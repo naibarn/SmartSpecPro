@@ -119,6 +119,45 @@ describe("enforceHermesMinVersion (pure helper)", () => {
   });
 });
 
+describe("enforceHermesDesktopControlVersion (pure helper)", () => {
+  it("demotes desktop Hermes advertising below Worker App 0.1.140", async () => {
+    const {
+      enforceHermesDesktopControlVersion,
+      HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION,
+    } = await import("../workerRegistryService");
+
+    const result = enforceHermesDesktopControlVersion(
+      { hermesMedia: { advertised: true, hermesVersion: "0.18.2" } },
+      "desktop_zeroclaw_managed",
+      "0.1.136",
+    );
+
+    expect(HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION).toBe("0.1.140");
+    expect(result.belowMinimum).toBe(true);
+    expect(result.capabilitiesJson.hermesMedia).toMatchObject({
+      advertised: false,
+      reason: "below_worker_app_version:0.1.140",
+    });
+    expect(result.warning).toContain("0.1.140");
+  });
+
+  it("preserves Worker App 0.1.140 and central Hermes workers", async () => {
+    const { enforceHermesDesktopControlVersion } = await import("../workerRegistryService");
+    const capabilities = { hermesMedia: { advertised: true, hermesVersion: "0.18.2" } };
+
+    expect(enforceHermesDesktopControlVersion(
+      capabilities,
+      "desktop_zeroclaw_managed",
+      "0.1.140",
+    ).capabilitiesJson.hermesMedia).toMatchObject({ advertised: true });
+    expect(enforceHermesDesktopControlVersion(
+      capabilities,
+      "hermes_agent_gateway",
+      "0.1.0",
+    ).capabilitiesJson.hermesMedia).toMatchObject({ advertised: true });
+  });
+});
+
 describe("registerWorker — hermes_worker_min_version enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -138,7 +177,7 @@ describe("registerWorker — hermes_worker_min_version enforcement", () => {
       machineName: null,
       displayName: "Worker App",
       status: "online",
-      runtimeVersion: "0.1.129",
+      runtimeVersion: "0.1.140",
       runtimeMode: "native_constrained",
       runtimeProfileId: null,
       policyProfileId: null,
@@ -166,7 +205,7 @@ describe("registerWorker — hermes_worker_min_version enforcement", () => {
     const payload: WorkerRegistrationPayload = {
       compatibility: {
         protocolVersion: "2026-04-06",
-        runtimeVersion: "0.1.129",
+        runtimeVersion: "0.1.140",
       },
       runtimeType: "desktop_zeroclaw_managed",
       workerMode: "per_user",
@@ -333,7 +372,7 @@ describe("registerWorker — hermes_worker_min_version enforcement", () => {
       machineName: null,
       displayName: "Worker App",
       status: "online",
-      runtimeVersion: "0.1.130",
+      runtimeVersion: "0.1.140",
       runtimeMode: "native_constrained",
       runtimeProfileId: null,
       policyProfileId: null,
@@ -361,7 +400,7 @@ describe("registerWorker — hermes_worker_min_version enforcement", () => {
     const payload: WorkerRegistrationPayload = {
       compatibility: {
         protocolVersion: "2026-04-06",
-        runtimeVersion: "0.1.130",
+        runtimeVersion: "0.1.140",
       },
       runtimeType: "desktop_zeroclaw_managed",
       workerMode: "per_user",
@@ -450,7 +489,7 @@ describe("recordWorkerHeartbeat — hermes_worker_min_version enforcement", () =
     const payload: WorkerHeartbeatPayload = {
       compatibility: {
         protocolVersion: "2026-04-06",
-        runtimeVersion: "0.1.129",
+        runtimeVersion: "0.1.140",
       },
       runtimeType: "desktop_zeroclaw_managed",
       status: "online",
@@ -582,7 +621,7 @@ describe("recordWorkerHeartbeat — hermes_worker_min_version enforcement", () =
     const payload: WorkerHeartbeatPayload = {
       compatibility: {
         protocolVersion: "2026-04-06",
-        runtimeVersion: "0.1.129",
+        runtimeVersion: "0.1.140",
       },
       runtimeType: "desktop_zeroclaw_managed",
       status: "online",
@@ -644,7 +683,7 @@ describe("recordWorkerHeartbeat — hermes_worker_min_version enforcement", () =
     const payload: WorkerHeartbeatPayload = {
       compatibility: {
         protocolVersion: "2026-04-06",
-        runtimeVersion: "0.1.130",
+        runtimeVersion: "0.1.140",
       },
       runtimeType: "desktop_zeroclaw_managed",
       status: "online",
@@ -714,7 +753,7 @@ describe("recordWorkerHeartbeat — hermes_worker_min_version enforcement", () =
     const payload: WorkerHeartbeatPayload = {
       compatibility: {
         protocolVersion: "2026-04-06",
-        runtimeVersion: "0.1.130",
+        runtimeVersion: "0.1.140",
       },
       runtimeType: "desktop_zeroclaw_managed",
       status: "online",

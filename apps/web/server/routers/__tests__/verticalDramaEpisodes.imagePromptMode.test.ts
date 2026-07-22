@@ -440,6 +440,13 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
     mockGetModelsByTypeAsync.mockResolvedValue([
       { id: "gpt-image-1.5-all", name: "GPT Image 1.5 (All)", provider: "openai", configJson: {} },
     ]);
+    mockGenerateStartFrameShotPrompt.mockResolvedValue({
+      prompt: "REFERENCE MAPPING: Image 1 = Hero.\nA hero stands in the rain",
+      negativePrompt: "",
+      creditsUsed: 2,
+      model: "gpt-image-planner",
+      usedMode: "policy_safe_rewrite",
+    });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ bible: null }])); // loadSeriesTargetAudienceRegion
@@ -447,7 +454,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
 
     await router.generateShotStartFramePrompt({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
 
     expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
@@ -458,6 +465,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
         imageModelId: "gpt-image-1.5-all",
       }),
     );
+    expect(mockEnsurePromptWithinLimit).not.toHaveBeenCalled();
   });
 
   it("resolves cinematic_narrative by default when the plan's selected image model is NOT GPT-family", async () => {
@@ -472,7 +480,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
 
     await router.generateShotStartFramePrompt({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
 
     expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
@@ -496,7 +504,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
     await expect(
       router.generateShotStartFramePrompt({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
       }),
     ).resolves.toBeTruthy();
 
@@ -507,10 +515,12 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
 
   it("an explicit plan.imagePromptMode always wins over the model-family default", async () => {
     const episodeRow = baseEpisodeRow({
+      motionPromptPack: { promptLanguage: "en" },
       startFramePlan: {
         mode: "single_frame_per_shot",
         selectedImageModelId: "gpt-image-1.5-all", // would default to policy_safe_rewrite
         imagePromptMode: "cinematic_narrative", // explicit override
+        imagePromptLanguage: "th",
         frames: [
           {
             shotNumber: 1,
@@ -532,7 +542,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
 
     await router.generateShotStartFramePrompt({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
 
     expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
@@ -540,6 +550,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
         imagePromptMode: "cinematic_narrative",
         imagePromptModeResolvedFrom: "user",
         imageModelFamily: "gpt",
+        promptLanguage: "th",
       }),
     );
   });
@@ -571,7 +582,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
 
     await router.generateShotStartFramePrompt({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
 
     expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
@@ -617,7 +628,7 @@ describe("generateShotStartFramePrompt — promptMode stamp persisted + returned
 
     const result = await router.generateShotStartFramePrompt({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
 
     const persistedFrame = capturedSet.startFramePlan.frames.find((f: any) => f.shotNumber === 1);
@@ -640,8 +651,28 @@ describe("generateShotStartFramePrompt — promptMode stamp persisted + returned
     });
   });
 
-  it("leaves promptMode/promptSafetyAdjustments/promptAnalysis absent when the service returns none of them", async () => {
-    const episodeRow = baseEpisodeRow();
+  it("clears a stale mode stamp and analysis when the user runs a general AI edit", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "gpt-image-1.5-all",
+        frames: [{
+          shotNumber: 1,
+          imagePrompt: "old direct prompt",
+          negativePrompt: "",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+          promptMode: {
+            mode: "policy_safe_rewrite",
+            resolvedFrom: "auto",
+            imageModelFamily: "gpt",
+            generatedAt: "2026-01-01T00:00:00.000Z",
+          },
+          promptSafetyAdjustments: ["old → safe"],
+          promptAnalysis: { storyMeaning: "stale" },
+        }],
+      },
+    });
     mockGetModelsByTypeAsync.mockResolvedValue([]);
     mockGenerateStartFrameShotPrompt.mockResolvedValue({
       prompt: "a prompt",
@@ -671,5 +702,8 @@ describe("generateShotStartFramePrompt — promptMode stamp persisted + returned
     expect(persistedFrame.promptSafetyAdjustments).toBeUndefined();
     expect(persistedFrame.promptAnalysis).toBeUndefined();
     expect(result.promptMode).toBeUndefined();
+    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ imagePromptMode: undefined }),
+    );
   });
 });

@@ -1390,6 +1390,8 @@ export async function startAutoStoryboardReviewForApi(input: {
       manualVideoGroupSize: plan.defaults.manualVideoGroupSize,
       speechLanguage: plan.defaults.speechLanguage,
       creativeBrief: plan.defaults.creativeBrief,
+      motionDirection: plan.defaults.motionDirection,
+      characterPresenceMode: plan.defaults.characterPresenceMode,
       qualityMode: toMarketplaceAutoReviewQualityMode(
         plan.defaults.qualityMode
       ),

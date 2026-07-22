@@ -189,6 +189,7 @@ describe("reconcileEpisodeLocations", () => {
     await expect(reconcileEpisodeLocations(owner, [malformedGroup])).resolves.toEqual({
       createdLocations: [],
       reusedLocations: [],
+      locationBindings: [],
     });
     // Existing roster is unchanged.
     expect(hoisted.locationRows).toHaveLength(1);
@@ -215,7 +216,11 @@ describe("reconcileEpisodeLocations", () => {
 
     const summary = await reconcileEpisodeLocations(owner, []);
 
-    expect(summary).toEqual({ createdLocations: [], reusedLocations: [] });
+    expect(summary).toEqual({
+      createdLocations: [],
+      reusedLocations: [],
+      locationBindings: [],
+    });
     expect(hoisted.locationRows).toHaveLength(1);
   });
 
@@ -288,9 +293,16 @@ describe("reconcileEpisodeLocations", () => {
 
     const groups: VerticalDramaStoryboardLocationGroup[] = [
       {
+        // NOTE: deliberately NOT a "<name> (qualifier)" shape — that case is
+        // now covered (and intentionally REUSED, not merged-as-new) by the
+        // "parenthetical-stripped name fallback" describe block below, per
+        // the series-18 fix. This test guards the orthogonal concern: two
+        // names that are merely textually similar/overlapping, with no
+        // trailing-parenthetical structure at all, must never be fuzzy-
+        // matched into the same row.
         locationKey: "location-4",
-        locationName: "ร้านกาแฟ (สาขา 2)",
-        description: "a genuinely different, second branch",
+        locationName: "ร้านกาแฟเก่าใกล้ตลาด",
+        description: "a genuinely different, unrelated old coffee shop near the market",
         shotNumbers: [5],
       },
     ];
@@ -299,8 +311,192 @@ describe("reconcileEpisodeLocations", () => {
 
     expect(summary.reusedLocations).toEqual([]);
     expect(summary.createdLocations).toHaveLength(1);
-    expect(summary.createdLocations[0].name).toBe("ร้านกาแฟ (สาขา 2)");
+    expect(summary.createdLocations[0].name).toBe("ร้านกาแฟเก่าใกล้ตลาด");
     expect(hoisted.locationRows).toHaveLength(2);
+  });
+
+  /**
+   * Regression coverage for the series 18 "situation-variant" duplication
+   * bug (2026-07-18 fix): the storyboard/location-detector pipeline
+   * described the SAME flight-control center under different dramatic beats
+   * across separate calls and minted TWO extra roster rows for it —
+   * `location-2-visit1` named "ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)" and
+   * `location-2-visit2` named "ศูนย์ควบคุมการปฏิบัติการบิน (วิกฤตผู้โดยสาร)" —
+   * alongside the original `location-2` row with no qualifier. Neither the
+   * exact-key nor the exact-normalized-name rule caught this (both the key
+   * AND the name differed, by exactly the trailing situation qualifier).
+   */
+  describe("parenthetical-stripped name fallback (series 18 fix)", () => {
+    it("reuses an existing location when the incoming name is the existing name plus a trailing situation qualifier in parens (no insert)", async () => {
+      hoisted.locationRows = [
+        makeLocationRow({
+          id: 1,
+          locationKey: "location-2",
+          name: "ศูนย์ควบคุมการปฏิบัติการบิน",
+          data: { description: "original, already-approved description" },
+        }),
+      ];
+
+      const groups: VerticalDramaStoryboardLocationGroup[] = [
+        {
+          locationKey: "location-2-visit1",
+          locationName: "ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)",
+          description: "a completely different incoming description this run",
+          shotNumbers: [1, 2],
+        },
+      ];
+
+      const summary = await reconcileEpisodeLocations(owner, groups);
+
+      expect(summary.reusedLocations).toEqual([
+        { locationKey: "location-2", name: "ศูนย์ควบคุมการปฏิบัติการบิน" },
+      ]);
+      expect(summary.createdLocations).toEqual([]);
+      expect(summary.locationBindings).toEqual([
+        {
+          incomingLocationKey: "location-2-visit1",
+          incomingLocationName: "ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)",
+          canonicalLocationKey: "location-2",
+        },
+      ]);
+      expect(hoisted.locationRows).toHaveLength(1);
+      expect((hoisted.locationRows[0].data as { description: string }).description).toBe(
+        "original, already-approved description",
+      );
+    });
+
+    it("reuses across two separate calls, each minting its own distinct situation-qualified variant name (the full series 18 scenario)", async () => {
+      hoisted.locationRows = [
+        makeLocationRow({ id: 1, locationKey: "location-2", name: "ศูนย์ควบคุมการปฏิบัติการบิน" }),
+      ];
+
+      await reconcileEpisodeLocations(owner, [
+        {
+          locationKey: "location-2-visit1",
+          locationName: "ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)",
+          description: "call 1",
+          shotNumbers: [1],
+        },
+      ]);
+      const summary2 = await reconcileEpisodeLocations(owner, [
+        {
+          locationKey: "location-2-visit2",
+          locationName: "ศูนย์ควบคุมการปฏิบัติการบิน (วิกฤตผู้โดยสาร)",
+          description: "call 2",
+          shotNumbers: [2],
+        },
+      ]);
+
+      expect(summary2.reusedLocations).toEqual([
+        { locationKey: "location-2", name: "ศูนย์ควบคุมการปฏิบัติการบิน" },
+      ]);
+      expect(summary2.createdLocations).toEqual([]);
+      // Still exactly ONE row for this location — no `-visit1`/`-visit2` rows.
+      expect(hoisted.locationRows).toHaveLength(1);
+    });
+
+    it("with NO existing 'X' row, 'X (Y)' still inserts normally — a parenthetical alone is not proof of an existing match", async () => {
+      hoisted.locationRows = [];
+
+      const groups: VerticalDramaStoryboardLocationGroup[] = [
+        {
+          locationKey: "hospital-roof",
+          locationName: "ดาดฟ้าโรงพยาบาล (คืนฝนตก)",
+          description: "a brand new location, never seen before",
+          shotNumbers: [1],
+        },
+      ];
+
+      const summary = await reconcileEpisodeLocations(owner, groups);
+
+      expect(summary.reusedLocations).toEqual([]);
+      expect(summary.createdLocations).toEqual([
+        { locationKey: "hospital-roof", name: "ดาดฟ้าโรงพยาบาล (คืนฝนตก)" },
+      ]);
+      expect(hoisted.locationRows).toHaveLength(1);
+    });
+
+    it("strips only ONE trailing parenthetical group when the name carries two — does not over-strip to a shorter existing name", async () => {
+      // Existing row is the singly-qualified name "ร้านกาแฟ (สาขา 2)" itself
+      // (e.g. a legitimately distinct second branch already in the roster) —
+      // NOT the bare "ร้านกาแฟ". Confirms stripping is bounded to exactly one
+      // trailing group so a doubly-qualified incoming name reuses the
+      // singly-qualified row, never collapsing all the way to the bare name.
+      hoisted.locationRows = [
+        makeLocationRow({ id: 1, locationKey: "loc_cafe_branch2", name: "ร้านกาแฟ (สาขา 2)" }),
+      ];
+
+      const groups: VerticalDramaStoryboardLocationGroup[] = [
+        {
+          locationKey: "location-9",
+          locationName: "ร้านกาแฟ (สาขา 2) (เดิม)",
+          description: "revisit, same second-branch cafe",
+          shotNumbers: [1],
+        },
+      ];
+
+      const summary = await reconcileEpisodeLocations(owner, groups);
+
+      expect(summary.reusedLocations).toEqual([
+        { locationKey: "loc_cafe_branch2", name: "ร้านกาแฟ (สาขา 2)" },
+      ]);
+      expect(summary.createdLocations).toEqual([]);
+      expect(hoisted.locationRows).toHaveLength(1);
+    });
+
+    it("covers Thai/Latin fullwidth parentheses （）the same as ASCII parens", async () => {
+      hoisted.locationRows = [makeLocationRow({ id: 1, locationKey: "loc_office", name: "ออฟฟิศ" })];
+
+      const groups: VerticalDramaStoryboardLocationGroup[] = [
+        {
+          locationKey: "location-10",
+          locationName: "ออฟฟิศ（ช่วงวิกฤต）",
+          description: "fullwidth-paren qualifier variant",
+          shotNumbers: [1],
+        },
+      ];
+
+      const summary = await reconcileEpisodeLocations(owner, groups);
+
+      expect(summary.reusedLocations).toEqual([{ locationKey: "loc_office", name: "ออฟฟิศ" }]);
+      expect(summary.createdLocations).toEqual([]);
+      expect(hoisted.locationRows).toHaveLength(1);
+    });
+
+    it("exact-key match still takes precedence over the parenthetical fallback", async () => {
+      hoisted.locationRows = [
+        makeLocationRow({
+          id: 1,
+          locationKey: "location-2",
+          name: "ศูนย์ควบคุมการปฏิบัติการบิน",
+          data: { description: "original, already-approved description" },
+        }),
+        makeLocationRow({
+          id: 2,
+          locationKey: "location-2-visit1",
+          name: "ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)",
+          data: { description: "already-existing distinct row (legacy bad data)" },
+        }),
+      ];
+
+      const groups: VerticalDramaStoryboardLocationGroup[] = [
+        {
+          // Exact key match against the SECOND (legacy) row must win, not
+          // the parenthetical-stripped fallback pointing at the first row.
+          locationKey: "location-2-visit1",
+          locationName: "ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)",
+          description: "same call, exact key present",
+          shotNumbers: [1],
+        },
+      ];
+
+      const summary = await reconcileEpisodeLocations(owner, groups);
+
+      expect(summary.reusedLocations).toEqual([
+        { locationKey: "location-2-visit1", name: "ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)" },
+      ]);
+      expect(hoisted.locationRows).toHaveLength(2);
+    });
   });
 
   /**

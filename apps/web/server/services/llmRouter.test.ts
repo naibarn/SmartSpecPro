@@ -846,6 +846,77 @@ describe("executeWithFallback", () => {
     }
   });
 
+  // Timeout-hole fix (2026-07-18) — see this file's doc comment at the fetch
+  // call site (audit-2026-07-18.jsonl root cause: moonshotai/kimi-k3
+  // capacity-limited, totalMs 275904 per hung attempt, headers arrived but
+  // the body never did). Previously the AbortController was cleared as soon
+  // as headers arrived, so a stalled `response.text()` read had NO deadline
+  // at all.
+  describe("body-read timeout (two-phase AbortController)", () => {
+    it("aborts a stalled body read at the body-timeout deadline and classifies it as a retryable network_error", async () => {
+      const provider = makeCandidate({ providerId: 1 });
+      setupProviderResolution([provider]);
+
+      mockFetch.mockImplementation((_url: string, init: any) => {
+        const signal: AbortSignal = init.signal;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          // Headers arrive immediately (this promise resolves), but the BODY
+          // never does until the (re-armed) AbortController fires.
+          text: () =>
+            new Promise((_resolve, reject) => {
+              signal.addEventListener("abort", () => {
+                reject(new DOMException("This operation was aborted.", "AbortError"));
+              });
+            }),
+        });
+      });
+
+      const result = await executeWithFallback({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: "Hi" }],
+        stream: false,
+        userId: 1,
+        timeoutMs: 30, // tight deadline so the test runs fast
+        disableProviderFallbacks: true,
+      });
+
+      expect(result.type).toBe("error");
+      if (result.type === "error") {
+        expect(result.error.toLowerCase()).toContain("aborted");
+      }
+      // Classified via the outer catch as "network_error" — the same class
+      // `verticalDramaStoryBible.ts`'s `classifyVerticalDramaLlmError`
+      // already treats as "transient" (bounded-retry-eligible).
+      expect(mockHealthRecordFailure).toHaveBeenCalledWith(1, "network_error");
+    });
+
+    it("does not abort a normal-latency call with no timeoutMs override (byte-identical default behavior)", async () => {
+      const provider = makeCandidate({ providerId: 1 });
+      setupProviderResolution([provider]);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "Hello" } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5 },
+        }),
+      });
+
+      const result = await executeWithFallback({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: "Hi" }],
+        stream: false,
+        userId: 1,
+      });
+
+      expect(result.type).toBe("success");
+    });
+  });
+
   it("recordSuccess called on success, recordFailure on failure", async () => {
     const provider1 = makeCandidate({ providerId: 1 });
     const provider2 = makeCandidate({ providerId: 2 });

@@ -138,6 +138,16 @@ export interface HermesConnectionRepo {
     connection: InsertHermesProviderConnection;
     job: InsertWorkerJob;
   }): Promise<{ connection: HermesProviderConnection; job: WorkerJob }>;
+  /** Atomic reconnect: moves an existing recoverable connection back to
+   *  `pending` and inserts its fresh authorize job in the same transaction.
+   *  Returns null when another request already changed the row. */
+  restartConnectionWithJob(params: {
+    tenantId: string;
+    connectionId: string;
+    expectedStatuses: HermesConnectionStatus[];
+    connectionValues: Partial<InsertHermesProviderConnection>;
+    job: InsertWorkerJob;
+  }): Promise<{ connection: HermesProviderConnection; job: WorkerJob } | null>;
   updateConnection(params: {
     tenantId?: string;
     connectionId: string;
@@ -234,6 +244,31 @@ function isWorkerOnline(worker: Pick<Worker, "status" | "lastSeenAt"> | null | u
   const lastSeenMs = new Date(worker.lastSeenAt).getTime();
   if (!Number.isFinite(lastSeenMs)) return false;
   return now.getTime() - lastSeenMs <= HERMES_WORKER_ONLINE_STALE_MS;
+}
+
+function getHermesMediaCapability(worker: Pick<Worker, "capabilitiesJson"> | null | undefined): {
+  advertised: boolean;
+  doctorOk: boolean | null;
+  hermesVersion: string | null;
+  reason: string | null;
+} {
+  const capabilities = worker?.capabilitiesJson;
+  const raw = capabilities && typeof capabilities === "object"
+    ? (capabilities as Record<string, unknown>).hermesMedia
+    : null;
+  const media = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  return {
+    advertised: media.advertised === true,
+    doctorOk: typeof media.doctorOk === "boolean" ? media.doctorOk : null,
+    hermesVersion: typeof media.hermesVersion === "string" ? media.hermesVersion : null,
+    reason: typeof media.reason === "string" && media.reason.trim() ? media.reason : null,
+  };
+}
+
+function isHermesMediaWorkerReady(worker: Worker | null | undefined, now: Date): boolean {
+  if (!isWorkerOnline(worker, now)) return false;
+  const capability = getHermesMediaCapability(worker);
+  return capability.advertised && capability.doctorOk !== false;
 }
 
 function isAssetTypeEnabledInManifest(
@@ -538,6 +573,30 @@ export const defaultHermesConnectionRepo: HermesConnectionRepo = {
     });
   },
 
+  async restartConnectionWithJob({
+    tenantId,
+    connectionId,
+    expectedStatuses,
+    connectionValues,
+    job,
+  }) {
+    const db = getDb();
+    return db.transaction(async (tx) => {
+      const [connectionRow] = await tx
+        .update(hermesProviderConnections)
+        .set(connectionValues)
+        .where(and(
+          eq(hermesProviderConnections.id, connectionId),
+          eq(hermesProviderConnections.tenantId, tenantId),
+          inArray(hermesProviderConnections.status, expectedStatuses),
+        ))
+        .returning();
+      if (!connectionRow) return null;
+      const [jobRow] = await tx.insert(workerJobs).values(job).returning();
+      return { connection: connectionRow, job: jobRow };
+    });
+  },
+
   async updateConnection({ tenantId, connectionId, values }) {
     const db = getDb();
     const conditions = [eq(hermesProviderConnections.id, connectionId)];
@@ -740,24 +799,66 @@ export async function getHermesAvailability(
   deps: HermesConnectionDeps = {},
 ): Promise<{
   enabled: boolean;
+  platformEnabled: boolean;
+  tenantEnabled: boolean;
   videoEnabled: boolean;
   scopes: { serverShared: boolean; serverPersonal: boolean; privateWorker: boolean };
+  serverWorker: {
+    configured: boolean;
+    online: boolean;
+    ready: boolean;
+    status: Worker["status"] | null;
+    lastSeenAt: string | null;
+    hermesVersion: string | null;
+    reason: "not_configured" | "not_found" | "offline" | "capability_unavailable" | null;
+    detail: string | null;
+  };
 }> {
   const resolved = resolveDeps(deps);
   const tenantId = tenantRequired(params.tenantId);
   const settings = await readSettingsFailClosed(resolved.settings);
   const tenantFlags = await readTenantFlagsFailClosed(resolved.flags, tenantId);
 
-  const enabled = Boolean(settings?.enabled) && Boolean(tenantFlags?.hermesMediaWorker);
+  const platformEnabled = Boolean(settings?.enabled);
+  const tenantEnabled = Boolean(tenantFlags?.hermesMediaWorker);
+  const enabled = platformEnabled && tenantEnabled;
   const videoEnabled = enabled && Boolean(settings?.videoEnabled);
+  const sharedWorkerId = settings?.sharedWorkerId ?? null;
+  const sharedWorker = sharedWorkerId
+    ? await resolved.repo.findWorkerById({ tenantId, workerId: sharedWorkerId }).catch(() => null)
+    : null;
+  const serverWorkerOnline = isWorkerOnline(sharedWorker, resolved.now());
+  const serverWorkerCapability = getHermesMediaCapability(sharedWorker);
+  const serverWorkerReady = isHermesMediaWorkerReady(sharedWorker, resolved.now());
+  const serverWorkerReason = !sharedWorkerId
+    ? "not_configured" as const
+    : !sharedWorker
+      ? "not_found" as const
+      : !serverWorkerOnline
+        ? "offline" as const
+        : !serverWorkerReady
+          ? "capability_unavailable" as const
+          : null;
 
   return {
     enabled,
+    platformEnabled,
+    tenantEnabled,
     videoEnabled,
     scopes: {
-      serverShared: enabled && Boolean(settings?.sharedPoolEnabled),
-      serverPersonal: enabled && Boolean(settings?.serverPersonalEnabled),
+      serverShared: enabled && serverWorkerReady && Boolean(settings?.sharedPoolEnabled),
+      serverPersonal: enabled && serverWorkerReady && Boolean(settings?.serverPersonalEnabled),
       privateWorker: enabled && Boolean(settings?.privateEnabled),
+    },
+    serverWorker: {
+      configured: Boolean(sharedWorkerId),
+      online: serverWorkerOnline,
+      ready: serverWorkerReady,
+      status: sharedWorker?.status ?? null,
+      lastSeenAt: sharedWorker?.lastSeenAt ? new Date(sharedWorker.lastSeenAt).toISOString() : null,
+      hermesVersion: serverWorkerCapability.hermesVersion,
+      reason: serverWorkerReason,
+      detail: serverWorkerCapability.reason,
     },
   };
 }
@@ -784,10 +885,17 @@ async function resolveTargetWorker(input: {
       if (!isWorkerOnline(worker, input.now)) {
         throw hermesTypedError("HERMES_WORKER_UNAVAILABLE", "PRECONDITION_FAILED", "worker offline");
       }
+      if (!isHermesMediaWorkerReady(worker, input.now)) {
+        throw hermesTypedError(
+          "HERMES_WORKER_UNAVAILABLE",
+          "PRECONDITION_FAILED",
+          "worker Hermes capability unavailable",
+        );
+      }
       return worker;
     }
     const owned = await input.repo.findOwnedOnlineWorkers({ tenantId: input.tenantId, userId: input.userId });
-    if (owned.length !== 1) {
+    if (owned.length !== 1 || !isHermesMediaWorkerReady(owned[0], input.now)) {
       throw hermesTypedError("HERMES_WORKER_UNAVAILABLE", "PRECONDITION_FAILED", "no unambiguous eligible worker");
     }
     return owned[0];
@@ -802,6 +910,13 @@ async function resolveTargetWorker(input: {
   const worker = await input.repo.findWorkerById({ tenantId: input.tenantId, workerId: sharedWorkerId });
   if (!worker || !isWorkerOnline(worker, input.now)) {
     throw hermesTypedError("HERMES_WORKER_UNAVAILABLE", "PRECONDITION_FAILED", "shared worker offline");
+  }
+  if (!isHermesMediaWorkerReady(worker, input.now)) {
+    throw hermesTypedError(
+      "HERMES_WORKER_UNAVAILABLE",
+      "PRECONDITION_FAILED",
+      "shared worker Hermes capability unavailable",
+    );
   }
   return worker;
 }
@@ -845,6 +960,69 @@ export async function startHermesConnect(
     });
   }
 
+  const existingRows = await resolved.repo.findConnections({
+    tenantId,
+    userId: params.userId,
+  });
+  const requestedWorkerId = params.workerId
+    ?? (params.scope === "private_worker" ? null : settings.sharedWorkerId);
+
+  // Only a connection whose OAuth session remains usable is idempotently
+  // reusable. `reauth_required` must continue below and create a fresh
+  // device-code job; returning it here makes the Reconnect button a no-op.
+  const reusableActiveConnection = existingRows
+    .filter((row) =>
+      (row.status === "authorized" || row.status === "entitlement_restricted")
+      && row.scope === params.scope
+      && (
+        params.scope === "server_shared"
+          ? true
+          : row.ownerUserId === params.userId
+      )
+      && (!requestedWorkerId || row.assignedWorkerId === requestedWorkerId)
+    )
+    .sort((left, right) =>
+      (right.authorizedAt?.getTime() ?? right.createdAt.getTime())
+      - (left.authorizedAt?.getTime() ?? left.createdAt.getTime())
+    )[0];
+  if (reusableActiveConnection) {
+    return { connectionId: reusableActiveConnection.id };
+  }
+
+  // A connect attempt is durable server state. Repeated clicks, multiple
+  // tabs, or a page reload must resume the same non-terminal attempt instead
+  // of creating another pending row and another queued authorize job.
+  const pendingRows = existingRows.filter((row) =>
+    row.status === "pending"
+    && row.scope === params.scope
+    && (
+      params.scope === "server_shared"
+        ? true
+        : row.ownerUserId === params.userId
+    )
+    && (!requestedWorkerId || row.assignedWorkerId === requestedWorkerId)
+  );
+  const reusableAttempts = (
+    await Promise.all(pendingRows.map(async (row) => ({
+      row,
+      job: await resolved.repo.findLatestControlJob({
+        tenantId,
+        connectionId: row.id,
+        jobType: HERMES_CONNECTION_AUTH_JOB_TYPE,
+      }),
+    })))
+  )
+    .filter((attempt) => attempt.job && !isTerminalWorkerJobStatus(attempt.job.status))
+    .sort((left, right) => {
+      const leftActive = left.job?.status === "queued" ? 1 : 0;
+      const rightActive = right.job?.status === "queued" ? 1 : 0;
+      if (leftActive !== rightActive) return leftActive - rightActive;
+      return left.row.createdAt.getTime() - right.row.createdAt.getTime();
+    });
+  if (reusableAttempts[0]) {
+    return { connectionId: reusableAttempts[0].row.id };
+  }
+
   const worker = await resolveTargetWorker({
     scope: params.scope,
     workerId: params.workerId,
@@ -854,6 +1032,53 @@ export async function startHermesConnect(
     settings,
     now: nowDate,
   });
+
+  const reconnectableConnection = existingRows
+    .filter((row) =>
+      (row.status === "reauth_required" || row.status === "error")
+      && row.scope === params.scope
+      && (
+        params.scope === "server_shared"
+          ? true
+          : row.ownerUserId === params.userId
+      )
+      && (!requestedWorkerId || row.assignedWorkerId === requestedWorkerId)
+    )
+    .sort((left, right) =>
+      (right.authorizedAt?.getTime() ?? right.createdAt.getTime())
+      - (left.authorizedAt?.getTime() ?? left.createdAt.getTime())
+    )[0];
+
+  if (reconnectableConnection) {
+    const metadataJson = { ...(reconnectableConnection.metadataJson ?? {}) };
+    delete metadataJson.lastError;
+    const restarted = await resolved.repo.restartConnectionWithJob({
+      tenantId,
+      connectionId: reconnectableConnection.id,
+      expectedStatuses: ["reauth_required", "error"],
+      connectionValues: {
+        status: "pending",
+        assignedWorkerId: worker.id,
+        entitlementStatus: null,
+        metadataJson: {
+          ...metadataJson,
+          consentAcknowledgedAt: nowDate.toISOString(),
+          consentUserId: params.userId,
+        },
+      },
+      job: buildAuthorizeJobInsert({
+        tenantId,
+        connectionId: reconnectableConnection.id,
+        workerId: worker.id,
+        runtimeType: worker.runtimeType,
+        requestedByUserId: params.userId,
+        profileReference: reconnectableConnection.profileReference,
+      }),
+    });
+    // A concurrent click may have won the conditional update. Both callers
+    // resume the same durable connection instead of creating duplicates.
+    return { connectionId: restarted?.connection.id ?? reconnectableConnection.id };
+  }
 
   const connectionId = randomUUID();
   const profileReference = `conn_${connectionId}`;
@@ -910,6 +1135,11 @@ export async function getHermesConnectStatus(
   userCode?: string;
   expiresAt?: string;
   errorCode?: HermesMediaErrorCode;
+  jobStatus?: string;
+  stage?: string;
+  startedAt?: string;
+  timeoutSeconds?: number;
+  elapsedSeconds?: number;
 }> {
   const resolved = resolveDeps(deps);
   const tenantId = tenantRequired(params.tenantId);
@@ -925,8 +1155,38 @@ export async function getHermesConnectStatus(
   let verificationUrl: string | undefined;
   let userCode: string | undefined;
   let expiresAt: string | undefined;
+  let eventErrorCode: HermesMediaErrorCode | undefined;
+  let jobStatus: string | undefined;
+  let stage: string | undefined;
+  let startedAt: string | undefined;
+  let timeoutSeconds: number | undefined;
+  let elapsedSeconds: number | undefined;
 
   if (job) {
+    jobStatus = job.status;
+    const jobOutput = (job.outputJson ?? {}) as Record<string, unknown>;
+    const lastEventPayload = (
+      jobOutput.lastEventPayload && typeof jobOutput.lastEventPayload === "object"
+        ? jobOutput.lastEventPayload
+        : {}
+    ) as Record<string, unknown>;
+    stage = typeof lastEventPayload.stage === "string"
+      ? lastEventPayload.stage
+      : typeof jobOutput.lastEventType === "string"
+        ? jobOutput.lastEventType
+        : undefined;
+    if (job.startedAt) {
+      const parsedStartedAt = new Date(job.startedAt);
+      if (!Number.isNaN(parsedStartedAt.getTime())) {
+        startedAt = parsedStartedAt.toISOString();
+        elapsedSeconds = Math.max(
+          0,
+          Math.floor((resolved.now().getTime() - parsedStartedAt.getTime()) / 1000),
+        );
+      }
+    }
+    timeoutSeconds = typeof job.timeoutSeconds === "number" ? job.timeoutSeconds : undefined;
+
     // Never log the device code / user code — only connectionId/jobId may
     // appear in structured logs elsewhere in this feature.
     const events = await resolved.repo.findJobEvents({ jobId: job.id, eventType: "hermes_device_code" });
@@ -936,6 +1196,12 @@ export async function getHermesConnectStatus(
       verificationUrl = typeof payload.verificationUrl === "string" ? payload.verificationUrl : undefined;
       userCode = typeof payload.userCode === "string" ? payload.userCode : undefined;
       expiresAt = typeof payload.expiresAt === "string" ? payload.expiresAt : undefined;
+      // Worker App <= 0.1.132 could latch the URL-only first line as a
+      // raw-only event. Never expose that OAuth output; surface a recoverable
+      // error so the UI stops polling instead of hanging forever.
+      if ((!verificationUrl || !userCode) && typeof payload.raw === "string") {
+        eventErrorCode = "HERMES_PROCESS_FAILED";
+      }
     }
 
     if (isTerminalWorkerJobStatus(job.status)) {
@@ -963,9 +1229,20 @@ export async function getHermesConnectStatus(
   const lastError = (row.metadataJson as Record<string, unknown> | null | undefined)?.lastError;
   const errorCode = typeof lastError === "string" && (HERMES_MEDIA_ERROR_CODES as readonly string[]).includes(lastError)
     ? (lastError as HermesMediaErrorCode)
-    : undefined;
+    : eventErrorCode;
 
-  return { status: row.status, verificationUrl, userCode, expiresAt, errorCode };
+  return {
+    status: row.status,
+    verificationUrl,
+    userCode,
+    expiresAt,
+    errorCode,
+    jobStatus,
+    stage,
+    startedAt,
+    timeoutSeconds,
+    elapsedSeconds,
+  };
 }
 
 /**
@@ -1010,6 +1287,14 @@ export async function settleHermesConnectionFromControlJob(
   if (!isSuccess && !isFailure) return;
 
   const output = params.job.outputJson ?? {};
+  // Worker event aggregation stores the terminal handler payload under
+  // `lastEventPayload`; direct/unit callers may still provide the legacy
+  // top-level shape. Accept both so successful probes actually persist the
+  // capability manifest used by the UI and media scheduler.
+  const terminalPayload = output.lastEventPayload && typeof output.lastEventPayload === "object"
+    ? output.lastEventPayload as Record<string, unknown>
+    : {};
+  const outputValue = (key: string): unknown => output[key] ?? terminalPayload[key];
 
   if (params.job.jobType === HERMES_CONNECTION_AUTH_JOB_TYPE) {
     if (row.status !== "pending") return; // already settled — idempotent no-op
@@ -1019,8 +1304,11 @@ export async function settleHermesConnectionFromControlJob(
         values: {
           status: "authorized",
           authorizedAt: nowDate,
-          accountHint: typeof output.accountHint === "string" ? output.accountHint : row.accountHint,
-          capabilitiesJson: (output.capabilities as HermesConnectionCapabilityManifest | undefined) ?? row.capabilitiesJson,
+          accountHint: typeof outputValue("accountHint") === "string"
+            ? outputValue("accountHint") as string
+            : row.accountHint,
+          capabilitiesJson: (outputValue("capabilities") as HermesConnectionCapabilityManifest | undefined)
+            ?? row.capabilitiesJson,
         },
       });
       auditHermesConnectionAuthorized({
@@ -1060,12 +1348,14 @@ export async function settleHermesConnectionFromControlJob(
   if (params.job.jobType === HERMES_CONNECTION_PROBE_JOB_TYPE) {
     if (row.status === "disconnected") return; // already settled — idempotent no-op
     if (isSuccess) {
-      if (output.entitlementRestricted === true) {
+      if (outputValue("entitlementRestricted") === true) {
         await repo.updateConnection({
           connectionId: row.id,
           values: {
             status: "entitlement_restricted",
-            entitlementStatus: typeof output.entitlementStatus === "string" ? output.entitlementStatus : "restricted",
+            entitlementStatus: typeof outputValue("entitlementStatus") === "string"
+              ? outputValue("entitlementStatus") as string
+              : "restricted",
             lastProbeAt: nowDate,
           },
         });
@@ -1080,8 +1370,14 @@ export async function settleHermesConnectionFromControlJob(
       await repo.updateConnection({
         connectionId: row.id,
         values: {
-          capabilitiesJson: (output.capabilities as HermesConnectionCapabilityManifest | undefined) ?? row.capabilitiesJson,
+          status: "authorized",
+          entitlementStatus: null,
+          capabilitiesJson: (outputValue("capabilities") as HermesConnectionCapabilityManifest | undefined)
+            ?? row.capabilitiesJson,
           lastProbeAt: nowDate,
+          metadataJson: Object.fromEntries(
+            Object.entries(row.metadataJson ?? {}).filter(([key]) => key !== "lastError"),
+          ),
         },
       });
       return;
@@ -1101,7 +1397,7 @@ export async function settleHermesConnectionFromControlJob(
     // because the overall job is classified a failure. Falls back to the
     // row's existing manifest when the job output carries none.
     const capabilitiesFromFailure =
-      (output.capabilities as HermesConnectionCapabilityManifest | undefined) ?? row.capabilitiesJson;
+      (outputValue("capabilities") as HermesConnectionCapabilityManifest | undefined) ?? row.capabilitiesJson;
     if (classification.outcome === "entitlement_restricted") {
       await repo.updateConnection({
         connectionId: row.id,

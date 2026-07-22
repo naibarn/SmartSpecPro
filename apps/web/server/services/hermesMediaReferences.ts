@@ -32,7 +32,7 @@
  * `server/services/__tests__/hermesMediaNamespaceGuard.test.ts`.
  */
 import { createHash } from "node:crypto";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, or } from "drizzle-orm";
 import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
 import { storageResolveUrl } from "../storage";
@@ -102,19 +102,39 @@ function toAbsoluteStorageUrl(relativePath: string): string {
 }
 
 /**
- * Streams the stored object and hashes its real bytes — the "compute once"
- * fallback for a reference asset whose `media_assets.checksumSha256` column
- * is not yet populated. Mirrors `videoProjectAssetResolver.ts`'s
- * `computeContentSha256` convention, but THROWS on failure (rather than
- * returning `undefined`) — a Hermes reference's `sha256` is a required,
- * non-optional contract field (`hermesMediaReferenceSchema`), so a fetch
- * failure here must fail the submit, not silently mint a reference with a
- * missing checksum.
+ * Legacy media rows can store a managed URL instead of the underlying object
+ * key. Keep hashing and claim-time URL minting on the same canonical key so
+ * both operations address the exact bytes the Worker later downloads.
+ */
+export function normalizeHermesReferenceStorageObjectKey(storageKey: string): string {
+  let value = storageKey.trim();
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      value = new URL(value).pathname;
+    } catch {
+      return storageKey;
+    }
+  }
+  for (const prefix of ["/api/storage/files/", "/uploads/", "storage://"]) {
+    if (value.startsWith(prefix)) {
+      return value.slice(prefix.length).replace(/^\/+/, "");
+    }
+  }
+  return value;
+}
+
+/**
+ * Streams the stored object and hashes its current bytes. The cached
+ * `media_assets.checksumSha256` is not authoritative because legacy producer
+ * paths could persist a hash for bytes that differ from the final stored
+ * object. A fetch failure must fail submit rather than queue a contract the
+ * Worker will deterministically reject.
  */
 export async function defaultHashHermesReferenceObject(params: {
   storageKey: string;
 }): Promise<string> {
-  const relativeUrl = await storageResolveUrl(params.storageKey);
+  const objectKey = normalizeHermesReferenceStorageObjectKey(params.storageKey);
+  const relativeUrl = await storageResolveUrl(objectKey);
   if (!relativeUrl) {
     throw new Error(`Cannot resolve storage URL for reference asset (storageKey=${params.storageKey})`);
   }
@@ -150,11 +170,10 @@ export class HermesMediaReferenceAssetNotFoundError extends Error {
  * Convert an ordered VD reference set (media asset ids + roles + the
  * "Image-N = <name>" labels from `contactSheets.ts`'s convention) into the
  * contract's `references[]`: `{ assetId, index (1-based, continuous), role,
- * label, sha256 }`. `sha256` comes from the `media_assets` checksum column;
- * when absent, computed once via the injectable `hashObject` and persisted
- * back (best-effort — a persistence failure does not fail THIS submit,
- * since the freshly computed hash is already in hand for the contract
- * being built right now).
+ * label, sha256 }`. `sha256` is computed from the current object bytes on
+ * every submit. The database value is only a cache and is repaired when stale
+ * (best-effort — a persistence failure does not fail THIS submit, since the
+ * freshly computed hash is already in hand for the current contract).
  */
 export async function buildHermesMediaReferences(
   params: {
@@ -179,20 +198,18 @@ export async function buildHermesMediaReferences(
     if (!asset) {
       throw new HermesMediaReferenceAssetNotFoundError(ref.assetId);
     }
-    let sha256 = asset.checksumSha256;
-    if (!sha256) {
-      sha256 = await hashObject({
-        tenantId: params.tenantId,
-        userId: params.userId,
-        assetId: ref.assetId,
-        storageKey: asset.storageKey,
-      });
+    const sha256 = await hashObject({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      assetId: ref.assetId,
+      storageKey: asset.storageKey,
+    });
+    if (asset.checksumSha256 !== sha256) {
       try {
         await repo.persistChecksum({ assetId: ref.assetId, checksumSha256: sha256 });
       } catch {
-        // Best-effort write-back only — the freshly computed hash above is
-        // still used for THIS contract even if persistence fails; a future
-        // reference to the same asset simply recomputes it again.
+        // Best-effort cache repair only. The verified hash above remains
+        // authoritative for this contract.
       }
     }
     references.push({ assetId: ref.assetId, index, role: ref.role, label: ref.label, sha256 });
@@ -201,13 +218,37 @@ export async function buildHermesMediaReferences(
   return references;
 }
 
-function extractStorageKeyFromUrl(url: string): string | null {
+export interface HermesReferenceStorageLookup {
+  storageKey: string;
+  storageKeyCandidates: string[];
+  originalUrlCandidates: string[];
+}
+
+/**
+ * Builds every first-party representation currently present in
+ * `media_assets`. Newer rows normally store a bare object key, while legacy
+ * MCP rows can store the complete `/api/storage/files/...` proxy path in
+ * both `storageKey` and `originalUrl`. Keeping both forms here prevents a
+ * visible VD reference from being silently dropped before a Hermes job.
+ */
+export function buildHermesReferenceStorageLookup(
+  url: string,
+): HermesReferenceStorageLookup | null {
   const withoutQuery = url.split("?")[0]?.split("#")[0] ?? "";
   const proxyMatch = /\/api\/storage\/files\/(.+)$/.exec(withoutQuery);
-  if (proxyMatch) return decodeURIComponent(proxyMatch[1]);
   const uploadsMatch = /\/uploads\/(.+)$/.exec(withoutQuery);
-  if (uploadsMatch) return decodeURIComponent(uploadsMatch[1]);
-  return null;
+  const encodedStorageKey = proxyMatch?.[1] ?? uploadsMatch?.[1];
+  if (!encodedStorageKey) return null;
+
+  const storageKey = decodeURIComponent(encodedStorageKey);
+  const relativePath = proxyMatch
+    ? `/api/storage/files/${storageKey}`
+    : `/uploads/${storageKey}`;
+  return {
+    storageKey,
+    storageKeyCandidates: Array.from(new Set([storageKey, relativePath])),
+    originalUrlCandidates: Array.from(new Set([withoutQuery, relativePath])),
+  };
 }
 
 export interface HermesReferenceAssetLookupRepo {
@@ -215,20 +256,39 @@ export interface HermesReferenceAssetLookupRepo {
     tenantId: string;
     userId: number;
     storageKey: string;
+    storageKeyCandidates?: string[];
+    originalUrlCandidates?: string[];
   }): Promise<{ id: string } | null>;
 }
 
 export const defaultHermesReferenceAssetLookupRepo: HermesReferenceAssetLookupRepo = {
-  async findAssetByStorageKey({ tenantId, userId, storageKey }) {
+  async findAssetByStorageKey({
+    tenantId,
+    userId,
+    storageKey,
+    storageKeyCandidates,
+    originalUrlCandidates,
+  }) {
     const db = getDb();
+    const storageCandidates = storageKeyCandidates?.length
+      ? storageKeyCandidates
+      : [storageKey];
+    const originalCandidates = originalUrlCandidates ?? [];
+    const assetMatch =
+      originalCandidates.length > 0
+        ? or(
+            inArray(mediaAssets.storageKey, storageCandidates),
+            inArray(mediaAssets.originalUrl, originalCandidates),
+          )
+        : inArray(mediaAssets.storageKey, storageCandidates);
     const [row] = await db
       .select({ id: mediaAssets.id })
       .from(mediaAssets)
       .where(
         and(
-          eq(mediaAssets.storageKey, storageKey),
           eq(mediaAssets.tenantId, tenantId),
           eq(mediaAssets.userId, userId),
+          assetMatch,
         ),
       )
       .limit(1);
@@ -249,13 +309,13 @@ export async function resolveHermesReferenceAssetIdFromUrl(
   params: { tenantId: string; userId: number; url: string },
   deps: { repo?: HermesReferenceAssetLookupRepo } = {},
 ): Promise<string | null> {
-  const storageKey = extractStorageKeyFromUrl(params.url);
-  if (!storageKey) return null;
+  const lookup = buildHermesReferenceStorageLookup(params.url);
+  if (!lookup) return null;
   const repo = deps.repo ?? defaultHermesReferenceAssetLookupRepo;
   const row = await repo.findAssetByStorageKey({
     tenantId: params.tenantId,
     userId: params.userId,
-    storageKey,
+    ...lookup,
   });
   return row ? row.id : null;
 }
@@ -272,6 +332,24 @@ export interface ResolveHermesOrderedRefsFromUrlsParams {
    *  compacts around a dropped entry). */
   roleFor?: (originalIndex: number) => string;
   labelFor?: (originalIndex: number) => string;
+  /**
+   * Required-reference surfaces must never silently downgrade from
+   * image.edit/reference-to-video to text-only generation.
+   */
+  requireAll?: boolean;
+}
+
+export class HermesMediaReferenceResolutionError extends Error {
+  readonly code = "HERMES_REFERENCE_RESOLUTION_FAILED";
+  readonly droppedReferenceCount: number;
+
+  constructor(droppedReferenceCount: number) {
+    super(
+      `แนบภาพอ้างอิงไปยัง Hermes ไม่สำเร็จ ${droppedReferenceCount} ภาพ กรุณาตรวจสอบภาพแล้วลองใหม่ / Could not attach ${droppedReferenceCount} required Hermes reference image(s).`,
+    );
+    this.name = "HermesMediaReferenceResolutionError";
+    this.droppedReferenceCount = droppedReferenceCount;
+  }
 }
 
 /**
@@ -315,6 +393,9 @@ export async function resolveHermesOrderedRefsFromUrls(
       role: params.roleFor ? params.roleFor(i) : "reference",
       label: params.labelFor ? params.labelFor(i) : `Image-${i + 1}`,
     });
+  }
+  if (params.requireAll && droppedReferenceCount > 0) {
+    throw new HermesMediaReferenceResolutionError(droppedReferenceCount);
   }
   return { orderedRefs, droppedReferenceCount };
 }

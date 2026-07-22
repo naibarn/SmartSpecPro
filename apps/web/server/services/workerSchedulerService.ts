@@ -296,6 +296,18 @@ export function workerJobMatchesSelection(
     return false;
   }
 
+  // Some runtime families use a compact, doctor-gated claim token while
+  // retaining descriptive capability families for admission/observability.
+  // When that explicit token is present it is the authoritative claim gate;
+  // requiring the descriptive family strings as additional claim hints would
+  // make conforming Hermes workers impossible to select.
+  const requiredClaimCapability = typeof requirements.requiredClaimCapability === "string"
+    ? requirements.requiredClaimCapability.trim()
+    : "";
+  if (requiredClaimCapability) {
+    return capabilityHints.includes(requiredClaimCapability);
+  }
+
   const requiredFamilies = Array.isArray(requirements.capabilityFamilies)
     ? requirements.capabilityFamilies.filter(
       (value): value is string => typeof value === "string" && value.trim().length > 0,

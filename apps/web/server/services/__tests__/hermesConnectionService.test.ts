@@ -76,7 +76,13 @@ function buildWorkerRow(overrides: Partial<Worker> = {}): Worker {
     policyProfileId: null,
     externalReference: "worker-app://hermes-1",
     dashboardUrl: null,
-    capabilitiesJson: {},
+    capabilitiesJson: {
+      hermesMedia: {
+        advertised: true,
+        doctorOk: true,
+        hermesVersion: "0.18.2",
+      },
+    },
     hardwareJson: {},
     healthSummaryJson: {},
     warningFlagsJson: [],
@@ -142,6 +148,7 @@ function buildDeps(overrides: Partial<HermesConnectionRepo> = {}, depsOverrides:
       connection: { ...connection, createdAt: NOW, authorizedAt: null },
       job: { ...job, id: "job-1", createdAt: NOW },
     })),
+    restartConnectionWithJob: vi.fn().mockResolvedValue(null),
     updateConnection: vi.fn(),
     clearDefaultFor: vi.fn().mockResolvedValue(undefined),
     setDefaultAtomic: vi.fn().mockImplementation(async ({ connectionId, assetType }) => ({
@@ -333,6 +340,29 @@ describe("startHermesConnect", () => {
       .rejects.toMatchObject({ message: expect.stringContaining("[HERMES_WORKER_UNAVAILABLE]") });
   });
 
+  it("private_worker: rejects an online worker that is not advertising a ready Hermes runtime", async () => {
+    const deps = buildDeps({
+      findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow({
+        capabilitiesJson: {
+          hermesMedia: {
+            advertised: false,
+            doctorOk: true,
+            reason: "below_worker_app_version:0.1.133",
+          },
+        },
+      })),
+    });
+
+    await expect(startHermesConnect({
+      ...baseParams,
+      scope: "private_worker",
+      workerId: "worker-1",
+    }, deps)).rejects.toMatchObject({
+      message: expect.stringContaining("[HERMES_WORKER_UNAVAILABLE]"),
+    });
+    expect(deps.repo!.insertConnectionWithJob).not.toHaveBeenCalled();
+  });
+
   it("private_worker: auto-selects the worker when the caller owns exactly one online eligible worker", async () => {
     const worker = buildWorkerRow({ id: "worker-auto" });
     const deps = buildDeps({
@@ -405,6 +435,116 @@ describe("startHermesConnect", () => {
       requestedByUserId: USER_ID,
     });
   });
+
+  it("reuses the existing non-terminal pending connection instead of creating duplicates", async () => {
+    const existing = buildConnectionRow({
+      id: "conn-pending-existing",
+      status: "pending",
+      scope: "server_personal",
+      authorizedAt: null,
+    });
+    const deps = buildDeps({
+      findConnections: vi.fn().mockResolvedValue([existing]),
+      findLatestControlJob: vi.fn().mockResolvedValue(buildWorkerJob({
+        status: "running",
+        capabilityRequirementsJson: { connectionId: existing.id },
+      })),
+    });
+
+    const result = await startHermesConnect(baseParams, deps);
+
+    expect(result).toEqual({ connectionId: existing.id });
+    expect(deps.repo!.insertConnectionWithJob).not.toHaveBeenCalled();
+    expect(deps.repo!.findWorkerById).not.toHaveBeenCalled();
+  });
+
+  it("reuses an already-authorized connection instead of starting another OAuth flow", async () => {
+    const existing = buildConnectionRow({
+      id: "conn-authorized-existing",
+      status: "authorized",
+      scope: "server_personal",
+      ownerUserId: USER_ID,
+      assignedWorkerId: "worker-1",
+      authorizedAt: NOW,
+    });
+    const deps = buildDeps({
+      findConnections: vi.fn().mockResolvedValue([existing]),
+    });
+
+    const result = await startHermesConnect(baseParams, deps);
+
+    expect(result).toEqual({ connectionId: existing.id });
+    expect(deps.repo!.insertConnectionWithJob).not.toHaveBeenCalled();
+    expect(deps.repo!.findWorkerById).not.toHaveBeenCalled();
+  });
+
+  it("restarts a reauth-required connection in place instead of returning it or creating a duplicate", async () => {
+    const existing = buildConnectionRow({
+      id: "conn-needs-reauth",
+      status: "reauth_required",
+      scope: "server_personal",
+      ownerUserId: USER_ID,
+      assignedWorkerId: "worker-1",
+      authorizedAt: NOW,
+      metadataJson: { lastError: "HERMES_REAUTH_REQUIRED", preserved: true },
+    });
+    const worker = buildWorkerRow();
+    const deps = buildDeps({
+      findConnections: vi.fn().mockResolvedValue([existing]),
+      findWorkerById: vi.fn().mockResolvedValue(worker),
+      restartConnectionWithJob: vi.fn().mockImplementation(async (args) => ({
+        connection: { ...existing, ...args.connectionValues },
+        job: { ...args.job, id: "job-reauth", createdAt: NOW },
+      })),
+    });
+
+    const result = await startHermesConnect(baseParams, deps);
+
+    expect(result).toEqual({ connectionId: existing.id });
+    expect(deps.repo!.restartConnectionWithJob).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TENANT_ID,
+      connectionId: existing.id,
+      expectedStatuses: ["reauth_required", "error"],
+      connectionValues: expect.objectContaining({
+        status: "pending",
+        assignedWorkerId: worker.id,
+        entitlementStatus: null,
+        metadataJson: expect.objectContaining({ preserved: true, consentUserId: USER_ID }),
+      }),
+      job: expect.objectContaining({
+        jobType: HERMES_CONNECTION_AUTH_JOB_TYPE,
+        workerId: worker.id,
+      }),
+    }));
+    const reconnectArgs = (deps.repo!.restartConnectionWithJob as any).mock.calls[0][0];
+    expect(reconnectArgs.connectionValues.metadataJson).not.toHaveProperty("lastError");
+    expect(deps.repo!.insertConnectionWithJob).not.toHaveBeenCalled();
+  });
+
+  it("does not reuse an authorized connection assigned to a different explicitly selected private worker", async () => {
+    const existing = buildConnectionRow({
+      id: "conn-other-worker",
+      status: "authorized",
+      scope: "private_worker",
+      ownerUserId: USER_ID,
+      assignedWorkerId: "worker-other",
+      authorizedAt: NOW,
+    });
+    const selectedWorker = buildWorkerRow({ id: "worker-selected" });
+    const deps = buildDeps({
+      findConnections: vi.fn().mockResolvedValue([existing]),
+      findWorkerById: vi.fn().mockResolvedValue(selectedWorker),
+    });
+
+    const result = await startHermesConnect({
+      ...baseParams,
+      scope: "private_worker",
+      workerId: selectedWorker.id,
+    }, deps);
+
+    expect(result.connectionId).not.toBe(existing.id);
+    expect(deps.repo!.insertConnectionWithJob).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("buildAuthorizeJobInsert", () => {
@@ -446,6 +586,38 @@ describe("getHermesConnectStatus", () => {
       userCode: "ABCD-1234",
       expiresAt: "2026-06-01T13:00:00.000Z",
     });
+  });
+
+  it("turns a legacy raw-only device event into a recoverable error without returning raw OAuth text", async () => {
+    const row = buildConnectionRow({ status: "pending" });
+    const job = buildWorkerJob({ status: "running" });
+    const event = buildJobEvent({
+      payloadJson: {
+        raw: "To continue:\n1. Open: https://accounts.x.ai/device?user_code=SECRET-CODE",
+      },
+    });
+    const deps = buildDeps({
+      findConnectionById: vi.fn().mockResolvedValue(row),
+      findLatestControlJob: vi.fn().mockResolvedValue(job),
+      findJobEvents: vi.fn().mockResolvedValue([event]),
+    });
+
+    const result = await getHermesConnectStatus({
+      tenantId: TENANT_ID,
+      userId: USER_ID,
+      isAdmin: false,
+      connectionId: row.id,
+    }, deps);
+
+    expect(result).toMatchObject({
+      status: "pending",
+      verificationUrl: undefined,
+      userCode: undefined,
+      expiresAt: undefined,
+      errorCode: "HERMES_PROCESS_FAILED",
+    });
+    expect(JSON.stringify(result)).not.toContain("SECRET-CODE");
+    expect(JSON.stringify(result)).not.toContain("raw");
   });
 
   it("maps auth-job failure reasons to typed error codes", async () => {
@@ -1024,22 +1196,89 @@ describe("getHermesAvailability", () => {
     (deps.flags!.getTenantFeatureFlags as any).mockResolvedValue({ hermesMediaWorker: false });
     const result = await getHermesAvailability({ tenantId: TENANT_ID }, deps);
     expect(result.enabled).toBe(false);
+    expect(result.platformEnabled).toBe(false);
+    expect(result.tenantEnabled).toBe(false);
     expect(result.scopes).toEqual({ serverShared: false, serverPersonal: false, privateWorker: false });
+    expect(result.serverWorker).toMatchObject({
+      configured: false,
+      online: false,
+      ready: false,
+      reason: "not_configured",
+    });
   });
 
   it("returns videoEnabled: false when master is on but video is off", async () => {
-    const deps = buildDeps();
+    const deps = buildDeps({ findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow()) });
     (deps.settings!.getHermesWorkerSettings as any).mockResolvedValue({ enabled: true, sharedPoolEnabled: true, serverPersonalEnabled: true, privateEnabled: true, videoEnabled: false, sharedWorkerId: "worker-1" });
     const result = await getHermesAvailability({ tenantId: TENANT_ID }, deps);
     expect(result.enabled).toBe(true);
+    expect(result.platformEnabled).toBe(true);
+    expect(result.tenantEnabled).toBe(true);
     expect(result.videoEnabled).toBe(false);
   });
 
   it("mirrors the three scope flags AND the tenant/master flags", async () => {
-    const deps = buildDeps();
+    const deps = buildDeps({ findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow()) });
     (deps.settings!.getHermesWorkerSettings as any).mockResolvedValue({ enabled: true, sharedPoolEnabled: true, serverPersonalEnabled: false, privateEnabled: true, videoEnabled: true, sharedWorkerId: "worker-1" });
     const result = await getHermesAvailability({ tenantId: TENANT_ID }, deps);
     expect(result.scopes).toEqual({ serverShared: true, serverPersonal: false, privateWorker: true });
+    expect(result.serverWorker).toMatchObject({
+      configured: true,
+      online: true,
+      ready: true,
+      status: "online",
+      hermesVersion: "0.18.2",
+    });
+  });
+
+  it("fails both server scopes closed when the configured shared worker is offline", async () => {
+    const deps = buildDeps({
+      findWorkerById: vi.fn().mockResolvedValue(
+        buildWorkerRow({ status: "offline" }),
+      ),
+    });
+
+    const result = await getHermesAvailability({ tenantId: TENANT_ID }, deps);
+
+    expect(result.scopes).toEqual({
+      serverShared: false,
+      serverPersonal: false,
+      privateWorker: true,
+    });
+    expect(result.serverWorker).toMatchObject({
+      configured: true,
+      online: false,
+      ready: false,
+      reason: "offline",
+    });
+  });
+
+  it("fails both server scopes closed when the worker doctor capability is unavailable", async () => {
+    const deps = buildDeps({
+      findWorkerById: vi.fn().mockResolvedValue(
+        buildWorkerRow({
+          capabilitiesJson: {
+            hermesMedia: {
+              advertised: false,
+              doctorOk: false,
+              hermesVersion: "0.18.2",
+              reason: "doctor failed",
+            },
+          },
+        }),
+      ),
+    });
+
+    const result = await getHermesAvailability({ tenantId: TENANT_ID }, deps);
+
+    expect(result.scopes.serverShared).toBe(false);
+    expect(result.scopes.serverPersonal).toBe(false);
+    expect(result.serverWorker).toMatchObject({
+      online: true,
+      ready: false,
+      reason: "capability_unavailable",
+      detail: "doctor failed",
+    });
   });
 });
 

@@ -4,7 +4,10 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-import { HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY } from "../../../shared/workerRuntime";
+import {
+  HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY,
+  workerRegistrationPayloadSchema,
+} from "../../../shared/workerRuntime";
 import { createControlPlaneClient, HermesControlPlaneError } from "../controlPlaneClient";
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -21,11 +24,15 @@ describe("createControlPlaneClient", () => {
     const calls: Array<{ url: string; body: unknown }> = [];
     const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
-      return jsonResponse(201, { created: true, workerId: "worker-1", tokens: { executionToken: "e", uploadToken: "u", refreshToken: "r" } });
+      return jsonResponse(201, {
+        created: true,
+        worker: { id: "worker-1" },
+        tokens: { executionToken: "e", uploadToken: "u", refreshToken: "r" },
+      });
     });
     const client = createControlPlaneClient({ baseUrl: "https://example.test", workerId: "worker-1", refreshToken: "refresh", fetchImpl });
 
-    await client.register({
+    const registered = await client.register({
       bearerToken: "registration-token",
       payload: {
         displayName: "Shared Hermes Worker",
@@ -42,6 +49,14 @@ describe("createControlPlaneClient", () => {
     expect(body.runtimeType).toBe("hermes_agent_gateway");
     expect(body.capabilitiesJson.maxConcurrentJobs).toBe(2);
     expect(body.capabilitiesJson.hermesMedia.advertised).toBe(true);
+    expect(registered.workerId).toBe("worker-1");
+    expect(workerRegistrationPayloadSchema.safeParse(body)).toMatchObject({ success: true });
+    expect(body.runtimeMetadataJson).toMatchObject({
+      hermesVersion: "0.18.2",
+      profileName: "smartspec-shared",
+      terminalBackend: "subprocess",
+      hostExecutionMode: "systemd",
+    });
 
     await client.register({
       bearerToken: "registration-token",

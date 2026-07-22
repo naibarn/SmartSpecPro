@@ -321,7 +321,7 @@ export function deriveVerticalDramaCapabilities(model: {
     // `maxReferenceImages` (that logic is unchanged from before this fix).
     //
     // Latent-bug fix (confirmed 2026-07-14): this branch used to return
-    // BEFORE ever parsing `configJson.maxReferenceImages`, so
+    // BEFORE ever parsing the image-reference limit, so
     // `imageCapabilities.maxReferenceImages` was ALWAYS `undefined` for
     // every image model — even ones (e.g. `google-banana-2-lite: 10`, see
     // the `STATIC_MODEL_REGISTRY` entry below) that explicitly declare it.
@@ -330,12 +330,16 @@ export function deriveVerticalDramaCapabilities(model: {
     // `verticalDramaEpisodes.ts`) and the trim in
     // `mergeAndTrimReferenceImageUrls` for ALL image models. Mirrors the
     // video branch's own `rawMaxReferenceImages`/`maxReferenceImages`
-    // parsing below EXACTLY (same field name, same
-    // undefined/null/non-finite -> `undefined` fallback) so a model without
-    // the field still resolves to `undefined` — byte-identical to the prior
-    // behavior for the common (unconfigured) case.
+    // parsing below. DB-imported and Hermes rows use
+    // `referenceImageLimit`, while older/static rows use
+    // `maxReferenceImages`; normalize both names here so the generation
+    // path enforces the same limit displayed by the catalog.
+    // Undefined/null/non-finite values still resolve to `undefined`, so a
+    // model without either field remains byte-identical to the prior
+    // behavior.
     const imgCfg = model.configJson ?? {};
-    const rawImageMaxReferenceImages = imgCfg.maxReferenceImages;
+    const rawImageMaxReferenceImages =
+      imgCfg.maxReferenceImages ?? imgCfg.referenceImageLimit;
     const imageMaxReferenceImages =
       rawImageMaxReferenceImages === undefined || rawImageMaxReferenceImages === null
         ? undefined

@@ -15,8 +15,9 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockListTasks } = vi.hoisted(() => ({
+const { mockListTasks, mockListHermesMediaTasks } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
+  mockListHermesMediaTasks: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("../services/mediaGenerationService", () => ({
@@ -44,6 +45,12 @@ vi.mock("../services/mcpMediaAdapter", () => ({
   // module import doesn't throw; unused by listTasks itself.
   submitMcpMediaTask: vi.fn(),
   getMcpMediaTask: vi.fn(),
+}));
+
+vi.mock("../services/hermesMediaAdapter", () => ({
+  isHermesMediaTaskId: vi.fn().mockReturnValue(false),
+  listHermesMediaTasks: mockListHermesMediaTasks,
+  reconcileHermesMediaJobFee: vi.fn(),
 }));
 
 vi.mock("../services/auditLogger", () => ({
@@ -253,8 +260,9 @@ describe("taskMatchesVerticalDramaSeries (pure helper)", () => {
 
 describe("mediaRouter.listTasks — seriesId filter", () => {
   it("is fully backward compatible when seriesId is omitted", async () => {
+    const createdAt = "2026-07-20T09:00:00.000Z";
     mockListTasks.mockResolvedValue({
-      tasks: [task({ id: "a" }), task({ id: "b" })],
+      tasks: [task({ id: "a", createdAt }), task({ id: "b", createdAt })],
       total: 2,
       limit: 50,
       offset: 0,
@@ -270,6 +278,45 @@ describe("mediaRouter.listTasks — seriesId filter", () => {
       "token-abc",
       expect.objectContaining({ limit: 50 }),
     );
+  });
+
+  it("merges Hermes image/video jobs into Media History and total", async () => {
+    mockListTasks.mockResolvedValue({
+      tasks: [task({ id: "provider-task", createdAt: "2026-07-20T09:00:00.000Z" })],
+      total: 1,
+      limit: 50,
+      offset: 0,
+    });
+    mockListHermesMediaTasks.mockResolvedValue([
+      task({
+        id: "hermes_job-1",
+        model: "grok-imagine-image",
+        createdAt: "2026-07-20T10:00:00.000Z",
+      }),
+      task({
+        id: "hermes_job-2",
+        mediaType: "video",
+        model: "grok-imagine-video",
+        createdAt: "2026-07-20T08:00:00.000Z",
+      }),
+    ]);
+
+    const fn = mediaRouter.listTasks as Function;
+    const result = await fn({ ctx: CTX, input: { limit: 50, daysAgo: 12 } });
+
+    expect(result.tasks.map((entry: any) => entry.id)).toEqual([
+      "hermes_job-1",
+      "provider-task",
+      "hermes_job-2",
+    ]);
+    expect(result.total).toBe(3);
+    expect(mockListHermesMediaTasks).toHaveBeenCalledWith({
+      userId: 9,
+      mediaType: undefined,
+      status: undefined,
+      limit: 50,
+      daysAgo: 12,
+    });
   });
 
   it("returns only tasks tagged with the requested seriesId", async () => {

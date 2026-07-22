@@ -179,6 +179,16 @@ describe("validatePresetSynthesisSelection", () => {
     ).not.toThrow();
   });
 
+  it("hasBasicSeed: true allows ZERO selected flavors (wizard basics are a sufficient spine)", () => {
+    expect(() =>
+      validatePresetSynthesisSelection({
+        selectedPresets: [],
+        selectedCategories: [],
+        hasBasicSeed: true,
+      }),
+    ).not.toThrow();
+  });
+
   it("hasUserPremise: true still throws above five selected flavors (MAX_SELECTIONS unchanged)", () => {
     expect(() =>
       validatePresetSynthesisSelection({
@@ -1113,6 +1123,62 @@ describe("buildUserPrompt (via synthesizeVerticalDramaPreset) — premise alone,
     );
     expect(prompt).not.toContain("No preset or category was selected");
   });
+
+  it("basics-only renders title/genre/age/lineage facts and asks AI to invent the full draft", async () => {
+    await synthesizeVerticalDramaPreset({
+      userId: 7,
+      tenantId: "tenant-1",
+      locale: "th",
+      selectedPresets: [],
+      selectedCategories: [],
+      targetEpisodeCount: 10,
+      seriesTitleHint: "ร้านเล็กหัวใจใหญ่",
+      genreHint: "ดราม่าชุมชน",
+      toneHint: "อบอุ่น",
+      audienceAgeRating: "under13",
+      lineageContext: {
+        contractVersion: 1,
+        parentSeriesId: 41,
+        parentTitle: "ร้านเดิม",
+        createMode: "sequel",
+        priorSeasonSummary: "ครอบครัวช่วยกันรักษาร้านไว้ได้",
+      },
+    });
+    const prompt = capturedUserPrompt();
+
+    expect(prompt).toContain("GENERATE FROM BASICS:");
+    expect(prompt).toContain("ร้านเล็กหัวใจใหญ่");
+    expect(prompt).toContain("ดราม่าชุมชน");
+    expect(prompt).toContain("ครอบครัวช่วยกันรักษาร้านไว้ได้");
+    expect(prompt).toContain("Target audience: CHILDREN UNDER 13.");
+    expect(prompt).toContain("ai_original");
+    expect(prompt).not.toContain("USER PREMISE (PRIMARY SPINE):");
+  });
+
+  it("treats sequel lineage as canon and the user premise as a new-season direction", async () => {
+    await synthesizeVerticalDramaPreset({
+      userId: 7,
+      tenantId: "tenant-1",
+      locale: "th",
+      selectedPresets: [],
+      selectedCategories: [],
+      userPremise: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
+      lineageContext: {
+        contractVersion: 1,
+        parentSeriesId: 16,
+        parentTitle: "คาเฟ่ริมนาวเพ้อรัก",
+        createMode: "sequel",
+        priorSeasonSummary: "พระเอกและนางเอกฝ่าปัญหาครอบครัวมาด้วยกัน",
+      },
+    });
+    const prompt = capturedUserPrompt();
+
+    expect(prompt).toContain("SEQUEL CONTINUITY (PRIMARY CANON):");
+    expect(prompt).toContain("This is a continuation, not a reboot.");
+    expect(prompt).toContain("USER PREMISE (NEW-SEASON DIRECTION):");
+    expect(prompt).not.toContain("build the ENTIRE draft from the premise alone");
+    expect(prompt).not.toContain("The user premise is the primary story spine");
+  });
 });
 
 describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-primary blending", () => {
@@ -1390,6 +1456,62 @@ describe("synthesizeVerticalDramaPresetV2 — premise alone, ZERO presets/catego
     expect(prompt).not.toContain("The PRIMARY selection's story spine");
     expect(prompt).not.toContain("fill EVERY facet slot assigned to it");
     expect(prompt).not.toContain("primarySelectionId, when also provided");
+  });
+
+  it("v2 keeps sequel lineage as the story spine when a premise is supplied", async () => {
+    mockExecuteWithFallback.mockResolvedValueOnce(mockLlmResponse(zeroSelectionDraftPayload()));
+
+    await synthesizeVerticalDramaPresetV2(
+      baseZeroSelectionParams({
+        lineageContext: {
+          contractVersion: 1,
+          parentSeriesId: 16,
+          parentTitle: "คาเฟ่ริมนาวเพ้อรัก",
+          createMode: "sequel",
+          priorSeasonSummary: "พระเอกและนางเอกฝ่าปัญหาครอบครัวมาด้วยกัน",
+        },
+      }),
+    );
+    const prompt = capturedUserPromptV2();
+
+    expect(prompt).toContain("SEQUEL CONTINUITY (PRIMARY CANON):");
+    expect(prompt).toContain("USER PREMISE (NEW-SEASON DIRECTION):");
+    expect(prompt).toContain(
+      "the sequel lineage is the sole story spine; the user premise is a new-season direction",
+    );
+    expect(prompt).not.toContain(
+      "the user premise above is the sole story spine",
+    );
+  });
+
+  it("basics-only v2 succeeds with no selections/premise and keeps empty blend facets", async () => {
+    mockExecuteWithFallback.mockResolvedValueOnce(
+      mockLlmResponse(
+        zeroSelectionDraftPayload({
+          mixRecipe: {
+            primaryFlavor: "ai_original",
+            supportingFlavors: [],
+            rationale: "Built from wizard basics.",
+          },
+        }),
+      ),
+    );
+
+    const { draft } = await synthesizeVerticalDramaPresetV2(
+      baseZeroSelectionParams({
+        userPremise: undefined,
+        targetEpisodeCount: 10,
+        genreHint: "ดราม่าครอบครัว",
+        audienceAgeRating: "13plus",
+      }),
+    );
+    const prompt = capturedUserPromptV2();
+
+    expect(draft.blendReport.underBlended).toEqual([]);
+    expect(prompt).toContain("GENERATE FROM BASICS:");
+    expect(prompt).toContain("ดราม่าครอบครัว");
+    expect(prompt).toContain("Target audience: TEENS 13 AND OVER.");
+    expect(prompt).toContain("ai_original");
   });
 
   it("with 1+ presets still renders the original verifiable-blend framing (byte-identical non-zero-selection behavior)", async () => {

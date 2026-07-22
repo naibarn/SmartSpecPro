@@ -579,6 +579,26 @@ export function readDeepDraftManualDialogueEditShotNumbers(item: unknown): numbe
 }
 
 /**
+ * Tolerant read of a breakdown item's `manualSummaryEdit.shotNumbers` (added
+ * 2026-07-22) — same "never throw", `[]`-fallback shape as
+ * `readDeepDraftManualDialogueEditShotNumbers` immediately above, over the
+ * sibling `manualSummaryEdit` stamp field the server writes whenever the
+ * combined `updateEpisodeDraftShot` mutation's `summary` was included (same
+ * `{ shotNumbers, ... }` shape, so this intentionally reuses
+ * `manualDialogueEditStampSchema` rather than duplicating an identical zod
+ * object). Client-side mirror of the server's `readItemManualSummaryEdit`.
+ * Unioned with `readDeepDraftManualDialogueEditShotNumbers`'s own result into
+ * the single "แก้ไขแล้ว" edited badge (see `isEdited` below) — the badge does
+ * not distinguish which field(s) were edited.
+ */
+export function readDeepDraftManualSummaryEditShotNumbers(item: unknown): number[] {
+  const raw = (item as { manualSummaryEdit?: unknown } | null | undefined)?.manualSummaryEdit;
+  if (raw === undefined || raw === null) return [];
+  const parsed = manualDialogueEditStampSchema.safeParse(raw);
+  return parsed.success ? parsed.data.shotNumbers : [];
+}
+
+/**
  * Per-shot duration for the live speech-seconds chip — derived the SAME way
  * the read-only completeness badge's own source data does server-side
  * (`computeDraftCompleteness` in `verticalDramaStoryBible.ts`, a server-only
@@ -651,6 +671,27 @@ export function toManualDialogueEditLineInput(row: ManualDialogueEditDraftLine):
     line,
     ...(delivery ? { delivery } : {}),
   };
+}
+
+/**
+ * True when `current` draft lines differ from `original` in any way that
+ * would produce a different `updateEpisodeDraftShot` `lines` payload —
+ * compares the same trimmed/normalized shape `toManualDialogueEditLineInput`
+ * produces (so a trailing-whitespace-only edit doesn't count as "changed"),
+ * plus row count (added/removed rows). Used by the combined shot editor
+ * (Save-button disable + payload build) to decide whether `lines` should be
+ * included in the mutation at all (2026-07-22, combined summary+dialogue
+ * editor).
+ */
+export function manualShotEditLinesChanged(
+  current: ManualDialogueEditDraftLine[],
+  original: ManualDialogueEditDraftLine[],
+): boolean {
+  if (current.length !== original.length) return true;
+  return (
+    JSON.stringify(current.map(toManualDialogueEditLineInput)) !==
+    JSON.stringify(original.map(toManualDialogueEditLineInput))
+  );
 }
 
 /**
@@ -1611,23 +1652,34 @@ const COVERAGE_STATUS_COPY_KEY = {
   error: "deepStoryDraftsCoverageError",
 } as const satisfies Record<VerticalDramaDeepDraftCoverageStatus, keyof typeof verticalDramaCopy>;
 
+/** Mirrors the server's `updateEpisodeDraftShotInput`'s `summary.max(600)` — soft `maxLength` guardrail (the server independently enforces the same limit). */
+const MANUAL_SHOT_EDIT_SUMMARY_MAX_LENGTH = 600;
+
 /**
- * Manual dialogue edits (W10.5) — the inline per-shot editor form, rendered
- * INSTEAD OF the read-only dialogue/silence-intent view for whichever ONE
- * shot is currently being edited (at most one per episode at a time — see
+ * Manual shot edits (W10.5, extended 2026-07-22 to also cover `summary`) —
+ * the inline per-shot editor form, rendered INSTEAD OF the read-only
+ * summary+dialogue/silence-intent view for whichever ONE shot is currently
+ * being edited (at most one per episode at a time — see
  * `VerticalDramaDeepStoryDraftEpisodeDetail`'s `editingShotNumber` state).
- * Purely presentational — the parent owns every piece of state and the
- * mutation itself, so this component has no hooks of its own (a plain
- * function call like `analyzeVerticalDramaLineSpeakability` below is not a
- * hook and carries no ordering constraint).
+ * ONE combined form edits both the shot's `summary` (top textarea) and its
+ * `dialogue_lines` (rows below) with a single Save — a wrong summary and a
+ * wrong dialogue line usually need fixing together, so this is deliberately
+ * not two separate editors. Purely presentational — the parent owns every
+ * piece of state and the mutation itself, so this component has no hooks of
+ * its own (a plain function call like `analyzeVerticalDramaLineSpeakability`
+ * below is not a hook and carries no ordering constraint).
  */
 function ManualDialogueEditShotForm({
   lang,
   episodeNumber,
   shotNumber,
+  summaryValue,
+  originalSummary,
   lines,
+  originalLines,
   episodeAlreadyCreated,
   isSaving,
+  onChangeSummary,
   onChangeLine,
   onAddLine,
   onRemoveLine,
@@ -1638,9 +1690,13 @@ function ManualDialogueEditShotForm({
   lang: VerticalDramaLang;
   episodeNumber: number;
   shotNumber: number;
+  summaryValue: string;
+  originalSummary: string;
   lines: ManualDialogueEditDraftLine[];
+  originalLines: ManualDialogueEditDraftLine[];
   episodeAlreadyCreated: boolean;
   isSaving: boolean;
+  onChangeSummary: (value: string) => void;
   onChangeLine: (index: number, patch: Partial<ManualDialogueEditDraftLine>) => void;
   onAddLine: () => void;
   onRemoveLine: (index: number) => void;
@@ -1656,6 +1712,12 @@ function ManualDialogueEditShotForm({
   const LiveIcon = COVERAGE_ICON[liveStatus];
   const hasEmptyLine = lines.some((row) => row.line.trim().length === 0);
   const atMaxLines = lines.length >= MANUAL_DIALOGUE_EDIT_MAX_LINES;
+  const trimmedSummary = summaryValue.trim();
+  const summaryEmpty = trimmedSummary.length === 0;
+  const summaryChanged = trimmedSummary !== originalSummary.trim();
+  const linesChanged = manualShotEditLinesChanged(lines, originalLines);
+  const hasChanges = summaryChanged || linesChanged;
+  const summaryInputId = `vd-manual-edit-${episodeNumber}-${shotNumber}-summary`;
 
   return (
     <div
@@ -1670,6 +1732,25 @@ function ManualDialogueEditShotForm({
           {pickCopy(lang, verticalDramaCopy.manualDialogueEditAlreadyCreatedHint)}
         </p>
       )}
+
+      <div className="grid gap-1">
+        <Label htmlFor={summaryInputId} className="sr-only">
+          {pickCopy(lang, verticalDramaCopy.manualSummaryEditLabel)}
+        </Label>
+        <Textarea
+          id={summaryInputId}
+          value={summaryValue}
+          maxLength={MANUAL_SHOT_EDIT_SUMMARY_MAX_LENGTH}
+          onChange={(e) => onChangeSummary(e.target.value)}
+          className="min-h-[2.5rem] text-xs"
+          data-testid={`vd-deep-story-draft-edit-summary-input-${episodeNumber}-${shotNumber}`}
+        />
+        {summaryEmpty && (
+          <p className="text-[10px] text-destructive">
+            {pickCopy(lang, verticalDramaCopy.manualSummaryEditRequired)}
+          </p>
+        )}
+      </div>
 
       <div className="grid gap-2">
         {lines.map((row, index) => {
@@ -1812,7 +1893,7 @@ function ManualDialogueEditShotForm({
         <Button
           type="button"
           size="sm"
-          disabled={isSaving || hasEmptyLine}
+          disabled={isSaving || hasEmptyLine || summaryEmpty || !hasChanges}
           onClick={onSave}
           className="gap-1.5"
           data-testid={`vd-deep-story-draft-edit-save-${episodeNumber}-${shotNumber}`}
@@ -1835,7 +1916,7 @@ export interface VerticalDramaDeepStoryDraftEpisodeDetailProps {
   episodeNumber: number;
   /** The active breakdown item for this episode number, if any — see `getActiveBreakdownItemsForDisplay`. */
   item?: VerticalDramaDisplayBreakdownItem;
-  /** Hides the "แก้บทพูด" edit affordance (an archived/read-only series) — mirrors every sibling mutation-owning component's own `readOnly` prop in this file. */
+  /** Hides the "แก้ช็อตนี้" edit affordance (an archived/read-only series) — mirrors every sibling mutation-owning component's own `readOnly` prop in this file. */
   readOnly?: boolean;
   /**
    * Whether a REAL episode row already exists for this `episodeNumber`
@@ -1852,12 +1933,20 @@ export interface VerticalDramaDeepStoryDraftEpisodeDetailProps {
  * `shotDrafts` (an episode outside the drafted horizon, or before any deep
  * draft has run at all), satisfying "only when item.shotDrafts present".
  *
- * Manual dialogue edits (W10.5) — every hook below runs UNCONDITIONALLY on
- * every render (before the `!shotDrafts` early return), satisfying React's
- * rules of hooks regardless of whether this instance ever actually renders
- * the shot list; `readDeepDraftShotDrafts`/`readDeepDraftManualDialogueEditShotNumbers`
- * etc. below are plain function calls, not hooks, so their placement relative
- * to the early return carries no such constraint.
+ * Manual dialogue + shot-summary edits (W10.5; extended 2026-07-22) — every
+ * hook below runs UNCONDITIONALLY on every render (before the `!shotDrafts`
+ * early return), satisfying React's rules of hooks regardless of whether
+ * this instance ever actually renders the shot list;
+ * `readDeepDraftShotDrafts`/`readDeepDraftManualDialogueEditShotNumbers` etc.
+ * below are plain function calls, not hooks, so their placement relative to
+ * the early return carries no such constraint.
+ *
+ * ONE combined editor per shot (2026-07-22) — a wrong summary and a wrong
+ * dialogue line usually need fixing together, so `editingShotNumber` gates a
+ * SINGLE form (`ManualDialogueEditShotForm`) that edits both the shot's
+ * `summary` and its `dialogue_lines`, saved together via one
+ * `updateEpisodeDraftShot` call that sends only the field(s) that actually
+ * changed (never both if only one differs) — see `handleSave` below.
  */
 export function VerticalDramaDeepStoryDraftEpisodeDetail({
   lang,
@@ -1870,13 +1959,27 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
   const utils = trpc.useUtils();
   const [editingShotNumber, setEditingShotNumber] = useState<number | null>(null);
   const [draftLines, setDraftLines] = useState<ManualDialogueEditDraftLine[]>([]);
+  const [summaryDraft, setSummaryDraft] = useState<string>("");
 
-  const editMutation = trpc.verticalDramaSeries.updateEpisodeDraftDialogue.useMutation({
+  /**
+   * Combined shot editor mutation (renamed from `updateEpisodeDraftDialogue`
+   * 2026-07-22 to `updateEpisodeDraftShot` — now accepts optional
+   * `summary`/`lines`, at least one required). onSuccess/onError bodies are
+   * reused VERBATIM from the pre-rename dialogue-only mutation (same
+   * `silenceIntentRemoved`/`speakabilityWarnings` toast handling), plus one
+   * additional invalidation: `verticalDramaEpisodes.getEpisodeDetail` (the
+   * shot-splitting page reads the same active breakdown version, so a
+   * summary edit here must be visible there too — mirrors
+   * `updateEpisodeDraftSynopsis`'s own dual invalidation in
+   * `VerticalDramaSeriesDetailPage.tsx`'s `StoryBibleOverviewCard`).
+   */
+  const editMutation = trpc.verticalDramaSeries.updateEpisodeDraftShot.useMutation({
     onSuccess: (
       data: { silenceIntentRemoved: boolean; speakabilityWarnings: unknown[] },
       variables: { shotNumber: number },
     ) => {
       void utils.verticalDramaSeries.get.invalidate({ seriesId });
+      void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
       toast.success(manualDialogueEditSavedSuccessText(lang, variables.shotNumber));
       if (data.silenceIntentRemoved) {
         toast.info(pickCopy(lang, verticalDramaCopy.manualDialogueEditSilenceRemovedInfo));
@@ -1893,9 +1996,11 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
 
   const handleOpenEdit = (shot: VerticalDramaDeepDraftShotDraft) => {
     setEditingShotNumber(shot.shot_number);
+    setSummaryDraft(shot.summary);
     setDraftLines(toManualDialogueEditDraftLines(shot.dialogue_lines));
   };
   const handleCancelEdit = () => setEditingShotNumber(null);
+  const handleChangeSummary = (value: string) => setSummaryDraft(value);
   const handleChangeLine = (index: number, patch: Partial<ManualDialogueEditDraftLine>) => {
     setDraftLines((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
@@ -1916,12 +2021,28 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
       ),
     );
   };
-  const handleSave = (shotNumber: number) => {
+  /**
+   * Builds `updateEpisodeDraftShot`'s payload from the LIVE shot draft
+   * (`shot`, the still-current server value for this shot number) vs the
+   * in-progress edit state — including ONLY the field(s) that actually
+   * changed. A no-op save (nothing changed) never fires the mutation (the
+   * form's own Save button is already disabled in that case; this is a
+   * defensive second guard).
+   */
+  const handleSave = (shot: VerticalDramaDeepDraftShotDraft) => {
+    const trimmedSummary = summaryDraft.trim();
+    const summaryChanged = trimmedSummary !== shot.summary.trim();
+    const linesChanged = manualShotEditLinesChanged(
+      draftLines,
+      toManualDialogueEditDraftLines(shot.dialogue_lines),
+    );
+    if (!summaryChanged && !linesChanged) return;
     editMutation.mutate({
       seriesId,
       episodeNumber,
-      shotNumber,
-      lines: draftLines.map(toManualDialogueEditLineInput),
+      shotNumber: shot.shot_number,
+      ...(summaryChanged ? { summary: trimmedSummary } : {}),
+      ...(linesChanged ? { lines: draftLines.map(toManualDialogueEditLineInput) } : {}),
       idempotencyKey: crypto.randomUUID(),
     });
   };
@@ -1930,6 +2051,7 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
   if (!shotDrafts) return null;
 
   const manualEditShotNumbers = readDeepDraftManualDialogueEditShotNumbers(item);
+  const manualSummaryEditShotNumbers = readDeepDraftManualSummaryEditShotNumbers(item);
   const completeness = readDeepDraftCompleteness(item);
   const cliffhangerLine = readDeepDraftCliffhangerLine(item);
   const CoverageIcon = completeness ? COVERAGE_ICON[completeness.coverageStatus] : null;
@@ -2027,7 +2149,9 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
         <ol className="mt-2 grid gap-2">
           {shotDrafts.map((shot) => {
             const isEditingThisShot = editingShotNumber === shot.shot_number;
-            const isEdited = manualEditShotNumbers.includes(shot.shot_number);
+            const isEdited =
+              manualEditShotNumbers.includes(shot.shot_number) ||
+              manualSummaryEditShotNumbers.includes(shot.shot_number);
             return (
               <li
                 key={shot.shot_number}
@@ -2098,15 +2222,19 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
                     lang={lang}
                     episodeNumber={episodeNumber}
                     shotNumber={shot.shot_number}
+                    summaryValue={summaryDraft}
+                    originalSummary={shot.summary}
                     lines={draftLines}
+                    originalLines={toManualDialogueEditDraftLines(shot.dialogue_lines)}
                     episodeAlreadyCreated={episodeAlreadyCreated}
                     isSaving={editMutation.isPending}
+                    onChangeSummary={handleChangeSummary}
                     onChangeLine={handleChangeLine}
                     onAddLine={handleAddLine}
                     onRemoveLine={handleRemoveLine}
                     onApplyCleaned={handleApplyCleaned}
                     onCancel={handleCancelEdit}
-                    onSave={() => handleSave(shot.shot_number)}
+                    onSave={() => handleSave(shot)}
                   />
                 ) : (
                   <>

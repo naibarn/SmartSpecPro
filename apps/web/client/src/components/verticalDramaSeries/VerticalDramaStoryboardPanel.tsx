@@ -52,6 +52,10 @@ import {
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import {
+  getBase64DataUrlByteLength,
+  type VerticalDramaStartFrameDropInput,
+} from "@/lib/verticalDramaStartFrameDrop";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -991,7 +995,10 @@ interface VerticalDramaStoryboardPanelProps {
    */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
   /** Dragging an image directly onto a shot's start-frame slot replaces it immediately, same as `onDropCharacterReference`. */
-  onDropStartFrame?: (shotNumber: number, url: string) => void;
+  onDropStartFrame?: (
+    shotNumber: number,
+    input: VerticalDramaStartFrameDropInput
+  ) => Promise<void>;
   /** Runs `start_frame_render_plan` for real (mode "full", spends credits) — generates every shot's image prompt at once. Shown only while no plan exists yet. */
   onGenerateStartFramePlan?: () => void;
   generatingStartFramePlan?: boolean;
@@ -1109,20 +1116,12 @@ interface VerticalDramaStoryboardPanelProps {
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
 
-  /* ---- Prompt language options (episode-level language plan) ----
-   *  Two independent selects next to the video model selector:
-   *  `promptLanguage` (the language the PROMPT TEXT itself is written in —
-   *  default "en" — this ONE shared field governs BOTH video-clip prompts
-   *  AND image/start-frame prompts, not video-only; see
-   *  `VerticalDramaPromptLanguage`'s doc comment in
-   *  `@shared/verticalDramaSeries/contracts`) and `dialogueLanguage` (the
-   *  language the characters SPEAK in the video — default "th" — video-only,
-   *  no image-prompt equivalent). Persisted via
-   *  `setEpisodeVideoPromptLanguage`; only affects FUTURE prompt generations
-   *  (same note pattern as `modelChangeNote`). */
-  selectedPromptLanguage?: string;
+  /* ---- Independent image/video prompt language settings ---- */
+  selectedImagePromptLanguage?: string;
+  selectedVideoPromptLanguage?: string;
   selectedDialogueLanguage?: string;
-  onSelectPromptLanguage?: (language: string) => void;
+  onSelectImagePromptLanguage?: (language: string) => void;
+  onSelectVideoPromptLanguage?: (language: string) => void;
   onSelectDialogueLanguage?: (language: string) => void;
   /** Thai regional speech accent — refines `dialogueLanguage` when it is
    *  (or defaults to) `"th"`. Shown only alongside the dialogue-language
@@ -1138,7 +1137,7 @@ interface VerticalDramaStoryboardPanelProps {
      model family (GPT-family → policy-safe synopsis rewrite, everything
      else → cinematic narrative), or the user can pin one explicitly.
      Persisted via `setEpisodeImagePromptMode` (free — same JSONB-patch
-     convention as `selectedPromptLanguage` above). Kept as a plain
+     convention as the language settings above). Kept as a plain
      `string` (not the shared `VdImagePromptMode` union) for the same
      forward-resilience reason as `promptModelTarget.family` on the video
      side. */
@@ -1564,9 +1563,11 @@ export function VerticalDramaStoryboardPanel({
   selectedVideoResolution = "",
   onSelectImageResolution,
   onSelectVideoResolution,
-  selectedPromptLanguage = "",
+  selectedImagePromptLanguage = "",
+  selectedVideoPromptLanguage = "",
   selectedDialogueLanguage = "",
-  onSelectPromptLanguage,
+  onSelectImagePromptLanguage,
+  onSelectVideoPromptLanguage,
   onSelectDialogueLanguage,
   selectedThaiAccent = null,
   onSelectThaiAccent,
@@ -1710,6 +1711,66 @@ export function VerticalDramaStoryboardPanel({
     return readFileAsDataUrl(input.file);
   }
 
+  async function resolveDroppedStartFrameInput(
+    event: React.DragEvent
+  ): Promise<VerticalDramaStartFrameDropInput | null> {
+    const { input, error } = readDroppedImageInput(event);
+    if (error) {
+      if (error.kind === "unsupported-file-type") {
+        toast.error(t2.unsupportedImageFileType);
+      } else {
+        toast.error(
+          vdCopyWithCount(
+            t2.imageFileTooLarge,
+            Math.round(error.maxBytes / (1024 * 1024))
+          )
+        );
+      }
+      return null;
+    }
+    if (!input) return null;
+    if (input.kind === "file") {
+      return {
+        kind: "upload",
+        fileName: input.file.name,
+        fileType: input.file.type,
+        fileBase64: await readFileAsDataUrl(input.file),
+      };
+    }
+    if (!input.url.startsWith("data:")) {
+      return { kind: "url", url: input.url };
+    }
+
+    const mimeType = /^data:(image\/[a-z0-9.+-]+);base64,/i.exec(
+      input.url
+    )?.[1];
+    if (!mimeType) {
+      toast.error(t2.unsupportedImageFileType);
+      return null;
+    }
+    const byteLength = getBase64DataUrlByteLength(input.url);
+    if (
+      byteLength == null ||
+      byteLength > DROPPED_IMAGE_FILE_MAX_BYTES
+    ) {
+      toast.error(
+        vdCopyWithCount(
+          t2.imageFileTooLarge,
+          Math.round(DROPPED_IMAGE_FILE_MAX_BYTES / (1024 * 1024))
+        )
+      );
+      return null;
+    }
+    const extension =
+      mimeType.split("/")[1]?.replace("jpeg", "jpg") || "png";
+    return {
+      kind: "upload",
+      fileName: `start-frame.${extension}`,
+      fileType: mimeType,
+      fileBase64: input.url,
+    };
+  }
+
   const selectedImageModel = imageModels.find(
     m => m.modelId === selectedImageModelId
   );
@@ -1764,6 +1825,10 @@ export function VerticalDramaStoryboardPanel({
   const resolvedAutoImagePromptMode = resolveDefaultImagePromptMode(
     currentImagePromptModelFamily
   );
+  const effectiveImagePromptMode =
+    imagePromptMode === "auto" ? resolvedAutoImagePromptMode : imagePromptMode;
+  const imagePromptLanguageUsesSynopsis =
+    effectiveImagePromptMode === "policy_safe_rewrite";
   const imageModelUsesMcp =
     Boolean(selectedImageModelId) &&
     selectedImageModelTransport.transport === "mcp";
@@ -1840,9 +1905,12 @@ export function VerticalDramaStoryboardPanel({
     useState<string | null>(null);
   /** Shot number currently resolving a dropped/uploaded file directly onto
    *  its start-frame image slot. */
-  const [droppingStartFrameForShot, setDroppingStartFrameForShot] = useState<
-    number | null
-  >(null);
+  const [droppingStartFrameShots, setDroppingStartFrameShots] = useState<
+    ReadonlySet<number>
+  >(new Set());
+  const droppingStartFrameShotsRef = useRef<Set<number>>(new Set());
+  const [draggingOverStartFrameForShot, setDraggingOverStartFrameForShot] =
+    useState<number | null>(null);
   const [lightboxProductImageUrl, setLightboxProductImageUrl] = useState<
     string | null
   >(null);
@@ -2449,7 +2517,12 @@ export function VerticalDramaStoryboardPanel({
           episode, deliberately NOT per-shot/per-clip (2026-07-05 product
           decision). Changing a model here only affects the NEXT generation;
           already-made images/clips are untouched (see `modelChangeNote`). */}
-        {onSelectImageModel || onSelectVideoModel ? (
+        {onSelectImageModel ||
+        onSelectVideoModel ||
+        onSelectImagePromptLanguage ||
+        onSelectVideoPromptLanguage ||
+        onSelectImagePromptMode ||
+        onSelectDialogueLanguage ? (
           <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/20 p-3">
             <div className="flex flex-wrap items-center gap-2">
               {onSelectImageModel ? (
@@ -2505,24 +2578,36 @@ export function VerticalDramaStoryboardPanel({
                 />
               ) : null}
 
-              {/* Video-prompt language options (episode-level language plan) —
-                two independent selects: the language the PROMPT TEXT is
-                written in, and the language the characters SPEAK. Shown
-                whenever the caller wires the callbacks (mirrors every other
-                selector in this header). */}
-              {onSelectPromptLanguage ? (
+              {/* In policy-safe mode the image prompt follows the synopsis
+                source language by contract, so its selector is intentionally
+                read-only. Cinematic mode can choose an independent language. */}
+              {onSelectImagePromptLanguage ? (
                 <LanguageSelect
-                  label={t2.promptLanguageLabel}
-                  value={selectedPromptLanguage || "en"}
-                  onChange={onSelectPromptLanguage}
-                  options={[
-                    { value: "en", label: t2.promptLanguageEn },
-                    { value: "th", label: t2.promptLanguageTh },
-                    { value: "zh", label: t2.promptLanguageZh },
-                    { value: "ja", label: t2.promptLanguageJa },
-                    { value: "ko", label: t2.promptLanguageKo },
-                  ]}
-                  testId="vd-storyboard-select-prompt-language"
+                  label={t2.imagePromptLanguageLabel}
+                  value={
+                    imagePromptLanguageUsesSynopsis
+                      ? "source"
+                      : selectedImagePromptLanguage || "en"
+                  }
+                  onChange={onSelectImagePromptLanguage}
+                  options={
+                    imagePromptLanguageUsesSynopsis
+                      ? [
+                          {
+                            value: "source",
+                            label: t2.imagePromptLanguageSource,
+                          },
+                        ]
+                      : [
+                          { value: "en", label: t2.promptLanguageEn },
+                          { value: "th", label: t2.promptLanguageTh },
+                          { value: "zh", label: t2.promptLanguageZh },
+                          { value: "ja", label: t2.promptLanguageJa },
+                          { value: "ko", label: t2.promptLanguageKo },
+                        ]
+                  }
+                  disabled={imagePromptLanguageUsesSynopsis}
+                  testId="vd-storyboard-select-image-prompt-language"
                 />
               ) : null}
               {/* Start-frame image-prompt engine mode
@@ -2556,6 +2641,21 @@ export function VerticalDramaStoryboardPanel({
                     },
                   ]}
                   testId="vd-storyboard-image-prompt-mode-select"
+                />
+              ) : null}
+              {onSelectVideoPromptLanguage ? (
+                <LanguageSelect
+                  label={t2.videoPromptLanguageLabel}
+                  value={selectedVideoPromptLanguage || "en"}
+                  onChange={onSelectVideoPromptLanguage}
+                  options={[
+                    { value: "en", label: t2.promptLanguageEn },
+                    { value: "th", label: t2.promptLanguageTh },
+                    { value: "zh", label: t2.promptLanguageZh },
+                    { value: "ja", label: t2.promptLanguageJa },
+                    { value: "ko", label: t2.promptLanguageKo },
+                  ]}
+                  testId="vd-storyboard-select-video-prompt-language"
                 />
               ) : null}
               {onSelectDialogueLanguage ? (
@@ -3206,8 +3306,12 @@ export function VerticalDramaStoryboardPanel({
                   <div
                     className={cn(
                       "relative aspect-[9/16] w-full overflow-hidden rounded-md border border-border bg-muted",
-                      (asset?.thumbnailUrl || asset?.url) && "cursor-zoom-in"
+                      (asset?.thumbnailUrl || asset?.url) && "cursor-zoom-in",
+                      draggingOverStartFrameForShot === shotNumber &&
+                        "border-primary ring-2 ring-primary/40"
                     )}
+                    data-testid={`vd-storyboard-start-frame-drop-${shotNumber}`}
+                    aria-busy={droppingStartFrameShots.has(shotNumber)}
                     onClick={() => {
                       if (asset?.url) setLightboxShot(shotNumber);
                     }}
@@ -3220,25 +3324,54 @@ export function VerticalDramaStoryboardPanel({
                       }
                     }}
                     onDragOver={e => {
-                      if (onDropStartFrame) e.preventDefault();
+                      if (!onDropStartFrame) return;
+                      e.preventDefault();
+                      setDraggingOverStartFrameForShot(shotNumber);
+                    }}
+                    onDragLeave={() => {
+                      setDraggingOverStartFrameForShot(current =>
+                        current === shotNumber ? null : current
+                      );
                     }}
                     onDrop={e => {
                       if (!onDropStartFrame) return;
                       e.preventDefault();
+                      setDraggingOverStartFrameForShot(current =>
+                        current === shotNumber ? null : current
+                      );
+                      if (droppingStartFrameShotsRef.current.has(shotNumber)) {
+                        return;
+                      }
+                      droppingStartFrameShotsRef.current.add(shotNumber);
                       void (async () => {
-                        setDroppingStartFrameForShot(shotNumber);
+                        setDroppingStartFrameShots(current =>
+                          new Set(current).add(shotNumber)
+                        );
                         try {
-                          const url = await resolveDroppedImageInputToUrl(e);
-                          if (url) onDropStartFrame(shotNumber, url);
-                        } finally {
-                          setDroppingStartFrameForShot(current =>
-                            current === shotNumber ? null : current
+                          const input = await resolveDroppedStartFrameInput(e);
+                          if (input) await onDropStartFrame(shotNumber, input);
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : t(
+                                  locale,
+                                  "อ่านไฟล์ภาพไม่สำเร็จ",
+                                  "Failed to read image file"
+                                )
                           );
+                        } finally {
+                          droppingStartFrameShotsRef.current.delete(shotNumber);
+                          setDroppingStartFrameShots(current => {
+                            const next = new Set(current);
+                            next.delete(shotNumber);
+                            return next;
+                          });
                         }
                       })();
                     }}
                   >
-                    {droppingStartFrameForShot === shotNumber ? (
+                    {droppingStartFrameShots.has(shotNumber) ? (
                       <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
                         <Loader2
                           aria-hidden="true"
@@ -6677,12 +6810,14 @@ function LanguageSelect({
   onChange,
   options,
   testId,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
   testId: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="flex flex-col items-start gap-1 rounded-md border border-border bg-background px-3 py-2 text-left">
@@ -6690,10 +6825,11 @@ function LanguageSelect({
         {label}
       </span>
       <select
-        className="bg-transparent text-xs font-medium outline-none"
+        className="bg-transparent text-xs font-medium outline-none disabled:cursor-not-allowed disabled:opacity-60"
         value={value}
         onChange={e => onChange(e.target.value)}
         data-testid={testId}
+        disabled={disabled}
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>

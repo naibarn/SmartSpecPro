@@ -8,6 +8,7 @@ import type { TRPCError } from "@trpc/server";
 const mockGetTenantFeatureFlags = vi.hoisted(() => vi.fn());
 const mockGetHermesWorkerSettings = vi.hoisted(() => vi.fn());
 const mockAssertMcpSharePolicyAllowed = vi.hoisted(() => vi.fn());
+const mockListMcpConnections = vi.hoisted(() => vi.fn());
 const mockGetDb = vi.hoisted(() => vi.fn());
 
 vi.mock("../tenantFeatureFlagService", () => ({
@@ -18,6 +19,9 @@ vi.mock("../hermesWorkerSettings", () => ({
 }));
 vi.mock("../mcpConnectionSharingService", () => ({
   assertMcpSharePolicyAllowed: mockAssertMcpSharePolicyAllowed,
+}));
+vi.mock("../mcpConnectionService", () => ({
+  listMcpConnections: mockListMcpConnections,
 }));
 vi.mock("../../db", () => ({
   getDb: mockGetDb,
@@ -208,5 +212,173 @@ describe("resolveMediaTransport (Feature 135 — hermes_worker arm)", () => {
       expect(mockAssertMcpSharePolicyAllowed).not.toHaveBeenCalled();
       expect(mockGetDb).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("resolveMediaTransport (MCP DB-first connection resolution)", () => {
+  const BASE_INPUT = {
+    tenantId: "tenant-1",
+    actorUserId: 7,
+    originSurface: "media_studio" as const,
+    assetType: "image" as const,
+    requestedTransport: "mcp" as const,
+    providerKey: "higgsfield",
+    model: "higgsfield/gpt_image_2",
+  };
+
+  const connection = (overrides: Record<string, unknown> = {}) => ({
+    id: "mcp-current",
+    providerKey: "higgsfield",
+    providerDisplayName: "Higgsfield",
+    displayName: "Higgsfield connection",
+    status: "connected",
+    providerAccountLabel: null,
+    defaultForImage: false,
+    defaultForVideo: false,
+    createdAt: new Date("2026-07-19T00:00:00Z"),
+    updatedAt: new Date("2026-07-19T07:00:00Z"),
+    tokenExpiresAt: new Date("2026-07-20T07:00:00Z"),
+    ownerUserId: 1,
+    connectionScope: "shared",
+    sharedGroupId: 2,
+    shareId: "share-2",
+    allowedAssetTypes: ["image", "video"],
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      mcpConnectEnabled: true,
+      mcpMediaStudioEnabled: true,
+      mcpMediaImageEnabled: true,
+      mcpMediaVideoEnabled: true,
+      mcpProviderCreditsTrackedEnabled: true,
+    } as any);
+    mockGetDb.mockReturnValue({
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn().mockResolvedValue([{
+              providerKey: "higgsfield",
+              displayName: "Higgsfield",
+            }]),
+          })),
+        })),
+      })),
+    });
+    mockAssertMcpSharePolicyAllowed.mockImplementation(async ({ connectionId }: { connectionId: string }) => ({
+      scope: "shared",
+      connection: {
+        id: connectionId,
+        ownerUserId: 1,
+        providerTemplateId: "provider-higgsfield",
+      },
+      share: {
+        id: "share-current",
+        groupId: 2,
+      },
+    }));
+  });
+
+  it("replaces a stale caller id with the only fresh eligible shared connection", async () => {
+    mockListMcpConnections.mockResolvedValue([connection()]);
+
+    const result = await resolveMediaTransport({
+      ...BASE_INPUT,
+      mcpConnectionId: "mcp-stale",
+      sharedGroupId: 999,
+    });
+
+    expect(mockListMcpConnections).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 7,
+    });
+    expect(mockAssertMcpSharePolicyAllowed).toHaveBeenCalledWith(expect.objectContaining({
+      connectionId: "mcp-current",
+      groupId: 999,
+    }));
+    expect(result).toMatchObject({
+      connectionId: "mcp-current",
+      connectionScope: "shared",
+      sharedGroupId: 2,
+      shareId: "share-current",
+    });
+  });
+
+  it("replaces a stale caller id with the only fresh eligible personal connection", async () => {
+    mockListMcpConnections.mockResolvedValue([connection({
+      id: "mcp-personal-current",
+      ownerUserId: 7,
+      connectionScope: "personal",
+      sharedGroupId: undefined,
+      shareId: undefined,
+    })]);
+    mockAssertMcpSharePolicyAllowed.mockResolvedValue({
+      scope: "personal",
+      connection: {
+        id: "mcp-personal-current",
+        ownerUserId: 7,
+        providerTemplateId: "provider-higgsfield",
+      },
+      share: null,
+    });
+
+    const result = await resolveMediaTransport({
+      ...BASE_INPUT,
+      mcpConnectionId: "mcp-stale",
+    });
+
+    expect(result).toMatchObject({
+      connectionId: "mcp-personal-current",
+      connectionScope: "personal",
+      ownerUserId: 7,
+    });
+  });
+
+  it("treats several active group shares of one physical connection as one eligible account", async () => {
+    mockListMcpConnections.mockResolvedValue([
+      connection({ sharedGroupId: 2, shareId: "share-2" }),
+      connection({ sharedGroupId: 3, shareId: "share-3" }),
+    ]);
+
+    const result = await resolveMediaTransport({
+      ...BASE_INPUT,
+      mcpConnectionId: "mcp-stale",
+    });
+
+    expect(result.connectionId).toBe("mcp-current");
+    expect(mockAssertMcpSharePolicyAllowed).toHaveBeenCalledWith(expect.objectContaining({
+      connectionId: "mcp-current",
+    }));
+  });
+
+  it("uses a caller selection only when it is present in the fresh eligible set", async () => {
+    mockListMcpConnections.mockResolvedValue([
+      connection({ id: "mcp-one", connectionScope: "personal", ownerUserId: 7 }),
+      connection({ id: "mcp-two", connectionScope: "shared" }),
+    ]);
+
+    const result = await resolveMediaTransport({
+      ...BASE_INPUT,
+      mcpConnectionId: "mcp-two",
+    });
+
+    expect(result.connectionId).toBe("mcp-two");
+  });
+
+  it("rejects a stale caller selection when several fresh physical connections are eligible", async () => {
+    mockListMcpConnections.mockResolvedValue([
+      connection({ id: "mcp-one", connectionScope: "personal", ownerUserId: 7 }),
+      connection({ id: "mcp-two", connectionScope: "shared" }),
+    ]);
+
+    await expect(resolveMediaTransport({
+      ...BASE_INPUT,
+      mcpConnectionId: "mcp-stale",
+    })).rejects.toMatchObject<Partial<TRPCError>>({
+      code: "BAD_REQUEST",
+    });
+    expect(mockAssertMcpSharePolicyAllowed).not.toHaveBeenCalled();
   });
 });

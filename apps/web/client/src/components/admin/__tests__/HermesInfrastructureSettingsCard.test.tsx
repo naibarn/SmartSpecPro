@@ -24,9 +24,16 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { updateSettingMutate, toastErrorMock } = vi.hoisted(() => ({
+const { updateSettingMutate, applySafePresetMutate, toastErrorMock } = vi.hoisted(() => ({
   updateSettingMutate: vi.fn(),
+  applySafePresetMutate: vi.fn(),
   toastErrorMock: vi.fn(),
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    i18n: { language: "en", resolvedLanguage: "en" },
+  }),
 }));
 
 vi.mock("sonner", () => ({
@@ -37,9 +44,24 @@ vi.mock("sonner", () => ({
   },
 }));
 
+vi.mock("@/components/help/HelpButton", () => ({
+  HelpButton: ({ page, topic, label }: { page: string; topic: string; label: string }) => (
+    <button type="button" data-page={page} data-topic={topic}>{label}</button>
+  ),
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     systemSettings: {
+      applyHermesSafePreset: {
+        useMutation: (opts: any) => ({
+          isPending: false,
+          mutate: (variables: unknown) => {
+            applySafePresetMutate(variables);
+            opts?.onSuccess?.({ success: true }, variables);
+          },
+        }),
+      },
       updateSetting: {
         useMutation: (opts: any) => ({
           isPending: false,
@@ -74,11 +96,32 @@ beforeEach(() => {
 });
 
 describe("HermesInfrastructureSettingsCard — Hermes Media Worker (Feature 135)", () => {
-  it("renders all 5 kill-switch toggles + the dev-only toggle with documented defaults when settings are absent", async () => {
+  it("links the admin setup guide from the card header", () => {
     renderCard();
 
+    expect(screen.getByRole("button", { name: "Setup Help" })).toHaveAttribute(
+      "data-topic",
+      "grok-via-hermes-admin",
+    );
+    expect(screen.getByRole("button", { name: "Setup Help" })).toHaveAttribute(
+      "data-page",
+      "/admin/settings",
+    );
+  });
+
+  it("renders one primary switch and keeps expert settings collapsed by default", async () => {
+    const user = renderCard();
+
+    expect(screen.getByRole("switch", { name: "Enable Grok via Hermes" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    const advancedDisclosure = screen.getByText("Advanced operator settings").closest("details");
+    expect(advancedDisclosure).not.toHaveAttribute("open");
+    await user.click(screen.getByText("Advanced operator settings"));
+    expect(advancedDisclosure).toHaveAttribute("open");
+
     const expectedOffToggles = [
-      "Toggle Hermes worker enabled",
       "Toggle Shared pool enabled",
       "Toggle Server personal enabled",
       "Toggle Private worker enabled",
@@ -91,7 +134,8 @@ describe("HermesInfrastructureSettingsCard — Hermes Media Worker (Feature 135)
   });
 
   it("renders the 8 number/text fields with documented defaults (not blank) when settings are absent", async () => {
-    renderCard();
+    const user = renderCard();
+    await user.click(screen.getByText("Advanced operator settings"));
 
     expect(screen.getByLabelText(/shared pool fee/i)).toHaveValue(0);
     expect(screen.getByLabelText(/minimum hermes worker version/i)).toHaveValue("");
@@ -114,7 +158,7 @@ describe("HermesInfrastructureSettingsCard — Hermes Media Worker (Feature 135)
     ]);
 
     await waitFor(() => {
-      expect(screen.getByRole("switch", { name: "Toggle Hermes worker enabled" })).toHaveAttribute(
+      expect(screen.getByRole("switch", { name: "Enable Grok via Hermes" })).toHaveAttribute(
         "aria-checked",
         "true",
       );
@@ -123,24 +167,18 @@ describe("HermesInfrastructureSettingsCard — Hermes Media Worker (Feature 135)
     expect(screen.getByTestId("hermes-shared-worker-id")).toHaveTextContent("worker-abc-123");
   });
 
-  it("flipping a kill switch calls the generic systemSettings.updateSetting mutation (not a bespoke Hermes endpoint)", async () => {
-    updateSettingMutate.mockReturnValue({ ok: true });
+  it("applies the safe preset with one mutation from the primary switch", async () => {
     const user = renderCard();
 
-    await user.click(screen.getByRole("switch", { name: "Toggle Hermes worker enabled" }));
+    await user.click(screen.getByRole("switch", { name: "Enable Grok via Hermes" }));
 
-    expect(updateSettingMutate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        category: "infrastructure",
-        key: "hermes_worker_enabled",
-        value: "true",
-      }),
-    );
+    expect(applySafePresetMutate).toHaveBeenCalledWith({ enabled: true });
   });
 
   it("saving a limit field calls updateSetting with the field's key and current value", async () => {
     updateSettingMutate.mockReturnValue({ ok: true });
     const user = renderCard();
+    await user.click(screen.getByText("Advanced operator settings"));
 
     const input = screen.getByLabelText(/max queued per user/i);
     await user.clear(input);
@@ -161,6 +199,7 @@ describe("HermesInfrastructureSettingsCard — Hermes Media Worker (Feature 135)
       error: { message: "hermes_max_queued_per_user cannot be lower than the max admission batch size (4)" },
     });
     const user = renderCard();
+    await user.click(screen.getByText("Advanced operator settings"));
 
     const input = screen.getByLabelText(/max queued per user/i);
     await user.clear(input);

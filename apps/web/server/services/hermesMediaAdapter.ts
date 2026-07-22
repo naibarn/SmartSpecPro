@@ -15,7 +15,7 @@
  * Hermes lane's queueing helper or tenant runtime flag
  * (`server/services/workerSchedulerService.ts`).
  */
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
@@ -44,6 +44,8 @@ import {
 import { refundReservation } from "./creditService";
 import { getCacheClient } from "./redisClients";
 import { debugError } from "../_core/logger";
+import { getCachedPublicAppUrl } from "./appRuntimeConfig";
+import { normalizeHermesReferenceStorageObjectKey } from "./hermesMediaReferences";
 
 // ────────────────────────────────────────────────────────────────────────
 // Task id helpers
@@ -196,12 +198,28 @@ function deriveHermesErrorMessage(
 async function resolveSignedUrl(
   storageKey: string,
   presign: typeof storagePresignGet,
+  resolve: typeof storageResolveUrl = storageResolveUrl,
   expiresInSeconds = 3600,
 ): Promise<string> {
-  const presigned = await presign(storageKey, expiresInSeconds);
+  const objectKey = normalizeHermesReferenceStorageObjectKey(storageKey);
+  const presigned = await presign(objectKey, expiresInSeconds);
   if (presigned) return presigned.url;
-  const resolved = await storageResolveUrl(storageKey);
-  return resolved ?? `/api/storage/files/${storageKey}`;
+  const resolved = await resolve(objectKey);
+  return resolved ?? `/api/storage/files/${objectKey}`;
+}
+
+function toHermesWorkerDownloadUrl(
+  downloadUrl: string,
+  publicAppUrl: () => string,
+): string {
+  if (/^https?:\/\//i.test(downloadUrl)) return downloadUrl;
+  const publicBaseUrl = publicAppUrl().trim().replace(/\/+$/, "");
+  if (!publicBaseUrl) {
+    throw new Error(
+      "PUBLIC_URL, APP_PUBLIC_URL, or APP_URL is required to mint a Worker-downloadable Hermes reference URL",
+    );
+  }
+  return new URL(downloadUrl, `${publicBaseUrl}/`).toString();
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -213,17 +231,14 @@ export interface GetHermesMediaTaskDeps {
   presign?: typeof storagePresignGet;
 }
 
-export async function getHermesMediaTask(
-  taskId: string,
+async function projectHermesMediaJob(
+  job: WorkerJob,
   userId: number,
-  deps: GetHermesMediaTaskDeps = {},
+  deps: GetHermesMediaTaskDeps,
 ): Promise<MediaTask | null> {
   const repo = deps.repo ?? defaultHermesMediaAdapterRepo;
   const presign = deps.presign ?? storagePresignGet;
 
-  const jobId = hermesTaskIdToJobId(taskId);
-  const job = await repo.getJobById(jobId);
-  if (!job) return null;
   // Ownership: never leak details about a job belonging to another user (or
   // tenant — `requestedByUserId` is only ever set for the tenant that
   // created it, so a mismatch here also catches a cross-tenant lookup).
@@ -268,7 +283,7 @@ export async function getHermesMediaTask(
   const capabilityRequirements = (job.capabilityRequirementsJson ?? {}) as Record<string, unknown>;
 
   const task: MediaTask = {
-    id: taskId,
+    id: `${HERMES_TASK_ID_PREFIX}${job.id}`,
     taskId: job.id,
     userId: String(userId),
     mediaType,
@@ -294,6 +309,105 @@ export async function getHermesMediaTask(
   };
 
   return task;
+}
+
+export async function getHermesMediaTask(
+  taskId: string,
+  userId: number,
+  deps: GetHermesMediaTaskDeps = {},
+): Promise<MediaTask | null> {
+  const repo = deps.repo ?? defaultHermesMediaAdapterRepo;
+  const jobId = hermesTaskIdToJobId(taskId);
+  const job = await repo.getJobById(jobId);
+  if (!job) return null;
+  return projectHermesMediaJob(job, userId, deps);
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// listHermesMediaTasks — Media History projection
+// ────────────────────────────────────────────────────────────────────────
+
+export interface ListHermesMediaTasksParams {
+  userId: number;
+  mediaType?: MediaTask["mediaType"];
+  status?: TaskStatus;
+  limit?: number;
+  daysAgo?: number;
+}
+
+export interface ListHermesMediaTasksDeps extends GetHermesMediaTaskDeps {
+  listJobs?: (params: ListHermesMediaTasksParams) => Promise<WorkerJob[]>;
+}
+
+const HERMES_JOB_STATUSES_BY_TASK_STATUS: Readonly<Record<TaskStatus, WorkerJob["status"][]>> = {
+  pending: ["queued", "claimed", "preparing"],
+  processing: ["running", "uploading", "publishing", "indexing"],
+  completed: ["completed"],
+  failed: ["failed", "expired", "canceled"],
+  // Hermes deliberately exposes canceled jobs as failed with the typed
+  // HERMES_JOB_CANCELLED code, matching getHermesMediaTask.
+  cancelled: [],
+};
+
+async function listHermesJobsForUser(
+  params: ListHermesMediaTasksParams,
+): Promise<WorkerJob[]> {
+  const db = getDb();
+  const limit = Math.min(100, Math.max(1, params.limit ?? 50));
+  const conditions = [
+    eq(workerJobs.requestedByUserId, params.userId),
+    params.mediaType === "image"
+      ? eq(workerJobs.jobType, HERMES_MEDIA_IMAGE_JOB_TYPE)
+      : params.mediaType === "video"
+        ? eq(workerJobs.jobType, HERMES_MEDIA_VIDEO_JOB_TYPE)
+        : inArray(workerJobs.jobType, [
+            HERMES_MEDIA_IMAGE_JOB_TYPE,
+            HERMES_MEDIA_VIDEO_JOB_TYPE,
+          ]),
+  ];
+
+  if (params.daysAgo) {
+    conditions.push(
+      gte(
+        workerJobs.createdAt,
+        new Date(Date.now() - params.daysAgo * 24 * 60 * 60 * 1_000),
+      ),
+    );
+  }
+  if (params.status) {
+    const statuses = HERMES_JOB_STATUSES_BY_TASK_STATUS[params.status];
+    if (statuses.length === 0) return [];
+    conditions.push(inArray(workerJobs.status, statuses));
+  }
+
+  return db
+    .select()
+    .from(workerJobs)
+    .where(and(...conditions))
+    .orderBy(desc(workerJobs.createdAt))
+    .limit(limit);
+}
+
+/**
+ * Projects the authoritative Hermes `worker_jobs` rows into the same
+ * MediaTask contract consumed by Media History. No duplicate `media_tasks`
+ * row is created, so polling and history always observe one source of truth.
+ */
+export async function listHermesMediaTasks(
+  params: ListHermesMediaTasksParams,
+  deps: ListHermesMediaTasksDeps = {},
+): Promise<MediaTask[]> {
+  if (params.mediaType === "audio") return [];
+  const listJobs = deps.listJobs ?? listHermesJobsForUser;
+  const jobs = await listJobs(params);
+  const projected = await Promise.all(
+    jobs.map((job) => projectHermesMediaJob(job, params.userId, deps)),
+  );
+  return projected
+    .filter((task): task is MediaTask => Boolean(task))
+    .filter((task) => !params.mediaType || task.mediaType === params.mediaType)
+    .filter((task) => !params.status || task.status === params.status)
+    .slice(0, Math.min(100, Math.max(1, params.limit ?? 50)));
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -451,6 +565,8 @@ export interface MintHermesMediaReferenceUrlsParams {
 export interface MintHermesMediaReferenceUrlsDeps {
   repo?: HermesMediaAdapterRepo;
   presign?: typeof storagePresignGet;
+  resolve?: typeof storageResolveUrl;
+  publicAppUrl?: () => string;
   now?: () => Date;
 }
 
@@ -468,6 +584,8 @@ export async function mintHermesMediaReferenceUrls(
 ): Promise<HermesReferenceUrlMintResult[]> {
   const repo = deps.repo ?? defaultHermesMediaAdapterRepo;
   const presign = deps.presign ?? storagePresignGet;
+  const resolve = deps.resolve ?? storageResolveUrl;
+  const publicAppUrl = deps.publicAppUrl ?? getCachedPublicAppUrl;
   const now = deps.now ?? (() => new Date());
   const expiresInSeconds = params.expiresInSeconds ?? HERMES_REFERENCE_URL_TTL_SECONDS;
 
@@ -484,10 +602,15 @@ export async function mintHermesMediaReferenceUrls(
     if (!asset) {
       throw new HermesReferenceAssetOwnershipError(reference.assetId);
     }
-    const url = await resolveSignedUrl(asset.storageKey, presign, expiresInSeconds);
+    const url = await resolveSignedUrl(
+      asset.storageKey,
+      presign,
+      resolve,
+      expiresInSeconds,
+    );
     results.push({
       assetId: reference.assetId,
-      url,
+      url: toHermesWorkerDownloadUrl(url, publicAppUrl),
       expiresAt: new Date(now().getTime() + expiresInSeconds * 1000).toISOString(),
     });
   }

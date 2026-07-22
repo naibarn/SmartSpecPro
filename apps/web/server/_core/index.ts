@@ -1561,14 +1561,6 @@ async function main() {
   const server = createServer(app);
   httpServer = server;
 
-  // Long-running LLM mutations (season critique apply, premium deep drafts)
-  // legitimately exceed Node 18+'s 300s default requestTimeout — the socket
-  // was being closed mid-response, surfacing as nginx 502 "HTML instead of
-  // JSON" on /trpc (observed live 2026-07-08). Match nginx's 600s proxy
-  // window; headersTimeout must stay > requestTimeout per Node docs.
-  server.requestTimeout = 620_000;
-  server.headersTimeout = 625_000;
-
   // WebSocket upgrade routing
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
@@ -1954,11 +1946,23 @@ async function main() {
   const preferred = parseInt(process.env.PORT || "3000");
   const port = Number.isFinite(preferred) ? preferred : 3000;
 
-  // Server-level timeouts to prevent hung requests and slow attacks
-  server.timeout = 120_000;          // 2 min — max time for any request
-  server.headersTimeout = 30_000;    // 30s — max time to receive headers
-  server.keepAliveTimeout = 65_000;  // 65s — must be > Nginx keepalive_timeout (60s)
-  server.requestTimeout = 120_000;   // 2 min — same as timeout, explicit
+  // Long-running LLM mutations can legitimately exceed two minutes. Keep the
+  // response socket alive slightly longer than the reverse proxy's 600s
+  // window. This must be configured once, here: a former duplicate 120s block
+  // overwrote the intended 620s value and caused Cloudflare Tunnel to return
+  // an HTML 502 while the pipeline continued and committed successfully.
+  server.timeout = 620_000;
+  server.requestTimeout = 620_000;
+  // Header receipt is still bounded tightly against slow-header attacks; it
+  // does not limit the time spent generating the response body.
+  server.headersTimeout = 30_000;
+  server.keepAliveTimeout = 65_000;  // must be > Nginx keepalive_timeout (60s)
+  console.log("[Startup] HTTP timeouts configured", {
+    timeoutMs: server.timeout,
+    requestTimeoutMs: server.requestTimeout,
+    headersTimeoutMs: server.headersTimeout,
+    keepAliveTimeoutMs: server.keepAliveTimeout,
+  });
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`SmartAIHub Web listening on http://0.0.0.0:${port}`);

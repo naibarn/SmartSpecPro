@@ -46,6 +46,64 @@ function baseProps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("VerticalDramaStoryboardPanel — start-frame image-prompt engine mode + badge (planning/vd-start-frame-prompt-modes/plan.md)", () => {
+  it("separates image and video prompt languages and locks image language in policy-safe mode", async () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          imageModels: [GPT_IMAGE_MODEL],
+          selectedImageModelId: GPT_IMAGE_MODEL.modelId,
+          imagePromptMode: "auto",
+          selectedImagePromptLanguage: "th",
+          selectedVideoPromptLanguage: "en",
+          onSelectImagePromptLanguage: vi.fn(),
+          onSelectVideoPromptLanguage: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    const imageSelect = (await screen.findByTestId(
+      "vd-storyboard-select-image-prompt-language"
+    )) as HTMLSelectElement;
+    const videoSelect = (await screen.findByTestId(
+      "vd-storyboard-select-video-prompt-language"
+    )) as HTMLSelectElement;
+    expect(imageSelect.disabled).toBe(true);
+    expect(imageSelect.value).toBe("source");
+    expect(imageSelect.previousElementSibling?.textContent).toBe(
+      "ภาษาพรอมต์ภาพ"
+    );
+    expect(videoSelect.disabled).toBe(false);
+    expect(videoSelect.value).toBe("en");
+    expect(videoSelect.previousElementSibling?.textContent).toBe(
+      "ภาษาพรอมต์วิดีโอ"
+    );
+  });
+
+  it("enables cinematic image language and keeps its callback independent from video language", async () => {
+    const onSelectImagePromptLanguage = vi.fn();
+    const onSelectVideoPromptLanguage = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          imageModels: [NANO_BANANA_MODEL],
+          selectedImageModelId: NANO_BANANA_MODEL.modelId,
+          imagePromptMode: "cinematic_narrative",
+          selectedImagePromptLanguage: "th",
+          selectedVideoPromptLanguage: "en",
+          onSelectImagePromptLanguage,
+          onSelectVideoPromptLanguage,
+        }) as any)}
+      />
+    );
+
+    const imageSelect = await screen.findByTestId(
+      "vd-storyboard-select-image-prompt-language"
+    );
+    fireEvent.change(imageSelect, { target: { value: "ja" } });
+    expect(onSelectImagePromptLanguage).toHaveBeenCalledWith("ja");
+    expect(onSelectVideoPromptLanguage).not.toHaveBeenCalled();
+  });
+
   it("renders the image-prompt-mode select with the stored value", async () => {
     render(
       <VerticalDramaStoryboardPanel
@@ -83,9 +141,7 @@ describe("VerticalDramaStoryboardPanel — start-frame image-prompt engine mode 
       "vd-storyboard-image-prompt-mode-select"
     );
     fireEvent.change(select, { target: { value: "policy_safe_rewrite" } });
-    expect(onSelectImagePromptMode).toHaveBeenCalledWith(
-      "policy_safe_rewrite"
-    );
+    expect(onSelectImagePromptMode).toHaveBeenCalledWith("policy_safe_rewrite");
   });
 
   it('shows the synopsis-direct engine as the "auto" hint for a GPT image model', async () => {

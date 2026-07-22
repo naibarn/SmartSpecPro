@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { hermesErrorCopy } from "@shared/hermesMedia";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 type HermesAssetType = "image" | "video";
 
@@ -42,10 +43,13 @@ export interface HermesConnectionPickerRow {
 }
 
 /** Scope badge copy (section-03 note, pinned Thai strings). */
-const HERMES_SCOPE_LABEL: Record<HermesConnectionPickerRow["scope"], string> = {
-  server_shared: "ส่วนกลาง",
-  server_personal: "ส่วนตัวบนเซิร์ฟเวอร์",
-  private_worker: "เครื่องของฉัน",
+const HERMES_SCOPE_LABEL: Record<
+  HermesConnectionPickerRow["scope"],
+  { th: string; en: string }
+> = {
+  server_shared: { th: "ส่วนกลาง", en: "Tenant shared" },
+  server_personal: { th: "ส่วนตัวบนเซิร์ฟเวอร์", en: "Private on server" },
+  private_worker: { th: "เครื่องของฉัน", en: "My computer" },
 };
 
 function capabilityEnabledFor(
@@ -73,12 +77,13 @@ function isJobEligible(
 function disabledReasonFor(
   connection: HermesConnectionPickerRow,
   assetType: HermesAssetType,
+  locale: "th" | "en",
 ): string | null {
   if (connection.status === "reauth_required") {
-    return hermesErrorCopy("HERMES_REAUTH_REQUIRED").th;
+    return hermesErrorCopy("HERMES_REAUTH_REQUIRED")[locale];
   }
   if (connection.status === "entitlement_restricted") {
-    return hermesErrorCopy("HERMES_ENTITLEMENT_RESTRICTED").th;
+    return hermesErrorCopy("HERMES_ENTITLEMENT_RESTRICTED")[locale];
   }
   if (
     connection.status === "authorized" &&
@@ -86,8 +91,12 @@ function disabledReasonFor(
     !connection.assignedWorkerOnline
   ) {
     return connection.scope === "private_worker"
-      ? "Worker ออฟไลน์ — เปิด Worker App บนเครื่องนี้ก่อน"
-      : "Worker ออฟไลน์ในขณะนี้";
+      ? locale === "th"
+        ? "Worker ออฟไลน์ — เปิด Worker App บนเครื่องนี้ก่อน"
+        : "Worker is offline — open the Worker App on this computer"
+      : locale === "th"
+        ? "Worker ออฟไลน์ในขณะนี้"
+        : "Worker is currently offline";
   }
   return null;
 }
@@ -101,6 +110,8 @@ export function HermesConnectionPicker({
   onChange: (connectionId: string | null) => void;
   assetType: HermesAssetType;
 }) {
+  const { locale: currentLocale } = useScopedTranslation(["media", "common"]);
+  const locale = currentLocale === "th" ? "th" : "en";
   const connections = trpc.hermesConnections.listConnections.useQuery(
     { assetType },
     { retry: false },
@@ -109,7 +120,8 @@ export function HermesConnectionPicker({
   const eligible = rows.filter((connection) => isJobEligible(connection, assetType));
   const informative = rows.filter(
     (connection) =>
-      !isJobEligible(connection, assetType) && disabledReasonFor(connection, assetType) !== null,
+      !isJobEligible(connection, assetType) &&
+      disabledReasonFor(connection, assetType, locale) !== null,
   );
 
   useEffect(() => {
@@ -150,14 +162,15 @@ export function HermesConnectionPicker({
 
   return (
     <div className="space-y-2">
-      <Label>บัญชี Grok (Hermes)</Label>
+      <Label>{locale === "th" ? "บัญชี Grok (Hermes)" : "Grok account (Hermes)"}</Label>
       {eligible.length === 0 && informative.length === 0 ? (
         <div className="rounded-lg border border-dashed p-3 text-sm text-gray-500">
-          ยังไม่มีบัญชี Grok ที่เชื่อมต่อสำหรับ
-          {assetType === "image" ? "การสร้างภาพ" : "การสร้างวิดีโอ"}
+          {locale === "th"
+            ? `ยังไม่มีบัญชี Grok ที่เชื่อมต่อสำหรับ${assetType === "image" ? "การสร้างภาพ" : "การสร้างวิดีโอ"}`
+            : `No connected Grok account is available for ${assetType} generation.`}
           <Link href="/settings?tab=integrations">
             <Button type="button" variant="link" className="ml-1 h-auto p-0">
-              เชื่อมต่อบัญชี Grok
+              {locale === "th" ? "เชื่อมต่อบัญชี Grok" : "Connect a Grok account"}
             </Button>
           </Link>
         </div>
@@ -167,21 +180,23 @@ export function HermesConnectionPicker({
           value={value ?? ""}
           onChange={(event) => handleChange(event.target.value)}
         >
-          <option value="">เลือกบัญชี Grok</option>
+          <option value="">
+            {locale === "th" ? "เลือกบัญชี Grok" : "Select a Grok account"}
+          </option>
           {eligible.map((connection) => (
             <option key={connection.id} value={connection.id}>
               {(connection.accountLabel ?? connection.accountHint ?? connection.id)}
               {" · "}
-              {HERMES_SCOPE_LABEL[connection.scope]}
+              {HERMES_SCOPE_LABEL[connection.scope][locale]}
             </option>
           ))}
           {informative.map((connection) => (
             <option key={connection.id} value={connection.id} disabled>
               {(connection.accountLabel ?? connection.accountHint ?? connection.id)}
               {" · "}
-              {HERMES_SCOPE_LABEL[connection.scope]}
+              {HERMES_SCOPE_LABEL[connection.scope][locale]}
               {" — "}
-              {disabledReasonFor(connection, assetType)}
+              {disabledReasonFor(connection, assetType, locale)}
             </option>
           ))}
         </select>

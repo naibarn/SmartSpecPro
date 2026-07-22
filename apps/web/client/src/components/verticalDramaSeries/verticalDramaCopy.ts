@@ -506,13 +506,17 @@ export const verticalDramaCopy = {
   },
 
   /* ---------------------------------------------------------------------- */
-  /* Manual dialogue edits (W10.5, added 2026-07-08) — inline per-shot       */
-  /* dialogue editor inside the Overview draft viewer                        */
+  /* Manual dialogue + shot-summary edits (W10.5, added 2026-07-08; extended */
+  /* 2026-07-22 to also cover the shot's `summary` field in the SAME form)   */
+  /* — one inline per-shot editor inside the Overview draft viewer           */
   /* (`VerticalDramaDeepStoryDraftEpisodeDetail`), wired to the shipped       */
-  /* `updateEpisodeDraftDialogue` mutation. Gated the SAME way as every      */
-  /* other deep-story-drafts string above (flag off -> never rendered).      */
+  /* `updateEpisodeDraftShot` mutation (renamed from                         */
+  /* `updateEpisodeDraftDialogue` — sends only the fields that changed).     */
+  /* Gated the SAME way as every other deep-story-drafts string above (flag  */
+  /* off -> never rendered).                                                 */
   /* ---------------------------------------------------------------------- */
-  manualDialogueEditCta: { th: "แก้บทพูด", en: "Edit dialogue" },
+  /** CTA now opens the COMBINED summary+dialogue editor (2026-07-22) — was "แก้บทพูด"/"Edit dialogue". */
+  manualDialogueEditCta: { th: "แก้ช็อตนี้", en: "Edit shot" },
   manualDialogueEditCancel: { th: "ยกเลิก", en: "Cancel" },
   manualDialogueEditSave: { th: "บันทึก", en: "Save" },
   manualDialogueEditSaving: { th: "กำลังบันทึก…", en: "Saving…" },
@@ -551,6 +555,33 @@ export const verticalDramaCopy = {
   manualDialogueEditSaveError: {
     th: "แก้ไขบทพูดไม่สำเร็จ",
     en: "Failed to edit the dialogue",
+  },
+  /** sr-only label for the summary `<textarea>` prepended to the combined form (2026-07-22). */
+  manualSummaryEditLabel: { th: "เรื่องย่อช็อต", en: "Shot summary" },
+  /** Validation message shown when the summary field is emptied — mirrors `manualDialogueEditLineRequired`'s tone. */
+  manualSummaryEditRequired: {
+    th: "เรื่องย่อช็อตห้ามว่าง",
+    en: "The shot summary cannot be empty",
+  },
+
+  /* ---------------------------------------------------------------------- */
+  /* Manual synopsis edits (added 2026-07-22) — inline per-sub-episode        */
+  /* logline editor inside the Overview draft plan card                      */
+  /* (`StoryBibleOverviewCard` in `VerticalDramaSeriesDetailPage.tsx`), wired */
+  /* to the shipped `updateEpisodeDraftSynopsis` mutation. Sibling of the     */
+  /* manual dialogue edit strings immediately above, same naming/tone.       */
+  /* ---------------------------------------------------------------------- */
+  editSynopsisCta: { th: "แก้เรื่องย่อ", en: "Edit synopsis" },
+  editSynopsisCancel: { th: "ยกเลิก", en: "Cancel" },
+  editSynopsisSave: { th: "บันทึก", en: "Save" },
+  editSynopsisSaving: { th: "กำลังบันทึก…", en: "Saving…" },
+  editSynopsisRequired: {
+    th: "เรื่องย่อห้ามว่าง",
+    en: "The synopsis cannot be empty",
+  },
+  editSynopsisSaveError: {
+    th: "แก้ไขเรื่องย่อไม่สำเร็จ",
+    en: "Failed to edit the synopsis",
   },
 
   /* ---------------------------------------------------------------------- */
@@ -1626,6 +1657,16 @@ export function manualDialogueEditLineGroupLabel(
   lineNumber: number
 ): string {
   return lang === "th" ? `บรรทัดที่ ${lineNumber}` : `Line ${lineNumber}`;
+}
+
+/** Copy Contract: "บันทึกเรื่องย่อตอนย่อยที่ {n} แล้ว" — manual synopsis edit success toast (sibling of `manualDialogueEditSavedSuccessText` above). */
+export function editSynopsisSavedSuccessText(
+  lang: VerticalDramaLang,
+  episodeNumber: number
+): string {
+  return lang === "th"
+    ? `บันทึกเรื่องย่อตอนย่อยที่ ${episodeNumber} แล้ว`
+    : `Saved sub-episode ${episodeNumber}'s synopsis`;
 }
 
 /** Bilingual short reasons for each `VerticalDramaLineSpeakabilityViolationKind` (spec §14.1 rule 6b) — the inline editor's live per-line hint, shown next to the "ใช้เวอร์ชันที่แก้ให้" one-click fix button. */

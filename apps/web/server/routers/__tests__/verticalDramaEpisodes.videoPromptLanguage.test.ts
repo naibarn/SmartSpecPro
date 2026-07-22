@@ -29,6 +29,7 @@ const { mockDb } = vi.hoisted(() => ({
     update: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
+    transaction: vi.fn(),
     instance: {},
   },
 }));
@@ -202,6 +203,7 @@ function selectChain(rows: unknown[]) {
     leftJoin: vi.fn(() => chain),
     where: vi.fn(() => chain),
     orderBy: vi.fn(() => chain),
+    for: vi.fn(() => chain),
     limit: vi.fn(() => Promise.resolve(rows)),
     then: (resolve: any) => Promise.resolve(rows).then(resolve),
   };
@@ -237,6 +239,12 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockDb.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) =>
+    fn({
+      select: (...args: unknown[]) => (mockDb.select as any)(...args),
+      update: (...args: unknown[]) => (mockDb.update as any)(...args),
+    }),
+  );
   mockGetModelsByTypeAsync.mockResolvedValue([
     { id: "veo-3-1", type: "video", isEnabled: true, creditCost: 50, aliases: [], configJson: {} },
   ]);
@@ -255,7 +263,9 @@ describe("setEpisodeVideoPromptLanguage", () => {
 
   it("creates a minimal motionPromptPack when none exists yet, persisting both language fields", async () => {
     const episodeRow = baseEpisodeRow();
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow]));
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([episodeRow]));
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -291,7 +301,9 @@ describe("setEpisodeVideoPromptLanguage", () => {
       dialogueLanguage: "th",
     };
     const episodeRow = baseEpisodeRow({ motionPromptPack: existingPack });
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow]));
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([episodeRow]));
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -312,5 +324,95 @@ describe("setEpisodeVideoPromptLanguage", () => {
       dialogueLanguage: "th",
       clips: existingPack.clips,
     });
+  });
+
+  it("snapshots the legacy image language before changing video language and preserves fresh frames", async () => {
+    const initiallyLoaded = baseEpisodeRow({
+      motionPromptPack: {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+        promptLanguage: "th",
+        clips: [],
+        warnings: [],
+      },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "gpt-image-2",
+        frames: [],
+      },
+    });
+    const freshRow = {
+      ...initiallyLoaded,
+      startFramePlan: {
+        ...initiallyLoaded.startFramePlan,
+        frames: [{
+          shotNumber: 1,
+          imagePrompt: "fresh concurrent prompt",
+          negativePrompt: "",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+        }],
+      },
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([initiallyLoaded]))
+      .mockReturnValueOnce(selectChain([freshRow]));
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([{ ...freshRow, ...value }]);
+      }),
+    });
+
+    await router.setEpisodeVideoPromptLanguage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", promptLanguage: "en" },
+    });
+
+    expect(capturedSet.motionPromptPack.promptLanguage).toBe("en");
+    expect(capturedSet.startFramePlan).toMatchObject({
+      imagePromptLanguage: "th",
+      frames: [{ imagePrompt: "fresh concurrent prompt" }],
+    });
+  });
+});
+
+describe("setEpisodeImagePromptLanguage", () => {
+  it("creates a minimal start-frame plan and persists image language independently", async () => {
+    const episodeRow = baseEpisodeRow({
+      motionPromptPack: {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+        promptLanguage: "en",
+        clips: [],
+        warnings: [],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([episodeRow]));
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([{ ...episodeRow, ...value }]);
+      }),
+    });
+
+    await router.setEpisodeImagePromptLanguage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", imagePromptLanguage: "th" },
+    });
+
+    expect(capturedSet.startFramePlan).toMatchObject({
+      mode: "single_frame_per_shot",
+      selectedImageModelId: "",
+      imagePromptLanguage: "th",
+      frames: [],
+    });
+    expect(capturedSet.motionPromptPack).toBeUndefined();
   });
 });

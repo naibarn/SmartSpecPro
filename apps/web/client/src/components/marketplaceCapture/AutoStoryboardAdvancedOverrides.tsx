@@ -45,8 +45,12 @@ interface AutoStoryboardAdvancedOverridesProps {
 
 type OverrideKey = keyof HyperframesAutoPlanOverrideInput;
 
-const baseAutoDefaultValues: Record<OverrideKey, string> =
-  HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES;
+const baseAutoDefaultValues: Record<OverrideKey, string> = {
+  ...HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES,
+  // Ensures the "auto" default prunes to an omitted key even before the shared
+  // schema/base-values gain characterPresenceMode from the backend agent.
+  characterPresenceMode: "auto",
+};
 
 function overrideValueString(value: unknown): string {
   return typeof value === "number" ? String(value) : String(value ?? "");
@@ -78,6 +82,91 @@ function overridesEqual(
       overrideValueString(right[typedKey])
     );
   });
+}
+
+const storyMotionFieldClass =
+  "w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+const storyMotionLabelClass =
+  "text-xs font-semibold text-slate-500 dark:text-slate-400";
+
+/**
+ * Prominent always-visible story/motion free-text fields for the Auto
+ * Storyboard Review flow. Writes into the SAME overrides object (and with the
+ * same prune-empty semantics) as AutoStoryboardAdvancedOverrides, so payload
+ * behavior is identical — this is a UI relocation of the two textareas out of
+ * the advanced panel.
+ */
+export function AutoStoryboardStoryMotionFields({
+  value,
+  onChange,
+  locale,
+}: {
+  value: HyperframesAutoPlanOverrideInput;
+  onChange: (value: HyperframesAutoPlanOverrideInput) => void;
+  locale?: AutoStoryboardAdvancedOverridesProps["locale"];
+}) {
+  const copy = getMarketplaceHyperframesUiCopy(locale);
+  const thai = copy.locale === "th";
+  const labels = {
+    creativeBrief: thai ? "แนวเรื่องหรือคำบรรยายเพิ่มเติม" : "Creative brief",
+    motionDirection: thai
+      ? "คำกำกับการเคลื่อนไหวในวิดีโอ (ไม่บังคับ)"
+      : "Video motion direction (optional)",
+  };
+  const update = (
+    key: "creativeBrief" | "motionDirection",
+    nextValue: string
+  ) => {
+    const next = { ...value };
+    if (nextValue === "") {
+      delete next[key];
+    } else {
+      next[key] = nextValue as never;
+    }
+    onChange(pruneBaseAutoDefaultOverrides(next));
+  };
+  return (
+    <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <label className="block space-y-1">
+        <span className={storyMotionLabelClass}>{labels.creativeBrief}</span>
+        <textarea
+          aria-label={labels.creativeBrief}
+          className={`${storyMotionFieldClass} min-h-24 py-2`}
+          value={overrideValueString(value.creativeBrief)}
+          onChange={event => update("creativeBrief", event.target.value)}
+          placeholder={
+            thai
+              ? "เช่น อยากได้แนวรีวิวอบอุ่น กระชับ เน้นผลลัพธ์จริง"
+              : "Example: warmer pacing, concise proof-first review, practical result emphasis"
+          }
+        />
+        <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {thai
+            ? "กำหนดแนวเรื่อง ตัวละคร หรือสถานการณ์ให้ระบบวางแผนทุก shot ตาม"
+            : "Steers the story/scenario the planner weaves into every shot"}
+        </p>
+      </label>
+      <label className="block space-y-1">
+        <span className={storyMotionLabelClass}>{labels.motionDirection}</span>
+        <textarea
+          aria-label={labels.motionDirection}
+          className={`${storyMotionFieldClass} min-h-24 py-2`}
+          value={overrideValueString(value.motionDirection)}
+          onChange={event => update("motionDirection", event.target.value)}
+          placeholder={
+            thai
+              ? "เช่น นางแบบหยิบขวดแชมพูขึ้นมา กดหัวปั๊ม... ปิดท้ายโชว์สินค้า"
+              : "Example: the model picks up the shampoo bottle, presses the pump... closing on a clear product showcase"
+          }
+        />
+        <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {thai
+            ? "ใช้กำกับท่วงท่า/ลำดับการเคลื่อนไหวของวิดีโอ (โหมดวิดีโอ)"
+            : "Choreographs the video motion sequence (video mode)"}
+        </p>
+      </label>
+    </div>
+  );
 }
 
 export function AutoStoryboardAdvancedOverrides({
@@ -113,6 +202,12 @@ export function AutoStoryboardAdvancedOverrides({
     manualGroupSize: thai ? "กำหนดจำนวนช็อตต่อคลิป" : "Manual group size",
     speechLanguage: thai ? "ภาษาพูด" : "Spoken language",
     creativeBrief: thai ? "แนวเรื่องหรือคำบรรยายเพิ่มเติม" : "Creative brief",
+    motionDirection: thai
+      ? "คำกำกับการเคลื่อนไหวในวิดีโอ (ไม่บังคับ)"
+      : "Video motion direction (optional)",
+    characterPresenceMode: thai
+      ? "การปรากฏของบุคคลในภาพ 3x3"
+      : "Character presence in 3x3 frames",
   };
   const fieldLabels: Record<string, string> = {
     platformPreset: labels.format,
@@ -129,6 +224,8 @@ export function AutoStoryboardAdvancedOverrides({
     manualVideoGroupSize: labels.manualGroupSize,
     speechLanguage: labels.speechLanguage,
     creativeBrief: labels.creativeBrief,
+    motionDirection: labels.motionDirection,
+    characterPresenceMode: labels.characterPresenceMode,
   };
   const describeFields = (fieldNames: string[]) =>
     fieldNames.map(field => fieldLabels[field] ?? field);
@@ -232,6 +329,22 @@ export function AutoStoryboardAdvancedOverrides({
     { value: "ar", label: thai ? "อาหรับ" : "Arabic" },
     { value: "pt", label: thai ? "โปรตุเกส" : "Portuguese" },
     { value: "it", label: thai ? "อิตาลี" : "Italian" },
+  ] as const;
+  const characterPresenceModeOptions = [
+    {
+      value: "auto",
+      label: thai ? "อัตโนมัติ (ค่าเริ่มต้น)" : "Auto (default)",
+    },
+    {
+      value: "every_frame",
+      label: thai ? "มีคนทุกเฟรม (9/9)" : "Person in every frame (9/9)",
+    },
+    {
+      value: "most_frames",
+      label: thai
+        ? "มีคนเกือบทุกเฟรม (อย่างน้อย 7/9)"
+        : "Person in most frames (at least 7/9)",
+    },
   ] as const;
   const imageModelOptions = providedImageModelOptions?.length
     ? providedImageModelOptions
@@ -526,21 +639,24 @@ export function AutoStoryboardAdvancedOverrides({
                 ))}
               </select>
             </label>
+            <label className="space-y-1">
+              <span className={labelClass}>{labels.characterPresenceMode}</span>
+              <select
+                aria-label={labels.characterPresenceMode}
+                className={fieldClass}
+                value={selectedValueFor("characterPresenceMode")}
+                onChange={event =>
+                  update("characterPresenceMode", event.target.value)
+                }
+              >
+                {characterPresenceModeOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <label className="block space-y-1">
-            <span className={labelClass}>{labels.creativeBrief}</span>
-            <textarea
-              aria-label={labels.creativeBrief}
-              className={`${fieldClass} min-h-24 py-2`}
-              value={selectedValueFor("creativeBrief")}
-              onChange={event => update("creativeBrief", event.target.value)}
-              placeholder={
-                thai
-                  ? "เช่น อยากได้แนวรีวิวอบอุ่น กระชับ เน้นผลลัพธ์จริง"
-                  : "Example: warmer pacing, concise proof-first review, practical result emphasis"
-              }
-            />
-          </label>
           {videoSegmentPreview ? (
             <div className="rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-slate-700 dark:border-sky-900 dark:bg-sky-950 dark:text-slate-200">
               {videoSegmentPreview.loading ? (

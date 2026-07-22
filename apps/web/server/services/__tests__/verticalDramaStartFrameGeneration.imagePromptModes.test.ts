@@ -76,7 +76,8 @@ import {
   generateStartFrameShotPrompt,
   buildStartFrameShotPromptUserPrompt,
   buildStartFrameShotPromptVisionImages,
-  VdReferenceMappingError,
+  buildDeterministicPolicySafeImagePrompt,
+  validatePolicySafeSynopsisRewrite,
   type GenerateStartFrameShotPromptParams,
 } from "../verticalDramaStartFrameGeneration";
 import { executeWithFallback } from "../llmRouter";
@@ -120,6 +121,7 @@ function baseShotParams(
     shotNumber: 4,
     currentPrompt: "vertical 9:16 start frame for shot 4, Aria in boardroom.",
     currentNegativePrompt: "no identity drift",
+    canonicalShotSummary: "อารียืนอยู่ในห้องประชุม",
     characterReferenceManifest: [],
     ...overrides,
   };
@@ -174,15 +176,29 @@ function systemMessageContent(callIndex = 0): string {
   return typeof systemMessage === "string" ? systemMessage : JSON.stringify(systemMessage);
 }
 
+function userMessageContent(callIndex = 0): string {
+  const args = mockExecute.mock.calls[callIndex][0] as {
+    messages: Array<{ role: string; content: unknown }>;
+  };
+  const userMessage = args.messages.find(m => m.role === "user")!.content;
+  return typeof userMessage === "string" ? userMessage : JSON.stringify(userMessage);
+}
+
 describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
   it("mode `policy_safe_rewrite` loads the synopsis skill", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a policy-safe prompt", negative_prompt: "no blur" }),
+      successResponse({
+        rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
+        safety_adjustments: [],
+      }),
     );
-    await generateStartFrameShotPrompt(
+    const result = await generateStartFrameShotPrompt(
       baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
     );
     expect(systemMessageContent()).toBe("SYNOPSIS_SKILL_BODY");
+    expect(result.prompt).toBe("อารียืนอยู่ในห้องประชุม");
+    expect(userMessageContent()).not.toContain("PROMPT LANGUAGE");
+    expect(userMessageContent()).not.toContain("framing_override");
   });
 
   it("mode `cinematic_narrative` loads the cinematic skill", async () => {
@@ -256,22 +272,40 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
   });
 });
 
-describe("generateStartFrameShotPrompt — reference-mapping validator still fail-closed regardless of mode", () => {
-  it("throws VdReferenceMappingError when a mode-1 prompt's own 'Image N' claim contradicts the manifest after one corrective retry", async () => {
-    const manifest = [{ index: 1, name: "Hero" }, { index: 2, name: "Villain" }];
-    // First attempt AND the corrective retry both claim the wrong index.
-    mockExecute.mockResolvedValue(
-      successResponse({
-        prompt: "REFERENCE MAPPING: Image 1 = Villain; Image 2 = Hero. A scene.",
-        negative_prompt: "no blur",
-      }),
+describe("policy-safe synopsis deterministic contract", () => {
+  it("builds only REFERENCE MAPPING plus the rewritten synopsis", () => {
+    expect(buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis: "ภูมิยืนคุยกับปราง",
+      characterReferenceManifest: [{ index: 1, name: "ภูมิ" }, { index: 2, name: "ปราง" }],
+      locationReferenceImage: { url: "https://cdn/roof.png", label: "ดาดฟ้าตึกแถวเก่า" },
+    })).toBe(
+      "REFERENCE MAPPING: Image 1 = ภูมิ; Image 2 = ปราง; Image 3 = location: ดาดฟ้าตึกแถวเก่า.\nภูมิยืนคุยกับปราง",
     );
-    await expect(
-      generateStartFrameShotPrompt(
-        baseShotParams({ imagePromptMode: "policy_safe_rewrite", characterReferenceManifest: manifest }),
-      ),
-    ).rejects.toThrow(VdReferenceMappingError);
-    // One initial call + one corrective retry — never more.
+  });
+
+  it("rejects an undeclared creative addition", () => {
+    expect(() => validatePolicySafeSynopsisRewrite("ภูมิยืนคุยกับปราง", {
+      rewritten_synopsis: "ภูมิยืนคุยกับปรางใต้แสงฝน",
+      safety_adjustments: [],
+    })).toThrow("undeclared addition");
+  });
+
+  it("retries once when the skill adds undeclared cinematic detail", async () => {
+    mockExecute
+      .mockResolvedValueOnce(successResponse({
+        rewritten_synopsis: "อารียืนอยู่ในห้องประชุมใต้แสงนุ่ม",
+        safety_adjustments: [],
+      }))
+      .mockResolvedValueOnce(successResponse({
+        rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
+        safety_adjustments: [],
+      }));
+
+    const result = await generateStartFrameShotPrompt(
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+    );
+
+    expect(result.prompt).toBe("อารียืนอยู่ในห้องประชุม");
     expect(mockExecute).toHaveBeenCalledTimes(2);
   });
 });
@@ -280,15 +314,21 @@ describe("generateStartFrameShotPrompt — lenient extras parsed and normalized 
   it("mode 1 returns normalized top-level safety_adjustments", async () => {
     mockExecute.mockResolvedValue(
       successResponse({
-        prompt: "a policy-safe prompt",
-        negative_prompt: "no blur",
-        safety_adjustments: ["  original → rewritten  ", "", 42, "second → fix"],
+        rewritten_synopsis: "อารียืนอยู่ในห้องประชุมอย่างสมัครใจ",
+        safety_adjustments: [{
+          original: "อารียืนอยู่ในห้องประชุม",
+          rewritten: "อารียืนอยู่ในห้องประชุมอย่างสมัครใจ",
+          reason: "adult_or_consent",
+        }],
       }),
     );
     const result = await generateStartFrameShotPrompt(
       baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
     );
-    expect(result.safetyAdjustments).toEqual(["original → rewritten", "second → fix"]);
+    expect(result.safetyAdjustments).toEqual([
+      "อารียืนอยู่ในห้องประชุม → อารียืนอยู่ในห้องประชุมอย่างสมัครใจ",
+    ]);
+    expect(result.negativePrompt).toBe("");
   });
 
   it("mode 2 returns normalized analysis_summary subset + quality_score/quality_flags as promptAnalysis, and safety_adjustments from analysis_summary", async () => {
@@ -372,7 +412,10 @@ describe("generateStartFrameShotPrompt — mode 2 vision resolution (D3: image-g
 
   it("mode 1 does NOT trigger vision resolution from portraits alone (mode 1 never receives them)", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a policy-safe prompt", negative_prompt: "no blur" }),
+      successResponse({
+        rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
+        safety_adjustments: [],
+      }),
     );
     const result = await generateStartFrameShotPrompt(
       baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),

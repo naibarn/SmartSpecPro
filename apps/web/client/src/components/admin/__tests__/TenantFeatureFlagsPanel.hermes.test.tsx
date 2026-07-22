@@ -29,6 +29,18 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    i18n: { language: "en", resolvedLanguage: "en" },
+  }),
+}));
+
+vi.mock("@/components/help/HelpButton", () => ({
+  HelpButton: ({ page, topic, label }: { page: string; topic: string; label: string }) => (
+    <button type="button" data-page={page} data-topic={topic}>{label}</button>
+  ),
+}));
+
 import { TenantFeatureFlagsPanel } from "../TenantFeatureFlagsPanel";
 
 describe("TenantFeatureFlagsPanel Hermes discoverability", () => {
@@ -59,6 +71,19 @@ describe("TenantFeatureFlagsPanel Hermes discoverability", () => {
     expect(screen.getByRole("switch", { name: /toggle hermes profile experience/i })).toBeInTheDocument();
   });
 
+  it("links the tenant rollout controls to the Grok via Hermes admin guide", () => {
+    render(<TenantFeatureFlagsPanel tenantId="tenant-1" canEdit={false} />);
+
+    expect(screen.getByRole("button", { name: "Setup Help" })).toHaveAttribute(
+      "data-topic",
+      "grok-via-hermes-admin",
+    );
+    expect(screen.getByRole("button", { name: "Setup Help" })).toHaveAttribute(
+      "data-page",
+      "/admin/tenants",
+    );
+  });
+
   it("surfaces Marketplace HyperFrames labels with their internal keys", () => {
     render(<TenantFeatureFlagsPanel tenantId="tenant-1" canEdit={false} />);
 
@@ -81,7 +106,7 @@ describe("TenantFeatureFlagsPanel Hermes discoverability", () => {
     // NOT nested under the "Hermes Runtime" group's flags.
     expect(screen.getByText("Key: hermesMediaWorker")).toBeInTheDocument();
     const mediaWorkerSwitch = screen.getByRole("switch", {
-      name: /toggle hermes media worker \(grok, f135\) \(hermesmediaworker\)/i,
+      name: /toggle grok via hermes — tenant rollout \(hermesmediaworker\)/i,
     });
     expect(mediaWorkerSwitch).toBeInTheDocument();
 

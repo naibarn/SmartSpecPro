@@ -50,7 +50,10 @@ import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
 import { AutoStoryboardReviewPlanSummary } from "@/components/marketplaceCapture/AutoStoryboardReviewPlanSummary";
-import { AutoStoryboardAdvancedOverrides } from "@/components/marketplaceCapture/AutoStoryboardAdvancedOverrides";
+import {
+  AutoStoryboardAdvancedOverrides,
+  AutoStoryboardStoryMotionFields,
+} from "@/components/marketplaceCapture/AutoStoryboardAdvancedOverrides";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { getMarketplaceHyperframesUiCopy } from "@/components/marketplaceCapture/hyperframesUiCopy";
 import type {
@@ -2453,6 +2456,12 @@ export default function MarketplaceCaptureProductDetail() {
     setAutoReviewSecondaryCharacterDetails,
   ] = useState("");
   const [autoReviewPropDetails, setAutoReviewPropDetails] = useState("");
+  const [autoReviewMotionDirection, setAutoReviewMotionDirection] =
+    useState("");
+  const [
+    autoReviewCharacterPresenceMode,
+    setAutoReviewCharacterPresenceMode,
+  ] = useState<"auto" | "every_frame" | "most_frames">("auto");
   const suppressAddImageToastRef = useRef(false);
   const requestedLibraryPageRef = useRef(0);
   const utils = trpc.useUtils();
@@ -2689,7 +2698,19 @@ export default function MarketplaceCaptureProductDetail() {
       label: modelId,
     }));
   }, [autoReviewVisionQaModelsQuery.data]);
+  // Model options load from TWO async sources: mediaModels.list AND
+  // mcpConnections.listConnections (MCP models are filtered out of the options
+  // until the connections query resolves). Pruning a stored selection before
+  // BOTH sources have settled successfully permanently erases the user's saved
+  // MCP model choice (the pruned value is immediately re-persisted to
+  // localStorage). Only prune once every source is loaded; on query error we
+  // keep the stored value — the server fails closed on truly invalid models.
+  const autoReviewImageModelSourcesReady =
+    imageMediaModelsQuery.isSuccess && mcpConnectionsQuery.isSuccess;
+  const autoReviewVideoModelSourcesReady =
+    videoMediaModelsQuery.isSuccess && mcpConnectionsQuery.isSuccess;
   useEffect(() => {
+    if (!autoReviewImageModelSourcesReady) return;
     if (!autoReviewImageModelOptions.length) return;
     if (
       !autoReviewImageModelOptions.some(
@@ -2698,8 +2719,13 @@ export default function MarketplaceCaptureProductDetail() {
     ) {
       setAutoReviewImageModel(autoReviewImageModelOptions[0].value);
     }
-  }, [autoReviewImageModel, autoReviewImageModelOptions]);
+  }, [
+    autoReviewImageModel,
+    autoReviewImageModelOptions,
+    autoReviewImageModelSourcesReady,
+  ]);
   useEffect(() => {
+    if (!autoReviewImageModelSourcesReady) return;
     const overrideImageModel = String(
       autoStoryboardOverrides.imageModel ?? ""
     ).trim();
@@ -2717,8 +2743,13 @@ export default function MarketplaceCaptureProductDetail() {
       delete next.imageModel;
       return next;
     });
-  }, [autoReviewImageModelOptions, autoStoryboardOverrides.imageModel]);
+  }, [
+    autoReviewImageModelOptions,
+    autoReviewImageModelSourcesReady,
+    autoStoryboardOverrides.imageModel,
+  ]);
   useEffect(() => {
+    if (!autoReviewVideoModelSourcesReady) return;
     const overrideVideoModel = String(
       autoStoryboardOverrides.videoModel ?? ""
     ).trim();
@@ -2736,7 +2767,11 @@ export default function MarketplaceCaptureProductDetail() {
       delete next.videoModel;
       return next;
     });
-  }, [autoReviewVideoModelOptions, autoStoryboardOverrides.videoModel]);
+  }, [
+    autoReviewVideoModelOptions,
+    autoReviewVideoModelSourcesReady,
+    autoStoryboardOverrides.videoModel,
+  ]);
   const buildAutoReviewTransportMetadata = useCallback(
     (imageModelId: string, videoModelId?: string) => {
       const imageTransport = resolveAutoReviewImageModelTransport(imageModelId);
@@ -4672,6 +4707,13 @@ export default function MarketplaceCaptureProductDetail() {
         visionQaModel: trimmedVisionQaModel || undefined,
         transportMetadata,
         referenceAnchors,
+        motionDirection: autoReviewMotionDirection.trim()
+          ? autoReviewMotionDirection.trim().slice(0, 2000)
+          : undefined,
+        characterPresenceMode:
+          autoReviewCharacterPresenceMode !== "auto"
+            ? autoReviewCharacterPresenceMode
+            : undefined,
       });
     },
     [
@@ -4679,6 +4721,8 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewAudioStrategy,
       autoReviewFrameStrategy,
       autoReviewImageModel,
+      autoReviewMotionDirection,
+      autoReviewCharacterPresenceMode,
       autoReviewVisionQaModel,
       autoReviewOverlayTextMode,
       autoReviewRunItems,
@@ -4961,6 +5005,35 @@ export default function MarketplaceCaptureProductDetail() {
               </p>
             </div>
           ) : null}
+          <div className="mt-4">
+            <label className="block">
+              <span className="text-sm font-semibold text-slate-900">
+                การปรากฏของบุคคลในภาพ 3x3
+              </span>
+              <select
+                className="mt-1 w-full rounded-md border px-2 py-1 text-sm"
+                value={autoReviewCharacterPresenceMode}
+                onChange={event =>
+                  setAutoReviewCharacterPresenceMode(
+                    event.target.value as
+                      | "auto"
+                      | "every_frame"
+                      | "most_frames"
+                  )
+                }
+              >
+                <option value="auto">อัตโนมัติ (ค่าเริ่มต้น)</option>
+                <option value="every_frame">มีคนทุกเฟรม (9/9)</option>
+                <option value="most_frames">
+                  มีคนเกือบทุกเฟรม (อย่างน้อย 7/9)
+                </option>
+              </select>
+            </label>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              ใช้เมื่อแนบรูปบุคคล/ตัวแบบ —
+              บังคับให้บุคคลตามรูปอ้างอิงปรากฏในเฟรม storyboard
+            </p>
+          </div>
         </div>
       ) : (
         <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
@@ -5035,6 +5108,19 @@ export default function MarketplaceCaptureProductDetail() {
             </div>
           );
         })}
+        {effectiveAutoReviewLaunchMode !== "auto_storyboard_review" ? (
+          <div>
+            {renderCharacterDetailField(
+              "คำกำกับการเคลื่อนไหวในวิดีโอ (ไม่บังคับ)",
+              autoReviewMotionDirection,
+              setAutoReviewMotionDirection,
+              "เช่น นางแบบหยิบขวดแชมพูขึ้นมา กดหัวปั๊มให้แชมพูไหลลงบนฝ่ามือ นำมาชะโลมบนศีรษะ เกิดฟองนุ่มทั่วเส้นผม แล้วปิดท้ายด้วยการโชว์สินค้าให้เห็นชัดเจน"
+            )}
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              ใช้กำกับท่วงท่า/ลำดับการเคลื่อนไหวของวิดีโอ (โหมดวิดีโอ)
+            </p>
+          </div>
+        ) : null}
       </div>
       {selectedAudioCreativePreset?.presetId === "audio_thai_tts" ? (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
@@ -5161,6 +5247,10 @@ export default function MarketplaceCaptureProductDetail() {
           />
           {characterChoicePanel}
           {creativeDirectionPanel}
+          <AutoStoryboardStoryMotionFields
+            value={autoStoryboardOverrides}
+            onChange={setAutoStoryboardOverrides}
+          />
           <AutoStoryboardAdvancedOverrides
             plan={autoStoryboardPlan}
             open={showAutoStoryboardAdvanced}

@@ -379,6 +379,9 @@ describe("MediaGenerationService retry behavior", () => {
       aliases: [],
       creditCost: 40,
       configJson: {
+        apiConfig: {
+          kie_model_id_with_references: "google-banana-2-image-to-image",
+        },
         inputFields: [
           {
             key: "reference_image",
@@ -415,6 +418,7 @@ describe("MediaGenerationService retry behavior", () => {
       reference_image_input_key: "reference_image",
       reference_image_input_label: "Reference Images",
       reference_image_input_type: "array",
+      kie_model_id_with_references: "google-banana-2-image-to-image",
     });
   });
 

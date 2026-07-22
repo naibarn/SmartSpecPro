@@ -19,7 +19,11 @@ import {
 } from "../services/mediaGenerationService";
 import { deductCredits, hasEnoughCredits, refundCredits } from "../services/creditService";
 import { calculateCreditCost, type UserSelections } from "../services/pricingCalculator";
-import { isHermesMediaTaskId, reconcileHermesMediaJobFee } from "../services/hermesMediaAdapter";
+import {
+  isHermesMediaTaskId,
+  listHermesMediaTasks,
+  reconcileHermesMediaJobFee,
+} from "../services/hermesMediaAdapter";
 import { billingEnvelopeFromMetadata } from "../services/workerBillingService";
 import {
   GEMINI_OMNI_AUDIO_CAPABILITY,
@@ -3959,7 +3963,14 @@ export const mediaRouter = router({
           status: input?.status,
           limit: fetchLimit,
         });
-        const allMergedTasks = [...mcpTasks, ...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
+        const hermesTasks = await listHermesMediaTasks({
+          userId: ctx.user.id,
+          mediaType: input?.mediaType as MediaType | undefined,
+          status: input?.status,
+          limit: fetchLimit,
+          daysAgo: input?.daysAgo,
+        });
+        const allMergedTasks = [...hermesTasks, ...mcpTasks, ...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
           .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
         const seriesFilteredTasks = input?.seriesId
           ? allMergedTasks.filter((task) => taskMatchesVerticalDramaSeries(task, input.seriesId as string))
@@ -3970,7 +3981,7 @@ export const mediaRouter = router({
           tasks: mergedTasks,
           total: input?.seriesId
             ? seriesFilteredTasks.length
-            : (result.total ?? result.tasks?.length ?? 0) + mcpTasks.length + activeDeferredTasks.length + nonDuplicateHyperframesTasks.length,
+            : (result.total ?? result.tasks?.length ?? 0) + hermesTasks.length + mcpTasks.length + activeDeferredTasks.length + nonDuplicateHyperframesTasks.length,
           limit: input?.limit ?? result.limit,
           offset: input?.offset ?? result.offset,
         };

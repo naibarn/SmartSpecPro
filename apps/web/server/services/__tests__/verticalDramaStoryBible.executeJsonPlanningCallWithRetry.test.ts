@@ -476,4 +476,94 @@ describe("executeJsonPlanningCallWithRetry", () => {
       expect(mockExecute).toHaveBeenCalledTimes(3);
     });
   });
+
+  /* ------------------------------------------------------------------------ */
+  /* Timeout-hole fix (2026-07-18, audit-2026-07-18.jsonl root cause: a        */
+  /* stalling provider — moonshotai/kimi-k3 capacity-limited — hung every      */
+  /* attempt for minutes with no body-read deadline in `llmRouter.ts`). The    */
+  /* `timeoutMs` / `maxTransientRetries` params below are opt-in passthroughs  */
+  /* used ONLY by `verticalDramaCharacterImageGeneration.ts`'s interactive     */
+  /* calls; every pre-existing caller omits both and gets byte-identical      */
+  /* behavior (proven by every test above still passing unmodified).          */
+  /* ------------------------------------------------------------------------ */
+  describe("timeout-hole fix passthrough (2026-07-18)", () => {
+    beforeEach(() => {
+      // `mockReset()` (not just the outer `beforeEach`'s `clearAllMocks()`)
+      // because a preceding Phase A test intentionally over-queues a
+      // `mockResolvedValueOnce` it never consumes (proving the retry cap
+      // stops calling before reaching it) — `clearAllMocks()` clears call
+      // history but not that leftover queued value, which would otherwise
+      // leak into this block's first test.
+      mockExecute.mockReset();
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("forwards timeoutMs verbatim to executeWithFallback on every attempt", async () => {
+      mockExecute
+        .mockResolvedValueOnce({ type: "error", error: "This operation was aborted" } as any)
+        .mockResolvedValueOnce(successWith(VALID_JSON));
+
+      const promise = executeJsonPlanningCallWithRetry(baseArgs({ timeoutMs: 150_000 }));
+      await vi.advanceTimersByTimeAsync(5_000);
+      await promise;
+
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      for (const call of mockExecute.mock.calls) {
+        expect(call[0]).toEqual(expect.objectContaining({ timeoutMs: 150_000 }));
+      }
+    });
+
+    it("omits timeoutMs (undefined) for callers that don't supply it — byte-identical to pre-existing behavior", async () => {
+      mockExecute.mockResolvedValueOnce(successWith(VALID_JSON));
+
+      await executeJsonPlanningCallWithRetry(baseArgs());
+
+      expect(mockExecute.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ timeoutMs: undefined }),
+      );
+    });
+
+    it("maxTransientRetries caps transient retries below the default 2 — throws after only 1 retry instead of 2", async () => {
+      mockExecute
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        // A 3rd call would succeed, but maxTransientRetries: 1 means only
+        // ONE transient retry is allowed (1 initial + 1 retry = 2 calls),
+        // so this 2nd failure must be the final one.
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        .mockResolvedValueOnce(successWith(VALID_JSON));
+
+      const promise = executeJsonPlanningCallWithRetry(
+        baseArgs({ timeoutMs: 150_000, maxTransientRetries: 1 }),
+      );
+      promise.catch(() => {});
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      await expect(promise).rejects.toThrow("fetch failed");
+      // 1 initial + 1 transient retry = 2 total calls, never the 3rd.
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+    });
+
+    /**
+     * Worst-case wall-clock proof for the interactive character-generation
+     * callers (`timeoutMs: 150_000, maxTransientRetries: 1`): every attempt
+     * is bounded to 150s by `timeoutMs` (proven above — it reaches every
+     * call), and at most 1 transient retry fires (proven above — only 2
+     * calls total for a persistently-stalling provider). So the worst-case
+     * wall time for THIS failure mode is 150s (initial) + 150s (1 retry) +
+     * 5s (first backoff) = 305s, comfortably under the 600s `/trpc/` nginx
+     * gateway timeout — see `verticalDramaCharacterImageGeneration.ts`'s
+     * call sites for the full arithmetic.
+     */
+    it("documents the worst-case interactive total: timeoutMs*(1+maxTransientRetries) + backoff < 600s", () => {
+      const timeoutMs = 150_000;
+      const maxTransientRetries = 1;
+      const firstBackoffMs = 5_000;
+      const worstCaseMs = timeoutMs * (1 + maxTransientRetries) + firstBackoffMs;
+      expect(worstCaseMs).toBe(305_000);
+      expect(worstCaseMs).toBeLessThan(600_000);
+    });
+  });
 });

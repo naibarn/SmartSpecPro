@@ -85,6 +85,7 @@ import {
   runProductReferenceStoryboardPromptSkill,
   type ProductReferenceStoryboardPromptSkillRunResult,
 } from "./productReferenceStoryboardSkillRunner";
+import { runProductVideoMotionPromptSkill } from "./productVideoMotionPromptSkillRunner";
 import {
   buildRuntimeModelConfig,
   executeSharedSkillTextRuntime,
@@ -907,6 +908,8 @@ type RunMetadata = Record<string, any> & {
   manualVideoGroupSize?: number;
   speechLanguage?: HyperframesSpokenLanguage;
   creativeBrief?: string | null;
+  motionDirection?: string | null;
+  characterPresenceMode?: MarketplaceAutoReviewCharacterPresenceMode | null;
   videoSegmentPlan?: VideoSegmentPlan;
 };
 
@@ -1736,6 +1739,7 @@ function normalizeShotFrameVisionQaDecision(input: {
   parsed: Record<string, unknown>;
   plan: AutoReviewPlan;
   reasonCodes: string[];
+  characterPresenceExpected?: boolean;
 }): {
   verdict: "pass" | "repair";
   reasonCodes: string[];
@@ -1745,6 +1749,7 @@ function normalizeShotFrameVisionQaDecision(input: {
   continuityMatchesShot: boolean;
   characterConsistencySafe: boolean;
   adWarningTextSafe: boolean;
+  characterPresenceSatisfied: boolean;
 } {
   const normalizedMinorSafety = normalizeVisionQaMinorSafetyResult({
     parsed: input.parsed,
@@ -1757,12 +1762,20 @@ function normalizeShotFrameVisionQaDecision(input: {
   const characterConsistencySafe =
     input.parsed.characterConsistencySafe !== false;
   const adWarningTextSafe = input.parsed.adWarningTextSafe !== false;
+  // Fail-open: presence is only evaluated when the run opted in AND the QA model
+  // actually reported it as unsatisfied (`=== false`). Absent mode or an
+  // unparseable/missing field ⇒ satisfied ⇒ behavior identical to today.
+  const characterPresenceSatisfied =
+    input.characterPresenceExpected === true
+      ? input.parsed.characterPresenceSatisfied !== false
+      : true;
   const reasonCodes = uniqueCleanTexts([
     ...normalizedMinorSafety.reasonCodes,
     productMatchesReference ? "" : "product_reference_mismatch",
     continuityMatchesShot ? "" : "storyboard_continuity_mismatch",
     characterConsistencySafe ? "" : "character_reference_mismatch",
     adWarningTextSafe ? "" : "ad_warning_text_issue",
+    characterPresenceSatisfied ? "" : "character_presence_missing",
   ]);
   const verdict =
     cleanText(input.parsed.verdict) === "pass" &&
@@ -1770,7 +1783,8 @@ function normalizeShotFrameVisionQaDecision(input: {
     productMatchesReference &&
     continuityMatchesShot &&
     characterConsistencySafe &&
-    adWarningTextSafe
+    adWarningTextSafe &&
+    characterPresenceSatisfied
       ? "pass"
       : "repair";
   return {
@@ -1782,6 +1796,7 @@ function normalizeShotFrameVisionQaDecision(input: {
     continuityMatchesShot,
     characterConsistencySafe,
     adWarningTextSafe,
+    characterPresenceSatisfied,
   };
 }
 
@@ -4705,6 +4720,198 @@ function buildMarketplaceAutoReviewDescribedCharacterDirective(
     "For child-focused products, a child may appear only as secondary product-use context when needed; the child must not become the recurring hero, narrator, presenter, or identity anchor.",
     "If a face is visible in the final storyboard, at least one active frame should clearly show the selected described presenter/persona. Prefer 2-3 active frames when the user selected a character/presenter.",
   ].join(" ");
+}
+
+type MarketplaceAutoReviewCharacterPresenceMode =
+  | "auto"
+  | "every_frame"
+  | "most_frames";
+
+function normalizeMarketplaceAutoReviewCharacterPresenceMode(
+  value: unknown
+): MarketplaceAutoReviewCharacterPresenceMode {
+  const text = cleanText(value).toLowerCase();
+  return text === "every_frame" || text === "most_frames" ? text : "auto";
+}
+
+/**
+ * True when the run actually has a presenter/person to enforce across frames:
+ * an uploaded character reference image, or a described-character brief. For
+ * product-only / hands-only runs there is no person, so a presence lock would be
+ * meaningless (and would silently corrupt product-only storyboards).
+ */
+function marketplaceAutoReviewHasCharacterPresence(
+  anchors: ResolvedMarketplaceAutoReviewReferenceAnchors
+): boolean {
+  const mode = normalizeMarketplaceAutoReviewCharacterMode(anchors.characterMode);
+  if (mode === "uploaded_reference") {
+    return Boolean(
+      cleanText(anchors.characterImageUrl) ||
+        cleanText(anchors.characterImageRef) ||
+        cleanText(anchors.characterImageProvidedRef)
+    );
+  }
+  if (mode === "described_character") {
+    return Boolean(marketplaceAutoReviewCharacterBriefText(anchors));
+  }
+  return false;
+}
+
+/**
+ * Planner directive that forces the referenced presenter into storyboard frames.
+ * Returns "" for `auto`/absent OR when no character reference exists so the
+ * Production Director prompt stays byte-identical (the array is filtered with
+ * `.filter(value => value !== "")` before join).
+ */
+function buildMarketplaceAutoReviewCharacterPresenceDirective(
+  mode: MarketplaceAutoReviewCharacterPresenceMode | null | undefined,
+  hasCharacterReference: boolean
+): string {
+  const normalized = normalizeMarketplaceAutoReviewCharacterPresenceMode(mode);
+  if (normalized === "auto") return "";
+  if (!hasCharacterReference) return "";
+  const presenceRule =
+    normalized === "every_frame"
+      ? "Every one of the 9 storyboard frames must visibly include the referenced presenter/person as an identity-preserving, clearly recognizable subject (not hands-only, not off-frame): design each shot's storyboardGuide and visual so the referenced person is present in that frame."
+      : "At least 7 of the 9 storyboard frames must visibly include the referenced presenter/person as an identity-preserving subject; at most 2 product-only close-up frames may omit the person when a tight product macro is required.";
+  return [
+    `USER-SELECTED CHARACTER PRESENCE LOCK: The user requires the referenced presenter/person to appear across the storyboard frames (${normalized}).`,
+    presenceRule,
+    "This presence requirement is an ADDITIONAL directive layered on top of product truth, reference-anchor identity, advertising safety, and claim rules; it never replaces or overrides them. On product-critical frames (for example the value-confirmation / Frame 8 beat) show BOTH the person and the fully readable product; if both cannot fit on that frame, product readability wins and the person still appears partially (shoulder, or hand plus face at the frame edge) rather than being dropped.",
+    "All minor-safety rules remain fully in force: never bind the uploaded presenter reference to a child, and a child may appear only as secondary product-use context, never as the recurring hero, narrator, presenter, or identity anchor.",
+  ].join(" ");
+}
+
+export function characterPresenceDirectiveForTest(
+  mode: string | null | undefined,
+  hasCharacterReference: boolean
+): string {
+  return buildMarketplaceAutoReviewCharacterPresenceDirective(
+    mode as MarketplaceAutoReviewCharacterPresenceMode | null | undefined,
+    hasCharacterReference
+  );
+}
+
+function buildMarketplaceAutoReviewCharacterPresenceRepairInstruction(
+  mode: MarketplaceAutoReviewCharacterPresenceMode,
+  framesMissingPresenter: number[]
+): string {
+  const frameList =
+    framesMissingPresenter.length > 0
+      ? `Frames ${framesMissingPresenter.join(", ")}`
+      : "the frames missing the presenter";
+  return mode === "every_frame"
+    ? `Regenerate so the referenced presenter/person appears, identity-preserved, in every one of the 9 storyboard frames. ${frameList} currently lack the referenced person: add the same referenced presenter to those frames while keeping the product true and fully readable.`
+    : `Regenerate so the referenced presenter/person appears in at least 7 of the 9 storyboard frames. ${frameList} currently lack the referenced person: add the same referenced presenter to those frames (at most 2 product-only close-up frames may omit the person) while keeping the product true and fully readable.`;
+}
+
+/**
+ * Deterministic voice descriptor built from EXISTING facts only (no new LLM
+ * call): spoken language + presenter gender/age hints when parseable, else a
+ * neutral narrator. Used by Feature B (Voice Consistency Lock).
+ */
+function buildMarketplaceAutoReviewVoiceProfileDescriptor(
+  plan: AutoReviewPlan,
+  metadata?: RunMetadata | null
+): string {
+  const languageLabel = marketplaceAutoReviewSpokenLanguageLabel(
+    metadata?.speechLanguage
+  );
+  const gender = marketplaceAutoReviewPresenterGenderFromPlanOrMetadata(
+    plan,
+    metadata
+  );
+  const preset = characterPresetRecordFromPlanOrMetadata(plan, metadata);
+  const ageLabel = cleanText(promptAgeLabelFromChoice(preset.age, preset.ageLabel));
+  const genderWord =
+    gender === "male" ? "male" : gender === "female" ? "female" : "";
+  const ageWord = ageLabel || (genderWord ? "adult" : "");
+  const parts = [ageWord, languageLabel, genderWord]
+    .map(part => cleanText(part))
+    .filter(Boolean);
+  return parts.length > 0
+    ? `one single consistent ${parts.join(" ")} narrator voice`
+    : "one single consistent narrator voice";
+}
+
+function buildMarketplaceAutoReviewVoiceConsistencyLockLine(
+  voiceProfile: string
+): string {
+  const profile = cleanText(voiceProfile);
+  if (!profile) return "";
+  return `VOICE CONSISTENCY LOCK: every clip uses the same single narrator voice — ${profile} — identical voice, timbre, tone, pacing, and language in every clip; never switch narrator between clips.`;
+}
+
+/**
+ * Feature B gating: return the compact voice-consistency lock line ONLY for
+ * native_video_audio runs (where per-clip generated audio causes voice drift).
+ * All other audio strategies (separate TTS / silent) return "" so their video
+ * prompts stay byte-identical.
+ */
+function buildMarketplaceAutoReviewVoiceConsistencyLock(input: {
+  resolvedAudioStrategy?:
+    | MarketplaceAutoReviewResolvedAudioStrategy
+    | null;
+  plan: AutoReviewPlan;
+  metadata?: RunMetadata | null;
+}): string {
+  if (input.resolvedAudioStrategy !== "native_video_audio") return "";
+  const profile = buildMarketplaceAutoReviewVoiceProfileDescriptor(
+    input.plan,
+    input.metadata
+  );
+  return buildMarketplaceAutoReviewVoiceConsistencyLockLine(profile);
+}
+
+export function marketplaceAutoReviewVoiceConsistencyLockForTest(input: {
+  resolvedAudioStrategy?: string | null;
+  plan?: Partial<AutoReviewPlan> | null;
+  metadata?: Partial<RunMetadata> | null;
+}): string {
+  return buildMarketplaceAutoReviewVoiceConsistencyLock({
+    resolvedAudioStrategy:
+      input.resolvedAudioStrategy as MarketplaceAutoReviewResolvedAudioStrategy | null,
+    plan: (input.plan ?? {}) as AutoReviewPlan,
+    metadata: (input.metadata ?? null) as RunMetadata | null,
+  });
+}
+
+function buildMarketplaceAutoReviewMotionDirectionDirective(
+  motionDirection?: string | null
+): string {
+  const text = cleanText(motionDirection);
+  if (!text) return "";
+  return [
+    `USER-SELECTED MOTION DIRECTION LOCK: The user described this motion/action sequence for the video: ${text}.`,
+    "Decompose this motion sequence chronologically across the ordered shot list, assigning each shot a shot.movement value that advances the sequence in order from the first shot to the last, so the full choreography plays out beat by beat across the storyboard.",
+    "This motion direction is an ADDITIONAL directive layered on top of product truth, advertising safety, claim, and reference-anchor rules; it never replaces or overrides them. Do not invent product actions, materials, or effects that contradict product truth or add unsafe or false claims.",
+    "Honor the user's final beat: the closing shot's movement must land on the concluding action the user described (for example a final clear product showcase).",
+  ].join(" ");
+}
+
+export function motionDirectionDirectiveForTest(
+  motionDirection?: string | null
+): string {
+  return buildMarketplaceAutoReviewMotionDirectionDirective(motionDirection);
+}
+
+function buildMarketplaceAutoReviewCreativeBriefDirective(
+  creativeBrief?: string | null
+): string {
+  const text = cleanText(creativeBrief);
+  if (!text) return "";
+  return [
+    `USER-SELECTED STORY DIRECTION LOCK: The user described this story direction / scenario for the video: ${text}.`,
+    "Weave this story/scenario (its characters, setting, and situation) into the shot plan, giving each shot a storyboardGuide, visual, and voiceover that stages the described scenario and advances it chronologically and coherently from the first shot to the last.",
+    "This story direction is an ADDITIONAL directive layered on top of product truth, advertising safety, claim, and reference-anchor rules; it never replaces or overrides them. Do not invent product specs, materials, effects, or claims that contradict product truth or add unsafe or false claims to fit the story.",
+    "All existing safety rules still apply fully; when the scenario involves children or minors, every minor-safety rule remains in force (a child may appear only as secondary product-use context and must not become the recurring hero, narrator, presenter, or identity anchor).",
+  ].join(" ");
+}
+
+export function creativeBriefDirectiveForTest(
+  creativeBrief?: string | null
+): string {
+  return buildMarketplaceAutoReviewCreativeBriefDirective(creativeBrief);
 }
 
 function assertProviderReadyReferenceAnchor(
@@ -8994,6 +9201,13 @@ function buildProductReferenceStoryboardSkillInputs(input: {
     referenceImageGroups,
     input.plan
   );
+  const characterPresenceMode =
+    normalizeMarketplaceAutoReviewCharacterPresenceMode(
+      input.metadata?.characterPresenceMode
+    );
+  const characterPresenceActive =
+    characterPresenceMode !== "auto" &&
+    referenceImageGroups.character.length > 0;
   const minorSafetyClothingLock = buildMinorSafetyClothingLock(input.plan);
   const imageAttemptStoryLens =
     buildProductReferenceStoryboardImageAttemptStoryLens({
@@ -9136,6 +9350,9 @@ function buildProductReferenceStoryboardSkillInputs(input: {
       total: referenceImageGroups.all.length,
     },
     runtime_contract: `Call the product-reference-storyboard skill and return only the final image prompt. Do not use backend fallback prompt text. This is a fresh skill call for image attempt ${Math.max(1, Math.floor(toNumber(input.directImageAttempt, 1)))} and must follow the image_attempt_story_lens instead of copying prior image-attempt prompt wording. The final prompt must explicitly satisfy the 9:16 strict 3x3 / 9 vertical frames contract before image provider submission. Reference image order is binding: ${referenceImageRoleOrder}. The final prompt must include the Product reference exact recreation lock using @Image1 as the primary visual source of truth and saying the written description must never override the attached product image. If a character reference is present, name that placeholder as the character identity source of truth whenever a face/body/person/child appears. ${productReferenceExactRecreationLock} ${imageAttemptStoryLensText} ${characterIdentityDirective} ${minorSafetyClothingLock}`,
+    ...(characterPresenceActive
+      ? { character_presence_mode: characterPresenceMode }
+      : {}),
   };
 }
 
@@ -10469,6 +10686,7 @@ export function normalizeMarketplaceAutoReviewShotFrameVisionQaDecisionForTest(i
   parsed: Record<string, unknown>;
   plan: AutoReviewPlan;
   reasonCodes: string[];
+  characterPresenceExpected?: boolean;
 }): ReturnType<typeof normalizeShotFrameVisionQaDecision> {
   return normalizeShotFrameVisionQaDecision(input);
 }
@@ -13268,6 +13486,9 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
   preflightMetadata: RunMetadata;
   referenceAnchors: ResolvedMarketplaceAutoReviewReferenceAnchors;
   noveltyMemory?: Record<string, unknown>;
+  motionDirection?: string | null;
+  creativeBrief?: string | null;
+  characterPresenceMode?: MarketplaceAutoReviewCharacterPresenceMode | null;
 }): Promise<{ plan: AutoReviewPlan; metadata: Record<string, unknown> }> {
   const model =
     cleanText(process.env.MARKETPLACE_AUTO_REVIEW_PLANNER_MODEL) || "gpt-4o";
@@ -13375,6 +13596,15 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
       params.referenceAnchors,
       { videoModel: cleanText(asRecord(params.preflightMetadata).videoModel) }
     );
+  const motionDirectionDirective =
+    buildMarketplaceAutoReviewMotionDirectionDirective(params.motionDirection);
+  const creativeBriefDirective =
+    buildMarketplaceAutoReviewCreativeBriefDirective(params.creativeBrief);
+  const characterPresenceDirective =
+    buildMarketplaceAutoReviewCharacterPresenceDirective(
+      params.characterPresenceMode,
+      marketplaceAutoReviewHasCharacterPresence(params.referenceAnchors)
+    );
   const buildRuntimeInput = (correction?: {
     actualShotCount: number;
     attempt: number;
@@ -13396,6 +13626,9 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
       describedCharacterDirective ||
         "Avoid human faces unless an approved character identity asset pack allows them; default to product-only or hands-only visuals.",
       creativeDirectionDirective,
+      motionDirectionDirective,
+      creativeBriefDirective,
+      characterPresenceDirective,
       "Return JSON only.",
       correction
         ? [
@@ -17031,10 +17264,16 @@ export async function selectMarketplaceAutoReviewImageAttemptForStoryboardReview
   const expectedFrameCount = shotCountForPlan(plan);
   let selectedStoryboardFrameUrls: string[] = [];
   if (storyboardGridUrl) {
+    // publicUrl is required for relative storage URLs: the NODE_BASE_URL
+    // fallback may point at a Docker-only hostname unreachable from systemd.
+    const splitPublicUrl = await resolveMarketplaceAutoReviewPublicUrl(
+      null
+    ).catch(() => null);
     selectedStoryboardFrameUrls = await splitStoryboardGrid({
       runId: run.id,
       tenantId,
       sourceUrl: storyboardGridUrl,
+      publicUrl: splitPublicUrl,
     });
   }
   if (selectedStoryboardFrameUrls.length === 0) {
@@ -17323,6 +17562,8 @@ export async function startMarketplaceAutoReviewRun(
     manualVideoGroupSize?: number | null;
     speechLanguage?: HyperframesSpokenLanguage | null;
     creativeBrief?: string | null;
+    motionDirection?: string | null;
+    characterPresenceMode?: MarketplaceAutoReviewCharacterPresenceMode | null;
     qualityMode?: MarketplaceAutoReviewQualityModeInput | null;
     visionQaModel?: string | null;
     referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
@@ -17364,6 +17605,11 @@ export async function startMarketplaceAutoReviewRun(
     input.speechLanguage
   );
   const creativeBrief = cleanText(input.creativeBrief);
+  const motionDirection = cleanText(input.motionDirection);
+  const characterPresenceMode =
+    normalizeMarketplaceAutoReviewCharacterPresenceMode(
+      input.characterPresenceMode
+    );
   const resolvedAudioStrategy = resolveMarketplaceAutoReviewAudioStrategy({
     outputMode,
     requested: audioStrategy,
@@ -17504,6 +17750,8 @@ export async function startMarketplaceAutoReviewRun(
       manualVideoGroupSize,
       speechLanguage,
       creativeBrief,
+      motionDirection,
+      characterPresenceMode,
       requestedShotCount: shotCountForPlan(currentPlan),
       qualityMode,
       visionQaModelOverride: visionQaModelOverride || null,
@@ -17737,6 +17985,9 @@ export async function startMarketplaceAutoReviewRun(
       preflightMetadata,
       referenceAnchors,
       noveltyMemory,
+      motionDirection,
+      creativeBrief,
+      characterPresenceMode,
     });
     plan = creativePlan.plan;
     const voiceoverRewrite =
@@ -18720,6 +18971,12 @@ async function runStoryboardGridLayoutVisionQa(params: {
   const hasCharacterReference = productReferenceManifest.some(
     entry => entry.role === "character"
   );
+  const characterPresenceMode =
+    normalizeMarketplaceAutoReviewCharacterPresenceMode(
+      params.metadata.characterPresenceMode
+    );
+  const characterPresenceExpected =
+    hasCharacterReference && characterPresenceMode !== "auto";
   const productReferenceUrls = productReferenceImageGroups.all;
   const referenceImageFingerprint =
     visualReferenceFingerprint(productReferenceUrls);
@@ -18774,11 +19031,16 @@ async function runStoryboardGridLayoutVisionQa(params: {
     hasCharacterReference
       ? "ตรวจ character identity ด้วย: ถ้ามีคน/พรีเซนเตอร์/แม่/ผู้ดูแลในภาพ ต้องตรง character reference anchor ทั้ง identity, age range, face/body structure, hair, wardrobe/styling; ถ้าไม่ตรงให้ characterConsistencySafe=false และ verdict=repair"
       : "",
+    characterPresenceExpected
+      ? characterPresenceMode === "every_frame"
+        ? "ผู้ใช้เลือกให้บุคคล/พรีเซนเตอร์ตาม character reference ปรากฏครบทุกเฟรม (9/9): ตรวจว่าทั้ง 9 พาเนลมีบุคคลที่ตรง identity ปรากฏจริง ถ้าพาเนลใดไม่มีบุคคล ให้ characterPresenceSatisfied=false, ใส่หมายเลขเฟรม (1-9) ที่ขาดบุคคลลงใน framesMissingPresenter และ verdict=repair"
+        : "ผู้ใช้เลือกให้บุคคล/พรีเซนเตอร์ปรากฏเกือบทุกเฟรม (อย่างน้อย 7 จาก 9, ยอมให้เฟรม close-up สินค้าไม่มีคนได้ไม่เกิน 2 เฟรม): ถ้ามีบุคคลน้อยกว่า 7 พาเนล ให้ characterPresenceSatisfied=false, ใส่หมายเลขเฟรม (1-9) ที่ขาดบุคคลลงใน framesMissingPresenter และ verdict=repair"
+      : "",
     marketplaceAutoReviewPlanNeedsMinorSafetyLock(params.plan)
       ? "กฎ publish safety สำหรับเด็ก: ตั้ง minorPresent=true เฉพาะเมื่อเห็นเด็ก/ทารก/toddler/minor จริงในภาพเท่านั้น ถ้าไม่มีเด็กให้ minorPresent=false และ minorSafetyClothingSafe=true เสมอ ถ้ามีเด็กจริงต้องสวมเสื้อผ้าปกปิดอก ลำตัว และบริเวณ underwear ห้ามเด็กไม่ใส่เสื้อ/bare torso/diaper-only/underwear-only/bath/changing/nude/semi-nude หากพบให้ verdict=repair และใส่ reasonCodes เช่น minor_safety_child_clothing_issue หรือ child_shirtless_bare_torso."
       : "",
     "ให้ตรวจด้วยสายตาจากภาพจริงเท่านั้น ถ้าไม่แน่ใจให้ verdict=repair และระบุ reasonCodes ที่ตรงที่สุด",
-    'JSON schema: {"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"isStrict3x3":boolean,"gridColumns":number,"gridRows":number,"frameCount":number,"visibleAddedText":boolean,"visibleTextExamples":[string],"repairInstruction":string,"productMatchesReference":boolean,"characterConsistencySafe":boolean,"minorPresent":boolean,"minorSafetyClothingSafe":boolean}',
+    `JSON schema: {"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"isStrict3x3":boolean,"gridColumns":number,"gridRows":number,"frameCount":number,"visibleAddedText":boolean,"visibleTextExamples":[string],"repairInstruction":string,"productMatchesReference":boolean,"characterConsistencySafe":boolean,${characterPresenceExpected ? '"characterPresenceSatisfied":boolean,"framesMissingPresenter":[number],' : ""}"minorPresent":boolean,"minorSafetyClothingSafe":boolean}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -18892,7 +19154,20 @@ async function runStoryboardGridLayoutVisionQa(params: {
     parsed,
     plan: params.plan,
     reasonCodes: parsedReasonCodes,
+    characterPresenceExpected,
   });
+  const framesMissingPresenter = Array.isArray(parsed.framesMissingPresenter)
+    ? parsed.framesMissingPresenter
+        .map(item => Math.floor(toNumber(item)))
+        .filter(frame => frame >= 1 && frame <= MAX_SHOT_COUNT)
+    : [];
+  const characterPresenceRepairInstruction =
+    characterPresenceExpected && !qaDecision.characterPresenceSatisfied
+      ? buildMarketplaceAutoReviewCharacterPresenceRepairInstruction(
+          characterPresenceMode,
+          framesMissingPresenter
+        )
+      : "";
   let storyboardGridGeometryUncertain = false;
   try {
     const gridBufferForGeometry = await fetchBufferFromUrl(
@@ -18945,6 +19220,7 @@ async function runStoryboardGridLayoutVisionQa(params: {
     !visibleAddedText &&
     qaDecision.productMatchesReference &&
     qaDecision.characterConsistencySafe &&
+    qaDecision.characterPresenceSatisfied &&
     qaDecision.minorSafetyClothingSafe
       ? "pass"
       : "repair";
@@ -18985,9 +19261,13 @@ async function runStoryboardGridLayoutVisionQa(params: {
     verdict,
     score: toNumber(parsed.score),
     reasonCodes,
-    repairInstruction:
+    repairInstruction: [
+      characterPresenceRepairInstruction,
       cleanText(parsed.repairInstruction) ||
-      "Regenerate one complete 9:16 storyboard canvas as exactly 3 equal columns x 3 equal rows with 9 panels, no 2x5/5x2/10-panel layout, no collage/masonry layout, and no visible text labels.",
+        "Regenerate one complete 9:16 storyboard canvas as exactly 3 equal columns x 3 equal rows with 9 panels, no 2x5/5x2/10-panel layout, no collage/masonry layout, and no visible text labels.",
+    ]
+      .filter(Boolean)
+      .join(" "),
     qaCacheKey,
     qaCacheHit: false,
     isStrict3x3: parsed.isStrict3x3 === true,
@@ -20955,7 +21235,9 @@ async function fetchBufferFromUrl(
   }
   
   const errorMessage = lastError instanceof Error ? lastError.message : String(lastError);
-  throw new Error(`Failed to fetch image for split: ${errorMessage}`);
+  throw new Error(
+    `Failed to fetch image for split: ${errorMessage} (url: ${absoluteUrl})`
+  );
 }
 
 async function splitStoryboardGrid(params: {
@@ -21202,6 +21484,7 @@ function buildMarketplaceAutoReviewVideoSegmentPlannerInput(params: {
     creativeBrief: normalizeVideoSegmentCreativeBrief(
       params.metadata.creativeBrief
     ),
+    motionDirection: cleanText(params.metadata.motionDirection) || undefined,
     creativePresets,
     shots: params.plan.shots.map((shot, index) => ({
       shotId: shot.id,
@@ -21859,6 +22142,110 @@ async function createStoryboardReview(params: {
   return surfaceRecordId;
 }
 
+export function buildMarketplaceAutoReviewSubmittedVideoPrompt(input: {
+  basePrompt: string;
+  repairInstruction?: string | null;
+  motionDirection?: string | null;
+  voiceConsistencyLock?: string | null;
+}): string {
+  const motionDirection = cleanText(input.motionDirection);
+  const voiceConsistencyLock = cleanText(input.voiceConsistencyLock);
+  return (
+    input.basePrompt +
+    (input.repairInstruction
+      ? `\nTargeted repair: ${input.repairInstruction}`
+      : "") +
+    (motionDirection
+      ? `\nUser motion direction (MANDATORY, additional to the rules above): ${marketplaceAutoReviewEnglishPromptText(
+          motionDirection,
+          motionDirection
+        )}`
+      : "") +
+    (voiceConsistencyLock ? `\n${voiceConsistencyLock}` : "")
+  );
+}
+
+export type MarketplaceAutoReviewVideoPromptSource =
+  | "deterministic"
+  | "skill"
+  | "deterministic_fallback";
+
+export type MarketplaceAutoReviewVideoUnitPromptResolution = {
+  prompt: string;
+  videoPromptSource: MarketplaceAutoReviewVideoPromptSource;
+  failureReason?: string;
+  warnings: string[];
+};
+
+/**
+ * Resolve the REAL submitted video prompt for one video unit.
+ *
+ * - When no motion direction is supplied (or no skill runner is injected) the
+ *   legacy deterministic path is used verbatim and `runSkill` is NEVER invoked —
+ *   zero new cost, byte-identical behavior.
+ * - When a motion direction IS supplied, the product-video-motion-prompt skill
+ *   is tried first. On success its prompt is used (the targeted-repair line is
+ *   still appended when present, preserving existing behavior). On ANY failure
+ *   the exact Phase-1 deterministic prompt (base + repair + motion line) is used
+ *   instead — this enhancer NEVER throws and NEVER blocks the unit.
+ */
+export async function resolveMarketplaceAutoReviewVideoUnitPrompt(input: {
+  basePrompt: string;
+  repairInstruction?: string | null;
+  motionDirection?: string | null;
+  voiceConsistencyLock?: string | null;
+  runSkill?: (() => Promise<{ prompt: string }>) | null;
+}): Promise<MarketplaceAutoReviewVideoUnitPromptResolution> {
+  const motionDirection = cleanText(input.motionDirection);
+  const deterministicPrompt = buildMarketplaceAutoReviewSubmittedVideoPrompt({
+    basePrompt: input.basePrompt,
+    repairInstruction: input.repairInstruction,
+    motionDirection: input.motionDirection,
+    voiceConsistencyLock: input.voiceConsistencyLock,
+  });
+
+  // Legacy path: no opt-in motion direction => never invoke the skill.
+  if (!motionDirection || !input.runSkill) {
+    return {
+      prompt: deterministicPrompt,
+      videoPromptSource: "deterministic",
+      warnings: [],
+    };
+  }
+
+  try {
+    const skillResult = await input.runSkill();
+    const skillPrompt = cleanText(skillResult?.prompt);
+    if (!skillPrompt) {
+      throw new Error("product-video-motion-prompt returned empty prompt");
+    }
+    // The skill already folds motion_direction into its output; do not append
+    // the motion line again. Still append any targeted repair instruction.
+    return {
+      prompt: buildMarketplaceAutoReviewSubmittedVideoPrompt({
+        basePrompt: skillPrompt,
+        repairInstruction: input.repairInstruction,
+        voiceConsistencyLock: input.voiceConsistencyLock,
+      }),
+      videoPromptSource: "skill",
+      warnings: [],
+    };
+  } catch (error) {
+    console.warn(
+      "[marketplaceAutoReview] video_motion_prompt_skill_fallback",
+      {
+        error: error instanceof Error ? error.message : String(error),
+      }
+    );
+    return {
+      prompt: deterministicPrompt,
+      videoPromptSource: "deterministic_fallback",
+      failureReason: error instanceof Error ? error.message : String(error),
+      warnings: ["video_prompt_skill_fallback"],
+    };
+  }
+}
+
 async function scheduleVideoAttempt(params: {
   db: Db;
   tenantId: string;
@@ -21932,6 +22319,16 @@ async function scheduleVideoAttempt(params: {
     .startFrameUrls?.length
     ? "start_stop"
     : "single_storyboard_frame";
+  // Feature B: deterministic voice-consistency lock for native_video_audio runs
+  // only. `voiceProfile` ("" for other strategies) is also passed as an optional
+  // fact into the product-video-motion-prompt skill; absent ⇒ zero bytes.
+  const voiceProfile =
+    resolvedAudioStrategy === "native_video_audio"
+      ? buildMarketplaceAutoReviewVoiceProfileDescriptor(plan, params.metadata)
+      : "";
+  const voiceConsistencyLock = voiceProfile
+    ? buildMarketplaceAutoReviewVoiceConsistencyLockLine(voiceProfile)
+    : "";
   const attemptId =
     cleanText(params.metadata.videoAttemptId) || `direct-video-${nanoid(12)}`;
   const submittedRefs: DirectMediaTaskRef[] = [];
@@ -21943,16 +22340,82 @@ async function scheduleVideoAttempt(params: {
       throw new Error(`Video repair exceeded max attempts for ${unit.unitId}`);
     }
     const refs = referenceImagesForVideoUnit(plan, params.metadata, unit);
-    const prompt =
-      buildVideoPrompt(plan, shot, {
-        audioStrategy: resolvedAudioStrategy,
-        isLastShot: shot.order === plan.shots.length,
-        referenceMode,
-        metadata: params.metadata,
-      }) +
-      (unit.repairInstruction
-        ? `\nTargeted repair: ${unit.repairInstruction}`
-        : "");
+    const basePrompt = buildVideoPrompt(plan, shot, {
+      audioStrategy: resolvedAudioStrategy,
+      isLastShot: shot.order === plan.shots.length,
+      referenceMode,
+      metadata: params.metadata,
+    });
+    const motionDirectionText = cleanText(params.metadata.motionDirection);
+    const shotFrameIndex = Math.max(0, unit.shotOrder - 1);
+    const publicUrlForVision = cleanText(params.runtime.publicUrl);
+    const videoMotionVisionRefs = motionDirectionText
+      ? refs
+          .map(url => {
+            try {
+              return absoluteVisionUrl(url, publicUrlForVision || undefined);
+            } catch {
+              return "";
+            }
+          })
+          .filter(Boolean)
+      : [];
+    const videoPromptResolution =
+      await resolveMarketplaceAutoReviewVideoUnitPrompt({
+        basePrompt,
+        repairInstruction: unit.repairInstruction,
+        motionDirection: params.metadata.motionDirection,
+        voiceConsistencyLock,
+        runSkill: motionDirectionText
+          ? () =>
+              runProductVideoMotionPromptSkill({
+                tenantId: params.tenantId,
+                userId: params.auth.userId,
+                facts: {
+                  productName: plan.productTruth.productName,
+                  productBrand: plan.productTruth.brand,
+                  productCategory: plan.productTruth.productCategory,
+                  productFacts:
+                    cleanText(plan.productTruth.description) ||
+                    cleanText(plan.productDetail),
+                  shotTitle: shot.title,
+                  shotVisual: shot.visual,
+                  shotMovement: shot.movement,
+                  voiceoverExcerpt: shot.voiceover,
+                  aspectRatio: "9:16",
+                  durationSeconds: shot.durationSeconds,
+                  shotOrder: shot.order,
+                  shotCount: plan.shots.length,
+                  isLastShot: shot.order === plan.shots.length,
+                  startFrameUrl:
+                    params.metadata.startFrameUrls?.[shotFrameIndex] ??
+                    params.metadata.storyboardFrameUrls?.[shotFrameIndex] ??
+                    null,
+                  stopFrameUrl:
+                    params.metadata.stopFrameUrls?.[shotFrameIndex] ?? null,
+                  motionDirection: params.metadata.motionDirection,
+                  voiceProfile: voiceProfile || undefined,
+                },
+                referenceImages: videoMotionVisionRefs,
+                runId: params.run.id,
+                unitId: unit.unitId,
+                attempt,
+                model: null,
+              }).then(result => ({ prompt: result.prompt }))
+          : null,
+      });
+    const prompt = videoPromptResolution.prompt;
+    const videoPromptSkillRuntime: Record<string, unknown> = {
+      videoPromptSource: videoPromptResolution.videoPromptSource,
+      usedMotionDirectionSkill:
+        videoPromptResolution.videoPromptSource === "skill",
+      ...(videoPromptResolution.failureReason
+        ? { failureReason: videoPromptResolution.failureReason }
+        : {}),
+      ...(videoPromptResolution.warnings.length > 0
+        ? { warnings: videoPromptResolution.warnings }
+        : {}),
+    };
     let credit: Awaited<
       ReturnType<typeof reserveMarketplaceMediaCredits>
     > | null = null;
@@ -21983,16 +22446,19 @@ async function scheduleVideoAttempt(params: {
           repairReasonCodes: unit.repairReasonCodes,
         },
       });
-      intentRef = buildDirectMediaSubmitIntentRef({
-        runId: params.run.id,
-        mediaType: "video",
-        stageKey: "video_generation",
-        unit,
-        attempt,
-        model: videoModel,
-        credit,
-        referenceImageUrls: refs,
-      });
+      intentRef = {
+        ...buildDirectMediaSubmitIntentRef({
+          runId: params.run.id,
+          mediaType: "video",
+          stageKey: "video_generation",
+          unit,
+          attempt,
+          model: videoModel,
+          credit,
+          referenceImageUrls: refs,
+        }),
+        skillRuntime: videoPromptSkillRuntime,
+      };
       submittedRefs.push(intentRef);
       await persistDirectMediaSubmitProgress({
         db: params.db,

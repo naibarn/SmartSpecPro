@@ -21,7 +21,12 @@ import {
 import { clearDocumentOcrSettingsCache, getDocumentOcrSettings } from "../services/documentOcrSettings";
 import { clearFinanceSlipMappingPresetCache } from "../services/financeSlipPresetSettings";
 import { clearPinnedMerchantPresetCache } from "../services/financeMerchantPresetSettings";
-import { HERMES_WORKER_SETTINGS_KEYS, getHermesWorkerSettings } from "../services/hermesWorkerSettings";
+import {
+  HERMES_WORKER_FULL_ENABLEMENT_PRESET,
+  HERMES_WORKER_SAFE_ENABLEMENT_PRESET,
+  HERMES_WORKER_SETTINGS_KEYS,
+  getHermesWorkerSettings,
+} from "../services/hermesWorkerSettings";
 import { validateHermesLimitCoherence } from "../services/hermesMediaAdmission";
 import { DOCUMENT_OCR_PROVIDER_IDS } from "../../shared/documentOcrRouting";
 import {
@@ -39,6 +44,7 @@ const settingCategorySchema = z.enum([
   "email",
   "general",
   "oauth",
+  "meta_channels",
   "ai",
   "telegram",
   "vectordb",
@@ -172,7 +178,7 @@ async function fetchPythonAdminJson<T>(params: {
     throw new Error(detail || `python_admin_request_failed:${response.status}`);
   }
 
-  return await response.json() as T;
+  return ( await response.json()) as T;
 }
 
 async function assertVectorDbConfigEditAllowedOrThrow(params: {
@@ -925,6 +931,106 @@ export const systemSettingsRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Apply the supported Grok via Hermes private-worker configuration as one
+   * transaction. This is intentionally separate from the expert per-setting
+   * mutation so the primary UI switch cannot leave a partially enabled
+   * control plane after a mid-sequence failure.
+   */
+  applyHermesSafePreset: adminProcedure
+    .input(z.object({
+      enabled: z.boolean(),
+      mode: z.enum(["private_only", "all"]).optional().default("private_only"),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      if (input.enabled && input.mode === "all") {
+        if (!ctx.tenantId) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Tenant context is required to enable the shared Hermes worker",
+          });
+        }
+        const { getHermesAvailability } = await import("../services/hermesConnectionService");
+        const availability = await getHermesAvailability({ tenantId: ctx.tenantId });
+        if (!availability.tenantEnabled) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Hermes Media Worker is not enabled for this tenant",
+          });
+        }
+        if (!availability.serverWorker.ready) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `Shared Hermes worker is not ready (${availability.serverWorker.reason ?? "unknown"})`,
+          });
+        }
+      }
+
+      const entries = input.enabled
+        ? Object.entries(
+          input.mode === "all"
+            ? HERMES_WORKER_FULL_ENABLEMENT_PRESET
+            : HERMES_WORKER_SAFE_ENABLEMENT_PRESET,
+        )
+        : [[HERMES_WORKER_SETTINGS_KEYS.enabled, "false"] as const];
+
+      await db.transaction(async (tx) => {
+        for (const [key, value] of entries) {
+          const existing = await tx
+            .select({ id: systemSettings.id })
+            .from(systemSettings)
+            .where(and(eq(systemSettings.category, "infrastructure"), eq(systemSettings.key, key)))
+            .limit(1);
+
+          const description =
+            key === HERMES_WORKER_SETTINGS_KEYS.enabled
+              ? "Feature 135 — Grok via Hermes platform enablement"
+              : input.mode === "all"
+                ? "Feature 135 — managed by the verified full three-mode preset"
+                : "Feature 135 — managed by the safe private-worker preset";
+
+          if (existing.length > 0) {
+            await tx
+              .update(systemSettings)
+              .set({
+                value,
+                description,
+                updatedBy: ctx.user?.id,
+                updatedAt: new Date(),
+              })
+              .where(eq(systemSettings.id, existing[0].id));
+          } else {
+            await tx.insert(systemSettings).values({
+              category: "infrastructure",
+              key,
+              value,
+              description,
+              updatedBy: ctx.user?.id,
+            });
+          }
+        }
+      });
+
+      const { clearHermesWorkerSettingsCache } = await import("../services/hermesWorkerSettings");
+      clearHermesWorkerSettingsCache();
+
+      // The safe preset always keeps the development-only web drainer off.
+      if (input.enabled) {
+        const { stopHermesWorkerDevDrainer } = await import("../services/hermesWorkerDevDrainer");
+        stopHermesWorkerDevDrainer();
+      }
+
+      return {
+        success: true,
+        enabled: input.enabled,
+        mode: input.mode,
+        appliedKeys: entries.map(([key]) => key),
+      };
+    }),
+
   updateDesktopReleaseSettings: adminProcedure
     .input(desktopReleaseSettingsUpdateSchema)
     .mutation(async ({ input, ctx }) => {
@@ -1238,10 +1344,19 @@ export const systemSettingsRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const settings = await db
+    const [ settings, metaChannelSettings, runtimeConfig] = await Promise.all([ db
       .select()
       .from(systemSettings)
-      .where(eq(systemSettings.category, "oauth"));
+      .where(eq(systemSettings.category, "oauth")),
+      db.select().from(systemSettings).where(eq(systemSettings.category, "meta_channels")),
+      getAppRuntimeConfig(),
+    ]);
+    const publicBaseUrl = (
+      runtimeConfig.publicUrl ||
+      runtimeConfig.appPublicUrl ||
+      runtimeConfig.appUrl ||
+      "http://localhost:3000"
+    ).replace(/\/+$/, "");
 
     const result: Record<string, string | boolean | undefined> = {
       googleClientId: undefined,
@@ -1257,6 +1372,14 @@ export const systemSettingsRouter = router({
       microsoftClientSecret: undefined,
       microsoftClientSecretConfigured: false,
       microsoftOneDriveRedirectUri: undefined,
+      metaAppId: undefined,
+      metaAppSecret: undefined,
+      metaAppSecretConfigured: false,
+      metaRedirectUri: `${publicBaseUrl}/auth/callback/meta`,
+      metaGraphApiVersion: "v25.0",
+      metaWebhookVerifyToken: undefined,
+      metaWebhookVerifyTokenConfigured: false,
+      metaWebhookCallbackUrl: `${publicBaseUrl}/api/webhooks/meta`,
     };
 
     for (const setting of settings) {
@@ -1283,6 +1406,25 @@ export const systemSettingsRouter = router({
         result.microsoftClientSecretConfigured = true;
       } else if (setting.key === "microsoftOneDriveRedirectUri") {
         result.microsoftOneDriveRedirectUri = setting.value || undefined;
+      } else if (setting.key === "metaAppId") {
+        result.metaAppId = setting.value || undefined;
+      } else if (setting.key === "metaAppSecret" && setting.value) {
+        result.metaAppSecret = "****" + "*".repeat(20);
+        result.metaAppSecretConfigured = true;
+      } else if (setting.key === "metaRedirectUri") {
+        result.metaRedirectUri = setting.value || undefined;
+      } else if (setting.key === "metaGraphApiVersion") {
+        result.metaGraphApiVersion = setting.value || "v25.0";
+      }
+    }
+
+    for (const setting of metaChannelSettings) {
+      if ((setting.key === "webhook_verify_token" || setting.key === "verify_token") && setting.value) {
+        result.metaWebhookVerifyToken = "****" + "*".repeat(20);
+        result.metaWebhookVerifyTokenConfigured = true;
+      }
+      if ((setting.key === "app_secret" || setting.key === "webhook_app_secret") && setting.value) {
+        result.metaAppSecretConfigured = true;
       }
     }
 
@@ -1304,7 +1446,16 @@ export const systemSettingsRouter = router({
       microsoftClientId: z.string().optional(),
       microsoftClientSecret: z.string().optional(),
       microsoftOneDriveRedirectUri: z.string().optional(),
-    }))
+        metaAppId: z.string().trim().max(256).optional(),
+        metaAppSecret: z.string().trim().max(4096).optional(),
+        metaRedirectUri: z.string().trim().url().max(2048).optional(),
+        metaGraphApiVersion: z
+          .string()
+          .trim()
+          .regex(/^v\d+\.\d+$/, "Use a version such as v25.0")
+          .optional(),
+        metaWebhookVerifyToken: z.string().trim().max(4096).optional(),
+      }),)
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -1319,11 +1470,24 @@ export const systemSettingsRouter = router({
         { key: "githubRedirectUri", value: input.githubRedirectUri, sensitive: false },
         { key: "microsoftClientId", value: input.microsoftClientId, sensitive: false },
         { key: "microsoftClientSecret", value: input.microsoftClientSecret, sensitive: true },
-        { key: "microsoftOneDriveRedirectUri", value: input.microsoftOneDriveRedirectUri, sensitive: false },
+        { key: "microsoftOneDriveRedirectUri", value: input.microsoftOneDriveRedirectUri, sensitive: false,
+        },
+        { key: "metaAppId", value: input.metaAppId, sensitive: false },
+        { key: "metaAppSecret", value: input.metaAppSecret, sensitive: true },
+        {
+          key: "metaRedirectUri",
+          value: input.metaRedirectUri,
+          sensitive: false,
+        },
+        {
+          key: "metaGraphApiVersion",
+          value: input.metaGraphApiVersion,
+          sensitive: false, },
       ];
 
       for (const update of updates) {
-        if (update.value !== undefined) {
+        const shouldPreserveSensitiveValue = update.sensitive && update.value?.trim() === "";
+        if (update.value !== undefined && !shouldPreserveSensitiveValue) {
           const storedValue = update.sensitive ? encrypt(update.value) : update.value;
 
           const existing = await db
@@ -1355,6 +1519,43 @@ export const systemSettingsRouter = router({
               updatedBy: ctx.user?.id,
             });
           }
+        }
+      }
+
+      const metaChannelUpdates = [
+        { key: "app_secret", value: input.metaAppSecret },
+        { key: "webhook_verify_token", value: input.metaWebhookVerifyToken },
+      ];
+
+      for (const update of metaChannelUpdates) {
+        if (update.value === undefined || update.value.trim() === "") continue;
+
+        const existing = await db
+          .select()
+          .from(systemSettings)
+          .where(and(eq(systemSettings.category, "meta_channels"), eq(systemSettings.key, update.key)))
+          .limit(1);
+        const storedValue = encrypt(update.value);
+
+        if (existing.length > 0) {
+          await db
+            .update(systemSettings)
+            .set({
+              value: storedValue,
+              isSensitive: true,
+              updatedBy: ctx.user?.id,
+              updatedAt: new Date(),
+            })
+            .where(eq(systemSettings.id, existing[0].id));
+        } else {
+          await db.insert(systemSettings).values({
+            category: "meta_channels",
+            key: update.key,
+            value: storedValue,
+            isSensitive: true,
+            description: `Meta Channels ${update.key}`,
+            updatedBy: ctx.user?.id,
+          });
         }
       }
 
@@ -1452,6 +1653,86 @@ export const systemSettingsRouter = router({
       return {
         success: false,
         message: `Cannot reach Google OAuth endpoints: ${error.message}`,
+      };
+    }
+  }),
+
+  /**
+   * Test Meta configuration without exposing an app access token or secret.
+   */
+  testMetaOAuthConnection: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) return { success: false, message: "Database not available" };
+
+    const [oauthSettings, metaChannelSettings] = await Promise.all([
+      db.select().from(systemSettings).where(eq(systemSettings.category, "oauth")),
+      db.select().from(systemSettings).where(eq(systemSettings.category, "meta_channels")),
+    ]);
+    const oauthMap = new Map(oauthSettings.map((setting) => [setting.key, setting]));
+    const metaChannelMap = new Map(metaChannelSettings.map((setting) => [setting.key, setting]));
+    const appId = oauthMap.get("metaAppId")?.value?.trim() || "";
+    const oauthAppSecret = oauthMap.get("metaAppSecret")?.value;
+    const webhookAppSecret = metaChannelMap.get("app_secret")?.value;
+    const appSecret =
+      (oauthAppSecret ? decrypt(oauthAppSecret) : "") || (webhookAppSecret ? decrypt(webhookAppSecret) : "");
+    const graphVersion = oauthMap.get("metaGraphApiVersion")?.value?.trim() || "v25.0";
+    const redirectUri = oauthMap.get("metaRedirectUri")?.value?.trim() || "";
+    const verifyTokenConfigured = Boolean(
+      metaChannelMap.get("webhook_verify_token")?.value || metaChannelMap.get("verify_token")?.value,
+    );
+
+    if (!appId || !appSecret || !redirectUri) {
+      return {
+        success: false,
+        message: "Save the Meta App ID, App Secret, and OAuth Redirect URI before testing.",
+      };
+    }
+    if (!/^v\d+\.\d+$/.test(graphVersion)) {
+      return {
+        success: false,
+        message: "Meta Graph API version must look like v25.0.",
+      };
+    }
+    if (!verifyTokenConfigured) {
+      return {
+        success: false,
+        message: "Save a Webhook Verify Token before testing.",
+      };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const response = await fetch(`https://graph.facebook.com/${graphVersion}/oauth/access_token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: appId,
+            client_secret: appSecret,
+            grant_type: "client_credentials",
+          }),
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          return {
+            success: false,
+            message: `Meta rejected the App ID or App Secret (HTTP ${response.status}).`,
+          };
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      return {
+        success: true,
+        message: "Meta credentials are valid and the webhook verification settings are ready.",
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown network error";
+      return {
+        success: false,
+        message: `Cannot reach Meta Graph API: ${message}`,
       };
     }
   }),
@@ -1901,7 +2182,8 @@ export const systemSettingsRouter = router({
       desktop_admin: z.boolean(),
       desktop_domain_admin: z.boolean(),
       desktop_user: z.boolean(),
-    })))
+    }),
+      ),)
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -1961,11 +2243,11 @@ export const systemSettingsRouter = router({
 
       // Map role to column key
       const roleKey = role === "admin" ? "admin" : role === "domain_admin" ? "domain_admin" : "user";
-      const colKey = `${platform}_${roleKey}` as keyof typeof overrides[0];
+      const colKey = `${platform}_${roleKey}` as keyof ( typeof overrides)[0];
 
       return overrides
-        .filter(o => o[colKey] === false)
-        .map(o => ({ menuItemId: o.menuItemId, visible: false }));
+        .filter((o) => o[colKey] === false)
+        .map((o) => ({ menuItemId: o.menuItemId, visible: false }));
     }),
 
   // ============================================================
@@ -2212,7 +2494,7 @@ export const systemSettingsRouter = router({
           return { success: false, message: `Cloudflare API error (${status}): ${response.statusText}` };
         }
 
-        const data = await response.json() as any;
+        const data = ( await response.json()) as any;
         if (!data.success) {
           return { success: false, message: `Cloudflare API error: ${JSON.stringify(data.errors)}` };
         }
@@ -2355,7 +2637,7 @@ export const systemSettingsRouter = router({
             };
           }
 
-          const data = await response.json() as any;
+          const data = ( await response.json()) as any;
           const result = data.result || {};
           return {
             provider: "cloudflare_vectorize",
@@ -2445,7 +2727,7 @@ export const systemSettingsRouter = router({
    */
   triggerReindex: adminProcedure.mutation(async ({ ctx }) => {
     try {
-      return await fetchPythonAdminJson<{ task_id: string; status: string; message: string }>({
+      return await fetchPythonAdminJson<{ task_id: string; status: string; message: string; }>({
         path: "/api/admin/vectordb/reindex",
         userId: ctx.user.id,
         method: "POST",
@@ -2461,7 +2743,7 @@ export const systemSettingsRouter = router({
    */
   getReindexStatus: adminProcedure.query(async ({ ctx }) => {
     try {
-      return await fetchPythonAdminJson<{ status: string; task_id: string | null; result: any }>({
+      return await fetchPythonAdminJson<{ status: string; task_id: string | null; result: any; }>({
         path: "/api/admin/vectordb/reindex/status",
         userId: ctx.user.id,
       });

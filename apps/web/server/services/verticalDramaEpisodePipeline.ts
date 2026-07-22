@@ -57,6 +57,7 @@ import {
   normalizeVerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import { resolveEffectiveImagePromptLanguage } from "@shared/verticalDramaSeries/imagePromptLanguage";
 // Part B2/B3 (planning/`polished-toasting-gadget.md`) — pure, shared
 // formatter for the compact episode plan-context block injected into the
 // start-frame + video motion prompt stages below. Safe as a static import
@@ -2766,16 +2767,15 @@ export class VerticalDramaEpisodePipeline {
       (previousStartFrames ?? []).map(frame => [frame.shotNumber, frame]),
     );
 
-    // Shared-field prompt-language fix — the episode-level video-prompt
-    // language plan (`motionPromptPack.promptLanguage`, set via
-    // `setEpisodeVideoPromptLanguage`) now ALSO governs image/start-frame
-    // prompt text, not just video-clip prompt text (same field, wider scope
-    // — see `VerticalDramaPromptLanguage`'s doc comment in `contracts.ts`).
-    // Mirrors `generateRealMotionPromptPack`'s own `existingLanguagePlan`
-    // read immediately above its equivalent `existingSelectedVideoModelId`.
-    const existingImagePromptLanguagePlan = episode.motionPromptPack as {
-      promptLanguage?: VerticalDramaPromptLanguage;
-    } | null;
+    // Image prompt language is stored independently on `startFramePlan`.
+    // Legacy episodes fall back to the former shared video setting until
+    // their image language is snapshotted or explicitly selected.
+    const effectiveImagePromptLanguage = resolveEffectiveImagePromptLanguage({
+      startFramePlan: episode.startFramePlan as VerticalDramaStartFramePlan | null,
+      motionPromptPack: episode.motionPromptPack as {
+        promptLanguage?: VerticalDramaPromptLanguage;
+      } | null,
+    });
 
     // Series-level target-audience region default (2026-07-06 quality
     // upgrade) — read the series' `bible.targetAudienceRegion` so every
@@ -2961,7 +2961,7 @@ export class VerticalDramaEpisodePipeline {
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
       targetAudienceRegion,
-      promptLanguage: existingImagePromptLanguagePlan?.promptLanguage,
+      promptLanguage: effectiveImagePromptLanguage,
       episodePlanContext,
       previousFramesByShotNumber,
       characters: characterIdentitySources,

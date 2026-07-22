@@ -27,15 +27,17 @@
  * shared query after a successful write.
  */
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardCard } from "@/components/dashboard";
+import { HelpButton } from "@/components/help/HelpButton";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Server } from "lucide-react";
+import { CheckCircle2, ChevronDown, Loader2, Server } from "lucide-react";
 
 import {
   HERMES_WORKER_SETTINGS_KEYS_CLIENT,
@@ -122,6 +124,36 @@ export default function HermesInfrastructureSettingsCard({
   infrastructureSettings,
   onSettingsChanged,
 }: HermesInfrastructureSettingsCardProps) {
+  const { i18n } = useTranslation();
+  const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
+  const copy = {
+    title: isThai ? "เปิดใช้ Grok ผ่าน Hermes" : "Enable Grok via Hermes",
+    description: isThai
+      ? "เปิดการสร้างภาพและวิดีโอด้วยบัญชี Grok ของผู้ใช้ ผ่าน Hermes worker ส่วนตัว"
+      : "Enable image and video generation with each user's Grok account through their private Hermes worker.",
+    enabled: isThai ? "เปิดใช้งานฝั่งแพลตฟอร์มแล้ว" : "Platform enablement is on",
+    disabled: isThai ? "ยังไม่เปิดใช้งานฝั่งแพลตฟอร์ม" : "Platform enablement is off",
+    setupTitle: isThai ? "วิธีตั้งค่าให้พร้อมใช้งาน" : "How to finish setup",
+    setupSteps: isThai
+      ? [
+          "เปิดสวิตช์นี้เพื่อใช้ preset ที่ปลอดภัยสำหรับ private worker",
+          "ไปที่ Admin → Tenants → Feature Flags แล้วเปิด “Grok via Hermes — Tenant rollout”",
+          "ให้ผู้ใช้เปิด Worker app จนสถานะ Online แล้วไปที่ Settings → Connections เพื่อเชื่อมบัญชี Grok",
+        ]
+      : [
+          "Turn on this switch to apply the safe private-worker preset.",
+          "Go to Admin → Tenants → Feature Flags and enable “Grok via Hermes — Tenant rollout”.",
+          "Have the user bring the Worker app online, then connect Grok in Settings → Connections.",
+        ],
+    safety: isThai
+      ? "Preset นี้จะไม่เปิด Shared pool, Server personal หรือ Web process worker"
+      : "This preset keeps shared pool, server-personal, and the web-process worker disabled.",
+    advanced: isThai ? "การตั้งค่าขั้นสูงสำหรับ Operator" : "Advanced operator settings",
+    advancedHint: isThai
+      ? "เปิดเฉพาะเมื่อต้องตั้งค่า shared worker, limits หรือโหมดทดสอบ"
+      : "Open only to configure a shared worker, limits, or development modes.",
+    help: isThai ? "คู่มือการตั้งค่า" : "Setup Help",
+  };
   const hermesDefaults = HERMES_WORKER_SETTINGS_DEFAULTS_CLIENT;
   const [hermesEnabled, setHermesEnabled] = useState<boolean>(hermesDefaults.enabled);
   const [hermesSharedPoolEnabled, setHermesSharedPoolEnabled] = useState<boolean>(hermesDefaults.sharedPoolEnabled);
@@ -186,6 +218,32 @@ export default function HermesInfrastructureSettingsCard({
     },
   });
 
+  const applySafePresetMutation = trpc.systemSettings.applyHermesSafePreset.useMutation({
+    onSuccess: (_data, variables) => {
+      setHermesEnabled(variables.enabled);
+      if (variables.enabled) {
+        setHermesSharedPoolEnabled(false);
+        setHermesServerPersonalEnabled(false);
+        setHermesPrivateEnabled(true);
+        setHermesVideoEnabled(true);
+        setHermesWebProcessWorkerEnabled(false);
+      }
+      toast.success(
+        variables.enabled
+          ? (isThai ? "เปิดใช้ Grok ผ่าน Hermes แล้ว" : "Grok via Hermes is enabled")
+          : (isThai ? "ปิดใช้ Grok ผ่าน Hermes แล้ว" : "Grok via Hermes is disabled"),
+      );
+      onSettingsChanged?.();
+    },
+    onError: (error) => {
+      toast.error(
+        isThai
+          ? `บันทึกการตั้งค่า Grok via Hermes ไม่สำเร็จ: ${error.message}`
+          : `Could not save Grok via Hermes settings: ${error.message}`,
+      );
+    },
+  });
+
   const saveHermesSetting = (key: string, value: string, description?: string) => {
     updateHermesSettingMutation.mutate({
       category: "infrastructure" as any,
@@ -200,49 +258,60 @@ export default function HermesInfrastructureSettingsCard({
       className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden mt-6"
       data-testid="hermes-media-worker-settings-card"
     >
-      <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-        <h3 className="flex items-center gap-2 text-lg">
-          <Server className="w-5 h-5 text-purple-500" />
-          Hermes Media Worker (Feature 135)
-        </h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Kill switches, limits, and admission windows for the Hermes GROK MEDIA worker —
-          the user's own Grok subscription generating images/videos. This is NOT the
-          agent-gateway Hermes runtime (Tenant Feature Flags → Hermes Runtime group).
-          Connection pairing (connect shared / quota / disable) is managed separately in
-          Settings → Integrations.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg">
+            <Server className="w-5 h-5 text-purple-500" />
+            {copy.title}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">{copy.description}</p>
+        </div>
+        <HelpButton
+          page="/admin/settings"
+          topic="grok-via-hermes-admin"
+          variant="outline"
+          size="sm"
+          label={copy.help}
+        />
       </div>
 
-      {/* Kill switches */}
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 rounded-xl border border-violet-200 bg-violet-50/50 p-4">
         <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="space-y-1">
-            <Label className="text-sm font-medium">Hermes worker enabled</Label>
-            <p className="text-xs text-muted-foreground">
-              Master kill switch (hermes_worker_enabled) — off disables the whole feature.
+            <Label className="text-sm font-semibold">{copy.title}</Label>
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {hermesEnabled ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : null}
+              {hermesEnabled ? copy.enabled : copy.disabled}
             </p>
           </div>
           <Switch
-            aria-label="Toggle Hermes worker enabled"
+            aria-label={copy.title}
             checked={hermesEnabled}
-            disabled={updateHermesSettingMutation.isPending}
-            onCheckedChange={(checked) => {
-              const previous = hermesEnabled;
-              setHermesEnabled(checked);
-              updateHermesSettingMutation.mutate(
-                {
-                  category: "infrastructure" as any,
-                  key: HERMES_WORKER_SETTINGS_KEYS_CLIENT.enabled,
-                  value: checked ? "true" : "false",
-                  description: "Feature 135 — Hermes Grok media worker master kill switch",
-                },
-                { onError: () => setHermesEnabled(previous) },
-              );
-            }}
+            disabled={applySafePresetMutation.isPending}
+            onCheckedChange={(checked) => applySafePresetMutation.mutate({ enabled: checked })}
           />
         </div>
 
+        <div className="mt-4">
+          <p className="text-sm font-medium">{copy.setupTitle}</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+            {copy.setupSteps.map((step) => <li key={step}>{step}</li>)}
+          </ol>
+          <p className="mt-3 text-xs text-muted-foreground">{copy.safety}</p>
+        </div>
+      </div>
+
+      <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/50">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
+          <span>
+            <span className="block text-sm font-semibold">{copy.advanced}</span>
+            <span className="mt-1 block text-xs text-muted-foreground">{copy.advancedHint}</span>
+          </span>
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t p-4">
+      {/* Advanced kill switches */}
+      <div className="space-y-3">
         <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="space-y-1">
             <Label className="text-sm font-medium">Shared pool enabled</Label>
@@ -503,6 +572,8 @@ export default function HermesInfrastructureSettingsCard({
         </p>
         <p className="mt-1 font-mono text-sm">{hermesSharedWorkerId || "ยังไม่ได้จับคู่ (not paired yet)"}</p>
       </div>
+        </div>
+      </details>
     </DashboardCard>
   );
 }

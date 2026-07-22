@@ -3423,6 +3423,7 @@ export const verticalDramaCharactersRouter = router({
           traceId: hermesTraceId,
           connectionId: transportDecision.connectionId,
           roleFor: () => "identity_lock",
+          requireAll: Boolean(referencePortraitUrl),
         });
         const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
         const hermesProviderModelId =
@@ -3927,6 +3928,7 @@ export const verticalDramaCharactersRouter = router({
           traceId: hermesTraceId,
           connectionId: transportDecision.connectionId,
           roleFor: () => "identity_lock",
+          requireAll: Boolean(referencePortraitUrl),
         });
         const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
         const hermesProviderModelId =

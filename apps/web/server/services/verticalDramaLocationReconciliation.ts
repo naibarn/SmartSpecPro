@@ -96,6 +96,43 @@ function normalizeLocationName(name: string): string {
 }
 
 /**
+ * Matches ONE trailing parenthetical qualifier group, Latin `(...)` or Thai/
+ * fullwidth `（...）`, anchored to the end of the string (optionally preceded
+ * by whitespace before the opening paren and followed by whitespace before
+ * the string ends). Used by `stripTrailingParenthetical` below — see that
+ * function's doc comment for why only ONE trailing group is ever stripped.
+ */
+const TRAILING_PARENTHETICAL_RE = /\s*[(（][^)）]*[)）]\s*$/;
+
+/**
+ * Strips a single TRAILING parenthetical qualifier group off `name`, if one
+ * is present — e.g. `"ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)"` ->
+ * `"ศูนย์ควบคุมการปฏิบัติการบิน"`. Feeds the parenthetical-stripped fallback
+ * match in `reconcileEpisodeLocations`'s doc comment (series 18 evidence:
+ * `location-2` "ศูนย์ควบคุมการปฏิบัติการบิน" wrongly grew two more rows,
+ * `location-2-visit1`/`-visit2`, whose `name` was the same text plus
+ * `"(รับสายด่วน)"`/`"(วิกฤตผู้โดยสาร)"`).
+ *
+ * Deliberately strips AT MOST ONE trailing group — the regex has no `/g`
+ * flag and `String.prototype.replace` with a non-`/g` regex only ever
+ * removes its single leftmost-satisfying match, which for an end-anchored
+ * pattern like this one is the LAST parenthetical group in the string. A
+ * name with two trailing groups, e.g. `"ร้านกาแฟ (สาขา 2) (เดิม)"`, therefore
+ * only loses `"(เดิม)"` here, becoming `"ร้านกาแฟ (สาขา 2)"` — NOT
+ * `"ร้านกาแฟ"`. This keeps the match narrowly scoped to the single common
+ * "situation qualifier appended to an otherwise-identical name" pattern
+ * actually evidenced in production, rather than aggressively stripping every
+ * parenthetical a name happens to carry.
+ *
+ * Returns `name` completely unchanged (not normalized/trimmed) when there is
+ * no trailing parenthetical to strip — callers compare the result against
+ * `name` itself to detect whether stripping actually did anything.
+ */
+function stripTrailingParenthetical(name: string): string {
+  return name.replace(TRAILING_PARENTHETICAL_RE, "");
+}
+
+/**
  * Resolve the base key to seed a NEW location row's `locationKey` with: the
  * incoming `locationKey` verbatim when it's present and fits the column
  * limit (the common case — the storyboard skill is instructed to invent a
@@ -111,8 +148,18 @@ function resolveNewLocationKeyBase(locationKey: string, locationName: string): s
 
 export interface LocationReconciliationSummary {
   createdLocations: Array<{ locationKey: string; name: string }>;
-  /** Existing rows matched by `locationKey` — left completely untouched (description frozen). */
+  /** Existing rows matched by canonical identity — left untouched (description frozen). */
   reusedLocations: Array<{ locationKey: string; name: string }>;
+  /**
+   * Incoming storyboard identity -> durable roster identity. Callers that
+   * persist the storyboard use this to replace unstable/generated keys with
+   * the canonical key selected by reconciliation.
+   */
+  locationBindings?: Array<{
+    incomingLocationKey: string;
+    incomingLocationName: string;
+    canonicalLocationKey: string;
+  }>;
 }
 
 /**
@@ -173,6 +220,33 @@ export interface LocationReconciliationSummary {
  *   storyboard generator's own fallback mints a content-derived slug key
  *   instead of a positional one, so this rule now mainly guards legacy data
  *   and any other unstable-key producer, current or future.)
+ * - **Parenthetical-stripped name fallback match** — when there is still no
+ *   match (no key match, no exact normalized-name match), strip a single
+ *   TRAILING parenthetical qualifier group off the incoming `locationName`
+ *   via `stripTrailingParenthetical` (Latin `(...)` or Thai/fullwidth
+ *   `（...）`) and, if that actually removed something, normalize the result
+ *   and look it up against the SAME `rowsByNormalizedName` map. An EXACT
+ *   match there is ALSO treated as a reuse — same "left completely
+ *   untouched" contract as every other match rule above. This is the fix for
+ *   a real production case (series 18): the storyboard/location-detector
+ *   pipeline, on separate calls, described the SAME physical flight-control
+ *   center under different dramatic beats and minted TWO extra roster rows
+ *   for it — `location-2-visit1` named `"ศูนย์ควบคุมการปฏิบัติการบิน
+ *   (รับสายด่วน)"` and `location-2-visit2` named `"ศูนย์ควบคุมการปฏิบัติการบิน
+ *   (วิกฤตผู้โดยสาร)"` — alongside the original `location-2` row named
+ *   `"ศูนย์ควบคุมการปฏิบัติการบิน"` with no qualifier. Neither the exact-key nor
+ *   the exact-normalized-name rule above catches this: the keys differ AND
+ *   the names differ (by the trailing situation qualifier). Stripping that
+ *   one trailing qualifier and re-comparing catches it deterministically.
+ *   This is DELIBERATELY exact structural matching after a single, bounded
+ *   strip — never fuzzy/edit-distance matching — so it stays predictable.
+ *   Deliberately NOT paired with a `locationKey` prefix check (e.g. treating
+ *   `location-2-visit1` as a match for `location-2` because one key
+ *   startsWith the other): a derived key with a genuinely DIFFERENT name
+ *   (e.g. a `"hotel"` row and a separately-named `"hotel-lobby"` sub-location)
+ *   could legitimately be a distinct place, so key-prefix matching is unsafe
+ *   as a general rule — the name-parenthetical signal above is the narrow,
+ *   safe one and is applied alone.
  * - **No match** — INSERT a new row. Its `locationKey` comes from
  *   `resolveNewLocationKeyBase` (the incoming key verbatim when usable, else
  *   a slug of `locationName`), deduplicated against every key already used
@@ -198,6 +272,7 @@ export async function reconcileEpisodeLocations(
 ): Promise<LocationReconciliationSummary> {
   const createdLocations: LocationReconciliationSummary["createdLocations"] = [];
   const reusedLocations: LocationReconciliationSummary["reusedLocations"] = [];
+  const locationBindings: NonNullable<LocationReconciliationSummary["locationBindings"]> = [];
 
   const rows: VerticalDramaLocationRow[] = await db
     .select()
@@ -264,14 +339,32 @@ export async function reconcileEpisodeLocations(
         ? nameAsKeyRow
         : undefined;
 
+    // Parenthetical-stripped name fallback (see doc comment): only computed
+    // when stripping actually removed a trailing parenthetical group — a
+    // name with none is already fully covered by the exact normalized-name
+    // lookup just above, so there's nothing new to look up here.
+    const strippedName = stripTrailingParenthetical(locationName);
+    const parentheticalMatch =
+      strippedName !== locationName
+        ? rowsByNormalizedName.get(normalizeLocationName(strippedName))
+        : undefined;
+
     const existing =
-      swapTarget ?? keyMatch ?? rowsByNormalizedName.get(normalizedIncomingName);
+      swapTarget ??
+      keyMatch ??
+      rowsByNormalizedName.get(normalizedIncomingName) ??
+      parentheticalMatch;
     if (existing) {
       // Reuse — description stays frozen (the plan's explicit decision); no
       // DB write at all. Matches whether found by the positive-swap-evidence
       // override, a default stable-key match, or the normalized-name
       // fallback (see doc comment).
       reusedLocations.push({ locationKey: existing.locationKey, name: existing.name });
+      locationBindings.push({
+        incomingLocationKey: locationKey,
+        incomingLocationName: locationName,
+        canonicalLocationKey: existing.locationKey,
+      });
       continue;
     }
 
@@ -299,10 +392,15 @@ export async function reconcileEpisodeLocations(
         rowsByNormalizedName.set(normalizedNewName, row);
       }
       createdLocations.push({ locationKey: row.locationKey, name: row.name });
+      locationBindings.push({
+        incomingLocationKey: locationKey,
+        incomingLocationName: locationName,
+        canonicalLocationKey: row.locationKey,
+      });
     }
   }
 
-  return { createdLocations, reusedLocations };
+  return { createdLocations, reusedLocations, locationBindings };
 }
 
 /**

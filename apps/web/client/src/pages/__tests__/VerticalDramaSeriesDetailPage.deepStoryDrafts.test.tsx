@@ -9,15 +9,27 @@ const mockGenerateStoryBibleDeepMutate = vi.fn();
 const mockGenerateStoryBibleDeepMutateAsync = vi.fn();
 const mockExtendMutate = vi.fn();
 /**
- * Manual dialogue edits (W10.5) — `VerticalDramaDeepStoryDraftEpisodeDetail`
- * now calls this mutation's `useMutation()` unconditionally (React's rules of
- * hooks; see that component's own doc comment), so every test in this file
- * that mounts it (any `deepDraftsFlagEnabled: true` case with a shot-drafted
- * episode) needs it mocked, even though this file doesn't exercise the
- * editor itself — that is covered end-to-end by
- * `VerticalDramaDeepStoryDraftsPanel.episodeDetail.test.tsx`.
+ * Manual shot edits (W10.5; combined summary+dialogue editor, renamed
+ * `updateEpisodeDraftDialogue` -> `updateEpisodeDraftShot` 2026-07-22) —
+ * `VerticalDramaDeepStoryDraftEpisodeDetail` now calls this mutation's
+ * `useMutation()` unconditionally (React's rules of hooks; see that
+ * component's own doc comment), so every test in this file that mounts it
+ * (any `deepDraftsFlagEnabled: true` case with a shot-drafted episode) needs
+ * it mocked, even though this file doesn't exercise the editor itself — that
+ * is covered end-to-end by `VerticalDramaDeepStoryDraftsPanel.episodeDetail.test.tsx`.
  */
-const mockUpdateEpisodeDraftDialogueMutate = vi.fn();
+const mockUpdateEpisodeDraftShotMutate = vi.fn();
+/**
+ * Manual synopsis edits (added 2026-07-22) — `StoryBibleOverviewCard` now
+ * calls this mutation's `useMutation()` unconditionally too (same "React's
+ * rules of hooks" reasoning as `updateEpisodeDraftDialogue` immediately
+ * above), so every test in this file needs both it and the sibling
+ * `getEpisodeDetail.invalidate` util mocked, even though this file doesn't
+ * exercise the synopsis editor itself — that is covered end-to-end by
+ * `VerticalDramaSeriesDetailPage.editSynopsis.test.tsx`.
+ */
+const mockUpdateEpisodeDraftSynopsisMutate = vi.fn();
+const mockInvalidateGetEpisodeDetail = vi.fn();
 
 let generateStoryBibleShouldFail = false;
 let generateStoryBibleDeepShouldFail = false;
@@ -52,6 +64,9 @@ vi.mock("@/lib/trpc", () => ({
       verticalDramaSeries: {
         get: { invalidate: mockInvalidateSeriesGet },
         getStoryJobStatus: { fetch: mockGetStoryJobStatusFetch },
+      },
+      verticalDramaEpisodes: {
+        getEpisodeDetail: { invalidate: mockInvalidateGetEpisodeDetail },
       },
     }),
     verticalDramaEpisodes: {
@@ -109,9 +124,15 @@ vi.mock("@/lib/trpc", () => ({
         // its own dedicated coverage in `VerticalDramaDeepStoryDraftsPanel.actions.test.tsx`.
         useQuery: () => ({ data: null }),
       },
-      updateEpisodeDraftDialogue: {
+      updateEpisodeDraftSynopsis: {
         useMutation: (_opts: unknown) => ({
-          mutate: mockUpdateEpisodeDraftDialogueMutate,
+          mutate: mockUpdateEpisodeDraftSynopsisMutate,
+          isPending: false,
+        }),
+      },
+      updateEpisodeDraftShot: {
+        useMutation: (_opts: unknown) => ({
+          mutate: mockUpdateEpisodeDraftShotMutate,
           isPending: false,
         }),
       },

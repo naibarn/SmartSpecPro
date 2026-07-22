@@ -5,6 +5,18 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    i18n: { language: "en", resolvedLanguage: "en" },
+  }),
+}));
+
+vi.mock("@/components/help/HelpButton", () => ({
+  HelpButton: ({ page, topic, label }: { page: string; topic: string; label: string }) => (
+    <button type="button" data-page={page} data-topic={topic}>{label}</button>
+  ),
+}));
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     user: {
@@ -95,6 +107,20 @@ describe("WorkerAppConnect", () => {
       }
       return Promise.resolve(new Response("{}", { status: 404 }));
     }));
+  });
+
+  it("links the Worker App guide from the connect page", async () => {
+    render(<WorkerAppConnect />);
+
+    await screen.findByText("My render worker");
+    expect(screen.getByRole("button", { name: "Worker App Help" })).toHaveAttribute(
+      "data-topic",
+      "grok-via-hermes-worker-app",
+    );
+    expect(screen.getByRole("button", { name: "Worker App Help" })).toHaveAttribute(
+      "data-page",
+      "/workers/connect",
+    );
   });
 
   it("shows browser approval without exposing worker tokens", async () => {

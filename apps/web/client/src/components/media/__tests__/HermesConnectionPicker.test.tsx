@@ -4,6 +4,10 @@
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({ locale: "th", t: (key: string) => key }),
+}));
+
 const { mockListConnections } = vi.hoisted(() => ({
   mockListConnections: vi.fn(),
 }));

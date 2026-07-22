@@ -4171,6 +4171,64 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     );
   });
 
+  it.each([
+    ["missing", undefined],
+    ["stale", "768"],
+  ])(
+    "uses the current approved start frame when the projected clip asset is %s",
+    async (_label, projectedStartFrameAssetId) => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 1,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "769", sortOrder: 0 }),
+      ]);
+      const episodeRow = {
+        ...episodeRowWithPack({
+          startFrameAssetId: projectedStartFrameAssetId,
+        }),
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "current approved frame",
+              requiredCharacterRefs: [],
+              approvedMediaAssetId: "770",
+            },
+          ],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 770, originalUrl: "https://cdn/770.png" }])
+        )
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }]));
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(1);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/770.png"],
+        }),
+        expect.any(String)
+      );
+      expect(mockFormatVideoClipRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clip: expect.objectContaining({ startFrameAssetId: "770" }),
+        })
+      );
+    }
+  );
+
   it("sends no referenceImageUrls when the model accepts none (maxReferenceImages 0)", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: false,
@@ -4491,6 +4549,85 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           referenceImageUrls: ["https://cdn/900.png", "https://cdn/950-location-plate.png"],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("resolves the canonical location asset when a legacy storyboard key and situation-qualified name drifted", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: {
+          distinct_locations: [
+            {
+              location_key: "location-2-visit1",
+              location_name:
+                "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+              shot_numbers: [1],
+            },
+          ],
+        },
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+            },
+          ],
+        },
+      };
+      mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([])) // exact legacy key has no roster row
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 72,
+              locationKey: "location-2",
+              name: "ศูนย์ควบคุมการปฏิบัติการบิน",
+              data: {},
+            },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            {
+              id: 950,
+              originalUrl:
+                "https://cdn/flight-control-center-location-plate.png",
+            },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
+
+      await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceAssetId).toHaveBeenCalledWith(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        72
+      );
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/flight-control-center-location-plate.png",
+          ],
         }),
         expect.any(String)
       );

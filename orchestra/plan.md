@@ -1,63 +1,129 @@
 # Orchestra Plan
 
 ## Task
-Implement the approved SocratiCode runtime lifecycle hardening so SSH/Codex reconnect fan-out and stale MCP containers cannot recreate sustained host memory pressure.
+Implement one selectable Kie.ai GPT Image 2 model that routes automatically to
+text-to-image or image-to-image based on attached reference images.
 
 ## Classification
-- scope: medium
-- risk: critical
-- affected_domains: host runtime, Docker/cgroups, systemd, operational monitoring, tests
-- estimated_file_count: 9-12 runtime/config/test files plus planning artifacts
-- chosen_route: quick-plan-chain -> direct-inline-waves -> security/performance gates
-- task_summary: add fail-closed container ownership and cleanup, request watchdogs, bounded services/logs, alert coverage, and a reversible live rollout
-- bug_route: performance/resource-exhaustion incident
+- scope: medium implementation
+- risk: medium
+- affected_domains: media-model catalog, Media Studio selection/input contract,
+  TypeScript generation service, Python Kie gateway/client, migrations and tests
+- chosen_route: brainstorming-prelude -> direct-standard-light inspection
+- task_summary: prove the current public-model and provider-model boundaries,
+  implement the approved backward-compatible design and prove both routing branches
+- bug_route: false
+- dispatch_preference: direct-standard-light
+- planned_agents: []
+- security_gate_required: false
+
+## Activation
+- Orchestra auto-activated because this is a cross-layer code-aware product and
+  routing decision.
+- Brainstorming is active because the request changes user-facing selection and
+  runtime routing behavior; implementation is gated on user approval.
+- SocratiCode status was green with an incremental refresh in progress. It
+  narrowed discovery to the GPT Image 2 seed/migration, Media Studio reference
+  support, media generation service, and Python gateway.
+
+## Success Criteria
+1. Identify the authoritative model IDs at catalog, request, and Kie upstream layers.
+2. Identify a single-model contract that does not alter other media models.
+3. Preserve old stored/requested GPT Image 2 IDs through an explicit compatibility path.
+4. Pass focused catalog, selection, service-forwarding, and provider tests.
+
+## Evidence
+- `apps/web/drizzle/0163_gpt_image_2_media_model.sql` creates two enabled rows.
+- `apps/web/scripts/seed-media-models-kie-ai.ts` repeats the two-row catalog shape.
+- `apps/web/client/src/pages/MediaStudio.tsx` derives attachment availability from
+  model config rather than from provider identity.
+- `python-backend/app/llm_proxy/gateway_unified.py` receives both the selected model
+  and `reference_image_urls` before calling the Kie client.
+- `python-backend/app/llm_proxy/providers/kie_ai_provider.py` already separates the
+  public/request model from the upstream model through `api_config.kie_model_id`.
+- Current Kie documentation confirms both modes use the same createTask endpoint,
+  while image-to-image requires the distinct upstream model ID and `input_urls`.
+
+## Recommended Direction
+- Keep `gpt-image-2-text-to-image` as the backward-compatible canonical database
+  row, rename its display name to `GPT Image 2`, and make reference input optional.
+- Move both old IDs and the short `gpt-image-2` name into the enabled row aliases,
+  then disable the separate image-to-image row so selectors show one item.
+- Declare the reference-driven upstream variant in this model's `configJson.apiConfig`.
+- Resolve that variant only inside Kie image generation when the model config opts
+  in and normalized reference URLs are non-empty. Keep the public/internal model ID
+  stable in tasks, billing, history, and saved projects.
+- Do not alter the shared enabled-model resolver or introduce provider-wide inference.
+
+## Alternatives Considered
+1. New canonical `gpt-image-2` row: clean naming but higher migration and persisted-ID risk.
+2. Frontend-only model swap: easy UI patch but bypassable by non-Media-Studio callers.
+3. Provider-wide hardcoded GPT switch: small patch but embeds catalog policy in Python
+   and is less extensible than an explicit per-model opt-in contract.
+
+## Constraints
+- The brainstorming design was approved by the user before implementation.
+- No change may introduce generic reference-driven model switching for unrelated models.
+- No destructive database action; migration must be additive/backward compatible.
+- Existing dirty work and archived Orchestra state are preserved.
+
+## Hermes reference download and Media History incident - 2026-07-20
+
+### Classification
+- scope: implementation-ready medium
+- risk: medium
+- bug_route: true
+- chosen_route: direct-inline-waves
+- dispatch_preference: direct-standard-light
+- security_gate_required: false
+
+### Evidence ledger
+- source: worker_jobs row plus worker_job_events
+- identifier: worker job 08e15bee-8ca7-47d5-9c33-6ca87d34bc6a
+- observed failure: `[HERMES_REFERENCE_DOWNLOAD_FAILED] reference download returned HTTP 404 Not Found`
+- data state: failed at `downloading_references`; frozen contract contains three checksummed references
+- confidence: high
+- next evidence needed: verify newly minted URLs return HTTP 200 after normalization
+
+### Design
+- Normalize persisted storage proxy/upload URLs back to object keys before
+  presigning; preserve plain object keys and ownership checks.
+- Project Hermes image/video jobs from `worker_jobs` into `media.listTasks`,
+  using the existing `MediaTask` projection instead of duplicating rows in
+  `media_tasks`.
+- Merge, sort, filter, and count Hermes tasks with the existing provider,
+  MCP, deferred, and HyperFrames history sources.
+
+### Success criteria
+1. A reference whose `storageKey` is `/api/storage/files/<key>` is presigned
+   as `<key>` and the resulting URL downloads successfully.
+2. Hermes image and video jobs appear in Media History for the requesting
+   user across pending, processing, completed, and failed states.
+3. Existing non-Hermes history sources and task polling remain unchanged.
+
+## Vertical Drama rapid prompt plus image timeout - 2026-07-21
+
+### Classification
+- scope: small
+- risk: medium
+- affected_domains: client workflow, tRPC router, focused tests
+- estimated_file_count: 4
+- chosen_route: direct TDD bug fix
+- bug_route: data-first general debugging
 - parallel_default: false
 - planned_agents: []
 - dispatch_preference: direct-standard-light
-- security_gate_required: true
 
-## Activation
-- Orchestra auto-activated because the user delegated end-to-end implementation of a production-host incident prevention change.
-- Brainstorming gate is satisfied by the approved design at `docs/portable-skill-pack/specs/2026-07-16-socraticode-runtime-lifecycle-hardening-design.md` and the user's explicit implementation approval.
-- Deep Plan Quick is used to convert the approved design into an implementation/TDD package.
-- SocratiCode was active and narrowed the relevant repository surface to the approved design and `scripts/system-crash-monitor.sh`; the authoritative live runtime remains `/home/dev/tools/socraticode-docker`.
-
-## Impact Preflight
-- Staged source changes under `ops/socraticode-runtime/`: launcher wrapper, persistent watcher, index runner role metadata, cleanup helper, cleanup systemd service/timer, watcher unit, logrotate policy, focused tests; validated copies are installed to the active host paths after backup.
-- Repository change: `scripts/system-crash-monitor.sh` for user-slice/session/container observability; SocratiCode reports no repository callers for this script.
-- Production data, database volumes, web/backend contracts, auth, tenant isolation, and application code are out of scope and must not be modified.
-- Existing dirty work is extensive. All edits stay within the exact paths listed in the quick plan; no broad staging or destructive git command is allowed.
-- Runtime backup is mandatory before install. Cleanup must be dry-run first and fail closed.
-- Confidence: high; prior-boot kernel/cgroup evidence isolated the incident to SocratiCode/SSH lifecycle pressure.
-
-## Evidence Ledger
-- source: kernel journal, cgroup counters, SSH journal, system monitor logs
-- identifier: previous boot `2026-07-16 19:03-22:48 +07`
-- observed failure: three Node memcg OOM kills; memory PSI 77-98% for 17 minutes; 51 SSH sessions started with about 37 not deactivated before shutdown
-- data state: `user-1000.slice` peaked at 23.6 GiB RAM and 4 GiB swap; `system-smartspec-agent.slice` peaked at 8.1 GiB; production web/backend/DB remained healthy
+### Evidence ledger
+- source: screenshot, production journal, production database rows
+- identifier: episode 114; start-frame run ids 363-370
+- observed failure: eight successful full `start_frame_render_plan` runs were launched while rapid per-shot clicks shared a stale empty plan; several LLM retry chains overlapped and the proxy returned HTTP 524 before JSON
+- data state: all eight duplicate runs eventually succeeded; media queue peaked at 16 and later drained to zero
 - confidence: high
-- next evidence needed: focused regression tests and post-rollout cgroup/health stability snapshots
+- next evidence needed: deployment-time browser smoke after the shared dirty worktree is safe to restart
 
-## Parallelization Preflight
-- candidate_agents: runtime implementer, test reviewer, operations/security reviewer
-- same_wave_candidates: tests and documentation could be independent, but live runtime files and their tests share exact contracts
-- ownership_map: conductor owns all runtime/config/test files; no sub-agent writers
-- dependency_edges: tests define behavior -> implementation -> install -> live verification -> convergence review
-- dispatch_mode: sequential_exception
-- sequential_reason: standard light mode plus a critical production runtime rollout; one conductor must preserve exact backup/install/rollback ordering and avoid collisions in the dirty tree
-
-## Waves
-1. TDD fixtures and planning package: define cleanup/watchdog failure cases.
-2. Runtime implementation: launcher ownership/traps, cleanup helper, watcher watchdog, service/timer/logrotate, monitor extensions.
-3. Safe rollout: backup, validate, install, dry-run cleanup, restart only dedicated watcher, enable cleanup timer, rotate logs.
-4. Verification and convergence: focused tests, systemd/logrotate checks, MCP smoke, PSI/cgroup/session/health snapshots, security/performance review.
-
-## Incident Follow-up - 2026-07-17 Emergency Pause
-- scope: small operational containment
-- risk: critical
-- bug_route: recurring performance/resource-exhaustion incident
-- evidence: the previous boot recorded 16 SocratiCode Node memcg OOM kills from 00:01 through 14:58 +07; 19 minutes after the next reboot, ten managed MCP containers already consumed about 6 GiB in `system-smartspec-agent.slice`, with the watcher alone at about 3.57 GiB.
-- chosen_route: direct standard-light containment; no sub-agents and no repository source-code changes.
-- containment: disable and stop the watcher/index/cleanup units, remove execute permission from the live MCP launcher, stop all managed MCP containers, and stop Qdrant while preserving its named data volume.
-- impact boundary: SmartSpecPro web/backend/database services, application data, Docker volumes, and unrelated dirty work remain untouched.
-- restore boundary: re-enabling SocratiCode requires an explicit operator action to restore launcher mode `0755`, enable the units, restore Qdrant `unless-stopped`, and start Qdrant before the watcher.
+### Impact and route
+- Change the per-shot prompt plus image handler to call only `generateShotStartFramePrompt` when the frame or prompt is missing.
+- Let that mutation create a minimal frame from persisted storyboard character facts and merge under the existing row lock.
+- Preserve sibling/concurrent frames and the latest selected image model from the locked plan.
+- Keep the explicit whole-episode start-frame-plan action unchanged.

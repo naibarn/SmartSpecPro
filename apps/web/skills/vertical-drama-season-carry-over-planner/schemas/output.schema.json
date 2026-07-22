@@ -25,8 +25,14 @@
             "type": "string",
             "enum": ["returns", "returns_with_explanation", "write_out", "cameo_only"]
           },
-          "returnJustification": { "type": "string" },
-          "suggestedStateUpdate": { "type": "string" }
+          "returnJustification": {
+            "type": ["string", "null"],
+            "minLength": 1
+          },
+          "suggestedStateUpdate": {
+            "type": ["string", "null"],
+            "minLength": 1
+          }
         }
       }
     },

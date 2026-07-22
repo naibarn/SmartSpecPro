@@ -278,6 +278,19 @@ describe("deriveVerticalDramaCapabilities", () => {
       expect(caps.verticalDramaReady).toBe(true);
     });
 
+    it("normalizes a Hermes image model's referenceImageLimit into maxReferenceImages", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: {
+          transport: "hermes_worker",
+          referenceImageLimit: 3,
+        },
+      });
+      expect(caps.maxReferenceImages).toBe(3);
+      expect(caps.verticalDramaReady).toBe(true);
+    });
+
     it("the static google-banana-2-lite catalog entry (configJson.maxReferenceImages: 10) now resolves a defined maxReferenceImages via deriveVerticalDramaCapabilities", () => {
       const staticModel = getStaticModelById("google-banana-2-lite");
       expect(staticModel?.configJson?.maxReferenceImages).toBe(10);

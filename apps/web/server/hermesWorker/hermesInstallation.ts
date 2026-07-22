@@ -25,10 +25,15 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
+import yaml from "js-yaml";
 
 import { parseHermesAuthStatusOutput } from "./hermesCliParsers";
 
 const SEGMENT_PATTERN = /^[A-Za-z0-9_-]+$/;
+const MANAGED_XAI_MEDIA_CONFIG = {
+  image_gen: { provider: "xai" },
+  video_gen: { provider: "xai" },
+};
 
 export interface ProfileHandle {
   /** `["-p", profileArg]` should be prepended to argv when set (native
@@ -70,6 +75,10 @@ async function ensureProfileDirs(dirs: ReturnType<typeof profileDirsFor>): Promi
   await fs.mkdir(path.join(dirs.homeDir, ".hermes"), { recursive: true, mode: 0o700 });
   await fs.mkdir(dirs.locksDir, { recursive: true });
   await fs.mkdir(dirs.logsDir, { recursive: true });
+  await fs.writeFile(path.join(dirs.homeDir, "config.yaml"), yaml.dump(MANAGED_XAI_MEDIA_CONFIG), {
+    encoding: "utf-8",
+    mode: 0o600,
+  });
 }
 
 function assertWithinRoot(root: string, candidate: string): void {
@@ -148,17 +157,25 @@ export interface HermesProbeDeps {
 export async function runHermesProfileIsolationProbe(
   deps: HermesProbeDeps,
 ): Promise<{ isolated: boolean }> {
-  await deps.spawnHermes(["-p", "__probe_a", "auth", "add", "xai-oauth", "--no-browser"], {
+  const authorize = await deps.spawnHermes(["-p", "__probe_a", "auth", "add", "xai-oauth", "--no-browser"], {
     timeoutMs: 5_000,
   });
   const check = await deps.spawnHermes(["-p", "__probe_b", "auth", "status", "xai-oauth"], {
     timeoutMs: 5_000,
   });
+  const probeOutput = `${authorize.stdout}\n${authorize.stderr}\n${check.stdout}\n${check.stderr}`;
+  if (
+    authorize.exitCode === 2
+    || check.exitCode === 2
+    || /invalid choice|unknown option|unrecognized argument|invalid option/i.test(probeOutput)
+  ) {
+    return { isolated: false };
+  }
   const authStatus = parseHermesAuthStatusOutput(check.stdout);
-  return { isolated: !authStatus.authorized };
+  return { isolated: check.exitCode === 0 && !authStatus.authorized };
 }
 
-const FLAG_PARSE_ERROR_PATTERN = /unknown option|unrecognized argument|invalid option|not compatible/i;
+const FLAG_PARSE_ERROR_PATTERN = /invalid choice|unknown option|unrecognized argument|invalid option|not compatible/i;
 
 /**
  * Probes whether `-z` (print/one-shot mode) composes with
@@ -168,9 +185,11 @@ const FLAG_PARSE_ERROR_PATTERN = /unknown option|unrecognized argument|invalid o
  */
 export async function runHermesFlagCompositionProbe(
   deps: HermesProbeDeps,
+  options: { includeProfileArg?: boolean } = {},
 ): Promise<{ template: "print_mode" | "chat_fallback" }> {
+  const profileArgs = options.includeProfileArg === false ? [] : ["-p", "__probe_flags"];
   const result = await deps.spawnHermes(
-    ["-p", "__probe_flags", "-z", "--provider", "xai-oauth", "--toolsets", "image_gen", "--ignore-user-config", "probe"],
+    [...profileArgs, "-z", "--provider", "xai-oauth", "--toolsets", "image_gen", "--ignore-user-config", "probe"],
     { timeoutMs: 5_000 },
   );
   const incompatible = result.exitCode !== 0 && FLAG_PARSE_ERROR_PATTERN.test(`${result.stdout}\n${result.stderr}`);
@@ -203,7 +222,9 @@ export async function provisionHermes(
   const versionResult = await deps.spawnHermes(["--version"], { timeoutMs: 10_000 });
   const version = versionResult.stdout.trim() || "unknown";
   const isolation = await runHermesProfileIsolationProbe(deps);
-  const flagComposition = await runHermesFlagCompositionProbe(deps);
+  const flagComposition = await runHermesFlagCompositionProbe(deps, {
+    includeProfileArg: isolation.isolated,
+  });
   const strategy = isolation.isolated
     ? createNativeProfileStrategy({ root: cfg.hermesHomeRoot })
     : createPerConnectionHomeStrategy({ root: cfg.hermesHomeRoot });

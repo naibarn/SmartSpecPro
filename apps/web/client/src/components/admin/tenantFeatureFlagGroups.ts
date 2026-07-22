@@ -298,7 +298,7 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "storyboardPreviewMatchCaptureServerWorkerEnabled", label: "Preview Match Worker", description: "Enable STORYBOARD_PREVIEW_MATCH_CAPTURE_SERVER_WORKER_ENABLED for this tenant" },
       { key: "storyboardPreviewMatchCaptureHighEnabled", label: "Preview Match High Quality", description: "Allow high-quality browser capture jobs" },
       { key: "storyboardClientCaptureExperimentEnabled", label: "Client Capture Experiment", description: "Allow experimental untrusted client-side capture paths" },
-      { key: "hermesMediaWorker", label: "Hermes Media Worker (Grok, F135)", description: "Master gate for the Hermes GROK MEDIA worker — the user's own Grok subscription generating images/videos. NOT the agent-gateway Hermes runtime (see the separate Hermes Runtime group)." },
+      { key: "hermesMediaWorker", label: "Grok via Hermes — Tenant rollout", description: "Tenant rollout gate for Grok image/video generation through the user's own Hermes worker. Platform enablement is also required in Admin Settings → Infrastructure → Tasks. This is NOT the agent-gateway Hermes Runtime." },
     ],
   },
   {

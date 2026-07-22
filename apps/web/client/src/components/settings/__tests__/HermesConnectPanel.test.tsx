@@ -19,6 +19,8 @@ const {
   mockAdminSetQuota,
   mockAdminDisable,
   mockUseAuth,
+  mockLanguage,
+  mockChangeLanguage,
 } = vi.hoisted(() => ({
   mockUseUtils: vi.fn(),
   mockGetAvailability: vi.fn(),
@@ -33,6 +35,22 @@ const {
   mockAdminSetQuota: vi.fn(),
   mockAdminDisable: vi.fn(),
   mockUseAuth: vi.fn(),
+  mockLanguage: { current: "th" },
+  mockChangeLanguage: vi.fn(),
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    i18n: {
+      get language() {
+        return mockLanguage.current;
+      },
+      get resolvedLanguage() {
+        return mockLanguage.current;
+      },
+      changeLanguage: mockChangeLanguage,
+    },
+  }),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -74,12 +92,30 @@ vi.mock("@/components/dashboard", () => ({
   ),
 }));
 
+vi.mock("@/components/help/HelpButton", () => ({
+  HelpButton: ({ page, topic, label }: { page: string; topic: string; label: string }) => (
+    <button type="button" data-page={page} data-topic={topic}>{label}</button>
+  ),
+}));
+
 import { HermesConnectPanel, formatHermesDeviceCodeCountdown } from "../HermesConnectPanel";
 
 const AVAILABLE = {
   enabled: true,
+  platformEnabled: true,
+  tenantEnabled: true,
   videoEnabled: true,
   scopes: { serverShared: true, serverPersonal: true, privateWorker: true },
+  serverWorker: {
+    configured: true,
+    online: true,
+    ready: true,
+    status: "online",
+    lastSeenAt: new Date().toISOString(),
+    hermesVersion: "0.18.2",
+    reason: null,
+    detail: null,
+  },
 };
 
 function baseConnectionRow(overrides: Partial<Record<string, unknown>> = {}) {
@@ -109,6 +145,7 @@ function baseConnectionRow(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockLanguage.current = "th";
   mockUseAuth.mockReturnValue({ user: { role: "user" } });
   mockUseUtils.mockReturnValue({
     hermesConnections: {
@@ -130,21 +167,108 @@ beforeEach(() => {
 });
 
 describe("HermesConnectPanel", () => {
+  it("links the connections guide from the panel header", () => {
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByRole("button", { name: "คู่มือ Grok via Hermes" })).toHaveAttribute(
+      "data-topic",
+      "grok-via-hermes-connections",
+    );
+    expect(screen.getByRole("button", { name: "คู่มือ Grok via Hermes" })).toHaveAttribute(
+      "data-page",
+      "/settings",
+    );
+  });
+
   it("shows the disabled explanation and no connect buttons when the feature is disabled", () => {
     mockGetAvailability.mockReturnValue({
-      data: { enabled: false, videoEnabled: false, scopes: { serverShared: false, serverPersonal: false, privateWorker: false } },
+      data: {
+        enabled: false,
+        platformEnabled: false,
+        tenantEnabled: true,
+        videoEnabled: false,
+        scopes: { serverShared: false, serverPersonal: false, privateWorker: false },
+      },
       isLoading: false,
     });
 
     render(<HermesConnectPanel />);
 
     expect(screen.getByTestId("hermes-panel-disabled-explanation")).toBeDefined();
+    expect(screen.getByText(/Admin Settings → Infrastructure → Tasks/)).toBeDefined();
+    expect(screen.getByRole("button", { name: "คู่มือ Grok via Hermes" })).toHaveAttribute(
+      "data-topic",
+      "grok-via-hermes-connections",
+    );
     expect(screen.queryByTestId("hermes-connect-button-server_personal")).toBeNull();
+  });
+
+  it("renders readiness guidance in English when the application language is English", () => {
+    mockLanguage.current = "en";
+    mockGetAvailability.mockReturnValue({
+      data: {
+        enabled: false,
+        platformEnabled: true,
+        tenantEnabled: false,
+        videoEnabled: false,
+        scopes: { serverShared: false, serverPersonal: false, privateWorker: false },
+      },
+      isLoading: false,
+    });
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByText("Setup is incomplete")).toBeDefined();
+    expect(screen.getByText(/Tenant admin: go to Admin → Tenants/)).toBeDefined();
+  });
+
+  it("explains all three account modes in English and offers the Worker App setup path", () => {
+    mockLanguage.current = "en";
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByText(/One admin-connected Grok account is shared by everyone in this tenant/)).toBeDefined();
+    expect(screen.getByText(/Your Grok account stays personal while jobs run on the managed server/)).toBeDefined();
+    expect(screen.getByText(/Jobs run on your own computer through Worker App/)).toBeDefined();
+    expect(screen.getByRole("link", { name: /Set up Worker App/ })).toHaveAttribute(
+      "href",
+      "/workers/connect",
+    );
+  });
+
+  it("disables both server connect actions when the shared server worker is offline", () => {
+    mockUseAuth.mockReturnValue({ user: { role: "admin" } });
+    mockGetAvailability.mockReturnValue({
+      data: {
+        ...AVAILABLE,
+        scopes: { ...AVAILABLE.scopes, serverShared: false, serverPersonal: false },
+        serverWorker: {
+          ...AVAILABLE.serverWorker,
+          online: false,
+          ready: false,
+          status: "offline",
+          reason: "offline",
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByTestId("hermes-connect-disabled-server_personal")).toBeDefined();
+    expect(screen.getByTestId("hermes-admin-connect-shared")).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("hermes-server-worker-reason")).toBeDefined();
   });
 
   it("hides the private-worker connect entry with a reason when that scope is unavailable", () => {
     mockGetAvailability.mockReturnValue({
-      data: { enabled: true, videoEnabled: true, scopes: { serverShared: true, serverPersonal: true, privateWorker: false } },
+      data: {
+        enabled: true,
+        platformEnabled: true,
+        tenantEnabled: true,
+        videoEnabled: true,
+        scopes: { serverShared: true, serverPersonal: true, privateWorker: false },
+      },
       isLoading: false,
     });
 
@@ -175,6 +299,10 @@ describe("HermesConnectPanel", () => {
   });
 
   it("renders the server_shared pool-wide-sharing addendum only for that scope", () => {
+    mockListConnectedWorkers.mockReturnValue({
+      data: { workers: [{ workerId: "worker-1", displayName: "My Desktop", status: "online" }] },
+      isLoading: false,
+    });
     render(<HermesConnectPanel />);
 
     fireEvent.click(screen.getByTestId("hermes-connect-button-server_personal"));
@@ -270,6 +398,52 @@ describe("HermesConnectPanel", () => {
     expect(screen.getByRole("button", { name: /ลองใหม่ \/ Reconnect/ })).toBeDefined();
   });
 
+  it("stops polling when a pending connection already has a typed raw-event recovery error", () => {
+    render(<HermesConnectPanel />);
+
+    const queryOptions = mockGetConnectStatus.mock.calls.at(-1)?.[1];
+    expect(queryOptions.refetchInterval({
+      state: {
+        data: {
+          status: "pending",
+          errorCode: "HERMES_PROCESS_FAILED",
+        },
+      },
+    })).toBe(false);
+  });
+
+  it("automatically resumes status polling for a pending connection after page reload", async () => {
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow({
+        id: "conn-pending",
+        status: "pending",
+        scope: "private_worker",
+        authorizedAt: null,
+      })],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mockGetConnectStatus.mockReturnValue({
+      data: {
+        status: "pending",
+        jobStatus: "running",
+        stage: "starting_hermes_control",
+        elapsedSeconds: 42,
+        timeoutSeconds: 900,
+      },
+      isLoading: false,
+    });
+
+    render(<HermesConnectPanel />);
+
+    await waitFor(() => {
+      const [input, options] = mockGetConnectStatus.mock.calls.at(-1) ?? [];
+      expect(input).toEqual({ connectionId: "conn-pending" });
+      expect(options).toMatchObject({ enabled: true });
+    });
+    expect(screen.getByTestId("hermes-connect-progress")).toHaveTextContent("42");
+  });
+
   it("invalidates listConnections and shows success once status flips to authorized", async () => {
     const invalidate = vi.fn();
     mockUseUtils.mockReturnValue({
@@ -296,6 +470,38 @@ describe("HermesConnectPanel", () => {
     await waitFor(() => expect(invalidate).toHaveBeenCalled());
   });
 
+  it("does not resurrect a stale pending row after connect status becomes authorized", async () => {
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow({
+        id: "conn-pending",
+        status: "pending",
+        scope: "private_worker",
+        authorizedAt: null,
+      })],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mockGetConnectStatus.mockReturnValue({
+      data: {
+        status: "authorized",
+        jobStatus: "completed",
+        stage: "job.completed",
+      },
+      isLoading: false,
+    });
+
+    render(<HermesConnectPanel />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("hermes-device-code-screen")).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      const [input, options] = mockGetConnectStatus.mock.calls.at(-1) ?? [];
+      expect(input).toEqual({ connectionId: "" });
+      expect(options).toMatchObject({ enabled: false });
+    });
+  });
+
   it("wires disconnect/probe/setDefault actions to the matching mutations", () => {
     const disconnectMutate = vi.fn();
     const probeMutate = vi.fn();
@@ -318,6 +524,25 @@ describe("HermesConnectPanel", () => {
 
     fireEvent.click(screen.getByLabelText(/ตั้งเป็นค่าเริ่มต้นสำหรับภาพ/));
     expect(setDefaultMutate).toHaveBeenCalledWith({ connectionId: "conn-1", assetType: "image" });
+  });
+
+  it("explains the connection lifetime when xAI does not provide an expiry", () => {
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow({
+        authorizedAt: "2026-07-20T00:00:00.000Z",
+      })],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByTestId("hermes-connection-lifetime-conn-1")).toHaveTextContent(
+      "วันหมดอายุ: xAI ไม่ได้ระบุ",
+    );
+    expect(screen.getByTestId("hermes-connection-lifetime-conn-1")).toHaveTextContent(
+      "ระบบจะแจ้งให้เชื่อมต่อใหม่",
+    );
   });
 
   it("wires the test-generation buttons to probe with testGeneration, and keeps the plain probe button free of it (regression)", () => {
@@ -584,6 +809,90 @@ describe("HermesConnectPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /บันทึกโควต้า/ }));
     expect(setQuotaMutate).toHaveBeenCalledWith({ connectionId: "conn-shared", dailyJobQuota: 50 });
+  });
+
+  it("keeps terminal connection history collapsed and shows five rows at a time", () => {
+    const historyRows = Array.from({ length: 7 }, (_, index) =>
+      baseConnectionRow({
+        id: `history-${index}`,
+        accountLabel: `History ${index}`,
+        status: index % 2 === 0 ? "error" : "disconnected",
+        createdAt: new Date(Date.UTC(2026, 6, 20, 0, index)).toISOString(),
+      }),
+    );
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow({ id: "active-1", accountLabel: "Active Grok" }), ...historyRows],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByText("Active Grok")).toBeDefined();
+    const historyToggle = screen.getByRole("button", { name: /ประวัติการเชื่อมต่อ.*7/ });
+    expect(historyToggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("History 6")).toBeNull();
+
+    fireEvent.click(historyToggle);
+    expect(historyToggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByTestId(/hermes-history-row-/)).toHaveLength(5);
+    expect(screen.getByText("History 6")).toBeDefined();
+    expect(screen.queryByText("History 0")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /แสดงเพิ่มอีก 2 รายการ/ }));
+    expect(screen.getAllByTestId(/hermes-history-row-/)).toHaveLength(7);
+    expect(screen.getByText("History 0")).toBeDefined();
+  });
+
+  it("uses English history disclosure copy when English is active", () => {
+    mockLanguage.current = "en";
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow({ id: "history-en", status: "disconnected" })],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByRole("button", { name: /Connection history.*1/ })).toBeDefined();
+  });
+
+  it("shows only server_shared rows in the tenant central admin panel", () => {
+    mockUseAuth.mockReturnValue({ user: { role: "admin" } });
+    mockAdminList.mockReturnValue({
+      data: [
+        baseConnectionRow({ id: "central-row", accountLabel: "Central Grok", scope: "server_shared" }),
+        baseConnectionRow({ id: "private-row", accountLabel: "Private Grok", scope: "private_worker" }),
+      ],
+      isLoading: false,
+    });
+
+    render(<HermesConnectPanel />);
+
+    const adminPanel = screen.getByTestId("hermes-admin-subpanel");
+    expect(adminPanel.textContent).toContain("Central Grok");
+    expect(adminPanel.textContent).not.toContain("Private Grok");
+  });
+
+  it("keeps terminal central connections in history instead of duplicating them in the admin panel", () => {
+    mockUseAuth.mockReturnValue({ user: { role: "admin" } });
+    const failedCentral = baseConnectionRow({
+      id: "shared-failed",
+      accountLabel: "Failed central Grok",
+      scope: "server_shared",
+      status: "error",
+    });
+    mockAdminList.mockReturnValue({ data: [failedCentral], isLoading: false });
+    mockListConnections.mockReturnValue({
+      data: [failedCentral],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.queryByTestId("hermes-admin-row-shared-failed")).toBeNull();
+    expect(screen.getByRole("button", { name: /ประวัติการเชื่อมต่อ.*1/ })).toBeDefined();
   });
 
   it("never renders a token-like string from the connection fixtures", () => {

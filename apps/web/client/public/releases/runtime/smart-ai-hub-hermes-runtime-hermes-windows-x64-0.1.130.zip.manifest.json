@@ -1,0 +1,12 @@
+{
+  "runtimeId": "hermes-windows-x64",
+  "version": "0.1.130",
+  "hermesVersion": "0.18.2",
+  "pythonRelativePath": "python/python.exe",
+  "hermesRelativePath": "python/hermes.exe",
+  "checksumFile": "SHA256SUMS",
+  "signatureFile": "SHA256SUMS.sig",
+  "allowed": true,
+  "archiveSha256": "3bdcbcc739f0c242d51d594a81ec8ce82ac41d86e438d7d712d8e5bca4a4e1e1",
+  "archiveSizeBytes": 67829056
+}

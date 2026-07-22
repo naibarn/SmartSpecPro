@@ -48,6 +48,7 @@
  *     [--display-name "Shared Hermes Worker"] [--machine-id ...] [--machine-name ...]
  */
 import { spawn } from "node:child_process";
+import { open } from "node:fs/promises";
 import { createControlPlaneClient, type HermesRegisterInput } from "../server/hermesWorker/controlPlaneClient";
 import { provisionHermes } from "../server/hermesWorker/hermesInstallation";
 import { buildHermesChildEnv, runHermes, type HermesChildProcessLike } from "../server/hermesWorker/hermesInvocation";
@@ -58,6 +59,7 @@ export interface PairHermesWorkerArgs {
   baseUrl: string;
   machineId?: string;
   machineName?: string;
+  envFile?: string;
 }
 
 function readFlag(argv: string[], flag: string): string | undefined {
@@ -71,12 +73,16 @@ export function parsePairHermesWorkerArgs(argv: string[]): PairHermesWorkerArgs 
   if (!tenantId) {
     throw new Error("pair-hermes-worker: --tenant-id is required");
   }
+  // Do not name this flag `--env-file`: Node 20+ reserves that option and
+  // consumes it before tsx can pass it to this script.
+  const envFile = readFlag(argv, "--credential-file");
   return {
     tenantId,
     displayName: readFlag(argv, "--display-name") ?? "Shared Hermes Worker",
     baseUrl: readFlag(argv, "--base-url") ?? "http://localhost:3000",
     machineId: readFlag(argv, "--machine-id"),
     machineName: readFlag(argv, "--machine-name"),
+    ...(envFile ? { envFile } : {}),
   };
 }
 
@@ -109,7 +115,21 @@ export interface PairHermesWorkerDeps {
   /** Writes `system_settings` key `hermes_shared_worker_id` (category
    *  `infrastructure`) — the ONLY thing this script persists. */
   writeSharedWorkerIdSetting(workerId: string): Promise<void>;
+  /** Writes the worker refresh credential to an operator-selected protected
+   *  environment file. Used by automated pairing so secrets never cross
+   *  stdout/stderr. */
+  writeWorkerEnvFile(params: {
+    envFile: string;
+    workerId: string;
+    refreshToken: string;
+  }): Promise<void>;
   print(line: string): void;
+}
+
+function assertSingleLineSecret(name: string, value: string): void {
+  if (!value || /[\r\n]/.test(value)) {
+    throw new Error(`pair-hermes-worker: invalid ${name}`);
+  }
 }
 
 function buildDefaultDeps(): PairHermesWorkerDeps {
@@ -194,6 +214,36 @@ function buildDefaultDeps(): PairHermesWorkerDeps {
         });
       }
     },
+    async writeWorkerEnvFile({ envFile, workerId, refreshToken }) {
+      assertSingleLineSecret("worker id", workerId);
+      assertSingleLineSecret("refresh token", refreshToken);
+      const hermesBinaryPath =
+        process.env.HERMES_BINARY_PATH
+        || "/var/lib/smartspec-hermes-worker/hermes/bin/hermes";
+      const refreshTokenFile =
+        process.env.HERMES_WORKER_TOKEN_FILE
+        || "/var/lib/smartspec-hermes-worker/state/refresh-token";
+      assertSingleLineSecret("Hermes binary path", hermesBinaryPath);
+      assertSingleLineSecret("Hermes refresh token file", refreshTokenFile);
+
+      const handle = await open(envFile, "w", 0o600);
+      try {
+        await handle.chmod(0o600);
+        await handle.writeFile(
+          [
+            `HERMES_WORKER_ID=${workerId}`,
+            `HERMES_WORKER_TOKEN=${refreshToken}`,
+            `HERMES_BINARY_PATH=${hermesBinaryPath}`,
+            `HERMES_WORKER_TOKEN_FILE=${refreshTokenFile}`,
+            "",
+          ].join("\n"),
+          { encoding: "utf8" },
+        );
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
+    },
     print(line) {
       console.log(line);
     },
@@ -231,10 +281,19 @@ export async function runPairHermesWorker(
   });
 
   deps.print(`Paired Hermes worker id: ${result.workerId}`);
-  deps.print("Place the following into /etc/smartspec/hermes-worker.env (root-owned, mode 0600):");
-  deps.print(`HERMES_WORKER_ID=${result.workerId}`);
-  deps.print(`HERMES_WORKER_TOKEN=${result.tokens.refreshToken}`);
-  deps.print("This is the ONLY time these values are printed — they are never written to the repo, the database, or system_settings.");
+  if (args.envFile) {
+    await deps.writeWorkerEnvFile({
+      envFile: args.envFile,
+      workerId: result.workerId,
+      refreshToken: result.tokens.refreshToken,
+    });
+    deps.print(`Credentials written securely to ${args.envFile}; token output suppressed.`);
+  } else {
+    deps.print("Place the following into /etc/smartspec/hermes-worker.env (root-owned, mode 0600):");
+    deps.print(`HERMES_WORKER_ID=${result.workerId}`);
+    deps.print(`HERMES_WORKER_TOKEN=${result.tokens.refreshToken}`);
+    deps.print("This is the ONLY time these values are printed — they are never written to the repo, the database, or system_settings.");
+  }
 
   await deps.writeSharedWorkerIdSetting(result.workerId);
   deps.print(`Wrote system_settings.hermes_shared_worker_id = ${result.workerId}`);

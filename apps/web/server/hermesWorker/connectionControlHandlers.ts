@@ -276,7 +276,7 @@ async function runGenerationLivenessTest(
       { jobId: `hermes-test-${input.connectionId}`, outputDir: workspace.outputDir },
     );
     const argv = buildArgv({
-      profile: { profileArg: input.profileReference },
+      profile: {},
       operation: `${assetType}.generate`,
       template: deps.invocationTemplate ?? "print_mode",
       enableFileToolset: false,
@@ -399,7 +399,7 @@ export async function runHermesConnectionAuthorize(
   };
 
   const authAddResult = await deps.spawnHermes(
-    ["-p", input.profileReference, "auth", "add", "xai-oauth", "--no-browser"],
+    ["auth", "add", "xai-oauth", "--no-browser"],
     { timeoutMs: input.timeoutSeconds * 1000, onStdoutLine },
   );
 
@@ -409,7 +409,7 @@ export async function runHermesConnectionAuthorize(
   }
 
   const statusResult = await deps.spawnHermes(
-    ["-p", input.profileReference, "auth", "status", "xai-oauth"],
+    ["auth", "status", "xai-oauth"],
     { timeoutMs: 30_000, onStdoutLine: () => {} },
   );
   const authStatus = parseHermesAuthStatusOutput(statusResult.stdout);
@@ -432,7 +432,7 @@ export async function runHermesConnectionProbe(
   deps.logger.info(`hermes_connection_probe: starting for connection ${input.connectionId}`);
 
   const statusResult = await deps.spawnHermes(
-    ["-p", input.profileReference, "auth", "status", "xai-oauth"],
+    ["auth", "status", "xai-oauth"],
     { timeoutMs: Math.min(input.timeoutSeconds, 30) * 1000, onStdoutLine: () => {} },
   );
   if (statusResult.exitCode !== 0) {
@@ -442,7 +442,10 @@ export async function runHermesConnectionProbe(
   const authStatus = parseHermesAuthStatusOutput(statusResult.stdout);
 
   const toolsResult = await deps.spawnHermes(
-    ["-p", input.profileReference, "tools"],
+    // `hermes tools` is interactive in current Hermes releases. The
+    // documented `status --all` command is safe for a headless worker and
+    // includes the available image/video generation categories.
+    ["status", "--all"],
     { timeoutMs: input.timeoutSeconds * 1000, onStdoutLine: () => {} },
   );
   if (toolsResult.exitCode !== 0) {
@@ -518,7 +521,7 @@ export async function runHermesConnectionDisconnect(
   deps.logger.info(`hermes_connection_disconnect: starting for connection ${input.connectionId}`);
 
   const logoutResult = await deps.spawnHermes(
-    ["-p", input.profileReference, "auth", "logout", "xai-oauth"],
+    ["auth", "logout", "xai-oauth"],
     { timeoutMs: input.timeoutSeconds * 1000, onStdoutLine: () => {} },
   );
 

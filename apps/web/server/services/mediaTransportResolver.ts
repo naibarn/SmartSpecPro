@@ -147,40 +147,44 @@ export async function resolveMediaTransport(input: MediaTransportResolveInput): 
   if (!flags.mcpProviderCreditsTrackedEnabled) {
     throw new TRPCError({ code: "FORBIDDEN", message: "MCP provider credit tracking is disabled" });
   }
-  // Resolve which connection this job runs on. The client normally pins one via
-  // the MCP connection picker, but that picker populates asynchronously and its
-  // localStorage cache can silently fail (full/blocked storage), so a generate
-  // fired before it settles arrives with no connection id. Rather than reject a
-  // request the actor is fully entitled to make, resolve it from the actor's OWN
-  // eligible connections — `listMcpConnections` already enforces ownership for
-  // personal ones and enabled-share + ACTIVE membership for shared ones, so this
-  // never widens access. Only auto-resolve when the choice is unambiguous
-  // (personal default, or a single eligible account); with several eligible
-  // accounts the caller must pick, since each bills a different provider account.
-  let connectionId = input.mcpConnectionId;
-  if (!connectionId) {
-    const eligible = (
-      await listMcpConnections({ tenantId: input.tenantId, userId: input.actorUserId })
-    ).filter((candidate) => (
-      candidate.status === "connected" &&
-      (!input.providerKey || candidate.providerKey === input.providerKey) &&
-      (!candidate.allowedAssetTypes?.length || candidate.allowedAssetTypes.includes(input.assetType))
-    ));
-    const personalDefault = eligible.find((candidate) => (
-      candidate.connectionScope === "personal" &&
-      (input.assetType === "image" ? candidate.defaultForImage : candidate.defaultForVideo)
-    ));
-    const resolved = personalDefault ?? (eligible.length === 1 ? eligible[0] : undefined);
-    if (!resolved) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: eligible.length > 1
-          ? `Select an MCP account — several ${input.providerKey ?? "MCP"} accounts are available.`
-          : `This model requires a connected ${input.providerKey ?? "MCP"} MCP account. Connect one (or ask the owner to share theirs with your group) first.`,
-      });
-    }
-    connectionId = resolved.id;
+  // Browser/localStorage state is never authoritative for MCP execution.
+  // Always query the actor's current personal + actively shared connections.
+  // `listMcpConnections` enforces tenant/owner or enabled-share + ACTIVE group
+  // membership, and `assertMcpSharePolicyAllowed` below revalidates the chosen
+  // row plus its tool/model/budget policy immediately before task creation.
+  const eligible = (
+    await listMcpConnections({ tenantId: input.tenantId, userId: input.actorUserId })
+  ).filter((candidate) => (
+    candidate.status === "connected" &&
+    (!input.providerKey || candidate.providerKey === input.providerKey) &&
+    (!candidate.allowedAssetTypes?.length || candidate.allowedAssetTypes.includes(input.assetType))
+  ));
+
+  // A physical connection may appear once per active group share. Treat those
+  // rows as one provider account for selection; the policy service chooses the
+  // actual authorizing share and returns its authoritative group metadata.
+  const eligibleById = new Map(eligible.map((candidate) => [candidate.id, candidate]));
+  const uniqueEligible = [...eligibleById.values()];
+  const callerSelection = input.mcpConnectionId
+    ? eligibleById.get(input.mcpConnectionId)
+    : undefined;
+  const personalDefault = uniqueEligible.find((candidate) => (
+    candidate.connectionScope === "personal" &&
+    (input.assetType === "image" ? candidate.defaultForImage : candidate.defaultForVideo)
+  ));
+  const resolved =
+    uniqueEligible.length === 1
+      ? uniqueEligible[0]
+      : callerSelection ?? personalDefault;
+  if (!resolved) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: uniqueEligible.length > 1
+        ? `Select an MCP account — several ${input.providerKey ?? "MCP"} accounts are available.`
+        : `This model requires a connected ${input.providerKey ?? "MCP"} MCP account. Connect one (or ask the owner to share theirs with your group) first.`,
+    });
   }
+  const connectionId = resolved.id;
   const toolName =
     input.toolName ??
     defaultMcpToolNameForProvider({

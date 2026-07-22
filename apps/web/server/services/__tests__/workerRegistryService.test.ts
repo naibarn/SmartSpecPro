@@ -1823,6 +1823,76 @@ describe("workerRegistryService", () => {
     }));
   });
 
+  it("scopes Hermes event sequence replay detection to the active assignment attempt", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const baseJob = {
+      id: "job-hermes-reclaimed",
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      jobType: "hermes_connection_authorize",
+      status: "claimed",
+      outputJson: {
+        assignmentAttempt: "attempt_new",
+      },
+      leaseOwnerToken: "lease-new",
+      leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      startedAt: new Date("2026-04-06T00:00:00.000Z"),
+    };
+    const oldAttemptEvents = [
+      {
+        id: "event-old-1",
+        workerJobId: baseJob.id,
+        eventType: "job.running",
+        payloadJson: { assignmentAttempt: "attempt_old", sequenceNumber: 1 },
+        createdAt: new Date("2026-04-06T00:00:01.000Z"),
+      },
+      {
+        id: "event-old-2",
+        workerJobId: baseJob.id,
+        eventType: "hermes_device_code",
+        payloadJson: { assignmentAttempt: "attempt_old", sequenceNumber: 2 },
+        createdAt: new Date("2026-04-06T00:00:02.000Z"),
+      },
+    ];
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue(baseJob),
+      listJobEvents: vi.fn().mockResolvedValue(oldAttemptEvents),
+      insertJobEvent: vi.fn().mockResolvedValue({ id: "event-new-1" }),
+      updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({
+        ...baseJob,
+        ...values,
+      })),
+    };
+
+    const result = await recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      jobId: baseJob.id,
+      payload: {
+        eventType: "job.running",
+        payloadJson: { stage: "starting_hermes_control" },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-new",
+        assignmentAttempt: "attempt_new",
+      },
+    }, { repo } as any);
+
+    expect(result).toMatchObject({ accepted: true, replayed: false });
+    expect(repo.insertJobEvent).toHaveBeenCalledWith(
+      baseJob.id,
+      "job.running",
+      expect.objectContaining({
+        assignmentAttempt: "attempt_new",
+        sequenceNumber: 1,
+      }),
+    );
+  });
+
   it("rejects stale HyperFrames artifact uploads after reassignment", async () => {
     const { completeWorkerArtifact, initWorkerArtifactUpload } = await import("../workerRegistryService");
 

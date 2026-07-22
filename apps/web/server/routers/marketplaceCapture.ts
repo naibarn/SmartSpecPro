@@ -699,6 +699,10 @@ export const marketplaceCaptureRouter = router({
           .optional()
           .nullable(),
         visionQaModel: z.string().min(1).max(120).optional().nullable(),
+        motionDirection: z.string().trim().min(1).max(2000).optional(),
+        characterPresenceMode: z
+          .enum(["auto", "every_frame", "most_frames"])
+          .optional(),
         transportMetadata: mcpTransportMetadataSchema,
         referenceAnchors: z
           .object({

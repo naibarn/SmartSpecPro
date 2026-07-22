@@ -2787,6 +2787,13 @@ export default function AdminMonitoring() {
               />
               <HelpButton
                 page="/admin/monitoring"
+                topic="grok-via-hermes-monitoring"
+                variant="outline"
+                size="sm"
+                label={locale === "th" ? "คู่มือ Grok Media" : "Grok Media Help"}
+              />
+              <HelpButton
+                page="/admin/monitoring"
                 topic="nemo-claw-workers"
                 variant="outline"
                 size="sm"

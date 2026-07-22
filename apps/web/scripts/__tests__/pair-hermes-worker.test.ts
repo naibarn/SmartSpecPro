@@ -36,6 +36,16 @@ describe("parsePairHermesWorkerArgs", () => {
   it("throws when --tenant-id is missing", () => {
     expect(() => parsePairHermesWorkerArgs(["--base-url", "http://localhost:3000"])).toThrow(/--tenant-id/);
   });
+
+  it("parses a secure credential environment-file target", () => {
+    expect(parsePairHermesWorkerArgs([
+      "--tenant-id", "tenant-123",
+      "--credential-file", "/tmp/hermes-worker.env",
+    ])).toMatchObject({
+      tenantId: "tenant-123",
+      envFile: "/tmp/hermes-worker.env",
+    });
+  });
 });
 
 describe("runPairHermesWorker", () => {
@@ -90,5 +100,40 @@ describe("runPairHermesWorker", () => {
       doctorOk: true,
       hermesVersion: "0.18.2",
     });
+  });
+
+  it("writes credentials to the requested env file without printing either token", async () => {
+    const printed: string[] = [];
+    const writeWorkerEnvFile = vi.fn(async () => {});
+
+    await runPairHermesWorker([
+      "--tenant-id", "tenant-1",
+      "--credential-file", "/tmp/hermes-worker.env",
+    ], {
+      mintRegistrationToken: () => "registration-token-secret",
+      runDoctorProbe: async () => ({ doctorOk: true, hermesVersion: "0.18.2" }),
+      registerWorker: async () => ({
+        workerId: "worker-secure",
+        tokens: {
+          executionToken: "execution-token-secret",
+          uploadToken: "upload-token-secret",
+          refreshToken: "refresh-token-secret",
+        },
+      }),
+      writeSharedWorkerIdSetting: async () => {},
+      writeWorkerEnvFile,
+      print: (line) => printed.push(line),
+    });
+
+    expect(writeWorkerEnvFile).toHaveBeenCalledWith({
+      envFile: "/tmp/hermes-worker.env",
+      workerId: "worker-secure",
+      refreshToken: "refresh-token-secret",
+    });
+    expect(printed.join("\n")).not.toContain("registration-token-secret");
+    expect(printed.join("\n")).not.toContain("execution-token-secret");
+    expect(printed.join("\n")).not.toContain("upload-token-secret");
+    expect(printed.join("\n")).not.toContain("refresh-token-secret");
+    expect(printed.join("\n")).toContain("Credentials written securely");
   });
 });

@@ -594,7 +594,9 @@
       "Bash(sed -n '2610,2650p' /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/WorkflowEditor.tsx)",
       "Bash(NODE_OPTIONS='--max-old-space-size=8192' ../../node_modules/.bin/tsc --noEmit)",
       "Bash(npx vitest *)",
-      "Bash(pnpm check *)"
+      "Bash(pnpm check *)",
+      "Bash(mkdir -p /home/dev/projects/SmartSpecPro/planning/vertical-drama-reference-picker-outfit-lock)",
+      "Bash(cp /home/dev/.claude/plans/polished-toasting-gadget.md /home/dev/projects/SmartSpecPro/planning/vertical-drama-reference-picker-outfit-lock/plan.md)"
     ],
     "deny": [
       "Bash(rm *)",

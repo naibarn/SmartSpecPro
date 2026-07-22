@@ -312,6 +312,7 @@ fn read_private_key(app_data_dir: &Path, storage: &str) -> Result<String, String
 
 #[cfg(target_os = "windows")]
 fn run_powershell_script(script: &str, env_pairs: &[(&str, &str)]) -> Result<String, String> {
+    use std::os::windows::process::CommandExt;
     let mut command = Command::new(resolve_powershell_binary()?);
     command
         .args([
@@ -322,6 +323,7 @@ fn run_powershell_script(script: &str, env_pairs: &[(&str, &str)]) -> Result<Str
             "-Command",
             script,
         ])
+        .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     for (key, value) in env_pairs {

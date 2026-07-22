@@ -9,6 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getModelGenerationModeLabel } from "@/lib/mediaModelInputs";
 import {
   getMediaModelTransportLabel,
@@ -81,6 +82,7 @@ export function formatMediaProviderDisplayName(providerName: unknown): string {
     elevenlabs: "ElevenLabs",
     eleven_labs: "ElevenLabs",
     omnivoice: "OmniVoice",
+    hermes_grok: "Grok via Hermes",
   };
   return knownNames[normalized] ?? raw;
 }
@@ -98,6 +100,8 @@ export default function ModelSelectorDialog({
   mediaType,
   isLoading,
 }: ModelSelectorDialogProps) {
+  const { locale } = useScopedTranslation(["media", "common"]);
+  const isThai = locale === "th";
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
@@ -168,10 +172,14 @@ export default function ModelSelectorDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {getMediaIcon()}
-            Select {mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} Model
+            {isThai
+              ? `เลือกโมเดล${mediaType === "image" ? "สร้างภาพ" : mediaType === "video" ? "สร้างวิดีโอ" : "สร้างเสียง"}`
+              : `Select ${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} Model`}
           </DialogTitle>
           <DialogDescription>
-            Choose a model from the available {mediaType} generation models
+            {isThai
+              ? "เลือกโมเดลที่เปิดใช้งานสำหรับงานนี้ โมเดล Grok via Hermes จะใช้บัญชี Grok ที่เชื่อมต่อไว้"
+              : `Choose from the available ${mediaType} generation models. Grok via Hermes uses your connected Grok account.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -180,7 +188,7 @@ export default function ModelSelectorDialog({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search models..."
+              placeholder={isThai ? "ค้นหาโมเดล..." : "Search models..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -201,7 +209,7 @@ export default function ModelSelectorDialog({
               )}
               onClick={() => setSelectedProvider(null)}
             >
-              All Providers
+              {isThai ? "ผู้ให้บริการทั้งหมด" : "All Providers"}
             </Badge>
             {providers
               .filter((p) => p.isEnabled !== false)
@@ -241,6 +249,7 @@ export default function ModelSelectorDialog({
                       <ModelCard
                         key={model.id ?? `${model.modelId}-${index}`}
                         model={model}
+                        locale={locale}
                         isSelected={model.modelId === selectedModelId}
                         onSelect={() => handleSelect(model.modelId)}
                       />
@@ -253,10 +262,10 @@ export default function ModelSelectorDialog({
               {filteredModels.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
                   <Bot className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>No models found</p>
+                  <p>{isThai ? "ไม่พบโมเดล" : "No models found"}</p>
                   {searchQuery && (
                     <p className="text-sm mt-1">
-                      Try adjusting your search query
+                      {isThai ? "ลองเปลี่ยนคำค้นหา" : "Try adjusting your search query"}
                     </p>
                   )}
                 </div>
@@ -272,11 +281,12 @@ export default function ModelSelectorDialog({
 // Model Card Component
 interface ModelCardProps {
   model: MediaModel;
+  locale: string;
   isSelected: boolean;
   onSelect: () => void;
 }
 
-function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
+function ModelCard({ model, locale, isSelected, onSelect }: ModelCardProps) {
   const modeLabel = getModelGenerationModeLabel(model);
   const providerName = getProviderName(model);
   const transportConfig = resolveMediaModelTransportConfig({
@@ -284,6 +294,18 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
     modelId: model.modelId,
     configJson: model.configJson,
   });
+  const isThai = locale === "th";
+  const isHermes = transportConfig.transport === "hermes_worker";
+  const hermesModelName = model.modelId.includes("video")
+    ? (isThai ? "Grok Imagine วิดีโอ (ผ่าน Hermes)" : model.name)
+    : model.modelId.includes("quality")
+      ? (isThai ? "Grok Imagine ภาพคุณภาพสูง (ผ่าน Hermes)" : model.name)
+      : (isThai ? "Grok Imagine ภาพ (ผ่าน Hermes)" : model.name);
+  const description = isHermes
+    ? (isThai
+        ? "สร้างด้วยบัญชี Grok ที่เชื่อมต่อผ่าน Worker ของคุณ ระบบจะเลือก connection ที่มีสิทธิ์จากฐานข้อมูลอัตโนมัติ และไม่หักเครดิต SmartSpecPro"
+        : model.description)
+    : model.description;
   return (
     <button
       onClick={onSelect}
@@ -297,7 +319,9 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-gray-900">{model.name}</span>
+            <span className="font-semibold text-gray-900">
+              {isHermes ? hermesModelName : model.name}
+            </span>
             <Badge
               variant="outline"
               className="border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] px-1.5 py-0"
@@ -329,7 +353,7 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
                 variant="default"
                 className="text-[10px] px-1.5 py-0 bg-violet-500 text-white"
               >
-                Grok via Hermes
+                {isThai ? "Grok ผ่าน Hermes" : "Grok via Hermes"}
               </Badge>
             ) : (
               <Badge
@@ -347,19 +371,19 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
             {model.isDefault && (
               <Badge className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0">
                 <Star className="h-3 w-3 mr-0.5 inline" />
-                Default
+                {isThai ? "ค่าเริ่มต้น" : "Default"}
               </Badge>
             )}
             {isSelected && (
               <Badge className="bg-purple-500 text-white text-[10px] px-1.5 py-0">
-                Selected
+                {isThai ? "เลือกอยู่" : "Selected"}
               </Badge>
             )}
           </div>
 
-          {model.description && (
+          {description && (
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-              {model.description}
+              {description}
             </p>
           )}
 
@@ -373,7 +397,9 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
                 className="text-[10px] px-1.5 py-0 bg-green-100 text-green-700"
               >
                 <Zap className="h-3 w-3 mr-0.5 inline" />
-                {model.creditCost} credits
+                {isHermes && model.creditCost === 0
+                  ? (isThai ? "0 เครดิต SmartSpecPro" : "0 SmartSpecPro credits")
+                  : `${model.creditCost} ${isThai ? "เครดิต" : "credits"}`}
               </Badge>
             )}
             {model.capabilities?.slice(0, 2).map((cap, idx) => (

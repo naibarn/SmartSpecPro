@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Preset Synthesizer
 description: Blend several Vertical Drama genre presets or category flavors into one coherent editable series preset draft.
-version: 1.3.0
+version: 1.4.1
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -130,7 +130,50 @@ Output skeleton:
 }
 ```
 
-## User Premise — Premise-Primary Blending (Feature 132 §4.3, F132A)
+## Generate from basics (no preset required)
+
+When the request says `GENERATE FROM BASICS`, no preset and no user premise
+were selected. This is a valid first-class authoring mode, not an error and not
+a reason to ask for more input.
+
+Rules for this mode:
+
+- Invent one coherent, original Vertical Drama concept from the basic setup
+  facts supplied by the caller: series title hint, genre hint, tone, business
+  or product context, audience age rating, Sub-episode count, and lineage.
+- Fill every missing creative decision yourself. Return the same complete
+  draft contract as other modes, including logline, main plot, season arc,
+  cliffhanger style, creator summary, at least three useful characters, and a
+  production-ready visual bible.
+- Do not invent a fake preset, preset ID, or category selection. Set
+  `mixRecipe.primaryFlavor` to `ai_original` and keep
+  `mixRecipe.supportingFlavors` empty when no category was supplied.
+- Treat the audience age rating as a hard content boundary.
+- For sequel or special-edition lineage, preserve the parent title, prior
+  season summary, returning-character decisions, relationships, and open
+  threads. New conflict must advance that continuity rather than reboot it.
+
+## Sequel lineage — continuity outranks premise
+
+Whenever `lineageContext` is present, it is the primary canon regardless of
+whether the creator also supplies a user premise or presets.
+
+- Create a continuation, never an unrelated reboot.
+- Preserve the parent series identity, prior events, returning characters,
+  established relationships, world, and unresolved threads.
+- Treat the user premise as a requested new-season direction layered onto
+  canon. It may evolve the story, but it must not replace or contradict it.
+- Presets remain supporting flavor and cannot displace lineage.
+- If a premise or preset conflicts with canon, keep canon and record the
+  conflict in `warnings`.
+- The title, logline, main plot, season arc, characters, and visual bible must
+  remain visibly traceable to the parent series.
+
+## User Premise — Premise-Primary Blending for original series (Feature 132 §4.3, F132A)
+
+This premise-primary rule applies only when `lineageContext` is absent. When
+lineage is present, the continuity rule above takes precedence and the premise
+becomes a new-season direction.
 
 When the creator supplies a free-form "โจทย์เรื่องที่อยากได้" (user premise) alongside the selected preset(s), the service (`server/services/verticalDramaPresetSynthesis.ts`) prepends the following conditional instruction block to the request ahead of the payload — it is templated per-request by the service, not statically present in every call, since this file is loaded verbatim and only the service can conditionally render it:
 

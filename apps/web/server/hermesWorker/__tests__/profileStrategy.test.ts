@@ -35,6 +35,18 @@ describe("runHermesProfileIsolationProbe", () => {
     const result = await runHermesProfileIsolationProbe({ spawnHermes });
     expect(result.isolated).toBe(false);
   });
+
+  it("falls back when the installed Hermes CLI rejects the legacy global -p flag", async () => {
+    const spawnHermes = async (): Promise<HermesProbeSpawnResult> => ({
+      exitCode: 2,
+      stdout: "",
+      stderr: "hermes: error: argument command: invalid choice: '__probe_a'",
+    });
+
+    const result = await runHermesProfileIsolationProbe({ spawnHermes });
+
+    expect(result.isolated).toBe(false);
+  });
 });
 
 describe("runHermesFlagCompositionProbe", () => {
@@ -85,6 +97,28 @@ describe("provisionHermes", () => {
     const result = await provisionHermes({ hermesHomeRoot: root, expectedVersion: "0.18.2" }, { spawnHermes });
     expect(result.strategy.kind).toBe("per_connection_home");
   });
+
+  it("uses per-connection HERMES_HOME with the real 0.18.2 invalid-choice response", async () => {
+    const spawnHermes = async (args: string[]): Promise<HermesProbeSpawnResult> => {
+      if (args[0] === "--version") return { exitCode: 0, stdout: "0.18.2", stderr: "" };
+      if (args[0] === "-p") {
+        return {
+          exitCode: 2,
+          stdout: "",
+          stderr: "hermes: error: argument command: invalid choice: '__probe_a'",
+        };
+      }
+      return { exitCode: 1, stdout: "", stderr: "provider not configured" };
+    };
+
+    const result = await provisionHermes(
+      { hermesHomeRoot: root, expectedVersion: "0.18.2" },
+      { spawnHermes },
+    );
+
+    expect(result.strategy.kind).toBe("per_connection_home");
+    expect(result.doctorOk).toBe(true);
+  });
 });
 
 describe.each([
@@ -105,6 +139,9 @@ describe.each([
     const resolvedRoot = path.resolve(root);
     expect(path.resolve(handle.homeDir).startsWith(resolvedRoot + path.sep)).toBe(true);
     expect(path.resolve(handle.locksDir).startsWith(resolvedRoot + path.sep)).toBe(true);
+    expect(await fs.readFile(path.join(handle.homeDir, "config.yaml"), "utf-8")).toContain(
+      "provider: xai",
+    );
   });
 
   it("rejects a tenantId/connectionId containing path traversal characters", async () => {

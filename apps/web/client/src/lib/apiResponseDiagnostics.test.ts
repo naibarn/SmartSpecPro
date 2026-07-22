@@ -30,7 +30,20 @@ describe("apiResponseDiagnostics", () => {
         status: 524,
         bodySnippet: "<!DOCTYPE html><html><body>Cloudflare timeout</body></html>",
       }),
-    ).toContain("timed out before returning JSON");
+    ).toContain("lost its server/proxy connection");
+  });
+
+  it("explains that an HTML 502 mutation response may have completed", () => {
+    const message = buildUnexpectedHtmlResponseMessage({
+      requestUrl: "https://smartaihub.app/trpc/verticalDramaEpisodes.runStage",
+      status: 502,
+      contentType: "text/html; charset=utf-8",
+      bodySnippet: "<!DOCTYPE html><html><body>Bad Gateway</body></html>",
+    });
+
+    expect(message).toContain("lost its server/proxy connection");
+    expect(message).toContain("may still have completed");
+    expect(message).not.toContain("web app shell");
   });
 
   it("throws a readable error when an api response is html", async () => {

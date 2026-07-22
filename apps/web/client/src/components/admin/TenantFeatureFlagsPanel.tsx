@@ -12,7 +12,9 @@
  */
 
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
+import { HelpButton } from "@/components/help/HelpButton";
 import type { TenantFeatureFlags, TenantFeatureFlagKey } from "@shared/featureFlags";
 import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags.ts";
 import { buildTenantFeatureFlagGroups } from "./tenantFeatureFlagGroups";
@@ -23,6 +25,8 @@ interface TenantFeatureFlagsPanelProps {
 }
 
 export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFeatureFlagsPanelProps) {
+  const { i18n } = useTranslation();
+  const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -106,23 +110,32 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
   return (
     <div className="space-y-3">
       <div className="sticky top-0 z-10 space-y-3 bg-white/95 pb-3 backdrop-blur">
-        <div className="rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
-          Hermes Runtime has its own group near the top of the list. Marketplace HyperFrames
-          flags are under Media Production & HyperFrames, with their internal keys shown
-          under each label. The unrelated <span className="font-semibold">Hermes Media Worker (Grok, F135)</span>{" "}
-          master flag (Grok image/video generation, not the agent runtime) lives in that same
-          Media Production & HyperFrames group — do not confuse it with the Hermes Runtime group below.
-          Use the search box to jump directly to <span className="font-semibold">Marketplace HyperFrames</span>,
-          <span className="font-semibold"> HyperFrames Worker Queue</span>,
-          <span className="font-semibold"> HyperFrames Library Save</span>,
-          <span className="font-semibold"> HyperFrames Operator Controls</span>,
-          <span className="font-semibold"> Hermes Media Worker (Grok, F135)</span>,
-          <span className="font-semibold"> Hermes Runtime</span>,
-          <span className="font-semibold"> Hermes Profile Experience</span>,
-          <span className="font-semibold"> Hermes Channel Workflow</span>,
-          <span className="font-semibold"> Hermes Memory Sync</span>,
-          <span className="font-semibold"> Hermes Task Modes</span>, and
-          <span className="font-semibold"> Hermes Visibility Summaries</span>.
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
+          <div className="min-w-0 flex-1">
+            Hermes Runtime has its own group near the top of the list. Marketplace HyperFrames
+            flags are under Media Production & HyperFrames, with their internal keys shown
+            under each label. The unrelated <span className="font-semibold">Hermes Media Worker (Grok, F135)</span>{" "}
+            master flag (Grok image/video generation, not the agent runtime) lives in that same
+            Media Production & HyperFrames group — do not confuse it with the Hermes Runtime group below.
+            Use the search box to jump directly to <span className="font-semibold">Marketplace HyperFrames</span>,
+            <span className="font-semibold"> HyperFrames Worker Queue</span>,
+            <span className="font-semibold"> HyperFrames Library Save</span>,
+            <span className="font-semibold"> HyperFrames Operator Controls</span>,
+            <span className="font-semibold"> Hermes Media Worker (Grok, F135)</span>,
+            <span className="font-semibold"> Hermes Runtime</span>,
+            <span className="font-semibold"> Hermes Profile Experience</span>,
+            <span className="font-semibold"> Hermes Channel Workflow</span>,
+            <span className="font-semibold"> Hermes Memory Sync</span>,
+            <span className="font-semibold"> Hermes Task Modes</span>, and
+            <span className="font-semibold"> Hermes Visibility Summaries</span>.
+          </div>
+          <HelpButton
+            page="/admin/tenants"
+            topic="grok-via-hermes-admin"
+            variant="outline"
+            size="sm"
+            label={isThai ? "คู่มือการตั้งค่า" : "Setup Help"}
+          />
         </div>
 
         {/* Summary + Search */}

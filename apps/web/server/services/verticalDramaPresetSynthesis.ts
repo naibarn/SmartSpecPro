@@ -65,6 +65,11 @@ import {
   type NarrativeRole,
   type RoleTier,
 } from "@shared/verticalDramaSeries/narrativeRole";
+import {
+  renderAudienceAgeRatingBlock,
+  type AudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
+import type { VerticalDramaSeriesLineage } from "@shared/verticalDramaSeries/lineage";
 
 const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-preset-synthesizer");
 const MIN_SELECTIONS = 2;
@@ -207,16 +212,83 @@ export interface SynthesizeVerticalDramaPresetParams {
   productContext?: string;
   targetEpisodeCount?: number;
   toneHint?: string;
+  /** Optional Create-Series basics used when no preset/premise is supplied. */
+  seriesTitleHint?: string;
+  genreHint?: string;
+  audienceAgeRating?: AudienceAgeRating;
+  /** Bounded pre-create continuity snapshot for sequel/special-edition drafts. */
+  lineageContext?: VerticalDramaSeriesLineage;
   /**
    * Feature 132 §4 (F132A) — free-form "โจทย์เรื่องที่อยากได้" creative-intent
    * input. When present (non-empty after trim), it becomes the PRIMARY story
-   * spine and the selected preset(s) become supporting flavor (spec §4.3).
+   * spine for original series. For sequel/special-edition requests, lineage
+   * remains primary canon and this premise is the requested new-season
+   * direction. Selected preset(s) remain supporting flavor (spec §4.3).
    * Absent/empty reproduces today's behavior byte-for-byte. The router is
    * responsible for tenant-flag gating (`verticalDramaUserPremise`) — this
    * service performs no flag check of its own, mirroring every other
    * flag-gated service in this codebase.
    */
   userPremise?: string;
+}
+
+type PresetSynthesisBasicSeedParams = Pick<
+  SynthesizeVerticalDramaPresetParams,
+  | "selectedCategories"
+  | "businessContext"
+  | "productContext"
+  | "targetEpisodeCount"
+  | "toneHint"
+  | "seriesTitleHint"
+  | "genreHint"
+  | "audienceAgeRating"
+  | "lineageContext"
+>;
+
+/** Defaults such as target count/audience tier are valid planning facts. */
+function hasPresetSynthesisBasicSeed(
+  params: PresetSynthesisBasicSeedParams,
+): boolean {
+  return Boolean(
+    params.selectedCategories.length > 0 ||
+      params.businessContext?.trim() ||
+      params.productContext?.trim() ||
+      params.targetEpisodeCount ||
+      params.toneHint?.trim() ||
+      params.seriesTitleHint?.trim() ||
+      params.genreHint?.trim() ||
+      params.audienceAgeRating ||
+      params.lineageContext
+  );
+}
+
+function buildGenerateFromBasicsBlock(params: {
+  hasPresetSelections: boolean;
+  userPremise?: string;
+}): string {
+  if (params.hasPresetSelections || params.userPremise?.trim()) return "";
+  return [
+    "GENERATE FROM BASICS:",
+    "No preset and no user premise were supplied. Invent one coherent, original Vertical Drama story from the basic setup facts in the payload.",
+    "Treat title/genre/tone/business/product/audience/episode-count/lineage facts as constraints. Fill every missing creative decision yourself.",
+    "For sequel or special-edition lineage, continuity facts are non-negotiable and must remain recognizable in the resulting plot, cast, and season arc.",
+  ].join("\n");
+}
+
+function buildLineageContinuityBlock(
+  lineageContext: VerticalDramaSeriesLineage | undefined,
+): string {
+  if (!lineageContext) return "";
+
+  return [
+    "SEQUEL CONTINUITY (PRIMARY CANON):",
+    "This is a continuation, not a reboot.",
+    "- Treat the lineageContext payload as non-negotiable canon: preserve the parent series identity, prior-season events, returning characters, established relationships, world, and unresolved threads.",
+    "- Advance those existing characters and conflicts into the new installment. Never replace them with an unrelated protagonist, business, community, setting, or story premise.",
+    "- Any user premise is a NEW-SEASON DIRECTION layered onto this canon. Use it to evolve the existing story; it must not erase, contradict, or displace continuity.",
+    "- If a requested detail conflicts with canon, preserve canon and record the conflict in `warnings`.",
+    "- The title/logline/mainPlot/seasonArc/characters/visualBible must remain visibly traceable to the parent series.",
+  ].join("\n");
 }
 
 export class PresetSynthesisInputError extends Error {
@@ -296,9 +368,33 @@ function normalizeSynthesizedCharacters(
 function buildUserPremisePrimaryBlock(
   userPremise: string | undefined,
   hasPresetSelections: boolean,
+  hasLineageContext = false,
 ): string | null {
   const trimmed = userPremise?.trim();
   if (!trimmed) return null;
+
+  if (hasLineageContext) {
+    return [
+      "USER PREMISE (NEW-SEASON DIRECTION):",
+      trimmed,
+      "",
+      "Blending rules when lineage and a user premise are present:",
+      "- The series lineage is the primary story spine and canon.",
+      "- Apply the premise as the requested evolution of the existing cast,",
+      "  relationships, world, and unresolved threads — never as a replacement story.",
+      ...(hasPresetSelections
+        ? [
+            "- Selected presets are supporting flavor only. They may intensify",
+            "  drama or texture but cannot displace lineage or the requested evolution.",
+          ]
+        : [
+            "- No preset or category was selected. Do not invent or reference one;",
+            "  synthesize directly from lineage plus this new-season direction.",
+          ]),
+      "- The synthesized draft's logline and mainPlot must visibly continue the",
+      "  parent story while incorporating the premise.",
+    ].join("\n");
+  }
 
   const blendingRules = hasPresetSelections
     ? [
@@ -585,6 +681,8 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
   // "primary" or "supporting flavor" that does not exist.
   const hasPresetSelections =
     params.selectedPresets.length > 0 || params.selectedCategories.length > 0;
+  const hasUserPremise = Boolean(params.userPremise?.trim());
+  const hasLineageContext = Boolean(params.lineageContext);
 
   const primarySelectionId =
     params.primarySelectionId ||
@@ -601,16 +699,39 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
     productContext: clampText(params.productContext, 600),
     targetEpisodeCount: params.targetEpisodeCount ?? 10,
     toneHint: clampText(params.toneHint, 180),
+    ...(params.seriesTitleHint
+      ? {
+          seriesTitleHint: clampText(
+            params.seriesTitleHint,
+            CREATE_SERIES_FIELD_LIMITS.title,
+          ),
+        }
+      : {}),
+    ...(params.genreHint
+      ? {
+          genreHint: clampText(
+            params.genreHint,
+            CREATE_SERIES_FIELD_LIMITS.genre,
+          ),
+        }
+      : {}),
+    ...(params.lineageContext
+      ? { lineageContext: params.lineageContext }
+      : {}),
     rules: [
       "Create one coherent preset draft, not a collage.",
       hasPresetSelections
         ? "Use one primary story spine and supporting flavors for situations, tone, and scene texture."
-        : "No preset or category was selected — build the entire draft from the user premise alone; ignore `primarySelectionId` (it is a placeholder, not a real preset).",
+        : hasUserPremise
+          ? hasLineageContext
+            ? "No preset or category was selected — build the continuation from lineage canon and use the user premise only as its new-season direction."
+            : "No preset or category was selected — build the entire draft from the user premise alone; ignore `primarySelectionId` (it is a placeholder, not a real preset)."
+          : "No preset, category, or premise was selected — build the entire draft from the basic setup facts and make strong original choices for every missing detail.",
       "Keep the result easy for a non-technical creator to edit.",
       "Product or service tie-in may help a scene, but must not magically solve the main conflict.",
       hasPresetSelections
         ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
-        : 'Set "mixRecipe.primaryFlavor" to "user_premise" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.',
+        : `Set "mixRecipe.primaryFlavor" to "${hasLineageContext && hasUserPremise ? "series_lineage" : hasUserPremise ? "user_premise" : "ai_original"}" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.`,
       "Use compact JSON only.",
       `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
@@ -622,7 +743,19 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
   return [
     renderCriteriaVersionMarker(),
     langInstruction,
-    buildUserPremisePrimaryBlock(params.userPremise, hasPresetSelections),
+    params.audienceAgeRating
+      ? renderAudienceAgeRatingBlock(params.audienceAgeRating)
+      : "",
+    buildLineageContinuityBlock(params.lineageContext),
+    buildUserPremisePrimaryBlock(
+      params.userPremise,
+      hasPresetSelections,
+      hasLineageContext,
+    ),
+    buildGenerateFromBasicsBlock({
+      hasPresetSelections,
+      userPremise: params.userPremise,
+    }),
     "Synthesize a new Vertical Drama Series genre preset from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
@@ -652,9 +785,12 @@ export function validatePresetSynthesisSelection(params: {
    * raises the ceiling.
    */
   hasUserPremise?: boolean;
+  /** Wizard basics (including defaults) may stand in for preset/premise seed. */
+  hasBasicSeed?: boolean;
 }) {
   const total = params.selectedPresets.length + uniqueStrings(params.selectedCategories).length;
-  const minSelections = params.hasUserPremise ? 0 : MIN_SELECTIONS;
+  const minSelections =
+    params.hasUserPremise || params.hasBasicSeed ? 0 : MIN_SELECTIONS;
   if (total < minSelections) {
     throw new PresetSynthesisInputError("Select at least 2 story flavors for Mix and Match");
   }
@@ -673,10 +809,15 @@ export async function synthesizeVerticalDramaPreset(
   // doc-comment). Never derive this from anything else, or a flag-off
   // tenant could synthesize a draft the prompt then silently ignores.
   const hasUserPremise = Boolean(params.userPremise?.trim());
+  const hasBasicSeed = hasPresetSynthesisBasicSeed({
+    ...params,
+    selectedCategories,
+  });
   validatePresetSynthesisSelection({
     selectedPresets: params.selectedPresets,
     selectedCategories,
     hasUserPremise,
+    hasBasicSeed,
   });
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);
@@ -966,6 +1107,10 @@ export interface SynthesizeVerticalDramaPresetV2Params {
   productContext?: string;
   targetEpisodeCount?: number;
   toneHint?: string;
+  seriesTitleHint?: string;
+  genreHint?: string;
+  audienceAgeRating?: AudienceAgeRating;
+  lineageContext?: VerticalDramaSeriesLineage;
   /** Default `DEFAULT_MIN_FACETS_PER_PRESET` (2). */
   minFacetsPerPreset?: number;
   /** See `SynthesizeVerticalDramaPresetParams.userPremise` (Feature 132 §4, F132A) — same contract, v2 counterpart. */
@@ -1068,6 +1213,8 @@ function buildUserPromptV2(args: {
   // guard), so the "verifiable blend" rules below must not ask the model to
   // fill facet slots or name a PRIMARY preset that does not exist.
   const hasPresetSelections = selections.length > 0 || selectedCategories.length > 0;
+  const hasUserPremise = Boolean(params.userPremise?.trim());
+  const hasLineageContext = Boolean(params.lineageContext);
 
   const blendCoreRules = hasPresetSelections
     ? [
@@ -1075,7 +1222,11 @@ function buildUserPromptV2(args: {
         'The PRIMARY selection\'s story spine (mainPlot/seasonArc skeleton) drives the main plot; every OTHER selected preset must still land concrete, genuine ("kept": true) contributions in its assigned facets below — fill EVERY facet slot assigned to it in "facetAssignments".',
       ]
     : [
-        "No preset or category was selected — the user premise above is the sole story spine. Do not invent, reference, or blend a preset that was not selected.",
+        hasUserPremise
+          ? hasLineageContext
+            ? "No preset or category was selected — the sequel lineage is the sole story spine; the user premise is a new-season direction layered onto that canon. Do not invent, reference, or blend a preset that was not selected."
+            : "No preset or category was selected — the user premise above is the sole story spine. Do not invent, reference, or blend a preset that was not selected."
+          : "No preset, category, or premise was selected — the basic setup facts are the story spine. Invent a coherent original story and do not reference a preset that was not selected.",
         'Every facet in "facetAssignments" below intentionally has an empty "assignedPresets" — return "blendFacets" covering every facet with an empty "contributions" array for each (there is nothing to blend).',
       ];
 
@@ -1098,6 +1249,25 @@ function buildUserPromptV2(args: {
     productContext: clampText(params.productContext, 600),
     targetEpisodeCount: params.targetEpisodeCount ?? 10,
     toneHint: clampText(params.toneHint, 180),
+    ...(params.seriesTitleHint
+      ? {
+          seriesTitleHint: clampText(
+            params.seriesTitleHint,
+            CREATE_SERIES_FIELD_LIMITS.title,
+          ),
+        }
+      : {}),
+    ...(params.genreHint
+      ? {
+          genreHint: clampText(
+            params.genreHint,
+            CREATE_SERIES_FIELD_LIMITS.genre,
+          ),
+        }
+      : {}),
+    ...(params.lineageContext
+      ? { lineageContext: params.lineageContext }
+      : {}),
     rules: [
       ...blendCoreRules,
       `"blendFacets" must cover every facet in this exact set: ${VERTICAL_DRAMA_BLEND_FACETS.join(", ")}.${
@@ -1115,7 +1285,7 @@ function buildUserPromptV2(args: {
       "Product or service tie-in may help a scene, but must not magically solve the main conflict.",
       hasPresetSelections
         ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
-        : 'Set "mixRecipe.primaryFlavor" to "user_premise" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.',
+        : `Set "mixRecipe.primaryFlavor" to "${hasLineageContext && hasUserPremise ? "series_lineage" : hasUserPremise ? "user_premise" : "ai_original"}" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.`,
       "Use compact JSON only.",
       `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
@@ -1136,7 +1306,19 @@ function buildUserPromptV2(args: {
   return [
     renderCriteriaVersionMarker(),
     langInstruction,
-    buildUserPremisePrimaryBlock(params.userPremise, hasPresetSelections),
+    params.audienceAgeRating
+      ? renderAudienceAgeRatingBlock(params.audienceAgeRating)
+      : "",
+    buildLineageContinuityBlock(params.lineageContext),
+    buildUserPremisePrimaryBlock(
+      params.userPremise,
+      hasPresetSelections,
+      hasLineageContext,
+    ),
+    buildGenerateFromBasicsBlock({
+      hasPresetSelections,
+      userPremise: params.userPremise,
+    }),
     "Synthesize a new Vertical Drama Series genre preset (Mix and Match v2 — verifiable blend) from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
@@ -1208,10 +1390,15 @@ export async function synthesizeVerticalDramaPresetV2(
   // THIS function's own already-gated `params.userPremise`, never raw
   // client input.
   const hasUserPremise = Boolean(params.userPremise?.trim());
+  const hasBasicSeed = hasPresetSynthesisBasicSeed({
+    ...params,
+    selectedCategories,
+  });
   validatePresetSynthesisSelection({
     selectedPresets: selections,
     selectedCategories,
     hasUserPremise,
+    hasBasicSeed,
   });
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);

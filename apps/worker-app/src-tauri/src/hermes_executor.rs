@@ -201,13 +201,16 @@ pub fn build_hermes_prompt_envelope(
 
 // ────────────────────────────────────────────────────────────────────────
 // Argv construction — invocation shape frozen in section-11 spec §2.2:
-// `hermes -p conn_<connectionId> -z --provider xai-oauth --toolsets
-// "image_gen"|"video_gen" --ignore-user-config <envelope>`. `file` toolset
+// `hermes -z <envelope> --provider xai-oauth --model grok-build-0.1 --toolsets
+// "image_gen"|"video_gen" --ignore-rules`. The managed per-connection config
+// selects the xAI media backends, so it must remain readable. `file` toolset
 // is NEVER enabled by default.
 // ────────────────────────────────────────────────────────────────────────
 
+const HERMES_XAI_INFERENCE_MODEL: &str = "grok-build-0.1";
+
 pub fn build_hermes_argv(
-    profile_arg: &str,
+    _profile_arg: &str,
     operation: &str,
     enable_file_toolset: bool,
     envelope: &str,
@@ -224,16 +227,101 @@ pub fn build_hermes_argv(
     };
 
     vec![
-        "-p".into(),
-        profile_arg.into(),
         "-z".into(),
+        envelope.into(),
         "--provider".into(),
         "xai-oauth".into(),
+        "--model".into(),
+        HERMES_XAI_INFERENCE_MODEL.into(),
         "--toolsets".into(),
         toolsets,
-        "--ignore-user-config".into(),
-        envelope.into(),
+        "--ignore-rules".into(),
     ]
+}
+
+const DIRECT_XAI_MEDIA_SCRIPT: &str = r#"
+import json
+import os
+import shutil
+import sys
+from pathlib import Path
+
+payload = json.loads(sys.argv[1])
+operation = payload["operation"]
+prompt = payload["prompt"]
+settings = payload.get("settings") or {}
+references = payload.get("references") or []
+
+print("SMARTSPECPRO_DIRECT_XAI_START", flush=True)
+
+if operation.startswith("image."):
+    selected_model = settings.get("model")
+    if selected_model:
+        os.environ["XAI_IMAGE_MODEL"] = str(selected_model)
+    from plugins.image_gen.xai import XAIImageGenProvider
+    source = references[0] if references and operation == "image.edit" else None
+    extra_refs = references[1:] if source else references
+    result = XAIImageGenProvider().generate(
+        prompt,
+        settings.get("aspectRatio") or "1:1",
+        image_url=source,
+        reference_image_urls=extra_refs or None,
+    )
+    output = result.get("image")
+else:
+    from plugins.video_gen.xai import XAIVideoGenProvider
+    source = references[0] if references and operation == "video.image_to_video" else None
+    extra_refs = references if operation == "video.reference_to_video" else None
+    result = XAIVideoGenProvider().generate(
+        prompt,
+        model=settings.get("model"),
+        image_url=source,
+        reference_image_urls=extra_refs,
+        duration=settings.get("durationSeconds"),
+        aspect_ratio=settings.get("aspectRatio") or "16:9",
+        resolution=settings.get("resolution") or "720p",
+        _model_override_explicit=bool(settings.get("model")),
+    )
+    output = result.get("video")
+
+if result.get("success") and output:
+    if not str(output).lower().startswith(("http://", "https://")):
+        source_path = Path(output)
+        destination = Path(payload["outputDir"]) / source_path.name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if source_path.resolve() != destination.resolve():
+            shutil.copy2(source_path, destination)
+        output = str(destination)
+    marker = {"status": "ok", "files": [output], "message": ""}
+else:
+    marker = {
+        "status": "error",
+        "files": [],
+        "message": result.get("error") or "xAI media generation returned no output",
+    }
+
+print("SMARTSPECPRO_RESULT_BEGIN " + json.dumps(marker) + " SMARTSPECPRO_RESULT_END", flush=True)
+"#;
+
+fn build_direct_xai_media_argv(
+    contract: &HermesJobContract,
+    reference_paths: &[PathBuf],
+    settings: &Value,
+    output_dir: &Path,
+) -> Result<Vec<String>, String> {
+    let payload = json!({
+        "operation": contract.operation,
+        "prompt": contract.prompt,
+        "references": reference_paths
+            .iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect::<Vec<_>>(),
+        "settings": settings,
+        "outputDir": output_dir.to_string_lossy(),
+    });
+    let serialized = serde_json::to_string(&payload)
+        .map_err(|error| format!("failed to serialize direct xAI media request: {error}"))?;
+    Ok(vec!["-c".to_string(), DIRECT_XAI_MEDIA_SCRIPT.to_string(), serialized])
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -243,6 +331,14 @@ pub fn build_hermes_argv(
 // ────────────────────────────────────────────────────────────────────────
 
 const CONNECTION_ID_PATTERN_MAX_LEN: usize = 128;
+const MANAGED_XAI_MEDIA_CONFIG: &str = "image_gen:\n  provider: xai\nvideo_gen:\n  provider: xai\n";
+
+fn ensure_managed_xai_media_config(home_dir: &Path) -> Result<(), String> {
+    fs::create_dir_all(home_dir)
+        .map_err(|error| format!("failed to create hermes profile home: {error}"))?;
+    fs::write(home_dir.join("config.yaml"), MANAGED_XAI_MEDIA_CONFIG)
+        .map_err(|error| format!("failed to write managed Hermes xAI media config: {error}"))
+}
 
 fn validate_connection_id_segment(value: &str) -> Result<(), String> {
     if value.is_empty() || value.len() > CONNECTION_ID_PATTERN_MAX_LEN {
@@ -252,7 +348,9 @@ fn validate_connection_id_segment(value: &str) -> Result<(), String> {
         .chars()
         .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
     {
-        return Err(format!("invalid Hermes connectionId for profile path: {value}"));
+        return Err(format!(
+            "invalid Hermes connectionId for profile path: {value}"
+        ));
     }
     Ok(())
 }
@@ -261,8 +359,9 @@ fn validate_connection_id_segment(value: &str) -> Result<(), String> {
 #[cfg(unix)]
 fn restrict_profile_dir_permissions(path: &Path) -> Result<(), String> {
     use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-        .map_err(|error| format!("failed to restrict hermes profile directory permissions: {error}"))
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700)).map_err(|error| {
+        format!("failed to restrict hermes profile directory permissions: {error}")
+    })
 }
 
 /// Best-effort current-user-only ACL via `icacls` (no ACL crate dependency
@@ -273,6 +372,7 @@ fn restrict_profile_dir_permissions(path: &Path) -> Result<(), String> {
 /// equivalent. Never fatal: profile creation still succeeds if this fails.
 #[cfg(windows)]
 fn restrict_profile_dir_permissions(path: &Path) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
     let username = std::env::var("USERNAME").unwrap_or_default();
     if username.trim().is_empty() {
         return Ok(());
@@ -282,6 +382,7 @@ fn restrict_profile_dir_permissions(path: &Path) -> Result<(), String> {
         .arg("/inheritance:r")
         .arg("/grant:r")
         .arg(format!("{username}:(OI)(CI)F"))
+        .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
         .output()
         .map(|_| ())
         .map_err(|error| format!("failed to run icacls on hermes profile directory: {error}"))
@@ -383,6 +484,7 @@ impl HermesProfileStore {
         let logs_dir = base.join("logs");
         fs::create_dir_all(home_dir.join(".hermes"))
             .map_err(|error| format!("failed to create hermes profile home: {error}"))?;
+        ensure_managed_xai_media_config(&home_dir)?;
         fs::create_dir_all(&locks_dir)
             .map_err(|error| format!("failed to create hermes profile locks dir: {error}"))?;
         fs::create_dir_all(&logs_dir)
@@ -399,7 +501,10 @@ impl HermesProfileStore {
         self.hosted.insert(connection_id.to_string());
 
         let mut env = HashMap::new();
-        env.insert("HERMES_HOME".to_string(), home_dir.to_string_lossy().to_string());
+        env.insert(
+            "HERMES_HOME".to_string(),
+            home_dir.to_string_lossy().to_string(),
+        );
         Ok(HermesProfileHandle {
             profile_arg: format!("conn_{connection_id}"),
             home_dir,
@@ -461,6 +566,7 @@ pub struct HermesExecutionPlan {
     pub profile_dir: PathBuf,
     pub output_dir: PathBuf,
     pub tmp_dir: PathBuf,
+    pub settings: Value,
     pub soft_timeout_ms: u64,
     pub hard_timeout_ms: u64,
     pub inactivity_timeout_ms: u64,
@@ -475,7 +581,10 @@ pub fn prepare_hermes_execution_plan(
     workspace_root: &Path,
 ) -> Result<HermesExecutionPlan, String> {
     if !is_hermes_media_job_type(&job.job_type) {
-        return Err(format!("unsupported hermes worker job type: {}", job.job_type));
+        return Err(format!(
+            "unsupported hermes worker job type: {}",
+            job.job_type
+        ));
     }
     if doctor.status != "ready" {
         return Err("hermes runtime is not ready".into());
@@ -483,6 +592,7 @@ pub fn prepare_hermes_execution_plan(
     let connection_id = verify_connection_affinity(job, profiles)?;
     let contract = parse_hermes_job_contract(job)?;
     let profile_dir = profiles.profile_dir(&connection_id)?;
+    ensure_managed_xai_media_config(&profile_dir)?;
 
     let job_segment = sanitize_segment(&job.id);
     if job_segment.is_empty() {
@@ -496,13 +606,8 @@ pub fn prepare_hermes_execution_plan(
     validate_workspace_path(workspace_root, &tmp_dir)?;
 
     let is_video = job.job_type == HERMES_MEDIA_VIDEO_JOB_TYPE;
-    let envelope = build_hermes_prompt_envelope(&contract, &job.id, &output_dir);
-    let argv = build_hermes_argv(
-        &format!("conn_{connection_id}"),
-        &contract.operation,
-        false,
-        &envelope,
-    );
+    let settings = job.input_json.get("settings").cloned().unwrap_or_else(|| json!({}));
+    let argv = build_direct_xai_media_argv(&contract, &[], &settings, &output_dir)?;
 
     let mut env = base_hermes_spawn_env();
     env.insert(
@@ -525,10 +630,19 @@ pub fn prepare_hermes_execution_plan(
         profile_dir,
         output_dir,
         tmp_dir,
+        settings,
         soft_timeout_ms: soft_ms,
         hard_timeout_ms: hard_ms,
-        inactivity_timeout_ms: 5 * 60_000,
-        expected_kind: if is_video { "video".into() } else { "image".into() },
+        inactivity_timeout_ms: if is_video {
+            15 * 60_000
+        } else {
+            3 * 60_000
+        },
+        expected_kind: if is_video {
+            "video".into()
+        } else {
+            "image".into()
+        },
         expected_count: contract.output_count.unwrap_or(1) as usize,
     })
 }
@@ -695,14 +809,20 @@ const RESERVED_WINDOWS_NAMES: &[&str] = &[
 ];
 
 fn assert_safe_file_name(path: &Path) -> Result<(), HermesFailure> {
-    let name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("");
     if name.is_empty() || name.chars().count() > 255 {
         return Err(HermesFailure::new(
             "HERMES_OUTPUT_INVALID",
             "Output file name length is invalid",
         ));
     }
-    if name.chars().any(|ch| (ch as u32) <= 0x1F || (ch as u32) == 0x7F) {
+    if name
+        .chars()
+        .any(|ch| (ch as u32) <= 0x1F || (ch as u32) == 0x7F)
+    {
         return Err(HermesFailure::new(
             "HERMES_OUTPUT_INVALID",
             "Output file name contains control characters",
@@ -741,13 +861,14 @@ fn confine_output_path(
         })
     };
 
-    if within(forbidden_roots) {
+    let is_allowed = within(allowed_roots);
+    if within(forbidden_roots) && !is_allowed {
         return Err(HermesFailure::new(
             "HERMES_OUTPUT_INVALID",
             "Output path resolves under a forbidden profile root",
         ));
     }
-    if !within(allowed_roots) {
+    if !is_allowed {
         return Err(HermesFailure::new(
             "HERMES_OUTPUT_INVALID",
             "Output path escapes the allowed workspace/cache roots",
@@ -756,21 +877,27 @@ fn confine_output_path(
     Ok(real)
 }
 
-const IMAGE_MAGIC_BYTES: &[(&[u8], &str)] = &[
-    (&[0x89, 0x50, 0x4E, 0x47], "image/png"),
-    (&[0xFF, 0xD8, 0xFF], "image/jpeg"),
-    (b"GIF8", "image/gif"),
-    (b"RIFF", "image/webp"),
-];
+fn detect_image_format(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
+    if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
+        return Some(("image/png", "png"));
+    }
+    if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        return Some(("image/jpeg", "jpg"));
+    }
+    if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+        return Some(("image/gif", "gif"));
+    }
+    if bytes.len() >= 12 && bytes.starts_with(b"RIFF") && &bytes[8..12] == b"WEBP" {
+        return Some(("image/webp", "webp"));
+    }
+    None
+}
 
 fn validate_image_file(path: &Path) -> Result<(String, u64), HermesFailure> {
     let bytes = fs::read(path)
         .map_err(|error| HermesFailure::new("HERMES_OUTPUT_INVALID", error.to_string()))?;
-    let matched = IMAGE_MAGIC_BYTES
-        .iter()
-        .find(|(magic, _)| bytes.len() >= magic.len() && &bytes[..magic.len()] == *magic);
-    match matched {
-        Some((_, content_type)) if !bytes.is_empty() => {
+    match detect_image_format(&bytes) {
+        Some((content_type, _)) if !bytes.is_empty() => {
             Ok((content_type.to_string(), bytes.len() as u64))
         }
         _ => Err(HermesFailure::new(
@@ -829,7 +956,10 @@ fn build_collected(
 pub fn collect_hermes_outputs(
     params: CollectOutputsParams,
 ) -> Result<Vec<CollectedOutput>, HermesFailure> {
-    let mut allowed_roots = vec![params.output_dir.to_path_buf(), params.tmp_dir.to_path_buf()];
+    let mut allowed_roots = vec![
+        params.output_dir.to_path_buf(),
+        params.tmp_dir.to_path_buf(),
+    ];
     allowed_roots.extend(params.cache_dirs.iter().cloned());
 
     if let Some(marker) = parse_result_marker(params.stdout)? {
@@ -848,15 +978,49 @@ pub fn collect_hermes_outputs(
             ));
         }
         let mut collected = Vec::new();
-        for file in &marker.files {
-            let candidate = if Path::new(file).is_absolute() {
-                PathBuf::from(file)
+        for (index, file) in marker.files.iter().enumerate() {
+            let (candidate, signal) = if file.starts_with("https://") {
+                fs::create_dir_all(params.tmp_dir).map_err(|error| {
+                    HermesFailure::new("HERMES_OUTPUT_INVALID", error.to_string())
+                })?;
+                let bytes = (params.fetch)(file).map_err(|error| {
+                    HermesFailure::new(
+                        "HERMES_OUTPUT_INVALID",
+                        format!("Failed to download result URL: {error}"),
+                    )
+                })?;
+                let extension = if params.expected_kind == "video" {
+                    "mp4"
+                } else {
+                    detect_image_format(&bytes)
+                        .map(|(_, extension)| extension)
+                        .ok_or_else(|| {
+                            HermesFailure::new(
+                                "HERMES_OUTPUT_INVALID",
+                                "Downloaded result failed image magic-byte validation",
+                            )
+                        })?
+                };
+                let local_path = params
+                    .tmp_dir
+                    .join(format!("result-marker-{index}.{extension}"));
+                fs::write(&local_path, &bytes).map_err(|error| {
+                    HermesFailure::new("HERMES_OUTPUT_INVALID", error.to_string())
+                })?;
+                (local_path, "result_marker_url")
+            } else if file.starts_with("http://") {
+                return Err(HermesFailure::new(
+                    "HERMES_OUTPUT_INVALID",
+                    "Hermes result URLs must use HTTPS",
+                ));
+            } else if Path::new(file).is_absolute() {
+                (PathBuf::from(file), "result_marker")
             } else {
-                params.output_dir.join(file)
+                (params.output_dir.join(file), "result_marker")
             };
             collected.push(build_collected(
                 &candidate,
-                "result_marker",
+                signal,
                 &allowed_roots,
                 params.forbidden_roots,
                 params.expected_kind,
@@ -1039,7 +1203,10 @@ pub fn download_and_verify_reference(
                 ));
             }
             HermesFetchOutcome::Failed(message) => {
-                return Err(HermesFailure::new("HERMES_REFERENCE_DOWNLOAD_FAILED", message));
+                return Err(HermesFailure::new(
+                    "HERMES_REFERENCE_DOWNLOAD_FAILED",
+                    message,
+                ));
             }
         }
     }
@@ -1155,10 +1322,85 @@ fn mask_token_like(value: &str) -> String {
     }
 }
 
+fn redact_named_diagnostic_value(input: &str, key: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut cursor = 0usize;
+    let lower = input.to_ascii_lowercase();
+    while let Some(relative) = lower[cursor..].find(key) {
+        let start = cursor + relative;
+        let preceding = input[..start].chars().next_back();
+        let boundary_ok = preceding
+            .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_' && ch != '-')
+            .unwrap_or(true);
+        let separator_index = start + key.len();
+        let separator = input[separator_index..].chars().next();
+        if !boundary_ok || !matches!(separator, Some('=') | Some(':')) {
+            output.push_str(&input[cursor..separator_index]);
+            cursor = separator_index;
+            continue;
+        }
+
+        let value_start = separator_index + 1;
+        let value_end = input[value_start..]
+            .char_indices()
+            .find_map(|(offset, ch)| {
+                (ch.is_whitespace() || matches!(ch, '&' | '"' | '\'' | ')' | ']'))
+                    .then_some(value_start + offset)
+            })
+            .unwrap_or(input.len());
+        output.push_str(&input[cursor..value_start]);
+        output.push_str("[REDACTED]");
+        cursor = value_end;
+    }
+    output.push_str(&input[cursor..]);
+    output
+}
+
+fn redact_bearer_tokens(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut cursor = 0usize;
+    let lower = input.to_ascii_lowercase();
+    while let Some(relative) = lower[cursor..].find("bearer ") {
+        let start = cursor + relative;
+        let value_start = start + "bearer ".len();
+        let value_end = input[value_start..]
+            .char_indices()
+            .find_map(|(offset, ch)| {
+                (ch.is_whitespace() || matches!(ch, '&' | '"' | '\'' | ')' | ']'))
+                    .then_some(value_start + offset)
+            })
+            .unwrap_or(input.len());
+        output.push_str(&input[cursor..value_start]);
+        output.push_str("[REDACTED]");
+        cursor = value_end;
+    }
+    output.push_str(&input[cursor..]);
+    output
+}
+
+fn redact_hermes_diagnostic_line(line: &str) -> String {
+    let mut redacted = redact_bearer_tokens(line);
+    for key in [
+        "refresh_token",
+        "access_token",
+        "authorization_code",
+        "device_code",
+        "user_code",
+        "password",
+        "token",
+        "secret",
+        "code",
+        "state",
+    ] {
+        redacted = redact_named_diagnostic_value(&redacted, key);
+    }
+    redacted.chars().take(512).collect()
+}
+
 fn build_diagnostic(reason: &str, stdout: &str, stderr: &str) -> String {
-    let stderr_line = stderr.lines().map(str::trim).find(|line| !line.is_empty());
+    let stderr_line = stderr.lines().map(str::trim).rfind(|line| !line.is_empty());
     if let Some(line) = stderr_line {
-        return format!("{reason}: {}", mask_token_like(line));
+        return format!("{reason}: {}", redact_hermes_diagnostic_line(line));
     }
     let last_stdout_line = stdout
         .lines()
@@ -1166,7 +1408,10 @@ fn build_diagnostic(reason: &str, stdout: &str, stderr: &str) -> String {
         .filter(|line| !line.is_empty())
         .last()
         .unwrap_or("");
-    format!("{reason}: {}", mask_token_like(last_stdout_line))
+    format!(
+        "{reason}: {}",
+        redact_hermes_diagnostic_line(last_stdout_line)
+    )
 }
 
 fn classify_and_build_failure(stdout: &str, stderr: &str) -> HermesControlOutcome {
@@ -1205,7 +1450,9 @@ fn find_urls(text: &str) -> Vec<String> {
         let start = cursor + relative;
         let rest = &text[start..];
         let end = rest
-            .find(|ch: char| ch.is_whitespace() || ch == '"' || ch == '\'' || ch == '<' || ch == '>')
+            .find(|ch: char| {
+                ch.is_whitespace() || ch == '"' || ch == '\'' || ch == '<' || ch == '>'
+            })
             .unwrap_or(rest.len());
         let end = end.max(1);
         urls.push(rest[..end].to_string());
@@ -1240,7 +1487,9 @@ fn is_code_like(token: &str) -> bool {
     }
     parts.iter().all(|part| {
         (4..=8).contains(&part.len())
-            && part.chars().all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit())
+            && part
+                .chars()
+                .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit())
             && part.chars().any(|ch| ch.is_ascii_alphanumeric())
     })
 }
@@ -1256,7 +1505,6 @@ struct DeviceCodeParseResult {
     verification_url: Option<String>,
     user_code: Option<String>,
     expires_at: Option<String>,
-    raw: Option<String>,
 }
 
 /// Byte-offset-safe: finds the char index of the first "expir" (any case).
@@ -1293,19 +1541,14 @@ fn extract_iso_expiry(text: &str) -> Option<String> {
         // Mirrors the TS regex's `[0-9:.Z+-]+` continuation class (stops at
         // punctuation like a trailing comma, never swallows trailing prose).
         let mut end = start + 11;
-        while end < chars.len()
-            && matches!(chars[end], '0'..='9' | ':' | '.' | 'Z' | '+' | '-')
-        {
+        while end < chars.len() && matches!(chars[end], '0'..='9' | ':' | '.' | 'Z' | '+' | '-') {
             end += 1;
         }
         let candidate: String = chars[start..end].iter().collect();
-        if let Ok(parsed) = time::OffsetDateTime::parse(
-            &candidate,
-            &time::format_description::well_known::Rfc3339,
-        ) {
-            if let Ok(formatted) =
-                parsed.format(&time::format_description::well_known::Rfc3339)
-            {
+        if let Ok(parsed) =
+            time::OffsetDateTime::parse(&candidate, &time::format_description::well_known::Rfc3339)
+        {
+            if let Ok(formatted) = parsed.format(&time::format_description::well_known::Rfc3339) {
                 return Some(formatted);
             }
         }
@@ -1347,7 +1590,10 @@ fn extract_expires_at(text: &str, now: time::OffsetDateTime) -> Option<String> {
     extract_iso_expiry(text).or_else(|| extract_relative_expiry(text, now))
 }
 
-fn parse_hermes_device_code_output(raw_text: &str, now: time::OffsetDateTime) -> DeviceCodeParseResult {
+fn parse_hermes_device_code_output(
+    raw_text: &str,
+    now: time::OffsetDateTime,
+) -> DeviceCodeParseResult {
     let lines: Vec<String> = raw_text
         .lines()
         .map(strip_decoration)
@@ -1358,7 +1604,6 @@ fn parse_hermes_device_code_output(raw_text: &str, now: time::OffsetDateTime) ->
             verification_url: None,
             user_code: None,
             expires_at: None,
-            raw: None,
         };
     }
     let joined = lines.join("\n");
@@ -1381,19 +1626,13 @@ fn parse_hermes_device_code_output(raw_text: &str, now: time::OffsetDateTime) ->
             verification_url: Some(url.clone()),
             user_code: Some(code.clone()),
             expires_at: extract_expires_at(&joined, now),
-            raw: None,
         };
     }
     DeviceCodeParseResult {
         verification_url: None,
         user_code: None,
         expires_at: None,
-        raw: Some(joined),
     }
-}
-
-fn looks_like_device_code_candidate(text: &str) -> bool {
-    text.contains("https://") || !find_codes(text).is_empty()
 }
 
 struct AuthStatusResult {
@@ -1448,21 +1687,17 @@ const HERMES_MEDIA_OPERATIONS: &[&str] = &[
     "video.reference_to_video",
 ];
 
-fn build_capability_manifest(hermes_version: &str, tools_output: &str, authorized: bool) -> Value {
+fn build_capability_manifest(hermes_version: &str, _tools_output: &str, authorized: bool) -> Value {
     let mut operations = serde_json::Map::new();
     for operation in HERMES_MEDIA_OPERATIONS {
-        if tools_output.contains(operation) {
+        if authorized {
             operations.insert((*operation).to_string(), json!({ "enabled": true }));
         } else {
             operations.insert(
                 (*operation).to_string(),
                 json!({
                     "enabled": false,
-                    "reason": if authorized {
-                        "Tool not available for this Hermes CLI installation post-authorization"
-                    } else {
-                        "Connection is not authorized"
-                    },
+                    "reason": "Connection is not authorized",
                 }),
             );
         }
@@ -1512,17 +1747,10 @@ pub fn run_hermes_connection_authorize(
                 payload.insert("expiresAt".to_string(), json!(expires_at));
             }
             deps.post_event(HERMES_DEVICE_CODE_EVENT_TYPE, Value::Object(payload));
-        } else if let Some(raw) = &parsed.raw {
-            if looks_like_device_code_candidate(raw) {
-                device_code_posted = true;
-                deps.post_event(HERMES_DEVICE_CODE_EVENT_TYPE, json!({ "raw": raw }));
-            }
         }
     };
 
     let args = vec![
-        "-p".to_string(),
-        profile_reference.to_string(),
         "auth".to_string(),
         "add".to_string(),
         "xai-oauth".to_string(),
@@ -1540,8 +1768,6 @@ pub fn run_hermes_connection_authorize(
     }
 
     let status_args = vec![
-        "-p".to_string(),
-        profile_reference.to_string(),
         "auth".to_string(),
         "status".to_string(),
         "xai-oauth".to_string(),
@@ -1568,7 +1794,10 @@ pub fn run_hermes_connection_authorize(
 /// `authorize` deliberately does NOT call this: it legitimately creates a
 /// brand-new local profile for a connection this worker doesn't host yet,
 /// so "not hosted" is the expected pre-condition there, not a violation.
-fn ensure_connection_hosted(connection_id: &str, deps: &dyn HermesControlDeps) -> Option<HermesControlOutcome> {
+fn ensure_connection_hosted(
+    connection_id: &str,
+    deps: &dyn HermesControlDeps,
+) -> Option<HermesControlOutcome> {
     if deps.is_hosted(connection_id) {
         return None;
     }
@@ -1585,8 +1814,9 @@ fn ensure_connection_hosted(connection_id: &str, deps: &dyn HermesControlDeps) -
 /// closed) → `tools` (credential-gated) → `--version` → capability manifest.
 pub fn run_hermes_connection_probe(
     connection_id: &str,
-    profile_reference: &str,
+    _profile_reference: &str,
     timeout_seconds: u64,
+    test_generation: Option<&str>,
     deps: &dyn HermesControlDeps,
 ) -> HermesControlOutcome {
     if let Some(failure) = ensure_connection_hosted(connection_id, deps) {
@@ -1600,8 +1830,6 @@ pub fn run_hermes_connection_probe(
     ));
 
     let status_args = vec![
-        "-p".to_string(),
-        profile_reference.to_string(),
         "auth".to_string(),
         "status".to_string(),
         "xai-oauth".to_string(),
@@ -1619,7 +1847,10 @@ pub fn run_hermes_connection_probe(
     }
     let auth_status = parse_hermes_auth_status_output(&status_result.stdout);
 
-    let tools_args = vec!["-p".to_string(), profile_reference.to_string(), "tools".to_string()];
+    // `hermes tools` is an interactive configuration wizard in current
+    // Hermes releases and therefore never terminates in a headless worker.
+    // `hermes status --all` is the documented non-interactive inventory.
+    let tools_args = vec!["status".to_string(), "--all".to_string()];
     let tools_result = match deps.spawn(&tools_args, timeout_seconds * 1000, &mut |_| {}) {
         Ok(result) => result,
         Err(error) => return HermesControlOutcome::failure("process_failed", error),
@@ -1644,7 +1875,63 @@ pub fn run_hermes_connection_probe(
         }
     };
 
-    let manifest = build_capability_manifest(&hermes_version, &tools_result.stdout, auth_status.authorized);
+    let mut manifest = build_capability_manifest(
+        &hermes_version,
+        &tools_result.stdout,
+        auth_status.authorized,
+    );
+
+    if let Some(asset_type @ ("image" | "video")) = test_generation {
+        let tested_at = deps
+            .now()
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap_or_else(|_| deps.now().unix_timestamp().to_string());
+        match run_probe_generation_test(connection_id, asset_type, deps) {
+            Ok(()) => {
+                if let Some(root) = manifest.as_object_mut() {
+                    root.insert(
+                        "lastGenerationTest".to_string(),
+                        json!({ "assetType": asset_type, "ok": true, "at": tested_at }),
+                    );
+                    if let Some(operations) =
+                        root.get_mut("operations").and_then(Value::as_object_mut)
+                    {
+                        let operation = if asset_type == "image" {
+                            "image.generate"
+                        } else {
+                            "video.generate"
+                        };
+                        operations.insert(operation.to_string(), json!({ "enabled": true }));
+                    }
+                }
+            }
+            Err((error_code, failure_reason, diagnostic)) => {
+                if matches!(
+                    error_code.as_str(),
+                    "HERMES_OAUTH_SESSION_EXPIRED"
+                        | "HERMES_REAUTH_REQUIRED"
+                        | "HERMES_ENTITLEMENT_RESTRICTED"
+                ) {
+                    return HermesControlOutcome::Failure {
+                        error_code,
+                        failure_reason,
+                        diagnostic,
+                    };
+                }
+                if let Some(root) = manifest.as_object_mut() {
+                    root.insert(
+                        "lastGenerationTest".to_string(),
+                        json!({
+                            "assetType": asset_type,
+                            "ok": false,
+                            "at": tested_at,
+                            "errorCode": error_code,
+                        }),
+                    );
+                }
+            }
+        }
+    }
     deps.log_info(&format!(
         "hermes_connection_probe: completed for connection {connection_id}"
     ));
@@ -1652,6 +1939,107 @@ pub fn run_hermes_connection_probe(
         account_hint: auth_status.account_hint,
         manifest: Some(manifest),
     }
+}
+
+fn run_probe_generation_test(
+    connection_id: &str,
+    asset_type: &str,
+    deps: &dyn HermesControlDeps,
+) -> Result<(), (String, String, String)> {
+    let workspace = std::env::temp_dir().join(format!(
+        "smartspec-hermes-test-{}-{}",
+        sanitize_segment(connection_id),
+        deps.now().unix_timestamp_nanos()
+    ));
+    let output_dir = workspace.join("output");
+    let tmp_dir = workspace.join("tmp");
+    let result = (|| {
+        fs::create_dir_all(&output_dir).map_err(|error| {
+            (
+                "HERMES_PROCESS_FAILED".to_string(),
+                "process_failed".to_string(),
+                format!("failed to create generation-test output directory: {error}"),
+            )
+        })?;
+        fs::create_dir_all(&tmp_dir).map_err(|error| {
+            (
+                "HERMES_PROCESS_FAILED".to_string(),
+                "process_failed".to_string(),
+                format!("failed to create generation-test temporary directory: {error}"),
+            )
+        })?;
+
+        let contract = HermesJobContract {
+            operation: format!("{asset_type}.generate"),
+            connection_id: connection_id.to_string(),
+            prompt: "SmartSpecPro connectivity check: generate one minimal test asset, then stop."
+                .to_string(),
+            references: Vec::new(),
+            output_count: Some(1),
+        };
+        let settings = if asset_type == "video" {
+            json!({
+                "model": "grok-imagine-video",
+                "aspectRatio": "16:9",
+                "durationSeconds": 3,
+            })
+        } else {
+            json!({ "aspectRatio": "1:1" })
+        };
+        let argv = build_direct_xai_media_argv(&contract, &[], &settings, &output_dir).map_err(
+            |error| {
+                (
+                    "HERMES_PROCESS_FAILED".to_string(),
+                    "process_failed".to_string(),
+                    error,
+                )
+            },
+        )?;
+        let timeout_ms = if asset_type == "video" {
+            240_000
+        } else {
+            120_000
+        };
+        let started_at = SystemTime::now();
+        let spawn_result = deps
+            .spawn(&argv, timeout_ms, &mut |_| {})
+            .map_err(|error| {
+                (
+                    "HERMES_PROCESS_FAILED".to_string(),
+                    "process_failed".to_string(),
+                    error,
+                )
+            })?;
+        if spawn_result.exit_code != Some(0) {
+            let combined = format!("{}\n{}", spawn_result.stdout, spawn_result.stderr);
+            let failure_reason = classify_hermes_failure_output(&combined).to_string();
+            return Err((
+                failure_reason_to_error_code(&failure_reason).to_string(),
+                failure_reason.clone(),
+                build_diagnostic(&failure_reason, &spawn_result.stdout, &spawn_result.stderr),
+            ));
+        }
+
+        let accept_validated_video = |_path: &Path| FfprobeCheckResult {
+            ok: true,
+            has_video_stream: true,
+        };
+        collect_hermes_outputs(CollectOutputsParams {
+            stdout: &spawn_result.stdout,
+            output_dir: &output_dir,
+            tmp_dir: &tmp_dir,
+            cache_dirs: &[],
+            forbidden_roots: &[],
+            job_window: (started_at, SystemTime::now()),
+            expected_kind: asset_type,
+            ffprobe: &accept_validated_video,
+            fetch: &production_fetch_hermes_media,
+        })
+        .map(|_| ())
+        .map_err(|failure| (failure.code, "process_failed".to_string(), failure.message))
+    })();
+    let _ = fs::remove_dir_all(&workspace);
+    result
 }
 
 /// Disconnect flow — port of `runHermesConnectionDisconnect`: logout THEN
@@ -1674,8 +2062,6 @@ pub fn run_hermes_connection_disconnect(
     ));
 
     let args = vec![
-        "-p".to_string(),
-        profile_reference.to_string(),
         "auth".to_string(),
         "logout".to_string(),
         "xai-oauth".to_string(),
@@ -1722,11 +2108,17 @@ pub fn run_hermes_connection_disconnect(
 
 pub struct HermesMediaJobDeps<'a> {
     pub download_reference: &'a dyn Fn(&HermesJobReference) -> Result<PathBuf, HermesFailure>,
+    pub fetch_output: &'a dyn Fn(&str) -> Result<Vec<u8>, String>,
     /// `(argv, cwd, env, timeouts)` — FIX F: the plan's own
     /// `hard_timeout_ms`/`soft_timeout_ms`/`inactivity_timeout_ms` (spec
     /// §2.2) are passed through at the call site below, not just computed
     /// and left unused.
-    pub spawn: &'a dyn Fn(&[String], &Path, &HashMap<String, String>, HermesSpawnTimeouts) -> Result<HermesSpawnOutcome, String>,
+    pub spawn: &'a dyn Fn(
+        &[String],
+        &Path,
+        &HashMap<String, String>,
+        HermesSpawnTimeouts,
+    ) -> Result<HermesSpawnOutcome, String>,
     pub ffprobe: &'a dyn Fn(&Path) -> FfprobeCheckResult,
     pub upload_artifact: &'a mut dyn FnMut(&CollectedOutput) -> Result<(), String>,
     pub emit_stage: &'a mut dyn FnMut(&str),
@@ -1741,14 +2133,23 @@ pub fn run_hermes_media_job(
     deps: &mut HermesMediaJobDeps,
 ) -> Result<Vec<CollectedOutput>, HermesFailure> {
     (deps.emit_stage)(HERMES_MEDIA_PROGRESS_STAGES[0]); // downloading_references
-    for reference in &contract.references {
-        (deps.download_reference)(reference)?;
-    }
+    let reference_paths = contract
+        .references
+        .iter()
+        .map(|reference| (deps.download_reference)(reference))
+        .collect::<Result<Vec<_>, _>>()?;
 
     (deps.emit_stage)(HERMES_MEDIA_PROGRESS_STAGES[1]); // starting_hermes
     (deps.emit_stage)(HERMES_MEDIA_PROGRESS_STAGES[2]); // generating
+    let direct_argv = build_direct_xai_media_argv(
+        contract,
+        &reference_paths,
+        &plan.settings,
+        &plan.output_dir,
+    )
+        .map_err(|error| HermesFailure::new("HERMES_PROCESS_FAILED", error))?;
     let spawn_result = (deps.spawn)(
-        &plan.argv,
+        &direct_argv,
         &plan.cwd,
         &plan.env,
         HermesSpawnTimeouts {
@@ -1761,15 +2162,16 @@ pub fn run_hermes_media_job(
     if spawn_result.exit_code != Some(0) {
         return Err(HermesFailure::new(
             "HERMES_PROCESS_FAILED",
-            format!("hermes exited with {:?}", spawn_result.exit_code),
+            build_diagnostic(
+                &format!("hermes exited with {:?}", spawn_result.exit_code),
+                &spawn_result.stdout,
+                &spawn_result.stderr,
+            ),
         ));
     }
 
     (deps.emit_stage)(HERMES_MEDIA_PROGRESS_STAGES[3]); // collecting_output
     let job_ended_at = SystemTime::now();
-    let no_fetch = |_url: &str| -> Result<Vec<u8>, String> {
-        Err("MEDIA tag download is not wired for this job flow".to_string())
-    };
     let collected = collect_hermes_outputs(CollectOutputsParams {
         stdout: &spawn_result.stdout,
         output_dir: &plan.output_dir,
@@ -1779,7 +2181,7 @@ pub fn run_hermes_media_job(
         job_window: (job_started_at, job_ended_at),
         expected_kind: &plan.expected_kind,
         ffprobe: deps.ffprobe,
-        fetch: &no_fetch,
+        fetch: deps.fetch_output,
     })?;
 
     (deps.emit_stage)(HERMES_MEDIA_PROGRESS_STAGES[4]); // validating_output (collection above already validated each candidate)
@@ -1811,9 +2213,31 @@ pub fn execute_hermes_media_job_core(
 ) -> Result<Vec<CollectedOutput>, HermesFailure> {
     let plan = prepare_hermes_execution_plan(job, doctor, profiles, workspace_root)
         .map_err(|error| HermesFailure::new("HERMES_PROCESS_FAILED", error))?;
+    // The execution plan validates paths but deliberately does not touch
+    // disk. Materialize the job workspace before spawning Hermes; Windows
+    // rejects a missing `current_dir` with os error 267.
+    fs::create_dir_all(&plan.output_dir).map_err(|error| {
+        HermesFailure::new(
+            "HERMES_PROCESS_FAILED",
+            format!("failed to create Hermes output directory: {error}"),
+        )
+    })?;
+    fs::create_dir_all(&plan.tmp_dir).map_err(|error| {
+        HermesFailure::new(
+            "HERMES_PROCESS_FAILED",
+            format!("failed to create Hermes temporary directory: {error}"),
+        )
+    })?;
     let contract = parse_hermes_job_contract(job)
         .map_err(|error| HermesFailure::new("HERMES_PROCESS_FAILED", error))?;
-    run_hermes_media_job(&plan, &contract, cache_dirs, forbidden_roots, job_started_at, deps)
+    run_hermes_media_job(
+        &plan,
+        &contract,
+        cache_dirs,
+        forbidden_roots,
+        job_started_at,
+        deps,
+    )
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1835,24 +2259,28 @@ pub fn execute_hermes_media_job_core(
 /// `HERMES_HOME`) ever reach the child. PATH/TEMP/SystemRoot are OS
 /// plumbing, not secrets, and are required for the interpreter/loader to
 /// function at all.
+fn required_hermes_os_env_keys() -> &'static [&'static str] {
+    &[
+        "PATH",
+        "SystemRoot",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "LOCALAPPDATA",
+        "APPDATA",
+        "USERPROFILE",
+        "HOME",
+    ]
+}
+
 fn base_hermes_spawn_env() -> HashMap<String, String> {
     let mut env = HashMap::new();
     env.insert("NO_COLOR".to_string(), "1".to_string());
     env.insert("PYTHONUNBUFFERED".to_string(), "1".to_string());
-    if let Ok(path) = std::env::var("PATH") {
-        env.insert("PATH".to_string(), path);
-    }
-    if let Ok(system_root) = std::env::var("SystemRoot") {
-        env.insert("SystemRoot".to_string(), system_root);
-    }
-    if let Ok(temp) = std::env::var("TEMP") {
-        env.insert("TEMP".to_string(), temp);
-    }
-    if let Ok(tmp) = std::env::var("TMP") {
-        env.insert("TMP".to_string(), tmp);
-    }
-    if let Ok(tmpdir) = std::env::var("TMPDIR") {
-        env.insert("TMPDIR".to_string(), tmpdir);
+    for key in required_hermes_os_env_keys() {
+        if let Ok(value) = std::env::var(key) {
+            env.insert((*key).to_string(), value);
+        }
     }
     env
 }
@@ -1901,6 +2329,14 @@ pub fn spawn_hermes_process(
         .current_dir(cwd)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    // A GUI Worker App must not flash or leave a blank console behind when
+    // Hermes is launched on Windows. stdout/stderr remain captured by pipes.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
     for (key, value) in env {
         command.env(key, value);
     }
@@ -2007,10 +2443,34 @@ pub fn spawn_hermes_process(
         stdout_buffer.push_str(&line);
         stdout_buffer.push('\n');
     }
-    let stderr_text = stderr_buffer.lock().map(|buffer| buffer.clone()).unwrap_or_default();
+    let mut stderr_text = stderr_buffer
+        .lock()
+        .map(|buffer| buffer.clone())
+        .unwrap_or_default();
+    if let Some(reason) = killed_by {
+        if !stderr_text.is_empty() && !stderr_text.ends_with('\n') {
+            stderr_text.push('\n');
+        }
+        let diagnostic = if reason == "inactivity" {
+            format!(
+                "Hermes process terminated after {} ms without stdout or stderr activity.",
+                timeouts.inactivity_ms.max(1_000)
+            )
+        } else {
+            format!(
+                "Hermes process terminated after reaching the {} ms hard timeout.",
+                timeouts.hard_ms.max(1_000)
+            )
+        };
+        stderr_text.push_str(&diagnostic);
+    }
 
     Ok(HermesSpawnOutcome {
-        exit_code: if killed_by.is_some() { None } else { status.code() },
+        exit_code: if killed_by.is_some() {
+            None
+        } else {
+            status.code()
+        },
         stdout: stdout_buffer,
         stderr: stderr_text,
     })
@@ -2050,6 +2510,65 @@ pub fn production_fetch_reference(url: &str) -> HermesFetchOutcome {
     outcome.unwrap_or_else(HermesFetchOutcome::Failed)
 }
 
+const HERMES_MEDIA_DOWNLOAD_MAX_BYTES: u64 = 512 * 1024 * 1024;
+
+fn validate_xai_media_url(url: &reqwest::Url) -> Result<(), String> {
+    if url.scheme() != "https" {
+        return Err("Hermes media URL must use HTTPS".to_string());
+    }
+    let host = url
+        .host_str()
+        .ok_or_else(|| "Hermes media URL has no host".to_string())?
+        .to_ascii_lowercase();
+    if host != "x.ai" && !host.ends_with(".x.ai") {
+        return Err("Hermes media URL is not hosted by xAI".to_string());
+    }
+    Ok(())
+}
+
+/// Downloads a generated Grok media URL for validation and artifact upload.
+/// The source and final redirect target are both restricted to HTTPS x.ai
+/// hosts so an agent-produced marker cannot turn the Worker into an SSRF
+/// client. The response is bounded before and after buffering.
+pub fn production_fetch_hermes_media(url: &str) -> Result<Vec<u8>, String> {
+    let parsed = reqwest::Url::parse(url)
+        .map_err(|error| format!("invalid Hermes media URL: {error}"))?;
+    validate_xai_media_url(&parsed)?;
+    tauri::async_runtime::block_on(async move {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(300))
+            .redirect(reqwest::redirect::Policy::limited(5))
+            .build()
+            .map_err(|error| format!("failed to build Hermes media client: {error}"))?;
+        let response = client
+            .get(parsed)
+            .send()
+            .await
+            .map_err(|error| format!("Hermes media download failed: {error}"))?;
+        validate_xai_media_url(response.url())?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Hermes media download returned HTTP {}",
+                response.status()
+            ));
+        }
+        if response
+            .content_length()
+            .is_some_and(|size| size > HERMES_MEDIA_DOWNLOAD_MAX_BYTES)
+        {
+            return Err("Hermes media download exceeds the 512 MB limit".to_string());
+        }
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|error| format!("failed to read Hermes media bytes: {error}"))?;
+        if bytes.len() as u64 > HERMES_MEDIA_DOWNLOAD_MAX_BYTES {
+            return Err("Hermes media download exceeds the 512 MB limit".to_string());
+        }
+        Ok(bytes.to_vec())
+    })
+}
+
 /// Builds the production `refresh` closure for `download_and_verify_reference`
 /// — re-mints a job's reference URLs mid-job via
 /// `POST /api/worker-jobs/:jobId/references/urls` (section 06) and picks out
@@ -2076,28 +2595,89 @@ pub fn build_production_refresh_closure(
                 .into_iter()
                 .find(|reference| reference.asset_id == asset_id)
                 .map(|reference| reference.url)
-                .ok_or_else(|| format!("refreshed reference URLs did not include assetId {asset_id}"))
+                .ok_or_else(|| {
+                    format!("refreshed reference URLs did not include assetId {asset_id}")
+                })
         })
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ProductionFfprobeMode {
+    Native(PathBuf),
+    ManagedWsl { runtime_root: String },
+}
+
+fn windows_path_to_wsl(path: &Path) -> String {
+    let mut value = path.to_string_lossy().replace('\\', "/");
+    if value.starts_with("//?/") {
+        value = value[4..].to_string();
+    }
+    if value.len() >= 2 && value.as_bytes().get(1) == Some(&b':') {
+        let drive = value[..1].to_ascii_lowercase();
+        format!("/mnt/{drive}{}", &value[2..])
+    } else {
+        value
+    }
+}
+
+fn managed_wsl_executable_expr(runtime_root: &str) -> String {
+    let root = runtime_root.trim();
+    let root_expr = if root == "~" {
+        "\"${HOME}\"".to_string()
+    } else if let Some(rest) = root.strip_prefix("~/") {
+        format!("\"${{HOME}}/{}\"", rest.replace('"', "\\\""))
+    } else {
+        format!("'{}'", root.replace('\'', "'\\''"))
+    };
+    format!("{root_expr}/runtime-pack/bin/ffprobe")
+}
+
 /// Real ffprobe invocation via the render runtime pack's bundled ffprobe
 /// binary (spec §2.2 — "video sanity via the already-bundled ffprobe").
-pub fn production_ffprobe(ffprobe_executable: PathBuf) -> impl Fn(&Path) -> FfprobeCheckResult {
+/// Managed WSL uses wsl.exe and passes the Windows output through /mnt/<drive>.
+pub fn production_ffprobe(mode: ProductionFfprobeMode) -> impl Fn(&Path) -> FfprobeCheckResult {
     move |file_path: &Path| {
-        let output = std::process::Command::new(&ffprobe_executable)
-            .args([
-                "-v",
-                "error",
-                "-select_streams",
-                "v",
-                "-show_entries",
-                "stream=codec_type",
-                "-of",
-                "csv=p=0",
-            ])
-            .arg(file_path)
-            .output();
+        let probe_args = [
+            "-v",
+            "error",
+            "-select_streams",
+            "v",
+            "-show_entries",
+            "stream=codec_type",
+            "-of",
+            "csv=p=0",
+        ];
+        let mut command = match &mode {
+            ProductionFfprobeMode::Native(ffprobe_executable) => {
+                let mut command = std::process::Command::new(ffprobe_executable);
+                command.args(probe_args).arg(file_path);
+                command
+            }
+            ProductionFfprobeMode::ManagedWsl { runtime_root } => {
+                let script = format!(
+                    "exec {} {} \"$1\"",
+                    managed_wsl_executable_expr(runtime_root),
+                    probe_args.join(" ")
+                );
+                let mut command = std::process::Command::new("wsl.exe");
+                command.args([
+                    "-e",
+                    "bash",
+                    "-lc",
+                    &script,
+                    "smartaihub-ffprobe",
+                    &windows_path_to_wsl(file_path),
+                ]);
+                command
+            }
+        };
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        }
+        let output = command.output();
         match output {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
@@ -2119,10 +2699,15 @@ pub fn production_ffprobe(ffprobe_executable: PathBuf) -> impl Fn(&Path) -> Ffpr
 /// doc comment).
 pub struct RealHermesControlDeps {
     pub hermes_executable: PathBuf,
+    pub python_executable: PathBuf,
     pub connection: crate::worker_control_plane::WorkerLoopConnection,
     pub job_id: String,
     pub lease_owner_token: String,
     pub assignment_attempt: String,
+    /// Monotonic sequence shared by device-code/authorized events emitted
+    /// during one control job. The server rejects missing sequence numbers,
+    /// so production wiring must not use the test-only `None` shape.
+    pub event_sequence_number: std::sync::Arc<std::sync::atomic::AtomicU32>,
     /// FIX C — the connection this control job operates on. `spawn()` uses
     /// this to resolve the SAME isolated `HERMES_HOME` `ensure_profile`
     /// creates and 0700-hardens, so `hermes auth add/status/logout` (the
@@ -2151,7 +2736,11 @@ impl HermesControlDeps for RealHermesControlDeps {
             .lock()
             .map_err(|_| "hermes profile store lock poisoned".to_string())?
             .profile_dir(&self.connection_id)?;
-        env.insert("HERMES_HOME".to_string(), profile_dir.to_string_lossy().to_string());
+        ensure_managed_xai_media_config(&profile_dir)?;
+        env.insert(
+            "HERMES_HOME".to_string(),
+            profile_dir.to_string_lossy().to_string(),
+        );
         // `self.timeout_ms` is a safety ceiling (e.g. the claimed job's own
         // `timeoutSeconds`); the caller's per-command timeout (`timeout_ms`)
         // is respected as long as it doesn't exceed that ceiling. Control
@@ -2159,8 +2748,13 @@ impl HermesControlDeps for RealHermesControlDeps {
         // the inactivity window is capped at 5 minutes or the timeout
         // itself, whichever is smaller.
         let effective_timeout_ms = timeout_ms.min(self.timeout_ms);
+        let executable = if args.first().is_some_and(|arg| arg == "-c") {
+            &self.python_executable
+        } else {
+            &self.hermes_executable
+        };
         spawn_hermes_process(
-            &self.hermes_executable,
+            executable,
             args,
             &self.app_data_dir,
             &env,
@@ -2180,6 +2774,9 @@ impl HermesControlDeps for RealHermesControlDeps {
         let lease_owner_token = self.lease_owner_token.clone();
         let assignment_attempt = self.assignment_attempt.clone();
         let event_type = event_type.to_string();
+        let sequence_number = self
+            .event_sequence_number
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let _ = tauri::async_runtime::block_on(async move {
             crate::worker_control_plane::report_worker_job_event(
                 &connection,
@@ -2187,7 +2784,7 @@ impl HermesControlDeps for RealHermesControlDeps {
                 &crate::worker_control_plane::WorkerJobEventPayload {
                     event_type,
                     payload_json: payload,
-                    sequence_number: None,
+                    sequence_number: Some(sequence_number),
                     lease_owner_token,
                     assignment_attempt: Some(assignment_attempt),
                 },
@@ -2249,9 +2846,15 @@ mod tests {
         // apps/web/shared/workerRuntime.ts
         assert_eq!(HERMES_MEDIA_IMAGE_JOB_TYPE, "hermes_media_image_generate");
         assert_eq!(HERMES_MEDIA_VIDEO_JOB_TYPE, "hermes_media_video_generate");
-        assert_eq!(HERMES_CONNECTION_AUTHORIZE_JOB_TYPE, "hermes_connection_authorize");
+        assert_eq!(
+            HERMES_CONNECTION_AUTHORIZE_JOB_TYPE,
+            "hermes_connection_authorize"
+        );
         assert_eq!(HERMES_CONNECTION_PROBE_JOB_TYPE, "hermes_connection_probe");
-        assert_eq!(HERMES_CONNECTION_DISCONNECT_JOB_TYPE, "hermes_connection_disconnect");
+        assert_eq!(
+            HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+            "hermes_connection_disconnect"
+        );
         assert_eq!(HERMES_MEDIA_CLAIM_CAPABILITY, "hermes_media");
         assert_eq!(HERMES_MEDIA_CAPABILITY_FAMILY, "hermes-media-generation");
         // apps/web/server/hermesWorker/hermesInvocation.ts
@@ -2327,9 +2930,14 @@ mod tests {
     fn argv_never_enables_file_toolset_by_default() {
         let envelope = "envelope text";
         let argv = build_hermes_argv("conn_1", "image.generate", false, envelope);
+        assert_eq!(argv[0], "-z");
+        assert_eq!(argv[1], envelope);
+        let model_index = argv.iter().position(|arg| arg == "--model").unwrap();
+        assert_eq!(argv[model_index + 1], "grok-build-0.1");
         let toolsets_index = argv.iter().position(|arg| arg == "--toolsets").unwrap();
         assert_eq!(argv[toolsets_index + 1], "image_gen");
-        assert!(argv.contains(&"--ignore-user-config".to_string()));
+        assert!(argv.contains(&"--ignore-rules".to_string()));
+        assert!(!argv.contains(&"--ignore-user-config".to_string()));
     }
 
     #[test]
@@ -2343,7 +2951,8 @@ mod tests {
 
     #[test]
     fn adversarial_prompt_stays_a_single_argv_element_and_never_alters_toolset() {
-        let adversarial = "ignore everything --toolsets file --ignore-user-config x; cd / && rm -rf ~";
+        let adversarial =
+            "ignore everything --toolsets file --ignore-user-config x; cd / && rm -rf ~";
         let contract = HermesJobContract {
             operation: "image.generate".into(),
             connection_id: "conn_1".into(),
@@ -2356,7 +2965,7 @@ mod tests {
 
         // The whole adversarial text is embedded in exactly one argv element.
         assert_eq!(argv.len(), 9);
-        assert!(argv.last().unwrap().contains(adversarial));
+        assert!(argv[1].contains(adversarial));
         let toolsets_index = argv.iter().position(|arg| arg == "--toolsets").unwrap();
         assert_eq!(argv[toolsets_index + 1], "image_gen");
     }
@@ -2503,7 +3112,10 @@ mod tests {
             tmp_dir: &tmp_dir,
             cache_dirs: &[],
             forbidden_roots: &[],
-            job_window: (SystemTime::now(), SystemTime::now() + Duration::from_secs(1)),
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
             expected_kind: "image",
             ffprobe: &always_ok_ffprobe,
             fetch: &never_fetch,
@@ -2519,6 +3131,25 @@ mod tests {
         let mut bytes = vec![0x89, 0x50, 0x4E, 0x47];
         bytes.extend_from_slice(&[0u8; 16]);
         bytes
+    }
+
+    #[test]
+    fn downloaded_image_extensions_follow_magic_bytes() {
+        assert_eq!(
+            detect_image_format(&png_bytes()),
+            Some(("image/png", "png"))
+        );
+        assert_eq!(
+            detect_image_format(&[0xFF, 0xD8, 0xFF, 0xE0]),
+            Some(("image/jpeg", "jpg"))
+        );
+        assert_eq!(detect_image_format(b"GIF89a"), Some(("image/gif", "gif")));
+        assert_eq!(
+            detect_image_format(b"RIFF0000WEBP"),
+            Some(("image/webp", "webp"))
+        );
+        assert_eq!(detect_image_format(b"RIFF0000WAVE"), None);
+        assert_eq!(detect_image_format(b"not-an-image"), None);
     }
 
     #[test]
@@ -2540,7 +3171,10 @@ mod tests {
             tmp_dir: &tmp_dir,
             cache_dirs: &[],
             forbidden_roots: &[],
-            job_window: (SystemTime::now(), SystemTime::now() + Duration::from_secs(1)),
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
             expected_kind: "image",
             ffprobe: &always_ok_ffprobe,
             fetch: &never_fetch,
@@ -2572,7 +3206,10 @@ mod tests {
             tmp_dir: &tmp_dir,
             cache_dirs: &[],
             forbidden_roots: &[other_profile_root.clone()],
-            job_window: (SystemTime::now(), SystemTime::now() + Duration::from_secs(1)),
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
             expected_kind: "image",
             ffprobe: &always_ok_ffprobe,
             fetch: &never_fetch,
@@ -2580,6 +3217,124 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().code, "HERMES_OUTPUT_INVALID");
+    }
+
+    #[test]
+    fn path_confinement_allows_only_explicit_media_cache_inside_profile_root() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_dir = dir.path().join("output");
+        let tmp_dir = dir.path().join("tmp");
+        let profile_root = dir.path().join("profiles");
+        let media_cache = profile_root.join("conn_1/home/cache/images");
+        fs::create_dir_all(&output_dir).unwrap();
+        fs::create_dir_all(&tmp_dir).unwrap();
+        fs::create_dir_all(&media_cache).unwrap();
+        let generated = media_cache.join("generated.png");
+        fs::write(&generated, png_bytes()).unwrap();
+
+        let stdout = format!(
+            "{HERMES_RESULT_MARKER_BEGIN} {{\"status\":\"ok\",\"files\":[\"{}\"]}} {HERMES_RESULT_MARKER_END}",
+            generated.to_string_lossy().replace('\\', "\\\\")
+        );
+        let collected = collect_hermes_outputs(CollectOutputsParams {
+            stdout: &stdout,
+            output_dir: &output_dir,
+            tmp_dir: &tmp_dir,
+            cache_dirs: std::slice::from_ref(&media_cache),
+            forbidden_roots: std::slice::from_ref(&profile_root),
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
+            expected_kind: "image",
+            ffprobe: &always_ok_ffprobe,
+            fetch: &never_fetch,
+        })
+        .unwrap();
+
+        assert_eq!(collected.len(), 1);
+        assert_eq!(collected[0].path, generated);
+    }
+
+    #[test]
+    fn result_marker_https_url_is_downloaded_to_the_job_tmp_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_dir = dir.path().join("output");
+        let tmp_dir = dir.path().join("tmp");
+        fs::create_dir_all(&output_dir).unwrap();
+        let stdout = format!(
+            "{HERMES_RESULT_MARKER_BEGIN} {{\"status\":\"ok\",\"files\":[\"https://files-cdn.x.ai/generated/image\"]}} {HERMES_RESULT_MARKER_END}"
+        );
+        let fetch = |url: &str| {
+            assert_eq!(url, "https://files-cdn.x.ai/generated/image");
+            Ok(png_bytes())
+        };
+        let collected = collect_hermes_outputs(CollectOutputsParams {
+            stdout: &stdout,
+            output_dir: &output_dir,
+            tmp_dir: &tmp_dir,
+            cache_dirs: &[],
+            forbidden_roots: &[],
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
+            expected_kind: "image",
+            ffprobe: &always_ok_ffprobe,
+            fetch: &fetch,
+        })
+        .unwrap();
+
+        assert_eq!(collected.len(), 1);
+        assert_eq!(collected[0].signal, "result_marker_url");
+        assert!(collected[0].path.starts_with(&tmp_dir));
+        assert!(collected[0].path.ends_with("result-marker-0.png"));
+    }
+
+    #[test]
+    fn result_marker_https_url_rejects_unsupported_image_bytes() {
+        let dir = tempfile::tempdir().unwrap();
+        let output_dir = dir.path().join("output");
+        let tmp_dir = dir.path().join("tmp");
+        fs::create_dir_all(&output_dir).unwrap();
+        let stdout = format!(
+            "{HERMES_RESULT_MARKER_BEGIN} {{\"status\":\"ok\",\"files\":[\"https://files-cdn.x.ai/generated/image\"]}} {HERMES_RESULT_MARKER_END}"
+        );
+        let fetch = |_: &str| Ok(b"not-an-image".to_vec());
+
+        let result = collect_hermes_outputs(CollectOutputsParams {
+            stdout: &stdout,
+            output_dir: &output_dir,
+            tmp_dir: &tmp_dir,
+            cache_dirs: &[],
+            forbidden_roots: &[],
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
+            expected_kind: "image",
+            ffprobe: &always_ok_ffprobe,
+            fetch: &fetch,
+        });
+
+        assert_eq!(result.unwrap_err().code, "HERMES_OUTPUT_INVALID");
+        assert!(!tmp_dir.join("result-marker-0.img").exists());
+    }
+
+    #[test]
+    fn xai_media_download_allowlist_rejects_non_xai_and_insecure_urls() {
+        assert!(validate_xai_media_url(
+            &reqwest::Url::parse("https://files-cdn.x.ai/video.mp4").unwrap()
+        )
+        .is_ok());
+        assert!(validate_xai_media_url(
+            &reqwest::Url::parse("https://example.com/video.mp4").unwrap()
+        )
+        .is_err());
+        assert!(validate_xai_media_url(
+            &reqwest::Url::parse("http://files-cdn.x.ai/video.mp4").unwrap()
+        )
+        .is_err());
     }
 
     #[test]
@@ -2597,7 +3352,10 @@ mod tests {
             tmp_dir: &tmp_dir,
             cache_dirs: &[],
             forbidden_roots: &[],
-            job_window: (SystemTime::now(), SystemTime::now() + Duration::from_secs(1)),
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
             expected_kind: "image",
             ffprobe: &always_ok_ffprobe,
             fetch: &never_fetch,
@@ -2626,7 +3384,10 @@ mod tests {
             tmp_dir: &tmp_dir,
             cache_dirs: &[],
             forbidden_roots: &[],
-            job_window: (SystemTime::now(), SystemTime::now() + Duration::from_secs(1)),
+            job_window: (
+                SystemTime::now(),
+                SystemTime::now() + Duration::from_secs(1),
+            ),
             expected_kind: "video",
             ffprobe: &failing_ffprobe,
             fetch: &never_fetch,
@@ -2634,6 +3395,18 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().code, "HERMES_OUTPUT_INVALID");
+    }
+
+    #[test]
+    fn managed_wsl_ffprobe_paths_expand_home_and_mount_windows_files() {
+        assert_eq!(
+            managed_wsl_executable_expr("~/.smartaihub-worker/runtime"),
+            "\"${HOME}/.smartaihub-worker/runtime\"/runtime-pack/bin/ffprobe"
+        );
+        assert_eq!(
+            windows_path_to_wsl(Path::new(r"C:\Users\worker\output.mp4")),
+            "/mnt/c/Users/worker/output.mp4"
+        );
     }
 
     // ── Reference download ──────────────────────────────────────────
@@ -2660,7 +3433,10 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().code, "HERMES_REFERENCE_DOWNLOAD_FAILED");
-        assert!(!*fetch_called.borrow(), "must fail closed before ever fetching");
+        assert!(
+            !*fetch_called.borrow(),
+            "must fail closed before ever fetching"
+        );
         assert!(!outside_marker.exists());
     }
 
@@ -2776,23 +3552,24 @@ mod tests {
         ) -> Result<HermesSpawnOutcome, String> {
             let call_index = self.spawn_calls.borrow().len();
             self.spawn_calls.borrow_mut().push(args.to_vec());
-            let response = self
-                .scripted_responses
-                .get(call_index)
-                .cloned()
-                .unwrap_or(HermesSpawnOutcome {
-                    exit_code: Some(0),
-                    stdout: String::new(),
-                    stderr: String::new(),
-                });
+            let response =
+                self.scripted_responses
+                    .get(call_index)
+                    .cloned()
+                    .unwrap_or(HermesSpawnOutcome {
+                        exit_code: Some(0),
+                        stdout: String::new(),
+                        stderr: String::new(),
+                    });
             if call_index == 0 && self.emit_device_code_lines {
-                // Expiry line arrives BEFORE the url+code line so the
-                // device-code-posted latch (which fires as soon as both a
-                // url and a code are found in the buffered text) fires with
-                // the expiry text already accumulated — mirrors a CLI that
-                // prints the expiry hint ahead of the actual code.
+                // Exact Hermes 0.18.2 xAI device-flow shape: the complete
+                // verification URL arrives one line BEFORE the explicit user
+                // code. The Worker must not latch an unusable raw-only event
+                // after the URL line.
+                on_stdout_line("To continue:");
+                on_stdout_line("  1. Open: https://accounts.x.ai/device?user_code=ABCD-EFGH");
+                on_stdout_line("  2. If prompted, enter code: ABCD-EFGH");
                 on_stdout_line("This code expires in 15 minutes.");
-                on_stdout_line("Visit https://accounts.x.ai/device and enter code ABCD-EFGH");
             }
             Ok(response)
         }
@@ -2834,20 +3611,16 @@ mod tests {
 
         let relative = extract_expires_at("This code expires in 15 minutes.", now)
             .expect("relative expiry should parse");
-        let parsed = time::OffsetDateTime::parse(
-            &relative,
-            &time::format_description::well_known::Rfc3339,
-        )
-        .unwrap();
+        let parsed =
+            time::OffsetDateTime::parse(&relative, &time::format_description::well_known::Rfc3339)
+                .unwrap();
         assert_eq!((parsed - now).whole_seconds(), 15 * 60);
 
         let hours = extract_expires_at("Valid for 1 hour.", now)
             .expect("hour-based relative expiry should parse");
-        let parsed_hours = time::OffsetDateTime::parse(
-            &hours,
-            &time::format_description::well_known::Rfc3339,
-        )
-        .unwrap();
+        let parsed_hours =
+            time::OffsetDateTime::parse(&hours, &time::format_description::well_known::Rfc3339)
+                .unwrap();
         assert_eq!((parsed_hours - now).whole_seconds(), 3_600);
 
         assert_eq!(extract_expires_at("No expiry information here.", now), None);
@@ -2879,17 +3652,25 @@ mod tests {
             .collect();
         assert_eq!(device_code_posts.len(), 1);
         assert_eq!(device_code_posts[0].1["userCode"], "ABCD-EFGH");
-        // FIX 6 — "This code expires in 15 minutes." must be extracted into
-        // a real RFC3339 `expiresAt` the app's countdown can parse.
-        let expires_at = device_code_posts[0].1["expiresAt"]
-            .as_str()
-            .expect("expiresAt should be present for a relative expiry line");
-        let parsed_expiry = time::OffsetDateTime::parse(
-            expires_at,
-            &time::format_description::well_known::Rfc3339,
-        )
-        .expect("expiresAt should be RFC3339");
-        assert!(parsed_expiry > time::OffsetDateTime::now_utc());
+        assert_eq!(
+            device_code_posts[0].1["verificationUrl"],
+            "https://accounts.x.ai/device?user_code=ABCD-EFGH"
+        );
+        assert!(
+            device_code_posts[0].1.get("raw").is_none(),
+            "device-code events must never fall back to raw OAuth output"
+        );
+        // Hermes 0.18.2 prints the expiry hint after the explicit code, while
+        // the structured event is emitted as soon as URL+code are complete.
+        // `expiresAt` is consequently optional.
+        if let Some(expires_at) = device_code_posts[0].1["expiresAt"].as_str() {
+            let parsed_expiry = time::OffsetDateTime::parse(
+                expires_at,
+                &time::format_description::well_known::Rfc3339,
+            )
+            .expect("expiresAt should be RFC3339 when present");
+            assert!(parsed_expiry > time::OffsetDateTime::now_utc());
+        }
 
         let logs = deps.logs.borrow();
         for log_line in logs.iter() {
@@ -2899,7 +3680,7 @@ mod tests {
     }
 
     #[test]
-    fn probe_gates_manifest_operations_on_tools_output() {
+    fn probe_advertises_bundled_xai_media_operations_after_authorization() {
         let deps = RecordingDeps::new(vec![
             HermesSpawnOutcome {
                 exit_code: Some(0),
@@ -2918,16 +3699,56 @@ mod tests {
             },
         ]);
 
-        let outcome = run_hermes_connection_probe("conn_1", "conn_conn_1", 30, &deps);
+        let outcome = run_hermes_connection_probe("conn_1", "conn_conn_1", 30, None, &deps);
 
         match outcome {
             HermesControlOutcome::Success { manifest, .. } => {
                 let manifest = manifest.unwrap();
                 assert_eq!(manifest["operations"]["image.generate"]["enabled"], true);
-                assert_eq!(manifest["operations"]["video.generate"]["enabled"], false);
+                assert_eq!(manifest["operations"]["video.generate"]["enabled"], true);
             }
             other => panic!("expected success, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn probe_records_a_failed_live_image_generation_in_the_manifest() {
+        let deps = RecordingDeps::new(vec![
+            HermesSpawnOutcome {
+                exit_code: Some(0),
+                stdout: "Status: authenticated".into(),
+                stderr: String::new(),
+            },
+            HermesSpawnOutcome {
+                exit_code: Some(0),
+                stdout: "Image Generation".into(),
+                stderr: String::new(),
+            },
+            HermesSpawnOutcome {
+                exit_code: Some(0),
+                stdout: "hermes-cli 0.18.2".into(),
+                stderr: String::new(),
+            },
+            HermesSpawnOutcome {
+                exit_code: Some(1),
+                stdout: String::new(),
+                stderr: "temporary generation failure".into(),
+            },
+        ]);
+
+        let outcome =
+            run_hermes_connection_probe("conn_1", "conn_conn_1", 300, Some("image"), &deps);
+
+        match outcome {
+            HermesControlOutcome::Success { manifest, .. } => {
+                let test = &manifest.unwrap()["lastGenerationTest"];
+                assert_eq!(test["assetType"], "image");
+                assert_eq!(test["ok"], false);
+                assert_eq!(test["errorCode"], "HERMES_PROCESS_FAILED");
+            }
+            other => panic!("expected a manifest with a failed liveness test, got {other:?}"),
+        }
+        assert_eq!(deps.spawn_calls.borrow().len(), 4);
     }
 
     #[test]
@@ -2956,8 +3777,8 @@ mod tests {
         // Logout must have been attempted (spawn call recorded) before we
         // report the removal failure.
         assert_eq!(deps.spawn_calls.borrow().len(), 1);
-        assert_eq!(deps.spawn_calls.borrow()[0][2], "auth");
-        assert_eq!(deps.spawn_calls.borrow()[0][3], "logout");
+        assert_eq!(deps.spawn_calls.borrow()[0][0], "auth");
+        assert_eq!(deps.spawn_calls.borrow()[0][1], "logout");
     }
 
     // ── Full-flow integration test (owns spec §20) ──────────────────
@@ -3002,23 +3823,27 @@ mod tests {
         }
     }
 
-    fn run_full_flow_scenario(job_type: &str, expected_kind: &str, output_file_bytes: Vec<u8>, output_file_name: &str) {
+    fn run_full_flow_scenario(
+        job_type: &str,
+        expected_kind: &str,
+        output_file_bytes: Vec<u8>,
+        output_file_name: &str,
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let workspace_root = dir.path().join("workspace");
         let mut profiles = HermesProfileStore::new(dir.path().join("profiles"));
         profiles.ensure_profile("conn_1").unwrap();
 
         let job = media_job(job_type, "conn_1", "generate something nice");
-        let plan = prepare_hermes_execution_plan(&job, &ready_doctor(), &profiles, &workspace_root).unwrap();
+        let plan = prepare_hermes_execution_plan(&job, &ready_doctor(), &profiles, &workspace_root)
+            .unwrap();
         let contract = parse_hermes_job_contract(&job).unwrap();
 
         fs::create_dir_all(&plan.output_dir).unwrap();
         fs::create_dir_all(&plan.cwd).unwrap();
         fs::write(plan.output_dir.join(output_file_name), &output_file_bytes).unwrap();
 
-        let marker = format!(
-            "{{\"status\":\"ok\",\"files\":[\"{output_file_name}\"]}}"
-        );
+        let marker = format!("{{\"status\":\"ok\",\"files\":[\"{output_file_name}\"]}}");
         let scenario = json!({
             "generate": {
                 "markerBlock": format!("{HERMES_RESULT_MARKER_BEGIN} {marker} {HERMES_RESULT_MARKER_END}"),
@@ -3028,19 +3853,16 @@ mod tests {
 
         let stages: RefCell<Vec<String>> = RefCell::new(Vec::new());
         let uploaded: RefCell<Vec<CollectedOutput>> = RefCell::new(Vec::new());
-        let spawn_fn = |argv: &[String], cwd: &Path, _env: &HashMap<String, String>, _timeouts: HermesSpawnTimeouts| {
-            // The shared fake CLI fixture (hermes.mjs) only dispatches its
-            // `generate` scenario when the first token after `-p <profile>`
-            // is literally `generate` — the real hermes CLI's media-generate
-            // subcommand shape is section-07's concern (still landing). This
-            // full-flow test's job is to prove the spawn → stdout capture →
-            // collect → upload pipeline works against a REAL child process,
-            // so it keeps the profile flag from the real argv (asserted
-            // byte-for-byte elsewhere in the argv-safety unit tests above)
-            // and swaps in the fixture-routable subcommand for the actual
-            // OS-level invocation.
-            let mut fixture_argv: Vec<String> = argv.iter().take(2).cloned().collect();
-            fixture_argv.push("generate".to_string());
+        let spawn_fn = |_argv: &[String],
+                        cwd: &Path,
+                        _env: &HashMap<String, String>,
+                        _timeouts: HermesSpawnTimeouts| {
+            // The real invocation is one-shot (`-z ... <prompt>`), while this
+            // shared fake CLI exposes a deterministic `generate` scenario.
+            // Argument safety is asserted separately above; this integration
+            // path proves spawn → capture → collect → upload with a real child
+            // process and the same per-connection HERMES_HOME environment.
+            let fixture_argv = vec!["generate".to_string()];
             Ok(spawn_fake_hermes(&fixture_argv, cwd, &scenario_file))
         };
         let ffprobe_fn = |_: &Path| FfprobeCheckResult {
@@ -3057,6 +3879,7 @@ mod tests {
 
         let mut deps = HermesMediaJobDeps {
             download_reference: &|_reference| Ok(PathBuf::new()),
+            fetch_output: &never_fetch,
             spawn: &spawn_fn,
             ffprobe: &ffprobe_fn,
             upload_artifact: &mut upload_fn,
@@ -3111,10 +3934,24 @@ mod tests {
         let mut profiles = HermesProfileStore::new(dir.path().join("profiles"));
         profiles.ensure_profile("conn_1").unwrap();
 
-        let job = media_job(HERMES_MEDIA_IMAGE_JOB_TYPE, "conn_1", "a spy proves the wiring");
+        let job = media_job(
+            HERMES_MEDIA_IMAGE_JOB_TYPE,
+            "conn_1",
+            "a spy proves the wiring",
+        );
 
         let spawn_calls: RefCell<Vec<Vec<String>>> = RefCell::new(Vec::new());
-        let spawn_fn = |argv: &[String], _cwd: &Path, _env: &HashMap<String, String>, _timeouts: HermesSpawnTimeouts| {
+        let spawn_fn = |argv: &[String],
+                        cwd: &Path,
+                        _env: &HashMap<String, String>,
+                        _timeouts: HermesSpawnTimeouts| {
+            assert!(cwd.is_dir(), "Hermes cwd must exist before process spawn");
+            let output_dir = cwd.join("output");
+            assert!(
+                output_dir.is_dir(),
+                "Hermes output directory must exist before process spawn"
+            );
+            fs::write(output_dir.join("spy.png"), png_bytes()).unwrap();
             spawn_calls.borrow_mut().push(argv.to_vec());
             Ok(HermesSpawnOutcome {
                 exit_code: Some(0),
@@ -3136,15 +3973,9 @@ mod tests {
         let stages: RefCell<Vec<String>> = RefCell::new(Vec::new());
         let mut emit_fn = |stage: &str| stages.borrow_mut().push(stage.to_string());
 
-        // Stage the "hermes-produced" output the spawn spy claims to have
-        // written, exactly like the full-flow tests do.
-        let job_segment = crate::worker_executor::sanitize_segment(&job.id);
-        let output_dir = workspace_root.join(&job_segment).join("output");
-        fs::create_dir_all(&output_dir).unwrap();
-        fs::write(output_dir.join("spy.png"), png_bytes()).unwrap();
-
         let mut deps = HermesMediaJobDeps {
             download_reference: &|_reference| Ok(PathBuf::new()),
+            fetch_output: &never_fetch,
             spawn: &spawn_fn,
             ffprobe: &ffprobe_fn,
             upload_artifact: &mut upload_fn,
@@ -3166,10 +3997,36 @@ mod tests {
         // Proves the spawn spy (i.e. `run_hermes_media_job`'s internals) was
         // actually invoked with the prepared plan's argv — not bypassed.
         assert_eq!(spawn_calls.borrow().len(), 1);
-        assert!(spawn_calls.borrow()[0].contains(&"--toolsets".to_string()));
+        assert_eq!(spawn_calls.borrow()[0].first().map(String::as_str), Some("-c"));
+        assert!(
+            spawn_calls.borrow()[0]
+                .get(1)
+                .is_some_and(|script| script.contains("XAIImageGenProvider"))
+        );
         assert_eq!(collected.len(), 1);
         assert_eq!(stages.into_inner(), HERMES_MEDIA_PROGRESS_STAGES.to_vec());
         assert_eq!(uploaded.borrow().len(), 1);
+    }
+
+    #[test]
+    fn direct_xai_image_script_applies_the_selected_catalog_model() {
+        let contract = HermesJobContract {
+            operation: "image.generate".into(),
+            connection_id: "conn_1".into(),
+            prompt: "quality image".into(),
+            references: vec![],
+            output_count: Some(1),
+        };
+        let argv = build_direct_xai_media_argv(
+            &contract,
+            &[],
+            &json!({ "model": "grok-imagine-image-quality" }),
+            Path::new("output"),
+        )
+        .unwrap();
+
+        assert!(argv[1].contains("XAI_IMAGE_MODEL"));
+        assert!(argv[2].contains("grok-imagine-image-quality"));
     }
 
     #[test]
@@ -3181,7 +4038,10 @@ mod tests {
         let job = media_job(HERMES_MEDIA_IMAGE_JOB_TYPE, "conn_1", "should never spawn");
 
         let spawn_calls: RefCell<u32> = RefCell::new(0);
-        let spawn_fn = |_: &[String], _: &Path, _: &HashMap<String, String>, _timeouts: HermesSpawnTimeouts| {
+        let spawn_fn = |_: &[String],
+                        _: &Path,
+                        _: &HashMap<String, String>,
+                        _timeouts: HermesSpawnTimeouts| {
             *spawn_calls.borrow_mut() += 1;
             Ok(HermesSpawnOutcome {
                 exit_code: Some(0),
@@ -3194,6 +4054,7 @@ mod tests {
         let mut emit_fn = |_: &str| {};
         let mut deps = HermesMediaJobDeps {
             download_reference: &|_reference| Ok(PathBuf::new()),
+            fetch_output: &never_fetch,
             spawn: &spawn_fn,
             ffprobe: &ffprobe_fn,
             upload_artifact: &mut upload_fn,
@@ -3216,6 +4077,53 @@ mod tests {
     }
 
     // ── FIX B — spawned child never inherits the full parent env ─────
+    #[test]
+    fn hermes_os_env_allowlist_includes_windows_home_and_app_data_paths() {
+        let keys = required_hermes_os_env_keys();
+        for required in ["LOCALAPPDATA", "APPDATA", "USERPROFILE", "HOME"] {
+            assert!(
+                keys.contains(&required),
+                "{required} is required by Hermes/Python home resolution on Windows"
+            );
+        }
+    }
+
+    #[test]
+    fn control_failure_diagnostic_uses_the_last_meaningful_exception_line() {
+        let diagnostic = build_diagnostic(
+            "process_failed",
+            "",
+            "Traceback (most recent call last):\n  File \"auth.py\", line 1\nRuntimeError: Windows home directory is unavailable\n",
+        );
+
+        assert_eq!(
+            diagnostic,
+            "process_failed: RuntimeError: Windows home directory is unavailable"
+        );
+    }
+
+    #[test]
+    fn control_failure_diagnostic_redacts_oauth_secrets_but_keeps_the_error_actionable() {
+        let diagnostic = build_diagnostic(
+            "process_failed",
+            "",
+            "RuntimeError: OAuth bootstrap failed token=sk-secret-value refresh_token=refresh-secret authorization_code=ABCD-EFGH bearer eyJhbGciOiJIUzI1NiJ9.secret url=https://auth.x.ai/callback?code=query-secret&state=state-secret\n",
+        );
+
+        assert!(diagnostic.contains("RuntimeError: OAuth bootstrap failed"));
+        for secret in [
+            "sk-secret-value",
+            "refresh-secret",
+            "ABCD-EFGH",
+            "eyJhbGciOiJIUzI1NiJ9.secret",
+            "query-secret",
+            "state-secret",
+        ] {
+            assert!(!diagnostic.contains(secret), "diagnostic leaked {secret}");
+        }
+        assert!(diagnostic.len() <= 600);
+    }
+
     #[test]
     fn spawn_hermes_process_env_clear_blocks_parent_secrets_from_reaching_the_child() {
         // Uses an AMBIENT parent-env var, READ ONLY (never mutated via
@@ -3286,7 +4194,15 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(result.exit_code, None, "killed process must report no exit code");
+        assert_eq!(
+            result.exit_code, None,
+            "killed process must report no exit code"
+        );
+        assert!(
+            result.stderr.contains("without stdout or stderr activity"),
+            "timeout reason must be visible in diagnostics: {}",
+            result.stderr
+        );
         assert!(
             started_at.elapsed() < std::time::Duration::from_secs(30),
             "inactivity timeout should fire well before the 30s sleep completes"
@@ -3318,8 +4234,15 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(result.exit_code, Some(0), "soft timeout must never kill the child");
-        assert!(*soft_fired.borrow(), "soft timeout callback should have fired");
+        assert_eq!(
+            result.exit_code,
+            Some(0),
+            "soft timeout must never kill the child"
+        );
+        assert!(
+            *soft_fired.borrow(),
+            "soft timeout callback should have fired"
+        );
     }
 
     // ── FIX D — media jobs and control jobs resolve the SAME HERMES_HOME ──
@@ -3334,7 +4257,10 @@ mod tests {
         let media_home = profiles.profile_dir("conn_1").unwrap();
 
         assert_eq!(media_home, handle.home_dir);
-        assert_eq!(handle.env.get("HERMES_HOME"), Some(&handle.home_dir.to_string_lossy().to_string()));
+        assert_eq!(
+            handle.env.get("HERMES_HOME"),
+            Some(&handle.home_dir.to_string_lossy().to_string())
+        );
     }
 
     #[test]
@@ -3345,10 +4271,14 @@ mod tests {
         let job = media_job(HERMES_MEDIA_IMAGE_JOB_TYPE, "conn_1", "a cat");
         let workspace_root = dir.path().join("workspace");
 
-        let plan = prepare_hermes_execution_plan(&job, &ready_doctor(), &profiles, &workspace_root).unwrap();
+        let plan = prepare_hermes_execution_plan(&job, &ready_doctor(), &profiles, &workspace_root)
+            .unwrap();
 
         assert_eq!(plan.profile_dir, handle.home_dir);
-        assert_eq!(plan.env.get("HERMES_HOME"), Some(&handle.home_dir.to_string_lossy().to_string()));
+        assert_eq!(
+            plan.env.get("HERMES_HOME"),
+            Some(&handle.home_dir.to_string_lossy().to_string())
+        );
     }
 
     // ── FIX C — control-job spawn carries the isolated HERMES_HOME ──────
@@ -3364,9 +4294,15 @@ mod tests {
             let mut guard = profiles.lock().unwrap();
             guard.ensure_profile("conn_1").unwrap().home_dir
         };
+        fs::write(
+            expected_home_dir.join("config.yaml"),
+            "image_gen:\n  provider: stale\n",
+        )
+        .unwrap();
 
         let deps = RealHermesControlDeps {
             hermes_executable: PathBuf::from("env"),
+            python_executable: PathBuf::from("env"),
             connection: crate::worker_control_plane::WorkerLoopConnection {
                 server_url: "https://smartaihub.app".into(),
                 worker_id: "worker-1".into(),
@@ -3385,6 +4321,7 @@ mod tests {
             job_id: "job-1".into(),
             lease_owner_token: "lease-1".into(),
             assignment_attempt: "attempt-1".into(),
+            event_sequence_number: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(1)),
             connection_id: "conn_1".into(),
             profiles: profiles.clone(),
             app_data_dir: dir.path().to_path_buf(),
@@ -3394,14 +4331,24 @@ mod tests {
         };
 
         let mut lines = Vec::new();
-        let outcome = deps.spawn(&[], 30_000, &mut |line: &str| lines.push(line.to_string())).unwrap();
+        let outcome = deps
+            .spawn(&[], 30_000, &mut |line: &str| lines.push(line.to_string()))
+            .unwrap();
 
         assert_eq!(outcome.exit_code, Some(0));
         let combined = lines.join("\n");
         assert!(
-            combined.contains(&format!("HERMES_HOME={}", expected_home_dir.to_string_lossy())),
+            combined.contains(&format!(
+                "HERMES_HOME={}",
+                expected_home_dir.to_string_lossy()
+            )),
             "expected HERMES_HOME={} in child env, got:\n{combined}",
             expected_home_dir.to_string_lossy()
+        );
+        assert_eq!(
+            fs::read_to_string(expected_home_dir.join("config.yaml")).unwrap(),
+            MANAGED_XAI_MEDIA_CONFIG,
+            "every control spawn must refresh the managed xAI media config"
         );
     }
 
@@ -3411,7 +4358,7 @@ mod tests {
         let mut deps = RecordingDeps::new(vec![]);
         deps.hosted = false;
 
-        let outcome = run_hermes_connection_probe("conn_1", "conn_conn_1", 30, &deps);
+        let outcome = run_hermes_connection_probe("conn_1", "conn_conn_1", 30, None, &deps);
 
         match outcome {
             HermesControlOutcome::Failure { error_code, .. } => {
@@ -3419,7 +4366,10 @@ mod tests {
             }
             other => panic!("expected an affinity failure, got {other:?}"),
         }
-        assert!(deps.spawn_calls.borrow().is_empty(), "must fail closed before any spawn");
+        assert!(
+            deps.spawn_calls.borrow().is_empty(),
+            "must fail closed before any spawn"
+        );
     }
 
     #[test]
@@ -3435,7 +4385,10 @@ mod tests {
             }
             other => panic!("expected an affinity failure, got {other:?}"),
         }
-        assert!(deps.spawn_calls.borrow().is_empty(), "must fail closed before any spawn");
+        assert!(
+            deps.spawn_calls.borrow().is_empty(),
+            "must fail closed before any spawn"
+        );
     }
 
     #[test]

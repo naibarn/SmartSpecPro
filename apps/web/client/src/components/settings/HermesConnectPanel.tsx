@@ -14,14 +14,17 @@
  * Never logs/toasts/persists the device user code — component state only.
  */
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DashboardCard } from "@/components/dashboard";
+import { HelpButton } from "@/components/help/HelpButton";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Cable,
+  ChevronDown,
   Copy,
   ExternalLink,
   Loader2,
@@ -40,6 +43,12 @@ const SCOPE_LABEL: Record<HermesScope, string> = {
   private_worker: "เครื่องของฉัน",
 };
 
+const SCOPE_LABEL_EN: Record<HermesScope, string> = {
+  server_shared: "Shared account",
+  server_personal: "Personal server account",
+  private_worker: "My worker",
+};
+
 const STATUS_LABEL: Record<string, string> = {
   pending: "กำลังเชื่อมต่อ",
   authorized: "เชื่อมต่อแล้ว",
@@ -47,6 +56,15 @@ const STATUS_LABEL: Record<string, string> = {
   entitlement_restricted: "ถูกจำกัดสิทธิ์",
   disconnected: "ยกเลิกการเชื่อมต่อแล้ว",
   error: "เกิดข้อผิดพลาด",
+};
+
+const STATUS_LABEL_EN: Record<string, string> = {
+  pending: "Connecting",
+  authorized: "Connected",
+  reauth_required: "Reconnect required",
+  entitlement_restricted: "Entitlement restricted",
+  disconnected: "Disconnected",
+  error: "Error",
 };
 
 /** Thai-locale timestamp for `capabilitySummary.probedAt` — same convention
@@ -58,6 +76,25 @@ function formatThaiDateTime(value: string | null | undefined): string | null {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    calendar: "gregory",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function formatConnectionDateTime(
+  value: string | null | undefined,
+  isThai: boolean,
+): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(isThai ? "th-TH" : "en-GB", {
     timeZone: "Asia/Bangkok",
     calendar: "gregory",
     year: "numeric",
@@ -148,10 +185,14 @@ const CONSENT_NOTICE_EN =
   "Prompts and reference images for jobs sent through this connection will be transmitted to xAI under the connected Grok account, subject to xAI's terms.";
 const SHARED_SCOPE_ADDENDUM_TH =
   "บัญชีนี้เป็นบัญชีกลาง — prompt และรูปของผู้ใช้ทุกคนใน tenant ที่ใช้ pool นี้จะถูกส่งผ่านบัญชี Grok นี้";
+const SHARED_SCOPE_ADDENDUM_EN =
+  "This is the tenant's central account. Prompts and reference images from every tenant member using this pool are sent through this Grok account.";
 const DISCONNECT_PENDING_NOTICE_TH =
   "จะยกเลิกการเชื่อมต่อเมื่องานบนเครื่องทำงานเสร็จ";
 const CONTACT_ADMIN_NOTICE_TH = "ติดต่อผู้ดูแลระบบ";
 const CONTACT_ADMIN_NOTICE_EN = "Contact your admin";
+const HISTORY_PAGE_SIZE = 5;
+const TERMINAL_CONNECTION_STATUSES = new Set(["error", "disconnected"]);
 
 /** `server_shared` rows are visible tenant-wide (any member can see them in
  *  the connection list), but only an admin may drive their connect flow —
@@ -165,6 +206,113 @@ function canReconnectScope(scope: HermesScope, isAdmin: boolean): boolean {
 }
 
 export function HermesConnectPanel() {
+  const { i18n } = useTranslation();
+  const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
+  const scopeLabels = isThai ? SCOPE_LABEL : SCOPE_LABEL_EN;
+  const statusLabels = isThai ? STATUS_LABEL : STATUS_LABEL_EN;
+  const copy = {
+    description: isThai
+      ? "เชื่อมต่อบัญชี Grok ของคุณผ่าน Hermes worker เพื่อสร้างภาพและวิดีโอโดยใช้เครดิตของบัญชีนั้นเอง"
+      : "Connect your Grok account through a Hermes worker to generate images and videos with that account's own quota.",
+    disabledTitle: isThai ? "ยังตั้งค่าไม่ครบ" : "Setup is incomplete",
+    disabledIntro: isThai
+      ? "Grok via Hermes ยังเปิดใช้งานไม่ได้ ตรวจสอบรายการด้านล่าง"
+      : "Grok via Hermes cannot be used yet. Check the items below.",
+    platformGate: isThai ? "เปิดใช้งานฝั่งแพลตฟอร์ม" : "Platform enablement",
+    tenantGate: isThai ? "เปิดให้ tenant นี้ใช้งาน" : "Tenant rollout",
+    privateScope: isThai ? "เปิด Private worker scope" : "Private-worker scope",
+    workerOnline: isThai ? "Worker app ออนไลน์" : "Worker app online",
+    grokConnected: isThai ? "เชื่อมต่อบัญชี Grok" : "Grok account connected",
+    ready: isThai ? "พร้อม" : "Ready",
+    actionRequired: isThai ? "ต้องดำเนินการ" : "Action required",
+    adminPath: isThai
+      ? "ผู้ดูแลระบบ: ไปที่ Admin Settings → Infrastructure → Tasks → Enable Grok via Hermes"
+      : "Admin: go to Admin Settings → Infrastructure → Tasks → Enable Grok via Hermes.",
+    tenantPath: isThai
+      ? "ผู้ดูแล tenant: ไปที่ Admin → Tenants → Feature Flags → Grok via Hermes — Tenant rollout"
+      : "Tenant admin: go to Admin → Tenants → Feature Flags → Grok via Hermes — Tenant rollout.",
+    privatePath: isThai
+      ? "ผู้ดูแลระบบ: เปิด Private worker ใน Advanced operator settings"
+      : "Admin: enable Private worker under Advanced operator settings.",
+    workerPath: isThai
+      ? "เปิด Worker app บนเครื่องของคุณและรอให้สถานะเป็น Online"
+      : "Open the Worker app on your computer and wait until it shows Online.",
+    accountPath: isThai
+      ? "เลือก “เครื่องของฉัน” ด้านล่าง แล้วทำขั้นตอนเชื่อมต่อบัญชี Grok"
+      : "Choose “My worker” below and complete the Grok connection flow.",
+    noAccounts: isThai ? "ยังไม่มีบัญชี Grok ที่เชื่อมต่อ" : "No Grok account is connected yet.",
+    noActiveAccounts: isThai ? "ยังไม่มีบัญชี Grok ที่กำลังใช้งาน" : "There is no active Grok connection.",
+    historyTitle: isThai ? "ประวัติการเชื่อมต่อ" : "Connection history",
+    historyDescription: isThai
+      ? "รายการที่เกิดข้อผิดพลาดหรือยกเลิกแล้ว แสดงใหม่ไปเก่า"
+      : "Failed and disconnected records, newest first.",
+    showMoreHistory: (count: number) => isThai
+      ? `แสดงเพิ่มอีก ${count} รายการ`
+      : `Show ${count} more`,
+    historyCreatedAt: isThai ? "สร้างเมื่อ" : "Created",
+    connect: isThai ? "เชื่อมต่อ" : "Connect",
+    unavailable: isThai ? "ไม่พร้อมใช้งาน" : "Unavailable",
+    selectWorker: isThai ? "เลือก Worker (ออนไลน์)" : "Select an online worker",
+    selectWorkerPlaceholder: isThai ? "เลือก Worker" : "Select a worker",
+    noWorker: isThai ? "ไม่มี Worker ที่ออนไลน์อยู่ในขณะนี้" : "No worker is currently online.",
+    acknowledge: isThai ? "ฉันรับทราบและยินยอม" : "I understand and consent",
+    acknowledgeAria: isThai
+      ? "รับทราบและยินยอมให้ส่งข้อมูลไปยัง xAI"
+      : "Acknowledge and consent to sending data to xAI",
+    confirmConnect: isThai ? "ยืนยันและเชื่อมต่อ" : "Confirm and connect",
+    cancel: isThai ? "ยกเลิก" : "Cancel",
+    reconnect: isThai ? "เชื่อมต่อใหม่" : "Reconnect",
+    openXai: isThai ? "เปิดหน้าเชื่อมต่อของ xAI" : "Open xAI connection page",
+    copyCode: isThai ? "คัดลอก" : "Copy",
+    refresh: isThai ? "รีเฟรช" : "Refresh",
+    language: isThai ? "English" : "ไทย",
+    serverWorker: isThai ? "Hermes worker ส่วนกลางออนไลน์" : "Managed Hermes server worker online",
+    serverWorkerReady: isThai
+      ? "ติดตั้ง Hermes และผ่านการตรวจสอบแล้ว"
+      : "Hermes is installed and passed its runtime check.",
+    serverWorkerNotConfigured: isThai
+      ? "ยังไม่ได้จับคู่ worker ส่วนกลางใน Admin Settings"
+      : "No managed server worker is paired in Admin Settings.",
+    serverWorkerOffline: isThai
+      ? "worker ส่วนกลางออฟไลน์ กรุณาให้ผู้ดูแลตรวจสอบ service"
+      : "The managed server worker is offline. Ask an admin to check the service.",
+    serverWorkerCapability: isThai
+      ? "Hermes บน worker ไม่ผ่านการตรวจสอบหรือยังไม่พร้อม"
+      : "Hermes on the managed worker failed its runtime check or is unavailable.",
+    modeCentralTitle: isThai ? "บัญชีกลางของ tenant" : "Tenant central account",
+    modeCentralDescription: isThai
+      ? "ผู้ดูแลเชื่อมต่อบัญชี Grok หนึ่งบัญชีให้ทุกคนใน tenant ใช้ร่วมกัน โควต้าและประวัติฝั่ง xAI เป็นของบัญชีกลาง งานประมวลผลบนเซิร์ฟเวอร์ส่วนกลาง"
+      : "One admin-connected Grok account is shared by everyone in this tenant. Its xAI quota and account history are shared, and jobs run on the managed server.",
+    modePersonalTitle: isThai ? "บัญชีส่วนตัวบนเซิร์ฟเวอร์" : "Personal account on server",
+    modePersonalDescription: isThai
+      ? "บัญชี Grok และโควต้าเป็นของคุณ โปรไฟล์แยกจากผู้ใช้อื่น แต่งานประมวลผลบนเซิร์ฟเวอร์ส่วนกลาง"
+      : "Your Grok account stays personal while jobs run on the managed server. Its profile and quota are isolated from other users.",
+    modePrivateTitle: isThai ? "บัญชีส่วนตัวบนเครื่องของฉัน" : "Personal account on my computer",
+    modePrivateDescription: isThai
+      ? "บัญชีและโควต้าเป็นของคุณ งานทำบนคอมพิวเตอร์ของคุณผ่าน Worker App และต้องเปิดแอปไว้ในสถานะ Online"
+      : "Jobs run on your own computer through Worker App. Your Grok account and quota stay personal, and Worker App must remain online.",
+    setupWorkerApp: isThai ? "ติดตั้งและตั้งค่า Worker App" : "Set up Worker App",
+    centralConnect: isThai ? "เชื่อมต่อบัญชีกลาง" : "Connect central account",
+    centralUnavailable: isThai
+      ? "เปิดปุ่มนี้ได้เมื่อ worker ส่วนกลางออนไลน์และเปิด Shared pool แล้ว"
+      : "This action becomes available when the managed worker is online and Shared pool is enabled.",
+    managedByAdmin: isThai ? "ผู้ดูแล tenant เป็นผู้เชื่อมต่อและจัดการ" : "Connected and managed by a tenant admin",
+    waitingForAuthorization: isThai
+      ? "กำลังเตรียมการยืนยันตัวตนกับ xAI กรุณารอสักครู่"
+      : "Preparing xAI authorization. Please wait.",
+    connectionProgress: (elapsed: number, timeout?: number) => isThai
+      ? `ดำเนินการแล้ว ${elapsed} วินาที${timeout ? ` จากเวลาสูงสุด ${timeout} วินาที` : ""}`
+      : `Elapsed ${elapsed} seconds${timeout ? ` of a ${timeout}-second limit` : ""}`,
+    connectionStage: (stage: string) => isThai
+      ? `ขั้นตอน: ${stage}`
+      : `Stage: ${stage}`,
+    connectionLifetime: (authorizedAt: string | null) => {
+      const connectedAt = formatConnectionDateTime(authorizedAt, isThai);
+      return isThai
+        ? `เชื่อมต่อ${connectedAt ? `เมื่อ ${connectedAt}` : "แล้ว"} · วันหมดอายุ: xAI ไม่ได้ระบุ ระบบจะแจ้งให้เชื่อมต่อใหม่เมื่อเซสชันใช้ไม่ได้`
+        : `Connected${connectedAt ? ` at ${connectedAt}` : ""} · Expiry: not supplied by xAI. The system will request reconnection if the session becomes invalid.`;
+    },
+  };
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const utils = trpc.useUtils();
@@ -186,10 +334,30 @@ export function HermesConnectPanel() {
   const [selectedWorkerId, setSelectedWorkerId] = useState<string | null>(null);
   const [connectingConnectionId, setConnectingConnectionId] = useState<string | null>(null);
   const [quotaDraftByConnectionId, setQuotaDraftByConnectionId] = useState<Record<string, string>>({});
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(HISTORY_PAGE_SIZE);
+  const authorizedHandledRef = useRef<string | null>(null);
 
   const onlineWorkers = ((connectedWorkers.data?.workers ?? []) as HermesConnectedWorkerRow[]).filter(
     (worker) => worker.status === "online",
   );
+  const connectionRows = (connections.data ?? []) as HermesConnectionRow[];
+  const activeConnectionRows = connectionRows.filter(
+    (row) => !TERMINAL_CONNECTION_STATUSES.has(row.status),
+  );
+  const historyConnectionRows = connectionRows
+    .filter((row) => TERMINAL_CONNECTION_STATUSES.has(row.status))
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+  const visibleHistoryRows = historyConnectionRows.slice(0, historyLimit);
+  const remainingHistoryCount = Math.max(0, historyConnectionRows.length - visibleHistoryRows.length);
+  const hasAuthorizedConnection = connectionRows.some((row) => row.status === "authorized");
+  const pendingConnection = activeConnectionRows.find((row) => row.status === "pending");
+  const serverWorkerReason = availability.data?.serverWorker?.reason === "not_configured"
+    || availability.data?.serverWorker?.reason === "not_found"
+    ? copy.serverWorkerNotConfigured
+    : availability.data?.serverWorker?.reason === "offline"
+      ? copy.serverWorkerOffline
+      : copy.serverWorkerCapability;
 
   const startConnect = trpc.hermesConnections.startConnect.useMutation({
     onSuccess: (result) => {
@@ -202,12 +370,30 @@ export function HermesConnectPanel() {
     { connectionId: connectingConnectionId ?? "" },
     {
       enabled: Boolean(connectingConnectionId),
-      refetchInterval: (query: { state: { data?: { status?: string } } }) => {
+      refetchInterval: (query: { state: { data?: { status?: string; errorCode?: string } } }) => {
         const status = query.state.data?.status;
+        if (query.state.data?.errorCode) return false;
         return status && status !== "pending" ? false : 2500;
       },
     },
   );
+
+  // A connection attempt is durable server state. Resume it after navigation
+  // or page reload instead of losing the polling state held by this component.
+  useEffect(() => {
+    if (connectingConnectionId || flowScope || !pendingConnection) return;
+    // listConnections can still contain the pre-invalidation pending row for
+    // one render after getConnectStatus has reported authorized. Do not
+    // resurrect that completed attempt and leave the device-code spinner open.
+    if (authorizedHandledRef.current === pendingConnection.id) return;
+    setFlowScope(pendingConnection.scope);
+    setConnectingConnectionId(pendingConnection.id);
+  }, [
+    connectingConnectionId,
+    flowScope,
+    pendingConnection?.id,
+    pendingConnection?.scope,
+  ]);
 
   const setDefault = trpc.hermesConnections.setDefault.useMutation({
     onSuccess: async () => {
@@ -260,7 +446,6 @@ export function HermesConnectPanel() {
   // Terminal `authorized` → success toast + invalidate + reset the flow.
   // Guarded by a ref so this fires exactly once per connectingConnectionId
   // even while the (now-stopped) polling query keeps returning cached data.
-  const authorizedHandledRef = useRef<string | null>(null);
   useEffect(() => {
     if (!connectingConnectionId) return;
     if (
@@ -302,24 +487,76 @@ export function HermesConnectPanel() {
   }
 
   if (availability.data && availability.data.enabled === false) {
+    const gateRows = [
+      {
+        label: copy.platformGate,
+        ready: availability.data.platformEnabled,
+        guidance: copy.adminPath,
+      },
+      {
+        label: copy.tenantGate,
+        ready: availability.data.tenantEnabled,
+        guidance: copy.tenantPath,
+      },
+    ];
     return (
       <DashboardCard className="p-5">
-        <div className="flex items-center gap-2">
-          <Cable className="h-4 w-4 text-gray-400" />
-          <h2 className="text-base font-semibold text-gray-950">Grok via Hermes</h2>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Cable className="h-4 w-4 text-gray-400" />
+            <h2 className="text-base font-semibold text-gray-950">Grok via Hermes</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <HelpButton
+              page="/settings"
+              topic="grok-via-hermes-connections"
+              variant="outline"
+              size="sm"
+              label={isThai ? "คู่มือ Grok via Hermes" : "Grok via Hermes Help"}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void i18n.changeLanguage(isThai ? "en" : "th")}
+            >
+              {copy.language}
+            </Button>
+          </div>
         </div>
-        <p
+        <div
           className="mt-3 rounded-md border border-dashed p-3 text-sm text-gray-600"
           data-testid="hermes-panel-disabled-explanation"
         >
-          ฟีเจอร์นี้ปิดอยู่ในขณะนี้ กรุณาติดต่อผู้ดูแลระบบ
-        </p>
+          <p className="font-medium text-gray-900">{copy.disabledTitle}</p>
+          <p className="mt-1">{copy.disabledIntro}</p>
+          <ul className="mt-3 space-y-2">
+            {gateRows.map((row) => (
+              <li key={row.label}>
+                <span className="font-medium">
+                  {row.ready ? "✓" : "○"} {row.label} — {row.ready ? copy.ready : copy.actionRequired}
+                </span>
+                {!row.ready ? <p className="mt-0.5 text-xs">{row.guidance}</p> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       </DashboardCard>
     );
   }
 
-  const connectionRows = (connections.data ?? []) as HermesConnectionRow[];
   const scopes = availability.data?.scopes;
+  const readinessRows = [
+    { label: copy.platformGate, ready: Boolean(availability.data?.platformEnabled), guidance: copy.adminPath },
+    { label: copy.tenantGate, ready: Boolean(availability.data?.tenantEnabled), guidance: copy.tenantPath },
+    {
+      label: copy.serverWorker,
+      ready: Boolean(availability.data?.serverWorker?.ready),
+      guidance: availability.data?.serverWorker?.ready ? copy.serverWorkerReady : serverWorkerReason,
+    },
+    { label: copy.privateScope, ready: Boolean(scopes?.privateWorker), guidance: copy.privatePath },
+    { label: copy.workerOnline, ready: onlineWorkers.length > 0, guidance: copy.workerPath },
+    { label: copy.grokConnected, ready: hasAuthorizedConnection, guidance: copy.accountPath },
+  ];
 
   return (
     <DashboardCard className="p-5">
@@ -331,23 +568,53 @@ export function HermesConnectPanel() {
             <Badge variant="outline">Hermes</Badge>
           </div>
           <p className="mt-1 text-sm text-gray-500">
-            เชื่อมต่อบัญชี Grok ของคุณผ่าน Hermes worker เพื่อสร้างภาพและวิดีโอโดยใช้เครดิตของบัญชีนั้นเอง
+            {copy.description}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => connections.refetch()}>
-          <RefreshCw className="mr-2 h-3.5 w-3.5" />
-          Refresh
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <HelpButton
+            page="/settings"
+            topic="grok-via-hermes-connections"
+            variant="outline"
+            size="sm"
+            label={isThai ? "คู่มือ Grok via Hermes" : "Grok via Hermes Help"}
+          />
+          <Button variant="outline" size="sm" onClick={() => connections.refetch()}>
+            <RefreshCw className="mr-2 h-3.5 w-3.5" />
+            {copy.refresh}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void i18n.changeLanguage(isThai ? "en" : "th")}
+            aria-label={isThai ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย"}
+          >
+            {copy.language}
+          </Button>
+        </div>
       </div>
+
+      <ul className="mt-4 grid gap-2 sm:grid-cols-2" data-testid="hermes-readiness-checklist">
+        {readinessRows.map((row) => (
+          <li key={row.label} className="rounded-md border p-3 text-sm">
+            <p className="font-medium text-gray-900">
+              {row.ready ? "✓" : "○"} {row.label}
+            </p>
+            <p className={row.ready ? "mt-1 text-xs text-emerald-700" : "mt-1 text-xs text-amber-700"}>
+              {row.ready ? (row.guidance || copy.ready) : `${copy.actionRequired}: ${row.guidance}`}
+            </p>
+          </li>
+        ))}
+      </ul>
 
       {/* Connection list */}
       <div className="mt-4 space-y-3">
-        {connectionRows.length === 0 ? (
+        {activeConnectionRows.length === 0 ? (
           <div className="rounded-md border border-dashed p-4 text-sm text-gray-500">
-            ยังไม่มีบัญชี Grok ที่เชื่อมต่อ
+            {connectionRows.length === 0 ? copy.noAccounts : copy.noActiveAccounts}
           </div>
         ) : (
-          connectionRows.map((row) => {
+          activeConnectionRows.map((row) => {
             const lastGenerationTestLine = formatLastGenerationTestLine(
               row.capabilitySummary.lastGenerationTest,
             );
@@ -359,9 +626,9 @@ export function HermesConnectPanel() {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={row.status === "authorized" ? "default" : "outline"}>
-                  {STATUS_LABEL[row.status] ?? row.status}
+                  {statusLabels[row.status] ?? row.status}
                 </Badge>
-                <Badge variant="outline">{SCOPE_LABEL[row.scope]}</Badge>
+                <Badge variant="outline">{scopeLabels[row.scope]}</Badge>
                 <span className="font-medium text-gray-950">
                   {row.accountLabel ?? row.accountHint ?? row.id}
                 </span>
@@ -375,6 +642,14 @@ export function HermesConnectPanel() {
                   ? ` · ตรวจสอบล่าสุด ${formatThaiDateTime(row.capabilitySummary.probedAt)} น.`
                   : ""}
               </div>
+              {row.status === "authorized" ? (
+                <div
+                  className="mt-1 text-xs text-gray-600"
+                  data-testid={`hermes-connection-lifetime-${row.id}`}
+                >
+                  {copy.connectionLifetime(row.authorizedAt)}
+                </div>
+              ) : null}
               {lastGenerationTestLine ? (
                 <div
                   className={`mt-1 text-xs ${
@@ -496,28 +771,113 @@ export function HermesConnectPanel() {
         )}
       </div>
 
+      {historyConnectionRows.length > 0 ? (
+        <section className="mt-4 rounded-md border" data-testid="hermes-history-panel">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-3 text-left hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+            aria-expanded={historyOpen}
+            aria-controls="hermes-connection-history-content"
+            onClick={() => setHistoryOpen((current) => !current)}
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-gray-900">
+                {copy.historyTitle} ({historyConnectionRows.length})
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-500">
+                {copy.historyDescription}
+              </span>
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${historyOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+          {historyOpen ? (
+            <div id="hermes-connection-history-content" className="border-t px-3 py-3">
+              <ul className="space-y-2">
+                {visibleHistoryRows.map((row) => (
+                  <li
+                    key={row.id}
+                    className="flex flex-col gap-2 rounded-md border bg-gray-50/60 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    data-testid={`hermes-history-row-${row.id}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{statusLabels[row.status] ?? row.status}</Badge>
+                        <Badge variant="outline">{scopeLabels[row.scope]}</Badge>
+                        <span className="truncate text-sm font-medium text-gray-900">
+                          {row.accountLabel ?? row.accountHint ?? row.id}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {copy.historyCreatedAt}{" "}
+                        {formatConnectionDateTime(row.createdAt, isThai) ?? row.createdAt}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {remainingHistoryCount > 0 ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => setHistoryLimit((current) => current + HISTORY_PAGE_SIZE)}
+                >
+                  {copy.showMoreHistory(Math.min(HISTORY_PAGE_SIZE, remainingHistoryCount))}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {/* Connect flow entry points — server_shared is admin-only and lives
           exclusively in the admin sub-panel below (single authoritative
           mutation surface). */}
       <div className="mt-4 space-y-2">
+        <div className="rounded-md border p-3" data-testid="hermes-connect-entry-server_shared">
+          <p className="text-sm font-medium text-gray-900">{copy.modeCentralTitle}</p>
+          <p className="mt-1 text-xs text-gray-600">{copy.modeCentralDescription}</p>
+          <p className="mt-2 text-xs font-medium text-violet-700">{copy.managedByAdmin}</p>
+        </div>
         {(["server_personal", "private_worker"] as HermesScope[]).map((scope) => {
           const scopeAvailable =
-            scope === "server_personal" ? scopes?.serverPersonal : scopes?.privateWorker;
+            scope === "server_personal"
+              ? scopes?.serverPersonal
+              : scopes?.privateWorker && onlineWorkers.length > 0;
+          const title = scope === "server_personal" ? copy.modePersonalTitle : copy.modePrivateTitle;
+          const description = scope === "server_personal"
+            ? copy.modePersonalDescription
+            : copy.modePrivateDescription;
           return (
             <div
               key={scope}
-              className="flex items-center justify-between rounded-md border p-3"
+              className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
               data-testid={`hermes-connect-entry-${scope}`}
             >
-              <span className="text-sm font-medium text-gray-900">{SCOPE_LABEL[scope]}</span>
+              <div>
+                <p className="text-sm font-medium text-gray-900">{title}</p>
+                <p className="mt-1 text-xs text-gray-600">{description}</p>
+                {scope === "private_worker" ? (
+                  <a
+                    href="/workers/connect"
+                    className="mt-2 inline-flex text-xs font-medium text-violet-700 underline underline-offset-2"
+                  >
+                    {copy.setupWorkerApp}
+                  </a>
+                ) : null}
+              </div>
               {scopeAvailable ? (
                 <Button size="sm" data-testid={`hermes-connect-button-${scope}`} onClick={() => openConnectFlow(scope)}>
                   <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                  เชื่อมต่อ
+                  {copy.connect}
                 </Button>
               ) : (
                 <span className="text-xs text-gray-400" data-testid={`hermes-connect-disabled-${scope}`}>
-                  ไม่พร้อมใช้งาน
+                  {copy.unavailable}
                 </span>
               )}
             </div>
@@ -531,26 +891,25 @@ export function HermesConnectPanel() {
           className="mt-4 rounded-md border p-3"
           data-testid={`hermes-consent-${flowScope}`}
         >
-          <p className="text-sm text-gray-800">{CONSENT_NOTICE_TH}</p>
-          <p className="mt-1 text-xs text-gray-500">{CONSENT_NOTICE_EN}</p>
+          <p className="text-sm text-gray-800">{isThai ? CONSENT_NOTICE_TH : CONSENT_NOTICE_EN}</p>
           {flowScope === "server_shared" ? (
             <p
               className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800"
               data-testid="hermes-consent-shared-addendum"
             >
-              {SHARED_SCOPE_ADDENDUM_TH}
+              {isThai ? SHARED_SCOPE_ADDENDUM_TH : SHARED_SCOPE_ADDENDUM_EN}
             </p>
           ) : null}
 
           {flowScope === "private_worker" ? (
             <div className="mt-3" data-testid="hermes-private-worker-selector">
-              <label className="text-xs font-medium text-gray-700">เลือก Worker (ออนไลน์)</label>
+              <label className="text-xs font-medium text-gray-700">{copy.selectWorker}</label>
               <select
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
                 value={selectedWorkerId ?? ""}
                 onChange={(event) => setSelectedWorkerId(event.target.value || null)}
               >
-                <option value="">เลือก Worker</option>
+                <option value="">{copy.selectWorkerPlaceholder}</option>
                 {onlineWorkers.map((worker) => (
                   <option key={worker.workerId} value={worker.workerId}>
                     {worker.displayName}
@@ -558,7 +917,7 @@ export function HermesConnectPanel() {
                 ))}
               </select>
               {onlineWorkers.length === 0 ? (
-                <p className="mt-1 text-xs text-red-600">ไม่มี Worker ที่ออนไลน์อยู่ในขณะนี้</p>
+                <p className="mt-1 text-xs text-red-600">{copy.noWorker}</p>
               ) : null}
             </div>
           ) : null}
@@ -566,11 +925,11 @@ export function HermesConnectPanel() {
           <label className="mt-3 flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              aria-label="รับทราบและยินยอมให้ส่งข้อมูลไปยัง xAI"
+              aria-label={copy.acknowledgeAria}
               checked={consentAcknowledged}
               onChange={(event) => setConsentAcknowledged(event.target.checked)}
             />
-            ฉันรับทราบและยินยอม
+            {copy.acknowledge}
           </label>
 
           <div className="mt-3 flex gap-2">
@@ -584,10 +943,10 @@ export function HermesConnectPanel() {
               onClick={confirmConsentAndConnect}
             >
               {startConnect.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
-              ยืนยันและเชื่อมต่อ
+              {copy.confirmConnect}
             </Button>
             <Button size="sm" variant="outline" onClick={closeConnectFlow}>
-              ยกเลิก
+              {copy.cancel}
             </Button>
           </div>
         </div>
@@ -620,9 +979,28 @@ export function HermesConnectPanel() {
             })()
           ) : (
             <>
-              <p className="text-sm text-gray-700">
-                {STATUS_LABEL[connectStatus.data?.status ?? "pending"]}
-              </p>
+              <div data-testid="hermes-connect-progress">
+                <p className="flex items-center gap-2 text-sm text-gray-700">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  {statusLabels[connectStatus.data?.status ?? "pending"]}
+                </p>
+                {!connectStatus.data?.verificationUrl ? (
+                  <p className="mt-1 text-xs text-gray-500">{copy.waitingForAuthorization}</p>
+                ) : null}
+                {connectStatus.data?.stage ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {copy.connectionStage(connectStatus.data.stage)}
+                  </p>
+                ) : null}
+                {typeof connectStatus.data?.elapsedSeconds === "number" ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {copy.connectionProgress(
+                      connectStatus.data.elapsedSeconds,
+                      connectStatus.data.timeoutSeconds,
+                    )}
+                  </p>
+                ) : null}
+              </div>
               {connectStatus.data?.verificationUrl ? (
                 <Button
                   size="sm"
@@ -630,7 +1008,7 @@ export function HermesConnectPanel() {
                   onClick={() => window.open(connectStatus.data?.verificationUrl, "_blank", "noopener")}
                 >
                   <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                  เปิดหน้าเชื่อมต่อของ xAI
+                  {copy.openXai}
                 </Button>
               ) : null}
               {connectStatus.data?.userCode ? (
@@ -647,7 +1025,7 @@ export function HermesConnectPanel() {
                     }}
                   >
                     <Copy className="mr-1.5 h-3.5 w-3.5" />
-                    คัดลอก
+                    {copy.copyCode}
                   </Button>
                 </div>
               ) : null}
@@ -667,24 +1045,40 @@ export function HermesConnectPanel() {
         <div className="mt-6 rounded-md border p-3" data-testid="hermes-admin-subpanel">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Shield className="h-4 w-4" />
-            จัดการบัญชีกลาง (Admin)
+            {copy.modeCentralTitle} (Admin)
           </div>
+          <p className="mt-2 text-xs text-gray-600">{copy.modeCentralDescription}</p>
           <Button
             size="sm"
             className="mt-2"
             data-testid="hermes-admin-connect-shared"
+            disabled={!scopes?.serverShared}
             onClick={() => openConnectFlow("server_shared")}
           >
-            เชื่อมต่อบัญชีกลาง
+            {copy.centralConnect}
           </Button>
+          {!scopes?.serverShared ? (
+            <p
+              className="mt-2 text-xs text-amber-700"
+              data-testid="hermes-server-worker-reason"
+            >
+              {serverWorkerReason}. {copy.centralUnavailable}
+            </p>
+          ) : null}
           <div className="mt-3 space-y-2">
-            {(adminConnections.data ?? []).map((row) => {
+            {(adminConnections.data ?? [])
+              .filter(
+                (row) =>
+                  row.scope === "server_shared"
+                  && !TERMINAL_CONNECTION_STATUSES.has(row.status),
+              )
+              .map((row) => {
               const draft = quotaDraftByConnectionId[row.id] ?? (row.dailyJobQuota != null ? String(row.dailyJobQuota) : "");
               return (
                 <div key={row.id} className="rounded-md border p-2" data-testid={`hermes-admin-row-${row.id}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">{row.accountLabel ?? row.accountHint ?? row.id}</span>
-                    <Badge variant="outline">{STATUS_LABEL[row.status] ?? row.status}</Badge>
+                    <Badge variant="outline">{statusLabels[row.status] ?? row.status}</Badge>
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <input

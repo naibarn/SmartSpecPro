@@ -7,9 +7,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildHermesMediaReferences,
   buildHermesMediaTaskEnvelope,
+  buildHermesReferenceStorageLookup,
   resolveHermesReferenceAssetIdFromUrl,
   resolveHermesOrderedRefsFromUrls,
   HermesMediaReferenceAssetNotFoundError,
+  HermesMediaReferenceResolutionError,
+  normalizeHermesReferenceStorageObjectKey,
   type HermesMediaReferenceRepo,
   type HermesReferenceAssetLookupRepo,
 } from "../hermesMediaReferences";
@@ -29,15 +32,35 @@ function fakeRepo(overrides: Partial<HermesMediaReferenceRepo> = {}): HermesMedi
 }
 
 describe("buildHermesMediaReferences", () => {
-  it("builds references with continuous 1-based indices and pulls sha256 from the stored checksum column", async () => {
+  it("canonicalizes managed legacy storage paths to the underlying object key", () => {
+    expect(
+      normalizeHermesReferenceStorageObjectKey(
+        "/api/storage/files/mcp-media/tenant-1/image.png",
+      ),
+    ).toBe("mcp-media/tenant-1/image.png");
+    expect(
+      normalizeHermesReferenceStorageObjectKey(
+        "https://smartaihub.app/uploads/characters/portrait.png?ignored=1",
+      ),
+    ).toBe("characters/portrait.png");
+    expect(normalizeHermesReferenceStorageObjectKey("plain/object.png")).toBe(
+      "plain/object.png",
+    );
+  });
+
+  it("builds continuous references from the current object bytes and repairs stale stored checksums", async () => {
+    const persistChecksum = vi.fn(async () => {});
     const repo = fakeRepo({
       findAssetById: vi.fn(async ({ assetId }) => ({
         id: assetId,
         storageKey: `key-${assetId}`,
         checksumSha256: "a".repeat(64),
       })),
+      persistChecksum,
     });
-    const hashObject = vi.fn();
+    const hashObject = vi.fn(async ({ assetId }) =>
+      assetId === "10" ? "b".repeat(64) : "c".repeat(64),
+    );
     const refs = await buildHermesMediaReferences(
       {
         tenantId: "tenant-1",
@@ -50,11 +73,40 @@ describe("buildHermesMediaReferences", () => {
       { repo, hashObject },
     );
     expect(refs).toEqual([
-      { assetId: "10", index: 1, role: "start_frame", label: "Image-1", sha256: "a".repeat(64) },
-      { assetId: "11", index: 2, role: "reference", label: "Image-2", sha256: "a".repeat(64) },
+      { assetId: "10", index: 1, role: "start_frame", label: "Image-1", sha256: "b".repeat(64) },
+      { assetId: "11", index: 2, role: "reference", label: "Image-2", sha256: "c".repeat(64) },
     ]);
-    // Checksum already present on the row — never falls back to hashing.
-    expect(hashObject).not.toHaveBeenCalled();
+    expect(hashObject).toHaveBeenCalledTimes(2);
+    expect(persistChecksum).toHaveBeenNthCalledWith(1, {
+      assetId: "10",
+      checksumSha256: "b".repeat(64),
+    });
+    expect(persistChecksum).toHaveBeenNthCalledWith(2, {
+      assetId: "11",
+      checksumSha256: "c".repeat(64),
+    });
+  });
+
+  it("does not write back when the stored checksum already matches the current object bytes", async () => {
+    const persistChecksum = vi.fn(async () => {});
+    const repo = fakeRepo({
+      findAssetById: vi.fn(async () => ({
+        id: "42",
+        storageKey: "k42",
+        checksumSha256: "a".repeat(64),
+      })),
+      persistChecksum,
+    });
+    const refs = await buildHermesMediaReferences(
+      {
+        tenantId: "tenant-1",
+        userId: 1,
+        orderedRefs: [{ assetId: "42", role: "reference", label: "Image-1" }],
+      },
+      { repo, hashObject: vi.fn(async () => "a".repeat(64)) },
+    );
+    expect(refs[0].sha256).toBe("a".repeat(64));
+    expect(persistChecksum).not.toHaveBeenCalled();
   });
 
   it("computes + persists the checksum when the asset row has none yet", async () => {
@@ -77,7 +129,7 @@ describe("buildHermesMediaReferences", () => {
 
   it("never fails the submit when the best-effort checksum write-back throws", async () => {
     const repo = fakeRepo({
-      findAssetById: vi.fn(async () => ({ id: "42", storageKey: "k42", checksumSha256: null })),
+      findAssetById: vi.fn(async () => ({ id: "42", storageKey: "k42", checksumSha256: "a".repeat(64) })),
       persistChecksum: vi.fn(async () => {
         throw new Error("write-back failed");
       }),
@@ -112,7 +164,7 @@ describe("buildHermesMediaReferences", () => {
     });
     const refs = await buildHermesMediaReferences(
       { tenantId: "t", userId: 1, orderedRefs: [{ assetId: "1", role: "reference", label: "Image-1" }] },
-      { repo },
+      { repo, hashObject: vi.fn(async () => "d".repeat(64)) },
     );
     expect(Object.keys(refs[0]).sort()).toEqual(["assetId", "index", "label", "role", "sha256"].sort());
   });
@@ -128,11 +180,11 @@ describe("resolveHermesReferenceAssetIdFromUrl", () => {
       { repo },
     );
     expect(result).toBe("77");
-    expect(repo.findAssetByStorageKey).toHaveBeenCalledWith({
+    expect(repo.findAssetByStorageKey).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: "t",
       userId: 1,
       storageKey: "characters/portrait-1.png",
-    });
+    }));
   });
 
   it("resolves a local /uploads/ storage URL to its owning asset id", async () => {
@@ -144,11 +196,11 @@ describe("resolveHermesReferenceAssetIdFromUrl", () => {
       { repo },
     );
     expect(result).toBe("88");
-    expect(repo.findAssetByStorageKey).toHaveBeenCalledWith({
+    expect(repo.findAssetByStorageKey).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: "t",
       userId: 1,
       storageKey: "locations/plate-1.png",
-    });
+    }));
   });
 
   it("returns null (never throws) for a URL shape it cannot map back to a storage key", async () => {
@@ -304,5 +356,45 @@ describe("resolveHermesOrderedRefsFromUrls (code review FIX 4 — audited refere
       { repo },
     );
     expect(orderedRefs).toEqual([{ assetId: "asset-2", role: "reference", label: "Image-2" }]);
+  });
+
+  it("builds lookup candidates for legacy rows that stored the full storage proxy path as storageKey", () => {
+    expect(
+      buildHermesReferenceStorageLookup(
+        "https://smartaihub.app/api/storage/files/mcp-media/tenant-1/asset.png?signature=ignored",
+      ),
+    ).toEqual({
+      storageKey: "mcp-media/tenant-1/asset.png",
+      storageKeyCandidates: [
+        "mcp-media/tenant-1/asset.png",
+        "/api/storage/files/mcp-media/tenant-1/asset.png",
+      ],
+      originalUrlCandidates: [
+        "https://smartaihub.app/api/storage/files/mcp-media/tenant-1/asset.png",
+        "/api/storage/files/mcp-media/tenant-1/asset.png",
+      ],
+    });
+  });
+
+  it("fails closed when a caller marks every supplied reference as required", async () => {
+    const repo: HermesReferenceAssetLookupRepo = {
+      findAssetByStorageKey: vi.fn(async ({ storageKey }) =>
+        storageKey === "present.png" ? { id: "asset-present" } : null,
+      ),
+    };
+
+    await expect(
+      resolveHermesOrderedRefsFromUrls(
+        {
+          tenantId: "t",
+          userId: 1,
+          urls: ["/uploads/present.png", "/uploads/missing.png"],
+          traceId: "trace-required",
+          connectionId: "conn-required",
+          requireAll: true,
+        },
+        { repo },
+      ),
+    ).rejects.toBeInstanceOf(HermesMediaReferenceResolutionError);
   });
 });

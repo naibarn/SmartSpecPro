@@ -52,14 +52,14 @@ import {
   type CharacterImageIndexMappingMismatch,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
-// Prompt-language directive (shared-field fix — this was previously wired
-// ONLY into the video-prompt path, `verticalDramaVideoMotionPromptGeneration.ts`
-// — see `VerticalDramaPromptLanguage`'s own doc comment in `contracts.ts` for
-// why the SAME `motionPromptPack.promptLanguage` field now also governs
-// image/start-frame prompt text). Mirrors that file's exact "resolve default
+// Cinematic image-prompt language directive. The caller resolves the
+// independent `startFramePlan.imagePromptLanguage` setting (with the legacy
+// fallback documented in `contracts.ts`) before entering this service.
+// Mirrors the video generator's exact "resolve default
 // -> look up English display name -> append a MANDATORY directive line to
 // the user prompt" convention; no skill.md changes.
 import {
+  VD_IMAGE_PROMPT_MAX,
   type VerticalDramaPromptLanguage,
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
   // Gap-5 fix (recorded, 2026-07-22) — the canonical PERSISTED per-frame
@@ -266,6 +266,7 @@ export type VerticalDramaStartFramePlanFrame = VerticalDramaStartFramePlan["fram
 export interface StartFrameRenderPlanProjection {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
+  imagePromptLanguage?: VerticalDramaPromptLanguage;
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;
@@ -377,6 +378,7 @@ export function projectStartFramePlan(
    * `productReferenceAssetIds` falls back to `[]`, exactly as before.
    */
   previousFramesByShotNumber?: Map<number, VerticalDramaStartFramePlanFrame>,
+  imagePromptLanguage?: VerticalDramaPromptLanguage,
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -386,6 +388,7 @@ export function projectStartFramePlan(
   return {
     mode: "single_frame_per_shot",
     selectedImageModelId,
+    ...(imagePromptLanguage ? { imagePromptLanguage } : {}),
     frames: raw.start_frame_requests
       .slice()
       .sort((a, b) => a.shot_number - b.shot_number)
@@ -728,8 +731,8 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
     // vertical-drama-skill-first-architecture plan Phase 3, item 1: this
     // used to duplicate a near-verbatim copy of that skill.md instruction).
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
-    // Shared-field prompt-language fix — same field/default/wording
-    // convention as `verticalDramaVideoMotionPromptGeneration.ts`'s
+    // Independent image-prompt language — same default/wording convention
+    // as `verticalDramaVideoMotionPromptGeneration.ts`'s
     // `buildUserPrompt` (the video pack-level sibling of this builder),
     // reworded for the fields THIS skill actually produces (an image
     // prompt/negative prompt per shot, not a video clip). Always appended
@@ -1008,6 +1011,7 @@ export async function generateStartFrameRenderPlan(
     shotCharacterIdsByShotNumber,
     canonicalShotSummaryByShotNumber,
     params.previousFramesByShotNumber,
+    params.promptLanguage,
   );
 
   return {
@@ -1266,6 +1270,87 @@ const startFrameShotPromptOutputSchema = z
   .passthrough();
 
 export type StartFrameShotPromptOutput = z.infer<typeof startFrameShotPromptOutputSchema>;
+
+const policySafeSynopsisAdjustmentSchema = z.object({
+  original: z.string().min(1),
+  rewritten: z.string().min(1),
+  reason: z.enum(["adult_or_consent", "threat", "violence", "sexual_content"]),
+});
+
+export const policySafeSynopsisOutputSchema = z.object({
+  contract_version: z.literal(1).optional(),
+  rewritten_synopsis: z.string().min(1),
+  safety_adjustments: z.array(policySafeSynopsisAdjustmentSchema).max(12),
+});
+
+export type PolicySafeSynopsisOutput = z.infer<typeof policySafeSynopsisOutputSchema>;
+
+/**
+ * Proves that the policy skill changed only the exact substrings it declared.
+ * Any undeclared addition/deletion, or an ambiguous replacement target, fails
+ * closed instead of silently turning synopsis-direct mode into creative mode.
+ */
+export function validatePolicySafeSynopsisRewrite(
+  sourceSynopsis: string,
+  output: PolicySafeSynopsisOutput,
+): string {
+  let reconstructed = sourceSynopsis.trim();
+  for (const adjustment of output.safety_adjustments) {
+    if (adjustment.original === adjustment.rewritten) {
+      throw new VdSchemaValidationError(
+        "Policy-safe synopsis adjustment must change the declared text",
+        adjustment,
+      );
+    }
+    const occurrences = reconstructed.split(adjustment.original).length - 1;
+    if (occurrences !== 1) {
+      throw new VdSchemaValidationError(
+        `Policy-safe synopsis adjustment target must occur exactly once (found ${occurrences})`,
+        adjustment,
+      );
+    }
+    reconstructed = reconstructed.replace(adjustment.original, adjustment.rewritten);
+  }
+  const rewritten = output.rewritten_synopsis.trim();
+  if (reconstructed !== rewritten) {
+    throw new VdSchemaValidationError(
+      "Policy-safe synopsis contains an undeclared addition, deletion, or rewrite",
+      { sourceSynopsis: sourceSynopsis.trim(), reconstructed, rewritten },
+    );
+  }
+  return rewritten;
+}
+
+export function buildPolicySafeSynopsisUserPrompt(canonicalShotSummary: string): string {
+  return [
+    "Rewrite only policy-sensitive wording in the authoritative synopsis below.",
+    "Preserve its original language and all non-policy wording exactly.",
+    "Allowed reasons only: adult_or_consent, threat, violence, sexual_content.",
+    "Do not add or infer blocking, expressions, clothing, lighting, camera, weather, props, or events.",
+    "Return only rewritten_synopsis and the exact safety_adjustments replacements.",
+    `authoritative_synopsis: ${canonicalShotSummary.trim()}`,
+    VD_COMPACT_JSON_INSTRUCTION,
+  ].join("\n");
+}
+
+export function buildDeterministicPolicySafeImagePrompt(params: {
+  rewrittenSynopsis: string;
+  characterReferenceManifest: GenerateStartFrameShotPromptCharacterManifestEntry[];
+  locationReferenceImage?: { url: string; label: string };
+}): string {
+  const mappings = params.characterReferenceManifest
+    .slice()
+    .sort((a, b) => a.index - b.index)
+    .map(entry => `Image ${entry.index} = ${entry.name}`);
+  if (params.locationReferenceImage) {
+    const locationIndex = Math.max(0, ...params.characterReferenceManifest.map(e => e.index)) + 1;
+    mappings.push(`Image ${locationIndex} = location: ${params.locationReferenceImage.label}`);
+  }
+  const synopsis = params.rewrittenSynopsis.trim();
+  return mappings.length > 0
+    ? `REFERENCE MAPPING: ${mappings.join("; ")}.\n${synopsis}`
+    : synopsis;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Lenient extras normalization — trims/caps whatever the two new modes       */
@@ -1686,8 +1771,8 @@ export function buildStartFrameShotPromptUserPrompt(
     isNewImagePromptMode && params.imagePromptMode === "cinematic_narrative"
       ? `frame_analysis_inputs: character portraits and the location image are ATTACHED as images below`
       : null,
-    // Shared-field prompt-language fix — same field/default/wording
-    // convention as `verticalDramaVideoMotionPromptGeneration.ts`'s
+    // Independent image-prompt language — same default/wording convention
+    // as `verticalDramaVideoMotionPromptGeneration.ts`'s
     // `buildShotVideoPromptUserPrompt` (the video single-shot sibling of this
     // builder), reworded for the fields THIS skill actually produces (an
     // image prompt/negative prompt, not a video clip). Always appended (even
@@ -1861,6 +1946,16 @@ export async function generateStartFrameShotPrompt(
     throw new InsufficientCreditsError();
   }
 
+  const isPolicySafeSynopsisMode =
+    params.imagePromptMode === "policy_safe_rewrite" && !params.referenceFrameMode;
+  const canonicalSynopsis = params.canonicalShotSummary?.trim();
+  if (isPolicySafeSynopsisMode && !canonicalSynopsis) {
+    throw new VdSchemaValidationError(
+      "Policy-safe synopsis mode requires an authoritative canonical shot synopsis",
+      { shotNumber: params.shotNumber },
+    );
+  }
+
   // Two-mode start-frame image prompt switch — `cinematic_narrative` is
   // explicitly image-grounded (D3, `planning/vd-start-frame-prompt-modes/
   // plan.md`): it wants vision even when the shot has no existing image yet,
@@ -1875,7 +1970,8 @@ export async function generateStartFrameShotPrompt(
     isCinematicNarrativeMode &&
     Boolean(params.characterReferenceImages?.length || params.locationReferenceImage);
   const wantsVision =
-    Boolean(params.imageUrl) || (hasModeTwoVisionInputs && params.attachShotImage !== false);
+    !isPolicySafeSynopsisMode &&
+    (Boolean(params.imageUrl) || (hasModeTwoVisionInputs && params.attachShotImage !== false));
 
   const resolvedModel = await resolveStartFrameShotPromptModel(
     params.seriesId,
@@ -1896,7 +1992,9 @@ export async function generateStartFrameShotPrompt(
     imagePromptMode: params.imagePromptMode,
     referenceFrameMode: params.referenceFrameMode,
   });
-  const userPrompt = buildStartFrameShotPromptUserPrompt(params);
+  const userPrompt = isPolicySafeSynopsisMode
+    ? buildPolicySafeSynopsisUserPrompt(canonicalSynopsis!)
+    : buildStartFrameShotPromptUserPrompt(params);
   const images = buildStartFrameShotPromptVisionImages(
     params.imageUrl,
     params.additionalImageUrls,
@@ -1907,6 +2005,100 @@ export async function generateStartFrameShotPrompt(
         }
       : undefined,
   );
+
+  if (isPolicySafeSynopsisMode) {
+    const executePolicyRewrite = (promptText: string) =>
+      executeVisionAwareJsonCallWithRetry<PolicySafeSynopsisOutput>({
+        model,
+        systemPrompt,
+        userPromptText: promptText,
+        hasVision: false,
+        images: [],
+        userId: params.userId,
+        schema: policySafeSynopsisOutputSchema,
+        firstAttemptMaxTokens: 1400,
+        retryMaxTokens: 1800,
+      });
+    let policyCall = await executePolicyRewrite(userPrompt);
+    const policyCalls = [policyCall];
+    let rewrittenSynopsis: string;
+    try {
+      rewrittenSynopsis = validatePolicySafeSynopsisRewrite(canonicalSynopsis!, policyCall.data);
+    } catch {
+      policyCall = await executePolicyRewrite(
+        `${userPrompt}\nCORRECTION: Your previous response changed text outside its declared exact replacements. Return a result reconstructable by applying each safety_adjustments item exactly once, in order, to the authoritative synopsis.`,
+      );
+      policyCalls.push(policyCall);
+      rewrittenSynopsis = validatePolicySafeSynopsisRewrite(canonicalSynopsis!, policyCall.data);
+    }
+
+    const outputPrompt = buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis,
+      characterReferenceManifest: params.characterReferenceManifest,
+      locationReferenceImage: params.locationReferenceImage,
+    });
+    if (outputPrompt.length > VD_IMAGE_PROMPT_MAX) {
+      throw new VdSchemaValidationError(
+        `Policy-safe synopsis prompt exceeds ${VD_IMAGE_PROMPT_MAX} characters`,
+        { length: outputPrompt.length },
+      );
+    }
+    const inputTokens = policyCalls.reduce(
+      (total, call) => total + (call.response.usage?.prompt_tokens ?? 0),
+      0,
+    );
+    const outputTokens = policyCalls.reduce(
+      (total, call) => total + (call.response.usage?.completion_tokens ?? 0),
+      0,
+    );
+    const creditsUsed = policyCalls.reduce(
+      (total, call) => total + calculateCreditsForLLM(
+        call.response.usage?.prompt_tokens ?? 0,
+        call.response.usage?.completion_tokens ?? 0,
+        model,
+      ),
+      0,
+    );
+    await deductCredits({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      amount: creditsUsed,
+      description: `Vertical Drama — policy-safe synopsis rewrite (episode #${params.episodeId}, shot #${params.shotNumber})`,
+      sourceType: "skill",
+      idempotencyKey: params.idempotencyKey,
+      metadata: {
+        model,
+        llmModel: model,
+        feature: "vertical_drama_series",
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        shotNumber: params.shotNumber,
+        inputTokens,
+        outputTokens,
+        semanticRetryCount: policyCalls.length - 1,
+      },
+    });
+    const safetyAdjustments = policyCall.data.safety_adjustments.map(
+      adjustment => `${adjustment.original} → ${adjustment.rewritten}`,
+    );
+    const frameStamp: VdImagePromptModeStamp = {
+      mode: "policy_safe_rewrite",
+      resolvedFrom: params.imagePromptModeResolvedFrom ?? "auto",
+      imageModelFamily: params.imageModelFamily ?? "other",
+      ...(params.imageModelId ? { imageModelId: params.imageModelId } : {}),
+      generatedAt: new Date().toISOString(),
+    };
+    return {
+      prompt: outputPrompt,
+      negativePrompt: "",
+      creditsUsed,
+      model,
+      usedVision: false,
+      usedMode: "policy_safe_rewrite",
+      frameStamp,
+      ...(safetyAdjustments.length > 0 ? { safetyAdjustments } : {}),
+    };
+  }
 
   const { data: validatedData, response } = await executeVisionAwareJsonCallWithRetry<
     z.infer<typeof startFrameShotPromptOutputSchema>

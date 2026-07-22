@@ -383,42 +383,57 @@ export async function createPresentationSlide(
 ): Promise<PresentationSlide> {
   const db = await resolveDb(dbClient);
 
-  const maxOrderRows = await db
-    .select({ maxOrderIndex: sql<number>`coalesce(max(${presentationSlides.orderIndex}), -1)` })
-    .from(presentationSlides)
-    .where(eq(presentationSlides.deckId, input.deckId));
+  // Two concurrent addSlide requests for the same deck can both read the same
+  // max(order_index) before either inserts, then both try to insert at the
+  // same order_index and one violates presentation_slides_deck_order_unique.
+  // Take a row lock on the parent deck FIRST (inside a transaction — a nested
+  // call becomes a SAVEPOINT when dbClient is already an open tx, e.g. from
+  // presentationImportService) so concurrent calls for the same deck
+  // serialize here before computing nextOrderIndex.
+  return db.transaction(async (tx) => {
+    await tx
+      .select({ id: presentationDecks.id })
+      .from(presentationDecks)
+      .where(eq(presentationDecks.id, input.deckId))
+      .for("update");
 
-  const nextOrderIndex = (maxOrderRows[0]?.maxOrderIndex ?? -1) + 1;
+    const maxOrderRows = await tx
+      .select({ maxOrderIndex: sql<number>`coalesce(max(${presentationSlides.orderIndex}), -1)` })
+      .from(presentationSlides)
+      .where(eq(presentationSlides.deckId, input.deckId));
 
-  const [created] = await db
-    .insert(presentationSlides)
-    .values({
-      deckId: input.deckId,
-      orderIndex: nextOrderIndex,
-      version: 1,
-      title: input.title || `Slide ${nextOrderIndex + 1}`,
-      slideContent: input.slideContent || {},
-      audioTrack: input.audioTrack ?? null,
-      notes: input.notes ?? null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
+    const nextOrderIndex = (maxOrderRows[0]?.maxOrderIndex ?? -1) + 1;
 
-  if (!created) {
-    throw new Error("Failed to create presentation slide");
-  }
+    const [created] = await tx
+      .insert(presentationSlides)
+      .values({
+        deckId: input.deckId,
+        orderIndex: nextOrderIndex,
+        version: 1,
+        title: input.title || `Slide ${nextOrderIndex + 1}`,
+        slideContent: input.slideContent || {},
+        audioTrack: input.audioTrack ?? null,
+        notes: input.notes ?? null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
 
-  await db
-    .update(presentationDecks)
-    .set({
-      slideCount: sql`${presentationDecks.slideCount} + 1`,
-      version: sql`${presentationDecks.version} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(eq(presentationDecks.id, input.deckId));
+    if (!created) {
+      throw new Error("Failed to create presentation slide");
+    }
 
-  return created;
+    await tx
+      .update(presentationDecks)
+      .set({
+        slideCount: sql`${presentationDecks.slideCount} + 1`,
+        version: sql`${presentationDecks.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(presentationDecks.id, input.deckId));
+
+    return created;
+  });
 }
 
 export async function reorderPresentationSlides(

@@ -297,7 +297,12 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
   };
 }
 
-const LOCATION_ROW = { id: 55, name: "ร้านสะดวกซื้อ", data: { description: "a real description" } };
+const LOCATION_ROW = {
+  id: 55,
+  locationKey: "loc_store",
+  name: "ร้านสะดวกซื้อ",
+  data: { description: "a real description" },
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -362,6 +367,53 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     expect(result.trimmedProductReferenceCount).toBe(0);
   });
 
+  it("resolves a canonical roster image when the legacy storyboard key and situation-qualified name drifted (series 18 regression)", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: {
+        distinct_locations: [
+          {
+            location_key: "location-2-visit1",
+            location_name:
+              "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+            description: "flight control center during the morning crisis",
+            shot_numbers: [1],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 72,
+            locationKey: "location-2",
+            name: "ศูนย์ควบคุมการปฏิบัติการบิน",
+            data: { description: "canonical flight control center" },
+          },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/flight-control-center.png"
+    );
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      72
+    );
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/flight-control-center.png",
+    ]);
+  });
+
   it("shot 4 (kitchen group) resolves the KITCHEN location, not the store — group matching is per-shot, not per-episode", async () => {
     const episodeRow = baseEpisodeRow({
       storyboard: { distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP] },
@@ -381,7 +433,7 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ id: 56, name: "ครัวที่บ้าน", data: { description: "kitchen desc" } }]))
+      .mockReturnValueOnce(selectChain([{ id: 56, locationKey: "loc_kitchen", name: "ครัวที่บ้าน", data: { description: "kitchen desc" } }]))
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
     mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/kitchen-plate.png");
 
@@ -402,7 +454,8 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([])) // roster lookup — no row yet
+      .mockReturnValueOnce(selectChain([])) // exact-key roster lookup — no row yet
+      .mockReturnValueOnce(selectChain([])) // bounded name fallback — no row yet
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
 
     await router.generateStartFrameImage({
@@ -459,7 +512,9 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 501 }])) // resolveShotCharacterReferenceEntries character lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 501, name: "Character A", characterKey: "char-a" }])
+      ) // resolveRequiredShotCharacterAttachmentManifest character lookup
       .mockReturnValueOnce(selectChain([LOCATION_ROW])) // location roster lookup
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
     mockGetPrimaryPortraitUrl.mockResolvedValueOnce("https://cdn.example.com/portrait-a.png");
@@ -549,7 +604,7 @@ describe("resolveShotLocationReferenceEntry — per-shot override precedence (Ph
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(
-        selectChain([{ id: 56, name: "ครัวที่บ้าน", data: { description: "kitchen desc" } }])
+        selectChain([{ id: 56, locationKey: "loc_kitchen", name: "ครัวที่บ้าน", data: { description: "kitchen desc" } }])
       ) // roster lookup for the OVERRIDE key (loc_kitchen), not the storyboard-matched loc_store
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
     mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/kitchen-plate.png");

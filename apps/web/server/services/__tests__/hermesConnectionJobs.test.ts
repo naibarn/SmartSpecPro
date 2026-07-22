@@ -125,6 +125,8 @@ function buildRepo(overrides: Partial<HermesConnectionJobsRepo> = {}): HermesCon
     findNonTerminalControlJobForConnection: vi.fn().mockResolvedValue(null),
     findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow()),
     insertJob: vi.fn().mockImplementation(async (values) => ({ id: "job-new", createdAt: NOW, ...values })),
+    listTimedOutControlJobs: vi.fn().mockResolvedValue([]),
+    expireTimedOutControlJob: vi.fn().mockResolvedValue(null),
     listTerminalUnsettledHermesJobs: vi.fn().mockResolvedValue([]),
     appendJobEvent: vi.fn().mockResolvedValue(undefined),
     updateConnectionRow: vi.fn(),
@@ -471,6 +473,40 @@ describe("settleHermesConnectionJob — control job settlement (table-driven)", 
     expect(state.lastProbeAt).toEqual(NOW);
   });
 
+  it("a successful probe self-heals reauth_required back to authorized and clears the stale auth error", async () => {
+    let state = buildConnectionRow({
+      status: "reauth_required",
+      entitlementStatus: "restricted",
+      metadataJson: { lastError: "HERMES_REAUTH_REQUIRED", preserved: true },
+    });
+    const repo = buildRepo({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnectionRow: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+    const job = buildWorkerJob({
+      jobType: HERMES_CONNECTION_PROBE_JOB_TYPE,
+      status: "completed",
+      outputJson: {
+        lastEventPayload: {
+          capabilities: { operations: { "image.generate": { enabled: true } } },
+        },
+      },
+    });
+
+    await settleHermesConnectionJob(job, { repo, now: () => NOW });
+
+    expect(state.status).toBe("authorized");
+    expect(state.entitlementStatus).toBeNull();
+    expect(state.metadataJson).toEqual({ preserved: true });
+    expect(state.lastProbeAt).toEqual(NOW);
+    expect(state.capabilitiesJson).toEqual({
+      operations: { "image.generate": { enabled: true } },
+    });
+  });
+
   it("probe classified 403 (constants-first, exact reason string) -> entitlement_restricted", async () => {
     let state = buildConnectionRow({ status: "authorized" });
     const repo = buildRepo({
@@ -621,6 +657,24 @@ describe("settleHermesConnectionJob — hermes_media_* side effects", () => {
     expect(updateConnectionRow).not.toHaveBeenCalled();
   });
 
+  it("does not treat a generic authentication-backend failure as proof that OAuth was revoked", async () => {
+    const updateConnectionRow = vi.fn();
+    const repo = buildRepo({
+      findConnectionById: vi.fn().mockResolvedValue(buildConnectionRow({ status: "authorized" })),
+      updateConnectionRow,
+    });
+    const job = buildWorkerJob({
+      jobType: HERMES_MEDIA_IMAGE_JOB_TYPE,
+      status: "failed",
+      failureReason: "authentication backend process unavailable",
+      capabilityRequirementsJson: { connectionId: "conn-1" },
+    });
+
+    await onTerminalHermesMediaJob(job, { repo });
+
+    expect(updateConnectionRow).not.toHaveBeenCalled();
+  });
+
   it("tenant mismatch (defense-in-depth) -> no connection-status side effect", async () => {
     const updateConnectionRow = vi.fn();
     const repo = buildRepo({
@@ -643,6 +697,43 @@ describe("settleHermesConnectionJob — hermes_media_* side effects", () => {
 });
 
 describe("runHermesConnectionSettlementTick", () => {
+  it("expires and settles a non-terminal control job that exceeded its hard timeout", async () => {
+    const timedOut = buildWorkerJob({
+      id: "job-timeout",
+      status: "claimed",
+      startedAt: new Date("2026-06-01T11:40:00.000Z"),
+      finishedAt: null,
+      timeoutSeconds: 900,
+      capabilityRequirementsJson: { connectionId: "conn-1" },
+    });
+    const expired = {
+      ...timedOut,
+      status: "expired",
+      failureReason: "authorization_timeout",
+      finishedAt: NOW,
+    } as WorkerJob;
+    let connection = buildConnectionRow({ status: "pending" });
+    const repo = buildRepo({
+      listTimedOutControlJobs: vi.fn().mockResolvedValue([timedOut]),
+      expireTimedOutControlJob: vi.fn().mockResolvedValue(expired),
+      listTerminalUnsettledHermesJobs: vi.fn().mockResolvedValue([]),
+      findConnectionById: vi.fn().mockImplementation(async () => connection),
+      updateConnectionRow: vi.fn().mockImplementation(async ({ values }) => {
+        connection = { ...connection, ...values };
+        return connection;
+      }),
+    } as Partial<HermesConnectionJobsRepo>);
+
+    await runHermesConnectionSettlementTick({ repo, now: () => NOW });
+
+    expect((repo as any).expireTimedOutControlJob).toHaveBeenCalledWith({
+      jobId: timedOut.id,
+      now: NOW,
+    });
+    expect(connection.status).toBe("error");
+    expect(connection.metadataJson).toMatchObject({ lastError: "HERMES_TIMEOUT" });
+  });
+
   it("settles all terminal-unsettled jobs in one tick and marks them settled", async () => {
     let connState1 = buildConnectionRow({ id: "conn-1", status: "pending" });
     let connState2 = buildConnectionRow({ id: "conn-2", status: "pending" });

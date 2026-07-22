@@ -208,6 +208,66 @@ describe("synthesizeSeasonCarryOver", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
+  it("normalizes blank/null optional character prose when no return explanation is required", async () => {
+    mockLlmResponse({
+      ...VALID_LLM_DRAFT,
+      characters: [
+        {
+          ...VALID_LLM_DRAFT.characters[0],
+          availability: "returns",
+          returnJustification: "",
+          suggestedStateUpdate: "",
+        },
+        {
+          characterKey: "char_rival",
+          name: "Rival",
+          postFinaleStatus: "left the city",
+          availability: "write_out",
+          returnJustification: null,
+          suggestedStateUpdate: null,
+        },
+      ],
+    });
+
+    const result = await synthesizeSeasonCarryOver({
+      userId: 1,
+      locale: "th",
+      lineageContext: lineageContext(),
+    });
+
+    expect(result.draft.characters).toEqual([
+      expect.not.objectContaining({
+        returnJustification: expect.anything(),
+        suggestedStateUpdate: expect.anything(),
+      }),
+      expect.not.objectContaining({
+        returnJustification: expect.anything(),
+        suggestedStateUpdate: expect.anything(),
+      }),
+    ]);
+  });
+
+  it("still rejects a blank justification for returns_with_explanation", async () => {
+    mockLlmResponse({
+      ...VALID_LLM_DRAFT,
+      characters: [
+        {
+          ...VALID_LLM_DRAFT.characters[0],
+          availability: "returns_with_explanation",
+          returnJustification: "",
+        },
+      ],
+    });
+
+    await expect(
+      synthesizeSeasonCarryOver({
+        userId: 1,
+        locale: "th",
+        lineageContext: lineageContext(),
+      }),
+    ).rejects.toThrow(/returnJustification/i);
+  });
+
   it("feeds the LLM ONLY the bounded compactSummary/currentState/roster — never a full episode list", async () => {
     mockLlmResponse(VALID_LLM_DRAFT);
     await synthesizeSeasonCarryOver({

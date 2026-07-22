@@ -110,7 +110,12 @@ contract points the pipeline validates mechanically.
    - `time_of_day` and `mood` when they are fixed by the story.
    Invent a new location ONLY when no existing location can honestly serve
    the scene — reusing established locations strengthens continuity and
-   production feasibility.
+   production feasibility. The same physical place returning under a
+   different situation, crisis, or mood is NOT a new location — reuse the
+   existing `location_key` verbatim; never coin a derived key
+   (`<existing>-visit1`) or append a situation qualifier to `name` (e.g.
+   `"ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)"` when that place already exists) —
+   the situation belongs in the scene itself, not the location's identity.
 
 4. **Dialogue accessibility (ภาษาที่เด็กมัธยมฟังรู้เรื่อง).** All dialogue is
    natural spoken Thai that a high-school student understands on first

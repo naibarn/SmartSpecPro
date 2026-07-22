@@ -9,6 +9,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import InviteCodeDashboard from "@/components/admin/InviteCodeDashboard";
+import {
+  MetaOAuthSettingsPanel,
+  type MetaOAuthForm,
+} from "@/components/admin/MetaOAuthSettingsPanel";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useTranslation } from "react-i18next";
 import { trpc } from "../lib/trpc";
@@ -801,13 +805,15 @@ export default function AdminSettings() {
     microsoftClientId?: string;
     microsoftClientSecret?: string;
     microsoftOneDriveRedirectUri?: string;
-  }>({});
+  } & MetaOAuthForm>({});
   const [showGoogleSecret, setShowGoogleSecret] = useState(false);
   const [showGithubSecret, setShowGithubSecret] = useState(false);
   const [showMicrosoftSecret, setShowMicrosoftSecret] = useState(false);
   const [googleSecretConfigured, setGoogleSecretConfigured] = useState(false);
   const [githubSecretConfigured, setGithubSecretConfigured] = useState(false);
   const [microsoftSecretConfigured, setMicrosoftSecretConfigured] = useState(false);
+  const [metaAppSecretConfigured, setMetaAppSecretConfigured] = useState(false);
+  const [metaWebhookVerifyTokenConfigured, setMetaWebhookVerifyTokenConfigured] = useState(false);
 
   // Queries
   const { data: stripeSettings, isLoading: stripeLoading, refetch: refetchStripe } =
@@ -878,12 +884,23 @@ export default function AdminSettings() {
 
   const updateOAuthMutation = trpc.systemSettings.updateOAuthSettings.useMutation({
     onSuccess: () => {
-      toast.success("OAuth settings saved successfully");
+      toast.success(isThai ? "บันทึกการตั้งค่า OAuth สำเร็จ" : "OAuth settings saved successfully");
       refetchOAuth();
-      setOauthForm((prev) => ({ ...prev, googleClientSecret: undefined, githubClientSecret: undefined }));
+      setOauthForm((prev) => ({
+        ...prev,
+        googleClientSecret: undefined,
+        githubClientSecret: undefined,
+        microsoftClientSecret: undefined,
+        metaAppSecret: undefined,
+        metaWebhookVerifyToken: undefined,
+      }));
     },
     onError: (err) => {
-      toast.error(`Failed to save OAuth settings: ${err.message}`);
+      toast.error(
+        isThai
+          ? `บันทึกการตั้งค่า OAuth ไม่สำเร็จ: ${err.message}`
+          : `Failed to save OAuth settings: ${err.message}`,
+      );
     },
   });
 
@@ -897,6 +914,36 @@ export default function AdminSettings() {
     },
     onError: (err) => {
       toast.error(`Test failed: ${err.message}`);
+    },
+  });
+
+  const testMetaOAuthMutation = trpc.systemSettings.testMetaOAuthConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(
+          isThai
+            ? "ข้อมูลรับรอง Meta ถูกต้อง และการตั้งค่า webhook พร้อมใช้งาน"
+            : data.message,
+        );
+      } else {
+        const thaiMessage = data.message.includes("Webhook Verify Token")
+          ? "กรุณาบันทึก Webhook Verify Token ก่อนทดสอบ"
+          : data.message.includes("App ID")
+            ? "กรุณาบันทึก Meta App ID, App Secret และ OAuth Redirect URI ก่อนทดสอบ"
+            : data.message.includes("Graph API version")
+              ? "เวอร์ชัน Meta Graph API ต้องมีรูปแบบ เช่น v25.0"
+              : data.message.includes("rejected")
+                ? "Meta ปฏิเสธ App ID หรือ App Secret กรุณาตรวจสอบข้อมูลอีกครั้ง"
+                : "ไม่สามารถเชื่อมต่อ Meta Graph API ได้ กรุณาตรวจสอบเครือข่ายและลองอีกครั้ง";
+        toast.error(isThai ? thaiMessage : data.message);
+      }
+    },
+    onError: (err) => {
+      toast.error(
+        isThai
+          ? "ทดสอบ Meta ไม่สำเร็จ กรุณาตรวจสอบค่าที่บันทึกและลองอีกครั้ง"
+          : `Test failed: ${err.message}`,
+      );
     },
   });
 
@@ -1426,10 +1473,15 @@ export default function AdminSettings() {
         githubRedirectUri: (oauthSettings.githubRedirectUri as string) || "",
         microsoftClientId: (oauthSettings.microsoftClientId as string) || "",
         microsoftOneDriveRedirectUri: (oauthSettings.microsoftOneDriveRedirectUri as string) || "",
+        metaAppId: (oauthSettings.metaAppId as string) || "",
+        metaRedirectUri: (oauthSettings.metaRedirectUri as string) || "",
+        metaGraphApiVersion: (oauthSettings.metaGraphApiVersion as string) || "v25.0",
       });
       setGoogleSecretConfigured(!!oauthSettings.googleClientSecretConfigured);
       setGithubSecretConfigured(!!oauthSettings.githubClientSecretConfigured);
       setMicrosoftSecretConfigured(!!oauthSettings.microsoftClientSecretConfigured);
+      setMetaAppSecretConfigured(!!oauthSettings.metaAppSecretConfigured);
+      setMetaWebhookVerifyTokenConfigured(!!oauthSettings.metaWebhookVerifyTokenConfigured);
     }
   }, [oauthSettings]);
 
@@ -1486,6 +1538,11 @@ export default function AdminSettings() {
       microsoftClientId: oauthForm.microsoftClientId,
       microsoftClientSecret: oauthForm.microsoftClientSecret,
       microsoftOneDriveRedirectUri: oauthForm.microsoftOneDriveRedirectUri,
+      metaAppId: oauthForm.metaAppId,
+      metaAppSecret: oauthForm.metaAppSecret,
+      metaRedirectUri: oauthForm.metaRedirectUri,
+      metaGraphApiVersion: oauthForm.metaGraphApiVersion,
+      metaWebhookVerifyToken: oauthForm.metaWebhookVerifyToken,
     });
   };
 
@@ -2221,11 +2278,12 @@ export default function AdminSettings() {
             <DashboardCard
               className="overflow-hidden"
               leading={<Globe className="w-5 h-5 text-blue-500" />}
-              title="OAuth / Social Login Configuration"
+              title={isThai ? "ตั้งค่า OAuth / Social Login" : "OAuth / Social Login Configuration"}
               description={
                 <>
-                  Configure Google and GitHub OAuth credentials for social login. Users will be able to sign
-                  in with these providers once configured.
+                  {isThai
+                    ? "ตั้งค่า credentials สำหรับ Google, GitHub, Microsoft และ Meta พร้อมคู่มือการเชื่อมต่อแต่ละผู้ให้บริการ"
+                    : "Configure Google, GitHub, Microsoft, and Meta credentials with provider-specific connection guidance."}
                 </>
               }
               bodyClassName="space-y-8"
@@ -2644,6 +2702,22 @@ export default function AdminSettings() {
                   </details>
                 </div>
 
+                <MetaOAuthSettingsPanel
+                  locale={isThai ? "th" : "en"}
+                  value={oauthForm}
+                  appSecretConfigured={metaAppSecretConfigured}
+                  webhookVerifyTokenConfigured={metaWebhookVerifyTokenConfigured}
+                  webhookCallbackUrl={
+                    (oauthSettings?.metaWebhookCallbackUrl as string)
+                    || "https://smartaihub.app/api/webhooks/meta"
+                  }
+                  onChange={(field, value) => {
+                    setOauthForm((previous) => ({ ...previous, [field]: value }));
+                  }}
+                  onTest={() => testMetaOAuthMutation.mutate()}
+                  isTesting={testMetaOAuthMutation.isPending}
+                />
+
                 {/* Save Button */}
                 <div className="flex gap-3 pt-4 border-t">
                   <Button
@@ -2656,7 +2730,7 @@ export default function AdminSettings() {
                     ) : (
                       <Save className="w-4 h-4 mr-2" />
                     )}
-                    Save OAuth Settings
+                    {isThai ? "บันทึกการตั้งค่า OAuth ทั้งหมด" : "Save all OAuth settings"}
                   </Button>
                 </div>
             </DashboardCard>

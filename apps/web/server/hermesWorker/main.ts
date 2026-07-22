@@ -33,6 +33,7 @@ import { createControlPlaneClient } from "./controlPlaneClient";
 import { provisionHermes, type HermesProbeSpawnResult } from "./hermesInstallation";
 import { buildHermesChildEnv, runHermes, type HermesChildProcessLike, type HermesSpawnFn } from "./hermesInvocation";
 import { createJobHandlers } from "./jobHandlers";
+import { persistHermesRefreshToken, readHermesRefreshToken } from "./refreshTokenStore";
 import { createWorkspaceManager } from "./workspace";
 
 const LOG_CATEGORY = "hermesWorker";
@@ -82,7 +83,12 @@ async function spawnForProbe(
 export async function runHermesSharedWorker(): Promise<void> {
   const baseUrl = readEnv("HERMES_WORKER_BASE_URL", "http://localhost:3000");
   const workerId = requireEnv("HERMES_WORKER_ID");
-  const refreshToken = requireEnv("HERMES_WORKER_TOKEN");
+  const bootstrapRefreshToken = requireEnv("HERMES_WORKER_TOKEN");
+  const refreshTokenFile = readEnv(
+    "HERMES_WORKER_TOKEN_FILE",
+    "/var/lib/smartspec-hermes-worker/state/refresh-token",
+  );
+  const refreshToken = await readHermesRefreshToken(refreshTokenFile, bootstrapRefreshToken);
   const hermesHomeRoot = readEnv("HERMES_HOME_ROOT", "/var/lib/smartspec-hermes-worker/profiles");
   const workspaceRoot = readEnv("HERMES_WORKSPACE_ROOT", "/var/lib/smartspec-hermes-worker/jobs");
   const hermesBinaryPath = readEnv("HERMES_BINARY_PATH", "hermes");
@@ -114,7 +120,13 @@ export async function runHermesSharedWorker(): Promise<void> {
     error: (msg: string) => debugError(LOG_CATEGORY, msg),
   };
 
-  const client = createControlPlaneClient({ baseUrl, workerId, refreshToken });
+  const client = createControlPlaneClient({
+    baseUrl,
+    workerId,
+    refreshToken,
+    persistRefreshToken: (nextRefreshToken) =>
+      persistHermesRefreshToken(refreshTokenFile, nextRefreshToken),
+  });
   const workspaceManager = createWorkspaceManager({ root: workspaceRoot });
   const handlers = createJobHandlers({
     client,
@@ -143,6 +155,9 @@ export async function runHermesSharedWorker(): Promise<void> {
     hermesMedia: {
       hermesVersion: provisioned.version,
       doctorOk: provisioned.doctorOk,
+      advertised: provisioned.doctorOk,
+      capability: "hermes-media-generation",
+      reason: provisioned.doctorOk ? null : "hermes doctor gate did not pass",
       strategy: provisioned.strategy.kind,
       invocationTemplate: provisioned.invocationTemplate,
     },

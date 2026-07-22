@@ -341,6 +341,21 @@ describe("generateStartFrameRenderPlan", () => {
   });
 });
 
+describe("projectStartFramePlan — plan-level image prompt language", () => {
+  it("preserves the resolved image language on a regenerated plan", () => {
+    const plan = projectStartFramePlan(
+      validOutput() as any,
+      "gpt-image-2",
+      undefined,
+      undefined,
+      undefined,
+      "th",
+    );
+
+    expect(plan.imagePromptLanguage).toBe("th");
+  });
+});
+
 describe("projectStartFramePlan", () => {
   it("persists the canonical Overview shot summary on the projected frame", () => {
     const raw = {

@@ -369,6 +369,17 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     expect(trimmedCount).toBe(2);
   });
 
+  it("keeps all three character portraits and automatically drops the location when the model limit is 3", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2", "char-3"],
+      ["loc-1"],
+      [],
+      3,
+    );
+    expect(urls).toEqual(["char-1", "char-2", "char-3"]);
+    expect(trimmedCount).toBe(1);
+  });
+
   it("dedupes across all three sources", () => {
     const { urls } = mergeAndTrimReferenceImageUrls(["a"], ["a", "b"], ["b", "c"], undefined);
     expect(urls).toEqual(["a", "b", "c"]);

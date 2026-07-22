@@ -90,14 +90,38 @@ function loadSkillSystemPrompt(): string {
 /* by `synthesizeSeasonCarryOver` below, never produced by the model.        */
 /* -------------------------------------------------------------------------- */
 
-const carryOverCharacterSchema = z.object({
-  characterKey: z.string().min(1),
-  name: z.string().min(1),
-  postFinaleStatus: z.string().min(1),
-  availability: z.enum(VERTICAL_DRAMA_CARRY_OVER_AVAILABILITIES),
-  returnJustification: z.string().min(1).optional(),
-  suggestedStateUpdate: z.string().min(1).optional(),
-});
+const optionalCharacterProseSchema = z.preprocess(
+  value => {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  },
+  z.string().min(1).optional(),
+);
+
+const carryOverCharacterSchema = z
+  .object({
+    characterKey: z.string().min(1),
+    name: z.string().min(1),
+    postFinaleStatus: z.string().min(1),
+    availability: z.enum(VERTICAL_DRAMA_CARRY_OVER_AVAILABILITIES),
+    returnJustification: optionalCharacterProseSchema,
+    suggestedStateUpdate: optionalCharacterProseSchema,
+  })
+  .superRefine((character, ctx) => {
+    if (
+      character.availability === "returns_with_explanation" &&
+      !character.returnJustification
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["returnJustification"],
+        message:
+          "returnJustification is required when availability is returns_with_explanation",
+      });
+    }
+  });
 
 const seasonCarryOverLlmDraftSchema = z.object({
   contract_version: z.literal(1),
@@ -159,6 +183,8 @@ function buildUserPrompt(params: SynthesizeSeasonCarryOverParams): string {
       "Decide EVERY roster character's availability for the new season: returns | returns_with_explanation | write_out | cameo_only.",
       `"availability" MUST be exactly one of: ${VERTICAL_DRAMA_CARRY_OVER_AVAILABILITIES.join(", ")}.`,
       "returnJustification is REQUIRED when availability is returns_with_explanation.",
+      "For every other availability, omit returnJustification or return null — never return an empty string.",
+      "suggestedStateUpdate is optional; omit it or return null when there is no meaningful update — never return an empty string.",
       "characterKey values MUST be copied verbatim from the roster payload — never invent a new one.",
       "Use compact JSON only.",
     ],
@@ -170,7 +196,7 @@ function buildUserPrompt(params: SynthesizeSeasonCarryOverParams): string {
     "Plan the next season's cast carry-over from this parent series payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
-    '{"contract_version":1,"characters":[{"characterKey":string,"name":string,"postFinaleStatus":string,"availability":string,"returnJustification":string,"suggestedStateUpdate":string}],"newCharacterSuggestions":[string],"newConflictDirections":[string],"antagonistStrategy":string}',
+    '{"contract_version":1,"characters":[{"characterKey":string,"name":string,"postFinaleStatus":string,"availability":string,"returnJustification":string|null,"suggestedStateUpdate":string|null}],"newCharacterSuggestions":[string],"newConflictDirections":[string],"antagonistStrategy":string}',
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)

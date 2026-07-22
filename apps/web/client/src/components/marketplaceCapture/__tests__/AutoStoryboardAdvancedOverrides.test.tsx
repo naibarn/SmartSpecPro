@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { buildHyperframesAutoStoryboardReviewPlan } from "@shared/hyperframes/autoPlan";
 import { buildHyperframesFeatureAccessProjection } from "@shared/hyperframes/featureAccess";
-import { AutoStoryboardAdvancedOverrides } from "../AutoStoryboardAdvancedOverrides";
+import {
+  AutoStoryboardAdvancedOverrides,
+  AutoStoryboardStoryMotionFields,
+} from "../AutoStoryboardAdvancedOverrides";
 
 function readyPlan(overrides: Record<string, unknown> = {}) {
   return buildHyperframesAutoStoryboardReviewPlan({
@@ -159,12 +162,133 @@ describe("AutoStoryboardAdvancedOverrides", () => {
       "veo3/generate-veo-3-video-lite"
     );
     expect(screen.getByLabelText("Video structure")).toHaveValue("per_shot");
-    expect(screen.getByLabelText("Creative brief")).toHaveValue("");
     expect(screen.getByLabelText("Vision QA model")).toHaveValue("");
     expect(
       screen.getByText("Auto (follow quality mode: gpt-4o-mini / gpt-4o)")
     ).toBeTruthy();
     expect(screen.getByText(/no overrides active/i)).toBeTruthy();
+  });
+
+  it("wires the optional motion direction textarea into the overrides payload", () => {
+    const onChange = vi.fn();
+    render(<AutoStoryboardStoryMotionFields value={{}} onChange={onChange} />);
+
+    const motion = screen.getByLabelText("Video motion direction (optional)");
+    fireEvent.change(motion, {
+      target: { value: "model pumps the shampoo then showcases the bottle" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      motionDirection: "model pumps the shampoo then showcases the bottle",
+    });
+  });
+
+  it("omits motion direction from the payload when cleared back to empty", () => {
+    const onChange = vi.fn();
+    render(
+      <AutoStoryboardStoryMotionFields
+        value={{ motionDirection: "pump then showcase" }}
+        onChange={onChange}
+      />
+    );
+
+    expect(
+      screen.getByLabelText("Video motion direction (optional)")
+    ).toHaveValue("pump then showcase");
+    fireEvent.change(
+      screen.getByLabelText("Video motion direction (optional)"),
+      { target: { value: "" } }
+    );
+    expect(onChange).toHaveBeenLastCalledWith({});
+  });
+
+  it("wires the prominent creative brief textarea into the overrides payload", () => {
+    const onChange = vi.fn();
+    render(<AutoStoryboardStoryMotionFields value={{}} onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText("Creative brief"), {
+      target: { value: "mother washing her child's hair, warm tone" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      creativeBrief: "mother washing her child's hair, warm tone",
+    });
+  });
+
+  it("renders Thai labels for the prominent story/motion fields", () => {
+    render(
+      <AutoStoryboardStoryMotionFields
+        value={{}}
+        onChange={vi.fn()}
+        locale="th"
+      />
+    );
+
+    expect(screen.getByLabelText("แนวเรื่องหรือคำบรรยายเพิ่มเติม")).toBeTruthy();
+    expect(
+      screen.getByLabelText("คำกำกับการเคลื่อนไหวในวิดีโอ (ไม่บังคับ)")
+    ).toBeTruthy();
+  });
+
+  it("defaults the character presence select to auto with no override sent", () => {
+    const onChange = vi.fn();
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{}}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByLabelText("Character presence in 3x3 frames")
+    ).toHaveValue("auto");
+  });
+
+  it("wires the character presence select into the overrides payload", () => {
+    const onChange = vi.fn();
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{}}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+
+    fireEvent.change(
+      screen.getByLabelText("Character presence in 3x3 frames"),
+      { target: { value: "every_frame" } }
+    );
+    expect(onChange).toHaveBeenLastCalledWith({
+      characterPresenceMode: "every_frame",
+    });
+  });
+
+  it("omits character presence from the payload when reset to auto", () => {
+    const onChange = vi.fn();
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{ characterPresenceMode: "every_frame" }}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByLabelText("Character presence in 3x3 frames")
+    ).toHaveValue("every_frame");
+    fireEvent.change(
+      screen.getByLabelText("Character presence in 3x3 frames"),
+      { target: { value: "auto" } }
+    );
+    expect(onChange).toHaveBeenLastCalledWith({});
   });
 
   it("shows manual group size only for manual video structure mode", () => {
@@ -411,7 +535,6 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     expect(screen.getByLabelText("จำนวนช็อต")).toBeTruthy();
     expect(screen.getByLabelText("โมเดลภาพ")).toBeTruthy();
     expect(screen.getByLabelText("โครงสร้างวิดีโอ")).toBeTruthy();
-    expect(screen.getByLabelText("แนวเรื่องหรือคำบรรยายเพิ่มเติม")).toBeTruthy();
     expect(screen.getByLabelText("ตัวเลือก Auto ขั้นสูง")).toBeTruthy();
     expect(screen.getByLabelText("โมเดลตรวจ QA (Vision)")).toBeTruthy();
     expect(

@@ -106,6 +106,7 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set<TenantFeat
   "mcpToolSchemaCacheEnabled",
   "mcpAutoFallbackToGatewayApiEnabled",
   "mcpProviderCreditsTrackedEnabled",
+  "META_CHANNELS_ENABLED",
 ]);
 
 /**

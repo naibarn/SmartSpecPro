@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Season Carry-Over Planner
 description: Decide how a parent Vertical Drama series' cast, relationships, and open threads carry forward into a brand-new season (sequel).
-version: 1.0.0
+version: 1.0.1
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -76,6 +76,12 @@ Return ONLY valid JSON, this exact shape:
 
 `characterKey` MUST be copied verbatim from the roster the request payload
 gives you — never invent a new one, never rename one.
+
+`returnJustification` is conditionally required: return a non-empty sentence
+only for `returns_with_explanation`. For `returns`, `write_out`, and
+`cameo_only`, return `null` or omit the field; never return an empty string.
+`suggestedStateUpdate` is optional for every availability: return a meaningful
+non-empty update, otherwise return `null` or omit it.
 
 ## Deciding each character's `availability`
 

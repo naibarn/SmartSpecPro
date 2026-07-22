@@ -682,6 +682,20 @@ export async function executeWithFallback(params: {
   disableProviderFallbacks?: boolean;
   /** If false, free provider mappings are filtered out before routing. */
   allowFreeModels?: boolean;
+  /**
+   * Optional override for BOTH fetch-timeout phases (see the two-phase
+   * timer at this function's fetch call site below — audit-2026-07-18.jsonl
+   * root cause: moonshotai/kimi-k3 capacity-limited, 03:21:33→03:26:09,
+   * totalMs 275904, "Provider returned malformed JSON"). Absent for every
+   * pre-existing caller (byte-identical default behavior: 120s
+   * time-to-headers, then a NEW 600s body-read/generation-wait cap that
+   * previously did not exist at all — see doc comment below). Only
+   * INTERACTIVE callers that need a tighter fail-fast budget than the
+   * generous default should set this (currently
+   * `verticalDramaCharacterImageGeneration.ts`'s two character-generation
+   * calls, via `executeJsonPlanningCallWithRetry`'s passthrough).
+   */
+  timeoutMs?: number;
 }): Promise<ExecuteResult> {
   const resolvedModel = await resolveEnabledLlmModelId([params.model]);
   if (!resolvedModel) {
@@ -728,6 +742,10 @@ export async function executeWithFallback(params: {
   for (let i = 0; i < maxAttempts; i++) {
     const candidate = targets[i];
     const startTime = Date.now();
+    // Declared outside the try so the `finally` below (same statement, but a
+    // SEPARATE block scope from `try {}`) can always clear it — see the
+    // two-phase-timeout doc comment at the fetch call site.
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
     try {
       const requestApiStyle = candidate.apiStyle ?? "chat-completions";
@@ -895,7 +913,51 @@ export async function executeWithFallback(params: {
 
       const fetchStart = Date.now();
       const abortController = new AbortController();
-      const fetchTimeout = setTimeout(() => abortController.abort(), 120_000); // 2 min timeout
+      /**
+       * Two-phase timeout bound to the SAME AbortController.
+       *
+       * Root cause this fixes (audit-2026-07-18.jsonl): user's series-18
+       * model override `moonshotai/kimi-k3` was upstream capacity-limited;
+       * 03:21:33 llm_request → 03:26:09 llm_response, totalMs 275904 (4.6
+       * min), error "Provider returned malformed JSON (application/json)".
+       * OpenRouter-style non-streaming responses deliver HEADERS almost
+       * immediately but only deliver the BODY once generation finishes.
+       * Previously this timer was cleared as soon as headers arrived
+       * (`clearTimeout(fetchTimeout)` right here) and the subsequent
+       * `response.text()` await below had NO deadline at all — a stalling
+       * provider hung for the life of the request, and repeated
+       * `vd_planning_retry` transient retries (see
+       * `verticalDramaStoryBible.ts`) stacked multiple ~5min hangs past the
+       * nginx `/trpc/` 600s gateway timeout, producing ~10 minutes of
+       * silence then an opaque 502.
+       *
+       * Phase 1 bounds time-to-HEADERS (unchanged default: 120s). Phase 2
+       * re-arms the SAME controller for the BODY-read deadline once headers
+       * arrive (instead of leaving it unbounded), and is cleared in this
+       * candidate's `finally` below (`timeoutHandle`) so it always ends when
+       * this candidate's attempt settles — success or error — never leaking
+       * into the next fallback candidate's attempt. Aborting mid-body-read
+       * makes `response.text()` reject with a DOMException
+       * ("This operation was aborted."), which the existing outer `catch`
+       * below already classifies as `errorType: "network_error"` — the SAME
+       * class `verticalDramaStoryBible.ts`'s `classifyVerticalDramaLlmError`
+       * already treats as `"transient"` (bounded-retry-eligible), so no
+       * change was needed there for classification to keep working.
+       *
+       * `params.timeoutMs` (opt-in, default-off — see this function's params
+       * doc comment) overrides BOTH phases' deadline for interactive callers
+       * that need a tighter fail-fast budget than the generous 10-minute
+       * body default. Absent, this is byte-identical to the pre-existing
+       * 120s headers behavior, PLUS a new 600s body cap that previously did
+       * not exist (this only ever converts an infinite hang into a
+       * classified transient failure — it never shortens any call that
+       * would have completed within 10 minutes, so legitimate long
+       * generations — VD deep drafts, premium revise, documented in nginx's
+       * `/trpc/` comment as taking >300s — are unaffected).
+       */
+      const headersTimeoutMs = params.timeoutMs ?? 120_000; // unchanged default
+      const bodyTimeoutMs = params.timeoutMs ?? 600_000; // NEW — was unbounded
+      timeoutHandle = setTimeout(() => abortController.abort(), headersTimeoutMs);
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -905,7 +967,10 @@ export async function executeWithFallback(params: {
         body: JSON.stringify(requestBody),
         signal: abortController.signal,
       });
-      clearTimeout(fetchTimeout);
+      // Headers arrived — switch from the headers-phase deadline to the
+      // body-phase deadline (do NOT just clear-and-leave-unbounded).
+      clearTimeout(timeoutHandle);
+      timeoutHandle = setTimeout(() => abortController.abort(), bodyTimeoutMs);
       const networkMs = Date.now() - fetchStart;
 
       const responseTimeMs = Date.now() - startTime;
@@ -1133,6 +1198,11 @@ export async function executeWithFallback(params: {
         );
         return { type: "fallback_required", from: candidate, to: nextCandidate, estimatedCredits };
       }
+    } finally {
+      // Always clears whichever phase's timer is currently armed — success
+      // return, `fallback_required` return, thrown error, or falling through
+      // to the next candidate. See the two-phase-timeout doc comment above.
+      clearTimeout(timeoutHandle);
     }
   }
 

@@ -483,6 +483,8 @@ describe("Manual dialogue edit copy (W10.5)", () => {
     "manualDialogueEditAlreadyCreatedHint",
     "manualDialogueEditSilenceRemovedInfo",
     "manualDialogueEditSaveError",
+    "manualSummaryEditLabel",
+    "manualSummaryEditRequired",
   ] as const;
 
   it("has non-empty bilingual (th/en) entries for every new key", () => {
@@ -493,7 +495,11 @@ describe("Manual dialogue edit copy (W10.5)", () => {
   });
 
   it("matches the exact literal Copy Contract strings from the task brief (Thai)", () => {
-    expect(verticalDramaCopy.manualDialogueEditCta.th).toBe("แก้บทพูด");
+    // Combined summary+dialogue editor (2026-07-22) — CTA text updated from
+    // "แก้บทพูด" ("Edit dialogue") to "แก้ช็อตนี้" ("Edit shot") since the
+    // same button now opens a form that edits both the shot's summary and
+    // its dialogue lines together.
+    expect(verticalDramaCopy.manualDialogueEditCta.th).toBe("แก้ช็อตนี้");
     expect(verticalDramaCopy.manualDialogueEditDeliveryPlaceholder.th).toBe(
       "อารมณ์/วิธีพูด"
     );

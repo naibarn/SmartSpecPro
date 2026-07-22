@@ -21,10 +21,21 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.redis_client import get_redis
 from app.core.smartspecweb_crypto import encrypt_smartspecweb
+from app.core.system_settings_loader import get_category_settings
 
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/oauth/meta", tags=["meta-oauth"])
+
+META_OAUTH_SCOPES = [
+    "pages_show_list",
+    "pages_manage_metadata",
+    "pages_messaging",
+    "pages_read_engagement",
+    "pages_manage_posts",
+    "pages_manage_engagement",
+    "business_management",
+]
 
 
 async def _verify_internal_token(
@@ -63,12 +74,10 @@ def _meta_defaults() -> dict[str, str]:
 async def _load_meta_config(db: AsyncSession) -> dict[str, str]:
     config = _meta_defaults()
     try:
-        result = await db.execute(text('SELECT key, value, "isSensitive" FROM system_settings WHERE category = :category'), {"category": "oauth"})
-        for key, value, is_sensitive in result.fetchall():
-            if not value:
-                continue
-            if key in config:
-                config[key] = str(value)
+        loaded = await get_category_settings("oauth", db)
+        for key in config:
+            if loaded.get(key):
+                config[key] = loaded[key]
     except Exception as exc:
         logger.warning("meta_oauth_config_load_failed", error=str(exc))
     return config
@@ -82,22 +91,13 @@ async def _resolve_meta_config(db: AsyncSession) -> dict[str, str]:
 
 
 def _build_auth_url(cfg: dict[str, str], state: str) -> str:
-    scopes = [
-        "pages_show_list",
-        "pages_manage_metadata",
-        "pages_messaging",
-        "pages_read_engagement",
-        "pages_manage_posts",
-        "pages_manage_comments",
-        "business_management",
-    ]
     base = f"https://www.facebook.com/{cfg['metaGraphApiVersion'].strip('/')}/dialog/oauth"
     return (
         f"{base}"
         f"?client_id={quote(cfg['metaAppId'], safe='')}"
         f"&redirect_uri={quote(cfg['metaRedirectUri'], safe='')}"
         f"&response_type=code"
-        f"&scope={quote(','.join(scopes), safe='')}"
+        f"&scope={quote(','.join(META_OAUTH_SCOPES), safe='')}"
         f"&state={quote(state, safe='')}"
     )
 
@@ -248,7 +248,7 @@ async def callback(
             ),
             {
                 "provider_user_id": profile["id"],
-                "granted_scopes": ["pages_show_list", "pages_manage_metadata", "pages_messaging", "pages_read_engagement", "pages_manage_posts", "pages_manage_comments", "business_management"],
+                "granted_scopes": META_OAUTH_SCOPES,
                 "encrypted_access_token": encrypted_token,
                 "token_expires_at": token_expires_at,
                 "metadata": {"metaProfile": profile, "oauthStateTenantId": tenant_id},
@@ -274,7 +274,7 @@ async def callback(
                 "tenant_id": tenant_id,
                 "user_id": user_id,
                 "provider_user_id": profile["id"],
-                "granted_scopes": ["pages_show_list", "pages_manage_metadata", "pages_messaging", "pages_read_engagement", "pages_manage_posts", "pages_manage_comments", "business_management"],
+                "granted_scopes": META_OAUTH_SCOPES,
                 "encrypted_access_token": encrypted_token,
                 "token_expires_at": token_expires_at,
                 "metadata": {"metaProfile": profile, "oauthStateTenantId": tenant_id},

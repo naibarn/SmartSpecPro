@@ -120,6 +120,24 @@ entries match the setting you're describing — simply invent a new lowercase-hy
 `location_key` and propose normally. This is the expected, common case for a season with
 few or no roster entries yet.
 
+**A different situation at the same physical place is still the same location — never
+mint a "variant" of it.** The same room, building, or set returning to the story under a
+different dramatic beat, mood, time of day, or reason for being there (a crisis call
+happening in the same flight-control center that was calm on a normal shift; a hostage
+standoff unfolding in the same lobby a character walked through casually last episode) is
+still the SAME physical place. Echo the existing roster entry's `location_key` verbatim —
+exactly as described above — even when what happens there this time feels dramatically
+distinct. Never coin a derived key like `<existing-key>-visit1`, `<existing-key>-2`, or
+similar, and never append a situation qualifier onto the `name`, such as
+`"ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)"` when the roster already has
+`"ศูนย์ควบคุมการปฏิบัติการบิน"` (a real production mistake this skill must never repeat: a
+single flight-control center wrongly became three roster rows — the original plus
+`-visit1` "(รับสายด่วน)" and `-visit2` "(วิกฤตผู้โดยสาร)" — because each new crisis
+happening there was treated as a new place). The situation, crisis, or mood belongs in
+that episode's own scene description/key beats, never in the location's identity — a
+location's `name` and `location_key` describe the PLACE, not what's currently happening
+in it.
+
 ## Environment-only description — MANDATORY
 
 `description` MUST describe the physical setting only — architecture, materials, fixed

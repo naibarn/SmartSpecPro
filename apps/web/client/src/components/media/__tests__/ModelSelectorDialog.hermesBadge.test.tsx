@@ -4,6 +4,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({ locale: "en", t: (key: string) => key }),
+}));
+
 import ModelSelectorDialog, { type MediaModel } from "../ModelSelectorDialog";
 
 const hermesModel: MediaModel = {

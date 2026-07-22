@@ -30,6 +30,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResizableCollapsiblePanel } from "@/components/ui/resizable-collapsible-panel";
 import { trpc } from "@/lib/trpc";
+import {
+  replaceVerticalDramaStartFrame,
+  type VerticalDramaStartFrameDropInput,
+} from "@/lib/verticalDramaStartFrameDrop";
 import type { VerticalDramaCrumb } from "@/components/verticalDramaSeries/VerticalDramaBreadcrumb";
 import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
 import {
@@ -1337,6 +1341,7 @@ function EpisodeWorkspaceShell({
   const [angleVariationGridUrlByShot, setAngleVariationGridUrlByShot] =
     useState<Record<number, string>>({});
   const angleVariationUploadMutation = trpc.ai.upload.useMutation();
+  const startFrameDropUploadMutation = trpc.ai.upload.useMutation();
 
   /** Shot numbers with an angle-variations task currently being polled (live
    *  submit OR resumed-on-load) — guards against double-polling the same
@@ -1631,22 +1636,29 @@ function EpisodeWorkspaceShell({
   }
 
   /** Dragging an image directly onto a shot's start-frame slot (no need to
-   *  open the swap panel first) — resolves the dropped URL to a canonical
-   *  media asset then links it immediately, same finalize path the swap
-   *  panel itself uses. */
-  async function handleDropStartFrame(shotNumber: number, url: string) {
+   *  open the swap panel first) — uploads local files when needed, resolves
+   *  the durable URL to a canonical media asset, then links it immediately. */
+  async function handleDropStartFrame(
+    shotNumber: number,
+    input: VerticalDramaStartFrameDropInput
+  ) {
     try {
-      const resolved = await resolveMediaAssetForImportMutation.mutateAsync({
-        seriesId,
-        source: "url",
-        url,
-        mimeType: "image/jpeg",
-      });
-      await setApprovedStartFrameAssetMutation.mutateAsync({
-        seriesId,
-        episodeId,
-        shotNumber,
-        mediaAssetId: resolved.mediaAssetId,
+      await replaceVerticalDramaStartFrame(input, {
+        upload: payload => startFrameDropUploadMutation.mutateAsync(payload),
+        resolveMediaAsset: ({ url, mimeType }) =>
+          resolveMediaAssetForImportMutation.mutateAsync({
+            seriesId,
+            source: "url",
+            url,
+            mimeType,
+          }),
+        setApprovedMediaAsset: mediaAssetId =>
+          setApprovedStartFrameAssetMutation.mutateAsync({
+            seriesId,
+            episodeId,
+            shotNumber,
+            mediaAssetId,
+          }),
       });
     } catch (err) {
       toast.error(
@@ -2357,15 +2369,16 @@ function EpisodeWorkspaceShell({
     });
   };
 
-  /* ---- Video-prompt language options (episode-level language plan) ----
-   *  `promptLanguage` (the language the video-clip PROMPT TEXT is written
-   *  in — default "en") and `dialogueLanguage` (the language the characters
-   *  SPEAK in the video — default "th"), persisted via
-   *  `setEpisodeVideoPromptLanguage` (free — same JSONB-patch convention as
-   *  `setEpisodeModelSelection`). Read straight off the episode's own
-   *  `motionPromptPack`, falling back to the defaults when absent. */
-  const selectedPromptLanguage =
+  /* ---- Independent image/video prompt-language settings ----
+   *  Legacy episodes fall back to the former shared video setting until an
+   *  explicit image language is saved. Policy-safe synopsis mode ignores the
+   *  image selector and preserves the synopsis source language. */
+  const selectedVideoPromptLanguage =
     episodeDetailQuery.data?.motionPromptPack?.promptLanguage ?? "en";
+  const selectedImagePromptLanguage =
+    episodeDetailQuery.data?.startFramePlan?.imagePromptLanguage ??
+    episodeDetailQuery.data?.motionPromptPack?.promptLanguage ??
+    "en";
   const selectedDialogueLanguage =
     episodeDetailQuery.data?.motionPromptPack?.dialogueLanguage ?? "th";
   const selectedThaiAccent =
@@ -2394,11 +2407,31 @@ function EpisodeWorkspaceShell({
       onError: err => toast.error(err.message),
     });
 
-  const handleSelectPromptLanguage = (language: string) => {
+  const setEpisodeImagePromptLanguageMutation =
+    trpc.verticalDramaEpisodes.setEpisodeImagePromptLanguage.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "บันทึกภาษาพรอมต์ภาพแล้ว"
+            : "Image prompt language saved."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  const handleSelectVideoPromptLanguage = (language: string) => {
     setEpisodeVideoPromptLanguageMutation.mutate({
       seriesId,
       episodeId,
       promptLanguage: language as "en" | "th" | "zh" | "ja" | "ko",
+    });
+  };
+  const handleSelectImagePromptLanguage = (language: string) => {
+    setEpisodeImagePromptLanguageMutation.mutate({
+      seriesId,
+      episodeId,
+      imagePromptLanguage: language as "en" | "th" | "zh" | "ja" | "ko",
     });
   };
   const handleSelectDialogueLanguage = (language: string) => {
@@ -3281,14 +3314,6 @@ function EpisodeWorkspaceShell({
             episodeId,
             shotNumber,
             canonicalShotSummary,
-            ...(!canonicalShotSummary
-              ? {
-                  instruction:
-                    lang === "th"
-                      ? `สร้าง image prompt สำหรับช็อตที่ ${shotNumber} ให้ครบถ้วนตามรายละเอียด storyboard และตัวละครที่กำหนดของช็อตนี้`
-                      : `Generate a complete image prompt for shot ${shotNumber}, following this shot's storyboard details and required characters.`,
-                }
-              : {}),
             idempotencyKey: crypto.randomUUID(),
           });
         } catch (err) {
@@ -5383,9 +5408,11 @@ function EpisodeWorkspaceShell({
             selectedVideoResolution,
             onSelectImageResolution: handleSelectImageResolution,
             onSelectVideoResolution: handleSelectVideoResolution,
-            selectedPromptLanguage,
+            selectedImagePromptLanguage,
+            selectedVideoPromptLanguage,
             selectedDialogueLanguage,
-            onSelectPromptLanguage: handleSelectPromptLanguage,
+            onSelectImagePromptLanguage: handleSelectImagePromptLanguage,
+            onSelectVideoPromptLanguage: handleSelectVideoPromptLanguage,
             onSelectDialogueLanguage: handleSelectDialogueLanguage,
             selectedThaiAccent,
             onSelectThaiAccent: handleSelectThaiAccent,

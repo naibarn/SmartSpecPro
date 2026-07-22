@@ -62,6 +62,13 @@ export interface HermesRegisterResult {
   tokens: HermesTokenSet;
 }
 
+interface HermesRegisterResponse {
+  created: boolean;
+  workerId?: string;
+  worker?: { id?: string };
+  tokens: HermesTokenSet;
+}
+
 export interface HermesReferenceUrl {
   assetId: string;
   url: string;
@@ -171,6 +178,10 @@ export interface HermesControlPlaneClientConfig {
   /** Seeds the in-memory execution/upload pair so tests (and a warm
    *  restart within the same process) can skip an extra refresh round-trip. */
   initialTokens?: { executionToken: string; uploadToken: string };
+  /** Persist every rotated refresh token before the client relies on the
+   * short-lived execution/upload pair. Required by restartable headless
+   * workers because the refresh endpoint revokes the previous token. */
+  persistRefreshToken?: (refreshToken: string) => Promise<void>;
 }
 
 async function parseErrorBody(response: Response): Promise<{ code: string; message: string }> {
@@ -206,9 +217,10 @@ export function createControlPlaneClient(cfg: HermesControlPlaneClientConfig): H
           throw new HermesControlPlaneError(response.status, code, message);
         }
         const body = (await response.json()) as { tokens: HermesTokenSet };
+        refreshToken = body.tokens.refreshToken;
+        await cfg.persistRefreshToken?.(refreshToken);
         executionToken = body.tokens.executionToken;
         uploadToken = body.tokens.uploadToken;
-        refreshToken = body.tokens.refreshToken;
       })().finally(() => {
         refreshInFlight = null;
       });
@@ -289,8 +301,37 @@ export function createControlPlaneClient(cfg: HermesControlPlaneClientConfig): H
             hermesVersion: payload.hermesVersion,
           },
         },
+        runtimeMetadataJson: {
+          hermesVersion: payload.hermesVersion,
+          profileName: "smartspec-shared",
+          profileLabel: "SmartSpec shared Grok media",
+          profilePurpose: "Tenant-scoped Grok image and video generation",
+          apiServerEnabled: false,
+          terminalBackend: "subprocess",
+          hostPlatform: process.platform,
+          hostExecutionMode: "systemd",
+        },
       };
-      return request<HermesRegisterResult>("bearer", "POST", "/api/workers/register", body, bearerToken);
+      const result = await request<HermesRegisterResponse>(
+        "bearer",
+        "POST",
+        "/api/workers/register",
+        body,
+        bearerToken,
+      );
+      const workerId = result.workerId ?? result.worker?.id;
+      if (!workerId) {
+        throw new HermesControlPlaneError(
+          502,
+          "worker_registration_invalid_response",
+          "Worker registration response did not include a worker id",
+        );
+      }
+      return {
+        created: result.created,
+        workerId,
+        tokens: result.tokens,
+      };
     },
 
     async heartbeat({ freeDiskBytes, activeJobIds, status, runtimeMetadataJson }) {

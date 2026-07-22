@@ -42,6 +42,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import type { VerticalDramaStartFrameDropInput } from "@/lib/verticalDramaStartFrameDrop";
 /**
  * Ad Banner Overlay — per-episode banner SELECTION (F131W, task #30-A2,
  * plan.md §6 episode side). `@shared/verticalDramaSeries/adBannerPresets` is
@@ -424,7 +425,10 @@ export interface VerticalDramaStoryboardPanelData {
    *  location visual bible) — per-shot location override, distinct from the
    *  storyboard's own `distinct_locations[]` grouping. */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
-  onDropStartFrame?: (shotNumber: number, url: string) => void;
+  onDropStartFrame?: (
+    shotNumber: number,
+    input: VerticalDramaStartFrameDropInput
+  ) => Promise<void>;
   onGenerateAngleVariations?: (shotNumber: number) => void;
   generatingAngleVariationsForShot?: number | null;
   angleVariationGridUrlByShot?: Record<number, string>;
@@ -475,13 +479,19 @@ export interface VerticalDramaStoryboardPanelData {
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
 
-  /* ---- Video-prompt language options (episode-level language plan) ---- */
-  selectedPromptLanguage?: string;
+  /* ---- Independent image/video prompt language options ---- */
+  selectedImagePromptLanguage?: string;
+  selectedVideoPromptLanguage?: string;
   selectedDialogueLanguage?: string;
-  onSelectPromptLanguage?: (language: string) => void;
+  onSelectImagePromptLanguage?: (language: string) => void;
+  onSelectVideoPromptLanguage?: (language: string) => void;
   onSelectDialogueLanguage?: (language: string) => void;
   selectedThaiAccent?: string | null;
   onSelectThaiAccent?: (value: string) => void;
+
+  /* ---- Start-frame image-prompt engine mode (per sub-episode) ---- */
+  imagePromptMode?: string;
+  onSelectImagePromptMode?: (mode: string) => void;
 
   /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
   nativeAudioEnabled?: boolean;
@@ -1282,12 +1292,24 @@ export function VerticalDramaEpisodeWorkspace({
           selectedVideoResolution={storyboardPanel?.selectedVideoResolution}
           onSelectImageResolution={storyboardPanel?.onSelectImageResolution}
           onSelectVideoResolution={storyboardPanel?.onSelectVideoResolution}
-          selectedPromptLanguage={storyboardPanel?.selectedPromptLanguage}
+          selectedImagePromptLanguage={
+            storyboardPanel?.selectedImagePromptLanguage
+          }
+          selectedVideoPromptLanguage={
+            storyboardPanel?.selectedVideoPromptLanguage
+          }
           selectedDialogueLanguage={storyboardPanel?.selectedDialogueLanguage}
-          onSelectPromptLanguage={storyboardPanel?.onSelectPromptLanguage}
+          onSelectImagePromptLanguage={
+            storyboardPanel?.onSelectImagePromptLanguage
+          }
+          onSelectVideoPromptLanguage={
+            storyboardPanel?.onSelectVideoPromptLanguage
+          }
           onSelectDialogueLanguage={storyboardPanel?.onSelectDialogueLanguage}
           selectedThaiAccent={storyboardPanel?.selectedThaiAccent}
           onSelectThaiAccent={storyboardPanel?.onSelectThaiAccent}
+          imagePromptMode={storyboardPanel?.imagePromptMode}
+          onSelectImagePromptMode={storyboardPanel?.onSelectImagePromptMode}
           nativeAudioEnabled={storyboardPanel?.nativeAudioEnabled}
           onSelectNativeAudioEnabled={
             storyboardPanel?.onSelectNativeAudioEnabled

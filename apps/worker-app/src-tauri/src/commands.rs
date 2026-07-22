@@ -1453,8 +1453,14 @@ fn hermes_profile_root(app_data_dir: &Path) -> PathBuf {
 /// Real `hermes --version` probe (production `query_version` implementation
 /// for `hermes_doctor_from_manifest_path`). Tests inject their own closure.
 pub(crate) fn query_hermes_version(hermes_executable: &Path) -> Result<String, String> {
-    let output = std::process::Command::new(hermes_executable)
-        .arg("--version")
+    let mut command = std::process::Command::new(hermes_executable);
+    command.arg("--version");
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let output = command
         .output()
         .map_err(|error| format!("failed to run hermes --version: {error}"))?;
     if !output.status.success() {
@@ -2953,10 +2959,14 @@ mod tests {
 #[tauri::command]
 pub async fn worker_app_run_manual_command(command: String) -> Result<String, String> {
     #[cfg(target_os = "windows")]
-    let output = std::process::Command::new("cmd")
-        .args(&["/C", &command])
-        .output()
-        .map_err(|e| format!("failed to spawn cmd: {e}"))?;
+    let output = {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("cmd")
+            .args(&["/C", &command])
+            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+            .output()
+            .map_err(|e| format!("failed to spawn cmd: {e}"))?
+    };
 
     #[cfg(not(target_os = "windows"))]
     let output = std::process::Command::new("sh")

@@ -2,14 +2,18 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Manual dialogue edits (W10.5, added 2026-07-08) — `VerticalDramaDeepStoryDraftEpisodeDetail`
- * now calls `trpc.useUtils()`/`trpc.verticalDramaSeries.updateEpisodeDraftDialogue.useMutation()`
- * UNCONDITIONALLY (before its `!shotDrafts` early return — React's rules of
- * hooks), so every test in this file needs `@/lib/trpc`/`sonner` mocked, even
- * the pre-existing read-only tests that never touch the editor. Mirrors
- * `VerticalDramaDeepStoryDraftsPanel.actions.test.tsx`'s own mock shape.
+ * Manual shot edits (W10.5, added 2026-07-08; combined summary+dialogue
+ * editor 2026-07-22) — `VerticalDramaDeepStoryDraftEpisodeDetail` now calls
+ * `trpc.useUtils()`/`trpc.verticalDramaSeries.updateEpisodeDraftShot.useMutation()`
+ * (renamed from `updateEpisodeDraftDialogue` — now accepts optional
+ * `summary`/`lines`) UNCONDITIONALLY (before its `!shotDrafts` early return —
+ * React's rules of hooks), so every test in this file needs
+ * `@/lib/trpc`/`sonner` mocked, even the pre-existing read-only tests that
+ * never touch the editor. Mirrors `VerticalDramaDeepStoryDraftsPanel.actions.test.tsx`'s
+ * own mock shape.
  */
 const mockInvalidateSeriesGet = vi.fn();
+const mockInvalidateGetEpisodeDetail = vi.fn();
 const mockEditMutate = vi.fn();
 let editShouldFail = false;
 let editErrorMessage: string | undefined = "edit boom";
@@ -27,9 +31,12 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       verticalDramaSeries: { get: { invalidate: mockInvalidateSeriesGet } },
+      verticalDramaEpisodes: {
+        getEpisodeDetail: { invalidate: mockInvalidateGetEpisodeDetail },
+      },
     }),
     verticalDramaSeries: {
-      updateEpisodeDraftDialogue: {
+      updateEpisodeDraftShot: {
         useMutation: (opts: {
           onSuccess?: (data: unknown, variables: unknown) => void;
           onError?: (err: { message?: string }) => void;
@@ -448,7 +455,7 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
   });
 
   /* -------------------------------------------------------------------------- */
-  /* Manual dialogue edits (W10.5) — inline per-shot editor                     */
+  /* Manual shot edits (W10.5; combined summary+dialogue editor 2026-07-22)     */
   /* -------------------------------------------------------------------------- */
 
   function itemFixture(overrides: Record<string, unknown> = {}) {
@@ -467,11 +474,11 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
   }
 
   describe("edit affordance visibility", () => {
-    it("shows a 'แก้บทพูด' edit button for every shot by default (readOnly omitted)", () => {
+    it("shows a 'แก้ช็อตนี้' edit button for every shot by default (readOnly omitted)", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
-      expect(screen.getByTestId("vd-deep-story-draft-edit-cta-1-1")).toHaveTextContent("แก้บทพูด");
+      expect(screen.getByTestId("vd-deep-story-draft-edit-cta-1-1")).toHaveTextContent("แก้ช็อตนี้");
       expect(screen.getByTestId("vd-deep-story-draft-edit-cta-1-9")).toBeInTheDocument();
     });
 
@@ -490,13 +497,15 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
   });
 
   describe("opening the editor", () => {
-    it("replaces the read-only dialogue view with the edit form, seeded from the shot's existing lines", () => {
+    it("replaces the read-only view with ONE combined form, seeded from the shot's existing summary AND lines", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
       expect(screen.getByTestId("vd-deep-story-draft-edit-form-1-1")).toBeInTheDocument();
       expect(screen.queryByText("นางเอก: Line for shot 1")).not.toBeInTheDocument();
+
+      expect(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1")).toHaveValue("Shot 1 summary");
 
       const row = screen.getByTestId("vd-deep-story-draft-edit-line-1-1-0");
       expect(within(row).getByTestId("vd-deep-story-draft-edit-speaker-1-1-0")).toHaveValue("นางเอก");
@@ -505,7 +514,7 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
       );
     });
 
-    it("seeds an empty editor (no rows) for a silent shot with zero dialogue_lines", () => {
+    it("seeds an empty dialogue section (no rows) for a silent shot with zero dialogue_lines", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail
           lang="th"
@@ -518,6 +527,7 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
       );
       openEditor(1);
       expect(screen.queryByTestId("vd-deep-story-draft-edit-line-1-1-0")).not.toBeInTheDocument();
+      expect(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1")).toHaveValue("Shot 1 summary");
     });
 
     it("every input has an accessible label, scoped per line via a 'บรรทัดที่ N' group", () => {
@@ -530,24 +540,30 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
       expect(within(group).getByLabelText("บทพูด")).toBeInTheDocument();
       expect(within(group).getByLabelText("อารมณ์/วิธีพูด")).toBeInTheDocument();
       expect(within(group).getByLabelText("ลบบรรทัดนี้")).toBeInTheDocument();
+      expect(screen.getByLabelText("เรื่องย่อช็อต")).toBeInTheDocument();
     });
 
-    it("ยกเลิก (cancel) closes the editor and discards in-progress edits", () => {
+    it("ยกเลิก (cancel) closes the editor and discards in-progress edits to BOTH summary and lines", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "แก้เรื่องย่อแต่ยังไม่บันทึก" },
+      });
       fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-line-input-1-1-0"), {
         target: { value: "แก้ไขแล้วแต่ยังไม่บันทึก" },
       });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-cancel-1-1"));
 
       expect(screen.queryByTestId("vd-deep-story-draft-edit-form-1-1")).not.toBeInTheDocument();
+      expect(screen.getByText("ช็อต 1 — Shot 1 summary")).toBeInTheDocument();
       expect(screen.getByText("นางเอก: Line for shot 1")).toBeInTheDocument();
       expect(mockEditMutate).not.toHaveBeenCalled();
 
       // Re-opening seeds fresh from the (unsaved) shot again, not the discarded draft.
       openEditor(1);
+      expect(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1")).toHaveValue("Shot 1 summary");
       expect(screen.getByTestId("vd-deep-story-draft-edit-line-input-1-1-0")).toHaveValue("Line for shot 1");
     });
   });
@@ -756,11 +772,24 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
   });
 
   describe("save flow", () => {
-    it("calls the mutation with {seriesId, episodeNumber, shotNumber, lines, idempotencyKey}", () => {
+    it("disables Save when nothing changed, and never fires the mutation from a click on the disabled button", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      expect(screen.getByTestId("vd-deep-story-draft-edit-save-1-1")).toBeDisabled();
+      fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
+      expect(mockEditMutate).not.toHaveBeenCalled();
+    });
+
+    it("sends ONLY `summary` (no `lines` key) when only the summary changed", () => {
+      render(
+        <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
+      );
+      openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary text" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
 
       expect(mockEditMutate).toHaveBeenCalledTimes(1);
@@ -768,15 +797,56 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         seriesId: string;
         episodeNumber: number;
         shotNumber: number;
-        lines: Array<{ speaker?: string; line: string; delivery?: string }>;
+        summary?: string;
+        lines?: Array<{ speaker?: string; line: string; delivery?: string }>;
         idempotencyKey: string;
       };
       expect(input.seriesId).toBe("10");
       expect(input.episodeNumber).toBe(1);
       expect(input.shotNumber).toBe(1);
-      expect(input.lines).toEqual([{ speaker: "นางเอก", line: "Line for shot 1" }]);
+      expect(input.summary).toBe("New summary text");
+      expect(input.lines).toBeUndefined();
       expect(typeof input.idempotencyKey).toBe("string");
       expect(input.idempotencyKey.length).toBeGreaterThan(0);
+    });
+
+    it("sends ONLY `lines` (no `summary` key) when only the dialogue changed", () => {
+      render(
+        <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
+      );
+      openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-line-input-1-1-0"), {
+        target: { value: "New line text" },
+      });
+      fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
+
+      const input = mockEditMutate.mock.calls[0][0] as {
+        summary?: string;
+        lines?: Array<{ speaker?: string; line: string; delivery?: string }>;
+      };
+      expect(input.summary).toBeUndefined();
+      expect(input.lines).toEqual([{ speaker: "นางเอก", line: "New line text" }]);
+    });
+
+    it("sends BOTH `summary` and `lines` when both changed", () => {
+      render(
+        <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
+      );
+      openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary text" },
+      });
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-line-input-1-1-0"), {
+        target: { value: "New line text" },
+      });
+      fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
+
+      const input = mockEditMutate.mock.calls[0][0] as {
+        summary?: string;
+        lines?: Array<{ speaker?: string; line: string; delivery?: string }>;
+      };
+      expect(input.summary).toBe("New summary text");
+      expect(input.lines).toEqual([{ speaker: "นางเอก", line: "New line text" }]);
     });
 
     it("generates a fresh idempotencyKey on every save click (family convention)", () => {
@@ -784,10 +854,16 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "First edit" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
       // The mutation succeeds synchronously in this mock and closes the
-      // editor — re-open to save again.
+      // editor — re-open and make a fresh change to save again.
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "Second edit" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
 
       const first = (mockEditMutate.mock.calls[0][0] as { idempotencyKey: string }).idempotencyKey;
@@ -813,14 +889,18 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
       expect(input.lines).toEqual([{ line: "Hi" }]);
     });
 
-    it("on success: invalidates verticalDramaSeries.get({seriesId}), toasts success with the shot number, and closes the editor", () => {
+    it("on success: invalidates verticalDramaSeries.get({seriesId}) AND verticalDramaEpisodes.getEpisodeDetail(), toasts success with the shot number, and closes the editor", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(3);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-3"), {
+        target: { value: "New summary" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-3"));
 
       expect(mockInvalidateSeriesGet).toHaveBeenCalledWith({ seriesId: "10" });
+      expect(mockInvalidateGetEpisodeDetail).toHaveBeenCalledTimes(1);
       expect(toast.success).toHaveBeenCalledWith("บันทึกบทช็อต 3 แล้ว");
       expect(screen.queryByTestId("vd-deep-story-draft-edit-form-1-3")).not.toBeInTheDocument();
     });
@@ -831,6 +911,9 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
       expect(toast.info).toHaveBeenCalledWith("นำป้ายช็อตภาพล้วนออก เพราะมีบทพูดแล้ว");
     });
@@ -840,6 +923,9 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
       expect(toast.info).not.toHaveBeenCalled();
     });
@@ -856,6 +942,9 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
       expect(toast.warning).toHaveBeenCalledWith("บันทึกแล้ว แต่ยังมี 2 จุดที่อ่านออกเสียงยาก");
     });
@@ -865,6 +954,9 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
       expect(toast.warning).not.toHaveBeenCalled();
     });
@@ -875,6 +967,9 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
 
       expect(toast.error).toHaveBeenCalledWith("edit boom");
@@ -889,6 +984,9 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
       openEditor(1);
+      fireEvent.change(screen.getByTestId("vd-deep-story-draft-edit-summary-input-1-1"), {
+        target: { value: "New summary" },
+      });
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-save-1-1"));
       expect(toast.error).toHaveBeenCalledWith("แก้ไขบทพูดไม่สำเร็จ");
     });
@@ -905,8 +1003,8 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
     });
   });
 
-  describe("'แก้แล้ว' (edited) badge", () => {
-    it("shows the badge only for shots included in manualDialogueEdit.shotNumbers", () => {
+  describe("'แก้แล้ว' (edited) badge — unions manualDialogueEdit and manualSummaryEdit", () => {
+    it("shows the badge for shots included in manualDialogueEdit.shotNumbers", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail
           lang="th"
@@ -925,7 +1023,41 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
       expect(screen.queryByTestId("vd-deep-story-draft-edited-badge-1-1")).not.toBeInTheDocument();
     });
 
-    it("shows no badge at all when manualDialogueEdit is absent (tolerant read, never throws)", () => {
+    it("shows the badge for shots included in manualSummaryEdit.shotNumbers too", () => {
+      render(
+        <VerticalDramaDeepStoryDraftEpisodeDetail
+          lang="th"
+          seriesId="10"
+          episodeNumber={1}
+          item={itemFixture({
+            manualSummaryEdit: {
+              editedAt: "2026-07-22T00:00:00.000Z",
+              editedByUserId: 42,
+              shotNumbers: [5],
+            },
+          })}
+        />,
+      );
+      expect(screen.getByTestId("vd-deep-story-draft-edited-badge-1-5")).toHaveTextContent("แก้แล้ว");
+      expect(screen.queryByTestId("vd-deep-story-draft-edited-badge-1-1")).not.toBeInTheDocument();
+    });
+
+    it("shows the badge exactly once when a shot is present in BOTH stamp sets", () => {
+      render(
+        <VerticalDramaDeepStoryDraftEpisodeDetail
+          lang="th"
+          seriesId="10"
+          episodeNumber={1}
+          item={itemFixture({
+            manualDialogueEdit: { editedAt: "2026-07-08T00:00:00.000Z", editedByUserId: 42, shotNumbers: [2] },
+            manualSummaryEdit: { editedAt: "2026-07-22T00:00:00.000Z", editedByUserId: 42, shotNumbers: [2] },
+          })}
+        />,
+      );
+      expect(screen.getAllByTestId("vd-deep-story-draft-edited-badge-1-2")).toHaveLength(1);
+    });
+
+    it("shows no badge at all when neither stamp is present (tolerant read, never throws)", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail lang="th" seriesId="10" episodeNumber={1} item={itemFixture()} />,
       );
@@ -934,13 +1066,16 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
       }
     });
 
-    it("shows no badge when manualDialogueEdit is malformed (tolerant read, never throws)", () => {
+    it("shows no badge when both stamps are malformed (tolerant read, never throws)", () => {
       render(
         <VerticalDramaDeepStoryDraftEpisodeDetail
           lang="th"
           seriesId="10"
           episodeNumber={1}
-          item={itemFixture({ manualDialogueEdit: { shotNumbers: "not-an-array" } })}
+          item={itemFixture({
+            manualDialogueEdit: { shotNumbers: "not-an-array" },
+            manualSummaryEdit: { shotNumbers: "not-an-array" },
+          })}
         />,
       );
       expect(screen.queryByTestId("vd-deep-story-draft-edited-badge-1-1")).not.toBeInTheDocument();

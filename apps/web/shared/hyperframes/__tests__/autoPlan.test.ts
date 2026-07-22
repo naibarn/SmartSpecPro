@@ -56,7 +56,10 @@ describe("HyperFrames auto plan contract", () => {
       manualVideoGroupSize: String(defaults.manualVideoGroupSize),
       speechLanguage: defaults.speechLanguage,
       creativeBrief: defaults.creativeBrief,
+      motionDirection: defaults.motionDirection,
+      characterPresenceMode: defaults.characterPresenceMode,
       qualityMode: defaults.qualityMode,
+      visionQaModel: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.visionQaModel,
     });
   });
 
@@ -161,5 +164,72 @@ describe("HyperFrames auto plan contract", () => {
         speechLanguage: "klingon",
       })
     ).not.toHaveProperty("speechLanguage");
+  });
+
+  it("carries an optional motionDirection override through normalize and apply", () => {
+    const normalized = normalizeHyperframesAutoPlanOverrides({
+      motionDirection: "  Pump, pour, lather, then showcase the product.  ",
+    });
+    expect(normalized.motionDirection).toBe(
+      "Pump, pour, lather, then showcase the product."
+    );
+
+    const defaults = buildDefaultHyperframesAutoPlanDefaults();
+    expect(defaults.motionDirection).toBe("");
+
+    const applied = applyHyperframesAutoPlanOverrides({
+      defaults,
+      overrides: {
+        motionDirection: "Pump, pour, lather, then showcase the product.",
+      },
+    });
+    expect(applied.motionDirection).toBe(
+      "Pump, pour, lather, then showcase the product."
+    );
+  });
+
+  it("drops an empty/whitespace-only motionDirection override (min 1 after trim)", () => {
+    expect(
+      normalizeHyperframesAutoPlanOverrides({ motionDirection: "   " })
+    ).not.toHaveProperty("motionDirection");
+    const applied = applyHyperframesAutoPlanOverrides({
+      defaults: buildDefaultHyperframesAutoPlanDefaults(),
+      overrides: { motionDirection: "   " },
+    });
+    expect(applied.motionDirection).toBe("");
+  });
+
+  it("defaults characterPresenceMode to auto", () => {
+    const defaults = buildDefaultHyperframesAutoPlanDefaults();
+    expect(defaults.characterPresenceMode).toBe("auto");
+    expect(HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.characterPresenceMode).toBe(
+      "auto"
+    );
+  });
+
+  it("carries an optional characterPresenceMode override through normalize and apply", () => {
+    const normalized = normalizeHyperframesAutoPlanOverrides({
+      characterPresenceMode: "every_frame",
+    });
+    expect(normalized.characterPresenceMode).toBe("every_frame");
+
+    const applied = applyHyperframesAutoPlanOverrides({
+      defaults: buildDefaultHyperframesAutoPlanDefaults(),
+      overrides: { characterPresenceMode: "most_frames" },
+    });
+    expect(applied.characterPresenceMode).toBe("most_frames");
+  });
+
+  it("ignores an invalid characterPresenceMode override (enum-guarded)", () => {
+    expect(
+      normalizeHyperframesAutoPlanOverrides({
+        characterPresenceMode: "sometimes",
+      })
+    ).not.toHaveProperty("characterPresenceMode");
+    const applied = applyHyperframesAutoPlanOverrides({
+      defaults: buildDefaultHyperframesAutoPlanDefaults(),
+      overrides: { characterPresenceMode: "sometimes" },
+    });
+    expect(applied.characterPresenceMode).toBe("auto");
   });
 });

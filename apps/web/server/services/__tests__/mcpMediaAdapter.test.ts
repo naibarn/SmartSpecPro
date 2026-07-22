@@ -254,7 +254,13 @@ describe("mcpMediaAdapter", () => {
       "MCP provider tool error: Error starting generation: Invalid or expired token Request ID: req_123",
     ))).toBe(true);
     expect(isMcpProviderAuthErrorForTest(new Error("MCP provider request failed: 401"))).toBe(true);
-    expect(isMcpProviderAuthErrorForTest(new Error("MCP provider request failed: 403"))).toBe(true);
+    expect(isMcpProviderAuthErrorForTest(new Error("MCP provider request failed: 403"))).toBe(false);
+    expect(isMcpProviderAuthErrorForTest(new Error(
+      "MCP provider tool error: seedream_v5_pro backend request failed (403): grace_daily_limit_reached",
+    ))).toBe(false);
+    expect(isMcpProviderAuthErrorForTest(new Error(
+      "MCP provider request failed: 403 Invalid or expired token",
+    ))).toBe(true);
     expect(isMcpProviderAuthErrorForTest(new Error(
       'MCP provider tool error: Invalid request: resolution: value "2K" not in allowed options [1k, 2k, 4k]',
     ))).toBe(false);

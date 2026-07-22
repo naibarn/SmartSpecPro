@@ -47,6 +47,32 @@ export const HERMES_WORKER_SETTINGS_KEYS = {
   webProcessWorkerEnabled: "web_process_hermes_worker_enabled",
 } as const;
 
+/**
+ * Safe one-click production preset for the supported user-owned/private-worker
+ * flow. Shared scopes stay disabled until a shared worker is provisioned, and
+ * the in-web drainer is never enabled by this preset.
+ */
+export const HERMES_WORKER_SAFE_ENABLEMENT_PRESET = {
+  [HERMES_WORKER_SETTINGS_KEYS.enabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.privateEnabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.videoEnabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.sharedPoolEnabled]: "false",
+  [HERMES_WORKER_SETTINGS_KEYS.serverPersonalEnabled]: "false",
+  [HERMES_WORKER_SETTINGS_KEYS.webProcessWorkerEnabled]: "false",
+} as const;
+
+/** Full three-mode preset. The write path must verify that the configured
+ * shared worker is online and doctor-ready before applying this preset. */
+export const HERMES_WORKER_FULL_ENABLEMENT_PRESET = {
+  [HERMES_WORKER_SETTINGS_KEYS.enabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.privateEnabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.videoEnabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.sharedPoolEnabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.serverPersonalEnabled]: "true",
+  [HERMES_WORKER_SETTINGS_KEYS.minHermesVersion]: "0.18.2",
+  [HERMES_WORKER_SETTINGS_KEYS.webProcessWorkerEnabled]: "false",
+} as const;
+
 export interface HermesWorkerSettings {
   enabled: boolean; // hermes_worker_enabled (default false — kill switch)
   sharedPoolEnabled: boolean; // hermes_worker_shared_pool_enabled (false)

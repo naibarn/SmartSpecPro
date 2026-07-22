@@ -9,6 +9,8 @@ vi.mock("../../db", () => ({
 }));
 
 import {
+  HERMES_WORKER_FULL_ENABLEMENT_PRESET,
+  HERMES_WORKER_SAFE_ENABLEMENT_PRESET,
   HERMES_WORKER_SETTINGS_KEYS,
   clearHermesWorkerSettingsCache,
   getHermesWorkerSettings,
@@ -40,6 +42,29 @@ describe("hermesWorkerSettings", () => {
     } else {
       process.env.SMARTSPEC_INLINE_HERMES_WORKER = originalEnv;
     }
+  });
+
+  it("defines a safe private-worker preset without shared or in-web execution", () => {
+    expect(HERMES_WORKER_SAFE_ENABLEMENT_PRESET).toEqual({
+      [HERMES_WORKER_SETTINGS_KEYS.enabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.privateEnabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.videoEnabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.sharedPoolEnabled]: "false",
+      [HERMES_WORKER_SETTINGS_KEYS.serverPersonalEnabled]: "false",
+      [HERMES_WORKER_SETTINGS_KEYS.webProcessWorkerEnabled]: "false",
+    });
+  });
+
+  it("defines a full preset for all three modes without in-web execution", () => {
+    expect(HERMES_WORKER_FULL_ENABLEMENT_PRESET).toEqual({
+      [HERMES_WORKER_SETTINGS_KEYS.enabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.privateEnabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.videoEnabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.sharedPoolEnabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.serverPersonalEnabled]: "true",
+      [HERMES_WORKER_SETTINGS_KEYS.minHermesVersion]: "0.18.2",
+      [HERMES_WORKER_SETTINGS_KEYS.webProcessWorkerEnabled]: "false",
+    });
   });
 
   it("returns the documented defaults when no rows exist", async () => {

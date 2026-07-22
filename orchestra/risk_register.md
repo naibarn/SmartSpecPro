@@ -13,3 +13,18 @@
 
 Security verdict: PASS. No secrets, network policy, application authorization,
 database, tenant boundary, or user data paths were changed.
+
+## Media polling and rate-limit containment - 2026-07-20
+
+Verdict: PASS
+
+| ID | Severity | Category | File | Description | Status |
+|---|---|---|---|---|---|
+| MP001 | INFO | IDOR | apps/web/server/routers/media.ts | MCP task lookup is scoped by authenticated `ctx.user.id`; direct tasks retain protected Python ownership checks | closed |
+| MP002 | INFO | JWT | python-backend/app/core/middleware.py | Limiter identity is derived only after signature/type verification; raw `openId` is digested | closed |
+| MP003 | INFO | Client abuse | apps/web/client/src/lib/mediaHistoryPolling.ts | Per-task cooldown and single-flight reservation prevent rerender request amplification | closed |
+
+Verdict rationale: no auth bypass, IDOR, secret exposure, raw identifier logging,
+or tenant-boundary regression was found. Anonymous requests retain the IP
+limiter, and authenticated claim compatibility does not bypass token
+verification.

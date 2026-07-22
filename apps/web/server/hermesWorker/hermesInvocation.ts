@@ -4,8 +4,9 @@
  * spec §13.3, §13.6).
  *
  * Invocation shape (plan §10 — supersedes spec §13.3's toolset list):
- *   `hermes -p conn_<connectionId> -z --provider xai-oauth --toolsets
- *   "image_gen"|"video_gen" --ignore-user-config <envelope>`
+ *   `hermes -p conn_<connectionId> -z <envelope> --provider xai-oauth
+ *   --model grok-build-0.1 --toolsets
+ *   "image_gen"|"video_gen" --ignore-rules`
  * spawned via an argv ARRAY (no shell) — the envelope, however large or
  * adversarial its content, is always exactly one argv element, so nothing a
  * user-supplied prompt contains can ever alter argv structure (extra flags,
@@ -124,6 +125,8 @@ const OPERATION_TOOLSET: Record<HermesMediaOperation, "image_gen" | "video_gen">
   "video.reference_to_video": "video_gen",
 };
 
+const HERMES_XAI_INFERENCE_MODEL = "grok-build-0.1";
+
 export interface BuildArgvParams {
   profile: Pick<ProfileHandle, "profileArg">;
   operation: HermesMediaOperation;
@@ -145,7 +148,17 @@ export function buildArgv(params: BuildArgvParams): string[] {
     argv.push("-p", params.profile.profileArg);
   }
   if (params.template === "print_mode") {
-    argv.push("-z", "--provider", "xai-oauth", "--toolsets", toolsets, "--ignore-user-config", params.envelope);
+    argv.push(
+      "-z",
+      params.envelope,
+      "--provider",
+      "xai-oauth",
+      "--model",
+      HERMES_XAI_INFERENCE_MODEL,
+      "--toolsets",
+      toolsets,
+      "--ignore-rules",
+    );
   } else {
     argv.push(
       "chat",
@@ -153,9 +166,11 @@ export function buildArgv(params: BuildArgvParams): string[] {
       "-Q",
       "--provider",
       "xai-oauth",
+      "--model",
+      HERMES_XAI_INFERENCE_MODEL,
       "--toolsets",
       toolsets,
-      "--ignore-user-config",
+      "--ignore-rules",
       params.envelope,
     );
   }

@@ -468,6 +468,32 @@ describe("workerSchedulerService", () => {
     ).toBe(false);
   });
 
+  it("uses requiredClaimCapability as the claim gate when a job also carries descriptive capability families", () => {
+    const hermesJob = {
+      capabilityRequirementsJson: {
+        preferredWorkerId: "worker-hermes-1",
+        requiredClaimCapability: "hermes_media",
+        capabilityFamilies: ["hermes-media-generation"],
+      },
+    };
+
+    expect(
+      workerJobMatchesSelection(
+        hermesJob,
+        "worker-hermes-1",
+        ["hermes_media"],
+      ),
+    ).toBe(true);
+
+    expect(
+      workerJobMatchesSelection(
+        hermesJob,
+        "worker-hermes-1",
+        ["hermes-media-generation"],
+      ),
+    ).toBe(false);
+  });
+
   it("queues desktop video_assembly jobs through the desktop runtime lane", async () => {
     getFeatureFlags.mockResolvedValue({
       openClawExternalRuntime: true,

@@ -30,6 +30,8 @@ describe("vertical-drama-season-carry-over-planner skill.md", () => {
     expect(content).toContain("cameo_only");
     expect(content).toContain("characterKey");
     expect(content).toContain("contract_version");
+    expect(content).toContain("conditionally required");
+    expect(content).toContain("never return an empty string");
   });
 
   it("carries the four judgment rules the project brief calls out explicitly", () => {

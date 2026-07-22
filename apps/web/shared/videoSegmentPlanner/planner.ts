@@ -172,6 +172,7 @@ export function planVideoSegments(rawInput: VideoSegmentPlannerInput) {
     audioStrategy: input.audioStrategy,
     referenceMode: input.referenceMode,
     creativeBrief: input.creativeBrief,
+    motionDirection: input.motionDirection,
     creativePresets: input.creativePresets,
     segments,
     fallbackReason,

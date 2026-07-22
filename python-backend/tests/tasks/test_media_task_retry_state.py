@@ -57,6 +57,14 @@ def test_prompt_length_errors_are_non_retryable():
     assert _is_non_retryable_media_error(error) is True
 
 
+def test_provider_file_type_validation_errors_are_non_retryable():
+    error = RuntimeError(
+        "500: Video generation failed: Kie.ai task submission failed: File type not supported"
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+
+
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
 

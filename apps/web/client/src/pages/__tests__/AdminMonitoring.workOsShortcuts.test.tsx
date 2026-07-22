@@ -81,7 +81,7 @@ vi.mock("@/components/ui/badge", () => ({
 }));
 
 vi.mock("@/components/help/HelpButton", () => ({
-  HelpButton: ({ label }: any) => <button type="button">{label}</button>,
+  HelpButton: ({ label, topic }: any) => <button type="button" data-topic={topic}>{label}</button>,
 }));
 
 vi.mock("@/components/LocaleToggle", () => ({
@@ -90,6 +90,15 @@ vi.mock("@/components/LocaleToggle", () => ({
 
 vi.mock("@/components/admin/OpsEarlyWarningPanel", () => ({
   OpsEarlyWarningPanel: () => <div>Ops panel</div>,
+}));
+
+vi.mock("@/components/admin/HermesWorkerAdminPanel", () => ({
+  HermesFleetBadge: () => null,
+  HermesWorkerAdminPanel: () => <div>Hermes worker overview</div>,
+}));
+
+vi.mock("@/components/admin/KnowledgeVaultReadinessDashboard", () => ({
+  KnowledgeVaultReadinessDashboard: () => <div>Knowledge vault readiness</div>,
 }));
 
 vi.mock("@/lib/opsMonitoringGuidance", () => ({
@@ -124,6 +133,7 @@ vi.mock("@/lib/trpc", () => ({
         getMetricsHistory: { invalidate: vi.fn() },
         getOpsIncidentTimeline: { invalidate: vi.fn() },
         listWorkers: { invalidate: vi.fn() },
+        getWorkerQueueOverview: { invalidate: vi.fn() },
         getTenantWorkerMcpOverview: { invalidate: vi.fn() },
         getWorkerDiagnostics: { invalidate: vi.fn() },
         getWorkerMcpInsights: { invalidate: vi.fn() },
@@ -352,6 +362,7 @@ vi.mock("@/lib/trpc", () => ({
       getAlerts: { useQuery: () => queryResult({ items: [], total: 0 }) },
       getMetricsHistory: { useQuery: () => queryResult([]) },
       listWorkers: { useQuery: () => queryResult([]) },
+      getWorkerQueueOverview: { useQuery: () => queryResult(null) },
       getTenantWorkerMcpOverview: { useQuery: () => queryResult(null) },
       getWorkerDiagnostics: { useQuery: () => queryResult(null) },
       getWorkerMcpInsights: { useQuery: () => queryResult(null) },
@@ -396,6 +407,15 @@ describe("AdminMonitoring Work OS shortcuts", () => {
       },
       configurable: true,
     });
+  });
+
+  it("links the Claw Workers card to the Grok media monitoring guide", () => {
+    render(<AdminMonitoring />);
+
+    expect(screen.getByRole("button", { name: "Grok Media Help" })).toHaveAttribute(
+      "data-topic",
+      "grok-via-hermes-monitoring",
+    );
   });
 
   it("routes Work OS shortcut buttons with source filters", () => {
@@ -467,7 +487,7 @@ describe("AdminMonitoring Work OS shortcuts", () => {
   it("opens the context evaluation dashboard and drills into a room/run slice", () => {
     render(<AdminMonitoring />);
 
-    fireEvent.click(screen.getByRole("button", { name: /^context$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /context & knowledge/i }));
     expect(
       screen.getByRole("heading", { name: /context engine evaluation/i })
     ).toBeInTheDocument();

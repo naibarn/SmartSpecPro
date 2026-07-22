@@ -110,14 +110,23 @@ describe("real-skill-file gate: vd-start-frame-prompt-modes (taught-not-wired fa
         expect(lowercase).toBe(uppercase);
       });
 
-      it("declares the REFERENCE MAPPING contract", async () => {
+      it("assigns reference mapping to the skill only when that mode owns it", async () => {
         const content = await readRealFile(lowercasePath);
-        expect(content).toContain("REFERENCE MAPPING");
+        if (skill.mode === "policy_safe_rewrite") {
+          expect(content).toContain("Application code owns reference mapping");
+          expect(content).toContain("Never add");
+        } else {
+          expect(content).toContain("REFERENCE MAPPING");
+        }
       });
 
-      it("declares the shared 3800-character prompt-length cap", async () => {
+      it("assigns final prompt length to code for policy mode and to the skill for cinematic mode", async () => {
         const content = await readRealFile(lowercasePath);
-        expect(content).toContain("3800 characters or fewer");
+        if (skill.mode === "policy_safe_rewrite") {
+          expect(content).toContain("prompt assembly.");
+        } else {
+          expect(content).toContain("3800 characters or fewer");
+        }
       });
 
       it(`declares its own signature section ("${skill.signatureHeader}")`, async () => {
@@ -125,14 +134,22 @@ describe("real-skill-file gate: vd-start-frame-prompt-modes (taught-not-wired fa
         expect(content).toContain(skill.signatureHeader);
       });
 
-      it("declares the SERIES VISUAL IDENTITY conditional-fact section", async () => {
+      it("does not let policy mode author visual identity while cinematic mode still does", async () => {
         const content = await readRealFile(lowercasePath);
-        expect(content).toContain("SERIES VISUAL IDENTITY");
+        if (skill.mode === "policy_safe_rewrite") {
+          expect(content).toContain("visual style");
+        } else {
+          expect(content).toContain("SERIES VISUAL IDENTITY");
+        }
       });
 
-      it("declares the PRODUCT TIE-IN conditional-fact section", async () => {
+      it("does not let policy mode add products while cinematic mode still supports tie-ins", async () => {
         const content = await readRealFile(lowercasePath);
-        expect(content).toContain("PRODUCT TIE-IN");
+        if (skill.mode === "policy_safe_rewrite") {
+          expect(content).toContain("products");
+        } else {
+          expect(content).toContain("PRODUCT TIE-IN");
+        }
       });
     });
   }
@@ -162,6 +179,8 @@ describe("real-skill-file gate: vd-start-frame-prompt-modes (taught-not-wired fa
 
   it("the policy_safe_rewrite skill's JSON contract declares safety_adjustments", async () => {
     const content = await readRealFile(resolve(SKILLS[0].dir, "skill.md"));
+    expect(content).toContain('"rewritten_synopsis"');
     expect(content).toContain('"safety_adjustments"');
+    expect(content).toContain("Do not return `prompt`, `negative_prompt`");
   });
 });

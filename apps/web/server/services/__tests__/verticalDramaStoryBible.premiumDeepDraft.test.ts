@@ -27,6 +27,15 @@ vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
 }));
 
+const { mockResolveVerticalDramaSeriesModel } = vi.hoisted(() => ({
+  mockResolveVerticalDramaSeriesModel: vi.fn(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  ),
+}));
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+}));
+
 vi.mock("../intelligentModelSelector", () => ({
   selectBestLlmModel: vi.fn(() => null),
 }));
@@ -213,6 +222,9 @@ function userPromptOf(callIndex: number): string {
 beforeEach(() => {
   vi.clearAllMocks();
   mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockResolveVerticalDramaSeriesModel.mockImplementation(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  );
   mockSelectBestLlmModel.mockReturnValue(null);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
@@ -356,6 +368,7 @@ describe("selectPremiumDraftWinnerIndex", () => {
 
 describe("premium — fan-out", () => {
   it(`issues exactly ${VD_PREMIUM_DRAFT_CANDIDATE_COUNT} calls with 3 distinct lens strings, then 1 judge call, then 1 sweep call`, async () => {
+    mockResolveVerticalDramaSeriesModel.mockResolvedValueOnce("google/gemini-3.5-flash");
     mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
     mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
     mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
@@ -370,6 +383,14 @@ describe("premium — fan-out", () => {
 
     const result = await generateStoryBibleDeep(baseDeepParams());
 
+    expect(mockResolveVerticalDramaSeriesModel).toHaveBeenCalledWith(
+      10,
+      resolveDeepStoryDraftModel,
+    );
+    expect(mockExecuteWithFallback.mock.calls.every(([request]) =>
+      request.model === "google/gemini-3.5-flash"
+    )).toBe(true);
+    expect(result.model).toBe("google/gemini-3.5-flash");
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5);
 
     const lensTexts = [systemPromptOf(0), systemPromptOf(1), systemPromptOf(2)];

@@ -491,6 +491,8 @@ export type VerticalDramaStartFramePlan = {
    * `vertical-drama-shot-start-frame-prompt` skill regardless of this field.
    */
   imagePromptMode?: VdImagePromptMode | "auto";
+  /** Language used by cinematic image/start-frame prompt generation. Policy-safe synopsis mode preserves the synopsis source language. */
+  imagePromptLanguage?: VerticalDramaPromptLanguage;
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;
@@ -651,30 +653,22 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
 };
 
 /**
- * Prompt LANGUAGE options (episode-level language plan) — two independent
- * axes:
- *  - `promptLanguage`: the language the PROMPT TEXT ITSELF is written in —
- *    this ONE shared field governs BOTH the video-clip prompt (the acting/
- *    motion/camera direction the video model reads) AND the image/start-
- *    frame prompt (the `prompt`/`negative_prompt` text the image model
- *    reads). There is no separate image-only language field — selecting a
- *    language here affects every prompt-text generation path for the
- *    episode. Defaults to `"en"` when absent (English is the best-supported
- *    prompt language across both image and video model providers) — never
- *    inferred from `dialogueLanguage`.
+ * Prompt LANGUAGE options (episode-level language plan):
+ *  - `startFramePlan.imagePromptLanguage`: the cinematic image-prompt
+ *    language. Policy-safe synopsis mode deliberately ignores this setting
+ *    and preserves the synopsis source language.
+ *  - `motionPromptPack.promptLanguage`: the video motion-prompt language.
+ *    Defaults to `"en"` when absent and is independent from image prompts.
  *  - `dialogueLanguage`: the language the characters SPEAK in the video
  *    (embedded verbatim for native-audio models, or routed to TTS
  *    otherwise) — a video-only concept, no image-prompt equivalent (start
  *    frames are silent stills). Defaults to the series' own locale (`"th"`)
  *    when absent — existing episodes with no explicit selection keep
  *    behaving exactly as before (Thai dialogue), this is purely additive.
- *  Set via `setEpisodeVideoPromptLanguage` (free, same JSONB-patch
- *  convention as `setEpisodeModelSelection`) and threaded into
- *  `generateVideoMotionPromptPack` / `generateVerticalDramaShotVideoPrompt` /
- *  `formatVideoClipRequest` (video-clip prompt text) as well as
- *  `generateStartFrameRenderPlan` / `generateStartFrameShotPrompt`
- *  (image/start-frame prompt text — wired in later than the video path, but
- *  reading the SAME field, not a duplicate).
+ *  Image and video prompt languages are persisted through separate setters.
+ *  Legacy episodes temporarily fall back from the missing image field to the
+ *  existing video prompt language so changing video language cannot silently
+ *  change previously established image behavior.
  */
 export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
 

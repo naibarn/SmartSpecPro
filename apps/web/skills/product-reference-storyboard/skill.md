@@ -164,6 +164,18 @@ If a video shot may include any turn, look-back, reveal, reaction, speaking, smi
 
 For face-visible frames, the natural frame prose must state front-facing or three-quarter face visibility, same referenced facial structure and hairline, natural skin texture with pores, subtle asymmetry, believable hands/anatomy, no waxy or plastic skin, no beauty-filter smoothing, no mannequin expression, no distorted eyes/teeth/fingers, and natural light on the face. For hands-only frames, say hands-only, no visible head/face/hair identity, natural hand anatomy.
 
+## Character Presence Mode
+
+Marketplace Auto Review may supply an optional `character_presence_mode` in the runtime inputs when the user has attached a character/presenter reference and explicitly asked for that person to appear across the 3x3 storyboard. This field is opt-in: when `character_presence_mode` is absent, this section does not apply and the storyboard follows the normal beat-driven presence rules above, unchanged.
+
+When `character_presence_mode` is `every_frame`, every one of Frame 1 through Frame 9 must visibly include the referenced presenter/person as an identity-preserving, clearly recognizable subject (front-facing or three-quarter face by default, obeying the `CHARACTER FACE AND 95 PERCENT IDENTITY LOCK`). Do not leave any frame without the referenced person: even hook, atmosphere, transition, and result beats must stage that person in frame.
+
+When `character_presence_mode` is `most_frames`, at least 7 of the 9 frames must include the referenced presenter; at most 2 tight product-only close-up frames may omit the person, and only when a macro product detail genuinely needs the full frame.
+
+Precedence with product-critical frames: Frame 8 and any reconfirming-value / value-confirmation beat stay product-critical as defined below — they must show the same canonical product large enough to verify category, full silhouette, countable parts, material, colorway, and scale. On these frames show BOTH the referenced person AND the fully readable product. If both cannot fit safely in one frame, product readability wins on that frame and the person still appears partially (a shoulder, or a hand plus face at the frame edge) rather than being dropped; never drop or shrink the product below verification size just to fit the person.
+
+Child-reference guard stays controlling: the uploaded-presenter rules above (never reinterpret the uploaded presenter as a child, toddler, kid, or baby) remain fully in force. `character_presence_mode` never authorizes binding the presenter reference to a child, and for child-focused products a child may still appear only as secondary product-use context, never as the recurring hero, narrator, presenter, or identity anchor.
+
 ## Product Reference Lock
 
 Every generated prompt must include a `PRODUCT REFERENCE LOCK`: use the first attached product reference image (`@Image1` when image tags are available) as the primary visual source of truth. The written Product Detail / product description is secondary and must never override the attached product image. In the final prompt, explicitly state that the generated sellable product must match `@Image1` / the first attached product reference image exactly for appearance, proportions, construction, material, color, countable parts, and scale. Treat `reference_product_images` as immutable physical evidence, not loose inspiration. Never add, remove, stretch, reshape, recolor, re-texture, relabel, simplify, upscale, downscale, beautify, or redesign product parts, proportions, materials, surfaces, markings, labels, ports, seams, caps, lids, straps, handles, packaging, or physical structure.

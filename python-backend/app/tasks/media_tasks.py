@@ -352,6 +352,7 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
         "prompt is too long",
         "prompt too long",
         "maximum prompt length",
+        "file type not supported",
         "invalid voice parameter",
         "insufficient credits",
         "credits insufficient",

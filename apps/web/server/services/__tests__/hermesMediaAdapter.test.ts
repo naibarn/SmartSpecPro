@@ -7,6 +7,7 @@ import {
   HermesReferenceAssetOwnershipError,
   hermesTaskIdToJobId,
   isHermesMediaTaskId,
+  listHermesMediaTasks,
   mintHermesMediaReferenceUrls,
   reconcileHermesMediaJobFee,
   type HermesMediaAdapterRepo,
@@ -392,6 +393,133 @@ describe("mintHermesMediaReferenceUrls", () => {
         { repo },
       ),
     ).rejects.toBeInstanceOf(HermesReferenceAssetOwnershipError);
+  });
+
+  it("presigns the object key when a legacy media_assets row stores a storage proxy URL", async () => {
+    const getMediaAssetForOwner = vi.fn(async () => ({
+      id: 1,
+      storageKey: "/api/storage/files/mcp-media/tenant-1/42/output.png",
+    }));
+    const presign = vi.fn(async (key: string) => ({
+      url: `https://signed.example/${key}`,
+      key,
+    }));
+    const repo = buildRepo({ getMediaAssetForOwner });
+
+    const [result] = await mintHermesMediaReferenceUrls(
+      { tenantId: TENANT_ID, requestedByUserId: USER_ID, references: [{ assetId: "1" }] },
+      { repo, presign },
+    );
+
+    expect(presign).toHaveBeenCalledWith(
+      "mcp-media/tenant-1/42/output.png",
+      expect.any(Number),
+    );
+    expect(result.url).toBe(
+      "https://signed.example/mcp-media/tenant-1/42/output.png",
+    );
+  });
+
+  it("turns a local-storage relative URL into an absolute Worker-downloadable URL", async () => {
+    const getMediaAssetForOwner = vi.fn(async () => ({
+      id: 1,
+      storageKey: "/uploads/characters/portrait.png",
+    }));
+    const repo = buildRepo({ getMediaAssetForOwner });
+
+    const [result] = await mintHermesMediaReferenceUrls(
+      {
+        tenantId: TENANT_ID,
+        requestedByUserId: USER_ID,
+        references: [{ assetId: "1" }],
+      },
+      {
+        repo,
+        presign: vi.fn(async () => null),
+        resolve: vi.fn(async key => `/uploads/${key}`),
+        publicAppUrl: () => "https://smartaihub.app",
+      },
+    );
+
+    expect(result.url).toBe(
+      "https://smartaihub.app/uploads/characters/portrait.png",
+    );
+  });
+
+  it("turns the storage proxy fallback into an absolute Worker-downloadable URL", async () => {
+    const repo = buildRepo({
+      getMediaAssetForOwner: vi.fn(async () => ({
+        id: 1,
+        storageKey: "characters/portrait.png",
+      })),
+    });
+
+    const [result] = await mintHermesMediaReferenceUrls(
+      {
+        tenantId: TENANT_ID,
+        requestedByUserId: USER_ID,
+        references: [{ assetId: "1" }],
+      },
+      {
+        repo,
+        presign: vi.fn(async () => null),
+        resolve: vi.fn(async () => null),
+        publicAppUrl: () => "https://smartaihub.app/",
+      },
+    );
+
+    expect(result.url).toBe(
+      "https://smartaihub.app/api/storage/files/characters/portrait.png",
+    );
+  });
+});
+
+describe("listHermesMediaTasks", () => {
+  it("projects both image and video worker jobs for Media History", async () => {
+    const imageJob = buildJob({
+      id: "image-job",
+      status: "failed",
+      failureReason: "[HERMES_REFERENCE_DOWNLOAD_FAILED] HTTP 404",
+    });
+    const videoJob = buildJob({
+      id: "video-job",
+      jobType: "hermes_media_video_generate",
+      status: "completed",
+      createdAt: new Date(NOW.getTime() - 1_000),
+    });
+    const listJobs = vi.fn(async () => [imageJob, videoJob]);
+    const repo = buildRepo();
+
+    const tasks = await listHermesMediaTasks(
+      { userId: USER_ID, limit: 50 },
+      { listJobs, repo },
+    );
+
+    expect(tasks.map((task) => task.id)).toEqual([
+      "hermes_image-job",
+      "hermes_video-job",
+    ]);
+    expect(tasks.map((task) => task.mediaType)).toEqual(["image", "video"]);
+    expect(tasks.map((task) => task.status)).toEqual(["failed", "completed"]);
+  });
+
+  it("applies media type and status filters before limiting the result", async () => {
+    const listJobs = vi.fn(async () => [
+      buildJob({ id: "pending-image", status: "queued" }),
+      buildJob({ id: "completed-image", status: "completed" }),
+      buildJob({
+        id: "completed-video",
+        jobType: "hermes_media_video_generate",
+        status: "completed",
+      }),
+    ]);
+
+    const tasks = await listHermesMediaTasks(
+      { userId: USER_ID, mediaType: "image", status: "completed", limit: 1 },
+      { listJobs, repo: buildRepo() },
+    );
+
+    expect(tasks.map((task) => task.id)).toEqual(["hermes_completed-image"]);
   });
 });
 

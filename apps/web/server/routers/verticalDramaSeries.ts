@@ -388,6 +388,27 @@ import {
   applyManualDialogueEdit,
   analyzeManualDialogueEditLines,
   ManualDialogueEditNoDraftError,
+  /**
+   * Manual shot-summary edits (added 2026-07-22,
+   * `planning/vd-edit-episode-synopsis/plan.md` Phase 2, then revised same
+   * day to a COMBINED summary+dialogue edit) — `updateEpisodeDraftShot`
+   * mutation below. Same "kept in the same import block as its dialogue-edit
+   * sibling" convention this block's own header doc comment already
+   * establishes; same literal-limit rationale applies to
+   * `updateEpisodeDraftShotInput` below too.
+   *
+   * `VD_MANUAL_DIALOGUE_EDIT_UNSPECIFIED_SPEAKER` is imported here (unlike
+   * the numeric limit constants this block's own header doc comment says are
+   * deliberately NOT imported) because it is referenced only INSIDE
+   * `updateEpisodeDraftShot`'s handler body below, never at this file's top
+   * level — per that same doc comment, only a top-level reference
+   * (module-evaluation time, e.g. a zod schema literal) breaks a sibling
+   * test's narrow mock graph; an in-function reference is safe.
+   */
+  readItemManualSummaryEdit,
+  applyManualShotSummaryEdit,
+  ManualShotSummaryEditNoDraftError,
+  VD_MANUAL_DIALOGUE_EDIT_UNSPECIFIED_SPEAKER,
   type StoredBreakdownVersion,
 } from "../services/verticalDramaStoryBible";
 /**
@@ -2979,6 +3000,73 @@ function loadManualDialogueEditTarget(
 }
 
 /**
+ * Compares an `updateEpisodeDraftShot` `lines` submission against a shot's
+ * currently STORED `dialogue_lines`, applying the SAME `speaker` placeholder
+ * normalization `applyManualDialogueEdit` stores
+ * (`VD_MANUAL_DIALOGUE_EDIT_UNSPECIFIED_SPEAKER` when omitted/blank) — so a
+ * resubmission of the exact same content is correctly recognized as
+ * unchanged even when the client omits `speaker`. `delivery` is compared
+ * `undefined`-normalized (an omitted `delivery` in the submission matches a
+ * stored line with no `delivery`). Used ONLY by `updateEpisodeDraftShot`'s
+ * no-op short-circuit — never mutates either argument.
+ */
+function linesMatchStoredDialogue(
+  stored: readonly { speaker: string; line: string; delivery?: string }[],
+  submitted: readonly { speaker?: string; line: string; delivery?: string }[]
+): boolean {
+  if (stored.length !== submitted.length) return false;
+  return stored.every((storedLine, index) => {
+    const submittedLine = submitted[index];
+    const normalizedSpeaker =
+      submittedLine.speaker && submittedLine.speaker.length > 0
+        ? submittedLine.speaker
+        : VD_MANUAL_DIALOGUE_EDIT_UNSPECIFIED_SPEAKER;
+    return (
+      storedLine.speaker === normalizedSpeaker &&
+      storedLine.line === submittedLine.line &&
+      (storedLine.delivery ?? undefined) ===
+        (submittedLine.delivery ?? undefined)
+    );
+  });
+}
+
+/**
+ * Resolves the ACTIVE breakdown version + item `updateEpisodeDraftSynopsis`
+ * needs, or throws NOT_FOUND with the same "no draft" convention
+ * `loadManualDialogueEditTarget` above uses (one generic Thai message,
+ * never discloses which specific thing is missing). Unlike
+ * `loadManualDialogueEditTarget`, this does NOT require `shotDrafts` to be
+ * present — a synopsis (logline) exists on every breakdown item as soon as
+ * it's planned, deep-drafted or not.
+ */
+function loadEpisodeSynopsisEditTarget(
+  bible: Record<string, unknown>,
+  episodeNumber: number
+): {
+  activeIndex: number;
+  versions: StoredBreakdownVersion[];
+  item: StoredEpisodeBreakdownItem;
+} {
+  const versions = readBreakdownVersions(bible);
+  const activeIndex = resolveActiveBreakdownVersionIndex(bible);
+  const item =
+    activeIndex >= 0
+      ? versions[activeIndex].items.find(
+          candidate => candidate.episodeNumber === episodeNumber
+        )
+      : undefined;
+
+  if (activeIndex < 0 || !item) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "ไม่มีร่างสำหรับตอนนี้",
+    });
+  }
+
+  return { activeIndex, versions, item };
+}
+
+/**
  * Best-effort audit record for `updateEpisodeDraftDialogue` (W10.5, added
  * 2026-07-08) — mirrors `recordDeepStoryDraftAuditEvent`'s exact
  * "cross-cutting `api_audit_events` insert, never throws" convention (same
@@ -3013,6 +3101,150 @@ async function recordManualDialogueEditAuditEvent(params: {
     debugError(
       "verticalDramaSeries.updateEpisodeDraftDialogue",
       "Failed to record manual dialogue edit audit event",
+      error
+    );
+  }
+}
+
+/**
+ * Best-effort audit record for `updateEpisodeDraftSynopsis` — sibling of
+ * `recordManualDialogueEditAuditEvent` immediately above, same "cross-cutting
+ * `api_audit_events` insert, never throws" convention. Only called on a
+ * FRESH (non-no-op) edit — an unchanged-logline submit is a complete no-op
+ * and is never separately audited (mirrors the replay-skip behavior of the
+ * dialogue edit's own audit call, one call site up).
+ */
+async function recordManualSynopsisEditAuditEvent(params: {
+  userId: number;
+  seriesId: number;
+  episodeNumber: number;
+  idempotencyKey?: string;
+}): Promise<void> {
+  try {
+    await db.insert(apiAuditEvents).values({
+      traceId: randomUUID().replace(/-/g, "").slice(0, 32),
+      eventType: "vertical_drama_manual_synopsis_edit",
+      userId: params.userId,
+      endpoint: "verticalDramaSeries.updateEpisodeDraftSynopsis",
+      statusCode: 200,
+      skillSlug: "vertical-drama-deep-story-draft",
+      creditsCharged: 0,
+      metadata: {
+        seriesId: params.seriesId,
+        episodeNumber: params.episodeNumber,
+        idempotencyKey: params.idempotencyKey ?? null,
+      },
+    });
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.updateEpisodeDraftSynopsis",
+      "Failed to record manual synopsis edit audit event",
+      error
+    );
+  }
+}
+
+/**
+ * Best-effort audit record for `updateEpisodeDraftShot` (combined
+ * summary+dialogue edit) — sibling of
+ * `recordManualDialogueEditAuditEvent`/`recordManualSynopsisEditAuditEvent`
+ * above, same "cross-cutting `api_audit_events` insert, never throws"
+ * convention. Only called on a FRESH (non-replay, non-no-op) edit — an
+ * idempotent replay or an unchanged submit is a complete no-op and is never
+ * separately audited (mirrors both sibling mutations' own audit-skip
+ * behavior). `summaryChanged`/`linesChanged` record which of the two
+ * optional fields this particular call actually applied.
+ */
+async function recordManualShotEditAuditEvent(params: {
+  userId: number;
+  seriesId: number;
+  episodeNumber: number;
+  shotNumber: number;
+  summaryChanged: boolean;
+  linesChanged: boolean;
+  idempotencyKey?: string;
+}): Promise<void> {
+  try {
+    await db.insert(apiAuditEvents).values({
+      traceId: randomUUID().replace(/-/g, "").slice(0, 32),
+      eventType: "vertical_drama_manual_shot_edit",
+      userId: params.userId,
+      endpoint: "verticalDramaSeries.updateEpisodeDraftShot",
+      statusCode: 200,
+      skillSlug: "vertical-drama-deep-story-draft",
+      creditsCharged: 0,
+      metadata: {
+        seriesId: params.seriesId,
+        episodeNumber: params.episodeNumber,
+        shotNumber: params.shotNumber,
+        summaryChanged: params.summaryChanged,
+        linesChanged: params.linesChanged,
+        idempotencyKey: params.idempotencyKey ?? null,
+      },
+    });
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.updateEpisodeDraftShot",
+      "Failed to record manual shot edit audit event",
+      error
+    );
+  }
+}
+
+/**
+ * Best-effort sync of the materialized `vertical_drama_episodes` row's
+ * `script._draftSummary.logline` for one series/episode (see
+ * `verticalDramaEpisodes.ts`'s own write site at the episode-materialize
+ * mutation, and the matching read-with-fallback a few hundred lines above
+ * it). A missing row (episode not yet materialized) or a `script` without a
+ * `_draftSummary` object is the NORMAL case for most series and is silently
+ * skipped, never logged as an error. Only unexpected failures (a thrown
+ * query/update) are caught and logged — this must NEVER fail the calling
+ * mutation, since `bible` is the source of truth and this is purely a
+ * denormalized-copy refresh.
+ */
+async function syncEpisodeDraftSummarySynopsis(params: {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  episodeNumber: number;
+  logline: string;
+}): Promise<void> {
+  try {
+    const [episodeRow] = await db
+      .select({
+        id: verticalDramaEpisodes.id,
+        script: verticalDramaEpisodes.script,
+      })
+      .from(verticalDramaEpisodes)
+      .where(
+        and(
+          eq(verticalDramaEpisodes.tenantId, params.tenantId),
+          eq(verticalDramaEpisodes.userId, params.userId),
+          eq(verticalDramaEpisodes.seriesId, params.seriesId),
+          eq(verticalDramaEpisodes.episodeNumber, params.episodeNumber)
+        )
+      )
+      .limit(1);
+    if (!episodeRow) return;
+
+    const script = (episodeRow.script as Record<string, unknown> | null) ?? null;
+    const draftSummary = script?._draftSummary;
+    if (!script || !draftSummary || typeof draftSummary !== "object") return;
+
+    await db
+      .update(verticalDramaEpisodes)
+      .set({
+        script: {
+          ...script,
+          _draftSummary: { ...draftSummary, logline: params.logline },
+        },
+      })
+      .where(eq(verticalDramaEpisodes.id, episodeRow.id));
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.updateEpisodeDraftSynopsis",
+      "Failed to sync materialized episode draft summary logline",
       error
     );
   }
@@ -3813,6 +4045,17 @@ const synthesizeGenrePresetInput = z.object({
   /** Legacy API name; this is the planned Sub-episode count for story structure. */
   targetEpisodeCount: z.number().int().positive().max(1000).optional(),
   toneHint: z.string().trim().max(180).optional(),
+  /** Create-Series basics-only synthesis facts (no preset/premise required). */
+  seriesTitleHint: z
+    .string()
+    .trim()
+    .max(CREATE_SERIES_FIELD_LIMITS.title)
+    .optional(),
+  genreHint: z
+    .string()
+    .trim()
+    .max(CREATE_SERIES_FIELD_LIMITS.genre)
+    .optional(),
   /**
    * Preset Mix v2 (spec §8.2.2.C.1, section-15) — optional alongside legacy
    * `selectedPresetIds`; equal default weights apply when omitted (see
@@ -3833,8 +4076,18 @@ const synthesizeGenrePresetInput = z.object({
     .trim()
     .max(CREATE_SERIES_FIELD_LIMITS.userPremise)
     .optional(),
-  /** Phase 1 — same contract as `createSeriesInput.audienceAgeRating`; accepted here for forward compatibility, not yet forwarded into preset synthesis (see Phase 1 task notes). */
+  /** Same contract as `createSeriesInput.audienceAgeRating`; forwarded into synthesis. */
   audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
+  /**
+   * Same bounded lineage/carry-over snapshot the wizard will later persist on
+   * `create`; lets a pre-create basics-only draft preserve sequel continuity.
+   */
+  lineageContext: z
+    .record(z.string(), z.unknown())
+    .refine(value => JSON.stringify(value).length <= 12_000, {
+      message: "Lineage context is too large",
+    })
+    .optional(),
 });
 
 /**
@@ -3928,6 +4181,58 @@ export const updateEpisodeDraftDialogueInput = z.object({
   lines: z.array(updateEpisodeDraftDialogueLineInput).max(8),
   idempotencyKey: z.string().trim().min(1).max(128).optional(),
 });
+
+/**
+ * `updateEpisodeDraftSynopsis` (manual "เรื่องย่อ" edit) input — lets a user
+ * directly edit a Sub-episode's `logline`, same ownership/procedure gate as
+ * `updateEpisodeDraftDialogueInput` above. `max(1200)` is a literal number
+ * (not an imported constant) for the same cross-module-mock reason that
+ * file's doc comment gives for its own literal limits.
+ */
+export const updateEpisodeDraftSynopsisInput = z.object({
+  seriesId: z.string().min(1),
+  episodeNumber: z.number().int().positive(),
+  logline: z.string().trim().min(1).max(1200),
+  idempotencyKey: z.string().trim().min(1).max(128).optional(),
+});
+
+/**
+ * `updateEpisodeDraftShot` (combined manual "แก้เรื่องย่อช็อต" + "แก้บทพูด"
+ * edit, revised 2026-07-22 — a summary-only mutation was originally
+ * planned, then widened to combine BOTH fields into one save because a
+ * wrong-dialogue fix and a wrong-summary fix usually happen at the same
+ * time) — lets a user directly edit ONE shot's `summary` heading text
+ * ("ช็อต N — <summary>") and/or its `dialogue_lines`, in the SAME
+ * mutation/write, within a Sub-episode's `shotDrafts[]`. Same ownership/
+ * procedure gate as `updateEpisodeDraftDialogueInput`/
+ * `updateEpisodeDraftSynopsisInput` above. `lines` reuses
+ * `updateEpisodeDraftDialogueLineInput`/its `max(8)` array limit VERBATIM
+ * (not redefined) — same shape `updateEpisodeDraftDialogueInput` above
+ * validates with. `shotNumber`'s `max(9)` and `summary`'s `max(600)` are
+ * LITERAL numbers (9 mirrors the service's `VD_DEEP_DRAFT_SHOTS_PER_EPISODE`)
+ * for the same cross-module-mock reason this file's Manual dialogue edits
+ * import block doc comment gives for its own literal limits. The
+ * `superRefine` below requires at least one of `summary`/`lines` — a
+ * request with neither is meaningless (nothing to save).
+ */
+export const updateEpisodeDraftShotInput = z
+  .object({
+    seriesId: z.string().min(1),
+    episodeNumber: z.number().int().positive(),
+    shotNumber: z.number().int().min(1).max(9),
+    summary: z.string().trim().min(1).max(600).optional(),
+    lines: z.array(updateEpisodeDraftDialogueLineInput).max(8).optional(),
+    idempotencyKey: z.string().trim().min(1).max(128).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.summary === undefined && value.lines === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ต้องระบุเรื่องย่อหรือบทพูดอย่างน้อยหนึ่งอย่าง",
+        path: ["summary"],
+      });
+    }
+  });
 
 /**
  * "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — `startImproveScript`
@@ -5663,6 +5968,26 @@ export const verticalDramaSeriesRouter = router({
       // byte-identical prompts (mirrors `verticalDramaSeriesPresetMixV2`'s
       // proven server-decides pattern).
       const userPremiseEnabled = flags?.verticalDramaUserPremise === true;
+      const hasExplicitPresetOrPremise =
+        selectedPresetIds.length > 0 ||
+        (input.selections?.length ?? 0) > 0 ||
+        Boolean(userPremiseEnabled && input.userPremise?.trim());
+      // Title/genre/audience facts are only needed when basics are the story
+      // spine. Lineage is different: sequel/special-edition canon must reach
+      // synthesis in every mode, including requests with a premise/preset.
+      const basicsOnlyContext = !hasExplicitPresetOrPremise
+        ? {
+            seriesTitleHint: input.seriesTitleHint,
+            genreHint: input.genreHint,
+            audienceAgeRating: input.audienceAgeRating,
+          }
+        : {};
+      const lineageContext = input.lineageContext
+        ? {
+            lineageContext:
+              input.lineageContext as VerticalDramaSeriesLineage,
+          }
+        : {};
 
       if (!presetMixV2Enabled) {
         const selectedPresetNumericIds = selectedPresetIds.map(id =>
@@ -5720,6 +6045,8 @@ export const verticalDramaSeriesRouter = router({
             productContext: input.productContext,
             targetEpisodeCount: input.targetEpisodeCount,
             toneHint: input.toneHint,
+            ...basicsOnlyContext,
+            ...lineageContext,
             userPremise: userPremiseEnabled ? input.userPremise : undefined,
           });
           return result;
@@ -5817,6 +6144,8 @@ export const verticalDramaSeriesRouter = router({
           productContext: input.productContext,
           targetEpisodeCount: input.targetEpisodeCount,
           toneHint: input.toneHint,
+          ...basicsOnlyContext,
+          ...lineageContext,
           userPremise: userPremiseEnabled ? input.userPremise : undefined,
         });
         return result;
@@ -6488,6 +6817,337 @@ export const verticalDramaSeriesRouter = router({
         criteriaVersionMarker: editResult.criteriaVersionMarker,
         speakabilityWarnings: editResult.speakabilityWarnings,
         silenceIntentRemoved: editResult.silenceIntentRemoved,
+      };
+    }),
+
+  /**
+   * Manual "แก้เรื่องย่อ" edit — lets a user directly rewrite a Sub-episode's
+   * `logline` without going through an LLM (no credit charge, no LLM call).
+   * The logline lives in TWO parallel places in the same `bible` jsonb blob
+   * and BOTH must be patched or the edit silently fails to propagate:
+   *   1. `bible.breakdownVersions[active].items[]` — consumed by the
+   *      shot-splitting stage (`storyboard_shotgrid`) and by
+   *      `getEpisodeDetail.episodePlan`.
+   *   2. legacy top-level `bible.episodeBreakdown[]` — consumed by the
+   *      Overview card and stage `plan_episode_script`.
+   * Mirrors `confirmImproveScript`'s dual-write sync approach above, and
+   * `updateEpisodeDraftDialogue`'s ownership/procedure/audit structure
+   * immediately above this. Every OTHER field on the item (shotDrafts,
+   * keyBeats, workingTitle, cliffhanger_line, tieIn, manualDialogueEdit,
+   * contentBudget, ...) is carried over untouched via a shallow spread —
+   * this function NEVER rebuilds the item or the bible object from scratch.
+   * An unchanged logline is a complete no-op: no DB write, no `updatedAt`
+   * bump, no audit event, same convention `updateEpisodeDraftDialogue`'s own
+   * idempotent-replay path uses.
+   */
+  updateEpisodeDraftSynopsis: verticalDramaDeepStoryDraftsProcedure
+    .input(updateEpisodeDraftSynopsisInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      const { activeIndex, versions, item } = loadEpisodeSynopsisEditTarget(
+        bible,
+        input.episodeNumber
+      );
+
+      // No-op short-circuit: identical logline, zero writes.
+      if (item.logline === input.logline) {
+        return {
+          ok: true as const,
+          episodeNumber: input.episodeNumber,
+          logline: item.logline,
+        };
+      }
+
+      const updatedVersions = versions.map((version, index) =>
+        index === activeIndex
+          ? {
+              ...version,
+              items: version.items.map(existingItem =>
+                existingItem.episodeNumber === input.episodeNumber
+                  ? { ...existingItem, logline: input.logline }
+                  : existingItem
+              ),
+            }
+          : version
+      );
+
+      // Legacy sync — skipped entirely (key omitted) when the legacy array
+      // is absent, same "only patch what exists" convention
+      // `confirmImproveScript` uses for the same array above.
+      const legacyBreakdown = (bible as { episodeBreakdown?: unknown })
+        .episodeBreakdown;
+      const nextBible: Record<string, unknown> = {
+        ...bible,
+        breakdownVersions: updatedVersions,
+        ...(Array.isArray(legacyBreakdown)
+          ? {
+              episodeBreakdown: legacyBreakdown.map(entry => {
+                if (!entry || typeof entry !== "object") return entry;
+                const epNum = (entry as { episodeNumber?: unknown })
+                  .episodeNumber;
+                if (epNum !== input.episodeNumber) return entry;
+                return {
+                  ...(entry as Record<string, unknown>),
+                  logline: input.logline,
+                };
+              }),
+            }
+          : {}),
+      };
+
+      await db
+        .update(verticalDramaSeries)
+        .set({ bible: nextBible, updatedAt: new Date() })
+        .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+        .returning();
+
+      await syncEpisodeDraftSummarySynopsis({
+        tenantId,
+        userId,
+        seriesId,
+        episodeNumber: input.episodeNumber,
+        logline: input.logline,
+      });
+
+      await recordManualSynopsisEditAuditEvent({
+        userId,
+        seriesId,
+        episodeNumber: input.episodeNumber,
+        idempotencyKey: input.idempotencyKey,
+      });
+
+      return {
+        ok: true as const,
+        episodeNumber: input.episodeNumber,
+        logline: input.logline,
+      };
+    }),
+
+  /**
+   * Manual "แก้เรื่องย่อช็อต" + "แก้บทพูด" combined edit — lets a user
+   * directly rewrite ONE shot's `summary` heading text ("ช็อต N —
+   * <summary>") AND/OR its `dialogue_lines`, in ONE save, without going
+   * through an LLM (no credit charge, no LLM call). Revised 2026-07-22 from
+   * an originally summary-only mutation to a combined one — a wrong-dialogue
+   * fix and a wrong-summary fix usually happen at the same time, so forcing
+   * two separate saves/writes would be a worse UX for no benefit.
+   *
+   * Applies the two edits CHAINED on the SAME in-memory item — `summary`
+   * first via `applyManualShotSummaryEdit`, then `lines` (if supplied) via
+   * the EXISTING `applyManualDialogueEdit` (reused as-is, never forked, so
+   * its silence_intent-removal/speakabilityWarnings/`draftCompleteness`
+   * recompute behavior stays byte-identical to `updateEpisodeDraftDialogue`'s
+   * own) — then persists with exactly ONE `db.update(...)` write. When only
+   * one field is supplied, only that one apply step runs. `manualSummaryEdit`
+   * and `manualDialogueEdit` remain two SEPARATE stamps on the item (each
+   * apply function stamps its own) — never merged into one.
+   *
+   * UNLIKE `updateEpisodeDraftSynopsis` above (which dual-writes `logline`
+   * into both `breakdownVersions[active].items[]` AND the legacy
+   * `bible.episodeBreakdown[]`), this mutation writes ONLY the active
+   * breakdown version's item — `episodeBreakdown[]` never carried per-shot
+   * data in the first place (it is a whole-episode summary array), and both
+   * deep-draft-consuming stages that read `shotDrafts` (`plan_episode_script`
+   * and `storyboard_shotgrid`, via `resolveEpisodeDraftHydration`) already
+   * read exclusively from the active breakdown version. A single write fully
+   * propagates the edit.
+   *
+   * Idempotent: a retried call carrying an `idempotencyKey` every SUPPLIED
+   * field's own stamp has already recorded is a complete no-op (no second
+   * write, no second audit event, no re-accumulated stamp `shotNumbers`).
+   * An edit where every supplied field is unchanged from the currently
+   * stored shot is also a complete no-op — same convention
+   * `updateEpisodeDraftSynopsis`'s own no-op short-circuit uses.
+   * `updateEpisodeDraftDialogue` itself is left completely untouched by this
+   * mutation — it has its own separate callers.
+   */
+  updateEpisodeDraftShot: verticalDramaDeepStoryDraftsProcedure
+    .input(updateEpisodeDraftShotInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      const { activeIndex, versions, item } = loadManualDialogueEditTarget(
+        bible,
+        input.episodeNumber,
+        input.shotNumber
+      );
+
+      const currentShot = (readItemShotDrafts(item) ?? []).find(
+        shot => shot.shot_number === input.shotNumber
+      );
+
+      const emptyWarnings: ReturnType<typeof analyzeManualDialogueEditLines> =
+        [];
+
+      // Idempotent replay: a retried call carrying an idempotencyKey EVERY
+      // supplied field's own stamp has already recorded is a complete no-op
+      // — no second write, no second audit event, no re-accumulated
+      // `shotNumbers`. Mirrors `updateEpisodeDraftDialogue`'s own replay
+      // branch, scoped per-field since this mutation carries two
+      // independent stamps (`manualSummaryEdit`/`manualDialogueEdit`).
+      // Requires the key to have actually been recorded on at least one
+      // SUPPLIED field's stamp (an absent `idempotencyKey` on the request
+      // trivially satisfies "not-supplied-fields-are-fine" for both, but
+      // must never count as a replay on its own).
+      const summaryStamp = readItemManualSummaryEdit(item);
+      const dialogueStamp = readItemManualDialogueEdit(item);
+      const summaryKeyRecorded =
+        !!input.idempotencyKey &&
+        !!summaryStamp?.appliedIdempotencyKeys?.includes(input.idempotencyKey);
+      const linesKeyRecorded =
+        !!input.idempotencyKey &&
+        !!dialogueStamp?.appliedIdempotencyKeys?.includes(input.idempotencyKey);
+      const isReplay =
+        !!input.idempotencyKey &&
+        (input.summary === undefined || summaryKeyRecorded) &&
+        (input.lines === undefined || linesKeyRecorded) &&
+        (summaryKeyRecorded || linesKeyRecorded);
+      if (isReplay) {
+        return {
+          ok: true as const,
+          episodeNumber: input.episodeNumber,
+          shotNumber: input.shotNumber,
+          ...(input.summary !== undefined
+            ? { summary: currentShot?.summary ?? input.summary }
+            : {}),
+          speakabilityWarnings:
+            input.lines !== undefined
+              ? analyzeManualDialogueEditLines(
+                  currentShot?.dialogue_lines ?? []
+                )
+              : emptyWarnings,
+          silenceIntentRemoved: false,
+        };
+      }
+
+      // No-op short-circuit: every SUPPLIED field is unchanged from the
+      // currently stored shot — zero writes. Mirrors
+      // `updateEpisodeDraftSynopsis`'s own no-op convention.
+      const summaryUnchanged =
+        input.summary === undefined || currentShot?.summary === input.summary;
+      const linesUnchanged =
+        input.lines === undefined ||
+        linesMatchStoredDialogue(currentShot?.dialogue_lines ?? [], input.lines);
+      if (summaryUnchanged && linesUnchanged) {
+        return {
+          ok: true as const,
+          episodeNumber: input.episodeNumber,
+          shotNumber: input.shotNumber,
+          ...(input.summary !== undefined
+            ? { summary: currentShot?.summary ?? input.summary }
+            : {}),
+          speakabilityWarnings:
+            input.lines !== undefined
+              ? analyzeManualDialogueEditLines(
+                  currentShot?.dialogue_lines ?? []
+                )
+              : emptyWarnings,
+          silenceIntentRemoved: false,
+        };
+      }
+
+      let workingItem: StoredEpisodeBreakdownItem = item;
+
+      if (input.summary !== undefined) {
+        try {
+          workingItem = applyManualShotSummaryEdit({
+            item: workingItem,
+            shotNumber: input.shotNumber,
+            summary: input.summary,
+            editedByUserId: userId,
+            idempotencyKey: input.idempotencyKey,
+          }).item;
+        } catch (error) {
+          if (error instanceof ManualShotSummaryEditNoDraftError) {
+            throw new TRPCError({ code: "NOT_FOUND", message: error.message });
+          }
+          throw error;
+        }
+      }
+
+      let speakabilityWarnings = emptyWarnings;
+      let silenceIntentRemoved = false;
+      if (input.lines !== undefined) {
+        try {
+          const dialogueResult = applyManualDialogueEdit({
+            item: workingItem,
+            shotNumber: input.shotNumber,
+            lines: input.lines,
+            editedByUserId: userId,
+            idempotencyKey: input.idempotencyKey,
+          });
+          workingItem = dialogueResult.item;
+          speakabilityWarnings = dialogueResult.speakabilityWarnings;
+          silenceIntentRemoved = dialogueResult.silenceIntentRemoved;
+        } catch (error) {
+          if (error instanceof ManualDialogueEditNoDraftError) {
+            throw new TRPCError({ code: "NOT_FOUND", message: error.message });
+          }
+          throw error;
+        }
+      }
+
+      const updatedVersions = versions.map((version, index) =>
+        index === activeIndex
+          ? {
+              ...version,
+              items: version.items.map(existingItem =>
+                existingItem.episodeNumber === input.episodeNumber
+                  ? workingItem
+                  : existingItem
+              ),
+            }
+          : version
+      );
+      const nextBible: Record<string, unknown> = {
+        ...bible,
+        breakdownVersions: updatedVersions,
+      };
+
+      await db
+        .update(verticalDramaSeries)
+        .set({ bible: nextBible, updatedAt: new Date() })
+        .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+        .returning();
+
+      await recordManualShotEditAuditEvent({
+        userId,
+        seriesId,
+        episodeNumber: input.episodeNumber,
+        shotNumber: input.shotNumber,
+        summaryChanged: input.summary !== undefined,
+        linesChanged: input.lines !== undefined,
+        idempotencyKey: input.idempotencyKey,
+      });
+
+      return {
+        ok: true as const,
+        episodeNumber: input.episodeNumber,
+        shotNumber: input.shotNumber,
+        ...(input.summary !== undefined ? { summary: input.summary } : {}),
+        speakabilityWarnings,
+        silenceIntentRemoved,
       };
     }),
 
@@ -8442,6 +9102,7 @@ export const verticalDramaSeriesRouter = router({
           urls: referenceImageUrls.slice(0, pricing.maxReferenceImages),
           traceId: hermesTraceId,
           connectionId: transportDecision.connectionId,
+          requireAll: referenceImageUrls.length > 0,
           roleFor: () => "product",
         });
         const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });

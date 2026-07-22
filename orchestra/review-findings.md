@@ -65,3 +65,261 @@ Result: CLEAN.
 - Agent-slice tasks fell from 137 to zero, memory PSI `avg10` stayed at zero, and no application runtime or data surface was touched.
 
 Convergence stop: three consecutive clean targeted conductor reviews; no blocking finding or must-do-now gap remains for the requested temporary stop. Re-enabling the current one-container-per-client design remains intentionally deferred.
+
+## Wizard no-seed convergence - 2026-07-19
+
+### Round 1 - completeness and contract review
+
+Result: FIXES APPLIED.
+
+- Added the missing five-category client bound required by the router schema.
+- Limited new basic-context fields to basics-only requests so established
+  preset/premise service calls keep their prior parameter contract.
+- Added sequel lineage forwarding and removed copy that still implied a preset
+  was required.
+
+### Round 2 - fresh targeted verification
+
+Result: CLEAN.
+
+- 126 targeted client/router/service/skill tests pass.
+- `pnpm check`, `git diff --check`, and dual-case skill comparison pass.
+- No auth, tenant-isolation, schema, migration, dependency, or destructive
+  runtime surface changed.
+
+Convergence stop: one clean standard-light review after fixes and fresh gates;
+no must-do-now gap remains. Real-LLM and deploy verification remain external
+side effects requiring a separate authorized runtime pass.
+
+## Hermes Grok authorization convergence - 2026-07-19
+
+### Round 1 - state-machine and authentication review
+
+Result: FIXES APPLIED.
+
+- The selector fix made authorization jobs claimable, exposing a second defect:
+  desktop control jobs emitted neither valid positive sequence numbers nor
+  running/terminal events.
+- The central control handler also skipped `job.running` and returned
+  capabilities under a field the settlement service did not consume.
+- Repaired both execution paths and verified that xAI authentication is OAuth
+  Device Authorization through a browser, not a Smart AI Hub password form.
+
+### Round 2 - focused proof and release review
+
+Result: CLEAN WITH EXTERNAL USER STEP.
+
+- 207 focused web tests and 118 Worker App tests pass.
+- A final 100-test server regression set proves the 0.1.131 desktop version
+  gate while preserving central workers and unrelated claim paths.
+- Worker App 0.1.131 is published and its production checksum and size match the
+  built installer.
+- Production health is OK and only one intended pending connection remains.
+- The live Windows worker still reports 0.1.130, so no authorization or
+  capability state was fabricated. Browser consent and the subsequent probe
+  remain a user-controlled external step.
+
+Convergence stop: all in-repository and production-server repairs are complete;
+the remaining gate is installation and xAI consent on the user's Windows
+machine.
+
+## Hermes Windows OAuth and history convergence - 2026-07-20
+
+### Round 1 - root-cause and sandbox review
+
+Result: FIXES APPLIED.
+
+- The failure occurred before OAuth, inside Hermes/Python home resolution under
+  `env_clear()`, because all Windows home/app-data variables were absent.
+- Kept the sandbox fail-closed and allow-listed only required OS path variables.
+- Replaced unusable first-line traceback masking with a bounded final-exception
+  diagnostic that redacts named OAuth values, URL query values, and Bearer tokens.
+
+### Round 2 - UI state and accessibility review
+
+Result: FIXES APPLIED.
+
+- Terminal records are separated from actionable connections and collapsed by
+  default.
+- History shows five records at a time, newest-first, with a real disclosure
+  button, ARIA state, Thai/English copy, and locale-appropriate timestamps.
+- Terminal central rows are not duplicated in the admin controls; private rows
+  never appear there.
+
+### Round 3 - release and production proof
+
+Result: CLEAN WITH EXTERNAL USER STEP.
+
+- Worker App full suite passed 121 tests; focused web regression passed 133
+  tests; Worker App typecheck passed.
+- The 0.1.132 NSIS bundle was rebuilt after the final security repair, copied
+  with mode 0644, atomically included in the web build, and downloaded from
+  production with matching size and SHA-256.
+- Web service is active and `/healthz` is OK.
+- Production correctly demoted the still-running 0.1.131 Windows worker and
+  exposed the minimum-version warning. Live device-code proof now requires the
+  user to install 0.1.132 and approve xAI in their browser.
+
+## Kie GPT Image 2 auto-routing convergence - 2026-07-20
+
+### Round 1 - catalog and compatibility
+
+Result: FIXES APPLIED.
+
+- Unified the seed and migration around one enabled canonical row.
+- Preserved the legacy image-to-image ID as an alias and disabled rather than
+  deleted its old row.
+- Added a focused selection test for stored/requested legacy IDs.
+
+### Round 2 - runtime isolation and proof
+
+Result: CLEAN.
+
+- Variant switching occurs only when a model explicitly supplies
+  `kie_model_id_with_references` and has a non-empty reference list.
+- Models without that metadata retain their existing upstream model ID.
+- Focused web tests, 28 Python provider tests, Ruff, and diff checks pass.
+
+Convergence stop: one clean standard-light review after fixes; no must-do-now
+gap remains. Migration apply and a paid live Kie smoke remain deployment steps.
+
+## Kie GPT Image 2 database migration convergence - 2026-07-20
+
+### Round 1 - live ledger ordering
+
+Result: FINDING FIXED.
+
+- The first Drizzle run skipped 0212 because its journal timestamp was older
+  than the latest live ledger entry despite returning success.
+- Raised only the 0212 timestamp above the live ledger watermark and reapplied.
+
+### Round 2 - state and idempotence
+
+Result: CLEAN.
+
+- The latest live ledger hash matches migration 0212.
+- Exactly one of the two retained GPT Image 2 rows is enabled.
+- Canonical metadata contains the reference variant and `input_urls` key.
+- A second migrate run created no duplicate ledger row.
+
+### Round 3 - backup and regression
+
+Result: CLEAN.
+
+- The verified custom-format backup contains both affected table datasets.
+- Seven focused catalog/selection tests and `git diff --check` pass.
+
+Convergence stop: two consecutive clean reviews after the timestamp repair; no
+database readiness gap remains.
+
+## GPT Image 2 production routing incident convergence - 2026-07-20
+
+### Round 1 - runtime evidence and repair
+
+Result: FINDINGS FIXED.
+
+- The media worker process was stale and demonstrably submitted text-to-image
+  with three `input_urls`.
+- Drained the queue before restart so no active generation was interrupted.
+- Found that History would still show the canonical ID after provider routing.
+
+### Round 2 - persisted effective model
+
+Result: CLEAN.
+
+- Async image task creation changes model only when non-empty references and
+  explicit Kie variant metadata are both present.
+- No-reference and non-opt-in model behavior remains unchanged.
+- Thirty-one focused tests pass.
+
+### Round 3 - live runtime readiness
+
+Result: CLEAN.
+
+- Media worker is healthy, subscribed to `media`, and responds to ping.
+- Backend restarted successfully and `/health` returns HTTP 200.
+- No paid provider smoke was issued automatically.
+
+Convergence stop: two consecutive clean rounds after fixes; no must-do-now gap
+remains.
+
+## Media polling and rate-limit incident convergence - 2026-07-20
+
+### Round 1 - correctness and security
+
+Result: CLEAN.
+
+- MCP ownership is checked with `ctx.user.id` before returning a task.
+- Direct provider tasks retain the existing authenticated Python path.
+- Rate-limit identity uses only cryptographically verified JWT payloads.
+- Raw `openId`, bearer tokens, and provider credentials are not logged.
+- Scheduler reserves cooldown before awaiting, preventing rerender re-entry.
+
+### Round 2 - integration and production
+
+Result: CLEAN.
+
+- Forty focused web tests and 36 focused Python tests pass.
+- Full TypeScript check and focused Ruff checks pass.
+- Backend/web/public health checks pass after restart.
+- Two production polling windows show no request burst, 404, limiter event, or
+  429; pending MCP tasks are zero.
+
+Convergence stop: two consecutive clean rounds; no critical, high, in-scope
+medium, verify-only, or must-do-now finding remains.
+
+### Round 3 - artifact tracking
+
+Result: FINDING FIXED, CLEAN AFTER RECHECK.
+
+- The first Python test path was ignored by the repository's generic `core`
+  ignore rule.
+- Moved the test to `python-backend/tests/unit/test_rate_limit_middleware_identity.py`.
+- Re-ran all five identity tests and Ruff; both pass, and the file is now
+  visible to Git.
+
+Final convergence stop: clean recheck after the artifact fix; no must-do-now
+gap remains.
+## Hermes reference forwarding - 2026-07-20
+
+Round 1:
+- Confirmed tenant/user predicates remain on every expanded lookup.
+- Confirmed worker jobs still persist asset ids and checksums, never URLs.
+- Confirmed optional generic references keep best-effort behavior.
+- Finding: full workspace typecheck is already red from dependency/type drift;
+  saved output at `/tmp/hermes-reference-tsc.log` and verified no changed
+  Hermes service error.
+
+Round 2:
+- Rechecked changed call sites and normalized URL candidates.
+- Re-ran 87 focused tests and the 2-test Episode Hermes subset.
+- Verified production assets resolve in prompt order and produce complete
+  checksum-backed contracts.
+- Clean: no material finding or missing in-scope coverage remains.
+# Hermes reference download and Media History review - 2026-07-20
+
+## Round 1 - clean after fixture repair
+
+- Intent check: required; fixes the reported reference-download failure and
+  makes Hermes image/video jobs visible in the existing history contract.
+- Evidence: worker job `08e15bee-8ca7-47d5-9c33-6ca87d34bc6a` failed with
+  HTTP 404 at `downloading_references`; its three assets now download with
+  HTTP 200 after storage-key canonicalization.
+- Contract review: `getHermesMediaTask` and list projection share one mapper;
+  ownership remains enforced by `requestedByUserId` and asset tenant/user
+  lookup.
+- History review: Hermes tasks are merged before global sort/filter/limit and
+  included in the aggregate total without duplicating `media_tasks`.
+- Finding fixed: an existing list test used nondeterministic timestamps and
+  became order-sensitive; fixture now uses a fixed timestamp.
+- Fresh gates: 64 focused tests pass, TypeScript check passes, diff check
+  passes, local/public health checks pass after restart.
+- New impact surfaces: none.
+- Status: clean; no material findings remain.
+## Vertical Drama rapid prompt plus image timeout - round 1
+
+- Changed surfaces reviewed: per-shot page handler, prompt mutation missing-frame path, row-lock merge, focused tests.
+- Finding fixed during implementation: the first patch matched the similar `repairShotImage` precondition; it was reverted and reapplied under the exact `generateShotStartFramePrompt` procedure anchor before verification.
+- Final review: no remaining in-scope correctness finding; existing whole-episode action remains available and unchanged.
+- Gates: 19 focused tests pass; `git diff --check` passes; repository typecheck remains red only on pre-existing router lines 1709-1765, with no errors in touched ranges.
+- Stop reason: one clean targeted conductor review after the repair round.

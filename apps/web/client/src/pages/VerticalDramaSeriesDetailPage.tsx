@@ -33,6 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -82,6 +83,7 @@ import {
   type VerticalDramaDeepDraftSummary,
 } from "@/components/verticalDramaSeries/VerticalDramaDeepStoryDraftsPanel";
 import {
+  editSynopsisSavedSuccessText,
   pickCopy,
   seriesStatusCopy,
   useVerticalDramaLang,
@@ -1621,6 +1623,88 @@ function StoryBibleTab({
   );
 }
 
+/** Mirrors the server's `updateEpisodeDraftSynopsisInput` `logline` cap (`verticalDramaSeries.ts`) — soft `maxLength` guardrail on the textarea (the server independently enforces the same limit). */
+const EDIT_SYNOPSIS_MAX_LENGTH = 1200;
+
+/**
+ * Manual synopsis edits (added 2026-07-22) — the inline per-sub-episode
+ * logline editor form, rendered INSTEAD OF the read-only logline text for
+ * whichever ONE sub-episode is currently being edited (at most one per card
+ * at a time — see `StoryBibleOverviewCard`'s own `editingEpisodeNumber`
+ * state). Purely presentational, mirrors `ManualDialogueEditShotForm`'s own
+ * doc comment in `VerticalDramaDeepStoryDraftsPanel.tsx` — the parent owns
+ * every piece of state and the mutation itself, so this component has no
+ * hooks of its own.
+ */
+function EditSynopsisForm({
+  lang,
+  episodeNumber,
+  value,
+  isSaving,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  lang: "th" | "en";
+  episodeNumber: number;
+  value: string;
+  isSaving: boolean;
+  onChange: (value: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const trimmedEmpty = value.trim().length === 0;
+  return (
+    <div
+      className="grid gap-2"
+      data-testid={`vd-edit-synopsis-form-${episodeNumber}`}
+    >
+      <Textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        maxLength={EDIT_SYNOPSIS_MAX_LENGTH}
+        className="min-h-[4.5rem] text-xs"
+        data-testid={`vd-edit-synopsis-textarea-${episodeNumber}`}
+      />
+      {trimmedEmpty && (
+        <p className="text-[10px] text-destructive">
+          {pickCopy(lang, verticalDramaCopy.editSynopsisRequired)}
+        </p>
+      )}
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={isSaving}
+          onClick={onCancel}
+          data-testid={`vd-edit-synopsis-cancel-${episodeNumber}`}
+        >
+          {pickCopy(lang, verticalDramaCopy.editSynopsisCancel)}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={isSaving || trimmedEmpty}
+          onClick={onSave}
+          className="gap-1.5"
+          data-testid={`vd-edit-synopsis-save-${episodeNumber}`}
+        >
+          {isSaving && (
+            <Loader2
+              className="h-3 w-3 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          )}
+          {isSaving
+            ? pickCopy(lang, verticalDramaCopy.editSynopsisSaving)
+            : pickCopy(lang, verticalDramaCopy.editSynopsisSave)}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Overview card for the "Generate story" action (spec addendum) — the first
  * real, credit-consuming LLM call in this feature. Shows the expanded season
@@ -1687,6 +1771,51 @@ export function StoryBibleOverviewCard({
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [copyFromEpisode, setCopyFromEpisode] = useState<number | null>(null);
   const [copyToEpisode, setCopyToEpisode] = useState<number | null>(null);
+  // Manual synopsis edits (added 2026-07-22) — at most one sub-episode's
+  // logline is editable at a time, same shape as `editingShotNumber` in
+  // `VerticalDramaDeepStoryDraftEpisodeDetail`.
+  const [editingEpisodeNumber, setEditingEpisodeNumber] = useState<
+    number | null
+  >(null);
+  const [synopsisDraft, setSynopsisDraft] = useState("");
+  const updateSynopsisMutation =
+    trpc.verticalDramaSeries.updateEpisodeDraftSynopsis.useMutation({
+      onSuccess: (
+        data: { episodeNumber: number; logline: string },
+        variables: { episodeNumber: number }
+      ) => {
+        void utils.verticalDramaSeries.get.invalidate({ seriesId });
+        // Required so the shot-splitting page (VerticalDramaEpisodePage ->
+        // VerticalDramaEpisodePlanPanel) picks up the new synopsis
+        // immediately — mirrors every other mutation in this file's sibling
+        // pages that touches the active breakdown version.
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        toast.success(
+          editSynopsisSavedSuccessText(lang, variables.episodeNumber)
+        );
+        setEditingEpisodeNumber(null);
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message || pickCopy(lang, verticalDramaCopy.editSynopsisSaveError)
+        );
+      },
+    });
+  const handleOpenSynopsisEdit = (episodeNumber: number, logline: string) => {
+    setEditingEpisodeNumber(episodeNumber);
+    setSynopsisDraft(logline);
+  };
+  const handleCancelSynopsisEdit = () => setEditingEpisodeNumber(null);
+  const handleSaveSynopsis = (episodeNumber: number) => {
+    const trimmed = synopsisDraft.trim();
+    if (!trimmed) return;
+    updateSynopsisMutation.mutate({
+      seriesId,
+      episodeNumber,
+      logline: trimmed,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  };
   const expanded = (bible ?? {}) as ExpandedStoryBible;
   const createdEpisodeNumberSet = useMemo(
     () => new Set(createdEpisodeNumbers),
@@ -2047,14 +2176,47 @@ export function StoryBibleOverviewCard({
                         </Badge>
                       ) : null}
                     </p>
-                    {ep.logline ? (
+                    {ep.logline ||
+                    editingEpisodeNumber === ep.episodeNumber ||
+                    !readOnly ? (
                       <div className="mt-1.5 flex flex-col gap-0.5">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          {lang === "th" ? "เรื่องย่อ" : "Logline"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {ep.logline}
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            {lang === "th" ? "เรื่องย่อ" : "Logline"}
+                          </p>
+                          {!readOnly && editingEpisodeNumber !== ep.episodeNumber ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-5 px-1.5 text-[10px]"
+                              onClick={() =>
+                                handleOpenSynopsisEdit(
+                                  ep.episodeNumber,
+                                  ep.logline ?? ""
+                                )
+                              }
+                              data-testid={`vd-edit-synopsis-cta-${ep.episodeNumber}`}
+                            >
+                              {pickCopy(lang, verticalDramaCopy.editSynopsisCta)}
+                            </Button>
+                          ) : null}
+                        </div>
+                        {editingEpisodeNumber === ep.episodeNumber ? (
+                          <EditSynopsisForm
+                            lang={lang}
+                            episodeNumber={ep.episodeNumber}
+                            value={synopsisDraft}
+                            isSaving={updateSynopsisMutation.isPending}
+                            onChange={setSynopsisDraft}
+                            onCancel={handleCancelSynopsisEdit}
+                            onSave={() => handleSaveSynopsis(ep.episodeNumber)}
+                          />
+                        ) : ep.logline ? (
+                          <p className="text-xs text-muted-foreground">
+                            {ep.logline}
+                          </p>
+                        ) : null}
                       </div>
                     ) : null}
                     {ep.keyBeats.length > 0 ? (

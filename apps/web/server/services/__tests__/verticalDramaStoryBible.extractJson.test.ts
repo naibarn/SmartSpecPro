@@ -136,6 +136,32 @@ describe("extractJson", () => {
       expect(() => extractJson(truncated)).toThrow(VdSchemaValidationError);
     });
 
+    // 2026-07-22 (`google/gemini-3.5-flash`, "Episode script" stage —
+    // journalctl smartspec-web 08:57-08:58 UTC): all 3 attempts failed with
+    // `Expected ',' or ']' after array element` / `Expected ',' or '}' after
+    // property value` at positions 7401/9082/9659 — far under the
+    // 12000/24000-token ceilings, so NOT truncation. Cause: an UNESCAPED `"`
+    // inside a Thai dialogue string desyncs the string-aware balanced scan,
+    // so `findBalancedJsonEnd` returned -1, `balancedSlice` stayed null, and
+    // the repair path was skipped entirely even though `jsonrepair` fixes
+    // exactly this input.
+    it("repairs an unescaped quote inside a string value when the balanced scan cannot find an envelope", () => {
+      const malformed =
+        '{"title":"ตอน 1","beats":[{"line":"เขาพูดว่า "อย่ามา แล้วเดินออกไป","id":1}],"end":true}';
+      const result = extractJson(malformed);
+      expect(result).toEqual({
+        title: "ตอน 1",
+        beats: [{ line: 'เขาพูดว่า "อย่ามา แล้วเดินออกไป', id: 1 }],
+        end: true,
+      });
+    });
+
+    it("does NOT repair an unescaped-quote response that is ALSO truncated (schema retry must still fire)", () => {
+      const truncated =
+        '{"title":"ตอน 1","beats":[{"line":"เขาพูดว่า "อย่ามา แล้วเดิน';
+      expect(() => extractJson(truncated)).toThrow(VdSchemaValidationError);
+    });
+
     it("leaves already-valid JSON untouched (happy path unaffected by the repair fallback)", () => {
       const valid = '{"episode_title":"Test","hook":"A hook","list":["x","y","z"]}';
       const result = extractJson(valid);

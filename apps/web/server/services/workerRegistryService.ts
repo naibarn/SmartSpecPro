@@ -192,6 +192,17 @@ export interface HermesMinVersionEnforcementResult {
   warning?: string;
 }
 
+export const HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION = "0.1.140";
+
+export function isHermesDesktopControlVersionCompatible(
+  runtimeType: string,
+  workerAppVersion: string | null | undefined,
+): boolean {
+  return runtimeType !== "desktop_zeroclaw_managed"
+    || !workerAppVersion?.trim()
+    || compareVersionsNumeric(workerAppVersion, HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION) >= 0;
+}
+
 /**
  * Forces `capabilitiesJson.hermesMedia.advertised = false` (+ a `reason`
  * naming the minimum) when `hermesMedia.hermesVersion` is below
@@ -227,6 +238,38 @@ export function enforceHermesMinVersion(
         ...hermesMedia,
         advertised: false,
         reason: `below_minimum_version:${trimmedMinVersion}`,
+      },
+    },
+    belowMinimum: true,
+    warning,
+  };
+}
+
+/**
+ * Older Worker App builds can run the Hermes CLI but do not have the complete
+ * Windows OAuth environment and sequenced connection-control contract.
+ * Demote only desktop Hermes advertising until the app is upgraded; the
+ * central Hermes worker has a separate runtime/version lifecycle.
+ */
+export function enforceHermesDesktopControlVersion(
+  capabilitiesJson: unknown,
+  runtimeType: string,
+  workerAppVersion: string,
+): HermesMinVersionEnforcementResult {
+  const base: Record<string, unknown> = isPlainObject(capabilitiesJson) ? { ...capabilitiesJson } : {};
+  const hermesMedia = isPlainObject(base.hermesMedia) ? (base.hermesMedia as Record<string, unknown>) : null;
+  if (!hermesMedia || isHermesDesktopControlVersionCompatible(runtimeType, workerAppVersion)) {
+    return { capabilitiesJson: base, belowMinimum: false };
+  }
+
+  const warning = `Worker App version ${workerAppVersion} is below the Hermes connection minimum ${HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION}. Update the Worker App before connecting Grok.`;
+  return {
+    capabilitiesJson: {
+      ...base,
+      hermesMedia: {
+        ...hermesMedia,
+        advertised: false,
+        reason: `below_worker_app_version:${HERMES_DESKTOP_CONTROL_MIN_WORKER_APP_VERSION}`,
       },
     },
     belowMinimum: true,
@@ -772,7 +815,7 @@ function readAssignmentAttempt(job: WorkerJobRecord): string | null {
 }
 
 function ensureAssignmentAttempt(job: WorkerJobRecord, assignmentAttempt: string | null | undefined): void {
-  if (job.jobType !== "hyperframes_final_composite") {
+  if (job.jobType !== "hyperframes_final_composite" && !isHermesFabricJobType(job.jobType)) {
     return;
   }
   const activeAttempt = readAssignmentAttempt(job);
@@ -891,6 +934,11 @@ function isTerminalJobStatus(
 function readEventSequenceNumber(event: WorkerJobEventRecord): number | null {
   const value = event?.payloadJson?.sequenceNumber;
   return typeof value === "number" && Number.isInteger(value) ? value : null;
+}
+
+function readEventAssignmentAttempt(event: WorkerJobEventRecord): string | null {
+  const value = event?.payloadJson?.assignmentAttempt;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function sanitizeFileName(fileName: string): string {
@@ -1239,7 +1287,16 @@ export async function registerWorker(
   // (applies regardless of runtimeType — the shared unit and Worker Apps
   // alike). Absent hermesMedia block or absent setting ⇒ no-op.
   const hermesMinVersion = (await getHermesWorkerSettings()).minHermesVersion;
-  const hermesEnforcement = enforceHermesMinVersion(mergedCapabilitiesJson, hermesMinVersion);
+  const hermesRuntimeEnforcement = enforceHermesMinVersion(mergedCapabilitiesJson, hermesMinVersion);
+  const hermesEnforcement = enforceHermesDesktopControlVersion(
+    hermesRuntimeEnforcement.capabilitiesJson,
+    input.payload.runtimeType,
+    input.payload.compatibility.runtimeVersion,
+  );
+  const hermesWarnings = [
+    hermesRuntimeEnforcement.warning,
+    hermesEnforcement.warning,
+  ].filter((warning): warning is string => Boolean(warning));
   const nextValues = {
     tenantId: input.auth.tenantId,
     teamId: input.payload.teamId ?? input.auth.teamId ?? null,
@@ -1264,8 +1321,8 @@ export async function registerWorker(
       effectiveRuntimeMetadata,
     ),
     warningFlagsJson: sanitizeWorkerWarningFlags(
-      hermesEnforcement.warning
-        ? [...sanitizeWorkerWarningFlags(input.payload.warningFlagsJson), hermesEnforcement.warning]
+      hermesWarnings.length > 0
+        ? [...sanitizeWorkerWarningFlags(input.payload.warningFlagsJson), ...hermesWarnings]
         : input.payload.warningFlagsJson,
     ),
     fileScopeMode: input.payload.fileScopeMode,
@@ -1377,7 +1434,16 @@ export async function recordWorkerHeartbeat(
   // the returned/persisted `warningFlagsJson` — section-12 wires it into
   // the heartbeat HTTP response's warning field.
   const hermesMinVersion = (await getHermesWorkerSettings()).minHermesVersion;
-  const hermesEnforcement = enforceHermesMinVersion(mergedHeartbeatCapabilitiesJson, hermesMinVersion);
+  const hermesRuntimeEnforcement = enforceHermesMinVersion(mergedHeartbeatCapabilitiesJson, hermesMinVersion);
+  const hermesEnforcement = enforceHermesDesktopControlVersion(
+    hermesRuntimeEnforcement.capabilitiesJson,
+    worker.runtimeType,
+    input.payload.compatibility.runtimeVersion,
+  );
+  const hermesWarnings = [
+    hermesRuntimeEnforcement.warning,
+    hermesEnforcement.warning,
+  ].filter((warning): warning is string => Boolean(warning));
   const updatedWorker = await repo.updateWorker(worker.id, {
     status: nextStatus,
     runtimeVersion: input.payload.compatibility.runtimeVersion,
@@ -1389,8 +1455,8 @@ export async function recordWorkerHeartbeat(
       input.payload.runtimeMetadataJson ?? {},
     ),
     warningFlagsJson: sanitizeWorkerWarningFlags(
-      hermesEnforcement.warning
-        ? [...sanitizeWorkerWarningFlags(input.payload.warningsJson), hermesEnforcement.warning]
+      hermesWarnings.length > 0
+        ? [...sanitizeWorkerWarningFlags(input.payload.warningsJson), ...hermesWarnings]
         : input.payload.warningsJson,
     ),
     lastSeenAt: new Date(),
@@ -1442,8 +1508,13 @@ export async function claimWorkerJob(
     input.payload.capabilityHints,
   );
   const eligibleCandidates = await filterClaimableJobsForWorker(worker, candidates);
+  const hermesControlVersionCompatible = isHermesDesktopControlVersionCompatible(
+    worker.runtimeType,
+    worker.runtimeVersion,
+  );
   const selectableCandidates = eligibleCandidates.filter((candidate) =>
-    workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
+    (!isHermesFabricJobType(candidate.jobType) || hermesControlVersionCompatible)
+    && workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
   );
 
   // Feature 135 section-05 — memoizes `connectionId -> assignedWorkerId`
@@ -1587,10 +1658,18 @@ export async function recordWorkerJobEvent(
   }
 
   const existingEvents = await repo.listJobEvents(job.id);
-  if (existingEvents.some((event) => readEventSequenceNumber(event) === sequenceNumber)) {
+  const activeAssignmentAttempt = readAssignmentAttempt(job);
+  const assignmentScoped = job.jobType === "hyperframes_final_composite"
+    || isHermesFabricJobType(job.jobType);
+  const relevantEvents = assignmentScoped && activeAssignmentAttempt
+    ? existingEvents.filter(
+      (event) => readEventAssignmentAttempt(event) === activeAssignmentAttempt,
+    )
+    : existingEvents;
+  if (relevantEvents.some((event) => readEventSequenceNumber(event) === sequenceNumber)) {
     return { accepted: false, job, replayed: true };
   }
-  const maxSeenSequence = existingEvents.reduce(
+  const maxSeenSequence = relevantEvents.reduce(
     (maxValue, event) => Math.max(maxValue, readEventSequenceNumber(event) ?? 0),
     0,
   );

@@ -24,6 +24,10 @@ describe("vertical-drama-preset-synthesizer skill — v2 runtime contract", () =
       expect(content).toContain("presetId");
       expect(content).toContain("kept");
       expect(content).toMatch(/never (?:silently )?downgrade/i);
+      expect(content).toContain("Generate from basics");
+      expect(content).toMatch(/no preset and no user premise/i);
+      expect(content).toContain("Sequel lineage — continuity outranks premise");
+      expect(content).toContain("continuation, never an unrelated reboot");
     }
   });
 

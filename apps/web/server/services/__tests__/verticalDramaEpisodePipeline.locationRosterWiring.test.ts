@@ -337,6 +337,60 @@ describe("runStage — storyboard_shotgrid real-generation branch calls reconcil
     expect(outcome.result.status).toBe("succeeded");
   });
 
+  it("persists the canonical roster key returned by reconciliation for a situation-qualified legacy key", async () => {
+    queueRunStageSelects();
+    setupWritePath();
+    const qualifiedGroup = {
+      location_key: "location-2-visit1",
+      location_name: "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+      description: "flight control center during the morning crisis",
+      shot_numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    };
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: {
+        shots: NINE_SHOTS,
+        distinct_locations: [qualifiedGroup],
+      },
+      creditsUsed: 3,
+      model: "gpt-4o-mini",
+    });
+    mockReconcileEpisodeLocations.mockResolvedValueOnce({
+      createdLocations: [],
+      reusedLocations: [
+        {
+          locationKey: "location-2",
+          name: "ศูนย์ควบคุมการปฏิบัติการบิน",
+        },
+      ],
+      locationBindings: [
+        {
+          incomingLocationKey: "location-2-visit1",
+          incomingLocationName:
+            "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+          canonicalLocationKey: "location-2",
+        },
+      ],
+    });
+
+    const outcome = await pipeline.runStage(owner, "storyboard_shotgrid", {
+      mode: "full",
+    });
+
+    const sharedUpdateChain = mockDb.update.mock.results[0].value;
+    const storyboardWrites = sharedUpdateChain.set.mock.calls
+      .map(([values]: [{ storyboard?: any }]) => values.storyboard)
+      .filter(Boolean);
+    expect(storyboardWrites).toHaveLength(2);
+    expect(storyboardWrites[0].distinct_locations[0].location_key).toBe(
+      "location-2-visit1"
+    );
+    expect(storyboardWrites[1].distinct_locations[0]).toMatchObject({
+      location_key: "location-2",
+      location_name: "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+    });
+    expect(outcome.result.status).toBe("succeeded");
+  });
+
   it("calls reconcileEpisodeLocations with an empty array when the storyboard has no distinct_locations", async () => {
     queueRunStageSelects();
     setupWritePath();

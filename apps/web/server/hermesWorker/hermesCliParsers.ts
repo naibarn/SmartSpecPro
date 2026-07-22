@@ -126,8 +126,17 @@ export function parseHermesAuthStatusOutput(text: string): HermesAuthStatusParse
  *  identifiers verbatim (e.g. `image.generate`, `image.edit`). */
 export function parseHermesToolsOutput(text: string): HermesMediaOperation[] {
   const found: HermesMediaOperation[] = [];
+  const normalized = text.toLowerCase();
+  const imageGenerationAvailable = normalized.includes("image generation");
+  const videoGenerationAvailable = normalized.includes("video generation");
   for (const operation of HERMES_MEDIA_OPERATIONS) {
-    if (text.includes(operation)) found.push(operation);
+    if (
+      text.includes(operation)
+      || (operation.startsWith("image.") && imageGenerationAvailable)
+      || (operation.startsWith("video.") && videoGenerationAvailable)
+    ) {
+      found.push(operation);
+    }
   }
   return found;
 }

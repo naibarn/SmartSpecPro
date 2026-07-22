@@ -67,6 +67,10 @@ export const HyperframesAutoPlanDefaultsSchema = z
     manualVideoGroupSize: z.number().int().min(1).max(12).optional(),
     speechLanguage: HyperframesSpokenLanguageSchema.default("en"),
     creativeBrief: z.string().trim().max(2000).optional().default(""),
+    motionDirection: z.string().trim().max(2000).optional().default(""),
+    characterPresenceMode: z
+      .enum(["auto", "every_frame", "most_frames"])
+      .default("auto"),
     qualityMode: z.enum(["fast", "balanced", "high"]),
     visionQaModel: z.string().min(1).max(120).nullable().optional().default(null),
     renderEngine: MarketplaceAutoReviewRenderEngineSchema,
@@ -174,6 +178,10 @@ const HyperframesAutoPlanOverrideFieldSchemas = {
   manualVideoGroupSize: z.number().int().min(1).max(12).optional(),
   speechLanguage: HyperframesSpokenLanguageSchema.optional(),
   creativeBrief: z.string().trim().max(2000).optional(),
+  motionDirection: z.string().trim().min(1).max(2000).optional(),
+  characterPresenceMode: z
+    .enum(["auto", "every_frame", "most_frames"])
+    .optional(),
   qualityMode: z.enum(["fast", "balanced", "high"]).optional(),
   visionQaModel: z.string().min(1).max(120).optional().nullable(),
   platformPresetId: z
@@ -201,6 +209,8 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   manualVideoGroupSize: "3",
   speechLanguage: "en",
   creativeBrief: "",
+  motionDirection: "",
+  characterPresenceMode: "auto",
   qualityMode: "balanced",
   visionQaModel: "",
 } as const satisfies Record<keyof HyperframesAutoPlanOverrideInput, string>;
@@ -237,6 +247,9 @@ export function buildDefaultHyperframesAutoPlanDefaults(
     ),
     speechLanguage: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.speechLanguage,
     creativeBrief: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.creativeBrief,
+    motionDirection: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.motionDirection,
+    characterPresenceMode:
+      HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.characterPresenceMode,
     qualityMode: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.qualityMode,
     visionQaModel: null,
     renderEngine: "hyperframes_composition",
@@ -322,6 +335,20 @@ export function normalizeHyperframesAutoPlanOverrides(
     );
   if (creativeBrief.success && creativeBrief.data !== undefined) {
     normalized.creativeBrief = creativeBrief.data;
+  }
+  const motionDirection =
+    HyperframesAutoPlanOverrideFieldSchemas.motionDirection.safeParse(
+      overrides.motionDirection
+    );
+  if (motionDirection.success && motionDirection.data !== undefined) {
+    normalized.motionDirection = motionDirection.data;
+  }
+  const characterPresenceMode =
+    HyperframesAutoPlanOverrideFieldSchemas.characterPresenceMode.safeParse(
+      overrides.characterPresenceMode
+    );
+  if (characterPresenceMode.success && characterPresenceMode.data) {
+    normalized.characterPresenceMode = characterPresenceMode.data;
   }
   const qualityMode =
     HyperframesAutoPlanOverrideFieldSchemas.qualityMode.safeParse(

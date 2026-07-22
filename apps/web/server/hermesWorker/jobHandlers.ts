@@ -562,6 +562,14 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
     const assignmentAttempt = job.assignmentAttempt ?? null;
     let sequenceNumber = 1;
 
+    await deps.client.postEvent(job.id, {
+      eventType: "job.running",
+      payloadJson: { stage: "starting_hermes_control" },
+      leaseOwnerToken,
+      assignmentAttempt,
+      sequenceNumber: sequenceNumber++,
+    });
+
     // Pre-fetch the profile handle so the control-job spawn gets the SAME
     // per-connection `HERMES_HOME` isolation env media jobs get (idempotent
     // — `profileOps.ensureProfile` below still calls `ensureProfile` again
@@ -621,7 +629,7 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
     await deps.client.postEvent(job.id, {
       eventType: outcome.ok ? "job.completed" : "job.failed",
       payloadJson: outcome.ok
-        ? { accountHint: outcome.accountHint, manifest: outcome.manifest }
+        ? { accountHint: outcome.accountHint, capabilities: outcome.manifest }
         : { failureReason: outcome.failureReason, diagnostic: outcome.diagnostic },
       leaseOwnerToken,
       assignmentAttempt,

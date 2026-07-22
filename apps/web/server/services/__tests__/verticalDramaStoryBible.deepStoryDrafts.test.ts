@@ -21,6 +21,15 @@ vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
 }));
 
+const { mockResolveVerticalDramaSeriesModel } = vi.hoisted(() => ({
+  mockResolveVerticalDramaSeriesModel: vi.fn(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  ),
+}));
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+}));
+
 vi.mock("../intelligentModelSelector", () => ({
   selectBestLlmModel: vi.fn(() => null),
 }));
@@ -50,6 +59,7 @@ vi.mock("../_core/logger", () => ({
 
 import {
   generateStoryBibleDeep,
+  resolveDeepStoryDraftModel,
   computeDeepDraftChunkSizes,
   resolveDeepDraftHorizon,
   enforceEpisodeShotDraftSpeakability,
@@ -71,6 +81,9 @@ import {
   analyzeManualDialogueEditLines,
   ManualDialogueEditNoDraftError,
   VD_MANUAL_DIALOGUE_EDIT_UNSPECIFIED_SPEAKER,
+  readItemManualSummaryEdit,
+  applyManualShotSummaryEdit,
+  ManualShotSummaryEditNoDraftError,
   type VdDeepDraftShotDraft,
   type VdDeepDraftWarning,
   type StoredEpisodeBreakdownItem,
@@ -153,6 +166,9 @@ function baseDeepParams(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockResolveVerticalDramaSeriesModel.mockImplementation(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  );
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -500,6 +516,22 @@ describe("computeDraftCompleteness", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateStoryBibleDeep — cross-chunk continuity recap", () => {
+  it("uses the series-wide pinned model for every standard deep-draft call", async () => {
+    mockResolveVerticalDramaSeriesModel.mockResolvedValueOnce("google/gemini-3.5-flash");
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(mockResolveVerticalDramaSeriesModel).toHaveBeenCalledWith(
+      10,
+      resolveDeepStoryDraftModel,
+    );
+    expect(mockExecuteWithFallback.mock.calls.map(([request]) => request.model)).toEqual([
+      "google/gemini-3.5-flash",
+    ]);
+    expect(result.model).toBe("google/gemini-3.5-flash");
+  });
+
   it("chunk 2's prompt contains chunk 1's titles, cliffhanger lines, and open threads", async () => {
     const episodes = Array.from({ length: 6 }, (_, i) => existingItem(i + 1));
     mockLlmResponseOnce(chunkResponsePayload([1, 2, 3, 4, 5], { openThreads: ["thread-alpha", "thread-beta"] }));
@@ -1476,6 +1508,243 @@ describe("applyManualDialogueEdit", () => {
       item,
       shotNumber: 1,
       lines: [{ line: "บทพูดใหม่ที่ไม่ควรกระทบต้นฉบับเดิมเลยสำหรับช็อตนี้" }],
+      editedByUserId: 1,
+    });
+
+    expect(item).toEqual(snapshot);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Manual shot-summary edits (added 2026-07-22,                              */
+/* `planning/vd-edit-episode-synopsis/plan.md` Phase 2) — mirrors the        */
+/* `readItemManualDialogueEdit`/`applyManualDialogueEdit` test blocks above  */
+/* 1:1, scoped to `summary` instead of `dialogue_lines`.                     */
+/* -------------------------------------------------------------------------- */
+
+describe("readItemManualSummaryEdit — legacy tolerance", () => {
+  it("returns null for an item with shotDrafts that has never been manually summary-edited", () => {
+    expect(readItemManualSummaryEdit(existingItem(1, { shotDrafts: nineShotDrafts() }))).toBeNull();
+  });
+
+  it("returns null for a fully legacy item with neither shotDrafts nor manualSummaryEdit", () => {
+    expect(readItemManualSummaryEdit(existingItem(1))).toBeNull();
+  });
+
+  it("returns the parsed stamp when present and valid", () => {
+    const item = existingItem(1, {
+      shotDrafts: nineShotDrafts(),
+      manualSummaryEdit: { editedAt: "2026-07-22T00:00:00.000Z", editedByUserId: 7, shotNumbers: [2, 5] },
+    });
+    expect(readItemManualSummaryEdit(item)).toEqual({
+      editedAt: "2026-07-22T00:00:00.000Z",
+      editedByUserId: 7,
+      shotNumbers: [2, 5],
+    });
+  });
+
+  it("returns null (never throws) when manualSummaryEdit is malformed", () => {
+    const item = existingItem(1, {
+      shotDrafts: nineShotDrafts(),
+      manualSummaryEdit: { shotNumbers: "not-an-array" },
+    });
+    expect(readItemManualSummaryEdit(item)).toBeNull();
+  });
+});
+
+describe("applyManualShotSummaryEdit", () => {
+  it("REPLACES the target shot's summary verbatim and leaves every other shot untouched", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 3,
+      summary: "เรื่องย่อช็อตที่แก้ไขใหม่สำหรับช็อตนี้",
+      editedByUserId: 7,
+      editedAt: "2026-07-22T00:00:00.000Z",
+    });
+
+    const updatedShots = readItemShotDrafts(result.item)!;
+    expect(updatedShots[2].summary).toBe("เรื่องย่อช็อตที่แก้ไขใหม่สำหรับช็อตนี้");
+    // every other shot is byte-identical to the original 9-shot fixture.
+    const originalShots = nineShotDrafts();
+    for (const i of [0, 1, 3, 4, 5, 6, 7, 8]) {
+      expect(updatedShots[i]).toEqual(originalShots[i]);
+    }
+  });
+
+  it("preserves every OTHER field on the edited shot itself unchanged (dialogue_lines, characters, location_key, silence_intent, contract, tie_in)", () => {
+    const shots = nineShotDrafts();
+    const contract = {
+      storyFunction: "reveal",
+      emotionalBeat: "dread",
+      audienceTakeaway: "the note is fake",
+      tensionSource: "time pressure",
+      newClueIds: ["clue-1"],
+      dialoguePurpose: "confront",
+      anchorLine: true,
+    };
+    shots[2] = {
+      ...shots[2],
+      contract,
+      tie_in: { has_product_moment: true, benefit_line: "saves time" },
+    } as VdDeepDraftShotDraft;
+    const item = existingItem(1, { shotDrafts: shots });
+
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 3,
+      summary: "เรื่องย่อช็อตใหม่",
+      editedByUserId: 7,
+    });
+
+    const updatedShots = readItemShotDrafts(result.item)!;
+    const updatedShot = updatedShots[2] as unknown as Record<string, unknown>;
+    expect(updatedShot.dialogue_lines).toEqual(shots[2].dialogue_lines);
+    expect(updatedShot.characters).toEqual(shots[2].characters);
+    expect(updatedShot.location_key).toEqual(shots[2].location_key);
+    expect(updatedShot.contract).toEqual(contract);
+    expect(updatedShot.tie_in).toEqual({ has_product_moment: true, benefit_line: "saves time" });
+  });
+
+  it("does NOT recompute/touch the item's draftCompleteness — a summary edit never affects dialogue-derived readiness", () => {
+    const shots = nineShotDrafts();
+    const item = existingItem(1, {
+      shotDrafts: shots,
+      draftCompleteness: {
+        dialogueEveryShot: true,
+        allSpeakable: true,
+        estimatedSpeechSeconds: 42,
+        coverageStatus: "ok",
+      },
+    });
+
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อช็อตแรกที่แก้ไขใหม่",
+      editedByUserId: 1,
+    });
+
+    expect((result.item as unknown as Record<string, unknown>).draftCompleteness).toEqual({
+      dialogueEveryShot: true,
+      allSpeakable: true,
+      estimatedSpeechSeconds: 42,
+      coverageStatus: "ok",
+    });
+  });
+
+  it("manualSummaryEdit stamp accumulates shotNumbers ACROSS TWO edits, deduping a shot edited twice", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+
+    const first = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 2,
+      summary: "เรื่องย่อช็อตสองครั้งแรก",
+      editedByUserId: 7,
+      editedAt: "2026-07-22T00:00:00.000Z",
+    });
+    expect(readItemManualSummaryEdit(first.item)).toEqual({
+      editedAt: "2026-07-22T00:00:00.000Z",
+      editedByUserId: 7,
+      shotNumbers: [2],
+    });
+
+    const second = applyManualShotSummaryEdit({
+      item: first.item,
+      shotNumber: 5,
+      summary: "เรื่องย่อช็อตห้า",
+      editedByUserId: 9,
+      editedAt: "2026-07-22T01:00:00.000Z",
+    });
+    expect(readItemManualSummaryEdit(second.item)).toEqual({
+      editedAt: "2026-07-22T01:00:00.000Z",
+      editedByUserId: 9,
+      shotNumbers: [2, 5],
+    });
+
+    // Editing shot 2 again does not duplicate it in the accumulated array.
+    const third = applyManualShotSummaryEdit({
+      item: second.item,
+      shotNumber: 2,
+      summary: "เรื่องย่อช็อตสองครั้งที่สอง",
+      editedByUserId: 9,
+      editedAt: "2026-07-22T02:00:00.000Z",
+    });
+    expect(readItemManualSummaryEdit(third.item)?.shotNumbers).toEqual([2, 5]);
+  });
+
+  it("stamps appliedIdempotencyKeys and accumulates it (deduped) across edits carrying idempotency keys", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+
+    const first = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อช็อตแรก",
+      editedByUserId: 1,
+      idempotencyKey: "key-a",
+    });
+    expect(readItemManualSummaryEdit(first.item)?.appliedIdempotencyKeys).toEqual(["key-a"]);
+
+    const second = applyManualShotSummaryEdit({
+      item: first.item,
+      shotNumber: 2,
+      summary: "เรื่องย่อช็อตสอง",
+      editedByUserId: 1,
+      idempotencyKey: "key-b",
+    });
+    expect(readItemManualSummaryEdit(second.item)?.appliedIdempotencyKeys).toEqual(["key-a", "key-b"]);
+
+    // A repeated key on a fresh call (never happens via the router's own
+    // replay short-circuit, but the pure function itself just dedupes).
+    const third = applyManualShotSummaryEdit({
+      item: second.item,
+      shotNumber: 3,
+      summary: "เรื่องย่อช็อตสาม",
+      editedByUserId: 1,
+      idempotencyKey: "key-b",
+    });
+    expect(readItemManualSummaryEdit(third.item)?.appliedIdempotencyKeys).toEqual(["key-a", "key-b"]);
+  });
+
+  it("omits appliedIdempotencyKeys entirely when no idempotencyKey was ever provided", () => {
+    const item = existingItem(1, { shotDrafts: nineShotDrafts() });
+    const result = applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อช็อตที่ไม่มี idempotency key",
+      editedByUserId: 1,
+    });
+    expect(readItemManualSummaryEdit(result.item)?.appliedIdempotencyKeys).toBeUndefined();
+  });
+
+  it("throws ManualShotSummaryEditNoDraftError when the item has no shotDrafts at all", () => {
+    const item = existingItem(1); // plain generateStoryBible-only item, no deep draft ever run
+    expect(() =>
+      applyManualShotSummaryEdit({ item, shotNumber: 1, summary: "x", editedByUserId: 1 }),
+    ).toThrow(ManualShotSummaryEditNoDraftError);
+  });
+
+  it("throws ManualShotSummaryEditNoDraftError when shotNumber has no matching shot in the item's shotDrafts", () => {
+    // Schema-valid (length 9) but missing shot_number 9 — shot 1 appears twice instead.
+    const shots = nineShotDrafts();
+    shots[8] = { ...shots[0] };
+    const item = existingItem(1, { shotDrafts: shots });
+
+    expect(() =>
+      applyManualShotSummaryEdit({ item, shotNumber: 9, summary: "x", editedByUserId: 1 }),
+    ).toThrow(ManualShotSummaryEditNoDraftError);
+  });
+
+  it("never mutates the input item", () => {
+    const shots = nineShotDrafts();
+    const item = existingItem(1, { shotDrafts: shots });
+    const snapshot = JSON.parse(JSON.stringify(item));
+
+    applyManualShotSummaryEdit({
+      item,
+      shotNumber: 1,
+      summary: "เรื่องย่อใหม่ที่ไม่ควรกระทบต้นฉบับเดิมเลย",
       editedByUserId: 1,
     });
 

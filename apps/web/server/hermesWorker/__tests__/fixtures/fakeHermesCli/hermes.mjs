@@ -122,7 +122,7 @@ async function main() {
     await runSimple(scenario, "authLogout", ["Logged out."]);
     return;
   }
-  if (args[0] === "tools") {
+  if (args[0] === "tools" || (args[0] === "status" && args[1] === "--all")) {
     await runSimple(scenario, "tools", ["Available tools:", "- image.generate", "- image.edit"]);
     return;
   }

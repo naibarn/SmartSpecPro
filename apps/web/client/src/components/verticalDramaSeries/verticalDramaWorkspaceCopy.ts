@@ -563,8 +563,10 @@ export const VD_COPY = {
     adBannerSave: "Save ad banners",
     adBannerSaving: "Saving…",
 
-    /* ---- Video-prompt language options (episode-level language plan) ---- */
-    promptLanguageLabel: "Prompt language",
+    /* ---- Independent image/video prompt language options ---- */
+    imagePromptLanguageLabel: "Image prompt language",
+    imagePromptLanguageSource: "Match synopsis language (automatic)",
+    videoPromptLanguageLabel: "Video prompt language",
     promptLanguageEn: "English (recommended)",
     promptLanguageTh: "Thai",
     promptLanguageZh: "Chinese",
@@ -1266,8 +1268,10 @@ export const VD_COPY = {
     adBannerSave: "บันทึกแบนเนอร์",
     adBannerSaving: "กำลังบันทึก…",
 
-    /* ---- Video-prompt language options (episode-level language plan) ---- */
-    promptLanguageLabel: "ภาษา prompt",
+    /* ---- ตัวเลือกภาษาพรอมต์ภาพและวิดีโอแยกกัน ---- */
+    imagePromptLanguageLabel: "ภาษาพรอมต์ภาพ",
+    imagePromptLanguageSource: "ตามภาษาเรื่องย่อ (อัตโนมัติ)",
+    videoPromptLanguageLabel: "ภาษาพรอมต์วิดีโอ",
     promptLanguageEn: "อังกฤษ (แนะนำ)",
     promptLanguageTh: "ไทย",
     promptLanguageZh: "中文",

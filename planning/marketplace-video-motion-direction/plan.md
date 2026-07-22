@@ -231,10 +231,125 @@ planning and the real video prompt, so motion is realistic and product-true.
 
 - [x] Research complete (3 read-only agents, evidence above)
 - [x] Plan approved by user (2 phases, optional-only, Opus implementation)
-- [ ] Phase 1A backend plumbing + injections + tests
-- [ ] Phase 1B frontend textarea + payload
-- [ ] Phase 1 verification (conductor)
-- [ ] Phase 2A skill authored
-- [ ] Phase 2B runner + integration + fallback
-- [ ] Phase 2C tests
-- [ ] Phase 2 verification + deploy
+- [x] Phase 1A backend plumbing + injections + tests (2026-07-18, ssp-backend)
+      - Router `startAutoReview` + `HyperframesAutoPlanOverrideInputSchema`
+        (.strict) both carry optional `motionDirection`
+        (z.string().trim().min(1).max(2000).optional()); normalize+apply thread it
+        to plan.defaults → startMarketplaceAutoReviewRun → RunMetadata.
+      - Injection 1: `buildMarketplaceAutoReviewMotionDirectionDirective` emits a
+        "USER-SELECTED MOTION DIRECTION LOCK:" block (chronological decomposition,
+        additional-not-replacement, final-beat) inserted into buildRuntimeInput
+        only when present (empty ⇒ filtered ⇒ byte-identical concept prompt).
+      - Injection 2: `buildMarketplaceAutoReviewSubmittedVideoPrompt` appends a
+        "User motion direction (MANDATORY, additional to the rules above): …" line
+        to the REAL scheduleVideoAttempt prompt (via
+        marketplaceAutoReviewEnglishPromptText w/ raw-text fallback); byte-identical
+        when absent, repair-only behavior unchanged.
+      - Preview parity: motionDirection threaded through videoSegmentPlanner
+        contracts/planner/promptBuilder + buildMarketplaceAutoReviewVideoSegmentPlannerInput.
+      - Tests: 22 pass (router validation, directive present-once + byte-identical,
+        REAL submitted-prompt present/absent, hyperframes carry-through). pnpm check:
+        0 new errors in touched files (140 pre-existing baseline unchanged). The 3
+        image-prompt storyboard test failures in marketplaceAutoReviewService.test.ts
+        are pre-existing on clean HEAD (concurrent skill/prompt-length work), not this change.
+- [x] Phase 1B frontend textarea + payload (autoReviewMotionDirection state, creative-direction textarea + video-mode caption, payload motionDirection trimmed/sliced/undefined; no form-reset block exists for these fields; payload TS error pending Phase 1A router type)
+- [x] Phase 1 verification (conductor) — 22/22 tests green after fixing JWT_SECRET vi.hoisted stub in router test; pnpm check = 140 baseline, TS2353 in MarketplaceCaptureProductDetail cleared
+- [x] Phase 2A skill authored (2026-07-18, ssp-backend)
+      - New `apps/web/skills/product-video-motion-prompt/`: `skill.md` (lowercase
+        canonical) + byte-identical `SKILL.md` twin + `schemas/input.schema.json`
+        + `schemas/ui.schema.json`. Frontmatter: category `video_prompt_generation`,
+        execution_mode llm-only, enabled_by_default true, execution_policy
+        `{ mode: requirements, requirements: { supportsVision: true },
+        fallbackPolicy: error }` — vision-only, NO 1M context requirement.
+      - Body rules (authored, not code): keyframe grounding lock, physically-
+        plausible product interaction, start→stop continuity/identity, optional
+        `motion_direction` = MANDATORY ADDITIONAL directive mapped to THIS shot's
+        timeline slice (absent ⇒ section does not apply, VD repair_instruction
+        shape), English output, no invented product claims, bounded plain-text.
+- [x] Phase 2B runner + integration + fallback (2026-07-18, ssp-backend)
+      - New `server/services/productVideoMotionPromptSkillRunner.ts`
+        (`runProductVideoMotionPromptSkill`). Vision resilience REUSED by importing
+        the exported generic `runProductReferenceStoryboardVisionLlmCallWithFallback`
+        (signature already model-agnostic: takes visionMessages/buildTextOnlyMessages/
+        callModel/model IDs) — no loop copy-paste; only the small message-builders +
+        candidate/text-only model resolvers are local. Output = bounded plain-text
+        video prompt.
+      - `scheduleVideoAttempt`: new exported seam
+        `resolveMarketplaceAutoReviewVideoUnitPrompt({ basePrompt, repairInstruction,
+        motionDirection, runSkill })`. motionDirection present ⇒ try skill per unit
+        (product facts + shot title/visual/movement + voiceover + 9:16 + duration +
+        start/stop keyframe URLs via referenceImagesForVideoUnit + motion_direction),
+        success ⇒ skill prompt (+ targeted-repair line preserved), ANY failure ⇒ exact
+        Phase-1 prompt (never throws/blocks). motionDirection absent ⇒ runSkill=null,
+        skill never invoked (legacy byte-identical, zero cost). Per-unit audit recorded
+        on the direct video ref's `skillRuntime` (videoPromptSource:
+        "deterministic" | "skill" | "deterministic_fallback" + failureReason +
+        warnings:["video_prompt_skill_fallback"] on fallback — reuses existing
+        skillRuntime warning channel, no new stage status).
+- [x] Phase 2C tests (2026-07-18, ssp-backend) — 14 new pass, 22 Phase-1 re-run green (36 total)
+      - Seam (`marketplaceAutoReviewVideoMotionPromptSeam.test.ts`, 6): skill success
+        (source=skill, no double motion line, repair preserved); failure ⇒ prompt
+        EQUALS Phase-1 output exactly; empty-prompt ⇒ fallback; absent/whitespace
+        motion ⇒ spy proves runSkill NEVER called.
+      - Runner (`productVideoMotionPromptSkillRunner.test.ts`, 3): success builds
+        prompt from skill LLM output + dispatches a vision image_url message (proves
+        reuse of the real fallback helper); facts-only user prompt (absent ⇒ zero bytes,
+        motion_direction rendered as mandatory additional directive).
+      - Loader/policy (`productVideoMotionPromptSkillLoader.test.ts`, 5): skill.md/SKILL.md
+        byte-identical (fs compare); frontmatter llm-only/enabled/vision-only + no 1M;
+        input schema loads (motion_direction + required keys); ui schema orders
+        motion_direction; resolveSkillExecutionPolicy resolves the vision model
+        (mocked rows) with modelSource=requirements_match.
+      - pnpm check: 140 total (unchanged baseline), 0 new errors in touched files.
+- [x] Phase 2 verification + deploy — conductor: 43/43 tests green (14 new Phase-2 + 22 Phase-1 + 7 storyboard-resilience regression); skill twins byte-identical; build:deploy + web restart 2026-07-18 09:21; service active, web 200, skill row synced+enabled in DB (slug product-video-motion-prompt)
+
+## Phase 3 — Wire creativeBrief (แนวเรื่องหรือคำบรรยายเพิ่มเติม) into the real planner prompt
+
+User report (2026-07-18): filled "แนวเรื่องหรือคำบรรยายเพิ่มเติม" ("มีเด็กผู้หญิงชาวไทยอายุ 6 ขวบ
+แม่กำลังสระผมให้") in the Auto advanced-overrides panel; generated image prompts
+ignore it entirely. Verified: the field is `creativeBrief`
+(AutoStoryboardAdvancedOverrides.tsx), cleaned+persisted at
+marketplaceAutoReviewService.ts:17392/:17438/:17533, but consumed ONLY by the
+preview segment planner (:21231). `creativeBriefSnapshot` (system-built object,
+:14518, injected at :13449) does NOT contain the user's text. This is exactly
+the taught-not-wired trap documented in Non-Negotiable Rule 3.
+
+Fix (mirror the motionDirection Phase-1 injection):
+1. New `buildMarketplaceAutoReviewCreativeBriefDirective(creativeBrief)` —
+   "USER-SELECTED STORY DIRECTION LOCK:" block: the Production Director must
+   weave the user's story/scenario into the shot plan (characters, setting,
+   scenario per shot: storyboardGuide/visual/voiceover), chronologically
+   coherent, ADDITIONAL to product truth + safety rules (never replaces them;
+   minor-safety rules still apply when the scenario includes children).
+2. Inject into `buildRuntimeInput` next to the motionDirection directive,
+   only-when-present (absent ⇒ byte-identical).
+3. Plumb creativeBrief into `buildGatewayCreativeAutoReviewPlan` the same way
+   motionDirection was plumbed (from startMarketplaceAutoReviewRun).
+4. No router/UI changes needed: the advanced-overrides path already carries
+   creativeBrief end-to-end into RunMetadata.
+5. Tests: byte-identical when absent; directive present exactly once when set;
+   the user's text reaches the planner prompt (anti-trap assertion).
+
+- [x] Phase 3 implementation + tests (2026-07-18, ssp-backend)
+      - New `buildMarketplaceAutoReviewCreativeBriefDirective(creativeBrief)` +
+        exported `creativeBriefDirectiveForTest` mirror the motionDirection helpers
+        (marketplaceAutoReviewService.ts ~:4731-4753). Emits a "USER-SELECTED STORY
+        DIRECTION LOCK:" block: Production Director weaves the user's scenario
+        (characters/setting/situation) into per-shot storyboardGuide/visual/voiceover,
+        chronologically coherent, ADDITIONAL-not-replacement, with all minor-safety
+        rules preserved when the scenario involves children.
+      - Injected into buildRuntimeInput adjacent to motionDirectionDirective
+        (computed ~:13403, inserted ~:13426); array is `.filter(v => v !== "")` before
+        join ⇒ absent creativeBrief = byte-identical concept prompt.
+      - Plumbed like motionDirection: `creativeBrief?: string | null` added to
+        buildGatewayCreativeAutoReviewPlan params (~:13294) and passed at the call site
+        (~:17771). creativeBrief already cleaned at :17392 + persisted to RunMetadata —
+        no router/schema/UI change; preview usage (:21231) + creativeBriefSnapshot
+        (:13449/:14518) untouched.
+      - Tests: new `marketplaceAutoReviewCreativeBrief.test.ts` (5): "" when
+        absent/empty/whitespace (byte-identical), LOCK present exactly once, user text
+        verbatim (anti-trap), per-shot storyboardGuide/visual/voiceover + chronological,
+        additional-not-replacement + minor-safety language. 27/27 green (5 new + 22
+        regression: motion-direction service 8, router 5, autoPlan 9). pnpm check: 140
+        baseline unchanged, 0 new errors in touched files.
+- [x] Phase 3 verification + deploy — conductor: 49/49 combined tests green (creativeBrief 5 + motion service 8 + seam 6 + router 5 + autoPlan 9 + overrides panel 16); also added motionDirection field to AutoStoryboardAdvancedOverrides panel (hyperframes path UI gap found by user); build:deploy + restart 2026-07-18 ~09:5x, service active web 200

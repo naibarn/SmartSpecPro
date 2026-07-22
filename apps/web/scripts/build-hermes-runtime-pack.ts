@@ -36,6 +36,11 @@ const execFileAsync = promisify(execFile);
  *  `HERMES_PINNED_VERSION` and the CLAUDE-plan pin `hermes-agent==0.18.2`. */
 export const HERMES_PINNED_VERSION = "0.18.2";
 export const HERMES_AGENT_PIP_SPEC = `hermes-agent==${HERMES_PINNED_VERSION}`;
+const WINDOWS_PYTHON_BUILD = "3.11.14+20260127";
+const WINDOWS_PYTHON_ARCHIVE_URL =
+  `https://github.com/astral-sh/python-build-standalone/releases/download/20260127/`
+  + `cpython-${WINDOWS_PYTHON_BUILD.replace("+", "%2B")}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`;
+const DISTLIB_BUILD_SPEC = "distlib==0.4.3";
 
 /** Runtime ids — frozen to match `hermes_runtime.rs`'s
  *  `HERMES_RUNTIME_ID_WINDOWS` / `HERMES_RUNTIME_ID_MACOS` and the
@@ -159,7 +164,9 @@ export async function assembleHermesRuntimePack(
 ): Promise<{ archivePath: string; manifestPath: string; entry: HermesRuntimeManifestEntry }> {
   const os = resolveHermesPackOs(options.os);
   const runtimeId = HERMES_RUNTIME_IDS[os];
-  const stagingRoot = await fs.mkdtemp(path.join(options.outputDir, `.${runtimeId}-staging-`));
+  const outputDir = path.resolve(options.outputDir);
+  await fs.mkdir(outputDir, { recursive: true });
+  const stagingRoot = await fs.mkdtemp(path.join(outputDir, `.${runtimeId}-staging-`));
   const runCommand =
     options.runCommand ??
     (async (command: string, args: string[], cwd: string) => {
@@ -167,19 +174,72 @@ export async function assembleHermesRuntimePack(
     });
 
   try {
-    // 1. uv-managed Python 3.11 venv.
-    await runCommand("uv", ["venv", "--python", "3.11", path.join(stagingRoot, "python")], stagingRoot);
-    // 2. Pin-install hermes-agent into that venv.
-    await runCommand(
-      "uv",
-      ["pip", "install", "--python", path.join(stagingRoot, "python"), HERMES_AGENT_PIP_SPEC],
-      stagingRoot,
-    );
+    let pythonRelativePath: string;
+    let hermesRelativePath: string;
+    if (os === "windows") {
+      // A Linux host cannot create a real Windows venv with `uv venv`.
+      // Assemble from the pinned python-build-standalone distribution,
+      // resolve Windows wheels explicitly, then create a native distlib
+      // console launcher. This keeps the published pack genuinely runnable
+      // on Windows instead of relabeling a Linux venv.
+      const pythonArchive = path.join(stagingRoot, ".python-windows.tar.gz");
+      await runCommand("curl", ["-L", "--fail", "--silent", "--show-error", "-o", pythonArchive, WINDOWS_PYTHON_ARCHIVE_URL], stagingRoot);
+      await runCommand("tar", ["-xzf", pythonArchive, "-C", stagingRoot], stagingRoot);
+      await fs.rm(pythonArchive, { force: true });
 
-    const pythonRelativePath =
-      os === "windows" ? "python/Scripts/python.exe" : "python/bin/python3";
-    const hermesRelativePath =
-      os === "windows" ? "python/Scripts/hermes.exe" : "python/bin/hermes";
+      await runCommand(
+        "uv",
+        [
+          "pip",
+          "install",
+          "--target",
+          path.join(stagingRoot, "python", "Lib", "site-packages"),
+          "--python-platform",
+          "x86_64-pc-windows-msvc",
+          "--python-version",
+          "3.11",
+          "--only-binary",
+          ":all:",
+          HERMES_AGENT_PIP_SPEC,
+        ],
+        stagingRoot,
+      );
+
+      const buildTools = path.join(stagingRoot, ".build-tools");
+      await runCommand("uv", ["pip", "install", "--target", buildTools, DISTLIB_BUILD_SPEC], stagingRoot);
+      const launcherScript = [
+        "from pathlib import Path",
+        "import sys",
+        "sys.path.insert(0, sys.argv[1])",
+        "from distlib.scripts import ScriptMaker",
+        "root = Path(sys.argv[2])",
+        "launcher = (Path(sys.argv[1]) / 'distlib' / 't64.exe').read_bytes()",
+        "maker = ScriptMaker(None, str(root))",
+        "maker._is_nt = True",
+        "maker._get_launcher = lambda kind: launcher",
+        "maker.executable = 'python.exe'",
+        "maker.variants = {''}",
+        "maker.set_mode = False",
+        "maker.make('hermes = hermes_cli.main:main')",
+      ].join("\n");
+      await runCommand(
+        "python3",
+        ["-c", launcherScript, buildTools, path.join(stagingRoot, "python")],
+        stagingRoot,
+      );
+      await fs.rm(buildTools, { recursive: true, force: true });
+      pythonRelativePath = "python/python.exe";
+      hermesRelativePath = "python/hermes.exe";
+    } else {
+      await runCommand("uv", ["venv", "--python", "3.11", path.join(stagingRoot, "python")], stagingRoot);
+      await runCommand(
+        "uv",
+        ["pip", "install", "--python", path.join(stagingRoot, "python"), HERMES_AGENT_PIP_SPEC],
+        stagingRoot,
+      );
+      pythonRelativePath = "python/bin/python3";
+      hermesRelativePath = "python/bin/hermes";
+    }
 
     if (!existsSync(path.join(stagingRoot, hermesRelativePath))) {
       throw new Error(
@@ -188,8 +248,41 @@ export async function assembleHermesRuntimePack(
     }
 
     const archiveFileName = `smart-ai-hub-hermes-runtime-${runtimeId}-${options.version}.zip`;
-    const archivePath = path.join(options.outputDir, archiveFileName);
-    await runCommand("zip", ["-r", archivePath, "."], stagingRoot);
+    const archivePath = path.join(outputDir, archiveFileName);
+
+    // The Worker App requires manifest.json INSIDE the archive after
+    // extraction. Archive digest/size are intentionally omitted here to
+    // avoid a self-referential checksum; the sidecar below carries those.
+    const installManifest = buildHermesRuntimeManifestEntry({
+      os,
+      version: options.version,
+      archiveSha256: "",
+      archiveSizeBytes: 0,
+      pythonRelativePath,
+      hermesRelativePath,
+    });
+    const {
+      archiveSha256: _archiveSha256,
+      archiveSizeBytes: _archiveSizeBytes,
+      archiveUrl: _archiveUrl,
+      ...installManifestWithoutArchive
+    } = installManifest;
+    await fs.writeFile(
+      path.join(stagingRoot, "manifest.json"),
+      JSON.stringify(installManifestWithoutArchive, null, 2),
+    );
+
+    const zipScript = [
+      "from pathlib import Path",
+      "from zipfile import ZIP_DEFLATED, ZipFile",
+      "root = Path(sys.argv[1])",
+      "archive = Path(sys.argv[2])",
+      "with ZipFile(archive, 'w', ZIP_DEFLATED, allowZip64=True) as output:",
+      "    for item in sorted(root.rglob('*')):",
+      "        if item.is_file():",
+      "            output.write(item, item.relative_to(root).as_posix())",
+    ].join("\n");
+    await runCommand("python3", ["-c", `import sys\n${zipScript}`, stagingRoot, archivePath], stagingRoot);
 
     const archiveSha256 = await sha256File(archivePath);
     const archiveSizeBytes = (await fs.stat(archivePath)).size;

@@ -1,33 +1,67 @@
 # Orchestra Decisions
 
-[2026-07-16T16:36:30Z] DECISION: Archive the previous completed Orchestra session before starting this task.
-  Context: no active snapshot existed and artifact-management requires a non-destructive fresh start.
-  Archive: /home/dev/projects/SmartSpecPro/orchestra/archive/2026-07-16T16-36-30Z
+[2026-07-20T01:35:00Z] DECISION: Recommend one enabled backward-compatible
+GPT Image 2 catalog row with declarative reference-driven Kie model routing.
+  Context: The current stack already separates the selected/public model ID from
+  `api_config.kie_model_id`, and all Kie image requests expose normalized reference
+  URLs at the provider boundary.
+  Alternatives considered: new canonical row, frontend-only switching, and a
+  hardcoded provider-wide GPT-specific branch.
 
-[2026-07-16T16:40:00Z] DECISION: Use direct standard-light execution with sequential rollout waves.
-  Context: the task changes critical production runtime behavior in a heavily dirty worktree; one conductor preserves backup, install, rollback, and verification ordering.
-  Alternatives considered: parallel writers; rejected because runtime files share lifecycle contracts and live rollout is inherently sequential.
+[2026-07-20T08:50:00+07:00] DECISION: Implement the approved route as an
+opt-in provider capability keyed by `kie_model_id_with_references`.
+  Context: Reference URLs and flattened model API config meet at the Python Kie
+  provider, making it the narrowest authoritative switching boundary.
+  Proof: catalog migration/seed tests, enabled-model alias test, TypeScript
+  metadata-forwarding test, and 28 focused Python provider tests pass.
 
-[2026-07-16T16:54:11Z] DECISION: Capture a timestamped host-runtime backup before installation.
-  Context: active SocratiCode scripts and systemd units live outside the application git worktree; watcher log rotation is also state-changing.
-  Backup: /home/dev/tools/socraticode-docker/backups/20260716T165411Z-lifecycle-hardening
-  Manifest: /home/dev/projects/SmartSpecPro/orchestra/backups/20260716T165411Z-socraticode-runtime/RESTORE.md
-  Restore: install the saved launcher/watcher/index/unit files, remove the newly added cleanup units/logrotate policy, daemon-reload, and restart only the dedicated watcher.
+[2026-07-20T08:48:32+07:00] DECISION: Back up the affected database tables
+before applying migration 0212.
+  Backup: /home/dev/projects/SmartSpecPro/orchestra/backups/backup-20260720-014832Z-kie-gpt-image-2-pre-migration.dump
+  Scope: public.media_models and drizzle.__drizzle_migrations from database smartspec
+  Format: PostgreSQL custom archive; SHA-256 cd4a731a919fde4adf1c6c0551727ee46b9498ff988cbc24e8c8ab089af1e6bf
+  Restore: inspect with pg_restore --list, then restore into a recovery database
+  with pg_restore --data-only --dbname=<recovery_database> <backup>.
 
-[2026-07-16T16:55:48Z] DECISION: Install checksum-validated runtime copies and restart only the dedicated watcher.
-  Context: cleanup dry-run selected no active container; the four pre-rollout interactive/watcher IDs were inventoried first.
-  Result: all three interactive IDs were preserved, the legacy watcher was replaced by one labeled 4 GiB managed watcher, and live MCP initialize/status passed.
+[2026-07-20T08:49:21+07:00] DECISION: Raise migration 0212 journal timestamp
+above the latest live migration timestamp before retrying Drizzle migrate.
+  Context: the first migrate command exited successfully but skipped 0212 because
+  its original journal timestamp was older than an out-of-band live ledger entry.
+  Proof: the retried migration inserted hash
+  96aba02e01fa08d411a251e8c8f05b687974b031bf4b5777379e7f4d52f1dc67
+  once and produced the expected one-enabled-row database state.
 
-[2026-07-16T17:04:01Z] DECISION: Enable the five-minute cleanup timer after fail-closed service repairs.
-  Context: the first service run exposed a read-only temporary-directory mismatch without mutating any container. The lock was then moved from shared `/tmp` into the dev-owned runtime lock directory and the sandbox was narrowed.
-  Result: the automatic timer run succeeded at 00:04:01 +07; installed security exposure is 2.6 OK and legacy containers remain report-only.
+[2026-07-20T09:08:11+07:00] DECISION: Gracefully drain and restart only the
+production media Celery worker after explicit user approval.
+  Context: the bind-mounted source was current but the worker process had loaded
+  the old provider module two days earlier; an active generation was allowed to
+  finish before the media consumer restarted.
+  Proof: media queue consumer is restored, worker ping is OK, and the fresh
+  process resolves reference-bearing GPT Image 2 requests to image-to-image.
 
-[2026-07-16T17:05:22Z] DECISION: Treat the busy legacy-client OOM as successful local containment, not an orphan-cleanup target.
-  Context: process-tree evidence proved the launcher and remote client live, so deleting it would violate the approved policy. It later reached its existing 4 GiB/no-swap cap.
-  Result: only that container exited; the monitor emitted a critical cgroup alert, host PSI stayed zero, and three follow-up snapshots retained flat counters and HTTP 200 health.
+[2026-07-20T09:11:47+07:00] DECISION: Persist the effective opt-in image model
+at async task creation and restart only the Python backend.
+  Context: provider routing alone fixed Kie execution but Media History reads
+  media_tasks.model, which previously retained the canonical text-to-image ID.
+  Proof: three new endpoint tests plus 28 provider tests pass; backend health is
+  HTTP 200 after restart.
 
-[2026-07-17T10:23:15Z] DECISION: Temporarily disable all SocratiCode runtime entry points after recurrence was proven.
-  Context: the previous boot recorded 16 SocratiCode Node memcg OOM kills, and ten managed MCP containers had already returned within 19 minutes of reboot. The fail-closed orphan policy correctly preserved live launchers but could not bound aggregate live-client memory.
-  Actions: set `/home/dev/tools/socraticode-docker/socraticode-mcp.sh` mode to `000`; disable and stop the watcher/index/cleanup units; stop all managed MCP containers; set `socraticode-qdrant` restart policy to `no` and stop it.
-  Data safety: the `socraticode_qdrant_data` named volume was preserved; no database, application container, or repository source file was changed.
-  Restore: restore launcher mode `0755`; enable the units; set Qdrant restart policy to `unless-stopped`; start Qdrant, index, watcher, and cleanup timer in that order.
+[2026-07-20T09:25:37+07:00] DECISION: Stop the only abandoned MCP media task
+after creating a table-data backup.
+  Context: task mcp_815c37bf01582291e6bb200d7b9960a1 caused 354 wrong-backend
+  fetch-result calls in about 100 seconds and exhausted a shared limiter bucket.
+  Backup: /home/dev/projects/SmartSpecPro/orchestra/backups/backup-20260720-mcp-media-tasks-pre-polling-stop.sql
+  Scope: public.mcp_media_tasks data
+  Format: PostgreSQL plain SQL data dump
+  Restore: load into a recovery database with psql; do not restore the stale row
+  to production because it would re-enable the incident condition.
+
+[2026-07-20T09:41:00+07:00] DECISION: Deploy the approved complete fix by
+gracefully restarting only the backend and web services.
+  Context: focused routing, polling, reconciliation, and JWT identity tests
+  passed; no schema or infrastructure change was required.
+  Proof: both services are active, local/public health passed, and two polling
+  windows recorded zero fetch-result bursts, 404s, limiter events, or 429s.
+[2026-07-20T22:55:37Z] DECISION: Route per-shot prompt plus image generation through the bounded per-shot prompt mutation
+  Context: Production evidence showed eight duplicate full start-frame plan runs for episode 114; synchronous whole-episode planning behind each per-shot click caused overlapping retries and HTTP 524 responses.
+  Alternatives considered: Client-only single-flight would still leave the first long request exposed to the proxy timeout; increasing the proxy timeout would preserve duplicate expensive work.

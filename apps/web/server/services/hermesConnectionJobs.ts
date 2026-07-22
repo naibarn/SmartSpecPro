@@ -111,6 +111,8 @@ export interface HermesConnectionJobsRepo {
   findNonTerminalControlJobForConnection(params: { connectionId: string; tenantId: string }): Promise<WorkerJob | null>;
   findWorkerById(params: { tenantId: string; workerId: string }): Promise<Worker | null>;
   insertJob(values: InsertWorkerJob): Promise<WorkerJob>;
+  listTimedOutControlJobs(now: Date): Promise<WorkerJob[]>;
+  expireTimedOutControlJob(params: { jobId: string; now: Date }): Promise<WorkerJob | null>;
   listTerminalUnsettledHermesJobs(): Promise<WorkerJob[]>;
   appendJobEvent(params: { jobId: string; eventType: string; payloadJson: Record<string, unknown> }): Promise<void>;
   updateConnectionRow(params: {
@@ -161,6 +163,42 @@ export const defaultHermesConnectionJobsRepo: HermesConnectionJobsRepo = {
     const db = getDb();
     const [row] = await db.insert(workerJobs).values(values).returning();
     return row;
+  },
+
+  async listTimedOutControlJobs(now) {
+    const db = getDb();
+    return db
+      .select()
+      .from(workerJobs)
+      .where(and(
+        inArray(workerJobs.jobType, [...HERMES_CONNECTION_CONTROL_JOB_TYPES]),
+        notInArray(workerJobs.status, [...TERMINAL_STATUSES]),
+        sql`coalesce(${workerJobs.startedAt}, ${workerJobs.createdAt})
+          + (${workerJobs.timeoutSeconds} * interval '1 second') <= ${now.toISOString()}::timestamptz`,
+      ))
+      .orderBy(workerJobs.startedAt)
+      .limit(100);
+  },
+
+  async expireTimedOutControlJob({ jobId, now }) {
+    const db = getDb();
+    const [row] = await db
+      .update(workerJobs)
+      .set({
+        status: "expired",
+        statusReason: "Hermes connection control job exceeded its hard timeout",
+        failureReason: "authorization_timeout",
+        finishedAt: now,
+        leaseOwnerToken: null,
+        leaseExpiresAt: null,
+      })
+      .where(and(
+        eq(workerJobs.id, jobId),
+        inArray(workerJobs.jobType, [...HERMES_CONNECTION_CONTROL_JOB_TYPES]),
+        notInArray(workerJobs.status, [...TERMINAL_STATUSES]),
+      ))
+      .returning();
+    return row ?? null;
   },
 
   async listTerminalUnsettledHermesJobs() {
@@ -364,8 +402,9 @@ function classifyMediaJobFailureForConnectionEffect(
     || lower.includes("unauthorized")
     || lower.includes("invalid_grant")
     || lower.includes("revoked")
-    || lower.includes("session")
-    || lower.includes("auth")
+    || lower.includes("oauth session")
+    || lower.includes("access token")
+    || lower.includes("token expired")
   ) {
     return "reauth_required";
   }
@@ -559,6 +598,26 @@ export async function runHermesConnectionSettlementTick(
 ): Promise<void> {
   const repo = deps.repo ?? defaultHermesConnectionJobsRepo;
   const now = deps.now ?? (() => new Date());
+  const tickNow = now();
+
+  try {
+    const timedOutJobs = await repo.listTimedOutControlJobs(tickNow);
+    for (const timedOutJob of timedOutJobs) {
+      try {
+        const expiredJob = await repo.expireTimedOutControlJob({
+          jobId: timedOutJob.id,
+          now: tickNow,
+        });
+        if (expiredJob) {
+          await settleHermesConnectionJob(expiredJob, { repo, now: () => tickNow });
+        }
+      } catch (error) {
+        debugError("hermesConnectionJobs", `Failed to expire hermes job ${timedOutJob.id}`, error);
+      }
+    }
+  } catch (error) {
+    debugError("hermesConnectionJobs", "Failed to list timed-out hermes jobs", error);
+  }
 
   let jobs: WorkerJob[];
   try {

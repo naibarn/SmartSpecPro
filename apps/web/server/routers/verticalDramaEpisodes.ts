@@ -242,6 +242,7 @@ import {
   type VerticalDramaDialogueQualityLine,
   type VerticalDramaEpisodeDialogueQuality,
 } from "@shared/verticalDramaSeries/dialogueQuality";
+import { resolveEffectiveImagePromptLanguage } from "@shared/verticalDramaSeries/imagePromptLanguage";
 // Wave-4A/W4-B integration (spec §8.8, section-12) — the guided Production
 // Wizard state resolver. TYPE-ONLY here (pure/shared, no runtime import) —
 // the resolver FUNCTION itself is loaded via a runtime `import()` inside
@@ -9629,68 +9630,154 @@ export const verticalDramaEpisodesRouter = router({
         episodeId,
       });
 
-      // Hygiene rule: `thaiAccent` is only meaningful when the effective
-      // dialogue language is Thai. If the caller explicitly sets a
-      // non-Thai `dialogueLanguage`, drop any existing `thaiAccent` from
-      // the persisted pack entirely rather than leave a stale accent value
-      // that would silently apply if the language were ever switched back.
-      const shouldClearThaiAccent =
-        Boolean(input.dialogueLanguage) && input.dialogueLanguage !== "th";
-
-      const existingPack =
-        row.motionPromptPack as VerticalDramaMotionPromptPack | null;
-      const updatedPack: VerticalDramaMotionPromptPack = existingPack
-        ? {
-            ...existingPack,
-            ...(input.promptLanguage
-              ? { promptLanguage: input.promptLanguage }
-              : {}),
-            ...(input.dialogueLanguage
-              ? { dialogueLanguage: input.dialogueLanguage }
-              : {}),
-            ...(input.thaiAccent ? { thaiAccent: input.thaiAccent } : {}),
-          }
-        : {
-            // Empty, NOT `DEFAULT_MODELS.video` — "selected" must reflect a
-            // REAL user choice, not an auto-default (fail-closed guard in
-            // `generateVideoClip`/the video-prompt-pack procedure requires a
-            // non-empty value before generating).
-            selectedVideoModelId: "",
-            durationProfileId:
-              row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
-            motionMode: "first_frame_to_video",
-            clips: [],
-            warnings: [],
-            ...(input.promptLanguage
-              ? { promptLanguage: input.promptLanguage }
-              : {}),
-            ...(input.dialogueLanguage
-              ? { dialogueLanguage: input.dialogueLanguage }
-              : {}),
-            ...(input.thaiAccent ? { thaiAccent: input.thaiAccent } : {}),
-          };
-
-      if (shouldClearThaiAccent) {
-        delete updatedPack.thaiAccent;
-      }
-
-      const [updatedRow] = await db
-        .update(verticalDramaEpisodes)
-        .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
-        .where(
-          and(
-            eq(verticalDramaEpisodes.id, episodeId),
-            eq(verticalDramaEpisodes.tenantId, tenantId),
-            eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId)
+      return db.transaction(async tx => {
+        const [lockedRow] = await tx
+          .select()
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
           )
-        )
-        .returning();
+          .for("update")
+          .limit(1);
+        const freshRow = lockedRow ?? row;
+        const existingPack =
+          freshRow.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const existingStartFramePlan =
+          freshRow.startFramePlan as VerticalDramaStartFramePlan | null;
+        const updatedPack: VerticalDramaMotionPromptPack = existingPack
+          ? {
+              ...existingPack,
+              ...(input.promptLanguage
+                ? { promptLanguage: input.promptLanguage }
+                : {}),
+              ...(input.dialogueLanguage
+                ? { dialogueLanguage: input.dialogueLanguage }
+                : {}),
+              ...(input.thaiAccent ? { thaiAccent: input.thaiAccent } : {}),
+            }
+          : {
+              selectedVideoModelId: "",
+              durationProfileId:
+                freshRow.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+              motionMode: "first_frame_to_video",
+              clips: [],
+              warnings: [],
+              ...(input.promptLanguage
+                ? { promptLanguage: input.promptLanguage }
+                : {}),
+              ...(input.dialogueLanguage
+                ? { dialogueLanguage: input.dialogueLanguage }
+                : {}),
+              ...(input.thaiAccent ? { thaiAccent: input.thaiAccent } : {}),
+            };
 
-      return {
-        episode: { ...updatedRow, id: String(updatedRow.id) },
-        motionPromptPack: updatedPack,
-      };
+        if (input.dialogueLanguage && input.dialogueLanguage !== "th") {
+          delete updatedPack.thaiAccent;
+        }
+
+        const shouldSnapshotLegacyImageLanguage =
+          Boolean(input.promptLanguage) && !existingStartFramePlan?.imagePromptLanguage;
+        const updatedStartFramePlan: VerticalDramaStartFramePlan | undefined =
+          shouldSnapshotLegacyImageLanguage
+            ? {
+                ...(existingStartFramePlan ?? {
+                  mode: "single_frame_per_shot" as const,
+                  selectedImageModelId: "",
+                  frames: [],
+                }),
+                imagePromptLanguage: resolveEffectiveImagePromptLanguage({
+                  startFramePlan: existingStartFramePlan,
+                  motionPromptPack: existingPack,
+                }),
+              }
+            : undefined;
+        const [updatedRow] = await tx
+          .update(verticalDramaEpisodes)
+          .set({
+            motionPromptPack: updatedPack,
+            ...(updatedStartFramePlan ? { startFramePlan: updatedStartFramePlan } : {}),
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          )
+          .returning();
+
+        return {
+          episode: { ...updatedRow, id: String(updatedRow.id) },
+          motionPromptPack: updatedPack,
+          ...(updatedStartFramePlan ? { startFramePlan: updatedStartFramePlan } : {}),
+        };
+      });
+    }),
+
+  setEpisodeImagePromptLanguage: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        imagePromptLanguage: z.enum(VERTICAL_DRAMA_PROMPT_LANGUAGES),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      return db.transaction(async tx => {
+        const [lockedRow] = await tx
+          .select()
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          )
+          .for("update")
+          .limit(1);
+        const freshRow = lockedRow ?? row;
+        const existingPlan =
+          freshRow.startFramePlan as VerticalDramaStartFramePlan | null;
+        const updatedPlan: VerticalDramaStartFramePlan = existingPlan
+          ? { ...existingPlan, imagePromptLanguage: input.imagePromptLanguage }
+          : {
+              mode: "single_frame_per_shot",
+              selectedImageModelId: "",
+              frames: [],
+              imagePromptLanguage: input.imagePromptLanguage,
+            };
+        const [updatedRow] = await tx
+          .update(verticalDramaEpisodes)
+          .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          )
+          .returning();
+        return {
+          episode: { ...updatedRow, id: String(updatedRow.id) },
+          startFramePlan: updatedPlan,
+        };
+      });
     }),
 
   /**
@@ -12625,17 +12712,13 @@ export const verticalDramaEpisodesRouter = router({
         frame.locationKey
       );
 
-      // Shared-field prompt-language fix — the episode-level video-prompt
-      // language plan (`motionPromptPack.promptLanguage`, set via
-      // `setEpisodeVideoPromptLanguage`) now ALSO governs image/start-frame
-      // prompt text, not just video-clip prompt text (same field, wider
-      // scope — see `VerticalDramaPromptLanguage`'s doc comment in
-      // `contracts.ts`). Read the same way every other call site in this
-      // file reads `row.motionPromptPack` (e.g. `setEpisodeVideoPromptLanguage`
-      // above).
-      const shotStartFramePromptLanguage = (
-        row.motionPromptPack as VerticalDramaMotionPromptPack | null
-      )?.promptLanguage;
+      // Resolve the independent image language, retaining the former shared
+      // video-language value only as a compatibility fallback for episodes
+      // created before `startFramePlan.imagePromptLanguage` existed.
+      const shotStartFramePromptLanguage = resolveEffectiveImagePromptLanguage({
+        startFramePlan: basePlan,
+        motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
+      });
 
       // Strip any stale identity-lock suffix before handing the stored
       // prompt to the skill as informational-only scene grounding — same
@@ -12750,6 +12833,23 @@ export const verticalDramaEpisodesRouter = router({
         resolveDefaultImagePromptMode(shotStartFramePromptImageModelFamily);
       const shotStartFramePromptModeResolvedFrom: "user" | "auto" =
         shotStartFramePromptExplicitMode ? "user" : "auto";
+      // A free-text AI edit is a separate, general prompt-repair action. It
+      // must not masquerade as synopsis-direct mode or stamp the result as if
+      // it came from the deterministic policy-safe contract.
+      const shotStartFramePromptIsManualAiEdit =
+        Boolean(input.instruction?.trim()) && !input.canonicalShotSummary?.trim();
+      const shotStartFramePromptCanonicalSynopsis =
+        input.canonicalShotSummary?.trim() || frame.canonicalShotSummary?.trim();
+      if (
+        !shotStartFramePromptIsManualAiEdit &&
+        shotStartFramePromptResolvedMode === "policy_safe_rewrite" &&
+        !shotStartFramePromptCanonicalSynopsis
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `ไม่พบเรื่องย่อหลักของช็อต ${input.shotNumber} — กรุณากลับไปสร้างหรือบันทึกเรื่องย่อใน Overview ก่อนสร้างพรอมต์ภาพ`,
+        });
+      }
 
       // Preset visual identity flow-through (spec §8.2.2) — ONLY resolved
       // for the two new modes' `SERIES VISUAL IDENTITY` fact (the service's
@@ -12826,7 +12926,7 @@ export const verticalDramaEpisodesRouter = router({
           instruction: input.instruction,
           currentPrompt: shotStartFramePromptBasePrompt,
           currentNegativePrompt: frame.negativePrompt ?? "",
-          canonicalShotSummary: input.canonicalShotSummary,
+          canonicalShotSummary: shotStartFramePromptCanonicalSynopsis,
           requiredCharacterRefs: frame.requiredCharacterRefs,
           characters: shotStartFramePromptCharacterIdentitySources,
           characterReferenceManifest:
@@ -12838,8 +12938,12 @@ export const verticalDramaEpisodesRouter = router({
           targetAudienceRegion: shotStartFramePromptRegion,
           promptLanguage: shotStartFramePromptLanguage,
           // Two-mode start-frame image prompt switch — resolved above.
-          imagePromptMode: shotStartFramePromptResolvedMode,
-          imagePromptModeResolvedFrom: shotStartFramePromptModeResolvedFrom,
+          imagePromptMode: shotStartFramePromptIsManualAiEdit
+            ? undefined
+            : shotStartFramePromptResolvedMode,
+          imagePromptModeResolvedFrom: shotStartFramePromptIsManualAiEdit
+            ? undefined
+            : shotStartFramePromptModeResolvedFrom,
           imageModelFamily: shotStartFramePromptImageModelFamily,
           imageModelName: shotStartFramePromptImageModelName,
           imageModelId: basePlan.selectedImageModelId || undefined,
@@ -12957,18 +13061,23 @@ export const verticalDramaEpisodesRouter = router({
       // Final-prompt QC (hard length cap) — enforced BEFORE this prompt is
       // persisted onto `startFramePlan.frames[]` below, same convention as
       // every other outgoing image prompt in this router.
-      const shotStartFramePromptQc = await ensurePromptWithinLimit({
-        kind: "image",
-        prompt: shotStartFramePromptResult.prompt,
-        userId,
-        tenantId,
-        seriesId,
-        idempotencyKey: input.idempotencyKey
-          ? `${input.idempotencyKey}:prompt-qc`
-          : undefined,
-        label: `start-frame shot prompt (episode #${episodeId}, shot ${input.shotNumber})`,
-      });
-      shotStartFramePromptResult.prompt = shotStartFramePromptQc.prompt;
+      // Synopsis-direct mode has already been hard-capped by the service.
+      // Never send it through the creative QC rewriter: doing so would undo
+      // the exact-replacement proof and could add cinematic details again.
+      if (shotStartFramePromptResult.usedMode !== "policy_safe_rewrite") {
+        const shotStartFramePromptQc = await ensurePromptWithinLimit({
+          kind: "image",
+          prompt: shotStartFramePromptResult.prompt,
+          userId,
+          tenantId,
+          seriesId,
+          idempotencyKey: input.idempotencyKey
+            ? `${input.idempotencyKey}:prompt-qc`
+            : undefined,
+          label: `start-frame shot prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+        });
+        shotStartFramePromptResult.prompt = shotStartFramePromptQc.prompt;
+      }
 
       // Persist onto ONLY the target shot's frame inside
       // `startFramePlan.frames[]` — same 2026-07-11 lost-update-race-fix
@@ -13014,18 +13123,14 @@ export const verticalDramaEpisodesRouter = router({
           ...(targetIndex === -1 ? frame : updatedFrames[targetIndex]),
           imagePrompt: shotStartFramePromptResult.prompt,
           negativePrompt: shotStartFramePromptResult.negativePrompt,
-          ...(input.canonicalShotSummary
-            ? { canonicalShotSummary: input.canonicalShotSummary }
+          ...(shotStartFramePromptCanonicalSynopsis
+            ? { canonicalShotSummary: shotStartFramePromptCanonicalSynopsis }
             : {}),
           // Two-mode start-frame image prompt switch — stamp which engine
           // authored this prompt + its normalized director's-notes extras.
-          // `frameStamp` is present on every call today (this procedure
-          // always resolves a mode — see `shotStartFramePromptResolvedMode`
-          // above); the conditional spread is a defensive no-op guard, not a
-          // reachable legacy branch, so a frame's existing stamp/extras
-          // (from `updatedFrames[targetIndex]`, spread above) are only ever
-          // left untouched, never wiped, if some future caller ever omits a
-          // mode again.
+          // Automatic generation carries a stamp. A free-text AI edit uses
+          // the general legacy editor and explicitly clears any stale stamp
+          // and mode-specific extras below.
           ...(shotStartFramePromptResult.frameStamp
             ? { promptMode: shotStartFramePromptResult.frameStamp }
             : {}),
@@ -13036,6 +13141,18 @@ export const verticalDramaEpisodesRouter = router({
             ? { promptAnalysis: shotStartFramePromptResult.promptAnalysis }
             : {}),
         };
+        if (shotStartFramePromptIsManualAiEdit) {
+          delete updatedFrame.promptMode;
+          delete updatedFrame.promptSafetyAdjustments;
+          delete updatedFrame.promptAnalysis;
+        } else {
+          if (!shotStartFramePromptResult.safetyAdjustments) {
+            delete updatedFrame.promptSafetyAdjustments;
+          }
+          if (!shotStartFramePromptResult.promptAnalysis) {
+            delete updatedFrame.promptAnalysis;
+          }
+        }
         if (targetIndex === -1) {
           updatedFrames.push(updatedFrame);
           updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
@@ -13198,9 +13315,10 @@ export const verticalDramaEpisodesRouter = router({
         frame.locationKey
       );
 
-      const referenceFramePromptLanguage = (
-        row.motionPromptPack as VerticalDramaMotionPromptPack | null
-      )?.promptLanguage;
+      const referenceFramePromptLanguage = resolveEffectiveImagePromptLanguage({
+        startFramePlan: basePlan,
+        motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
+      });
 
       // Scene grounding only — same defensive stripping every other call
       // site applies to a stored prompt before an LLM call.

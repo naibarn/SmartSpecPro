@@ -1030,9 +1030,36 @@ export function extractJson(text: string): unknown {
     // `executeJsonPlanningCallWithRetry`'s higher-token-ceiling schema retry
     // and could ship fabricated/incomplete data, so truncated responses must
     // keep throwing exactly as before.
-    if (balancedSlice) {
+    //
+    // 2026-07-22 follow-up (`google/gemini-3.5-flash`, "Episode script"
+    // stage — journalctl smartspec-web 08:57-08:58 UTC, 3/3 attempts failed
+    // with `Expected ',' or '}' after property value` / `Expected ',' or ']'
+    // after array element` at positions 7401/9082/9659, i.e. far under the
+    // 12000/24000-token ceilings, so NOT truncation): when the model leaves
+    // an UNESCAPED `"` inside a string value — extremely common for Thai
+    // dialogue that quotes a character — the string-aware scan above
+    // desyncs on that stray quote. With an odd number of stray quotes the
+    // scan never returns to depth 0, so `findBalancedJsonEnd` returns -1,
+    // `balancedSlice` stays null, and the repair below was SKIPPED
+    // entirely even though `jsonrepair` fixes exactly this input. That is
+    // why the failure survived all `VD_SCHEMA_MAX_RETRIES` retries.
+    //
+    // So: prefer the balanced slice when the scan found one, and otherwise
+    // fall back to the legacy slice — but ONLY when the response is
+    // COMPLETE, i.e. the trimmed candidate's last non-whitespace character
+    // closes a JSON value (`}` / `]`). A genuinely truncated response is cut
+    // off mid-token and never ends that way, so it keeps throwing exactly as
+    // before and still reaches `executeJsonPlanningCallWithRetry`'s
+    // higher-token-ceiling retry instead of shipping machine-fabricated
+    // closing brackets.
+    const trimmedCandidate = candidate.trimEnd();
+    const looksComplete =
+      trimmedCandidate.endsWith("}") || trimmedCandidate.endsWith("]");
+    const repairTarget =
+      balancedSlice ?? (looksComplete && legacyEnd > legacyStart ? jsonSlice : null);
+    if (repairTarget) {
       try {
-        const repaired = jsonrepair(balancedSlice);
+        const repaired = jsonrepair(repairTarget);
         return JSON.parse(repaired);
       } catch {
         // Repair failed too (or produced something still unparsable) — fall
@@ -1409,6 +1436,33 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
     parsedJson: unknown;
     zodError: unknown;
   }) => { data: T; warnings: string[] } | null;
+  /**
+   * OPTIONAL passthrough (2026-07-18, timeout-hole fix — see
+   * `llmRouter.ts`'s `executeWithFallback` two-phase-timeout doc comment,
+   * audit-2026-07-18.jsonl root cause: moonshotai/kimi-k3 capacity-limited,
+   * totalMs 275904 per hung attempt). `undefined` for every one of this
+   * function's PRE-EXISTING callers — forwarded verbatim to
+   * `executeWithFallback`'s own `timeoutMs`, which is itself opt-in and
+   * default-off, so omitting this keeps every existing caller's control
+   * flow and timing byte-identical to before this option existed. Only
+   * INTERACTIVE callers that need a bounded fail-fast budget (currently
+   * `verticalDramaCharacterImageGeneration.ts`'s character-generation calls)
+   * should set this.
+   */
+  timeoutMs?: number;
+  /**
+   * OPTIONAL override (default `undefined` → `VD_TRANSIENT_RETRY_BACKOFFS_MS.length`,
+   * i.e. 2 — byte-identical to pre-existing behavior) for how many
+   * `"transient"`-classified retries this invocation may use. Exists
+   * because a caller that also sets `timeoutMs` bounds EVERY attempt
+   * (initial + retries) to that same wall-clock ceiling, so the worst-case
+   * total for a stalling provider is `timeoutMs * (1 + effective transient
+   * retries) + sum(backoffs used)` — see the two interactive call sites in
+   * `verticalDramaCharacterImageGeneration.ts` for the concrete arithmetic
+   * proving this stays under the 600s `/trpc/` nginx gateway timeout.
+   * Never affects the (orthogonal) schema-retry budget.
+   */
+  maxTransientRetries?: number;
 }): Promise<{
   data: T;
   response: Awaited<ReturnType<typeof executeWithFallback>> extends infer R
@@ -1431,6 +1485,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       userId: params.userId,
       maxTokens,
       temperature: params.temperature,
+      timeoutMs: params.timeoutMs,
     });
 
     if (result.type !== "success") {
@@ -1513,16 +1568,18 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       // retry for network/timeout/rate-limit/upstream-5xx failures, ORTHOGONAL
       // to the schema retry above (either may fire independently), but the
       // overall attempt count is capped by `VD_PLANNING_CALL_MAX_ATTEMPTS`.
+      const effectiveMaxTransientRetries =
+        params.maxTransientRetries ?? VD_TRANSIENT_RETRY_BACKOFFS_MS.length;
       if (
         classification === "transient" &&
-        transientRetriesUsed < VD_TRANSIENT_RETRY_BACKOFFS_MS.length &&
+        transientRetriesUsed < effectiveMaxTransientRetries &&
         attemptNumber < VD_PLANNING_CALL_MAX_ATTEMPTS
       ) {
         const backoffMs = VD_TRANSIENT_RETRY_BACKOFFS_MS[transientRetriesUsed];
         transientRetriesUsed++;
         debugError(
           "vd_planning_retry",
-          `${params.label}: attempt ${attemptNumber} failed with a transient error for model ${params.model}, retrying after ${backoffMs}ms (transient retry ${transientRetriesUsed}/${VD_TRANSIENT_RETRY_BACKOFFS_MS.length})`,
+          `${params.label}: attempt ${attemptNumber} failed with a transient error for model ${params.model}, retrying after ${backoffMs}ms (transient retry ${transientRetriesUsed}/${effectiveMaxTransientRetries})`,
           { message: errorMessage }
         );
         await vdSleep(backoffMs);
@@ -1569,6 +1626,122 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       );
       throw error;
     }
+  }
+}
+
+/* ---- Shared Vision-Aware JSON Retry Helpers ------------------------------ */
+
+export type VisionAwareContent =
+  | string
+  | Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail: "high" } }
+    >;
+
+export interface VisionAwareImageInput {
+  url: string;
+  label?: string;
+}
+
+export function buildVisionAwareContent(
+  text: string,
+  hasVision: boolean,
+  images: VisionAwareImageInput[],
+): VisionAwareContent {
+  if (!hasVision) return text;
+  const parts: Array<
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string; detail: "high" } }
+  > = [{ type: "text" as const, text }];
+  for (const image of images) {
+    if (image.label) {
+      parts.push({ type: "text" as const, text: image.label });
+    }
+    parts.push({
+      type: "image_url" as const,
+      image_url: { url: image.url, detail: "high" as const },
+    });
+  }
+  return parts;
+}
+
+export type VisionAwareCallResponse = Awaited<ReturnType<typeof executeWithFallback>> extends infer R
+  ? R extends { type: "success"; response: infer Resp }
+    ? Resp
+    : never
+  : never;
+
+export async function runVisionAwareJsonAttempt<T>(args: {
+  model: string;
+  systemPrompt: string;
+  content: VisionAwareContent;
+  userId: number;
+  maxTokens: number;
+  schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
+}): Promise<{ data: T; response: VisionAwareCallResponse }> {
+  const result = await executeWithFallback({
+    model: args.model,
+    messages: [
+      { role: "system", content: args.systemPrompt },
+      { role: "user", content: args.content },
+    ],
+    stream: false,
+    userId: args.userId,
+    maxTokens: args.maxTokens,
+    temperature: 0.7,
+  });
+
+  if (result.type !== "success") {
+    throw new Error(
+      result.type === "error"
+        ? `LLM request failed: ${result.error}`
+        : "LLM request did not reach a successful provider response",
+    );
+  }
+
+  const responseContent = result.response.choices?.[0]?.message?.content ?? "";
+  const parsed = extractJson(responseContent);
+  const validation = args.schema.safeParse(parsed);
+  if (!validation.success) {
+    throw new VdSchemaValidationError(
+      "Vision-aware response failed schema validation",
+      validation.error,
+    );
+  }
+  return { data: validation.data as T, response: result.response };
+}
+
+export async function executeVisionAwareJsonCallWithRetry<T>(args: {
+  model: string;
+  systemPrompt: string;
+  userPromptText: string;
+  hasVision: boolean;
+  images: VisionAwareImageInput[];
+  userId: number;
+  schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
+  firstAttemptMaxTokens: number;
+  retryMaxTokens: number;
+}): Promise<{ data: T; response: VisionAwareCallResponse }> {
+  try {
+    return await runVisionAwareJsonAttempt<T>({
+      model: args.model,
+      systemPrompt: args.systemPrompt,
+      content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
+      userId: args.userId,
+      maxTokens: args.firstAttemptMaxTokens,
+      schema: args.schema,
+    });
+  } catch (firstError) {
+    if (!(firstError instanceof VdSchemaValidationError)) throw firstError;
+    const retryText = `${args.userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
+    return runVisionAwareJsonAttempt<T>({
+      model: args.model,
+      systemPrompt: args.systemPrompt,
+      content: buildVisionAwareContent(retryText, args.hasVision, args.images),
+      userId: args.userId,
+      maxTokens: args.retryMaxTokens,
+      schema: args.schema,
+    });
   }
 }
 
@@ -4192,7 +4365,13 @@ export async function generateStoryBibleDeep(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveDeepStoryDraftModel();
+  // The series-level policy is authoritative for every LLM-backed stage.
+  // `resolveDeepStoryDraftModel` is only the automatic fallback when the
+  // series has no pinned model.
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveDeepStoryDraftModel,
+  );
 
   // Format profiles (task #23) — resolved ONCE per run, from the FULL
   // planned season length (`totalEpisodeCount`), never from `episodes.length`
@@ -6943,7 +7122,13 @@ async function generateStoryBibleDeepPremium(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveDeepStoryDraftModel();
+  // Keep candidate, judge, revise, re-judge, and continuity-sweep calls on
+  // the model the user pinned for this series. The deep-draft selector is
+  // used only when no series-wide model policy is set.
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveDeepStoryDraftModel,
+  );
   const ctx: PremiumRunContext = {
     model,
     userId: params.userId,
@@ -7599,6 +7784,160 @@ export function applyManualDialogueEdit(
     speakabilityWarnings,
     silenceIntentRemoved,
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Manual shot-summary edits — series Overview per-shot "เรื่องย่อช็อต"       */
+/* correction (added 2026-07-22,                                              */
+/* `planning/vd-edit-episode-synopsis/plan.md` Phase 2).                     */
+/*                                                                            */
+/* Lets the user fix ONE deep-drafted shot's `summary` heading text ("ช็อต N  */
+/* — <summary>") AT THE SOURCE (the series' active breakdown item), mirroring */
+/* `applyManualDialogueEdit`/`manualDialogueEditStampSchema`/                */
+/* `readItemManualDialogueEdit` immediately above 1:1 — same stamp shape,    */
+/* same tolerant-reader convention, and the SAME "edit the ACTIVE breakdown  */
+/* version's item IN PLACE" persistence decision documented in that          */
+/* section's own "PERSISTENCE DECISION" comment above (the identical         */
+/* justification applies verbatim here: a summary-text correction is a       */
+/* typo/line-level fix to already-produced content, not a re-plan, so it is  */
+/* exempt from the append-only breakdown-versions discipline the same way a  */
+/* dialogue-line fix is).                                                    */
+/*                                                                            */
+/* Only `summary` changes — `dialogue_lines`, `silence_intent`, `characters`, */
+/* `location_key`, `contract`, `tie_in`, and the item's `draftCompleteness`  */
+/* (derived from dialogue only, per `computeDraftCompleteness` — a summary   */
+/* edit never affects it) are all left untouched, carried over via the same  */
+/* shallow-spread-only discipline this file uses throughout.                 */
+/* -------------------------------------------------------------------------- */
+
+const manualShotSummaryEditStampSchema = z
+  .object({
+    editedAt: z.string().min(1),
+    editedByUserId: z.number().int().positive(),
+    shotNumbers: z.array(
+      z.number().int().min(1).max(VD_DEEP_DRAFT_SHOTS_PER_EPISODE)
+    ),
+    /** Idempotency replay guard — mirrors `manualDialogueEditStampSchema.appliedIdempotencyKeys`'s own doc comment exactly, scoped to the `summary` half of `updateEpisodeDraftShot` instead. */
+    appliedIdempotencyKeys: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+export type VdManualSummaryEditStamp = z.infer<
+  typeof manualShotSummaryEditStampSchema
+>;
+
+/**
+ * Tolerant read of a stored breakdown item's `manualSummaryEdit` — mirrors
+ * `readItemManualDialogueEdit`'s exact "never throw, `null` when absent or
+ * malformed" shape.
+ */
+export function readItemManualSummaryEdit(
+  item: StoredEpisodeBreakdownItem
+): VdManualSummaryEditStamp | null {
+  const raw = (item as { manualSummaryEdit?: unknown }).manualSummaryEdit;
+  if (raw === undefined) return null;
+  const parsed = manualShotSummaryEditStampSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Thrown by `applyManualShotSummaryEdit` when `item` has no `shotDrafts` at all, or none matching the requested `shotNumber`. The router maps this to `TRPCError({ code: "NOT_FOUND" })`, reusing this error's own message verbatim — mirrors `ManualDialogueEditNoDraftError` exactly. */
+export class ManualShotSummaryEditNoDraftError extends Error {
+  code = "VD_MANUAL_SHOT_SUMMARY_EDIT_NO_DRAFT" as const;
+  constructor() {
+    super("ไม่มีร่างสำหรับตอน/ช็อตนี้");
+    this.name = "ManualShotSummaryEditNoDraftError";
+  }
+}
+
+export interface ApplyManualShotSummaryEditInput {
+  /** The ACTIVE breakdown item carrying the target shot (already resolved by the caller — this function never scans `bible`). */
+  item: StoredEpisodeBreakdownItem;
+  shotNumber: number;
+  /** REPLACES the shot's `summary` verbatim. */
+  summary: string;
+  editedByUserId: number;
+  /** Overridable for deterministic tests; defaults to `new Date().toISOString()`. */
+  editedAt?: string;
+  /**
+   * Recorded into `manualSummaryEdit.appliedIdempotencyKeys` (accumulated)
+   * when provided. The router calls this function ONLY on a fresh
+   * (non-replay, non-no-op) edit — mirrors
+   * `ApplyManualDialogueEditInput.idempotencyKey`'s own doc comment.
+   */
+  idempotencyKey?: string;
+}
+
+export interface ApplyManualShotSummaryEditResult {
+  item: StoredEpisodeBreakdownItem;
+}
+
+/**
+ * Pure (DB-free) core of the `summary` half of `updateEpisodeDraftShot`
+ * (`verticalDramaSeries.ts` — a combined summary+dialogue edit; this
+ * function only ever handles the summary side, `applyManualDialogueEdit`
+ * above handles the dialogue side): REPLACES shot `shotNumber`'s `summary`
+ * text only. Every other shot field (`dialogue_lines`, `silence_intent`,
+ * `characters`, `location_key`, `contract`, `tie_in`) survives via a
+ * shallow spread, and the item's `draftCompleteness` is left completely
+ * untouched (it is derived from dialogue only — see this section's own
+ * header doc comment). Stamps `manualSummaryEdit` with the accumulated,
+ * deduped, ascending set of every shot number ever manually summary-edited
+ * on this item (`editedAt`/`editedByUserId` reflect only the MOST RECENT
+ * edit) — mirrors `applyManualDialogueEdit`'s own stamp accounting exactly.
+ *
+ * Throws `ManualShotSummaryEditNoDraftError` when `item` has no
+ * `shotDrafts` at all, or none matching `shotNumber`. Never mutates `item`.
+ */
+export function applyManualShotSummaryEdit(
+  input: ApplyManualShotSummaryEditInput
+): ApplyManualShotSummaryEditResult {
+  const shotDrafts = readItemShotDrafts(input.item);
+  const shotIndex =
+    shotDrafts?.findIndex(shot => shot.shot_number === input.shotNumber) ?? -1;
+  if (!shotDrafts || shotIndex === -1) {
+    throw new ManualShotSummaryEditNoDraftError();
+  }
+
+  const currentShot = shotDrafts[shotIndex];
+  const updatedShot: VdDeepDraftShotDraft = {
+    ...currentShot,
+    summary: input.summary,
+  };
+
+  const updatedShotDrafts = [...shotDrafts];
+  updatedShotDrafts[shotIndex] = updatedShot;
+
+  const priorStamp = readItemManualSummaryEdit(input.item);
+  const shotNumbers = Array.from(
+    new Set([...(priorStamp?.shotNumbers ?? []), input.shotNumber])
+  ).sort((a, b) => a - b);
+  const appliedIdempotencyKeys = input.idempotencyKey
+    ? Array.from(
+        new Set([
+          ...(priorStamp?.appliedIdempotencyKeys ?? []),
+          input.idempotencyKey,
+        ])
+      )
+    : priorStamp?.appliedIdempotencyKeys;
+
+  const manualSummaryEdit: VdManualSummaryEditStamp = {
+    editedAt: input.editedAt ?? new Date().toISOString(),
+    editedByUserId: input.editedByUserId,
+    shotNumbers,
+    ...(appliedIdempotencyKeys ? { appliedIdempotencyKeys } : {}),
+  };
+
+  // NOTE: `draftCompleteness` is intentionally NOT recomputed/touched here
+  // (unlike `applyManualDialogueEdit`) — it is derived from dialogue only,
+  // and a summary edit never changes dialogue. Whatever value was already
+  // on `input.item` survives via the spread below, byte-identical.
+  const updatedItem = {
+    ...input.item,
+    shotDrafts: updatedShotDrafts,
+    manualSummaryEdit,
+  } as StoredEpisodeBreakdownItem;
+
+  return { item: updatedItem };
 }
 
 /* ============================================================================ */

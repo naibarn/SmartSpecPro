@@ -102,17 +102,20 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../verticalDramaStoryBible";
-import { resolvePremiumLargeContextModelId } from "../verticalDramaImproveScript";
+import { resolveQualityLargeContextModelId } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
 const mockResolveModel = vi.mocked(resolveStoryBibleModel);
-// `resolveCharacterVisualBibleModel`'s auto-fallback (see the `vi.mock`
-// comment above) — renamed from `mockResolveQualityModel` alongside the
-// 2026-07-18 premium-model-for-this-stage fix.
-const mockResolveQualityModel = vi.mocked(resolvePremiumLargeContextModelId);
+// `resolveCharacterVisualBibleModel`'s auto-fallback. Briefly pointed at
+// `resolvePremiumLargeContextModelId` (2026-07-18 premium-model fix), then
+// REVERTED the same day back to `resolveQualityLargeContextModelId` after the
+// premium pick (`gpt-5.5-pro`, ~160s/call) stacked past the 600s `/trpc/`
+// gateway timeout and 502'd — see `resolveCharacterVisualBibleModel`'s own
+// revert comment. The mock must track the SOURCE's actual fallback fn.
+const mockResolveQualityModel = vi.mocked(resolveQualityLargeContextModelId);
 const mockExistsSync = vi.mocked(fs.existsSync);
 const mockReadFileSync = vi.mocked(fs.readFileSync);
 const mockParseSkillFile = vi.mocked(parseSkillFile);
@@ -441,12 +444,12 @@ function successResponse(payload: unknown) {
 // override-wins-over-any-autoFallback contract itself is already covered
 // generically by `verticalDramaLlmModelPolicy.test.ts`.
 describe("resolveCharacterVisualBibleModel", () => {
-  it("delegates to resolvePremiumLargeContextModelId as its auto-fallback", async () => {
-    mockResolveQualityModel.mockResolvedValue("strong-flagship-model");
+  it("delegates to resolveQualityLargeContextModelId as its auto-fallback (post-revert)", async () => {
+    mockResolveQualityModel.mockResolvedValue("fast-quality-model");
 
     const model = await resolveCharacterVisualBibleModel(42);
 
-    expect(model).toBe("strong-flagship-model");
+    expect(model).toBe("fast-quality-model");
     expect(mockResolveQualityModel).toHaveBeenCalledTimes(1);
   });
 });

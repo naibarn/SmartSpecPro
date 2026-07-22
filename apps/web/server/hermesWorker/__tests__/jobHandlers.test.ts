@@ -411,7 +411,11 @@ describe("createJobHandlers", () => {
 
   it("routes the three hermes_connection_* job types to the section-04 handlers (spy-level)", async () => {
     const authorize = vi.fn(async () => ({ ok: true as const, accountHint: "user@example.com" }));
-    const probe = vi.fn(async () => ({ ok: true as const, accountHint: "user@example.com" }));
+    const probe = vi.fn(async () => ({
+      ok: true as const,
+      accountHint: "user@example.com",
+      manifest: { operations: { "image.generate": { enabled: true } } },
+    }));
     const disconnect = vi.fn(async () => ({ ok: true as const }));
     const { client, events } = createFakeClient();
     const strategy = createNativeProfileStrategy({ root: profileRoot });
@@ -446,8 +450,17 @@ describe("createJobHandlers", () => {
     expect(probe).toHaveBeenCalledTimes(1);
     expect(disconnect).toHaveBeenCalledTimes(1);
 
+    for (const jobId of ["job-auth", "job-probe", "job-disconnect"]) {
+      expect(
+        events.filter((event) => event.jobId === jobId).map((event) => event.eventType),
+      ).toEqual(["job.running", "job.completed"]);
+    }
     expect(events.find((event) => event.jobId === "job-auth" && event.eventType === "job.completed")).toBeDefined();
-    expect(events.find((event) => event.jobId === "job-probe" && event.eventType === "job.completed")).toBeDefined();
+    expect(
+      events.find((event) => event.jobId === "job-probe" && event.eventType === "job.completed")?.payloadJson,
+    ).toMatchObject({
+      capabilities: { operations: { "image.generate": { enabled: true } } },
+    });
     expect(events.find((event) => event.jobId === "job-disconnect" && event.eventType === "job.completed")).toBeDefined();
   });
 

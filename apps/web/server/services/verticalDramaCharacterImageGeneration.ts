@@ -29,7 +29,10 @@ import {
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
-import { resolvePremiumLargeContextModelId } from "./verticalDramaImproveScript";
+import {
+  resolvePremiumLargeContextModelId,
+  resolveQualityLargeContextModelId,
+} from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import { auditLogger } from "./auditLogger";
@@ -1389,7 +1392,21 @@ export function buildCharacterPortraitCandidatesUserPrompt(
 export async function resolveCharacterVisualBibleModel(
   seriesId: number,
 ): Promise<string> {
-  return resolveVerticalDramaSeriesModel(seriesId, resolvePremiumLargeContextModelId);
+  // REVERTED 2026-07-18: FIX B briefly pointed this at
+  // `resolvePremiumLargeContextModelId` (the MOST EXPENSIVE eligible model) to
+  // improve lead-portrait quality. In production that resolved to a thinking-pro
+  // tier (e.g. `openai/gpt-5.5-pro`) that takes ~160s for a SINGLE call — so a
+  // preview with the schema-retry budget stacked past the 600s `/trpc/` gateway
+  // timeout and returned a 502 (HTML app-shell), and even a single call made the
+  // interactive character preview unusably slow. So this reverts to the fast
+  // auto-selected model. Quality is still protected WITHOUT the slow model:
+  // FIX A's graceful lead-beauty degradation means a plain lead is accepted with
+  // a warning instead of hard-blocking, and a creator who genuinely wants a
+  // stronger model for a specific series can pin it via the per-series
+  // `llmModelPolicy` override (Settings) — which `resolveVerticalDramaSeriesModel`
+  // still honors above this fallback. `resolvePremiumLargeContextModelId` is kept
+  // (unused here) so a deliberate, latency-aware re-adoption stays a one-line change.
+  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2423,6 +2440,24 @@ export async function generateCharacterVisualPrompts(
     maxTokens: 5500,
     schema: responseSchema,
     label: "Character visual bible",
+    // Timeout-hole fix (2026-07-18, audit-2026-07-18.jsonl root cause: a
+    // stalling provider — e.g. moonshotai/kimi-k3 capacity-limited — could
+    // hang each attempt for minutes with NO body-read deadline at all; see
+    // `llmRouter.ts`'s two-phase-timeout doc comment). This is an
+    // INTERACTIVE call (user is waiting on the page for a character
+    // generation), so it opts into a tight fail-fast budget instead of the
+    // shared path's generous 600s default.
+    // Worst case: `timeoutMs` bounds EVERY attempt (initial + retries) to
+    // 150s; `maxTransientRetries: 1` means a stalling provider retries
+    // transient failures at most once. Worst-case wall time for the
+    // stalling-provider failure mode this fix targets = 150s (initial) +
+    // 150s (1 transient retry) + 5s (first backoff) = 305s — comfortably
+    // under the 600s `/trpc/` nginx gateway timeout. (Schema-classified
+    // retries are unaffected by this override and are not part of this
+    // failure mode: a schema failure requires the provider to have already
+    // returned a body, i.e. it did not stall/abort.)
+    timeoutMs: 150_000,
+    maxTransientRetries: 1,
     // FIX A (2026-07-18, both accepted user decisions — see
     // `buildResponseSchema`'s doc comment above): once every corrective retry
     // is exhausted, prove the lead-beauty gate was the ONLY remaining problem
@@ -2831,6 +2866,11 @@ export async function generateCharacterPortraitCandidates(
     retryMaxTokens: 16_000,
     schema: responseSchema,
     label: "Character portrait candidate batch",
+    // Timeout-hole fix — see `generateCharacterVisualPrompts`'s identical
+    // comment above for the full rationale and worst-case arithmetic (305s,
+    // comfortably under the 600s `/trpc/` nginx gateway timeout).
+    timeoutMs: 150_000,
+    maxTransientRetries: 1,
     // FIX A (2026-07-18) — see `generateCharacterVisualPrompts`'s identical
     // hook for the full rationale. Structural/identity checks (character_id,
     // candidate count, duplicate ids, role-tier, region anchor, anti-clone

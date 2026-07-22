@@ -132,7 +132,11 @@ function sanitizeMcpConnectionErrorMessage(error: unknown): string {
 
 function isMcpProviderAuthError(error: unknown): boolean {
   const message = errorMessage(error);
-  return /invalid or expired token|token (?:has )?expired|expired token|invalid token|requires re-?authentication|unauthori[sz]ed|forbidden|\b401\b|\b403\b/i.test(message);
+  // A provider may use HTTP 403 for quota, entitlement, moderation, or model
+  // restrictions. Those failures do not invalidate the OAuth session and must
+  // not demote a healthy connection to requires_reauth. Only definitive
+  // credential signals are safe to persist as an authentication failure.
+  return /invalid or expired token|token (?:has )?expired|expired token|invalid token|requires re-?authentication|reauth(?:entication)? required|unauthori[sz]ed|\b401\b/i.test(message);
 }
 
 async function markMcpConnectionRequiresReauth(params: {

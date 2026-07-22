@@ -1,80 +1,226 @@
-# Orchestra Progress - SocratiCode lifecycle hardening
+# Orchestra Progress
 
 Loop policy:
   orchestra_id: fable_style_coding_orchestra
-  purpose: prevent recurrence of SSH/Codex/SocratiCode host memory thrashing
-  iteration: 8/12
-  tool_call_batches: unknown/30
+  purpose: implement Kie GPT Image 2 automatic mode routing
+  iteration: 7/12
+  tool_call_batches: 28/30
   estimated_cost_usd: unknown <= 0.50
   dispatch_waves: 0/6
   active_subagents: 0/4
   parallel_writers: 0/2
   required_subagent_wait: 0/10 minutes
   background_subagent_wait: 0/15 minutes
-  repair_rounds: 3/5
+  repair_rounds: 0/5
   stop_conditions: success_criteria_met, tests_passed, no_open_blockers
   stop_reason: success
 
-Evidence ledger:
-  source: kernel/cgroup/SSH/server-log
-  identifier: previous boot 2026-07-16
-  observed failure: three memcg OOM kills plus sustained memory PSI and SSH reconnect/session accumulation
-  data state: lifecycle hardening installed and live-verified; current boot healthy
-  confidence: high
-  next evidence needed: none for the requested scope
+[COMPLETE] discovery — traced catalog, UI request, gateway, and Kie payload boundaries
+[COMPLETE] option-analysis — compared canonical-row, frontend-switch, and scoped provider resolver approaches
+[COMPLETE] design-gate — user approved the scoped provider-routing design
+[COMPLETE] implementation — unified catalog row, compatibility alias, migration, and opt-in provider resolver
+[COMPLETE] verification — focused web and Python tests pass; lint and diff checks pass
 
-[COMPLETE] wave-0-diagnosis-and-design - Root cause isolated and design approved.
-[COMPLETE] wave-1-quick-plan - Standard-depth package passed five stabilization rounds with two consecutive clean rounds.
-[COMPLETE] wave-1-section-01 - Cleanup/launcher red-green cycle complete; 10 focused lifecycle scenarios pass.
-[COMPLETE] wave-2-section-02 - Watchdog, index serialization, units, log rotation, and lifecycle telemetry implemented; focused tests pass.
-[COMPLETE] wave-3-live-rollout - Backup captured, validated copies installed, only the dedicated watcher restarted, timer enabled.
-
-Rollout repair 1: cleanup service failed closed before mutation because `/tmp` was read-only under `ProtectSystem=strict`. Added the minimal `ReadWritePaths=/tmp` exception; service/timer verification is stale and must rerun.
-
-Security repair 2: moved the cleanup lock from world-writable `/tmp` to the dev-owned SocratiCode locks directory; enabled `PrivateTmp` and narrowed `ReadWritePaths`. Fresh gates pass.
-
-Security repair 3: removed Linux capabilities, isolated network/devices/temp,
-restricted sockets/namespaces/realtime/SUID, protected kernel/cgroup surfaces,
-and set umask 0077. Installed service succeeds and systemd security exposure is
-2.6 OK.
-
-[COMPLETE] wave-2-runtime-implementation - Launcher, cleanup, watchdog, units, logs, monitor.
-[COMPLETE] wave-4-verification-convergence - Fresh gates, automatic timer run, live MCP smoke, security review, and stability snapshots pass.
-[COMPLETE] wave-5-emergency-pause - Recurrence confirmed from 16 Node memcg OOM kills; SocratiCode launcher, units, MCP containers, and Qdrant were reversibly stopped without touching application services or data.
-
-Dirty-work note: the worktree contains extensive unrelated feature changes. This task owns only the exact runtime/monitor/planning paths in `orchestra/plan.md`.
-
-Impact hypothesis: incorrect cleanup eligibility could kill an active MCP client; watchdog mistakes could restart a healthy watcher; unit/logrotate errors could break recovery. Fail-closed tests, dry-run output, active-container PID checks, systemd verification, and post-rollout MCP/health probes cover these risks.
-
-Section 01 review: initial completeness review found missing grace-period and project-mismatch tests; both were added. Fresh Bash syntax and cleanup lifecycle tests pass. No active Docker container was touched.
-
-Final evidence: cleanup lifecycle tests pass; watcher tests pass 4/4; live MCP
-smoke passes and cleans its owned container; installed files match source;
-systemd/logrotate gates pass; automatic cleanup ran successfully; public/local/
-backend returned 200; three post-containment snapshots held PSI at zero,
-high/oom counters flat, watcher restarts at zero, and Docker info children at
-zero.
-
-Recurrence evidence ledger:
-  source: previous-boot kernel journal, current Docker/cgroup state, HTTP health probes
-  identifier: boot 4b89432960434b81a29530b58822774d and 2026-07-17T17:19-17:23+07 containment
-  observed failure: 16 SocratiCode Node memcg OOM kills; ten managed MCP containers returned within 19 minutes of reboot and the watcher reached about 3.57 GiB
-  data state: SocratiCode paused; Qdrant volume preserved; web/backend/Postgres healthy
-  confidence: high
-  next evidence needed: none for the requested temporary stop
+Sub-agent lifecycle:
+  none; standard light mode and no user authorization for delegation
 
 Loop policy final:
-  iterations_used: 8/12
-  tool_call_batches_used: unknown/30
-  estimated_cost_usd: unknown/0.50
+  iterations_used: 7/12
+  tool_call_batches_used: 28/30
+  estimated_cost_usd: unknown/0.50; conservative proxy low
   dispatch_waves_used: 0/6
   timed_out_subagents: none
-  repair_rounds_used: 3/5
-  stop_conditions_met: [success_criteria_met, tests_passed, no_open_blockers]
+  repair_rounds_used: 2/5
+  stop_conditions_met: [success_criteria_met, focused_tests_passed, no_open_blockers]
   stop_reason: success
 
 Gap closure:
   must_do_now: none
-  should_offer_next: redesign SocratiCode around one shared bounded runtime or a strict global concurrency limit before re-enabling it
-  safely_deferred: permanent lifecycle redesign because the requested containment is to keep SocratiCode stopped for now
-  no_action_needed: Qdrant data backup because the named volume was preserved and no delete/recreate command ran
+  should_offer_next:
+    - apply migration 0212 through the normal deployment workflow
+  safely_deferred:
+    - repository-wide TypeScript cleanup; current failures are unrelated existing errors
+    - live Kie paid generation smoke and database migration apply; external side effects
+  no_action_needed:
+    - unrelated media models; design uses explicit per-model opt-in metadata
+
+## Migration deployment - 2026-07-20
+
+[COMPLETE] preflight — confirmed localhost:5432/smartspec and live latest migration state
+[COMPLETE] backup — captured and verified media_models plus Drizzle ledger archive
+[COMPLETE] dry-run — migration SQL updated two rows inside a rolled-back transaction
+[COMPLETE] apply — corrected journal ordering and applied migration 0212
+[COMPLETE] verify — live hash, row state, idempotence, focused tests, and diff checks pass
+
+## GPT Image 2 production routing incident - 2026-07-20
+
+[COMPLETE] evidence — task dffa05d34f1737c7df813c00b640e87f had three references but Kie received text-to-image
+[COMPLETE] runtime repair — drained and restarted only smartspec-celery-media
+[COMPLETE] history repair — async image API now persists and queues the opt-in effective model ID
+[COMPLETE] rollout — restarted smartspec-backend with health-gated verification
+[COMPLETE] proof — 31 focused tests pass; worker queue and backend health are ready
+
+Evidence ledger:
+  source: database row plus Celery provider log
+  identifier: media task ab0213ca-ccd6-46d2-9eae-28748f6e727a / Kie task dffa05d34f1737c7df813c00b640e87f
+  observed failure: kie_ai_create_task model=gpt-image-2-text-to-image with input_urls
+  data state: completed with three reference_image_urls
+  confidence: high
+  next evidence needed: optional next user generation log for paid live-provider proof
+
+Gap closure:
+  must_do_now:
+    - stale journal timestamp | fixed and migration reapplied
+  should_offer_next:
+    - none
+  safely_deferred:
+    - paid live Kie generation smoke; external provider cost
+  no_action_needed:
+    - legacy row deletion; retained disabled for rollback and compatibility
+
+## Vertical Drama rapid prompt plus image timeout - 2026-07-21
+
+[COMPLETE] evidence - production logs and rows prove eight duplicate full-plan runs for episode 114
+[COMPLETE] TDD - regression checks failed on the old whole-plan per-shot path
+[COMPLETE] implementation - per-shot prompt mutation now materializes and row-lock-merges missing frames
+[COMPLETE] verification - 19 focused tests and diff check pass; touched ranges have no TypeScript errors
+[PENDING] rollout - web restart is intentionally deferred because the shared production worktree contains extensive unrelated uncommitted changes
+
+Evidence ledger:
+  source: screenshot, server-log, db-row, test-output
+  identifier: episode 114; run ids 363-370
+  observed failure: concurrent full start-frame planning exceeded the proxy timeout while duplicate server work completed
+  data state: duplicate runs succeeded; media queue drained to zero
+  confidence: high
+  next evidence needed: browser smoke after a safe scoped rollout
+
+Gap closure:
+  must_do_now: none in the source fix
+  should_offer_next:
+    - deploy through a clean/scoped rollout and verify rapid clicks in the browser
+  safely_deferred:
+    - production restart; current dirty worktree would activate unrelated changes
+  no_action_needed:
+    - Cloudflare timeout increase; the duplicate long-running request path was removed from the per-shot action
+
+## Hermes reference download and Media History incident - 2026-07-20
+
+Loop policy:
+  orchestra_id: fable_style_coding_orchestra
+  purpose: fix Hermes reference downloads and include Hermes in Media History
+  iteration: 1/12
+  tool_call_batches: 8/30
+  estimated_cost_usd: unknown <= 0.50; conservative proxy low
+  dispatch_waves: 0/6
+  active_subagents: 0/4
+  parallel_writers: 0/2
+  required_subagent_wait: 0/10 minutes
+  background_subagent_wait: 0/15 minutes
+  repair_rounds: 0/5
+  stop_conditions: success_criteria_met, tests_passed, no_open_blockers
+  stop_reason: active
+
+[COMPLETE] evidence — latest Hermes job failed with HTTP 404 while downloading three references
+[COMPLETE] design — canonical storage key plus read-only worker_jobs history projection
+[IN_PROGRESS] TDD — add focused regression tests before implementation
+
+Evidence ledger:
+  source: database row plus worker job events
+  identifier: worker job 08e15bee-8ca7-47d5-9c33-6ca87d34bc6a
+  observed failure: HERMES_REFERENCE_DOWNLOAD_FAILED with HTTP 404
+  data state: failed at downloading_references with three frozen references
+  confidence: high
+  next evidence needed: fresh signed URL HTTP status after fix
+
+[COMPLETE] TDD — regression tests reproduced proxy-key presign failure and missing history projection
+[COMPLETE] implementation — canonicalized managed storage URLs and merged Hermes projections into media.listTasks
+[COMPLETE] data proof — all three production reference assets returned HTTP 200; 17 Hermes jobs projected for user 1
+[COMPLETE] verification — 64 focused tests, TypeScript check, and diff check pass
+[COMPLETE] rollout — restarted only smartspec-web; local and public healthz return ok
+[COMPLETE] review convergence — one clean targeted conductor review after the last fix
+
+Loop policy final:
+  iterations_used: 5/12
+  tool_call_batches_used: 14/30
+  estimated_cost_usd: unknown/0.50; conservative proxy low
+  dispatch_waves_used: 0/6
+  timed_out_subagents: none
+  repair_rounds_used: 1/5
+  stop_conditions_met: [success_criteria_met, tests_passed, no_open_blockers]
+  stop_reason: success
+
+Gap closure:
+  must_do_now:
+    - unstable timestamp fixture | fixed with deterministic createdAt and reran stale gates
+  should_offer_next: none
+  safely_deferred:
+    - paid live Grok image retry | external provider credit spend; user can retry from the same shot
+  no_action_needed:
+    - duplicate media_tasks persistence | avoided by projecting authoritative worker_jobs
+
+## Media polling and rate-limit incident - 2026-07-20
+
+[COMPLETE] containment — backed up and failed the only abandoned MCP task
+[COMPLETE] routing — MCP fetch-result remains in Node; direct tasks remain in Python
+[COMPLETE] polling — stable single-flight scheduler prevents rerender feedback loops
+[COMPLETE] rate-limit — verified JWT identities receive isolated buckets
+[COMPLETE] reconciliation — image/audio hard timeout reduced to 2 hours
+[COMPLETE] verification — 76 focused tests, TypeScript, Ruff, health, and live log observation pass
+
+Evidence ledger:
+  source: production logs, database row, deterministic tests, post-deploy observation
+  identifier: mcp_815c37bf01582291e6bb200d7b9960a1
+  observed failure: 354 wrong-backend fetch-result calls in about 100 seconds exhausted ip:127.0.0.1
+  data state: incident task failed; pending MCP task count zero
+  confidence: high
+  next evidence needed: none for recurrence prevention
+
+Loop policy final:
+  iterations_used: 3 sections
+  tool_call_batches_used: exact telemetry unavailable
+  estimated_cost_usd: unknown
+  dispatch_waves_used: 0
+  timed_out_subagents: none
+  repair_rounds_used: 2 (test fixture and ignored test-path repair)
+  stop_conditions_met: [incident_contained, focused_tests_passed, production_observation_clean]
+  stop_reason: success
+
+Gap closure:
+  must_do_now: none
+  should_offer_next:
+    - optional paid Kie generation smoke for upstream evidence
+  safely_deferred:
+    - paid provider smoke; external cost and not required to prove internal 429 repair
+  no_action_needed:
+    - global rate-limit increase; root request loop and identity collision were fixed
+
+## Hermes Vertical Drama reference forwarding - 2026-07-20
+
+[COMPLETE] evidence — production job 3487f6bb had prompt Image 1-3 but references=[]
+[COMPLETE] root cause — legacy media_assets rows store the full storage proxy path
+[COMPLETE] TDD — prefixed-path resolution and required-reference fail-closed coverage
+[COMPLETE] integration — Vertical Drama Hermes image surfaces require all supplied references
+[COMPLETE] production — web service restarted healthy; assets 200, 219, 233 resolve and hash
+
+Evidence ledger:
+  source: production database row, media asset rows, test output, server log
+  identifier: worker job 3487f6bb-b7c2-444b-9574-4e3cc7502f72
+  observed failure: operation=image.generate and reference_count=0 despite Image 1-3 prompt
+  data state: expected assets 200, 219, 233 exist under the same tenant/user
+  confidence: high
+  next evidence needed: none for the forwarding defect
+
+Verification:
+  focused_tests: 87 passed
+  episode_hermes_subset: 2 passed
+  production_asset_resolution: [200, 219, 233]
+  production_reference_contract: 3 references with 64-character sha256 values
+  health: local and public healthz passed
+  typecheck: blocked by 140 pre-existing repository-wide errors; no error in hermesMediaReferences
+
+Gap closure:
+  must_do_now: none
+  safely_deferred:
+    - paid live Grok image regeneration; external account cost and user-visible asset replacement
+  no_action_needed:
+    - Worker release; 0.1.144 already forwards downloaded reference paths
