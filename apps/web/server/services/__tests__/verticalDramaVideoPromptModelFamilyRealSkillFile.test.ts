@@ -211,6 +211,46 @@ describe("real-skill-file gate: vertical-drama-shot-video-prompt[-subshots] (tau
 });
 
 /**
+ * Pack-parity follow-up (`planning/vd-video-prompt-model-family-quality/
+ * plan.md`, "pack bulk generator — out of scope" item, closed 2026-07-22) —
+ * same real-file gate discipline for the `vertical-drama-video-motion-
+ * prompt-pack` skill, which received its OWN model-family-shaping upgrade
+ * (v2.0.0) rather than reusing the per-shot skill's sections verbatim. This
+ * skill has NO `frame_analysis` JSON contract and NO `### family: x`
+ * sub-headers (position anchoring is a plain-prose instruction in its
+ * "Single camera move + speaker anchoring per clip" section instead) — its
+ * own assertions are intentionally NOT copy-pasted from the `SKILLS` loop
+ * above.
+ */
+describe("real-skill-file gate: vertical-drama-video-motion-prompt-pack (taught-not-wired failure class, pack-parity follow-up)", () => {
+  const packSkillDir = resolve(__dirname, "../../../skills/vertical-drama-video-motion-prompt-pack");
+  const lowercasePath = resolve(packSkillDir, "skill.md");
+  const uppercasePath = resolve(packSkillDir, "SKILL.md");
+
+  it("lowercase skill.md and SKILL.md are byte-identical twins (loader reads lowercase first)", async () => {
+    const lowercase = await readRealFile(lowercasePath);
+    const uppercase = await readRealFile(uppercasePath);
+    expect(lowercase).toBe(uppercase);
+  });
+
+  it.each([
+    "## MODEL-FAMILY SHAPING — MANDATORY",
+    "## CAMERA & EMOTION GRAMMAR — MANDATORY",
+    "SOUND — SFX ONLY, WRITTEN INTO THE PROMPT",
+  ])("contains the required '%s' section header", async (header) => {
+    const content = await readRealFile(lowercasePath);
+    expect(content).toContain(header);
+  });
+
+  it("the loader's resolution strategy finds a real skill.md for the pack skill folder (real fs, mirrors resolveSkillDirCandidates)", async () => {
+    const fs = await realFs();
+    const candidateDirs = skillDirCandidates("skills/vertical-drama-video-motion-prompt-pack");
+    const found = candidateDirs.some(dir => fs.existsSync(resolve(dir, "skill.md")));
+    expect(found).toBe(true);
+  });
+});
+
+/**
  * Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
  * quality/plan.md` Phase 2) — same real-file gate discipline for the NEW
  * `vertical-drama-video-prompt-judge` skill.

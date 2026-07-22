@@ -551,6 +551,263 @@ describe("generateVideoMotionPromptPack", () => {
       expect(userMessage.content).not.toContain("บริบทฉากของตอน");
     });
   });
+
+  // Pack-parity follow-up (`planning/vd-video-prompt-model-family-quality/
+  // plan.md`, "pack bulk generator — out of scope" item, closed 2026-07-22)
+  // — the pack now emits the SAME `TARGET VIDEO MODEL` fact block the
+  // per-shot generator does (`buildTargetVideoModelFactBlock` +
+  // `resolveShotVideoPromptModelFamily`, reused not duplicated). Mirrors
+  // `verticalDramaShotVideoPromptGeneration.test.ts`'s "TARGET VIDEO MODEL
+  // fact block" describe block wording.
+  describe("TARGET VIDEO MODEL fact block (pack parity with the per-shot generator)", () => {
+    function veoModelRow() {
+      return {
+        id: "veo3/generate-veo-3-video-lite",
+        type: "video" as const,
+        name: "Veo 3.1 Lite",
+        aspectRatios: ["9:16"],
+        configJson: {},
+        provider: "kie.ai",
+        aliases: [],
+      };
+    }
+
+    function grokModelRow() {
+      return {
+        id: "hermes_grok/grok-imagine-1.5",
+        type: "video" as const,
+        name: "Grok Imagine",
+        aspectRatios: ["9:16"],
+        configJson: {},
+        provider: "hermes_grok",
+        aliases: [],
+      };
+    }
+
+    it("emits 'TARGET VIDEO MODEL' + 'family: veo' for a veo model row", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          selectedVideoModelId: veoModelRow().id,
+          selectedVideoModel: veoModelRow() as any,
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toContain("TARGET VIDEO MODEL");
+      expect(userMessage.content).toContain("family: veo");
+    });
+
+    it("emits 'family: grok' + 'negative_prompt_supported: no' for a grok model row", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          selectedVideoModelId: grokModelRow().id,
+          selectedVideoModel: grokModelRow() as any,
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toContain("family: grok");
+      expect(userMessage.content).toContain("negative_prompt_supported: no");
+    });
+
+    it("degrades to family 'other' and never throws when the model row is absent (selectedVideoModel omitted)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+
+      const result = await generateVideoMotionPromptPack(
+        baseParams({ selectedVideoModelId: "some-unknown-model", selectedVideoModel: undefined }),
+      );
+
+      expect(result.pack.clips.length).toBeGreaterThan(0);
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toContain("family: other");
+    });
+  });
+
+  // Native-audio fact (SOUND section activation) — mirrors the per-shot
+  // generator's `nativeAudioEnabled` describe block, but for the pack's own
+  // SOUND section ("SOUND — SFX ONLY, WRITTEN INTO THE PROMPT — MANDATORY
+  // when native audio is on").
+  describe("native-audio fact (SOUND section activation, pack parity)", () => {
+    function videoModelRow() {
+      return {
+        id: "veo3/generate-veo-3-video-lite",
+        type: "video" as const,
+        name: "Veo 3.1 Lite",
+        aspectRatios: ["9:16"],
+        configJson: {},
+        provider: "kie.ai",
+        aliases: [],
+      };
+    }
+
+    it("includes the NATIVE AUDIO DIRECTION fact when nativeAudioEnabled is true AND the model supports native audio", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+      mockResolveVerticalDramaCapabilities.mockReturnValue({ supportsNativeAudio: true } as any);
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          selectedVideoModelId: videoModelRow().id,
+          selectedVideoModel: videoModelRow() as any,
+          nativeAudioEnabled: true,
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toContain("NATIVE AUDIO DIRECTION (native_audio: true)");
+    });
+
+    it("omits the NATIVE AUDIO DIRECTION fact when nativeAudioEnabled is not set (byte-identical default)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+      mockResolveVerticalDramaCapabilities.mockReturnValue({ supportsNativeAudio: true } as any);
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          selectedVideoModelId: videoModelRow().id,
+          selectedVideoModel: videoModelRow() as any,
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).not.toContain("NATIVE AUDIO DIRECTION");
+    });
+
+    it("omits the NATIVE AUDIO DIRECTION fact when the model does not support native audio, even if nativeAudioEnabled is true", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+      mockResolveVerticalDramaCapabilities.mockReturnValue({ supportsNativeAudio: false } as any);
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          selectedVideoModelId: videoModelRow().id,
+          selectedVideoModel: videoModelRow() as any,
+          nativeAudioEnabled: true,
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).not.toContain("NATIVE AUDIO DIRECTION");
+    });
+  });
+
+  // Optional best-effort start-frame vision — pack parity with the per-shot
+  // generator's vision call, reusing `resolveShotVideoPromptModel` +
+  // `buildVisionAwareContent` (same mock idiom the per-shot describe block
+  // above uses to force the vision-capable branch).
+  describe("startFrameImages (optional best-effort vision, pack parity with the per-shot generator)", () => {
+    it("attaches each start-frame image labeled 'Shot <n> start frame' when a vision-capable model is available", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+      mockLoadEnabledLlmModelRows.mockResolvedValue([{ modelId: "vision-model" } as any]);
+      mockSelectBestLlmModel.mockReturnValue("vision-model");
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          startFrameImages: [
+            { shotNumber: 1, url: "https://cdn.example.com/shot1.png" },
+            { shotNumber: 2, url: "https://cdn.example.com/shot2.png" },
+          ],
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(Array.isArray(userMessage.content)).toBe(true);
+      const content = userMessage.content as Array<{
+        type: string;
+        text?: string;
+        image_url?: { url: string };
+      }>;
+      expect(content.filter((c) => c.type === "image_url").map((c) => c.image_url!.url)).toEqual([
+        "https://cdn.example.com/shot1.png",
+        "https://cdn.example.com/shot2.png",
+      ]);
+      expect(content.some((c) => c.type === "text" && c.text === "Shot 1 start frame")).toBe(true);
+      expect(content.some((c) => c.type === "text" && c.text === "Shot 2 start frame")).toBe(true);
+    });
+
+    it("caps attached start-frame images at 12", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+      mockLoadEnabledLlmModelRows.mockResolvedValue([{ modelId: "vision-model" } as any]);
+      mockSelectBestLlmModel.mockReturnValue("vision-model");
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          startFrameImages: Array.from({ length: 20 }, (_, i) => ({
+            shotNumber: i + 1,
+            url: `https://cdn.example.com/shot${i + 1}.png`,
+          })),
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      const content = userMessage.content as Array<{ type: string }>;
+      expect(content.filter((c) => c.type === "image_url")).toHaveLength(12);
+    });
+
+    it("falls back to text-only and logs the vision-fallback warning when no vision-capable model is enabled", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+      mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+      mockSelectBestLlmModel.mockReturnValue(undefined as any);
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          startFrameImages: [{ shotNumber: 1, url: "https://cdn.example.com/shot1.png" }],
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(typeof userMessage.content).toBe("string");
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[vd_video_prompt] generated WITHOUT vision"),
+        expect.objectContaining({ seriesId: 42, episodeId: 7 }),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("runs text-only exactly as today (plain string content, no vision-fallback warning) when startFrameImages is omitted", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(2)));
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await generateVideoMotionPromptPack(baseParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(typeof userMessage.content).toBe("string");
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
 });
 
 describe("projectMotionPromptPack", () => {
@@ -592,7 +849,7 @@ describe("projectMotionPromptPack", () => {
       video_clip_requests: [validClipRequest(1)],
       plain_text_video_plan: "text",
     };
-    const withLanguage = projectMotionPromptPack(raw as any, "model-x", "profile-x", undefined, {
+    const withLanguage = projectMotionPromptPack(raw as any, "model-x", "profile-x", {
       promptLanguage: "zh",
       dialogueLanguage: "en",
     });
@@ -602,6 +859,52 @@ describe("projectMotionPromptPack", () => {
     const withoutLanguage = projectMotionPromptPack(raw as any, "model-x", "profile-x");
     expect(withoutLanguage.promptLanguage).toBeUndefined();
     expect(withoutLanguage.dialogueLanguage).toBeUndefined();
+  });
+
+  // Sound-direction/dialogue ownership fix (pack-parity follow-up,
+  // `planning/vd-video-prompt-model-family-quality/plan.md`, closed
+  // 2026-07-22) — the skill now writes both the sound clause and dialogue
+  // delivery directly into its own `prompt`; this function must never
+  // append a SECOND copy of either. `audioDirection` and the separately-
+  // synced `dialogue` field must still be populated (UI + audit + TTS
+  // depend on them) even though `prompt` no longer carries their text.
+  it("returns prompt byte-identical to the skill's own prompt text (no SFX-cues/dialogue-note code-side append), while audioDirection and dialogue stay populated as separate fields", () => {
+    const raw = {
+      video_plan_summary: {},
+      video_clip_requests: [
+        {
+          ...validClipRequest(1),
+          prompt: "Aria delivers the line cold. A phone buzzes on the table.",
+          audio_direction: "A phone buzzes on the table.",
+        },
+      ],
+      plain_text_video_plan: "text",
+    };
+
+    let pack = projectMotionPromptPack(raw as any, "model-x", "profile-x");
+
+    expect(pack.clips[0].prompt).toBe("Aria delivers the line cold. A phone buzzes on the table.");
+    expect(pack.clips[0].prompt).not.toContain(" SFX cues:");
+    expect(pack.clips[0].prompt).not.toContain(" Dialogue spoken during this clip:");
+    expect(pack.clips[0].audioDirection).toBe("A phone buzzes on the table.");
+
+    pack = syncDialogueOntoMotionPromptClips(pack, {
+      dialogue_lines: [
+        { clip_number: 1, speaker_character_id: "aria", dialogue_line: "We are not done here." },
+      ],
+    });
+    expect(pack.clips[0].dialogue).toEqual([
+      {
+        characterKey: "aria",
+        lineTh: "We are not done here.",
+        emotion: undefined,
+        delivery: undefined,
+        subtext: undefined,
+      },
+    ]);
+    // The dialogue sync never touches `prompt` — it stays exactly as the
+    // skill wrote it.
+    expect(pack.clips[0].prompt).toBe("Aria delivers the line cold. A phone buzzes on the table.");
   });
 });
 

@@ -401,14 +401,6 @@ export function projectMotionPromptPack(
   callerVideoModelId: string,
   fallbackDurationProfileId: string,
   /**
-   * Ground-truth dialogue per shot number. Appended deterministically to
-   * each clip's final prompt (in addition to being given to the LLM as
-   * context, see `buildUserPrompt`) so the spoken line reliably ends up in
-   * the prompt actually sent to the video model, regardless of whether the
-   * LLM chose to mention it.
-   */
-  shotDialogueByShotNumber?: Map<number, string>,
-  /**
    * Episode-level language plan to echo straight through onto the projected
    * pack (episode-level language options wave) — this function never invents
    * or defaults these; the caller (`generateVideoMotionPromptPack` /
@@ -441,28 +433,35 @@ export function projectMotionPromptPack(
     ...(languagePlan?.dialogueLanguage ? { dialogueLanguage: languagePlan.dialogueLanguage } : {}),
     ...(languagePlan?.thaiAccent ? { thaiAccent: languagePlan.thaiAccent } : {}),
     motionMode: hasBridgedClip ? "first_last_frame_bridge" : "first_frame_to_video",
+    // Sound-direction/dialogue ownership fix (pack-parity follow-up,
+    // `planning/vd-video-prompt-model-family-quality/plan.md`, closed
+    // 2026-07-22) — this used to fold ` SFX cues: <audioDirection>` and
+    // ` Dialogue spoken during this clip: "..."` onto `c.prompt` here. The
+    // updated skill (`vertical-drama-video-motion-prompt-pack/skill.md`,
+    // "SOUND — SFX ONLY, WRITTEN INTO THE PROMPT" + "Weave delivery + acting
+    // direction into every clip prompt" sections) now writes both the sound
+    // clause and the dialogue delivery directly into `c.prompt` itself, so
+    // `prompt` is returned completely as-is — NEVER append either note here
+    // again (mirrors the identical fix already shipped for the per-shot
+    // generator, see `generateVerticalDramaShotVideoPrompt`'s own doc
+    // comment). `audioDirection` keeps being returned/persisted unchanged
+    // below — the UI "เสียง:" block and audit trail read it from there,
+    // independent of what's now embedded in `prompt`. `dialogue` stays a
+    // SEPARATE persisted field, populated by `syncDialogueOntoMotionPromptClips`
+    // (UI + audit + TTS depend on it) — this function never touches it.
     clips: raw.video_clip_requests
       .slice()
       .sort((a, b) => a.clip_number - b.clip_number)
-      .map((c) => {
-        const dialogueLines = c.source_shot_numbers
-          .map((n) => shotDialogueByShotNumber?.get(n))
-          .filter((v): v is string => typeof v === "string" && v.length > 0);
-        const dialogueNote = dialogueLines.length
-          ? ` Dialogue spoken during this clip: ${dialogueLines.map((l) => `"${l}"`).join(" / ")}.`
-          : "";
-        const audioNote = c.audio_direction ? ` SFX cues: ${c.audio_direction}` : "";
-        return {
-          clipNumber: c.clip_number,
-          sourceShotNumbers: c.source_shot_numbers,
-          prompt: `${c.prompt}${audioNote}${dialogueNote}`,
-          negativeMotionPrompt: c.negative_motion_prompt ?? undefined,
-          startFrameAssetId: c.start_frame_reference?.asset_id ?? undefined,
-          endFrameAssetId: c.end_frame_reference?.asset_id ?? undefined,
-          durationSeconds: c.duration_seconds,
-          audioDirection: c.audio_direction ?? undefined,
-        };
-      }),
+      .map((c) => ({
+        clipNumber: c.clip_number,
+        sourceShotNumbers: c.source_shot_numbers,
+        prompt: c.prompt,
+        negativeMotionPrompt: c.negative_motion_prompt ?? undefined,
+        startFrameAssetId: c.start_frame_reference?.asset_id ?? undefined,
+        endFrameAssetId: c.end_frame_reference?.asset_id ?? undefined,
+        durationSeconds: c.duration_seconds,
+        audioDirection: c.audio_direction ?? undefined,
+      })),
   };
 }
 
@@ -629,6 +628,49 @@ export interface GenerateVideoMotionPromptPackParams {
   durationSeconds: number;
   durationProfileId: string;
   selectedVideoModelId?: string;
+  /**
+   * Pack-parity follow-up (`planning/vd-video-prompt-model-family-quality/
+   * plan.md`, "pack bulk generator — out of scope" item, closed 2026-07-22)
+   * — the resolved video model catalog row, same optional
+   * `Pick<ModelDefinition, ...>` shape
+   * `GenerateVerticalDramaShotVideoPromptParams.selectedVideoModel` uses.
+   * Feeds `buildTargetVideoModelFactBlock`'s `model`/family classification
+   * and `resolveVerticalDramaCapabilities`' `maxReferenceImages`/
+   * `supportsNativeAudio`. Optional (unlike the per-shot sibling, which is
+   * required) — omitted/absent degrades the fact block to family `"other"`
+   * and omits the native-audio fact, never throws (see
+   * `resolveShotVideoPromptModelFamily`'s doc comment).
+   */
+  selectedVideoModel?: Pick<ModelDefinition, "type" | "aspectRatios" | "configJson" | "provider" | "aliases"> & {
+    id?: string;
+    name?: string;
+  };
+  /**
+   * Pack-parity follow-up — the caller's already-resolved decision (rollout
+   * gate ANDed with the episode's persisted preference) of whether this
+   * generation should request the skill's SOUND section, mirroring
+   * `GenerateVerticalDramaShotVideoPromptParams.nativeAudioEnabled`'s exact
+   * contract. This function ANDs its own model-capability check
+   * (`resolveVerticalDramaCapabilities(...).supportsNativeAudio`) on top —
+   * the caller never pre-resolves the capability half. Optional/omitted
+   * (falsy) preserves today's byte-identical prompt (no NATIVE AUDIO
+   * DIRECTION fact, no `audio_direction` requested).
+   */
+  nativeAudioEnabled?: boolean;
+  /**
+   * Pack-parity follow-up — OPTIONAL best-effort start-frame images, one per
+   * shot, so the LLM can read actual on-screen speaker position the same way
+   * the per-shot generator's vision call does (the skill's "Single camera
+   * move + speaker anchoring per clip" section already instructs this when
+   * images are attached). Each entry's `url` must be a publicly-fetchable
+   * image URL; `shotNumber` labels the image so the skill can match it to
+   * the shot(s) it grounds. Attached ONLY when a vision-capable LLM is
+   * resolvable (see `generateVideoMotionPromptPack`'s own doc comment) —
+   * never blocks or fails generation when unavailable, and capped at 12
+   * images regardless of how many are supplied. Omitted/empty (every caller
+   * before this task) preserves today's byte-identical text-only call.
+   */
+  startFrameImages?: Array<{ shotNumber: number; url: string }>;
   storyboardShots: Array<{
     shotNumber: number;
     description: string;
@@ -706,7 +748,27 @@ export interface GenerateVideoMotionPromptPackParams {
   retentionHooksEnabled?: boolean;
 }
 
-function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
+function buildUserPrompt(
+  params: GenerateVideoMotionPromptPackParams,
+  /**
+   * Pack-parity follow-up — the SAME `TARGET VIDEO MODEL (MANDATORY
+   * MODEL-FAMILY SHAPING)` fact block the per-shot builder emits
+   * (`buildTargetVideoModelFactBlock`), pre-computed by the caller
+   * (`generateVideoMotionPromptPack`) so this pure builder never has to
+   * import model-resolution helpers itself. `null` only when the caller
+   * supplied no `selectedVideoModelId` at all (mirrors the old bare
+   * "Preferred video model" line's identical omission condition).
+   */
+  targetVideoModelFactBlock: string | null,
+  /**
+   * Pack-parity follow-up — mirrors the per-shot builder's
+   * `nativeAudioDirectionEnabled` param exactly: true only when the caller's
+   * `nativeAudioEnabled` AND the resolved model's `supportsNativeAudio`
+   * capability are BOTH true. Activates the skill's SOUND section fact;
+   * omitted (false) preserves today's byte-identical prompt.
+   */
+  nativeAudioDirectionEnabled: boolean,
+): string {
   const promptLanguage = params.promptLanguage ?? "en";
   const dialogueLanguage = params.dialogueLanguage ?? "th";
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
@@ -750,7 +812,6 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
     `Episode title: ${params.episodeTitle}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     `Duration profile: ${params.durationProfileId}`,
-    params.selectedVideoModelId ? `Preferred video model: ${params.selectedVideoModelId}` : null,
     episodePlanContextBlock,
     `Storyboard shots (bridge shots into motion clips per the skill's usual pairing strategy):\n${shotLines}`,
     `When a shot has a "dialogue" line, the resulting clip's "prompt" must explicitly mention the character speaking it and describe mouth/lip movement matching that line — do not produce a silent/mute description for a shot that has dialogue.`,
@@ -759,6 +820,21 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
     dialogueLanguage === "th" && params.thaiAccent
       ? `SPEECH ACCENT (MANDATORY): ${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`
       : null,
+    // Pack-parity follow-up — mirrors the per-shot builder's NATIVE AUDIO
+    // DIRECTION fact (same wording/shape, adapted from "this shot" to
+    // "every clip"), naming `native_audio: true` explicitly so the skill's
+    // SOUND section activates; omitted entirely when off, so the skill
+    // "writes no sound clause and omits audio_direction" exactly as its own
+    // SOUND section instructs.
+    nativeAudioDirectionEnabled
+      ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model generates synchronized audio natively as part of each clip — per the skill's SOUND section, for EVERY "video_clip_requests[]" entry write the sound direction into that clip's "prompt" itself (as the final clause) and also return the identical text in that clip's "audio_direction" field: SFX cues tied to that clip's own visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and that clip's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
+      : null,
+    // Pack-parity follow-up — grouped with the other target-model-capability
+    // facts immediately above (native-audio), close to the end of the
+    // prompt so the model reads it right before actually writing the clip
+    // requests. `null` (omitted) only when the caller supplied no
+    // `selectedVideoModelId` at all.
+    targetVideoModelFactBlock,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -777,6 +853,18 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
  * (throws `VdSchemaValidationError` on a malformed LLM response) — mirrors
  * `generateStoryboardShotgrid`'s check-credits -> call -> deduct-credits
  * convention.
+ *
+ * Pack-parity follow-up (`planning/vd-video-prompt-model-family-quality/
+ * plan.md`, "pack bulk generator — out of scope" item, closed 2026-07-22) —
+ * this is still exactly ONE LLM call plus its existing retry: when
+ * `params.startFrameImages` is supplied AND a vision-capable model is
+ * enabled, that one call is routed through `executeVisionAwareJsonCallWithRetry`
+ * (the SAME vision-call helper the per-shot generator uses) instead of
+ * `executeJsonPlanningCallWithRetry`; otherwise (no images, or none
+ * resolvable) the call is byte-identical to before this task — same model
+ * resolution, same `executeJsonPlanningCallWithRetry` schema+transient retry
+ * budget. No judged/best-of-N loop here (out of scope — this call already
+ * produces 8-9 clips per generation).
  */
 export async function generateVideoMotionPromptPack(
   params: GenerateVideoMotionPromptPackParams,
@@ -799,28 +887,106 @@ export async function generateVideoMotionPromptPack(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveVerticalDramaSeriesModel(
-    params.seriesId,
-    resolveQualityLargeContextModelId
-  );
+  // Pack-parity follow-up — resolve a vision-capable model ONLY when the
+  // caller supplied start-frame images to attach, reusing the SAME
+  // model-resolution helper family the per-shot generator uses
+  // (`resolveShotVideoPromptModel`, itself falling back to this exact
+  // `resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId)`
+  // call when no vision-capable model is enabled) — never a new selection
+  // policy. When no images are supplied, `model` resolves EXACTLY as before
+  // this task (byte-identical text-only call).
+  const wantsVision = (params.startFrameImages?.length ?? 0) > 0;
+  let model: string;
+  let hasVision = false;
+  if (wantsVision) {
+    const resolved = await resolveShotVideoPromptModel(params.seriesId);
+    model = resolved.model;
+    hasVision = resolved.hasVision;
+    if (!hasVision) {
+      // Vision fallback surface — same signal the per-shot generator logs
+      // (see that function's own doc comment), so a pack call that WANTED
+      // vision but couldn't get one is visible in server logs instead of
+      // silently degrading. Never blocks/fails the stage.
+      console.warn(
+        "[vd_video_prompt] generated WITHOUT vision (no vision-capable model enabled) — pack relied on text-only clip descriptions",
+        { seriesId: params.seriesId, episodeId: params.episodeId },
+      );
+    }
+  } else {
+    model = await resolveVerticalDramaSeriesModel(
+      params.seriesId,
+      resolveQualityLargeContextModelId
+    );
+  }
+
   const systemPrompt = loadSkillSystemPrompt();
-  const userPrompt = buildUserPrompt(params);
+
+  // Pack-parity follow-up — the SAME `TARGET VIDEO MODEL` fact block +
+  // native-audio fact the per-shot generator emits, reusing its exported
+  // helpers rather than duplicating their logic. `capabilities` is only
+  // resolvable when the caller supplied BOTH a model id and the full model
+  // row (`selectedVideoModel`); absent either, capability-derived facts
+  // (`maxReferenceImages`, native-audio) are simply omitted — never thrown.
+  const capabilities =
+    params.selectedVideoModelId && params.selectedVideoModel
+      ? resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
+          type: params.selectedVideoModel.type,
+          aspectRatios: params.selectedVideoModel.aspectRatios,
+          configJson: params.selectedVideoModel.configJson,
+        })
+      : undefined;
+  const targetVideoModelFactBlock = params.selectedVideoModelId
+    ? buildTargetVideoModelFactBlock({
+        family: resolveShotVideoPromptModelFamily(
+          params.selectedVideoModelId,
+          params.selectedVideoModel ?? {},
+        ),
+        modelId: params.selectedVideoModelId,
+        modelName: params.selectedVideoModel?.name,
+        maxReferenceImages: capabilities?.maxReferenceImages,
+        // The pack skill has no `frame_analysis` JSON contract — position
+        // anchoring is a plain-prose instruction in its "Single camera move
+        // + speaker anchoring per clip" section instead — so this generator
+        // never requests the per-shot-only structured field.
+        hasEstablishedCharacters: false,
+      })
+    : null;
+  const nativeAudioDirectionEnabled =
+    params.nativeAudioEnabled === true && capabilities?.supportsNativeAudio === true;
+
+  const userPrompt = buildUserPrompt(params, targetVideoModelFactBlock, nativeAudioDirectionEnabled);
 
   // Same truncation flaw and fix as `generateStartFrameRenderPlan` — 9
   // enriched per-shot clips (Phase 3B skill upgrades) previously truncated
   // the old 4000-token ceiling mid-array. Raised, plus one automatic
   // same-model retry on truncated/invalid JSON — see
-  // `executeJsonPlanningCallWithRetry`'s doc comment.
-  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt,
-    userPrompt,
-    temperature: 0.7,
-    userId: params.userId,
-    maxTokens: 16000,
-    schema: videoMotionPromptPackOutputSchema,
-    label: "Video motion prompt pack",
-  });
+  // `executeJsonPlanningCallWithRetry`'s doc comment. The vision branch
+  // mirrors this with `executeVisionAwareJsonCallWithRetry`'s own one-retry
+  // (higher-token-ceiling) contract.
+  const { data: validatedData, response } = hasVision
+    ? await executeVisionAwareJsonCallWithRetry<VideoMotionPromptPackOutput>({
+        model,
+        systemPrompt,
+        userPromptText: userPrompt,
+        hasVision: true,
+        images: (params.startFrameImages ?? [])
+          .slice(0, 12)
+          .map((frame) => ({ url: frame.url, label: `Shot ${frame.shotNumber} start frame` })),
+        userId: params.userId,
+        schema: videoMotionPromptPackOutputSchema,
+        firstAttemptMaxTokens: 16000,
+        retryMaxTokens: 32000,
+      })
+    : await executeJsonPlanningCallWithRetry<VideoMotionPromptPackOutput>({
+        model,
+        systemPrompt,
+        userPrompt,
+        temperature: 0.7,
+        userId: params.userId,
+        maxTokens: 16000,
+        schema: videoMotionPromptPackOutputSchema,
+        label: "Video motion prompt pack",
+      });
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
@@ -843,19 +1009,14 @@ export async function generateVideoMotionPromptPack(
       episodeId: params.episodeId,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
+      usedVision: hasVision,
     },
   });
 
-  const shotDialogueByShotNumber = new Map(
-    params.storyboardShots
-      .filter((s) => s.dialogueExcerpt)
-      .map((s) => [s.shotNumber, s.dialogueExcerpt as string]),
-  );
   const pack = projectMotionPromptPack(
     validatedData,
     params.selectedVideoModelId ?? "dry-run-video-model",
     params.durationProfileId,
-    shotDialogueByShotNumber,
     {
       promptLanguage: params.promptLanguage,
       dialogueLanguage: params.dialogueLanguage,

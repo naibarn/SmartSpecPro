@@ -3126,6 +3126,113 @@ export class VerticalDramaEpisodePipeline {
         )
       : undefined;
 
+    // Pack-parity follow-up (`planning/vd-video-prompt-model-family-quality/
+    // plan.md`, "pack bulk generator — out of scope" item, closed
+    // 2026-07-22) — resolve the full video-model catalog row, the tenant's
+    // native-audio preference, and any approved start-frame images so
+    // `generateVideoMotionPromptPack` can build the SAME `TARGET VIDEO
+    // MODEL` fact block, native-audio fact, and best-effort vision call the
+    // per-shot generator already has. All three reads run AFTER the
+    // `episodePlanSeriesRow` select above and are individually best-effort
+    // (never throw) — a missing/unresolvable model row, flag lookup
+    // failure, or absent start-frame plan must never break this stage;
+    // `generateVideoMotionPromptPack` itself already degrades gracefully
+    // when any of these are absent (family "other", no native-audio fact,
+    // text-only call).
+
+    // Full model catalog row — mirrors
+    // `applySpeakerSwitchSubShotsToRealMotionPromptPack`'s own catalog-
+    // lookup pattern above (dynamic import: this file's dependency
+    // direction forbids a static import of the router's equivalent
+    // `resolveEpisodeVideoModel` helper).
+    const selectedVideoModel = await (async () => {
+      try {
+        const [{ getModelsByTypeAsync }, { DEFAULT_MODELS }] = await Promise.all([
+          import("./modelRegistry"),
+          import("./mediaGenerationService"),
+        ]);
+        const models = await getModelsByTypeAsync("video");
+        const requestedModelId = existingSelectedVideoModelId?.trim();
+        return (
+          (requestedModelId &&
+            models.find(m => m.id === requestedModelId && m.isEnabled !== false)) ||
+          models.find(m => m.id === DEFAULT_MODELS.video)
+        );
+      } catch {
+        return undefined;
+      }
+    })();
+
+    // Native audio direction — same flag key + "rollout gate AND persisted
+    // preference" resolution as
+    // `applySpeakerSwitchSubShotsToRealMotionPromptPack`'s identical block
+    // above (no per-call UI toggle exists for this whole-episode batch
+    // path).
+    const priorPersistedPack = episode.motionPromptPack as
+      | { nativeAudioEnabled?: boolean }
+      | null;
+    const nativeAudioEnabled = await (async () => {
+      try {
+        const { getTenantFeatureFlags } = await import("./tenantFeatureFlagService");
+        const flags = await getTenantFeatureFlags(owner.tenantId).catch(() => null);
+        return (
+          flags?.verticalDramaSeriesNativeAudioPrompts === true &&
+          priorPersistedPack?.nativeAudioEnabled === true
+        );
+      } catch {
+        return false;
+      }
+    })();
+
+    // Optional start-frame vision — only shots with an APPROVED start-frame
+    // render (ground truth, same "approved asset over free-text claim"
+    // convention as `syncStartFramesOntoMotionPromptClips`); frames with no
+    // approved asset yet are simply skipped, never block the stage.
+    const startFrameImages = await (async () => {
+      try {
+        const startFramePlan =
+          (episode.startFramePlan as VerticalDramaStartFramePlan | null) ?? null;
+        const approvedFrames = (startFramePlan?.frames ?? []).filter(
+          f => typeof f.approvedMediaAssetId === "string" && f.approvedMediaAssetId.trim().length > 0
+        );
+        if (approvedFrames.length === 0) return undefined;
+        const assetIds = approvedFrames
+          .map(f => Number(f.approvedMediaAssetId))
+          .filter(id => Number.isInteger(id) && id > 0);
+        if (assetIds.length === 0) return undefined;
+        // Explicitly typed (`db.select(...)` is loosely typed `any` in this
+        // codebase's `db` wrapper, see `server/db.ts` — matches
+        // `applySpeakerSwitchSubShotsToRealMotionPromptPack`'s own
+        // `(typeof characterRows)[number]` workaround for the identical
+        // looseness, just spelled out inline here since there is no
+        // pre-existing local to reuse `typeof` from).
+        const assetRows: Array<{ id: number; url: string | null }> = await db
+          .select({ id: mediaAssets.id, url: mediaAssets.originalUrl })
+          .from(mediaAssets)
+          .where(
+            and(
+              inArray(mediaAssets.id, assetIds),
+              eq(mediaAssets.tenantId, owner.tenantId),
+              eq(mediaAssets.userId, owner.userId)
+            )
+          );
+        const urlByAssetId = new Map<number, string>();
+        for (const row of assetRows) {
+          if (row.url) urlByAssetId.set(row.id, row.url);
+        }
+        const resolved = approvedFrames
+          .map(f => {
+            const assetId = Number(f.approvedMediaAssetId);
+            const url = Number.isInteger(assetId) ? urlByAssetId.get(assetId) : undefined;
+            return url ? { shotNumber: f.shotNumber, url } : null;
+          })
+          .filter((v): v is { shotNumber: number; url: string } => v !== null);
+        return resolved.length > 0 ? resolved : undefined;
+      } catch {
+        return undefined;
+      }
+    })();
+
     return generateVideoMotionPromptPack({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -3136,6 +3243,9 @@ export class VerticalDramaEpisodePipeline {
       durationProfileId:
         episode.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
       selectedVideoModelId: existingSelectedVideoModelId,
+      selectedVideoModel,
+      nativeAudioEnabled,
+      startFrameImages,
       promptLanguage: existingLanguagePlan?.promptLanguage,
       dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
       thaiAccent: existingLanguagePlan?.thaiAccent,
