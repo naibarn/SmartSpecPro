@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@smartspec/shared": "workspace:*",
+    "@smartspec/shared": "*",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {

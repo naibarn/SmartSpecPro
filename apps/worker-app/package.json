@@ -16,7 +16,7 @@
     "release:windows": "node scripts/package-windows-release.mjs"
   },
   "dependencies": {
-    "@smartspec/remotion-render": "workspace:*",
+    "@smartspec/remotion-render": "*",
     "@tauri-apps/api": "^2.10.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
