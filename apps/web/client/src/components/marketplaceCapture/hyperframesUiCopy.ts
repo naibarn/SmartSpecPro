@@ -94,6 +94,20 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "9 ภาพต่อเนื่อง (Sequential) — 1 prompt ต่อ 1 ภาพ",
         sequentialStrategyOptionDescription:
           "สร้างภาพแยก 9 ภาพเป็นเรื่องเดียวต่อเนื่อง เน้นสินค้าตรงทุกมุม",
+        // Frame-strategy card promotion — top-level card copy. The card
+        // mirrors `frameStrategyOptions` in AutoStoryboardAdvancedOverrides.tsx
+        // (reuses `frameStrategyLabels` above for option labels and
+        // `sequentialStrategyOptionDescription` above for the sequential
+        // option's description); only the card chrome + the two
+        // non-sequential descriptions are new here.
+        frameStrategyCardTitle: "รูปแบบการสร้างภาพ (Frame strategy)",
+        frameStrategyCardSubtitle:
+          "เลือกวิธีที่ระบบจะสร้างภาพ storyboard ให้คุณ",
+        frameStrategyCardOptionDescriptions: {
+          storyboard_3x3_split: "ภาพเดียวแบบตาราง 9 ช่อง เห็นทุกช็อตในภาพเดียว",
+          video_shot_start_stop:
+            "แยกเฟรมเริ่มและจบของแต่ละช็อต เหมาะกับการตัดต่อวิดีโอ",
+        } as Record<"storyboard_3x3_split" | "video_shot_start_stop", string>,
         angleChipLabels: {
           front: "ด้านหน้า",
           back: "ด้านหลัง",
@@ -226,6 +240,21 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "Sequential 9 images — one prompt per image",
         sequentialStrategyOptionDescription:
           "Nine separate images telling one continuous story, product-accurate from every angle",
+        // Frame-strategy card promotion — top-level card copy. The card
+        // mirrors `frameStrategyOptions` in AutoStoryboardAdvancedOverrides.tsx
+        // (reuses `frameStrategyLabels` above for option labels and
+        // `sequentialStrategyOptionDescription` above for the sequential
+        // option's description); only the card chrome + the two
+        // non-sequential descriptions are new here.
+        frameStrategyCardTitle: "Frame strategy",
+        frameStrategyCardSubtitle:
+          "Choose how Auto builds your storyboard frames",
+        frameStrategyCardOptionDescriptions: {
+          storyboard_3x3_split:
+            "One 3x3 grid image showing every shot at a glance",
+          video_shot_start_stop:
+            "Separate start and stop frames per shot, ready for video editing",
+        } as Record<"storyboard_3x3_split" | "video_shot_start_stop", string>,
         angleChipLabels: {
           front: "Front",
           back: "Back",
