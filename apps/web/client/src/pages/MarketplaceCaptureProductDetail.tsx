@@ -4796,6 +4796,82 @@ export default function MarketplaceCaptureProductDetail() {
     ]
   );
 
+  // Feature 136 (section 11, §6.8) — multi-angle product reference chips +
+  // capacity meter + evidence review. `autoReviewProductAngleLabels` /
+  // `setAutoReviewProductAngleLabels` (section 02) stay the single source
+  // of truth `buildAutoReviewReferenceAnchors` reads to emit
+  // `productAngleImages[]`; this block only derives a
+  // `Record<imageId, angleLabel>` view for the chips UI and adapts the
+  // chips' `onAngleLabelChange(imageId, label)` callback back onto that
+  // same array state (upsert by url), so the payload is never re-plumbed.
+  const autoReviewProductAngleLabelsByImageId = useMemo(() => {
+    const map: Record<string, SequentialAngleLabel> = {};
+    for (const image of productImageOptions) {
+      const entry = autoReviewProductAngleLabels.find(
+        candidate => candidate.url === image.url
+      );
+      if (entry) map[image.id] = entry.angleLabel;
+    }
+    return map;
+  }, [productImageOptions, autoReviewProductAngleLabels]);
+  const handleAutoReviewAngleLabelChange = useCallback(
+    (imageId: string, label: SequentialAngleLabel) => {
+      const image = productImageOptions.find(candidate => candidate.id === imageId);
+      if (!image || !image.url) return;
+      setAutoReviewProductAngleLabels(previous => {
+        const next = previous.filter(entry => entry.url !== image.url);
+        next.push({
+          url: image.url,
+          ref: image.removableId
+            ? `product-image:${image.removableId}`
+            : `product-image-option:${image.id}`,
+          hash: image.hash || null,
+          storageKey: null,
+          source: "marketplace_product_image",
+          angleLabel: label,
+        });
+        return next;
+      });
+    },
+    [productImageOptions]
+  );
+  const autoReviewAngleSelectionEntries = useMemo(
+    () =>
+      buildSequentialAngleSelectionEntries({
+        images: productImageOptions,
+        primaryImageId: resolvedProductAnchorImage?.id ?? null,
+        angleLabels: autoReviewProductAngleLabelsByImageId,
+      }),
+    [productImageOptions, resolvedProductAnchorImage, autoReviewProductAngleLabelsByImageId]
+  );
+  // `modelCap` always comes from the server (`referenceCapacity.modelCap`,
+  // binding decision §3.2) — never the model registry.
+  const autoReviewReferenceCapacityMeter = useMemo(
+    () =>
+      resolveSequentialCapacityMeter({
+        modelCap: autoStoryboardReferenceCapacity?.modelCap ?? 0,
+        entries: autoReviewAngleSelectionEntries,
+        guardianReserved:
+          autoReviewCharacterMode === "uploaded_reference" || Boolean(characterAnchorUrl),
+        environmentAttached: Boolean(environmentAnchorUrl),
+      }),
+    [
+      autoStoryboardReferenceCapacity,
+      autoReviewAngleSelectionEntries,
+      autoReviewCharacterMode,
+      characterAnchorUrl,
+      environmentAnchorUrl,
+    ]
+  );
+  const autoReviewGuardianState = useMemo(
+    () =>
+      projectSequentialGuardianState({
+        planChildSubjectPolicy: autoStoryboardEvidencePreview?.childSubjectPolicy ?? null,
+        characterReferenceAttached: Boolean(characterAnchorUrl),
+      }),
+    [autoStoryboardEvidencePreview, characterAnchorUrl]
+  );
+
   if (product.isLoading) return <main className="p-8">Loading product...</main>;
   if (!product.data) return <main className="p-8">Product not found</main>;
 
@@ -4898,82 +4974,6 @@ export default function MarketplaceCaptureProductDetail() {
         className="mt-2 min-h-20 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
       />
     </label>
-  );
-
-  // Feature 136 (section 11, §6.8) — multi-angle product reference chips +
-  // capacity meter + evidence review. `autoReviewProductAngleLabels` /
-  // `setAutoReviewProductAngleLabels` (section 02) stay the single source
-  // of truth `buildAutoReviewReferenceAnchors` reads to emit
-  // `productAngleImages[]`; this block only derives a
-  // `Record<imageId, angleLabel>` view for the chips UI and adapts the
-  // chips' `onAngleLabelChange(imageId, label)` callback back onto that
-  // same array state (upsert by url), so the payload is never re-plumbed.
-  const autoReviewProductAngleLabelsByImageId = useMemo(() => {
-    const map: Record<string, SequentialAngleLabel> = {};
-    for (const image of productImageOptions) {
-      const entry = autoReviewProductAngleLabels.find(
-        candidate => candidate.url === image.url
-      );
-      if (entry) map[image.id] = entry.angleLabel;
-    }
-    return map;
-  }, [productImageOptions, autoReviewProductAngleLabels]);
-  const handleAutoReviewAngleLabelChange = useCallback(
-    (imageId: string, label: SequentialAngleLabel) => {
-      const image = productImageOptions.find(candidate => candidate.id === imageId);
-      if (!image || !image.url) return;
-      setAutoReviewProductAngleLabels(previous => {
-        const next = previous.filter(entry => entry.url !== image.url);
-        next.push({
-          url: image.url,
-          ref: image.removableId
-            ? `product-image:${image.removableId}`
-            : `product-image-option:${image.id}`,
-          hash: image.hash || null,
-          storageKey: null,
-          source: "marketplace_product_image",
-          angleLabel: label,
-        });
-        return next;
-      });
-    },
-    [productImageOptions]
-  );
-  const autoReviewAngleSelectionEntries = useMemo(
-    () =>
-      buildSequentialAngleSelectionEntries({
-        images: productImageOptions,
-        primaryImageId: resolvedProductAnchorImage?.id ?? null,
-        angleLabels: autoReviewProductAngleLabelsByImageId,
-      }),
-    [productImageOptions, resolvedProductAnchorImage, autoReviewProductAngleLabelsByImageId]
-  );
-  // `modelCap` always comes from the server (`referenceCapacity.modelCap`,
-  // binding decision §3.2) — never the model registry.
-  const autoReviewReferenceCapacityMeter = useMemo(
-    () =>
-      resolveSequentialCapacityMeter({
-        modelCap: autoStoryboardReferenceCapacity?.modelCap ?? 0,
-        entries: autoReviewAngleSelectionEntries,
-        guardianReserved:
-          autoReviewCharacterMode === "uploaded_reference" || Boolean(characterAnchorUrl),
-        environmentAttached: Boolean(environmentAnchorUrl),
-      }),
-    [
-      autoStoryboardReferenceCapacity,
-      autoReviewAngleSelectionEntries,
-      autoReviewCharacterMode,
-      characterAnchorUrl,
-      environmentAnchorUrl,
-    ]
-  );
-  const autoReviewGuardianState = useMemo(
-    () =>
-      projectSequentialGuardianState({
-        planChildSubjectPolicy: autoStoryboardEvidencePreview?.childSubjectPolicy ?? null,
-        characterReferenceAttached: Boolean(characterAnchorUrl),
-      }),
-    [autoStoryboardEvidencePreview, characterAnchorUrl]
   );
 
   const characterChoicePanel = (

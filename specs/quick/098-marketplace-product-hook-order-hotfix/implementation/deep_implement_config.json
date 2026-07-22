@@ -1,0 +1,22 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/098-marketplace-product-hook-order-hotfix/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/098-marketplace-product-hook-order-hotfix/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm test -- client/src/pages/__tests__/MarketplaceCaptureProductDetail.sequentialUiWiring.test.ts client/src/pages/__tests__/MarketplaceCaptureProductDetail.autoReviewPolling.test.ts",
+  "sections": [
+    "section-01-hook-order-hotfix"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-22T13:27:40.770523+00:00"
+}

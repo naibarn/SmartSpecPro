@@ -27,6 +27,34 @@ function sourceBetween(start: string, end: string) {
 }
 
 describe("MarketplaceCaptureProductDetail sequential UI wiring (Feature 136 section 11)", () => {
+  it("declares every sequential derived-state hook before the product loading guards", () => {
+    const productGuardIndexes = [
+      source.indexOf("if (product.isLoading) return"),
+      source.indexOf("if (!product.data) return"),
+    ];
+    for (const guardIndex of productGuardIndexes) {
+      expect(guardIndex).toBeGreaterThanOrEqual(0);
+    }
+
+    const sequentialHookMarkers = [
+      "const autoReviewProductAngleLabelsByImageId = useMemo(",
+      "const handleAutoReviewAngleLabelChange = useCallback(",
+      "const autoReviewAngleSelectionEntries = useMemo(",
+      "const autoReviewReferenceCapacityMeter = useMemo(",
+      "const autoReviewGuardianState = useMemo(",
+    ];
+
+    for (const marker of sequentialHookMarkers) {
+      const hookIndex = source.indexOf(marker);
+      expect(hookIndex, `${marker} must exist`).toBeGreaterThanOrEqual(0);
+      for (const guardIndex of productGuardIndexes) {
+        expect(hookIndex, `${marker} must run before product guards`).toBeLessThan(
+          guardIndex
+        );
+      }
+    }
+  });
+
   it("imports and mounts the three sequential UI components", () => {
     expect(source).toContain("SequentialEvidenceReviewPanel");
     expect(source).toContain("SequentialGuardianNotice");
