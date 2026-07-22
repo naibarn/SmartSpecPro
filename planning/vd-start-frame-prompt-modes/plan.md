@@ -260,3 +260,14 @@ the persisted prompt never carries the tail.
       session block.
 - [x] Memory updated (project_vd_start_frame_prompt_modes.md +
       feedback_skill_first_authoring no-code-append rule)
+- [x] Gap sweep complete (2026-07-22): G1 batch-regen state loss FIXED
+      (projectStartFramePlan merges prior per-frame state by shot number),
+      G2 closed as correct-by-design, G3/G4 SFX double-append FIXED (skill
+      owns the sound clause; formatter no longer appends audioDirection and
+      its cap guard now rolls back its OWN tiers LIFO), judge fact sheet
+      solo-shot false flag FIXED, speaker-switch matrix 9→15 tests, dead
+      import removed, 40 pre-existing router-test failures repaired (53/53).
+- [x] Verified 405 tests green (service 265 + router/shared 116 + client 24)
+      and committed as c38fb4498 (67 files).
+- [ ] `git push origin main` — commit exists locally; push was blocked by the
+      permission classifier, user must run it.
