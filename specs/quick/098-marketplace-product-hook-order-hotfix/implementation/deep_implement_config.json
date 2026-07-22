@@ -6,10 +6,13 @@
   "git_root": "/home/dev/projects/SmartSpecPro",
   "commit_style": "conventional",
   "test_command": "npm test -- client/src/pages/__tests__/MarketplaceCaptureProductDetail.sequentialUiWiring.test.ts client/src/pages/__tests__/MarketplaceCaptureProductDetail.autoReviewPolling.test.ts",
-  "sections": [
-    "section-01-hook-order-hotfix"
-  ],
-  "sections_state": {},
+  "sections": ["section-01-hook-order-hotfix"],
+  "sections_state": {
+    "section-01-hook-order-hotfix": {
+      "status": "complete",
+      "commit_hash": "b25aca693"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",
