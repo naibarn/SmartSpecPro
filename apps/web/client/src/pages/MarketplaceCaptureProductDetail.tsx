@@ -140,6 +140,58 @@ function persistStoredAutoStoryboardOverrides(
   }
 }
 
+// Standard Order ("flow เดิม") credit-cap selector — round-count display
+// values mirror server/services/marketplaceAutoReviewService.ts
+// buildMarketplaceAutoReviewQualityModePolicy()'s maxRepairAttemptsPerUnit
+// (fast_draft=1, balanced=MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS+1=3,
+// premium_strict_qa=MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS+2=4). Display-only —
+// keep these numbers in sync if that server-side policy ever changes.
+const AUTO_REVIEW_QUALITY_MODE_ROUNDS: Record<
+  Exclude<AutoReviewQualityMode, "">,
+  number
+> = {
+  fast_draft: 1,
+  balanced: 3,
+  premium_strict_qa: 4,
+};
+const AUTO_REVIEW_QUALITY_MODE_STORAGE_PREFIX =
+  "smartSpecPro.marketplaceCapture.autoReviewQualityMode.v1";
+
+function loadStoredAutoReviewQualityMode(
+  productId: string
+): AutoReviewQualityMode {
+  if (typeof window === "undefined" || !productId) return "";
+  try {
+    const raw = window.localStorage.getItem(
+      `${AUTO_REVIEW_QUALITY_MODE_STORAGE_PREFIX}:${productId}`
+    );
+    return raw === "fast_draft" ||
+      raw === "balanced" ||
+      raw === "premium_strict_qa"
+      ? raw
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+function persistStoredAutoReviewQualityMode(
+  productId: string,
+  qualityMode: AutoReviewQualityMode
+) {
+  if (typeof window === "undefined" || !productId) return;
+  try {
+    const key = `${AUTO_REVIEW_QUALITY_MODE_STORAGE_PREFIX}:${productId}`;
+    if (!qualityMode) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    window.localStorage.setItem(key, qualityMode);
+  } catch {
+    // Ignore storage failures so Auto Review controls remain usable.
+  }
+}
+
 type ProductEditForm = {
   productName: string;
   descriptionText: string;
@@ -172,6 +224,16 @@ type AutoReviewAudioStrategy =
 type AutoReviewShotCount = 7 | 8 | 9;
 type AutoReviewOverlayTextMode = "no_text" | "allow_text";
 type AutoReviewImageModel = string;
+// Standard Order credit-cap selector — "" means "no selection", which keeps
+// today's behavior exactly (the field is omitted from the mutate payload and
+// the server falls back to its own "balanced" default). Values must match
+// the router's own enum verbatim (server/routers/marketplaceCapture.ts
+// `startAutoReview` input, `qualityMode`) — never invent new strings here.
+type AutoReviewQualityMode =
+  | ""
+  | "fast_draft"
+  | "balanced"
+  | "premium_strict_qa";
 type AutoReviewStartAction = "storyboard" | "video" | "auto_review_video";
 type AutoReviewCharacterMode =
   | "product_only"
@@ -2413,6 +2475,51 @@ export default function MarketplaceCaptureProductDetail() {
   // fixed mapping of fast_draft/balanced -> gpt-4o-mini, premium_strict_qa
   // -> gpt-4o. Vision-capable models change often, so users can override it.
   const [autoReviewVisionQaModel, setAutoReviewVisionQaModel] = useState("");
+  // Standard Order credit-cap selector (image repair rounds). "" = no
+  // selection, which omits the field from startAutoReviewMutation and keeps
+  // today's behavior exactly. Persisted per productId (route has no `key`,
+  // so this component instance can survive a product-to-product
+  // navigation) via the safe localStorage helpers above.
+  const [autoReviewQualityMode, setAutoReviewQualityMode] =
+    useState<AutoReviewQualityMode>(() =>
+      loadStoredAutoReviewQualityMode(productId)
+    );
+  // Guards the productId -> reload effect and the autoReviewQualityMode ->
+  // persist effect from racing each other. Without this, switching product
+  // (this route has no `key`, so the component never remounts) would run
+  // both effects in the same commit while `autoReviewQualityMode` still
+  // holds the PREVIOUS product's value, and the persist effect would
+  // overwrite the new product's saved choice with the old product's
+  // leftover state. Skip exactly one persist right after a reload.
+  const skipNextAutoReviewQualityModePersistRef = useRef(false);
+  useEffect(() => {
+    skipNextAutoReviewQualityModePersistRef.current = true;
+    setAutoReviewQualityMode(loadStoredAutoReviewQualityMode(productId));
+  }, [productId]);
+  useEffect(() => {
+    if (skipNextAutoReviewQualityModePersistRef.current) {
+      skipNextAutoReviewQualityModePersistRef.current = false;
+      return;
+    }
+    persistStoredAutoReviewQualityMode(productId, autoReviewQualityMode);
+  }, [productId, autoReviewQualityMode]);
+  // Display-only estimate for the Standard Order quality-mode selector.
+  // Falls back to "balanced" (today's server-side default) when the user
+  // hasn't picked anything yet, so the helper text always reflects what
+  // will actually happen.
+  const autoReviewQualityModeEstimateRounds =
+    AUTO_REVIEW_QUALITY_MODE_ROUNDS[autoReviewQualityMode || "balanced"];
+  const autoReviewQualityModeMaxImages =
+    autoReviewShotCount * autoReviewQualityModeEstimateRounds;
+  const autoReviewQualityModeEstimateTextTh = `${autoReviewShotCount} ช็อต × สูงสุด ${autoReviewQualityModeEstimateRounds} รอบ/ช็อต = สูงสุดประมาณ ${autoReviewQualityModeMaxImages} ภาพ (ปกติใช้ ~${autoReviewShotCount} ภาพ ถ้าผ่าน QA รอบแรก)${
+    autoReviewQualityMode
+      ? ""
+      : " • ยังไม่เลือก = ใช้ค่าเริ่มต้นของระบบ (มาตรฐาน)"
+  }`;
+  const autoReviewQualityModeEstimateTextEn = `${autoReviewShotCount} shots × up to ${autoReviewQualityModeEstimateRounds} round(s)/shot = up to ~${autoReviewQualityModeMaxImages} images worst case (typically ~${autoReviewShotCount} if QA passes on the first try).${
+    autoReviewQualityMode ? "" : " No selection = system default (Standard)."
+  }`;
+  const autoReviewQualityModeEstimateText = `${autoReviewQualityModeEstimateTextTh} | ${autoReviewQualityModeEstimateTextEn}`;
   const [autoReviewMcpConnectionId, setAutoReviewMcpConnectionId] = useState<
     string | null
   >(null);
@@ -4766,6 +4873,11 @@ export default function MarketplaceCaptureProductDetail() {
         overlayTextMode: autoReviewOverlayTextMode,
         imageModel: autoReviewImageModel,
         visionQaModel: trimmedVisionQaModel || undefined,
+        // Feature: Standard Order credit-cap selector. "" (no selection)
+        // omits the key entirely — byte-identical to today's payload for
+        // every caller that never touches the new selector; the server's
+        // own "balanced" default policy still applies.
+        qualityMode: autoReviewQualityMode || undefined,
         transportMetadata,
         referenceAnchors,
         motionDirection: autoReviewMotionDirection.trim()
@@ -4784,6 +4896,7 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewImageModel,
       autoReviewMotionDirection,
       autoReviewCharacterPresenceMode,
+      autoReviewQualityMode,
       autoReviewVisionQaModel,
       autoReviewOverlayTextMode,
       autoReviewRunItems,
@@ -6580,6 +6693,48 @@ export default function MarketplaceCaptureProductDetail() {
                       ))}
                     </div>
                   </div>
+                  {sequentialStrategyEnabled && sequentialStrategySelected ? (
+                    <div className="rounded-lg border bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        จำนวนรอบซ่อมภาพ (Quality mode)
+                      </p>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        {(
+                          [
+                            ["fast_draft", "ประหยัด", "Economy", 1],
+                            ["balanced", "มาตรฐาน", "Standard", 3],
+                            ["premium_strict_qa", "พรีเมียม", "Premium", 4],
+                          ] as const
+                        ).map(([mode, labelTh, labelEn, rounds]) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            aria-pressed={autoReviewQualityMode === mode}
+                            onClick={() =>
+                              setAutoReviewQualityMode(previous =>
+                                previous === mode ? "" : mode
+                              )
+                            }
+                            className={`rounded-lg border p-3 text-center transition ${
+                              autoReviewQualityMode === mode
+                                ? "border-rose-500 bg-white shadow-sm ring-2 ring-rose-100"
+                                : "bg-white/70 hover:bg-white"
+                            }`}
+                          >
+                            <span className="block text-sm font-semibold text-slate-900">
+                              {labelTh} · {labelEn}
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">
+                              สูงสุด {rounds} รอบ/ช็อต
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        {autoReviewQualityModeEstimateText}
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="rounded-lg border bg-slate-50 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       เสียงพูด / บทพากย์
