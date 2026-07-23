@@ -21,7 +21,7 @@
  * `shots.length === 0` self-disable).
  */
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Pencil } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -39,6 +39,10 @@ import {
 } from "./hyperframesUiCopy";
 
 const REDRAFT_NOTES_MAX_CHARS = 2000;
+// Marketplace mandatory text-plan review gate follow-up (2026-07-23 user
+// feedback on the live gate) — matches the server's
+// `updateAutoReviewPlanShotDialogue` input contract.
+const SHOT_DIALOGUE_MAX_CHARS = 2000;
 // Display heuristic only (roughly 3-4 lines of product facts) — collapses
 // the product-facts block so a long spec sheet does not push the approve /
 // redraft actions far below the fold. Never hides content outright; the
@@ -112,6 +116,12 @@ export interface AutoReviewPlanReviewPlanData {
   sequentialShots: AutoReviewPlanReviewSequentialShotRow[];
   settings: AutoReviewPlanReviewSettingRow[];
   creditEstimate: AutoReviewPlanReviewCreditEstimate | null;
+  /** True for the deterministic degraded fallback pack
+   *  (`buildDegradedSequentialStoryboardPack`,
+   *  `server/services/marketplaceAutoReviewService.ts`) — never has
+   *  enrichment dialogue and does not honor the user's tone/structure
+   *  settings. See `isAutoReviewPlanReviewDegradedPlan`. */
+  isDegradedFallback: boolean;
 }
 
 /**
@@ -438,6 +448,27 @@ export function buildAutoReviewPlanReviewSettingRows(
 }
 
 /**
+ * True for the deterministic degraded fallback pack
+ * (`buildDegradedSequentialStoryboardPack`,
+ * `server/services/marketplaceAutoReviewService.ts`) — assembled when every
+ * loop round of the real skill fails structurally, so the run can stay
+ * alive. That pack never has enrichment dialogue (`dialogue: ""` on every
+ * shot) and does not honor the user's tone/structure settings, so the
+ * review gate warns the user and points at "ask AI to redraft" (which
+ * re-attempts the real skill). Checked via EITHER persisted signal
+ * (`sequentialStoryboard.degraded === true` or `skillVersion` containing the
+ * literal substring "degraded", e.g. `"1.0.0-degraded"`) — never invents a
+ * third heuristic. Never throws on malformed/missing metadata.
+ */
+export function isAutoReviewPlanReviewDegradedPlan(
+  metadataJson: unknown
+): boolean {
+  const sequential = asRecord(asRecord(metadataJson).sequentialStoryboard);
+  if (sequential.degraded === true) return true;
+  return cleanText(sequential.skillVersion).toLowerCase().includes("degraded");
+}
+
+/**
  * One-call convenience bundling every projector above — the shape
  * `MarketplaceCaptureProductDetail.tsx` builds from the FULL
  * (`includeHeavyMetadata`) `getAutoReviewRun` response (the polled
@@ -464,12 +495,28 @@ export function buildAutoReviewPlanReviewPlanData(
       metadataJson,
       frameStrategy
     ),
+    isDegradedFallback: isAutoReviewPlanReviewDegradedPlan(metadataJson),
   };
 }
 
 /* -------------------------------------------------------------------------- */
 /* Component                                                                 */
 /* -------------------------------------------------------------------------- */
+
+/** `updateAutoReviewPlanShotDialogue` input's shot-scoped fields (the caller
+ *  adds `runId`) — `server/routers/marketplaceCapture.ts`. */
+export interface AutoReviewPlanReviewShotDialogueSaveInput {
+  shotId: number;
+  dialogue: string;
+}
+
+/** Per-shot inline save error, keyed by `shotId` so a failed save on one
+ *  shot never blanks another shot's row (nullable-single-id convention,
+ *  mirrors `SequentialShotReviewSection`'s `shotError`). */
+export interface AutoReviewPlanReviewShotDialogueError {
+  shotId: number;
+  message: string;
+}
 
 export interface AutoReviewPlanReviewPanelProps {
   /** `metadataJson.planReview` (or `undefined`/`null` on older runs). */
@@ -493,6 +540,17 @@ export interface AutoReviewPlanReviewPanelProps {
    *  panel never defines a second cancel flow. */
   onCancelRun: () => void;
   cancelling?: boolean;
+  /** 2026-07-23 user feedback on the live gate — inline per-shot dialogue
+   *  edit, calling the server's `updateAutoReviewPlanShotDialogue`. Optional
+   *  so a caller that has not wired it yet still renders read-only dialogue
+   *  text (mirrors `onRetryLoadPlan`'s optionality convention) — the pencil
+   *  affordance itself only renders when this is provided. */
+  onSaveShotDialogue?: (input: AutoReviewPlanReviewShotDialogueSaveInput) => void;
+  /** Shot whose dialogue-save mutation is currently in flight (nullable-
+   *  single-id convention, mirrors `SequentialShotReviewSection`'s
+   *  `savingShotId`). */
+  dialogueSavingShotId?: number | null;
+  dialogueSaveError?: AutoReviewPlanReviewShotDialogueError | null;
   locale?: MarketplaceHyperframesUiLocale | string;
 }
 
@@ -550,6 +608,180 @@ function PlanReviewProductDetail({
   );
 }
 
+/**
+ * One sequential-shot row — 2026-07-23 user feedback on the live gate.
+ * Purpose + visual summary render as before; dialogue now ALWAYS renders
+ * (never hidden when empty — the degraded fallback pack has no dialogue at
+ * all, and hiding the row silently read as "dialogue was never wired") and
+ * is inline-editable via `onSaveDialogue`. "แก้ภาพช็อตนี้" never edits
+ * `visualSummary` directly (that English text grounds the image prompt and
+ * must stay in the skill's own hands) — it only appends a prefilled note
+ * into the panel's EXISTING redraft-notes textarea via `onRequestVisualFix`
+ * (owned by the parent, since notes are the parent's state).
+ */
+function PlanReviewShotRow({
+  shot,
+  locale,
+  busy,
+  savingShotId,
+  saveError,
+  onSaveDialogue,
+  onRequestVisualFix,
+}: {
+  shot: AutoReviewPlanReviewSequentialShotRow;
+  locale?: MarketplaceHyperframesUiLocale | string;
+  busy: boolean;
+  savingShotId?: number | null;
+  saveError?: AutoReviewPlanReviewShotDialogueError | null;
+  onSaveDialogue?: (input: AutoReviewPlanReviewShotDialogueSaveInput) => void;
+  onRequestVisualFix: (shotId: number) => void;
+}) {
+  const copy = getMarketplaceHyperframesUiCopy(locale);
+  const isSaving = savingShotId === shot.shotId;
+  const rowError =
+    saveError && saveError.shotId === shot.shotId ? saveError.message : null;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(shot.dialogue);
+  const wasSavingRef = useRef(false);
+
+  // A settle (isSaving true -> false) with no error means the save
+  // succeeded — close the editor and adopt the fresh server text (already
+  // reflected in `shot.dialogue` via the caller's query invalidation by the
+  // time this fires). A failed attempt (error set) leaves the editor open
+  // with exactly what the user typed, matching the redraft box's "retain
+  // what the user typed" rule below.
+  useEffect(() => {
+    if (wasSavingRef.current && !isSaving && !rowError) {
+      setEditing(false);
+      setDraft(shot.dialogue);
+    }
+    wasSavingRef.current = isSaving;
+  }, [isSaving, rowError, shot.dialogue]);
+
+  return (
+    <li
+      data-testid={`plan-review-shot-${shot.shotId}`}
+      className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {copy.planReviewShotLabel(shot.shotId)}
+        </span>
+        {shot.durationSeconds != null ? (
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {copy.planReviewShotDurationLabel(shot.durationSeconds)}
+          </span>
+        ) : null}
+      </div>
+      {shot.purpose ? (
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <span className="font-semibold">
+            {copy.planReviewShotPurposeLabel}:
+          </span>{" "}
+          {shot.purpose}
+        </p>
+      ) : null}
+      {shot.visualSummary ? (
+        <p className="mt-1 text-sm text-slate-800 dark:text-slate-100">
+          <span className="font-semibold text-slate-500 dark:text-slate-400">
+            {copy.planReviewShotVisualSummaryLabel}:
+          </span>{" "}
+          <span className="mr-1 rounded border border-slate-300 px-1 align-middle text-[10px] font-semibold uppercase text-slate-500 dark:border-slate-600 dark:text-slate-400">
+            {copy.planReviewVisualSummaryLanguageBadge}
+          </span>
+          {shot.visualSummary}
+        </p>
+      ) : null}
+      <button
+        type="button"
+        className="mt-1 text-xs font-medium text-sky-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline dark:text-sky-400"
+        disabled={busy}
+        onClick={() => onRequestVisualFix(shot.shotId)}
+      >
+        {copy.planReviewFixShotVisual}
+      </button>
+
+      <div className="mt-2 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/40">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {copy.planReviewShotDialogueLabel}
+          </span>
+          {!editing && onSaveDialogue ? (
+            <button
+              type="button"
+              aria-label={copy.planReviewEditShotDialogueAriaLabel(shot.shotId)}
+              className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-700"
+              disabled={busy}
+              onClick={() => {
+                setDraft(shot.dialogue);
+                setEditing(true);
+              }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+        {editing ? (
+          <div className="mt-1 space-y-1">
+            <Textarea
+              aria-label={copy.planReviewEditShotDialogueAriaLabel(shot.shotId)}
+              value={draft}
+              onChange={event => setDraft(event.target.value)}
+              maxLength={SHOT_DIALOGUE_MAX_CHARS}
+              className="min-h-16 bg-white dark:bg-slate-900"
+              disabled={isSaving}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs text-slate-400">
+                {copy.promptCharCount(draft.length, SHOT_DIALOGUE_MAX_CHARS)}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={isSaving}
+                  onClick={() => {
+                    setDraft(shot.dialogue);
+                    setEditing(false);
+                  }}
+                >
+                  {copy.cancel}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isSaving || busy}
+                  onClick={() =>
+                    onSaveDialogue?.({
+                      shotId: shot.shotId,
+                      dialogue: draft.trim(),
+                    })
+                  }
+                >
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : null}
+                  {copy.planReviewSaveShotDialogue}
+                </Button>
+              </div>
+            </div>
+            {rowError ? (
+              <p className="text-xs text-red-700 dark:text-red-300">
+                {rowError}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-1 text-sm text-slate-800 dark:text-slate-100">
+            {shot.dialogue || copy.planReviewShotDialogueEmpty}
+          </p>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export function AutoReviewPlanReviewPanel({
   planReview,
   plan,
@@ -563,12 +795,20 @@ export function AutoReviewPlanReviewPanel({
   redraftError,
   onCancelRun,
   cancelling,
+  onSaveShotDialogue,
+  dialogueSavingShotId,
+  dialogueSaveError,
   locale,
 }: AutoReviewPlanReviewPanelProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const [redraftOpen, setRedraftOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const previousRedraftCountRef = useRef(planReview?.redraftCount ?? 0);
+  const redraftTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // Set by `requestShotVisualFix` below (a per-shot "แก้ภาพช็อตนี้" click) —
+  // consumed by the focus effect once the notes box is confirmed open, so
+  // the user can start typing their correction immediately.
+  const [pendingRedraftFocus, setPendingRedraftFocus] = useState(false);
 
   // A successful redraft increments `redraftCount` in the persisted
   // metadata — close the notes box and clear the buffer only on that signal
@@ -583,6 +823,22 @@ export function AutoReviewPlanReviewPanel({
     }
   }, [planReview?.redraftCount]);
 
+  // 2026-07-23 user feedback on the live gate — a per-shot "แก้ภาพช็อตนี้"
+  // click opens the redraft-notes box (if closed) and appends a prefilled
+  // line; this focuses the textarea and places the caret at the end right
+  // after that DOM update commits, so the user can type their correction
+  // without an extra click.
+  useEffect(() => {
+    if (!pendingRedraftFocus || !redraftOpen) return;
+    const el = redraftTextareaRef.current;
+    if (el) {
+      el.focus();
+      const end = el.value.length;
+      el.setSelectionRange(end, end);
+    }
+    setPendingRedraftFocus(false);
+  }, [pendingRedraftFocus, redraftOpen]);
+
   const isAwaiting =
     planReview?.required === true && planReview?.status === "awaiting";
   if (!isAwaiting) return null;
@@ -596,6 +852,24 @@ export function AutoReviewPlanReviewPanel({
       plan.voiceoverScript ||
       hasSequentialShots)
   );
+
+  // "ภาพที่จะเห็น" (visualSummary) is never directly editable here — it
+  // grounds the English image prompt and must stay in the skill's hands.
+  // Instead this rides the EXISTING whole-plan redraft: append a prefilled
+  // "Shot N: " line into the notes textarea (opening it if closed) and
+  // focus it so the user can type the correction immediately.
+  function requestShotVisualFix(shotId: number) {
+    const prefix = `${copy.planReviewShotLabel(shotId)}: `;
+    setNotes(current => {
+      const trimmed = current.replace(/\s+$/, "");
+      const next = trimmed ? `${trimmed}\n${prefix}` : prefix;
+      return next.length > REDRAFT_NOTES_MAX_CHARS
+        ? next.slice(0, REDRAFT_NOTES_MAX_CHARS)
+        : next;
+    });
+    setRedraftOpen(true);
+    setPendingRedraftFocus(true);
+  }
 
   return (
     <div
@@ -619,6 +893,16 @@ export function AutoReviewPlanReviewPanel({
           </span>
         ) : null}
       </div>
+
+      {plan?.isDegradedFallback ? (
+        <div
+          data-testid="plan-review-degraded-banner"
+          className="flex items-start gap-2 rounded-md border-2 border-orange-400 bg-orange-50 p-3 text-sm text-orange-900 dark:border-orange-500/50 dark:bg-orange-950/30 dark:text-orange-100"
+        >
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <p>{copy.planReviewDegradedBanner}</p>
+        </div>
+      ) : null}
 
       {!plan ? (
         planLoadError ? (
@@ -686,50 +970,21 @@ export function AutoReviewPlanReviewPanel({
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     {copy.planReviewShotsTableTitle}
                   </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {copy.planReviewVisualSummaryLanguageHint}
+                  </p>
                   <ol className="space-y-2">
                     {plan.sequentialShots.map(shot => (
-                      <li
+                      <PlanReviewShotRow
                         key={shot.shotId}
-                        data-testid={`plan-review-shot-${shot.shotId}`}
-                        className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {copy.planReviewShotLabel(shot.shotId)}
-                          </span>
-                          {shot.durationSeconds != null ? (
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {copy.planReviewShotDurationLabel(
-                                shot.durationSeconds
-                              )}
-                            </span>
-                          ) : null}
-                        </div>
-                        {shot.purpose ? (
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            <span className="font-semibold">
-                              {copy.planReviewShotPurposeLabel}:
-                            </span>{" "}
-                            {shot.purpose}
-                          </p>
-                        ) : null}
-                        {shot.visualSummary ? (
-                          <p className="mt-1 text-sm text-slate-800 dark:text-slate-100">
-                            <span className="font-semibold text-slate-500 dark:text-slate-400">
-                              {copy.planReviewShotVisualSummaryLabel}:
-                            </span>{" "}
-                            {shot.visualSummary}
-                          </p>
-                        ) : null}
-                        {shot.dialogue ? (
-                          <p className="mt-1 text-sm text-slate-800 dark:text-slate-100">
-                            <span className="font-semibold text-slate-500 dark:text-slate-400">
-                              {copy.planReviewShotDialogueLabel}:
-                            </span>{" "}
-                            {shot.dialogue}
-                          </p>
-                        ) : null}
-                      </li>
+                        shot={shot}
+                        locale={locale}
+                        busy={busy}
+                        savingShotId={dialogueSavingShotId}
+                        saveError={dialogueSaveError}
+                        onSaveDialogue={onSaveShotDialogue}
+                        onRequestVisualFix={requestShotVisualFix}
+                      />
                     ))}
                   </ol>
                 </div>
@@ -776,6 +1031,7 @@ export function AutoReviewPlanReviewPanel({
               {copy.planReviewRedraftNotesLabel}
             </span>
             <Textarea
+              ref={redraftTextareaRef}
               aria-label={copy.planReviewRedraftNotesLabel}
               value={notes}
               onChange={event => setNotes(event.target.value)}

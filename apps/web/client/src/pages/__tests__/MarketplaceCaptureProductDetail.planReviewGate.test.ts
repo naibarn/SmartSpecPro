@@ -121,6 +121,39 @@ describe("MarketplaceCaptureProductDetail plan-review gate wiring (2026-07-23)",
     );
   });
 
+  it("wires updateAutoReviewPlanShotDialogue with per-shot pending state (2026-07-23 inline dialogue edit follow-up) and refetches like the sibling mutations", () => {
+    const dialogueMutation = sourceBetween(
+      "const [dialogueSavingShotId, setDialogueSavingShotId] = useState<",
+      "const item = (productItem ?? {})"
+    );
+    expect(dialogueMutation).toContain(
+      "trpc.marketplaceCapture.updateAutoReviewPlanShotDialogue.useMutation("
+    );
+    expect(dialogueMutation).toContain("await autoReviewRuns.refetch();");
+    expect(dialogueMutation).toContain("toast.error(error.message)");
+    expect(dialogueMutation).toContain(
+      "utils.marketplaceCapture.getAutoReviewRun.setData("
+    );
+    // Nullable-single-id pending state, mirroring
+    // `sequentialSavingShotId`/`sequentialShotError` in StoryboardReviewPage.tsx.
+    expect(dialogueMutation).toContain(
+      "const [dialogueSaveError, setDialogueSaveError] = useState<"
+    );
+    expect(dialogueMutation).toContain("onSettled: () => setDialogueSavingShotId(null)");
+    expect(dialogueMutation).toContain(
+      "setDialogueSaveError({ shotId: variables.shotId, message: error.message })"
+    );
+
+    // Exactly one instance on the whole page — the panel must bind to it,
+    // not declare its own (same rule as `cancelAutoReviewMutation` below).
+    const dialogueMutationDeclarations = (
+      source.match(
+        /trpc\.marketplaceCapture\.updateAutoReviewPlanShotDialogue\.useMutation\(/g
+      ) ?? []
+    ).length;
+    expect(dialogueMutationDeclarations).toBe(1);
+  });
+
   it("mounts the panel with runId-bound callbacks and reuses the EXISTING cancelAutoReviewMutation instance — never a second cancel flow", () => {
     const mount = sourceBetween(
       "<AutoReviewPlanReviewPanel",
@@ -145,6 +178,24 @@ describe("MarketplaceCaptureProductDetail plan-review gate wiring (2026-07-23)",
       ) ?? []
     ).length;
     expect(cancelMutationDeclarations).toBe(1);
+  });
+
+  it("mounts onSaveShotDialogue bound to the run id + updateAutoReviewPlanShotDialogueMutation, with the per-shot pending state passed through", () => {
+    const mount = sourceBetween(
+      "<AutoReviewPlanReviewPanel",
+      "{isStartingAutoReviewRun && !statusAutoReviewRun ? ("
+    );
+    expect(mount).toContain("onSaveShotDialogue={input => {");
+    expect(mount).toContain(
+      "updateAutoReviewPlanShotDialogueMutation.mutate({"
+    );
+    expect(mount).toContain("runId: String(statusAutoReviewRun.id),");
+    expect(mount).toContain("shotId: input.shotId,");
+    expect(mount).toContain("dialogue: input.dialogue,");
+    expect(mount).toContain(
+      "dialogueSavingShotId={dialogueSavingShotId}"
+    );
+    expect(mount).toContain("dialogueSaveError={dialogueSaveError}");
   });
 
   it("renders the panel only when isStatusAutoReviewRunAwaitingPlanReview is true, next to (not inside) the generic timeline/stage renderer", () => {

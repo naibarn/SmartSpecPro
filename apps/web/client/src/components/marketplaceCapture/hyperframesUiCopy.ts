@@ -253,6 +253,22 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         planReviewShotPurposeLabel: "จุดประสงค์",
         planReviewShotVisualSummaryLabel: "ภาพที่จะเห็น",
         planReviewShotDialogueLabel: "บทพูด",
+        // 2026-07-23 user feedback on the live gate — inline per-shot
+        // dialogue edit + visual-summary correction note + degraded-plan
+        // banner. Backs `AutoReviewPlanReviewPanel.tsx`'s `PlanReviewShotRow`.
+        planReviewShotDialogueEmpty: "— ไม่มีบทพูดในแผนนี้ —",
+        planReviewEditShotDialogueAriaLabel: (n: number) =>
+          `แก้ไขบทพูดช็อตที่ ${n}`,
+        planReviewSaveShotDialogue: "บันทึกบทพูด",
+        planReviewFixShotVisual: "แก้ภาพช็อตนี้",
+        // Kept unlocalized in both locales — a language tag on the content
+        // itself, not UI chrome (same convention as
+        // `planReviewStorytellingStructureLabels` above).
+        planReviewVisualSummaryLanguageBadge: "(EN)",
+        planReviewVisualSummaryLanguageHint:
+          'หมายเหตุ: ช่อง "ภาพที่จะเห็น" เป็นภาษาอังกฤษโดยตั้งใจ เพราะใช้เป็น prompt ป้อนโมเดลสร้างภาพโดยตรง ระบบจะไม่แปลข้อความนี้ให้อัตโนมัติ',
+        planReviewDegradedBanner:
+          'แผนนี้เป็นแผนสำรองจากระบบ (การเรียกสกิลหลักล้มเหลวก่อนหน้านี้ — ปัญหานี้ถูกแก้ไขแล้ว) แนะนำให้กด "ให้ AI ร่างใหม่" เพื่อให้ได้แผนจริงที่มีบทพูดภาษาไทยและตรงกับโทนที่ตั้งไว้ ก่อนยืนยัน',
         planReviewApprove: "ยืนยัน สร้างภาพ",
         planReviewRequestRedraft: "ให้ AI ร่างใหม่",
         planReviewRedraftNotesLabel: "บอกสิ่งที่ต้องแก้",
@@ -573,6 +589,22 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         planReviewShotPurposeLabel: "Purpose",
         planReviewShotVisualSummaryLabel: "Visual summary",
         planReviewShotDialogueLabel: "Dialogue",
+        // 2026-07-23 user feedback on the live gate — inline per-shot
+        // dialogue edit + visual-summary correction note + degraded-plan
+        // banner. Backs `AutoReviewPlanReviewPanel.tsx`'s `PlanReviewShotRow`.
+        planReviewShotDialogueEmpty: "— No dialogue in this plan —",
+        planReviewEditShotDialogueAriaLabel: (n: number) =>
+          `Edit dialogue for shot ${n}`,
+        planReviewSaveShotDialogue: "Save dialogue",
+        planReviewFixShotVisual: "Fix this shot's visual",
+        // Kept unlocalized in both locales — a language tag on the content
+        // itself, not UI chrome (same convention as
+        // `planReviewStorytellingStructureLabels` above).
+        planReviewVisualSummaryLanguageBadge: "(EN)",
+        planReviewVisualSummaryLanguageHint:
+          'Note: "Visual summary" stays in English on purpose — it feeds the image-generation prompt directly and is never machine-translated.',
+        planReviewDegradedBanner:
+          'This plan is an automatic system fallback (the main skill call failed earlier — this issue has since been fixed). We recommend clicking "Ask AI to redraft" to get a real plan with Thai dialogue that matches your configured tone before confirming.',
         planReviewApprove: "Confirm, generate images",
         planReviewRequestRedraft: "Ask AI to redraft",
         planReviewRedraftNotesLabel: "Tell us what to fix",

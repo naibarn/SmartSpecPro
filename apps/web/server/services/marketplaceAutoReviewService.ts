@@ -22127,6 +22127,120 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
   return getMarketplaceAutoReviewRun(run.id, auth);
 }
 
+/**
+ * Marketplace text-plan review gate — inline per-shot DIALOGUE correction
+ * while the run holds at `awaiting_plan_review` (planning/marketplace-
+ * storyboard-text-gate/plan.md design item 2: "inline edit of dialogue").
+ * The user reviews the spoken lines BEFORE any image credit is spent and
+ * must be able to fix them directly.
+ *
+ * Deliberately distinct from `saveMarketplaceAutoReviewSequentialShotOverride`
+ * 's `shotOverrides[shotId]` slot: that mechanism is the separate POST-
+ * approval per-shot regeneration path (allowance ledger, in-flight guard via
+ * `assertSequentialShotRegenerationPreconditions`, which never even checks
+ * `planReview`) and is not meant to represent "the reviewed plan text"
+ * itself. This mutation instead edits `sequentialStoryboard.shots[shotId-1]
+ * .dialogue` directly — the SAME field the pack-authoring/refresh prompt
+ * engines already read as ground truth (`productReviewSequentialStoryboard
+ * SkillRunner.ts`'s `buildCinematicVideoPromptEngineUserPrompt` /
+ * `buildCinematicImagePromptEngineUserPrompt` /
+ * `applyStartFramePromptEngineToShot`'s vocabulary base), so a correction
+ * here is exactly what the user is approving.
+ *
+ * No other field duplicates dialogue for the actual video-generation
+ * submission: `resolveSequentialVideoUnitPromptText` (the function that
+ * resolves what is actually submitted to the video provider) reads ONLY the
+ * already-authored `video_prompt` (override-first, else pack) and is
+ * documented as "a pure pass-through, never a composer" — it never reads
+ * `dialogue`. So this edit does not need to (and must not) touch
+ * `video_prompt` / `start_frame_image_prompt` / any `voiceoverScript`
+ * aggregate; those stay exactly as the skill last authored them and are
+ * re-authored fresh on the next redraft or per-shot prompt refresh, both of
+ * which read this same `dialogue` field as their input.
+ *
+ * Same double-check precondition as `approveMarketplaceAutoReviewPlanReview`
+ * / `requestMarketplaceAutoReviewPlanRedraft`
+ * (`assertMarketplaceAutoReviewAwaitingPlanReview`): fails closed once the
+ * plan is approved — downstream may already be consuming it. Non-sequential
+ * runs (3x3 / start-stop — no `sequentialStoryboard.shots`) reject: the
+ * review panel only ever offers per-shot dialogue editing for the 9-shot
+ * sequential mode (the 3x3/start-stop `voiceoverScript`/`shot.voiceover`
+ * fields are a different, older shape entirely — out of scope here).
+ *
+ * Stamps `metadata.planReview.editedShots[shotId] = { editedAt }` as an
+ * audit breadcrumb so a later redraft/QA pass can see a human touched this
+ * shot. `approveMarketplaceAutoReviewPlanReview` only ever spread-merges
+ * `planReview.status`/`approvedAt` (never touches `sequentialStoryboard`),
+ * so both the edited dialogue and this breadcrumb survive approval
+ * unchanged — approve only releases the hold, it never re-authors text. A
+ * later redraft legitimately REPLACES the whole `sequentialStoryboard` (and
+ * `planReview`) with fresh authoring — the breadcrumb disappearing along
+ * with it is intended (fresh authoring), not a bug; no guard needed.
+ *
+ * No provider/credit call — like `saveMarketplaceAutoReviewSequentialShotOverride`,
+ * this never changes run status, stage, or any media task.
+ */
+export async function updateMarketplaceAutoReviewPlanShotDialogue(
+  input: { runId: string; shotId: number; dialogue: string },
+  auth: AuthContext
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRun(db, input.runId, auth);
+  await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
+
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const sequential = asRecord(metadata.sequentialStoryboard);
+  const shots = Array.isArray(sequential.shots)
+    ? (sequential.shots as SequentialStoryboardShot[])
+    : [];
+  if (shots.length < input.shotId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        shots.length === 0
+          ? "รันนี้ไม่ได้ใช้โหมด 9 ภาพต่อเนื่อง จึงแก้บทพูดรายช็อตจากหน้านี้ไม่ได้"
+          : `ไม่พบช็อตที่ ${input.shotId} ในแผน`,
+    });
+  }
+
+  // Defensive re-clean at the service boundary even though the router's
+  // Zod schema already trims + caps at 2000 chars — same convention
+  // `requestMarketplaceAutoReviewPlanRedraft` uses for `notes` above, so a
+  // direct (non-tRPC) caller can never persist an untrimmed/oversized value.
+  const dialogue = cleanText(input.dialogue).slice(0, 2000);
+  const editedAt = nowIso();
+  const nextShots = shots.map((shot, index) =>
+    index === input.shotId - 1 ? { ...shot, dialogue } : shot
+  );
+  const planReview = asRecord(metadata.planReview);
+  const editedShots = asRecord(planReview.editedShots);
+  const nextMetadata: RunMetadata = {
+    ...metadata,
+    sequentialStoryboard: {
+      ...sequential,
+      shots: nextShots,
+    },
+    planReview: {
+      ...planReview,
+      editedShots: {
+        ...editedShots,
+        [String(input.shotId)]: { editedAt },
+      },
+    },
+  };
+  await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
+  console.warn("[marketplaceAutoReview] plan_review_shot_dialogue_edited", {
+    runId: run.id,
+    shotId: input.shotId,
+  });
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
 async function markRunFailed(
   db: Db,
   run: MarketplaceAutoReviewRun,

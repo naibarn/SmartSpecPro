@@ -3380,6 +3380,39 @@ export default function MarketplaceCaptureProductDetail() {
         toast.error(error.message);
       },
     });
+  // Marketplace mandatory text-plan review gate follow-up (2026-07-23 user
+  // feedback on the live gate) — inline per-shot dialogue edit. Nullable-
+  // single-id pending state + shotId-keyed inline error mirror
+  // `sequentialSavingShotId`/`sequentialShotError` in StoryboardReviewPage.tsx
+  // (same convention for `SequentialShotEditorCard`'s save flow).
+  const [dialogueSavingShotId, setDialogueSavingShotId] = useState<
+    number | null
+  >(null);
+  const [dialogueSaveError, setDialogueSaveError] = useState<{
+    shotId: number;
+    message: string;
+  } | null>(null);
+  const updateAutoReviewPlanShotDialogueMutation =
+    trpc.marketplaceCapture.updateAutoReviewPlanShotDialogue.useMutation({
+      onSuccess: async result => {
+        setDialogueSaveError(null);
+        const freshRunId = compactText(
+          (result as Record<string, unknown> | undefined)?.id
+        );
+        if (freshRunId) {
+          utils.marketplaceCapture.getAutoReviewRun.setData(
+            { runId: freshRunId },
+            result
+          );
+        }
+        await autoReviewRuns.refetch();
+      },
+      onError: (error, variables) => {
+        setDialogueSaveError({ shotId: variables.shotId, message: error.message });
+        toast.error(error.message);
+      },
+      onSettled: () => setDialogueSavingShotId(null),
+    });
 
   const item = (productItem ?? {}) as Record<string, unknown>;
   const itemDescription = asRecord(item.descriptionJson);
@@ -7469,6 +7502,17 @@ export default function MarketplaceCaptureProductDetail() {
                       })
                     }
                     cancelling={cancelAutoReviewMutation.isPending}
+                    onSaveShotDialogue={input => {
+                      setDialogueSaveError(null);
+                      setDialogueSavingShotId(input.shotId);
+                      updateAutoReviewPlanShotDialogueMutation.mutate({
+                        runId: String(statusAutoReviewRun.id),
+                        shotId: input.shotId,
+                        dialogue: input.dialogue,
+                      });
+                    }}
+                    dialogueSavingShotId={dialogueSavingShotId}
+                    dialogueSaveError={dialogueSaveError}
                   />
                 ) : null}
                 {isStartingAutoReviewRun && !statusAutoReviewRun ? (

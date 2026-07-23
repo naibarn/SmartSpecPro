@@ -25,6 +25,15 @@
  *    is a same-file private function, not mockable via `vi.mock`, exactly
  *    like `startMarketplaceAutoReviewRun`'s own concept-authoring path, which
  *    no existing test in this file exercises end-to-end either).
+ *  - `updateMarketplaceAutoReviewPlanShotDialogue` (DB-backed) — inline
+ *    per-shot dialogue correction while the gate holds: edits
+ *    `sequentialStoryboard.shots[shotId-1].dialogue` in place, stamps the
+ *    `planReview.editedShots[shotId]` breadcrumb, leaves every other shot
+ *    byte-identical, rejects once `planReview` is no longer `"awaiting"`,
+ *    rejects a shotId beyond the authored pack length, and rejects a
+ *    non-sequential run (no `sequentialStoryboard.shots` at all). A
+ *    companion `approveMarketplaceAutoReviewPlanReview` test proves an edit
+ *    survives approval untouched (approve only ever releases the hold).
  *  - Structural wiring proof (grep-guard, mirrors
  *    marketplaceAutoReview.sequentialGate.test.ts's own technique) that both
  *    `startMarketplaceAutoReviewRun` and `requestMarketplaceAutoReviewPlanRedraft`
@@ -49,6 +58,7 @@ import {
   marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest,
   redraftNotesDirectiveForTest,
   requestMarketplaceAutoReviewPlanRedraft,
+  updateMarketplaceAutoReviewPlanShotDialogue,
 } from "../marketplaceAutoReviewService";
 
 const mockGetDb = vi.mocked(getDb);
@@ -133,6 +143,48 @@ function awaitingPlanReviewMetadataFixture(
     },
     ...overrides,
   };
+}
+
+/** One `sequentialStoryboard.shots[]` pack entry — copied locally (not
+ *  imported from marketplaceAutoReview.sequentialShotRegen.test.ts), per
+ *  this service's own section-08 test convention. Field shape matches
+ *  `SequentialStoryboardShot` in productReviewSequentialStoryboardSkillRunner.ts. */
+function makeSequentialShot(
+  shotId: number,
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    shot_id: shotId,
+    purpose: `beat_${shotId}`,
+    duration_seconds: 5,
+    demonstration_type: "usage_demo",
+    depicts_minor: false,
+    guardian_required: false,
+    transition_from_previous: "",
+    visual_summary: `shot ${shotId} visual summary`,
+    dialogue: `บทพูดช็อตที่ ${shotId}`,
+    estimated_speech_seconds: 1,
+    start_frame_image_prompt: `Clean generic product shot for shot ${shotId}.`,
+    image_prompt_character_count: 40,
+    video_prompt: `Shot ${shotId} video action.`,
+    video_prompt_character_count: 20,
+    claim_trace: [],
+    qc: {},
+    ...overrides,
+  };
+}
+
+/** `awaitingPlanReviewMetadataFixture` plus a complete 9-shot sequential
+ *  pack — the shape `updateMarketplaceAutoReviewPlanShotDialogue` requires. */
+function sequentialAwaitingPlanReviewMetadataFixture(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return awaitingPlanReviewMetadataFixture({
+    sequentialStoryboard: {
+      shots: Array.from({ length: 9 }, (_, i) => makeSequentialShot(i + 1)),
+    },
+    ...overrides,
+  });
 }
 
 /** Mock covering the query shapes this gate's code paths issue:
@@ -477,6 +529,292 @@ describe("requestMarketplaceAutoReviewPlanRedraft precondition guard", () => {
     await expect(
       requestMarketplaceAutoReviewPlanRedraft({ runId: "mar_missing" }, AUTH)
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* updateMarketplaceAutoReviewPlanShotDialogue                                */
+/* -------------------------------------------------------------------------- */
+
+describe("updateMarketplaceAutoReviewPlanShotDialogue", () => {
+  it("edits shot 4's dialogue while awaiting review, stamps the editedShots breadcrumb, and leaves every other shot byte-identical (single lean metadata write)", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture();
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    const result = await updateMarketplaceAutoReviewPlanShotDialogue(
+      { runId: "mar_1", shotId: 4, dialogue: "  บทพูดใหม่ช็อต 4  " },
+      AUTH
+    );
+
+    // Zero stage writes: this never touches image_generation.
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+
+    expect(updateRunSpy).toHaveBeenCalledTimes(1);
+    const [runSet] = updateRunSpy.mock.calls[0] as [Record<string, any>];
+    expect(Object.keys(runSet).sort()).toEqual(
+      ["metadataJson", "updatedAt"].sort()
+    );
+
+    const nextShots = runSet.metadataJson.sequentialStoryboard.shots;
+    // Trimmed at the service boundary even though this test bypasses the
+    // router's own `.trim()`.
+    expect(nextShots[3].dialogue).toBe("บทพูดใหม่ช็อต 4");
+    const originalShots = (metadata.sequentialStoryboard as any).shots;
+    for (const i of [0, 1, 2, 4, 5, 6, 7, 8]) {
+      expect(nextShots[i]).toEqual(originalShots[i]);
+    }
+
+    expect(runSet.metadataJson.planReview.editedShots).toEqual({
+      "4": { editedAt: expect.any(String) },
+    });
+    // An edit never flips planReview.status by itself.
+    expect(runSet.metadataJson.planReview.status).toBe("awaiting");
+
+    expect(
+      (result as any).metadataJson.sequentialStoryboard.shots[3].dialogue
+    ).toBe("บทพูดใหม่ช็อต 4");
+  });
+
+  it("accepts an empty dialogue string to silence a shot", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture();
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+      })
+    );
+
+    await updateMarketplaceAutoReviewPlanShotDialogue(
+      { runId: "mar_1", shotId: 2, dialogue: "   " },
+      AUTH
+    );
+
+    const [runSet] = updateRunSpy.mock.calls[0] as [Record<string, any>];
+    expect(runSet.metadataJson.sequentialStoryboard.shots[1].dialogue).toBe(
+      ""
+    );
+  });
+
+  it("preserves an EXISTING editedShots breadcrumb for a different shot (additive, not a replace)", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      planReview: {
+        required: true,
+        status: "awaiting",
+        heldAt: "2026-07-23T00:00:00.000Z",
+        redraftCount: 0,
+        lastNotes: null,
+        editedShots: { "2": { editedAt: "2026-07-23T00:01:00.000Z" } },
+      },
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+      })
+    );
+
+    await updateMarketplaceAutoReviewPlanShotDialogue(
+      { runId: "mar_1", shotId: 5, dialogue: "new line" },
+      AUTH
+    );
+
+    const [runSet] = updateRunSpy.mock.calls[0] as [Record<string, any>];
+    expect(runSet.metadataJson.planReview.editedShots).toEqual({
+      "2": { editedAt: "2026-07-23T00:01:00.000Z" },
+      "5": { editedAt: expect.any(String) },
+    });
+  });
+
+  it("throws BAD_REQUEST and performs zero writes once the plan has already been approved", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      planReview: { required: true, status: "approved" },
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const completedImageGenerationStage = awaitingPlanReviewStageFixture({
+      status: "completed",
+      outputJson: { statusDetail: { state: "completed" } },
+    });
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage: completedImageGenerationStage,
+        updateRunSpy,
+      })
+    );
+
+    await expect(
+      updateMarketplaceAutoReviewPlanShotDialogue(
+        { runId: "mar_1", shotId: 4, dialogue: "too late" },
+        AUTH
+      )
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST when metadata.planReview says awaiting but the stage row disagrees (drift fails closed)", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture();
+    const run = baseRunFixture({ metadataJson: metadata });
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({ run, imageGenerationStage: null, updateRunSpy })
+    );
+
+    await expect(
+      updateMarketplaceAutoReviewPlanShotDialogue(
+        { runId: "mar_1", shotId: 1, dialogue: "x" },
+        AUTH
+      )
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST for a shotId beyond the authored pack length, and zero writes happen", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      sequentialStoryboard: {
+        shots: Array.from({ length: 6 }, (_, i) => makeSequentialShot(i + 1)),
+      },
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+      })
+    );
+
+    await expect(
+      updateMarketplaceAutoReviewPlanShotDialogue(
+        { runId: "mar_1", shotId: 9, dialogue: "x" },
+        AUTH
+      )
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST for a non-sequential run (no sequentialStoryboard.shots at all)", async () => {
+    const metadata = awaitingPlanReviewMetadataFixture();
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+      })
+    );
+
+    await expect(
+      updateMarketplaceAutoReviewPlanShotDialogue(
+        { runId: "mar_1", shotId: 1, dialogue: "x" },
+        AUTH
+      )
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws NOT_FOUND when the run does not belong to this user/tenant; no write happens", async () => {
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [], orderBy: async () => [] }),
+        }),
+      }),
+      update: () => ({
+        set: (setObj: Record<string, unknown>) => {
+          updateRunSpy(setObj);
+          return { where: () => ({ returning: async () => [] }) };
+        },
+      }),
+    } as any);
+
+    await expect(
+      updateMarketplaceAutoReviewPlanShotDialogue(
+        { runId: "mar_missing", shotId: 1, dialogue: "x" },
+        AUTH
+      )
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* approveMarketplaceAutoReviewPlanReview must not re-author an edited shot   */
+/* -------------------------------------------------------------------------- */
+
+describe("approveMarketplaceAutoReviewPlanReview preserves a prior dialogue edit", () => {
+  it("carries the edited dialogue and the editedShots breadcrumb through approval unchanged (approve only releases the hold)", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      planReview: {
+        required: true,
+        status: "awaiting",
+        heldAt: "2026-07-23T00:00:00.000Z",
+        redraftCount: 0,
+        lastNotes: null,
+        editedShots: { "4": { editedAt: "2026-07-23T00:05:00.000Z" } },
+      },
+    });
+    (metadata.sequentialStoryboard as any).shots[3].dialogue =
+      "บทพูดใหม่ช็อต 4";
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    const result = await approveMarketplaceAutoReviewPlanReview(
+      { runId: "mar_1" },
+      AUTH
+    );
+
+    const [runSet] = updateRunSpy.mock.calls[0] as [Record<string, any>];
+    expect(runSet.metadataJson.sequentialStoryboard.shots[3].dialogue).toBe(
+      "บทพูดใหม่ช็อต 4"
+    );
+    expect(runSet.metadataJson.planReview.editedShots).toEqual({
+      "4": { editedAt: "2026-07-23T00:05:00.000Z" },
+    });
+    expect(runSet.metadataJson.planReview.status).toBe("approved");
+    expect(
+      (result as any).metadataJson.sequentialStoryboard.shots[3].dialogue
+    ).toBe("บทพูดใหม่ช็อต 4");
   });
 });
 

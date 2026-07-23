@@ -12,6 +12,7 @@ import {
   buildAutoReviewPlanReviewPlanText,
   buildAutoReviewPlanReviewSequentialShotRows,
   buildAutoReviewPlanReviewSettingRows,
+  isAutoReviewPlanReviewDegradedPlan,
   type AutoReviewPlanReviewPlanData,
   type AutoReviewPlanReviewState,
 } from "../AutoReviewPlanReviewPanel";
@@ -34,6 +35,7 @@ function planFixture(
     sequentialShots: [],
     settings: [],
     creditEstimate: null,
+    isDegradedFallback: false,
     ...overrides,
   };
 }
@@ -191,6 +193,349 @@ describe("AutoReviewPlanReviewPanel", () => {
     expect(
       screen.queryByText("เปิดด้วยปัญหาน้ำรั่วในกระเป๋า แล้วโชว์สินค้าแก้ปัญหา")
     ).toBeNull();
+  });
+
+  it("shows the empty-dialogue placeholder instead of hiding the row (e.g. the degraded fallback pack never has dialogue)", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "hook_open",
+              visualSummary: "เห็นกระบอกน้ำวางบนโต๊ะ",
+              dialogue: "",
+              durationSeconds: 4,
+            },
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.getByText("— No dialogue in this plan —")).toBeTruthy();
+  });
+
+  it('labels the visual summary line with an "(EN)" badge and shows the English-content hint once for the shots list', () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "",
+              visualSummary: "wide shot of the product",
+              dialogue: "",
+              durationSeconds: null,
+            },
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.getByText("(EN)")).toBeTruthy();
+    expect(screen.getByText(/stays in English on purpose/)).toBeTruthy();
+  });
+
+  it("renders no pencil edit affordance when onSaveShotDialogue is not provided (an unwired caller stays read-only)", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "hook_open",
+              visualSummary: "a",
+              dialogue: "สวัสดีค่ะ",
+              durationSeconds: 4,
+            },
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(
+      screen.queryByRole("button", { name: "Edit dialogue for shot 1" })
+    ).toBeNull();
+  });
+
+  it("edits a shot's dialogue inline and saves via onSaveShotDialogue with the trimmed {shotId, dialogue}", () => {
+    const onSaveShotDialogue = vi.fn();
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 3,
+              purpose: "hook_open",
+              visualSummary: "a",
+              dialogue: "เดิม",
+              durationSeconds: 4,
+            },
+          ],
+        })}
+        onSaveShotDialogue={onSaveShotDialogue}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit dialogue for shot 3" })
+    );
+    const textarea = screen.getByLabelText(
+      "Edit dialogue for shot 3"
+    ) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("เดิม");
+
+    fireEvent.change(textarea, { target: { value: "  ข้อความใหม่  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save dialogue" }));
+
+    expect(onSaveShotDialogue).toHaveBeenCalledTimes(1);
+    expect(onSaveShotDialogue).toHaveBeenCalledWith({
+      shotId: 3,
+      dialogue: "ข้อความใหม่",
+    });
+  });
+
+  it("cancels an in-progress dialogue edit without calling onSaveShotDialogue, discarding the draft", () => {
+    const onSaveShotDialogue = vi.fn();
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "",
+              visualSummary: "a",
+              dialogue: "เดิม",
+              durationSeconds: null,
+            },
+          ],
+        })}
+        onSaveShotDialogue={onSaveShotDialogue}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit dialogue for shot 1" })
+    );
+    fireEvent.change(screen.getByLabelText("Edit dialogue for shot 1"), {
+      target: { value: "ทิ้งข้อความนี้" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(onSaveShotDialogue).not.toHaveBeenCalled();
+    expect(screen.getByText("เดิม")).toBeTruthy();
+    // The pencil button reappears once editing closes and shares the same
+    // aria-label as the textarea it opens — assert on the textbox role
+    // specifically so this does not false-match the (intentionally)
+    // re-rendered pencil button.
+    expect(
+      screen.queryByRole("textbox", { name: "Edit dialogue for shot 1" })
+    ).toBeNull();
+  });
+
+  it("disables the save button while dialogueSavingShotId matches this shot, and surfaces a shot-scoped inline error", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "",
+              visualSummary: "a",
+              dialogue: "เดิม",
+              durationSeconds: null,
+            },
+            {
+              shotId: 2,
+              purpose: "",
+              visualSummary: "b",
+              dialogue: "อื่น",
+              durationSeconds: null,
+            },
+          ],
+        })}
+        onSaveShotDialogue={vi.fn()}
+        dialogueSavingShotId={1}
+        dialogueSaveError={{ shotId: 2, message: "Save failed" }}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit dialogue for shot 1" })
+    );
+    expect(screen.getByRole("button", { name: /Save dialogue/ })).toBeDisabled();
+
+    // Shot 2's error is independent of shot 1's saving state.
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit dialogue for shot 2" })
+    );
+    expect(screen.getByText("Save failed")).toBeTruthy();
+  });
+
+  it("closes the editor and shows the fresh dialogue once dialogueSavingShotId clears with no error (a successful save)", () => {
+    const { rerender } = render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "",
+              visualSummary: "a",
+              dialogue: "เดิม",
+              durationSeconds: null,
+            },
+          ],
+        })}
+        onSaveShotDialogue={vi.fn()}
+        dialogueSavingShotId={1}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit dialogue for shot 1" })
+    );
+    fireEvent.change(screen.getByLabelText("Edit dialogue for shot 1"), {
+      target: { value: "ใหม่แล้ว" },
+    });
+
+    // Settle with no error + the fresh server text (query invalidation
+    // already landed by the time the parent clears the pending id) — the
+    // editor closes and shows the updated text.
+    rerender(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "",
+              visualSummary: "a",
+              dialogue: "ใหม่แล้ว",
+              durationSeconds: null,
+            },
+          ],
+        })}
+        onSaveShotDialogue={vi.fn()}
+        dialogueSavingShotId={null}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    // Same aria-label collision as the cancel test above — assert on the
+    // textbox role so this does not false-match the reappeared pencil button.
+    expect(
+      screen.queryByRole("textbox", { name: "Edit dialogue for shot 1" })
+    ).toBeNull();
+    expect(screen.getByText("ใหม่แล้ว")).toBeTruthy();
+  });
+
+  it('"Fix this shot\'s visual" opens the redraft-notes box (if closed), prefills "Shot N: ", and focuses the textarea', () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 2,
+              purpose: "problem",
+              visualSummary: "wrong material shown",
+              dialogue: "",
+              durationSeconds: null,
+            },
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.queryByPlaceholderText(/Tell us what to fix/)).toBeNull();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fix this shot's visual" })
+    );
+
+    const textarea = screen.getByPlaceholderText(
+      /Tell us what to fix/
+    ) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("Shot 2: ");
+    expect(document.activeElement).toBe(textarea);
+  });
+
+  it('appends (not replaces) a second "Fix this shot\'s visual" note for another shot, keeping the first line', () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            {
+              shotId: 1,
+              purpose: "",
+              visualSummary: "a",
+              dialogue: "",
+              durationSeconds: null,
+            },
+            {
+              shotId: 5,
+              purpose: "",
+              visualSummary: "b",
+              dialogue: "",
+              durationSeconds: null,
+            },
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    const [fixShot1, fixShot5] = screen.getAllByRole("button", {
+      name: "Fix this shot's visual",
+    });
+    fireEvent.click(fixShot1);
+    fireEvent.click(fixShot5);
+
+    const textarea = screen.getByPlaceholderText(
+      /Tell us what to fix/
+    ) as HTMLTextAreaElement;
+    // The trailing space of "Shot 1: " is trimmed before the newline is
+    // appended (no dangling whitespace at a line end).
+    expect(textarea.value).toBe("Shot 1:\nShot 5: ");
+  });
+
+  it("shows the degraded-fallback banner only when plan.isDegradedFallback is true", () => {
+    const { rerender } = render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({ isDegradedFallback: false })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.queryByTestId("plan-review-degraded-banner")).toBeNull();
+
+    rerender(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({ isDegradedFallback: true })}
+        locale="th"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.getByTestId("plan-review-degraded-banner")).toBeTruthy();
+    expect(screen.getByText(/แผนนี้เป็นแผนสำรองจากระบบ/)).toBeTruthy();
   });
 
   it("renders settings rows side-by-side with the plan", () => {
@@ -600,5 +945,37 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
     expect(data.sequentialShots).toHaveLength(1);
     expect(data.creditEstimate).toEqual({ typical: 1, worst: 3 });
     expect(data.settings.some(row => row.key === "frameStrategy")).toBe(true);
+    expect(data.isDegradedFallback).toBe(false);
+  });
+
+  it("isAutoReviewPlanReviewDegradedPlan detects EITHER the degraded flag or a skillVersion containing 'degraded', and never throws on missing metadata", () => {
+    expect(isAutoReviewPlanReviewDegradedPlan(undefined)).toBe(false);
+    expect(isAutoReviewPlanReviewDegradedPlan(null)).toBe(false);
+    expect(isAutoReviewPlanReviewDegradedPlan({})).toBe(false);
+    expect(
+      isAutoReviewPlanReviewDegradedPlan({
+        sequentialStoryboard: { degraded: true },
+      })
+    ).toBe(true);
+    expect(
+      isAutoReviewPlanReviewDegradedPlan({
+        sequentialStoryboard: { skillVersion: "1.0.0-degraded" },
+      })
+    ).toBe(true);
+    expect(
+      isAutoReviewPlanReviewDegradedPlan({
+        sequentialStoryboard: { skillVersion: "1.2.0", degraded: false },
+      })
+    ).toBe(false);
+  });
+
+  it("buildAutoReviewPlanReviewPlanData bundles isDegradedFallback from isAutoReviewPlanReviewDegradedPlan", () => {
+    const data = buildAutoReviewPlanReviewPlanData(
+      { sequentialStoryboard: { degraded: true, shots: [] } },
+      "sequential_shot_storyboard",
+      "storyboard_images",
+      "en"
+    );
+    expect(data.isDegradedFallback).toBe(true);
   });
 });

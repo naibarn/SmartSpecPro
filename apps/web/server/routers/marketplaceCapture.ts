@@ -44,6 +44,7 @@ import {
   selectMarketplaceAutoReviewImageAttemptForStoryboardReview,
   selectMarketplaceAutoReviewSequentialShotAlternate,
   startMarketplaceAutoReviewRun,
+  updateMarketplaceAutoReviewPlanShotDialogue,
 } from "../services/marketplaceAutoReviewService";
 import {
   applyMarketplaceClaimResolution,
@@ -1354,6 +1355,31 @@ export const marketplaceCaptureRouter = router({
         authFromCtx(ctx),
         autoReviewRuntimeFromCtx(ctx)
       )
+    ),
+
+  // Marketplace text-plan review gate — inline per-shot DIALOGUE correction
+  // while the run holds at `awaiting_plan_review` (design item 2,
+  // planning/marketplace-storyboard-text-gate/plan.md). Edits
+  // `metadataJson.sequentialStoryboard.shots[shotId-1].dialogue` directly —
+  // NOT `shotOverrides` (that slot is the separate POST-approval per-shot
+  // regeneration mechanism and is unreachable while this gate holds). Same
+  // ownership/precondition guard as `approveAutoReviewPlanReview` /
+  // `requestAutoReviewPlanRedraft` (`assertMarketplaceAutoReviewAwaitingPlan
+  // Review`, checked inside the service function), so an edit after
+  // approval — or on a non-sequential run — fails closed with BAD_REQUEST.
+  // No provider/credit call, so — like `saveAutoReviewSequentialShotOverride`
+  // — no runtime threading is needed.
+  updateAutoReviewPlanShotDialogue: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(9),
+        dialogue: z.string().trim().max(2000),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      updateMarketplaceAutoReviewPlanShotDialogue(input, authFromCtx(ctx))
     ),
 
   deleteProduct: protectedProcedure
