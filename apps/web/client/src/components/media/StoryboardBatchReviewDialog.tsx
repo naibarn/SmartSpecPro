@@ -2481,34 +2481,6 @@ export function StoryboardBatchReviewPanel({
                           )}
                         </div>
                       ) : null}
-                      {matchedSequentialShot && sequentialAlternates.length > 1 ? (
-                        <SequentialShotAlternatesStrip
-                          className="col-span-2 sm:col-span-1"
-                          shotId={matchedSequentialShot.shotId}
-                          alternates={sequentialAlternates}
-                          swapping={sequentialSwappingShotId === matchedSequentialShot.shotId}
-                          onSelectAlternate={(input) => onSelectSequentialShotAlternate?.(input)}
-                          onOpenPreview={({ attempt, imageUrl, label, isSelected }) => {
-                            const shotId = matchedSequentialShot.shotId;
-                            setLightboxMedia({
-                              type: "image",
-                              url: imageUrl,
-                              title: `${t("mediaStudio.storyboardReviewClipLabel", { index: task.index + 1 })} · ${label}`,
-                              useAction: {
-                                label: hyperframesCopy.spareImageUseThisLabel,
-                                inUseLabel: hyperframesCopy.spareImageCurrentBadge,
-                                isCurrent: isSelected,
-                                disabled: isSelected || sequentialSwappingShotId === shotId,
-                                onUse: () => {
-                                  onSelectSequentialShotAlternate?.({ shotId, attempt });
-                                  setLightboxMedia(null);
-                                },
-                              },
-                            });
-                          }}
-                          locale={locale}
-                        />
-                      ) : null}
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -3591,6 +3563,36 @@ export function StoryboardBatchReviewPanel({
                           </Button>
                         ) : null}
                       </div>
+                      {matchedSequentialShot && sequentialAlternates.length > 1 ? (
+                        <SequentialShotAlternatesStrip
+                          className="mt-3 border-t pt-3"
+                          layout="wrap"
+                          size="md"
+                          shotId={matchedSequentialShot.shotId}
+                          alternates={sequentialAlternates}
+                          swapping={sequentialSwappingShotId === matchedSequentialShot.shotId}
+                          onSelectAlternate={(input) => onSelectSequentialShotAlternate?.(input)}
+                          onOpenPreview={({ attempt, imageUrl, label, isSelected }) => {
+                            const shotId = matchedSequentialShot.shotId;
+                            setLightboxMedia({
+                              type: "image",
+                              url: imageUrl,
+                              title: `${t("mediaStudio.storyboardReviewClipLabel", { index: task.index + 1 })} · ${label}`,
+                              useAction: {
+                                label: hyperframesCopy.spareImageUseThisLabel,
+                                inUseLabel: hyperframesCopy.spareImageCurrentBadge,
+                                isCurrent: isSelected,
+                                disabled: isSelected || sequentialSwappingShotId === shotId,
+                                onUse: () => {
+                                  onSelectSequentialShotAlternate?.({ shotId, attempt });
+                                  setLightboxMedia(null);
+                                },
+                              },
+                            });
+                          }}
+                          locale={locale}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </div>

@@ -2,21 +2,25 @@
  * Marketplace spare-image repair — shared thumbnail strip.
  *
  * Extracted 2026-07-23 (direct user feedback on b661284a6) so the strip
- * renders in TWO places with byte-identical markup, test ids, and copy:
+ * renders in TWO places with byte-identical test ids and copy:
  *  - `SequentialShotEditorCard.tsx` — the collapsed "ช็อตภาพทั้งหมด 9 ภาพ"
  *    grid section. Original placement; clicking a thumbnail selects a spare
- *    immediately (legacy behavior, preserved exactly).
- *  - `StoryboardBatchReviewDialog.tsx` clip list — the new PRIMARY
- *    placement, directly under each clip's own "Ref" thumbnail. There the
- *    9-shot grid buried the strip below a squashed main image and cut-off
- *    cards; the clip list is what the user actually works in. Clicking a
- *    thumbnail there opens a full-screen preview instead of swapping
- *    immediately (`onOpenPreview`), with an explicit "use this image"
- *    action living in that preview.
+ *    immediately (legacy behavior, preserved exactly via the `layout="scroll"`
+ *    / `size="sm"` defaults below).
+ *  - `StoryboardBatchReviewDialog.tsx` clip list — the PRIMARY placement
+ *    (moved here 2026-07-23, then relocated again the same day per
+ *    follow-up feedback on 09f311ad1: the first placement squeezed the
+ *    strip into the ~130px-wide left column next to the Ref thumbnail,
+ *    forcing a horizontal scrollbar for even 2 thumbnails; it now renders
+ *    full width in the wide middle column, directly below the action
+ *    button row, using `layout="wrap"` + `size="md"` so every alternate
+ *    fits without scrolling). Clicking a thumbnail there opens a
+ *    full-screen preview instead of swapping immediately (`onOpenPreview`),
+ *    with an explicit "use this image" action living in that preview.
  *
- * Thumbnails preserve the shot's 9:16 vertical aspect (`aspect-[9/16]`) —
- * never squashed into a square or wide crop, so the product/character in
- * the frame stays legible at a small size.
+ * Thumbnails always preserve the shot's 9:16 vertical aspect
+ * (`aspect-[9/16]`) — never squashed into a square or wide crop, so the
+ * product/character in the frame stays legible.
  *
  * Renders nothing when `alternates.length < 2` (the common single-wave
  * case) — no layout shift, matching the rest of this feature.
@@ -28,6 +32,11 @@ import {
   getMarketplaceHyperframesUiCopy,
   type MarketplaceHyperframesUiLocale,
 } from "./hyperframesUiCopy";
+
+const THUMBNAIL_SIZE_CLASSES: Record<"sm" | "md", string> = {
+  sm: "w-16",
+  md: "w-24",
+};
 
 export interface SequentialShotAlternatesStripProps {
   shotId: number;
@@ -52,9 +61,21 @@ export interface SequentialShotAlternatesStripProps {
   }) => void;
   locale?: MarketplaceHyperframesUiLocale | string;
   /** Merged onto the root element, e.g. for grid placement in a caller's
-   *  own layout (the clip list places this in a narrow single-column grid
-   *  next to the clip's Ref thumbnail). */
+   *  own layout. */
   className?: string;
+  /**
+   * `"scroll"` (default) — thumbnails stay on one row with horizontal
+   * overflow-scroll, matching `SequentialShotEditorCard`'s original,
+   * narrow-column behavior.
+   * `"wrap"` — no horizontal scroll; thumbnails wrap onto additional rows
+   * once they no longer fit, for placements with a wide, mostly-empty row
+   * (the clip list's middle column).
+   */
+  layout?: "scroll" | "wrap";
+  /** `"sm"` (default, 64px) matches the original size. `"md"` (96px) is a
+   *  bit larger for placements with room to spare — still true 9:16, never
+   *  letterboxed. */
+  size?: "sm" | "md";
 }
 
 export function SequentialShotAlternatesStrip({
@@ -65,6 +86,8 @@ export function SequentialShotAlternatesStrip({
   onOpenPreview,
   locale,
   className,
+  layout = "scroll",
+  size = "sm",
 }: SequentialShotAlternatesStripProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
 
@@ -78,7 +101,12 @@ export function SequentialShotAlternatesStrip({
       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
         {copy.spareImagesTitle}
       </p>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div
+        className={cn(
+          "flex gap-2",
+          layout === "wrap" ? "flex-wrap" : "overflow-x-auto pb-1",
+        )}
+      >
         {alternates.map(alternate => {
           const attemptLabel = copy.spareImageAttemptLabel(alternate.attempt);
           const scoreSuffix =
@@ -112,7 +140,8 @@ export function SequentialShotAlternatesStrip({
                   : onSelectAlternate({ shotId, attempt: alternate.attempt })
               }
               className={cn(
-                "relative aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-md border-2 transition focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 disabled:cursor-not-allowed",
+                "relative aspect-[9/16] shrink-0 overflow-hidden rounded-md border-2 transition focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 disabled:cursor-not-allowed",
+                THUMBNAIL_SIZE_CLASSES[size],
                 alternate.isSelected
                   ? "border-emerald-500 ring-2 ring-emerald-100"
                   : "border-slate-200 hover:border-sky-500 disabled:opacity-60",
