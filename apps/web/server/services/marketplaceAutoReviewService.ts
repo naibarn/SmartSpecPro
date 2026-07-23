@@ -20299,9 +20299,20 @@ async function resolveSequentialShotRegenerationOutcome(input: {
       ? (sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[])
       : [];
     const childSubjectPolicy = sequentialChildSubjectPolicyFromMetadata(sequential);
+    // Same external-gateway resolution as the pack-authoring path: the
+    // stored manifest keeps relative storage paths, but the refresh skill's
+    // vision input goes to OpenRouter, which 400s on non-absolute URLs.
     const skillVisionUrls = manifest
       .map(entry => cleanText(entry.url))
-      .filter(Boolean);
+      .filter(Boolean)
+      .flatMap(url => {
+        try {
+          const resolved = resolveReferenceUrl(url, input.publicUrl);
+          return resolved && /^https?:\/\//.test(resolved) ? [resolved] : [];
+        } catch {
+          return [];
+        }
+      });
     const refreshFn =
       input.effects?.refreshSequentialShotPromptWithSkill ??
       refreshSequentialShotPromptWithSkill;
@@ -32698,10 +32709,26 @@ function resolveSequentialReferenceAttachmentPlan(
     evidenceIndex += 1;
   }
 
+  // skillVisionUrls feed the pack-authoring LLM's vision input via an
+  // EXTERNAL gateway (OpenRouter fetches these itself), so relative storage
+  // paths like `/api/storage/files/...` MUST be resolved to public absolute
+  // URLs here. Root cause of the 100%-degraded sequential runs (2026-07-23
+  // audit: every attempt died with HTTP 400 "Invalid URL format:
+  // /api/storage/files/..." → fallback pack): this list was passed through
+  // raw while the vision-QA path resolved with publicUrl all along. An
+  // unresolvable ref (no public base configured) is DROPPED — the skill can
+  // author from text + the remaining refs; it must never 400 the whole call.
   const skillVisionUrls = uniqRefs([
     ...providerReferenceUrls,
     ...evidenceOnlyResolved.map(({ url }) => url),
-  ]);
+  ]).flatMap(url => {
+    try {
+      const resolved = resolveReferenceUrl(url, publicUrl);
+      return resolved && /^https?:\/\//.test(resolved) ? [resolved] : [];
+    } catch {
+      return [];
+    }
+  });
 
   return {
     modelCap: capacity.modelCap,

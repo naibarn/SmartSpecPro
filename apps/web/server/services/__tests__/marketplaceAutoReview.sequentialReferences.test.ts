@@ -610,3 +610,47 @@ describe("normalizeSequentialProductAngleImages (checkbox-selection UX, via reso
     expect(anchors.productAngleImages).toHaveLength(0);
   });
 });
+
+describe("skillVisionUrls external-gateway URL resolution (degraded-run root cause)", () => {
+  it("resolves relative storage paths to absolute public URLs and never emits non-absolute refs", () => {
+    const metadata = {
+      productReferenceAssetPack: readyProductReferenceAssetPack,
+      productAngleReferenceAssetPack: {
+        entries: [
+          angleEntry({
+            url: "/api/storage/files/marketplace-auto-review/angle-rel.png",
+            ref: "angle-rel",
+            hash: "relhash1",
+            angleLabel: "back",
+          }),
+          angleEntry({
+            // evidence-only: excluded from provider payload but included in
+            // skill vision — must be resolved too.
+            url: "/api/storage/files/marketplace-auto-review/pack-rel.png",
+            ref: "pack-rel",
+            hash: "relhash2",
+            angleLabel: "package",
+          }),
+        ],
+      },
+    };
+
+    const plan = resolveSequentialReferenceAttachmentPlanForTest({
+      metadata: metadata as any,
+      plan: basePlan,
+      modelCap: 10,
+      publicUrl: "https://pub.example.test",
+    });
+
+    expect(plan.skillVisionUrls.length).toBeGreaterThan(0);
+    for (const url of plan.skillVisionUrls) {
+      expect(url).toMatch(/^https?:\/\//);
+    }
+    expect(plan.skillVisionUrls).toContain(
+      "https://pub.example.test/api/storage/files/marketplace-auto-review/angle-rel.png"
+    );
+    expect(plan.skillVisionUrls).toContain(
+      "https://pub.example.test/api/storage/files/marketplace-auto-review/pack-rel.png"
+    );
+  });
+});
