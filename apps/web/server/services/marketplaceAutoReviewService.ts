@@ -2417,9 +2417,24 @@ function imageReasonCodesContainStoryboardGridLayoutBlocker(
   return reasonCodes.some(imageReasonCodeBlocksStoryboardGridLayout);
 }
 
+// Vision models frequently return `"false"`/`"true"` strings for boolean
+// schema fields. A string `"false"` is a REAL negative answer — reading it
+// as "unknown" (the old `typeof !== "boolean"` bail-out) silently armed the
+// fail-closed minor-safety fallback on child-free frames.
+function coerceVisionQaBoolean(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return null;
+}
+
 function visionQaMinorPresenceState(parsed: Record<string, unknown>): {
   known: boolean;
   present: boolean;
+  strictPresent: boolean;
 } {
   const keys = [
     "minorPresent",
@@ -2431,29 +2446,75 @@ function visionQaMinorPresenceState(parsed: Record<string, unknown>): {
     "containsMinor",
     "containsChild",
   ];
+  // Image-grounded keys only — these are the ONLY keys allowed to ARM the
+  // fail-closed guardian check. The broader aliases (`childPresent`,
+  // `hasChild`, …) stay in the clothing-presence OR above, but a model told
+  // "this is a mother_baby product" can emit `childPresent: true` meaning
+  // "child-RELATED product", not "a child is visible in THIS frame" — that
+  // single ambiguous true must not activate a check that then fail-closes
+  // on a missing `adultGuardianPresent` field for a hands-only frame.
+  const strictKeys = new Set(["minorPresent", "visibleMinor", "visibleChild"]);
   let known = false;
   let present = false;
+  let strictPresent = false;
   for (const key of keys) {
-    if (typeof parsed[key] !== "boolean") continue;
+    const value = coerceVisionQaBoolean(parsed[key]);
+    if (typeof value !== "boolean") continue;
     known = true;
-    present = present || parsed[key] === true;
+    present = present || value === true;
+    if (value === true && strictKeys.has(key)) strictPresent = true;
   }
-  return { known, present };
+  return { known, present, strictPresent };
+}
+
+/**
+ * Per-shot image-QA grounding for minor safety. The sequential skill contract
+ * already declares `depicts_minor` per shot (guardian-presence.md mandates
+ * product-only / hands-only / adult-presenter-only framings declare `false`),
+ * but the QA normalizer historically ignored it and used the run-wide text
+ * heuristic instead — so an empty-chair frame in a `mother_baby` run was
+ * treated as "a child may be present". Returns `null` when no sequential
+ * contract exists (3x3 runs, legacy metadata) ⇒ callers keep the run-wide
+ * fail-closed behavior unchanged.
+ */
+function sequentialShotDepictsMinorForVisionQa(
+  metadata: RunMetadata,
+  shotOrder: number
+): boolean | null {
+  const value = sequentialStoryboardShotContractByOrder(
+    metadata,
+    shotOrder
+  ).depicts_minor;
+  return typeof value === "boolean" ? value : null;
 }
 
 function normalizeVisionQaMinorSafetyResult(input: {
   parsed: Record<string, unknown>;
   plan: AutoReviewPlan;
   reasonCodes: string[];
+  // Per-shot grounding (see sequentialShotDepictsMinorForVisionQa). `false`
+  // ⇒ this shot is contract-declared child-free, so an ABSENT model answer
+  // no longer counts as "a child may be present". `true`/absent/null ⇒
+  // today's run-wide fail-closed behavior byte-for-byte. An AFFIRMATIVE
+  // model sighting (`presence.present`) always wins over the contract.
+  shotDepictsMinor?: boolean | null;
 }): {
   reasonCodes: string[];
   minorPresent: boolean | null;
+  minorPresentStrict: boolean;
   minorSafetyClothingSafe: boolean;
 } {
   const minorSafetyLockRequired = marketplaceAutoReviewPlanNeedsMinorSafetyLock(
     input.plan
   );
   const presence = visionQaMinorPresenceState(input.parsed);
+  // The run-wide text heuristic (`mother_baby` category / child-word regex)
+  // may only fill in for a SILENT model when the shot contract does not
+  // positively declare the frame child-free.
+  const unknownPresenceAssumesMinor =
+    input.shotDepictsMinor === false
+      ? false
+      : minorSafetyLockRequired && !presence.known;
   const minorSafetyReasonCodes = input.reasonCodes.filter(
     imageReasonCodeMentionsMinorSafety
   );
@@ -2465,17 +2526,17 @@ function normalizeVisionQaMinorSafetyResult(input: {
   );
   const keepMinorSafetyReasons =
     explicitMinorSafetyBlockers.length > 0 &&
-    (presence.present || (minorSafetyLockRequired && !presence.known));
+    (presence.present || unknownPresenceAssumesMinor);
   const missingMinorEvidence =
     minorSafetyLockRequired &&
-    input.parsed.minorSafetyClothingSafe === false &&
+    coerceVisionQaBoolean(input.parsed.minorSafetyClothingSafe) === false &&
     minorSafetyReasonCodes.length === 0;
   const reasonCodes = uniqueCleanTexts([
     ...nonMinorReasonCodes,
     ...(keepMinorSafetyReasons ? explicitMinorSafetyBlockers : []),
     ...(minorSafetyReasonCodes.length > 0 &&
     !keepMinorSafetyReasons &&
-    (presence.present || (minorSafetyLockRequired && !presence.known))
+    (presence.present || unknownPresenceAssumesMinor)
       ? ["minor_safety_child_clothing_unverified"]
       : []),
     ...(missingMinorEvidence
@@ -2485,6 +2546,7 @@ function normalizeVisionQaMinorSafetyResult(input: {
   return {
     reasonCodes,
     minorPresent: presence.known ? presence.present : null,
+    minorPresentStrict: presence.strictPresent,
     minorSafetyClothingSafe: !keepMinorSafetyReasons && !missingMinorEvidence,
   };
 }
@@ -2497,6 +2559,9 @@ function normalizeShotFrameVisionQaDecision(input: {
   // Feature 136 section 07 (§3.5) — optional; absent ⇒ today's behavior
   // exactly (guardian/assembly checks below are both no-ops).
   evidenceGuard?: { enabled: boolean; assemblyDocumented: boolean };
+  // Per-shot `depicts_minor` from the sequential contract; absent/null ⇒
+  // run-wide fail-closed behavior unchanged (3x3 / legacy runs).
+  shotDepictsMinor?: boolean | null;
 }): {
   verdict: "pass" | "repair";
   reasonCodes: string[];
@@ -2514,6 +2579,7 @@ function normalizeShotFrameVisionQaDecision(input: {
     parsed: input.parsed,
     plan: input.plan,
     reasonCodes: input.reasonCodes,
+    shotDepictsMinor: input.shotDepictsMinor,
   });
   const productMatchesReference =
     input.parsed.productMatchesReference !== false;
@@ -2538,9 +2604,15 @@ function normalizeShotFrameVisionQaDecision(input: {
   const adultGuardianPresentRaw = input.parsed.adultGuardianPresent;
   const adultGuardianPresent =
     typeof adultGuardianPresentRaw === "boolean" ? adultGuardianPresentRaw : null;
+  // Arming requires a STRICT image-grounded sighting (`minorPresent` /
+  // `visibleMinor` / `visibleChild` affirmatively true) — the broad alias OR
+  // (`childPresent` = "child-related product") used to arm this fail-closed
+  // check on hands-only frames and then fail it on the routinely-dropped
+  // `adultGuardianPresent` field. Once armed, the semantics below stay
+  // fail-closed and untouched.
   const guardianCheckActive =
     input.evidenceGuard?.enabled === true &&
-    normalizedMinorSafety.minorPresent === true;
+    normalizedMinorSafety.minorPresentStrict === true;
   const guardianPresenceSafe =
     !guardianCheckActive || adultGuardianPresent === true;
 
@@ -2593,7 +2665,11 @@ function normalizeShotFrameVisionQaDecision(input: {
 
 function normalizeCachedShotFrameVisionQaEnvelopeForPlan(
   qa: Record<string, unknown>,
-  plan: AutoReviewPlan
+  plan: AutoReviewPlan,
+  // Same per-shot grounding as the live path — without it the cached
+  // envelope (whose `minorPresent` was persisted as null) regenerates the
+  // identical false positive from cache on every later read.
+  shotDepictsMinor?: boolean | null
 ): Record<string, unknown> {
   const reasonCodes = Array.isArray(qa.reasonCodes)
     ? qa.reasonCodes.map(item => cleanText(item)).filter(Boolean)
@@ -2602,6 +2678,7 @@ function normalizeCachedShotFrameVisionQaEnvelopeForPlan(
     parsed: qa,
     plan,
     reasonCodes,
+    shotDepictsMinor,
   });
   return {
     ...qa,
@@ -12580,6 +12657,7 @@ export function normalizeMarketplaceAutoReviewVisionQaMinorSafetyResultForTest(i
   parsed: Record<string, unknown>;
   plan: AutoReviewPlan;
   reasonCodes: string[];
+  shotDepictsMinor?: boolean | null;
 }): ReturnType<typeof normalizeVisionQaMinorSafetyResult> {
   return normalizeVisionQaMinorSafetyResult(input);
 }
@@ -12590,8 +12668,21 @@ export function normalizeMarketplaceAutoReviewShotFrameVisionQaDecisionForTest(i
   reasonCodes: string[];
   characterPresenceExpected?: boolean;
   evidenceGuard?: { enabled: boolean; assemblyDocumented: boolean };
+  shotDepictsMinor?: boolean | null;
 }): ReturnType<typeof normalizeShotFrameVisionQaDecision> {
   return normalizeShotFrameVisionQaDecision(input);
+}
+
+export function normalizeMarketplaceAutoReviewCachedShotFrameVisionQaEnvelopeForTest(
+  qa: Record<string, unknown>,
+  plan: AutoReviewPlan,
+  shotDepictsMinor?: boolean | null
+): Record<string, unknown> {
+  return normalizeCachedShotFrameVisionQaEnvelopeForPlan(
+    qa,
+    plan,
+    shotDepictsMinor
+  );
 }
 
 export function imageReasonCodesContainStoryboardGridLayoutBlockerForTest(
@@ -22551,7 +22642,7 @@ async function runStoryboardGridLayoutVisionQa(params: {
         : "ผู้ใช้เลือกให้บุคคล/พรีเซนเตอร์ปรากฏเกือบทุกเฟรม (อย่างน้อย 7 จาก 9, ยอมให้เฟรม close-up สินค้าไม่มีคนได้ไม่เกิน 2 เฟรม): ถ้ามีบุคคลน้อยกว่า 7 พาเนล ให้ characterPresenceSatisfied=false, ใส่หมายเลขเฟรม (1-9) ที่ขาดบุคคลลงใน framesMissingPresenter และ verdict=repair"
       : "",
     marketplaceAutoReviewPlanNeedsMinorSafetyLock(params.plan)
-      ? "กฎ publish safety สำหรับเด็ก: ตั้ง minorPresent=true เฉพาะเมื่อเห็นเด็ก/ทารก/toddler/minor จริงในภาพเท่านั้น ถ้าไม่มีเด็กให้ minorPresent=false และ minorSafetyClothingSafe=true เสมอ ถ้ามีเด็กจริงต้องสวมเสื้อผ้าปกปิดอก ลำตัว และบริเวณ underwear ห้ามเด็กไม่ใส่เสื้อ/bare torso/diaper-only/underwear-only/bath/changing/nude/semi-nude หากพบให้ verdict=repair และใส่ reasonCodes เช่น minor_safety_child_clothing_issue หรือ child_shirtless_bare_torso."
+      ? "กฎ publish safety สำหรับเด็ก: minorPresent เป็นฟิลด์บังคับ ต้องตอบเป็นฟิลด์แรกของ JSON ทุกครั้ง ตั้ง minorPresent=true เฉพาะเมื่อเห็นเด็ก/ทารก/toddler/minor จริงในภาพเท่านั้น ถ้าไม่มีเด็กให้ minorPresent=false และ minorSafetyClothingSafe=true เสมอ และห้ามใส่ minor-safety reason code ใด ๆ ถ้ามีเด็กจริงต้องสวมเสื้อผ้าปกปิดอก ลำตัว และบริเวณ underwear ห้ามเด็กไม่ใส่เสื้อ/bare torso/diaper-only/underwear-only/bath/changing/nude/semi-nude หากพบให้ verdict=repair และใส่ reasonCodes เช่น minor_safety_child_clothing_issue หรือ child_shirtless_bare_torso."
       : "",
     // Feature 136 section 07 (§3.5) — guardian criteria gated on
     // `guard.enabled && productChildRelated`; assembly criteria gated on
@@ -22562,8 +22653,8 @@ async function runStoryboardGridLayoutVisionQa(params: {
     guardContext.enabled
       ? "กฎ demonstration evidence: ตั้ง assemblyContentDetected=true เฉพาะเมื่อเห็นเนื้อหาการประกอบ/แกะ/ชิ้นส่วนกระจาย/กลไกภายในจริงในภาพ มิฉะนั้นตั้ง false เสมอ"
       : "",
-    "ให้ตรวจด้วยสายตาจากภาพจริงเท่านั้น ถ้าไม่แน่ใจให้ verdict=repair และระบุ reasonCodes ที่ตรงที่สุด",
-    `JSON schema: {"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"isStrict3x3":boolean,"gridColumns":number,"gridRows":number,"frameCount":number,"visibleAddedText":boolean,"visibleTextExamples":[string],"repairInstruction":string,"productMatchesReference":boolean,"characterConsistencySafe":boolean,${characterPresenceExpected ? '"characterPresenceSatisfied":boolean,"framesMissingPresenter":[number],' : ""}${marketplaceReviewEvidenceGuardQaSchemaFragment(guardContext)}"minorPresent":boolean,"minorSafetyClothingSafe":boolean}`,
+    "ให้ตรวจด้วยสายตาจากภาพจริงเท่านั้น ถ้าไม่แน่ใจในเกณฑ์อื่นให้ verdict=repair และระบุ reasonCodes ที่ตรงที่สุด ยกเว้นหมวด minor safety: ห้ามเดา ห้ามใส่ reason code เกี่ยวกับเด็ก/minor เว้นแต่เห็นเด็กจริงในภาพและตั้ง minorPresent=true แล้วเท่านั้น",
+    `JSON schema: {"minorPresent":boolean,"minorSafetyClothingSafe":boolean,"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"isStrict3x3":boolean,"gridColumns":number,"gridRows":number,"frameCount":number,"visibleAddedText":boolean,"visibleTextExamples":[string],"repairInstruction":string,"productMatchesReference":boolean,${characterPresenceExpected ? '"characterPresenceSatisfied":boolean,"framesMissingPresenter":[number],' : ""}${marketplaceReviewEvidenceGuardQaSchemaFragment(guardContext)}"characterConsistencySafe":boolean}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -22987,7 +23078,11 @@ async function runShotFrameVisionQa(params: {
   });
   if (cached) {
     return {
-      ...normalizeCachedShotFrameVisionQaEnvelopeForPlan(cached, params.plan),
+      ...normalizeCachedShotFrameVisionQaEnvelopeForPlan(
+        cached,
+        params.plan,
+        sequentialShotDepictsMinorForVisionQa(params.metadata, params.shot.order)
+      ),
       qaCacheKey,
       qaCacheHit: true,
       cacheEvidenceRef: qaCacheKey,
@@ -23008,7 +23103,7 @@ async function runShotFrameVisionQa(params: {
       ? "ถ้ามี character reference แล้วภาพคน/เด็ก/พรีเซนเตอร์ไม่ตรง identity, age range, face/body structure, hair, หรือ wardrobe/styling จาก character anchor ให้ตอบ characterConsistencySafe=false และ verdict=repair ทันที"
       : "",
     marketplaceAutoReviewPlanNeedsMinorSafetyLock(params.plan)
-      ? "กฎ publish safety สำหรับเด็ก: ตั้ง minorPresent=true เฉพาะเมื่อเห็นเด็ก/ทารก/toddler/minor จริงในภาพเท่านั้น ถ้าไม่มีเด็กให้ minorPresent=false และ minorSafetyClothingSafe=true เสมอ ถ้ามีเด็กจริงต้องสวมเสื้อผ้าปกปิดอก ลำตัว และบริเวณ underwear ห้ามเด็กไม่ใส่เสื้อ/bare torso/diaper-only/underwear-only/bath/changing/nude/semi-nude หากพบให้ verdict=repair และใส่ reasonCodes เช่น minor_safety_child_clothing_issue หรือ child_shirtless_bare_torso."
+      ? "กฎ publish safety สำหรับเด็ก: minorPresent เป็นฟิลด์บังคับ ต้องตอบเป็นฟิลด์แรกของ JSON ทุกครั้ง ตั้ง minorPresent=true เฉพาะเมื่อเห็นเด็ก/ทารก/toddler/minor จริงในภาพเท่านั้น ถ้าไม่มีเด็กให้ minorPresent=false และ minorSafetyClothingSafe=true เสมอ และห้ามใส่ minor-safety reason code ใด ๆ ถ้ามีเด็กจริงต้องสวมเสื้อผ้าปกปิดอก ลำตัว และบริเวณ underwear ห้ามเด็กไม่ใส่เสื้อ/bare torso/diaper-only/underwear-only/bath/changing/nude/semi-nude หากพบให้ verdict=repair และใส่ reasonCodes เช่น minor_safety_child_clothing_issue หรือ child_shirtless_bare_torso."
       : "",
     // Feature 136 section 07 (§3.5) — guardian criteria gated on
     // `guard.enabled && productChildRelated`; assembly criteria gated on
@@ -23026,7 +23121,7 @@ async function runShotFrameVisionQa(params: {
       shot: params.shot,
     }),
     "ถ้า start หรือ stop frame ไม่ผ่าน ให้ระบุ failedFrameRoles แบบ structured เป็น start_frame/stop_frame/storyboard_frame และซ่อมเฉพาะ frame นั้น ห้ามสั่ง regenerate ทั้ง run",
-    `JSON schema: {"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"failedFrameRoles":["start_frame|stop_frame|storyboard_frame"],"frameVerdicts":[{"role":"start_frame|stop_frame|storyboard_frame","verdict":"pass|repair","reasonCodes":[string],"repairInstruction":string}],"repairInstruction":string,"productMatchesReference":boolean,"continuityMatchesShot":boolean,"characterConsistencySafe":boolean,"adWarningTextSafe":boolean,${marketplaceReviewEvidenceGuardQaSchemaFragment(guardContext)}"minorPresent":boolean,"minorSafetyClothingSafe":boolean}`,
+    `JSON schema: {"minorPresent":boolean,"minorSafetyClothingSafe":boolean,"verdict":"pass|repair","score":0-100,"reasonCodes":[string],"failedFrameRoles":["start_frame|stop_frame|storyboard_frame"],"frameVerdicts":[{"role":"start_frame|stop_frame|storyboard_frame","verdict":"pass|repair","reasonCodes":[string],"repairInstruction":string}],"repairInstruction":string,"productMatchesReference":boolean,"continuityMatchesShot":boolean,"characterConsistencySafe":boolean,${marketplaceReviewEvidenceGuardQaSchemaFragment(guardContext)}"adWarningTextSafe":boolean}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -23136,6 +23231,10 @@ async function runShotFrameVisionQa(params: {
       enabled: guardContext.enabled,
       assemblyDocumented: guardContext.assemblyDocumented,
     },
+    shotDepictsMinor: sequentialShotDepictsMinorForVisionQa(
+      params.metadata,
+      params.shot.order
+    ),
   });
   // Feature 136 section 12 (§5.5) — evidence-guard occurrence observability.
   // Never gates `verdict` below (already computed from the same reasonCodes
