@@ -102,7 +102,7 @@ describe("AutoStoryboardReviewPlanSummary — quality-mode worst-case estimate",
 
     expect(
       screen.getByText(
-        "typically ~9 images · up to 27 images if every shot needs a repair"
+        "9 images on the first pass · up to 27 if every repair round runs (each round regenerates the whole 9-image set)"
       )
     ).toBeTruthy();
   });
@@ -120,7 +120,7 @@ describe("AutoStoryboardReviewPlanSummary — quality-mode worst-case estimate",
     );
 
     expect(
-      screen.getByText("ปกติ ~9 ภาพ · สูงสุด 36 ภาพ ถ้าต้องซ่อมทุกช็อต")
+      screen.getByText("รอบแรก 9 ภาพ · สูงสุด 36 ภาพ ถ้าต้องซ่อมครบทุกรอบ (1 รอบซ่อม = สร้างใหม่ทั้งชุด 9 ภาพ)")
     ).toBeTruthy();
   });
 
@@ -138,7 +138,7 @@ describe("AutoStoryboardReviewPlanSummary — quality-mode worst-case estimate",
 
     expect(
       screen.getByText(
-        "typically ~1 image · up to 3 images if every shot needs a repair"
+        "1 image on the first pass · up to 3 if every repair round runs (each round regenerates the whole 1-image set)"
       )
     ).toBeTruthy();
   });

@@ -66,7 +66,7 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         // `typical * maxRepairAttemptsPerUnit` for the selected quality
         // mode (see AutoStoryboardQualityModeControl.tsx for the mapping).
         imageJobsEstimatedWorstCase: (typical: number, worst: number) =>
-          `ปกติ ~${typical} ภาพ · สูงสุด ${worst} ภาพ ถ้าต้องซ่อมทุกช็อต`,
+          `รอบแรก ${typical} ภาพ · สูงสุด ${worst} ภาพ ถ้าต้องซ่อมครบทุกรอบ (1 รอบซ่อม = สร้างใหม่ทั้งชุด ${typical} ภาพ)`,
         qualityModeControlLabel: "คุณภาพ / รอบซ่อมภาพ",
         qualityModeControlOptions: {
           fast: "ร่างเร็ว",
@@ -274,7 +274,7 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         // `typical * maxRepairAttemptsPerUnit` for the selected quality
         // mode (see AutoStoryboardQualityModeControl.tsx for the mapping).
         imageJobsEstimatedWorstCase: (typical: number, worst: number) =>
-          `typically ~${typical} image${typical === 1 ? "" : "s"} · up to ${worst} images if every shot needs a repair`,
+          `${typical} image${typical === 1 ? "" : "s"} on the first pass · up to ${worst} if every repair round runs (each round regenerates the whole ${typical}-image set)`,
         qualityModeControlLabel: "Quality / repair rounds",
         qualityModeControlOptions: {
           fast: "Fast draft",
