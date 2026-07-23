@@ -8256,8 +8256,8 @@ function applyBestImageAttemptSelection(metadata: RunMetadata): RunMetadata {
   const best = bestImageAttemptReview(metadata);
   if (!best) return metadata;
   const storyboardGridUrl = cleanText(best.storyboardGridUrl);
-  const storyboardFrameUrls = cleanStringList(best.storyboardFrameUrls);
-  const startFrameUrls = cleanStringList(best.startFrameUrls);
+  const bestStoryboardFrameUrls = cleanStringList(best.storyboardFrameUrls);
+  const bestStartFrameUrls = cleanStringList(best.startFrameUrls);
   const stopFrameUrls = cleanStringList(best.stopFrameUrls);
   const selectedImageAttempt = toNumber(best.attempt);
   const selectedImageAttemptScore = clampImageAttemptScore(
@@ -8266,19 +8266,30 @@ function applyBestImageAttemptSelection(metadata: RunMetadata): RunMetadata {
   const existingAcceptance = asRecord(
     metadata.generatedMediaAcceptanceEnvelope
   );
+  // Marketplace spare-image repair — a manual per-shot alternate selection
+  // (`selectMarketplaceAutoReviewSequentialShotAlternate`) must survive this
+  // automatic whole-wave re-selection: patch those specific shot indexes
+  // back onto the freshly-selected arrays instead of letting the best wave
+  // silently clobber a user's manual repair. `effectiveStoryboardFrameUrls`
+  // preserves the exact storyboard/start precedence this function always
+  // had; only the final reapply step is new.
+  const effectiveStoryboardFrameUrls =
+    bestStoryboardFrameUrls.length > 0
+      ? bestStoryboardFrameUrls
+      : bestStartFrameUrls;
+  const storyboardFrameUrls = reapplyManualShotAlternateSelections(
+    metadata,
+    effectiveStoryboardFrameUrls
+  );
+  const startFrameUrls = reapplyManualShotAlternateSelections(
+    metadata,
+    bestStartFrameUrls
+  );
   return {
     ...metadata,
     ...(storyboardGridUrl ? { storyboardGridUrl } : {}),
     ...(storyboardFrameUrls.length > 0 ? { storyboardFrameUrls } : {}),
-    ...(startFrameUrls.length > 0
-      ? {
-          startFrameUrls,
-          storyboardFrameUrls:
-            storyboardFrameUrls.length > 0
-              ? storyboardFrameUrls
-              : startFrameUrls,
-        }
-      : {}),
+    ...(startFrameUrls.length > 0 ? { startFrameUrls } : {}),
     ...(stopFrameUrls.length > 0 ? { stopFrameUrls } : {}),
     selectedImageAttempt,
     selectedImageAttemptScore,
@@ -8292,6 +8303,183 @@ function applyBestImageAttemptSelection(metadata: RunMetadata): RunMetadata {
       selectedImageAttemptNegativeScore: toNumber(best.negativeScore),
     }),
   };
+}
+
+/**
+ * Marketplace spare-image repair — one selectable alternate for a single
+ * sequential shot index, projected from an `imageAttemptReviews[]` wave.
+ * `qualityScore` is the WHOLE-WAVE QA score (this system never scores a
+ * single shot in isolation); `null` when that wave was never scored.
+ * `isSelected` reflects whichever wave is actually live for THIS shot right
+ * now (see `buildSequentialShotAlternates`).
+ */
+export type MarketplaceAutoReviewShotAlternate = {
+  attempt: number;
+  qualityScore: number | null;
+  imageUrl: string;
+  isSelected: boolean;
+};
+
+/** One review wave's frame URL for a 0-based shot index — storyboard frame
+ *  first, start frame as fallback (sequential runs sometimes only ever
+ *  populate `startFrameUrls`; mirrors `applyBestImageAttemptSelection`'s own
+ *  storyboard/start precedence). Empty string when the wave never produced
+ *  a usable frame at that index. */
+function imageAttemptReviewFrameUrlForShotIndex(
+  review: Record<string, unknown>,
+  shotIndex: number
+): string {
+  const storyboardFrameUrls = cleanStringList(review.storyboardFrameUrls);
+  const storyboardUrl = cleanText(storyboardFrameUrls[shotIndex]);
+  if (storyboardUrl) return storyboardUrl;
+  const startFrameUrls = cleanStringList(review.startFrameUrls);
+  return cleanText(startFrameUrls[shotIndex]);
+}
+
+/** `metadata.manualShotAlternateSelections` (keyed by 1-based shot id,
+ *  string — same keying convention as `sequentialStoryboard.shotOverrides`)
+ *  parsed defensively; malformed/missing entries are dropped rather than
+ *  thrown on. */
+function manualShotAlternateSelectionsFromMetadata(
+  metadata: RunMetadata
+): Record<string, { attempt: number; at: string }> {
+  const raw = asRecord(metadata.manualShotAlternateSelections);
+  const out: Record<string, { attempt: number; at: string }> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const record = asRecord(value);
+    const attempt = toNumber(record.attempt, 0);
+    if (!(attempt > 0)) continue;
+    out[key] = { attempt, at: cleanText(record.at) };
+  }
+  return out;
+}
+
+/**
+ * Marketplace spare-image repair, read side (CMD-2 backend). Every
+ * non-selected `imageAttemptReviews[]` wave still holds already-generated,
+ * already-paid-for frames per shot — `bestImageAttemptReview` only ever
+ * promotes ONE whole wave into the live `storyboardFrameUrls`. This
+ * projects the rest as selectable "spares" per sequential shot index, at
+ * zero extra generation cost (never calls the media provider, never spends
+ * credits — pure read over already-persisted review waves).
+ *
+ * Keyed by 1-based shot id (string, matches `shotOverrides` keying) so a
+ * caller can look up `sequentialShotAlternates?.[String(card.shotId)]`. A
+ * shot with fewer than 2 contributing waves is OMITTED entirely (nothing to
+ * pick between) — callers should treat a missing key the same as `[]`.
+ * Pure function of `metadata` alone; never throws.
+ */
+function buildSequentialShotAlternates(
+  metadata: RunMetadata
+): Record<string, MarketplaceAutoReviewShotAlternate[]> {
+  const reviews = (
+    Array.isArray(metadata.imageAttemptReviews)
+      ? metadata.imageAttemptReviews.map(item => asRecord(item))
+      : []
+  )
+    .slice()
+    .sort((a, b) => toNumber(a.attempt) - toNumber(b.attempt));
+  if (reviews.length < 2) return {};
+
+  const maxShotCount = reviews.reduce((max, review) => {
+    const storyboardLen = cleanStringList(review.storyboardFrameUrls).length;
+    const startLen = cleanStringList(review.startFrameUrls).length;
+    return Math.max(max, storyboardLen, startLen);
+  }, 0);
+  if (maxShotCount === 0) return {};
+
+  const manualSelections = manualShotAlternateSelectionsFromMetadata(metadata);
+  const overallSelectedAttempt = toNumber(metadata.selectedImageAttempt, 0);
+  const result: Record<string, MarketplaceAutoReviewShotAlternate[]> = {};
+
+  for (let shotIndex = 0; shotIndex < maxShotCount; shotIndex++) {
+    const entries: MarketplaceAutoReviewShotAlternate[] = [];
+    for (const review of reviews) {
+      const imageUrl = imageAttemptReviewFrameUrlForShotIndex(
+        review,
+        shotIndex
+      );
+      if (!imageUrl) continue;
+      const rawScore = toNumber(review.qualityScore, Number.NaN);
+      entries.push({
+        attempt: toNumber(review.attempt),
+        qualityScore: Number.isFinite(rawScore)
+          ? clampImageAttemptScore(rawScore)
+          : null,
+        imageUrl,
+        isSelected: false,
+      });
+    }
+    if (entries.length < 2) continue; // nothing to pick between
+
+    const shotId = shotIndex + 1;
+    const manual = manualSelections[String(shotId)];
+    const effectiveAttempt =
+      (manual && entries.some(entry => entry.attempt === manual.attempt)
+        ? manual.attempt
+        : 0) ||
+      (entries.some(entry => entry.attempt === overallSelectedAttempt)
+        ? overallSelectedAttempt
+        : 0) ||
+      entries[entries.length - 1].attempt;
+    for (const entry of entries) {
+      entry.isSelected = entry.attempt === effectiveAttempt;
+    }
+    result[String(shotId)] = entries;
+  }
+  return result;
+}
+
+export function buildSequentialShotAlternatesForTest(
+  metadata: RunMetadata
+): Record<string, MarketplaceAutoReviewShotAlternate[]> {
+  return buildSequentialShotAlternates(metadata);
+}
+
+/**
+ * Re-applies any manual per-shot spare-image selections on top of a
+ * freshly-selected whole-wave frame array, so a later automatic
+ * `applyBestImageAttemptSelection` run never silently reverts a user's
+ * manual repair. Only patches indexes that (a) have a recorded override and
+ * (b) still resolve to a URL from that override's attempt wave; every other
+ * index is left exactly as the caller passed it in. Pure, never mutates its
+ * input.
+ */
+function reapplyManualShotAlternateSelections(
+  metadata: RunMetadata,
+  frameUrls: string[]
+): string[] {
+  const manual = manualShotAlternateSelectionsFromMetadata(metadata);
+  const keys = Object.keys(manual);
+  if (keys.length === 0 || frameUrls.length === 0) return frameUrls;
+  const reviews = Array.isArray(metadata.imageAttemptReviews)
+    ? metadata.imageAttemptReviews.map(item => asRecord(item))
+    : [];
+  const next = [...frameUrls];
+  for (const key of keys) {
+    const shotIndex = Number(key) - 1;
+    if (
+      !Number.isInteger(shotIndex) ||
+      shotIndex < 0 ||
+      shotIndex >= next.length
+    ) {
+      continue;
+    }
+    const review = reviews.find(
+      item => toNumber(item.attempt) === manual[key].attempt
+    );
+    if (!review) continue;
+    const url = imageAttemptReviewFrameUrlForShotIndex(review, shotIndex);
+    if (url) next[shotIndex] = url;
+  }
+  return next;
+}
+
+export function reapplyManualShotAlternateSelectionsForTest(
+  metadata: RunMetadata,
+  frameUrls: string[]
+): string[] {
+  return reapplyManualShotAlternateSelections(metadata, frameUrls);
 }
 
 function acceptBestImageAttemptAfterProviderFailure(params: {
@@ -18965,6 +19153,17 @@ function serializeRun(
   options: { includeHeavyMetadata?: boolean } = {}
 ) {
   const includeHeavyMetadata = options.includeHeavyMetadata ?? true;
+  // Marketplace spare-image repair — read-only projection of already-
+  // generated, already-paid-for per-shot alternates from non-selected
+  // `imageAttemptReviews[]` waves (see `buildSequentialShotAlternates`).
+  // Computed once and threaded into whichever `metadataJson` shape this
+  // function returns below; empty object when there's nothing to add, so
+  // the common case never changes the existing `metadataJson` shape.
+  const sequentialShotAlternates = buildSequentialShotAlternates(
+    asRecord(run.metadataJson) as RunMetadata
+  );
+  const hasSequentialShotAlternates =
+    Object.keys(sequentialShotAlternates).length > 0;
   const storyboardReviewUrl = buildMarketplaceAutoReviewStoryboardReviewLink({
     storyboardReviewId: run.storyboardReviewId,
     productId: run.productId,
@@ -19020,6 +19219,14 @@ function serializeRun(
   );
   const serializedRun = {
     ...run,
+    ...(hasSequentialShotAlternates
+      ? {
+          metadataJson: {
+            ...asRecord(run.metadataJson),
+            sequentialShotAlternates,
+          },
+        }
+      : {}),
     stages,
     links: {
       productionProject: run.productionRunId
@@ -19058,6 +19265,7 @@ function serializeRun(
         hyperframesAutoPreview: hyperframesAutoPreviewSummary,
         generatedMediaAcceptanceEnvelope:
           metadata.generatedMediaAcceptanceEnvelope ?? null,
+        ...(hasSequentialShotAlternates ? { sequentialShotAlternates } : {}),
       },
       metadataSummary: {
         omitted: true,
@@ -20329,6 +20537,114 @@ export async function saveMarketplaceAutoReviewSequentialShotOverride(
     override: savedOverride,
     warnings: evaluation.warnings,
   };
+}
+
+/**
+ * Marketplace spare-image repair (write side, CMD-2 backend) — swaps ONE
+ * sequential shot's LIVE frame URL to an already-generated, already-paid-
+ * for alternate from a non-selected `imageAttemptReviews[]` wave. Never
+ * calls the media provider and never spends credits: this only re-points
+ * whichever of `storyboardFrameUrls[shotIndex]` / `startFrameUrls
+ * [shotIndex]` are currently live to a URL that already exists on the
+ * chosen attempt wave. Every other shot's URL is left untouched.
+ *
+ * Preconditions/auth reuse `assertSequentialShotRegenerationPreconditions`
+ * with `includeSpendGuards: false` — the exact same ownership, tenant-flag,
+ * and run-status guard the neighbouring regenerate/save procedures already
+ * use (unweakened), just without the in-flight/allowance spend checks that
+ * only make sense for the paid regeneration path.
+ *
+ * Records the override in `metadata.manualShotAlternateSelections[shotId]`
+ * so a later automatic `applyBestImageAttemptSelection` run never silently
+ * reverts it (see that function's reapply step).
+ */
+export async function selectMarketplaceAutoReviewSequentialShotAlternate(
+  input: { runId: string; shotId: number; attempt: number },
+  auth: AuthContext
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRun(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const plan = extractPlanFromRun(run);
+  const tenantId = tenantIdForRun(run, auth);
+  const tenantFlags = await getTenantFeatureFlags(tenantId);
+
+  assertSequentialShotRegenerationPreconditions({
+    run,
+    metadata,
+    plan,
+    shotId: input.shotId,
+    tenantFlags,
+    includeSpendGuards: false,
+  });
+
+  const attempt = Math.floor(toNumber(input.attempt));
+  if (!Number.isFinite(attempt) || attempt <= 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Invalid image attempt",
+    });
+  }
+  const reviews = Array.isArray(metadata.imageAttemptReviews)
+    ? metadata.imageAttemptReviews.map(item => asRecord(item))
+    : [];
+  const review = reviews.find(item => toNumber(item.attempt) === attempt);
+  if (!review) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Image attempt not found",
+    });
+  }
+
+  const shotIndex = input.shotId - 1;
+  const alternateUrl = imageAttemptReviewFrameUrlForShotIndex(
+    review,
+    shotIndex
+  );
+  if (!alternateUrl) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Attempt ${attempt} ไม่มีภาพสำหรับช็อตที่ ${input.shotId}`,
+    });
+  }
+
+  const hasStoryboardFrameUrls = Array.isArray(metadata.storyboardFrameUrls);
+  const hasStartFrameUrls = Array.isArray(metadata.startFrameUrls);
+  if (!hasStoryboardFrameUrls && !hasStartFrameUrls) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "รันนี้ยังไม่มีชุดภาพที่ใช้งานอยู่ให้สลับ",
+    });
+  }
+
+  const nextStoryboardFrameUrls = hasStoryboardFrameUrls
+    ? [...(metadata.storyboardFrameUrls as string[])]
+    : null;
+  if (nextStoryboardFrameUrls) nextStoryboardFrameUrls[shotIndex] = alternateUrl;
+  const nextStartFrameUrls = hasStartFrameUrls
+    ? [...(metadata.startFrameUrls as string[])]
+    : null;
+  if (nextStartFrameUrls) nextStartFrameUrls[shotIndex] = alternateUrl;
+
+  const selectedAt = nowIso();
+  const nextMetadata: RunMetadata = {
+    ...metadata,
+    ...(nextStoryboardFrameUrls
+      ? { storyboardFrameUrls: nextStoryboardFrameUrls }
+      : {}),
+    ...(nextStartFrameUrls ? { startFrameUrls: nextStartFrameUrls } : {}),
+    manualShotAlternateSelections: {
+      ...asRecord(metadata.manualShotAlternateSelections),
+      [String(input.shotId)]: { attempt, at: selectedAt },
+    },
+  };
+  await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
+  return getMarketplaceAutoReviewRun(run.id, auth);
 }
 
 export async function listMarketplaceAutoReviewRuns(

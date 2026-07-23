@@ -40,6 +40,7 @@ import {
   regenerateMarketplaceAutoReviewSequentialShot,
   saveMarketplaceAutoReviewSequentialShotOverride,
   selectMarketplaceAutoReviewImageAttemptForStoryboardReview,
+  selectMarketplaceAutoReviewSequentialShotAlternate,
   startMarketplaceAutoReviewRun,
 } from "../services/marketplaceAutoReviewService";
 import {
@@ -1279,6 +1280,28 @@ export const marketplaceCaptureRouter = router({
     .output(z.any())
     .mutation(async ({ input, ctx }) =>
       saveMarketplaceAutoReviewSequentialShotOverride(input, authFromCtx(ctx))
+    ),
+
+  // Marketplace spare-image repair — swaps a sequential shot's live frame
+  // URL to an already-generated, already-paid-for alternate from a
+  // non-selected image-attempt wave (surfaced via `getAutoReviewRun`'s
+  // `metadataJson.sequentialShotAlternates`). No provider call, no credit
+  // spend. Same ownership/tenant-flag/run-status guard as the neighbouring
+  // regenerate/save procedures above.
+  selectAutoReviewSequentialShotAlternate: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(9),
+        attempt: z.number().int().positive().max(20),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      selectMarketplaceAutoReviewSequentialShotAlternate(
+        input,
+        authFromCtx(ctx)
+      )
     ),
 
   cancelAutoReviewRun: protectedProcedure
