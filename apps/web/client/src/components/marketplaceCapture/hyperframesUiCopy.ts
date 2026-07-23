@@ -147,6 +147,22 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         referenceAutoAngleOption: "อัตโนมัติ",
         referenceAngleSelectLabel: "เลือกมุมภาพ (ไม่บังคับ)",
         referenceAnchorBadge: "ภาพหลัก",
+        // Selection redesign follow-up (2026-07-23) — clicking the image
+        // itself now toggles sequential reference selection directly
+        // (see `canToggleAutoReviewSelection` in
+        // MarketplaceCaptureProductDetail.tsx). These back the on-image
+        // "selected" overlay, the locked-anchor helper line, and the
+        // localized aria-label/title strings for the card button and the
+        // corner toggle.
+        referenceSelectedBadge: "เลือกใช้อ้างอิง",
+        referenceAnchorLockedHint:
+          'ภาพนี้ถูกล็อกเป็นภาพหลัก ใช้ปุ่ม "ตั้งเป็นภาพ Hero" ที่ภาพอื่นเพื่อเปลี่ยน',
+        referenceSelectAriaLabel: (n: number) =>
+          `เลือกภาพที่ ${n} เป็นภาพอ้างอิงสินค้าหลายมุม`,
+        referenceDeselectAriaLabel: (n: number) =>
+          `เอาภาพที่ ${n} ออกจากภาพอ้างอิงสินค้าหลายมุม`,
+        referenceAnchorAriaLabel: (n: number) =>
+          `ภาพที่ ${n} ถูกล็อกเป็นภาพหลัก ใช้ปุ่ม "ตั้งเป็นภาพ Hero" ที่ภาพอื่นเพื่อเปลี่ยน`,
         evidenceReviewTitle: "ตรวจหลักฐานและข้อขัดแย้ง",
         evidenceReviewDescription:
           "ตรวจข้อมูลที่ระบบดึงจากหน้าสินค้า ยืนยันหรือตัดออกก่อนเริ่มสร้างรีวิว",
@@ -302,6 +318,22 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         referenceAutoAngleOption: "Auto",
         referenceAngleSelectLabel: "Choose angle (optional)",
         referenceAnchorBadge: "Primary image",
+        // Selection redesign follow-up (2026-07-23) — clicking the image
+        // itself now toggles sequential reference selection directly
+        // (see `canToggleAutoReviewSelection` in
+        // MarketplaceCaptureProductDetail.tsx). These back the on-image
+        // "selected" overlay, the locked-anchor helper line, and the
+        // localized aria-label/title strings for the card button and the
+        // corner toggle.
+        referenceSelectedBadge: "Reference selected",
+        referenceAnchorLockedHint:
+          'Locked as the primary reference. Use "Set as Hero image" on another photo to change it.',
+        referenceSelectAriaLabel: (n: number) =>
+          `Select image ${n} as a reference for the sequential storyboard.`,
+        referenceDeselectAriaLabel: (n: number) =>
+          `Remove image ${n} from the sequential storyboard references.`,
+        referenceAnchorAriaLabel: (n: number) =>
+          `Image ${n} is locked as the primary reference. Use "Set as Hero image" on another photo to change it.`,
         evidenceReviewTitle: "Evidence & conflict review",
         evidenceReviewDescription:
           "Review the facts pulled from the product page. Confirm or exclude them before generation starts.",

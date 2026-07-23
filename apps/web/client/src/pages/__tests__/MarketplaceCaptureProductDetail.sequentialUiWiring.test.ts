@@ -149,4 +149,57 @@ describe("MarketplaceCaptureProductDetail sequential UI wiring (Feature 136 sect
     expect(gridSection).toContain("isAutoReviewAnchor ? (");
     expect(gridSection).toContain("!isAutoReviewAnchor");
   });
+
+  it("selection redesign follow-up (2026-07-23) — clicking the image in sequential mode toggles reference selection, never reassigns the anchor", () => {
+    const cardButtonRegion = sourceBetween(
+      "const canToggleAutoReviewSelection =",
+      "hyperframesCopy.referenceAnchorLockedHint"
+    );
+
+    // The card click is gated: toggle the reference selection when allowed,
+    // and only fall back to `selectProductAnchor` when NOT in sequential
+    // mode (never unconditionally, which was the reported bug). The locked
+    // anchor image is excluded from the toggle.
+    expect(cardButtonRegion).toContain(
+      "sequentialPickerActive && !isAutoReviewAnchor"
+    );
+    expect(cardButtonRegion).toMatch(
+      /if \(canToggleAutoReviewSelection\)\s*\{\s*toggleAutoReviewReferenceSelect\(imageId\);/
+    );
+    expect(cardButtonRegion).toMatch(
+      /if \(!sequentialPickerActive\)\s*\{\s*selectProductAnchor\(imageId\);/
+    );
+
+    // The "selected" state must be obvious ON the image itself (an overlay
+    // inside the same wrapper as the <img>), not buried under the caption.
+    const relativeWrapperIndex = cardButtonRegion.indexOf(
+      '<div className="relative">'
+    );
+    const imgIndex = cardButtonRegion.indexOf("<img");
+    const selectedBadgeIndex = cardButtonRegion.indexOf(
+      "hyperframesCopy.referenceSelectedBadge"
+    );
+    const figcaptionIndex = cardButtonRegion.indexOf("<figcaption");
+    expect(relativeWrapperIndex).toBeGreaterThanOrEqual(0);
+    expect(imgIndex).toBeGreaterThan(relativeWrapperIndex);
+    expect(selectedBadgeIndex).toBeGreaterThan(imgIndex);
+    expect(figcaptionIndex).toBeGreaterThan(selectedBadgeIndex);
+
+    // Both the corner toggle and the card click use the localized
+    // hyperframesUiCopy aria-label strings — never a hardcoded Thai-only
+    // literal — proving the fix is wired consistently in both places.
+    const gridSection = sourceBetween(
+      "{productImageOptions.map((image, index) => {",
+      "<SequentialProductAngleChips"
+    );
+    const selectAriaLabelUses = (
+      gridSection.match(/hyperframesCopy\.referenceSelectAriaLabel\(/g) ?? []
+    ).length;
+    const deselectAriaLabelUses = (
+      gridSection.match(/hyperframesCopy\.referenceDeselectAriaLabel\(/g) ?? []
+    ).length;
+    expect(selectAriaLabelUses).toBeGreaterThanOrEqual(2);
+    expect(deselectAriaLabelUses).toBeGreaterThanOrEqual(2);
+    expect(gridSection).toContain("hyperframesCopy.referenceAnchorAriaLabel(");
+  });
 });
