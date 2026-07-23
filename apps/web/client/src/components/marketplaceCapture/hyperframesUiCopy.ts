@@ -197,6 +197,13 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         spareImageQualityScoreSuffix: (score: number) => ` · คะแนน ${score}`,
         spareImageSelectAriaLabel: (n: number) =>
           `ใช้ภาพสำรองครั้งที่ ${n} แทนภาพปัจจุบันของช็อตนี้ (ไม่เสียเครดิตเพิ่ม)`,
+        // Storyboard Review clip list placement (2026-07-23 user feedback
+        // on b661284a6) — clicking a spare thumbnail there opens a
+        // full-screen preview instead of swapping immediately, so the
+        // aria-label and the preview's explicit action need their own copy.
+        spareImagePreviewAriaLabel: (n: number) =>
+          `ดูภาพสำรองครั้งที่ ${n} แบบเต็มจอ`,
+        spareImageUseThisLabel: "ใช้ภาพนี้",
         promptCharCount: (n: number, max: number) => `${n}/${max} ตัวอักษร`,
         promptOverBudget:
           "ยาวเกินงบตัวอักษรที่แนะนำ ระบบฝั่งเซิร์ฟเวอร์จะตรวจสอบอีกครั้งตอนบันทึก",
@@ -378,6 +385,13 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         spareImageQualityScoreSuffix: (score: number) => ` · score ${score}`,
         spareImageSelectAriaLabel: (n: number) =>
           `Use spare image attempt ${n} instead of this shot's current image (no extra credit).`,
+        // Storyboard Review clip list placement (2026-07-23 user feedback
+        // on b661284a6) — clicking a spare thumbnail there opens a
+        // full-screen preview instead of swapping immediately, so the
+        // aria-label and the preview's explicit action need their own copy.
+        spareImagePreviewAriaLabel: (n: number) =>
+          `Preview spare image attempt ${n} full-screen`,
+        spareImageUseThisLabel: "Use this image",
         promptCharCount: (n: number, max: number) => `${n}/${max} characters`,
         promptOverBudget:
           "Over the recommended character budget — the server re-validates on save.",

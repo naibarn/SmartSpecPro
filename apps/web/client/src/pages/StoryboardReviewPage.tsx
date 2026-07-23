@@ -14001,6 +14001,15 @@ export default function StoryboardReviewPage() {
               mediaAttachTargetTaskId={mediaAttachTargetTaskId}
               mediaAttachTargetFrameIndex={mediaAttachTargetFrameIndex}
               onMediaAttachTargetChange={setStoryboardMediaAttachTarget}
+              // Marketplace spare-image repair — Storyboard Review clip
+              // list placement (2026-07-23 user feedback on b661284a6):
+              // the same sequential-shot data + handler already wired to
+              // `SequentialShotReviewSection` above, now also reaching the
+              // clip list so its spare strip renders under each clip's Ref
+              // thumbnail instead of only in the collapsed 9-shot grid.
+              sequentialShots={sequentialShotCards}
+              sequentialSwappingShotId={sequentialSwappingShotId}
+              onSelectSequentialShotAlternate={handleSelectSequentialShotAlternate}
               onMoveTask={moveStoryboardTask}
               onRemoveTask={removeStoryboardTask}
               onAutoCompound={autoCompound}

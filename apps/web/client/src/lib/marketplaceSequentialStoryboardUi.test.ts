@@ -20,7 +20,9 @@ import {
   projectSequentialLoopReport,
   projectSequentialShotCards,
   resolveSequentialCapacityMeter,
+  resolveSequentialShotCardForStoryboardTask,
   type SequentialAngleSelectionEntry,
+  type SequentialShotCardModel,
 } from "./marketplaceSequentialStoryboardUi";
 
 function shotFixture(overrides: Record<string, unknown> = {}) {
@@ -273,6 +275,84 @@ describe("marketplaceSequentialStoryboardUi", () => {
           },
         ]);
       });
+    });
+  });
+
+  describe("resolveSequentialShotCardForStoryboardTask (Storyboard Review clip list linkage)", () => {
+    function shotCards(): SequentialShotCardModel[] {
+      return nineShotFixture().map((raw) =>
+        projectSequentialShotCards({ sequentialStoryboard: { shots: [raw] } })[0]!
+      );
+    }
+
+    it("returns undefined when there are no sequential shots at all", () => {
+      expect(
+        resolveSequentialShotCardForStoryboardTask({
+          taskIndex: 0,
+          taskShotIdHint: null,
+          shots: [],
+        })
+      ).toBeUndefined();
+    });
+
+    it("resolves by the trailing integer in taskShotIdHint (e.g. \"shot-3\"), ignoring task position", () => {
+      const shots = shotCards();
+      const resolved = resolveSequentialShotCardForStoryboardTask({
+        taskIndex: 0, // deliberately mismatched position — the hint must win
+        taskShotIdHint: "shot-3",
+        shots,
+      });
+      expect(resolved?.shotId).toBe(3);
+    });
+
+    it("accepts a bare numeric-string hint", () => {
+      const shots = shotCards();
+      const resolved = resolveSequentialShotCardForStoryboardTask({
+        taskIndex: 0,
+        taskShotIdHint: "7",
+        shots,
+      });
+      expect(resolved?.shotId).toBe(7);
+    });
+
+    it("falls back to positional (taskIndex + 1) when the hint is absent", () => {
+      const shots = shotCards();
+      const resolved = resolveSequentialShotCardForStoryboardTask({
+        taskIndex: 4,
+        taskShotIdHint: null,
+        shots,
+      });
+      expect(resolved?.shotId).toBe(5);
+    });
+
+    it("falls back to positional when the hint does not match any known shot", () => {
+      const shots = shotCards();
+      const resolved = resolveSequentialShotCardForStoryboardTask({
+        taskIndex: 2,
+        taskShotIdHint: "unrelated-task-id-without-a-trailing-shot-number",
+        shots,
+      });
+      expect(resolved?.shotId).toBe(3);
+    });
+
+    it("returns undefined when neither the hint nor the position resolves to a known shot", () => {
+      const shots = shotCards();
+      const resolved = resolveSequentialShotCardForStoryboardTask({
+        taskIndex: 40,
+        taskShotIdHint: null,
+        shots,
+      });
+      expect(resolved).toBeUndefined();
+    });
+
+    it("trims whitespace before reading the hint", () => {
+      const shots = shotCards();
+      const resolved = resolveSequentialShotCardForStoryboardTask({
+        taskIndex: 0,
+        taskShotIdHint: "  shot-6  ",
+        shots,
+      });
+      expect(resolved?.shotId).toBe(6);
     });
   });
 

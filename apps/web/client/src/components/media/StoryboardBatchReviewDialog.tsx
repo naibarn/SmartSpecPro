@@ -40,6 +40,19 @@ import {
   updateArticleStoryboardVoiceMetadata,
   type ArticleStoryboardReviewMetadata,
 } from "@shared/articleStoryboardVideo";
+// Marketplace spare-image repair — Storyboard Review clip list placement
+// (2026-07-23 direct user feedback on b661284a6 moved the spare-image strip
+// out of the collapsed 9-shot grid and directly under each clip's own "Ref"
+// thumbnail here, since that grid squashed the main image, cut cards off,
+// and made spare thumbnails too small to judge).
+import { SequentialShotAlternatesStrip } from "@/components/marketplaceCapture/SequentialShotAlternatesStrip";
+import {
+  getMarketplaceHyperframesUiCopy,
+} from "@/components/marketplaceCapture/hyperframesUiCopy";
+import {
+  resolveSequentialShotCardForStoryboardTask,
+  type SequentialShotCardModel,
+} from "@/lib/marketplaceSequentialStoryboardUi";
 
 const STORYBOARD_SHOT_DURATION_OPTIONS_SECONDS = [4, 6, 8, 10, 12, 15] as const;
 const STORYBOARD_TRIM_FALLBACK_DURATION_SECONDS = 8;
@@ -178,6 +191,17 @@ interface StoryboardBatchReviewDialogProps {
   mediaAttachTargetTaskId?: string | null;
   mediaAttachTargetFrameIndex?: 0 | 1 | null;
   onMediaAttachTargetChange?: (taskId: string | null, frameIndex?: 0 | 1 | null) => void;
+  /** Marketplace spare-image repair — Storyboard Review clip list placement
+   *  (2026-07-23). Sequential 9-shot cards for the active auto-review run,
+   *  used only to resolve which clip corresponds to which shot so its
+   *  spare-image strip can render under that clip's own Ref thumbnail.
+   *  Omit (or pass an empty array) for legacy/non-sequential runs — every
+   *  clip then simply renders no spare strip. */
+  sequentialShots?: SequentialShotCardModel[];
+  /** True while `shotId`'s spare-image swap mutation is in flight; mirrors
+   *  `regeneratingTaskId`'s per-id convention. */
+  sequentialSwappingShotId?: number | null;
+  onSelectSequentialShotAlternate?: (input: { shotId: number; attempt: number }) => void;
 }
 
 export interface StoryboardBatchReviewPanelProps extends Omit<StoryboardBatchReviewDialogProps, "open"> {
@@ -193,6 +217,16 @@ type StoryboardLightboxMedia = {
   type: "image" | "video";
   url: string;
   title: string;
+  /** Marketplace spare-image repair — present only when this lightbox was
+   *  opened from a spare-image thumbnail. Renders an explicit "use this
+   *  image" action (or an "in use" indicator) in the lightbox header. */
+  useAction?: {
+    label: string;
+    inUseLabel: string;
+    isCurrent: boolean;
+    disabled?: boolean;
+    onUse: () => void;
+  };
 } | null;
 
 function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
@@ -468,6 +502,9 @@ export function StoryboardBatchReviewPanel({
   mediaAttachTargetTaskId = null,
   mediaAttachTargetFrameIndex = null,
   onMediaAttachTargetChange,
+  sequentialShots = [],
+  sequentialSwappingShotId = null,
+  onSelectSequentialShotAlternate,
   closeLabel = "Close",
   className,
   contentClassName,
@@ -475,6 +512,10 @@ export function StoryboardBatchReviewPanel({
   tabletPageFlow = false,
 }: StoryboardBatchReviewPanelProps) {
   const { t, locale } = useScopedTranslation(["media", "common"]);
+  // Marketplace spare-image repair — shared copy module (Thai + English)
+  // for the "use this image" lightbox action; the strip itself reads this
+  // same module internally.
+  const hyperframesCopy = getMarketplaceHyperframesUiCopy(locale);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [draftPrompts, setDraftPrompts] = useState<Record<string, string>>({});
   const [isGeneratingSelected, setIsGeneratingSelected] = useState(false);
@@ -2251,6 +2292,21 @@ export function StoryboardBatchReviewPanel({
               const selectedTransitionName = task.transition?.name ?? "none";
               const selectedTransitionDuration = task.transition?.durationMs ?? STORYBOARD_DEFAULT_TRANSITION_DURATION_MS;
               const isMediaAttachTarget = mediaAttachTargetTaskId === task.id;
+              // Marketplace spare-image repair — Storyboard Review clip
+              // list placement (2026-07-23 user feedback on b661284a6). See
+              // `resolveSequentialShotCardForStoryboardTask` for the clip
+              // -> shot linkage (explicit `extraParams.shotId` hint first,
+              // positional `task.index` fallback). Renders nothing when no
+              // shot matches or the shot has fewer than 2 alternates.
+              const matchedSequentialShot = resolveSequentialShotCardForStoryboardTask({
+                taskIndex: task.index,
+                taskShotIdHint:
+                  typeof task.generationExtraParams?.shotId === "string"
+                    ? (task.generationExtraParams.shotId as string)
+                    : null,
+                shots: sequentialShots,
+              });
+              const sequentialAlternates = matchedSequentialShot?.alternates ?? [];
               return (
                 <div
                   key={task.id}
@@ -2424,6 +2480,34 @@ export function StoryboardBatchReviewPanel({
                             </div>
                           )}
                         </div>
+                      ) : null}
+                      {matchedSequentialShot && sequentialAlternates.length > 1 ? (
+                        <SequentialShotAlternatesStrip
+                          className="col-span-2 sm:col-span-1"
+                          shotId={matchedSequentialShot.shotId}
+                          alternates={sequentialAlternates}
+                          swapping={sequentialSwappingShotId === matchedSequentialShot.shotId}
+                          onSelectAlternate={(input) => onSelectSequentialShotAlternate?.(input)}
+                          onOpenPreview={({ attempt, imageUrl, label, isSelected }) => {
+                            const shotId = matchedSequentialShot.shotId;
+                            setLightboxMedia({
+                              type: "image",
+                              url: imageUrl,
+                              title: `${t("mediaStudio.storyboardReviewClipLabel", { index: task.index + 1 })} · ${label}`,
+                              useAction: {
+                                label: hyperframesCopy.spareImageUseThisLabel,
+                                inUseLabel: hyperframesCopy.spareImageCurrentBadge,
+                                isCurrent: isSelected,
+                                disabled: isSelected || sequentialSwappingShotId === shotId,
+                                onUse: () => {
+                                  onSelectSequentialShotAlternate?.({ shotId, attempt });
+                                  setLightboxMedia(null);
+                                },
+                              },
+                            });
+                          }}
+                          locale={locale}
+                        />
                       ) : null}
                     </div>
 
@@ -3706,6 +3790,23 @@ export function StoryboardBatchReviewPanel({
                 <div className="flex items-center justify-between gap-3 text-white">
                   <div className="min-w-0 truncate text-sm font-medium">{lightboxMedia.title}</div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {lightboxMedia.useAction ? (
+                      lightboxMedia.useAction.isCurrent ? (
+                        <Badge variant="secondary" className="h-8 items-center rounded-md px-3 text-xs">
+                          {lightboxMedia.useAction.inUseLabel}
+                        </Badge>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={lightboxMedia.useAction.onUse}
+                          disabled={lightboxMedia.useAction.disabled}
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          {lightboxMedia.useAction.label}
+                        </Button>
+                      )
+                    ) : null}
                     <Button asChild type="button" size="sm" variant="secondary">
                       <a href={lightboxMedia.url} download target="_blank" rel="noreferrer">
                         <Download className="mr-2 h-4 w-4" />

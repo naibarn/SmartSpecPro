@@ -284,6 +284,54 @@ export function projectSequentialShotCards(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Storyboard Review clip list linkage                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Marketplace spare-image repair — Storyboard Review clip list placement
+ * (2026-07-23 user feedback on b661284a6 moved the spare-image strip out of
+ * the collapsed 9-shot grid and directly under each clip's own "Ref"
+ * thumbnail in the clip list). Resolves which `SequentialShotCardModel` (if
+ * any) a Storyboard Review clip/task corresponds to.
+ *
+ * Preferred linkage: `taskShotIdHint`, the clip's own
+ * `storyboardContext.extraParams.shotId` string (when the per-shot video
+ * generation pipeline set one, e.g. `"shot-3"` — see
+ * `getStoryboardTaskShotId` in `storyboardReviewWorkspace.ts`). Reading the
+ * TRAILING integer off this string survives the clip being reordered via
+ * "up"/"down", because the id is stored ON the task, not derived from its
+ * current list position.
+ *
+ * Fallback: positional — clip index N (0-based `task.index`) maps to shot
+ * N+1. This mirrors how the clip list already labels the clip itself
+ * ("Clip {task.index + 1}") and only applies when no explicit hint is
+ * present, matching the per_shot pipeline's shot-ordered clip creation.
+ *
+ * Returns `undefined` when neither resolves to a card in `shots` — callers
+ * must render nothing rather than guess a wrong shot.
+ */
+export function resolveSequentialShotCardForStoryboardTask(input: {
+  taskIndex: number;
+  taskShotIdHint?: string | null;
+  shots: readonly SequentialShotCardModel[];
+}): SequentialShotCardModel | undefined {
+  if (input.shots.length === 0) return undefined;
+
+  const hint = cleanText(input.taskShotIdHint);
+  if (hint) {
+    const match = /(\d+)\s*$/.exec(hint);
+    const shotId = match ? Number(match[1]) : NaN;
+    if (Number.isFinite(shotId)) {
+      const byHint = input.shots.find(shot => shot.shotId === shotId);
+      if (byHint) return byHint;
+    }
+  }
+
+  const positionalShotId = input.taskIndex + 1;
+  return input.shots.find(shot => shot.shotId === positionalShotId);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Loop report                                                               */
 /* -------------------------------------------------------------------------- */
 
