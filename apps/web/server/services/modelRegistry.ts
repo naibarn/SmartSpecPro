@@ -473,6 +473,22 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     ],
     creditCost: 40,
     aspectRatios: ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
+    // Multi-view fix (planning/marketplace-multi-product-reference-images):
+    // static-registry parity for cold-start + unit tests. The DB row carries
+    // the same maxReferenceImages, so the sequential cap resolver
+    // (getSequentialReferenceImageModelCap -> getModelById) reports 14 — kie.ai
+    // nano-banana-2 accepts up to 14 input images — instead of the ?? 5
+    // fallback. Provider generation still uses the DB configJson at dispatch.
+    configJson: {
+      kieModelId: "nano-banana-2",
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      generateType: "text-to-image",
+      maxReferenceImages: 14,
+      inputFields: [
+        { key: "image_input", label: "Reference Images", type: "image_urls", syncWith: "none" },
+      ],
+    },
     isEnabled: true,
     priority: 2,
   },

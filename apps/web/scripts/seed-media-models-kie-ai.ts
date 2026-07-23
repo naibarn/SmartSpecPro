@@ -1722,6 +1722,10 @@ const IMAGE_MODELS = [
       kieModelId: "nano-banana-2",
       generateType: "text-to-image",
       maxPromptLength: 20000,
+      // Multi-view (planning/marketplace-multi-product-reference-images):
+      // kie.ai nano-banana-2 accepts up to 14 input images. Keeps the
+      // marketplace-auto-review reference cap in sync on every re-seed.
+      maxReferenceImages: 14,
       inputFields: [
         { key: "image_input", label: "Reference Images", type: "image_urls" },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",

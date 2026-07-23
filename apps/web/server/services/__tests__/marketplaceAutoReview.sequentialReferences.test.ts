@@ -396,6 +396,16 @@ describe("getSequentialReferenceImageModelCap", () => {
   it("defaults to 5 for an unrecognized model id", () => {
     expect(getSequentialReferenceImageModelCapForTest("totally-unknown-model-id")).toBe(5);
   });
+
+  it("reads google-banana-2 as 14 (kie.ai nano-banana-2 input-image limit)", () => {
+    // Multi-view fix (planning/marketplace-multi-product-reference-images):
+    // the resolver reads getModelById (DB-merged; static fallback in this
+    // DB-less test env). The static registry entry now carries
+    // configJson.maxReferenceImages = 14 — matching the DB row and the seed —
+    // so the plan-time cap and the dispatch-time trim agree at 14 instead of
+    // silently degrading to the ?? 5 fallback.
+    expect(getSequentialReferenceImageModelCapForTest("google-banana-2")).toBe(14);
+  });
 });
 
 describe("enforceSequentialReferenceIndexMapping", () => {

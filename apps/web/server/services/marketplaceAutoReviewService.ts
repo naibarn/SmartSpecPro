@@ -31423,8 +31423,15 @@ export async function cancelMarketplaceAutoReviewRun(
 // needs the SAME cap resolver to compute the plan-time `referenceCapacity`
 // preview — a private function cannot be called from another module.
 export function getSequentialReferenceImageModelCap(modelId: string): number {
+  // Multi-view fix (planning/marketplace-multi-product-reference-images):
+  // resolve the cap from the DB-MERGED registry (getModelById) — the SAME
+  // source the dispatch-time trim `resolveReferenceImageUrlsForModel`
+  // (mediaGenerationService.ts) already uses — so the plan-time cap and the
+  // provider-time trim can never diverge, and admin `configJson` edits take
+  // effect here too. `getModelById` is sync (reads the in-memory model cache),
+  // so this stays a synchronous `: number` and no caller has to change.
   return (
-    getReferenceImageLimitFromConfig(getStaticModelById(modelId)?.configJson) ?? 5
+    getReferenceImageLimitFromConfig(getModelById(modelId)?.configJson) ?? 5
   );
 }
 
