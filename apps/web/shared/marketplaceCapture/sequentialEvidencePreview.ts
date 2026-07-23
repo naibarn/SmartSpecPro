@@ -36,7 +36,14 @@ import { z } from "zod";
 export interface SequentialReferenceAngleCandidate {
   /** Stable identifier for trimmedAngles / meter display (a ref or resolved URL). */
   ref: string;
-  angleLabel: string;
+  /**
+   * Optional (checkbox-selection UX): `undefined` means the user selected
+   * this image as a supporting angle WITHOUT tagging a specific label — it
+   * is still a normal angle candidate for capacity purposes, never
+   * evidence-only and never dropped by this module (the caller decides
+   * evidence-only status upstream from the label, not this type).
+   */
+  angleLabel?: string;
 }
 
 export interface SequentialReferenceCapacityInput {
@@ -467,7 +474,7 @@ export const SequentialEvidencePreviewSchema = z
 export const SequentialReferenceAngleCandidateSchema = z
   .object({
     ref: z.string().min(1),
-    angleLabel: z.string().min(1),
+    angleLabel: z.string().min(1).optional(),
   })
   .strict();
 

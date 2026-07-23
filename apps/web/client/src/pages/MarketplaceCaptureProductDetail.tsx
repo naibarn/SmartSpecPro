@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Circle,
   Copy,
   Download,
   ExternalLink,
@@ -65,9 +66,11 @@ import { SequentialProductAngleChips } from "@/components/marketplaceCapture/Seq
 import { SequentialEvidenceReviewPanel } from "@/components/marketplaceCapture/SequentialEvidenceReviewPanel";
 import {
   buildSequentialAngleSelectionEntries,
+  isSequentialEvidenceOnlyAngleLabel,
   isSequentialFrameStrategy,
   projectSequentialGuardianState,
   resolveSequentialCapacityMeter,
+  SEQUENTIAL_ANGLE_LABELS,
   type SequentialAngleLabel,
 } from "@/lib/marketplaceSequentialStoryboardUi";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
@@ -215,25 +218,21 @@ type UploadedReferenceAnchor = {
 type AutoReviewAnchorDropRole = "product" | "character" | "environment";
 type ImageDimensions = { width: number; height: number };
 // Feature 136 (section 02, §5.1) — multi-angle product reference layer, data
-// plumbing only (selection UI/chips/meter land in section 11).
-type AutoReviewProductAngleLabel =
-  | "front"
-  | "back"
-  | "side"
-  | "top"
-  | "base"
-  | "detail"
-  | "package"
-  | "parts_diagram"
-  | "scale"
-  | "other";
+// plumbing only (selection UI/picker/meter land in section 11).
+// Feature 136 (selection redesign, 2026-07-23) — `angleLabel` is now
+// OPTIONAL. Enrollment is presence of an entry in
+// `autoReviewProductAngleLabels` (a checkbox on the Product Images grid),
+// never having a label; `undefined` means a normal, unlabeled supporting
+// angle ("auto"), never evidence-only. Uses the shared `SequentialAngleLabel`
+// union (`@/lib/marketplaceSequentialStoryboardUi`) directly rather than a
+// duplicate local alias.
 type AutoReviewProductAngleImageEntry = {
   url: string;
   ref: string;
   hash?: string | null;
   storageKey?: string | null;
   source: "marketplace_product_image" | "upload" | "library";
-  angleLabel: AutoReviewProductAngleLabel;
+  angleLabel?: SequentialAngleLabel;
 };
 
 const PRODUCT_MEDIA_DRAG_MIME = "application/x-smartspec-product-media";
@@ -4800,16 +4799,16 @@ export default function MarketplaceCaptureProductDetail() {
     ]
   );
 
-  // Feature 136 (section 11, §6.8) — multi-angle product reference chips +
+  // Feature 136 (section 11, §6.8) — multi-angle product reference picker +
   // capacity meter + evidence review. `autoReviewProductAngleLabels` /
   // `setAutoReviewProductAngleLabels` (section 02) stay the single source
   // of truth `buildAutoReviewReferenceAnchors` reads to emit
   // `productAngleImages[]`; this block only derives a
-  // `Record<imageId, angleLabel>` view for the chips UI and adapts the
-  // chips' `onAngleLabelChange(imageId, label)` callback back onto that
-  // same array state (upsert by url), so the payload is never re-plumbed.
+  // `Record<imageId, angleLabel>` view for the picker UI and the set of
+  // selected image ids (checkbox state), so the payload is never
+  // re-plumbed.
   const autoReviewProductAngleLabelsByImageId = useMemo(() => {
-    const map: Record<string, SequentialAngleLabel> = {};
+    const map: Record<string, SequentialAngleLabel | undefined> = {};
     for (const image of productImageOptions) {
       const entry = autoReviewProductAngleLabels.find(
         candidate => candidate.url === image.url
@@ -4818,35 +4817,83 @@ export default function MarketplaceCaptureProductDetail() {
     }
     return map;
   }, [productImageOptions, autoReviewProductAngleLabels]);
+  // Feature 136 (selection redesign, 2026-07-23) — enrollment is presence of
+  // an entry in `autoReviewProductAngleLabels` (checkbox), never having a
+  // label. `autoReviewProductAngleLabelsByImageId` only gets a key for
+  // images that ARE enrolled (see loop above), so its key set IS the
+  // selected-id set — reused here rather than re-derived.
+  const autoReviewSelectedProductAngleImageIds = useMemo(
+    () => new Set(Object.keys(autoReviewProductAngleLabelsByImageId)),
+    [autoReviewProductAngleLabelsByImageId]
+  );
+  const buildAutoReviewProductAngleEntry = useCallback(
+    (
+      image: (typeof productImageOptions)[number],
+      angleLabel: SequentialAngleLabel | undefined
+    ): AutoReviewProductAngleImageEntry => ({
+      url: image.url,
+      ref: image.removableId
+        ? `product-image:${image.removableId}`
+        : `product-image-option:${image.id}`,
+      hash: image.hash || null,
+      storageKey: null,
+      source: "marketplace_product_image",
+      angleLabel,
+    }),
+    []
+  );
   const handleAutoReviewAngleLabelChange = useCallback(
-    (imageId: string, label: SequentialAngleLabel) => {
+    (imageId: string, label: SequentialAngleLabel | undefined) => {
       const image = productImageOptions.find(candidate => candidate.id === imageId);
       if (!image || !image.url) return;
       setAutoReviewProductAngleLabels(previous => {
         const next = previous.filter(entry => entry.url !== image.url);
-        next.push({
-          url: image.url,
-          ref: image.removableId
-            ? `product-image:${image.removableId}`
-            : `product-image-option:${image.id}`,
-          hash: image.hash || null,
-          storageKey: null,
-          source: "marketplace_product_image",
-          angleLabel: label,
-        });
+        next.push(buildAutoReviewProductAngleEntry(image, label));
         return next;
       });
     },
-    [productImageOptions]
+    [productImageOptions, buildAutoReviewProductAngleEntry]
   );
+  // Feature 136 (selection redesign) — the checkbox overlay on the Product
+  // Images grid. Adds/removes an entry with `angleLabel: undefined` (a
+  // normal, unlabeled supporting angle); never called for the locked hero
+  // anchor (the grid never renders a toggle for it).
+  const toggleAutoReviewReferenceSelect = useCallback(
+    (imageId: string) => {
+      const image = productImageOptions.find(candidate => candidate.id === imageId);
+      if (!image || !image.url) return;
+      if (resolvedProductAnchorImage && resolvedProductAnchorImage.id === imageId) {
+        return;
+      }
+      setAutoReviewProductAngleLabels(previous => {
+        if (previous.some(entry => entry.url === image.url)) {
+          return previous.filter(entry => entry.url !== image.url);
+        }
+        return [...previous, buildAutoReviewProductAngleEntry(image, undefined)];
+      });
+    },
+    [productImageOptions, resolvedProductAnchorImage, buildAutoReviewProductAngleEntry]
+  );
+  // Feature 136 (selection redesign) — only ENROLLED (checked) images ever
+  // become angle entries; unchecked images must never phantom-populate the
+  // capacity meter (the exact confusion this redesign fixes — the meter
+  // used to show up to 8 candidate images as "attached" before any
+  // checkbox was ever clicked).
   const autoReviewAngleSelectionEntries = useMemo(
     () =>
       buildSequentialAngleSelectionEntries({
-        images: productImageOptions,
+        images: productImageOptions.filter(image =>
+          autoReviewSelectedProductAngleImageIds.has(image.id)
+        ),
         primaryImageId: resolvedProductAnchorImage?.id ?? null,
         angleLabels: autoReviewProductAngleLabelsByImageId,
       }),
-    [productImageOptions, resolvedProductAnchorImage, autoReviewProductAngleLabelsByImageId]
+    [
+      productImageOptions,
+      resolvedProductAnchorImage,
+      autoReviewProductAngleLabelsByImageId,
+      autoReviewSelectedProductAngleImageIds,
+    ]
   );
   // `modelCap` always comes from the server (`referenceCapacity.modelCap`,
   // binding decision §3.2) — never the model registry.
@@ -8270,10 +8317,28 @@ export default function MarketplaceCaptureProductDetail() {
                     const imageId = image.id;
                     const isSelected = selectedProductImageId === imageId;
                     const isHero = Boolean(image.isHero);
+                    // Feature 136 (selection redesign, 2026-07-23) —
+                    // sequential-mode-only checkbox overlay.
+                    // `isAutoReviewAnchor` is the locked @Image1 anchor
+                    // (never a toggle); `isAutoReviewAngleAttached` reflects
+                    // real enrollment in `autoReviewProductAngleLabels`
+                    // (checkbox state), never a phantom default.
+                    const sequentialPickerActive =
+                      sequentialStrategyEnabled && sequentialStrategySelected;
+                    const isAutoReviewAnchor = Boolean(
+                      resolvedProductAnchorImage &&
+                        resolvedProductAnchorImage.id === imageId
+                    );
+                    const isAutoReviewAngleAttached =
+                      sequentialPickerActive &&
+                      !isAutoReviewAnchor &&
+                      autoReviewSelectedProductAngleImageIds.has(imageId);
+                    const currentAutoReviewAngleLabel =
+                      autoReviewProductAngleLabelsByImageId[imageId];
                     return (
                       <figure
                         key={imageId}
-                        className={`relative rounded-md border bg-slate-50 p-2 text-left transition ${isHero ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100" : isSelected ? "border-sky-600 bg-sky-50 ring-2 ring-sky-100" : "border-slate-200"}`}
+                        className={`relative rounded-md border bg-slate-50 p-2 text-left transition ${isHero ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100" : isSelected ? "border-sky-600 bg-sky-50 ring-2 ring-sky-100" : isAutoReviewAngleAttached ? "border-violet-500 bg-violet-50 ring-2 ring-violet-100" : "border-slate-200"}`}
                       >
                         <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
                           <button
@@ -8304,6 +8369,63 @@ export default function MarketplaceCaptureProductDetail() {
                           >
                             <Download className="h-4 w-4" />
                           </a>
+                        </div>
+                        <div className="absolute right-2 top-2 z-10 flex flex-col items-end gap-1">
+                          {sequentialPickerActive ? (
+                            isAutoReviewAnchor ? (
+                              <span
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 text-white shadow-sm"
+                                aria-hidden="true"
+                                title={hyperframesCopy.referenceAnchorBadge}
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={event => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  toggleAutoReviewReferenceSelect(imageId);
+                                }}
+                                aria-pressed={isAutoReviewAngleAttached}
+                                aria-label={
+                                  isAutoReviewAngleAttached
+                                    ? `เอาภาพที่ ${index + 1} ออกจากภาพอ้างอิงสินค้าหลายมุม`
+                                    : `เลือกภาพที่ ${index + 1} เป็นภาพอ้างอิงสินค้าหลายมุม`
+                                }
+                                title={
+                                  isAutoReviewAngleAttached
+                                    ? "เลือกเป็นภาพอ้างอิงแล้ว — คลิกเพื่อเอาออก"
+                                    : "คลิกเพื่อเลือกเป็นภาพอ้างอิงสินค้าเพิ่มเติม"
+                                }
+                                className={`inline-flex h-8 w-8 items-center justify-center rounded-full shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-1 ${isAutoReviewAngleAttached ? "bg-violet-600 text-white hover:bg-violet-700" : "bg-white/95 text-slate-400 hover:bg-white hover:text-violet-600"}`}
+                              >
+                                {isAutoReviewAngleAttached ? (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                ) : (
+                                  <Circle className="h-4 w-4" />
+                                )}
+                              </button>
+                            )
+                          ) : null}
+                          {image.removableId ? (
+                            <button
+                              type="button"
+                              className="flex h-8 items-center justify-center rounded-full bg-white/95 px-2 text-red-600 shadow-sm hover:bg-red-50 hover:text-red-700"
+                              onClick={event => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                removeProductImage(image.removableId);
+                              }}
+                              disabled={removeProductImageMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">
+                                Remove product image {index + 1}
+                              </span>
+                            </button>
+                          ) : null}
                         </div>
                         <button
                           type="button"
@@ -8348,7 +8470,53 @@ export default function MarketplaceCaptureProductDetail() {
                               Hero / Default
                             </span>
                           ) : null}
+                          {sequentialPickerActive && isAutoReviewAnchor ? (
+                            <span className="ml-1 mt-1 inline-block rounded bg-violet-600 px-2 py-0.5 text-xs text-white">
+                              {hyperframesCopy.referenceAnchorBadge}
+                            </span>
+                          ) : null}
                         </button>
+                        {sequentialPickerActive && isAutoReviewAngleAttached ? (
+                          <div className="mt-2">
+                            <label
+                              className="sr-only"
+                              htmlFor={`auto-review-angle-${imageId}`}
+                            >
+                              {hyperframesCopy.referenceAngleSelectLabel}
+                            </label>
+                            <select
+                              id={`auto-review-angle-${imageId}`}
+                              value={currentAutoReviewAngleLabel ?? ""}
+                              onChange={event => {
+                                const value = event.target.value;
+                                handleAutoReviewAngleLabelChange(
+                                  imageId,
+                                  value
+                                    ? (value as SequentialAngleLabel)
+                                    : undefined
+                                );
+                              }}
+                              className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                            >
+                              <option value="">
+                                {hyperframesCopy.referenceAutoAngleOption}
+                              </option>
+                              {SEQUENTIAL_ANGLE_LABELS.map(label => (
+                                <option key={label} value={label}>
+                                  {hyperframesCopy.angleChipLabels[label]}
+                                </option>
+                              ))}
+                            </select>
+                            {currentAutoReviewAngleLabel &&
+                            isSequentialEvidenceOnlyAngleLabel(
+                              currentAutoReviewAngleLabel
+                            ) ? (
+                              <span className="mt-1 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                {hyperframesCopy.referenceEvidenceOnly}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
                         {image.removableId ? (
                           <button
                             type="button"
@@ -8365,23 +8533,6 @@ export default function MarketplaceCaptureProductDetail() {
                               : "Set as Hero image"}
                           </button>
                         ) : null}
-                        {image.removableId ? (
-                          <button
-                            type="button"
-                            className="absolute right-2 top-2 flex h-8 items-center justify-center rounded-full bg-white/95 px-2 text-red-600 shadow-sm hover:bg-red-50 hover:text-red-700"
-                            onClick={event => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              removeProductImage(image.removableId);
-                            }}
-                            disabled={removeProductImageMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">
-                              Remove product image {index + 1}
-                            </span>
-                          </button>
-                        ) : null}
                       </figure>
                     );
                   })}
@@ -8394,23 +8545,27 @@ export default function MarketplaceCaptureProductDetail() {
               </div>
             )}
 
-            {/* Feature 136 (section 11) — multi-angle product reference
-                chips + capacity meter, mounted on the Product Images
-                surface. `capacity.modelCap` always comes from the server
+            {/* Feature 136 (section 11, selection redesign) — capacity meter
+                + trim warning + discoverability hint header strip, mounted
+                on the Product Images surface. The per-image checkbox +
+                optional angle select now live directly on each card above
+                (`toggleAutoReviewReferenceSelect` / `SEQUENTIAL_ANGLE_LABELS`
+                select wired to `handleAutoReviewAngleLabelChange`).
+                `capacity.modelCap` always comes from the server
                 (`plan.referenceCapacity`); this component never consults
                 the model registry. */}
             <div className="mt-4">
               <SequentialProductAngleChips
                 enabled={sequentialStrategyEnabled && sequentialStrategySelected}
-                images={productImageOptions}
-                primaryImageId={resolvedProductAnchorImage?.id ?? null}
-                angleLabels={autoReviewProductAngleLabelsByImageId}
-                onAngleLabelChange={handleAutoReviewAngleLabelChange}
                 capacity={autoReviewReferenceCapacityMeter}
                 modelLabel={
                   autoStoryboardOverrides.imageModel ||
                   autoStoryboardPlan?.defaults.imageModel ||
                   ""
+                }
+                showDiscoverabilityHint={
+                  productImageOptions.length > 1 &&
+                  autoReviewProductAngleLabels.length === 0
                 }
               />
             </div>

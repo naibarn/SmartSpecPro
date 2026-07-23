@@ -139,6 +139,14 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         referenceEvidenceOnly: "ใช้เป็นหลักฐานเท่านั้น (ไม่แนบเข้าโมเดล)",
         referenceCapacityImpossible: (model: string) =>
           `ความจุภาพอ้างอิงของโมเดล ${model} ไม่พอสำหรับภาพที่บังคับต้องมี (เช่น ภาพสินค้าหลัก) กรุณาลดจำนวนภาพอ้างอิงหรือเปลี่ยนโมเดล`,
+        // Selection redesign (2026-07-23, user-approved mockup) — checkbox
+        // selection on the Product Images grid replaces "assign a label to
+        // enroll". These three strings back that picker.
+        referenceDiscoverabilityHint: (n: number) =>
+          `ใช้ภาพสินค้าได้อีก ${n} ภาพ — คลิกเลือกภาพมุมอื่นเพื่อให้ AI สร้างสินค้าได้แม่นยำขึ้น`,
+        referenceAutoAngleOption: "อัตโนมัติ",
+        referenceAngleSelectLabel: "เลือกมุมภาพ (ไม่บังคับ)",
+        referenceAnchorBadge: "ภาพหลัก",
         evidenceReviewTitle: "ตรวจหลักฐานและข้อขัดแย้ง",
         evidenceReviewDescription:
           "ตรวจข้อมูลที่ระบบดึงจากหน้าสินค้า ยืนยันหรือตัดออกก่อนเริ่มสร้างรีวิว",
@@ -286,6 +294,14 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         referenceEvidenceOnly: "Evidence only (not attached to the model)",
         referenceCapacityImpossible: (model: string) =>
           `Model ${model} cannot fit even the required reference images (e.g. the primary product). Reduce reference images or choose a different model.`,
+        // Selection redesign (2026-07-23, user-approved mockup) — checkbox
+        // selection on the Product Images grid replaces "assign a label to
+        // enroll". These three strings back that picker.
+        referenceDiscoverabilityHint: (n: number) =>
+          `${n} more product image${n === 1 ? "" : "s"} available — click to select other angles so the AI can render your product more accurately.`,
+        referenceAutoAngleOption: "Auto",
+        referenceAngleSelectLabel: "Choose angle (optional)",
+        referenceAnchorBadge: "Primary image",
         evidenceReviewTitle: "Evidence & conflict review",
         evidenceReviewDescription:
           "Review the facts pulled from the product page. Confirm or exclude them before generation starts.",

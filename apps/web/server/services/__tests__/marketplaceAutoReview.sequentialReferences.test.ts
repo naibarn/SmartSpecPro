@@ -18,6 +18,7 @@ import {
   approvedSequentialProductReferenceUrlsForTest,
   enforceSequentialReferenceIndexMappingForTest,
   getSequentialReferenceImageModelCapForTest,
+  resolveMarketplaceAutoReviewReferenceAnchorsForTest,
   resolveSequentialReferenceAttachmentPlanForTest,
 } from "../marketplaceAutoReviewService";
 import { findReferenceIndexMappingMismatches, type ReferenceIndexEntry } from "../../../shared/marketplaceCapture/referenceIndexMap";
@@ -362,6 +363,62 @@ describe("resolveSequentialReferenceAttachmentPlan / approvedSequentialProductRe
     expect(plan.providerReferenceUrls).toEqual(["https://example.com/product.png"]);
   });
 
+  it("attaches an unlabeled angle (checkbox-selection UX) as a normal supporting angle — not evidence-only, not dropped", () => {
+    const metadata = {
+      productReferenceAssetPack: readyProductReferenceAssetPack,
+      productAngleReferenceAssetPack: {
+        entries: [
+          angleEntry({
+            url: "https://cdn.example.test/angle-nolabel.png",
+            ref: "angle-nolabel",
+            hash: "hnolabel",
+            angleLabel: undefined,
+            evidenceOnly: false,
+          }),
+        ],
+      },
+    };
+
+    const plan = resolveSequentialReferenceAttachmentPlanForTest({
+      metadata: metadata as any,
+      plan: basePlan,
+      modelCap: 5,
+    });
+
+    // Attached (not dropped) and counted as a normal angle, not trimmed.
+    expect(plan.providerReferenceUrls).toEqual([
+      "https://example.com/product.png",
+      "https://cdn.example.test/angle-nolabel.png",
+    ]);
+    expect(plan.attachedAngleCount).toBe(1);
+    expect(plan.trimmedAngles).toEqual([]);
+
+    // Provider manifest: attached with a generic instruction, no "(undefined)".
+    const angleManifestEntry = plan.providerManifest.find(
+      entry => entry.url === "https://cdn.example.test/angle-nolabel.png"
+    );
+    expect(angleManifestEntry).toBeTruthy();
+    expect(angleManifestEntry?.angleLabel).toBeUndefined();
+    expect(angleManifestEntry?.instruction).toBe(
+      "additional product angle; supplements @Image1, never overrides it"
+    );
+    expect(angleManifestEntry?.instruction).not.toContain("undefined");
+
+    // Stored manifest: a normal product_angle entry, never evidenceOnly.
+    const storedEntry = plan.storedManifest.find(
+      entry => entry.url === "https://cdn.example.test/angle-nolabel.png"
+    );
+    expect(storedEntry).toMatchObject({ role: "product_angle" });
+    expect(storedEntry?.evidenceOnly).not.toBe(true);
+    expect(storedEntry?.angleLabel).toBeUndefined();
+
+    // Not evidence-only, so it must not be excluded from providerManifest —
+    // it IS skillVisionUrls too (every attached URL also flows there).
+    expect(plan.skillVisionUrls).toEqual(
+      expect.arrayContaining(["https://cdn.example.test/angle-nolabel.png"])
+    );
+  });
+
   it("keeps the 3x3 single-anchor rule byte-identical (guards against accidental relaxation)", () => {
     expect(() =>
       approvedProductReferenceUrlsForTest({
@@ -489,5 +546,67 @@ describe("submit-time re-validation catches manifest drift (contract pin — ful
 
     expect(findReferenceIndexMappingMismatches(prompt, manifestA)).toEqual([]);
     expect(findReferenceIndexMappingMismatches(prompt, manifestB)).not.toEqual([]);
+  });
+});
+
+describe("normalizeSequentialProductAngleImages (checkbox-selection UX, via resolveMarketplaceAutoReviewReferenceAnchors)", () => {
+  it("keeps an entry with angleLabel omitted — undefined, not dropped, not defaulted to a real label", () => {
+    const anchors = resolveMarketplaceAutoReviewReferenceAnchorsForTest({
+      productTruth: {
+        imageUrls: ["https://cdn.example.test/product-hero.png"],
+      },
+      referenceAnchors: {
+        schemaVersion: 1,
+        creationIntent: "auto_review_video",
+        requiredRoles: ["product"],
+        productImageUrl: "https://cdn.example.test/product-hero.png",
+        productImageRef: "marketplace-product-image:hero_1",
+        productImageId: "hero_1",
+        productAngleImages: [
+          {
+            url: "https://cdn.example.test/angle-nolabel.png",
+            ref: "angle-nolabel",
+            hash: "hnolabel",
+            source: "marketplace_product_image",
+            // angleLabel intentionally omitted (checkbox-selected, untagged).
+          },
+        ],
+      },
+    });
+
+    expect(anchors.productAngleImages).toHaveLength(1);
+    expect(anchors.productAngleImages[0]).toMatchObject({
+      url: "https://cdn.example.test/angle-nolabel.png",
+      ref: "angle-nolabel",
+      evidenceOnly: false,
+    });
+    expect(anchors.productAngleImages[0].angleLabel).toBeUndefined();
+  });
+
+  it("still drops an entry whose supplied angleLabel is invalid (non-empty but unrecognized)", () => {
+    const anchors = resolveMarketplaceAutoReviewReferenceAnchorsForTest({
+      productTruth: {
+        imageUrls: ["https://cdn.example.test/product-hero.png"],
+      },
+      referenceAnchors: {
+        schemaVersion: 1,
+        creationIntent: "auto_review_video",
+        requiredRoles: ["product"],
+        productImageUrl: "https://cdn.example.test/product-hero.png",
+        productImageRef: "marketplace-product-image:hero_1",
+        productImageId: "hero_1",
+        productAngleImages: [
+          {
+            url: "https://cdn.example.test/angle-invalid.png",
+            ref: "angle-invalid",
+            hash: "hinvalid",
+            source: "marketplace_product_image",
+            angleLabel: "diagonal" as any,
+          },
+        ],
+      },
+    });
+
+    expect(anchors.productAngleImages).toHaveLength(0);
   });
 });

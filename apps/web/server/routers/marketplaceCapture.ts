@@ -844,18 +844,25 @@ export const marketplaceCaptureRouter = router({
                     "upload",
                     "library",
                   ]),
-                  angleLabel: z.enum([
-                    "front",
-                    "back",
-                    "side",
-                    "top",
-                    "base",
-                    "detail",
-                    "package",
-                    "parts_diagram",
-                    "scale",
-                    "other",
-                  ]),
+                  // Optional (checkbox-selection UX): a selected image with
+                  // NO label is a normal supporting angle (attached to the
+                  // provider like any other), not evidence-only. Only
+                  // "package" / "parts_diagram" stay evidence-only, and only
+                  // when the label is explicitly set to one of those values.
+                  angleLabel: z
+                    .enum([
+                      "front",
+                      "back",
+                      "side",
+                      "top",
+                      "base",
+                      "detail",
+                      "package",
+                      "parts_diagram",
+                      "scale",
+                      "other",
+                    ])
+                    .optional(),
                 })
               )
               .max(8)

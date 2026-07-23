@@ -258,9 +258,14 @@ type SequentialAngleAnchorEntry = {
   hash?: string | null;
   storageKey?: string | null;
   source: SequentialAngleImageSource;
-  angleLabel: SequentialProductAngleLabel;
+  /** Optional (checkbox-selection UX): `undefined` when the user selected
+   *  this image as a supporting angle without tagging a specific label — a
+   *  normal, attachable angle, never dropped and never defaulted to a real
+   *  label. */
+  angleLabel?: SequentialProductAngleLabel;
   /** Derived: true when `angleLabel` is "package" | "parts_diagram" — these
-   *  never enter a provider payload, only `skillVisionUrls`. */
+   *  never enter a provider payload, only `skillVisionUrls`. An `undefined`
+   *  `angleLabel` is always `false` here (a normal supporting angle). */
   evidenceOnly: boolean;
 };
 export type MarketplaceAutoReviewReferenceAnchorsInput = {
@@ -5770,8 +5775,22 @@ function normalizeSequentialProductAngleImages(
   for (const entry of entries) {
     const url = cleanText(entry?.url);
     const ref = cleanText(entry?.ref);
-    const angleLabel = normalizeSequentialProductAngleLabel(entry?.angleLabel);
-    if (!url || !ref || !angleLabel) continue; // drop incomplete/invalid entries
+    if (!url || !ref) continue; // drop incomplete entries
+
+    // Checkbox-selection UX — `angleLabel` is OPTIONAL: a selected image
+    // with no label at all is a normal, attachable supporting angle
+    // (undefined), never dropped and never defaulted to a real label. Only
+    // a NON-EMPTY label that fails to match a known enum value is invalid
+    // and drops the whole entry (defensive re-validation; the router zod
+    // schema already rejects this shape before it reaches here).
+    const rawAngleLabel = entry?.angleLabel;
+    let angleLabel: SequentialProductAngleLabel | undefined;
+    if (rawAngleLabel !== undefined && rawAngleLabel !== null) {
+      const normalizedLabel = normalizeSequentialProductAngleLabel(rawAngleLabel);
+      if (!normalizedLabel) continue; // invalid (non-empty) label ⇒ drop entry
+      angleLabel = normalizedLabel;
+    }
+
     normalized.push({
       url,
       ref,
@@ -31466,7 +31485,7 @@ type SequentialReferenceAttachmentPlan = {
   /** ALL resolvable product refs incl. evidence-only (section 04 skill Phase A input). */
   skillVisionUrls: string[];
   /** Surplus angles trimmed from the END under a tight cap (§23.2 warning / section 05/11). */
-  trimmedAngles: Array<{ ref: string; angleLabel: string }>;
+  trimmedAngles: SequentialReferenceAngleCandidate[];
   attachedAngleCount: number;
 };
 
@@ -31615,16 +31634,22 @@ function resolveSequentialReferenceAttachmentPlan(
     },
   ];
   attachedAngles.forEach((candidate, i) => {
-    const angleWord =
-      SEQUENTIAL_PRODUCT_ANGLE_INSTRUCTION_BY_LABEL[
-        candidate.angleLabel as SequentialProductAngleLabel
-      ] ?? candidate.angleLabel;
+    // Checkbox-selection UX — an undefined `angleLabel` is a normal
+    // supporting angle (attached like any other), just without a specific
+    // angle word to name in the instruction text.
+    const angleWord = candidate.angleLabel
+      ? (SEQUENTIAL_PRODUCT_ANGLE_INSTRUCTION_BY_LABEL[
+          candidate.angleLabel as SequentialProductAngleLabel
+        ] ?? candidate.angleLabel)
+      : undefined;
     providerManifest.push({
       placeholder: `@Image${2 + i}`,
       role: "product",
       url: attachedAngleUrls[i],
       angleLabel: candidate.angleLabel,
-      instruction: `additional product angle (${angleWord}); supplements @Image1, never overrides it`,
+      instruction: angleWord
+        ? `additional product angle (${angleWord}); supplements @Image1, never overrides it`
+        : "additional product angle; supplements @Image1, never overrides it",
     });
   });
   let nextPlaceholderIndex = providerManifest.length + 1;

@@ -38,7 +38,10 @@ describe("MarketplaceCaptureProductDetail sequential UI wiring (Feature 136 sect
 
     const sequentialHookMarkers = [
       "const autoReviewProductAngleLabelsByImageId = useMemo(",
+      "const autoReviewSelectedProductAngleImageIds = useMemo(",
+      "const buildAutoReviewProductAngleEntry = useCallback(",
       "const handleAutoReviewAngleLabelChange = useCallback(",
+      "const toggleAutoReviewReferenceSelect = useCallback(",
       "const autoReviewAngleSelectionEntries = useMemo(",
       "const autoReviewReferenceCapacityMeter = useMemo(",
       "const autoReviewGuardianState = useMemo(",
@@ -85,7 +88,7 @@ describe("MarketplaceCaptureProductDetail sequential UI wiring (Feature 136 sect
     expect(evidencePanelMount).toContain("onChange={setAutoStoryboardOverrides}");
   });
 
-  it("the angle-label state identifier used by the chips is the same one buildAutoReviewReferenceAnchors reads", () => {
+  it("the angle-label state identifier used by the picker is the same one buildAutoReviewReferenceAnchors reads", () => {
     const buildAnchorsFn = sourceBetween(
       "const buildAutoReviewReferenceAnchors = useCallback(",
       "async function startAutoStoryboardReview"
@@ -95,20 +98,55 @@ describe("MarketplaceCaptureProductDetail sequential UI wiring (Feature 136 sect
 
     const chipsDerivedState = sourceBetween(
       "const autoReviewProductAngleLabelsByImageId = useMemo(",
-      "const handleAutoReviewAngleLabelChange = useCallback("
+      "const autoReviewSelectedProductAngleImageIds = useMemo("
     );
     expect(chipsDerivedState).toContain("autoReviewProductAngleLabels");
 
+    // Feature 136 (selection redesign, 2026-07-23) — the header strip no
+    // longer takes images/angleLabels/onAngleLabelChange; it is pure
+    // presentation over the capacity meter + a parent-computed hint flag.
     const chipsMount = sourceBetween(
       "<SequentialProductAngleChips",
       "{history.length > 0 ? ("
     );
-    expect(chipsMount).toContain("angleLabels={autoReviewProductAngleLabelsByImageId}");
+    expect(chipsMount).toContain("capacity={autoReviewReferenceCapacityMeter}");
+    expect(chipsMount).toContain("showDiscoverabilityHint=");
+    expect(chipsMount).not.toContain("images={productImageOptions}");
+    expect(chipsMount).not.toContain("angleLabels={autoReviewProductAngleLabelsByImageId}");
+    expect(chipsMount).not.toContain("onAngleLabelChange={handleAutoReviewAngleLabelChange}");
   });
 
   it("never imports the model registry for capacity, and never constructs productAngleImages outside buildAutoReviewReferenceAnchors", () => {
     expect(source).not.toContain("getReferenceImageLimitForModel");
     const productAngleImagesConstructions = source.match(/productAngleImages:/g) ?? [];
     expect(productAngleImagesConstructions).toHaveLength(1);
+  });
+
+  it("selection redesign (2026-07-23) — enrollment is a checkbox toggle, not assigning a label", () => {
+    // The optional-label signature: choosing "unset" keeps the selection
+    // and only clears the label.
+    expect(source).toContain(
+      "(imageId: string, label: SequentialAngleLabel | undefined)"
+    );
+
+    // The checkbox handler exists, is a hook (Rules of Hooks: before the
+    // product-loading guards, asserted above), and is wired into the
+    // Product Images grid.
+    const toggleHookIndex = source.indexOf(
+      "const toggleAutoReviewReferenceSelect = useCallback("
+    );
+    expect(toggleHookIndex).toBeGreaterThanOrEqual(0);
+
+    const gridSection = sourceBetween(
+      "{productImageOptions.map((image, index) => {",
+      "<SequentialProductAngleChips"
+    );
+    expect(gridSection).toContain("toggleAutoReviewReferenceSelect(imageId)");
+    expect(gridSection).toContain("handleAutoReviewAngleLabelChange(");
+    expect(gridSection).toContain("SEQUENTIAL_ANGLE_LABELS.map(");
+    // The hero/@Image1 anchor is locked and non-togglable — the grid never
+    // renders a clickable toggle for it, only a static indicator.
+    expect(gridSection).toContain("isAutoReviewAnchor ? (");
+    expect(gridSection).toContain("!isAutoReviewAnchor");
   });
 });

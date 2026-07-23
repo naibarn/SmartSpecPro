@@ -72,7 +72,11 @@ export type SequentialAngleSelectionEntry = {
   hash?: string | null;
   storageKey?: string | null;
   source: string;
-  angleLabel: SequentialAngleLabel;
+  /** Feature 136 (selection redesign, 2026-07-23) — optional. Enrollment is
+   *  presence of this entry (a checkbox on the Product Images grid), never
+   *  having a label; `undefined` means a normal, unlabeled supporting angle
+   *  ("auto"), never evidence-only. */
+  angleLabel?: SequentialAngleLabel;
   evidenceOnly: boolean;
 };
 
@@ -359,11 +363,15 @@ export function projectSequentialGuardianState(input: {
 const SEQUENTIAL_ANGLE_SELECTION_MAX_ENTRIES = 8;
 
 /**
- * Product images + user angle labels -> ordered, deduped (by hash, else by
- * URL), <=8 angle entries, primary excluded. Pure selection-state
- * projection — attachment ORDER, evidence-only exclusion for provider
- * submission, and dedupe against server-side truth are owned by the server
- * (section 02); this only drives the client picker + meter.
+ * Already-selected product images (Feature 136 selection redesign — the
+ * caller is expected to pass only ENROLLED images, i.e. images with a
+ * checkbox-driven entry; this function never decides enrollment itself) +
+ * optional user angle labels -> ordered, deduped (by hash, else by URL),
+ * <=8 angle entries, primary excluded. Pure selection-state projection —
+ * attachment ORDER, evidence-only exclusion for provider submission, and
+ * dedupe against server-side truth are owned by the server (section 02);
+ * this only drives the client picker + meter. `angleLabel` is optional per
+ * entry; `undefined` means a normal supporting angle (never evidence-only).
  */
 export function buildSequentialAngleSelectionEntries(input: {
   images: ReadonlyArray<{
@@ -375,7 +383,7 @@ export function buildSequentialAngleSelectionEntries(input: {
     source?: string | null;
   }>;
   primaryImageId?: string | null;
-  angleLabels: Record<string, SequentialAngleLabel>;
+  angleLabels: Record<string, SequentialAngleLabel | undefined>;
 }): SequentialAngleSelectionEntry[] {
   const entries: SequentialAngleSelectionEntry[] = [];
   const seen = new Set<string>();
@@ -391,7 +399,7 @@ export function buildSequentialAngleSelectionEntries(input: {
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    const angleLabel = input.angleLabels?.[image.id] ?? "other";
+    const angleLabel = input.angleLabels?.[image.id];
     entries.push({
       imageId: image.id,
       url,
@@ -400,7 +408,9 @@ export function buildSequentialAngleSelectionEntries(input: {
       storageKey: cleanText(image.storageKey) || null,
       source: cleanText(image.source) || "marketplace_product_image",
       angleLabel,
-      evidenceOnly: isSequentialEvidenceOnlyAngleLabel(angleLabel),
+      evidenceOnly: angleLabel
+        ? isSequentialEvidenceOnlyAngleLabel(angleLabel)
+        : false,
     });
   }
 
@@ -441,7 +451,12 @@ export function resolveSequentialCapacityMeter(input: {
   return {
     modelCap: result.modelCap,
     attachedAngles: result.attachedAngleCount,
-    trimmedAngles: result.trimmedAngles.map(candidate => candidate.angleLabel),
+    // `angleLabel` is optional on the shared candidate type (undefined =
+    // "auto"); this display-only list falls back to the "other" display key
+    // for an unlabeled trimmed angle, without changing any stored value.
+    trimmedAngles: result.trimmedAngles.map(
+      candidate => candidate.angleLabel ?? "other"
+    ),
     capacityImpossible: result.requiredSlotsExceedCap,
   };
 }

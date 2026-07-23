@@ -107,6 +107,35 @@ describe("marketplaceCapture startAutoReview — referenceAnchors.productAngleIm
     expect(result.success).toBe(false);
   });
 
+  it("accepts an entry with angleLabel omitted (checkbox-selection UX — unlabeled ⇒ normal supporting angle)", () => {
+    const entry = validAngleEntry();
+    delete (entry as any).angleLabel;
+
+    const result = schema.safeParse(basePayload([entry]));
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const parsedEntries = (result.data as any).referenceAnchors
+        .productAngleImages;
+      expect(parsedEntries).toHaveLength(1);
+      expect(parsedEntries[0].angleLabel).toBeUndefined();
+      expect(parsedEntries[0].url).toBe(entry.url);
+    }
+  });
+
+  it("accepts an entry with angleLabel explicitly set to undefined", () => {
+    const result = schema.safeParse(
+      basePayload([validAngleEntry({ angleLabel: undefined })])
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(
+        (result.data as any).referenceAnchors.productAngleImages[0].angleLabel
+      ).toBeUndefined();
+    }
+  });
+
   it("rejects an entry missing url", () => {
     const entry = validAngleEntry();
     delete (entry as any).url;

@@ -251,7 +251,7 @@ describe("marketplaceSequentialStoryboardUi", () => {
       { id: "img_3", url: "https://cdn.example.com/3.png", hash: null },
     ];
 
-    it("excludes the primary anchor, defaults unlabeled images to other, dedupes by hash, preserves order", () => {
+    it("excludes the primary anchor, leaves unlabeled images with angleLabel undefined (auto, non-evidence-only), dedupes by hash, preserves order", () => {
       const entries = buildSequentialAngleSelectionEntries({
         images,
         primaryImageId: "img_primary",
@@ -259,7 +259,8 @@ describe("marketplaceSequentialStoryboardUi", () => {
       });
 
       expect(entries.map(entry => entry.imageId)).toEqual(["img_1", "img_2", "img_3"]);
-      expect(entries.map(entry => entry.angleLabel)).toEqual(["other", "back", "other"]);
+      expect(entries.map(entry => entry.angleLabel)).toEqual([undefined, "back", undefined]);
+      expect(entries.map(entry => entry.evidenceOnly)).toEqual([false, false, false]);
     });
 
     it("marks package/parts_diagram as evidenceOnly", () => {
@@ -352,6 +353,28 @@ describe("marketplaceSequentialStoryboardUi", () => {
       });
       expect(meter.attachedAngles).toBe(1);
       expect(meter.trimmedAngles).toEqual([]);
+    });
+
+    it("tolerates entries with angleLabel undefined (auto) without throwing, still counting them as attached angles", () => {
+      const entries: SequentialAngleSelectionEntry[] = [
+        { imageId: "a", url: "u_a", source: "upload", angleLabel: undefined, evidenceOnly: false },
+        { imageId: "b", url: "u_b", source: "upload", angleLabel: "front", evidenceOnly: false },
+      ];
+      expect(() =>
+        resolveSequentialCapacityMeter({
+          modelCap: 5,
+          entries,
+          guardianReserved: false,
+          environmentAttached: false,
+        })
+      ).not.toThrow();
+      const meter = resolveSequentialCapacityMeter({
+        modelCap: 5,
+        entries,
+        guardianReserved: false,
+        environmentAttached: false,
+      });
+      expect(meter.attachedAngles).toBe(2);
     });
   });
 
