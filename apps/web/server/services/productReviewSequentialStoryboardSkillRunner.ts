@@ -2529,6 +2529,9 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
   const retryHistory: Array<Record<string, unknown>> = [...(persisted?.retryHistory ?? [])];
   const roundsAlreadyCompleted = Math.min(config.loopRounds, persisted?.roundsCompleted ?? 0);
   const startRound = (roundsAlreadyCompleted + 1) as 1 | 2 | 3;
+  // Carries the previous round's rejection reasons into the next round's
+  // prompt so the model can actually fix them (see roundContractText below).
+  let lastRoundRejectionDirective: string | null = null;
 
   for (let round = startRound; round <= config.loopRounds; round += 1) {
     const roundNum = round as 1 | 2 | 3;
@@ -2539,7 +2542,17 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
       manifest: input.referenceManifest,
       childSubjectPolicy: input.childSubjectPolicy,
     });
-    const roundContractText = [buildSequentialStoryboardRoundFocus(roundNum), feedback]
+    const roundContractText = [
+      buildSequentialStoryboardRoundFocus(roundNum),
+      feedback,
+      // Weak-model self-correction (field evidence 2026-07-23): without this
+      // the model repeated the SAME shape mistake every round (echoing input
+      // fields at top level, dropping loopReport/finalQc, or emitting hollow
+      // shots) and every run burned all 3 rounds into the degraded fallback.
+      lastRoundRejectionDirective
+        ? `## CORRECTIVE DIRECTIVE — PREVIOUS ROUND WAS REJECTED\n${lastRoundRejectionDirective}`
+        : "",
+    ]
       .filter(Boolean)
       .join("\n\n");
 
@@ -2575,6 +2588,12 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
             ? Object.keys(rawOutput as Record<string, unknown>).slice(0, 16)
             : [`(${Array.isArray(rawOutput) ? "array" : typeof rawOutput})`],
       });
+      lastRoundRejectionDirective = [
+        `Round ${roundNum} was rejected: ${structural.reasons.join(", ")}.`,
+        "Return ONE JSON object whose TOP-LEVEL keys are exactly: skillVersion, evidenceProfile, claimWhitelist, conflicts, reviewStrategy, childSubjectPolicy, globalContinuity, shots, loopReport, finalQc, referenceManifest.",
+        "Do NOT echo input fields (target_audience, review_tone, video_structure_mode, story_arc) at top level.",
+        "Every shot must include ALL contract fields: shot_id, purpose, duration_seconds, demonstration_type, depicts_minor, guardian_required, transition_from_previous, visual_summary, dialogue, estimated_speech_seconds, start_frame_image_prompt, image_prompt_character_count, video_prompt, video_prompt_character_count, claim_trace, qc.",
+      ].join(" ");
       continue;
     }
 
@@ -2596,6 +2615,9 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
       audioStrategy: input.audioStrategy ?? null,
     });
     const valid = disqualifiers.length === 0;
+    if (!valid) {
+      lastRoundRejectionDirective = `Round ${roundNum} was disqualified: ${disqualifiers.join(", ")}. Fix these exact problems (keep everything else that scored well) and return the COMPLETE JSON object again — every shot needs its full contract fields, including non-empty Thai dialogue when the audio strategy is not silent.`;
+    }
 
     const report: LoopRoundReport = {
       ...(roundScoresRaw as Record<string, unknown>),
