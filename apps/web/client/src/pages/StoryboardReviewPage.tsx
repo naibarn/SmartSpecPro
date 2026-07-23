@@ -3833,6 +3833,13 @@ export default function StoryboardReviewPage() {
     DEFAULT_HYPERFRAMES_FINAL_SFX_IDS.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id, index)),
   );
   const [isHyperframesFinalPanelExpanded, setIsHyperframesFinalPanelExpanded] = useState(false);
+  // Storyboard review layout fix (2026-07-23, user-reported): the sequential
+  // 9-shot IMAGE grid renders at the very top of this page and is extremely
+  // tall, so it pushed the clip list — the primary work surface of this page —
+  // far below the fold, making the page look like it rendered "the wrong
+  // layout" after a refresh. It now starts COLLAPSED behind a toggle, the same
+  // way the final-composite panel below already does.
+  const [isSequentialShotsExpanded, setIsSequentialShotsExpanded] = useState(false);
   const [isHyperframesFinalPayloadExpanded, setIsHyperframesFinalPayloadExpanded] = useState(false);
   const [isHyperframesFinalAudioPreviewExpanded, setIsHyperframesFinalAudioPreviewExpanded] = useState(false);
   const [isHyperframesFinalTextPreviewExpanded, setIsHyperframesFinalTextPreviewExpanded] = useState(false);
@@ -10297,18 +10304,46 @@ export default function StoryboardReviewPage() {
         <div className="border-b bg-sky-50 px-2 py-1.5 sm:px-3">
           {/* Feature 136 (section 11) — self-disables (renders null) for
               legacy 3x3 runs via the empty-shots projection; no additional
-              frame-strategy branching needed here. */}
-          <SequentialShotReviewSection
-            shots={sequentialShotCards}
-            loopReport={sequentialLoopReport}
-            budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
-            busyShotId={sequentialRegeneratingShotId}
-            savingShotId={sequentialSavingShotId}
-            shotError={sequentialShotError}
-            onRegenerateShot={handleRegenerateSequentialShot}
-            onSaveShotEdits={handleSaveSequentialShotEdits}
-            locale={locale}
-          />
+              frame-strategy branching needed here.
+              2026-07-23: gated behind a collapse toggle (see
+              `isSequentialShotsExpanded`) so the tall 9-shot image grid no
+              longer buries the clip list at the top of the page. */}
+          {sequentialShotCards.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setIsSequentialShotsExpanded(current => !current)}
+              aria-expanded={isSequentialShotsExpanded}
+              className="mb-1 flex w-full items-center justify-between gap-2 rounded-md border border-sky-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+            >
+              <span>
+                {locale === "th"
+                  ? `ช็อตภาพทั้งหมด ${sequentialShotCards.length} ภาพ`
+                  : `All ${sequentialShotCards.length} shot images`}
+              </span>
+              <span className="text-xs font-normal text-slate-500">
+                {isSequentialShotsExpanded
+                  ? locale === "th"
+                    ? "ซ่อน"
+                    : "Hide"
+                  : locale === "th"
+                    ? "แสดง / แก้ไขภาพ"
+                    : "Show / edit images"}
+              </span>
+            </button>
+          ) : null}
+          {isSequentialShotsExpanded ? (
+            <SequentialShotReviewSection
+              shots={sequentialShotCards}
+              loopReport={sequentialLoopReport}
+              budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
+              busyShotId={sequentialRegeneratingShotId}
+              savingShotId={sequentialSavingShotId}
+              shotError={sequentialShotError}
+              onRegenerateShot={handleRegenerateSequentialShot}
+              onSaveShotEdits={handleSaveSequentialShotEdits}
+              locale={locale}
+            />
+          ) : null}
           {isHyperframesFinalPanelExpanded ? (
             <HyperframesStoryboardReviewPanel
               render={hyperframesRenderProjection}
