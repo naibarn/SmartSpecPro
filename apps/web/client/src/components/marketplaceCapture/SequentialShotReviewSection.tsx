@@ -25,9 +25,16 @@ export interface SequentialShotReviewSectionProps {
   budgets: { imageMaxChars: number; videoMaxChars: number };
   busyShotId?: number | null;
   savingShotId?: number | null;
+  /** Marketplace spare-image repair — the shot whose swap mutation is
+   *  currently in flight, following the same nullable-single-id convention
+   *  as `busyShotId`/`savingShotId`. */
+  swappingShotId?: number | null;
   shotError?: SequentialShotEditorCardShotError | null;
   onRegenerateShot: (shotId: number) => void;
   onSaveShotEdits: (input: SequentialShotEditorCardSaveInput) => void;
+  /** Marketplace spare-image repair — swap a shot's live frame to an
+   *  already-generated, already-paid-for alternate. Never charges credits. */
+  onSelectShotAlternate: (input: { shotId: number; attempt: number }) => void;
   locale?: MarketplaceHyperframesUiLocale | string;
 }
 
@@ -37,9 +44,11 @@ export function SequentialShotReviewSection({
   budgets,
   busyShotId,
   savingShotId,
+  swappingShotId,
   shotError,
   onRegenerateShot,
   onSaveShotEdits,
+  onSelectShotAlternate,
   locale,
 }: SequentialShotReviewSectionProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
@@ -61,9 +70,11 @@ export function SequentialShotReviewSection({
             videoMaxChars={budgets.videoMaxChars}
             busy={busyShotId === shot.shotId}
             saving={savingShotId === shot.shotId}
+            swappingAlternate={swappingShotId === shot.shotId}
             error={shotError && shotError.shotId === shot.shotId ? shotError : undefined}
             onRegenerate={onRegenerateShot}
             onSaveEdits={onSaveShotEdits}
+            onSelectAlternate={onSelectShotAlternate}
             locale={locale}
           />
         ))}

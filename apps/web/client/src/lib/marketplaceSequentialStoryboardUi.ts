@@ -82,6 +82,21 @@ export type SequentialAngleSelectionEntry = {
 
 export type SequentialClaimSource = { text: string; support: string };
 
+/**
+ * Marketplace spare-image repair (2026-07-23) — one already-generated,
+ * already-paid-for candidate frame for a shot, sourced from a non-selected
+ * image-attempt wave. `qualityScore` is the WHOLE-WAVE QA score (this
+ * system never scores a single shot in isolation) and is `null` when that
+ * wave was never scored. `isSelected` marks whichever wave is currently
+ * live for this shot right now.
+ */
+export type SequentialShotAlternate = {
+  attempt: number;
+  qualityScore: number | null;
+  imageUrl: string;
+  isSelected: boolean;
+};
+
 export type SequentialShotCardModel = {
   shotId: number;
   purpose: string;
@@ -97,6 +112,12 @@ export type SequentialShotCardModel = {
   qcStatus: string;
   qcScores?: Record<string, number>;
   frameUrl?: string | null;
+  /** Empty when the shot has fewer than 2 contributing image-attempt waves
+   *  (the common case — the server OMITS the key entirely rather than
+   *  persisting an empty array). Read from the TOP-LEVEL
+   *  `metadataJson.sequentialShotAlternates[String(shotId)]`, mirroring
+   *  `storyboardFrameUrls` — never nested under `sequentialStoryboard`. */
+  alternates: SequentialShotAlternate[];
   edited: boolean;
   editedAt?: string | null;
 };
@@ -150,6 +171,39 @@ function sequentialStoryboardRecord(
 /* -------------------------------------------------------------------------- */
 
 /**
+ * One shot's raw `metadataJson.sequentialShotAlternates[shotId]` value ->
+ * `SequentialShotAlternate[]`. Never throws — a missing key, a non-array
+ * value, or malformed entries all resolve to `[]`, which is also the
+ * CORRECT (non-error) shape for the common case: a shot with fewer than 2
+ * contributing image-attempt waves has its key omitted entirely by the
+ * server, never persisted as an empty array — both must read as "no
+ * spares". Malformed entries (missing/non-finite `attempt`, empty
+ * `imageUrl`) are dropped individually rather than discarding the whole
+ * list.
+ */
+function projectSequentialShotAlternateEntries(
+  raw: unknown
+): SequentialShotAlternate[] {
+  if (!Array.isArray(raw)) return [];
+
+  const alternates: SequentialShotAlternate[] = [];
+  for (const entry of raw) {
+    if (!isPlainObject(entry)) continue;
+    const attempt = Number(entry.attempt);
+    const imageUrl = cleanText(entry.imageUrl);
+    if (!Number.isFinite(attempt) || attempt <= 0 || !imageUrl) continue;
+    alternates.push({
+      attempt,
+      qualityScore:
+        typeof entry.qualityScore === "number" ? entry.qualityScore : null,
+      imageUrl,
+      isSelected: entry.isSelected === true,
+    });
+  }
+  return alternates;
+}
+
+/**
  * metadataJson -> per-shot card models (`shotOverrides` applied, `edited`
  * flagged). Never throws — a non-array/missing `shots`, a legacy 3x3
  * metadata blob, or malformed entries all resolve to `[]`.
@@ -163,6 +217,11 @@ export function projectSequentialShotCards(
   const frameUrls = Array.isArray(asRecord(metadataJson).storyboardFrameUrls)
     ? (asRecord(metadataJson).storyboardFrameUrls as unknown[])
     : [];
+  // Marketplace spare-image repair — top-level on `metadataJson` (mirrors
+  // `storyboardFrameUrls` above), never nested under `sequentialStoryboard`.
+  const shotAlternates = asRecord(
+    asRecord(metadataJson).sequentialShotAlternates
+  );
 
   const cards: SequentialShotCardModel[] = [];
   for (const rawShot of rawShots) {
@@ -213,6 +272,9 @@ export function projectSequentialShotCards(
       qcStatus: cleanText(qc.status),
       qcScores: Object.keys(qcScores).length > 0 ? qcScores : undefined,
       frameUrl: cleanText(frameUrls[shotId - 1]) || null,
+      alternates: projectSequentialShotAlternateEntries(
+        shotAlternates[String(shotId)]
+      ),
       edited,
       editedAt: edited ? cleanText(override.editedAt) || null : null,
     });

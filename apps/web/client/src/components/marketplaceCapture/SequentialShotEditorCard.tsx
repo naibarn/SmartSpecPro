@@ -6,6 +6,13 @@
  * the affected card with the blocker id shown as a code chip and the
  * server message as the body; `getSequentialShotBlockerHint` may add an
  * optional "what to fix" line (fallback = server message alone).
+ *
+ * Marketplace spare-image repair (2026-07-23) — when `shot.alternates` has
+ * more than one entry, a compact thumbnail strip renders under the image
+ * so a bad shot (e.g. wrong product material) can be repaired by swapping
+ * in an already-generated, already-paid-for frame at zero extra credit.
+ * Renders nothing for 0 or 1 alternates — the common single-wave case gets
+ * no layout shift.
  */
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -37,9 +44,15 @@ export interface SequentialShotEditorCardProps {
   videoMaxChars: number;
   busy?: boolean;
   saving?: boolean;
+  /** True while this shot's spare-image swap mutation is in flight. Follows
+   *  the same per-card boolean convention as `busy`/`saving`. */
+  swappingAlternate?: boolean;
   error?: SequentialShotEditorCardShotError;
   onRegenerate: (shotId: number) => void;
   onSaveEdits: (input: SequentialShotEditorCardSaveInput) => void;
+  /** Marketplace spare-image repair — swap this shot's live frame to an
+   *  already-generated, already-paid-for alternate. Never charges credits. */
+  onSelectAlternate: (input: { shotId: number; attempt: number }) => void;
   locale?: MarketplaceHyperframesUiLocale | string;
 }
 
@@ -49,9 +62,11 @@ export function SequentialShotEditorCard({
   videoMaxChars,
   busy,
   saving,
+  swappingAlternate,
   error,
   onRegenerate,
   onSaveEdits,
+  onSelectAlternate,
   locale,
 }: SequentialShotEditorCardProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
@@ -96,6 +111,74 @@ export function SequentialShotEditorCard({
           alt=""
           className="h-32 w-full rounded-md border object-cover dark:border-slate-700"
         />
+      ) : null}
+
+      {shot.alternates.length > 1 ? (
+        <div
+          data-testid={`sequential-shot-alternates-${shot.shotId}`}
+          className="space-y-1"
+        >
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {copy.spareImagesTitle}
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {shot.alternates.map(alternate => {
+              const attemptLabel = copy.spareImageAttemptLabel(
+                alternate.attempt
+              );
+              const scoreSuffix =
+                typeof alternate.qualityScore === "number"
+                  ? copy.spareImageQualityScoreSuffix(alternate.qualityScore)
+                  : "";
+              const disabled =
+                alternate.isSelected || Boolean(swappingAlternate);
+              return (
+                <button
+                  key={alternate.attempt}
+                  type="button"
+                  data-testid={`sequential-shot-alternate-${shot.shotId}-${alternate.attempt}`}
+                  disabled={disabled}
+                  aria-pressed={alternate.isSelected}
+                  aria-label={
+                    alternate.isSelected
+                      ? `${attemptLabel} — ${copy.spareImageCurrentBadge}`
+                      : copy.spareImageSelectAriaLabel(alternate.attempt)
+                  }
+                  title={`${attemptLabel}${scoreSuffix}`}
+                  onClick={() =>
+                    onSelectAlternate({
+                      shotId: shot.shotId,
+                      attempt: alternate.attempt,
+                    })
+                  }
+                  className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 disabled:cursor-not-allowed ${
+                    alternate.isSelected
+                      ? "border-emerald-500 ring-2 ring-emerald-100"
+                      : "border-slate-200 hover:border-sky-500 disabled:opacity-60"
+                  }`}
+                >
+                  <img
+                    src={alternate.imageUrl}
+                    alt={attemptLabel}
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-center text-[10px] leading-tight text-white">
+                    {attemptLabel}
+                    {scoreSuffix}
+                  </span>
+                  {alternate.isSelected ? (
+                    <Badge
+                      variant="default"
+                      className="absolute right-0 top-0 rounded-none rounded-bl-md border-0 bg-emerald-600 px-1 py-0 text-[9px] text-white"
+                    >
+                      {copy.spareImageCurrentBadge}
+                    </Badge>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       ) : null}
 
       {error ? (

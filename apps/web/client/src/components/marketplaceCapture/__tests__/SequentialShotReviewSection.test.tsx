@@ -31,6 +31,7 @@ function shotCardFixture(
     claimSources: [{ text: "waterproof", support: "text_verified" }],
     qcStatus: "passed",
     frameUrl: null,
+    alternates: [],
     edited: false,
     editedAt: null,
     ...overrides,
@@ -54,6 +55,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
       />
     );
     expect(container).toBeEmptyDOMElement();
@@ -67,6 +69,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="en"
       />
     );
@@ -94,6 +97,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -110,6 +114,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={{ imageMaxChars: 10, videoMaxChars: 2000 }}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="en"
       />
     );
@@ -128,6 +133,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={onRegenerateShot}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -144,6 +150,7 @@ describe("SequentialShotReviewSection", () => {
         busyShotId={3}
         onRegenerateShot={onRegenerateShot}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -160,6 +167,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={onSaveShotEdits}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -182,6 +190,7 @@ describe("SequentialShotReviewSection", () => {
         savingShotId={5}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={onSaveShotEdits}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -202,6 +211,7 @@ describe("SequentialShotReviewSection", () => {
         }}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -244,6 +254,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -266,6 +277,7 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
@@ -280,9 +292,186 @@ describe("SequentialShotReviewSection", () => {
         budgets={budgets}
         onRegenerateShot={vi.fn()}
         onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
         locale="th"
       />
     );
     expect(screen.queryByText("รายงานรอบตรวจสอบ")).toBeNull();
+  });
+
+  describe("spare-image alternates (marketplace spare-image repair)", () => {
+    function alternateFixture(
+      overrides: Partial<{
+        attempt: number;
+        qualityScore: number | null;
+        imageUrl: string;
+        isSelected: boolean;
+      }> = {}
+    ) {
+      return {
+        attempt: 1,
+        qualityScore: 80,
+        imageUrl: "https://cdn.example.com/alt-1.png",
+        isSelected: false,
+        ...overrides,
+      };
+    }
+
+    it("renders no spare-images strip and no layout shift when a shot has 0 or 1 alternates", () => {
+      const shots = [
+        shotCardFixture({ shotId: 1, alternates: [] }),
+        shotCardFixture({
+          shotId: 2,
+          alternates: [alternateFixture({ attempt: 1, isSelected: true })],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={vi.fn()}
+          locale="en"
+        />
+      );
+      expect(screen.queryByText("Spare images (no extra credit)")).toBeNull();
+      expect(
+        screen.queryByTestId("sequential-shot-alternates-1")
+      ).toBeNull();
+      expect(
+        screen.queryByTestId("sequential-shot-alternates-2")
+      ).toBeNull();
+    });
+
+    it("renders a labelled thumbnail strip with attempt + quality score when a shot has 2+ alternates, marking the selected one current and non-clickable", () => {
+      const shots = [
+        shotCardFixture({
+          shotId: 4,
+          alternates: [
+            alternateFixture({
+              attempt: 1,
+              qualityScore: 72,
+              imageUrl: "https://cdn.example.com/alt-1.png",
+              isSelected: false,
+            }),
+            alternateFixture({
+              attempt: 2,
+              qualityScore: 91,
+              imageUrl: "https://cdn.example.com/alt-2.png",
+              isSelected: true,
+            }),
+          ],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={vi.fn()}
+          locale="th"
+        />
+      );
+
+      expect(screen.getByText("ภาพสำรอง (ไม่เสียเครดิตเพิ่ม)")).toBeTruthy();
+      const card = screen.getByTestId("sequential-shot-card-4");
+
+      const currentThumb = within(card).getByTestId(
+        "sequential-shot-alternate-4-2"
+      );
+      expect(within(currentThumb).getByText("ใช้อยู่")).toBeTruthy();
+      expect(currentThumb).toBeDisabled();
+
+      const otherThumb = within(card).getByTestId(
+        "sequential-shot-alternate-4-1"
+      );
+      expect(otherThumb).not.toBeDisabled();
+      expect(within(card).getByText(/ครั้งที่ 1/)).toBeTruthy();
+      expect(within(card).getByText(/คะแนน 72/)).toBeTruthy();
+    });
+
+    it("invokes onSelectShotAlternate with the exact shotId + attempt when a non-selected thumbnail is clicked, and never for the selected one", () => {
+      const onSelectShotAlternate = vi.fn();
+      const shots = [
+        shotCardFixture({
+          shotId: 6,
+          alternates: [
+            alternateFixture({ attempt: 1, isSelected: false }),
+            alternateFixture({ attempt: 2, isSelected: true }),
+            alternateFixture({
+              attempt: 3,
+              isSelected: false,
+              imageUrl: "https://cdn.example.com/alt-3.png",
+            }),
+          ],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={onSelectShotAlternate}
+          locale="th"
+        />
+      );
+
+      fireEvent.click(screen.getByTestId("sequential-shot-alternate-6-3"));
+      expect(onSelectShotAlternate).toHaveBeenCalledTimes(1);
+      expect(onSelectShotAlternate).toHaveBeenCalledWith({
+        shotId: 6,
+        attempt: 3,
+      });
+
+      // Clicking the already-selected (current) thumbnail is a no-op — it
+      // is rendered disabled, so `fireEvent.click` must not invoke the
+      // callback at all.
+      fireEvent.click(screen.getByTestId("sequential-shot-alternate-6-2"));
+      expect(onSelectShotAlternate).toHaveBeenCalledTimes(1);
+    });
+
+    it("disables only the swapping shot's alternate thumbnails while swappingShotId matches, leaving other shots clickable", () => {
+      const shots = [
+        shotCardFixture({
+          shotId: 2,
+          alternates: [
+            alternateFixture({ attempt: 1, isSelected: false }),
+            alternateFixture({ attempt: 2, isSelected: true }),
+          ],
+        }),
+        shotCardFixture({
+          shotId: 7,
+          alternates: [
+            alternateFixture({ attempt: 1, isSelected: false }),
+            alternateFixture({ attempt: 2, isSelected: true }),
+          ],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          swappingShotId={2}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={vi.fn()}
+          locale="th"
+        />
+      );
+
+      expect(
+        screen.getByTestId("sequential-shot-alternate-2-1")
+      ).toBeDisabled();
+      expect(
+        screen.getByTestId("sequential-shot-alternate-7-1")
+      ).not.toBeDisabled();
+    });
   });
 });

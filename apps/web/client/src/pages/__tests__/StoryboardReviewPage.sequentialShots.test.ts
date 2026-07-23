@@ -76,4 +76,30 @@ describe("StoryboardReviewPage sequential shots wiring (Feature 136 section 11)"
       "projectSequentialShotCards((autoReviewRunQuery.data as any)?.metadataJson)"
     );
   });
+
+  it("wires the marketplace spare-image repair (alternate-swap) mutation into the mount, alongside the existing regenerate/save wiring", () => {
+    expect(source).toContain(
+      "trpc.marketplaceCapture.selectAutoReviewSequentialShotAlternate.useMutation"
+    );
+    // Same card-level error surface as the save-edits rejection path (no
+    // separate toast, no separate error prop) — proven by reusing the
+    // shared `sequentialShotError` state inside the new mutation's
+    // `onError`.
+    const mutationBlock = sourceBetween(
+      "const selectSequentialShotAlternateMutation =",
+      "const handleRegenerateSequentialShot = useCallback("
+    );
+    expect(mutationBlock).toContain("setSequentialShotError(");
+    expect(mutationBlock).toContain("setSequentialSwappingShotId(null)");
+    expect(mutationBlock).not.toContain("toast.error");
+
+    const mountBlock = sourceBetween(
+      "<SequentialShotReviewSection",
+      "onSaveShotEdits={handleSaveSequentialShotEdits}"
+    );
+    expect(mountBlock).toContain("swappingShotId={sequentialSwappingShotId}");
+    expect(source).toContain(
+      "onSelectShotAlternate={handleSelectSequentialShotAlternate}"
+    );
+  });
 });

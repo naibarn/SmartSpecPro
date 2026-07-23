@@ -94,6 +94,7 @@ describe("marketplaceSequentialStoryboardUi", () => {
       expect(first.depictsMinor).toBe(false);
       expect(first.guardianRequired).toBe(false);
       expect(first.frameUrl).toBe("https://cdn.example.com/frame-1.png");
+      expect(first.alternates).toEqual([]);
       expect(first.edited).toBe(false);
       expect(first.editedAt).toBeNull();
     });
@@ -154,6 +155,124 @@ describe("marketplaceSequentialStoryboardUi", () => {
           sequentialStoryboard: { shots: [{ purpose: "missing shot_id" }, null, 42] },
         })
       ).toEqual([]);
+    });
+
+    describe("alternates (marketplace spare-image repair)", () => {
+      it("reads alternates from the TOP-LEVEL metadataJson.sequentialShotAlternates keyed by shot id, leaving every other shot empty", () => {
+        const metadataJson = {
+          sequentialStoryboard: { shots: nineShotFixture() },
+          sequentialShotAlternates: {
+            "3": [
+              {
+                attempt: 1,
+                qualityScore: 72,
+                imageUrl: "https://cdn.example.com/s3-a1.png",
+                isSelected: false,
+              },
+              {
+                attempt: 2,
+                qualityScore: 91,
+                imageUrl: "https://cdn.example.com/s3-a2.png",
+                isSelected: true,
+              },
+            ],
+          },
+        };
+
+        const cards = projectSequentialShotCards(metadataJson);
+        const shot3 = cards.find(card => card.shotId === 3)!;
+        expect(shot3.alternates).toEqual([
+          {
+            attempt: 1,
+            qualityScore: 72,
+            imageUrl: "https://cdn.example.com/s3-a1.png",
+            isSelected: false,
+          },
+          {
+            attempt: 2,
+            qualityScore: 91,
+            imageUrl: "https://cdn.example.com/s3-a2.png",
+            isSelected: true,
+          },
+        ]);
+
+        const untouched = cards.filter(card => card.shotId !== 3);
+        expect(untouched).toHaveLength(8);
+        for (const card of untouched) {
+          expect(card.alternates).toEqual([]);
+        }
+      });
+
+      it("defaults to [] when sequentialShotAlternates is absent entirely (single-wave run — the common case)", () => {
+        const cards = projectSequentialShotCards({
+          sequentialStoryboard: { shots: nineShotFixture() },
+        });
+        for (const card of cards) {
+          expect(card.alternates).toEqual([]);
+        }
+      });
+
+      it("passes through a null qualityScore verbatim (an unscored wave), never coercing it to 0", () => {
+        const metadataJson = {
+          sequentialStoryboard: { shots: nineShotFixture() },
+          sequentialShotAlternates: {
+            "1": [
+              {
+                attempt: 1,
+                qualityScore: null,
+                imageUrl: "https://cdn.example.com/s1-a1.png",
+                isSelected: true,
+              },
+            ],
+          },
+        };
+        const cards = projectSequentialShotCards(metadataJson);
+        expect(cards.find(card => card.shotId === 1)!.alternates).toEqual([
+          {
+            attempt: 1,
+            qualityScore: null,
+            imageUrl: "https://cdn.example.com/s1-a1.png",
+            isSelected: true,
+          },
+        ]);
+      });
+
+      it("tolerates a non-array value and drops malformed entries (null/number/missing attempt/missing imageUrl) individually, without throwing", () => {
+        const metadataJson = {
+          sequentialStoryboard: { shots: nineShotFixture() },
+          sequentialShotAlternates: {
+            "1": "not-an-array",
+            "2": [
+              null,
+              42,
+              {
+                qualityScore: 80,
+                imageUrl: "https://cdn.example.com/missing-attempt.png",
+                isSelected: false,
+              },
+              { attempt: 2, qualityScore: 80, isSelected: false },
+              {
+                attempt: 3,
+                qualityScore: 80,
+                imageUrl: "https://cdn.example.com/s2-a3.png",
+                isSelected: true,
+              },
+            ],
+          },
+        };
+
+        expect(() => projectSequentialShotCards(metadataJson)).not.toThrow();
+        const cards = projectSequentialShotCards(metadataJson);
+        expect(cards.find(card => card.shotId === 1)!.alternates).toEqual([]);
+        expect(cards.find(card => card.shotId === 2)!.alternates).toEqual([
+          {
+            attempt: 3,
+            qualityScore: 80,
+            imageUrl: "https://cdn.example.com/s2-a3.png",
+            isSelected: true,
+          },
+        ]);
+      });
     });
   });
 

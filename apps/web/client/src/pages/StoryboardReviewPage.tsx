@@ -4156,6 +4156,12 @@ export default function StoryboardReviewPage() {
     blockerId: string;
     message: string;
   } | null>(null);
+  // Marketplace spare-image repair — the shot whose spare-image swap
+  // mutation is currently in flight (nullable-single-id convention, mirrors
+  // `sequentialRegeneratingShotId`/`sequentialSavingShotId` above).
+  const [sequentialSwappingShotId, setSequentialSwappingShotId] = useState<number | null>(
+    null,
+  );
   const regenerateSequentialShotMutation =
     trpc.marketplaceCapture.regenerateAutoReviewSequentialShot.useMutation({
       onSuccess: () => {
@@ -4187,6 +4193,28 @@ export default function StoryboardReviewPage() {
       },
       onSettled: () => setSequentialSavingShotId(null),
     });
+  // Marketplace spare-image repair — swaps a shot's live frame to an
+  // already-generated, already-paid-for alternate from a non-selected
+  // image-attempt wave. No provider call, no credit spend. Errors surface
+  // the same way `saveSequentialShotOverrideMutation` surfaces them (the
+  // shared `sequentialShotError` card-level banner), not a toast.
+  const selectSequentialShotAlternateMutation =
+    trpc.marketplaceCapture.selectAutoReviewSequentialShotAlternate.useMutation({
+      onSuccess: () => {
+        setSequentialShotError(null);
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: (error, variables) => {
+        setSequentialShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_alternate_swap_failed",
+          message: error.message,
+        });
+      },
+      onSettled: () => setSequentialSwappingShotId(null),
+    });
   const handleRegenerateSequentialShot = useCallback(
     (shotId: number) => {
       if (!effectiveHyperframesRunId) return;
@@ -4213,6 +4241,18 @@ export default function StoryboardReviewPage() {
       });
     },
     [effectiveHyperframesRunId, saveSequentialShotOverrideMutation],
+  );
+  const handleSelectSequentialShotAlternate = useCallback(
+    (input: { shotId: number; attempt: number }) => {
+      if (!effectiveHyperframesRunId) return;
+      setSequentialSwappingShotId(input.shotId);
+      selectSequentialShotAlternateMutation.mutate({
+        runId: effectiveHyperframesRunId,
+        shotId: input.shotId,
+        attempt: input.attempt,
+      });
+    },
+    [effectiveHyperframesRunId, selectSequentialShotAlternateMutation],
   );
   const createHyperframesPreviewMutation =
     trpc.marketplaceCapture.createHyperframesPreview.useMutation({
@@ -10338,9 +10378,11 @@ export default function StoryboardReviewPage() {
               budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
               busyShotId={sequentialRegeneratingShotId}
               savingShotId={sequentialSavingShotId}
+              swappingShotId={sequentialSwappingShotId}
               shotError={sequentialShotError}
               onRegenerateShot={handleRegenerateSequentialShot}
               onSaveShotEdits={handleSaveSequentialShotEdits}
+              onSelectShotAlternate={handleSelectSequentialShotAlternate}
               locale={locale}
             />
           ) : null}

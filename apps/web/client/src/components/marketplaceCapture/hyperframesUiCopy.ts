@@ -186,6 +186,17 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         sequentialShotsTitle: "ช็อตทั้ง 9 ภาพ",
         regenerateShot: "สร้างภาพนี้ใหม่",
         saveShotEdits: "บันทึกการแก้ไข",
+        // Marketplace spare-image repair (2026-07-23) — swap in an already-
+        // generated, already-paid-for frame from a non-selected image-
+        // attempt wave, at zero extra credit. The strip renders only when a
+        // shot has 2+ alternates (spec: fewer than 2 contributing waves
+        // omits the metadata key entirely).
+        spareImagesTitle: "ภาพสำรอง (ไม่เสียเครดิตเพิ่ม)",
+        spareImageCurrentBadge: "ใช้อยู่",
+        spareImageAttemptLabel: (n: number) => `ครั้งที่ ${n}`,
+        spareImageQualityScoreSuffix: (score: number) => ` · คะแนน ${score}`,
+        spareImageSelectAriaLabel: (n: number) =>
+          `ใช้ภาพสำรองครั้งที่ ${n} แทนภาพปัจจุบันของช็อตนี้ (ไม่เสียเครดิตเพิ่ม)`,
         promptCharCount: (n: number, max: number) => `${n}/${max} ตัวอักษร`,
         promptOverBudget:
           "ยาวเกินงบตัวอักษรที่แนะนำ ระบบฝั่งเซิร์ฟเวอร์จะตรวจสอบอีกครั้งตอนบันทึก",
@@ -356,6 +367,17 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         sequentialShotsTitle: "All 9 shots",
         regenerateShot: "Regenerate this image",
         saveShotEdits: "Save edits",
+        // Marketplace spare-image repair (2026-07-23) — swap in an already-
+        // generated, already-paid-for frame from a non-selected image-
+        // attempt wave, at zero extra credit. The strip renders only when a
+        // shot has 2+ alternates (spec: fewer than 2 contributing waves
+        // omits the metadata key entirely).
+        spareImagesTitle: "Spare images (no extra credit)",
+        spareImageCurrentBadge: "In use",
+        spareImageAttemptLabel: (n: number) => `Attempt ${n}`,
+        spareImageQualityScoreSuffix: (score: number) => ` · score ${score}`,
+        spareImageSelectAriaLabel: (n: number) =>
+          `Use spare image attempt ${n} instead of this shot's current image (no extra credit).`,
         promptCharCount: (n: number, max: number) => `${n}/${max} characters`,
         promptOverBudget:
           "Over the recommended character budget — the server re-validates on save.",
