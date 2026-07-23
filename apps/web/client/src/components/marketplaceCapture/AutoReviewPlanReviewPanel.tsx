@@ -43,6 +43,17 @@ const REDRAFT_NOTES_MAX_CHARS = 2000;
 // feedback on the live gate) — matches the server's
 // `updateAutoReviewPlanShotDialogue` input contract.
 const SHOT_DIALOGUE_MAX_CHARS = 2000;
+// One-stop plan-review gate (2026-07-23 user request — "ตรวจสอบรอบเดียว
+// จบ"). Mirrors the SAME defaults `StoryboardReviewPage.tsx` already passes
+// to `SequentialShotReviewSection`'s `budgets` prop (`{ imageMaxChars: 4000,
+// videoMaxChars: 2000 }`) and the server's own
+// `MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS`
+// (`server/services/marketplaceAutoReviewService.ts`) — the video budget has
+// no per-run override today, so it is always this constant; the image
+// budget defers to the run's own `sequentialImagePromptMaxChars` override
+// when set (section 01, server-bounded 1000-4000).
+const DEFAULT_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS = 4000;
+const SEQUENTIAL_VIDEO_PROMPT_MAX_CHARS = 2000;
 // Display heuristic only (roughly 3-4 lines of product facts) — collapses
 // the product-facts block so a long spec sheet does not push the approve /
 // redraft actions far below the fold. Never hides content outright; the
@@ -75,6 +86,23 @@ function pickLabel(
   return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
 }
 
+/**
+ * One-stop plan-review gate — prefers a PERSISTED character count (authored
+ * by the skill/runner itself, e.g. `image_prompt_character_count` /
+ * `video_prompt_character_count`,
+ * `server/services/productReviewSequentialStoryboardSkillRunner.ts`) and
+ * falls back to the live text's `.length` only when that count is absent,
+ * non-numeric, or negative — never recomputes over an already-authoritative
+ * count.
+ */
+function resolvePersistedOrLiveCharCount(
+  persisted: unknown,
+  text: string
+): number {
+  const count = Number(persisted);
+  return Number.isFinite(count) && count >= 0 ? count : text.length;
+}
+
 /* -------------------------------------------------------------------------- */
 /* View models                                                               */
 /* -------------------------------------------------------------------------- */
@@ -102,6 +130,15 @@ export interface AutoReviewPlanReviewSequentialShotRow {
   visualSummary: string;
   dialogue: string;
   durationSeconds: number | null;
+  /** The exact prompt text this shot will submit (or already submitted) as
+   *  its start-frame image-generation prompt — read-only at this gate (see
+   *  `buildAutoReviewPlanReviewSequentialShotRows`'s doc comment). */
+  startFrameImagePrompt: string;
+  startFrameImagePromptChars: number;
+  /** The exact prompt text this shot will submit (or already submitted) as
+   *  its video-generation prompt — read-only at this gate. */
+  videoPrompt: string;
+  videoPromptChars: number;
 }
 
 export interface AutoReviewPlanReviewCreditEstimate {
@@ -116,6 +153,14 @@ export interface AutoReviewPlanReviewPlanData {
   sequentialShots: AutoReviewPlanReviewSequentialShotRow[];
   settings: AutoReviewPlanReviewSettingRow[];
   creditEstimate: AutoReviewPlanReviewCreditEstimate | null;
+  /** One-stop plan-review gate (2026-07-23) — the prompt-length budgets the
+   *  image/video prompt disclosures compare each shot's character count
+   *  against. */
+  promptBudgets: AutoReviewPlanReviewPromptBudgets;
+  /** One-stop plan-review gate (2026-07-23) — the reference-image legend +
+   *  citation-verification cross-reference set. Empty for non-sequential
+   *  runs or a sequential run that has not reached `prompt_plan` yet. */
+  referenceManifest: AutoReviewPlanReviewReferenceManifestRow[];
   /** True for the deterministic degraded fallback pack
    *  (`buildDegradedSequentialStoryboardPack`,
    *  `server/services/marketplaceAutoReviewService.ts`) — never has
@@ -142,14 +187,28 @@ function toAutoStoryboardQualityMode(
 
 /**
  * Per-shot rows for the sequential (`sequential_shot_storyboard`) strategy's
- * TEXT-only review table — `shot_id`/`purpose`/`visual_summary`/`dialogue`/
- * `duration_seconds` from `metadataJson.sequentialStoryboard.shots`
- * (`SequentialStoryboardShot`,
+ * review table — `shot_id`/`purpose`/`visual_summary`/`dialogue`/
+ * `duration_seconds`/`start_frame_image_prompt`/`video_prompt` from
+ * `metadataJson.sequentialStoryboard.shots` (`SequentialStoryboardShot`,
  * `server/services/productReviewSequentialStoryboardSkillRunner.ts`).
- * Deliberately omits `start_frame_image_prompt`/`video_prompt` — those are a
- * separate, more technical review already available on the Storyboard
- * Review page; this gate is about the STORY, not the image/video prompt
- * engineering. Never throws on malformed/missing data — resolves to `[]`.
+ *
+ * 2026-07-23 user request ("ควรแสดง prompt ในการสร้างภาพไปพร้อม ๆ กันเลย
+ * ตรวจสอบรอบเดียวจบ") REVERSES this projector's earlier "story only, never
+ * the generation prompts" stance — the actual `start_frame_image_prompt`/
+ * `video_prompt` the run will submit now render alongside the story fields
+ * so the ENTIRE plan (story + the literal generation prompts + their
+ * reference citations) can be verified in one pass, before any image
+ * credit is spent. Direct hand-editing of these two fields still belongs to
+ * the Storyboard Review page (a later, per-shot, credit-bearing stage) —
+ * this gate only displays them read-only, folded into the SAME whole-plan
+ * redraft loop as the rest of the text plan.
+ *
+ * `*PromptChars` prefers the persisted `image_prompt_character_count` /
+ * `video_prompt_character_count` (see `resolvePersistedOrLiveCharCount`)
+ * and falls back to the live `.length` of the prompt text only when that
+ * count is absent/non-finite.
+ *
+ * Never throws on malformed/missing data — resolves to `[]`.
  */
 export function buildAutoReviewPlanReviewSequentialShotRows(
   metadataJson: unknown
@@ -166,15 +225,161 @@ export function buildAutoReviewPlanReviewSequentialShotRows(
       Number.isFinite(rawShot.duration_seconds)
         ? rawShot.duration_seconds
         : null;
+    const startFrameImagePrompt = cleanText(rawShot.start_frame_image_prompt);
+    const videoPrompt = cleanText(rawShot.video_prompt);
     rows.push({
       shotId,
       purpose: cleanText(rawShot.purpose),
       visualSummary: cleanText(rawShot.visual_summary),
       dialogue: cleanText(rawShot.dialogue),
       durationSeconds,
+      startFrameImagePrompt,
+      startFrameImagePromptChars: resolvePersistedOrLiveCharCount(
+        rawShot.image_prompt_character_count,
+        startFrameImagePrompt
+      ),
+      videoPrompt,
+      videoPromptChars: resolvePersistedOrLiveCharCount(
+        rawShot.video_prompt_character_count,
+        videoPrompt
+      ),
     });
   }
   return rows.sort((a, b) => a.shotId - b.shotId);
+}
+
+export interface AutoReviewPlanReviewPromptBudgets {
+  imageMaxChars: number;
+  videoMaxChars: number;
+}
+
+/**
+ * Per-run prompt-length budgets for the plan-review gate's image/video
+ * prompt disclosures. Mirrors the SAME defaults `StoryboardReviewPage.tsx`
+ * already passes to `SequentialShotReviewSection` (`{ imageMaxChars: 4000,
+ * videoMaxChars: 2000 }`) — the video budget has no per-run override today,
+ * so it is always `SEQUENTIAL_VIDEO_PROMPT_MAX_CHARS`; the image budget
+ * defers to `metadataJson.sequentialImagePromptMaxChars` (section 01,
+ * server-bounded 1000-4000) when it is a finite positive number, else the
+ * same 4000 default the server itself falls back to
+ * (`resolveSequentialImagePromptBudget`,
+ * `server/services/marketplaceAutoReviewService.ts`). Never throws on
+ * malformed/missing metadata.
+ */
+export function buildAutoReviewPlanReviewPromptBudgets(
+  metadataJson: unknown
+): AutoReviewPlanReviewPromptBudgets {
+  const override = Number(asRecord(metadataJson).sequentialImagePromptMaxChars);
+  const imageMaxChars =
+    Number.isFinite(override) && override > 0
+      ? override
+      : DEFAULT_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS;
+  return { imageMaxChars, videoMaxChars: SEQUENTIAL_VIDEO_PROMPT_MAX_CHARS };
+}
+
+export interface AutoReviewPlanReviewReferenceManifestRow {
+  /** 1-based — the number inside the shared `@ImageN` placeholder
+   *  convention (`SequentialReferenceManifestEntry.index`,
+   *  `server/services/productReviewSequentialStoryboardSkillRunner.ts`). */
+  index: number;
+  /** `"primary_product" | "product_angle" | "character" | "environment"`
+   *  (`resolveSequentialReferenceAttachmentPlan`'s `storedManifest`,
+   *  `server/services/marketplaceAutoReviewService.ts`) — kept a loose
+   *  `string` here so an unrecognized future role never throws; render-time
+   *  falls back to `planReviewReferenceManifestUnknownRoleLabel`. */
+  role: string;
+  /** Only meaningful when `role === "product_angle"`. */
+  angleLabel?: string;
+  evidenceOnly: boolean;
+}
+
+/**
+ * The reference-image legend backing the plan-review gate's citation
+ * verification (2026-07-23 user request — "เปิดโอกาสให้ตรวจสอบความถูกต้อง
+ * ได้") — decodes what each `@ImageN` placeholder cited inside a shot's
+ * generation prompts actually resolves to. Reads
+ * `metadataJson.sequentialStoryboard.referenceManifest`
+ * (`SequentialReferenceManifestEntry[]`,
+ * `server/services/productReviewSequentialStoryboardSkillRunner.ts`) —
+ * never re-derives capacity/attachment-order logic, purely projects the
+ * ALREADY-resolved manifest. Never throws — malformed/missing metadata or
+ * entries resolve to `[]`/are dropped individually.
+ */
+export function buildAutoReviewPlanReviewReferenceManifestRows(
+  metadataJson: unknown
+): AutoReviewPlanReviewReferenceManifestRow[] {
+  const sequential = asRecord(asRecord(metadataJson).sequentialStoryboard);
+  const rawManifest = Array.isArray(sequential.referenceManifest)
+    ? sequential.referenceManifest
+    : [];
+  const rows: AutoReviewPlanReviewReferenceManifestRow[] = [];
+  for (const rawEntry of rawManifest) {
+    if (!isPlainObject(rawEntry)) continue;
+    const index = Number(rawEntry.index);
+    const role = cleanText(rawEntry.role);
+    if (!Number.isFinite(index) || index <= 0 || !role) continue;
+    rows.push({
+      index,
+      role,
+      angleLabel: cleanText(rawEntry.angleLabel) || undefined,
+      evidenceOnly: rawEntry.evidenceOnly === true,
+    });
+  }
+  return rows.sort((a, b) => a.index - b.index);
+}
+
+/**
+ * Scans a generation prompt for every `@ImageN` reference citation — the
+ * SAME placeholder convention the runner itself writes into these prompts
+ * (`@Image${n}`, `providerManifest`/
+ * `buildStartFramePromptEngineReferenceManifestBlock`,
+ * `server/services/*.ts`). Returns cited indices in FIRST-SEEN order,
+ * deduplicated (a prompt citing `@Image1` three times still yields one
+ * entry). Pure regex scan — no server calls, never throws on empty/
+ * malformed input.
+ */
+export function extractAutoReviewPlanReviewPromptImageCitations(
+  prompt: string
+): number[] {
+  if (!prompt) return [];
+  const seen = new Set<number>();
+  const ordered: number[] = [];
+  const pattern = /@Image(\d+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(prompt)) !== null) {
+    const index = Number(match[1]);
+    if (!Number.isFinite(index) || seen.has(index)) continue;
+    seen.add(index);
+    ordered.push(index);
+  }
+  return ordered;
+}
+
+export interface AutoReviewPlanReviewPromptCitationChip {
+  index: number;
+  /** `false` when this `@ImageN` has no matching row in the run's real
+   *  `referenceManifest` — i.e. the prompt cites an image slot that was
+   *  never actually attached, a correctness problem worth flagging BEFORE
+   *  any image credit is spent. */
+  valid: boolean;
+}
+
+/**
+ * The plan-review gate's citation-verification aid (2026-07-23 user request
+ * — "เปิดโอกาสให้ตรวจสอบความถูกต้องได้"): cross-references every `@ImageN`
+ * citation found in `prompt` against `manifestIndices` (the run's real
+ * `buildAutoReviewPlanReviewReferenceManifestRows` indices). Pure — the
+ * caller owns rendering (chip color, warning text); this never mutates the
+ * prompt or invents a manifest entry.
+ */
+export function buildAutoReviewPlanReviewPromptCitationChips(
+  prompt: string,
+  manifestIndices: ReadonlySet<number>
+): AutoReviewPlanReviewPromptCitationChip[] {
+  return extractAutoReviewPlanReviewPromptImageCitations(prompt).map(index => ({
+    index,
+    valid: manifestIndices.has(index),
+  }));
 }
 
 /**
@@ -495,6 +700,9 @@ export function buildAutoReviewPlanReviewPlanData(
       metadataJson,
       frameStrategy
     ),
+    promptBudgets: buildAutoReviewPlanReviewPromptBudgets(metadataJson),
+    referenceManifest:
+      buildAutoReviewPlanReviewReferenceManifestRows(metadataJson),
     isDegradedFallback: isAutoReviewPlanReviewDegradedPlan(metadataJson),
   };
 }
@@ -627,6 +835,8 @@ function PlanReviewShotRow({
   saveError,
   onSaveDialogue,
   onRequestVisualFix,
+  promptBudgets,
+  manifestIndices,
 }: {
   shot: AutoReviewPlanReviewSequentialShotRow;
   locale?: MarketplaceHyperframesUiLocale | string;
@@ -635,6 +845,9 @@ function PlanReviewShotRow({
   saveError?: AutoReviewPlanReviewShotDialogueError | null;
   onSaveDialogue?: (input: AutoReviewPlanReviewShotDialogueSaveInput) => void;
   onRequestVisualFix: (shotId: number) => void;
+  /** One-stop plan-review gate (2026-07-23) — see `PlanReviewShotPromptBlock`. */
+  promptBudgets: AutoReviewPlanReviewPromptBudgets;
+  manifestIndices: ReadonlySet<number>;
 }) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const isSaving = savingShotId === shot.shotId;
@@ -778,7 +991,208 @@ function PlanReviewShotRow({
           </p>
         )}
       </div>
+
+      <PlanReviewShotPromptBlock
+        shotId={shot.shotId}
+        kind="image"
+        title={copy.planReviewShotImagePromptTitle}
+        prompt={shot.startFrameImagePrompt}
+        charCount={shot.startFrameImagePromptChars}
+        maxChars={promptBudgets.imageMaxChars}
+        manifestIndices={manifestIndices}
+        locale={locale}
+      />
+      <PlanReviewShotPromptBlock
+        shotId={shot.shotId}
+        kind="video"
+        title={copy.planReviewShotVideoPromptTitle}
+        prompt={shot.videoPrompt}
+        charCount={shot.videoPromptChars}
+        maxChars={promptBudgets.videoMaxChars}
+        manifestIndices={manifestIndices}
+        locale={locale}
+      />
     </li>
+  );
+}
+
+/**
+ * One collapsed-by-default generation-prompt disclosure inside a shot row
+ * (2026-07-23 user request — "ควรแสดง prompt ในการสร้างภาพไปพร้อม ๆ กันเลย
+ * ตรวจสอบรอบเดียวจบ"). The char-count-vs-budget badge and the citation
+ * chips/warnings render REGARDLESS of collapse state — collapsing only
+ * hides the (potentially long) raw prompt text itself — so a reviewer can
+ * spot every budget/citation problem across all the shots' prompt blocks
+ * without expanding any of them, and only expands the ones that need a
+ * closer read. Never edits the prompt (read-only at this gate — see
+ * `buildAutoReviewPlanReviewSequentialShotRows`'s doc comment).
+ */
+function PlanReviewShotPromptBlock({
+  shotId,
+  kind,
+  title,
+  prompt,
+  charCount,
+  maxChars,
+  manifestIndices,
+  locale,
+}: {
+  shotId: number;
+  kind: "image" | "video";
+  title: string;
+  prompt: string;
+  charCount: number;
+  maxChars: number;
+  manifestIndices: ReadonlySet<number>;
+  locale?: MarketplaceHyperframesUiLocale | string;
+}) {
+  const copy = getMarketplaceHyperframesUiCopy(locale);
+  const [open, setOpen] = useState(false);
+  const hasPrompt = Boolean(prompt);
+  const overBudget = charCount > maxChars;
+  const citationChips = hasPrompt
+    ? buildAutoReviewPlanReviewPromptCitationChips(prompt, manifestIndices)
+    : [];
+  const hasUnknownCitation = citationChips.some(chip => !chip.valid);
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      data-testid={`plan-review-${kind}-prompt-${shotId}`}
+      className="mt-2 rounded-md border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-700 dark:bg-slate-800/40"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          {title}
+        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={
+              overBudget
+                ? "rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800 dark:border-red-500/40 dark:bg-red-950/30 dark:text-red-200"
+                : "rounded-full border border-slate-300 px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-slate-600 dark:text-slate-400"
+            }
+          >
+            {copy.promptCharCount(charCount, maxChars)}
+          </span>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="text-xs font-medium text-sky-700 hover:underline dark:text-sky-400"
+            >
+              {open ? copy.planReviewShowLess : copy.planReviewShowMore}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+      </div>
+
+      {citationChips.length > 0 ? (
+        <div
+          data-testid={`plan-review-${kind}-prompt-citations-${shotId}`}
+          className="mt-1 flex flex-wrap gap-1"
+        >
+          {citationChips.map(chip => (
+            <span
+              key={chip.index}
+              data-citation-valid={chip.valid}
+              className={
+                chip.valid
+                  ? "inline-flex items-center gap-0.5 rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-950/30 dark:text-emerald-200"
+                  : "inline-flex items-center gap-0.5 rounded border border-red-300 bg-red-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-red-800 dark:border-red-500/40 dark:bg-red-950/30 dark:text-red-200"
+              }
+            >
+              {!chip.valid ? <AlertTriangle className="h-2.5 w-2.5" /> : null}
+              @Image{chip.index}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {overBudget ? (
+        <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+          {copy.planReviewPromptOverBudgetWarning}
+        </p>
+      ) : null}
+      {hasUnknownCitation ? (
+        <p className="mt-1 text-xs text-red-700 dark:text-red-300">
+          {copy.planReviewPromptUnknownCitationWarning}
+        </p>
+      ) : null}
+
+      <CollapsibleContent>
+        {hasPrompt ? (
+          <p className="mt-1 whitespace-pre-wrap break-words font-mono text-xs text-slate-800 dark:text-slate-100">
+            {prompt}
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {copy.planReviewShotPromptEmpty}
+          </p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/**
+ * The reference-image legend at the top of the sequential shots list
+ * (2026-07-23 user request — "เปิดโอกาสให้ตรวจสอบความถูกต้องได้"): decodes
+ * every `@ImageN` a shot's generation prompts may cite against the run's
+ * real attachment manifest. Renders `null` when the manifest is empty (a
+ * non-sequential run, or a sequential run that has not reached
+ * `prompt_plan` yet) — omitted rather than shown empty, same convention as
+ * the credit-estimate line at the bottom of this panel.
+ */
+function PlanReviewReferenceManifestLegend({
+  rows,
+  locale,
+}: {
+  rows: AutoReviewPlanReviewReferenceManifestRow[];
+  locale?: MarketplaceHyperframesUiLocale | string;
+}) {
+  const copy = getMarketplaceHyperframesUiCopy(locale);
+  if (rows.length === 0) return null;
+
+  return (
+    <div
+      data-testid="plan-review-reference-manifest"
+      className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-900"
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {copy.planReviewReferenceManifestTitle}
+      </p>
+      <ul className="mt-2 space-y-1">
+        {rows.map(row => {
+          const roleLabel =
+            pickLabel(copy.planReviewReferenceManifestRoleLabels, row.role) ??
+            copy.planReviewReferenceManifestUnknownRoleLabel;
+          const angleLabel =
+            row.role === "product_angle" && row.angleLabel
+              ? pickLabel(copy.angleChipLabels, row.angleLabel)
+              : null;
+          return (
+            <li
+              key={row.index}
+              data-testid={`plan-review-reference-manifest-row-${row.index}`}
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs"
+            >
+              <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                @Image{row.index}
+              </span>
+              <span className="text-slate-700 dark:text-slate-200">
+                {angleLabel ? `${roleLabel} (${angleLabel})` : roleLabel}
+              </span>
+              {row.evidenceOnly ? (
+                <span className="rounded border border-slate-300 px-1 text-[10px] font-medium text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                  {copy.referenceEvidenceOnly}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -851,6 +1265,13 @@ export function AutoReviewPlanReviewPanel({
       plan.storyboardGuide ||
       plan.voiceoverScript ||
       hasSequentialShots)
+  );
+  // One-stop plan-review gate (2026-07-23) — computed once per render (cheap;
+  // at most a handful of manifest rows) and passed down to every shot row's
+  // `PlanReviewShotPromptBlock` citation check, rather than re-deriving a
+  // `Set` per shot per render.
+  const manifestIndices = new Set(
+    (plan?.referenceManifest ?? []).map(row => row.index)
   );
 
   // "ภาพที่จะเห็น" (visualSummary) is never directly editable here — it
@@ -973,6 +1394,10 @@ export function AutoReviewPlanReviewPanel({
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {copy.planReviewVisualSummaryLanguageHint}
                   </p>
+                  <PlanReviewReferenceManifestLegend
+                    rows={plan.referenceManifest}
+                    locale={locale}
+                  />
                   <ol className="space-y-2">
                     {plan.sequentialShots.map(shot => (
                       <PlanReviewShotRow
@@ -984,6 +1409,8 @@ export function AutoReviewPlanReviewPanel({
                         saveError={dialogueSaveError}
                         onSaveDialogue={onSaveShotDialogue}
                         onRequestVisualFix={requestShotVisualFix}
+                        promptBudgets={plan.promptBudgets}
+                        manifestIndices={manifestIndices}
                       />
                     ))}
                   </ol>

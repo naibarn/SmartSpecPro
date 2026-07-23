@@ -2,7 +2,7 @@
  * Marketplace mandatory text-plan review gate (2026-07-23,
  * planning/marketplace-storyboard-text-gate, commit f997ba1a9).
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -10,8 +10,12 @@ import {
   buildAutoReviewPlanReviewCreditEstimate,
   buildAutoReviewPlanReviewPlanData,
   buildAutoReviewPlanReviewPlanText,
+  buildAutoReviewPlanReviewPromptBudgets,
+  buildAutoReviewPlanReviewPromptCitationChips,
+  buildAutoReviewPlanReviewReferenceManifestRows,
   buildAutoReviewPlanReviewSequentialShotRows,
   buildAutoReviewPlanReviewSettingRows,
+  extractAutoReviewPlanReviewPromptImageCitations,
   isAutoReviewPlanReviewDegradedPlan,
   type AutoReviewPlanReviewPlanData,
   type AutoReviewPlanReviewState,
@@ -35,7 +39,31 @@ function planFixture(
     sequentialShots: [],
     settings: [],
     creditEstimate: null,
+    promptBudgets: { imageMaxChars: 4000, videoMaxChars: 2000 },
+    referenceManifest: [],
     isDegradedFallback: false,
+    ...overrides,
+  };
+}
+
+/** A minimal but complete sequential shot row fixture — every test that
+ *  only cares about a FEW fields spreads `...overrides` over this rather
+ *  than repeating all 9 required fields inline. */
+function sequentialShotRowFixture(
+  overrides: Partial<
+    AutoReviewPlanReviewPlanData["sequentialShots"][number]
+  > = {}
+): AutoReviewPlanReviewPlanData["sequentialShots"][number] {
+  return {
+    shotId: 1,
+    purpose: "",
+    visualSummary: "",
+    dialogue: "",
+    durationSeconds: null,
+    startFrameImagePrompt: "",
+    startFrameImagePromptChars: 0,
+    videoPrompt: "",
+    videoPromptChars: 0,
     ...overrides,
   };
 }
@@ -163,20 +191,20 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
               purpose: "hook_open",
               visualSummary: "เห็นกระบอกน้ำวางบนโต๊ะ",
               dialogue: "สวัสดีค่ะ",
               durationSeconds: 4,
-            },
-            {
+            }),
+            sequentialShotRowFixture({
               shotId: 2,
               purpose: "problem",
               visualSummary: "น้ำหกเปียกกระเป๋า",
               dialogue: "",
               durationSeconds: null,
-            },
+            }),
           ],
         })}
         locale="th"
@@ -201,13 +229,13 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
               purpose: "hook_open",
               visualSummary: "เห็นกระบอกน้ำวางบนโต๊ะ",
               dialogue: "",
               durationSeconds: 4,
-            },
+            }),
           ],
         })}
         locale="en"
@@ -223,13 +251,10 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
-              purpose: "",
               visualSummary: "wide shot of the product",
-              dialogue: "",
-              durationSeconds: null,
-            },
+            }),
           ],
         })}
         locale="en"
@@ -246,13 +271,13 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
               purpose: "hook_open",
               visualSummary: "a",
               dialogue: "สวัสดีค่ะ",
               durationSeconds: 4,
-            },
+            }),
           ],
         })}
         locale="en"
@@ -271,13 +296,13 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 3,
               purpose: "hook_open",
               visualSummary: "a",
               dialogue: "เดิม",
               durationSeconds: 4,
-            },
+            }),
           ],
         })}
         onSaveShotDialogue={onSaveShotDialogue}
@@ -310,13 +335,11 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
-              purpose: "",
               visualSummary: "a",
               dialogue: "เดิม",
-              durationSeconds: null,
-            },
+            }),
           ],
         })}
         onSaveShotDialogue={onSaveShotDialogue}
@@ -349,20 +372,16 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
-              purpose: "",
               visualSummary: "a",
               dialogue: "เดิม",
-              durationSeconds: null,
-            },
-            {
+            }),
+            sequentialShotRowFixture({
               shotId: 2,
-              purpose: "",
               visualSummary: "b",
               dialogue: "อื่น",
-              durationSeconds: null,
-            },
+            }),
           ],
         })}
         onSaveShotDialogue={vi.fn()}
@@ -390,13 +409,11 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
-              purpose: "",
               visualSummary: "a",
               dialogue: "เดิม",
-              durationSeconds: null,
-            },
+            }),
           ],
         })}
         onSaveShotDialogue={vi.fn()}
@@ -420,13 +437,11 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 1,
-              purpose: "",
               visualSummary: "a",
               dialogue: "ใหม่แล้ว",
-              durationSeconds: null,
-            },
+            }),
           ],
         })}
         onSaveShotDialogue={vi.fn()}
@@ -449,13 +464,11 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
+            sequentialShotRowFixture({
               shotId: 2,
               purpose: "problem",
               visualSummary: "wrong material shown",
-              dialogue: "",
-              durationSeconds: null,
-            },
+            }),
           ],
         })}
         locale="en"
@@ -481,20 +494,8 @@ describe("AutoReviewPlanReviewPanel", () => {
         planReview={awaitingPlanReview}
         plan={planFixture({
           sequentialShots: [
-            {
-              shotId: 1,
-              purpose: "",
-              visualSummary: "a",
-              dialogue: "",
-              durationSeconds: null,
-            },
-            {
-              shotId: 5,
-              purpose: "",
-              visualSummary: "b",
-              dialogue: "",
-              durationSeconds: null,
-            },
+            sequentialShotRowFixture({ shotId: 1, visualSummary: "a" }),
+            sequentialShotRowFixture({ shotId: 5, visualSummary: "b" }),
           ],
         })}
         locale="en"
@@ -742,6 +743,276 @@ describe("AutoReviewPlanReviewPanel", () => {
     expect(screen.getByText("Run is not awaiting review")).toBeTruthy();
     expect(screen.getByText("Notes too long")).toBeTruthy();
   });
+
+  // One-stop plan-review gate (2026-07-23 user request — "ควรแสดง prompt
+  // ในการสร้างภาพไปพร้อม ๆ กันเลย ตรวจสอบรอบเดียวจบ ... เปิดโอกาสให้ตรวจสอบ
+  // ความถูกต้องได้"): the two per-shot generation-prompt disclosures, the
+  // reference-image legend, and the citation-verification chips/warnings.
+  it("renders the two per-shot generation-prompt disclosures collapsed by default and expands each independently to show its prompt text", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            sequentialShotRowFixture({
+              shotId: 1,
+              startFrameImagePrompt: "A stainless steel bottle on a table.",
+              startFrameImagePromptChars: 37,
+              videoPrompt: "Slow push-in on the bottle.",
+              videoPromptChars: 27,
+            }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    const shotEl = screen.getByTestId("plan-review-shot-1");
+    expect(within(shotEl).getByText("Image prompt (EN)")).toBeTruthy();
+    expect(within(shotEl).getByText("Video prompt (EN)")).toBeTruthy();
+    expect(within(shotEl).queryByText(/stainless steel bottle/)).toBeNull();
+    expect(within(shotEl).queryByText(/Slow push-in/)).toBeNull();
+
+    fireEvent.click(
+      within(screen.getByTestId("plan-review-image-prompt-1")).getByRole(
+        "button",
+        { name: "Show more" }
+      )
+    );
+    expect(within(shotEl).getByText(/stainless steel bottle/)).toBeTruthy();
+    // The video block stays collapsed independently of the image block.
+    expect(within(shotEl).queryByText(/Slow push-in/)).toBeNull();
+
+    fireEvent.click(
+      within(screen.getByTestId("plan-review-video-prompt-1")).getByRole(
+        "button",
+        { name: "Show more" }
+      )
+    );
+    expect(within(shotEl).getByText(/Slow push-in/)).toBeTruthy();
+  });
+
+  it('shows "— No prompt in this plan —" for a shot with no image/video prompt, consistent with the dialogue empty-state', () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [sequentialShotRowFixture({ shotId: 1 })],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    const shotEl = screen.getByTestId("plan-review-shot-1");
+    fireEvent.click(
+      within(screen.getByTestId("plan-review-image-prompt-1")).getByRole(
+        "button",
+        { name: "Show more" }
+      )
+    );
+    fireEvent.click(
+      within(screen.getByTestId("plan-review-video-prompt-1")).getByRole(
+        "button",
+        { name: "Show more" }
+      )
+    );
+    expect(
+      within(shotEl).getAllByText("— No prompt in this plan —")
+    ).toHaveLength(2);
+  });
+
+  it("shows a red over-budget badge and warning when a shot's prompt exceeds its budget, and a neutral badge when within budget", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [
+            sequentialShotRowFixture({
+              shotId: 1,
+              startFrameImagePrompt: "short prompt",
+              startFrameImagePromptChars: 4500,
+              videoPrompt: "short video prompt",
+              videoPromptChars: 100,
+            }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    const shotEl = screen.getByTestId("plan-review-shot-1");
+    expect(within(shotEl).getByText("4500/4000 characters")).toBeTruthy();
+    expect(within(shotEl).getByText("100/2000 characters")).toBeTruthy();
+    expect(
+      within(shotEl).getByText(
+        'Over the prompt budget — click "Ask AI to redraft" before confirming.'
+      )
+    ).toBeTruthy();
+  });
+
+  it("respects a custom sequentialImagePromptMaxChars budget instead of the 4000 default", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          promptBudgets: { imageMaxChars: 1500, videoMaxChars: 2000 },
+          sequentialShots: [
+            sequentialShotRowFixture({
+              shotId: 1,
+              startFrameImagePrompt: "short prompt",
+              startFrameImagePromptChars: 1600,
+            }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.getByText("1600/1500 characters")).toBeTruthy();
+  });
+
+  it("shows a green chip for a citation present in the manifest and a red chip + warning for one that is not", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          referenceManifest: [
+            { index: 1, role: "primary_product", evidenceOnly: false },
+          ],
+          sequentialShots: [
+            sequentialShotRowFixture({
+              shotId: 1,
+              startFrameImagePrompt:
+                "Use @Image1 as the product and @Image9 as the character.",
+              startFrameImagePromptChars: 58,
+            }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    const citations = screen.getByTestId(
+      "plan-review-image-prompt-citations-1"
+    );
+    const validChip = within(citations).getByText("@Image1");
+    const unknownChip = within(citations).getByText("@Image9");
+    expect(validChip.getAttribute("data-citation-valid")).toBe("true");
+    expect(unknownChip.getAttribute("data-citation-valid")).toBe("false");
+    expect(
+      screen.getByText(
+        "References an @ImageN that is not in the reference list — ask AI to redraft."
+      )
+    ).toBeTruthy();
+  });
+
+  it("shows no citation chips and no unknown-citation warning for a prompt that cites no @ImageN placeholder", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          referenceManifest: [
+            { index: 1, role: "primary_product", evidenceOnly: false },
+          ],
+          sequentialShots: [
+            sequentialShotRowFixture({
+              shotId: 1,
+              startFrameImagePrompt: "A plain prompt with no reference tags.",
+              startFrameImagePromptChars: 39,
+            }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(
+      screen.queryByTestId("plan-review-image-prompt-citations-1")
+    ).toBeNull();
+    expect(screen.queryByText(/is not in the reference list/)).toBeNull();
+  });
+
+  it("renders the reference-image legend decoding @ImageN against the run's manifest, including angle + evidence-only labeling", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          referenceManifest: [
+            { index: 1, role: "primary_product", evidenceOnly: false },
+            {
+              index: 2,
+              role: "product_angle",
+              angleLabel: "back",
+              evidenceOnly: false,
+            },
+            { index: 3, role: "character", evidenceOnly: false },
+            { index: 4, role: "environment", evidenceOnly: false },
+            {
+              index: 5,
+              role: "product_angle",
+              angleLabel: "package",
+              evidenceOnly: true,
+            },
+          ],
+          sequentialShots: [sequentialShotRowFixture({ shotId: 1 })],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    const legend = screen.getByTestId("plan-review-reference-manifest");
+    expect(within(legend).getByText("Primary product")).toBeTruthy();
+    expect(within(legend).getByText("Product angle (Back)")).toBeTruthy();
+    expect(within(legend).getByText("Character")).toBeTruthy();
+    expect(within(legend).getByText("Location")).toBeTruthy();
+    expect(within(legend).getByText("Product angle (Packaging)")).toBeTruthy();
+    expect(
+      within(legend).getByText("Evidence only (not attached to the model)")
+    ).toBeTruthy();
+  });
+
+  it("omits the reference-image legend entirely when the manifest is empty, rather than rendering it blank", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          sequentialShots: [sequentialShotRowFixture({ shotId: 1 })],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.queryByTestId("plan-review-reference-manifest")).toBeNull();
+  });
+
+  it("renders the new prompt disclosures, budget warning, and reference legend in Thai", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          referenceManifest: [
+            { index: 1, role: "primary_product", evidenceOnly: false },
+          ],
+          sequentialShots: [
+            sequentialShotRowFixture({
+              shotId: 1,
+              startFrameImagePrompt: "ใช้ @Image1 เป็นสินค้าหลัก",
+              startFrameImagePromptChars: 4500,
+            }),
+          ],
+        })}
+        locale="th"
+        {...requiredProps()}
+      />
+    );
+    expect(screen.getByText("Prompt ภาพ (EN)")).toBeTruthy();
+    expect(screen.getByText("Prompt วิดีโอ (EN)")).toBeTruthy();
+    expect(screen.getByText("รายการภาพอ้างอิง (ถอดรหัส @ImageN)")).toBeTruthy();
+    expect(screen.getByText("สินค้า (หลัก)")).toBeTruthy();
+    expect(
+      screen.getByText('เกินงบ prompt — ควรสั่ง "ให้ AI ร่างใหม่" ก่อนยืนยัน')
+    ).toBeTruthy();
+  });
 });
 
 describe("AutoReviewPlanReviewPanel projection helpers", () => {
@@ -766,7 +1037,7 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
     });
   });
 
-  it("buildAutoReviewPlanReviewSequentialShotRows reads sequentialStoryboard.shots, sorts by shot_id, and drops malformed entries", () => {
+  it("buildAutoReviewPlanReviewSequentialShotRows reads sequentialStoryboard.shots, sorts by shot_id, drops malformed entries, and reads the generation prompts + persisted character counts", () => {
     const rows = buildAutoReviewPlanReviewSequentialShotRows({
       sequentialStoryboard: {
         shots: [
@@ -776,6 +1047,10 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
             visual_summary: "b",
             dialogue: "d2",
             duration_seconds: 5,
+            start_frame_image_prompt: "image prompt two",
+            image_prompt_character_count: 17,
+            video_prompt: "video prompt two",
+            video_prompt_character_count: 16,
           },
           { shot_id: 0, purpose: "junk" },
           "not-an-object",
@@ -785,6 +1060,9 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
             visual_summary: "a",
             dialogue: "d1",
             duration_seconds: 4,
+            start_frame_image_prompt: "image prompt one",
+            video_prompt: "video prompt one",
+            // No persisted character counts — must fall back to `.length`.
           },
         ],
       },
@@ -796,6 +1074,10 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
         visualSummary: "a",
         dialogue: "d1",
         durationSeconds: 4,
+        startFrameImagePrompt: "image prompt one",
+        startFrameImagePromptChars: "image prompt one".length,
+        videoPrompt: "video prompt one",
+        videoPromptChars: "video prompt one".length,
       },
       {
         shotId: 2,
@@ -803,6 +1085,10 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
         visualSummary: "b",
         dialogue: "d2",
         durationSeconds: 5,
+        startFrameImagePrompt: "image prompt two",
+        startFrameImagePromptChars: 17,
+        videoPrompt: "video prompt two",
+        videoPromptChars: 16,
       },
     ]);
   });
@@ -810,6 +1096,101 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
   it("buildAutoReviewPlanReviewSequentialShotRows resolves to [] for a non-sequential (legacy or absent) run", () => {
     expect(buildAutoReviewPlanReviewSequentialShotRows({})).toEqual([]);
     expect(buildAutoReviewPlanReviewSequentialShotRows(null)).toEqual([]);
+  });
+
+  it("buildAutoReviewPlanReviewPromptBudgets defaults image to 4000 and video to 2000, honoring a valid sequentialImagePromptMaxChars override", () => {
+    expect(buildAutoReviewPlanReviewPromptBudgets({})).toEqual({
+      imageMaxChars: 4000,
+      videoMaxChars: 2000,
+    });
+    expect(
+      buildAutoReviewPlanReviewPromptBudgets({
+        sequentialImagePromptMaxChars: 2500,
+      })
+    ).toEqual({ imageMaxChars: 2500, videoMaxChars: 2000 });
+    // Non-positive/non-finite overrides fall back to the default rather
+    // than producing an impossible 0/negative budget.
+    expect(
+      buildAutoReviewPlanReviewPromptBudgets({
+        sequentialImagePromptMaxChars: 0,
+      })
+    ).toEqual({ imageMaxChars: 4000, videoMaxChars: 2000 });
+    expect(
+      buildAutoReviewPlanReviewPromptBudgets({
+        sequentialImagePromptMaxChars: "not-a-number",
+      })
+    ).toEqual({ imageMaxChars: 4000, videoMaxChars: 2000 });
+  });
+
+  it("buildAutoReviewPlanReviewReferenceManifestRows reads sequentialStoryboard.referenceManifest, sorts by index, and drops malformed entries", () => {
+    const rows = buildAutoReviewPlanReviewReferenceManifestRows({
+      sequentialStoryboard: {
+        referenceManifest: [
+          { index: 2, role: "product_angle", angleLabel: "back" },
+          { index: 0, role: "junk" },
+          "not-an-object",
+          { index: 1, role: "primary_product" },
+          {
+            index: 5,
+            role: "product_angle",
+            angleLabel: "package",
+            evidenceOnly: true,
+          },
+        ],
+      },
+    });
+    expect(rows).toEqual([
+      {
+        index: 1,
+        role: "primary_product",
+        angleLabel: undefined,
+        evidenceOnly: false,
+      },
+      {
+        index: 2,
+        role: "product_angle",
+        angleLabel: "back",
+        evidenceOnly: false,
+      },
+      {
+        index: 5,
+        role: "product_angle",
+        angleLabel: "package",
+        evidenceOnly: true,
+      },
+    ]);
+  });
+
+  it("buildAutoReviewPlanReviewReferenceManifestRows resolves to [] for a run with no manifest, never throwing", () => {
+    expect(buildAutoReviewPlanReviewReferenceManifestRows({})).toEqual([]);
+    expect(buildAutoReviewPlanReviewReferenceManifestRows(null)).toEqual([]);
+    expect(buildAutoReviewPlanReviewReferenceManifestRows(undefined)).toEqual(
+      []
+    );
+  });
+
+  it("extractAutoReviewPlanReviewPromptImageCitations scans @ImageN citations in first-seen order, deduplicated, and never throws on empty/malformed input", () => {
+    expect(
+      extractAutoReviewPlanReviewPromptImageCitations(
+        "Use @Image1 as the product. @Image3 is the character. @Image1 again."
+      )
+    ).toEqual([1, 3]);
+    expect(extractAutoReviewPlanReviewPromptImageCitations("")).toEqual([]);
+    expect(
+      extractAutoReviewPlanReviewPromptImageCitations("no citations here")
+    ).toEqual([]);
+  });
+
+  it("buildAutoReviewPlanReviewPromptCitationChips marks each citation valid/invalid against the manifest index set", () => {
+    const chips = buildAutoReviewPlanReviewPromptCitationChips(
+      "Use @Image1 and @Image2 and @Image9.",
+      new Set([1, 2])
+    );
+    expect(chips).toEqual([
+      { index: 1, valid: true },
+      { index: 2, valid: true },
+      { index: 9, valid: false },
+    ]);
   });
 
   it("buildAutoReviewPlanReviewCreditEstimate is sequential-only and derives N from the actual shot count", () => {
@@ -933,8 +1314,10 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
           storyboardGuide: "Guide",
           voiceoverScript: "Script",
         },
+        sequentialImagePromptMaxChars: 3000,
         sequentialStoryboard: {
           shots: [{ shot_id: 1, purpose: "hook_open" }],
+          referenceManifest: [{ index: 1, role: "primary_product" }],
         },
       },
       "sequential_shot_storyboard",
@@ -945,6 +1328,18 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
     expect(data.sequentialShots).toHaveLength(1);
     expect(data.creditEstimate).toEqual({ typical: 1, worst: 3 });
     expect(data.settings.some(row => row.key === "frameStrategy")).toBe(true);
+    expect(data.promptBudgets).toEqual({
+      imageMaxChars: 3000,
+      videoMaxChars: 2000,
+    });
+    expect(data.referenceManifest).toEqual([
+      {
+        index: 1,
+        role: "primary_product",
+        angleLabel: undefined,
+        evidenceOnly: false,
+      },
+    ]);
     expect(data.isDegradedFallback).toBe(false);
   });
 

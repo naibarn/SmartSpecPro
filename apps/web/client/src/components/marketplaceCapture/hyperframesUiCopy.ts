@@ -267,6 +267,31 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         planReviewVisualSummaryLanguageBadge: "(EN)",
         planReviewVisualSummaryLanguageHint:
           'หมายเหตุ: ช่อง "ภาพที่จะเห็น" เป็นภาษาอังกฤษโดยตั้งใจ เพราะใช้เป็น prompt ป้อนโมเดลสร้างภาพโดยตรง ระบบจะไม่แปลข้อความนี้ให้อัตโนมัติ',
+        // One-stop plan-review gate (2026-07-23 user request — "ควรแสดง
+        // prompt ในการสร้างภาพไปพร้อม ๆ กันเลย ตรวจสอบรอบเดียวจบ ... เปิด
+        // โอกาสให้ตรวจสอบความถูกต้องได้"). Backs
+        // `AutoReviewPlanReviewPanel.tsx`'s `PlanReviewShotPromptBlock` (the
+        // two per-shot generation-prompt disclosures) and
+        // `PlanReviewReferenceManifestLegend` (the `@ImageN` legend above
+        // the shots list).
+        planReviewShotImagePromptTitle: "Prompt ภาพ (EN)",
+        planReviewShotVideoPromptTitle: "Prompt วิดีโอ (EN)",
+        planReviewShotPromptEmpty: "— ไม่มี prompt ในแผนนี้ —",
+        planReviewPromptOverBudgetWarning:
+          'เกินงบ prompt — ควรสั่ง "ให้ AI ร่างใหม่" ก่อนยืนยัน',
+        planReviewPromptUnknownCitationWarning:
+          "อ้างอิง @ImageN ที่ไม่มีในรายการภาพ — ควรสั่งร่างใหม่",
+        planReviewReferenceManifestTitle: "รายการภาพอ้างอิง (ถอดรหัส @ImageN)",
+        planReviewReferenceManifestRoleLabels: {
+          primary_product: "สินค้า (หลัก)",
+          product_angle: "มุมสินค้า",
+          character: "บุคคล",
+          environment: "สถานที่",
+        } as Record<
+          "primary_product" | "product_angle" | "character" | "environment",
+          string
+        >,
+        planReviewReferenceManifestUnknownRoleLabel: "อื่น ๆ",
         planReviewDegradedBanner:
           'แผนนี้เป็นแผนสำรองจากระบบ (การเรียกสกิลหลักล้มเหลวก่อนหน้านี้ — ปัญหานี้ถูกแก้ไขแล้ว) แนะนำให้กด "ให้ AI ร่างใหม่" เพื่อให้ได้แผนจริงที่มีบทพูดภาษาไทยและตรงกับโทนที่ตั้งไว้ ก่อนยืนยัน',
         planReviewApprove: "ยืนยัน สร้างภาพ",
@@ -603,6 +628,32 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         planReviewVisualSummaryLanguageBadge: "(EN)",
         planReviewVisualSummaryLanguageHint:
           'Note: "Visual summary" stays in English on purpose — it feeds the image-generation prompt directly and is never machine-translated.',
+        // One-stop plan-review gate (2026-07-23 user request — "ควรแสดง
+        // prompt ในการสร้างภาพไปพร้อม ๆ กันเลย ตรวจสอบรอบเดียวจบ ... เปิด
+        // โอกาสให้ตรวจสอบความถูกต้องได้"). Backs
+        // `AutoReviewPlanReviewPanel.tsx`'s `PlanReviewShotPromptBlock` (the
+        // two per-shot generation-prompt disclosures) and
+        // `PlanReviewReferenceManifestLegend` (the `@ImageN` legend above
+        // the shots list).
+        planReviewShotImagePromptTitle: "Image prompt (EN)",
+        planReviewShotVideoPromptTitle: "Video prompt (EN)",
+        planReviewShotPromptEmpty: "— No prompt in this plan —",
+        planReviewPromptOverBudgetWarning:
+          'Over the prompt budget — click "Ask AI to redraft" before confirming.',
+        planReviewPromptUnknownCitationWarning:
+          "References an @ImageN that is not in the reference list — ask AI to redraft.",
+        planReviewReferenceManifestTitle:
+          "Reference image legend (decode @ImageN)",
+        planReviewReferenceManifestRoleLabels: {
+          primary_product: "Primary product",
+          product_angle: "Product angle",
+          character: "Character",
+          environment: "Location",
+        } as Record<
+          "primary_product" | "product_angle" | "character" | "environment",
+          string
+        >,
+        planReviewReferenceManifestUnknownRoleLabel: "Other",
         planReviewDegradedBanner:
           'This plan is an automatic system fallback (the main skill call failed earlier — this issue has since been fixed). We recommend clicking "Ask AI to redraft" to get a real plan with Thai dialogue that matches your configured tone before confirming.',
         planReviewApprove: "Confirm, generate images",
