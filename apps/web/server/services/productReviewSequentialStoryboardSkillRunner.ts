@@ -2649,7 +2649,17 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
       model: input.model ?? null,
       durationMs: Date.now() - roundStartedAt,
     });
-    retryHistory.push({ round: roundNum, status: "completed", valid, total, normalized });
+    retryHistory.push({
+      round: roundNum,
+      status: "completed",
+      valid,
+      total,
+      normalized,
+      // Evidence (2026-07-23): an invalid completed round was undebuggable —
+      // loopReport carries the disqualifiers but gets wiped by the degraded
+      // overwrite, so record them here too.
+      ...(disqualifiers.length > 0 ? { disqualifiers } : {}),
+    });
 
     if (valid && normalized >= config.minPromptScoreToPass) {
       break;

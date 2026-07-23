@@ -416,6 +416,20 @@ Before emitting, verify every `finalQc` boolean is true:
 in the Tone/preset consumption section above). If
 any is false, revise before emitting — do not emit a failing `finalQc`.
 
+Absolute output-shape lock: the response is ONE JSON object whose TOP-LEVEL
+keys are exactly `skillVersion`, `evidenceProfile`, `claimWhitelist`,
+`conflicts`, `reviewStrategy`, `childSubjectPolicy`, `globalContinuity`,
+`shots`, `loopReport`, `finalQc`, `referenceManifest`. Never place input
+fields (`target_audience`, `review_tone`, `video_structure_mode`,
+`story_arc`) at the top level — they are inputs, not outputs. Every shot
+object must carry ALL sixteen contract fields (shot_id, purpose,
+duration_seconds, demonstration_type, depicts_minor, guardian_required,
+transition_from_previous, visual_summary, dialogue,
+estimated_speech_seconds, start_frame_image_prompt,
+image_prompt_character_count, video_prompt, video_prompt_character_count,
+claim_trace, qc) — `dialogue` must be non-empty natural Thai whenever the
+audio strategy is not silent.
+
 Once all eleven pass, emit the strict JSON object described above: ONE JSON
 object conforming exactly to `output.schema.json`, no markdown fences, no
 prose outside the object, with `skillVersion` set to `"1.0.0"` in lockstep
