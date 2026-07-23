@@ -17660,6 +17660,11 @@ function buildDegradedSequentialStoryboardPack(input: {
       ),
       global_block_present_in_every_video_prompt: true,
       guardian_policy_satisfied: !input.guardianRequired,
+      // Degraded fallback is code-built — nothing verified tone/structure
+      // adherence, so both stay false (consistent with the deliberate
+      // hook_within_3_seconds: false self-fail above).
+      tone_preset_adhered: false,
+      structure_beats_present: false,
     },
     referenceManifest: [],
   };
