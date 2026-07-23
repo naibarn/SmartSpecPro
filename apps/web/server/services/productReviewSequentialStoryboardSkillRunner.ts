@@ -143,6 +143,31 @@ const SEQUENTIAL_CLAIM_CONFIDENCE_LEVELS = new Set([
   "conflicting",
 ]);
 
+/**
+ * Weak-model enum drift guard (same failure class as the VD role_tier drift):
+ * a cheap model emits `"visual-verified"`, `"Verified (visual)"`,
+ * `"confirmed"`, … and the strict Set check disqualified an otherwise
+ * perfect pack (`invalid_claim_confidence` — field evidence 2026-07-23: a
+ * round scoring 10/10 on every dimension was thrown away over one enum
+ * spelling). Normalize at the parse layer; anything unrecognizable maps to
+ * "conditional" — the SAFE direction (the claim stays out of the
+ * unconditional whitelist) — instead of nuking the whole pack.
+ */
+export function normalizeSequentialClaimSupport(value: unknown): string {
+  const raw = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_")
+    .replace(/[^a-z_]/g, "");
+  if (SEQUENTIAL_CLAIM_CONFIDENCE_LEVELS.has(raw)) return raw;
+  if (/visual/.test(raw) && /verif/.test(raw)) return "visual_verified";
+  if (/text/.test(raw) && /verif/.test(raw)) return "text_verified";
+  if (/user/.test(raw) && /confirm/.test(raw)) return "user_confirmed";
+  if (/conflict/.test(raw)) return "conflicting";
+  if (/unsupport|no_evidence|none/.test(raw)) return "unsupported";
+  return "conditional";
+}
+
 const SEQUENTIAL_STORYBOARD_FINAL_QC_KEYS = [
   "all_claims_supported",
   "all_shots_under_10_seconds",
@@ -1083,6 +1108,20 @@ export function validateSequentialStoryboardPackStructure(
     if (!allTrue) reasons.push("final_qc_not_passing");
   }
   if (reasons.length > 0) return { ok: false, reasons };
+  // Parse-boundary enum normalization (weak-model drift guard): the objects
+  // here come straight from JSON.parse (never frozen), so in-place
+  // normalization is safe and every downstream consumer — including the pure
+  // retention disqualifiers — sees clean claim-confidence values.
+  if (Array.isArray(value.shots)) {
+    for (const shot of value.shots as Array<Record<string, unknown>>) {
+      if (!shot || typeof shot !== "object") continue;
+      const traces = Array.isArray(shot.claim_trace) ? shot.claim_trace : [];
+      for (const trace of traces as Array<Record<string, unknown>>) {
+        if (!trace || typeof trace !== "object") continue;
+        trace.support = normalizeSequentialClaimSupport(trace.support);
+      }
+    }
+  }
   return { ok: true, pack: value as unknown as SequentialStoryboardPack };
 }
 
@@ -1104,7 +1143,7 @@ export function computeSequentialStoryboardRoundScoreTotal(
  */
 export function findSequentialStoryboardRetentionDisqualifiers(
   pack: SequentialStoryboardPack,
-  ctx: { imageBudget: number }
+  ctx: { imageBudget: number; audioStrategy?: string | null }
 ): string[] {
   const reasons = new Set<string>();
   const shots = Array.isArray(pack.shots) ? pack.shots : [];
@@ -1121,6 +1160,32 @@ export function findSequentialStoryboardRetentionDisqualifiers(
   if (!contiguous) reasons.add("shot_id_discontinuous");
 
   for (const shot of shots) {
+    // Per-shot CONTRACT enforcement (field evidence 2026-07-23): a retained
+    // round shipped shots carrying ONLY {shot_id + prompts} — no dialogue,
+    // no purpose, no visual_summary, no depicts_minor — while self-scoring
+    // dialogue_continuity 10/10. Pack-level validation never looked inside a
+    // shot, so the hollow pack sailed through to the plan-review gate with
+    // nine empty บทพูด rows. These fields are load-bearing: dialogue is the
+    // spoken script, depicts_minor drives the minor-safety QA grounding.
+    const shotRecord = shot as unknown as Record<string, unknown>;
+    const hasCoreFields =
+      String(shotRecord.purpose ?? "").trim().length > 0 &&
+      String(shotRecord.visual_summary ?? "").trim().length > 0 &&
+      Number.isFinite(Number(shotRecord.duration_seconds)) &&
+      String(shotRecord.demonstration_type ?? "").trim().length > 0 &&
+      typeof shotRecord.depicts_minor === "boolean" &&
+      typeof shotRecord.guardian_required === "boolean" &&
+      typeof shotRecord.dialogue === "string" &&
+      Array.isArray(shotRecord.claim_trace);
+    if (!hasCoreFields) reasons.add("shot_fields_missing");
+    const audioStrategy = String(ctx.audioStrategy ?? "").trim();
+    if (
+      audioStrategy &&
+      audioStrategy !== "silent" &&
+      String(shotRecord.dialogue ?? "").trim().length === 0
+    ) {
+      reasons.add("dialogue_missing");
+    }
     const imagePrompt = String(shot.start_frame_image_prompt ?? "").trim();
     const videoPrompt = String(shot.video_prompt ?? "").trim();
     if (!imagePrompt || !videoPrompt) reasons.add("prompt_missing");
@@ -1132,7 +1197,18 @@ export function findSequentialStoryboardRetentionDisqualifiers(
       reasons.add("global_block_missing");
     }
     for (const trace of shot.claim_trace ?? []) {
-      if (!SEQUENTIAL_CLAIM_CONFIDENCE_LEVELS.has(String(trace?.support))) {
+      // Lenient membership via the normalizer (never mutates — this function
+      // is pure and test fixtures may be frozen). The actual in-place
+      // normalization happens once at the parse boundary in
+      // `validateSequentialStoryboardPackStructure`, so downstream consumers
+      // still see clean enum values.
+      if (
+        !SEQUENTIAL_CLAIM_CONFIDENCE_LEVELS.has(
+          normalizeSequentialClaimSupport(
+            (trace as Record<string, unknown> | null | undefined)?.support
+          )
+        )
+      ) {
         reasons.add("invalid_claim_confidence");
       }
     }
@@ -2072,7 +2148,31 @@ function buildSequentialStoryboardVisionMessages(input: {
 }
 
 function parseSequentialStoryboardLlmOutput(rawContent: string): unknown {
-  return extractJson(rawContent);
+  const parsed = extractJson(rawContent);
+  // Weak-model wrapper unwrap (field evidence 2026-07-23: rounds failed
+  // `shots_missing` while the model plainly authored a full pack — some
+  // models nest the object under a single wrapper key like `output` /
+  // `result` / the schema name). If the top level has no shots but exactly
+  // one child object DOES, that child is the pack.
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    !Array.isArray(parsed) &&
+    !Array.isArray((parsed as Record<string, unknown>).shots)
+  ) {
+    const record = parsed as Record<string, unknown>;
+    const childrenWithShots = Object.values(record).filter(
+      value =>
+        value &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        Array.isArray((value as Record<string, unknown>).shots)
+    );
+    if (childrenWithShots.length === 1) {
+      return childrenWithShots[0];
+    }
+  }
+  return parsed;
 }
 
 function buildProductionSequentialStoryboardLoopEffects(ctx: {
@@ -2466,6 +2566,14 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
         round: roundNum,
         status: "contract_violation",
         reasons: structural.reasons,
+        // Parse diagnostics (2026-07-23): `shots_missing` was undebuggable
+        // without knowing what the model ACTUALLY returned — record the
+        // parsed top-level shape so the next failure names the wrapper/
+        // truncation instead of guessing.
+        parsedTopLevelKeys:
+          rawOutput && typeof rawOutput === "object" && !Array.isArray(rawOutput)
+            ? Object.keys(rawOutput as Record<string, unknown>).slice(0, 16)
+            : [`(${Array.isArray(rawOutput) ? "array" : typeof rawOutput})`],
       });
       continue;
     }
@@ -2485,6 +2593,7 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
     const { total, normalized } = computeSequentialStoryboardRoundScoreTotal(roundScoresRaw);
     const disqualifiers = findSequentialStoryboardRetentionDisqualifiers(pack, {
       imageBudget,
+      audioStrategy: input.audioStrategy ?? null,
     });
     const valid = disqualifiers.length === 0;
 
