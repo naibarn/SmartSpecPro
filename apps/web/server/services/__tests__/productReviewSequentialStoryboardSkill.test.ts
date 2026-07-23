@@ -102,7 +102,7 @@ const CLAIM_CONFIDENCE_LEVELS = [
   "conflicting",
 ];
 
-// §19.2 finalQc — nine required booleans.
+// §19.2 finalQc — eleven required booleans (adherence keys added 2026-07-23).
 const FINAL_QC_KEYS = [
   "all_claims_supported",
   "all_shots_under_10_seconds",
@@ -113,6 +113,8 @@ const FINAL_QC_KEYS = [
   "all_video_prompts_within_budget",
   "global_block_present_in_every_video_prompt",
   "guardian_policy_satisfied",
+  "tone_preset_adhered",
+  "structure_beats_present",
 ];
 
 // §19.2 shots[] — full per-shot required field set.

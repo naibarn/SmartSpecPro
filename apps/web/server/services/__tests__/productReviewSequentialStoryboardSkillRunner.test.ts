@@ -187,6 +187,8 @@ function makeCleanPack(
       all_video_prompts_within_budget: true,
       global_block_present_in_every_video_prompt: true,
       guardian_policy_satisfied: true,
+      tone_preset_adhered: true,
+      structure_beats_present: true,
     },
     referenceManifest: makeManifest(),
     ...overrides,

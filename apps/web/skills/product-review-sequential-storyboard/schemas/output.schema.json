@@ -432,7 +432,7 @@
     },
     "finalQc": {
       "title": "Final QC (Phase K)",
-      "description": "All nine booleans must be true before this object may be emitted as a passing result.",
+      "description": "All eleven booleans must be true before this object may be emitted as a passing result.",
       "type": "object",
       "additionalProperties": true,
       "required": [
@@ -444,7 +444,9 @@
         "all_image_prompts_within_budget",
         "all_video_prompts_within_budget",
         "global_block_present_in_every_video_prompt",
-        "guardian_policy_satisfied"
+        "guardian_policy_satisfied",
+        "tone_preset_adhered",
+        "structure_beats_present"
       ],
       "properties": {
         "all_claims_supported": { "type": "boolean" },
@@ -455,7 +457,9 @@
         "all_image_prompts_within_budget": { "type": "boolean" },
         "all_video_prompts_within_budget": { "type": "boolean" },
         "global_block_present_in_every_video_prompt": { "type": "boolean" },
-        "guardian_policy_satisfied": { "type": "boolean" }
+        "guardian_policy_satisfied": { "type": "boolean" },
+        "tone_preset_adhered": { "type": "boolean" },
+        "structure_beats_present": { "type": "boolean" }
       }
     },
     "referenceManifest": {

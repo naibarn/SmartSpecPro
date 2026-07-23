@@ -153,6 +153,13 @@ const SEQUENTIAL_STORYBOARD_FINAL_QC_KEYS = [
   "all_video_prompts_within_budget",
   "global_block_present_in_every_video_prompt",
   "guardian_policy_satisfied",
+  // Settings-adherence QC (2026-07-23, user-reported "ตั้งค่าแล้วเนื้อหาไม่ตรง"):
+  // tone/structure directives were TAUGHT in the prompt but never VERIFIED,
+  // so drafts that ignored them passed finalQc (the taught-not-wired class).
+  // The CRITERIA for these two keys live in skill.md Phase K — TypeScript
+  // only enforces that the skill self-verified them.
+  "tone_preset_adhered",
+  "structure_beats_present",
 ] as const;
 
 /**

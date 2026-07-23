@@ -245,6 +245,29 @@ guardian rules always win over any tone or preset direction.
 must appear in every shot's submitted video prompt action/camera language
 (Phase G) — never only one of the two.
 
+Tone/structure adherence is VERIFIED, not assumed (`finalQc.tone_preset_adhered`,
+`finalQc.structure_beats_present`):
+- `tone_preset_adhered` = true only when the spoken dialogue ACTUALLY reads in
+  the selected `review_tone`/`tone_preset` throughout. ตลกขำเบา ๆ requires
+  genuinely humorous phrasing (wordplay, playful exaggeration, self-aware
+  jokes) in the hook and in at least two more shots — plain feature narration
+  in a neutral voice is NOT that tone. หงุดหงิดกับปัญหา requires the presenter
+  to actually voice the frustration before the product resolves it. When no
+  tone was selected, true means the default natural Thai review tone is
+  consistent across all shots. Never set true because the tone was merely
+  "mentioned in the plan" — judge the actual dialogue lines one by one.
+- `structure_beats_present` = true only when every named beat of the selected
+  `segment_structure_preset`/story arc maps to specific shots that PERFORM
+  that beat's function. A "Problem" beat must state a concrete real-life
+  problem the product solves, in the dialogue (e.g. "ลูกนั่งกินข้าวไม่นิ่ง
+  เก้าอี้ผู้ใหญ่สูงเกินตัว" — not generic praise like "สินค้าคุณภาพดี
+  แข็งแรง", which states no problem at all). A Hook → Problem → … arc with no
+  identifiable Problem sentence anywhere is a hard fail. When no structure was
+  selected, true means the default review arc (hook → value → proof → close)
+  is present and each stage is identifiable in specific shots.
+If either is false, revise the dialogue/shots and re-verify before emitting —
+exactly like every other `finalQc` key.
+
 Price policy: no spoken or visual price, discount, "ราคาถูกที่สุด",
 comparison, flash-sale, voucher, or shipping-price content anywhere in the
 dialogue or in any prompt. A downstream TypeScript scan is only a detection
@@ -388,10 +411,12 @@ Before emitting, verify every `finalQc` boolean is true:
 `all_claims_supported`, `all_shots_under_10_seconds`, `hook_within_3_seconds`,
 `price_absent`, `overclaims_absent`, `all_image_prompts_within_budget`,
 `all_video_prompts_within_budget`,
-`global_block_present_in_every_video_prompt`, `guardian_policy_satisfied`. If
+`global_block_present_in_every_video_prompt`, `guardian_policy_satisfied`,
+`tone_preset_adhered`, `structure_beats_present` (adherence criteria defined
+in the Tone/preset consumption section above). If
 any is false, revise before emitting — do not emit a failing `finalQc`.
 
-Once all nine pass, emit the strict JSON object described above: ONE JSON
+Once all eleven pass, emit the strict JSON object described above: ONE JSON
 object conforming exactly to `output.schema.json`, no markdown fences, no
 prose outside the object, with `skillVersion` set to `"1.0.0"` in lockstep
 with this file's frontmatter `version`.
