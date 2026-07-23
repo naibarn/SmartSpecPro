@@ -5790,6 +5790,27 @@ export function creativeBriefDirectiveForTest(
   return buildMarketplaceAutoReviewCreativeBriefDirective(creativeBrief);
 }
 
+// Marketplace text-plan review gate (planning/marketplace-storyboard-text-
+// gate) — "ให้ AI ร่างใหม่" notes. Mirrors the creativeBrief/motionDirection
+// directive pattern exactly (same idiom, same isolation) rather than folding
+// the notes into `creativeBrief` itself, so the persisted `creativeBrief`
+// setting stays exactly what the user configured across repeated redrafts.
+function buildMarketplaceAutoReviewRedraftNotesDirective(
+  notes?: string | null
+): string {
+  const text = cleanText(notes);
+  if (!text) return "";
+  return [
+    `USER REDRAFT CORRECTION NOTES: The user reviewed the previous storyboard/voiceover text draft and requested this correction before approving it for image generation: ${text}.`,
+    "Treat this as the HIGHEST-PRIORITY correction for this redraft: fix the specific issue(s) described (for example wrong product facts or properties, wrong or forbidden claims/wording, wrong tone versus the selected style, or a missing story beat such as Hook/Problem) in the new storyboardGuide, voiceoverScript, productDetail, and every shot.",
+    "This correction never overrides product truth, advertising safety, or claim rules; it only corrects how the story is told within those rules.",
+  ].join(" ");
+}
+
+export function redraftNotesDirectiveForTest(notes?: string | null): string {
+  return buildMarketplaceAutoReviewRedraftNotesDirective(notes);
+}
+
 function assertProviderReadyReferenceAnchor(
   kind: "product" | "character" | "environment",
   url: string | null,
@@ -15503,6 +15524,10 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
   motionDirection?: string | null;
   creativeBrief?: string | null;
   characterPresenceMode?: MarketplaceAutoReviewCharacterPresenceMode | null;
+  /** Marketplace text-plan review gate — "ให้ AI ร่างใหม่" correction notes.
+   *  Only ever set when this call is a redraft of an already-authored plan;
+   *  a no-op directive (empty string) for every ordinary first pass. */
+  redraftNotes?: string | null;
 }): Promise<{ plan: AutoReviewPlan; metadata: Record<string, unknown> }> {
   const model =
     cleanText(process.env.MARKETPLACE_AUTO_REVIEW_PLANNER_MODEL) || "gpt-4o";
@@ -15614,6 +15639,9 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
     buildMarketplaceAutoReviewMotionDirectionDirective(params.motionDirection);
   const creativeBriefDirective =
     buildMarketplaceAutoReviewCreativeBriefDirective(params.creativeBrief);
+  const redraftNotesDirective = buildMarketplaceAutoReviewRedraftNotesDirective(
+    params.redraftNotes
+  );
   const characterPresenceDirective =
     buildMarketplaceAutoReviewCharacterPresenceDirective(
       params.characterPresenceMode,
@@ -15642,6 +15670,7 @@ async function buildGatewayCreativeAutoReviewPlan(params: {
       creativeDirectionDirective,
       motionDirectionDirective,
       creativeBriefDirective,
+      redraftNotesDirective,
       characterPresenceDirective,
       "Return JSON only.",
       correction
@@ -19356,6 +19385,10 @@ function serializeRun(
         hyperframesAutoPreview: hyperframesAutoPreviewSummary,
         generatedMediaAcceptanceEnvelope:
           metadata.generatedMediaAcceptanceEnvelope ?? null,
+        // Marketplace text-plan review gate — kept in the trimmed/summary
+        // branch too (list views) even though it's small, so a run needing
+        // user action is distinguishable without fetching heavy metadata.
+        planReview: metadata.planReview ?? null,
         ...(hasSequentialShotAlternates ? { sequentialShotAlternates } : {}),
       },
       metadataSummary: {
@@ -20812,6 +20845,90 @@ async function ensureRunStages(
   }
 }
 
+/**
+ * Marketplace text-plan review gate (planning/marketplace-storyboard-text-
+ * gate, mandatory for ALL runs, no opt-out). Builds the `image_generation`
+ * stage `blocked_needs_user` upsert input for the hold — mirrors the
+ * established "stop and wait for user" idiom byte-for-byte (see
+ * `persistMarketplaceAutoReviewRecheckRequired`'s `product_preflight`
+ * `blocked_needs_user` upsert above): `output.statusDetail` in the exact
+ * `MarketplaceAutoReviewStatusDetailSchema` shape (state `"awaiting_plan_
+ * review"`, added to `MARKETPLACE_AUTO_REVIEW_DETAIL_STATES` in
+ * `@shared/marketplaceAutoReview/contracts` — required, since `detailFromStage`
+ * safe-parses `statusDetail` against that enum and silently falls back to a
+ * generic state otherwise) plus a `stageCompletionEvidence` with
+ * `status: "user_blocked"` (required — `upsertRunStage` throws for
+ * `blocked_needs_user` without one; see `stageEvidenceStatusForStageStatus`).
+ */
+function marketplaceAutoReviewPlanReviewGateStageUpsertInput(runId: string): {
+  output: Record<string, unknown>;
+  stageCompletionEvidence: StageCompletionEvidenceInput;
+} {
+  return {
+    output: {
+      statusDetail: {
+        state: "awaiting_plan_review",
+        severity: "blocked",
+        stageKey: "image_generation",
+        reasonCodes: ["mandatory_text_plan_review"],
+        safeMessage:
+          "ตรวจและยืนยันสตอรีบอร์ดข้อความก่อน ระบบจึงจะเริ่มสร้างภาพและตัดเครดิต",
+        nextAction:
+          'เปิดหน้าตรวจสตอรีบอร์ดข้อความ อ่าน storyboard/บทพูดให้ครบ แล้วกด "ยืนยัน สร้างภาพ" หรือ "ให้ AI ร่างใหม่"',
+        userActionRequired: true,
+        retryable: true,
+      },
+    },
+    stageCompletionEvidence: {
+      status: "user_blocked",
+      requiredRefs: ["planReviewApproval"],
+      artifactRefs: [`run:${runId}`],
+      policyRefs: ["mandatory-text-plan-review-before-image-spend"],
+      missingRefs: ["planReviewApproval"],
+    },
+  };
+}
+
+export function marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest(
+  runId: string
+): {
+  output: Record<string, unknown>;
+  stageCompletionEvidence: StageCompletionEvidenceInput;
+} {
+  return marketplaceAutoReviewPlanReviewGateStageUpsertInput(runId);
+}
+
+/**
+ * Puts (or keeps) the run's `image_generation` stage in the mandatory
+ * awaiting-plan-review hold. Idempotent across background-advancement ticks
+ * by construction: `advanceMarketplaceAutoReviewRun`'s existing generic
+ * blocked-stage short-circuit (`clearResolvedMarketplaceAutoReviewInputChange
+ * Block` returns `null` for any `statusDetail.state` other than
+ * `"input_change_recheck_required"`) already stops advancement the instant
+ * `run.currentStage === "image_generation"` and this stage row's `status` is
+ * `blocked_needs_user` — so calling this, then setting `run.currentStage` to
+ * `"image_generation"`, is the ENTIRE hold. No new branch needed in
+ * `advanceMarketplaceAutoReviewRun` and — critically — `scheduleImageAttempt`
+ * (and its image credit reservation) is never reached while held.
+ */
+async function holdMarketplaceAutoReviewRunAtImageGeneration(params: {
+  db: Db;
+  runId: string;
+  stages: readonly StageKey[];
+}): Promise<void> {
+  const { output, stageCompletionEvidence } =
+    marketplaceAutoReviewPlanReviewGateStageUpsertInput(params.runId);
+  await upsertRunStage({
+    db: params.db,
+    runId: params.runId,
+    stageKey: "image_generation",
+    stageOrder: stageIndex("image_generation", params.stages),
+    status: "blocked_needs_user",
+    output,
+    stageCompletionEvidence,
+  });
+}
+
 export async function startMarketplaceAutoReviewRun(
   input: {
     productId: string;
@@ -21517,6 +21634,23 @@ export async function startMarketplaceAutoReviewRun(
       policyRefs: ["product-reference-locked", "character-identity-limited"],
     },
   });
+  // Marketplace text-plan review gate (planning/marketplace-storyboard-text-
+  // gate) — MANDATORY for every run, no opt-out. `metadataAfterConceptStory`/
+  // `metadataAfterSequentialPromptPlan` above are scoped to the try block
+  // this authoring ran in, so the latest persisted metadata is re-read here
+  // rather than threading a new outer-scoped variable through that block.
+  const runBeforeGate = await reloadRun(db, runId, auth);
+  const metadataWithPlanReviewHold: RunMetadata = {
+    ...(asRecord(runBeforeGate.metadataJson) as RunMetadata),
+    planReview: {
+      required: true,
+      status: "awaiting",
+      heldAt: nowIso(),
+      redraftCount: 0,
+      lastNotes: null,
+    },
+  };
+  await holdMarketplaceAutoReviewRunAtImageGeneration({ db, runId, stages });
   await updateRun({
     db,
     runId,
@@ -21525,10 +21659,456 @@ export async function startMarketplaceAutoReviewRun(
     stageIndex: stageIndex("image_generation", stages),
     stageCount: stages.length,
     selectedConceptId: plan.conceptId,
+    metadataJson: metadataWithPlanReviewHold,
   });
 
   queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
   return getMarketplaceAutoReviewRun(runId, auth);
+}
+
+/**
+ * Marketplace text-plan review gate — shared precondition for both new
+ * mutations below. Checks BOTH the API-facing `metadata.planReview.status`
+ * AND the authoritative `image_generation` stage row (the one
+ * `advanceMarketplaceAutoReviewRun` actually keys its short-circuit off of)
+ * so a drift between the two fails closed with a clear error instead of
+ * silently doing the wrong thing.
+ */
+async function assertMarketplaceAutoReviewAwaitingPlanReview(
+  db: Db,
+  run: MarketplaceAutoReviewRun
+): Promise<void> {
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const planReviewStatus = cleanText(asRecord(metadata.planReview).status);
+  const [imageGenerationStage] = await db
+    .select()
+    .from(marketplaceAutoReviewStages)
+    .where(
+      and(
+        eq(marketplaceAutoReviewStages.runId, run.id),
+        eq(marketplaceAutoReviewStages.stageKey, "image_generation")
+      )
+    )
+    .limit(1);
+  const gateState = cleanText(
+    asRecord(asRecord(imageGenerationStage?.outputJson).statusDetail).state
+  );
+  if (
+    planReviewStatus !== "awaiting" ||
+    imageGenerationStage?.status !== "blocked_needs_user" ||
+    gateState !== "awaiting_plan_review"
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "รันนี้ไม่ได้อยู่ในสถานะรอตรวจสตอรีบอร์ดข้อความจากเกทนี้ จึงทำรายการนี้ไม่ได้",
+    });
+  }
+}
+
+/**
+ * Marketplace text-plan review gate — "ยืนยัน สร้างภาพ". Releases the
+ * mandatory hold `startMarketplaceAutoReviewRun` (and, on a prior redraft,
+ * `requestMarketplaceAutoReviewPlanRedraft`) put the run into: resets
+ * `image_generation` back to its pristine pre-hold `"queued"` status (the
+ * exact status `ensureRunStages` gives every stage at run creation), so the
+ * existing generic advance loop schedules the FIRST image attempt exactly as
+ * if the run had never held — zero new branches needed in
+ * `advanceMarketplaceAutoReviewRun` or `scheduleImageAttempt`.
+ */
+export async function approveMarketplaceAutoReviewPlanReview(
+  input: { runId: string },
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRun(db, input.runId, auth);
+  await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
+  const stages = stageKeysForMode(
+    run.outputMode as MarketplaceAutoReviewOutputMode
+  );
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const nextMetadata: RunMetadata = {
+    ...metadata,
+    planReview: {
+      ...asRecord(metadata.planReview),
+      required: true,
+      status: "approved",
+      approvedAt: nowIso(),
+    },
+  };
+  await upsertRunStage({
+    db,
+    runId: run.id,
+    stageKey: "image_generation",
+    stageOrder: stageIndex("image_generation", stages),
+    status: "queued",
+    output: {},
+  });
+  await updateRun({
+    db,
+    runId: run.id,
+    metadataJson: nextMetadata,
+    errorMessage: null,
+  });
+  queueMarketplaceAutoReviewAdvance(run.id, auth, runtime, 500);
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
+/**
+ * Marketplace text-plan review gate — "ให้ AI ร่างใหม่". Text cost only: re-
+ * runs concept_story + prompt_plan authoring (verified: prompt_plan cannot
+ * be re-run standalone — for `storyboard_3x3_split`/`video_shot_start_stop`
+ * the reviewed text (storyboardGuide/voiceoverScript/productDetail/shots)
+ * is produced entirely inside concept_story's `buildGatewayCreativeAutoReview
+ * Plan` call, and the sequential-only `runSequentialPromptPlanStage` both
+ * depends on concept_story's `plan` as an input AND is a pure no-op for
+ * every non-sequential run — so redrafting "only prompt_plan" for 3x3 would
+ * redraft nothing), then re-enters the SAME mandatory hold with the fresh
+ * plan. Never touches `image_generation`/`storyboard_review` or any image
+ * credit path.
+ */
+export async function requestMarketplaceAutoReviewPlanRedraft(
+  input: { runId: string; notes?: string | null },
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRun(db, input.runId, auth);
+  await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
+
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const planReview = asRecord(metadata.planReview);
+  const notes = cleanText(input.notes).slice(0, 2000);
+  const tenantId = tenantIdForRun(run, auth);
+  const stages = stageKeysForMode(
+    run.outputMode as MarketplaceAutoReviewOutputMode
+  );
+  const outputMode = run.outputMode as MarketplaceAutoReviewOutputMode;
+  const frameStrategy = run.frameStrategy as MarketplaceAutoReviewFrameStrategy;
+  const audioStrategy = (cleanText(metadata.audioStrategy) ||
+    "auto") as MarketplaceAutoReviewAudioStrategyInput;
+  const resolvedAudioStrategy =
+    metadata.resolvedAudioStrategy as MarketplaceAutoReviewResolvedAudioStrategy;
+  const overlayTextMode = normalizeMarketplaceAutoReviewOverlayTextMode(
+    metadata.overlayTextMode
+  );
+  const speechLanguage = normalizeMarketplaceAutoReviewSpeechLanguage(
+    metadata.speechLanguage
+  );
+  const creativeBrief = cleanText(metadata.creativeBrief) || undefined;
+  const motionDirection = cleanText(metadata.motionDirection) || undefined;
+  const characterPresenceMode = normalizeMarketplaceAutoReviewCharacterPresenceMode(
+    metadata.characterPresenceMode
+  );
+  const referenceAnchors = asRecord(
+    metadata.referenceAnchors
+  ) as ResolvedMarketplaceAutoReviewReferenceAnchors;
+  const requestedShotCount = normalizeMarketplaceAutoReviewShotCount(
+    metadata.requestedShotCount
+  );
+
+  const bundle = await getMarketplaceProductWithAccess(run.productId, auth);
+  const insights = await loadSupportingInsights(db, bundle, auth);
+  const noveltyMemory = await loadMarketplaceAutoReviewNoveltyMemory({
+    db,
+    tenantId,
+    auth,
+    productId: run.productId,
+  });
+  const baseFallbackPlan = buildAutoReviewProductTruthScaffold(
+    bundle,
+    requestedShotCount
+  );
+  const fallbackPlan = withMarketplaceAutoReviewReferenceAnchors(
+    baseFallbackPlan,
+    referenceAnchors
+  );
+  const preflightMetadata = buildFeature117ContractMetadata({
+    runId: run.id,
+    tenantId,
+    auth,
+    bundle,
+    insights,
+    plan: fallbackPlan,
+    outputMode,
+    frameStrategy,
+    audioStrategy,
+    resolvedAudioStrategy,
+    overlayTextMode,
+    referenceAnchors,
+    noveltyMemory,
+    externalOperationalRecoveryEvidence:
+      runtime.externalOperationalRecoveryEvidence,
+  });
+
+  let creativePlan = await buildGatewayCreativeAutoReviewPlan({
+    db,
+    tenantId,
+    auth,
+    run,
+    runId: run.id,
+    productionRunId: run.productionRunId,
+    bundle,
+    insights,
+    outputMode,
+    frameStrategy,
+    audioStrategy,
+    resolvedAudioStrategy,
+    overlayTextMode,
+    speechLanguage,
+    fallbackPlan,
+    preflightMetadata,
+    referenceAnchors,
+    noveltyMemory,
+    motionDirection,
+    creativeBrief,
+    characterPresenceMode,
+    redraftNotes: notes || undefined,
+  });
+  let plan = creativePlan.plan;
+  const voiceoverRewrite = await rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(
+    {
+      tenantId,
+      auth,
+      runId: run.id,
+      productionRunId: run.productionRunId,
+      plan,
+      outputMode,
+      frameStrategy,
+      resolvedAudioStrategy,
+      referenceAnchors,
+      speechLanguage,
+    }
+  );
+  plan = voiceoverRewrite.plan;
+  creativePlan = {
+    plan,
+    metadata: {
+      ...creativePlan.metadata,
+      voiceoverSkillRewrite: voiceoverRewrite.metadata,
+    },
+  };
+
+  const feature117Metadata = buildFeature117ContractMetadata({
+    runId: run.id,
+    tenantId,
+    auth,
+    bundle,
+    insights,
+    plan,
+    outputMode,
+    frameStrategy,
+    audioStrategy,
+    resolvedAudioStrategy,
+    overlayTextMode,
+    referenceAnchors,
+    noveltyMemory: asRecord(creativePlan.metadata.noveltyMemory),
+    externalOperationalRecoveryEvidence:
+      runtime.externalOperationalRecoveryEvidence,
+  });
+
+  const redraftCount = (toNumber(planReview.redraftCount) || 0) + 1;
+  const previousLlmQaCreditTransactions = Array.isArray(
+    metadata.llmQaCreditTransactions
+  )
+    ? metadata.llmQaCreditTransactions
+    : [];
+  const newLlmQaCreditTransactions =
+    toNumber(creativePlan.metadata.reservedCredits) ||
+    toNumber(creativePlan.metadata.refundCredits) ||
+    toNumber(creativePlan.metadata.actualCredits)
+      ? [
+          {
+            stageKey: "concept_story",
+            creditsUsed: toNumber(creativePlan.metadata.creditsUsed),
+            reservedCredits: toNumber(creativePlan.metadata.reservedCredits),
+            actualCredits: toNumber(creativePlan.metadata.actualCredits),
+            refundCredits: toNumber(creativePlan.metadata.refundCredits),
+            creditTransactionId: creativePlan.metadata.creditTransactionId,
+            creditReservationIdempotencyKey:
+              creativePlan.metadata.creditReservationIdempotencyKey,
+            refundTransactionId: creativePlan.metadata.refundTransactionId,
+            creditCategory: "agents_sdk_creative_planning_gateway",
+            model: creativePlan.metadata.model,
+            provider: creativePlan.metadata.provider,
+            createdAt: creativePlan.metadata.generatedAt,
+            redraftCount,
+          },
+        ]
+      : [];
+
+  const metadataAfterConceptStory: RunMetadata = withUpdatedCreditSummary({
+    ...metadata,
+    ...feature117Metadata,
+    concept: plan,
+    creativePlanning: creativePlan.metadata,
+    llmQaCreditTransactions: [
+      ...previousLlmQaCreditTransactions,
+      ...newLlmQaCreditTransactions,
+    ],
+    planReview: {
+      required: true,
+      status: "awaiting",
+      heldAt: nowIso(),
+      redraftCount,
+      lastNotes: notes || null,
+    },
+  });
+  await updateRun({
+    db,
+    runId: run.id,
+    selectedConceptId: plan.conceptId,
+    metadataJson: metadataAfterConceptStory,
+  });
+
+  // Sequential-only per-shot re-authoring (Feature 136 section 05 §5.0).
+  // `runSequentialPromptPlanStage`'s own idempotence guard treats an
+  // already-`finalQc`'d full pack as "a completed pack must never re-pay"
+  // and no-ops — so the existing pack is cleared here first, which is
+  // exactly the redraft's intent. The notes are folded into `userInputs.
+  // userRequirements`, the SAME free-text field the sequential skill runner
+  // already reads into its prompt (`productReviewSequentialStoryboardSkill
+  // Runner.ts`, `user_requirements:` line) — no new plumbing needed for the
+  // sequential path. A no-op for every non-sequential run (step 1 gate).
+  const existingSequential = asRecord(
+    metadataAfterConceptStory.sequentialStoryboard
+  );
+  const existingSequentialUserInputs = asRecord(existingSequential.userInputs);
+  const metadataForSequentialRedraft: RunMetadata =
+    frameStrategy === "sequential_shot_storyboard"
+      ? {
+          ...metadataAfterConceptStory,
+          sequentialStoryboard: {
+            ...existingSequential,
+            shots: undefined,
+            finalQc: undefined,
+            loopReport: undefined,
+            userInputs: {
+              ...existingSequentialUserInputs,
+              userRequirements:
+                [
+                  cleanText(existingSequentialUserInputs.userRequirements),
+                  notes,
+                ]
+                  .filter(Boolean)
+                  .join("\n\n") || undefined,
+            },
+          },
+        }
+      : metadataAfterConceptStory;
+  const metadataAfterSequentialPromptPlan = await runSequentialPromptPlanStage({
+    run,
+    metadata: metadataForSequentialRedraft,
+    plan,
+    auth,
+    runtime,
+  });
+  if (metadataAfterSequentialPromptPlan !== metadataForSequentialRedraft) {
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: metadataAfterSequentialPromptPlan,
+    });
+  } else if (metadataForSequentialRedraft !== metadataAfterConceptStory) {
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: metadataForSequentialRedraft,
+    });
+  }
+
+  await upsertRunStage({
+    db,
+    runId: run.id,
+    stageKey: "concept_story",
+    stageOrder: stageIndex("concept_story", stages),
+    status: "completed",
+    output: {
+      conceptId: plan.conceptId,
+      storyboardGuide: plan.storyboardGuide,
+      voiceoverScript: plan.voiceoverScript,
+      creativePlanning: creativePlan.metadata,
+      redraftCount,
+    },
+    stageCompletionEvidence: {
+      requiredRefs: [
+        "creativeBriefSnapshot",
+        "capabilityManifest",
+        "creativePlan",
+        "llmPlanningCredit",
+        "evidenceInstructionFirewall",
+      ],
+      artifactRefs: [`concept:${plan.conceptId}`, `brief:${run.id}`],
+      qaVerdictRefs: [`creative-plan-verdict:${run.id}:redraft:${redraftCount}`],
+      creditRefs: creativePlan.metadata.creditsUsed
+        ? [`llm-credit:${run.id}:concept_story:redraft:${redraftCount}`]
+        : [],
+      lineageRefs: [`lineage:${run.id}:product`],
+      policyRefs: ["ad-policy:th-global:v1", "gateway-only-llm-runtime"],
+    },
+  });
+  await upsertRunStage({
+    db,
+    runId: run.id,
+    stageKey: "prompt_plan",
+    stageOrder: stageIndex("prompt_plan", stages),
+    status: "completed",
+    output: {
+      frameStrategy,
+      shotCount: plan.shots.length,
+      audioStrategy,
+      resolvedAudioStrategy,
+      redraftCount,
+    },
+    stageCompletionEvidence: {
+      requiredRefs: [
+        "storyboardContract",
+        "shotMediaPayloads",
+        "productReferenceAssetPack",
+        "characterIdentityAssetPack",
+        "visualWarningPlan",
+      ],
+      artifactRefs: [
+        `storyboard:${plan.conceptId}`,
+        `shot-payloads:${run.id}`,
+      ],
+      qaVerdictRefs: [`prompt-plan-verdict:${run.id}:redraft:${redraftCount}`],
+      lineageRefs: [`lineage:${run.id}:product`],
+      policyRefs: ["product-reference-locked", "character-identity-limited"],
+    },
+  });
+
+  // Re-enter the SAME mandatory hold with the fresh plan — never touches
+  // image_generation's stage row beyond re-arming the hold, and never
+  // reserves an image credit.
+  await holdMarketplaceAutoReviewRunAtImageGeneration({
+    db,
+    runId: run.id,
+    stages,
+  });
+  await updateRun({
+    db,
+    runId: run.id,
+    status: "running",
+    currentStage: "image_generation",
+    stageIndex: stageIndex("image_generation", stages),
+    stageCount: stages.length,
+    selectedConceptId: plan.conceptId,
+    errorMessage: null,
+  });
+
+  return getMarketplaceAutoReviewRun(run.id, auth);
 }
 
 async function markRunFailed(

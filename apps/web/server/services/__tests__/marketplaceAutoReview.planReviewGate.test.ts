@@ -1,0 +1,550 @@
+/**
+ * Marketplace text-plan review gate (planning/marketplace-storyboard-text-
+ * gate) — MANDATORY for every Auto Review run, no opt-out. After
+ * `prompt_plan` completes and BEFORE `image_generation` reserves any image
+ * credit, the run holds in `awaiting_plan_review` until the user approves
+ * the text plan or requests an AI redraft.
+ *
+ * Covers:
+ *  - `marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest` — the pure
+ *    stage-upsert-input builder (exact `statusDetail`/`stageCompletionEvidence`
+ *    shape the frontend + `advanceMarketplaceAutoReviewRun` both key off of).
+ *  - `redraftNotesDirectiveForTest` — the "ให้ AI ร่างใหม่" notes directive.
+ *  - `advanceMarketplaceAutoReviewRun` (real, unmocked, DB-backed) — repeated
+ *    advancement ticks on a held run never advance past the gate and never
+ *    write anything (proves (a)/(b): zero-credit + idempotent-across-ticks
+ *    by construction, reusing the EXISTING generic blocked-stage short-
+ *    circuit with zero new branches there).
+ *  - `approveMarketplaceAutoReviewPlanReview` — releases the hold (DB-backed).
+ *  - `requestMarketplaceAutoReviewPlanRedraft` — precondition guard (DB-
+ *    backed; the full LLM re-authoring path is intentionally NOT exercised
+ *    with a live/mocked gateway here — see the file-level convention note in
+ *    marketplaceAutoReview.evidenceGuard.test.ts, "service tests exercise
+ *    exported ...ForTest helpers (no DB, pure fixtures)"; the concept_story/
+ *    prompt_plan re-authoring call chain (`runMarketplaceMediaProductionAgent`)
+ *    is a same-file private function, not mockable via `vi.mock`, exactly
+ *    like `startMarketplaceAutoReviewRun`'s own concept-authoring path, which
+ *    no existing test in this file exercises end-to-end either).
+ *  - Structural wiring proof (grep-guard, mirrors
+ *    marketplaceAutoReview.sequentialGate.test.ts's own technique) that both
+ *    `startMarketplaceAutoReviewRun` and `requestMarketplaceAutoReviewPlanRedraft`
+ *    call the shared hold helper, and that `advanceMarketplaceAutoReviewRun`
+ *    itself is untouched (still the same generic blocked-stage short-circuit
+ *    the gate rides on).
+ */
+import fs from "fs";
+import path from "path";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+vi.mock("../../db", () => ({ getDb: vi.fn() }));
+
+import { getDb } from "../../db";
+import {
+  marketplaceAutoReviewRuns,
+  marketplaceAutoReviewStages,
+} from "../../../drizzle/schema";
+import {
+  advanceMarketplaceAutoReviewRun,
+  approveMarketplaceAutoReviewPlanReview,
+  marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest,
+  redraftNotesDirectiveForTest,
+  requestMarketplaceAutoReviewPlanRedraft,
+} from "../marketplaceAutoReviewService";
+
+const mockGetDb = vi.mocked(getDb);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+/* -------------------------------------------------------------------------- */
+/* Fixtures (copied locally, not shared with sibling test files — matches     */
+/* this service's own section-08 test convention)                            */
+/* -------------------------------------------------------------------------- */
+
+function baseRunFixture(overrides: Record<string, unknown> = {}): any {
+  return {
+    id: "mar_1",
+    tenantId: "tenant_1",
+    userId: 7,
+    productId: "mp_1",
+    productionRunId: "prod_1",
+    outputMode: "storyboard_images",
+    frameStrategy: "storyboard_3x3_split",
+    status: "running",
+    currentStage: "image_generation",
+    stageIndex: 5,
+    stageCount: 6,
+    selectedConceptId: "concept-1",
+    storyboardReviewId: null,
+    videoEditorProjectId: null,
+    renderJobId: null,
+    resultLibraryItemId: null,
+    resultJson: {},
+    metadataJson: {},
+    errorMessage: null,
+    idempotencyKey: "marketplace-auto-review:test",
+    createdAt: new Date("2026-07-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+    completedAt: null,
+    ...overrides,
+  };
+}
+
+/** The `image_generation` stage row while the gate is holding — exactly what
+ *  `holdMarketplaceAutoReviewRunAtImageGeneration` persists. */
+function awaitingPlanReviewStageFixture(
+  overrides: Record<string, unknown> = {}
+): any {
+  const { output, stageCompletionEvidence } =
+    marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest("mar_1");
+  return {
+    id: 1,
+    runId: "mar_1",
+    stageKey: "image_generation",
+    stageOrder: 5,
+    status: "blocked_needs_user",
+    providerTaskIdsJson: [],
+    outputJson: {
+      ...output,
+      completionEvidenceId: `stage-evidence:mar_1:image_generation:test`,
+      completionEvidence: { ...stageCompletionEvidence, evidenceId: "x" },
+    },
+    errorMessage: null,
+    startedAt: null,
+    completedAt: null,
+    createdAt: new Date("2026-07-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+    ...overrides,
+  };
+}
+
+function awaitingPlanReviewMetadataFixture(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    concept: { conceptId: "concept-1", shots: [] },
+    planReview: {
+      required: true,
+      status: "awaiting",
+      heldAt: "2026-07-23T00:00:00.000Z",
+      redraftCount: 0,
+      lastNotes: null,
+    },
+    ...overrides,
+  };
+}
+
+/** Mock covering the query shapes this gate's code paths issue:
+ *  `.where().limit()` on the runs table (reloadRun), `.where().limit()` on
+ *  the stages table (the gate's own `image_generation` row lookup AND
+ *  `advanceMarketplaceAutoReviewRun`'s blocked-stage lookup — both are
+ *  single-row `.limit()` queries), `.where().orderBy()` on the stages table
+ *  (the full stage list — `getMarketplaceAutoReviewRun`'s trailing re-fetch),
+ *  `update().set()` on the runs table, and `insert().values().onConflictDo
+ *  Update()` on the stages table (`upsertRunStage`). `update`/`onConflictDo
+ *  Update` mutate `params.run`/`params.imageGenerationStage` in place so a
+ *  later `.select()` in the SAME test observes the write (same technique as
+ *  marketplaceAutoReview.sequentialShotAlternates.test.ts's `buildDbMock`). */
+function buildDbMock(params: {
+  run: Record<string, unknown>;
+  imageGenerationStage?: Record<string, unknown> | null;
+  stages?: Record<string, unknown>[];
+  updateRunSpy?: (setObj: Record<string, unknown>) => void;
+  upsertStageSpy?: (input: {
+    values: Record<string, unknown>;
+    set: Record<string, unknown>;
+  }) => void;
+}) {
+  return {
+    select: (_cols?: unknown) => ({
+      from: (table: unknown) => ({
+        where: (..._args: unknown[]) => ({
+          limit: async () => {
+            if (table === marketplaceAutoReviewRuns) return [params.run];
+            if (table === marketplaceAutoReviewStages) {
+              return params.imageGenerationStage
+                ? [params.imageGenerationStage]
+                : [];
+            }
+            return [];
+          },
+          orderBy: async () => {
+            if (table === marketplaceAutoReviewStages)
+              return params.stages ?? [];
+            return [];
+          },
+        }),
+      }),
+    }),
+    update: (table: unknown) => ({
+      set: (setObj: Record<string, unknown>) => {
+        if (table === marketplaceAutoReviewRuns) {
+          params.updateRunSpy?.(setObj);
+          params.run = { ...params.run, ...setObj };
+        }
+        return { where: () => ({ returning: async () => [params.run] }) };
+      },
+    }),
+    insert: (table: unknown) => ({
+      values: (values: Record<string, unknown>) => ({
+        onConflictDoUpdate: async (opts: { set: Record<string, unknown> }) => {
+          params.upsertStageSpy?.({ values, set: opts.set });
+          if (table === marketplaceAutoReviewStages) {
+            params.imageGenerationStage = {
+              ...(params.imageGenerationStage ?? {}),
+              ...values,
+              ...opts.set,
+            };
+          }
+          return undefined;
+        },
+      }),
+    }),
+  } as any;
+}
+
+const AUTH = { userId: 7, tenantId: "tenant_1" };
+
+/* -------------------------------------------------------------------------- */
+/* marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest — pure          */
+/* -------------------------------------------------------------------------- */
+
+describe("marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest", () => {
+  it("returns the exact statusDetail shape the frontend and advanceMarketplaceAutoReviewRun key off of", () => {
+    const { output, stageCompletionEvidence } =
+      marketplaceAutoReviewPlanReviewGateStageUpsertInputForTest("mar_42");
+    expect(output.statusDetail).toEqual({
+      state: "awaiting_plan_review",
+      severity: "blocked",
+      stageKey: "image_generation",
+      reasonCodes: ["mandatory_text_plan_review"],
+      safeMessage:
+        "ตรวจและยืนยันสตอรีบอร์ดข้อความก่อน ระบบจึงจะเริ่มสร้างภาพและตัดเครดิต",
+      nextAction:
+        'เปิดหน้าตรวจสตอรีบอร์ดข้อความ อ่าน storyboard/บทพูดให้ครบ แล้วกด "ยืนยัน สร้างภาพ" หรือ "ให้ AI ร่างใหม่"',
+      userActionRequired: true,
+      retryable: true,
+    });
+    expect(stageCompletionEvidence.status).toBe("user_blocked");
+    expect(stageCompletionEvidence.artifactRefs).toEqual(["run:mar_42"]);
+  });
+});
+
+describe("redraftNotesDirectiveForTest", () => {
+  it("returns '' for empty/whitespace/undefined notes (no-op for an ordinary first pass)", () => {
+    expect(redraftNotesDirectiveForTest(undefined)).toBe("");
+    expect(redraftNotesDirectiveForTest(null)).toBe("");
+    expect(redraftNotesDirectiveForTest("   ")).toBe("");
+  });
+
+  it("wraps real notes as a high-priority correction directive", () => {
+    const directive = redraftNotesDirectiveForTest(
+      "วัสดุเป็นพลาสติก ไม่ใช่ผ้า"
+    );
+    expect(directive).toContain("USER REDRAFT CORRECTION NOTES");
+    expect(directive).toContain("วัสดุเป็นพลาสติก ไม่ใช่ผ้า");
+    expect(directive).toContain("HIGHEST-PRIORITY correction");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* advanceMarketplaceAutoReviewRun — the hold, exercised for real             */
+/* -------------------------------------------------------------------------- */
+
+describe("advanceMarketplaceAutoReviewRun while awaiting_plan_review", () => {
+  it("does not advance, and performs zero writes (no image credit reservation reached)", async () => {
+    const run = baseRunFixture({
+      metadataJson: awaitingPlanReviewMetadataFixture(),
+    });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    const result = await advanceMarketplaceAutoReviewRun("mar_1", AUTH);
+
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+    expect((result as any).status).toBe("running");
+    expect((result as any).currentStage).toBe("image_generation");
+  });
+
+  it("repeated advancement ticks stay held every time (idempotent) and never write", async () => {
+    const run = baseRunFixture({
+      metadataJson: awaitingPlanReviewMetadataFixture(),
+    });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    for (let tick = 0; tick < 5; tick += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await advanceMarketplaceAutoReviewRun("mar_1", AUTH);
+    }
+
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* approveMarketplaceAutoReviewPlanReview                                     */
+/* -------------------------------------------------------------------------- */
+
+describe("approveMarketplaceAutoReviewPlanReview", () => {
+  it("releases the hold: resets image_generation to queued and marks planReview approved, with a single lean metadata write", async () => {
+    const run = baseRunFixture({
+      metadataJson: awaitingPlanReviewMetadataFixture(),
+    });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    const result = await approveMarketplaceAutoReviewPlanReview(
+      { runId: "mar_1" },
+      AUTH
+    );
+
+    expect(upsertStageSpy).toHaveBeenCalledTimes(1);
+    const [{ set: stageSet }] = upsertStageSpy.mock.calls[0] as [
+      { values: Record<string, any>; set: Record<string, any> },
+    ];
+    expect(stageSet.status).toBe("queued");
+    // Zero extra credit cost: releasing the hold must not stamp any credit
+    // or provider-task field onto the stage row.
+    expect(stageSet.outputJson).toEqual({});
+
+    expect(updateRunSpy).toHaveBeenCalledTimes(1);
+    const [runSet] = updateRunSpy.mock.calls[0] as [Record<string, any>];
+    expect(Object.keys(runSet).sort()).toEqual(
+      ["errorMessage", "metadataJson", "updatedAt"].sort()
+    );
+    expect(runSet.metadataJson.planReview).toMatchObject({
+      required: true,
+      status: "approved",
+    });
+    expect(runSet.metadataJson.planReview.approvedAt).toEqual(
+      expect.any(String)
+    );
+
+    expect((result as any).metadataJson.planReview.status).toBe("approved");
+  });
+
+  it("throws BAD_REQUEST and performs zero writes when the run is not awaiting review", async () => {
+    const run = baseRunFixture({
+      metadataJson: { planReview: { required: true, status: "approved" } },
+    });
+    const completedImageGenerationStage = awaitingPlanReviewStageFixture({
+      status: "completed",
+      outputJson: { statusDetail: { state: "completed" } },
+    });
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage: completedImageGenerationStage,
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_1" }, AUTH)
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST when metadata.planReview says awaiting but the stage row disagrees (drift fails closed)", async () => {
+    const run = baseRunFixture({
+      metadataJson: awaitingPlanReviewMetadataFixture(),
+    });
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage: null,
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_1" }, AUTH)
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws NOT_FOUND when the run does not belong to this user/tenant; no write happens", async () => {
+    const updateRunSpy = vi.fn();
+    mockGetDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [], orderBy: async () => [] }),
+        }),
+      }),
+      update: () => ({
+        set: (setObj: Record<string, unknown>) => {
+          updateRunSpy(setObj);
+          return { where: () => ({ returning: async () => [] }) };
+        },
+      }),
+    } as any);
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_missing" }, AUTH)
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* requestMarketplaceAutoReviewPlanRedraft — precondition guard               */
+/* -------------------------------------------------------------------------- */
+
+describe("requestMarketplaceAutoReviewPlanRedraft precondition guard", () => {
+  it("throws BAD_REQUEST and re-authors nothing when the run is not awaiting review (zero image AND zero text-authoring writes)", async () => {
+    const run = baseRunFixture({
+      metadataJson: { planReview: { required: true, status: "approved" } },
+    });
+    const completedImageGenerationStage = awaitingPlanReviewStageFixture({
+      status: "completed",
+      outputJson: { statusDetail: { state: "completed" } },
+    });
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage: completedImageGenerationStage,
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      requestMarketplaceAutoReviewPlanRedraft(
+        { runId: "mar_1", notes: "ผิด" },
+        AUTH
+      )
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws NOT_FOUND when the run does not belong to this user/tenant; no write happens", async () => {
+    mockGetDb.mockResolvedValue({
+      select: () => ({
+        from: () => ({
+          where: () => ({ limit: async () => [], orderBy: async () => [] }),
+        }),
+      }),
+      update: () => ({
+        set: () => ({ where: () => ({ returning: async () => [] }) }),
+      }),
+    } as any);
+
+    await expect(
+      requestMarketplaceAutoReviewPlanRedraft({ runId: "mar_missing" }, AUTH)
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Structural wiring proof (grep-guard — mirrors                              */
+/* marketplaceAutoReview.sequentialGate.test.ts's own technique)              */
+/* -------------------------------------------------------------------------- */
+
+describe("Marketplace text-plan review gate — wiring grep-guard", () => {
+  function extractFunctionBody(content: string, signature: RegExp): string {
+    const match = signature.exec(content);
+    expect(match, `signature ${signature} not found`).not.toBeNull();
+    const startIndex = match!.index;
+    const rest = content.slice(startIndex + match![0].length);
+    const nextTopLevel =
+      /\n(?:export\s+)?(?:async\s+)?function\s+\w+|\nexport\s+(?:const|class|interface|type)\s+\w+/.exec(
+        rest
+      );
+    const endIndex = nextTopLevel
+      ? startIndex + match![0].length + nextTopLevel.index
+      : content.length;
+    return content.slice(startIndex, endIndex);
+  }
+
+  const filePath = path.resolve(
+    import.meta.dirname,
+    "../marketplaceAutoReviewService.ts"
+  );
+  const content = fs.readFileSync(filePath, "utf-8");
+
+  it("startMarketplaceAutoReviewRun holds the run at the gate before handing off to image_generation", () => {
+    const body = extractFunctionBody(
+      content,
+      /export async function startMarketplaceAutoReviewRun\(/
+    );
+    expect(body).toContain("holdMarketplaceAutoReviewRunAtImageGeneration(");
+    // The hold must be written (via the SAME updateRun call) alongside the
+    // currentStage transition to image_generation, not before concept_story/
+    // prompt_plan are marked completed.
+    const holdIndex = body.indexOf(
+      "holdMarketplaceAutoReviewRunAtImageGeneration("
+    );
+    const promptPlanIndex = body.indexOf('stageKey: "prompt_plan"');
+    expect(promptPlanIndex).toBeGreaterThan(-1);
+    expect(holdIndex).toBeGreaterThan(promptPlanIndex);
+  });
+
+  it("requestMarketplaceAutoReviewPlanRedraft re-authors concept_story + prompt_plan and re-enters the same hold", () => {
+    const body = extractFunctionBody(
+      content,
+      /export async function requestMarketplaceAutoReviewPlanRedraft\(/
+    );
+    expect(body).toContain("buildGatewayCreativeAutoReviewPlan(");
+    expect(body).toContain("rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(");
+    expect(body).toContain("runSequentialPromptPlanStage(");
+    expect(body).toContain("holdMarketplaceAutoReviewRunAtImageGeneration(");
+    expect(body).toContain("redraftNotes:");
+    // Never touches image_generation credit scheduling.
+    expect(body).not.toContain("scheduleImageAttempt(");
+  });
+
+  it("advanceMarketplaceAutoReviewRun is untouched: still the same generic blocked-stage short-circuit the gate rides on, with zero new branches for awaiting_plan_review", () => {
+    const body = extractFunctionBody(
+      content,
+      /export async function advanceMarketplaceAutoReviewRun\(/
+    );
+    expect(body).toContain("clearResolvedMarketplaceAutoReviewInputChangeBlock(");
+    expect(body).not.toContain("awaiting_plan_review");
+    expect(body).not.toContain("planReview");
+  });
+});

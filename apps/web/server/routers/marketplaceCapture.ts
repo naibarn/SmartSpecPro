@@ -33,11 +33,13 @@ import {
 } from "../services/marketplaceProductService";
 import {
   advanceMarketplaceAutoReviewRun,
+  approveMarketplaceAutoReviewPlanReview,
   cancelMarketplaceAutoReviewRun,
   getMarketplaceAutoReviewRun,
   listMarketplaceAutoReviewRuns,
   queueMarketplaceAutoReviewAdvance,
   regenerateMarketplaceAutoReviewSequentialShot,
+  requestMarketplaceAutoReviewPlanRedraft,
   saveMarketplaceAutoReviewSequentialShotOverride,
   selectMarketplaceAutoReviewImageAttemptForStoryboardReview,
   selectMarketplaceAutoReviewSequentialShotAlternate,
@@ -1309,6 +1311,46 @@ export const marketplaceCaptureRouter = router({
     .mutation(async ({ input, ctx }) =>
       cancelMarketplaceAutoReviewRun(
         input.runId,
+        authFromCtx(ctx),
+        autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
+
+  // Marketplace text-plan review gate (planning/marketplace-storyboard-text-
+  // gate) — "ยืนยัน สร้างภาพ". Releases the mandatory awaiting_plan_review
+  // hold and lets the existing background advance loop schedule the first
+  // image attempt. Same ownership/tenant guard as the neighbouring
+  // regenerate/save/select procedures above (via `reloadRun` inside the
+  // service function); the media `userToken` is required to actually submit
+  // once released, so runtime is threaded through like `advanceAutoReviewRun`.
+  approveAutoReviewPlanReview: protectedProcedure
+    .input(z.object({ runId: z.string().min(1).max(64) }))
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      approveMarketplaceAutoReviewPlanReview(
+        input,
+        authFromCtx(ctx),
+        autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
+
+  // Marketplace text-plan review gate — "ให้ AI ร่างใหม่". Text cost only:
+  // re-authors concept_story + prompt_plan (see
+  // `requestMarketplaceAutoReviewPlanRedraft` for why prompt_plan cannot be
+  // re-run standalone), folds `notes` in as correction guidance, then
+  // re-enters the same hold with the fresh plan. Never touches
+  // image_generation or image credits.
+  requestAutoReviewPlanRedraft: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        notes: z.string().trim().max(2000).optional(),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      requestMarketplaceAutoReviewPlanRedraft(
+        input,
         authFromCtx(ctx),
         autoReviewRuntimeFromCtx(ctx)
       )
