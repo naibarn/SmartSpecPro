@@ -73,6 +73,14 @@ import {
 // the picker/meter/evidence-review/guardian-notice UI on top of it.
 import { SequentialProductAngleChips } from "@/components/marketplaceCapture/SequentialProductAngleChips";
 import { SequentialEvidenceReviewPanel } from "@/components/marketplaceCapture/SequentialEvidenceReviewPanel";
+// Marketplace mandatory text-plan review gate (2026-07-23,
+// planning/marketplace-storyboard-text-gate, commit f997ba1a9) — every Auto
+// Review run holds after the text plan is authored and before any image
+// credit is spent, until the user approves or asks for a redraft.
+import {
+  AutoReviewPlanReviewPanel,
+  buildAutoReviewPlanReviewPlanData,
+} from "@/components/marketplaceCapture/AutoReviewPlanReviewPanel";
 import {
   buildSequentialAngleSelectionEntries,
   isSequentialEvidenceOnlyAngleLabel,
@@ -3325,6 +3333,53 @@ export default function MarketplaceCaptureProductDetail() {
       },
       onError: error => toast.error(error.message),
     });
+  // Marketplace mandatory text-plan review gate (2026-07-23,
+  // planning/marketplace-storyboard-text-gate) — "ยืนยัน สร้างภาพ" / "ให้ AI
+  // ร่างใหม่". Both mutations return the SAME full (`includeHeavyMetadata`)
+  // run shape as `getAutoReviewRun`, so a successful redraft can seed that
+  // query's cache directly (instant fresh plan text, no extra round trip)
+  // while `autoReviewRuns.refetch()` keeps the polled summary list (which is
+  // what the gate/close detection reads) in sync — mirrors
+  // `cancelAutoReviewMutation`/`advanceAutoReviewMutation` above (toast on
+  // error is this page's existing convention for these single-run lifecycle
+  // actions); an inline error string is also kept for the panel itself since
+  // this is a credit-gating action worth more than an auto-dismissing toast.
+  const [autoReviewPlanReviewApproveError, setAutoReviewPlanReviewApproveError] =
+    useState<string | null>(null);
+  const [autoReviewPlanReviewRedraftError, setAutoReviewPlanReviewRedraftError] =
+    useState<string | null>(null);
+  const approveAutoReviewPlanReviewMutation =
+    trpc.marketplaceCapture.approveAutoReviewPlanReview.useMutation({
+      onSuccess: async () => {
+        setAutoReviewPlanReviewApproveError(null);
+        await autoReviewRuns.refetch();
+      },
+      onError: error => {
+        setAutoReviewPlanReviewApproveError(error.message);
+        toast.error(error.message);
+      },
+    });
+  const requestAutoReviewPlanRedraftMutation =
+    trpc.marketplaceCapture.requestAutoReviewPlanRedraft.useMutation({
+      onSuccess: async result => {
+        setAutoReviewPlanReviewRedraftError(null);
+        const freshRunId = compactText(
+          (result as Record<string, unknown> | undefined)?.id
+        );
+        if (freshRunId) {
+          utils.marketplaceCapture.getAutoReviewRun.setData(
+            { runId: freshRunId },
+            result
+          );
+        }
+        await autoReviewRuns.refetch();
+        toast.success("ร่างสตอรีบอร์ดข้อความใหม่แล้ว");
+      },
+      onError: error => {
+        setAutoReviewPlanReviewRedraftError(error.message);
+        toast.error(error.message);
+      },
+    });
 
   const item = (productItem ?? {}) as Record<string, unknown>;
   const itemDescription = asRecord(item.descriptionJson);
@@ -3519,6 +3574,57 @@ export default function MarketplaceCaptureProductDetail() {
     !showAutoReviewHistory &&
     visibleAutoReviewRunItems.length === 0;
   const statusAutoReviewRun = activeAutoReviewRun ?? latestVisibleAutoReviewRun;
+  // Marketplace mandatory text-plan review gate — the run currently held for
+  // text-plan review, gated on (1) the SUMMARY metadata's own `planReview`
+  // flag (present even in the trimmed `listAutoReviewRuns` payload — see
+  // `serializeRun`'s `includeHeavyMetadata: false` branch), (2) the run
+  // itself still being non-terminal, and (3) `currentStage` actually being
+  // the held `image_generation` stage — defense in depth against a stale
+  // `planReview.status: "awaiting"` surviving on an otherwise-terminal run
+  // (`cancelMarketplaceAutoReviewRun` never clears `planReview`). The
+  // server's own `assertMarketplaceAutoReviewAwaitingPlanReview` remains the
+  // real fail-closed guard either way — this only controls what the client
+  // shows.
+  const statusAutoReviewRunPlanReview = asRecord(
+    asRecord(statusAutoReviewRun?.metadataJson).planReview
+  );
+  const isStatusAutoReviewRunAwaitingPlanReview =
+    Boolean(statusAutoReviewRun) &&
+    isAutoReviewRunBlockingStart(statusAutoReviewRun) &&
+    compactText(statusAutoReviewRun?.currentStage) === "image_generation" &&
+    statusAutoReviewRunPlanReview.required === true &&
+    statusAutoReviewRunPlanReview.status === "awaiting";
+  // Heavy metadata (`concept.storyboardGuide`/`voiceoverScript`/
+  // `productDetail`, `sequentialStoryboard.shots`) is NOT in the polled
+  // `listAutoReviewRuns` summary payload (`summary: true` →
+  // `includeHeavyMetadata: false`) — only fetched here, for the ONE run
+  // currently held, while it is held.
+  const planReviewRunId = isStatusAutoReviewRunAwaitingPlanReview
+    ? compactText(statusAutoReviewRun?.id)
+    : "";
+  const planReviewRunQuery = trpc.marketplaceCapture.getAutoReviewRun.useQuery(
+    { runId: planReviewRunId },
+    {
+      enabled: Boolean(planReviewRunId),
+      staleTime: 0,
+      refetchOnWindowFocus: true,
+    }
+  );
+  const planReviewPlanData = useMemo(() => {
+    const heavyRun = planReviewRunQuery.data as
+      | Record<string, unknown>
+      | undefined;
+    if (!heavyRun || compactText(heavyRun.id) !== planReviewRunId) return null;
+    return buildAutoReviewPlanReviewPlanData(
+      heavyRun.metadataJson,
+      heavyRun.frameStrategy,
+      heavyRun.outputMode
+    );
+  }, [planReviewRunQuery.data, planReviewRunId]);
+  const planReviewLoadErrorMessage = planReviewRunQuery.error
+    ? ((planReviewRunQuery.error as { message?: string })?.message ??
+      "โหลดแผนข้อความไม่สำเร็จ")
+    : null;
   const statusTimelineItems = statusAutoReviewRun
     ? getAutoReviewTimelineItems(statusAutoReviewRun)
     : [];
@@ -7335,6 +7441,35 @@ export default function MarketplaceCaptureProductDetail() {
                       </div>
                     </div>
                   </div>
+                ) : null}
+                {isStatusAutoReviewRunAwaitingPlanReview ? (
+                  <AutoReviewPlanReviewPanel
+                    planReview={statusAutoReviewRunPlanReview}
+                    plan={planReviewPlanData}
+                    planLoadError={planReviewLoadErrorMessage}
+                    onRetryLoadPlan={() => planReviewRunQuery.refetch()}
+                    onApprove={() =>
+                      approveAutoReviewPlanReviewMutation.mutate({
+                        runId: String(statusAutoReviewRun.id),
+                      })
+                    }
+                    approving={approveAutoReviewPlanReviewMutation.isPending}
+                    approveError={autoReviewPlanReviewApproveError}
+                    onRequestRedraft={notes =>
+                      requestAutoReviewPlanRedraftMutation.mutate({
+                        runId: String(statusAutoReviewRun.id),
+                        notes: notes || undefined,
+                      })
+                    }
+                    redrafting={requestAutoReviewPlanRedraftMutation.isPending}
+                    redraftError={autoReviewPlanReviewRedraftError}
+                    onCancelRun={() =>
+                      cancelAutoReviewMutation.mutate({
+                        runId: String(statusAutoReviewRun.id),
+                      })
+                    }
+                    cancelling={cancelAutoReviewMutation.isPending}
+                  />
                 ) : null}
                 {isStartingAutoReviewRun && !statusAutoReviewRun ? (
                   <div className="rounded-lg border border-dashed border-sky-200 bg-white p-4 shadow-sm">

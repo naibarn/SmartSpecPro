@@ -73,8 +73,26 @@ The GATE is also the mitigation while this is being fixed: the user sees the mis
 paying.
 
 ## Status
-- [x] User approved: mandatory gate, all runs (2026-07-23)
-- [ ] Implement backend: `awaiting_plan_review` stop + resume + re-draft mutation
-- [ ] Implement UI: text plan review surface + confirm/redraft/cancel
-- [ ] Settings-fidelity trace (taught-not-wired check) + skill-first adherence QC
-- [ ] Tests + deploy
+- [x] User approved: mandatory gate, all runs (2026-07-23) + "ทำให้ครบถ้วนสมบูรณ์ ไม่ต้องรอยืนยันอีก"
+- [x] Backend gate — committed f997ba1a9. Key facts: both flows converge on
+  startMarketplaceAutoReviewRun (one gate covers Standard + Auto); the hold rides the EXISTING
+  blocked-stage short-circuit in advanceMarketplaceAutoReviewRun (idempotent + zero-credit by
+  construction); metadataJson.planReview { required, status awaiting|approved, heldAt,
+  approvedAt, redraftCount, lastNotes }; statusDetail.state "awaiting_plan_review" (added to
+  MARKETPLACE_AUTO_REVIEW_DETAIL_STATES); mutations approveAutoReviewPlanReview({runId}) +
+  requestAutoReviewPlanRedraft({runId, notes<=2000}) (redraft re-runs concept_story+prompt_plan —
+  prompt_plan alone is bookkeeping for 3x3; sequential also clears+reruns the per-shot pack;
+  notes go in as a labeled directive, creativeBrief unmutated). 25/25 gate tests verified by
+  conductor. Trade-off: redraft doesn't refresh the Director Project record (stale text possible
+  in media-studio production tab).
+  ⚠ DEPLOY RULE: gate is mandatory — do NOT restart the server until the review UI ships; the
+  running process is pre-gate until restart, so nothing strands.
+- [x] Settings-fidelity — ROOT CAUSE CONFIRMED taught-not-wired: review_tone/segment_structure
+  reach the prompt but finalQc never verified adherence. Fixed 4f25bfe0d: finalQc +2 required
+  keys (tone_preset_adhered, structure_beats_present), criteria skill-first in skill.md twins
+  (ตลกขำ = humorous phrasing in hook + ≥2 shots judged on actual dialogue; Problem beat must
+  state a concrete problem, not "สินค้าคุณภาพดี แข็งแรง"), output.schema.json required set,
+  5 fixture files updated. 112/112 + neighbors green.
+- [~] UI: AutoReviewPlanReviewPanel (agent in flight) — approve / redraft-with-notes / cancel +
+  settings-vs-plan side-by-side + per-shot text table + credit estimate line.
+- [ ] Deploy backend+frontend together (single restart) + verify.

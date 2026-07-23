@@ -232,6 +232,119 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         loopReportCandidates: (n: number) => `มี ${n} ตัวเลือก`,
         loopReportDegraded:
           "ระบบใช้ prompt สำรองแบบอัตโนมัติ เนื่องจากไม่มีรอบตรวจสอบใดผ่านเกณฑ์",
+        // Marketplace mandatory text-plan review gate (2026-07-23,
+        // planning/marketplace-storyboard-text-gate) — every Auto Review run
+        // holds after the text plan is authored and BEFORE any image credit
+        // is spent, until the user approves or asks for a redraft. Backs
+        // `AutoReviewPlanReviewPanel.tsx`.
+        planReviewTitle: "ตรวจสตอรีบอร์ดข้อความก่อนสร้างภาพ",
+        planReviewExplainer:
+          "ยังไม่มีการตัดเครดิตสร้างภาพ จนกว่าคุณจะยืนยันแผนข้อความนี้",
+        planReviewDraftBadge: (n: number) => `ร่างที่ ${n}`,
+        planReviewSettingsTitle: "การตั้งค่าที่คุณเลือก",
+        planReviewProductDetailTitle: "ข้อมูลสินค้า",
+        planReviewShowMore: "ดูเพิ่มเติม",
+        planReviewShowLess: "ย่อ",
+        planReviewStoryboardGuideTitle: "แนวทาง Storyboard",
+        planReviewVoiceoverScriptTitle: "บทพากย์ / บทพูด",
+        planReviewShotsTableTitle: "ช็อตทั้งหมด (ข้อความ)",
+        planReviewShotLabel: (n: number) => `ช็อตที่ ${n}`,
+        planReviewShotDurationLabel: (seconds: number) => `${seconds} วินาที`,
+        planReviewShotPurposeLabel: "จุดประสงค์",
+        planReviewShotVisualSummaryLabel: "ภาพที่จะเห็น",
+        planReviewShotDialogueLabel: "บทพูด",
+        planReviewApprove: "ยืนยัน สร้างภาพ",
+        planReviewRequestRedraft: "ให้ AI ร่างใหม่",
+        planReviewRedraftNotesLabel: "บอกสิ่งที่ต้องแก้",
+        planReviewRedraftNotesPlaceholder:
+          "บอกสิ่งที่ต้องแก้ เช่น วัสดุจริงคือพลาสติกแข็ง / โทนต้องตลกกว่านี้ / ช็อต 2 ต้องพูดปัญหาจริง",
+        planReviewRedraftSubmit: "ส่งให้ร่างใหม่",
+        planReviewRedraftCancel: "ไม่ร่างใหม่แล้ว",
+        planReviewCancelRun: "ยกเลิกงานนี้",
+        planReviewLoading: "กำลังโหลดแผนข้อความ...",
+        planReviewLoadError: "โหลดแผนข้อความไม่สำเร็จ",
+        planReviewRetry: "ลองใหม่",
+        planReviewCreativeBriefLabel: "โจทย์ / บรีฟจากผู้ใช้",
+        planReviewMotionDirectionLabel: "ทิศทางความเคลื่อนไหว",
+        planReviewFrameStrategyRowLabel: "รูปแบบการสร้างภาพ",
+        planReviewOutputModeRowLabel: "ประเภทงาน",
+        planReviewOutputModeLabels: {
+          storyboard_images: "Storyboard + ภาพ",
+          full_video: "วิดีโอเต็ม",
+        } as Record<"storyboard_images" | "full_video", string>,
+        planReviewShotCountRowLabel: "จำนวนช็อตที่ขอ",
+        planReviewOverlayTextRowLabel: "ข้อความบนภาพ",
+        planReviewOverlayTextModeLabels: {
+          no_text: "ไม่มีข้อความบนภาพ",
+          allow_text: "มีข้อความบนภาพได้",
+        } as Record<"no_text" | "allow_text", string>,
+        planReviewAudioStrategyRowLabel: "รูปแบบเสียง",
+        planReviewResolvedAudioStrategyLabels: {
+          native_video_audio: "เสียงจากวิดีโอ (native)",
+          separate_tts_voiceover: "พากย์เสียงแยก (TTS)",
+          silent: "ไม่มีเสียง",
+        } as Record<
+          "native_video_audio" | "separate_tts_voiceover" | "silent",
+          string
+        >,
+        planReviewSpeechLanguageRowLabel: "ภาษาที่พูด",
+        planReviewCharacterPresenceRowLabel: "ความถี่การปรากฏตัวของคน",
+        planReviewCharacterPresenceLabels: {
+          every_frame: "ทุกเฟรม",
+          most_frames: "ส่วนใหญ่ของเฟรม",
+        } as Record<"every_frame" | "most_frames", string>,
+        planReviewReviewToneRowLabel: "โทนการรีวิว",
+        // Byte-identical to `AUTO_REVIEW_REVIEW_TONES` labels in
+        // MarketplaceCaptureProductDetail.tsx (not exported there) so the
+        // Standard-Order picker and this read-only review panel always agree.
+        planReviewReviewToneLabels: {
+          warm_honest: "จริงใจเป็นกันเอง",
+          funny_light: "ตลกขำเบา ๆ",
+          irritated_problem: "หงุดหงิดกับปัญหา",
+          energetic_excited: "ตื่นเต้นพลังสูง",
+          empathetic_soft: "อบอุ่นเห็นใจ",
+          expert_confident: "ผู้เชี่ยวชาญมั่นใจ",
+          straight_serious: "ตรงไปตรงมา จริงจัง",
+        } as Record<
+          | "warm_honest"
+          | "funny_light"
+          | "irritated_problem"
+          | "energetic_excited"
+          | "empathetic_soft"
+          | "expert_confident"
+          | "straight_serious",
+          string
+        >,
+        planReviewStorytellingStructureRowLabel: "โครงเรื่อง",
+        // Structure names are industry-standard abbreviations/labels kept
+        // unlocalized in both locales — mirrors
+        // `AUTO_REVIEW_STORYTELLING_STRUCTURES` in
+        // MarketplaceCaptureProductDetail.tsx (not exported there).
+        planReviewStorytellingStructureLabels: {
+          hook_problem_emotion_insight_solution_result_cta:
+            "Hook → Problem → Emotion → Insight → Solution → Result → CTA",
+          hook_problem_insight_proof_cta:
+            "Hook → Problem → Insight → Proof → CTA",
+          product_review_situation_problem_try_result_fit:
+            "Situation → Problem → Try → Result → Fit",
+          before_after_bridge: "Before → After → Bridge",
+          pas: "PAS",
+          aida: "AIDA",
+          relatable_story: "Relatable Story",
+          problem_struggle_solution_transformation:
+            "Problem → Struggle → Solution → Transformation",
+        } as Record<
+          | "hook_problem_emotion_insight_solution_result_cta"
+          | "hook_problem_insight_proof_cta"
+          | "product_review_situation_problem_try_result_fit"
+          | "before_after_bridge"
+          | "pas"
+          | "aida"
+          | "relatable_story"
+          | "problem_struggle_solution_transformation",
+          string
+        >,
+        planReviewNoPlanTextFallback: "ยังไม่มีเนื้อหาข้อความให้ตรวจในตอนนี้",
       }
     : {
         locale: resolved,
@@ -439,6 +552,116 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         loopReportCandidates: (n: number) => `${n} candidate${n === 1 ? "" : "s"}`,
         loopReportDegraded:
           "The system used an automatic fallback prompt because no loop round passed review.",
+        // Marketplace mandatory text-plan review gate (2026-07-23,
+        // planning/marketplace-storyboard-text-gate) — every Auto Review run
+        // holds after the text plan is authored and BEFORE any image credit
+        // is spent, until the user approves or asks for a redraft. Backs
+        // `AutoReviewPlanReviewPanel.tsx`.
+        planReviewTitle: "Review the text storyboard before generating images",
+        planReviewExplainer:
+          "No image credits are spent until you confirm this text plan.",
+        planReviewDraftBadge: (n: number) => `Draft ${n}`,
+        planReviewSettingsTitle: "Your selected settings",
+        planReviewProductDetailTitle: "Product facts",
+        planReviewShowMore: "Show more",
+        planReviewShowLess: "Show less",
+        planReviewStoryboardGuideTitle: "Storyboard guide",
+        planReviewVoiceoverScriptTitle: "Voiceover script",
+        planReviewShotsTableTitle: "All shots (text)",
+        planReviewShotLabel: (n: number) => `Shot ${n}`,
+        planReviewShotDurationLabel: (seconds: number) => `${seconds}s`,
+        planReviewShotPurposeLabel: "Purpose",
+        planReviewShotVisualSummaryLabel: "Visual summary",
+        planReviewShotDialogueLabel: "Dialogue",
+        planReviewApprove: "Confirm, generate images",
+        planReviewRequestRedraft: "Ask AI to redraft",
+        planReviewRedraftNotesLabel: "Tell us what to fix",
+        planReviewRedraftNotesPlaceholder:
+          "Tell us what to fix — e.g. the real material is hard plastic / the tone needs to be funnier / shot 2 must state the real problem",
+        planReviewRedraftSubmit: "Submit redraft",
+        planReviewRedraftCancel: "Never mind, keep this draft",
+        planReviewCancelRun: "Cancel this run",
+        planReviewLoading: "Loading the text plan...",
+        planReviewLoadError: "Failed to load the text plan",
+        planReviewRetry: "Retry",
+        planReviewCreativeBriefLabel: "Creative brief",
+        planReviewMotionDirectionLabel: "Motion direction",
+        planReviewFrameStrategyRowLabel: "Frame strategy",
+        planReviewOutputModeRowLabel: "Output type",
+        planReviewOutputModeLabels: {
+          storyboard_images: "Storyboard + images",
+          full_video: "Full video",
+        } as Record<"storyboard_images" | "full_video", string>,
+        planReviewShotCountRowLabel: "Requested shot count",
+        planReviewOverlayTextRowLabel: "On-screen text",
+        planReviewOverlayTextModeLabels: {
+          no_text: "No on-screen text",
+          allow_text: "On-screen text allowed",
+        } as Record<"no_text" | "allow_text", string>,
+        planReviewAudioStrategyRowLabel: "Audio",
+        planReviewResolvedAudioStrategyLabels: {
+          native_video_audio: "Native video audio",
+          separate_tts_voiceover: "Separate TTS voiceover",
+          silent: "Silent",
+        } as Record<
+          "native_video_audio" | "separate_tts_voiceover" | "silent",
+          string
+        >,
+        planReviewSpeechLanguageRowLabel: "Spoken language",
+        planReviewCharacterPresenceRowLabel: "Character presence frequency",
+        planReviewCharacterPresenceLabels: {
+          every_frame: "Every frame",
+          most_frames: "Most frames",
+        } as Record<"every_frame" | "most_frames", string>,
+        planReviewReviewToneRowLabel: "Review tone",
+        planReviewReviewToneLabels: {
+          warm_honest: "Warm & honest",
+          funny_light: "Light & funny",
+          irritated_problem: "Frustrated with the problem",
+          energetic_excited: "High-energy excited",
+          empathetic_soft: "Empathetic & soft",
+          expert_confident: "Confident expert",
+          straight_serious: "Straightforward & serious",
+        } as Record<
+          | "warm_honest"
+          | "funny_light"
+          | "irritated_problem"
+          | "energetic_excited"
+          | "empathetic_soft"
+          | "expert_confident"
+          | "straight_serious",
+          string
+        >,
+        planReviewStorytellingStructureRowLabel: "Storytelling structure",
+        // Structure names are industry-standard abbreviations/labels kept
+        // unlocalized in both locales — mirrors
+        // `AUTO_REVIEW_STORYTELLING_STRUCTURES` in
+        // MarketplaceCaptureProductDetail.tsx (not exported there).
+        planReviewStorytellingStructureLabels: {
+          hook_problem_emotion_insight_solution_result_cta:
+            "Hook → Problem → Emotion → Insight → Solution → Result → CTA",
+          hook_problem_insight_proof_cta:
+            "Hook → Problem → Insight → Proof → CTA",
+          product_review_situation_problem_try_result_fit:
+            "Situation → Problem → Try → Result → Fit",
+          before_after_bridge: "Before → After → Bridge",
+          pas: "PAS",
+          aida: "AIDA",
+          relatable_story: "Relatable Story",
+          problem_struggle_solution_transformation:
+            "Problem → Struggle → Solution → Transformation",
+        } as Record<
+          | "hook_problem_emotion_insight_solution_result_cta"
+          | "hook_problem_insight_proof_cta"
+          | "product_review_situation_problem_try_result_fit"
+          | "before_after_bridge"
+          | "pas"
+          | "aida"
+          | "relatable_story"
+          | "problem_struggle_solution_transformation",
+          string
+        >,
+        planReviewNoPlanTextFallback: "No reviewable text is available yet.",
       };
 }
 
