@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { HyperframesAutoStoryboardReviewPlan } from "@shared/hyperframes/autoPlan";
@@ -15,6 +16,25 @@ interface AutoStoryboardReviewPlanSummaryProps {
   onUseStandard: () => void;
   onResetToAuto?: () => void;
   locale?: MarketplaceHyperframesUiLocale | string;
+  /**
+   * Quality-mode / image-repair-rounds control (2026-07-23 user feedback),
+   * rendered directly under the Estimate tile since it is the control that
+   * drives that tile's worst-case number. Rendered as a caller-provided slot
+   * so this component stays plan/copy-driven only — the caller
+   * (`MarketplaceCaptureProductDetail.tsx`) owns wiring it to the shared
+   * `autoStoryboardOverrides` state (see `AutoStoryboardQualityModeControl`).
+   * Optional and additive: omitting it renders the tile exactly as before.
+   */
+  qualityModeControl?: ReactNode;
+  /**
+   * Repair rounds budget for the currently selected quality mode (from
+   * `AUTO_STORYBOARD_QUALITY_MODE_ROUNDS` in
+   * `AutoStoryboardQualityModeControl.tsx`). Used only to compute the
+   * worst-case estimate line below the Estimate tile's happy-path numbers.
+   * Optional and additive: omitting it (or a falsy value) renders the tile
+   * exactly as before, with no worst-case line.
+   */
+  qualityModeRepairRounds?: number;
 }
 
 export function AutoStoryboardReviewPlanSummary({
@@ -26,6 +46,8 @@ export function AutoStoryboardReviewPlanSummary({
   onUseStandard,
   onResetToAuto,
   locale,
+  qualityModeControl,
+  qualityModeRepairRounds,
 }: AutoStoryboardReviewPlanSummaryProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const blockers = plan?.blockers ?? [];
@@ -182,6 +204,18 @@ export function AutoStoryboardReviewPlanSummary({
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               {copy.imageJobsEstimated(plan.creditEstimate.imageJobCount)}
             </p>
+          ) : null}
+          {plan?.creditEstimate && qualityModeRepairRounds ? (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {copy.imageJobsEstimatedWorstCase(
+                plan.creditEstimate.imageJobCount ?? 1,
+                (plan.creditEstimate.imageJobCount ?? 1) *
+                  qualityModeRepairRounds
+              )}
+            </p>
+          ) : null}
+          {qualityModeControl ? (
+            <div className="mt-2">{qualityModeControl}</div>
           ) : null}
         </div>
       </div>

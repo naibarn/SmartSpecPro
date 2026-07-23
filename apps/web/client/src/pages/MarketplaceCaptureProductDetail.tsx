@@ -59,6 +59,15 @@ import {
 // promoting `frameStrategy` out of the collapsed advanced-overrides panel.
 // Renders null when the tenant flag is off (see mount site below).
 import { AutoStoryboardFrameStrategyCard } from "@/components/marketplaceCapture/AutoStoryboardFrameStrategyCard";
+// Quality-mode (image-repair-rounds) control promotion (2026-07-23 user
+// feedback) — always-visible next to the Estimate tile instead of buried in
+// the collapsed advanced-overrides panel. Writes the SAME
+// `autoStoryboardOverrides` state as AutoStoryboardAdvancedOverrides.
+import {
+  AutoStoryboardQualityModeControl,
+  AUTO_STORYBOARD_QUALITY_MODE_ROUNDS,
+  resolveAutoStoryboardQualityMode,
+} from "@/components/marketplaceCapture/AutoStoryboardQualityModeControl";
 // Feature 136 (section 11) — sequential 9-image storyboard UI. Data
 // plumbing (section 02) already lives in this file; these components add
 // the picker/meter/evidence-review/guardian-notice UI on top of it.
@@ -2534,6 +2543,16 @@ export default function MarketplaceCaptureProductDetail() {
     useState<HyperframesAutoPlanOverrideInput>(() =>
       loadStoredAutoStoryboardOverrides()
     );
+  // Display-only estimate for the Auto flow's promoted quality-mode control
+  // (2026-07-23 user feedback). Reads the SAME `autoStoryboardOverrides`
+  // state AutoStoryboardAdvancedOverrides's qualityMode dropdown reads, so
+  // both controls always agree on the selected value and this number never
+  // drifts from what will actually be sent on start.
+  const autoStoryboardQualityMode = resolveAutoStoryboardQualityMode(
+    autoStoryboardOverrides
+  );
+  const autoStoryboardQualityModeRounds =
+    AUTO_STORYBOARD_QUALITY_MODE_ROUNDS[autoStoryboardQualityMode];
   const [pendingAutoReviewAction, setPendingAutoReviewAction] =
     useState<AutoReviewStartAction | null>(null);
   const [showAutoReviewRuns, setShowAutoReviewRuns] = useState(false);
@@ -5542,6 +5561,13 @@ export default function MarketplaceCaptureProductDetail() {
               setAutoStoryboardOverrides({});
               setShowAutoStoryboardAdvanced(false);
             }}
+            qualityModeControl={
+              <AutoStoryboardQualityModeControl
+                value={autoStoryboardOverrides}
+                onChange={setAutoStoryboardOverrides}
+              />
+            }
+            qualityModeRepairRounds={autoStoryboardQualityModeRounds}
           />
           <AutoStoryboardFrameStrategyCard
             enabled={sequentialStrategyEnabled}

@@ -56,6 +56,25 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         // creditEstimate.imageJobCount > 1 (sequential storyboard strategy).
         imageJobsEstimated: (jobs: number) =>
           `สร้างภาพ ${jobs} งาน (คิดเครดิตต่อภาพตอนสร้างจริง)`,
+        // Quality-mode control promotion (2026-07-23 user feedback: the
+        // repair-rounds selector was undiscoverable inside the collapsed
+        // advanced-overrides panel, but it is a credit-cost control that
+        // must be visible before generation starts). Worst-case line shown
+        // next to the Estimate tile whenever a repair-rounds budget is
+        // known — `typical` is the same imageJobCount already shown above
+        // (falls back to 1 for non-sequential strategies), `worst` is
+        // `typical * maxRepairAttemptsPerUnit` for the selected quality
+        // mode (see AutoStoryboardQualityModeControl.tsx for the mapping).
+        imageJobsEstimatedWorstCase: (typical: number, worst: number) =>
+          `ปกติ ~${typical} ภาพ · สูงสุด ${worst} ภาพ ถ้าต้องซ่อมทุกช็อต`,
+        qualityModeControlLabel: "คุณภาพ / รอบซ่อมภาพ",
+        qualityModeControlOptions: {
+          fast: "ร่างเร็ว",
+          balanced: "สมดุล",
+          high: "คุณภาพสูง QA",
+        } as Record<"fast" | "balanced" | "high", string>,
+        qualityModeControlRounds: (rounds: number) =>
+          `สูงสุด ${rounds} รอบ/ช็อต`,
         autoBlockedStandardAvailable:
           "Auto ถูกบล็อก แต่ยังใช้ Standard Order ได้ตามปกติ",
         advancedOverrides: "ตัวเลือก Auto ขั้นสูง",
@@ -245,6 +264,25 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         // creditEstimate.imageJobCount > 1 (sequential storyboard strategy).
         imageJobsEstimated: (jobs: number) =>
           `${jobs} image jobs (billed per image at generation)`,
+        // Quality-mode control promotion (2026-07-23 user feedback: the
+        // repair-rounds selector was undiscoverable inside the collapsed
+        // advanced-overrides panel, but it is a credit-cost control that
+        // must be visible before generation starts). Worst-case line shown
+        // next to the Estimate tile whenever a repair-rounds budget is
+        // known — `typical` is the same imageJobCount already shown above
+        // (falls back to 1 for non-sequential strategies), `worst` is
+        // `typical * maxRepairAttemptsPerUnit` for the selected quality
+        // mode (see AutoStoryboardQualityModeControl.tsx for the mapping).
+        imageJobsEstimatedWorstCase: (typical: number, worst: number) =>
+          `typically ~${typical} image${typical === 1 ? "" : "s"} · up to ${worst} images if every shot needs a repair`,
+        qualityModeControlLabel: "Quality / repair rounds",
+        qualityModeControlOptions: {
+          fast: "Fast draft",
+          balanced: "Balanced",
+          high: "High QA",
+        } as Record<"fast" | "balanced" | "high", string>,
+        qualityModeControlRounds: (rounds: number) =>
+          `up to ${rounds} round${rounds === 1 ? "" : "s"}/shot`,
         autoBlockedStandardAvailable:
           "Auto is blocked, Standard Order remains available.",
         advancedOverrides: "Advanced overrides",
