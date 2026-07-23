@@ -608,6 +608,30 @@ describe("unified product reference storyboard skill", () => {
     expect(mirroredSkillContent).toBe(skillContent);
     expect(skillContent).toContain(`name: ${promptOptimizerSkillId}`);
     expect(skillContent).toContain("Post-processes product-reference-storyboard prompts");
+    // G10 fix (planning/fix-marketplace-preflight-lock-optimizer): the
+    // optimizer paraphrased `MINOR SAFETY CLOTHING LOCK` away while
+    // compressing, and the fail-closed image preflight — which matches that
+    // header literally — killed run mar_829542bb… before any image existed.
+    expect(skillContent).toContain("## Safety And Evidence Lock Preservation");
+    for (const lockHeader of [
+      "MINOR SAFETY CLOTHING LOCK:",
+      "GUARDIAN PRESENCE LOCK:",
+      "DEMONSTRATION EVIDENCE LOCK:",
+      "CLAIM SAFETY EXCLUSIONS:",
+    ]) {
+      expect(skillContent).toContain(lockHeader);
+    }
+    expect(skillContent).toContain(
+      "reproduce the header and its directive sentences verbatim"
+    );
+    expect(skillContent).toContain(
+      "a prompt missing any safety/evidence lock that the source prompt contained"
+    );
+    // The old blanket "shorten every global lock" instruction is what taught
+    // the model to compress the safety block — it must stay carved out.
+    expect(skillContent).toContain(
+      "except the safety/evidence locks above, which stay verbatim"
+    );
     expect(skillContent).toContain("Perform a hidden rewrite loop");
     expect(skillContent).toContain("Never return:");
     expect(skillContent).toContain("a prompt over `target_max_chars`");
@@ -680,6 +704,11 @@ describe("unified product reference storyboard skill", () => {
     expect(skillsRouterSource).toContain(
       "originSurface: input.originSurface ?? \"media_studio\""
     );
+    // G10 fix — the runtime contract must repeat the verbatim-preservation
+    // rule to the optimizer model, the same way the sequential_video path
+    // pins its global-block marker.
+    expect(runnerSource).toContain("SAFETY AND EVIDENCE LOCK PRESERVATION");
+    expect(runnerSource).toContain("MINOR SAFETY CLOTHING LOCK:");
     expect(runnerSource).toContain("const requiredRuntimeFields = requiredFields");
     expect(runnerSource).toContain(
       "PRODUCT_REFERENCE_STORYBOARD_SCHEMA_AUDIT_FIELD_NAMES"

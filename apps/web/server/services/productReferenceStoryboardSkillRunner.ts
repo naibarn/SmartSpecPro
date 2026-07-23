@@ -1850,6 +1850,11 @@ export async function optimizeProductReferenceStoryboardPrompt(input: {
     promptLengthPlan?.directive,
     "## Product Reference Storyboard Optimizer Runtime Contract",
     `Return only the optimized image-generation prompt text at or below ${input.maxOutputChars} characters.`,
+    // G10 fix (planning/fix-marketplace-preflight-lock-optimizer): the
+    // downstream fail-closed preflight matches these headers literally.
+    // Run mar_829542bb… failed because the optimizer paraphrased
+    // MINOR SAFETY CLOTHING LOCK away while compressing.
+    "SAFETY AND EVIDENCE LOCK PRESERVATION (highest priority): if the source prompt contains any of the blocks MINOR SAFETY CLOTHING LOCK:, GUARDIAN PRESENCE LOCK:, DEMONSTRATION EVIDENCE LOCK:, or CLAIM SAFETY EXCLUSIONS:, reproduce each of those headers and their directive sentences VERBATIM in the output. Never delete, rename, merge, translate, summarize, or paraphrase them, and never move their wording into another sentence. Compress frame prose and every other section first; if the budget still does not fit, keep these blocks and shorten the frames further.",
     "Preserve complete Frame 1 through Frame 9 with non-empty visual-only frame prose.",
     "Use one shared CAMERA/LIGHT/DEPTH: block and one shared PRODUCT VERIFY: block. Do not repeat those blocks in every frame.",
     "Remove VISUAL:, STORY MATCH:, HUMAN REALISM:, quoted voiceover lines, timecodes, subtitles, captions, and any frame labels likely to render as visible text.",

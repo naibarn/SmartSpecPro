@@ -1545,52 +1545,105 @@ function marketplaceAutoReviewPlanNeedsMinorSafetyLock(
   return textHasMinorSafetySignal(source);
 }
 
+const MARKETPLACE_AUTO_REVIEW_MINOR_SAFETY_LOCK_TEXT = [
+  "MINOR SAFETY CLOTHING LOCK:",
+  "If any baby, toddler, child, kid, or minor appears, they must be safely dressed in age-appropriate clothing covering chest, torso, and underwear areas.",
+  "No shirtless child, no bare chest or bare torso, no underwear-only/diaper-only child scene, no bath/changing/nude/semi-nude framing, no suggestive pose, and no close crop of a minor's underwear or diaper area.",
+  "For diaper, baby-care, and mother-baby products, show the package, folded product, adult caregiver hands, or a fully clothed child beside the product; never show a child wearing only a diaper or with exposed torso.",
+].join(" ");
+
+const MARKETPLACE_AUTO_REVIEW_COMPACT_MINOR_SAFETY_LOCK_TEXT = [
+  "MINOR SAFETY CLOTHING LOCK:",
+  "If any baby, toddler, child, kid, or minor appears, show only age-appropriate clothing covering chest, torso, and underwear areas.",
+  "No shirtless, bare torso, underwear-only, diaper-only, bath/changing/nude/semi-nude, suggestive, or close underwear/diaper framing.",
+].join(" ");
+
 function buildMinorSafetyClothingLock(plan: AutoReviewPlan): string {
   if (!marketplaceAutoReviewPlanNeedsMinorSafetyLock(plan)) return "";
-  return [
-    "MINOR SAFETY CLOTHING LOCK:",
-    "If any baby, toddler, child, kid, or minor appears, they must be safely dressed in age-appropriate clothing covering chest, torso, and underwear areas.",
-    "No shirtless child, no bare chest or bare torso, no underwear-only/diaper-only child scene, no bath/changing/nude/semi-nude framing, no suggestive pose, and no close crop of a minor's underwear or diaper area.",
-    "For diaper, baby-care, and mother-baby products, show the package, folded product, adult caregiver hands, or a fully clothed child beside the product; never show a child wearing only a diaper or with exposed torso.",
-  ].join(" ");
+  return MARKETPLACE_AUTO_REVIEW_MINOR_SAFETY_LOCK_TEXT;
 }
 
 function buildCompactMinorSafetyClothingLock(plan: AutoReviewPlan): string {
   if (!marketplaceAutoReviewPlanNeedsMinorSafetyLock(plan)) return "";
-  return [
-    "MINOR SAFETY CLOTHING LOCK:",
-    "If any baby, toddler, child, kid, or minor appears, show only age-appropriate clothing covering chest, torso, and underwear areas.",
-    "No shirtless, bare torso, underwear-only, diaper-only, bath/changing/nude/semi-nude, suggestive, or close underwear/diaper framing.",
-  ].join(" ");
+  return MARKETPLACE_AUTO_REVIEW_COMPACT_MINOR_SAFETY_LOCK_TEXT;
 }
 
 function ensureMinorSafetyClothingLockInImagePrompt(
   prompt: string,
-  plan: AutoReviewPlan
+  plan: AutoReviewPlan,
+  // G10 fix (planning/fix-marketplace-preflight-lock-optimizer): sequential
+  // callers pass their EFFECTIVE budget (4000-base) instead of inheriting
+  // the 3x3 constant, so the lock is never silently dropped against the
+  // wrong cap. Default keeps every existing caller byte-identical.
+  maxChars: number = MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS
 ): string {
   const base = cleanText(prompt);
   const lock = buildMinorSafetyClothingLock(plan);
   if (!base || !lock || /MINOR SAFETY CLOTHING LOCK/i.test(base)) return base;
   const appended = `${base}\n\n${lock}`;
-  if (appended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
+  if (appended.length <= maxChars) {
     return appended;
   }
   const compactLock = buildCompactMinorSafetyClothingLock(plan);
   const compactAppended = `${base}\n\n${compactLock}`;
-  if (
-    compactAppended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS
-  ) {
+  if (compactAppended.length <= maxChars) {
     return compactAppended;
   }
   if (countPromptMatches(base, /\bFrame\s+\d+\s*:/gi) >= MAX_SHOT_COUNT) {
-    return base;
+    // G10 fix — a complete frame set must never be truncated, but dropping
+    // the lock is worse than a small budget overflow: a child-related prompt
+    // without the literal lock is rejected by the fail-closed preflight (the
+    // mar_829542bb… failure) or, worse, submitted unguarded. Keep both: all
+    // frames plus the compact lock.
+    return compactAppended;
   }
-  const baseBudget =
-    MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS - lock.length - 2;
+  const baseBudget = maxChars - lock.length - 2;
   if (baseBudget > 1200) {
     return `${compactImagePromptText(base, baseBudget)}\n\n${lock}`;
   }
   return appended;
+}
+
+/**
+ * G10 fix — the preflight demands the literal lock when the PLAN is
+ * child-related OR when the PROMPT ITSELF carries a minor-safety signal
+ * (`textHasMinorSafetySignal`). The plan-gated builder above can only
+ * satisfy the first case, so a non-child product whose storyboard happens
+ * to place a child in frame would blow up on an unrepairable blocker — the
+ * same dead-end class as the `mar_829542bb…` failure. This wrapper closes
+ * the second case using the exact same lock text, and is applied at the
+ * relock sites only (the plan-gated helper keeps its existing contract).
+ */
+function ensureMinorSafetyClothingLockForPromptSignal(
+  prompt: string,
+  plan: AutoReviewPlan,
+  maxChars: number = MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS
+): string {
+  const planLocked = ensureMinorSafetyClothingLockInImagePrompt(
+    prompt,
+    plan,
+    maxChars
+  );
+  if (!planLocked) return planLocked;
+  if (/MINOR SAFETY CLOTHING LOCK/i.test(planLocked)) return planLocked;
+  if (!textHasMinorSafetySignal(planLocked)) return planLocked;
+  const appended = `${planLocked}\n\n${MARKETPLACE_AUTO_REVIEW_MINOR_SAFETY_LOCK_TEXT}`;
+  if (appended.length <= maxChars) return appended;
+  // Safety outranks the char budget: a prompt that shows a minor without the
+  // lock is either rejected downstream or submitted unguarded.
+  return `${planLocked}\n\n${MARKETPLACE_AUTO_REVIEW_COMPACT_MINOR_SAFETY_LOCK_TEXT}`;
+}
+
+export function ensureMinorSafetyClothingLockForPromptSignalForTest(input: {
+  prompt: string;
+  plan: AutoReviewPlan;
+  maxChars?: number | null;
+}): string {
+  return ensureMinorSafetyClothingLockForPromptSignal(
+    input.prompt,
+    input.plan,
+    input.maxChars ?? undefined
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1897,9 +1950,17 @@ export function marketplaceReviewEvidenceGuardQaSchemaFragmentForTest(
 function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
   prompt: string,
   plan: AutoReviewPlan,
-  guard: MarketplaceReviewEvidenceGuardContext | undefined
+  guard: MarketplaceReviewEvidenceGuardContext | undefined,
+  // G10 fix: the effective sequential budget (per-run configurable); the
+  // minor-safety lock now appends against THIS budget instead of the
+  // narrower 3x3 constant. Default keeps existing callers byte-identical.
+  maxChars: number = MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS
 ): string {
-  let next = ensureMinorSafetyClothingLockInImagePrompt(prompt, plan);
+  let next = ensureMinorSafetyClothingLockForPromptSignal(
+    prompt,
+    plan,
+    maxChars
+  );
   if (!next) return next;
 
   const guardianDirective = buildGuardianPresenceDirective(plan, guard);
@@ -1908,7 +1969,7 @@ function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
     !new RegExp(MARKETPLACE_REVIEW_GUARDIAN_PRESENCE_LOCK_MARKER, "i").test(next)
   ) {
     const appended = `${next}\n\n${guardianDirective}`;
-    if (appended.length <= MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS) {
+    if (appended.length <= maxChars) {
       next = appended;
     }
     // else: never truncate a final sequential prompt (G16 precedent) — leave
@@ -1921,7 +1982,7 @@ function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
     !new RegExp(MARKETPLACE_REVIEW_DEMONSTRATION_EVIDENCE_LOCK_MARKER, "i").test(next)
   ) {
     const appended = `${next}\n\n${demonstrationDirective}`;
-    if (appended.length <= MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS) {
+    if (appended.length <= maxChars) {
       next = appended;
     }
   }
@@ -1929,17 +1990,47 @@ function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
   return next;
 }
 
+/** G10 fix — chars to RESERVE from the LLM optimizer's output budget so the
+ *  deterministic safety/evidence locks re-ensured AFTER optimization always
+ *  fit back under the provider budget. Uses the FULL (non-compact) variants
+ *  plus their "\n\n" joiners; 0 when the plan needs none of them. */
+function sequentialEvidenceLockReserveChars(
+  plan: AutoReviewPlan,
+  guard: MarketplaceReviewEvidenceGuardContext | undefined
+): number {
+  let reserve = 0;
+  const minorLock = buildMinorSafetyClothingLock(plan);
+  if (minorLock) reserve += minorLock.length + 2;
+  const guardianDirective = buildGuardianPresenceDirective(plan, guard);
+  if (guardianDirective) reserve += guardianDirective.length + 2;
+  const demonstrationDirective = buildDemonstrationEvidenceDirective(
+    plan,
+    guard
+  );
+  if (demonstrationDirective) reserve += demonstrationDirective.length + 2;
+  return reserve;
+}
+
+export function sequentialEvidenceLockReserveCharsForTest(input: {
+  plan: AutoReviewPlan;
+  guard?: MarketplaceReviewEvidenceGuardContext | null;
+}): number {
+  return sequentialEvidenceLockReserveChars(input.plan, input.guard ?? undefined);
+}
+
 export function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePromptForTest(
   input: {
     prompt: string;
     plan: AutoReviewPlan;
     guard?: MarketplaceReviewEvidenceGuardContext | null;
+    maxChars?: number | null;
   }
 ): string {
   return ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
     input.prompt,
     input.plan,
-    input.guard ?? undefined
+    input.guard ?? undefined,
+    input.maxChars ?? undefined
   );
 }
 
@@ -2056,6 +2147,34 @@ function ensureTargetedRepairDirectiveInImagePrompt(
 type MarketplaceAutoReviewFinalImagePromptOptimizer =
   typeof optimizeProductReferenceStoryboardPrompt;
 
+/** G10 fix — the optimizer's output budget, minus the chars reserved for the
+ *  deterministic locks re-appended after it. Floored so a huge reserve can
+ *  never collapse the optimizer target to an unusable size. */
+const MARKETPLACE_AUTO_REVIEW_OPTIMIZER_MIN_TARGET_CHARS = 1500;
+
+function marketplaceAutoReviewOptimizerBudgetWithLockReserve(
+  budgetChars: number,
+  reserveChars: number
+): number {
+  if (!Number.isFinite(budgetChars) || budgetChars <= 0) return budgetChars;
+  const reserve = Math.max(0, Math.floor(reserveChars));
+  if (reserve <= 0) return budgetChars;
+  return Math.max(
+    Math.min(budgetChars, MARKETPLACE_AUTO_REVIEW_OPTIMIZER_MIN_TARGET_CHARS),
+    budgetChars - reserve
+  );
+}
+
+export function marketplaceAutoReviewOptimizerBudgetWithLockReserveForTest(
+  budgetChars: number,
+  reserveChars: number
+): number {
+  return marketplaceAutoReviewOptimizerBudgetWithLockReserve(
+    budgetChars,
+    reserveChars
+  );
+}
+
 async function optimizeMarketplaceAutoReviewFinalImagePromptForProvider(input: {
   tenantId: string;
   userId: number;
@@ -2064,13 +2183,23 @@ async function optimizeMarketplaceAutoReviewFinalImagePromptForProvider(input: {
   attempt: number;
   promptAttempt?: number | null;
   sourcePrompt: string;
+  // G10 fix — optional; defaults to the 3x3 constant so every existing
+  // caller keeps byte-identical behavior. Callers that re-append locks
+  // after optimization pass the reserved-down budget.
+  maxOutputChars?: number | null;
   optimizer?: MarketplaceAutoReviewFinalImagePromptOptimizer;
 }): Promise<{
   prompt: string;
   audit: Record<string, unknown> | null;
 }> {
   const sourcePrompt = cleanText(input.sourcePrompt);
-  if (sourcePrompt.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
+  const maxOutputChars =
+    typeof input.maxOutputChars === "number" &&
+    Number.isFinite(input.maxOutputChars) &&
+    input.maxOutputChars > 0
+      ? Math.floor(input.maxOutputChars)
+      : MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS;
+  if (sourcePrompt.length <= maxOutputChars) {
     return { prompt: sourcePrompt, audit: null };
   }
 
@@ -2085,7 +2214,7 @@ async function optimizeMarketplaceAutoReviewFinalImagePromptForProvider(input: {
     unitId: input.unitId,
     attempt: input.attempt,
     promptAttempt: input.promptAttempt ?? null,
-    maxOutputChars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+    maxOutputChars,
   });
   const optimizedPrompt = cleanText(optimizerResult.value.rawContent);
   return {
@@ -2102,7 +2231,7 @@ async function optimizeMarketplaceAutoReviewFinalImagePromptForProvider(input: {
       promptKind: "grid_image",
       sourcePromptLengthChars: sourcePrompt.length,
       optimizedPromptLengthChars: optimizedPrompt.length,
-      maxOutputChars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+      maxOutputChars,
       preferredTargetChars: optimizerResult.preferredTargetChars,
       runtimeStatus: optimizerResult.execution.runtime.status,
       runtimeEngine: optimizerResult.execution.runtime.selection.engine,
@@ -10786,8 +10915,16 @@ async function buildDegradedMarketplaceAutoReviewStoryboardGridPromptFallback(in
     };
   }
 
-  const repairDirectedPrompt = ensureTargetedRepairDirectiveInImagePrompt(
+  // G10 fix — advisory mode still must never submit a child-related prompt
+  // whose safety lock the optimizer compressed away.
+  const relockedPrompt = ensureMinorSafetyClothingLockForPromptSignal(
     optimizedPrompt,
+    input.plan
+  );
+  const postOptimizerSafetyRelockApplied =
+    relockedPrompt !== cleanText(optimizedPrompt);
+  const repairDirectedPrompt = ensureTargetedRepairDirectiveInImagePrompt(
+    relockedPrompt,
     input.unit
   );
 
@@ -10796,6 +10933,13 @@ async function buildDegradedMarketplaceAutoReviewStoryboardGridPromptFallback(in
     degradedReason,
     ...(finalPromptOptimizerAudit
       ? { finalPromptOptimizer: finalPromptOptimizerAudit }
+      : {}),
+    ...(postOptimizerSafetyRelockApplied
+      ? {
+          promptSafetyPatchApplied: true,
+          postOptimizerSafetyRelockApplied: true,
+          backendEnforcedSafetyLocks: ["minor_safety_clothing_lock"],
+        }
       : {}),
   };
 
@@ -10836,6 +10980,167 @@ async function buildDegradedMarketplaceAutoReviewStoryboardGridPromptFallback(in
   };
 }
 
+/** G10 fix — safety/evidence blockers that stay FAIL-CLOSED at prompt
+ *  preflight even after the deterministic repair round. Everything else
+ *  soft-passes so the run continues to generation, the vision-QA repair
+ *  loop, and the Storyboard Review human gate. */
+const MARKETPLACE_AUTO_REVIEW_PREFLIGHT_HARD_BLOCKERS: ReadonlySet<string> =
+  new Set([
+    "prompt_empty",
+    "minor_safety_clothing_lock_missing",
+    "guardian_directive_missing",
+    "assembly_demo_unverified",
+    "invalid_requested_shot_count",
+  ]);
+
+/**
+ * G10 fix (planning/fix-marketplace-preflight-lock-optimizer) — post-optimizer
+ * finalize for NON-grid image units (sequential + start/stop). The LLM
+ * final-prompt optimizer may compress away the literal lock lines the
+ * fail-closed preflight requires (run mar_829542bb… lost MINOR SAFETY
+ * CLOTHING LOCK exactly this way), so:
+ *  1. deterministic repair round: re-ensure the locks via the SAME
+ *     idempotent-appender family the pre-optimizer build uses;
+ *  2. preflight;
+ *  3. on failure, only safety/evidence blockers still throw — remaining
+ *     quality-class blockers soft-pass as `soft_blocker_*` warnings and the
+ *     run proceeds to generation + vision QA + Storyboard Review.
+ */
+function finalizeMarketplaceAutoReviewNonGridImagePromptAfterOptimizer(input: {
+  optimizedPrompt: string;
+  optimizerAudit: Record<string, unknown> | null;
+  plan: AutoReviewPlan;
+  unit: DirectImageUnit;
+  overlayTextMode: MarketplaceAutoReviewOverlayTextMode;
+  guard: MarketplaceReviewEvidenceGuardContext | undefined;
+  sequentialMaxChars: number | null;
+}): {
+  prompt: string;
+  preflight: MarketplaceAutoReviewPromptPreflightResult;
+  skillRun: ProductReferenceStoryboardPromptSkillRunResult | null;
+  skillRuntime: Record<string, unknown> | null;
+} {
+  const relockedPrompt =
+    input.unit.role === "sequential_shot_frame"
+      ? ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
+          input.optimizedPrompt,
+          input.plan,
+          input.guard,
+          input.sequentialMaxChars ?? undefined
+        )
+      : ensureMinorSafetyClothingLockForPromptSignal(
+          input.optimizedPrompt,
+          input.plan
+        );
+  const relockApplied = relockedPrompt !== cleanText(input.optimizedPrompt);
+  const repairDirectedPrompt = ensureTargetedRepairDirectiveInImagePrompt(
+    relockedPrompt,
+    input.unit
+  );
+  const baseSkillRuntime: Record<string, unknown> = {
+    ...(input.optimizerAudit
+      ? { finalPromptOptimizer: input.optimizerAudit }
+      : {}),
+    ...(relockApplied
+      ? {
+          promptSafetyPatchApplied: true,
+          backendEnforcedSafetyLocks: ["minor_safety_clothing_lock"],
+        }
+      : {}),
+  };
+  const skillRuntime = Object.keys(baseSkillRuntime).length
+    ? baseSkillRuntime
+    : null;
+  const result = validateMarketplaceAutoReviewImagePromptPreflight({
+    prompt: repairDirectedPrompt,
+    unit: input.unit,
+    plan: input.plan,
+    overlayTextMode: input.overlayTextMode,
+    skillRuntime,
+    guard: input.guard,
+  });
+  if (result.status !== "failed") {
+    return {
+      prompt: repairDirectedPrompt,
+      preflight: result,
+      skillRun: null,
+      skillRuntime,
+    };
+  }
+  const hardBlockers = result.blockers.filter(code =>
+    MARKETPLACE_AUTO_REVIEW_PREFLIGHT_HARD_BLOCKERS.has(code)
+  );
+  if (hardBlockers.length > 0) {
+    throw new MarketplaceAutoReviewImagePromptPreflightError({
+      unit: input.unit,
+      prompt: repairDirectedPrompt,
+      preflight: result,
+      skillRuntime,
+    });
+  }
+  const softPreflight: MarketplaceAutoReviewPromptPreflightResult = {
+    ...result,
+    status: "passed",
+    blockers: [],
+    warnings: [
+      ...result.warnings,
+      ...result.blockers.map(code => `soft_blocker_${code}`),
+      "prompt_preflight_soft_passed_after_repair",
+    ],
+  };
+  console.warn(
+    "[marketplaceAutoReview] image_prompt_preflight_soft_pass_after_repair",
+    {
+      unitId: input.unit.unitId,
+      unitRole: input.unit.role,
+      originalBlockers: result.blockers,
+      relockApplied,
+      promptLengthChars: repairDirectedPrompt.length,
+    }
+  );
+  return {
+    prompt: repairDirectedPrompt,
+    preflight: softPreflight,
+    skillRun: null,
+    skillRuntime: {
+      ...(skillRuntime ?? {}),
+      promptPreflightSoftPass: {
+        originalBlockers: result.blockers,
+        relockApplied,
+      },
+    },
+  };
+}
+
+export function finalizeMarketplaceAutoReviewNonGridImagePromptAfterOptimizerForTest(
+  input: {
+    optimizedPrompt: string;
+    optimizerAudit?: Record<string, unknown> | null;
+    plan: AutoReviewPlan;
+    unit: DirectImageUnit;
+    overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
+    guard?: MarketplaceReviewEvidenceGuardContext | null;
+    sequentialMaxChars?: number | null;
+  }
+): {
+  prompt: string;
+  preflight: MarketplaceAutoReviewPromptPreflightResult;
+  skillRun: ProductReferenceStoryboardPromptSkillRunResult | null;
+  skillRuntime: Record<string, unknown> | null;
+} {
+  return finalizeMarketplaceAutoReviewNonGridImagePromptAfterOptimizer({
+    optimizedPrompt: input.optimizedPrompt,
+    optimizerAudit: input.optimizerAudit ?? null,
+    plan: input.plan,
+    unit: input.unit,
+    overlayTextMode: normalizeMarketplaceAutoReviewOverlayTextMode(
+      input.overlayTextMode
+    ),
+    guard: input.guard ?? undefined,
+    sequentialMaxChars: input.sequentialMaxChars ?? null,
+  });
+}
+
 async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
   tenantId: string;
   auth: AuthContext;
@@ -10860,23 +11165,40 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
       input.overlayTextMode,
       input.metadata
     );
+    const guard = resolveMarketplaceReviewEvidenceGuardContext(
+      input.metadata,
+      input.plan
+    );
+    // G10 fix — reserve room for the deterministic locks that are re-ensured
+    // AFTER optimization, so the relocked prompt still fits the provider
+    // budget without any truncation.
+    const lockReserveChars = sequentialEvidenceLockReserveChars(
+      input.plan,
+      guard
+    );
     // Feature 136 (section 06, §5.3) — sequential units route through the
     // sequential-aware sibling optimizer with the EFFECTIVE sequential
     // budget (section 04's `resolveSequentialImagePromptBudget`), never the
     // fixed 3x3 constant the sibling below uses. Start/stop stays untouched.
-    const finalPrompt =
+    const sequentialMaxChars =
       input.unit.role === "sequential_shot_frame"
+        ? resolveSequentialImagePromptBudget({
+            overrideMaxChars:
+              toNumber(input.metadata?.sequentialImagePromptMaxChars, 0) || null,
+            providerMaxPromptLength: null,
+          })
+        : null;
+    const finalPrompt =
+      sequentialMaxChars != null
         ? await optimizeMarketplaceAutoReviewSequentialFinalPromptForProvider({
             tenantId: input.tenantId,
             userId: input.auth.userId,
             runId: input.runId,
             promptKind: "sequential_image",
-            maxOutputChars: resolveSequentialImagePromptBudget({
-              overrideMaxChars:
-                toNumber(input.metadata?.sequentialImagePromptMaxChars, 0) ||
-                null,
-              providerMaxPromptLength: null,
-            }),
+            maxOutputChars: marketplaceAutoReviewOptimizerBudgetWithLockReserve(
+              sequentialMaxChars,
+              lockReserveChars
+            ),
             sourcePrompt,
           })
         : await optimizeMarketplaceAutoReviewFinalImagePromptForProvider({
@@ -10886,41 +11208,20 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
             unitId: input.unit.unitId,
             attempt: input.attempt,
             sourcePrompt,
+            maxOutputChars: marketplaceAutoReviewOptimizerBudgetWithLockReserve(
+              MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+              lockReserveChars
+            ),
           });
-    const repairDirectedPrompt = ensureTargetedRepairDirectiveInImagePrompt(
-      finalPrompt.prompt,
-      input.unit
-    );
-    const skillRuntime = finalPrompt.audit
-      ? {
-          finalPromptOptimizer: finalPrompt.audit,
-        }
-      : null;
-    const result = validateMarketplaceAutoReviewImagePromptPreflight({
-      prompt: repairDirectedPrompt,
-      unit: input.unit,
+    return finalizeMarketplaceAutoReviewNonGridImagePromptAfterOptimizer({
+      optimizedPrompt: finalPrompt.prompt,
+      optimizerAudit: finalPrompt.audit,
       plan: input.plan,
+      unit: input.unit,
       overlayTextMode: input.overlayTextMode,
-      skillRuntime,
-      guard: resolveMarketplaceReviewEvidenceGuardContext(
-        input.metadata,
-        input.plan
-      ),
+      guard,
+      sequentialMaxChars,
     });
-    if (result.status === "failed") {
-      throw new MarketplaceAutoReviewImagePromptPreflightError({
-        unit: input.unit,
-        prompt: repairDirectedPrompt,
-        preflight: result,
-        skillRuntime,
-      });
-    }
-    return {
-      prompt: repairDirectedPrompt,
-      preflight: result,
-      skillRun: null,
-      skillRuntime,
-    };
   }
 
   let feedback: ProductReferenceStoryboardPreflightFeedback | null = null;
@@ -11047,13 +11348,27 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
         attempt: input.attempt,
         promptAttempt: promptSkillAttempt,
         sourcePrompt: postProcessedPrompt,
+        maxOutputChars: marketplaceAutoReviewOptimizerBudgetWithLockReserve(
+          MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+          sequentialEvidenceLockReserveChars(input.plan, undefined)
+        ),
       });
-    const prompt = ensureTargetedRepairDirectiveInImagePrompt(
+    // G10 fix — the LLM optimizer can compress the safety lock away; the
+    // 3x3 path re-ensures it deterministically after optimization, same as
+    // the non-grid path.
+    const relockedFinalPrompt = ensureMinorSafetyClothingLockForPromptSignal(
       finalPrompt.prompt,
+      input.plan
+    );
+    const postOptimizerSafetyRelockApplied =
+      relockedFinalPrompt !== cleanText(finalPrompt.prompt);
+    const prompt = ensureTargetedRepairDirectiveInImagePrompt(
+      relockedFinalPrompt,
       input.unit
     );
     const promptSafetyPatchApplied =
-      safetyPrompt !== cleanText(skillRun.prompt);
+      safetyPrompt !== cleanText(skillRun.prompt) ||
+      postOptimizerSafetyRelockApplied;
     const promptPostProcessPreservedRawFrames =
       rawSkillFrameCount >= MAX_SHOT_COUNT &&
       processedFrameCount < rawSkillFrameCount;
@@ -11064,6 +11379,9 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
             promptSafetyPatchApplied: true,
             backendEnforcedSafetyLocks: ["minor_safety_clothing_lock"],
           }
+        : {}),
+      ...(postOptimizerSafetyRelockApplied
+        ? { postOptimizerSafetyRelockApplied: true }
         : {}),
       ...(layoutContractPrompt.applied
         ? {
