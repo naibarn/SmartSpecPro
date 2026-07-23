@@ -276,6 +276,16 @@ export type SequentialStoryboardSkillLoopInput = {
   model?: string | null;
   publicUrl?: string | null;
   originSurface?: "marketplace_capture" | "media_studio" | null;
+  /**
+   * Plan-review redraft generation (planReview.redraftCount). The per-round
+   * credit idempotency key is ONLY unique per (runId, round) — a redraft
+   * re-runs the same rounds for the same run, so without this the ledger
+   * insert hits a duplicate-key error and the whole round is miscounted as
+   * `invocation_failed` → guaranteed degraded fallback on EVERY redraft
+   * (2026-07-23 field evidence). 0/absent keeps the legacy key byte-identical
+   * so resume of pre-gate runs stays idempotent.
+   */
+  chargeGeneration?: number | null;
 
   productName: string;
   productDescription: string;
@@ -2178,7 +2188,12 @@ function buildProductionSequentialStoryboardLoopEffects(ctx: {
             policy.modelId!
           );
           if (creditsUsed > 0) {
-            await deductCredits({
+            const chargeGeneration = Math.max(
+              0,
+              Math.floor(Number(ctx.input.chargeGeneration) || 0)
+            );
+            try {
+              await deductCredits({
               userId: ctx.input.userId,
               tenantId: ctx.input.tenantId,
               amount: creditsUsed,
@@ -2187,6 +2202,9 @@ function buildProductionSequentialStoryboardLoopEffects(ctx: {
                 "marketplace-auto-review",
                 "sequential-storyboard",
                 ctx.input.runId ?? "no-run",
+                // generation 0 keeps the legacy key shape byte-identical
+                // (resume-compat); redrafts get their own key space.
+                ...(chargeGeneration > 0 ? [`g${chargeGeneration}`] : []),
                 String(args.round),
               ].join(":"),
               skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
@@ -2202,6 +2220,29 @@ function buildProductionSequentialStoryboardLoopEffects(ctx: {
                 provider: llmResult.providerName,
               },
             });
+            } catch (chargeError) {
+              // Idempotency semantics: a duplicate ledger key means THIS
+              // exact attempt was already charged once (resume / retried
+              // round). The LLM work above already succeeded — failing the
+              // whole round over a duplicate ledger insert turned every
+              // redraft into a guaranteed degraded fallback. Only the
+              // duplicate case is swallowed; every other ledger error still
+              // fails the round (fail-closed on genuinely unpaid work).
+              const message = [
+                chargeError instanceof Error ? chargeError.message : "",
+                chargeError instanceof Error &&
+                chargeError.cause instanceof Error
+                  ? chargeError.cause.message
+                  : "",
+              ].join(" | ");
+              if (!/duplicate key|unique constraint|idempoten/i.test(message)) {
+                throw chargeError;
+              }
+              console.warn(
+                "[productReviewSequentialStoryboardSkillRunner] duplicate credit idempotency key — attempt already charged, continuing",
+                { runId: ctx.input.runId ?? null, round: args.round }
+              );
+            }
           }
           return {
             rawContent,

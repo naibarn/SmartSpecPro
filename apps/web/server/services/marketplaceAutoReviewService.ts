@@ -33217,6 +33217,14 @@ function applySequentialStoryboardPackToRunMetadata(input: {
 
   const nextSequential: Record<string, unknown> = {
     ...existingSequential,
+    // Applying a pack REPLACES the degraded state. Without these two lines a
+    // successful redraft after a degraded round kept the stale
+    // `degraded: true` + old retry history from the spread above, so the UI
+    // showed the "degraded plan" banner over a REAL pack forever. The
+    // degraded fallback path re-sets `degraded: true` on top of this result,
+    // so clearing here never hides a genuine degrade.
+    degraded: false,
+    degradedRetryHistory: [],
     skillVersion: input.pack.skillVersion,
     evidenceProfile: input.pack.evidenceProfile,
     claimWhitelist: claimFold.claimWhitelist,
@@ -33522,6 +33530,12 @@ async function runSequentialPromptPlanStage(input: {
     productTruthText: input.plan.productDetail,
     referenceManifest: referencePlan.storedManifest,
     skillVisionUrls: referencePlan.skillVisionUrls,
+    // Redraft generation → per-round credit idempotency key namespace. Without
+    // this every redraft reused the first run's (runId, round) keys, the
+    // ledger insert hit duplicate-key, and the round was miscounted as
+    // invocation_failed ⇒ degraded fallback on every redraft.
+    chargeGeneration:
+      toNumber(asRecord(input.metadata.planReview).redraftCount, 0) || 0,
     imageBudgetOverride:
       toNumber(input.metadata.sequentialImagePromptMaxChars, 0) || undefined,
     reviewTone: cleanText(referenceAnchorsRecord.reviewTone) || undefined,
@@ -33613,16 +33627,32 @@ async function runSequentialPromptPlanStage(input: {
         referenceManifest: referencePlan.storedManifest,
         childSubjectPolicy: finalPolicy,
       });
+      // Evidence durability (2026-07-23): the degraded pack used to OVERWRITE
+      // sequentialStoryboard wholesale, wiping the per-round retryHistory —
+      // so "why did it degrade" was unrecoverable after the fact (the journal
+      // collapses the reasons to `[Array]`). Persist the full history (bounded)
+      // so the exact structural reasons are always one DB read away.
+      const degradedRetryHistory = Array.isArray(
+        (error as SequentialStoryboardStructuralError).retryHistory
+      )
+        ? (error as SequentialStoryboardStructuralError).retryHistory.slice(0, 12)
+        : [];
       const finalMetadata: RunMetadata = {
         ...degradedMetadata,
         sequentialStoryboard: {
           ...asRecord(degradedMetadata.sequentialStoryboard),
           degraded: true,
+          degradedRetryHistory,
         },
       };
       await effects.emitAudit?.("sequential_prompt_degraded_fallback", {
         reason: error.message,
+        retryHistory: degradedRetryHistory,
       });
+      console.error(
+        "[marketplaceAutoReviewService][sequentialPromptPlan] degraded_retry_history",
+        JSON.stringify(degradedRetryHistory)
+      );
       return finalMetadata;
     }
     throw error;
