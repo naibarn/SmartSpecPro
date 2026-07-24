@@ -2862,18 +2862,52 @@ export default function MarketplaceCaptureProductDetail() {
       staleTime: 5 * 60 * 1000,
     });
   const autoReviewVisionQaModelOptions = useMemo(() => {
+    // Quality QA picker: restrict to the admin-curated recommended set
+    // (model_provider_map.isRecommended) so users can only pick vetted
+    // models — the same set the recommendedOnly skills draw from.
     const liveModels = (autoReviewVisionQaModelsQuery.data?.models ?? [])
       .map(model => ({
         value: String(model?.id ?? "").trim(),
         label: String(model?.name ?? model?.id ?? "").trim(),
+        isRecommended:
+          (model as { isRecommended?: boolean } | null)?.isRecommended === true,
       }))
       .filter(option => option.value);
-    if (liveModels.length > 0) return liveModels;
+
+    if (liveModels.length > 0) {
+      const recommended = liveModels.filter(option => option.isRecommended);
+      // No curated model yet ⇒ never leave the picker empty (the admin may
+      // not have flagged anything); fall back to the full list.
+      if (recommended.length === 0) {
+        return liveModels.map(({ value, label }) => ({ value, label }));
+      }
+      const options = recommended.map(({ value, label }) => ({ value, label }));
+      // A previously-saved model that has since left the curated set (or was
+      // auto-revoked by the quality breaker) must stay visible and labelled —
+      // hiding it would leave the select showing a value it cannot display.
+      const storedVisionQaModel = String(
+        (autoStoryboardOverrides as Record<string, unknown> | null | undefined)
+          ?.visionQaModel ?? ""
+      ).trim();
+      if (
+        storedVisionQaModel &&
+        !options.some(option => option.value === storedVisionQaModel)
+      ) {
+        const stored = liveModels.find(
+          option => option.value === storedVisionQaModel
+        );
+        options.push({
+          value: storedVisionQaModel,
+          label: `${stored?.label || storedVisionQaModel} (ไม่อยู่ในชุดแนะนำ)`,
+        });
+      }
+      return options;
+    }
     return MARKETPLACE_AUTO_REVIEW_CURATED_VISION_QA_MODELS.map(modelId => ({
       value: modelId,
       label: modelId,
     }));
-  }, [autoReviewVisionQaModelsQuery.data]);
+  }, [autoReviewVisionQaModelsQuery.data, autoStoryboardOverrides]);
   // Model options load from TWO async sources: mediaModels.list AND
   // mcpConnections.listConnections (MCP models are filtered out of the options
   // until the connections query resolves). Pruning a stored selection before

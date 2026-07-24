@@ -37,6 +37,8 @@ interface EnabledMappedModelRow {
   modelId: string;
   modelName: string;
   contextLength: number | null;
+  /** Admin-curated quality flag (model_provider_map.isRecommended). */
+  isRecommended?: boolean | null;
 }
 
 function findProviderTemplate(providerName: string) {
@@ -128,6 +130,7 @@ export function mergeAvailableLlmModels(input: {
   providerDisplayName: string;
   contextLength?: number;
   isDefault?: boolean;
+  isRecommended?: boolean;
 }> {
   const providersById = new Map(input.providers.map((provider) => [provider.id, provider]));
   const merged = new Map<string, {
@@ -137,6 +140,7 @@ export function mergeAvailableLlmModels(input: {
     providerDisplayName: string;
     contextLength?: number;
     isDefault?: boolean;
+    isRecommended?: boolean;
   }>();
 
   for (const mappedModel of input.mappedModels ?? []) {
@@ -153,6 +157,10 @@ export function mergeAvailableLlmModels(input: {
       providerDisplayName: mappedModel.providerDisplayName,
       contextLength: mappedModel.contextLength ?? undefined,
       isDefault: mappedModel.modelId === provider.defaultModel,
+      // Carried so quality-critical pickers can filter to the curated set.
+      // (Row-rebuild trap: this literal is the ONLY place the merged shape is
+      // constructed — a new column silently vanishes if not added here.)
+      isRecommended: mappedModel.isRecommended === true,
     });
   }
 
@@ -355,6 +363,7 @@ export const llmProvidersRouter = router({
             modelId: modelProviderMap.modelId,
             modelName: modelProviderMap.modelName,
             contextLength: modelProviderMap.contextLength,
+            isRecommended: modelProviderMap.isRecommended,
           })
           .from(modelProviderMap)
           .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -392,6 +401,10 @@ export const llmProvidersRouter = router({
           providerDisplayName: "Kie AI",
           contextLength: model.contextLength,
           isDefault: model.id === "gpt-5-4",
+          // Keep both return branches structurally identical — a shape that
+          // differs only in the fallback path turns this procedure's result
+          // into a union that downstream consumers (ChatView) cannot accept.
+          isRecommended: false,
         }));
 
       return {
