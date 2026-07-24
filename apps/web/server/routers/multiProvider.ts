@@ -35,6 +35,8 @@ export interface ModelMappingListRow {
   isEnabled: boolean;
   priority: number;
   priorityLocked: boolean;
+  /** Admin-curated quality flag (see modelProviderMap.isRecommended). */
+  isRecommended?: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
   ownedBy?: string;
   surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
@@ -82,6 +84,8 @@ export interface AdminModelCatalogRow {
   isEnabled: boolean;
   priority: number;
   priorityLocked: boolean;
+  /** Admin-curated quality flag (see modelProviderMap.isRecommended). */
+  isRecommended?: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
   ownedBy?: string;
   surface?: "chat" | "embedding" | "parse" | "guardrail" | "reward" | "translation" | "multimodal" | "other";
@@ -343,6 +347,7 @@ export function mergeAdminModelCatalogRows(input: {
       isEnabled: mapping.isEnabled,
       priority: mapping.priority,
       priorityLocked: mapping.priorityLocked,
+      isRecommended: mapping.isRecommended,
       apiStyle: mapping.apiStyle,
       ownedBy: state.ownedBy,
       surface: state.surface,
@@ -402,6 +407,7 @@ export function mergeAdminModelCatalogRows(input: {
         isEnabled: false,
         priority: 0,
         priorityLocked: false,
+        isRecommended: false,
         apiStyle: model.apiStyle ?? defaultApiStyleForProvider(provider.providerName),
         ownedBy: state.ownedBy,
         surface: state.surface,
@@ -519,6 +525,7 @@ export const multiProviderRouter = router({
           isEnabled: modelProviderMap.isEnabled,
           priority: modelProviderMap.priority,
           priorityLocked: modelProviderMap.priorityLocked,
+          isRecommended: modelProviderMap.isRecommended,
           apiStyle: modelProviderMap.apiStyle,
           supportsVision: modelProviderMap.supportsVision,
           supportsThinking: modelProviderMap.supportsThinking,
@@ -576,6 +583,7 @@ export const multiProviderRouter = router({
           isEnabled: modelProviderMap.isEnabled,
           priority: modelProviderMap.priority,
           priorityLocked: modelProviderMap.priorityLocked,
+          isRecommended: modelProviderMap.isRecommended,
           apiStyle: modelProviderMap.apiStyle,
           // Capability columns
           supportsVision: modelProviderMap.supportsVision,
@@ -946,22 +954,45 @@ export const multiProviderRouter = router({
     .input(
       z.object({
         mappingId: z.number().int(),
-        priority: z.number().int().min(0).max(999),
+        priority: z.number().int().min(0).max(999).optional(),
+        // Admin-curated quality flag (model_provider_map.isRecommended). Optional so this
+        // endpoint doubles as a lightweight single-field toggle from the mappings table
+        // (e.g. the Recommended column) without having to resubmit priority.
+        isRecommended: z.boolean().optional(),
       })
     )
     .mutation(async ({ input }) => {
+      const updateFields: {
+        priority?: number;
+        priorityLocked?: boolean;
+        isRecommended?: boolean;
+      } = {};
+
+      if (input.priority !== undefined) {
+        updateFields.priority = input.priority;
+        updateFields.priorityLocked = true;
+      }
+      if (input.isRecommended !== undefined) {
+        updateFields.isRecommended = input.isRecommended;
+      }
+
+      if (Object.keys(updateFields).length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "At least one of priority or isRecommended must be provided",
+        });
+      }
+
       const result = await db
         .update(modelProviderMap)
-        .set({
-          priority: input.priority,
-          priorityLocked: true,
-        })
+        .set(updateFields)
         .where(eq(modelProviderMap.id, input.mappingId))
         .returning({
           id: modelProviderMap.id,
           modelId: modelProviderMap.modelId,
           priority: modelProviderMap.priority,
           priorityLocked: modelProviderMap.priorityLocked,
+          isRecommended: modelProviderMap.isRecommended,
         });
 
       if (!result[0]) {

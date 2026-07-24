@@ -299,6 +299,61 @@ describe("mergeAdminModelCatalogRows", () => {
       executionMode: "deferred",
     });
   });
+
+  it("carries isRecommended through for mapped rows and defaults unmapped rows to false", () => {
+    const rows = mergeAdminModelCatalogRows({
+      providers: [
+        {
+          id: 5,
+          providerName: "openrouter",
+          providerDisplayName: "OpenRouter",
+          isEnabled: true,
+          availableModels: [
+            {
+              id: "deepseek/deepseek-v4-flash",
+              name: "DeepSeek V4 Flash",
+              contextLength: 128000,
+              pricing: { input: 0.28, output: 0.28 },
+            },
+            {
+              id: "openai/gpt-5.4",
+              name: "GPT 5.4",
+              contextLength: 400000,
+              pricing: { input: 2.5, output: 10 },
+            },
+          ],
+        },
+      ],
+      mappings: [
+        {
+          id: 55,
+          modelId: "deepseek-v4-flash",
+          providerId: 5,
+          providerName: "openrouter",
+          providerDisplayName: "OpenRouter",
+          modelName: "DeepSeek V4 Flash",
+          providerModelId: "deepseek/deepseek-v4-flash",
+          pricingInput: "0.28",
+          pricingOutput: "0.28",
+          isFree: false,
+          contextLength: 128000,
+          isEnabled: true,
+          priority: 5,
+          priorityLocked: true,
+          apiStyle: "chat-completions",
+          isRecommended: true,
+        },
+      ],
+    });
+
+    const mappedRow = rows.find((row) => row.providerModelId === "deepseek/deepseek-v4-flash");
+    expect(mappedRow?.isMapped).toBe(true);
+    expect(mappedRow?.isRecommended).toBe(true);
+
+    const unmappedRow = rows.find((row) => row.providerModelId === "openai/gpt-5.4");
+    expect(unmappedRow?.isMapped).toBe(false);
+    expect(unmappedRow?.isRecommended).toBe(false);
+  });
 });
 
 describe("listAdminModelCatalog", () => {
@@ -1123,6 +1178,64 @@ describe("multiProvider.updateModelPriority", () => {
     });
 
     expect(result.mapping).toEqual(updatedRow);
+  });
+
+  it("updates isRecommended only, without requiring or locking priority", async () => {
+    const returningMock = vi.fn().mockResolvedValue([{
+      id: 1,
+      modelId: "gpt-4o",
+      priority: 10,
+      priorityLocked: false,
+      isRecommended: true,
+    }]);
+    const whereMock = vi.fn().mockReturnValue({ returning: returningMock });
+    const setMock = vi.fn().mockReturnValue({ where: whereMock });
+    mockDbUpdate.mockReturnValue({ set: setMock });
+
+    const fn = multiProviderRouter.updateModelPriority as Function;
+    const result = await fn({
+      ctx: { user: { role: "admin" } },
+      input: { mappingId: 1, isRecommended: true },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.mapping.isRecommended).toBe(true);
+    expect(setMock).toHaveBeenCalledWith({ isRecommended: true });
+  });
+
+  it("updates priority and isRecommended together, still locking priority", async () => {
+    const returningMock = vi.fn().mockResolvedValue([{
+      id: 2,
+      modelId: "gpt-5",
+      priority: 5,
+      priorityLocked: true,
+      isRecommended: false,
+    }]);
+    const whereMock = vi.fn().mockReturnValue({ returning: returningMock });
+    const setMock = vi.fn().mockReturnValue({ where: whereMock });
+    mockDbUpdate.mockReturnValue({ set: setMock });
+
+    const fn = multiProviderRouter.updateModelPriority as Function;
+    const result = await fn({
+      ctx: { user: { role: "admin" } },
+      input: { mappingId: 2, priority: 5, isRecommended: false },
+    });
+
+    expect(setMock).toHaveBeenCalledWith({
+      priority: 5,
+      priorityLocked: true,
+      isRecommended: false,
+    });
+    expect(result.mapping.isRecommended).toBe(false);
+  });
+
+  it("throws BAD_REQUEST when neither priority nor isRecommended is provided", async () => {
+    const fn = multiProviderRouter.updateModelPriority as Function;
+
+    await expect(
+      fn({ ctx: { user: { role: "admin" } }, input: { mappingId: 3 } }),
+    ).rejects.toThrow();
+    expect(mockDbUpdate).not.toHaveBeenCalled();
   });
 });
 

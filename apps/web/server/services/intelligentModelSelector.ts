@@ -149,7 +149,10 @@ export interface CapabilityRequirements {
 }
 
 const CAPABILITY_KEYS: ReadonlyArray<
-  keyof Omit<CapabilityRequirements, "contextLength">
+  // recommendedOnly is a selection MODE (filters on row.isRecommended, a
+  // differently-named column), not a same-named row capability — it must
+  // stay out of the row[key] capability loop.
+  keyof Omit<CapabilityRequirements, "contextLength" | "recommendedOnly">
 > = [
   "supportsVision",
   "supportsThinking",
