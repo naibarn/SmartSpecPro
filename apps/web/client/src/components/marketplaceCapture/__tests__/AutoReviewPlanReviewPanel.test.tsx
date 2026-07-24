@@ -18,7 +18,9 @@ import {
   extractAutoReviewPlanReviewPromptImageCitations,
   isAutoReviewPlanReviewApprovalBlocked,
   isAutoReviewPlanReviewDegradedPlan,
+  isAutoReviewPlanReviewDraftFailed,
   isAutoReviewPlanReviewSilentAudioStrategy,
+  resolveAutoReviewPlanReviewDraftFailureReasonCode,
   type AutoReviewPlanReviewPlanData,
   type AutoReviewPlanReviewState,
 } from "../AutoReviewPlanReviewPanel";
@@ -45,8 +47,25 @@ function planFixture(
     referenceManifest: [],
     isDegradedFallback: false,
     isSilentAudioStrategy: false,
+    draftFailureReasonCode: null,
     ...overrides,
   };
+}
+
+/** A minimal fake-shot row fixture matching the shape
+ *  `buildDegradedSequentialStoryboardPack` actually persists (empty
+ *  dialogue, generic purpose/visual text) — used to prove the shot list is
+ *  truly HIDDEN (not just visually de-emphasized) for a failed draft, the
+ *  same way the two runs currently stuck in production do. */
+function fakeDegradedShotRowFixture(
+  shotId: number
+): AutoReviewPlanReviewPlanData["sequentialShots"][number] {
+  return sequentialShotRowFixture({
+    shotId,
+    purpose: `degraded_shot_${shotId}`,
+    visualSummary: "Show practical product proof from the reference image",
+    dialogue: "",
+  });
 }
 
 /** A minimal but complete sequential shot row fixture — every test that
@@ -519,49 +538,83 @@ describe("AutoReviewPlanReviewPanel", () => {
     expect(textarea.value).toBe("Shot 1:\nShot 5: ");
   });
 
-  it("shows the degraded-fallback banner only when plan.isDegradedFallback is true", () => {
-    const { rerender } = render(
+  // 2026-07-24 user report — a FAILED sequential draft used to render nine
+  // fake, dialogue-less shots (`plan-review-degraded-banner` plus the real
+  // shot list) instead of telling the user why it failed: "degraded pack
+  // ที่ไม่มีบทพูด ควรเอาออกไปเลยดีกว่าไหม แล้วแจ้ง message user ว่าสาเหตุอะไร
+  // จะได้ไม่เสียเวลา". These tests cover the replacement: a single reason
+  // card (`plan-review-draft-failed-reason`), the fake shot list actually
+  // removed from the DOM (not just visually hidden), and the two ways
+  // forward (redraft / cancel) staying enabled while approve stays blocked.
+  it("shows the draft-failed reason card keyed by draftFailureReasonCode and hides the fake shot list entirely, keeping approve disabled and redraft/cancel enabled", () => {
+    render(
       <AutoReviewPlanReviewPanel
         planReview={awaitingPlanReview}
-        plan={planFixture({ isDegradedFallback: false })}
-        locale="en"
-        {...requiredProps()}
-      />
-    );
-    expect(screen.queryByTestId("plan-review-degraded-banner")).toBeNull();
-
-    rerender(
-      <AutoReviewPlanReviewPanel
-        planReview={awaitingPlanReview}
-        plan={planFixture({ isDegradedFallback: true })}
+        plan={planFixture({
+          isDegradedFallback: true,
+          draftFailureReasonCode: "vision_capability",
+          sequentialShots: [
+            fakeDegradedShotRowFixture(1),
+            fakeDegradedShotRowFixture(2),
+            fakeDegradedShotRowFixture(3),
+          ],
+        })}
         locale="th"
         {...requiredProps()}
       />
     );
-    expect(screen.getByTestId("plan-review-degraded-banner")).toBeTruthy();
-    expect(screen.getByText(/แผนนี้เป็นแผนสำรองจากระบบ/)).toBeTruthy();
+    // The old banner-plus-fake-shots UI is gone — replaced by one card.
+    expect(screen.queryByTestId("plan-review-degraded-banner")).toBeNull();
+    expect(
+      screen.getByTestId("plan-review-draft-failed-reason")
+    ).toBeTruthy();
+    expect(screen.getByText(/โมเดลที่เลือกอ่านภาพไม่ได้/)).toBeTruthy();
+    // The (here, three) fake dialogue-less shots must never reach the DOM.
+    expect(screen.queryByTestId("plan-review-shot-1")).toBeNull();
+    expect(screen.queryByTestId("plan-review-shot-2")).toBeNull();
+    expect(screen.queryByTestId("plan-review-shot-3")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "ยืนยัน สร้างภาพ" })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "ให้ AI ร่างใหม่" })
+    ).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "ยกเลิกงานนี้ เพื่อเริ่มงานใหม่" })
+    ).not.toBeDisabled();
+    // The generic "no dialogue in any shot" notice would be misleading here
+    // (the real cause is a vision-incapable model) — the reason card above
+    // is the only explanation shown.
+    expect(
+      screen.queryByTestId("plan-review-approval-blocked-reason")
+    ).toBeNull();
   });
 
-  // 2026-07-24 user report — a degraded-fallback plan with empty dialogue on
-  // every shot could still be approved, spending real image credits on a
-  // product-review video that is unusable without dialogue. These four
-  // tests cover `isAutoReviewPlanReviewApprovalBlocked`'s wiring into the
-  // approve button + the new blocked-reason notice.
-  it("disables the approve button and shows the blocked-reason notice for a degraded plan, keeping redraft and cancel enabled", () => {
+  it("shows the generic reason card (and hides shots) for a LEGACY isDegradedFallback plan with no reasonCode at all — same fix, no data migration needed", () => {
     render(
       <AutoReviewPlanReviewPanel
         planReview={awaitingPlanReview}
-        plan={planFixture({ isDegradedFallback: true })}
+        plan={planFixture({
+          isDegradedFallback: true,
+          draftFailureReasonCode: null,
+          sequentialShots: [
+            fakeDegradedShotRowFixture(1),
+            fakeDegradedShotRowFixture(2),
+          ],
+        })}
         locale="en"
         {...requiredProps()}
       />
     );
     expect(
+      screen.getByTestId("plan-review-draft-failed-reason")
+    ).toBeTruthy();
+    expect(screen.getByText(/The storyboard draft failed/)).toBeTruthy();
+    expect(screen.queryByTestId("plan-review-shot-1")).toBeNull();
+    expect(screen.queryByTestId("plan-review-shot-2")).toBeNull();
+    expect(
       screen.getByRole("button", { name: /Confirm, generate images/ })
     ).toBeDisabled();
-    expect(
-      screen.getByTestId("plan-review-approval-blocked-reason")
-    ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Ask AI to redraft" })
     ).not.toBeDisabled();
@@ -572,6 +625,36 @@ describe("AutoReviewPlanReviewPanel", () => {
     ).not.toBeDisabled();
   });
 
+  it("does not show the draft-failed reason card for a healthy plan — real shots still render and approve stays enabled", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          isDegradedFallback: false,
+          draftFailureReasonCode: null,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "สวัสดีค่ะ" }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(
+      screen.queryByTestId("plan-review-draft-failed-reason")
+    ).toBeNull();
+    expect(screen.getByTestId("plan-review-shot-1")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /Confirm, generate images/ })
+    ).not.toBeDisabled();
+  });
+
+  // 2026-07-24 user report — a degraded-fallback plan with empty dialogue on
+  // every shot could still be approved, spending real image credits on a
+  // product-review video that is unusable without dialogue. These three
+  // tests cover `isAutoReviewPlanReviewApprovalBlocked`'s OTHER arm (a
+  // non-failed draft whose real shots all happen to have blank dialogue) —
+  // wiring into the approve button + the blocked-reason notice.
   it("disables the approve button when every sequential shot's dialogue is blank on a non-silent-audio run", () => {
     render(
       <AutoReviewPlanReviewPanel
@@ -1446,6 +1529,61 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
     ]);
     expect(data.isDegradedFallback).toBe(false);
     expect(data.isSilentAudioStrategy).toBe(false);
+    expect(data.draftFailureReasonCode).toBeNull();
+  });
+
+  it("resolveAutoReviewPlanReviewDraftFailureReasonCode accepts only the four known codes, and never throws on malformed/missing metadata", () => {
+    expect(resolveAutoReviewPlanReviewDraftFailureReasonCode(undefined)).toBeNull();
+    expect(resolveAutoReviewPlanReviewDraftFailureReasonCode(null)).toBeNull();
+    expect(resolveAutoReviewPlanReviewDraftFailureReasonCode({})).toBeNull();
+    for (const reasonCode of [
+      "vision_capability",
+      "provider_credit",
+      "model_bad_output",
+      "unknown",
+    ]) {
+      expect(
+        resolveAutoReviewPlanReviewDraftFailureReasonCode({
+          sequentialStoryboard: { draftFailure: { reasonCode } },
+        })
+      ).toBe(reasonCode);
+    }
+    // An unrecognized future code, or a missing/malformed draftFailure
+    // block, resolves to null rather than being trusted verbatim.
+    expect(
+      resolveAutoReviewPlanReviewDraftFailureReasonCode({
+        sequentialStoryboard: { draftFailure: { reasonCode: "rate_limited" } },
+      })
+    ).toBeNull();
+    expect(
+      resolveAutoReviewPlanReviewDraftFailureReasonCode({
+        sequentialStoryboard: { degraded: true },
+      })
+    ).toBeNull();
+    // Never renders `degradedRetryHistory`'s raw provider error text (which
+    // may contain an openrouter.ai key-management URL) — confirms this
+    // resolver only ever reads `draftFailure.reasonCode`, nothing else.
+    expect(
+      resolveAutoReviewPlanReviewDraftFailureReasonCode({
+        sequentialStoryboard: {
+          degradedRetryHistory: ["raw provider error https://openrouter.ai/keys"],
+        },
+      })
+    ).toBeNull();
+  });
+
+  it("buildAutoReviewPlanReviewPlanData bundles draftFailureReasonCode from metadataJson.sequentialStoryboard.draftFailure.reasonCode", () => {
+    const data = buildAutoReviewPlanReviewPlanData(
+      {
+        sequentialStoryboard: {
+          draftFailure: { reasonCode: "provider_credit" },
+        },
+      },
+      "sequential_shot_storyboard",
+      "storyboard_images",
+      "en"
+    );
+    expect(data.draftFailureReasonCode).toBe("provider_credit");
   });
 
   it("isAutoReviewPlanReviewDegradedPlan detects EITHER the degraded flag or a skillVersion containing 'degraded', and never throws on missing metadata", () => {
@@ -1510,8 +1648,53 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
     expect(data.isSilentAudioStrategy).toBe(true);
   });
 
+  it("isAutoReviewPlanReviewDraftFailed returns false for a null plan", () => {
+    expect(isAutoReviewPlanReviewDraftFailed(null)).toBe(false);
+  });
+
+  it("isAutoReviewPlanReviewDraftFailed is true for an explicit draftFailureReasonCode", () => {
+    expect(
+      isAutoReviewPlanReviewDraftFailed(
+        planFixture({
+          isDegradedFallback: false,
+          draftFailureReasonCode: "model_bad_output",
+        })
+      )
+    ).toBe(true);
+  });
+
+  it("isAutoReviewPlanReviewDraftFailed is true for the LEGACY isDegradedFallback backstop even with no reasonCode", () => {
+    expect(
+      isAutoReviewPlanReviewDraftFailed(
+        planFixture({ isDegradedFallback: true, draftFailureReasonCode: null })
+      )
+    ).toBe(true);
+  });
+
+  it("isAutoReviewPlanReviewDraftFailed is false for a healthy plan (neither signal set)", () => {
+    expect(
+      isAutoReviewPlanReviewDraftFailed(
+        planFixture({ isDegradedFallback: false, draftFailureReasonCode: null })
+      )
+    ).toBe(false);
+  });
+
   it("isAutoReviewPlanReviewApprovalBlocked returns false for a null plan (still loading — an unrelated pre-existing concern)", () => {
     expect(isAutoReviewPlanReviewApprovalBlocked(null)).toBe(false);
+  });
+
+  it("isAutoReviewPlanReviewApprovalBlocked blocks on draftFailureReasonCode alone, even if isDegradedFallback were somehow false — an edge case must never slip through", () => {
+    expect(
+      isAutoReviewPlanReviewApprovalBlocked(
+        planFixture({
+          isDegradedFallback: false,
+          draftFailureReasonCode: "vision_capability",
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "hello" }),
+          ],
+        })
+      )
+    ).toBe(true);
   });
 
   it("isAutoReviewPlanReviewApprovalBlocked blocks a degraded-fallback plan unconditionally, even with non-empty dialogue", () => {

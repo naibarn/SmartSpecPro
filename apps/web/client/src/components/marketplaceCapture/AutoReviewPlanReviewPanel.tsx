@@ -173,6 +173,16 @@ export interface AutoReviewPlanReviewPlanData {
    *  empty" heuristic (`isAutoReviewPlanReviewApprovalBlocked`) must never
    *  fire for it. See `isAutoReviewPlanReviewSilentAudioStrategy`. */
   isSilentAudioStrategy: boolean;
+  /** The PINNED backend contract for why a sequential draft's per-shot loop
+   *  failed structurally:
+   *  `metadataJson.sequentialStoryboard.draftFailure.reasonCode`, one of
+   *  `"vision_capability" | "provider_credit" | "model_bad_output" |
+   *  "unknown"`. `null` when absent OR not one of those four known codes —
+   *  including every run from before this field existed (a degraded run
+   *  that still only has the legacy `isDegradedFallback` backstop signal).
+   *  See `resolveAutoReviewPlanReviewDraftFailureReasonCode` and
+   *  `isAutoReviewPlanReviewDraftFailed`. */
+  draftFailureReasonCode: string | null;
 }
 
 /**
@@ -679,6 +689,40 @@ export function isAutoReviewPlanReviewDegradedPlan(
   return cleanText(sequential.skillVersion).toLowerCase().includes("degraded");
 }
 
+/** The four reason codes a parallel backend agent may write into
+ *  `metadataJson.sequentialStoryboard.draftFailure.reasonCode` — see
+ *  `resolveAutoReviewPlanReviewDraftFailureReasonCode`. */
+const KNOWN_DRAFT_FAILURE_REASON_CODES = new Set([
+  "vision_capability",
+  "provider_credit",
+  "model_bad_output",
+  "unknown",
+]);
+
+/**
+ * Failed-draft reason gate (2026-07-24 user report — a failed sequential
+ * draft rendered nine fake, dialogue-less shots instead of a clear reason:
+ * "degraded pack ที่ไม่มีบทพูด ควรเอาออกไปเลยดีกว่าไหม แล้วแจ้ง message user
+ * ว่าสาเหตุอะไร"). Reads the PINNED backend contract
+ * `metadataJson.sequentialStoryboard.draftFailure.reasonCode` and validates
+ * it is one of the four known codes — any other value (including absent,
+ * malformed, or an unrecognized future code) resolves to `null`, which the
+ * render layer treats identically to a pre-this-change legacy failure
+ * (`isDegradedFallback: true` with no reasonCode at all): the generic
+ * "unknown" reason card copy. Deliberately never reads
+ * `sequentialStoryboard.degradedRetryHistory` — that field holds raw
+ * provider error text (including an openrouter.ai key-management URL) that
+ * must never reach the DOM. Never throws on malformed/missing metadata.
+ */
+export function resolveAutoReviewPlanReviewDraftFailureReasonCode(
+  metadataJson: unknown
+): string | null {
+  const sequential = asRecord(asRecord(metadataJson).sequentialStoryboard);
+  const draftFailure = asRecord(sequential.draftFailure);
+  const reasonCode = cleanText(draftFailure.reasonCode);
+  return KNOWN_DRAFT_FAILURE_REASON_CODES.has(reasonCode) ? reasonCode : null;
+}
+
 /**
  * True when `metadataJson.resolvedAudioStrategy === "silent"` — the ONLY
  * resolved-audio-strategy value that means "no dialogue is expected by
@@ -695,22 +739,48 @@ export function isAutoReviewPlanReviewSilentAudioStrategy(
 }
 
 /**
+ * Failed-draft view state (2026-07-24 user report — see
+ * `resolveAutoReviewPlanReviewDraftFailureReasonCode`'s doc comment): `true`
+ * when EITHER of these is true —
+ *  - `plan.draftFailureReasonCode !== null` — the PINNED backend contract
+ *    explicitly recorded why the draft failed; OR
+ *  - `plan.isDegradedFallback === true` — the deterministic fallback pack.
+ *    `sequentialStoryboard.degraded` is a backstop the backend still sets on
+ *    every failed draft (reasonCode or not), so this arm also covers every
+ *    LEGACY run that degraded before `draftFailure` existed (no data
+ *    migration needed — those runs just render the generic "unknown"
+ *    reason card instead of the nine fake shots they used to show).
+ * The panel renders a single reason card and hides the (fake) shot list
+ * whenever this is `true` — see `AutoReviewPlanReviewPanel`'s `draftFailed`.
+ */
+export function isAutoReviewPlanReviewDraftFailed(
+  plan: AutoReviewPlanReviewPlanData | null
+): boolean {
+  if (!plan) return false;
+  return plan.draftFailureReasonCode !== null || plan.isDegradedFallback === true;
+}
+
+/**
  * Approval-blocking gate (2026-07-24 user report: a degraded-fallback plan
  * with empty dialogue on every shot could still be approved, spending real
  * image credits on a product-review video that is unusable without dialogue
  * — "หากงานไม่มีบทพูดมันใช้อะไรไม่ได้เลย เป็นงานรีวิว บทพูดอย่างไรก็ต้องมี").
  * The panel component disables `onApprove` whenever this returns `true`,
  * because EITHER of these is true:
- *  - `plan.isDegradedFallback` — the deterministic fallback pack, which
- *    ALWAYS has empty dialogue on every shot by construction (see that
- *    field's doc comment) and never honors the user's settings; OR
+ *  - `isAutoReviewPlanReviewDraftFailed(plan)` — the draft failed outright
+ *    (an explicit `draftFailureReasonCode`, or the legacy `isDegradedFallback`
+ *    backstop with no reason code) — forcing this FIRST means a legacy/edge
+ *    case (e.g. a future bug that sets `draftFailureReasonCode` without also
+ *    setting `sequentialStoryboard.degraded`) can never slip past this gate
+ *    and reach the approve button; OR
  *  - every sequential shot's dialogue is blank AND the run's audio strategy
  *    is not deliberately `"silent"` (`isSilentAudioStrategy`) — a real
- *    (non-degraded) draft that somehow still shipped with zero dialogue
+ *    (non-failed) draft that somehow still shipped with zero dialogue
  *    everywhere is exactly as unusable for a review video.
  * Non-sequential runs (`sequentialShots.length === 0`, e.g.
  * `storyboard_3x3_split` / `video_shot_start_stop`) have no per-shot
- * dialogue to evaluate, so only the `isDegradedFallback` arm can block them.
+ * dialogue to evaluate, so only the `isAutoReviewPlanReviewDraftFailed` arm
+ * can block them.
  * A `null` plan (still loading, or failed to load) never blocks — the
  * existing `!plan` branch already renders its own loading/error state, and
  * the approve button's availability while unloaded is an unrelated,
@@ -720,7 +790,7 @@ export function isAutoReviewPlanReviewApprovalBlocked(
   plan: AutoReviewPlanReviewPlanData | null
 ): boolean {
   if (!plan) return false;
-  if (plan.isDegradedFallback) return true;
+  if (isAutoReviewPlanReviewDraftFailed(plan)) return true;
   if (plan.sequentialShots.length === 0) return false;
   if (plan.isSilentAudioStrategy) return false;
   return plan.sequentialShots.every(shot => !shot.dialogue.trim());
@@ -759,6 +829,8 @@ export function buildAutoReviewPlanReviewPlanData(
     isDegradedFallback: isAutoReviewPlanReviewDegradedPlan(metadataJson),
     isSilentAudioStrategy:
       isAutoReviewPlanReviewSilentAudioStrategy(metadataJson),
+    draftFailureReasonCode:
+      resolveAutoReviewPlanReviewDraftFailureReasonCode(metadataJson),
   };
 }
 
@@ -1313,7 +1385,17 @@ export function AutoReviewPlanReviewPanel({
   if (!isAwaiting) return null;
 
   const busy = Boolean(approving) || Boolean(redrafting);
-  const hasSequentialShots = (plan?.sequentialShots.length ?? 0) > 0;
+  // 2026-07-24 user report ("degraded pack ที่ไม่มีบทพูด ควรเอาออกไปเลย...
+  // แล้วแจ้ง message user ว่าสาเหตุอะไร") — see
+  // `isAutoReviewPlanReviewDraftFailed`'s doc comment. `hasSequentialShots`
+  // is deliberately forced `false` on a failed draft even though
+  // `plan.sequentialShots` is non-empty in that case: those rows are the
+  // deterministic fallback pack's nine fake, dialogue-less shots, never
+  // real content, so the shot list (and its reference-manifest legend) must
+  // never render for them.
+  const draftFailed = isAutoReviewPlanReviewDraftFailed(plan);
+  const hasSequentialShots =
+    !draftFailed && (plan?.sequentialShots.length ?? 0) > 0;
   const hasPlanText = Boolean(
     plan &&
     (plan.productDetail ||
@@ -1329,9 +1411,22 @@ export function AutoReviewPlanReviewPanel({
     (plan?.referenceManifest ?? []).map(row => row.index)
   );
   // 2026-07-24 user report — see `isAutoReviewPlanReviewApprovalBlocked`'s
-  // doc comment for the exact blocked condition (degraded fallback pack, or
+  // doc comment for the exact blocked condition (draft failed outright, or
   // every shot's dialogue is blank on a non-silent-audio run).
   const approvalBlocked = isAutoReviewPlanReviewApprovalBlocked(plan);
+  // The reason card (below) already names the real cause when the draft
+  // failed outright — the generic "no dialogue in any shot" notice would be
+  // actively misleading there (there is no shot list to point at, and the
+  // real cause may have nothing to do with dialogue), so it is reserved for
+  // the OTHER `approvalBlocked` case: a non-failed draft whose real shots
+  // all happen to have blank dialogue.
+  const showApprovalBlockedReason = approvalBlocked && !draftFailed;
+  const draftFailedReasonText = draftFailed
+    ? (pickLabel(
+        copy.planReviewDraftFailedReasonLabels,
+        plan?.draftFailureReasonCode ?? "unknown"
+      ) ?? copy.planReviewDraftFailedReasonLabels.unknown)
+    : "";
 
   // "ภาพที่จะเห็น" (visualSummary) is never directly editable here — it
   // grounds the English image prompt and must stay in the skill's hands.
@@ -1374,13 +1469,13 @@ export function AutoReviewPlanReviewPanel({
         ) : null}
       </div>
 
-      {plan?.isDegradedFallback ? (
+      {draftFailed ? (
         <div
-          data-testid="plan-review-degraded-banner"
-          className="flex items-start gap-2 rounded-md border-2 border-orange-400 bg-orange-50 p-3 text-sm text-orange-900 dark:border-orange-500/50 dark:bg-orange-950/30 dark:text-orange-100"
+          data-testid="plan-review-draft-failed-reason"
+          className="flex items-start gap-2 rounded-md border-2 border-red-400 bg-red-50 p-3 text-sm text-red-900 dark:border-red-500/50 dark:bg-red-950/30 dark:text-red-100"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <p>{copy.planReviewDegradedBanner}</p>
+          <p>{draftFailedReasonText}</p>
         </div>
       ) : null}
 
@@ -1585,7 +1680,7 @@ export function AutoReviewPlanReviewPanel({
         </Button>
       </div>
 
-      {approvalBlocked ? (
+      {showApprovalBlockedReason ? (
         <div
           data-testid="plan-review-approval-blocked-reason"
           className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
@@ -1595,7 +1690,12 @@ export function AutoReviewPlanReviewPanel({
         </div>
       ) : null}
 
-      {plan?.creditEstimate ? (
+      {/* A failed draft's `creditEstimate` is derived from the SAME nine
+          fake shots the reason card above replaces — showing an "estimated
+          images" figure for a plan that cannot be approved would be exactly
+          the kind of stale/fake signal this change removes, so it is
+          suppressed too. */}
+      {plan?.creditEstimate && !draftFailed ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">
           {copy.imageJobsEstimatedWorstCase(
             plan.creditEstimate.typical,

@@ -292,8 +292,30 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           string
         >,
         planReviewReferenceManifestUnknownRoleLabel: "อื่น ๆ",
-        planReviewDegradedBanner:
-          'แผนนี้เป็นแผนสำรองจากระบบ (การเรียกสกิลหลักล้มเหลวก่อนหน้านี้ — ปัญหานี้ถูกแก้ไขแล้ว) แนะนำให้กด "ให้ AI ร่างใหม่" เพื่อให้ได้แผนจริงที่มีบทพูดภาษาไทยและตรงกับโทนที่ตั้งไว้ ก่อนยืนยัน',
+        // Failed-draft reason card (2026-07-24 user report — "degraded pack
+        // ที่ไม่มีบทพูด ควรเอาออกไปเลยดีกว่าไหม แล้วแจ้ง message user ว่าสาเหตุ
+        // อะไร จะได้ไม่เสียเวลา"): replaces the OLD `planReviewDegradedBanner`
+        // banner-plus-fake-shots UI. Keyed by
+        // `metadataJson.sequentialStoryboard.draftFailure.reasonCode` (see
+        // `resolveAutoReviewPlanReviewDraftFailureReasonCode`); `unknown`
+        // ALSO covers every legacy run that degraded before that field
+        // existed (`isDegradedFallback: true` with no reason code at all).
+        planReviewDraftFailedReasonLabels: {
+          vision_capability:
+            'โมเดลที่เลือกอ่านภาพไม่ได้ ระบบได้ปรับให้อัตโนมัติแล้ว กรุณากด "ให้ AI ร่างใหม่" อีกครั้ง',
+          provider_credit:
+            'เครดิตผู้ให้บริการ AI ไม่พอ กรุณาเติมเครดิตแล้วกด "ให้ AI ร่างใหม่"',
+          model_bad_output:
+            'โมเดลตอบกลับไม่ครบถ้วน กรุณากด "ให้ AI ร่างใหม่" อีกครั้ง',
+          unknown:
+            'ร่างสตอรีบอร์ดไม่สำเร็จ กรุณากด "ให้ AI ร่างใหม่" หรือ "ยกเลิกงานนี้ เพื่อเริ่มงานใหม่"',
+        } as Record<
+          | "vision_capability"
+          | "provider_credit"
+          | "model_bad_output"
+          | "unknown",
+          string
+        >,
         planReviewApprove: "ยืนยัน สร้างภาพ",
         // Approval-blocking gate (2026-07-24 user report — "หากงานไม่มีบทพูด
         // มันใช้อะไรไม่ได้เลย เป็นงานรีวิว บทพูดอย่างไรก็ต้องมี"): shown next
@@ -668,8 +690,28 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           string
         >,
         planReviewReferenceManifestUnknownRoleLabel: "Other",
-        planReviewDegradedBanner:
-          'This plan is an automatic system fallback (the main skill call failed earlier — this issue has since been fixed). We recommend clicking "Ask AI to redraft" to get a real plan with Thai dialogue that matches your configured tone before confirming.',
+        // Failed-draft reason card (2026-07-24 user report) — replaces the
+        // OLD `planReviewDegradedBanner` banner-plus-fake-shots UI. Keyed by
+        // `metadataJson.sequentialStoryboard.draftFailure.reasonCode` (see
+        // `resolveAutoReviewPlanReviewDraftFailureReasonCode`); `unknown`
+        // ALSO covers every legacy run that degraded before that field
+        // existed (`isDegradedFallback: true` with no reason code at all).
+        planReviewDraftFailedReasonLabels: {
+          vision_capability:
+            'The selected model cannot read images. The system has already switched models automatically — please click "Ask AI to redraft" again.',
+          provider_credit:
+            'The AI provider credit balance is insufficient. Please top up credit, then click "Ask AI to redraft".',
+          model_bad_output:
+            'The model response was incomplete. Please click "Ask AI to redraft" again.',
+          unknown:
+            'The storyboard draft failed. Please click "Ask AI to redraft", or "Cancel this run to start a new one".',
+        } as Record<
+          | "vision_capability"
+          | "provider_credit"
+          | "model_bad_output"
+          | "unknown",
+          string
+        >,
         planReviewApprove: "Confirm, generate images",
         // Approval-blocking gate (2026-07-24 user report — "if the job has
         // no dialogue it's completely unusable; it's a review job, dialogue

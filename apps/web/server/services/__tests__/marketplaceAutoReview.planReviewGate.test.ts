@@ -521,6 +521,56 @@ describe("approveMarketplaceAutoReviewPlanReview content gate", () => {
     expect(upsertStageSpy).not.toHaveBeenCalled();
   });
 
+  // 2026-07-24 field follow-up (mar_76cb03fe0f29a20ec6422480f5a6840b): a
+  // FAILED draft (every authoring round died structurally) now holds with
+  // `draftFailure` set and ZERO shots — the pre-existing `shots.length === 0
+  // -> return null` early return (meant for a non-sequential run) must never
+  // let this slip through and approve into image credits.
+  it("throws BAD_REQUEST and performs zero writes when sequentialStoryboard.draftFailure is set with zero shots (a failed draft, not a 'no sequential pack' no-op)", async () => {
+    const metadata = awaitingPlanReviewMetadataFixture({
+      sequentialStoryboard: {
+        degraded: true,
+        degradedRetryHistory: [
+          {
+            round: 1,
+            status: "invocation_failed",
+            error: "invocation_failed: https://openrouter.ai/keys detail",
+          },
+        ],
+        draftFailure: {
+          reasonCode: "model_bad_output",
+          failedAt: "2026-07-24T00:00:00.000Z",
+          roundsAttempted: 1,
+        },
+      },
+    });
+    expect(
+      (metadata as any).sequentialStoryboard.shots
+    ).toBeUndefined();
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_1" }, AUTH)
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining('ให้ AI ร่างใหม่'),
+    });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
   it('throws BAD_REQUEST when skillVersion contains "degraded" even without an explicit degraded flag (mirrors the client\'s isAutoReviewPlanReviewDegradedPlan OR condition)', async () => {
     const metadata = sequentialAwaitingPlanReviewMetadataFixture({
       sequentialStoryboard: {

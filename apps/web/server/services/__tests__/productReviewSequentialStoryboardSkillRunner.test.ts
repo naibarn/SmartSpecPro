@@ -925,75 +925,14 @@ describe("T10 — degraded fallback (structural failure survives all bounded att
   });
 });
 
-describe("T10b — SVC-side degraded-pack assembly helper (cross-import, never throws)", () => {
-  it("buildDegradedSequentialStoryboardPackForTest never throws and produces 9 safety-locked prompts", async () => {
-    vi.resetModules();
-    vi.doMock("../../db", () => ({ getDb: vi.fn(async () => null) }));
-    const { buildDegradedSequentialStoryboardPackForTest } = await import(
-      "../marketplaceAutoReviewService"
-    );
-
-    const plan = {
-      conceptId: "concept-1",
-      title: "รีวิวสินค้า",
-      productTruth: {
-        productId: "mp_1",
-        productName: "เก้าอี้เด็ก",
-        brand: "TestBrand",
-        platform: "shopee",
-        externalProductId: "123",
-        externalShopId: "seller-1",
-        productCategory: "mother_baby",
-        categoryText: "สินค้าเด็ก",
-        categoryPath: ["เด็ก"],
-        sourceUrl: "https://example.com/product",
-        affiliateUrl: null,
-        shopName: null,
-        price: null,
-        rating: null,
-        sold: null,
-        reviews: null,
-        description: "",
-        specs: {},
-        imageUrls: ["https://example.com/product.png"],
-      },
-      storyboardGuide: "Shot-by-shot storyboard guide",
-      voiceoverScript: "VOICEOVER SCRIPT BY SHOT",
-      productDetail: "PRODUCT FACTS LOCK: เก้าอี้เด็ก. Do not alter shape or material.",
-      shots: [
-        {
-          id: "shot-1",
-          order: 1,
-          title: "เปิดปัญหา",
-          startSeconds: 0,
-          endSeconds: 8,
-          durationSeconds: 8,
-          storyboardGuide: "1. 0-8s เปิดปัญหา",
-          voiceover: "สั้นมาก",
-          camera: "slow push-in",
-          visual: "เห็นเก้าอี้เด็ก",
-          movement: "slow push-in",
-          productRole: "context first",
-        },
-      ],
-    } as any;
-
-    let result: any;
-    expect(() => {
-      result = buildDegradedSequentialStoryboardPackForTest({
-        plan,
-        guardianRequired: true,
-        assemblyDocumented: false,
-      });
-    }).not.toThrow();
-
-    expect(result.degraded).toBe(true);
-    expect(result.shots).toHaveLength(9);
-    for (const shot of result.shots) {
-      expect(shot.start_frame_image_prompt.length).toBeGreaterThan(0);
-      expect(shot.video_prompt).toContain(SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER);
-    }
-    expect(result.evidenceProfile.product_reference_model_conflict).toBeNull();
-    vi.doUnmock("../../db");
-  });
-});
+// T10b — SVC-side degraded-pack assembly helper — DELETED (2026-07-24 field
+// follow-up, mar_76cb03fe0f29a20ec6422480f5a6840b): the run catch block no
+// longer fabricates a 9-shot deterministic pack
+// (`buildDegradedSequentialStoryboardPack`/`...ForTest`, removed from
+// marketplaceAutoReviewService.ts) when every authoring round fails
+// structurally — it classifies the failure into
+// `sequentialStoryboard.draftFailure.reasonCode` instead (see
+// `classifySequentialStoryboardDraftFailureReason` and its own dedicated
+// test file, marketplaceAutoReview.draftFailureClassifier.test.ts). This
+// test covered ONLY that now-deleted builder, so it was deleted with it —
+// nothing else in this file referenced it.

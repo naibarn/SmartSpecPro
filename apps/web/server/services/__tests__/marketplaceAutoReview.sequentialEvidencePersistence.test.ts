@@ -767,7 +767,13 @@ describe("runSequentialPromptPlanStage (§5.0)", () => {
     expect(mockRunLoop).toHaveBeenCalledTimes(2);
   });
 
-  it("SequentialStoryboardStructuralError -> degraded pack persisted, audit emitted, no throw", async () => {
+  // 2026-07-24 field follow-up (mar_76cb03fe0f29a20ec6422480f5a6840b): this
+  // used to assert on a fabricated 9-shot deterministic pack
+  // (`buildDegradedSequentialStoryboardPack`, now deleted). The run now
+  // holds with NO shots at all and a classified `draftFailure.reasonCode`
+  // instead — see classifySequentialStoryboardDraftFailureReason's own
+  // dedicated test file, marketplaceAutoReview.draftFailureClassifier.test.ts.
+  it("SequentialStoryboardStructuralError -> no fabricated shots persisted; draftFailure classified, audit emitted, no throw", async () => {
     mockGetDb.mockResolvedValue(makeMockDb().db);
     mockRunLoop.mockRejectedValue(
       new SequentialStoryboardStructuralError("every round failed", [])
@@ -783,13 +789,46 @@ describe("runSequentialPromptPlanStage (§5.0)", () => {
 
     const seq = result.sequentialStoryboard as Record<string, unknown>;
     expect(seq.degraded).toBe(true);
-    expect(Array.isArray(seq.shots)).toBe(true);
-    expect((seq.shots as unknown[]).length).toBe(9);
+    expect(seq.shots).toBeUndefined();
+    expect(seq.draftFailure).toEqual({
+      reasonCode: "unknown",
+      failedAt: expect.any(String),
+      roundsAttempted: 0,
+    });
     expect(
       auditSpy.mock.calls.some(call =>
         String(call[0]).includes("sequential_prompt_degraded_fallback")
       )
     ).toBe(true);
     auditSpy.mockRestore();
+  });
+
+  it("SequentialStoryboardStructuralError with a vision-capability retryHistory entry -> draftFailure.reasonCode classifies it (never fabricates shots)", async () => {
+    mockGetDb.mockResolvedValue(makeMockDb().db);
+    mockRunLoop.mockRejectedValue(
+      new SequentialStoryboardStructuralError("every round failed", [
+        {
+          round: 1,
+          status: "invocation_failed",
+          error:
+            "product-review-sequential-storyboard LLM call failed: No endpoints found that support image input",
+        },
+      ])
+    );
+
+    const result = await runSequentialPromptPlanStageForTest({
+      run: makeRun(),
+      metadata: baseRunMetadata(),
+      plan: basePlan,
+      auth: { userId: 1, tenantId: "tenant_1" },
+    });
+
+    const seq = result.sequentialStoryboard as Record<string, unknown>;
+    expect(seq.degraded).toBe(true);
+    expect(seq.shots).toBeUndefined();
+    const draftFailure = seq.draftFailure as Record<string, unknown>;
+    expect(draftFailure.reasonCode).toBe("vision_capability");
+    expect(draftFailure.roundsAttempted).toBe(1);
+    expect(typeof draftFailure.failedAt).toBe("string");
   });
 });

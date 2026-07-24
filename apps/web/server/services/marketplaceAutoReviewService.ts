@@ -192,6 +192,11 @@ import {
 } from "../../shared/mediaModelTransport";
 import type { MediaAssetType } from "../../shared/mcpConnectTypes";
 import { detectStoryboardGridRects } from "./storyboardGridGeometry";
+// 2026-07-24 field follow-up (mar_76cb03fe0f29a20ec6422480f5a6840b) — reused
+// UNMODIFIED (never re-derived) by `classifySequentialStoryboardDraftFailure
+// Reason` below so its transient/ambiguous-error exclusion logic applies
+// identically here.
+import { isDefinitiveVisionCapabilityError } from "./modelVisionCapabilityBreaker";
 
 export type MarketplaceAutoReviewOutputMode =
   | "storyboard_images"
@@ -17564,167 +17569,116 @@ export function buildMarketplaceAutoReview3x3StoryboardPromptForTest(input: {
   );
 }
 
-// Feature 136 (section 04, §3 deliverable #2 / §5.10) — degraded
-// deterministic fallback assembly. Built here (not in the standalone runner)
-// because it needs `AutoReviewPlan` + the module-private `buildShotFramePrompt`
-// / `buildMinorSafetyClothingLock` (mirrors the grid degraded-fallback
-// advisory pattern at this file's `storyboard_prompt_degraded_fallback`
-// path). The runner signals structural failure via the typed
-// `SequentialStoryboardStructuralError`; the SVC integration (section 05/06)
-// catches it and calls this helper to keep the run alive. Degraded packs
-// skip claims/dialogue enrichment but keep every safety lock; money-path and
-// safety validators (this section's `validateSequentialStoryboardPackPreflight`)
-// stay fail-closed against whatever this produces. NEVER `slice()`s a final
-// prompt — every component string here is short/fixed by construction.
-function buildDegradedSequentialStoryboardVideoPrompt(input: {
-  plan: AutoReviewPlan;
-  shotNumber: number;
-  guardianRequired: boolean;
-}): string {
-  const productIdentity = marketplaceAutoReviewEnglishPromptText(
-    input.plan.productTruth.productName,
-    "the exact selected product from the reference images"
+// Feature 136 (2026-07-24 field follow-up, run
+// mar_76cb03fe0f29a20ec6422480f5a6840b): every sequential-storyboard
+// authoring round failing structurally used to fabricate a 9-shot
+// deterministic pack here (`buildDegradedSequentialStoryboardPack`, now
+// deleted — `dialogue: ""` and generic English text on every shot) purely so
+// the run could still "hold" at plan review. The user saw nine useless fake
+// shots with zero clue why authoring actually failed. This classifier
+// replaces that fabrication: `runSequentialPromptPlanStage`'s
+// `SequentialStoryboardStructuralError` catch reduces the bounded
+// `degradedRetryHistory` it already records into ONE safe, client-facing
+// reason code and holds the run with NO shots at all — a failed draft has no
+// shots. Never the raw provider error text (that stays in
+// `degradedRetryHistory`, which the client never reads — see
+// `findMarketplaceAutoReviewPlanReviewApprovalBlocker`'s own docblock on that
+// same non-echo invariant).
+//
+// Precedence (first match wins, scanning every entry in order): a
+// vision-capability rejection is the most specific/actionable signal (an
+// admin can fix the model flag directly in /admin/llm-models — see
+// `isDefinitiveVisionCapabilityError` in modelVisionCapabilityBreaker.ts,
+// reused UNMODIFIED so its transient/ambiguous-error exclusion logic — never
+// blame capability for a balance/timeout/rate-limit blip — applies
+// identically here), checked before the more generic "provider account
+// exhausted" signal, which in turn is checked before the catch-all "model
+// produced a structurally/qualitatively bad output" signal. `unknown` only
+// when nothing matches — including an empty history — never a re-invented
+// deterministic pack.
+export type SequentialStoryboardDraftFailureReasonCode =
+  | "vision_capability"
+  | "provider_credit"
+  | "model_bad_output"
+  | "unknown";
+
+export type SequentialStoryboardDraftFailure = {
+  reasonCode: SequentialStoryboardDraftFailureReasonCode;
+  failedAt: string;
+  roundsAttempted: number;
+};
+
+const SEQUENTIAL_DRAFT_FAILURE_PROVIDER_CREDIT_PATTERN =
+  /can only afford|insufficient (credit|balance|fund|quota)|requires more credits|quota exceeded|balance/i;
+
+const SEQUENTIAL_DRAFT_FAILURE_MODEL_BAD_OUTPUT_PATTERN =
+  /final_qc|loop_report|contract|schema|invalid.*(json|enum)/i;
+
+/** Concatenates every text-bearing field a `degradedRetryHistory` entry can
+ *  carry across its real shapes (`error` string for `invocation_failed`;
+ *  `reasons` string[] for `contract_violation`) into one haystack for the
+ *  regex checks below. Never throws on a malformed entry. */
+function sequentialDraftFailureEntryText(entry: Record<string, unknown>): string {
+  const record = asRecord(entry);
+  const reasons = Array.isArray(record.reasons)
+    ? (record.reasons as unknown[]).filter(
+        (reason): reason is string => typeof reason === "string"
+      )
+    : [];
+  return [typeof record.error === "string" ? record.error : "", ...reasons].join(
+    " "
   );
-  const guardianLine = input.guardianRequired
-    ? " If a child is shown using the product, a supervising adult guardian must also be visible in the same frame; never show an unaccompanied minor using the product."
-    : "";
-  const lock = buildMinorSafetyClothingLock(input.plan);
-  return [
-    `${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER}. Keep the exact same ${productIdentity} consistent in every shot. Use any additional product angle references only to keep the product accurate from every camera direction; never let them override @Image1.`,
-    "Style: photorealistic commercial short-form review video, 9:16 vertical, natural lighting, realistic motion, realistic hands, stable product structure, clean background, no visible text overlays, no logo, no price mention.",
-    "Dialogue style: natural Thai product-review tone, concise, trustworthy, family-friendly, no hard-sell shouting, no exaggerated medical or scientific claims, no guarantee claims, no superlative superiority claims, no false promises.",
-    "Audio: clear Thai voiceover or spoken dialogue, natural room ambience, only product-relevant foley synchronized with visible actions.",
-    `Shot ${input.shotNumber}: continue the product review with one clear, simple, physically plausible action showing the product in practical use (deterministic fallback — no enrichment dialogue).${guardianLine}`,
-    lock,
-  ]
-    .filter(Boolean)
-    .join(" ");
 }
 
-function buildDegradedSequentialStoryboardPack(input: {
-  plan: AutoReviewPlan;
-  imageBudget: number;
-  overlayTextMode: MarketplaceAutoReviewOverlayTextMode;
-  guardianRequired: boolean;
-  assemblyDocumented: boolean;
-}): SequentialStoryboardPack {
-  const shots = Array.from({ length: MAX_SHOT_COUNT }, (_, index) => {
-    const sourceIndex = Math.min(index, Math.max(0, input.plan.shots.length - 1));
-    const sourceShot = input.plan.shots[sourceIndex];
-    const shotForPrompt: AutoReviewShot = sourceShot
-      ? { ...sourceShot, order: index + 1 }
-      : {
-          id: `degraded-shot-${index + 1}`,
-          order: index + 1,
-          title: `Product review shot ${index + 1}`,
-          startSeconds: index * DEFAULT_SHOT_DURATION_SECONDS,
-          endSeconds: (index + 1) * DEFAULT_SHOT_DURATION_SECONDS,
-          durationSeconds: DEFAULT_SHOT_DURATION_SECONDS,
-          storyboardGuide: "Show practical product proof from the reference image",
-          voiceover: "",
-          camera: "",
-          visual: "",
-          movement: "",
-          productRole: "",
-        };
-    const imagePrompt = ensureMinorSafetyClothingLockInImagePrompt(
-      buildShotFramePrompt(input.plan, shotForPrompt, "start", input.overlayTextMode),
-      input.plan
-    );
-    const videoPrompt = buildDegradedSequentialStoryboardVideoPrompt({
-      plan: input.plan,
-      shotNumber: index + 1,
-      guardianRequired: input.guardianRequired,
-    });
-    return {
-      shot_id: index + 1,
-      purpose: `degraded_shot_${index + 1}`,
-      duration_seconds: DEFAULT_SHOT_DURATION_SECONDS,
-      demonstration_type: "finished_product_showcase" as const,
-      depicts_minor: false,
-      guardian_required: input.guardianRequired,
-      transition_from_previous: "",
-      visual_summary: shotForPrompt.visual || shotForPrompt.storyboardGuide || "",
-      dialogue: "",
-      estimated_speech_seconds: 0,
-      start_frame_image_prompt: imagePrompt,
-      image_prompt_character_count: imagePrompt.length,
-      video_prompt: videoPrompt,
-      video_prompt_character_count: videoPrompt.length,
-      claim_trace: [],
-      qc: {
-        evidence_accuracy: 0,
-        continuity: 0,
-        compliance: 0,
-        length_valid:
-          imagePrompt.length <= input.imageBudget &&
-          videoPrompt.length <= MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS,
-        status: "needs_revision" as const,
-      },
-    };
-  });
-
-  return {
-    skillVersion: "1.0.0-degraded",
-    degraded: true,
-    evidenceProfile: {
-      assembly_documented: input.assemblyDocumented,
-      assembly_evidence: [],
-      product_reference_model_conflict: null,
-    },
-    claimWhitelist: [],
-    conflicts: [],
-    reviewStrategy: {},
-    childSubjectPolicy: {
-      productChildRelated: input.guardianRequired,
-      childDepictionPlanned: false,
-      guardianReferenceIndex: null,
-      guardianPolicyActive: input.guardianRequired,
-    },
-    globalContinuity: {},
-    shots,
-    loopReport: { selected_version: "degraded" },
-    finalQc: {
-      all_claims_supported: true,
-      all_shots_under_10_seconds: true,
-      hook_within_3_seconds: false,
-      price_absent: true,
-      overclaims_absent: true,
-      all_image_prompts_within_budget: shots.every(
-        shot => shot.image_prompt_character_count <= input.imageBudget
-      ),
-      all_video_prompts_within_budget: shots.every(
-        shot =>
-          shot.video_prompt_character_count <=
-          MARKETPLACE_AUTO_REVIEW_VIDEO_PROMPT_MAX_CHARS
-      ),
-      global_block_present_in_every_video_prompt: true,
-      guardian_policy_satisfied: !input.guardianRequired,
-      // Degraded fallback is code-built — nothing verified tone/structure
-      // adherence, so both stay false (consistent with the deliberate
-      // hook_within_3_seconds: false self-fail above).
-      tone_preset_adhered: false,
-      structure_beats_present: false,
-    },
-    referenceManifest: [],
-  };
+/** True for a round the pinned contract calls out by its literal
+ *  `status === "disqualified"`, PLUS the real runtime shape a
+ *  completed-but-invalid round actually uses — `status: "completed"` with a
+ *  non-empty `disqualifiers` array (see `findSequentialStoryboardRetention
+ *  Disqualifiers` in productReviewSequentialStoryboardSkillRunner.ts). Both
+ *  are model-attributable output failures (hollow shots, missing dialogue,
+ *  budget/claim violations), same as a `contract_violation`. */
+function sequentialDraftFailureEntryIsModelAttributable(
+  entry: Record<string, unknown>
+): boolean {
+  const record = asRecord(entry);
+  const status = typeof record.status === "string" ? record.status : "";
+  if (status === "contract_violation" || status === "disqualified") return true;
+  return Array.isArray(record.disqualifiers) && record.disqualifiers.length > 0;
 }
 
-export function buildDegradedSequentialStoryboardPackForTest(input: {
-  plan: AutoReviewPlan;
-  imageBudget?: number | null;
-  overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
-  guardianRequired?: boolean | null;
-  assemblyDocumented?: boolean | null;
-}): SequentialStoryboardPack {
-  return buildDegradedSequentialStoryboardPack({
-    plan: input.plan,
-    imageBudget:
-      input.imageBudget ?? MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_PROMPT_MAX_CHARS,
-    overlayTextMode: normalizeMarketplaceAutoReviewOverlayTextMode(input.overlayTextMode),
-    guardianRequired: Boolean(input.guardianRequired),
-    assemblyDocumented: Boolean(input.assemblyDocumented),
-  });
+export function classifySequentialStoryboardDraftFailureReason(
+  history: Array<Record<string, unknown>> | null | undefined
+): SequentialStoryboardDraftFailureReasonCode {
+  const entries = Array.isArray(history) ? history : [];
+
+  if (
+    entries.some(entry =>
+      isDefinitiveVisionCapabilityError(sequentialDraftFailureEntryText(entry))
+    )
+  ) {
+    return "vision_capability";
+  }
+  if (
+    entries.some(entry =>
+      SEQUENTIAL_DRAFT_FAILURE_PROVIDER_CREDIT_PATTERN.test(
+        sequentialDraftFailureEntryText(entry)
+      )
+    )
+  ) {
+    return "provider_credit";
+  }
+  if (
+    entries.some(
+      entry =>
+        sequentialDraftFailureEntryIsModelAttributable(entry) ||
+        SEQUENTIAL_DRAFT_FAILURE_MODEL_BAD_OUTPUT_PATTERN.test(
+          sequentialDraftFailureEntryText(entry)
+        )
+    )
+  ) {
+    return "model_bad_output";
+  }
+  return "unknown";
 }
 
 function buildCompactMarketplaceAutoReviewVideoCharacterLine(
@@ -21768,14 +21722,18 @@ async function assertMarketplaceAutoReviewAwaitingPlanReview(
  * must never queue an `image_generation` credit spend against a pack the
  * user cannot actually use. Returns the exact `TRPCError.message` to throw,
  * or `null` when approval may proceed. Two fail-closed shapes:
- *  - The deterministic degraded fallback pack
- *    (`buildDegradedSequentialStoryboardPack`) — every shot has empty
- *    `dialogue` and generic English text by construction. Detected via the
- *    EXACT same OR condition the client's `isAutoReviewPlanReviewDegradedPlan`
- *    (AutoReviewPlanReviewPanel.tsx) uses — `sequentialStoryboard.degraded
- *    === true` OR `skillVersion` containing the literal substring
- *    "degraded" — so client and server can never disagree about what counts
- *    as degraded.
+ *  - Degraded-or-failed: `sequentialStoryboard.degraded === true`,
+ *    OR `sequentialStoryboard.draftFailure` is present (2026-07-24 follow-up
+ *    — every authoring round died structurally; the run holds with NO shots
+ *    at all, see `classifySequentialStoryboardDraftFailureReason`), OR
+ *    `skillVersion` contains the literal substring "degraded" (legacy
+ *    deterministic fallback packs, if any remain persisted from before this
+ *    follow-up). Detected via the EXACT same OR condition the client's
+ *    `isAutoReviewPlanReviewDegradedPlan` (AutoReviewPlanReviewPanel.tsx)
+ *    uses, so client and server can never disagree about what counts as
+ *    degraded. Checked BEFORE the "no sequential pack at all" early return
+ *    below — a failed draft has zero shots by design, and must never be
+ *    mistaken for "not a sequential run".
  *  - A pack with dialogue on ZERO shots, UNLESS the run's resolved audio
  *    strategy is `"silent"` — the same `=== "silent"` literal comparator
  *    `findSequentialStoryboardRetentionDisqualifiers`'s own
@@ -21783,27 +21741,25 @@ async function assertMarketplaceAutoReviewAwaitingPlanReview(
  *    (productReviewSequentialStoryboardSkillRunner.ts), not a re-invented
  *    definition.
  * A run with no sequential pack at all (`sequentialStoryboard.shots` absent
- * or empty — every 3x3/`video_shot_start_stop` run) returns `null`
- * unconditionally: this gate only ever applies to a run that actually
- * carries a sequential pack, mirroring the same "no shots at all ⇒ not a
- * sequential run" idiom `updateMarketplaceAutoReviewPlanShotDialogue` above
- * already uses. Never throws on malformed metadata; never echoes any stored
- * `errorMessage`/`degradedRetryHistory` text (those hold a raw provider
- * error URL that must never reach the client).
+ * or empty, and not degraded/failed — every 3x3/`video_shot_start_stop` run)
+ * returns `null` unconditionally: this gate only ever applies to a run that
+ * actually carries a sequential pack, mirroring the same "no shots at all ⇒
+ * not a sequential run" idiom `updateMarketplaceAutoReviewPlanShotDialogue`
+ * above already uses. Never throws on malformed metadata; never echoes any
+ * stored `errorMessage`/`degradedRetryHistory` text (those hold a raw
+ * provider error URL that must never reach the client) — only the safe
+ * `draftFailure.reasonCode` enum is ever derived from stored failure data.
  */
 function findMarketplaceAutoReviewPlanReviewApprovalBlocker(
   metadata: RunMetadata
 ): string | null {
   const sequential = asRecord(metadata.sequentialStoryboard);
-  const shots = Array.isArray(sequential.shots)
-    ? (sequential.shots as SequentialStoryboardShot[])
-    : [];
-  if (shots.length === 0) return null;
 
-  const isDegraded =
+  const isDegradedOrFailed =
     sequential.degraded === true ||
+    Boolean(asRecord(sequential.draftFailure).reasonCode) ||
     cleanText(sequential.skillVersion).toLowerCase().includes("degraded");
-  if (isDegraded) {
+  if (isDegradedOrFailed) {
     return (
       'ร่างนี้เป็นสตอรีบอร์ดสำรองที่ระบบสร้างขึ้นอัตโนมัติ ไม่มีบทพูดและใช้งานจริงไม่ได้ ' +
       'กรุณากด "ให้ AI ร่างใหม่" หรือยกเลิกงานนี้แล้วเริ่มใหม่ / This plan is an automatic ' +
@@ -21811,6 +21767,11 @@ function findMarketplaceAutoReviewPlanReviewApprovalBlocker(
       "or cancel this run and start over."
     );
   }
+
+  const shots = Array.isArray(sequential.shots)
+    ? (sequential.shots as SequentialStoryboardShot[])
+    : [];
+  if (shots.length === 0) return null;
 
   const hasAnyDialogue = shots.some(
     shot => cleanText(shot.dialogue).length > 0
@@ -33476,12 +33437,6 @@ async function runSequentialPromptPlanStage(input: {
   const demonstrationEvidenceDirectiveForContract =
     buildDemonstrationEvidenceDirective(input.plan, evidenceGuardContext);
 
-  const imageBudget = resolveSequentialImagePromptBudget({
-    overrideMaxChars:
-      toNumber(input.metadata.sequentialImagePromptMaxChars, 0) || null,
-    providerMaxPromptLength: null,
-  });
-
   const existingBlockedClaimTexts = uniqRefs(
     (Array.isArray(asRecord(input.metadata.claimEvidenceMapping).blockedClaims)
       ? (asRecord(input.metadata.claimEvidenceMapping)
@@ -33714,46 +33669,42 @@ async function runSequentialPromptPlanStage(input: {
       effects
     );
   } catch (error) {
-    // Step 9 — degraded path. Every OTHER error propagates (fail-closed):
+    // Step 9 — draft-failure path. Every OTHER error propagates (fail-closed):
     // the stage stays incomplete and the run remains resumable.
     if (error instanceof SequentialStoryboardStructuralError) {
-      const degradedPack = buildDegradedSequentialStoryboardPack({
-        plan: input.plan,
-        imageBudget,
-        overlayTextMode:
-          (input.metadata.overlayTextMode as MarketplaceAutoReviewOverlayTextMode) ??
-          "no_text",
-        guardianRequired: prePolicy.productChildRelated,
-        assemblyDocumented: false,
-      });
-      const finalPolicy = computeMarketplaceAutoReviewChildSubjectPolicy({
-        categoryText,
-        productTexts,
-        shots: degradedPack.shots,
-        guardianReferenceRef,
-      });
-      const degradedMetadata = applySequentialStoryboardPackToRunMetadata({
-        metadata: workingMetadata,
-        pack: degradedPack,
-        referenceManifest: referencePlan.storedManifest,
-        childSubjectPolicy: finalPolicy,
-      });
-      // Evidence durability (2026-07-23): the degraded pack used to OVERWRITE
-      // sequentialStoryboard wholesale, wiping the per-round retryHistory —
-      // so "why did it degrade" was unrecoverable after the fact (the journal
-      // collapses the reasons to `[Array]`). Persist the full history (bounded)
-      // so the exact structural reasons are always one DB read away.
+      // Evidence durability (2026-07-23): persist the full per-round history
+      // (bounded) so the exact structural reasons are always one DB read
+      // away — never collapsed to an unreadable `[Array]` by the journal.
       const degradedRetryHistory = Array.isArray(
         (error as SequentialStoryboardStructuralError).retryHistory
       )
         ? (error as SequentialStoryboardStructuralError).retryHistory.slice(0, 12)
         : [];
+      // 2026-07-24 field follow-up (mar_76cb03fe0f29a20ec6422480f5a6840b):
+      // this used to fabricate a 9-shot deterministic pack
+      // (`buildDegradedSequentialStoryboardPack`, now deleted — `dialogue: ""`
+      // and generic English text on every shot) just so the run could still
+      // hold at plan review, leaving the user with nine useless fake shots
+      // and no clue why authoring failed. A failed draft has no shots:
+      // classify WHY into a safe, client-facing enum instead — never the raw
+      // provider error text (that stays in `degradedRetryHistory`, which the
+      // client never reads). The run still HOLDS (returns normally) rather
+      // than going terminal, so the user's redraft/cancel buttons keep
+      // working exactly as before.
+      const draftFailure: SequentialStoryboardDraftFailure = {
+        reasonCode: classifySequentialStoryboardDraftFailureReason(
+          degradedRetryHistory
+        ),
+        failedAt: nowIso(),
+        roundsAttempted: degradedRetryHistory.length,
+      };
       const finalMetadata: RunMetadata = {
-        ...degradedMetadata,
+        ...workingMetadata,
         sequentialStoryboard: {
-          ...asRecord(degradedMetadata.sequentialStoryboard),
+          ...asRecord(workingMetadata.sequentialStoryboard),
           degraded: true,
           degradedRetryHistory,
+          draftFailure,
         },
       };
       await effects.emitAudit?.("sequential_prompt_degraded_fallback", {
