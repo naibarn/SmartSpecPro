@@ -21763,6 +21763,73 @@ async function assertMarketplaceAutoReviewAwaitingPlanReview(
 }
 
 /**
+ * Approve-time content gate for the sequential pack (field evidence
+ * mar_76cb03fe0f29a20ec6422480f5a6840b, 2026-07-24): approving a plan review
+ * must never queue an `image_generation` credit spend against a pack the
+ * user cannot actually use. Returns the exact `TRPCError.message` to throw,
+ * or `null` when approval may proceed. Two fail-closed shapes:
+ *  - The deterministic degraded fallback pack
+ *    (`buildDegradedSequentialStoryboardPack`) — every shot has empty
+ *    `dialogue` and generic English text by construction. Detected via the
+ *    EXACT same OR condition the client's `isAutoReviewPlanReviewDegradedPlan`
+ *    (AutoReviewPlanReviewPanel.tsx) uses — `sequentialStoryboard.degraded
+ *    === true` OR `skillVersion` containing the literal substring
+ *    "degraded" — so client and server can never disagree about what counts
+ *    as degraded.
+ *  - A pack with dialogue on ZERO shots, UNLESS the run's resolved audio
+ *    strategy is `"silent"` — the same `=== "silent"` literal comparator
+ *    `findSequentialStoryboardRetentionDisqualifiers`'s own
+ *    `dialogue_missing` disqualifier uses
+ *    (productReviewSequentialStoryboardSkillRunner.ts), not a re-invented
+ *    definition.
+ * A run with no sequential pack at all (`sequentialStoryboard.shots` absent
+ * or empty — every 3x3/`video_shot_start_stop` run) returns `null`
+ * unconditionally: this gate only ever applies to a run that actually
+ * carries a sequential pack, mirroring the same "no shots at all ⇒ not a
+ * sequential run" idiom `updateMarketplaceAutoReviewPlanShotDialogue` above
+ * already uses. Never throws on malformed metadata; never echoes any stored
+ * `errorMessage`/`degradedRetryHistory` text (those hold a raw provider
+ * error URL that must never reach the client).
+ */
+function findMarketplaceAutoReviewPlanReviewApprovalBlocker(
+  metadata: RunMetadata
+): string | null {
+  const sequential = asRecord(metadata.sequentialStoryboard);
+  const shots = Array.isArray(sequential.shots)
+    ? (sequential.shots as SequentialStoryboardShot[])
+    : [];
+  if (shots.length === 0) return null;
+
+  const isDegraded =
+    sequential.degraded === true ||
+    cleanText(sequential.skillVersion).toLowerCase().includes("degraded");
+  if (isDegraded) {
+    return (
+      'ร่างนี้เป็นสตอรีบอร์ดสำรองที่ระบบสร้างขึ้นอัตโนมัติ ไม่มีบทพูดและใช้งานจริงไม่ได้ ' +
+      'กรุณากด "ให้ AI ร่างใหม่" หรือยกเลิกงานนี้แล้วเริ่มใหม่ / This plan is an automatic ' +
+      'fallback storyboard with no usable dialogue — click "ให้ AI ร่างใหม่" to redraft, ' +
+      "or cancel this run and start over."
+    );
+  }
+
+  const hasAnyDialogue = shots.some(
+    shot => cleanText(shot.dialogue).length > 0
+  );
+  const isSilentAudioStrategy =
+    cleanText(metadata.resolvedAudioStrategy) === "silent";
+  if (!hasAnyDialogue && !isSilentAudioStrategy) {
+    return (
+      'ร่างนี้ไม่มีบทพูดเลยแม้แต่ช็อตเดียว วิดีโอรีวิวต้องมีบทพูด ' +
+      'กรุณากด "ให้ AI ร่างใหม่" หรือยกเลิกงานนี้แล้วเริ่มใหม่ / This plan has no dialogue ' +
+      'in any shot — a review video must have spoken lines. Click "ให้ AI ร่างใหม่" to ' +
+      "redraft, or cancel this run and start over."
+    );
+  }
+
+  return null;
+}
+
+/**
  * Marketplace text-plan review gate — "ยืนยัน สร้างภาพ". Releases the
  * mandatory hold `startMarketplaceAutoReviewRun` (and, on a prior redraft,
  * `requestMarketplaceAutoReviewPlanRedraft`) put the run into: resets
@@ -21770,7 +21837,10 @@ async function assertMarketplaceAutoReviewAwaitingPlanReview(
  * exact status `ensureRunStages` gives every stage at run creation), so the
  * existing generic advance loop schedules the FIRST image attempt exactly as
  * if the run had never held — zero new branches needed in
- * `advanceMarketplaceAutoReviewRun` or `scheduleImageAttempt`.
+ * `advanceMarketplaceAutoReviewRun` or `scheduleImageAttempt`. Since 2026-
+ * 07-24: fails closed BEFORE any write via
+ * `findMarketplaceAutoReviewPlanReviewApprovalBlocker` — a degraded or
+ * dialogue-less pack is rejected as a no-op (see that function's docblock).
  */
 export async function approveMarketplaceAutoReviewPlanReview(
   input: { runId: string },
@@ -21785,10 +21855,17 @@ export async function approveMarketplaceAutoReviewPlanReview(
     });
   const run = await reloadRun(db, input.runId, auth);
   await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  // Content gate BEFORE any stage/metadata write — approve must be a no-op
+  // on rejection (no partial state, no queued image_generation stage).
+  const approvalBlocker =
+    findMarketplaceAutoReviewPlanReviewApprovalBlocker(metadata);
+  if (approvalBlocker) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: approvalBlocker });
+  }
   const stages = stageKeysForMode(
     run.outputMode as MarketplaceAutoReviewOutputMode
   );
-  const metadata = asRecord(run.metadataJson) as RunMetadata;
   const nextMetadata: RunMetadata = {
     ...metadata,
     planReview: {

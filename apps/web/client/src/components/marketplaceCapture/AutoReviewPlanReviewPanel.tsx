@@ -167,6 +167,12 @@ export interface AutoReviewPlanReviewPlanData {
    *  enrichment dialogue and does not honor the user's tone/structure
    *  settings. See `isAutoReviewPlanReviewDegradedPlan`. */
   isDegradedFallback: boolean;
+  /** True when `metadataJson.resolvedAudioStrategy === "silent"` — a
+   *  silent-audio run has NO dialogue BY DESIGN (the user chose a silent
+   *  review video), so the approval-blocking "every shot's dialogue is
+   *  empty" heuristic (`isAutoReviewPlanReviewApprovalBlocked`) must never
+   *  fire for it. See `isAutoReviewPlanReviewSilentAudioStrategy`. */
+  isSilentAudioStrategy: boolean;
 }
 
 /**
@@ -674,6 +680,53 @@ export function isAutoReviewPlanReviewDegradedPlan(
 }
 
 /**
+ * True when `metadataJson.resolvedAudioStrategy === "silent"` — the ONLY
+ * resolved-audio-strategy value that means "no dialogue is expected by
+ * design" (`"native_video_audio"` / `"separate_tts_voiceover"` both still
+ * expect spoken dialogue). Reused by `isAutoReviewPlanReviewApprovalBlocked`
+ * below so a deliberately silent review is never mistaken for the same
+ * failure symptom as an all-empty-dialogue degraded/malformed draft. Never
+ * throws on malformed/missing metadata.
+ */
+export function isAutoReviewPlanReviewSilentAudioStrategy(
+  metadataJson: unknown
+): boolean {
+  return cleanText(asRecord(metadataJson).resolvedAudioStrategy) === "silent";
+}
+
+/**
+ * Approval-blocking gate (2026-07-24 user report: a degraded-fallback plan
+ * with empty dialogue on every shot could still be approved, spending real
+ * image credits on a product-review video that is unusable without dialogue
+ * — "หากงานไม่มีบทพูดมันใช้อะไรไม่ได้เลย เป็นงานรีวิว บทพูดอย่างไรก็ต้องมี").
+ * The panel component disables `onApprove` whenever this returns `true`,
+ * because EITHER of these is true:
+ *  - `plan.isDegradedFallback` — the deterministic fallback pack, which
+ *    ALWAYS has empty dialogue on every shot by construction (see that
+ *    field's doc comment) and never honors the user's settings; OR
+ *  - every sequential shot's dialogue is blank AND the run's audio strategy
+ *    is not deliberately `"silent"` (`isSilentAudioStrategy`) — a real
+ *    (non-degraded) draft that somehow still shipped with zero dialogue
+ *    everywhere is exactly as unusable for a review video.
+ * Non-sequential runs (`sequentialShots.length === 0`, e.g.
+ * `storyboard_3x3_split` / `video_shot_start_stop`) have no per-shot
+ * dialogue to evaluate, so only the `isDegradedFallback` arm can block them.
+ * A `null` plan (still loading, or failed to load) never blocks — the
+ * existing `!plan` branch already renders its own loading/error state, and
+ * the approve button's availability while unloaded is an unrelated,
+ * pre-existing concern this gate does not change.
+ */
+export function isAutoReviewPlanReviewApprovalBlocked(
+  plan: AutoReviewPlanReviewPlanData | null
+): boolean {
+  if (!plan) return false;
+  if (plan.isDegradedFallback) return true;
+  if (plan.sequentialShots.length === 0) return false;
+  if (plan.isSilentAudioStrategy) return false;
+  return plan.sequentialShots.every(shot => !shot.dialogue.trim());
+}
+
+/**
  * One-call convenience bundling every projector above — the shape
  * `MarketplaceCaptureProductDetail.tsx` builds from the FULL
  * (`includeHeavyMetadata`) `getAutoReviewRun` response (the polled
@@ -704,6 +757,8 @@ export function buildAutoReviewPlanReviewPlanData(
     referenceManifest:
       buildAutoReviewPlanReviewReferenceManifestRows(metadataJson),
     isDegradedFallback: isAutoReviewPlanReviewDegradedPlan(metadataJson),
+    isSilentAudioStrategy:
+      isAutoReviewPlanReviewSilentAudioStrategy(metadataJson),
   };
 }
 
@@ -1273,6 +1328,10 @@ export function AutoReviewPlanReviewPanel({
   const manifestIndices = new Set(
     (plan?.referenceManifest ?? []).map(row => row.index)
   );
+  // 2026-07-24 user report — see `isAutoReviewPlanReviewApprovalBlocked`'s
+  // doc comment for the exact blocked condition (degraded fallback pack, or
+  // every shot's dialogue is blank on a non-silent-audio run).
+  const approvalBlocked = isAutoReviewPlanReviewApprovalBlocked(plan);
 
   // "ภาพที่จะเห็น" (visualSummary) is never directly editable here — it
   // grounds the English image prompt and must stay in the skill's hands.
@@ -1497,7 +1556,11 @@ export function AutoReviewPlanReviewPanel({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" disabled={busy} onClick={onApprove}>
+        <Button
+          type="button"
+          disabled={busy || approvalBlocked}
+          onClick={onApprove}
+        >
           {approving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           {copy.planReviewApprove}
         </Button>
@@ -1521,6 +1584,16 @@ export function AutoReviewPlanReviewPanel({
           {copy.planReviewCancelRun}
         </Button>
       </div>
+
+      {approvalBlocked ? (
+        <div
+          data-testid="plan-review-approval-blocked-reason"
+          className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+        >
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+          <p>{copy.planReviewApprovalBlockedReason}</p>
+        </div>
+      ) : null}
 
       {plan?.creditEstimate ? (
         <p className="text-xs text-amber-800 dark:text-amber-200">

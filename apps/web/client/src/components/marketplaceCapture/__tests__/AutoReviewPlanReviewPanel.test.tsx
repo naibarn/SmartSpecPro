@@ -16,7 +16,9 @@ import {
   buildAutoReviewPlanReviewSequentialShotRows,
   buildAutoReviewPlanReviewSettingRows,
   extractAutoReviewPlanReviewPromptImageCitations,
+  isAutoReviewPlanReviewApprovalBlocked,
   isAutoReviewPlanReviewDegradedPlan,
+  isAutoReviewPlanReviewSilentAudioStrategy,
   type AutoReviewPlanReviewPlanData,
   type AutoReviewPlanReviewState,
 } from "../AutoReviewPlanReviewPanel";
@@ -42,6 +44,7 @@ function planFixture(
     promptBudgets: { imageMaxChars: 4000, videoMaxChars: 2000 },
     referenceManifest: [],
     isDegradedFallback: false,
+    isSilentAudioStrategy: false,
     ...overrides,
   };
 }
@@ -539,6 +542,107 @@ describe("AutoReviewPlanReviewPanel", () => {
     expect(screen.getByText(/แผนนี้เป็นแผนสำรองจากระบบ/)).toBeTruthy();
   });
 
+  // 2026-07-24 user report — a degraded-fallback plan with empty dialogue on
+  // every shot could still be approved, spending real image credits on a
+  // product-review video that is unusable without dialogue. These four
+  // tests cover `isAutoReviewPlanReviewApprovalBlocked`'s wiring into the
+  // approve button + the new blocked-reason notice.
+  it("disables the approve button and shows the blocked-reason notice for a degraded plan, keeping redraft and cancel enabled", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({ isDegradedFallback: true })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: /Confirm, generate images/ })
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId("plan-review-approval-blocked-reason")
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Ask AI to redraft" })
+    ).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", {
+        name: "Cancel this run to start a new one",
+      })
+    ).not.toBeDisabled();
+  });
+
+  it("disables the approve button when every sequential shot's dialogue is blank on a non-silent-audio run", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          isDegradedFallback: false,
+          isSilentAudioStrategy: false,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "" }),
+            sequentialShotRowFixture({ shotId: 2, dialogue: "   " }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: /Confirm, generate images/ })
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId("plan-review-approval-blocked-reason")
+    ).toBeTruthy();
+  });
+
+  it("does not block approval when every shot's dialogue is blank but the run's audio strategy is deliberately silent", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          isDegradedFallback: false,
+          isSilentAudioStrategy: true,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "" }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: /Confirm, generate images/ })
+    ).not.toBeDisabled();
+    expect(
+      screen.queryByTestId("plan-review-approval-blocked-reason")
+    ).toBeNull();
+  });
+
+  it("does not block approval for a healthy plan with dialogue present in at least one shot", () => {
+    render(
+      <AutoReviewPlanReviewPanel
+        planReview={awaitingPlanReview}
+        plan={planFixture({
+          isDegradedFallback: false,
+          isSilentAudioStrategy: false,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "" }),
+            sequentialShotRowFixture({ shotId: 2, dialogue: "สวัสดีค่ะ" }),
+          ],
+        })}
+        locale="en"
+        {...requiredProps()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: /Confirm, generate images/ })
+    ).not.toBeDisabled();
+    expect(
+      screen.queryByTestId("plan-review-approval-blocked-reason")
+    ).toBeNull();
+  });
+
   it("renders settings rows side-by-side with the plan", () => {
     render(
       <AutoReviewPlanReviewPanel
@@ -720,7 +824,7 @@ describe("AutoReviewPlanReviewPanel", () => {
       />
     );
     const cancelButton = screen.getByRole("button", {
-      name: "Cancel this run",
+      name: "Cancel this run to start a new one",
     });
     expect(cancelButton).not.toBeDisabled();
     fireEvent.click(cancelButton);
@@ -1341,6 +1445,7 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
       },
     ]);
     expect(data.isDegradedFallback).toBe(false);
+    expect(data.isSilentAudioStrategy).toBe(false);
   });
 
   it("isAutoReviewPlanReviewDegradedPlan detects EITHER the degraded flag or a skillVersion containing 'degraded', and never throws on missing metadata", () => {
@@ -1372,5 +1477,108 @@ describe("AutoReviewPlanReviewPanel projection helpers", () => {
       "en"
     );
     expect(data.isDegradedFallback).toBe(true);
+  });
+
+  it("isAutoReviewPlanReviewSilentAudioStrategy is true only for resolvedAudioStrategy === 'silent', and never throws on missing metadata", () => {
+    expect(isAutoReviewPlanReviewSilentAudioStrategy(undefined)).toBe(false);
+    expect(isAutoReviewPlanReviewSilentAudioStrategy(null)).toBe(false);
+    expect(isAutoReviewPlanReviewSilentAudioStrategy({})).toBe(false);
+    expect(
+      isAutoReviewPlanReviewSilentAudioStrategy({
+        resolvedAudioStrategy: "silent",
+      })
+    ).toBe(true);
+    expect(
+      isAutoReviewPlanReviewSilentAudioStrategy({
+        resolvedAudioStrategy: "native_video_audio",
+      })
+    ).toBe(false);
+    expect(
+      isAutoReviewPlanReviewSilentAudioStrategy({
+        resolvedAudioStrategy: "separate_tts_voiceover",
+      })
+    ).toBe(false);
+  });
+
+  it("buildAutoReviewPlanReviewPlanData bundles isSilentAudioStrategy from metadataJson.resolvedAudioStrategy", () => {
+    const data = buildAutoReviewPlanReviewPlanData(
+      { resolvedAudioStrategy: "silent" },
+      "sequential_shot_storyboard",
+      "storyboard_images",
+      "en"
+    );
+    expect(data.isSilentAudioStrategy).toBe(true);
+  });
+
+  it("isAutoReviewPlanReviewApprovalBlocked returns false for a null plan (still loading — an unrelated pre-existing concern)", () => {
+    expect(isAutoReviewPlanReviewApprovalBlocked(null)).toBe(false);
+  });
+
+  it("isAutoReviewPlanReviewApprovalBlocked blocks a degraded-fallback plan unconditionally, even with non-empty dialogue", () => {
+    expect(
+      isAutoReviewPlanReviewApprovalBlocked(
+        planFixture({
+          isDegradedFallback: true,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "hello" }),
+          ],
+        })
+      )
+    ).toBe(true);
+  });
+
+  it("isAutoReviewPlanReviewApprovalBlocked blocks a non-degraded run whose every sequential shot has blank dialogue and is not a silent-audio run", () => {
+    expect(
+      isAutoReviewPlanReviewApprovalBlocked(
+        planFixture({
+          isDegradedFallback: false,
+          isSilentAudioStrategy: false,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "" }),
+            sequentialShotRowFixture({ shotId: 2, dialogue: "   " }),
+          ],
+        })
+      )
+    ).toBe(true);
+  });
+
+  it("isAutoReviewPlanReviewApprovalBlocked does not block when the audio strategy is deliberately silent, even with all-blank dialogue", () => {
+    expect(
+      isAutoReviewPlanReviewApprovalBlocked(
+        planFixture({
+          isDegradedFallback: false,
+          isSilentAudioStrategy: true,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "" }),
+          ],
+        })
+      )
+    ).toBe(false);
+  });
+
+  it("isAutoReviewPlanReviewApprovalBlocked does not block when at least one shot has dialogue", () => {
+    expect(
+      isAutoReviewPlanReviewApprovalBlocked(
+        planFixture({
+          isDegradedFallback: false,
+          isSilentAudioStrategy: false,
+          sequentialShots: [
+            sequentialShotRowFixture({ shotId: 1, dialogue: "" }),
+            sequentialShotRowFixture({ shotId: 2, dialogue: "สวัสดีค่ะ" }),
+          ],
+        })
+      )
+    ).toBe(false);
+  });
+
+  it("isAutoReviewPlanReviewApprovalBlocked does not block a non-sequential run (no shots to evaluate) that is not degraded", () => {
+    expect(
+      isAutoReviewPlanReviewApprovalBlocked(
+        planFixture({
+          isDegradedFallback: false,
+          sequentialShots: [],
+        })
+      )
+    ).toBe(false);
   });
 });

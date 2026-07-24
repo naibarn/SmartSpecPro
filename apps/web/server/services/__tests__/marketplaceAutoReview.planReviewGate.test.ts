@@ -481,6 +481,227 @@ describe("approveMarketplaceAutoReviewPlanReview", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* approveMarketplaceAutoReviewPlanReview content gate (degraded pack /       */
+/* zero-dialogue pack) — field evidence                                      */
+/* mar_76cb03fe0f29a20ec6422480f5a6840b, 2026-07-24                           */
+/* -------------------------------------------------------------------------- */
+
+describe("approveMarketplaceAutoReviewPlanReview content gate", () => {
+  it("throws BAD_REQUEST and performs zero writes when sequentialStoryboard.degraded is true", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      sequentialStoryboard: {
+        degraded: true,
+        skillVersion: "1.0.0",
+        shots: Array.from({ length: 9 }, (_, i) =>
+          makeSequentialShot(i + 1, { dialogue: "" })
+        ),
+      },
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_1" }, AUTH)
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining('ให้ AI ร่างใหม่'),
+    });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
+  it('throws BAD_REQUEST when skillVersion contains "degraded" even without an explicit degraded flag (mirrors the client\'s isAutoReviewPlanReviewDegradedPlan OR condition)', async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      sequentialStoryboard: {
+        skillVersion: "1.0.0-degraded",
+        shots: Array.from({ length: 9 }, (_, i) => makeSequentialShot(i + 1)),
+      },
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_1" }, AUTH)
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST when the pack has dialogue on zero shots and the run's resolved audio strategy is not silent, and never echoes raw provider error text", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      resolvedAudioStrategy: "native_video_audio",
+      sequentialStoryboard: {
+        shots: Array.from({ length: 9 }, (_, i) =>
+          makeSequentialShot(i + 1, { dialogue: "" })
+        ),
+      },
+      // A real stored error would contain an openrouter.ai key-management
+      // URL (field evidence) — proves the rejection message never echoes it.
+      errorMessage: "invocation_failed: https://openrouter.ai/keys detail",
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_1" }, AUTH)
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.not.stringContaining("openrouter"),
+    });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST when the pack has dialogue on zero shots (whitespace-only) and resolvedAudioStrategy is absent (defaults to non-silent, fails closed)", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      sequentialStoryboard: {
+        shots: Array.from({ length: 9 }, (_, i) =>
+          makeSequentialShot(i + 1, { dialogue: "   " })
+        ),
+      },
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    await expect(
+      approveMarketplaceAutoReviewPlanReview({ runId: "mar_1" }, AUTH)
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(updateRunSpy).not.toHaveBeenCalled();
+    expect(upsertStageSpy).not.toHaveBeenCalled();
+  });
+
+  it("approves normally when the pack has dialogue on zero shots but the run's resolved audio strategy is silent", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture({
+      resolvedAudioStrategy: "silent",
+      sequentialStoryboard: {
+        shots: Array.from({ length: 9 }, (_, i) =>
+          makeSequentialShot(i + 1, { dialogue: "" })
+        ),
+      },
+    });
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    const result = await approveMarketplaceAutoReviewPlanReview(
+      { runId: "mar_1" },
+      AUTH
+    );
+
+    expect(upsertStageSpy).toHaveBeenCalledTimes(1);
+    expect(updateRunSpy).toHaveBeenCalledTimes(1);
+    expect((result as any).metadataJson.planReview.status).toBe("approved");
+  });
+
+  it("approves normally for a healthy (non-degraded) sequential pack with dialogue present on every shot", async () => {
+    const metadata = sequentialAwaitingPlanReviewMetadataFixture();
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    const result = await approveMarketplaceAutoReviewPlanReview(
+      { runId: "mar_1" },
+      AUTH
+    );
+
+    expect(upsertStageSpy).toHaveBeenCalledTimes(1);
+    expect(updateRunSpy).toHaveBeenCalledTimes(1);
+    expect((result as any).metadataJson.planReview.status).toBe("approved");
+  });
+
+  it("approves normally for a non-sequential run with no sequentialStoryboard.shots at all (3x3/video_shot_start_stop runs are untouched by this content gate)", async () => {
+    const metadata = awaitingPlanReviewMetadataFixture();
+    expect((metadata as any).sequentialStoryboard).toBeUndefined();
+    const run = baseRunFixture({ metadataJson: metadata });
+    const imageGenerationStage = awaitingPlanReviewStageFixture();
+    const updateRunSpy = vi.fn();
+    const upsertStageSpy = vi.fn();
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        run,
+        imageGenerationStage,
+        stages: [imageGenerationStage],
+        updateRunSpy,
+        upsertStageSpy,
+      })
+    );
+
+    const result = await approveMarketplaceAutoReviewPlanReview(
+      { runId: "mar_1" },
+      AUTH
+    );
+
+    expect(upsertStageSpy).toHaveBeenCalledTimes(1);
+    expect(updateRunSpy).toHaveBeenCalledTimes(1);
+    expect((result as any).metadataJson.planReview.status).toBe("approved");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* requestMarketplaceAutoReviewPlanRedraft — precondition guard               */
 /* -------------------------------------------------------------------------- */
 

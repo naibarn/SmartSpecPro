@@ -295,13 +295,27 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         planReviewDegradedBanner:
           'แผนนี้เป็นแผนสำรองจากระบบ (การเรียกสกิลหลักล้มเหลวก่อนหน้านี้ — ปัญหานี้ถูกแก้ไขแล้ว) แนะนำให้กด "ให้ AI ร่างใหม่" เพื่อให้ได้แผนจริงที่มีบทพูดภาษาไทยและตรงกับโทนที่ตั้งไว้ ก่อนยืนยัน',
         planReviewApprove: "ยืนยัน สร้างภาพ",
+        // Approval-blocking gate (2026-07-24 user report — "หากงานไม่มีบทพูด
+        // มันใช้อะไรไม่ได้เลย เป็นงานรีวิว บทพูดอย่างไรก็ต้องมี"): shown next
+        // to the (now-disabled) approve button whenever
+        // `isAutoReviewPlanReviewApprovalBlocked` is true. Names the exact
+        // two ways out (`planReviewRequestRedraft`, `planReviewCancelRun`)
+        // so the message stays actionable, not just a dead end.
+        planReviewApprovalBlockedReason:
+          'ยืนยันตอนนี้ไม่ได้: แผนนี้ไม่มีบทพูดในช็อตใดเลย และวิดีโอรีวิวสินค้าต้องมีบทพูดเสมอ ระบบจึงบล็อกการสร้างภาพไว้ก่อน จนกว่าจะร่างใหม่สำเร็จ กด "ให้ AI ร่างใหม่" เพื่อให้ได้แผนที่มีบทพูด หรือกด "ยกเลิกงานนี้ เพื่อเริ่มงานใหม่" เพื่อเริ่มงานอื่น',
         planReviewRequestRedraft: "ให้ AI ร่างใหม่",
         planReviewRedraftNotesLabel: "บอกสิ่งที่ต้องแก้",
         planReviewRedraftNotesPlaceholder:
           "บอกสิ่งที่ต้องแก้ เช่น วัสดุจริงคือพลาสติกแข็ง / โทนต้องตลกกว่านี้ / ช็อต 2 ต้องพูดปัญหาจริง",
         planReviewRedraftSubmit: "ส่งให้ร่างใหม่",
         planReviewRedraftCancel: "ไม่ร่างใหม่แล้ว",
-        planReviewCancelRun: "ยกเลิกงานนี้",
+        // 2026-07-24 user question ("ระบบเช็คว่ามีงานค้างเดิม แต่ต้องการจะ
+        // สร้างงานใหม่ทิ้งอันเดิมทำอย่างไร") — this button already reuses the
+        // page's existing cancel flow (see `onCancelRun`'s doc comment) and
+        // IS the answer, but its old label ("ยกเลิกงานนี้") never said that
+        // cancelling is what unblocks starting a new run. Spelling that out
+        // directly in the label, not a new mutation.
+        planReviewCancelRun: "ยกเลิกงานนี้ เพื่อเริ่มงานใหม่",
         planReviewLoading: "กำลังโหลดแผนข้อความ...",
         planReviewLoadError: "โหลดแผนข้อความไม่สำเร็จ",
         planReviewRetry: "ลองใหม่",
@@ -657,13 +671,27 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         planReviewDegradedBanner:
           'This plan is an automatic system fallback (the main skill call failed earlier — this issue has since been fixed). We recommend clicking "Ask AI to redraft" to get a real plan with Thai dialogue that matches your configured tone before confirming.',
         planReviewApprove: "Confirm, generate images",
+        // Approval-blocking gate (2026-07-24 user report — "if the job has
+        // no dialogue it's completely unusable; it's a review job, dialogue
+        // must always exist"): shown next to the (now-disabled) approve
+        // button whenever `isAutoReviewPlanReviewApprovalBlocked` is true.
+        // Names the exact two ways out (`planReviewRequestRedraft`,
+        // `planReviewCancelRun`) so the message stays actionable, not just
+        // a dead end.
+        planReviewApprovalBlockedReason:
+          'Cannot confirm yet: this plan has no dialogue in any shot, and a product-review video always needs dialogue. Image generation stays blocked until a redraft succeeds — click "Ask AI to redraft" for a plan with dialogue, or "Cancel this run to start a new one" to start over.',
         planReviewRequestRedraft: "Ask AI to redraft",
         planReviewRedraftNotesLabel: "Tell us what to fix",
         planReviewRedraftNotesPlaceholder:
           "Tell us what to fix — e.g. the real material is hard plastic / the tone needs to be funnier / shot 2 must state the real problem",
         planReviewRedraftSubmit: "Submit redraft",
         planReviewRedraftCancel: "Never mind, keep this draft",
-        planReviewCancelRun: "Cancel this run",
+        // 2026-07-24 user question about discarding a stuck run to start a
+        // new one — this button already reuses the page's existing cancel
+        // flow and IS the answer, but its old label ("Cancel this run")
+        // never said that cancelling is what unblocks starting a new run.
+        // Spelling that out directly in the label, not a new mutation.
+        planReviewCancelRun: "Cancel this run to start a new one",
         planReviewLoading: "Loading the text plan...",
         planReviewLoadError: "Failed to load the text plan",
         planReviewRetry: "Retry",
