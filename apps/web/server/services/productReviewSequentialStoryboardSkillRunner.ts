@@ -46,12 +46,23 @@ import {
 } from "./agentRuntime/skillRuntimeOrchestrator";
 import { executeWithFallback, getProviderForModel } from "./llmRouter";
 import {
+  executeSkillLlmWithFallback,
+  type SkillLlmRequest,
+} from "./skillModelFallback";
+import {
+  isDefinitiveVisionCapabilityError,
+  recordModelVisionCapabilityFailure,
+} from "./modelVisionCapabilityBreaker";
+import {
   getSkillByIdAsync,
   syncSingleSkillIfChanged,
   type SkillDefinition,
 } from "./skillRegistry";
 import { buildCustomSkillUserPrompt } from "./skillExecutionPromptBuilder";
-import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
+import {
+  resolveSkillExecutionPolicy,
+  type SkillExecutionPolicyResult,
+} from "./skillExecutionPolicy";
 import { optimizeProductReferenceStoryboardPrompt } from "./productReferenceStoryboardSkillRunner";
 import { appendProductReferenceStoryboardCategoryRules } from "./productReferenceStoryboardCategoryRules";
 import { extractJson } from "./verticalDramaStoryBible";
@@ -500,6 +511,17 @@ const lastInvokedModelByRunKey = new Map<string, string>();
 function rememberInvokedModelForRun(runId: string | null | undefined, modelId: string) {
   if (lastInvokedModelByRunKey.size > 1000) lastInvokedModelByRunKey.clear();
   lastInvokedModelByRunKey.set(runId ?? "no-run", modelId);
+}
+
+/**
+ * Test-only accessor (repo `...ForTest` convention) — proves which model
+ * ACTUALLY produced a round's output (never merely the first one attempted)
+ * reached the quality-breaker bridge. Never used by production code.
+ */
+export function peekLastInvokedModelForRunForTest(
+  runId: string | null | undefined
+): string | undefined {
+  return lastInvokedModelByRunKey.get(runId ?? "no-run");
 }
 
 export type LoopRoundReport = Partial<SequentialStoryboardLoopRoundScores> & {
@@ -2194,6 +2216,202 @@ function parseSequentialStoryboardLlmOutput(rawContent: string): unknown {
   return parsed;
 }
 
+/**
+ * Feature 136 hardening (2026-07-24 field incident: run
+ * mar_76cb03fe0f29a20ec6422480f5a6840b, redraft #8 — all 3 authoring rounds
+ * died identically on "No endpoints found that support image input" because
+ * the resolved model's `supportsVision` flag was stale relative to the
+ * provider's live catalog, and every TS-level round re-resolved the SAME
+ * broken model). Routes the round's authoring call through the EXISTING
+ * shared multi-model fallback helper (`executeSkillLlmWithFallback`,
+ * `skillModelFallback.ts` — already production-proven by
+ * `teamRunSkillExecutor.ts`, `verticalDramaImproveScript.ts`,
+ * `presentationArticleGenerator.ts`, `routers/chat.ts`) instead of a single
+ * `executeWithFallback` call, so a HARD model failure tries the next
+ * priority-ranked candidate (same capability requirements) WITHIN this same
+ * round, instead of burning every TS-level round on one broken model before
+ * falling through to the degraded deterministic pack.
+ *
+ * Extracted from the `legacyExecute` closure (rather than inlined) so it is
+ * directly unit-testable without `executeSharedSkillTextRuntime`'s feature
+ * -flag / agent-runtime selection machinery — see the `...ForTest` export.
+ *
+ * Contract preserved exactly: same round/retry shape (throws on total
+ * failure, caught by the outer loop and recorded as `invocation_failed`,
+ * exactly as before), same credit idempotency key shape
+ * (`marketplace-auto-review:sequential-storyboard:<runId>[:g<N>]:<round>`),
+ * same duplicate-ledger-key swallow (a resumed/retried round re-charging the
+ * same attempt is not a failure), same `SharedSkillRuntimeTextResult` return
+ * shape `legacyExecute` must produce.
+ *
+ * ONE deliberate behavior change: `modelId` / `providerName` / credit
+ * charging now reflect whichever candidate model ACTUALLY produced the
+ * content, not the originally-resolved `policy.modelId` —
+ * `lastInvokedModelByRunKey` (the quality-breaker bridge) is stamped with
+ * THIS served model, never the first one merely attempted. A second,
+ * additive behavior change: provider-level fallback is now possible per
+ * candidate model (delegated to `executeSkillLlmWithFallback`'s own proven
+ * provider retry) where the old code passed `disableProviderFallbacks:
+ * true`; this skill's own `strict_provider_pin: false` / unset
+ * `preferredProviderId` make that inert today, called out here for anyone
+ * re-reading this later.
+ *
+ * Deliverable 2 (self-healing capability flag, same incident): every FAILED
+ * fallback attempt is scanned for a DEFINITIVE "this model cannot accept
+ * image input" provider error; each match fires (never blocks/throws)
+ * `recordModelVisionCapabilityFailure` so `model_provider_map.supportsVision`
+ * self-corrects for THAT modelId regardless of whether this round ultimately
+ * succeeded via a later candidate.
+ */
+async function invokeSequentialStoryboardAuthoringCall(args: {
+  ctx: { input: SequentialStoryboardSkillLoopInput };
+  policy: SkillExecutionPolicyResult;
+  systemPrompt: string;
+  userPrompt: string;
+  referenceImages: string[];
+  round: 1 | 2 | 3;
+}): Promise<{
+  rawContent: string;
+  usage: { promptTokens: number; completionTokens: number };
+  creditsUsed: number;
+  providerName: string | null;
+  modelId: string | null;
+  rawResponse?: unknown;
+}> {
+  const { ctx, policy, systemPrompt, userPrompt, referenceImages, round } = args;
+
+  const fallbackResult = await executeSkillLlmWithFallback({
+    // buildSequentialStoryboardVisionMessages is declared to return the wide
+    // `Message[]` shape (`_core/llm.ts`, needed for its image_url content
+    // parts) — structurally a superset of what this call needs
+    // (`{role, content: string | unknown[]}[]`; never a bare non-array
+    // content object at runtime). Cast rather than widen the shared
+    // `SkillLlmRequest` type for one caller.
+    messages: buildSequentialStoryboardVisionMessages({
+      systemPrompt,
+      userPrompt,
+      referenceImages,
+    }) as unknown as SkillLlmRequest["messages"],
+    skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
+    userId: ctx.input.userId,
+    executionPolicy: policy,
+    maxTokens: 8000,
+    temperature: 0.4,
+  });
+
+  // Deliverable 2 — fire-and-forget, independent of whether this round
+  // ultimately succeeds via a later candidate. See modelVisionCapabilityBreaker.ts.
+  for (const attempt of fallbackResult.attempts) {
+    if (!attempt.success && isDefinitiveVisionCapabilityError(attempt.errorMessage)) {
+      void recordModelVisionCapabilityFailure({
+        modelId: attempt.modelId,
+        errorMessage: attempt.errorMessage,
+        runId: ctx.input.runId ?? null,
+      });
+    }
+  }
+
+  if (!fallbackResult.success) {
+    throw new Error(
+      `product-review-sequential-storyboard LLM call failed: ${fallbackResult.error}`
+    );
+  }
+  const rawContent = fallbackResult.content ?? "";
+  if (!rawContent.trim()) {
+    throw new Error("product-review-sequential-storyboard returned empty output");
+  }
+
+  // The model that ACTUALLY produced the output — may differ from
+  // policy.modelId when an earlier candidate hit a hard failure and this
+  // call fell over to the next one within the SAME round. Every downstream
+  // bookkeeping keys off THIS, never the originally-resolved policy.modelId.
+  const servedModelId = fallbackResult.modelId || policy.modelId!;
+  rememberInvokedModelForRun(ctx.input.runId, servedModelId);
+
+  const usage = {
+    promptTokens: fallbackResult.inputTokens ?? 0,
+    completionTokens: fallbackResult.outputTokens ?? 0,
+  };
+  const creditsUsed = await calculateCreditsForLLMDynamic(
+    usage.promptTokens,
+    usage.completionTokens,
+    servedModelId
+  );
+  if (creditsUsed > 0) {
+    const chargeGeneration = Math.max(
+      0,
+      Math.floor(Number(ctx.input.chargeGeneration) || 0)
+    );
+    try {
+      await deductCredits({
+        userId: ctx.input.userId,
+        tenantId: ctx.input.tenantId,
+        amount: creditsUsed,
+        description: "Marketplace Auto Review sequential storyboard skill",
+        idempotencyKey: [
+          "marketplace-auto-review",
+          "sequential-storyboard",
+          ctx.input.runId ?? "no-run",
+          // generation 0 keeps the legacy key shape byte-identical
+          // (resume-compat); redrafts get their own key space.
+          ...(chargeGeneration > 0 ? [`g${chargeGeneration}`] : []),
+          String(round),
+        ].join(":"),
+        skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
+        sourceType: "skill",
+        metadata: {
+          skill: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
+          runtimeKind: "llm",
+          originSurface: "marketplace_capture",
+          entryPoint: "marketplace_auto_review_stage",
+          runId: ctx.input.runId ?? null,
+          round,
+          model: servedModelId,
+          provider: fallbackResult.provider?.providerName ?? undefined,
+          fallbackAttempts: fallbackResult.attempts.length,
+        },
+      });
+    } catch (chargeError) {
+      // Idempotency semantics: a duplicate ledger key means THIS exact
+      // attempt was already charged once (resume / retried round). The LLM
+      // work above already succeeded — failing the whole round over a
+      // duplicate ledger insert turned every redraft into a guaranteed
+      // degraded fallback. Only the duplicate case is swallowed; every other
+      // ledger error still fails the round (fail-closed on genuinely unpaid
+      // work).
+      const message = [
+        chargeError instanceof Error ? chargeError.message : "",
+        chargeError instanceof Error && chargeError.cause instanceof Error
+          ? chargeError.cause.message
+          : "",
+      ].join(" | ");
+      if (!/duplicate key|unique constraint|idempoten/i.test(message)) {
+        throw chargeError;
+      }
+      console.warn(
+        "[productReviewSequentialStoryboardSkillRunner] duplicate credit idempotency key — attempt already charged, continuing",
+        { runId: ctx.input.runId ?? null, round }
+      );
+    }
+  }
+
+  return {
+    rawContent,
+    usage,
+    creditsUsed,
+    providerName: fallbackResult.provider?.providerName ?? null,
+    modelId: servedModelId,
+    rawResponse: fallbackResult.rawData,
+  };
+}
+
+/** Test-only wrapper (repo `...ForTest` convention). */
+export async function invokeSequentialStoryboardAuthoringCallForTest(
+  args: Parameters<typeof invokeSequentialStoryboardAuthoringCall>[0]
+): ReturnType<typeof invokeSequentialStoryboardAuthoringCall> {
+  return invokeSequentialStoryboardAuthoringCall(args);
+}
+
 function buildProductionSequentialStoryboardLoopEffects(ctx: {
   skill: SkillDefinition;
   input: SequentialStoryboardSkillLoopInput;
@@ -2211,7 +2429,6 @@ function buildProductionSequentialStoryboardLoopEffects(ctx: {
           "product-review-sequential-storyboard skill has no enabled vision-capable LLM model"
         );
       }
-      rememberInvokedModelForRun(ctx.input.runId, policy.modelId);
       const provider = await getProviderForModel(policy.modelId, {
         preferredProviderId: policy.preferredProviderId,
         strictProviderPin: policy.strictProviderPin,
@@ -2265,114 +2482,15 @@ function buildProductionSequentialStoryboardLoopEffects(ctx: {
           name: "product_review_sequential_storyboard_output",
           validationMode: "structured_json",
         },
-        legacyExecute: async () => {
-          const llmResult = await executeWithFallback({
-            model: policy.modelId!,
-            messages: buildSequentialStoryboardVisionMessages({
-              systemPrompt,
-              userPrompt,
-              referenceImages: ctx.input.skillVisionUrls,
-            }),
-            stream: false,
-            userId: ctx.input.userId,
-            preferredProvider: policy.preferredProviderId,
-            strictProviderPin: policy.strictProviderPin,
-            maxTokens: 8000,
-            temperature: 0.4,
-            disableProviderFallbacks: true,
-            allowFreeModels: policy.allowFreeModels,
-          });
-          if (llmResult.type !== "success") {
-            const errorMessage =
-              llmResult.type === "error"
-                ? llmResult.error
-                : `provider fallback required from ${llmResult.from.providerName} to ${llmResult.to.providerName}, but provider fallback is disabled`;
-            throw new Error(
-              `product-review-sequential-storyboard LLM call failed: ${errorMessage}`
-            );
-          }
-          const rawContent = extractSequentialStoryboardLlmContent(llmResult.response);
-          if (!rawContent) {
-            throw new Error("product-review-sequential-storyboard returned empty output");
-          }
-          const usage = {
-            promptTokens: Number((llmResult.response as { usage?: { prompt_tokens?: number } })?.usage?.prompt_tokens ?? 0),
-            completionTokens: Number(
-              (llmResult.response as { usage?: { completion_tokens?: number } })?.usage
-                ?.completion_tokens ?? 0
-            ),
-          };
-          const creditsUsed = await calculateCreditsForLLMDynamic(
-            usage.promptTokens,
-            usage.completionTokens,
-            policy.modelId!
-          );
-          if (creditsUsed > 0) {
-            const chargeGeneration = Math.max(
-              0,
-              Math.floor(Number(ctx.input.chargeGeneration) || 0)
-            );
-            try {
-              await deductCredits({
-              userId: ctx.input.userId,
-              tenantId: ctx.input.tenantId,
-              amount: creditsUsed,
-              description: "Marketplace Auto Review sequential storyboard skill",
-              idempotencyKey: [
-                "marketplace-auto-review",
-                "sequential-storyboard",
-                ctx.input.runId ?? "no-run",
-                // generation 0 keeps the legacy key shape byte-identical
-                // (resume-compat); redrafts get their own key space.
-                ...(chargeGeneration > 0 ? [`g${chargeGeneration}`] : []),
-                String(args.round),
-              ].join(":"),
-              skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
-              sourceType: "skill",
-              metadata: {
-                skill: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
-                runtimeKind: "llm",
-                originSurface: "marketplace_capture",
-                entryPoint: "marketplace_auto_review_stage",
-                runId: ctx.input.runId ?? null,
-                round: args.round,
-                model: policy.modelId!,
-                provider: llmResult.providerName,
-              },
-            });
-            } catch (chargeError) {
-              // Idempotency semantics: a duplicate ledger key means THIS
-              // exact attempt was already charged once (resume / retried
-              // round). The LLM work above already succeeded — failing the
-              // whole round over a duplicate ledger insert turned every
-              // redraft into a guaranteed degraded fallback. Only the
-              // duplicate case is swallowed; every other ledger error still
-              // fails the round (fail-closed on genuinely unpaid work).
-              const message = [
-                chargeError instanceof Error ? chargeError.message : "",
-                chargeError instanceof Error &&
-                chargeError.cause instanceof Error
-                  ? chargeError.cause.message
-                  : "",
-              ].join(" | ");
-              if (!/duplicate key|unique constraint|idempoten/i.test(message)) {
-                throw chargeError;
-              }
-              console.warn(
-                "[productReviewSequentialStoryboardSkillRunner] duplicate credit idempotency key — attempt already charged, continuing",
-                { runId: ctx.input.runId ?? null, round: args.round }
-              );
-            }
-          }
-          return {
-            rawContent,
-            usage,
-            creditsUsed,
-            providerName: llmResult.providerName,
-            modelId: policy.modelId,
-            rawResponse: llmResult.response,
-          };
-        },
+        legacyExecute: () =>
+          invokeSequentialStoryboardAuthoringCall({
+            ctx,
+            policy,
+            systemPrompt,
+            userPrompt,
+            referenceImages: ctx.input.skillVisionUrls,
+            round: args.round,
+          }),
       });
 
       return parseSequentialStoryboardLlmOutput(execution.value.rawContent) as SequentialStoryboardRoundOutput;
