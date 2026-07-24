@@ -137,6 +137,15 @@ export interface CapabilityRequirements {
   supportsResponses?: boolean;
   /** Minimum context window size in tokens. */
   contextLength?: number;
+  /**
+   * Restrict selection to the admin-curated quality set
+   * (model_provider_map.isRecommended). Capability flags say what a model
+   * CAN do; this says a human vetted that it does it WELL. Skills opt in
+   * via execution_policy.requirements.recommendedOnly — membership and
+   * ranking stay fully admin-driven (enable/disable + isRecommended +
+   * priority), never hardcoded model ids.
+   */
+  recommendedOnly?: boolean;
 }
 
 const CAPABILITY_KEYS: ReadonlyArray<
@@ -215,6 +224,14 @@ export function selectLlmModelCandidates(
     }
     return true;
   });
+
+  // Step 1b: Filter by the admin-curated recommended set (quality opt-in).
+  // Not part of CAPABILITY_KEYS because the requirement key
+  // (`recommendedOnly`) and the row column (`isRecommended`) intentionally
+  // differ — the requirement is a mode, not a capability.
+  if (requirements.recommendedOnly === true) {
+    candidates = candidates.filter((row) => row.isRecommended === true);
+  }
 
   // Step 2: Filter by contextLength
   if (requirements.contextLength != null && requirements.contextLength > 0) {

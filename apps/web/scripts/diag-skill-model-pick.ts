@@ -5,7 +5,7 @@ import { selectLlmModelCandidates } from "../server/services/intelligentModelSel
 
 async function main() {
   const rows = await loadEnabledLlmModelRows({ allowFreeModels: false });
-  const reqs = { supportsVision: true, supportsThinking: true, contextLength: 1000000 };
+  const reqs = { supportsVision: true, supportsThinking: true, contextLength: 1000000, recommendedOnly: true };
   const picks = selectLlmModelCandidates(reqs as any, rows, 5);
   console.log("CANDIDATES(top5)=", JSON.stringify(picks));
   console.log("WINNER=", picks[0] ?? null);

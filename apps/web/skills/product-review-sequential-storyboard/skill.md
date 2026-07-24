@@ -13,7 +13,7 @@ execution_mode: llm-only
 strict_provider_pin: false
 execution_policy:
   mode: requirements
-  requirements: { supportsVision: true, supportsThinking: true, contextLength: 1000000 }
+  requirements: { supportsVision: true, supportsThinking: true, contextLength: 1000000, recommendedOnly: true }
   allowConversationOverride: false
   allowFreeModels: false
   fallbackPolicy: error

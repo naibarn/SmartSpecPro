@@ -1104,6 +1104,16 @@ export const modelProviderMap = pgTable(
     /** Whether priority was manually set by admin (locks against auto-reassignment) */
     priorityLocked: boolean("priorityLocked").default(false),
 
+    /**
+     * Admin-curated quality flag: this model has been vetted as genuinely
+     * strong for complex/quality-critical work. Skills opt in via
+     * execution_policy.requirements.recommendedOnly — selection then draws
+     * ONLY from this set (still admin-enabled, still ranked by priority).
+     * Capability flags describe what a model CAN do; this flag records the
+     * human judgment that it does it WELL.
+     */
+    isRecommended: boolean("isRecommended").default(false).notNull(),
+
     /** Whether this mapping is active */
     isEnabled: boolean("isEnabled").default(true).notNull(),
 

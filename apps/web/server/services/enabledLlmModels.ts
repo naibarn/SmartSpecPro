@@ -42,6 +42,8 @@ export type EnabledLlmModelRow = {
   contextLength: number | null;
   priority: number;
   priorityLocked: boolean | null;
+  /** Admin-curated quality flag (see modelProviderMap.isRecommended). */
+  isRecommended?: boolean | null;
   isFree: boolean;
   pricingInput?: string | null;
   pricingOutput?: string | null;
@@ -246,6 +248,7 @@ export async function loadEnabledLlmModelRows(
         contextLength: modelProviderMap.contextLength,
         priority: modelProviderMap.priority,
         priorityLocked: modelProviderMap.priorityLocked,
+        isRecommended: modelProviderMap.isRecommended,
         isFree: modelProviderMap.isFree,
         pricingInput: modelProviderMap.pricingInput,
         pricingOutput: modelProviderMap.pricingOutput,
@@ -282,6 +285,7 @@ export async function loadEnabledLlmModelRows(
       contextLength: row.contextLength,
       priority: row.priority,
       priorityLocked: row.priorityLocked,
+      isRecommended: row.isRecommended,
       isFree: row.isFree,
       pricingInput: row.pricingInput,
       pricingOutput: row.pricingOutput,
