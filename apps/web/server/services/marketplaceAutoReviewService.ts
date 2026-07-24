@@ -4,6 +4,8 @@ import { nanoid } from "nanoid";
 import { getDb } from "../db";
 import { storageExists, storagePut, storageResolveUrl } from "../storage";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { selectLlmModelCandidates } from "./intelligentModelSelector";
 import { shouldUseCloudTasksForMediaJobs } from "./mediaJobDispatchMode";
 import { getRedisClient } from "./redis";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
@@ -3465,6 +3467,44 @@ function effectiveQualityModePolicy(
     cleanText(stored.visionQaModel) ||
     DEFAULT_VISION_QA_MODEL;
   return { maxRepairAttemptsPerUnit, visionQaModel };
+}
+
+/**
+ * Top-priority model of the admin-curated recommended set that can actually see
+ * images. Vision is a hard requirement: a recommended set with no vision model
+ * resolves to null so the caller keeps the legacy default rather than dispatching
+ * a blind QA pass. Read fresh on every call so a breaker revocation takes effect
+ * immediately instead of riding a cache to the end of the run.
+ */
+async function resolveRecommendedVisionQaModelId(): Promise<string | null> {
+  try {
+    const rows = await loadEnabledLlmModelRows();
+    const [picked] = selectLlmModelCandidates(
+      { supportsVision: true, recommendedOnly: true },
+      rows,
+      1
+    );
+    return cleanText(picked) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Precedence: env pin > explicit user pick > curated recommended set > quality-mode
+ * default. The dropdown choice always wins — auto-selection only fills the gap when
+ * nobody chose, so losing a recommendation never silently overrides an operator who
+ * picked that model on purpose.
+ */
+async function resolveVisionQaModelId(metadata: RunMetadata): Promise<string> {
+  const envPinned = cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL);
+  if (envPinned) return envPinned;
+  const userPicked = cleanText(asRecord(metadata).visionQaModelOverride);
+  if (userPicked) return userPicked;
+  return (
+    (await resolveRecommendedVisionQaModelId()) ||
+    effectiveQualityModePolicy(metadata).visionQaModel
+  );
 }
 
 function buildMarketplaceAutoReviewCreativePerformanceMemory(params: {
@@ -23252,9 +23292,7 @@ async function runStoryboardGridLayoutVisionQa(params: {
   gridUrl: string;
   runtime: RuntimeContext;
 }): Promise<Record<string, unknown>> {
-  const model =
-    cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL) ||
-    effectiveQualityModePolicy(params.metadata).visionQaModel;
+  const model = await resolveVisionQaModelId(params.metadata);
   const imagePromptHashes = directImagePromptFingerprints(params.metadata);
   const absoluteGridUrl = absoluteVisionUrl(
     params.gridUrl,
@@ -23728,9 +23766,7 @@ async function runShotFrameVisionQa(params: {
   frameRoles: DirectImageFrameRole[];
   runtime: RuntimeContext;
 }): Promise<Record<string, unknown>> {
-  const model =
-    cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL) ||
-    effectiveQualityModePolicy(params.metadata).visionQaModel;
+  const model = await resolveVisionQaModelId(params.metadata);
   const productReferenceImageGroups =
     normalizeProductReferenceStoryboardReferenceImageGroups(
       productReferenceStoryboardReferenceImageGroups(
@@ -25198,9 +25234,7 @@ async function runVideoClipContinuityQa(params: {
   videoUrl: string;
   runtime: RuntimeContext;
 }): Promise<Record<string, unknown>> {
-  const model =
-    cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL) ||
-    effectiveQualityModePolicy(params.metadata).visionQaModel;
+  const model = await resolveVisionQaModelId(params.metadata);
   const referenceFrameUrls = videoReferenceFrameUrlsForShot(
     params.metadata,
     params.shot
