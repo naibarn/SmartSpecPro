@@ -72,6 +72,10 @@ import {
 } from "./skillFiles";
 import { parseSkillFile } from "@smartspec/skills";
 import {
+  isRecommendedModelQualityStrikeStatus,
+  recordRecommendedModelQualityStrike,
+} from "./recommendedModelQualityBreaker";
+import {
   resolveVerticalDramaImagePromptModeForImageModel,
   VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS,
   type MarketplaceStartFramePromptStyle,
@@ -482,6 +486,21 @@ export type SequentialStoryboardPack = {
 /** Whatever a single round invocation resolves to — structurally UNVERIFIED
  *  (may be missing required fields; see `validateSequentialStoryboardPackStructure`). */
 export type SequentialStoryboardRoundOutput = Record<string, unknown>;
+
+/**
+ * Which model actually served each run's latest authoring round. The model
+ * is resolved inside the invokeSkillRound closure while output validation
+ * happens back in the loop — this map bridges the two WITHOUT changing the
+ * round-output contract (which many test fixtures inject). Bounded: cleared
+ * defensively if it ever grows past 1000 runs (long-lived process guard).
+ * Test-injected invokeSkillRound never populates it ⇒ strike hooks no-op.
+ */
+const lastInvokedModelByRunKey = new Map<string, string>();
+
+function rememberInvokedModelForRun(runId: string | null | undefined, modelId: string) {
+  if (lastInvokedModelByRunKey.size > 1000) lastInvokedModelByRunKey.clear();
+  lastInvokedModelByRunKey.set(runId ?? "no-run", modelId);
+}
 
 export type LoopRoundReport = Partial<SequentialStoryboardLoopRoundScores> & {
   round: 1 | 2 | 3;
@@ -2192,6 +2211,7 @@ function buildProductionSequentialStoryboardLoopEffects(ctx: {
           "product-review-sequential-storyboard skill has no enabled vision-capable LLM model"
         );
       }
+      rememberInvokedModelForRun(ctx.input.runId, policy.modelId);
       const provider = await getProviderForModel(policy.modelId, {
         preferredProviderId: policy.preferredProviderId,
         strictProviderPin: policy.strictProviderPin,
@@ -2588,6 +2608,17 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
             ? Object.keys(rawOutput as Record<string, unknown>).slice(0, 16)
             : [`(${Array.isArray(rawOutput) ? "array" : typeof rawOutput})`],
       });
+      // Quality circuit breaker: a structural contract violation is a
+      // MODEL-attributable output failure (transport/ledger failures take
+      // the invocation_failed branch above and never strike).
+      if (isRecommendedModelQualityStrikeStatus("contract_violation")) {
+        void recordRecommendedModelQualityStrike({
+          modelId: lastInvokedModelByRunKey.get(input.runId ?? "no-run"),
+          runId: input.runId,
+          reason: "contract_violation",
+          detail: structural.reasons.join(","),
+        });
+      }
       lastRoundRejectionDirective = [
         `Round ${roundNum} was rejected: ${structural.reasons.join(", ")}.`,
         "Return ONE JSON object whose TOP-LEVEL keys are exactly: skillVersion, evidenceProfile, claimWhitelist, conflicts, reviewStrategy, childSubjectPolicy, globalContinuity, shots, loopReport, finalQc, referenceManifest.",
@@ -2617,6 +2648,14 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
     const valid = disqualifiers.length === 0;
     if (!valid) {
       lastRoundRejectionDirective = `Round ${roundNum} was disqualified: ${disqualifiers.join(", ")}. Fix these exact problems (keep everything else that scored well) and return the COMPLETE JSON object again — every shot needs its full contract fields, including non-empty Thai dialogue when the audio strategy is not silent.`;
+      // Quality circuit breaker: retention disqualifiers are output-quality
+      // failures (hollow shots, missing dialogue, claim/budget violations).
+      void recordRecommendedModelQualityStrike({
+        modelId: lastInvokedModelByRunKey.get(input.runId ?? "no-run"),
+        runId: input.runId,
+        reason: "disqualified",
+        detail: disqualifiers.join(","),
+      });
     }
 
     const report: LoopRoundReport = {

@@ -1114,6 +1114,19 @@ export const modelProviderMap = pgTable(
      */
     isRecommended: boolean("isRecommended").default(false).notNull(),
 
+    /**
+     * Quality circuit breaker for the recommended set: MODEL-ATTRIBUTABLE
+     * skill-output failures (contract violations / quality disqualifiers —
+     * never transport, ledger, or provider-balance errors) accumulate as
+     * strikes inside a sliding window; crossing the threshold auto-revokes
+     * isRecommended (never the last member of the set) and records why.
+     * Re-recommendation is a deliberate human action in the admin UI.
+     */
+    recommendedStrikeCount: integer("recommendedStrikeCount").default(0).notNull(),
+    recommendedStrikeWindowStartedAt: timestamp("recommendedStrikeWindowStartedAt", { withTimezone: true }),
+    recommendedAutoRevokedAt: timestamp("recommendedAutoRevokedAt", { withTimezone: true }),
+    recommendedAutoRevokedReason: text("recommendedAutoRevokedReason"),
+
     /** Whether this mapping is active */
     isEnabled: boolean("isEnabled").default(true).notNull(),
 
