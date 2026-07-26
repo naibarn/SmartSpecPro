@@ -41,7 +41,9 @@ export type StagedReviewState = {
   } | null;
   shots: Array<{
     shotId: number;
+    state?: string | null;
     title?: string | null;
+    visualSummary?: string | null;
     storySummary: string;
     dialogue: string;
     imagePrompt?: string | null;
@@ -50,6 +52,8 @@ export type StagedReviewState = {
     imageArtifactHash?: string | null;
     videoArtifactUrl?: string | null;
     videoArtifactHash?: string | null;
+    imageTaskStatus?: string | null;
+    videoTaskStatus?: string | null;
   }>;
   checkpoints: StagedCheckpoint[];
   correctionRequired?: {
@@ -147,6 +151,45 @@ function checkpointStateLabel(state: string | undefined) {
       return "แทนที่แล้ว";
     default:
       return "รอระบบ";
+  }
+}
+
+function shotStateLabel(state: string | null | undefined) {
+  switch (state) {
+    case "image_prompt_awaiting":
+      return "รอตรวจ Prompt ภาพ";
+    case "image_generating":
+      return "กำลังสร้างภาพ";
+    case "image_result_awaiting":
+      return "รอตรวจภาพ";
+    case "video_prompt_awaiting":
+      return "รอตรวจ Prompt วิดีโอ";
+    case "video_generating":
+      return "กำลังสร้างวิดีโอ";
+    case "video_result_awaiting":
+      return "รอตรวจวิดีโอ";
+    case "story_awaiting":
+      return "รอตรวจเนื้อเรื่อง";
+    case "completed":
+      return "พร้อมใช้งาน";
+    default:
+      return state ? state.replaceAll("_", " ") : "รอระบบเตรียมช็อต";
+  }
+}
+
+function mediaTaskStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case "pending":
+    case "processing":
+    case "submitted":
+      return "กำลังประมวลผล";
+    case "completed":
+      return "สร้างเสร็จแล้ว";
+    case "failed":
+    case "cancelled":
+      return "สร้างไม่สำเร็จ · กด retry ได้";
+    default:
+      return null;
   }
 }
 
@@ -377,6 +420,10 @@ export function StagedCheckpointReviewPanel(props: {
             ตรวจเนื้อเรื่อง → ตรวจ Prompt ภาพ → Storyboard Review / ผลภาพ →
             ยืนยัน Prompt วิดีโอ → ตรวจผลวิดีโอ → ตรวจเสียง →
             ตรวจและยืนยันการประกอบ
+          </p>
+          <p className="mt-2 text-xs text-violet-700">
+            ทุกช็อตแยกกัน: แก้ Prompt หรือ retry เฉพาะช็อตได้
+            และระบบจะใช้เครดิตเฉพาะตอนกดยืนยันสร้างเท่านั้น
           </p>
         </div>
         {action("refresh", "รีเฟรชสถานะ", props.onRefresh)}
@@ -717,12 +764,26 @@ export function StagedCheckpointReviewPanel(props: {
               return (
                 <article
                   key={shot.shotId}
-                  className="rounded-md border border-slate-200 bg-white p-3"
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
-                  <h4 className="font-semibold text-slate-900">
-                    ช็อตที่ {shot.shotId}
-                    {shot.title ? ` · ${shot.title}` : ""}
-                  </h4>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-violet-600">
+                        Shot {String(shot.shotId).padStart(2, "0")}
+                      </p>
+                      <h4 className="mt-1 font-semibold text-slate-900">
+                        {shot.title || `ช็อตที่ ${shot.shotId}`}
+                      </h4>
+                    </div>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                      {shotStateLabel(shot.state)}
+                    </span>
+                  </div>
+                  {shot.visualSummary ? (
+                    <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                      {shot.visualSummary}
+                    </p>
+                  ) : null}
                   {storyEditable ? (
                     <>
                       <label className="mt-2 block text-sm font-medium text-slate-800">
@@ -780,54 +841,103 @@ export function StagedCheckpointReviewPanel(props: {
                       </p>
                     </>
                   )}
-                  {shot.imagePrompt ? (
-                    <label className="mt-3 block text-sm font-medium text-slate-800">
-                      Prompt ภาพ
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    <label className="block text-sm font-medium text-slate-800">
+                      <span className="flex items-center justify-between gap-2">
+                        <span>Prompt ภาพ</span>
+                        <span className="text-[11px] font-normal text-slate-500">
+                          {imageCheckpoint
+                            ? checkpointStateLabel(imageCheckpoint.state)
+                            : "รอสร้างหลังยืนยันเนื้อเรื่อง"}
+                        </span>
+                      </span>
                       <textarea
-                        className="mt-1 min-h-24 w-full rounded border p-2 text-xs font-normal"
-                        value={drafts[imageDraftKey] ?? shot.imagePrompt}
+                        className="mt-1 min-h-28 w-full rounded-lg border border-slate-200 p-3 text-xs font-normal outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-50"
+                        placeholder="ระบบจะแสดง Prompt ภาพของช็อตนี้เมื่อเนื้อเรื่องผ่านการยืนยัน"
+                        value={drafts[imageDraftKey] ?? shot.imagePrompt ?? ""}
+                        aria-label={`Prompt ภาพช็อตที่ ${shot.shotId}`}
                         onChange={event =>
                           setDrafts(prev => ({
                             ...prev,
                             [imageDraftKey]: event.target.value,
                           }))
                         }
-                        disabled={props.pending}
+                        disabled={!isEditable(imageCheckpoint) || props.pending}
                       />
                     </label>
-                  ) : null}
-                  {shot.videoPrompt ? (
-                    <label className="mt-3 block text-sm font-medium text-slate-800">
-                      Prompt วิดีโอ
+                    <label className="block text-sm font-medium text-slate-800">
+                      <span className="flex items-center justify-between gap-2">
+                        <span>Prompt วิดีโอ</span>
+                        <span className="text-[11px] font-normal text-slate-500">
+                          {videoCheckpoint
+                            ? checkpointStateLabel(videoCheckpoint.state)
+                            : "รอรับรองภาพก่อน"}
+                        </span>
+                      </span>
                       <textarea
-                        className="mt-1 min-h-20 w-full rounded border p-2 text-xs font-normal"
-                        value={drafts[videoDraftKey] ?? shot.videoPrompt}
+                        className="mt-1 min-h-28 w-full rounded-lg border border-slate-200 p-3 text-xs font-normal outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:bg-slate-50"
+                        placeholder="ระบบจะแสดง Prompt วิดีโอหลังรับรองภาพของช็อตนี้"
+                        value={drafts[videoDraftKey] ?? shot.videoPrompt ?? ""}
+                        aria-label={`Prompt วิดีโอช็อตที่ ${shot.shotId}`}
                         onChange={event =>
                           setDrafts(prev => ({
                             ...prev,
                             [videoDraftKey]: event.target.value,
                           }))
                         }
-                        disabled={props.pending}
+                        disabled={!isEditable(videoCheckpoint) || props.pending}
                       />
                     </label>
-                  ) : null}
-                  {shot.imageArtifactUrl ? (
-                    <img
-                      src={shot.imageArtifactUrl}
-                      alt={`ผลภาพช็อตที่ ${shot.shotId}`}
-                      className="mt-3 max-h-64 rounded object-contain"
-                    />
-                  ) : null}
-                  {shot.videoArtifactUrl ? (
-                    <video
-                      className="mt-3 max-h-72 w-full rounded object-contain"
-                      controls
-                      preload="metadata"
-                      src={shot.videoArtifactUrl}
-                      aria-label={`ผลวิดีโอช็อตที่ ${shot.shotId}`}
-                    />
-                  ) : null}
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
+                        <span>ภาพ / เฟรมอ้างอิง</span>
+                        <span className="font-normal text-slate-500">
+                          {mediaTaskStatusLabel(shot.imageTaskStatus) ||
+                            (shot.imageArtifactUrl
+                              ? "มีผลลัพธ์"
+                              : "ยังไม่มีภาพ")}
+                        </span>
+                      </div>
+                      {shot.imageArtifactUrl ? (
+                        <img
+                          src={shot.imageArtifactUrl}
+                          alt={`ผลภาพช็อตที่ ${shot.shotId}`}
+                          className="aspect-[9/16] max-h-[22rem] w-full object-contain"
+                        />
+                      ) : (
+                        <div className="flex min-h-40 items-center justify-center p-5 text-center text-xs leading-5 text-slate-500">
+                          ภาพของช็อตนี้จะแสดงที่นี่หลังจากกดยืนยันสร้างภาพ
+                        </div>
+                      )}
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
+                        <span>วิดีโอรายช็อต</span>
+                        <span className="font-normal text-slate-500">
+                          {mediaTaskStatusLabel(shot.videoTaskStatus) ||
+                            (shot.videoArtifactUrl
+                              ? "มีผลลัพธ์"
+                              : "ยังไม่มีวิดีโอ")}
+                        </span>
+                      </div>
+                      {shot.videoArtifactUrl ? (
+                        <video
+                          className="aspect-[9/16] max-h-[22rem] w-full object-contain"
+                          controls
+                          preload="metadata"
+                          src={shot.videoArtifactUrl}
+                          aria-label={`ผลวิดีโอช็อตที่ ${shot.shotId}`}
+                        />
+                      ) : (
+                        <div className="flex min-h-40 items-center justify-center p-5 text-center text-xs leading-5 text-slate-500">
+                          วิดีโอของช็อตนี้จะแสดงที่นี่หลังจากยืนยัน Prompt
+                          วิดีโอ
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
                     {[
                       imageCheckpoint,
@@ -890,7 +1000,7 @@ export function StagedCheckpointReviewPanel(props: {
                     {videoCheckpoint?.state === "awaiting"
                       ? action(
                           `approve-video-${shot.shotId}`,
-                          `ยืนยัน Prompt วิดีโอช็อตที่ ${shot.shotId}`,
+                          `ยืนยันและสร้างวิดีโอช็อตที่ ${shot.shotId}`,
                           () =>
                             props.onApprove({
                               checkpoint: videoCheckpoint,
@@ -923,6 +1033,17 @@ export function StagedCheckpointReviewPanel(props: {
                           `reject-video-${shot.shotId}`,
                           `ขอแก้ Prompt วิดีโอช็อตที่ ${shot.shotId}`,
                           () => props.onReject(videoCheckpoint)
+                        )
+                      : null}
+                    {videoCheckpoint?.state === "rejected"
+                      ? action(
+                          `retry-video-prompt-${shot.shotId}`,
+                          `สร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} ใหม่`,
+                          () =>
+                            props.onRetry({
+                              shotId: shot.shotId,
+                              stage: "video",
+                            })
                         )
                       : null}
                     {imageCheckpoint &&

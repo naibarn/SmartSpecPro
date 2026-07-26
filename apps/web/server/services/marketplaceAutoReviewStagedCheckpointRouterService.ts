@@ -146,6 +146,15 @@ function safeArtifactUrl(value: unknown): string | null {
   return null;
 }
 
+function stagedTaskStatus(
+  stagedPipeline: Record<string, any> | null | undefined,
+  key: string
+): string | null {
+  const task = stagedPipeline?.tasks?.[key];
+  const status = typeof task?.status === "string" ? task.status.trim() : "";
+  return status || null;
+}
+
 function operationFromPayload(value: unknown, fallback: StagedCheckpointRun) {
   const payload =
     value && typeof value === "object"
@@ -185,6 +194,7 @@ export async function getStagedAutoReviewCheckpointState(
     const detail = stagedPipeline?.plan?.shots?.[shot.shotId - 1] ?? {};
     return {
       shotId: shot.shotId,
+      state: shot.state,
       storySummary: shot.storySummary,
       dialogue: shot.dialogue,
       title: detail.title ?? null,
@@ -197,6 +207,8 @@ export async function getStagedAutoReviewCheckpointState(
       // task IDs, storage keys, and raw diagnostics remain server-only.
       imageArtifactUrl: safeArtifactUrl(shot.imageArtifactUrl),
       videoArtifactUrl: safeArtifactUrl(shot.videoArtifactUrl),
+      imageTaskStatus: stagedTaskStatus(stagedPipeline, `image:${shot.shotId}`),
+      videoTaskStatus: stagedTaskStatus(stagedPipeline, `video:${shot.shotId}`),
     };
   });
   return {

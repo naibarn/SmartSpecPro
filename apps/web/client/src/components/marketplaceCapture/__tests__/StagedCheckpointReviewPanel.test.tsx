@@ -254,7 +254,7 @@ describe("StagedCheckpointReviewPanel", () => {
     };
     render(<StagedCheckpointReviewPanel {...input} />);
 
-    fireEvent.change(screen.getByLabelText("Prompt ภาพ"), {
+    fireEvent.change(screen.getByLabelText("Prompt ภาพช็อตที่ 1"), {
       target: { value: "Prompt ภาพฉบับแก้ไขเฉพาะช็อตที่ 1" },
     });
     fireEvent.click(
@@ -269,6 +269,37 @@ describe("StagedCheckpointReviewPanel", () => {
       imagePrompt: "Prompt ภาพฉบับแก้ไขเฉพาะช็อตที่ 1",
     });
     expect(input.onRetry).toHaveBeenCalledWith({ shotId: 1, stage: "image" });
+  });
+
+  it("keeps retry available when only the video prompt was rejected", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: [
+        {
+          ...input.state.shots[0],
+          imagePrompt: "ภาพที่ผ่านแล้ว",
+          videoPrompt: "วิดีโอที่ต้องแก้",
+        },
+      ],
+      checkpoints: [
+        {
+          ...baseCheckpoint,
+          kind: "video_prompt",
+          checkpointId: "video-prompt:run-1:shot-1:r1",
+          state: "rejected",
+          estimatedCredits: 4,
+        },
+      ],
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "สร้าง Prompt วิดีโอช็อตที่ 1 ใหม่",
+      })
+    );
+    expect(input.onRetry).toHaveBeenCalledWith({ shotId: 1, stage: "video" });
   });
 
   it("requires video result acceptance and exposes shot-local video repair", () => {
@@ -329,5 +360,43 @@ describe("StagedCheckpointReviewPanel", () => {
     expect(input.onReject).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "video_result", shotId: 1 })
     );
+  });
+
+  it("renders the complete shot board with separate prompt editors and media slots", () => {
+    const input = props();
+    input.state = {
+      ...input.state,
+      shots: Array.from({ length: 9 }, (_, index) => ({
+        shotId: index + 1,
+        title: `ช็อต ${index + 1}`,
+        state: "image_prompt_awaiting",
+        storySummary: `เรื่องย่อช็อต ${index + 1}`,
+        dialogue: `บทพูดช็อต ${index + 1}`,
+        imagePrompt: `image prompt ${index + 1}`,
+        videoPrompt: `video prompt ${index + 1}`,
+        imageArtifactUrl: index === 0 ? "/media/shot-1.png" : null,
+        videoArtifactUrl: index === 0 ? "/media/shot-1.mp4" : null,
+      })),
+    };
+    render(<StagedCheckpointReviewPanel {...input} />);
+
+    expect(screen.getAllByText(/Shot 0[1-9]/)).toHaveLength(9);
+    expect(
+      screen.getAllByRole("textbox", { name: /Prompt ภาพช็อตที่/ })
+    ).toHaveLength(9);
+    expect(
+      screen.getAllByRole("textbox", { name: /Prompt วิดีโอช็อตที่/ })
+    ).toHaveLength(9);
+    expect(screen.getByAltText("ผลภาพช็อตที่ 1")).toHaveAttribute(
+      "src",
+      "/media/shot-1.png"
+    );
+    expect(screen.getByLabelText("ผลวิดีโอช็อตที่ 1")).toHaveAttribute(
+      "src",
+      "/media/shot-1.mp4"
+    );
+    expect(
+      screen.getAllByText("ภาพของช็อตนี้จะแสดงที่นี่หลังจากกดยืนยันสร้างภาพ")
+    ).toHaveLength(8);
   });
 });

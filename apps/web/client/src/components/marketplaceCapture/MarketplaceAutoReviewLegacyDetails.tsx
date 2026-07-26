@@ -9,11 +9,24 @@ import {
   Sparkles,
   XCircle,
 } from "lucide-react";
+import { projectSequentialShotCards } from "@/lib/marketplaceSequentialStoryboardUi";
+import { SequentialShotReviewSection } from "./SequentialShotReviewSection";
+import type {
+  SequentialShotEditorCardSaveInput,
+  SequentialShotEditorCardShotError,
+} from "./SequentialShotEditorCard";
 
 type LegacyDetailsProps = {
   run: Record<string, any>;
   productName: string;
   onCreateStaged: () => void;
+  onRegenerateShot?: (shotId: number) => void;
+  onSaveShotEdits?: (input: SequentialShotEditorCardSaveInput) => void;
+  onSelectShotAlternate?: (input: { shotId: number; attempt: number }) => void;
+  busyShotId?: number | null;
+  savingShotId?: number | null;
+  swappingShotId?: number | null;
+  shotError?: SequentialShotEditorCardShotError | null;
   className?: string;
 };
 
@@ -217,6 +230,13 @@ export function MarketplaceAutoReviewLegacyDetails({
   run,
   productName,
   onCreateStaged,
+  onRegenerateShot,
+  onSaveShotEdits,
+  onSelectShotAlternate,
+  busyShotId,
+  savingShotId,
+  swappingShotId,
+  shotError,
   className = "",
 }: LegacyDetailsProps) {
   const metadata = asRecord(run.metadataJson);
@@ -229,6 +249,7 @@ export function MarketplaceAutoReviewLegacyDetails({
   const productionLink = outputLinkFor(links, "production_project");
   const libraryLink = outputLinkFor(links, "library_item");
   const images = collectImageUrls(run);
+  const sequentialShots = projectSequentialShotCards(run.metadataJson);
   const credits = creditSummary(run);
   const statusDetail = asRecord(
     run.statusDetail ?? timeline.statusDetail ?? projectionTimeline.statusDetail
@@ -274,7 +295,9 @@ export function MarketplaceAutoReviewLegacyDetails({
               <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900">
                 งานนี้ถูกสร้างด้วยระบบเดิมที่รันต่อเนื่องจนจบ จึงไม่มี
                 checkpoint สำหรับ approve / reject / edit / retry
-                ย้อนหลังและไม่สามารถหยุด เครดิตระหว่างทางได้
+                ย้อนหลังและไม่สามารถหยุดเครดิตระหว่างทางได้ แต่ถ้ามีข้อมูล
+                sequential storyboard ระบบยังแสดงและแก้ไข prompt
+                รายช็อตได้ด้านล่าง
               </p>
             </div>
           </div>
@@ -290,7 +313,7 @@ export function MarketplaceAutoReviewLegacyDetails({
         <div className="mt-4 grid gap-2 text-xs text-amber-900 sm:grid-cols-3">
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
             <strong className="block text-amber-950">แก้ไขงานนี้</strong>
-            อ่านผลลัพธ์และเปิดไปแก้ต่อใน Storyboard Review ได้
+            แก้ prompt รายช็อตหรือเปิดผลต่อใน Storyboard Review ได้
           </p>
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
             <strong className="block text-amber-950">ทำงานใหม่</strong>
@@ -298,7 +321,7 @@ export function MarketplaceAutoReviewLegacyDetails({
           </p>
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
             <strong className="block text-amber-950">เครดิต</strong>
-            ระบบเดิมไม่สามารถคืนเครดิตตาม checkpoint ที่ยังไม่เริ่มได้
+            การแก้ prompt ไม่ใช้เครดิต; สร้างภาพใหม่จะใช้เครดิตตามระบบเดิม
           </p>
         </div>
       </article>
@@ -376,6 +399,51 @@ export function MarketplaceAutoReviewLegacyDetails({
             <p className="mt-2 text-xs leading-5">
               ทางไปต่อ: {statusDetail.nextAction}
             </p>
+          ) : null}
+        </article>
+      ) : null}
+
+      {sequentialShots.length > 0 ? (
+        <article
+          className="rounded-2xl border border-sky-200 bg-sky-50/60 p-5 shadow-sm sm:p-6"
+          aria-label="รีวิว storyboard รายช็อตของงานเดิม"
+        >
+          <header className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">
+                Shot-level review · Legacy data
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">
+                ภาพ Prompt และวิดีโอแยกตามช็อต
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                แสดงข้อมูลที่งานเดิมบันทึกไว้จริงทีละช็อต แก้บทพูดและ Prompt
+                ได้โดยไม่เริ่มงานใหม่ ส่วนการตรวจ approve/reject และการสร้าง
+                วิดีโอแบบหยุดรอเครดิต ให้สร้าง Job แบบ staged
+              </p>
+            </div>
+            <span className="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-800">
+              {sequentialShots.length} ช็อต
+            </span>
+          </header>
+          {onRegenerateShot && onSaveShotEdits ? (
+            <div className="mt-5">
+              <SequentialShotReviewSection
+                shots={sequentialShots}
+                loopReport={null}
+                budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
+                busyShotId={busyShotId}
+                savingShotId={savingShotId}
+                swappingShotId={swappingShotId}
+                shotError={shotError}
+                onRegenerateShot={onRegenerateShot}
+                onSaveShotEdits={onSaveShotEdits}
+                onSelectShotAlternate={
+                  onSelectShotAlternate ?? (() => undefined)
+                }
+                locale="th"
+              />
+            </div>
           ) : null}
         </article>
       ) : null}

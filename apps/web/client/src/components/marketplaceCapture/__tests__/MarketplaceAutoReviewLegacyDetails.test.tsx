@@ -82,4 +82,55 @@ describe("MarketplaceAutoReviewLegacyDetails", () => {
     );
     expect(onCreateStaged).toHaveBeenCalledTimes(1);
   });
+
+  it("shows legacy sequential shots with per-shot prompts and generated media", () => {
+    const onRegenerateShot = vi.fn();
+    const onSaveShotEdits = vi.fn();
+    render(
+      <MarketplaceAutoReviewLegacyDetails
+        productName="สินค้าทดสอบ"
+        onCreateStaged={vi.fn()}
+        onRegenerateShot={onRegenerateShot}
+        onSaveShotEdits={onSaveShotEdits}
+        run={{
+          id: "mar-legacy-sequential",
+          status: "completed",
+          metadataJson: {
+            sequentialStoryboard: {
+              shots: Array.from({ length: 9 }, (_, index) => ({
+                shot_id: index + 1,
+                purpose: `purpose_${index + 1}`,
+                dialogue: `บทพูด ${index + 1}`,
+                start_frame_image_prompt: `ภาพ ${index + 1}`,
+                video_prompt: `วิดีโอ ${index + 1}`,
+                qc: { status: "passed" },
+              })),
+            },
+            storyboardFrameUrls: Array.from(
+              { length: 9 },
+              (_, index) => `https://cdn.example.com/frame-${index + 1}.png`
+            ),
+            videoClipUrls: Array.from(
+              { length: 9 },
+              (_, index) => `https://cdn.example.com/video-${index + 1}.mp4`
+            ),
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("ภาพ Prompt และวิดีโอแยกตามช็อต")).toBeTruthy();
+    expect(screen.getAllByTestId(/sequential-shot-card-/)).toHaveLength(9);
+    expect(screen.getAllByDisplayValue(/ภาพ [1-9]/)).toHaveLength(9);
+    expect(screen.getAllByDisplayValue(/วิดีโอ [1-9]/)).toHaveLength(9);
+    expect(screen.getByLabelText("วิดีโอช็อตที่ 1")).toHaveAttribute(
+      "src",
+      "https://cdn.example.com/video-1.mp4"
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "สร้างภาพนี้ใหม่" })[0]
+    );
+    expect(onRegenerateShot).toHaveBeenCalledWith(1);
+  });
 });

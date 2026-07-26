@@ -112,6 +112,9 @@ export type SequentialShotCardModel = {
   qcStatus: string;
   qcScores?: Record<string, number>;
   frameUrl?: string | null;
+  /** Legacy Auto Review's per-shot video output, when the old run already
+   * persisted the completed clip array. */
+  videoUrl?: string | null;
   /** Empty when the shot has fewer than 2 contributing image-attempt waves
    *  (the common case — the server OMITS the key entirely rather than
    *  persisting an empty array). Read from the TOP-LEVEL
@@ -217,6 +220,9 @@ export function projectSequentialShotCards(
   const frameUrls = Array.isArray(asRecord(metadataJson).storyboardFrameUrls)
     ? (asRecord(metadataJson).storyboardFrameUrls as unknown[])
     : [];
+  const videoUrls = Array.isArray(asRecord(metadataJson).videoClipUrls)
+    ? (asRecord(metadataJson).videoClipUrls as unknown[])
+    : [];
   // Marketplace spare-image repair — top-level on `metadataJson` (mirrors
   // `storyboardFrameUrls` above), never nested under `sequentialStoryboard`.
   const shotAlternates = asRecord(
@@ -272,6 +278,7 @@ export function projectSequentialShotCards(
       qcStatus: cleanText(qc.status),
       qcScores: Object.keys(qcScores).length > 0 ? qcScores : undefined,
       frameUrl: cleanText(frameUrls[shotId - 1]) || null,
+      videoUrl: cleanText(videoUrls[shotId - 1]) || null,
       alternates: projectSequentialShotAlternateEntries(
         shotAlternates[String(shotId)]
       ),

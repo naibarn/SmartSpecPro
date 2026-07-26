@@ -161,6 +161,68 @@ export default function MarketplaceAutoReviewWorkflowPage() {
   const canCancel = Boolean(
     runId && !TERMINAL_STATUSES.has(status) && !cancelMutation.isPending
   );
+  const [legacyRegeneratingShotId, setLegacyRegeneratingShotId] = useState<
+    number | null
+  >(null);
+  const [legacySavingShotId, setLegacySavingShotId] = useState<number | null>(
+    null
+  );
+  const [legacySwappingShotId, setLegacySwappingShotId] = useState<
+    number | null
+  >(null);
+  const [legacyShotError, setLegacyShotError] = useState<{
+    shotId: number;
+    blockerId: string;
+    message: string;
+  } | null>(null);
+  const regenerateLegacyShotMutation =
+    trpc.marketplaceCapture.regenerateAutoReviewSequentialShot.useMutation({
+      onSuccess: async () => {
+        setLegacyShotError(null);
+        await runQuery.refetch();
+      },
+      onError: (error, variables) => {
+        setLegacyShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_regeneration_failed",
+          message: error.message,
+        });
+      },
+      onSettled: () => setLegacyRegeneratingShotId(null),
+    });
+  const saveLegacyShotMutation =
+    trpc.marketplaceCapture.saveAutoReviewSequentialShotOverride.useMutation({
+      onSuccess: async () => {
+        setLegacyShotError(null);
+        await runQuery.refetch();
+      },
+      onError: (error, variables) => {
+        const blocker = /\[ids:\s*([^,\]]+)/.exec(error.message);
+        setLegacyShotError({
+          shotId: variables.shotId,
+          blockerId: blocker?.[1]?.trim() || "sequential_shot_override_failed",
+          message: error.message,
+        });
+      },
+      onSettled: () => setLegacySavingShotId(null),
+    });
+  const selectLegacyShotAlternateMutation =
+    trpc.marketplaceCapture.selectAutoReviewSequentialShotAlternate.useMutation(
+      {
+        onSuccess: async () => {
+          setLegacyShotError(null);
+          await runQuery.refetch();
+        },
+        onError: (error, variables) => {
+          setLegacyShotError({
+            shotId: variables.shotId,
+            blockerId: "sequential_shot_alternate_swap_failed",
+            message: error.message,
+          });
+        },
+        onSettled: () => setLegacySwappingShotId(null),
+      }
+    );
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.08),_transparent_42%),#f8fafc] px-3 py-4 sm:px-6 lg:px-8">
@@ -400,6 +462,38 @@ export default function MarketplaceAutoReviewWorkflowPage() {
               <MarketplaceAutoReviewLegacyDetails
                 run={run}
                 productName={productName}
+                busyShotId={legacyRegeneratingShotId}
+                savingShotId={legacySavingShotId}
+                swappingShotId={legacySwappingShotId}
+                shotError={legacyShotError}
+                onRegenerateShot={shotId => {
+                  if (!runId) return;
+                  setLegacyShotError(null);
+                  setLegacyRegeneratingShotId(shotId);
+                  regenerateLegacyShotMutation.mutate({ runId, shotId });
+                }}
+                onSaveShotEdits={input => {
+                  if (!runId) return;
+                  setLegacyShotError(null);
+                  setLegacySavingShotId(input.shotId);
+                  saveLegacyShotMutation.mutate({
+                    runId,
+                    shotId: input.shotId,
+                    dialogue: input.dialogue,
+                    startFrameImagePrompt: input.imagePrompt,
+                    videoPrompt: input.videoPrompt,
+                  });
+                }}
+                onSelectShotAlternate={input => {
+                  if (!runId) return;
+                  setLegacyShotError(null);
+                  setLegacySwappingShotId(input.shotId);
+                  selectLegacyShotAlternateMutation.mutate({
+                    runId,
+                    shotId: input.shotId,
+                    attempt: input.attempt,
+                  });
+                }}
                 onCreateStaged={() => {
                   if (productId) {
                     setLocation(

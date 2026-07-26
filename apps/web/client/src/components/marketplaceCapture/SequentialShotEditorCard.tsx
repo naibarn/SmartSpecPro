@@ -119,6 +119,18 @@ export function SequentialShotEditorCard({
         />
       ) : null}
 
+      {shot.videoUrl ? (
+        <video
+          src={shot.videoUrl}
+          controls
+          preload="metadata"
+          className="mx-auto aspect-[9/16] w-full max-w-[220px] rounded-md border object-contain dark:border-slate-700"
+          aria-label={
+            thai ? `วิดีโอช็อตที่ ${shot.shotId}` : `Shot ${shot.shotId} video`
+          }
+        />
+      ) : null}
+
       <SequentialShotAlternatesStrip
         shotId={shot.shotId}
         alternates={shot.alternates}
