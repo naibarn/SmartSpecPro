@@ -163,6 +163,11 @@ import {
   type MarketplaceStartFramePromptStyle,
 } from "../../shared/marketplaceCapture/startFramePromptStyle";
 import {
+  advanceStagedMarketplaceAutoReviewRun,
+  initializeStagedMarketplaceAutoReviewRun,
+  redraftStagedMarketplaceAutoReviewRun,
+} from "./marketplaceAutoReviewStagedPipelineService";
+import {
   buildRuntimeModelConfig,
   executeSharedSkillTextRuntime,
 } from "./agentRuntime/skillRuntimeOrchestrator";
@@ -231,6 +236,33 @@ export type MarketplaceAutoReviewStatus =
   | "completed"
   | "failed"
   | "cancelled";
+
+export type MarketplaceAutoReviewPlanningArchitecture =
+  | "monolithic_sequential_v1"
+  | "staged_two_skill_v2";
+
+/**
+ * Resolve the architecture exactly once at run creation. Non-sequential
+ * strategies deliberately return null so the Feature 141 architecture fields
+ * cannot accidentally change the 3x3/start-stop paths.
+ */
+export function resolveMarketplaceAutoReviewPlanningArchitecture(input: {
+  frameStrategy: MarketplaceAutoReviewFrameStrategyInput;
+  stagedSequentialStoryboardV2Enabled: boolean;
+}): MarketplaceAutoReviewPlanningArchitecture | null {
+  if (input.frameStrategy !== "sequential_shot_storyboard") return null;
+  return input.stagedSequentialStoryboardV2Enabled
+    ? "staged_two_skill_v2"
+    : "monolithic_sequential_v1";
+}
+
+/** Resume/recovery must dispatch from this persisted value, never the current
+ * tenant flag. Kept as a small pure helper so the invariant is easy to test. */
+export function shouldDispatchStagedMarketplaceAutoReview(
+  persistedArchitecture: string | null | undefined
+): boolean {
+  return persistedArchitecture === "staged_two_skill_v2";
+}
 // Feature 136 (section 02, §5.1-§5.3) — multi-angle product reference layer
 // for the `sequential_shot_storyboard` strategy. Kept as a loose string union
 // (not imported from the shared validator module) so this type declaration
@@ -247,8 +279,12 @@ const SEQUENTIAL_PRODUCT_ANGLE_LABELS = [
   "scale",
   "other",
 ] as const;
-type SequentialProductAngleLabel = (typeof SEQUENTIAL_PRODUCT_ANGLE_LABELS)[number];
-type SequentialAngleImageSource = "marketplace_product_image" | "upload" | "library";
+type SequentialProductAngleLabel =
+  (typeof SEQUENTIAL_PRODUCT_ANGLE_LABELS)[number];
+type SequentialAngleImageSource =
+  | "marketplace_product_image"
+  | "upload"
+  | "library";
 type SequentialAngleAnchorInputEntry = {
   url?: string | null;
   ref?: string | null;
@@ -358,6 +394,8 @@ type RuntimeContext = {
   automationWorkerId?: string | null;
   schedulerSource?: string | null;
   externalOperationalRecoveryEvidence?: Record<string, unknown> | null;
+  deferInitialization?: boolean;
+  initializationRunId?: string | null;
 };
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -543,7 +581,8 @@ const MARKETPLACE_AUTO_REVIEW_THAI_PROMPT_TRANSLATIONS: Array<{
   },
   {
     pattern: /มือจัดโคมไฟ\s*หนังสือ\s*และแก้วน้ำบนโต๊ะ/g,
-    replacement: "hands arrange a lamp, books, and a glass of water on the table",
+    replacement:
+      "hands arrange a lamp, books, and a glass of water on the table",
   },
   {
     pattern: /มือหยิบของบนโต๊ะ/g,
@@ -560,26 +599,41 @@ const MARKETPLACE_AUTO_REVIEW_THAI_PROMPT_TRANSLATIONS: Array<{
   { pattern: /มุมกล้องใกล้/g, replacement: "close camera angle" },
   { pattern: /โชว์วิธีจัดของ/g, replacement: "show the organizing method" },
   { pattern: /โชว์การจัดของ/g, replacement: "show the organization proof" },
-  { pattern: /จัดของจำเป็นให้เป็นที่/g, replacement: "organize essentials into clear spots" },
+  {
+    pattern: /จัดของจำเป็นให้เป็นที่/g,
+    replacement: "organize essentials into clear spots",
+  },
   { pattern: /จัดของ/g, replacement: "organize items" },
   { pattern: /ปิดด้วยผลลัพธ์/g, replacement: "close with the result" },
   { pattern: /ผลลัพธ์/g, replacement: "result" },
   { pattern: /สินค้าแม่และเด็ก/g, replacement: "mother and baby product" },
   { pattern: /แม่และเด็ก/g, replacement: "mother and baby" },
   { pattern: /เก้าอี้กินข้าวเด็ก/g, replacement: "baby high chair" },
-  { pattern: /เครื่องใช้ไฟฟ้าภายในบ้าน/g, replacement: "home electrical appliance" },
+  {
+    pattern: /เครื่องใช้ไฟฟ้าภายในบ้าน/g,
+    replacement: "home electrical appliance",
+  },
   {
     pattern: /เครื่องใช้ไฟฟ้าในครัวขนาดเล็ก/g,
     replacement: "small kitchen appliance",
   },
-  { pattern: /เครื่องชงกาแฟและอุปกรณ์/g, replacement: "coffee machine and accessories" },
+  {
+    pattern: /เครื่องชงกาแฟและอุปกรณ์/g,
+    replacement: "coffee machine and accessories",
+  },
   { pattern: /เครื่องชงกาแฟ/g, replacement: "coffee machine" },
-  { pattern: /โต๊ะวางของข้างเตียงสีเขียว/g, replacement: "green bedside shelf" },
+  {
+    pattern: /โต๊ะวางของข้างเตียงสีเขียว/g,
+    replacement: "green bedside shelf",
+  },
   { pattern: /โต๊ะข้างเตียง/g, replacement: "bedside table" },
   { pattern: /ข้างเตียง/g, replacement: "bedside" },
   { pattern: /โต๊ะตัวนี้/g, replacement: "this product" },
   { pattern: /ช่วยให้/g, replacement: "helps" },
-  { pattern: /ห้องดูเป็นระเบียบขึ้น/g, replacement: "the room look more organized" },
+  {
+    pattern: /ห้องดูเป็นระเบียบขึ้น/g,
+    replacement: "the room look more organized",
+  },
   { pattern: /ของจำเป็น/g, replacement: "essential items" },
   { pattern: /มีที่อยู่ชัดเจนขึ้น/g, replacement: "have clearer places" },
   { pattern: /หยิบอะไรก็ไม่เจอ/g, replacement: "hard to find anything" },
@@ -624,7 +678,10 @@ function marketplaceAutoReviewEnglishMeaningText(
   if (!containsMarketplaceAutoReviewNonLatinScript(text)) return text;
   if (containsMarketplaceAutoReviewThaiScript(text)) {
     const translated = translateMarketplaceAutoReviewThaiPromptText(text);
-    if (translated && !containsMarketplaceAutoReviewNonLatinScript(translated)) {
+    if (
+      translated &&
+      !containsMarketplaceAutoReviewNonLatinScript(translated)
+    ) {
       return translated;
     }
   }
@@ -744,7 +801,9 @@ function marketplaceAutoReviewNativeSpeechFallback(params: {
   );
   const productName =
     language === "en"
-      ? containsMarketplaceAutoReviewNonLatinScript(cleanText(params.productName))
+      ? containsMarketplaceAutoReviewNonLatinScript(
+          cleanText(params.productName)
+        )
         ? "This product"
         : cleanText(params.productName) || "This product"
       : cleanText(params.productName) || "this product";
@@ -948,6 +1007,9 @@ type MarketplaceAutoReviewVideoAudioProfile =
 
 type RunMetadata = Record<string, any> & {
   schemaVersion?: string;
+  planningArchitecture?: MarketplaceAutoReviewPlanningArchitecture;
+  planningArchitectureVersion?: number;
+  humanApprovalPolicy?: "all_checkpoints_required";
   imageAttemptId?: string;
   videoAttemptId?: string;
   directImageTasks?: DirectMediaTaskRef[];
@@ -1724,8 +1786,7 @@ function resolveMarketplaceReviewEvidenceGuardConflictExclusions(
     conflicts
       .filter(entry => cleanText(entry.resolution) !== "confirmed_by_user")
       .map(
-        entry =>
-          cleanText(entry.claimed_value) || cleanText(entry.attribute)
+        entry => cleanText(entry.claimed_value) || cleanText(entry.attribute)
       )
   );
 }
@@ -1738,7 +1799,9 @@ function resolveMarketplaceReviewEvidenceGuardBlockedClaims(
   const blockedClaims = Array.isArray(claimEvidenceMapping.blockedClaims)
     ? (claimEvidenceMapping.blockedClaims as Array<Record<string, unknown>>)
     : [];
-  const userInputs = asRecord(asRecord(metadata?.sequentialStoryboard).userInputs);
+  const userInputs = asRecord(
+    asRecord(metadata?.sequentialStoryboard).userInputs
+  );
   const userForbiddenClaims = Array.isArray(userInputs.forbiddenClaims)
     ? (userInputs.forbiddenClaims as unknown[])
     : [];
@@ -1762,7 +1825,8 @@ function resolveMarketplaceReviewEvidenceGuardContext(
   const enabled = metadata?.evidenceGuard?.enabled === true;
   // Same trigger family as `marketplaceAutoReviewPlanNeedsMinorSafetyLock`
   // (never a copy of the regex itself, hard guardrail spec §5.2/§3.2).
-  const productChildRelated = marketplaceAutoReviewPlanNeedsMinorSafetyLock(plan);
+  const productChildRelated =
+    marketplaceAutoReviewPlanNeedsMinorSafetyLock(plan);
 
   const sequential = asRecord(metadata?.sequentialStoryboard);
   const sequentialShots = Array.isArray(sequential.shots)
@@ -1811,7 +1875,10 @@ export function resolveMarketplaceReviewEvidenceGuardContextForTest(input: {
   metadata?: RunMetadata | null;
   plan: AutoReviewPlan;
 }): MarketplaceReviewEvidenceGuardContext {
-  return resolveMarketplaceReviewEvidenceGuardContext(input.metadata, input.plan);
+  return resolveMarketplaceReviewEvidenceGuardContext(
+    input.metadata,
+    input.plan
+  );
 }
 
 /**
@@ -1856,7 +1923,7 @@ function buildDemonstrationEvidenceDirective(
   if (!guard.assemblyDocumented) {
     return [
       MARKETPLACE_REVIEW_DEMONSTRATION_EVIDENCE_LOCK_MARKER,
-      "Assembly is not confirmed for this product: do not depict assembly, disassembly, exploded/spread parts, fasteners, internal mechanisms, or \"what's in the box\" parts-spread content.",
+      'Assembly is not confirmed for this product: do not depict assembly, disassembly, exploded/spread parts, fasteners, internal mechanisms, or "what\'s in the box" parts-spread content.',
       "Show only the finished, fully assembled product exactly as shown in the reference images; visible-operation demonstrations of the finished product remain allowed.",
     ].join(" ");
   }
@@ -1895,14 +1962,20 @@ export function buildDemonstrationEvidenceDirectiveForTest(input: {
   plan: AutoReviewPlan;
   guard?: MarketplaceReviewEvidenceGuardContext | null;
 }): string {
-  return buildDemonstrationEvidenceDirective(input.plan, input.guard ?? undefined);
+  return buildDemonstrationEvidenceDirective(
+    input.plan,
+    input.guard ?? undefined
+  );
 }
 
 export function buildGuardianPresenceRepairInstructionForTest(input: {
   plan: AutoReviewPlan;
   guard?: MarketplaceReviewEvidenceGuardContext | null;
 }): string {
-  return buildGuardianPresenceRepairInstruction(input.plan, input.guard ?? undefined);
+  return buildGuardianPresenceRepairInstruction(
+    input.plan,
+    input.guard ?? undefined
+  );
 }
 
 /**
@@ -1925,7 +1998,9 @@ function buildMarketplaceReviewClaimSafetyExclusionsLine(
 export function buildMarketplaceReviewClaimSafetyExclusionsLineForTest(input: {
   guard?: MarketplaceReviewEvidenceGuardContext | null;
 }): string {
-  return buildMarketplaceReviewClaimSafetyExclusionsLine(input.guard ?? undefined);
+  return buildMarketplaceReviewClaimSafetyExclusionsLine(
+    input.guard ?? undefined
+  );
 }
 
 /**
@@ -1978,7 +2053,9 @@ function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
   const guardianDirective = buildGuardianPresenceDirective(plan, guard);
   if (
     guardianDirective &&
-    !new RegExp(MARKETPLACE_REVIEW_GUARDIAN_PRESENCE_LOCK_MARKER, "i").test(next)
+    !new RegExp(MARKETPLACE_REVIEW_GUARDIAN_PRESENCE_LOCK_MARKER, "i").test(
+      next
+    )
   ) {
     const appended = `${next}\n\n${guardianDirective}`;
     if (appended.length <= maxChars) {
@@ -1988,10 +2065,16 @@ function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
     // `next` unchanged; the shared preflight blocker surfaces the gap.
   }
 
-  const demonstrationDirective = buildDemonstrationEvidenceDirective(plan, guard);
+  const demonstrationDirective = buildDemonstrationEvidenceDirective(
+    plan,
+    guard
+  );
   if (
     demonstrationDirective &&
-    !new RegExp(MARKETPLACE_REVIEW_DEMONSTRATION_EVIDENCE_LOCK_MARKER, "i").test(next)
+    !new RegExp(
+      MARKETPLACE_REVIEW_DEMONSTRATION_EVIDENCE_LOCK_MARKER,
+      "i"
+    ).test(next)
   ) {
     const appended = `${next}\n\n${demonstrationDirective}`;
     if (appended.length <= maxChars) {
@@ -2027,17 +2110,18 @@ export function sequentialEvidenceLockReserveCharsForTest(input: {
   plan: AutoReviewPlan;
   guard?: MarketplaceReviewEvidenceGuardContext | null;
 }): number {
-  return sequentialEvidenceLockReserveChars(input.plan, input.guard ?? undefined);
+  return sequentialEvidenceLockReserveChars(
+    input.plan,
+    input.guard ?? undefined
+  );
 }
 
-export function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePromptForTest(
-  input: {
-    prompt: string;
-    plan: AutoReviewPlan;
-    guard?: MarketplaceReviewEvidenceGuardContext | null;
-    maxChars?: number | null;
-  }
-): string {
+export function ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePromptForTest(input: {
+  prompt: string;
+  plan: AutoReviewPlan;
+  guard?: MarketplaceReviewEvidenceGuardContext | null;
+  maxChars?: number | null;
+}): string {
   return ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
     input.prompt,
     input.plan,
@@ -2145,7 +2229,9 @@ function ensureTargetedRepairDirectiveInImagePrompt(
   }
   const compactDirective = compactImagePromptText(directive, 700);
   const compactAppended = `${base}\n\n${compactDirective}`;
-  if (compactAppended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
+  if (
+    compactAppended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS
+  ) {
     return compactAppended;
   }
   const baseBudget =
@@ -2328,17 +2414,15 @@ async function optimizeMarketplaceAutoReviewSequentialFinalPromptForProvider(inp
   };
 }
 
-export async function optimizeMarketplaceAutoReviewSequentialFinalPromptForProviderForTest(
-  input: {
-    tenantId: string;
-    userId: number;
-    runId?: string | null;
-    promptKind: "sequential_image" | "sequential_video";
-    maxOutputChars: number;
-    sourcePrompt: string;
-    optimizer?: MarketplaceAutoReviewSequentialFinalPromptOptimizer;
-  }
-): Promise<{ prompt: string; audit: Record<string, unknown> | null }> {
+export async function optimizeMarketplaceAutoReviewSequentialFinalPromptForProviderForTest(input: {
+  tenantId: string;
+  userId: number;
+  runId?: string | null;
+  promptKind: "sequential_image" | "sequential_video";
+  maxOutputChars: number;
+  sourcePrompt: string;
+  optimizer?: MarketplaceAutoReviewSequentialFinalPromptOptimizer;
+}): Promise<{ prompt: string; audit: Record<string, unknown> | null }> {
   return optimizeMarketplaceAutoReviewSequentialFinalPromptForProvider(input);
 }
 
@@ -2610,7 +2694,9 @@ function normalizeShotFrameVisionQaDecision(input: {
   // the resolved minor-presence signal is confirmed `true`.
   const adultGuardianPresentRaw = input.parsed.adultGuardianPresent;
   const adultGuardianPresent =
-    typeof adultGuardianPresentRaw === "boolean" ? adultGuardianPresentRaw : null;
+    typeof adultGuardianPresentRaw === "boolean"
+      ? adultGuardianPresentRaw
+      : null;
   // Arming requires a STRICT image-grounded sighting (`minorPresent` /
   // `visibleMinor` / `visibleChild` affirmatively true) — the broad alias OR
   // (`childPresent` = "child-related product") used to arm this fail-closed
@@ -2640,7 +2726,9 @@ function normalizeShotFrameVisionQaDecision(input: {
     characterConsistencySafe ? "" : "character_reference_mismatch",
     adWarningTextSafe ? "" : "ad_warning_text_issue",
     characterPresenceSatisfied ? "" : "character_presence_missing",
-    guardianCheckActive && !guardianPresenceSafe ? "guardian_presence_missing" : "",
+    guardianCheckActive && !guardianPresenceSafe
+      ? "guardian_presence_missing"
+      : "",
     assemblyCheckActive ? "assembly_content_unverified" : "",
   ]);
   const verdict =
@@ -3458,9 +3546,10 @@ function buildMarketplaceAutoReviewQualityModePolicy(
   };
 }
 
-function effectiveQualityModePolicy(
-  metadata: RunMetadata
-): { maxRepairAttemptsPerUnit: number; visionQaModel: string } {
+function effectiveQualityModePolicy(metadata: RunMetadata): {
+  maxRepairAttemptsPerUnit: number;
+  visionQaModel: string;
+} {
   const stored = asRecord(metadata?.qualityModePolicy);
   const storedMaxAttempts = toNumber(stored.maxRepairAttemptsPerUnit, 0);
   const maxRepairAttemptsPerUnit =
@@ -5320,9 +5409,7 @@ function buildMarketplaceAutoReviewCharacterVideoLock(input: {
   return [
     "VIDEO CHARACTER LOCK:",
     `${source} are the presenter source of truth.`,
-    subject
-      ? `Any visible presenter/reviewer must be ${subject}.`
-      : "",
+    subject ? `Any visible presenter/reviewer must be ${subject}.` : "",
     visualDetails ? `User-selected visual details: ${visualDetails}.` : "",
     characterBrief ? `User-selected character brief: ${characterBrief}` : "",
     "Keep the presenter's gender, age range, appearance, role, wardrobe family, and identity consistent with the selected image/frame references across shots.",
@@ -5664,12 +5751,14 @@ function normalizeMarketplaceAutoReviewCharacterPresenceMode(
 function marketplaceAutoReviewHasCharacterPresence(
   anchors: ResolvedMarketplaceAutoReviewReferenceAnchors
 ): boolean {
-  const mode = normalizeMarketplaceAutoReviewCharacterMode(anchors.characterMode);
+  const mode = normalizeMarketplaceAutoReviewCharacterMode(
+    anchors.characterMode
+  );
   if (mode === "uploaded_reference") {
     return Boolean(
       cleanText(anchors.characterImageUrl) ||
-        cleanText(anchors.characterImageRef) ||
-        cleanText(anchors.characterImageProvidedRef)
+      cleanText(anchors.characterImageRef) ||
+      cleanText(anchors.characterImageProvidedRef)
     );
   }
   if (mode === "described_character") {
@@ -5743,7 +5832,9 @@ function buildMarketplaceAutoReviewVoiceProfileDescriptor(
     metadata
   );
   const preset = characterPresetRecordFromPlanOrMetadata(plan, metadata);
-  const ageLabel = cleanText(promptAgeLabelFromChoice(preset.age, preset.ageLabel));
+  const ageLabel = cleanText(
+    promptAgeLabelFromChoice(preset.age, preset.ageLabel)
+  );
   const genderWord =
     gender === "male" ? "male" : gender === "female" ? "female" : "";
   const ageWord = ageLabel || (genderWord ? "adult" : "");
@@ -5770,9 +5861,7 @@ function buildMarketplaceAutoReviewVoiceConsistencyLockLine(
  * prompts stay byte-identical.
  */
 function buildMarketplaceAutoReviewVoiceConsistencyLock(input: {
-  resolvedAudioStrategy?:
-    | MarketplaceAutoReviewResolvedAudioStrategy
-    | null;
+  resolvedAudioStrategy?: MarketplaceAutoReviewResolvedAudioStrategy | null;
   plan: AutoReviewPlan;
   metadata?: RunMetadata | null;
 }): string {
@@ -5929,7 +6018,8 @@ function normalizeSequentialProductAngleImages(
     const rawAngleLabel = entry?.angleLabel;
     let angleLabel: SequentialProductAngleLabel | undefined;
     if (rawAngleLabel !== undefined && rawAngleLabel !== null) {
-      const normalizedLabel = normalizeSequentialProductAngleLabel(rawAngleLabel);
+      const normalizedLabel =
+        normalizeSequentialProductAngleLabel(rawAngleLabel);
       if (!normalizedLabel) continue; // invalid (non-empty) label ⇒ drop entry
       angleLabel = normalizedLabel;
     }
@@ -7689,7 +7779,11 @@ export function resolveMarketplaceAutoReviewFrameStrategyForTest(
  * contract (see section-01 §6).
  */
 export function assertMarketplaceSequentialStoryboardAllowed(input: {
-  frameStrategy: MarketplaceAutoReviewFrameStrategyInput | string | null | undefined;
+  frameStrategy:
+    | MarketplaceAutoReviewFrameStrategyInput
+    | string
+    | null
+    | undefined;
   marketplaceSequentialStoryboard: boolean;
 }): void {
   if (
@@ -7796,6 +7890,233 @@ function directTaskRefs(value: unknown): DirectMediaTaskRef[] {
     .filter(
       item => Boolean(cleanText(item.unitId)) && Boolean(cleanText(item.taskId))
     );
+}
+
+type StagedTaskCancellationRef = DirectMediaTaskRef & {
+  stagedTaskKey: string;
+};
+
+function stagedTaskMediaType(key: string): "image" | "video" | "audio" | null {
+  const prefix = key.split(":", 1)[0];
+  return prefix === "image" || prefix === "video" || prefix === "audio"
+    ? prefix
+    : null;
+}
+
+function stagedTaskHasArtifact(
+  metadata: RunMetadata,
+  key: string,
+  task: Record<string, any>
+) {
+  if (cleanText(task.resultUrl)) return cleanText(task.resultUrl);
+  const [mediaType, shotIdText] = key.split(":");
+  const shotId = Number(shotIdText);
+  if (mediaType === "audio") {
+    return (
+      cleanText(asRecord(metadata.stagedPipeline).audioUrl) ||
+      cleanText(metadata.audioUrl)
+    );
+  }
+  if (
+    (mediaType !== "image" && mediaType !== "video") ||
+    !Number.isInteger(shotId)
+  ) {
+    return "";
+  }
+  const shots = Array.isArray(metadata.stagedSequentialStoryboard?.shots)
+    ? metadata.stagedSequentialStoryboard.shots
+    : [];
+  const shot = shots.find(
+    (item: unknown) => Number(asRecord(item).shotId) === shotId
+  );
+  return mediaType === "image"
+    ? cleanText(asRecord(shot).imageArtifactUrl)
+    : cleanText(asRecord(shot).videoArtifactUrl);
+}
+
+function stagedTaskRefsFromEntries(
+  metadata: RunMetadata,
+  entries: Array<[string, unknown]>,
+  runId?: string,
+  allowStateArtifact = true
+): StagedTaskCancellationRef[] {
+  return entries
+    .map(([key, rawTask]) => {
+      const task = asRecord(rawTask);
+      const mediaType = stagedTaskMediaType(key);
+      const taskId = cleanText(task.taskId);
+      if (!mediaType || !taskId) return null;
+      const shotId = Number(key.split(":")[1]);
+      const unitId =
+        mediaType === "audio" ? "full-voiceover" : `shot-${shotId}`;
+      const resultUrl = allowStateArtifact
+        ? stagedTaskHasArtifact(metadata, key, task)
+        : cleanText(task.resultUrl);
+      const taskCompleted =
+        cleanText(task.status) === "completed" || Boolean(resultUrl);
+      const creditIdempotencyKey =
+        cleanText(task.creditIdempotencyKey) ||
+        (runId ? `staged:${runId}:${mediaType}:${unitId}` : undefined);
+      return {
+        stagedTaskKey: key,
+        unitId,
+        mediaType,
+        stageKey:
+          mediaType === "image"
+            ? "image_generation"
+            : mediaType === "video"
+              ? "video_generation"
+              : "audio_generation",
+        role:
+          mediaType === "image"
+            ? "storyboard_frame"
+            : mediaType === "video"
+              ? "storyboard_shot_video"
+              : "voiceover",
+        ...(mediaType !== "audio" && Number.isInteger(shotId)
+          ? { shotId: String(shotId), shotOrder: shotId }
+          : {}),
+        attempt: Number(task.attempt) > 0 ? Number(task.attempt) : 1,
+        taskId,
+        providerTaskId: cleanText(task.providerTaskId) || undefined,
+        model: cleanText(task.model) || "staged-media",
+        status: taskCompleted
+          ? "completed"
+          : cleanText(task.status) || "processing",
+        resultUrl: resultUrl || undefined,
+        creditAmount: toNumber(task.creditAmount),
+        creditTransactionId: toNumber(task.creditTransactionId) || undefined,
+        creditIdempotencyKey,
+        refundTransactionId: toNumber(task.refundTransactionId) || undefined,
+        submittedAt: cleanText(task.submittedAt) || nowIso(),
+      } as StagedTaskCancellationRef;
+    })
+    .filter((item): item is StagedTaskCancellationRef => Boolean(item));
+}
+
+function stagedTaskRefs(
+  metadata: RunMetadata,
+  runId?: string
+): StagedTaskCancellationRef[] {
+  const tasks = asRecord(asRecord(asRecord(metadata).stagedPipeline).tasks);
+  return stagedTaskRefsFromEntries(metadata, Object.entries(tasks), runId);
+}
+
+function stagedTaskHistoryRefs(
+  metadata: RunMetadata,
+  runId?: string
+): StagedTaskCancellationRef[] {
+  const history = asRecord(metadata.stagedPipeline);
+  const entries = Array.isArray(history.taskHistory)
+    ? history.taskHistory
+        .map(item => {
+          const task = asRecord(item);
+          const key = cleanText(task.stagedTaskKey);
+          return key ? ([key, task] as [string, unknown]) : null;
+        })
+        .filter((item): item is [string, unknown] => Boolean(item))
+    : [];
+  return stagedTaskRefsFromEntries(metadata, entries, runId, false);
+}
+
+function stagedTaskCreditRefs(
+  metadata: RunMetadata,
+  runId?: string
+): StagedTaskCancellationRef[] {
+  const history = stagedTaskHistoryRefs(metadata, runId);
+  const historyTaskIds = new Set(history.map(ref => ref.taskId));
+  return [
+    ...history,
+    ...stagedTaskRefs(metadata, runId).filter(
+      ref => !historyTaskIds.has(ref.taskId)
+    ),
+  ];
+}
+
+function applyStagedTaskRefUpdates(
+  metadata: RunMetadata,
+  refs: DirectMediaTaskRef[]
+): RunMetadata {
+  const pipeline = asRecord(metadata.stagedPipeline);
+  const tasks = { ...asRecord(pipeline.tasks) };
+  const taskHistory = Array.isArray(pipeline.taskHistory)
+    ? pipeline.taskHistory.map(item => {
+        const historyTask = asRecord(item);
+        const matchingRef = refs.find(
+          ref =>
+            cleanText(historyTask.taskId) === cleanText(ref.taskId) &&
+            cleanText(historyTask.stagedTaskKey) ===
+              cleanText((ref as StagedTaskCancellationRef).stagedTaskKey)
+        );
+        return matchingRef
+          ? compactRecord({
+              ...historyTask,
+              status: matchingRef.status,
+              resultUrl: matchingRef.resultUrl,
+              refundTransactionId: matchingRef.refundTransactionId,
+              cancellationRequestedAt: matchingRef.cancellationRequestedAt,
+              cancellationReason: matchingRef.cancellationReason,
+              providerCancellationStatus:
+                matchingRef.providerCancellationStatus,
+              providerCancellationEvidenceId:
+                matchingRef.providerCancellationEvidenceId,
+              providerCancellationDispatchedAt:
+                matchingRef.providerCancellationDispatchedAt,
+              providerCancellationError: matchingRef.providerCancellationError,
+              creditIdempotencyKey: matchingRef.creditIdempotencyKey,
+            })
+          : item;
+      })
+    : pipeline.taskHistory;
+  for (const ref of refs) {
+    const key = cleanText((ref as StagedTaskCancellationRef).stagedTaskKey);
+    if (!key || !tasks[key]) continue;
+    tasks[key] = compactRecord({
+      ...asRecord(tasks[key]),
+      status: ref.status,
+      resultUrl: ref.resultUrl,
+      refundTransactionId: ref.refundTransactionId,
+      cancellationRequestedAt: ref.cancellationRequestedAt,
+      cancellationReason: ref.cancellationReason,
+      providerCancellationStatus: ref.providerCancellationStatus,
+      providerCancellationEvidenceId: ref.providerCancellationEvidenceId,
+      providerCancellationDispatchedAt: ref.providerCancellationDispatchedAt,
+      providerCancellationError: ref.providerCancellationError,
+      creditIdempotencyKey: ref.creditIdempotencyKey,
+    });
+  }
+  return {
+    ...metadata,
+    stagedPipeline: {
+      ...pipeline,
+      tasks,
+      taskHistory,
+    },
+  };
+}
+
+export function summarizeMarketplaceAutoReviewStagedCancellationForTest(
+  metadata: RunMetadata,
+  runId = "mar_staged_test"
+) {
+  const refs = stagedTaskRefs(metadata, runId);
+  const creditRefs = stagedTaskCreditRefs(metadata, runId);
+  return {
+    taskIds: refs.filter(isCancellableDirectMediaRef).map(ref => ref.taskId),
+    refundTaskIds: refs
+      .filter(
+        ref =>
+          isCancellableDirectMediaRef(ref) && toNumber(ref.creditAmount) > 0
+      )
+      .map(ref => ref.taskId),
+    completedTaskIds: refs
+      .filter(ref => !isCancellableDirectMediaRef(ref))
+      .map(ref => ref.taskId),
+    creditIdempotencyKeys: refs
+      .map(ref => cleanText(ref.creditIdempotencyKey))
+      .filter(Boolean),
+    creditTaskIds: creditRefs.map(ref => ref.taskId),
+  };
 }
 
 function latestCompletedImageTaskRefs(
@@ -8081,8 +8402,9 @@ function sequentialBestOfTwoEnabled(metadata: RunMetadata): boolean {
 function sequentialUnitCandidateSelectionsFromMetadata(
   metadata: RunMetadata
 ): Record<string, Record<string, unknown>> {
-  const raw = asRecord(asRecord(metadata.sequentialStoryboard))
-    .unitCandidateSelections;
+  const raw = asRecord(
+    asRecord(metadata.sequentialStoryboard)
+  ).unitCandidateSelections;
   return asRecord(raw) as Record<string, Record<string, unknown>>;
 }
 
@@ -8172,7 +8494,9 @@ function resolveSequentialBestOfTwoSelection(input: {
   }): number => {
     const qa = candidate.qa ?? null;
     const reasonCodes = Array.isArray(qa?.reasonCodes)
-      ? (qa!.reasonCodes as unknown[]).map(code => cleanText(code)).filter(Boolean)
+      ? (qa!.reasonCodes as unknown[])
+          .map(code => cleanText(code))
+          .filter(Boolean)
       : [];
     const status: "passed" | "repair_required" =
       qa && cleanText(qa.verdict) !== "pass" ? "repair_required" : "passed";
@@ -9412,6 +9736,7 @@ function creditRefsFromMetadata(metadata: RunMetadata): string[] {
   const mediaRefs = [
     ...directTaskRefs(metadata.directImageTasks),
     ...directTaskRefs(metadata.directVideoTasks),
+    ...stagedTaskCreditRefs(metadata),
   ].flatMap(ref => [
     cleanText(ref.creditIdempotencyKey)
       ? `credit:${cleanText(ref.creditIdempotencyKey)}`
@@ -9465,6 +9790,7 @@ function withUpdatedCreditSummary(metadata: RunMetadata): RunMetadata {
   const mediaRefs = [
     ...directTaskRefs(metadata.directImageTasks),
     ...directTaskRefs(metadata.directVideoTasks),
+    ...stagedTaskCreditRefs(metadata),
   ];
   if (metadata.audioCreditAmount) {
     mediaRefs.push({
@@ -10230,9 +10556,7 @@ function sequentialShotFrameImagePrompt(
   const packPrompt = cleanText(packEntry.start_frame_image_prompt);
   const prompt = overridePrompt || packPrompt;
   if (!prompt) {
-    throw new Error(
-      `Missing sequential shot prompt for unit ${unit.unitId}`
-    );
+    throw new Error(`Missing sequential shot prompt for unit ${unit.unitId}`);
   }
   return prompt;
 }
@@ -10280,11 +10604,12 @@ function buildImagePromptForUnit(
     // (when enabled) reach the skill-authored prompt too, via the SAME
     // shared idempotent-appender family the 3x3/start-stop paths use.
     const basePrompt = sequentialShotFrameImagePrompt(unit, metadata);
-    const guardedPrompt = ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
-      basePrompt,
-      plan,
-      guard
-    );
+    const guardedPrompt =
+      ensureMarketplaceAutoReviewEvidenceLocksInSequentialImagePrompt(
+        basePrompt,
+        plan,
+        guard
+      );
     return ensureTargetedRepairDirectiveInImagePrompt(guardedPrompt, unit);
   }
   const safeRepairInstruction = repairInstruction
@@ -10973,9 +11298,8 @@ function buildProductReferenceStoryboardSkillInputs(input: {
     input.plan,
     evidenceGuardContext
   );
-  const claimSafetyExclusionsLine = buildMarketplaceReviewClaimSafetyExclusionsLine(
-    evidenceGuardContext
-  );
+  const claimSafetyExclusionsLine =
+    buildMarketplaceReviewClaimSafetyExclusionsLine(evidenceGuardContext);
   const evidenceGuardContractSuffix = [
     guardianPresenceDirective,
     demonstrationEvidenceDirective,
@@ -11462,17 +11786,15 @@ function finalizeMarketplaceAutoReviewNonGridImagePromptAfterOptimizer(input: {
   };
 }
 
-export function finalizeMarketplaceAutoReviewNonGridImagePromptAfterOptimizerForTest(
-  input: {
-    optimizedPrompt: string;
-    optimizerAudit?: Record<string, unknown> | null;
-    plan: AutoReviewPlan;
-    unit: DirectImageUnit;
-    overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
-    guard?: MarketplaceReviewEvidenceGuardContext | null;
-    sequentialMaxChars?: number | null;
-  }
-): {
+export function finalizeMarketplaceAutoReviewNonGridImagePromptAfterOptimizerForTest(input: {
+  optimizedPrompt: string;
+  optimizerAudit?: Record<string, unknown> | null;
+  plan: AutoReviewPlan;
+  unit: DirectImageUnit;
+  overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
+  guard?: MarketplaceReviewEvidenceGuardContext | null;
+  sequentialMaxChars?: number | null;
+}): {
   prompt: string;
   preflight: MarketplaceAutoReviewPromptPreflightResult;
   skillRun: ProductReferenceStoryboardPromptSkillRunResult | null;
@@ -11534,7 +11856,8 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
       input.unit.role === "sequential_shot_frame"
         ? resolveSequentialImagePromptBudget({
             overrideMaxChars:
-              toNumber(input.metadata?.sequentialImagePromptMaxChars, 0) || null,
+              toNumber(input.metadata?.sequentialImagePromptMaxChars, 0) ||
+              null,
             providerMaxPromptLength: null,
           })
         : null;
@@ -11589,263 +11912,266 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
   // instead of failing the run. See buildDegradedMarketplaceAutoReview
   // StoryboardGridPromptFallback above.
   try {
-  for (
-    let promptSkillAttempt = 1;
-    promptSkillAttempt <=
-    MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS;
-    promptSkillAttempt += 1
-  ) {
-    const userInputs = buildProductReferenceStoryboardSkillInputs({
-      ...input,
-      referenceImageGroups,
-      metadata: input.metadata,
-      directImageAttempt: input.attempt,
-      promptSkillAttempt,
-      preflightFeedback: feedback,
-    });
-    const skillInputSnapshot =
-      buildProductReferenceStoryboardSkillInputSnapshot(userInputs);
-    let skillRun: ProductReferenceStoryboardPromptSkillRunResult;
-    try {
-      skillRun = await runProductReferenceStoryboardPromptSkill({
-        tenantId: input.tenantId,
-        userId: input.auth.userId,
-        runId: input.runId,
-        unitId: input.unit.unitId,
-        attempt: input.attempt,
-        promptAttempt: promptSkillAttempt,
-        userInputs,
-        referenceImages: referenceImageGroups.all,
-        publicUrl: input.publicUrl,
-        maxOutputChars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+    for (
+      let promptSkillAttempt = 1;
+      promptSkillAttempt <=
+      MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS;
+      promptSkillAttempt += 1
+    ) {
+      const userInputs = buildProductReferenceStoryboardSkillInputs({
+        ...input,
+        referenceImageGroups,
+        metadata: input.metadata,
+        directImageAttempt: input.attempt,
+        promptSkillAttempt,
+        preflightFeedback: feedback,
       });
-    } catch (error) {
-      if (
-        error instanceof ProductReferenceStoryboardSkillIncompleteOutputError
-      ) {
-        retryHistory.push({
-          promptSkillAttempt,
-          status: "failed",
-          score: 0,
-          blockers: error.blockers,
-          warnings: [],
-          promptLengthChars: error.rawOutput.length,
-          promptHash: buildProductionStableHash({
-            runId: input.runId,
-            unitId: input.unit.unitId,
-            directAttempt: input.attempt,
+      const skillInputSnapshot =
+        buildProductReferenceStoryboardSkillInputSnapshot(userInputs);
+      let skillRun: ProductReferenceStoryboardPromptSkillRunResult;
+      try {
+        skillRun = await runProductReferenceStoryboardPromptSkill({
+          tenantId: input.tenantId,
+          userId: input.auth.userId,
+          runId: input.runId,
+          unitId: input.unit.unitId,
+          attempt: input.attempt,
+          promptAttempt: promptSkillAttempt,
+          userInputs,
+          referenceImages: referenceImageGroups.all,
+          publicUrl: input.publicUrl,
+          maxOutputChars: MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+        });
+      } catch (error) {
+        if (
+          error instanceof ProductReferenceStoryboardSkillIncompleteOutputError
+        ) {
+          retryHistory.push({
             promptSkillAttempt,
-            prompt: error.rawOutput,
-          }).slice(0, 16),
-          reasonCode: "skill_output_incomplete",
-          checkedAt: nowIso(),
+            status: "failed",
+            score: 0,
+            blockers: error.blockers,
+            warnings: [],
+            promptLengthChars: error.rawOutput.length,
+            promptHash: buildProductionStableHash({
+              runId: input.runId,
+              unitId: input.unit.unitId,
+              directAttempt: input.attempt,
+              promptSkillAttempt,
+              prompt: error.rawOutput,
+            }).slice(0, 16),
+            reasonCode: "skill_output_incomplete",
+            checkedAt: nowIso(),
+          });
+          feedback = buildProductReferenceStoryboardIncompleteOutputFeedback({
+            promptSkillAttempt,
+            error,
+          });
+          latestError = error;
+          console.warn(
+            "[marketplaceAutoReview] prompt_skill_incomplete_retry",
+            {
+              runId: input.runId,
+              unitId: input.unit.unitId,
+              directAttempt: input.attempt,
+              promptSkillAttempt,
+              maxPromptSkillAttempts:
+                MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS,
+              blockers: error.blockers,
+              outputLengthChars: error.rawOutput.length,
+              fallbackUsed: false,
+              nextAction:
+                promptSkillAttempt <
+                MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS
+                  ? "retry_same_skill_with_incomplete_output_feedback"
+                  : "fail_before_image_provider_submit",
+            }
+          );
+          if (
+            promptSkillAttempt <
+            MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS
+          ) {
+            continue;
+          }
+        }
+        throw error;
+      }
+      const safetyPrompt = ensureMinorSafetyClothingLockInImagePrompt(
+        skillRun.prompt,
+        input.plan
+      );
+      const layoutContractPrompt =
+        ensureStoryboardGridLayoutContractInImagePrompt(safetyPrompt);
+      const rawSkillFrameCount = countPromptMatches(
+        skillRun.prompt,
+        /\bFrame\s+\d+\s*:/gi
+      );
+      const processedFrameCount = countPromptMatches(
+        layoutContractPrompt.prompt,
+        /\bFrame\s+\d+\s*:/gi
+      );
+      const postProcessedPrompt =
+        rawSkillFrameCount >= MAX_SHOT_COUNT &&
+        processedFrameCount < rawSkillFrameCount
+          ? cleanText(skillRun.prompt)
+          : layoutContractPrompt.prompt;
+      const finalPrompt =
+        await optimizeMarketplaceAutoReviewFinalImagePromptForProvider({
+          tenantId: input.tenantId,
+          userId: input.auth.userId,
+          runId: input.runId,
+          unitId: input.unit.unitId,
+          attempt: input.attempt,
+          promptAttempt: promptSkillAttempt,
+          sourcePrompt: postProcessedPrompt,
+          maxOutputChars: marketplaceAutoReviewOptimizerBudgetWithLockReserve(
+            MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
+            sequentialEvidenceLockReserveChars(input.plan, undefined)
+          ),
         });
-        feedback = buildProductReferenceStoryboardIncompleteOutputFeedback({
-          promptSkillAttempt,
-          error,
-        });
-        latestError = error;
-        console.warn("[marketplaceAutoReview] prompt_skill_incomplete_retry", {
+      // G10 fix — the LLM optimizer can compress the safety lock away; the
+      // 3x3 path re-ensures it deterministically after optimization, same as
+      // the non-grid path.
+      const relockedFinalPrompt = ensureMinorSafetyClothingLockForPromptSignal(
+        finalPrompt.prompt,
+        input.plan
+      );
+      const postOptimizerSafetyRelockApplied =
+        relockedFinalPrompt !== cleanText(finalPrompt.prompt);
+      const prompt = ensureTargetedRepairDirectiveInImagePrompt(
+        relockedFinalPrompt,
+        input.unit
+      );
+      const promptSafetyPatchApplied =
+        safetyPrompt !== cleanText(skillRun.prompt) ||
+        postOptimizerSafetyRelockApplied;
+      const promptPostProcessPreservedRawFrames =
+        rawSkillFrameCount >= MAX_SHOT_COUNT &&
+        processedFrameCount < rawSkillFrameCount;
+      const skillAuditForPreflight = {
+        ...skillRun.skillAudit,
+        ...(promptSafetyPatchApplied
+          ? {
+              promptSafetyPatchApplied: true,
+              backendEnforcedSafetyLocks: ["minor_safety_clothing_lock"],
+            }
+          : {}),
+        ...(postOptimizerSafetyRelockApplied
+          ? { postOptimizerSafetyRelockApplied: true }
+          : {}),
+        ...(layoutContractPrompt.applied
+          ? {
+              promptLayoutContractApplied: true,
+              backendEnforcedLayoutLocks: [
+                "storyboard_layout_preset_contract_line",
+              ],
+            }
+          : {}),
+        ...(promptPostProcessPreservedRawFrames
+          ? {
+              promptPostProcessPreservedRawFrames: true,
+              promptPostProcessFrameCounts: {
+                rawSkillFrameCount,
+                processedFrameCount,
+              },
+            }
+          : {}),
+        ...(finalPrompt.audit
+          ? {
+              finalPromptOptimizer: finalPrompt.audit,
+            }
+          : {}),
+      };
+      const result = validateMarketplaceAutoReviewImagePromptPreflight({
+        prompt,
+        unit: input.unit,
+        plan: input.plan,
+        overlayTextMode: input.overlayTextMode,
+        skillRuntime: skillAuditForPreflight,
+        guard: resolveMarketplaceReviewEvidenceGuardContext(
+          input.metadata,
+          input.plan
+        ),
+      });
+      const attemptAudit = {
+        promptSkillAttempt,
+        status: result.status,
+        score: result.score,
+        blockers: result.blockers,
+        warnings: result.warnings,
+        promptLengthChars: prompt.length,
+        promptHash: buildProductionStableHash({
           runId: input.runId,
           unitId: input.unit.unitId,
           directAttempt: input.attempt,
           promptSkillAttempt,
-          maxPromptSkillAttempts:
-            MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS,
-          blockers: error.blockers,
-          outputLengthChars: error.rawOutput.length,
-          fallbackUsed: false,
-          nextAction:
-            promptSkillAttempt <
-            MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS
-              ? "retry_same_skill_with_incomplete_output_feedback"
-              : "fail_before_image_provider_submit",
-        });
-        if (
-          promptSkillAttempt <
-          MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS
-        ) {
-          continue;
-        }
+          prompt,
+        }).slice(0, 16),
+        skillRuntime: skillAuditForPreflight,
+        checkedAt: result.checkedAt,
+      };
+      retryHistory.push(attemptAudit);
+      skillRun.skillAudit = {
+        ...skillAuditForPreflight,
+        promptSkillAttempt,
+        skillInputSnapshot,
+        preflightRetryHistory: retryHistory,
+        referenceImageRoleCounts: {
+          product: referenceImageGroups.product.length,
+          character: referenceImageGroups.character.length,
+          environment: referenceImageGroups.environment.length,
+          total: referenceImageGroups.all.length,
+        },
+      };
+      if (result.status === "passed") {
+        return {
+          prompt,
+          preflight: result,
+          skillRun,
+          skillRuntime: skillRun.skillAudit,
+        };
       }
-      throw error;
-    }
-    const safetyPrompt = ensureMinorSafetyClothingLockInImagePrompt(
-      skillRun.prompt,
-      input.plan
-    );
-    const layoutContractPrompt =
-      ensureStoryboardGridLayoutContractInImagePrompt(safetyPrompt);
-    const rawSkillFrameCount = countPromptMatches(
-      skillRun.prompt,
-      /\bFrame\s+\d+\s*:/gi
-    );
-    const processedFrameCount = countPromptMatches(
-      layoutContractPrompt.prompt,
-      /\bFrame\s+\d+\s*:/gi
-    );
-    const postProcessedPrompt =
-      rawSkillFrameCount >= MAX_SHOT_COUNT &&
-      processedFrameCount < rawSkillFrameCount
-        ? cleanText(skillRun.prompt)
-        : layoutContractPrompt.prompt;
-    const finalPrompt =
-      await optimizeMarketplaceAutoReviewFinalImagePromptForProvider({
-        tenantId: input.tenantId,
-        userId: input.auth.userId,
-        runId: input.runId,
-        unitId: input.unit.unitId,
-        attempt: input.attempt,
-        promptAttempt: promptSkillAttempt,
-        sourcePrompt: postProcessedPrompt,
-        maxOutputChars: marketplaceAutoReviewOptimizerBudgetWithLockReserve(
-          MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS,
-          sequentialEvidenceLockReserveChars(input.plan, undefined)
-        ),
+      feedback = buildProductReferenceStoryboardPromptPreflightFeedback({
+        promptSkillAttempt,
+        prompt,
+        preflight: result,
       });
-    // G10 fix — the LLM optimizer can compress the safety lock away; the
-    // 3x3 path re-ensures it deterministically after optimization, same as
-    // the non-grid path.
-    const relockedFinalPrompt = ensureMinorSafetyClothingLockForPromptSignal(
-      finalPrompt.prompt,
-      input.plan
-    );
-    const postOptimizerSafetyRelockApplied =
-      relockedFinalPrompt !== cleanText(finalPrompt.prompt);
-    const prompt = ensureTargetedRepairDirectiveInImagePrompt(
-      relockedFinalPrompt,
-      input.unit
-    );
-    const promptSafetyPatchApplied =
-      safetyPrompt !== cleanText(skillRun.prompt) ||
-      postOptimizerSafetyRelockApplied;
-    const promptPostProcessPreservedRawFrames =
-      rawSkillFrameCount >= MAX_SHOT_COUNT &&
-      processedFrameCount < rawSkillFrameCount;
-    const skillAuditForPreflight = {
-      ...skillRun.skillAudit,
-      ...(promptSafetyPatchApplied
-        ? {
-            promptSafetyPatchApplied: true,
-            backendEnforcedSafetyLocks: ["minor_safety_clothing_lock"],
-          }
-        : {}),
-      ...(postOptimizerSafetyRelockApplied
-        ? { postOptimizerSafetyRelockApplied: true }
-        : {}),
-      ...(layoutContractPrompt.applied
-        ? {
-            promptLayoutContractApplied: true,
-            backendEnforcedLayoutLocks: [
-              "storyboard_layout_preset_contract_line",
-            ],
-          }
-        : {}),
-      ...(promptPostProcessPreservedRawFrames
-        ? {
-            promptPostProcessPreservedRawFrames: true,
-            promptPostProcessFrameCounts: {
-              rawSkillFrameCount,
-              processedFrameCount,
-            },
-          }
-        : {}),
-      ...(finalPrompt.audit
-        ? {
-            finalPromptOptimizer: finalPrompt.audit,
-          }
-        : {}),
-    };
-    const result = validateMarketplaceAutoReviewImagePromptPreflight({
-      prompt,
-      unit: input.unit,
-      plan: input.plan,
-      overlayTextMode: input.overlayTextMode,
-      skillRuntime: skillAuditForPreflight,
-      guard: resolveMarketplaceReviewEvidenceGuardContext(
-        input.metadata,
-        input.plan
-      ),
-    });
-    const attemptAudit = {
-      promptSkillAttempt,
-      status: result.status,
-      score: result.score,
-      blockers: result.blockers,
-      warnings: result.warnings,
-      promptLengthChars: prompt.length,
-      promptHash: buildProductionStableHash({
+      latestError = new MarketplaceAutoReviewImagePromptPreflightError({
+        unit: input.unit,
+        prompt,
+        preflight: result,
+        skillRuntime: {
+          ...skillRun.skillAudit,
+          promptSkillAttempt,
+          preflightRetryHistory: retryHistory,
+        },
+      });
+      console.warn("[marketplaceAutoReview] prompt_skill_preflight_retry", {
         runId: input.runId,
         unitId: input.unit.unitId,
         directAttempt: input.attempt,
         promptSkillAttempt,
-        prompt,
-      }).slice(0, 16),
-      skillRuntime: skillAuditForPreflight,
-      checkedAt: result.checkedAt,
-    };
-    retryHistory.push(attemptAudit);
-    skillRun.skillAudit = {
-      ...skillAuditForPreflight,
-      promptSkillAttempt,
-      skillInputSnapshot,
-      preflightRetryHistory: retryHistory,
-      referenceImageRoleCounts: {
-        product: referenceImageGroups.product.length,
-        character: referenceImageGroups.character.length,
-        environment: referenceImageGroups.environment.length,
-        total: referenceImageGroups.all.length,
-      },
-    };
-    if (result.status === "passed") {
-      return {
-        prompt,
-        preflight: result,
-        skillRun,
-        skillRuntime: skillRun.skillAudit,
-      };
+        maxPromptSkillAttempts:
+          MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS,
+        score: result.score,
+        blockers: result.blockers,
+        warnings: result.warnings,
+        promptLengthChars: prompt.length,
+        fallbackUsed: false,
+        nextAction:
+          promptSkillAttempt <
+          MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS
+            ? "retry_same_skill_with_preflight_feedback"
+            : "fail_before_image_provider_submit",
+      });
     }
-    feedback = buildProductReferenceStoryboardPromptPreflightFeedback({
-      promptSkillAttempt,
-      prompt,
-      preflight: result,
-    });
-    latestError = new MarketplaceAutoReviewImagePromptPreflightError({
-      unit: input.unit,
-      prompt,
-      preflight: result,
-      skillRuntime: {
-        ...skillRun.skillAudit,
-        promptSkillAttempt,
-        preflightRetryHistory: retryHistory,
-      },
-    });
-    console.warn("[marketplaceAutoReview] prompt_skill_preflight_retry", {
-      runId: input.runId,
-      unitId: input.unit.unitId,
-      directAttempt: input.attempt,
-      promptSkillAttempt,
-      maxPromptSkillAttempts:
-        MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS,
-      score: result.score,
-      blockers: result.blockers,
-      warnings: result.warnings,
-      promptLengthChars: prompt.length,
-      fallbackUsed: false,
-      nextAction:
-        promptSkillAttempt <
-        MARKETPLACE_AUTO_REVIEW_PROMPT_SKILL_PREFLIGHT_MAX_ATTEMPTS
-          ? "retry_same_skill_with_preflight_feedback"
-          : "fail_before_image_provider_submit",
-    });
-  }
 
-  throw (
-    latestError ??
-    new Error(
-      "product-reference-storyboard prompt preflight failed before image provider submit"
-    )
-  );
+    throw (
+      latestError ??
+      new Error(
+        "product-reference-storyboard prompt preflight failed before image provider submit"
+      )
+    );
   } catch (loopError) {
     console.error(
       "[marketplaceAutoReview] storyboard_grid_prompt_skill_loop_failed_using_degraded_fallback",
@@ -12757,7 +13083,9 @@ export function imageReasonCodesContainStoryboardGridLayoutBlockerForTest(
   return imageReasonCodesContainStoryboardGridLayoutBlocker(reasonCodes);
 }
 
-export function imageReasonCodeBlocksPublishSafetyForTest(code: unknown): boolean {
+export function imageReasonCodeBlocksPublishSafetyForTest(
+  code: unknown
+): boolean {
   return imageReasonCodeBlocksPublishSafety(code);
 }
 
@@ -12767,7 +13095,9 @@ export function imageReasonCodesContainPublishSafetyBlockerForTest(
   return imageReasonCodesContainPublishSafetyBlocker(reasonCodes);
 }
 
-export function imageReasonCodeMentionsMinorSafetyForTest(code: unknown): boolean {
+export function imageReasonCodeMentionsMinorSafetyForTest(
+  code: unknown
+): boolean {
   return imageReasonCodeMentionsMinorSafety(code);
 }
 
@@ -17279,7 +17609,7 @@ function imagePromptReferenceSection(plan: AutoReviewPlan): string {
 function buildMarketplaceUiSafetyText(): string {
   return [
     "Prohibit marketplace/mobile app screenshots, phone screens, storefront UIs, price/rating/review widgets, cart/checkout flows, and platform marks. Prohibit Shopee/Lazada/TikTok Shop logos.",
-    "Use only supplied references.",
+    "Use supplied references.",
   ].join(" ");
 }
 
@@ -17364,7 +17694,7 @@ function build3x3StoryboardPrompt(
       .filter(Boolean)
       .join("; ") ||
       "varied cinematic product-film camera, realistic lens/light/depth, grounded shadows, coherent color.",
-    180
+    160
   );
   const sharedProductVerify = compactImagePromptText(
     [
@@ -17390,12 +17720,17 @@ function build3x3StoryboardPrompt(
       .filter(Boolean)
       .join("; ") ||
       "exact selected product from reference images; no added/removed parts; no UI.",
-    220
+    200
   );
-  const storyFrameLines = plan.shots.map(
-    shot =>
-      `Frame ${shot.order} | VISUAL: ${marketplaceAutoReviewEnglishVisualMeaningText(sanitizeStoryboardImageBeatText(shot.visual), "show product proof", 36)} | STORY MATCH:${marketplaceAutoReviewEnglishImagePromptText(shot.voiceover, "spoken meaning", 18)}.`
-  );
+  const storyboardTextPolicy =
+    overlayTextMode === "allow_text"
+      ? `TEXT POLICY: Short Thai overlay text is allowed only if truthful and not covering product. Never include video seconds/timecodes. ${buildMarketplaceUiSafetyText()}`
+      : `TEXT POLICY: No text/captions/labels/watermarks/UI, no black caption bars, no timecodes, subtitles/video seconds, or measurement overlays. ${buildMarketplaceUiSafetyText()}`;
+  const storyFrameLines = plan.shots.map(shot => {
+    const visualMaxLength = plan.shots.length > 1 ? 30 : 36;
+    const storyMatchMaxLength = plan.shots.length > 1 ? 12 : 18;
+    return `Frame ${shot.order} | VISUAL: ${marketplaceAutoReviewEnglishVisualMeaningText(sanitizeStoryboardImageBeatText(shot.visual), "show product proof", visualMaxLength)} | STORY MATCH:${marketplaceAutoReviewEnglishImagePromptText(shot.voiceover, "spoken meaning", storyMatchMaxLength)}.`;
+  });
   const unusedFrameLines = Array.from(
     { length: Math.max(0, MAX_SHOT_COUNT - plan.shots.length) },
     (_, index) => {
@@ -17405,11 +17740,11 @@ function build3x3StoryboardPrompt(
   );
   const frameLines = [...storyFrameLines, ...unusedFrameLines].join("\n");
   const storyboardLayoutLock =
-    "LAYOUT LOCK: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines, no collage/masonry layout, no labels/numbers/text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
+    "LAYOUT LOCK: one 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines, no collage/masonry layout. One panel per cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
   const outputFormat =
     overlayTextMode === "allow_text"
-      ? "OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images. Optional short text only under TEXT POLICY; no video seconds/timecodes."
-      : "OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images.";
+      ? "OUTPUT FORMAT LOCK: Plain prompt text only. one single 9:16 image, not separate images. Optional short text only under TEXT POLICY; no video seconds/timecodes."
+      : "OUTPUT FORMAT LOCK: Plain prompt text only. one single 9:16 image, not separate images.";
   const productCategoryHint =
     marketplaceAutoReviewEnglishPromptText(
       plan.productTruth.productName,
@@ -17425,19 +17760,19 @@ function build3x3StoryboardPrompt(
     "generation_mode: multi_frame_storyboard",
     "storyboard_layout_preset: canvas_9_16_grid_3x3_frame_9_16_exact",
     "aspect_ratio: 9:16",
-    `storyboard_guide: ${marketplaceAutoReviewEnglishImagePromptText(plan.storyboardGuide, "create a truth-locked marketplace product review storyboard", 90)}`,
+    `storyboard_guide: ${marketplaceAutoReviewEnglishImagePromptText(plan.storyboardGuide, "create a truth-locked marketplace product review storyboard", 65)}`,
     "voiceover_script: separate spoken contract; never render as text.",
-    `product_detail: ${marketplaceAutoReviewEnglishImagePromptText(plan.productDetail, "exact selected product from reference images", 90)}`,
+    `product_detail: ${marketplaceAutoReviewEnglishImagePromptText(plan.productDetail, "exact selected product from reference images", 65)}`,
     "reference_product_images: supplied separately as immutable product reference images",
-    `production_concept_details: ${compactImagePromptText(`${marketplaceAutoReviewEnglishPromptText(plan.title, "Marketplace product review")}; ${plan.shots.length} active shots; ${productCategoryHint}`, 55)}`,
+    `production_concept_details: ${compactImagePromptText(`${marketplaceAutoReviewEnglishPromptText(plan.title, "Marketplace product review")}; ${plan.shots.length} active shots; ${productCategoryHint}`, 40)}`,
     "",
     storyboardLayoutLock,
     outputFormat,
-    imageOverlayTextPolicyPrompt(overlayTextMode),
-    "CINEMATIC REALISM LOCK: photorealistic product-film stills, varied camera, realistic lens/light/depth, grounded shadows.",
-    "PRODUCT REFERENCE LOCK / PRODUCT VISUAL SOURCE LOCK: @Image1/supplied product reference image is the primary visual source of truth; written description is secondary and must never override; recreate/match the exact same actual reference product; no added/removed parts.",
-    "TEXT RENDERING POLICY: no seconds/timecodes, frame labels, dimension text, marketplace/mobile app screenshots, logos, prices, ratings, review widgets, or cart/checkout flows.",
-    "PROOF/REVIEW VISUAL LOCK: show real product use; no review cards/stars/screens/UI/ratings/text.",
+    storyboardTextPolicy,
+    "CINEMATIC REALISM LOCK: photorealistic product-film stills; varied camera, realistic lens/light/depth, grounded shadows.",
+    "PRODUCT REFERENCE LOCK / PRODUCT VISUAL SOURCE LOCK: @Image1 is the primary visual source of truth; written description is secondary and must never override; recreate and match the exact same actual reference product; no added/removed parts.",
+    "TEXT RENDERING POLICY: no seconds/timecodes, frame labels, dimension text, marketplace/mobile app screenshots, logos, prices, ratings, review widgets, cart/checkout.",
+    "PROOF/REVIEW VISUAL LOCK: real product use; no review cards/stars/screens/UI/ratings/text.",
     buildMinorSafetyClothingLock(plan),
     // Feature 136 section 07 (§3.4) — conditional-spread (not a ternary-to-
     // "" element) so the array gains ZERO new entries when guard is
@@ -17453,17 +17788,17 @@ function build3x3StoryboardPrompt(
       : []),
     `CAMERA/LIGHT/DEPTH: ${sharedCameraLightDepth}`,
     `PRODUCT VERIFY: ${sharedProductVerify}`,
-    "HUMAN REALISM: people only if needed; same approved identity if supplied, otherwise hands-only/no invented face; natural anatomy.",
+    "HUMAN REALISM: people only if needed; approved identity when supplied, otherwise hands-only/no invented face; natural anatomy.",
     buildApprovedCharacterAnchorRequirement(plan),
     plan.shots.length < MAX_SHOT_COUNT
       ? `REQUESTED STORY SHOTS: ${plan.shots.length}. Frames 1-${plan.shots.length} active; remaining frames reserved.`
       : "",
     "SHOT-BY-SHOT STORYBOARD PROMPT:",
-    storyboardLayoutLock,
+    "FRAME CELL CONTINUITY LOCK: one panel per cell; preserve product identity and shot order.",
     frameLines,
     "",
     "FINAL GRID/TEXT LOCK: strict 3x3, nine-cell grid, clean narrow solid black gutter lines, one panel per cell, never 2x5/5x2/10 panels, no captions/frame labels/seconds/timecodes/measurements.",
-    "REPAIR SCOPE LOCK: if this is a repair attempt, still regenerate the full 3x3 storyboard grid as one 9:16 canvas with all 9 panels; never output a single standalone scene.",
+    "REPAIR SCOPE LOCK: repair uses the full 3x3 grid with all 9 panels; never output a single standalone scene.",
     repairInstruction
       ? `TARGETED GRID REPAIR: ${compactImagePromptText(repairInstruction, 500)}. Keep full 3x3 grid, all 9 panels, exact product reference match.`
       : "",
@@ -17618,16 +17953,19 @@ const SEQUENTIAL_DRAFT_FAILURE_MODEL_BAD_OUTPUT_PATTERN =
  *  carry across its real shapes (`error` string for `invocation_failed`;
  *  `reasons` string[] for `contract_violation`) into one haystack for the
  *  regex checks below. Never throws on a malformed entry. */
-function sequentialDraftFailureEntryText(entry: Record<string, unknown>): string {
+function sequentialDraftFailureEntryText(
+  entry: Record<string, unknown>
+): string {
   const record = asRecord(entry);
   const reasons = Array.isArray(record.reasons)
     ? (record.reasons as unknown[]).filter(
         (reason): reason is string => typeof reason === "string"
       )
     : [];
-  return [typeof record.error === "string" ? record.error : "", ...reasons].join(
-    " "
-  );
+  return [
+    typeof record.error === "string" ? record.error : "",
+    ...reasons,
+  ].join(" ");
 }
 
 /** True for a round the pinned contract calls out by its literal
@@ -18473,6 +18811,7 @@ async function upsertMarketplaceAutoReviewOutboxJob(params: {
   priority?: number;
   maxAttempts?: number;
   scheduledAt?: Date;
+  preserveExistingStatus?: boolean;
 }) {
   const now = nowDate();
   const id = `mar-outbox:${buildProductionStableHash({
@@ -18480,32 +18819,36 @@ async function upsertMarketplaceAutoReviewOutboxJob(params: {
     jobType: params.jobType,
     idempotencyKey: params.idempotencyKey,
   }).slice(0, 24)}`;
-  await params.db
-    .insert(marketplaceAutoReviewOutboxJobs)
-    .values({
-      id,
-      runId: params.run.id,
-      tenantId: params.auth.tenantId ?? params.run.tenantId ?? null,
-      userId: params.auth.userId,
-      jobType: params.jobType,
-      idempotencyKey: params.idempotencyKey,
+  const insert = params.db.insert(marketplaceAutoReviewOutboxJobs).values({
+    id,
+    runId: params.run.id,
+    tenantId: params.auth.tenantId ?? params.run.tenantId ?? null,
+    userId: params.auth.userId,
+    jobType: params.jobType,
+    idempotencyKey: params.idempotencyKey,
+    status: "queued",
+    priority: params.priority ?? 100,
+    maxAttempts: params.maxAttempts ?? 3,
+    scheduledAt: params.scheduledAt ?? now,
+    payloadJson: params.payload,
+    updatedAt: now,
+  } as any);
+  if (params.preserveExistingStatus) {
+    await insert.onConflictDoNothing({
+      target: marketplaceAutoReviewOutboxJobs.idempotencyKey,
+    });
+    return;
+  }
+  await insert.onConflictDoUpdate({
+    target: marketplaceAutoReviewOutboxJobs.idempotencyKey,
+    set: {
+      payloadJson: params.payload,
       status: "queued",
       priority: params.priority ?? 100,
-      maxAttempts: params.maxAttempts ?? 3,
       scheduledAt: params.scheduledAt ?? now,
-      payloadJson: params.payload,
       updatedAt: now,
-    } as any)
-    .onConflictDoUpdate({
-      target: marketplaceAutoReviewOutboxJobs.idempotencyKey,
-      set: {
-        payloadJson: params.payload,
-        status: "queued",
-        priority: params.priority ?? 100,
-        scheduledAt: params.scheduledAt ?? now,
-        updatedAt: now,
-      } as any,
-    });
+    } as any,
+  });
 }
 
 async function persistMarketplaceAutoReviewLeaseRow(params: {
@@ -18738,9 +19081,12 @@ async function persistMarketplaceAutoReviewStageAttemptSnapshot(params: {
   const evidenceJson = buildMarketplaceAutoReviewStageAttemptEvidenceJson({
     runId: params.run.id,
     frameStrategy: params.run.frameStrategy as string,
-    evidenceGuardEnabled: asRecord(params.metadata.evidenceGuard).enabled === true,
+    evidenceGuardEnabled:
+      asRecord(params.metadata.evidenceGuard).enabled === true,
     qualityMode: cleanText(params.metadata.qualityMode) || null,
-    providerReconciliationId: cleanText(providerReconciliation.reconciliationId),
+    providerReconciliationId: cleanText(
+      providerReconciliation.reconciliationId
+    ),
     repairLedgerId: cleanText(repairLedger.ledgerId),
     qaArtifactManifestId: cleanText(
       asRecord(params.metadata.qaArtifactManifest).manifestId
@@ -19374,6 +19720,9 @@ function serializeRun(
       ...serializedRun,
       resultJson: summarizeMarketplaceAutoReviewResultForUi(run.resultJson),
       metadataJson: {
+        planningArchitecture: metadata.planningArchitecture ?? null,
+        planningArchitectureVersion:
+          metadata.planningArchitectureVersion ?? null,
         resolvedAudioStrategy: metadata.resolvedAudioStrategy ?? null,
         referenceAnchors: metadata.referenceAnchors ?? null,
         imageAttemptReviews: summarizeImageAttemptReviewsForUi(metadata),
@@ -19388,6 +19737,35 @@ function serializeRun(
         // branch too (list views) even though it's small, so a run needing
         // user action is distinguishable without fetching heavy metadata.
         planReview: metadata.planReview ?? null,
+        stagedSequentialStoryboard: metadata.stagedSequentialStoryboard
+          ? {
+              storyPlanStatus:
+                asRecord(metadata.stagedSequentialStoryboard).storyPlanStatus ??
+                null,
+              planRevision:
+                asRecord(metadata.stagedSequentialStoryboard).planRevision ??
+                null,
+              reviewCheckpoints: Array.isArray(
+                asRecord(metadata.stagedSequentialStoryboard).reviewCheckpoints
+              )
+                ? (
+                    asRecord(metadata.stagedSequentialStoryboard)
+                      .reviewCheckpoints as unknown[]
+                  ).map(item => {
+                    const checkpoint = asRecord(item);
+                    return compactRecord({
+                      checkpointId: cleanText(checkpoint.checkpointId),
+                      kind: cleanText(checkpoint.kind),
+                      shotId: checkpoint.shotId ?? null,
+                      state: cleanText(checkpoint.state),
+                      revision: toNumber(checkpoint.revision),
+                      contentHash: cleanText(checkpoint.contentHash),
+                      estimatedCredits: toNumber(checkpoint.estimatedCredits),
+                    });
+                  })
+                : [],
+            }
+          : null,
         ...(hasSequentialShotAlternates ? { sequentialShotAlternates } : {}),
       },
       metadataSummary: {
@@ -19839,7 +20217,8 @@ function assertSequentialShotRegenerationPreconditions(input: {
   }
   assertMarketplaceSequentialStoryboardAllowed({
     frameStrategy: run.frameStrategy,
-    marketplaceSequentialStoryboard: tenantFlags.marketplaceSequentialStoryboard,
+    marketplaceSequentialStoryboard:
+      tenantFlags.marketplaceSequentialStoryboard,
   });
   if (run.status === "failed" || run.status === "cancelled") {
     throw new TRPCError({
@@ -19869,7 +20248,10 @@ function assertSequentialShotRegenerationPreconditions(input: {
     });
   }
   if (!input.includeSpendGuards) return;
-  const unitId = directImageUnitIdForFrameRole(planShot, "sequential_shot_frame");
+  const unitId = directImageUnitIdForFrameRole(
+    planShot,
+    "sequential_shot_frame"
+  );
   const unitRefs = latestTaskRefsByUnit(
     directTaskRefs(metadata.directImageTasks)
   ).filter(ref => ref.unitId === unitId);
@@ -19882,8 +20264,7 @@ function assertSequentialShotRegenerationPreconditions(input: {
   if (inFlight) {
     throw new TRPCError({
       code: "CONFLICT",
-      message:
-        "ช็อตนี้กำลังสร้างภาพอยู่ กรุณารอให้เสร็จก่อนสั่งสร้างใหม่",
+      message: "ช็อตนี้กำลังสร้างภาพอยู่ กรุณารอให้เสร็จก่อนสั่งสร้างใหม่",
     });
   }
   const allowance = toNumber(
@@ -19977,7 +20358,8 @@ function buildSequentialShotEditPreflight(input: {
   const manifest = Array.isArray(sequential.referenceManifest)
     ? (sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[])
     : [];
-  const childSubjectPolicy = sequentialChildSubjectPolicyFromMetadata(sequential);
+  const childSubjectPolicy =
+    sequentialChildSubjectPolicyFromMetadata(sequential);
   const assemblyDocumented =
     asRecord(sequential.evidenceProfile).assembly_documented === true;
 
@@ -20292,7 +20674,8 @@ async function resolveSequentialShotRegenerationOutcome(input: {
     const manifest = Array.isArray(sequential.referenceManifest)
       ? (sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[])
       : [];
-    const childSubjectPolicy = sequentialChildSubjectPolicyFromMetadata(sequential);
+    const childSubjectPolicy =
+      sequentialChildSubjectPolicyFromMetadata(sequential);
     // Same external-gateway resolution as the pack-authoring path: the
     // stored manifest keeps relative storage paths, but the refresh skill's
     // vision input goes to OpenRouter, which 400s on non-absolute URLs.
@@ -20347,12 +20730,14 @@ async function resolveSequentialShotRegenerationOutcome(input: {
       });
 
       const refreshedVideoPrompt =
-        cleanText(refreshResult.videoPrompt) || cleanText(packEntry.video_prompt);
+        cleanText(refreshResult.videoPrompt) ||
+        cleanText(packEntry.video_prompt);
       const candidateShot = {
         ...packEntry,
         shot_id: input.shotId,
         start_frame_image_prompt: refreshResult.startFrameImagePrompt,
-        image_prompt_character_count: refreshResult.startFrameImagePrompt.length,
+        image_prompt_character_count:
+          refreshResult.startFrameImagePrompt.length,
         video_prompt: refreshedVideoPrompt,
         video_prompt_character_count: refreshedVideoPrompt.length,
       } as SequentialStoryboardShot;
@@ -20379,15 +20764,21 @@ async function resolveSequentialShotRegenerationOutcome(input: {
             shots: candidatePackShots,
           },
         };
-        nextMetadata = markLastSequentialShotRegeneration(nextMetadata, entry => ({
-          ...entry,
-          promptSource: "single_shot_refresh",
-        }));
+        nextMetadata = markLastSequentialShotRegeneration(
+          nextMetadata,
+          entry => ({
+            ...entry,
+            promptSource: "single_shot_refresh",
+          })
+        );
       } else {
-        nextMetadata = markLastSequentialShotRegeneration(nextMetadata, entry => ({
-          ...entry,
-          refreshRejectedBlockers: shotBlockers,
-        }));
+        nextMetadata = markLastSequentialShotRegeneration(
+          nextMetadata,
+          entry => ({
+            ...entry,
+            refreshRejectedBlockers: shotBlockers,
+          })
+        );
       }
     } catch (error) {
       console.warn(
@@ -20398,12 +20789,15 @@ async function resolveSequentialShotRegenerationOutcome(input: {
           error: error instanceof Error ? error.message : String(error),
         }
       );
-      nextMetadata = markLastSequentialShotRegeneration(nextMetadata, entry => ({
-        ...entry,
-        refreshRejectedBlockers: [
-          error instanceof Error ? error.message : String(error),
-        ],
-      }));
+      nextMetadata = markLastSequentialShotRegeneration(
+        nextMetadata,
+        entry => ({
+          ...entry,
+          refreshRejectedBlockers: [
+            error instanceof Error ? error.message : String(error),
+          ],
+        })
+      );
     }
   }
 
@@ -20485,7 +20879,8 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
   });
 
   const imageBudget = resolveSequentialImagePromptBudget({
-    overrideMaxChars: toNumber(metadata.sequentialImagePromptMaxChars, 0) || null,
+    overrideMaxChars:
+      toNumber(metadata.sequentialImagePromptMaxChars, 0) || null,
     providerMaxPromptLength: null,
   });
   const requestedAt = nowIso();
@@ -20508,7 +20903,9 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
     productCategory: inferProductReferenceStoryboardCategory(plan),
   });
 
-  const stages = stageKeysForMode(run.outputMode as MarketplaceAutoReviewOutputMode);
+  const stages = stageKeysForMode(
+    run.outputMode as MarketplaceAutoReviewOutputMode
+  );
   await updateRun({
     db,
     runId: run.id,
@@ -20626,7 +21023,8 @@ export async function saveMarketplaceAutoReviewSequentialShotOverride(
   }
 
   const imageBudget = resolveSequentialImagePromptBudget({
-    overrideMaxChars: toNumber(metadata.sequentialImagePromptMaxChars, 0) || null,
+    overrideMaxChars:
+      toNumber(metadata.sequentialImagePromptMaxChars, 0) || null,
     providerMaxPromptLength: null,
   });
   const edit = {
@@ -20759,7 +21157,8 @@ export async function selectMarketplaceAutoReviewSequentialShotAlternate(
   const nextStoryboardFrameUrls = hasStoryboardFrameUrls
     ? [...(metadata.storyboardFrameUrls as string[])]
     : null;
-  if (nextStoryboardFrameUrls) nextStoryboardFrameUrls[shotIndex] = alternateUrl;
+  if (nextStoryboardFrameUrls)
+    nextStoryboardFrameUrls[shotIndex] = alternateUrl;
   const nextStartFrameUrls = hasStartFrameUrls
     ? [...(metadata.startFrameUrls as string[])]
     : null;
@@ -20808,7 +21207,10 @@ export async function listMarketplaceAutoReviewRuns(
           : undefined
       )
     )
-    .orderBy(desc(marketplaceAutoReviewRuns.createdAt))
+    .orderBy(
+      desc(marketplaceAutoReviewRuns.updatedAt),
+      desc(marketplaceAutoReviewRuns.createdAt)
+    )
     .limit(limit);
   if (runs.length === 0) return [];
   const stages = await db
@@ -20939,49 +21341,52 @@ async function holdMarketplaceAutoReviewRunAtImageGeneration(params: {
   });
 }
 
+export type MarketplaceAutoReviewStartInput = {
+  productId: string;
+  workflowMode?: "standard" | "job_workbench" | null;
+  idempotencyKey?: string | null;
+  creationIntent?: "storyboard" | "video" | "auto_review_video" | null;
+  outputMode: MarketplaceAutoReviewOutputMode;
+  frameStrategy?: MarketplaceAutoReviewFrameStrategyInput;
+  audioStrategy?: MarketplaceAutoReviewAudioStrategyInput;
+  shotCount?: number | null;
+  overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
+  imageModel?: MarketplaceAutoReviewImageModel | null;
+  videoModel?: MarketplaceAutoReviewVideoModel | null;
+  videoStructureMode?: VideoSegmentStructureMode | null;
+  manualVideoGroupSize?: number | null;
+  speechLanguage?: HyperframesSpokenLanguage | null;
+  creativeBrief?: string | null;
+  motionDirection?: string | null;
+  characterPresenceMode?: MarketplaceAutoReviewCharacterPresenceMode | null;
+  qualityMode?: MarketplaceAutoReviewQualityModeInput | null;
+  visionQaModel?: string | null;
+  referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
+  transportMetadata?: Record<string, unknown> | null;
+  // Feature 136 (section 05 §5.8) — sequential confirmation-loop overrides,
+  // forwarded exactly like `characterPresenceMode` would be (precedent
+  // absent from committed main today, G1) via `startAutoStoryboardReviewForApi`.
+  // Persisted under `metadataJson.sequentialStoryboard.userInputs` (§5.1
+  // step 5 threads them into the runner's input contract). Harmless no-ops
+  // for every non-sequential run.
+  confirmedAttributes?: Record<string, string> | null;
+  forbiddenClaims?: string[] | null;
+  targetAudience?: string | null;
+  userRequirements?: string | null;
+  /** Section-01 override (bounded 1000-4000); threads into the runner's
+   *  `imageBudgetOverride` via `resolveSequentialImagePromptBudget`. */
+  sequentialImagePromptMaxChars?: number | null;
+  /**
+   * Feature 136 section 13 (§4 deliverable 2) — optional cinematic-prompt
+   * style layer, forwarded exactly like `videoModel` (top-level, sticky
+   * across `buildRunMetadata` calls). Harmless no-op for every non-
+   * sequential run and for every existing caller that never sets it.
+   */
+  startFramePromptStyle?: MarketplaceStartFramePromptStyle | null;
+};
+
 export async function startMarketplaceAutoReviewRun(
-  input: {
-    productId: string;
-    idempotencyKey?: string | null;
-    creationIntent?: "storyboard" | "video" | "auto_review_video" | null;
-    outputMode: MarketplaceAutoReviewOutputMode;
-    frameStrategy?: MarketplaceAutoReviewFrameStrategyInput;
-    audioStrategy?: MarketplaceAutoReviewAudioStrategyInput;
-    shotCount?: number | null;
-    overlayTextMode?: MarketplaceAutoReviewOverlayTextMode | null;
-    imageModel?: MarketplaceAutoReviewImageModel | null;
-    videoModel?: MarketplaceAutoReviewVideoModel | null;
-    videoStructureMode?: VideoSegmentStructureMode | null;
-    manualVideoGroupSize?: number | null;
-    speechLanguage?: HyperframesSpokenLanguage | null;
-    creativeBrief?: string | null;
-    motionDirection?: string | null;
-    characterPresenceMode?: MarketplaceAutoReviewCharacterPresenceMode | null;
-    qualityMode?: MarketplaceAutoReviewQualityModeInput | null;
-    visionQaModel?: string | null;
-    referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
-    transportMetadata?: Record<string, unknown> | null;
-    // Feature 136 (section 05 §5.8) — sequential confirmation-loop overrides,
-    // forwarded exactly like `characterPresenceMode` would be (precedent
-    // absent from committed main today, G1) via `startAutoStoryboardReviewForApi`.
-    // Persisted under `metadataJson.sequentialStoryboard.userInputs` (§5.1
-    // step 5 threads them into the runner's input contract). Harmless no-ops
-    // for every non-sequential run.
-    confirmedAttributes?: Record<string, string> | null;
-    forbiddenClaims?: string[] | null;
-    targetAudience?: string | null;
-    userRequirements?: string | null;
-    /** Section-01 override (bounded 1000-4000); threads into the runner's
-     *  `imageBudgetOverride` via `resolveSequentialImagePromptBudget`. */
-    sequentialImagePromptMaxChars?: number | null;
-    /**
-     * Feature 136 section 13 (§4 deliverable 2) — optional cinematic-prompt
-     * style layer, forwarded exactly like `videoModel` (top-level, sticky
-     * across `buildRunMetadata` calls). Harmless no-op for every non-
-     * sequential run and for every existing caller that never sets it.
-     */
-    startFramePromptStyle?: MarketplaceStartFramePromptStyle | null;
-  },
+  input: MarketplaceAutoReviewStartInput,
   auth: AuthContext,
   runtime: RuntimeContext = {}
 ) {
@@ -21002,12 +21407,24 @@ export async function startMarketplaceAutoReviewRun(
   // reason this fetch existed) and snapshotted into `evidenceGuard` via
   // `buildRunMetadata` below — every downstream consumer reads THAT
   // snapshot, never the live flag.
-  const startTenantFlags = await getTenantFeatureFlags(auth.tenantId ?? "default");
+  const startTenantFlags = await getTenantFeatureFlags(
+    auth.tenantId ?? "default"
+  );
+  const stagedSequentialStoryboardV2Enabled =
+    startTenantFlags.marketplaceStagedSequentialStoryboardV2 === true ||
+    input.workflowMode === "job_workbench";
+  const planningArchitecture = resolveMarketplaceAutoReviewPlanningArchitecture(
+    {
+      frameStrategy,
+      stagedSequentialStoryboardV2Enabled,
+    }
+  );
   if (frameStrategy === "sequential_shot_storyboard") {
     assertMarketplaceSequentialStoryboardAllowed({
       frameStrategy,
       marketplaceSequentialStoryboard:
-        startTenantFlags.marketplaceSequentialStoryboard,
+        startTenantFlags.marketplaceSequentialStoryboard ||
+        stagedSequentialStoryboardV2Enabled,
     });
   }
   const evidenceGuardEnabled =
@@ -21064,6 +21481,20 @@ export async function startMarketplaceAutoReviewRun(
     { tenantId, actorUserId: auth.userId }
   );
   const requestedIdempotencyKey = cleanText(input.idempotencyKey);
+  const initializationRunId = cleanText(runtime.initializationRunId);
+  const existingInitializationRun = initializationRunId
+    ? await reloadRun(db, initializationRunId, auth)
+    : null;
+  if (
+    existingInitializationRun &&
+    existingInitializationRun.productId !== input.productId
+  ) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        "Marketplace Auto Review initialization payload does not match the persisted run",
+    });
+  }
 
   const bundle = await getMarketplaceProductWithAccess(input.productId, auth);
   const insights = await loadSupportingInsights(db, bundle, auth);
@@ -21073,7 +21504,7 @@ export async function startMarketplaceAutoReviewRun(
     auth,
     productId: input.productId,
   });
-  const runId = createMarketplaceId("mar");
+  const runId = existingInitializationRun?.id ?? createMarketplaceId("mar");
   const referenceAnchorHash = buildProductionStableHash(
     input.referenceAnchors ?? {}
   ).slice(0, 12);
@@ -21097,7 +21528,9 @@ export async function startMarketplaceAutoReviewRun(
       referenceAnchorHash,
       runId,
     });
-  const productionRunId = `mp-auto-${input.productId}-${Date.now().toString(36)}-${nanoid(6)}`;
+  const productionRunId =
+    cleanText(existingInitializationRun?.productionRunId) ||
+    `mp-auto-${input.productId}-${Date.now().toString(36)}-${nanoid(6)}`;
   const now = nowDate();
   const baseFallbackPlan = buildAutoReviewProductTruthScaffold(
     bundle,
@@ -21176,6 +21609,13 @@ export async function startMarketplaceAutoReviewRun(
     withUpdatedCreditSummary({
       schemaVersion: AUTO_REVIEW_SCHEMA_VERSION,
       ...metadata,
+      ...(planningArchitecture
+        ? {
+            planningArchitecture,
+            planningArchitectureVersion: 1,
+            humanApprovalPolicy: "all_checkpoints_required" as const,
+          }
+        : {}),
       productId: input.productId,
       creationIntent: input.creationIntent ?? referenceAnchors.creationIntent,
       outputMode,
@@ -21192,7 +21632,9 @@ export async function startMarketplaceAutoReviewRun(
       videoModel,
       // Feature 136 section 13 (§4 deliverable 2) — sticky top-level field,
       // same pattern as `videoModel` immediately above.
-      startFramePromptStyle: isMarketplaceStartFramePromptStyle(input.startFramePromptStyle)
+      startFramePromptStyle: isMarketplaceStartFramePromptStyle(
+        input.startFramePromptStyle
+      )
         ? input.startFramePromptStyle
         : (metadata as RunMetadata).startFramePromptStyle,
       videoStructureMode,
@@ -21261,6 +21703,35 @@ export async function startMarketplaceAutoReviewRun(
       productTruth: currentPlan.productTruth,
       productImageUrls: currentPlan.productTruth.imageUrls,
       supportingInsightIds: insights.map(row => row.id),
+      ...(runtime.deferInitialization === true
+        ? {
+            initializationControl: {
+              schemaVersion: 1,
+              status: "queued",
+              queuedAt: nowIso(),
+              input: {
+                ...input,
+                outputMode,
+                frameStrategy,
+                audioStrategy,
+                shotCount: requestedShotCount,
+                overlayTextMode,
+                imageModel,
+                videoModel,
+                videoStructureMode,
+                manualVideoGroupSize,
+                speechLanguage,
+                creativeBrief,
+                motionDirection,
+                characterPresenceMode,
+                qualityMode,
+                visionQaModel: visionQaModelOverride || null,
+                referenceAnchors,
+                transportMetadata,
+              },
+            },
+          }
+        : {}),
     });
   const productPreflightEvidence = Array.isArray(
     feature117Metadata.stageCompletionEvidence
@@ -21270,170 +21741,239 @@ export async function startMarketplaceAutoReviewRun(
         | undefined)
     : undefined;
 
-  const [insertedRun] = await db
-    .insert(marketplaceAutoReviewRuns)
-    .values({
-      id: runId,
-      tenantId: auth.tenantId ?? null,
-      userId: auth.userId,
-      productId: input.productId,
-      productionRunId,
-      outputMode,
-      frameStrategy,
-      status: "queued",
-      currentStage: "product_preflight",
-      stageIndex: stageIndex("product_preflight", stages),
-      stageCount: stages.length,
-      selectedConceptId: plan.conceptId,
-      storyboardReviewId: null,
-      videoEditorProjectId: null,
-      renderJobId: null,
-      resultLibraryItemId: null,
-      resultJson: {},
-      metadataJson: buildRunMetadata(
-        feature117Metadata,
-        plan,
-        creativePlan.metadata
-      ),
-      errorMessage: null,
-      idempotencyKey,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing()
-    .returning({ id: marketplaceAutoReviewRuns.id });
-  if (!insertedRun?.id) {
-    if (requestedIdempotencyKey) {
-      const [conflictingByIdempotency] = await db
-        .select()
-        .from(marketplaceAutoReviewRuns)
-        .where(
-          and(
-            eq(marketplaceAutoReviewRuns.userId, auth.userId),
-            tenantAccessClause(auth),
-            eq(
-              marketplaceAutoReviewRuns.idempotencyKey,
-              requestedIdempotencyKey
+  if (!existingInitializationRun) {
+    const [insertedRun] = await db
+      .insert(marketplaceAutoReviewRuns)
+      .values({
+        id: runId,
+        tenantId: auth.tenantId ?? null,
+        userId: auth.userId,
+        productId: input.productId,
+        productionRunId,
+        outputMode,
+        frameStrategy,
+        status: "queued",
+        currentStage: "product_preflight",
+        stageIndex: stageIndex("product_preflight", stages),
+        stageCount: stages.length,
+        selectedConceptId: plan.conceptId,
+        storyboardReviewId: null,
+        videoEditorProjectId: null,
+        renderJobId: null,
+        resultLibraryItemId: null,
+        resultJson: {},
+        metadataJson: buildRunMetadata(
+          feature117Metadata,
+          plan,
+          creativePlan.metadata
+        ),
+        errorMessage: null,
+        idempotencyKey,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing()
+      .returning({ id: marketplaceAutoReviewRuns.id });
+    if (!insertedRun?.id) {
+      if (requestedIdempotencyKey) {
+        const [conflictingByIdempotency] = await db
+          .select()
+          .from(marketplaceAutoReviewRuns)
+          .where(
+            and(
+              eq(marketplaceAutoReviewRuns.userId, auth.userId),
+              tenantAccessClause(auth),
+              eq(
+                marketplaceAutoReviewRuns.idempotencyKey,
+                requestedIdempotencyKey
+              )
             )
           )
-        )
-        .orderBy(desc(marketplaceAutoReviewRuns.createdAt))
-        .limit(1);
-      if (conflictingByIdempotency?.id) {
-        if (conflictingByIdempotency.productId !== input.productId) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "Idempotency key is already associated with a different marketplace product",
-          });
-        }
-        if (
-          ACTIVE_RUN_STATUSES.includes(
-            cleanText(conflictingByIdempotency.status) as
-              | "queued"
-              | "running"
-              | "waiting_provider"
-          )
-        ) {
-          queueMarketplaceAutoReviewAdvance(
-            conflictingByIdempotency.id,
-            auth,
-            runtime,
-            5_000
-          );
-        }
-        return getMarketplaceAutoReviewRun(conflictingByIdempotency.id, auth);
-      }
-    }
-    throw new TRPCError({
-      code: "CONFLICT",
-      message:
-        "Could not start auto review run because another run was created at the same time",
-    });
-  }
-  await ensureRunStages(db, runId, outputMode);
-  await upsertRunStage({
-    db,
-    runId,
-    stageKey: "product_preflight",
-    stageOrder: stageIndex("product_preflight", stages),
-    status: productPreflightBlocked ? "blocked" : "completed",
-    output: {
-      evidenceRefs: [
-        "productEvidenceLock",
-        "productReferenceAssetPack",
-        "evidenceInstructionFirewall",
-        "creditSummary",
-      ],
-      completionEvidenceId: productPreflightEvidence?.evidenceId,
-      statusDetail: productPreflightBlocked
-        ? {
-            state:
-              (feature117Metadata.productReferenceAssetPack as any)?.status ===
-              "blocked"
-                ? "product_reference_blocked"
-                : (feature117Metadata.accessSnapshot as any)?.status ===
-                    "blocked"
-                  ? "awaiting_credit_authorization"
-                  : "evidence_instruction_blocked",
-            severity: "blocked",
-            stageKey: "product_preflight",
-            reasonCodes: productPreflightEvidence?.missingRefs ?? [
-              "product_preflight_blocked",
-            ],
-            safeMessage:
-              (feature117Metadata.productReferenceAssetPack as any)?.status ===
-              "blocked"
-                ? "ยังไม่มีรูปสินค้าที่ระบบใช้เป็น reference ได้ จึงหยุดก่อนสร้างภาพหรือวิดีโอ"
-                : (feature117Metadata.accessSnapshot as any)?.status ===
-                    "blocked"
-                  ? "สิทธิ์สินค้าเป็นแบบอ่านอย่างเดียว ระบบจึงไม่สามารถใช้เครดิตเพื่อสร้างสื่อจากสินค้านี้"
-                  : "พบข้อความจาก marketplace ที่เสี่ยงเป็นคำสั่งแทรก จึงหยุดก่อนส่งข้อมูลเข้า Agents",
-            nextAction:
-              (feature117Metadata.productReferenceAssetPack as any)?.status ===
-              "blocked"
-                ? "เลือกหรืออัปโหลดรูปสินค้าที่เห็นตัวสินค้าชัดเจนก่อนเริ่มใหม่"
-                : (feature117Metadata.accessSnapshot as any)?.status ===
-                    "blocked"
-                  ? "ขอสิทธิ์แก้ไข/เจ้าของสินค้า หรือคัดลอกสินค้าเป็นของ workspace ก่อนเริ่มใหม่"
-                  : "ตรวจข้อมูลสินค้า/จับภาพใหม่ แล้วเริ่มงานอีกครั้ง",
-            userActionRequired: true,
-            retryable: true,
+          .orderBy(desc(marketplaceAutoReviewRuns.createdAt))
+          .limit(1);
+        if (conflictingByIdempotency?.id) {
+          if (conflictingByIdempotency.productId !== input.productId) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message:
+                "Idempotency key is already associated with a different marketplace product",
+            });
           }
-        : {
-            state: "completed",
-            severity: "success",
-            stageKey: "product_preflight",
-            reasonCodes: [],
-            safeMessage:
-              "ตรวจข้อมูลสินค้า reference เครดิต policy และ evidence firewall ผ่านแล้ว",
-            userActionRequired: false,
-            retryable: false,
-          },
-    },
-    stageCompletionEvidence: stageCompletionInputFromExisting(
-      productPreflightEvidence
-    ),
-  });
-  if (productPreflightBlocked) {
+          if (
+            ACTIVE_RUN_STATUSES.includes(
+              cleanText(conflictingByIdempotency.status) as
+                | "queued"
+                | "running"
+                | "waiting_provider"
+            )
+          ) {
+            const initializationControl = asRecord(
+              asRecord(conflictingByIdempotency.metadataJson)
+                .initializationControl
+            );
+            if (
+              cleanText(initializationControl.status) === "queued" &&
+              Number(initializationControl.schemaVersion) === 1
+            ) {
+              await upsertMarketplaceAutoReviewOutboxJob({
+                db,
+                run: conflictingByIdempotency,
+                auth,
+                jobType: "initialize_run",
+                idempotencyKey: `marketplace-auto-review:${conflictingByIdempotency.id}:initialize:v1`,
+                priority: 20,
+                maxAttempts: 3,
+                preserveExistingStatus: true,
+                payload: {
+                  runId: conflictingByIdempotency.id,
+                  initializationVersion: 1,
+                },
+              });
+            } else {
+              queueMarketplaceAutoReviewAdvance(
+                conflictingByIdempotency.id,
+                auth,
+                runtime,
+                5_000
+              );
+            }
+          }
+          return getMarketplaceAutoReviewRun(conflictingByIdempotency.id, auth);
+        }
+      }
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Could not start auto review run because another run was created at the same time",
+      });
+    }
+    await ensureRunStages(db, runId, outputMode);
+    await upsertRunStage({
+      db,
+      runId,
+      stageKey: "product_preflight",
+      stageOrder: stageIndex("product_preflight", stages),
+      status: productPreflightBlocked ? "blocked" : "completed",
+      output: {
+        evidenceRefs: [
+          "productEvidenceLock",
+          "productReferenceAssetPack",
+          "evidenceInstructionFirewall",
+          "creditSummary",
+        ],
+        completionEvidenceId: productPreflightEvidence?.evidenceId,
+        statusDetail: productPreflightBlocked
+          ? {
+              state:
+                (feature117Metadata.productReferenceAssetPack as any)
+                  ?.status === "blocked"
+                  ? "product_reference_blocked"
+                  : (feature117Metadata.accessSnapshot as any)?.status ===
+                      "blocked"
+                    ? "awaiting_credit_authorization"
+                    : "evidence_instruction_blocked",
+              severity: "blocked",
+              stageKey: "product_preflight",
+              reasonCodes: productPreflightEvidence?.missingRefs ?? [
+                "product_preflight_blocked",
+              ],
+              safeMessage:
+                (feature117Metadata.productReferenceAssetPack as any)
+                  ?.status === "blocked"
+                  ? "ยังไม่มีรูปสินค้าที่ระบบใช้เป็น reference ได้ จึงหยุดก่อนสร้างภาพหรือวิดีโอ"
+                  : (feature117Metadata.accessSnapshot as any)?.status ===
+                      "blocked"
+                    ? "สิทธิ์สินค้าเป็นแบบอ่านอย่างเดียว ระบบจึงไม่สามารถใช้เครดิตเพื่อสร้างสื่อจากสินค้านี้"
+                    : "พบข้อความจาก marketplace ที่เสี่ยงเป็นคำสั่งแทรก จึงหยุดก่อนส่งข้อมูลเข้า Agents",
+              nextAction:
+                (feature117Metadata.productReferenceAssetPack as any)
+                  ?.status === "blocked"
+                  ? "เลือกหรืออัปโหลดรูปสินค้าที่เห็นตัวสินค้าชัดเจนก่อนเริ่มใหม่"
+                  : (feature117Metadata.accessSnapshot as any)?.status ===
+                      "blocked"
+                    ? "ขอสิทธิ์แก้ไข/เจ้าของสินค้า หรือคัดลอกสินค้าเป็นของ workspace ก่อนเริ่มใหม่"
+                    : "ตรวจข้อมูลสินค้า/จับภาพใหม่ แล้วเริ่มงานอีกครั้ง",
+              userActionRequired: true,
+              retryable: true,
+            }
+          : {
+              state: "completed",
+              severity: "success",
+              stageKey: "product_preflight",
+              reasonCodes: [],
+              safeMessage:
+                "ตรวจข้อมูลสินค้า reference เครดิต policy และ evidence firewall ผ่านแล้ว",
+              userActionRequired: false,
+              retryable: false,
+            },
+      },
+      stageCompletionEvidence: stageCompletionInputFromExisting(
+        productPreflightEvidence
+      ),
+    });
+    if (productPreflightBlocked) {
+      await updateRun({
+        db,
+        runId,
+        status: "running",
+        currentStage: "product_preflight",
+        stageIndex: stageIndex("product_preflight", stages),
+        stageCount: stages.length,
+      });
+      return getMarketplaceAutoReviewRun(runId, auth);
+    }
     await updateRun({
       db,
       runId,
       status: "running",
-      currentStage: "product_preflight",
-      stageIndex: stageIndex("product_preflight", stages),
+      currentStage: "concept_story",
+      stageIndex: stageIndex("concept_story", stages),
       stageCount: stages.length,
     });
+    if (runtime.deferInitialization === true) {
+      const queuedRun = await reloadRun(db, runId, auth);
+      await upsertMarketplaceAutoReviewOutboxJob({
+        db,
+        run: queuedRun,
+        auth,
+        jobType: "initialize_run",
+        idempotencyKey: `marketplace-auto-review:${runId}:initialize:v1`,
+        priority: 20,
+        maxAttempts: 3,
+        preserveExistingStatus: true,
+        payload: {
+          runId,
+          initializationVersion: 1,
+        },
+      });
+      return getMarketplaceAutoReviewRun(runId, auth);
+    }
+  } else {
+    const existingMetadata = asRecord(
+      existingInitializationRun.metadataJson
+    ) as RunMetadata;
+    const initializationControl = asRecord(
+      existingMetadata.initializationControl
+    );
+    feature117Metadata = {
+      ...preflightMetadata,
+      initializationControl: {
+        ...initializationControl,
+        schemaVersion: 1,
+        status: "running",
+        startedAt: nowIso(),
+      },
+    } as RunMetadata;
+  }
+  if (planningArchitecture === "staged_two_skill_v2") {
+    const stagedRun = await reloadRun(db, runId, auth);
+    await initializeStagedMarketplaceAutoReviewRun({
+      db,
+      run: stagedRun,
+    });
+    queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
     return getMarketplaceAutoReviewRun(runId, auth);
   }
-  await updateRun({
-    db,
-    runId,
-    status: "running",
-    currentStage: "concept_story",
-    stageIndex: stageIndex("concept_story", stages),
-    stageCount: stages.length,
-  });
   try {
     const runForPlanning = await reloadRun(db, runId, auth);
     creativePlan = await buildGatewayCreativeAutoReviewPlan({
@@ -21515,15 +22055,14 @@ export async function startMarketplaceAutoReviewRun(
     // voiceover rewrite hook has run, BEFORE `prompt_plan` is marked
     // completed below. No-op (returns metadata unchanged) for every other
     // frame strategy — see `runSequentialPromptPlanStage`'s own step 1 gate.
-    const metadataAfterSequentialPromptPlan = await runSequentialPromptPlanStage(
-      {
+    const metadataAfterSequentialPromptPlan =
+      await runSequentialPromptPlanStage({
         run: runForPlanning,
         metadata: metadataAfterConceptStory,
         plan,
         auth,
         runtime,
-      }
-    );
+      });
     if (metadataAfterSequentialPromptPlan !== metadataAfterConceptStory) {
       await updateRun({
         db,
@@ -21531,6 +22070,12 @@ export async function startMarketplaceAutoReviewRun(
         metadataJson: metadataAfterSequentialPromptPlan,
       });
     }
+    // The production-project builder creates sequential image units
+    // immediately after this block and reads their prompts from the metadata
+    // passed to it. Keep the in-memory metadata aligned with the persisted
+    // prompt-plan result; otherwise every valid sequential pack is invisible
+    // here and `sequentialShotFrameImagePrompt` fails on shot 01.
+    feature117Metadata = metadataAfterSequentialPromptPlan;
   } catch (error) {
     if ((error as any)?.__marketplaceAutoReviewRecheckRequired) {
       return getMarketplaceAutoReviewRun(runId, auth);
@@ -21652,6 +22197,18 @@ export async function startMarketplaceAutoReviewRun(
   const runBeforeGate = await reloadRun(db, runId, auth);
   const metadataWithPlanReviewHold: RunMetadata = {
     ...(asRecord(runBeforeGate.metadataJson) as RunMetadata),
+    ...(initializationRunId
+      ? {
+          initializationControl: {
+            ...asRecord(
+              asRecord(runBeforeGate.metadataJson).initializationControl
+            ),
+            schemaVersion: 1,
+            status: "completed",
+            completedAt: nowIso(),
+          },
+        }
+      : {}),
     planReview: {
       required: true,
       status: "awaiting",
@@ -21674,6 +22231,88 @@ export async function startMarketplaceAutoReviewRun(
 
   queueMarketplaceAutoReviewAdvance(runId, auth, runtime, 500);
   return getMarketplaceAutoReviewRun(runId, auth);
+}
+
+export async function enqueueMarketplaceAutoReviewRun(
+  input: MarketplaceAutoReviewStartInput,
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  return startMarketplaceAutoReviewRun(input, auth, {
+    ...runtime,
+    deferInitialization: true,
+  });
+}
+
+export async function initializeMarketplaceAutoReviewRun(
+  runId: string,
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await reloadRun(db, runId, auth);
+  if (
+    run.status === "completed" ||
+    run.status === "failed" ||
+    run.status === "cancelled"
+  ) {
+    return getMarketplaceAutoReviewRun(runId, auth);
+  }
+  const initializationControl = asRecord(
+    asRecord(run.metadataJson).initializationControl
+  );
+  const initializationInput = asRecord(initializationControl.input);
+  if (
+    Number(initializationControl.schemaVersion) !== 1 ||
+    cleanText(initializationInput.productId) !== run.productId ||
+    !cleanText(initializationInput.outputMode)
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Marketplace Auto Review initialization payload is missing or unsupported",
+    });
+  }
+  if (cleanText(initializationControl.status) === "completed") {
+    return getMarketplaceAutoReviewRun(runId, auth);
+  }
+  return startMarketplaceAutoReviewRun(
+    initializationInput as MarketplaceAutoReviewStartInput,
+    auth,
+    {
+      ...runtime,
+      deferInitialization: false,
+      initializationRunId: runId,
+    }
+  );
+}
+
+export async function failMarketplaceAutoReviewInitialization(
+  runId: string,
+  auth: AuthContext
+) {
+  const db = await getDb();
+  if (!db) return;
+  const run = await reloadRun(db, runId, auth);
+  if (
+    run.status === "completed" ||
+    run.status === "failed" ||
+    run.status === "cancelled"
+  ) {
+    return;
+  }
+  await markRunFailed(
+    db,
+    run,
+    "Auto Storyboard Review initialization failed after the retry limit. Please retry from the product page.",
+    "concept_story"
+  );
 }
 
 /**
@@ -21761,7 +22400,7 @@ function findMarketplaceAutoReviewPlanReviewApprovalBlocker(
     cleanText(sequential.skillVersion).toLowerCase().includes("degraded");
   if (isDegradedOrFailed) {
     return (
-      'ร่างนี้เป็นสตอรีบอร์ดสำรองที่ระบบสร้างขึ้นอัตโนมัติ ไม่มีบทพูดและใช้งานจริงไม่ได้ ' +
+      "ร่างนี้เป็นสตอรีบอร์ดสำรองที่ระบบสร้างขึ้นอัตโนมัติ ไม่มีบทพูดและใช้งานจริงไม่ได้ " +
       'กรุณากด "ให้ AI ร่างใหม่" หรือยกเลิกงานนี้แล้วเริ่มใหม่ / This plan is an automatic ' +
       'fallback storyboard with no usable dialogue — click "ให้ AI ร่างใหม่" to redraft, ' +
       "or cancel this run and start over."
@@ -21780,7 +22419,7 @@ function findMarketplaceAutoReviewPlanReviewApprovalBlocker(
     cleanText(metadata.resolvedAudioStrategy) === "silent";
   if (!hasAnyDialogue && !isSilentAudioStrategy) {
     return (
-      'ร่างนี้ไม่มีบทพูดเลยแม้แต่ช็อตเดียว วิดีโอรีวิวต้องมีบทพูด ' +
+      "ร่างนี้ไม่มีบทพูดเลยแม้แต่ช็อตเดียว วิดีโอรีวิวต้องมีบทพูด " +
       'กรุณากด "ให้ AI ร่างใหม่" หรือยกเลิกงานนี้แล้วเริ่มใหม่ / This plan has no dialogue ' +
       'in any shot — a review video must have spoken lines. Click "ให้ AI ร่างใหม่" to ' +
       "redraft, or cancel this run and start over."
@@ -21879,6 +22518,17 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
       message: "Database unavailable",
     });
   const run = await reloadRun(db, input.runId, auth);
+  if (
+    shouldDispatchStagedMarketplaceAutoReview(
+      cleanText(asRecord(run.metadataJson).planningArchitecture)
+    )
+  ) {
+    return redraftStagedMarketplaceAutoReviewRun({
+      db,
+      run,
+      notes: input.notes,
+    });
+  }
   await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
 
   const metadata = asRecord(run.metadataJson) as RunMetadata;
@@ -21902,9 +22552,10 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
   );
   const creativeBrief = cleanText(metadata.creativeBrief) || undefined;
   const motionDirection = cleanText(metadata.motionDirection) || undefined;
-  const characterPresenceMode = normalizeMarketplaceAutoReviewCharacterPresenceMode(
-    metadata.characterPresenceMode
-  );
+  const characterPresenceMode =
+    normalizeMarketplaceAutoReviewCharacterPresenceMode(
+      metadata.characterPresenceMode
+    );
   const referenceAnchors = asRecord(
     metadata.referenceAnchors
   ) as ResolvedMarketplaceAutoReviewReferenceAnchors;
@@ -21971,8 +22622,8 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
     redraftNotes: notes || undefined,
   });
   let plan = creativePlan.plan;
-  const voiceoverRewrite = await rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(
-    {
+  const voiceoverRewrite =
+    await rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill({
       tenantId,
       auth,
       runId: run.id,
@@ -21983,8 +22634,7 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
       resolvedAudioStrategy,
       referenceAnchors,
       speechLanguage,
-    }
-  );
+    });
   plan = voiceoverRewrite.plan;
   creativePlan = {
     plan,
@@ -22144,7 +22794,9 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
         "evidenceInstructionFirewall",
       ],
       artifactRefs: [`concept:${plan.conceptId}`, `brief:${run.id}`],
-      qaVerdictRefs: [`creative-plan-verdict:${run.id}:redraft:${redraftCount}`],
+      qaVerdictRefs: [
+        `creative-plan-verdict:${run.id}:redraft:${redraftCount}`,
+      ],
       creditRefs: creativePlan.metadata.creditsUsed
         ? [`llm-credit:${run.id}:concept_story:redraft:${redraftCount}`]
         : [],
@@ -22173,10 +22825,7 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
         "characterIdentityAssetPack",
         "visualWarningPlan",
       ],
-      artifactRefs: [
-        `storyboard:${plan.conceptId}`,
-        `shot-payloads:${run.id}`,
-      ],
+      artifactRefs: [`storyboard:${plan.conceptId}`, `shot-payloads:${run.id}`],
       qaVerdictRefs: [`prompt-plan-verdict:${run.id}:redraft:${redraftCount}`],
       lineageRefs: [`lineage:${run.id}:product`],
       policyRefs: ["product-reference-locked", "character-identity-limited"],
@@ -22429,9 +23078,8 @@ function resolveSequentialImageSubmitReferencePackage(input: {
     modelCap,
     input.publicUrl
   );
-  const persistedReferenceManifest = sequentialStoryboardReferenceManifestFromMetadata(
-    input.metadata
-  );
+  const persistedReferenceManifest =
+    sequentialStoryboardReferenceManifestFromMetadata(input.metadata);
   return {
     referenceImageUrls: referencePlan.providerReferenceUrls,
     providerReferenceImageManifest: referencePlan.providerManifest,
@@ -22851,8 +23499,7 @@ async function scheduleImageAttempt(params: {
       assertSequentialReferenceIndexMappingAtSubmit({
         unitId: unit.unitId,
         prompt,
-        manifest:
-          sequentialSubmitReferences?.persistedReferenceManifest ?? [],
+        manifest: sequentialSubmitReferences?.persistedReferenceManifest ?? [],
       });
     }
     const promptAudit = buildMarketplaceAutoReviewImagePromptAudit({
@@ -23627,7 +24274,10 @@ async function runStoryboardGridLayoutVisionQa(params: {
   // Feature 136 section 12 (§5.5) — evidence-guard occurrence observability.
   // Never gates `verdict` below (already computed from the same reasonCodes
   // independently); best-effort, never throws.
-  for (const code of ["guardian_presence_missing", "assembly_content_unverified"] as const) {
+  for (const code of [
+    "guardian_presence_missing",
+    "assembly_content_unverified",
+  ] as const) {
     if (qaDecision.reasonCodes.includes(code)) {
       await recordMarketplaceAutoReviewEvidenceGuardOccurrence({
         context: {
@@ -23635,7 +24285,8 @@ async function runStoryboardGridLayoutVisionQa(params: {
           tenantId: params.run.tenantId ?? null,
           userId: params.auth.userId,
           productId: params.run.productId ?? null,
-          frameStrategy: params.run.frameStrategy as MarketplaceAutoReviewAuditContext["frameStrategy"],
+          frameStrategy: params.run
+            .frameStrategy as MarketplaceAutoReviewAuditContext["frameStrategy"],
           stageKey: "image_generation",
         },
         code,
@@ -23782,13 +24433,11 @@ function buildSequentialShotFrameVisionQaContinuityLines(input: {
   ];
 }
 
-export function buildSequentialShotFrameVisionQaContinuityLinesForTest(
-  input: {
-    frameRoles: DirectImageFrameRole[];
-    metadata: RunMetadata;
-    shot: AutoReviewShot;
-  }
-): string[] {
+export function buildSequentialShotFrameVisionQaContinuityLinesForTest(input: {
+  frameRoles: DirectImageFrameRole[];
+  metadata: RunMetadata;
+  shot: AutoReviewShot;
+}): string[] {
   return buildSequentialShotFrameVisionQaContinuityLines(input);
 }
 
@@ -23865,7 +24514,10 @@ async function runShotFrameVisionQa(params: {
       ...normalizeCachedShotFrameVisionQaEnvelopeForPlan(
         cached,
         params.plan,
-        sequentialShotDepictsMinorForVisionQa(params.metadata, params.shot.order)
+        sequentialShotDepictsMinorForVisionQa(
+          params.metadata,
+          params.shot.order
+        )
       ),
       qaCacheKey,
       qaCacheHit: true,
@@ -24023,7 +24675,10 @@ async function runShotFrameVisionQa(params: {
   // Feature 136 section 12 (§5.5) — evidence-guard occurrence observability.
   // Never gates `verdict` below (already computed from the same reasonCodes
   // independently); best-effort, never throws.
-  for (const code of ["guardian_presence_missing", "assembly_content_unverified"] as const) {
+  for (const code of [
+    "guardian_presence_missing",
+    "assembly_content_unverified",
+  ] as const) {
     if (qaDecision.reasonCodes.includes(code)) {
       await recordMarketplaceAutoReviewEvidenceGuardOccurrence({
         context: {
@@ -24031,7 +24686,8 @@ async function runShotFrameVisionQa(params: {
           tenantId: params.run.tenantId ?? null,
           userId: params.auth.userId,
           productId: params.run.productId ?? null,
-          frameStrategy: params.run.frameStrategy as MarketplaceAutoReviewAuditContext["frameStrategy"],
+          frameStrategy: params.run
+            .frameStrategy as MarketplaceAutoReviewAuditContext["frameStrategy"],
           stageKey: "image_generation",
         },
         code,
@@ -24171,13 +24827,11 @@ function marketplaceAutoReviewShotFrameCandidatesForStrategy(input: {
   return { expectedFrameRoles, frameCandidates };
 }
 
-export function marketplaceAutoReviewShotFrameCandidatesForStrategyForTest(
-  input: {
-    frameStrategy: MarketplaceAutoReviewFrameStrategy;
-    metadata: RunMetadata;
-    index: number;
-  }
-): {
+export function marketplaceAutoReviewShotFrameCandidatesForStrategyForTest(input: {
+  frameStrategy: MarketplaceAutoReviewFrameStrategy;
+  metadata: RunMetadata;
+  index: number;
+}): {
   expectedFrameRoles: DirectImageFrameRole[];
   frameCandidates: Array<{ role: DirectImageFrameRole; url: string }>;
 } {
@@ -24577,13 +25231,14 @@ async function ensureImageVisionQa(params: {
   // with BOTH feature flags off; this is the GA baseline (spec §26 Phase 5).
   // Observability only: never alters `accepted`/`repairUnits` above, which
   // are already final by this point.
-  const finalMetadata = await recordMarketplaceAutoReviewModeMetricsAtImageStageDecision({
-    metadata: metadataWithBestOfTwo,
-    run: params.run,
-    auth: params.auth,
-    accepted,
-    qaHasWarnings,
-  });
+  const finalMetadata =
+    await recordMarketplaceAutoReviewModeMetricsAtImageStageDecision({
+      metadata: metadataWithBestOfTwo,
+      run: params.run,
+      auth: params.auth,
+      accepted,
+      qaHasWarnings,
+    });
   await updateRun({
     db: params.db,
     runId: params.run.id,
@@ -24601,7 +25256,10 @@ async function ensureImageVisionQa(params: {
  */
 async function recordMarketplaceAutoReviewModeMetricsAtImageStageDecision(params: {
   metadata: RunMetadata;
-  run: Pick<MarketplaceAutoReviewRun, "id" | "tenantId" | "productId" | "frameStrategy">;
+  run: Pick<
+    MarketplaceAutoReviewRun,
+    "id" | "tenantId" | "productId" | "frameStrategy"
+  >;
   auth: AuthContext;
   accepted: boolean;
   qaHasWarnings: boolean;
@@ -24617,7 +25275,8 @@ async function recordMarketplaceAutoReviewModeMetricsAtImageStageDecision(params
   const metrics = buildMarketplaceAutoReviewModeMetrics({
     runId: params.run.id,
     frameStrategy: params.run.frameStrategy as string,
-    evidenceGuardEnabled: asRecord(params.metadata.evidenceGuard).enabled === true,
+    evidenceGuardEnabled:
+      asRecord(params.metadata.evidenceGuard).enabled === true,
     qualityMode: cleanText(params.metadata.qualityMode) || null,
     imageAttemptReviews,
   });
@@ -24627,7 +25286,8 @@ async function recordMarketplaceAutoReviewModeMetricsAtImageStageDecision(params
     userId: params.auth.userId,
     productId: params.run.productId ?? null,
     frameStrategy:
-      (params.run.frameStrategy as MarketplaceAutoReviewAuditContext["frameStrategy"]) ??
+      (params.run
+        .frameStrategy as MarketplaceAutoReviewAuditContext["frameStrategy"]) ??
       "storyboard_3x3_split",
     stageKey: "image_generation",
   };
@@ -24636,7 +25296,10 @@ async function recordMarketplaceAutoReviewModeMetricsAtImageStageDecision(params
     metrics,
     dedupeKey: `mode_metrics:${stageStatus}`,
   });
-  return applyMarketplaceAutoReviewModeMetricsToMetadata(params.metadata, metrics) as RunMetadata;
+  return applyMarketplaceAutoReviewModeMetricsToMetadata(
+    params.metadata,
+    metrics
+  ) as RunMetadata;
 }
 
 async function reconcileDirectImageAttempt(params: {
@@ -25908,7 +26571,7 @@ async function fetchBufferFromUrl(
   const absoluteUrl = url.startsWith("/")
     ? `${(cleanText(publicUrl) || process.env.NODE_BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, "")}${url}`
     : url;
-  
+
   let lastError: unknown;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -25924,8 +26587,9 @@ async function fetchBufferFromUrl(
       }
     }
   }
-  
-  const errorMessage = lastError instanceof Error ? lastError.message : String(lastError);
+
+  const errorMessage =
+    lastError instanceof Error ? lastError.message : String(lastError);
   throw new Error(
     `Failed to fetch image for split: ${errorMessage} (url: ${absoluteUrl})`
   );
@@ -26654,16 +27318,14 @@ function marketplaceAutoReviewStoryboardFramesReadyForFrameStrategy(input: {
       );
 }
 
-export function marketplaceAutoReviewStoryboardFramesReadyForFrameStrategyForTest(
-  input: {
-    frameStrategy: MarketplaceAutoReviewFrameStrategy;
-    metadata: Pick<
-      RunMetadata,
-      "storyboardFrameUrls" | "startFrameUrls" | "stopFrameUrls"
-    >;
-    expectedFrameCount: number;
-  }
-): boolean {
+export function marketplaceAutoReviewStoryboardFramesReadyForFrameStrategyForTest(input: {
+  frameStrategy: MarketplaceAutoReviewFrameStrategy;
+  metadata: Pick<
+    RunMetadata,
+    "storyboardFrameUrls" | "startFrameUrls" | "stopFrameUrls"
+  >;
+  expectedFrameCount: number;
+}): boolean {
   return marketplaceAutoReviewStoryboardFramesReadyForFrameStrategy(input);
 }
 
@@ -27072,12 +27734,9 @@ export async function resolveMarketplaceAutoReviewVideoUnitPrompt(input: {
       warnings: [],
     };
   } catch (error) {
-    console.warn(
-      "[marketplaceAutoReview] video_motion_prompt_skill_fallback",
-      {
-        error: error instanceof Error ? error.message : String(error),
-      }
-    );
+    console.warn("[marketplaceAutoReview] video_motion_prompt_skill_fallback", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       prompt: deterministicPrompt,
       videoPromptSource: "deterministic_fallback",
@@ -27145,11 +27804,7 @@ const SEQUENTIAL_VIDEO_MODEL_NO_START_FRAME_MESSAGE =
  */
 export function assertMarketplaceAutoReviewSequentialVideoModelSupported(input: {
   outputMode: MarketplaceAutoReviewOutputMode;
-  frameStrategy:
-    | MarketplaceAutoReviewFrameStrategy
-    | string
-    | null
-    | undefined;
+  frameStrategy: MarketplaceAutoReviewFrameStrategy | string | null | undefined;
   videoModel: string | null | undefined;
 }): void {
   if (input.outputMode !== "full_video") return;
@@ -27262,7 +27917,9 @@ function validateMarketplaceAutoReviewSequentialVideoPromptPreflight(input: {
   if (!prompt.includes(SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER)) {
     blockers.push("video_global_block_missing");
   }
-  if (prompt.length > sequentialVideoPromptEffectiveMaxChars(input.videoModel)) {
+  if (
+    prompt.length > sequentialVideoPromptEffectiveMaxChars(input.videoModel)
+  ) {
     blockers.push("prompt_too_long_for_video_provider");
   }
   if (detectSequentialPromptPriceClaims(prompt)) {
@@ -27361,7 +28018,10 @@ function sequentialShotGuardianNeeded(
   const policyFlag =
     asRecord(asRecord(metadata.sequentialStoryboard).childSubjectPolicy)
       .childDepictionPlanned === true;
-  return (shotFlag || policyFlag) && characterIdentityAllowsVisualGeneration(metadata);
+  return (
+    (shotFlag || policyFlag) &&
+    characterIdentityAllowsVisualGeneration(metadata)
+  );
 }
 
 /**
@@ -27415,7 +28075,13 @@ function resolveSequentialVideoReferenceAttachment(params: {
   if (extraBudget === 0) {
     // The single start frame carries 100% of identity; the prompt text
     // compensates via the product identity summary (VD-style precedent).
-    return { modelCap, startFrameUrl, referenceImageUrls: [startFrameUrl], manifest, trimmed };
+    return {
+      modelCap,
+      startFrameUrl,
+      referenceImageUrls: [startFrameUrl],
+      manifest,
+      trimmed,
+    };
   }
 
   let remaining = extraBudget;
@@ -27451,7 +28117,9 @@ function resolveSequentialVideoReferenceAttachment(params: {
   // Step 1 — guardian/presenter portrait, only when this shot needs one.
   if (sequentialShotGuardianNeeded(params.metadata, params.unit.shotOrder)) {
     const characterPack = asRecord(params.metadata.characterIdentityAssetPack);
-    const guardianUrl = cleanText(approvedPackReferenceUrls(characterPack, 1)[0]);
+    const guardianUrl = cleanText(
+      approvedPackReferenceUrls(characterPack, 1)[0]
+    );
     tryAttach(
       guardianUrl
         ? {
@@ -27572,7 +28240,11 @@ function resolveMarketplaceAutoReviewSequentialShotVideoDuration(input: {
         ? [...configSupportedDurations].sort((a, b) => a - b)
         : null;
   if (!supportedDurations) {
-    return { durationSeconds: requested, fitted: false, supportedDurations: null };
+    return {
+      durationSeconds: requested,
+      fitted: false,
+      supportedDurations: null,
+    };
   }
   const picked =
     supportedDurations.find(value => value >= requested) ??
@@ -27742,14 +28414,13 @@ async function scheduleVideoAttempt(params: {
           : "");
 
       // §5.4 — preflight, before any credit reservation or provider call.
-      sequentialPreflight = validateMarketplaceAutoReviewSequentialVideoPromptPreflight(
-        {
+      sequentialPreflight =
+        validateMarketplaceAutoReviewSequentialVideoPromptPreflight({
           prompt,
           unit,
           shotDurationSeconds: effectiveDurationSeconds,
           videoModel,
-        }
-      );
+        });
       if (
         sequentialPreflight.status === "failed" &&
         sequentialPreflight.blockers.includes(
@@ -29273,9 +29944,10 @@ export function buildMarketplaceAutoReviewQualityModePolicyForTest(
   return buildMarketplaceAutoReviewQualityModePolicy(metadata);
 }
 
-export function effectiveQualityModePolicyForTest(
-  metadata: RunMetadata
-): { maxRepairAttemptsPerUnit: number; visionQaModel: string } {
+export function effectiveQualityModePolicyForTest(metadata: RunMetadata): {
+  maxRepairAttemptsPerUnit: number;
+  visionQaModel: string;
+} {
   return effectiveQualityModePolicy(metadata);
 }
 
@@ -31532,6 +32204,134 @@ async function clearResolvedMarketplaceAutoReviewInputChangeBlock(params: {
   });
 }
 
+async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
+  db: Db;
+  run: MarketplaceAutoReviewRun;
+  auth: AuthContext;
+  runtime: RuntimeContext;
+}) {
+  let result: Awaited<ReturnType<typeof advanceStagedMarketplaceAutoReviewRun>>;
+  try {
+    result = await advanceStagedMarketplaceAutoReviewRun({
+      db: params.db,
+      run: params.run,
+      auth: params.auth,
+      runtime: params.runtime,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "staged_provider_failed";
+    const shotId = Number(message.match(/shot:(\d+)/)?.[1] ?? 0) || null;
+    const stageKey = message.includes("audio")
+      ? "audio_generation"
+      : message.includes("video")
+        ? "video_generation"
+        : message.includes("render")
+          ? "render"
+          : "image_generation";
+    const current = await reloadRun(params.db, params.run.id, params.auth);
+    const metadata = asRecord(current.metadataJson);
+    const correction = {
+      state: "correction_required",
+      reasonCode: message.split(":")[0].slice(0, 120),
+      shotId,
+      stageKey,
+      retryable: true,
+      occurredAt: nowIso(),
+    };
+    const failedStagedRefs = stagedTaskRefs(metadata, current.id)
+      .filter(
+        ref =>
+          ref.stageKey === stageKey &&
+          isCancellableDirectMediaRef(ref) &&
+          !ref.refundTransactionId
+      )
+      .map(ref => ({
+        ...ref,
+        status: "failed",
+        errorMessage: message,
+      }));
+    const stagedProviderFailureRefund =
+      await refundDirectMediaRefsForCancellation({
+        auth: params.auth,
+        refs: failedStagedRefs,
+        reason: "provider_failed",
+      });
+    const failureMetadata = applyStagedTaskRefUpdates(
+      metadata,
+      stagedProviderFailureRefund.refs
+    );
+    const nextMetadata = withUpdatedCreditSummary({
+      ...failureMetadata,
+      stagedPipeline: {
+        ...asRecord(failureMetadata.stagedPipeline),
+        correctionRequired: correction,
+        providerFailureReconciliation: {
+          status: "reconciled",
+          stageKey,
+          taskIds: stagedProviderFailureRefund.refs.map(ref => ref.taskId),
+          refundRefs: stagedProviderFailureRefund.refundRefs,
+          refundFailures: stagedProviderFailureRefund.refundFailures,
+          recordedAt: nowIso(),
+        },
+      },
+    });
+    await updateRun({
+      db: params.db,
+      runId: current.id,
+      status: "running",
+      currentStage: stageKey,
+      stageIndex: stageIndex(
+        stageKey,
+        stageKeysForMode(current.outputMode as MarketplaceAutoReviewOutputMode)
+      ),
+      metadataJson: nextMetadata as RunMetadata,
+    });
+    await upsertRunStage({
+      db: params.db,
+      runId: current.id,
+      stageKey,
+      stageOrder: stageIndex(
+        stageKey,
+        stageKeysForMode(current.outputMode as MarketplaceAutoReviewOutputMode)
+      ),
+      status: "blocked_needs_user",
+      output: {
+        statusDetail: {
+          state: "correction_required",
+          severity: "warning",
+          reasonCodes: [correction.reasonCode],
+          safeMessage:
+            "ขั้นตอนนี้ต้องตรวจและสั่งลองใหม่ ระบบยังไม่ไปขั้นถัดไปและไม่คิดเครดิตซ้ำเอง",
+          nextAction: shotId
+            ? `ตรวจช็อตที่ ${shotId} แล้วกดลองใหม่`
+            : "ตรวจรายละเอียดแล้วกดลองใหม่",
+          userActionRequired: true,
+          retryable: true,
+        },
+      },
+    });
+    return getMarketplaceAutoReviewRun(params.run.id, params.auth);
+  }
+  // The staged pipeline owns every approval and media boundary. Final render
+  // is deliberately kept in this service so the existing render/library
+  // evidence path remains the single finalizer for both architectures.
+  if (result.finalAssemblyApproved && params.run.outputMode === "full_video") {
+    const refreshed = await reloadRun(params.db, params.run.id, params.auth);
+    const metadata = asRecord(refreshed.metadataJson) as RunMetadata;
+    const plan = extractPlanFromRun(refreshed);
+    await ensureRender({
+      db: params.db,
+      tenantId: tenantIdForRun(refreshed, params.auth),
+      auth: params.auth,
+      run: refreshed,
+      plan,
+      metadata,
+    });
+  }
+  return getMarketplaceAutoReviewRun(params.run.id, params.auth);
+}
+
 export async function advanceMarketplaceAutoReviewRun(
   runId: string,
   auth: AuthContext,
@@ -31551,33 +32351,61 @@ export async function advanceMarketplaceAutoReviewRun(
   ) {
     return getMarketplaceAutoReviewRun(runId, auth);
   }
-  const [blockedStage] = await db
-    .select()
-    .from(marketplaceAutoReviewStages)
-    .where(
-      and(
-        eq(marketplaceAutoReviewStages.runId, run.id),
-        eq(marketplaceAutoReviewStages.stageKey, run.currentStage),
-        inArray(marketplaceAutoReviewStages.status, [
-          "blocked",
-          "blocked_needs_user",
-        ])
+  const initializationControl = asRecord(
+    asRecord(run.metadataJson).initializationControl
+  );
+  if (
+    run.currentStage === "concept_story" &&
+    cleanText(initializationControl.status) === "queued" &&
+    Number(initializationControl.schemaVersion) === 1
+  ) {
+    await upsertMarketplaceAutoReviewOutboxJob({
+      db,
+      run,
+      auth,
+      jobType: "initialize_run",
+      idempotencyKey: `marketplace-auto-review:${run.id}:initialize:v1`,
+      priority: 20,
+      maxAttempts: 3,
+      preserveExistingStatus: true,
+      payload: {
+        runId: run.id,
+        initializationVersion: 1,
+      },
+    });
+    return getMarketplaceAutoReviewRun(runId, auth);
+  }
+  const stagedArchitectureActive = shouldDispatchStagedMarketplaceAutoReview(
+    cleanText(asRecord(run.metadataJson).planningArchitecture)
+  );
+  if (!stagedArchitectureActive) {
+    const [blockedStage] = await db
+      .select()
+      .from(marketplaceAutoReviewStages)
+      .where(
+        and(
+          eq(marketplaceAutoReviewStages.runId, run.id),
+          eq(marketplaceAutoReviewStages.stageKey, run.currentStage),
+          inArray(marketplaceAutoReviewStages.status, [
+            "blocked",
+            "blocked_needs_user",
+          ])
+        )
       )
-    )
-    .limit(1);
-  if (blockedStage) {
-    const clearedRun = await clearResolvedMarketplaceAutoReviewInputChangeBlock(
-      {
-        db,
-        run,
-        auth,
-        blockedStage,
+      .limit(1);
+    if (blockedStage) {
+      const clearedRun =
+        await clearResolvedMarketplaceAutoReviewInputChangeBlock({
+          db,
+          run,
+          auth,
+          blockedStage,
+        });
+      if (!clearedRun) {
+        return getMarketplaceAutoReviewRun(runId, auth);
       }
-    );
-    if (!clearedRun) {
-      return getMarketplaceAutoReviewRun(runId, auth);
+      run = clearedRun;
     }
-    run = clearedRun;
   }
   const lease = await claimMarketplaceAutoReviewAdvanceLease({
     db,
@@ -31595,6 +32423,18 @@ export async function advanceMarketplaceAutoReviewRun(
       run.outputMode as MarketplaceAutoReviewOutputMode
     );
     let metadata = asRecord(run.metadataJson) as RunMetadata;
+    if (
+      shouldDispatchStagedMarketplaceAutoReview(
+        cleanText(metadata.planningArchitecture)
+      )
+    ) {
+      return advanceMarketplaceAutoReviewStagedArchitecture({
+        db,
+        run,
+        auth,
+        runtime,
+      });
+    }
     if (
       run.currentStage === "concept_story" &&
       (!metadata.concept || typeof metadata.concept !== "object")
@@ -32362,6 +33202,13 @@ export async function cancelMarketplaceAutoReviewRun(
     runId: run.id,
     userToken: runtime.userToken,
   });
+  const stagedCancelIntent = await requestDirectMediaRefsForCancellation({
+    auth,
+    refs: stagedTaskRefs(metadata, run.id),
+    reason: "run_cancelled",
+    runId: run.id,
+    userToken: runtime.userToken,
+  });
   let audioProviderCancellationEvidence: Record<string, unknown> | null = null;
   if (cleanText(metadata.audioMediaTaskId) && !cleanText(metadata.audioUrl)) {
     const evidenceId = [
@@ -32405,12 +33252,17 @@ export async function cancelMarketplaceAutoReviewRun(
   const providerCancellationEvidence = [
     ...imageCancelIntent.providerCancellationEvidence,
     ...videoCancelIntent.providerCancellationEvidence,
+    ...stagedCancelIntent.providerCancellationEvidence,
     ...(audioProviderCancellationEvidence
       ? [audioProviderCancellationEvidence]
       : []),
   ];
+  const stagedIntentMetadata = applyStagedTaskRefUpdates(
+    metadata,
+    stagedCancelIntent.refs
+  );
   const intentMetadata = withUpdatedCreditSummary({
-    ...metadata,
+    ...stagedIntentMetadata,
     directImageTasks: imageCancelIntent.refs,
     directVideoTasks: videoCancelIntent.refs,
     providerCancellationEvidence,
@@ -32440,6 +33292,11 @@ export async function cancelMarketplaceAutoReviewRun(
   const videoCancellation = await refundDirectMediaRefsForCancellation({
     auth,
     refs: videoCancelIntent.refs,
+    reason: "run_cancelled",
+  });
+  const stagedCancellation = await refundDirectMediaRefsForCancellation({
+    auth,
+    refs: stagedCancelIntent.refs,
     reason: "run_cancelled",
   });
   let audioRefundTransactionId = metadata.audioRefundTransactionId;
@@ -32522,6 +33379,17 @@ export async function cancelMarketplaceAutoReviewRun(
         .filter(isCancellableDirectMediaRef)
         .map(ref => ref.taskId),
     },
+    stagedMedia: {
+      refundRefs: stagedCancellation.refundRefs,
+      refundFailures: stagedCancellation.refundFailures,
+      providerCancellationEvidenceRefs:
+        stagedCancelIntent.providerCancellationEvidence
+          .map(item => cleanText(item.evidenceId))
+          .filter(Boolean),
+      cancellationRequestedTaskIds: stagedCancellation.refs
+        .filter(isCancellableDirectMediaRef)
+        .map(ref => ref.taskId),
+    },
     audio: {
       mediaTaskId: cleanText(metadata.audioMediaTaskId) || null,
       providerTaskId: cleanText(metadata.audioProviderTaskId) || null,
@@ -32542,7 +33410,7 @@ export async function cancelMarketplaceAutoReviewRun(
     },
   };
   const reconciledMetadata = withUpdatedCreditSummary({
-    ...intentMetadata,
+    ...applyStagedTaskRefUpdates(intentMetadata, stagedCancellation.refs),
     directImageTasks: imageCancellation.refs,
     directVideoTasks: videoCancellation.refs,
     providerCancellationEvidence,
@@ -32588,6 +33456,7 @@ export async function cancelMarketplaceAutoReviewRun(
         creditRefs: [
           ...imageCancellation.refundRefs,
           ...videoCancellation.refundRefs,
+          ...stagedCancellation.refundRefs,
           audioRefundTransactionId
             ? `credit:${audioRefundTransactionId}`
             : "credit-reconciliation:audio-not-required",
@@ -32655,8 +33524,12 @@ export function getSequentialReferenceImageModelCap(modelId: string): number {
 // (`sequentialStoryboard.childSubjectPolicy`) is written by later Feature 136
 // sections (05 plan surface, 07 guardian presence); absent ⇒ not required.
 function sequentialGuardianRequired(metadata: RunMetadata): boolean {
-  const policy = asRecord(asRecord(metadata.sequentialStoryboard).childSubjectPolicy);
-  return Boolean(policy.productChildRelated) && Boolean(policy.childDepictionPlanned);
+  const policy = asRecord(
+    asRecord(metadata.sequentialStoryboard).childSubjectPolicy
+  );
+  return (
+    Boolean(policy.productChildRelated) && Boolean(policy.childDepictionPlanned)
+  );
 }
 
 type SequentialReferenceProviderManifestEntry = {
@@ -32744,7 +33617,9 @@ function resolveSequentialReferenceAttachmentPlan(
   // then by resolved URL, against everything already accepted (primary
   // included). Evidence-only entries never compete for a slot.
   const anglePack = asRecord(metadata.productAngleReferenceAssetPack);
-  const angleEntries: SequentialAngleAnchorEntry[] = Array.isArray(anglePack.entries)
+  const angleEntries: SequentialAngleAnchorEntry[] = Array.isArray(
+    anglePack.entries
+  )
     ? (anglePack.entries as SequentialAngleAnchorEntry[])
     : [];
 
@@ -32752,7 +33627,10 @@ function resolveSequentialReferenceAttachmentPlan(
   const acceptedUrls = new Set<string>(primaryUrl ? [primaryUrl] : []);
   const resolvedUrlByRef = new Map<string, string>();
   const attachableCandidates: SequentialReferenceAngleCandidate[] = [];
-  const evidenceOnlyResolved: Array<{ entry: SequentialAngleAnchorEntry; url: string }> = [];
+  const evidenceOnlyResolved: Array<{
+    entry: SequentialAngleAnchorEntry;
+    url: string;
+  }> = [];
 
   for (const entry of angleEntries) {
     let resolvedUrl = "";
@@ -32807,8 +33685,12 @@ function resolveSequentialReferenceAttachmentPlan(
     environmentPresent: Boolean(environmentUrl),
   });
 
-  const attachedGuardianUrl = capacity.guardianAttached ? guardianUrl : undefined;
-  const attachedEnvironmentUrl = capacity.environmentAttached ? environmentUrl : undefined;
+  const attachedGuardianUrl = capacity.guardianAttached
+    ? guardianUrl
+    : undefined;
+  const attachedEnvironmentUrl = capacity.environmentAttached
+    ? environmentUrl
+    : undefined;
   const attachedAngles = capacity.attachedAngles;
   const attachedAngleUrls = attachedAngles.map(
     candidate => resolvedUrlByRef.get(candidate.ref) ?? candidate.ref
@@ -32871,14 +33753,18 @@ function resolveSequentialReferenceAttachmentPlan(
     nextPlaceholderIndex += 1;
   }
 
-  const storedManifest: SequentialReferenceStoredManifestEntry[] = providerManifest.map(
-    (entry, i) => ({
+  const storedManifest: SequentialReferenceStoredManifestEntry[] =
+    providerManifest.map((entry, i) => ({
       index: i + 1,
-      role: i === 0 ? "primary_product" : entry.role === "product" ? "product_angle" : entry.role,
+      role:
+        i === 0
+          ? "primary_product"
+          : entry.role === "product"
+            ? "product_angle"
+            : entry.role,
       angleLabel: entry.angleLabel,
       url: entry.url,
-    })
-  );
+    }));
 
   // §5.5 step 8 — evidence-only entries continue the index numbering after
   // the attached block (never enter providerReferenceUrls/providerManifest;
@@ -32934,8 +33820,12 @@ function approvedSequentialProductReferenceUrls(
   modelCap: number,
   publicUrl?: string | null
 ): string[] {
-  return resolveSequentialReferenceAttachmentPlan(metadata, plan, modelCap, publicUrl)
-    .providerReferenceUrls;
+  return resolveSequentialReferenceAttachmentPlan(
+    metadata,
+    plan,
+    modelCap,
+    publicUrl
+  ).providerReferenceUrls;
 }
 
 /**
@@ -32960,7 +33850,10 @@ async function enforceSequentialReferenceIndexMapping<T>(params: {
     const seen = new Set<string>();
     const all: ReferenceIndexMappingMismatch[] = [];
     for (const { prompt } of params.getPrompts(pack)) {
-      for (const mismatch of findReferenceIndexMappingMismatches(prompt, params.manifest)) {
+      for (const mismatch of findReferenceIndexMappingMismatches(
+        prompt,
+        params.manifest
+      )) {
         const key = `${mismatch.imageIndex}:${mismatch.claimedRole}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -32992,7 +33885,9 @@ async function enforceSequentialReferenceIndexMapping<T>(params: {
 
 // ---- `...ForTest` exports (SVC convention) ---------------------------------
 
-export function getSequentialReferenceImageModelCapForTest(modelId: string): number {
+export function getSequentialReferenceImageModelCapForTest(
+  modelId: string
+): number {
   return getSequentialReferenceImageModelCap(modelId);
 }
 
@@ -33028,7 +33923,10 @@ export function enforceSequentialReferenceIndexMappingForTest<T>(params: {
   initial: T;
   getPrompts: (pack: T) => Array<{ shotId: number; prompt: string }>;
   manifest: readonly ReferenceIndexEntry[];
-  retry: (mismatches: ReferenceIndexMappingMismatch[], directive: string) => Promise<T>;
+  retry: (
+    mismatches: ReferenceIndexMappingMismatch[],
+    directive: string
+  ) => Promise<T>;
 }): Promise<T> {
   return enforceSequentialReferenceIndexMapping(params);
 }
@@ -33165,7 +34063,10 @@ function foldSequentialClaimsIntoEvidenceMapping(input: {
   metadata: RunMetadata;
   pack: SequentialStoryboardPack;
   confirmedAttributes: Record<string, string>;
-}): { claimEvidenceMapping: Record<string, unknown>; claimWhitelist: unknown[] } {
+}): {
+  claimEvidenceMapping: Record<string, unknown>;
+  claimWhitelist: unknown[];
+} {
   const existing = asRecord(input.metadata.claimEvidenceMapping);
   const existingBlocked = Array.isArray(existing.blockedClaims)
     ? existing.blockedClaims
@@ -33181,10 +34082,7 @@ function foldSequentialClaimsIntoEvidenceMapping(input: {
     const text = cleanText(claimText);
     if (!text) return;
     if (
-      sequentialClaimMatchesConfirmedAttributes(
-        text,
-        input.confirmedAttributes
-      )
+      sequentialClaimMatchesConfirmedAttributes(text, input.confirmedAttributes)
     ) {
       return; // resolved by the user — no omission entry at all
     }
@@ -33212,10 +34110,7 @@ function foldSequentialClaimsIntoEvidenceMapping(input: {
     if (
       (confidence === "unsupported" || confidence === "conflicting") &&
       text &&
-      sequentialClaimMatchesConfirmedAttributes(
-        text,
-        input.confirmedAttributes
-      )
+      sequentialClaimMatchesConfirmedAttributes(text, input.confirmedAttributes)
     ) {
       return { ...record, confidence: "user_confirmed" };
     }
@@ -33375,7 +34270,8 @@ async function runSequentialPromptPlanStage(input: {
   const forbiddenClaims = Array.isArray(existingUserInputs.forbiddenClaims)
     ? (existingUserInputs.forbiddenClaims as string[])
     : undefined;
-  const targetAudience = cleanText(existingUserInputs.targetAudience) || undefined;
+  const targetAudience =
+    cleanText(existingUserInputs.targetAudience) || undefined;
   const userRequirements =
     cleanText(existingUserInputs.userRequirements) || undefined;
 
@@ -33386,7 +34282,8 @@ async function runSequentialPromptPlanStage(input: {
   // Step 3 — reference resolution. Fail-closed BEFORE any LLM spend: an
   // impossible model cap throws here (`resolveSequentialReferenceAttachmentPlan`),
   // before the loop below is ever constructed.
-  const imageModel = cleanText(input.metadata.imageModel) || DEFAULT_IMAGE_MODEL;
+  const imageModel =
+    cleanText(input.metadata.imageModel) || DEFAULT_IMAGE_MODEL;
   const modelCap = getSequentialReferenceImageModelCap(imageModel);
   const referencePlan = resolveSequentialReferenceAttachmentPlan(
     input.metadata,
@@ -33454,7 +34351,11 @@ async function runSequentialPromptPlanStage(input: {
     workingMetadata = next;
     const db = await getDb();
     if (db) {
-      await updateRun({ db, runId: input.run.id, metadataJson: workingMetadata });
+      await updateRun({
+        db,
+        runId: input.run.id,
+        metadataJson: workingMetadata,
+      });
     }
   };
 
@@ -33471,16 +34372,22 @@ async function runSequentialPromptPlanStage(input: {
   if (referencePlan.trimmedAngles.length > 0) {
     try {
       const reservedRoles: string[] = [];
-      if (referencePlan.storedManifest.some(entry => entry.role === "character")) {
+      if (
+        referencePlan.storedManifest.some(entry => entry.role === "character")
+      ) {
         reservedRoles.push("guardian");
       }
-      if (referencePlan.storedManifest.some(entry => entry.role === "environment")) {
+      if (
+        referencePlan.storedManifest.some(entry => entry.role === "environment")
+      ) {
         reservedRoles.push("environment");
       }
-      const angleTrimDedupeKey = buildSequentialReferenceAnglesTrimmedDedupeKey({
-        modelCap: referencePlan.modelCap,
-        trimmedAngles: referencePlan.trimmedAngles,
-      });
+      const angleTrimDedupeKey = buildSequentialReferenceAnglesTrimmedDedupeKey(
+        {
+          modelCap: referencePlan.modelCap,
+          trimmedAngles: referencePlan.trimmedAngles,
+        }
+      );
       const existingObservability = workingMetadata.observability as
         | MarketplaceAutoReviewObservabilityState
         | undefined;
@@ -33497,13 +34404,14 @@ async function runSequentialPromptPlanStage(input: {
           frameStrategy: "sequential_shot_storyboard",
           stageKey: "prompt_plan",
         };
-        const angleTrimPayload = buildSequentialReferenceAnglesTrimmedEventPayload({
-          context: angleTrimContext,
-          modelCap: referencePlan.modelCap,
-          attachedAngleCount: referencePlan.attachedAngleCount,
-          trimmedAngles: referencePlan.trimmedAngles,
-          reservedRoles,
-        });
+        const angleTrimPayload =
+          buildSequentialReferenceAnglesTrimmedEventPayload({
+            context: angleTrimContext,
+            modelCap: referencePlan.modelCap,
+            attachedAngleCount: referencePlan.attachedAngleCount,
+            trimmedAngles: referencePlan.trimmedAngles,
+            reservedRoles,
+          });
         emitMarketplaceAutoReviewAuditEvent({
           event: "sequential_reference_angles_trimmed",
           context: angleTrimContext,
@@ -33543,9 +34451,9 @@ async function runSequentialPromptPlanStage(input: {
     async loadPersistedLoopState(): Promise<PersistedLoopState | null> {
       const seq = asRecord(workingMetadata.sequentialStoryboard);
       const loopReportRaw = asRecord(seq.loopReport);
-      const roundsCompleted = (["round_1", "round_2", "round_3"] as const).filter(
-        key => Boolean(loopReportRaw[key])
-      ).length;
+      const roundsCompleted = (
+        ["round_1", "round_2", "round_3"] as const
+      ).filter(key => Boolean(loopReportRaw[key])).length;
       if (roundsCompleted === 0) return null;
       return {
         roundsCompleted,
@@ -33605,7 +34513,9 @@ async function runSequentialPromptPlanStage(input: {
     imageBudgetOverride:
       toNumber(input.metadata.sequentialImagePromptMaxChars, 0) || undefined,
     reviewTone: cleanText(referenceAnchorsRecord.reviewTone) || undefined,
-    creativePresetSelections: Array.isArray(referenceAnchorsRecord.creativePresets)
+    creativePresetSelections: Array.isArray(
+      referenceAnchorsRecord.creativePresets
+    )
       ? (referenceAnchorsRecord.creativePresets as AutoReviewCreativePresetSelection[])
       : undefined,
     videoModel: cleanText(input.metadata.videoModel) || undefined,
@@ -33619,7 +34529,8 @@ async function runSequentialPromptPlanStage(input: {
     )
       ? input.metadata.startFramePromptStyle
       : undefined,
-    videoStructureMode: cleanText(input.metadata.videoStructureMode) || undefined,
+    videoStructureMode:
+      cleanText(input.metadata.videoStructureMode) || undefined,
     // NOTE (implementation-gaps.md G11, re-verified after the main merge at
     // e1fdfd30e): `motionDirection` is still NOT a committed field anywhere —
     // not on `MarketplaceAutoReviewReferenceAnchorsInput`, not as a
@@ -33641,7 +34552,9 @@ async function runSequentialPromptPlanStage(input: {
     forbiddenClaims,
     confirmedAttributes,
     blockedClaims:
-      existingBlockedClaimTexts.length > 0 ? existingBlockedClaimTexts : undefined,
+      existingBlockedClaimTexts.length > 0
+        ? existingBlockedClaimTexts
+        : undefined,
     childSubjectPolicy: {
       productChildRelated: prePolicy.productChildRelated,
       childDepictionPlanned: false,
@@ -33655,7 +34568,8 @@ async function runSequentialPromptPlanStage(input: {
         | "silent"
         | undefined) ?? undefined,
     productCategory,
-    guardianPresenceDirective: guardianPresenceDirectiveForContract || undefined,
+    guardianPresenceDirective:
+      guardianPresenceDirectiveForContract || undefined,
     demonstrationEvidenceDirective:
       demonstrationEvidenceDirectiveForContract || undefined,
   };
@@ -33678,7 +34592,10 @@ async function runSequentialPromptPlanStage(input: {
       const degradedRetryHistory = Array.isArray(
         (error as SequentialStoryboardStructuralError).retryHistory
       )
-        ? (error as SequentialStoryboardStructuralError).retryHistory.slice(0, 12)
+        ? (error as SequentialStoryboardStructuralError).retryHistory.slice(
+            0,
+            12
+          )
         : [];
       // 2026-07-24 field follow-up (mar_76cb03fe0f29a20ec6422480f5a6840b):
       // this used to fabricate a 9-shot deterministic pack
@@ -33692,9 +34609,8 @@ async function runSequentialPromptPlanStage(input: {
       // than going terminal, so the user's redraft/cancel buttons keep
       // working exactly as before.
       const draftFailure: SequentialStoryboardDraftFailure = {
-        reasonCode: classifySequentialStoryboardDraftFailureReason(
-          degradedRetryHistory
-        ),
+        reasonCode:
+          classifySequentialStoryboardDraftFailureReason(degradedRetryHistory),
         failedAt: nowIso(),
         roundsAttempted: degradedRetryHistory.length,
       };

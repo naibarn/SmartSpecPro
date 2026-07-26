@@ -42,6 +42,24 @@ describe("MarketplaceAutoReviewLaunchModeSwitch", () => {
 
     fireEvent.click(autoButton);
     expect(onChange).toHaveBeenCalledWith("auto_storyboard_review");
-    expect(screen.getByRole("button", { name: /standard mode/i })).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /standard mode/i })
+    ).not.toBeDisabled();
+  });
+
+  it("uses a full-width Auto mode when Standard is intentionally hidden", () => {
+    const onChange = vi.fn();
+    render(
+      <MarketplaceAutoReviewLaunchModeSwitch
+        value="auto_storyboard_review"
+        onChange={onChange}
+        autoEnabled
+        standardAvailable
+        showStandardOption={false}
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: /standard mode/i })).toBeNull();
+    expect(screen.getByRole("group")).toHaveClass("grid-cols-1");
   });
 });

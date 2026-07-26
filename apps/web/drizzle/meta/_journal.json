@@ -1394,6 +1394,20 @@
       "when": 1784512161809,
       "tag": "0212_kie_gpt_image_2_auto_routing",
       "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1784875288357,
+      "tag": "0213_gpt_image_2_current_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1785060000000,
+      "tag": "0214_email_auth_normalization",
+      "breakpoints": true
     }
   ]
 }

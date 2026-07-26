@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["shot_id", "accepted_image_artifact_hash", "approved_dialogue", "safety_policy"],
+  "properties": {
+    "shot_id": { "type": "integer", "minimum": 1, "maximum": 9 },
+    "accepted_image_artifact_hash": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "approved_dialogue": { "type": "string", "maxLength": 320 },
+    "safety_policy": { "type": "object" }
+  },
+  "additionalProperties": false
+}

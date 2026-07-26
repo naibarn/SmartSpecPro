@@ -9,6 +9,8 @@ import {
 } from "../../drizzle/schema";
 import {
   advanceMarketplaceAutoReviewRun,
+  failMarketplaceAutoReviewInitialization,
+  initializeMarketplaceAutoReviewRun,
   type MarketplaceAutoReviewStatus,
 } from "../services/marketplaceAutoReviewService";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
@@ -38,6 +40,7 @@ const HYPERFRAMES_OUTBOX_JOB_TYPES = [
   "hyperframes_finalize",
 ] as const;
 export const MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES = [
+  "initialize_run",
   "advance_run",
   "provider_reconciliation_recovery",
 ] as const;
@@ -75,9 +78,9 @@ function shouldUseInProcessInterval(): boolean {
 export function isMarketplaceAutoReviewAdvanceOutboxJobType(
   jobType: string
 ): boolean {
-  return (MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES as readonly string[]).includes(
-    jobType
-  );
+  return (
+    MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES as readonly string[]
+  ).includes(jobType);
 }
 
 function createMarketplaceAutoReviewToken(input: {
@@ -154,9 +157,15 @@ export async function runMarketplaceAutoReviewJob(
       .from(marketplaceAutoReviewOutboxJobs)
       .where(
         and(
-          inArray(marketplaceAutoReviewOutboxJobs.status, [
-            ...READY_OUTBOX_STATUSES,
-          ]),
+          or(
+            inArray(marketplaceAutoReviewOutboxJobs.status, [
+              ...READY_OUTBOX_STATUSES,
+            ]),
+            and(
+              eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+              sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+            )
+          ),
           inArray(marketplaceAutoReviewOutboxJobs.jobType, [
             ...MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES,
           ]),
@@ -223,35 +232,89 @@ export async function runMarketplaceAutoReviewJob(
         });
         continue;
       }
+      const workerLockId = `marketplace-auto-review-job:${process.pid}`;
+      let heartbeatTimer: NodeJS.Timeout | null = null;
       try {
-        await db
+        const [claimedJob] = await db
           .update(marketplaceAutoReviewOutboxJobs)
           .set({
             status: "running",
-            lockedBy: `marketplace-auto-review-job:${process.pid}`,
+            lockedBy: workerLockId,
             lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
             attempts: Number(job.attempts ?? 0) + 1,
             updatedAt: now,
           })
-          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+          .where(
+            and(
+              eq(marketplaceAutoReviewOutboxJobs.id, job.id),
+              or(
+                inArray(marketplaceAutoReviewOutboxJobs.status, [
+                  ...READY_OUTBOX_STATUSES,
+                ]),
+                and(
+                  eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+                  sql`${marketplaceAutoReviewOutboxJobs.lockedUntil} <= ${nowIso}`
+                )
+              )
+            )
+          )
+          .returning();
+        if (!claimedJob) {
+          skippedRuns += 1;
+          continue;
+        }
+        heartbeatTimer = setInterval(() => {
+          void db
+            .update(marketplaceAutoReviewOutboxJobs)
+            .set({
+              lockedUntil: new Date(Date.now() + 5 * 60 * 1000),
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(marketplaceAutoReviewOutboxJobs.id, job.id),
+                eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+                eq(marketplaceAutoReviewOutboxJobs.lockedBy, workerLockId)
+              )
+            )
+            .catch((error: unknown) => {
+              console.warn(
+                "[marketplace-auto-review] outbox heartbeat failed",
+                error instanceof Error ? error.message : String(error)
+              );
+            });
+        }, 60_000);
+        heartbeatTimer.unref();
         const token = createMarketplaceAutoReviewToken({
           userId: run.userId,
           tenantId,
           runId: run.id,
         });
-        await advanceMarketplaceAutoReviewRun(
-          run.id,
-          {
-            userId: run.userId,
-            tenantId,
-          },
-          {
-            userToken: token,
-            publicUrl: runtimeConfig.publicUrl,
-            automationWorkerId: `marketplace-auto-review-outbox:${process.pid}`,
-            schedulerSource: `outbox:${job.jobType}`,
-          }
-        );
+        const jobRuntime = {
+          userToken: token,
+          publicUrl: runtimeConfig.publicUrl,
+          automationWorkerId: `marketplace-auto-review-outbox:${process.pid}`,
+          schedulerSource: `outbox:${job.jobType}`,
+        };
+        if (job.jobType === "initialize_run") {
+          await initializeMarketplaceAutoReviewRun(
+            run.id,
+            {
+              userId: run.userId,
+              tenantId,
+            },
+            jobRuntime
+          );
+        } else {
+          await advanceMarketplaceAutoReviewRun(
+            run.id,
+            {
+              userId: run.userId,
+              tenantId,
+            },
+            jobRuntime
+          );
+        }
         await db
           .update(marketplaceAutoReviewOutboxJobs)
           .set({
@@ -261,13 +324,19 @@ export async function runMarketplaceAutoReviewJob(
             lockedUntil: null,
             updatedAt: new Date(),
           })
-          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+          .where(
+            and(
+              eq(marketplaceAutoReviewOutboxJobs.id, job.id),
+              eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+              eq(marketplaceAutoReviewOutboxJobs.lockedBy, workerLockId)
+            )
+          );
         processedOutboxJobs += 1;
       } catch (error) {
         const attempts = Number(job.attempts ?? 0) + 1;
         const exhausted = attempts >= Number(job.maxAttempts ?? 3);
         const message = error instanceof Error ? error.message : String(error);
-        await db
+        const [updatedJob] = await db
           .update(marketplaceAutoReviewOutboxJobs)
           .set({
             status: exhausted ? "failed" : "retry",
@@ -279,8 +348,34 @@ export async function runMarketplaceAutoReviewJob(
               : new Date(Date.now() + Math.min(30 * 60_000, attempts * 60_000)),
             updatedAt: new Date(),
           })
-          .where(eq(marketplaceAutoReviewOutboxJobs.id, job.id));
+          .where(
+            and(
+              eq(marketplaceAutoReviewOutboxJobs.id, job.id),
+              eq(marketplaceAutoReviewOutboxJobs.status, "running"),
+              eq(marketplaceAutoReviewOutboxJobs.lockedBy, workerLockId)
+            )
+          )
+          .returning({ id: marketplaceAutoReviewOutboxJobs.id });
+        if (
+          updatedJob &&
+          exhausted &&
+          job.jobType === "initialize_run"
+        ) {
+          try {
+            await failMarketplaceAutoReviewInitialization(run.id, {
+              userId: run.userId,
+              tenantId,
+            });
+          } catch (markError) {
+            console.error(
+              "[marketplace-auto-review] failed to persist exhausted initialization",
+              markError instanceof Error ? markError.message : String(markError)
+            );
+          }
+        }
         errors.push({ runId: run.id, message });
+      } finally {
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
       }
     }
 

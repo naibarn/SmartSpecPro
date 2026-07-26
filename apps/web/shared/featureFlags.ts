@@ -59,6 +59,8 @@ export interface TenantFeatureFlags {
   hermesMediaWorker: boolean; // F135 — Hermes Grok media worker; unrelated to hermesAgentRuntime
   marketplaceSequentialStoryboard: boolean; // F136 — sequential 9-image storyboard strategy for Marketplace Auto Review
   marketplaceReviewEvidenceGuard: boolean; // F136 — shared evidence guards (assembly/guardian/claims) for BOTH review modes
+  marketplaceStagedSequentialStoryboardV2: boolean; // F141 — staged two-skill storyboard pipeline with mandatory human checkpoints
+  marketplaceStagedSequentialStoryboardLiveSmoke: boolean; // F141 — capped live-smoke route for staged storyboard verification
   desktopHostEnabled: boolean; // F51 — Unified Desktop Host control plane
   desktopAdvancedLocalMode: boolean; // F52 — Step-up desktop local power
   desktopPackageSync: boolean; // F53 — Signed desktop package sync and materialization
@@ -271,6 +273,8 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "hermesMediaWorker",
   "marketplaceSequentialStoryboard",
   "marketplaceReviewEvidenceGuard",
+  "marketplaceStagedSequentialStoryboardV2",
+  "marketplaceStagedSequentialStoryboardLiveSmoke",
   "desktopHostEnabled",
   "desktopAdvancedLocalMode",
   "desktopPackageSync",
@@ -482,6 +486,8 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   hermesMediaWorker: false, // F135 — Hermes Grok media worker stays disabled until rollout is ready (unrelated to hermesAgentRuntime)
   marketplaceSequentialStoryboard: false, // F136 — sequential 9-image storyboard strategy stays dark until section rollout completes
   marketplaceReviewEvidenceGuard: false, // F136 — shared evidence guards (assembly/guardian/claims) stay dark until section rollout completes
+  marketplaceStagedSequentialStoryboardV2: false, // F141 — staged checkpoint pipeline stays dark until no-spend/live-smoke proof completes
+  marketplaceStagedSequentialStoryboardLiveSmoke: false, // F141 — live smoke requires explicit operator enablement
   desktopHostEnabled: false, // Desktop Host control plane rollout is explicit and fail-closed
   desktopAdvancedLocalMode: false, // High-power local mode requires explicit tenant opt-in
   desktopPackageSync: false, // Signed package sync stays disabled until registry/policy is ready

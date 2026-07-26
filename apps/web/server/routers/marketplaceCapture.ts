@@ -47,6 +47,19 @@ import {
   updateMarketplaceAutoReviewPlanShotDialogue,
 } from "../services/marketplaceAutoReviewService";
 import {
+  acceptStagedAutoReviewImage,
+  approveStagedAutoReviewCheckpoint,
+  editStagedAutoReviewAudioPlan,
+  editStagedAutoReviewFinalAssembly,
+  editStagedAutoReviewShot,
+  getStagedAutoReviewCheckpointState,
+  rejectStagedAutoReviewCheckpoint,
+  redraftStagedAutoReviewPlan,
+  retryStagedAutoReviewShot,
+  retryStagedAutoReviewAudioPlan,
+  retryStagedAutoReviewFinalAssembly,
+} from "../services/marketplaceAutoReviewStagedCheckpointRouterService";
+import {
   applyMarketplaceClaimResolution,
   analyzeMarketplaceProductInsights,
   buildBasicStorytellingHandoffFromCapture,
@@ -129,15 +142,18 @@ import {
 } from "../services/hyperframesOperatorService";
 import { readHyperframesFeatureFlagsForTenant } from "../services/hyperframesFeatureAccessService";
 
-const mcpTransportMetadataSchema = z.object({
-  transport: z.enum(["gateway_api", "mcp"]),
-  connectionId: z.string().max(64).optional(),
-  mcpConnectionId: z.string().max(64).optional(),
-  sharedGroupId: z.number().int().optional(),
-  approvalId: z.string().max(128).optional(),
-  mcpApprovalId: z.string().max(128).optional(),
-  idempotencyKey: z.string().max(128).optional(),
-}).optional().nullable();
+const mcpTransportMetadataSchema = z
+  .object({
+    transport: z.enum(["gateway_api", "mcp"]),
+    connectionId: z.string().max(64).optional(),
+    mcpConnectionId: z.string().max(64).optional(),
+    sharedGroupId: z.number().int().optional(),
+    approvalId: z.string().max(128).optional(),
+    mcpApprovalId: z.string().max(128).optional(),
+    idempotencyKey: z.string().max(128).optional(),
+  })
+  .optional()
+  .nullable();
 
 function authFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
@@ -148,61 +164,105 @@ function authFromCtx(ctx: any) {
 }
 
 const VISUAL_SEARCH_MAX_BYTES = 5 * 1024 * 1024;
-const visualSearchMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
+const visualSearchMimeTypes = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
 
 function hasImageMagicBytes(buffer: Buffer, mimeType: string): boolean {
   if (mimeType === "image/png") {
-    return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+    return (
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47
+    );
   }
   if (mimeType === "image/jpeg") {
     return buffer[0] === 0xff && buffer[1] === 0xd8;
   }
   if (mimeType === "image/webp") {
-    return buffer.slice(0, 4).toString("ascii") === "RIFF" && buffer.slice(8, 12).toString("ascii") === "WEBP";
+    return (
+      buffer.slice(0, 4).toString("ascii") === "RIFF" &&
+      buffer.slice(8, 12).toString("ascii") === "WEBP"
+    );
   }
   return false;
 }
 
-function decodeVisualSearchImage(input: { imageBase64: string; mimeType: string }): Buffer {
+function decodeVisualSearchImage(input: {
+  imageBase64: string;
+  mimeType: string;
+}): Buffer {
   const mimeType = input.mimeType.trim().toLowerCase();
   if (!visualSearchMimeTypes.has(mimeType)) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "รองรับเฉพาะรูป PNG, JPEG หรือ WebP" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "รองรับเฉพาะรูป PNG, JPEG หรือ WebP",
+    });
   }
-  const cleaned = input.imageBase64.replace(/^data:image\/(?:png|jpeg|jpg|webp);base64,/i, "").replace(/\s+/g, "");
+  const cleaned = input.imageBase64
+    .replace(/^data:image\/(?:png|jpeg|jpg|webp);base64,/i, "")
+    .replace(/\s+/g, "");
   if (!cleaned) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "ไม่พบข้อมูลรูปภาพ" });
   }
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(cleaned) || cleaned.length % 4 !== 0) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "ข้อมูลรูปภาพไม่ใช่ base64 ที่ถูกต้อง" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "ข้อมูลรูปภาพไม่ใช่ base64 ที่ถูกต้อง",
+    });
   }
   const buffer = Buffer.from(cleaned, "base64");
   if (!buffer.length) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "ไม่สามารถอ่านรูปภาพได้" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "ไม่สามารถอ่านรูปภาพได้",
+    });
   }
   if (buffer.length > VISUAL_SEARCH_MAX_BYTES) {
-    throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "รูปภาพต้องมีขนาดไม่เกิน 5MB" });
+    throw new TRPCError({
+      code: "PAYLOAD_TOO_LARGE",
+      message: "รูปภาพต้องมีขนาดไม่เกิน 5MB",
+    });
   }
   if (!hasImageMagicBytes(buffer, mimeType)) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "ชนิดไฟล์รูปภาพไม่ตรงกับข้อมูลจริง" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "ชนิดไฟล์รูปภาพไม่ตรงกับข้อมูลจริง",
+    });
   }
   return buffer;
 }
 
-export function decodeVisualSearchImageForTest(input: { imageBase64: string; mimeType: string }): Buffer {
+export function decodeVisualSearchImageForTest(input: {
+  imageBase64: string;
+  mimeType: string;
+}): Buffer {
   return decodeVisualSearchImage(input);
 }
 
 const editableProductDetailsSchema = z.object({
   productName: z.string().trim().min(1).max(500),
   descriptionText: z.string().max(80_000).optional().nullable(),
-  priceCurrent: z.union([z.string().max(64), z.number()]).optional().nullable(),
-  commissionRatePercent: z.union([z.string().max(64), z.number()]).optional().nullable(),
+  priceCurrent: z
+    .union([z.string().max(64), z.number()])
+    .optional()
+    .nullable(),
+  commissionRatePercent: z
+    .union([z.string().max(64), z.number()])
+    .optional()
+    .nullable(),
   productPageUrl: z.string().trim().max(4096).optional().nullable(),
   soldCountText: z.string().trim().max(128).optional().nullable(),
   capturedCategoryText: z.string().trim().max(300).optional().nullable(),
   shopName: z.string().trim().max(300).optional().nullable(),
   productCategory: productReferenceCategorySchema.optional().nullable(),
-  ratingScore: z.union([z.string().max(64), z.number()]).optional().nullable(),
+  ratingScore: z
+    .union([z.string().max(64), z.number()])
+    .optional()
+    .nullable(),
   reviewCountText: z.string().trim().max(128).optional().nullable(),
   affiliateUrl: z.string().trim().max(4096).optional().nullable(),
 });
@@ -213,7 +273,10 @@ const manualProductSchema = editableProductDetailsSchema.extend({
 });
 
 const visualProductSearchSchema = z.object({
-  imageBase64: z.string().min(1).max(Math.ceil(VISUAL_SEARCH_MAX_BYTES * 1.4)),
+  imageBase64: z
+    .string()
+    .min(1)
+    .max(Math.ceil(VISUAL_SEARCH_MAX_BYTES * 1.4)),
   mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
   limit: z.number().int().min(1).max(50).optional().default(24),
   ownerOnly: z.boolean().optional().default(false),
@@ -242,8 +305,7 @@ const hyperframesOperatorProcedure = protectedProcedure.use(
     const adminLike = role === "admin" || role === "system_agent";
     const flags = await readHyperframesFeatureFlagsForTenant(authFromCtx(ctx));
     const delegated =
-      flags.operatorEnabled &&
-      hyperframesDelegatedOperatorRoles.has(role);
+      flags.operatorEnabled && hyperframesDelegatedOperatorRoles.has(role);
 
     if (!adminLike && !delegated) {
       throw new TRPCError({
@@ -522,7 +584,10 @@ export const marketplaceCaptureRouter = router({
             .default("all"),
           query: z.string().trim().max(160).optional(),
           category: z.string().trim().max(160).optional(),
-          sortMode: z.enum(["recommended", "sold", "rating", "updated"]).optional().default("updated"),
+          sortMode: z
+            .enum(["recommended", "sold", "rating", "updated"])
+            .optional()
+            .default("updated"),
         })
         .optional()
         .default({})
@@ -613,9 +678,18 @@ export const marketplaceCaptureRouter = router({
     ),
 
   updateProductDetails: protectedProcedure
-    .input(z.object({ productId: z.string().min(1).max(64), data: editableProductDetailsSchema }))
+    .input(
+      z.object({
+        productId: z.string().min(1).max(64),
+        data: editableProductDetailsSchema,
+      })
+    )
     .mutation(async ({ input, ctx }) =>
-      updateMarketplaceProductDetails(input.productId, input.data, authFromCtx(ctx))
+      updateMarketplaceProductDetails(
+        input.productId,
+        input.data,
+        authFromCtx(ctx)
+      )
     ),
 
   enhanceProductDescription: protectedProcedure
@@ -675,6 +749,7 @@ export const marketplaceCaptureRouter = router({
     .input(
       z.object({
         productId: z.string().min(1).max(64),
+        workflowMode: z.enum(["standard", "job_workbench"]).optional(),
         creationIntent: z
           .enum(["storyboard", "video", "auto_review_video"])
           .optional()
@@ -714,7 +789,12 @@ export const marketplaceCaptureRouter = router({
           .enum(["no_text", "allow_text"])
           .optional()
           .default("no_text"),
-        imageModel: z.string().min(1).max(120).optional().default("google-banana-2"),
+        imageModel: z
+          .string()
+          .min(1)
+          .max(120)
+          .optional()
+          .default("google-banana-2"),
         qualityMode: z
           .enum(["fast_draft", "balanced", "premium_strict_qa"])
           .optional()
@@ -894,6 +974,7 @@ export const marketplaceCaptureRouter = router({
         productId: input.productId,
         includeTemplates: input.includeTemplates,
         overrides: input.overrides,
+        workflowMode: input.workflowMode,
         auth: authFromCtx(ctx),
       })
     ),
@@ -920,6 +1001,7 @@ export const marketplaceCaptureRouter = router({
         expectedPlanHash: input.expectedPlanHash,
         idempotencyKey: input.idempotencyKey,
         overrides: input.overrides,
+        workflowMode: input.workflowMode,
         transportMetadata: input.transportMetadata,
         referenceAnchors: input.referenceAnchors,
         auth: authFromCtx(ctx),
@@ -1380,6 +1462,183 @@ export const marketplaceCaptureRouter = router({
     .output(z.any())
     .mutation(async ({ input, ctx }) =>
       updateMarketplaceAutoReviewPlanShotDialogue(input, authFromCtx(ctx))
+    ),
+
+  getStagedAutoReviewCheckpointState: protectedProcedure
+    .input(z.object({ runId: z.string().min(1).max(64) }))
+    .output(z.any())
+    .query(async ({ input, ctx }) =>
+      getStagedAutoReviewCheckpointState(input.runId, authFromCtx(ctx))
+    ),
+
+  approveStagedAutoReviewCheckpoint: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        checkpointId: z.string().min(1).max(128),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+        expected: z.object({
+          revision: z.number().int().positive(),
+          contentHash: z.string().min(1).max(256),
+          model: z.string().min(1).max(160),
+          provider: z.string().min(1).max(160),
+          safetyVerdict: z.string().min(1).max(160),
+          referenceManifestHash: z.string().min(1).max(256),
+          estimatedCredits: z.number().finite().nonnegative(),
+        }),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      approveStagedAutoReviewCheckpoint({
+        ...input,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  rejectStagedAutoReviewCheckpoint: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        checkpointId: z.string().min(1).max(128),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+        reasonCode: z.string().min(1).max(160),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      rejectStagedAutoReviewCheckpoint({
+        ...input,
+        auth: authFromCtx(ctx),
+      })
+    ),
+
+  editStagedAutoReviewShot: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(9).optional(),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+        storySummary: z.string().trim().max(600).optional(),
+        dialogue: z.string().trim().max(320).optional(),
+        imagePrompt: z.string().trim().max(4000).optional(),
+        videoPrompt: z.string().trim().max(2000).optional(),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      editStagedAutoReviewShot({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  acceptStagedAutoReviewImage: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        checkpointId: z.string().min(1).max(128),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+        expected: z.object({
+          revision: z.number().int().positive(),
+          contentHash: z.string().min(1).max(256),
+          model: z.string().min(1).max(160),
+          provider: z.string().min(1).max(160),
+          safetyVerdict: z.string().min(1).max(160),
+          referenceManifestHash: z.string().min(1).max(256),
+          estimatedCredits: z.number().finite().nonnegative(),
+        }),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      acceptStagedAutoReviewImage({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  retryStagedAutoReviewShot: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(9),
+        stage: z.enum(["image", "video"]),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      retryStagedAutoReviewShot({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  editStagedAutoReviewAudioPlan: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+        text: z.string().trim().min(1).max(4000),
+        language: z.string().trim().min(1).max(12).optional(),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      editStagedAutoReviewAudioPlan({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  redraftStagedAutoReviewPlan: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+        notes: z.string().trim().max(1200).optional(),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      redraftStagedAutoReviewPlan({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  editStagedAutoReviewFinalAssembly: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+        shotOrder: z.array(z.number().int().min(1).max(9)).length(9),
+        includeAudio: z.boolean(),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      editStagedAutoReviewFinalAssembly({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  retryStagedAutoReviewAudioPlan: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      retryStagedAutoReviewAudioPlan({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  retryStagedAutoReviewFinalAssembly: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      retryStagedAutoReviewFinalAssembly({ ...input, auth: authFromCtx(ctx) })
     ),
 
   deleteProduct: protectedProcedure

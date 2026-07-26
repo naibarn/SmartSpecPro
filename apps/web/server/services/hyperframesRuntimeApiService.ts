@@ -37,8 +37,8 @@ import {
 import {
   assertMarketplaceSequentialStoryboardAllowed,
   assertMarketplaceAutoReviewSequentialVideoModelSupported,
+  enqueueMarketplaceAutoReviewRun,
   getMarketplaceAutoReviewRun,
-  startMarketplaceAutoReviewRun,
   queueMarketplaceAutoReviewAdvance,
   type MarketplaceAutoReviewReferenceAnchorsInput,
 } from "./marketplaceAutoReviewService";
@@ -95,6 +95,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+export function assertStagedFinalAssemblyApproved(
+  runRecord: Record<string, unknown>
+) {
+  const metadata = isRecord(runRecord.metadataJson)
+    ? runRecord.metadataJson
+    : runRecord;
+  if (
+    cleanText(
+      runRecord.planningArchitecture ?? metadata.planningArchitecture
+    ) !== "staged_two_skill_v2"
+  ) {
+    return;
+  }
+  const stagedStoryboard = isRecord(metadata.stagedSequentialStoryboard)
+    ? metadata.stagedSequentialStoryboard
+    : {};
+  const checkpoints = Array.isArray(stagedStoryboard.reviewCheckpoints)
+    ? stagedStoryboard.reviewCheckpoints
+    : [];
+  const finalAssemblyCheckpoint = [...checkpoints]
+    .reverse()
+    .find(checkpoint => {
+      if (!isRecord(checkpoint)) return false;
+      return (
+        cleanText(checkpoint.kind) === "final_assembly" &&
+        cleanText(checkpoint.state) !== "superseded"
+      );
+    });
+  const state = isRecord(finalAssemblyCheckpoint)
+    ? cleanText(finalAssemblyCheckpoint.state)
+    : "";
+  if (state !== "approved" && state !== "consumed") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_final_assembly_approval_required",
+    });
+  }
 }
 
 export function isManualStoryboardHyperframesIdentity(input: {
@@ -641,7 +680,10 @@ export function validateHyperframesFinalCompositeAudioAssets(
   }
 }
 
-function hyperframesAspectRatioForOutput(width: number, height: number): "9:16" | "16:9" | "1:1" | "4:5" {
+function hyperframesAspectRatioForOutput(
+  width: number,
+  height: number
+): "9:16" | "16:9" | "1:1" | "4:5" {
   if (Math.abs(width - height) <= 2) return "1:1";
   const ratio = width / height;
   if (Math.abs(ratio - 16 / 9) < 0.05) return "16:9";
@@ -649,10 +691,13 @@ function hyperframesAspectRatioForOutput(width: number, height: number): "9:16" 
   return "9:16";
 }
 
-async function resolveWorkerDownloadUrl(storageRef: string | null | undefined): Promise<string | null> {
+async function resolveWorkerDownloadUrl(
+  storageRef: string | null | undefined
+): Promise<string | null> {
   const normalized = cleanText(storageRef);
   if (!normalized) return null;
-  if (/^https?:\/\//i.test(normalized) || normalized.startsWith("/")) return normalized;
+  if (/^https?:\/\//i.test(normalized) || normalized.startsWith("/"))
+    return normalized;
   return await generateSignedUrl(normalized, 86_400);
 }
 
@@ -660,9 +705,13 @@ async function buildHyperframesFinalCompositeWorkerInput(input: {
   apiInput: CreateHyperframesFinalCompositeInput;
   payload: ReturnType<typeof buildHyperframesRenderJobPayload>;
 }) {
-  const config = HyperframesFinalCompositeConfigSchema.parse(input.apiInput.config);
+  const config = HyperframesFinalCompositeConfigSchema.parse(
+    input.apiInput.config
+  );
   const timeline = normalizeHyperframesFinalCompositeTimeline(config);
-  const timelineByShotId = new Map(timeline.entries.map(entry => [entry.shotId, entry]));
+  const timelineByShotId = new Map(
+    timeline.entries.map(entry => [entry.shotId, entry])
+  );
   const finalCompositeConfig =
     input.payload.finalCompositeConfig &&
     typeof input.payload.finalCompositeConfig === "object" &&
@@ -676,26 +725,30 @@ async function buildHyperframesFinalCompositeWorkerInput(input: {
     finalCompositeConfig,
   });
 
-  const sourceVideos = await Promise.all(timeline.entries.map(async entry => ({
-    shotId: entry.shotId,
-    storageRef: entry.sourceMediaRef,
-    downloadUrl: await resolveWorkerDownloadUrl(entry.sourceMediaRef),
-    mediaStartSec: entry.mediaStartSec,
-    durationSec: entry.durationSec,
-    contentType: "video/mp4",
-    checksumSha256: entry.sourceMediaHash,
-  })));
-  const audioRefs = await Promise.all(config.audioEvents.map(async event => ({
-    role:
-      event.role === "voiceover"
-        ? ("voiceover" as const)
-        : event.role === "music"
-          ? ("music_bed" as const)
-          : ("sfx" as const),
-    storageRef: event.assetRef,
-    downloadUrl: await resolveWorkerDownloadUrl(event.assetRef),
-    checksumSha256: null,
-  })));
+  const sourceVideos = await Promise.all(
+    timeline.entries.map(async entry => ({
+      shotId: entry.shotId,
+      storageRef: entry.sourceMediaRef,
+      downloadUrl: await resolveWorkerDownloadUrl(entry.sourceMediaRef),
+      mediaStartSec: entry.mediaStartSec,
+      durationSec: entry.durationSec,
+      contentType: "video/mp4",
+      checksumSha256: entry.sourceMediaHash,
+    }))
+  );
+  const audioRefs = await Promise.all(
+    config.audioEvents.map(async event => ({
+      role:
+        event.role === "voiceover"
+          ? ("voiceover" as const)
+          : event.role === "music"
+            ? ("music_bed" as const)
+            : ("sfx" as const),
+      storageRef: event.assetRef,
+      downloadUrl: await resolveWorkerDownloadUrl(event.assetRef),
+      checksumSha256: null,
+    }))
+  );
 
   return {
     renderIntent: "hyperframes_final_composite" as const,
@@ -1118,6 +1171,7 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
   auth: HyperframesAuthContext;
   includeTemplates?: boolean;
   overrides?: Record<string, unknown>;
+  workflowMode?: "standard" | "job_workbench";
 }) {
   // Feature 136 (section 05 §5.7) — the `WithEvidence` variant shares 100%
   // of the plain plan getter's internals; the two optional fields below are
@@ -1129,6 +1183,7 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
       productId: input.productId,
       auth: input.auth,
       overrides: input.overrides,
+      workflowMode: input.workflowMode,
     });
   return {
     contractVersion:
@@ -1326,6 +1381,7 @@ export async function startAutoStoryboardReviewForApi(input: {
   expectedPlanHash?: string;
   idempotencyKey?: string;
   overrides?: Record<string, unknown>;
+  workflowMode?: "standard" | "job_workbench";
   transportMetadata?: Record<string, unknown> | null;
   referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
   runtime?: Record<string, unknown>;
@@ -1334,6 +1390,7 @@ export async function startAutoStoryboardReviewForApi(input: {
     productId: input.productId,
     auth: input.auth,
     overrides: input.overrides,
+    workflowMode: input.workflowMode,
   });
   if (input.expectedPlanHash && input.expectedPlanHash !== plan.planHash) {
     const resumeResponse =
@@ -1399,7 +1456,9 @@ export async function startAutoStoryboardReviewForApi(input: {
     );
     assertMarketplaceSequentialStoryboardAllowed({
       frameStrategy: plan.defaults.frameStrategy,
-      marketplaceSequentialStoryboard: gateFlags.marketplaceSequentialStoryboard,
+      marketplaceSequentialStoryboard:
+        gateFlags.marketplaceSequentialStoryboard ||
+        input.workflowMode === "job_workbench",
     });
   }
   // Feature 136 section 09 (§5.1) — start-frame capability gate, second
@@ -1410,7 +1469,7 @@ export async function startAutoStoryboardReviewForApi(input: {
     frameStrategy: plan.defaults.frameStrategy,
     videoModel: plan.defaults.videoModel,
   });
-  const run = await startMarketplaceAutoReviewRun(
+  const run = await enqueueMarketplaceAutoReviewRun(
     {
       productId: input.productId,
       idempotencyKey: input.idempotencyKey,
@@ -1443,11 +1502,13 @@ export async function startAutoStoryboardReviewForApi(input: {
       forbiddenClaims: plan.defaults.forbiddenClaims,
       targetAudience: plan.defaults.targetAudience,
       userRequirements: plan.defaults.userRequirements,
-      sequentialImagePromptMaxChars: plan.defaults.sequentialImagePromptMaxChars,
+      sequentialImagePromptMaxChars:
+        plan.defaults.sequentialImagePromptMaxChars,
       // Feature 136 section 13 (§4 deliverable 2) — forward the resolved
       // cinematic-prompt style, same additive pattern as the five fields
       // above (the `expectedPlanHash` guard already covers this field too).
       startFramePromptStyle: plan.defaults.startFramePromptStyle,
+      workflowMode: input.workflowMode,
     },
     input.auth,
     input.runtime ?? {}
@@ -1654,6 +1715,7 @@ export async function createHyperframesFinalCompositeForApi(
     runId: input.runId,
     auth: input.auth,
   });
+  assertStagedFinalAssemblyApproved(runRecord as Record<string, unknown>);
   const productBundle = await getHyperframesFinalCompositeProductState({
     productId: input.productId,
     runId: input.runId,
@@ -1807,7 +1869,9 @@ export async function createHyperframesFinalCompositeForApi(
         safeMessage:
           "ระบบปิดการส่งงานเข้า Smart AI Hub Worker App ชั่วคราว จึงยังไม่สามารถส่ง Final Composite เข้าคิวได้",
         safeDiagnostics: [
-          error instanceof Error ? error.message : "Worker dispatch is disabled.",
+          error instanceof Error
+            ? error.message
+            : "Worker dispatch is disabled.",
           "No server render job was queued and no credits were reserved.",
         ],
         permissions: {

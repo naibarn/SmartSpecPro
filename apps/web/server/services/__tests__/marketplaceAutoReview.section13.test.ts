@@ -41,8 +41,27 @@ describe("Feature 136 section 13 — startFramePromptStyle run-metadata wiring",
       path.resolve(__dirname, "../marketplaceAutoReviewService.ts"),
       "utf8"
     );
-    expect(body).toContain(
-      "startFramePromptStyle: isMarketplaceStartFramePromptStyle(input.startFramePromptStyle)"
+    expect(body).toMatch(
+      /startFramePromptStyle:\s*isMarketplaceStartFramePromptStyle\(\s*input\.startFramePromptStyle\s*\)/
+    );
+  });
+
+  it("passes the persisted sequential prompt-plan metadata into production-project construction", () => {
+    const body = fs.readFileSync(
+      path.resolve(__dirname, "../marketplaceAutoReviewService.ts"),
+      "utf8"
+    );
+    const promptPlanAssignment = body.indexOf(
+      "feature117Metadata = metadataAfterSequentialPromptPlan;"
+    );
+    const projectInsert = body.indexOf(
+      "await insertDirectProductionDirectorProject({",
+      promptPlanAssignment
+    );
+    expect(promptPlanAssignment).toBeGreaterThan(-1);
+    expect(projectInsert).toBeGreaterThan(promptPlanAssignment);
+    expect(body.slice(projectInsert, projectInsert + 500)).toContain(
+      "metadata: feature117Metadata,"
     );
   });
 });

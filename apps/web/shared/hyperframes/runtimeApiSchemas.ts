@@ -50,19 +50,27 @@ export const HyperframesValidatedAudioAssetSchema = z
     checksum: z
       .object({
         algorithm: z.literal("sha256").default("sha256"),
-        value: z.string().trim().regex(/^[a-f0-9]{32,128}$/i),
+        value: z
+          .string()
+          .trim()
+          .regex(/^[a-f0-9]{32,128}$/i),
       })
       .strict(),
-    mimeType: z.string().trim().regex(/^audio\/[a-z0-9.+-]+$/i),
+    mimeType: z
+      .string()
+      .trim()
+      .regex(/^audio\/[a-z0-9.+-]+$/i),
     durationSec: z.number().positive().max(600),
     ownerTenantId: z.string().trim().min(1).max(128).optional(),
   })
   .strict();
 
-export const GetAutoStoryboardReviewPlanInputSchema = ProductIdInputSchema.extend({
-  includeTemplates: z.boolean().optional().default(false),
-  overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
-}).strict();
+export const GetAutoStoryboardReviewPlanInputSchema =
+  ProductIdInputSchema.extend({
+    includeTemplates: z.boolean().optional().default(false),
+    overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
+    workflowMode: z.enum(["standard", "job_workbench"]).optional(),
+  }).strict();
 
 export const GetAutoStoryboardReviewPlanOutputSchema = z
   .object({
@@ -151,83 +159,86 @@ export type GetVideoSegmentPlanPreviewOutput = z.infer<
   typeof GetVideoSegmentPlanPreviewOutputSchema
 >;
 
-export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend({
-  expectedPlanHash: z.string().min(6).max(128).optional(),
-  idempotencyKey: z.string().min(1).max(192).optional(),
-  overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
-  transportMetadata: HyperframesAutoReviewTransportMetadataSchema,
-  referenceAnchors: z
-    .object({
-      schemaVersion: z.number().int().positive().optional(),
-      creationIntent: z
-        .enum(["storyboard", "video", "auto_review_video"])
-        .optional()
-        .nullable(),
-      characterMode: z
-        .enum([
-          "product_only",
-          "hands_only",
-          "described_character",
-          "uploaded_reference",
-        ])
-        .optional(),
-      characterBrief: z.string().min(1).max(2000).optional(),
-      characterPreset: z
-        .union([
-          z.string().max(4000),
-          z.record(z.unknown()),
-          z.array(z.unknown()),
-        ])
-        .optional(),
-      reviewTone: z
-        .enum([
-          "warm_honest",
-          "funny_light",
-          "irritated_problem",
-          "energetic_excited",
-          "empathetic_soft",
-          "expert_confident",
-          "straight_serious",
-        ])
-        .optional()
-        .nullable(),
-      storytellingStructure: z
-        .enum([
-          "hook_problem_emotion_insight_solution_result_cta",
-          "hook_problem_insight_proof_cta",
-          "product_review_situation_problem_try_result_fit",
-          "before_after_bridge",
-          "pas",
-          "aida",
-          "relatable_story",
-          "problem_struggle_solution_transformation",
-        ])
-        .optional()
-        .nullable(),
-      creativePresets: z
-        .array(AutoReviewCreativePresetSelectionSchema)
-        .max(8)
-        .optional(),
-      requiredRoles: z
-        .array(z.enum(["product", "character", "environment"]))
-        .optional(),
-      lockPolicy: z.record(z.unknown()).optional(),
-      productImageUrl: z.string().min(1).max(4096),
-      productImageId: z.string().max(160).optional().nullable(),
-      productImageRef: z.string().max(512).optional().nullable(),
-      productImageSource: z.string().max(128).optional().nullable(),
-      productImageSourceUrl: z.string().max(4096).optional().nullable(),
-      productImageStorageKey: z.string().max(1024).optional().nullable(),
-      productImageHash: z.string().max(256).optional().nullable(),
-      productImageIndex: z.number().int().optional().nullable(),
-      auditMetadata: z.record(z.unknown()).optional(),
-      fileEvidence: z.record(z.unknown()).optional(),
-      sourceRefs: z.array(z.string().min(1).max(512)).optional(),
-    })
-    .passthrough()
-    .optional()
-    .nullable(),
-}).strict();
+export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend(
+  {
+    expectedPlanHash: z.string().min(6).max(128).optional(),
+    idempotencyKey: z.string().min(1).max(192).optional(),
+    overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
+    workflowMode: z.enum(["standard", "job_workbench"]).optional(),
+    transportMetadata: HyperframesAutoReviewTransportMetadataSchema,
+    referenceAnchors: z
+      .object({
+        schemaVersion: z.number().int().positive().optional(),
+        creationIntent: z
+          .enum(["storyboard", "video", "auto_review_video"])
+          .optional()
+          .nullable(),
+        characterMode: z
+          .enum([
+            "product_only",
+            "hands_only",
+            "described_character",
+            "uploaded_reference",
+          ])
+          .optional(),
+        characterBrief: z.string().min(1).max(2000).optional(),
+        characterPreset: z
+          .union([
+            z.string().max(4000),
+            z.record(z.unknown()),
+            z.array(z.unknown()),
+          ])
+          .optional(),
+        reviewTone: z
+          .enum([
+            "warm_honest",
+            "funny_light",
+            "irritated_problem",
+            "energetic_excited",
+            "empathetic_soft",
+            "expert_confident",
+            "straight_serious",
+          ])
+          .optional()
+          .nullable(),
+        storytellingStructure: z
+          .enum([
+            "hook_problem_emotion_insight_solution_result_cta",
+            "hook_problem_insight_proof_cta",
+            "product_review_situation_problem_try_result_fit",
+            "before_after_bridge",
+            "pas",
+            "aida",
+            "relatable_story",
+            "problem_struggle_solution_transformation",
+          ])
+          .optional()
+          .nullable(),
+        creativePresets: z
+          .array(AutoReviewCreativePresetSelectionSchema)
+          .max(8)
+          .optional(),
+        requiredRoles: z
+          .array(z.enum(["product", "character", "environment"]))
+          .optional(),
+        lockPolicy: z.record(z.unknown()).optional(),
+        productImageUrl: z.string().min(1).max(4096),
+        productImageId: z.string().max(160).optional().nullable(),
+        productImageRef: z.string().max(512).optional().nullable(),
+        productImageSource: z.string().max(128).optional().nullable(),
+        productImageSourceUrl: z.string().max(4096).optional().nullable(),
+        productImageStorageKey: z.string().max(1024).optional().nullable(),
+        productImageHash: z.string().max(256).optional().nullable(),
+        productImageIndex: z.number().int().optional().nullable(),
+        auditMetadata: z.record(z.unknown()).optional(),
+        fileEvidence: z.record(z.unknown()).optional(),
+        sourceRefs: z.array(z.string().min(1).max(512)).optional(),
+      })
+      .passthrough()
+      .optional()
+      .nullable(),
+  }
+).strict();
 
 export const StartAutoStoryboardReviewOutputSchema = z
   .object({
@@ -265,7 +276,9 @@ export const CreateHyperframesPreviewOutputSchema = z
   })
   .strict();
 
-export const HyperframesThaiFontFamilySchema = z.enum(hyperframesThaiFontFamilies);
+export const HyperframesThaiFontFamilySchema = z.enum(
+  hyperframesThaiFontFamilies
+);
 
 export const HyperframesFinalCompositeTextModeSchema = z.enum([
   "none",
@@ -339,17 +352,24 @@ export const HyperframesFinalCompositeShotInputSchema = z
     title: z.string().trim().max(180).optional().default(""),
     sourceVideoUrl: z.string().trim().min(1).max(4096),
     sourceVideoRef: z.string().trim().max(1024).optional().nullable(),
-    mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).optional().default(0),
+    mediaStartSec: z
+      .number()
+      .min(0)
+      .max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC)
+      .optional()
+      .default(0),
     startSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
-    durationSec: z.number().min(0.5).max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
+    durationSec: z
+      .number()
+      .min(0.5)
+      .max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
     onScreenText: z.array(z.string().trim().max(600)).max(15).default([]),
     subtitleCues: z
       .array(HyperframesFinalCompositeSubtitleCueSchema)
       .max(12)
       .default([]),
-    overlayPreset: HyperframesFinalCompositeOverlayPresetSchema.optional().default(
-      "auto"
-    ),
+    overlayPreset:
+      HyperframesFinalCompositeOverlayPresetSchema.optional().default("auto"),
     animationPreset: z
       .enum([
         "smooth_reveal",
@@ -365,41 +385,57 @@ export const HyperframesFinalCompositeShotInputSchema = z
       .enum(["fade", "slide", "zoom", "whip", "none"])
       .optional()
       .default("fade"),
-    textMotionPreset: HyperframesFinalCompositeTextMotionPresetSchema.optional()
-      .default("stagger_rise"),
+    textMotionPreset:
+      HyperframesFinalCompositeTextMotionPresetSchema.optional().default(
+        "stagger_rise"
+      ),
   })
   .strict();
 
 export const HyperframesFinalCompositeConfigSchema = z
   .object({
-    finalVideoLengthSec: z.number().min(1).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+    finalVideoLengthSec: z
+      .number()
+      .min(1)
+      .max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
     width: z.number().int().min(320).max(4096).optional().default(1080),
     height: z.number().int().min(320).max(4096).optional().default(1920),
     fps: z.number().int().min(12).max(60).optional().default(30),
-    textMode: HyperframesFinalCompositeTextModeSchema.optional().default(
-      "hook_and_per_shot"
-    ),
-    overlayPreset: HyperframesFinalCompositeOverlayPresetSchema.optional().default(
-      "auto"
-    ),
+    textMode:
+      HyperframesFinalCompositeTextModeSchema.optional().default(
+        "hook_and_per_shot"
+      ),
+    overlayPreset:
+      HyperframesFinalCompositeOverlayPresetSchema.optional().default("auto"),
     includeHookText: z.boolean().optional().default(true),
     includeShotText: z.boolean().optional().default(true),
     burnInSubtitles: z.boolean().optional().default(true),
     preserveNativeAudio: z.boolean().optional().default(true),
-    subtitlePreset: HyperframesFinalCompositeSubtitlePresetSchema.optional().default(
-      "classic_box"
-    ),
+    subtitlePreset:
+      HyperframesFinalCompositeSubtitlePresetSchema.optional().default(
+        "classic_box"
+      ),
     audioPackPresetId: z.string().trim().min(1).max(180).optional(),
     musicPresetId: z.string().trim().min(1).max(180).optional(),
-    sfxPresetIds: z.array(z.string().trim().min(1).max(180)).max(12).default([]),
+    sfxPresetIds: z
+      .array(z.string().trim().min(1).max(180))
+      .max(12)
+      .default([]),
     audioEvents: z.array(HyperframesAudioEventSchema).max(80).default([]),
     audioAssetValidation: z
       .object({
         stagedAssetsRequired: z.boolean().default(true),
         allowSyntheticFallback: z.boolean().default(true),
-        missingAssetRefs: z.array(z.string().trim().min(1).max(240)).default([]),
-        validatedAssetRefs: z.array(z.string().trim().min(1).max(240)).default([]),
-        validatedAssets: z.array(HyperframesValidatedAudioAssetSchema).max(80).default([]),
+        missingAssetRefs: z
+          .array(z.string().trim().min(1).max(240))
+          .default([]),
+        validatedAssetRefs: z
+          .array(z.string().trim().min(1).max(240))
+          .default([]),
+        validatedAssets: z
+          .array(HyperframesValidatedAudioAssetSchema)
+          .max(80)
+          .default([]),
       })
       .strict()
       .default({
@@ -410,7 +446,12 @@ export const HyperframesFinalCompositeConfigSchema = z
         validatedAssets: [],
       }),
     fontFamily: HyperframesThaiFontFamilySchema.optional().default("Prompt"),
-    styleBrief: z.string().trim().max(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS).optional().default(""),
+    styleBrief: z
+      .string()
+      .trim()
+      .max(HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS)
+      .optional()
+      .default(""),
     hookText: z.string().trim().max(160).optional().default(""),
     supportingText: z.string().trim().max(160).optional().default(""),
     subtitlePlacement: z
@@ -418,8 +459,10 @@ export const HyperframesFinalCompositeConfigSchema = z
       .optional()
       .default("bottom"),
     subtitleFontSizePx: z.number().int().min(24).max(52).optional().default(34),
-    textMotionPreset: HyperframesFinalCompositeTextMotionPresetSchema.optional()
-      .default("slide_right_to_left"),
+    textMotionPreset:
+      HyperframesFinalCompositeTextMotionPresetSchema.optional().default(
+        "slide_right_to_left"
+      ),
     safeZonePercent: z.number().min(0).max(30).optional().default(8),
     cssAnimationEnabled: z.boolean().optional().default(true),
     gsapCompatibleTimeline: z.boolean().optional().default(true),
@@ -461,7 +504,7 @@ export const GetHyperframesRenderJobInputSchema = z
   .strict()
   .refine(
     input => Boolean(input.renderJobId?.trim() || input.runId?.trim()),
-    "renderJobId or runId is required",
+    "renderJobId or runId is required"
   );
 
 export const GetHyperframesRenderJobOutputSchema = z

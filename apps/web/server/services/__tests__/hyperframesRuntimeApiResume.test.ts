@@ -26,7 +26,9 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
   });
 
   it("returns the actual active run and render projection without starting a duplicate run, even when the previous start hash is stale", async () => {
-    const getHyperframesAutoStoryboardReviewPlan = vi.fn(async () => resumePlan);
+    const getHyperframesAutoStoryboardReviewPlan = vi.fn(
+      async () => resumePlan
+    );
     const getMarketplaceAutoReviewRun = vi.fn(async () => activeRun);
     const startMarketplaceAutoReviewRun = vi.fn();
     const queueMarketplaceAutoReviewAdvance = vi.fn();
@@ -89,9 +91,8 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
       finalizeHyperframesRenderToLibrary: vi.fn(),
     }));
 
-    const { startAutoStoryboardReviewForApi } = await import(
-      "../hyperframesRuntimeApiService"
-    );
+    const { startAutoStoryboardReviewForApi } =
+      await import("../hyperframesRuntimeApiService");
 
     const result = await startAutoStoryboardReviewForApi({
       productId: activeRun.productId,
@@ -159,11 +160,9 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
       status: "queued",
       resultJson: {},
     };
-    const getHyperframesAutoStoryboardReviewPlan = vi.fn(
-      async () => startPlan
-    );
+    const getHyperframesAutoStoryboardReviewPlan = vi.fn(async () => startPlan);
     const getMarketplaceAutoReviewRun = vi.fn();
-    const startMarketplaceAutoReviewRun = vi.fn(async () => startedRun);
+    const enqueueMarketplaceAutoReviewRun = vi.fn(async () => startedRun);
 
     vi.doMock("../hyperframesAutoPlanService", () => ({
       getHyperframesAutoStoryboardReviewPlan,
@@ -172,7 +171,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
     }));
     vi.doMock("../marketplaceAutoReviewService", () => ({
       getMarketplaceAutoReviewRun,
-      startMarketplaceAutoReviewRun,
+      enqueueMarketplaceAutoReviewRun,
       // Feature 136 start-gates — see the note on the sibling mock above.
       assertMarketplaceSequentialStoryboardAllowed: vi.fn(),
       assertMarketplaceAutoReviewSequentialVideoModelSupported: vi.fn(),
@@ -204,9 +203,8 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
       finalizeHyperframesRenderToLibrary: vi.fn(),
     }));
 
-    const { startAutoStoryboardReviewForApi } = await import(
-      "../hyperframesRuntimeApiService"
-    );
+    const { startAutoStoryboardReviewForApi } =
+      await import("../hyperframesRuntimeApiService");
 
     const result = await startAutoStoryboardReviewForApi({
       productId: startedRun.productId,
@@ -223,7 +221,7 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
       auth: { userId: 119, tenantId: "tenant_1" },
       overrides,
     });
-    expect(startMarketplaceAutoReviewRun).toHaveBeenCalledWith(
+    expect(enqueueMarketplaceAutoReviewRun).toHaveBeenCalledWith(
       {
         productId: startedRun.productId,
         idempotencyKey: "hf-auto-start:plan_override_1",

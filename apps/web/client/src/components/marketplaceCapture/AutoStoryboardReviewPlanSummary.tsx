@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { HyperframesAutoStoryboardReviewPlan } from "@shared/hyperframes/autoPlan";
 import {
@@ -14,7 +20,11 @@ interface AutoStoryboardReviewPlanSummaryProps {
   updating?: boolean;
   onStart: () => void;
   onUseStandard: () => void;
+  showStandardAction?: boolean;
   onResetToAuto?: () => void;
+  /** Hide legacy active-run polling copy when this card is embedded in the
+   * dedicated New Job setup route. Existing jobs are shown in its navigator. */
+  showActiveRunStatus?: boolean;
   locale?: MarketplaceHyperframesUiLocale | string;
   /**
    * Quality-mode / image-repair-rounds control (2026-07-23 user feedback),
@@ -44,7 +54,9 @@ export function AutoStoryboardReviewPlanSummary({
   updating,
   onStart,
   onUseStandard,
+  showStandardAction = true,
   onResetToAuto,
+  showActiveRunStatus = true,
   locale,
   qualityModeControl,
   qualityModeRepairRounds,
@@ -63,9 +75,9 @@ export function AutoStoryboardReviewPlanSummary({
       ? !ready
       : primaryUsesResume
         ? !plan?.activeRunId
-      : primaryUsesStandard
-        ? !plan?.standardOrderAvailable
-        : true);
+        : primaryUsesStandard
+          ? !plan?.standardOrderAvailable
+          : true);
   const primaryLabel =
     primaryActionId === "start_auto_storyboard_review"
       ? copy.createAutoReview
@@ -75,13 +87,12 @@ export function AutoStoryboardReviewPlanSummary({
           ? copy.useStandardOrder
           : primaryActionId === "review_blockers"
             ? copy.reviewBlockers
-            : plan?.primaryAction.label ?? copy.createAutoReview;
-  const summary =
-    loading
-      ? copy.autoReviewLoading
-      : copy.locale === "th"
-        ? copy.autoReviewFallbackSummary
-        : plan?.display.summary ?? copy.autoReviewFallbackSummary;
+            : (plan?.primaryAction.label ?? copy.createAutoReview);
+  const summary = loading
+    ? copy.autoReviewLoading
+    : copy.locale === "th"
+      ? copy.autoReviewFallbackSummary
+      : (plan?.display.summary ?? copy.autoReviewFallbackSummary);
   const handlePrimaryAction = primaryUsesStandard ? onUseStandard : onStart;
   const isActiveRun = Boolean(plan?.activeRunId);
   // Feature 136 (section 11, §6.7) — always-visible active-strategy label.
@@ -121,12 +132,12 @@ export function AutoStoryboardReviewPlanSummary({
               {copy.overridePending}
             </p>
           ) : null}
-          {isActiveRun ? (
+          {isActiveRun && showActiveRunStatus ? (
             <p className="mt-2 flex items-center gap-2 text-xs text-sky-900 dark:text-sky-100/90">
               <Loader2 className="h-3 w-3 animate-spin text-sky-700 dark:text-sky-200" />
               {copy.locale === "th"
-                ? "งาน Auto Review กำลังทำงานและถูกเช็กสถานะอัตโนมัติอยู่"
-                : "Auto Review run is active and being polled"}
+                ? "มี Job เดิมที่ยังไม่จบ — เปิด Workbench เพื่อตรวจต่อ"
+                : "An existing Job is not finished — open Workbench to continue"}
             </p>
           ) : null}
         </div>
@@ -137,16 +148,26 @@ export function AutoStoryboardReviewPlanSummary({
             </p>
           ) : null}
           {plan?.resetToAutoAvailable && onResetToAuto ? (
-            <Button type="button" variant="outline" size="sm" onClick={onResetToAuto}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onResetToAuto}
+            >
               <RotateCcw className="mr-2 h-4 w-4" />
               {copy.useAutoPlan}
             </Button>
           ) : null}
-          {primaryUsesStandard ? null : (
-            <Button type="button" variant="outline" size="sm" onClick={onUseStandard}>
+          {showStandardAction && !primaryUsesStandard ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onUseStandard}
+            >
               {copy.standardOrder}
             </Button>
-          )}
+          ) : null}
           <Button
             type="button"
             onClick={handlePrimaryAction}

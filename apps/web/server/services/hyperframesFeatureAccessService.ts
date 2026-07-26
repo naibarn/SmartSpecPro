@@ -195,11 +195,15 @@ export function buildHyperframesCreditEstimate(input: {
   // credit math below (binding decision §3.1).
   const imageJobCount = normalizeHyperframesImageJobCount(input.imageJobCount);
   const rawComputeUnits = estimatedRenderPixels / HYPERFRAMES_PIXEL_FRAME_CREDIT_UNIT;
+  // Keep the minimum estimate billable before applying worker complexity.
+  // Otherwise a sub-credit preview rounds to 1 for every quality/strategy,
+  // hiding the very cost difference that the plan summary is meant to show.
+  const baseEstimatedCredits = Math.max(
+    1,
+    rawComputeUnits * profileMultiplier * costClassMultiplier
+  );
   const estimatedCredits = Math.ceil(
-    rawComputeUnits *
-      profileMultiplier *
-      costClassMultiplier *
-      workerComplexityMultiplier
+    baseEstimatedCredits * workerComplexityMultiplier
   );
   const compositionInputHash = input.compositionInputHash ?? "pending_input_hash";
   const templateVersion = input.templateVersion ?? "1.0.0";

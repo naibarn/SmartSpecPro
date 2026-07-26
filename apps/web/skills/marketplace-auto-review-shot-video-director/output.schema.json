@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["shot_id", "duration_seconds", "video_prompt", "accepted_image_artifact_hash", "finish_reason"],
+  "properties": {
+    "shot_id": { "type": "integer", "minimum": 1, "maximum": 9 },
+    "duration_seconds": { "const": 10 },
+    "video_prompt": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "accepted_image_artifact_hash": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "finish_reason": { "type": "string", "enum": ["completed", "bounded_fallback"] }
+  },
+  "additionalProperties": false
+}

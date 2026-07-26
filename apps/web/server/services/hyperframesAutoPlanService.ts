@@ -70,7 +70,9 @@ function stringList(value: unknown): string[] {
 function resumeCandidateFrameUrlsFromReviewSummaries(
   reviews: unknown
 ): string[] {
-  const reviewList = Array.isArray(reviews) ? reviews.map(item => recordFromJsonLike(item)) : [];
+  const reviewList = Array.isArray(reviews)
+    ? reviews.map(item => recordFromJsonLike(item))
+    : [];
   return reviewList.flatMap(review => [
     ...stringList(review?.storyboardFrameUrls),
     ...stringList(review?.resultUrls),
@@ -81,9 +83,7 @@ function resumeCandidateFrameUrlsFromReviewSummaries(
   ]);
 }
 
-function storyboardReadyResumeCandidate(
-  run: Record<string, unknown>
-): boolean {
+function storyboardReadyResumeCandidate(run: Record<string, unknown>): boolean {
   const metadata = recordFromJsonLike(run.metadataJson);
   const result = recordFromJsonLike(run.resultJson);
   const storyboardReviewId =
@@ -242,15 +242,21 @@ function isResumableAutoStoryboardReviewRun(
   if (compactText(run?.storyboardReviewId)) return false;
 
   const storyboardFrames = [
-    ...stringListFrom(run?.metadataJson && isRecord(run.metadataJson)
-      ? run.metadataJson.storyboardFrameUrls
-      : undefined),
-    ...stringListFrom(run?.resultJson && isRecord(run.resultJson)
-      ? run.resultJson.frameUrls
-      : undefined),
-    ...stringListFrom(run?.resultJson && isRecord(run.resultJson)
-      ? run.resultJson.storyboardFrameUrls
-      : undefined),
+    ...stringListFrom(
+      run?.metadataJson && isRecord(run.metadataJson)
+        ? run.metadataJson.storyboardFrameUrls
+        : undefined
+    ),
+    ...stringListFrom(
+      run?.resultJson && isRecord(run.resultJson)
+        ? run.resultJson.frameUrls
+        : undefined
+    ),
+    ...stringListFrom(
+      run?.resultJson && isRecord(run.resultJson)
+        ? run.resultJson.storyboardFrameUrls
+        : undefined
+    ),
   ];
   if (storyboardFrames.length === 0) return false;
 
@@ -294,7 +300,9 @@ export function inferHyperframesProductReadiness(
       : bundle;
   const images = [
     ...((Array.isArray(bundle.images) ? bundle.images : []) as unknown[]),
-    ...((Array.isArray(product.imagesJson) ? product.imagesJson : []) as unknown[]),
+    ...((Array.isArray(product.imagesJson)
+      ? product.imagesJson
+      : []) as unknown[]),
     ...((Array.isArray(product.selectedImageUrls)
       ? product.selectedImageUrls
       : []) as unknown[]),
@@ -338,7 +346,9 @@ function sanitizeSequentialStoryboardOverrides(input: {
 }): { overrides?: Record<string, unknown> | null; sequentialBlocked: boolean } {
   const overrides = input.overrides;
   const isPlainRecord =
-    Boolean(overrides) && typeof overrides === "object" && !Array.isArray(overrides);
+    Boolean(overrides) &&
+    typeof overrides === "object" &&
+    !Array.isArray(overrides);
   if (
     isPlainRecord &&
     (overrides as Record<string, unknown>).frameStrategy ===
@@ -371,8 +381,9 @@ export function buildHyperframesAutoPlanFromState(input: {
   now?: Date;
 }): HyperframesAutoStoryboardReviewPlan {
   const readiness = inferHyperframesProductReadiness(input.productBundle);
-  const activeRunIsHyperframesAuto =
-    isHyperframesAutoStoryboardReviewRun(input.activeRun);
+  const activeRunIsHyperframesAuto = isHyperframesAutoStoryboardReviewRun(
+    input.activeRun
+  );
   const activeRunId = activeRunIsHyperframesAuto
     ? compactText(input.activeRun?.id)
     : "";
@@ -465,6 +476,7 @@ async function getHyperframesAutoStoryboardReviewPlanInternal(input: {
   auth: HyperframesAuthContext;
   overrides?: Record<string, unknown> | null;
   accessInput?: Partial<HyperframesAccessInput>;
+  workflowMode?: "standard" | "job_workbench";
 }): Promise<{
   plan: HyperframesAutoStoryboardReviewPlan;
   productBundle: unknown;
@@ -485,11 +497,11 @@ async function getHyperframesAutoStoryboardReviewPlanInternal(input: {
     input.auth
   );
   const findActiveRun = (runs: Record<string, unknown>[]) =>
-    runs.find(run =>
-      ["queued", "running", "waiting_provider"].includes(
-        compactText((run as Record<string, unknown>).status)
-      ) ||
-      isResumableAutoStoryboardReviewRun(run as Record<string, unknown>)
+    runs.find(
+      run =>
+        ["queued", "running", "waiting_provider"].includes(
+          compactText((run as Record<string, unknown>).status)
+        ) || isResumableAutoStoryboardReviewRun(run as Record<string, unknown>)
     ) ?? null;
   let activeRun = findActiveRun(recentRuns as Record<string, unknown>[]);
   if (!activeRun) {
@@ -528,7 +540,15 @@ async function getHyperframesAutoStoryboardReviewPlanInternal(input: {
   // AUTHORITATIVE decision still happens inside `buildHyperframesAutoPlanFromState`
   // off the fully-resolved `defaults`, so a divergence here can only ever
   // skip the optimization, never cause an incorrect block.
-  const rawOverrides = isRecord(input.overrides) ? input.overrides : null;
+  const workflowOverrides =
+    input.workflowMode === "job_workbench"
+      ? {
+          ...(isRecord(input.overrides) ? input.overrides : {}),
+          outputMode: "full_video",
+          frameStrategy: "sequential_shot_storyboard",
+        }
+      : input.overrides;
+  const rawOverrides = isRecord(workflowOverrides) ? workflowOverrides : null;
   const requestedFrameStrategyLooksSequential =
     compactText(rawOverrides?.frameStrategy) === "sequential_shot_storyboard";
   const requestedOutputModeLooksFullVideo =
@@ -545,16 +565,20 @@ async function getHyperframesAutoStoryboardReviewPlanInternal(input: {
     productId: input.productId,
     productBundle,
     activeRun: activeRun as Record<string, unknown> | null,
-    overrides: input.overrides,
+    overrides: workflowOverrides,
     accessInput: input.accessInput,
     access,
-    sequentialStoryboardEnabled: tenantFlags.marketplaceSequentialStoryboard,
+    sequentialStoryboardEnabled:
+      tenantFlags.marketplaceSequentialStoryboard ||
+      input.workflowMode === "job_workbench",
     videoModelSupportsStartFrame,
   });
   return {
     plan,
     productBundle,
-    sequentialStoryboardEnabled: tenantFlags.marketplaceSequentialStoryboard,
+    sequentialStoryboardEnabled:
+      tenantFlags.marketplaceSequentialStoryboard ||
+      input.workflowMode === "job_workbench",
   };
 }
 
@@ -563,6 +587,7 @@ export async function getHyperframesAutoStoryboardReviewPlan(input: {
   auth: HyperframesAuthContext;
   overrides?: Record<string, unknown> | null;
   accessInput?: Partial<HyperframesAccessInput>;
+  workflowMode?: "standard" | "job_workbench";
 }): Promise<HyperframesAutoStoryboardReviewPlan> {
   const { plan } = await getHyperframesAutoStoryboardReviewPlanInternal(input);
   return plan;
@@ -660,6 +685,7 @@ export async function getHyperframesAutoStoryboardReviewPlanWithEvidence(input: 
   auth: HyperframesAuthContext;
   overrides?: Record<string, unknown> | null;
   accessInput?: Partial<HyperframesAccessInput>;
+  workflowMode?: "standard" | "job_workbench";
 }): Promise<{
   plan: HyperframesAutoStoryboardReviewPlan;
   evidencePreview?: SequentialEvidencePreview;

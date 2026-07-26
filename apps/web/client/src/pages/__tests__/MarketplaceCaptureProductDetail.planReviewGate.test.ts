@@ -139,9 +139,11 @@ describe("MarketplaceCaptureProductDetail plan-review gate wiring (2026-07-23)",
     expect(dialogueMutation).toContain(
       "const [dialogueSaveError, setDialogueSaveError] = useState<"
     );
-    expect(dialogueMutation).toContain("onSettled: () => setDialogueSavingShotId(null)");
     expect(dialogueMutation).toContain(
-      "setDialogueSaveError({ shotId: variables.shotId, message: error.message })"
+      "onSettled: () => setDialogueSavingShotId(null)"
+    );
+    expect(dialogueMutation).toMatch(
+      /setDialogueSaveError\(\{\s*shotId:\s*variables\.shotId,\s*message:\s*error\.message,?\s*\}\)/
     );
 
     // Exactly one instance on the whole page — the panel must bind to it,
@@ -161,11 +163,11 @@ describe("MarketplaceCaptureProductDetail plan-review gate wiring (2026-07-23)",
     );
     expect(mount).toContain("planReview={statusAutoReviewRunPlanReview}");
     expect(mount).toContain("plan={planReviewPlanData}");
-    expect(mount).toContain(
-      "onApprove={() =>\n                      approveAutoReviewPlanReviewMutation.mutate({"
+    expect(mount).toMatch(
+      /onApprove=\{\(\) =>\s+approveAutoReviewPlanReviewMutation\.mutate\(\{/s
     );
-    expect(mount).toContain(
-      "onRequestRedraft={notes =>\n                      requestAutoReviewPlanRedraftMutation.mutate({"
+    expect(mount).toMatch(
+      /onRequestRedraft=\{notes =>\s+requestAutoReviewPlanRedraftMutation\.mutate\(\{/s
     );
     expect(mount).toContain("cancelAutoReviewMutation.mutate({");
     expect(mount).toContain("cancelling={cancelAutoReviewMutation.isPending}");
@@ -192,9 +194,7 @@ describe("MarketplaceCaptureProductDetail plan-review gate wiring (2026-07-23)",
     expect(mount).toContain("runId: String(statusAutoReviewRun.id),");
     expect(mount).toContain("shotId: input.shotId,");
     expect(mount).toContain("dialogue: input.dialogue,");
-    expect(mount).toContain(
-      "dialogueSavingShotId={dialogueSavingShotId}"
-    );
+    expect(mount).toContain("dialogueSavingShotId={dialogueSavingShotId}");
     expect(mount).toContain("dialogueSaveError={dialogueSaveError}");
   });
 

@@ -15,6 +15,7 @@ import {
   buildManualStoryboardProductState,
   getHyperframesFinalCompositeRuntimeBlockReason,
   buildHyperframesLibrarySaveChargeSummary,
+  assertStagedFinalAssemblyApproved,
   isHyperframesRunEligibleForPreview,
   isManualStoryboardHyperframesIdentity,
   validateHyperframesFinalCompositeAudioAssets,
@@ -31,6 +32,30 @@ describe("hyperframesRuntimeApiService", () => {
       workspaces.map(workspace => rm(workspace, { recursive: true, force: true }))
     );
     workspaces.length = 0;
+  });
+
+  it("fails closed before paid final composite when staged final assembly is not approved", () => {
+    expect(() =>
+      assertStagedFinalAssemblyApproved({
+        planningArchitecture: "staged_two_skill_v2",
+        metadataJson: {
+          stagedSequentialStoryboard: {
+            reviewCheckpoints: [{ kind: "final_assembly", state: "awaiting" }],
+          },
+        },
+      })
+    ).toThrow("staged_final_assembly_approval_required");
+
+    expect(() =>
+      assertStagedFinalAssemblyApproved({
+        planningArchitecture: "staged_two_skill_v2",
+        metadataJson: {
+          stagedSequentialStoryboard: {
+            reviewCheckpoints: [{ kind: "final_assembly", state: "consumed" }],
+          },
+        },
+      })
+    ).not.toThrow();
   });
 
   async function createRuntimeToolEnv(): Promise<HyperframesRuntimeAdapterEnv> {

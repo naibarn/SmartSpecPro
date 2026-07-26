@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "video_prompt": { "label": "Prompt วิดีโอ", "inputType": "textarea" },
+    "accepted_image_artifact_hash": { "label": "ภาพที่ยอมรับ", "inputType": "evidence" },
+    "finish_reason": { "label": "ผลการตรวจ", "inputType": "status" }
+  }
+}

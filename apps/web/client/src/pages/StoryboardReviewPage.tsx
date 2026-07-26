@@ -4140,6 +4140,38 @@ export default function StoryboardReviewPage() {
     { runId: effectiveHyperframesRunId ?? "" },
     { enabled: Boolean(effectiveHyperframesRunId) },
   );
+  const stagedWorkflowRunId =
+    compactStoryboardText((autoReviewRunQuery.data as any)?.metadataJson?.planningArchitecture) === "staged_two_skill_v2"
+      ? compactStoryboardText(effectiveHyperframesRunId)
+      : "";
+  const stagedCheckpointStateQuery =
+    trpc.marketplaceCapture.getStagedAutoReviewCheckpointState.useQuery(
+      { runId: stagedWorkflowRunId },
+      {
+        enabled: Boolean(stagedWorkflowRunId),
+        refetchInterval: stagedWorkflowRunId ? 4000 : false,
+        refetchOnWindowFocus: true,
+        retry: false,
+        staleTime: 0,
+      },
+    );
+  const stagedFinalAssemblyApproved = useMemo(() => {
+    if (!stagedWorkflowRunId) return true;
+    const checkpoints = Array.isArray(stagedCheckpointStateQuery.data?.checkpoints)
+      ? stagedCheckpointStateQuery.data.checkpoints
+      : [];
+    return checkpoints.some((checkpoint: any) =>
+      checkpoint?.kind === "final_assembly" &&
+      ["approved", "consumed"].includes(String(checkpoint?.state ?? "")) &&
+      checkpoint?.state !== "superseded",
+    );
+  }, [stagedCheckpointStateQuery.data, stagedWorkflowRunId]);
+  const stagedFinalAssemblyGateReason =
+    stagedWorkflowRunId && !stagedFinalAssemblyApproved
+      ? locale === "th"
+        ? "ต้องกลับไป Job Workbench เพื่อยืนยันการประกอบขั้นสุดท้ายก่อน Render"
+        : "Return to Job Workbench and approve final assembly before rendering."
+      : null;
   const sequentialShotCards = useMemo(
     () => projectSequentialShotCards((autoReviewRunQuery.data as any)?.metadataJson),
     [autoReviewRunQuery.data],
@@ -8040,7 +8072,8 @@ export default function StoryboardReviewPage() {
   ]);
   const hyperframesFinalCompositeRenderBlockedReason =
     hyperframesFinalCompositeDisabledReason ??
-    hyperframesFinalCompositeDuplicateGuardReason;
+    hyperframesFinalCompositeDuplicateGuardReason ??
+    stagedFinalAssemblyGateReason;
   const hyperframesFinalCompositeRenderButtonDisabled = Boolean(
     createHyperframesFinalCompositeMutation.isPending ||
       updateHyperframesFinalCompositeStateMutation.isPending ||
@@ -8118,6 +8151,7 @@ export default function StoryboardReviewPage() {
             : "High quality capture is not enabled for this rollout."
           : null) ??
     hyperframesFinalCompositeDisabledReason ??
+    stagedFinalAssemblyGateReason ??
     (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId
       ? locale === "th"
         ? "กำลังรอ context จาก Marketplace Capture"
@@ -10327,6 +10361,28 @@ export default function StoryboardReviewPage() {
           </div>
         </div>
       </header>
+
+      {stagedWorkflowRunId ? (
+        <div className="border-b border-violet-200 bg-[radial-gradient(circle_at_top_right,_rgba(124,58,237,0.12),_transparent_48%),#f5f3ff] px-3 py-3 sm:px-4">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-700">Job handoff</span>
+                <p className="text-sm font-semibold text-violet-950">Storyboard Review คือขั้นแก้ละเอียดหลังผ่าน Job Workbench</p>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-violet-800">หากต้องแก้เนื้อเรื่อง Prompt หรือขอสร้างใหม่ ให้กลับไปที่ job ก่อน ส่วนหน้านี้ใช้จัดวางภาพ ตัดต่อ และตรวจงานสร้างสรรค์ต่อ</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a className="inline-flex min-h-11 items-center rounded-md bg-violet-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500" href={`/marketplace/auto-review/${encodeURIComponent(stagedWorkflowRunId)}`}>
+                กลับไป Job Workbench
+              </a>
+              {effectiveHyperframesProductId ? <a className="inline-flex min-h-11 items-center rounded-md border border-violet-200 bg-white px-3 py-2 text-sm font-medium text-violet-800 transition hover:bg-violet-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500" href={`/marketplace-capture/products/${encodeURIComponent(effectiveHyperframesProductId)}`}>
+                หน้าสินค้า
+              </a> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {verticalDramaReviewMetadata ? (
         <div className="border-b bg-white px-2 py-3 sm:px-4 xl:shrink-0">

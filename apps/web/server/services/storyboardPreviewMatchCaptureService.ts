@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { TRPCError } from "@trpc/server";
+import { assertStagedFinalAssemblyApproved } from "./hyperframesRuntimeApiService";
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import {
@@ -848,6 +849,7 @@ export async function createPreviewMatchFinalCompositeCaptureForApi(
       message: "Storyboard Review identity does not match this run.",
     });
   }
+  assertStagedFinalAssemblyApproved(run as Record<string, unknown>);
 
   const idempotencyKey = input.idempotencyKey ?? buildPreviewMatchCaptureIdempotencyKey({
     tenantId,

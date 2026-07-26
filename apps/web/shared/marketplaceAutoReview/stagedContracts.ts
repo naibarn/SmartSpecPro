@@ -2,14 +2,14 @@ import { z } from "zod";
 
 export const STAGED_PLANNING_ARCHITECTURE = "staged_two_skill_v2" as const;
 export const STAGED_PLANNING_ARCHITECTURE_VERSION = 1 as const;
-export const STAGED_HUMAN_APPROVAL_POLICY =
-  "all_checkpoints_required" as const;
+export const STAGED_HUMAN_APPROVAL_POLICY = "all_checkpoints_required" as const;
 
 export const STAGED_CHECKPOINT_KINDS = [
   "story_plan",
   "image_prompt",
   "image_result",
   "video_prompt",
+  "video_result",
   "audio_plan",
   "final_assembly",
 ] as const;
@@ -65,11 +65,13 @@ export const HumanApprovalCheckpointV1Schema = z
     approvedSafetyVerdict: z.string().min(1).nullable(),
     approvedReferenceManifestHash: z.string().min(1).nullable(),
   })
+  .passthrough()
   .superRefine((value, context) => {
     const isShotCheckpoint =
       value.kind === "image_prompt" ||
       value.kind === "image_result" ||
-      value.kind === "video_prompt";
+      value.kind === "video_prompt" ||
+      value.kind === "video_result";
     if (isShotCheckpoint && (value.scope !== "shot" || value.shotId === null)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -86,43 +88,58 @@ export const HumanApprovalCheckpointV1Schema = z
     }
   });
 
-export const StagedShotStateV1Schema = z.object({
-  shotId: z.number().int().positive(),
-  revision: z.number().int().positive(),
-  state: z.string().min(1),
-  storySummary: z.string().min(1),
-  dialogue: z.string(),
-  imagePromptHash: z.string().min(1).nullable(),
-  imageArtifactHash: z.string().min(1).nullable(),
-  videoPromptHash: z.string().min(1).nullable(),
-  videoArtifactHash: z.string().min(1).nullable(),
-});
+export const StagedShotStateV1Schema = z
+  .object({
+    shotId: z.number().int().positive(),
+    revision: z.number().int().positive(),
+    state: z.string().min(1),
+    storySummary: z.string().min(1),
+    dialogue: z.string(),
+    imagePromptHash: z.string().min(1).nullable(),
+    imageArtifactHash: z.string().min(1).nullable(),
+    videoPromptHash: z.string().min(1).nullable(),
+    videoArtifactHash: z.string().min(1).nullable(),
+  })
+  .passthrough();
 
-export const StagedSequentialStoryboardStateV1Schema = z.object({
-  storyPlanStatus: z.enum(["not_ready", "awaiting", "approved", "redraft_queued"]),
-  planRevision: z.number().int().positive(),
-  storyPlanHash: z.string().min(1).nullable(),
-  referenceManifestHash: z.string().min(1).nullable(),
-  shots: z.array(StagedShotStateV1Schema).length(9),
-  reviewCheckpoints: z.array(HumanApprovalCheckpointV1Schema),
-});
+export const StagedSequentialStoryboardStateV1Schema = z
+  .object({
+    storyPlanStatus: z.enum([
+      "not_ready",
+      "awaiting",
+      "approved",
+      "redraft_queued",
+    ]),
+    planRevision: z.number().int().positive(),
+    storyPlanHash: z.string().min(1).nullable(),
+    referenceManifestHash: z.string().min(1).nullable(),
+    shots: z.array(StagedShotStateV1Schema).length(9),
+    reviewCheckpoints: z.array(HumanApprovalCheckpointV1Schema),
+  })
+  .passthrough();
 
-export const StagedPlanReviewEnvelopeV1Schema = z.object({
-  required: z.literal(true),
-  status: z.enum(["awaiting", "redraft_queued", "approved"]),
-  planRevision: z.number().int().positive(),
-  approvedRevision: z.number().int().positive().nullable(),
-  redraftCount: z.number().int().nonnegative(),
-  lastOperationId: z.string().min(1).nullable(),
-});
+export const StagedPlanReviewEnvelopeV1Schema = z
+  .object({
+    required: z.literal(true),
+    status: z.enum(["awaiting", "redraft_queued", "approved"]),
+    planRevision: z.number().int().positive(),
+    approvedRevision: z.number().int().positive().nullable(),
+    redraftCount: z.number().int().nonnegative(),
+    lastOperationId: z.string().min(1).nullable(),
+  })
+  .passthrough();
 
-export const StagedSequentialStoryboardMetadataV1Schema = z.object({
-  planningArchitecture: z.literal(STAGED_PLANNING_ARCHITECTURE),
-  planningArchitectureVersion: z.literal(STAGED_PLANNING_ARCHITECTURE_VERSION),
-  humanApprovalPolicy: z.literal(STAGED_HUMAN_APPROVAL_POLICY),
-  planReview: StagedPlanReviewEnvelopeV1Schema,
-  stagedSequentialStoryboard: StagedSequentialStoryboardStateV1Schema,
-});
+export const StagedSequentialStoryboardMetadataV1Schema = z
+  .object({
+    planningArchitecture: z.literal(STAGED_PLANNING_ARCHITECTURE),
+    planningArchitectureVersion: z.literal(
+      STAGED_PLANNING_ARCHITECTURE_VERSION
+    ),
+    humanApprovalPolicy: z.literal(STAGED_HUMAN_APPROVAL_POLICY),
+    planReview: StagedPlanReviewEnvelopeV1Schema,
+    stagedSequentialStoryboard: StagedSequentialStoryboardStateV1Schema,
+  })
+  .passthrough();
 
 export const StagedOperationRequestV1Schema = z.object({
   runId: z.string().min(1),
@@ -189,8 +206,7 @@ export function validateNineShotContract(
   const valid =
     shots.length === 9 &&
     shots.every(
-      (shot, index) =>
-        shot.shotId === index + 1 && shot.durationSeconds === 10
+      (shot, index) => shot.shotId === index + 1 && shot.durationSeconds === 10
     );
   return valid
     ? { valid: true, reasonCodes: [] }

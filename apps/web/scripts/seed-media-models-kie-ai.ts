@@ -1573,14 +1573,15 @@ const IMAGE_MODELS = [
       documentationUrl: "https://docs.kie.ai/market/gpt/gpt-image-2-text-to-image",
       generateType: "text-to-image",
       supportsReferenceImages: true,
-      maxReferenceImages: 4,
+      maxPromptLength: 20000,
+      maxReferenceImages: 16,
       apiConfig: {
         kie_model_id_with_references: "gpt-image-2-image-to-image",
         reference_image_input_key: "input_urls",
         reference_image_input_type: "array",
       },
       inputFields: [
-        { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 4 },
+        { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [
             { value: "auto", label: "Auto" },

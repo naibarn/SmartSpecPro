@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["product", "shots", "reference_manifest", "safety_policy"],
+  "properties": {
+    "product": { "type": "object" },
+    "shots": { "type": "array", "minItems": 9, "maxItems": 9 },
+    "reference_manifest": { "type": "array" },
+    "safety_policy": { "type": "object" }
+  },
+  "additionalProperties": false
+}

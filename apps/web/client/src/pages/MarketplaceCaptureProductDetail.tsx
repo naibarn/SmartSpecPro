@@ -13,6 +13,7 @@ import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
+import { isLostUpstreamApiErrorMessage } from "@/lib/apiResponseDiagnostics";
 import {
   resolveMarketplaceAutoReviewLaunchMode,
   shouldShowStandardOrderControls,
@@ -34,6 +35,7 @@ import {
   Library,
   Loader2,
   Maximize2,
+  Package,
   PackagePlus,
   RefreshCw,
   Search,
@@ -50,6 +52,8 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceInsightsSection } from "@/components/marketplace/MarketplaceInsightsSection";
 import { MarketplaceAutoReviewLaunchModeSwitch } from "@/components/marketplaceCapture/MarketplaceAutoReviewLaunchModeSwitch";
+import { MarketplaceAutoReviewJobNavigator } from "@/components/marketplaceCapture/MarketplaceAutoReviewJobNavigator";
+import { MarketplaceAutoReviewProductImagePicker } from "@/components/marketplaceCapture/MarketplaceAutoReviewProductImagePicker";
 import { AutoStoryboardReviewPlanSummary } from "@/components/marketplaceCapture/AutoStoryboardReviewPlanSummary";
 import {
   AutoStoryboardAdvancedOverrides,
@@ -333,6 +337,7 @@ const AUTO_REVIEW_TERMINAL_STATUSES = new Set([
 ]);
 const AUTO_REVIEW_RUN_ACTIVE_POLL_MS = 5_000;
 const AUTO_REVIEW_RUN_START_WAIT_POLL_MS = 3_000;
+const AUTO_REVIEW_RUN_START_RECOVERY_WINDOW_MS = 60_000;
 const AUTO_REVIEW_RUN_STALE_MS = 5_000;
 const AUTO_REVIEW_PLANNED_STAGES = [
   "product_preflight",
@@ -559,7 +564,11 @@ const PRODUCT_REFERENCE_CATEGORY_OPTIONS = Object.entries(
 ).map(([id, label]) => ({ id, label }));
 
 function getProductId(pathname: string) {
-  return pathname.match(/\/marketplace-capture\/products\/([^/]+)/)?.[1] ?? "";
+  return (
+    pathname.match(/\/marketplace-capture\/products\/([^/]+)/)?.[1] ??
+    pathname.match(/\/marketplace\/auto-review\/new\/([^/]+)/)?.[1] ??
+    ""
+  );
 }
 
 function parseCompactCount(
@@ -2447,7 +2456,10 @@ export default function MarketplaceCaptureProductDetail() {
   const { confirm } = useConfirm();
   const { t } = useScopedTranslation(["common"]);
   const hyperframesCopy = getMarketplaceHyperframesUiCopy();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const isAutoReviewJobSetupRoute = location.startsWith(
+    "/marketplace/auto-review/new/"
+  );
   const productId = getProductId(location);
   const [panelTab, setPanelTab] = useState<ProductPanelTab>("product");
   const [mediaTab, setMediaTab] = useState<ProductMediaTab>("image");
@@ -2567,6 +2579,7 @@ export default function MarketplaceCaptureProductDetail() {
   const [showAutoReviewHistory, setShowAutoReviewHistory] = useState(false);
   const [optimisticAutoStoryboardStart, setOptimisticAutoStoryboardStart] =
     useState(false);
+  const autoStoryboardStartAttemptRef = useRef(0);
   const [collapsedAutoReviewRunIds, setCollapsedAutoReviewRunIds] = useState<
     Set<string>
   >(() => new Set());
@@ -2634,17 +2647,16 @@ export default function MarketplaceCaptureProductDetail() {
   const [autoReviewPropDetails, setAutoReviewPropDetails] = useState("");
   const [autoReviewMotionDirection, setAutoReviewMotionDirection] =
     useState("");
-  const [
-    autoReviewCharacterPresenceMode,
-    setAutoReviewCharacterPresenceMode,
-  ] = useState<"auto" | "every_frame" | "most_frames">("auto");
+  const [autoReviewCharacterPresenceMode, setAutoReviewCharacterPresenceMode] =
+    useState<"auto" | "every_frame" | "most_frames">("auto");
   const suppressAddImageToastRef = useRef(false);
   const requestedLibraryPageRef = useRef(0);
   const utils = trpc.useUtils();
   const tenantFeatureFlags = useTenantFeatureFlags();
-  const marketplaceIntelligenceEnabled = MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS.some(
-    flag => tenantFeatureFlags[flag] === true
-  );
+  const marketplaceIntelligenceEnabled =
+    MARKETPLACE_INTELLIGENCE_FEATURE_FLAGS.some(
+      flag => tenantFeatureFlags[flag] === true
+    );
 
   const product = trpc.marketplaceCapture.getProduct.useQuery(
     { productId },
@@ -2673,7 +2685,9 @@ export default function MarketplaceCaptureProductDetail() {
         await marketplaceMetricEnrichmentsQuery.refetch();
       },
       onError: (error: any) => {
-        toast.error(error?.message || "Unable to save marketplace metric enrichment");
+        toast.error(
+          error?.message || "Unable to save marketplace metric enrichment"
+        );
       },
     });
   const imageMediaModelsQuery = trpc.mediaModels.list.useQuery({
@@ -3011,7 +3025,13 @@ export default function MarketplaceCaptureProductDetail() {
   );
   const autoStoryboardPlanQuery =
     trpc.marketplaceCapture.getAutoStoryboardReviewPlan.useQuery(
-      { productId, overrides: autoStoryboardOverrides },
+      {
+        productId,
+        overrides: autoStoryboardOverrides,
+        ...(isAutoReviewJobSetupRoute
+          ? { workflowMode: "job_workbench" as const }
+          : {}),
+      },
       {
         enabled: Boolean(productId),
         refetchOnMount: "always",
@@ -3029,9 +3049,11 @@ export default function MarketplaceCaptureProductDetail() {
   const autoStoryboardReferenceCapacity =
     autoStoryboardPlanQuery.data?.referenceCapacity ?? null;
   const sequentialStrategyEnabled =
-    tenantFeatureFlags.marketplaceSequentialStoryboard === true;
+    tenantFeatureFlags.marketplaceSequentialStoryboard === true ||
+    isAutoReviewJobSetupRoute;
   const sequentialStrategySelected = isSequentialFrameStrategy(
-    autoStoryboardOverrides.frameStrategy ?? autoStoryboardPlan?.defaults.frameStrategy
+    autoStoryboardOverrides.frameStrategy ??
+      autoStoryboardPlan?.defaults.frameStrategy
   );
   const autoStoryboardPlanLoading =
     autoStoryboardPlanQuery.isLoading && !autoStoryboardPlan;
@@ -3108,13 +3130,14 @@ export default function MarketplaceCaptureProductDetail() {
   );
   const shouldLoadAutoReviewRuns =
     Boolean(productId) &&
-    (showAutoReviewRuns ||
+    (isAutoReviewJobSetupRoute ||
+      showAutoReviewRuns ||
       Boolean(pendingAutoReviewAction) ||
       optimisticAutoStoryboardStart ||
       effectiveAutoReviewLaunchMode === "auto_storyboard_review");
   const autoReviewRunsQueryInput = useMemo(
-    () => ({ productId, limit: showAutoReviewHistory ? 8 : 3, summary: true }),
-    [productId, showAutoReviewHistory]
+    () => ({ productId, limit: 50, summary: true }),
+    [productId]
   );
   const shouldPollAutoReviewRunStart =
     Boolean(pendingAutoReviewAction) || optimisticAutoStoryboardStart;
@@ -3294,6 +3317,24 @@ export default function MarketplaceCaptureProductDetail() {
         setShowAutoReviewHistory(false);
         setCollapsedAutoReviewRunIds(new Set());
         setCollapsedAutoReviewPanelIds(new Set());
+        const startedRun = result?.run ?? result;
+        if (
+          compactText(startedRun?.id) &&
+          (compactText(
+            asRecord(startedRun?.metadataJson).planningArchitecture
+          ) === "staged_two_skill_v2" ||
+            (tenantFeatureFlags.marketplaceStagedSequentialStoryboardV2 ===
+              true &&
+              isSequentialFrameStrategy(
+                startedRun?.frameStrategy ?? autoReviewFrameStrategy
+              )) ||
+            isAutoReviewJobSetupRoute)
+        ) {
+          window.location.assign(
+            `/marketplace/auto-review/${encodeURIComponent(compactText(startedRun?.id))}`
+          );
+          return;
+        }
         toast.success(
           result?.productionRunId
             ? "เริ่มสร้างรีวิวสินค้าอัตโนมัติแล้ว"
@@ -3324,9 +3365,39 @@ export default function MarketplaceCaptureProductDetail() {
         setShowAutoReviewRuns(true);
         setShowAutoReviewHistory(false);
         setOptimisticAutoStoryboardStart(false);
+        if (
+          compactText(result.run?.id) &&
+          (compactText(
+            asRecord(result.run?.metadataJson).planningArchitecture
+          ) === "staged_two_skill_v2" ||
+            (tenantFeatureFlags.marketplaceStagedSequentialStoryboardV2 ===
+              true &&
+              isSequentialFrameStrategy(
+                result.run?.frameStrategy ??
+                  autoStoryboardPlan?.defaults.frameStrategy
+              )) ||
+            isAutoReviewJobSetupRoute)
+        ) {
+          window.location.assign(
+            `/marketplace/auto-review/${encodeURIComponent(compactText(result.run?.id))}`
+          );
+          return;
+        }
         toast.success("เริ่ม Auto Storyboard Review แล้ว");
       },
       onError: error => {
+        if (isLostUpstreamApiErrorMessage(error.message)) {
+          const recoveryAttempt = autoStoryboardStartAttemptRef.current;
+          toast.warning(
+            "การเชื่อมต่อหมดเวลาก่อนรับคำตอบ กำลังตรวจสอบงานที่อาจเริ่มทำไปแล้ว"
+          );
+          window.setTimeout(() => {
+            if (autoStoryboardStartAttemptRef.current === recoveryAttempt) {
+              setOptimisticAutoStoryboardStart(false);
+            }
+          }, AUTO_REVIEW_RUN_START_RECOVERY_WINDOW_MS);
+          return;
+        }
         setOptimisticAutoStoryboardStart(false);
         toast.error(error.message);
       },
@@ -3378,10 +3449,14 @@ export default function MarketplaceCaptureProductDetail() {
   // error is this page's existing convention for these single-run lifecycle
   // actions); an inline error string is also kept for the panel itself since
   // this is a credit-gating action worth more than an auto-dismissing toast.
-  const [autoReviewPlanReviewApproveError, setAutoReviewPlanReviewApproveError] =
-    useState<string | null>(null);
-  const [autoReviewPlanReviewRedraftError, setAutoReviewPlanReviewRedraftError] =
-    useState<string | null>(null);
+  const [
+    autoReviewPlanReviewApproveError,
+    setAutoReviewPlanReviewApproveError,
+  ] = useState<string | null>(null);
+  const [
+    autoReviewPlanReviewRedraftError,
+    setAutoReviewPlanReviewRedraftError,
+  ] = useState<string | null>(null);
   const approveAutoReviewPlanReviewMutation =
     trpc.marketplaceCapture.approveAutoReviewPlanReview.useMutation({
       onSuccess: async () => {
@@ -3442,12 +3517,14 @@ export default function MarketplaceCaptureProductDetail() {
         await autoReviewRuns.refetch();
       },
       onError: (error, variables) => {
-        setDialogueSaveError({ shotId: variables.shotId, message: error.message });
+        setDialogueSaveError({
+          shotId: variables.shotId,
+          message: error.message,
+        });
         toast.error(error.message);
       },
       onSettled: () => setDialogueSavingShotId(null),
     });
-
   const item = (productItem ?? {}) as Record<string, unknown>;
   const itemDescription = asRecord(item.descriptionJson);
   const itemSpecs = asRecord(item.specsJson);
@@ -3504,7 +3581,10 @@ export default function MarketplaceCaptureProductDetail() {
     },
     {
       label: "Sold",
-      value: formatCount(item.soldCountNormalized as any, item.soldCountText as any),
+      value: formatCount(
+        item.soldCountNormalized as any,
+        item.soldCountText as any
+      ),
     },
     {
       label: "Rating",
@@ -3512,18 +3592,23 @@ export default function MarketplaceCaptureProductDetail() {
     },
     {
       label: "Reviews",
-      value: formatCount(item.reviewCountText as any, itemPlatformRaw.reviewCountNormalized as any),
+      value: formatCount(
+        item.reviewCountText as any,
+        itemPlatformRaw.reviewCountNormalized as any
+      ),
     },
   ];
   const marketplaceSnapshots = marketplaceSnapshotsQuery.data?.snapshots ?? [];
-  const marketplaceMetricEnrichments = marketplaceMetricEnrichmentsQuery.data ?? [];
+  const marketplaceMetricEnrichments =
+    marketplaceMetricEnrichmentsQuery.data ?? [];
   const productExternalProductId = compactText(item.externalProductId);
   const productExternalShopId = compactText(item.externalShopId);
   const matchingMarketplaceSnapshotItem = useMemo(() => {
     if (!productExternalProductId) return null;
     for (const snapshot of marketplaceSnapshots) {
       const match = (snapshot.items ?? []).find((snapshotItem: any) => {
-        const itemIdMatches = String(snapshotItem.itemId ?? "") === productExternalProductId;
+        const itemIdMatches =
+          String(snapshotItem.itemId ?? "") === productExternalProductId;
         const shopIdMatches = productExternalShopId
           ? String(snapshotItem.shopId ?? "") === productExternalShopId
           : true;
@@ -3615,7 +3700,15 @@ export default function MarketplaceCaptureProductDetail() {
   const health = productData?.health;
   const insights = [...((productInsights.data as any[] | undefined) ?? [])];
   const autoReviewRunItems = (autoReviewRuns.data ?? []) as any[];
+  const stagedAutoReviewRunItems = autoReviewRunItems.filter(
+    run =>
+      compactText(asRecord(run?.metadataJson).planningArchitecture) ===
+      "staged_two_skill_v2"
+  );
   const activeAutoReviewRun = autoReviewRunItems.find(run =>
+    isAutoReviewRunBlockingStart(run)
+  );
+  const activeStagedAutoReviewRun = stagedAutoReviewRunItems.find(run =>
     isAutoReviewRunBlockingStart(run)
   );
   const isStartingAutoReviewRun =
@@ -3626,6 +3719,7 @@ export default function MarketplaceCaptureProductDetail() {
   const hideOldTerminalAutoReviewRuns =
     isStartingAutoReviewRun && !showAutoReviewHistory;
   const latestAutoReviewRunId = compactText(autoReviewRunItems[0]?.id);
+  const latestJobWorkbenchRunId = compactText(stagedAutoReviewRunItems[0]?.id);
   const defaultAutoReviewRunItems = autoReviewRunItems.filter(
     (run, index) =>
       !isAutoReviewRunSuppressed(run, suppressedAutoReviewRunIds) &&
@@ -3641,6 +3735,12 @@ export default function MarketplaceCaptureProductDetail() {
     !showAutoReviewHistory &&
     visibleAutoReviewRunItems.length === 0;
   const statusAutoReviewRun = activeAutoReviewRun ?? latestVisibleAutoReviewRun;
+  const stagedAutoReviewRunId =
+    compactText(
+      asRecord(statusAutoReviewRun?.metadataJson).planningArchitecture
+    ) === "staged_two_skill_v2"
+      ? compactText(statusAutoReviewRun?.id)
+      : "";
   // Marketplace mandatory text-plan review gate — the run currently held for
   // text-plan review, gated on (1) the SUMMARY metadata's own `planReview`
   // flag (present even in the trimmed `listAutoReviewRuns` payload — see
@@ -4934,6 +5034,7 @@ export default function MarketplaceCaptureProductDetail() {
       });
       if (!confirmed) return;
       setAutoReviewLaunchMode("auto_storyboard_review");
+      autoStoryboardStartAttemptRef.current += 1;
       setOptimisticAutoStoryboardStart(true);
       setShowAutoReviewRuns(true);
       setShowAutoReviewHistory(false);
@@ -4953,6 +5054,9 @@ export default function MarketplaceCaptureProductDetail() {
         expectedPlanHash: autoStoryboardPlan.planHash,
         idempotencyKey: `hf-auto-resume:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
         overrides: autoStoryboardOverrides,
+        ...(isAutoReviewJobSetupRoute
+          ? { workflowMode: "job_workbench" as const }
+          : {}),
         transportMetadata,
         referenceAnchors: buildAutoReviewReferenceAnchors("auto_review_video"),
       });
@@ -4966,6 +5070,7 @@ export default function MarketplaceCaptureProductDetail() {
     if (!confirmed) return;
     const startAttemptKey = Date.now().toString(36);
     setAutoReviewLaunchMode("auto_storyboard_review");
+    autoStoryboardStartAttemptRef.current += 1;
     setOptimisticAutoStoryboardStart(true);
     setShowAutoReviewRuns(true);
     setShowAutoReviewHistory(false);
@@ -4989,6 +5094,9 @@ export default function MarketplaceCaptureProductDetail() {
       expectedPlanHash: autoStoryboardPlan.planHash,
       idempotencyKey: `hf-auto-start:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
       overrides: autoStoryboardOverrides,
+      ...(isAutoReviewJobSetupRoute
+        ? { workflowMode: "job_workbench" as const }
+        : {}),
       transportMetadata,
       referenceAnchors: buildAutoReviewReferenceAnchors("auto_review_video"),
     });
@@ -5149,7 +5257,9 @@ export default function MarketplaceCaptureProductDetail() {
   );
   const handleAutoReviewAngleLabelChange = useCallback(
     (imageId: string, label: SequentialAngleLabel | undefined) => {
-      const image = productImageOptions.find(candidate => candidate.id === imageId);
+      const image = productImageOptions.find(
+        candidate => candidate.id === imageId
+      );
       if (!image || !image.url) return;
       setAutoReviewProductAngleLabels(previous => {
         const next = previous.filter(entry => entry.url !== image.url);
@@ -5165,19 +5275,31 @@ export default function MarketplaceCaptureProductDetail() {
   // anchor (the grid never renders a toggle for it).
   const toggleAutoReviewReferenceSelect = useCallback(
     (imageId: string) => {
-      const image = productImageOptions.find(candidate => candidate.id === imageId);
+      const image = productImageOptions.find(
+        candidate => candidate.id === imageId
+      );
       if (!image || !image.url) return;
-      if (resolvedProductAnchorImage && resolvedProductAnchorImage.id === imageId) {
+      if (
+        resolvedProductAnchorImage &&
+        resolvedProductAnchorImage.id === imageId
+      ) {
         return;
       }
       setAutoReviewProductAngleLabels(previous => {
         if (previous.some(entry => entry.url === image.url)) {
           return previous.filter(entry => entry.url !== image.url);
         }
-        return [...previous, buildAutoReviewProductAngleEntry(image, undefined)];
+        return [
+          ...previous,
+          buildAutoReviewProductAngleEntry(image, undefined),
+        ];
       });
     },
-    [productImageOptions, resolvedProductAnchorImage, buildAutoReviewProductAngleEntry]
+    [
+      productImageOptions,
+      resolvedProductAnchorImage,
+      buildAutoReviewProductAngleEntry,
+    ]
   );
   // Feature 136 (selection redesign) — only ENROLLED (checked) images ever
   // become angle entries; unchecked images must never phantom-populate the
@@ -5208,7 +5330,8 @@ export default function MarketplaceCaptureProductDetail() {
         modelCap: autoStoryboardReferenceCapacity?.modelCap ?? 0,
         entries: autoReviewAngleSelectionEntries,
         guardianReserved:
-          autoReviewCharacterMode === "uploaded_reference" || Boolean(characterAnchorUrl),
+          autoReviewCharacterMode === "uploaded_reference" ||
+          Boolean(characterAnchorUrl),
         environmentAttached: Boolean(environmentAnchorUrl),
       }),
     [
@@ -5222,7 +5345,8 @@ export default function MarketplaceCaptureProductDetail() {
   const autoReviewGuardianState = useMemo(
     () =>
       projectSequentialGuardianState({
-        planChildSubjectPolicy: autoStoryboardEvidencePreview?.childSubjectPolicy ?? null,
+        planChildSubjectPolicy:
+          autoStoryboardEvidencePreview?.childSubjectPolicy ?? null,
         characterReferenceAttached: Boolean(characterAnchorUrl),
       }),
     [autoStoryboardEvidencePreview, characterAnchorUrl]
@@ -5505,10 +5629,7 @@ export default function MarketplaceCaptureProductDetail() {
                 value={autoReviewCharacterPresenceMode}
                 onChange={event =>
                   setAutoReviewCharacterPresenceMode(
-                    event.target.value as
-                      | "auto"
-                      | "every_frame"
-                      | "most_frames"
+                    event.target.value as "auto" | "every_frame" | "most_frames"
                   )
                 }
               >
@@ -5642,202 +5763,362 @@ export default function MarketplaceCaptureProductDetail() {
     </section>
   );
 
-  const autoStoryboardReviewSurface = showAutoStoryboardReviewSurface ? (
-    <div className="mt-4 space-y-3">
-      {autoStoryboardPlan?.primaryAction.actionId ===
-        "resume_auto_storyboard_review" && autoStoryboardPlan.activeRunId ? (
-        <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-800 dark:bg-sky-950/30">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-sky-900 dark:text-sky-100">
-                พบงาน Auto Storyboard Review เดิมที่ยังต่อได้
-              </p>
-              <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
-                งานนี้มีเฟรมพร้อมแล้ว ระบบจะกลับไปทำต่อจาก run เดิมถ้าคุณยืนยัน
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              className="bg-sky-600 text-white hover:bg-sky-700"
-              aria-label="ทำงานต่อจากงานเดิม"
-              onClick={() => startAutoStoryboardReview()}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              ทำงานต่อจากงานเดิม
-            </Button>
-          </div>
-        </div>
-      ) : null}
-      <MarketplaceAutoReviewLaunchModeSwitch
-        value={effectiveAutoReviewLaunchMode}
-        onChange={setAutoReviewLaunchMode}
-        autoEnabled={Boolean(
-          autoStoryboardPlanLoading ||
-          autoStoryboardPlan?.access.capabilities.canAccessAuto
-        )}
-        standardAvailable={Boolean(
-          autoStoryboardPlan?.standardOrderAvailable ?? true
-        )}
-      />
-      {autoStoryboardPlanErrored ? (
-        <div
-          className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 font-semibold">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                {hyperframesCopy.autoPlanLoadFailed}
+  const autoStoryboardReviewSurface =
+    isAutoReviewJobSetupRoute && showAutoStoryboardReviewSurface ? (
+      <div className="mt-4 space-y-3">
+        {autoStoryboardPlan?.primaryAction.actionId ===
+          "resume_auto_storyboard_review" && autoStoryboardPlan.activeRunId ? (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-4 shadow-sm dark:border-sky-800 dark:bg-sky-950/30">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-sky-900 dark:text-sky-100">
+                  พบงาน Auto Storyboard Review เดิมที่ยังต่อได้
+                </p>
+                <p className="mt-1 text-sm leading-6 text-sky-800 dark:text-sky-100/85">
+                  งานนี้มีเฟรมพร้อมแล้ว ระบบจะกลับไปทำต่อจาก run
+                  เดิมถ้าคุณยืนยัน
+                </p>
               </div>
-              <p className="mt-1 leading-6 text-amber-800 dark:text-amber-200">
-                {hyperframesCopy.autoPlanLoadFailedDescription}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={autoStoryboardPlanRetrying}
-                onClick={() => void autoStoryboardPlanQuery.refetch()}
-              >
-                <RefreshCw
-                  className={`mr-2 h-4 w-4 ${
-                    autoStoryboardPlanRetrying ? "animate-spin" : ""
-                  }`}
-                />
-                {hyperframesCopy.retryAutoPlan}
-              </Button>
               <Button
                 type="button"
                 size="sm"
-                onClick={() => setAutoReviewLaunchMode("standard_order")}
+                className="bg-sky-600 text-white hover:bg-sky-700"
+                aria-label="ทำงานต่อจากงานเดิม"
+                onClick={() => startAutoStoryboardReview()}
               >
-                {hyperframesCopy.useStandardOrder}
+                <RefreshCw className="mr-2 h-4 w-4" />
+                ทำงานต่อจากงานเดิม
               </Button>
             </div>
           </div>
-        </div>
-      ) : effectiveAutoReviewLaunchMode === "auto_storyboard_review" ? (
-        <>
-          <AutoStoryboardReviewPlanSummary
-            plan={autoStoryboardPlan}
-            loading={autoStoryboardPlanQuery.isLoading}
-            starting={startAutoStoryboardReviewMutation.isPending}
-            updating={autoStoryboardPlanRefreshingForOverrides}
-            onStart={startAutoStoryboardReview}
-            onUseStandard={() => setAutoReviewLaunchMode("standard_order")}
-            onResetToAuto={() => {
-              setAutoStoryboardOverrides({});
-              setShowAutoStoryboardAdvanced(false);
-            }}
-            qualityModeControl={
-              <AutoStoryboardQualityModeControl
-                value={autoStoryboardOverrides}
-                onChange={setAutoStoryboardOverrides}
-              />
-            }
-            qualityModeRepairRounds={autoStoryboardQualityModeRounds}
-          />
-          <AutoStoryboardFrameStrategyCard
-            enabled={sequentialStrategyEnabled}
-            plan={autoStoryboardPlan}
-            value={autoStoryboardOverrides}
-            onChange={setAutoStoryboardOverrides}
-          />
-          {characterChoicePanel}
-          {creativeDirectionPanel}
-          <AutoStoryboardStoryMotionFields
-            value={autoStoryboardOverrides}
-            onChange={setAutoStoryboardOverrides}
-          />
-          {/* Feature 136 (section 11) — SequentialEvidenceReviewPanel renders
+        ) : null}
+        <MarketplaceAutoReviewLaunchModeSwitch
+          value={effectiveAutoReviewLaunchMode}
+          onChange={setAutoReviewLaunchMode}
+          autoEnabled={Boolean(
+            autoStoryboardPlanLoading ||
+            autoStoryboardPlan?.access.capabilities.canAccessAuto
+          )}
+          standardAvailable={Boolean(
+            autoStoryboardPlan?.standardOrderAvailable ?? true
+          )}
+          showStandardOption={!isAutoReviewJobSetupRoute}
+        />
+        {autoStoryboardPlanErrored ? (
+          <div
+            className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 font-semibold">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {hyperframesCopy.autoPlanLoadFailed}
+                </div>
+                <p className="mt-1 leading-6 text-amber-800 dark:text-amber-200">
+                  {hyperframesCopy.autoPlanLoadFailedDescription}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={autoStoryboardPlanRetrying}
+                  onClick={() => void autoStoryboardPlanQuery.refetch()}
+                >
+                  <RefreshCw
+                    className={`mr-2 h-4 w-4 ${
+                      autoStoryboardPlanRetrying ? "animate-spin" : ""
+                    }`}
+                  />
+                  {hyperframesCopy.retryAutoPlan}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setAutoReviewLaunchMode("standard_order")}
+                >
+                  {hyperframesCopy.useStandardOrder}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : effectiveAutoReviewLaunchMode === "auto_storyboard_review" ? (
+          <>
+            <AutoStoryboardReviewPlanSummary
+              plan={autoStoryboardPlan}
+              loading={autoStoryboardPlanQuery.isLoading}
+              starting={startAutoStoryboardReviewMutation.isPending}
+              updating={autoStoryboardPlanRefreshingForOverrides}
+              onStart={startAutoStoryboardReview}
+              onUseStandard={() => setAutoReviewLaunchMode("standard_order")}
+              showStandardAction={!isAutoReviewJobSetupRoute}
+              showActiveRunStatus={!isAutoReviewJobSetupRoute}
+              onResetToAuto={() => {
+                setAutoStoryboardOverrides({});
+                setShowAutoStoryboardAdvanced(false);
+              }}
+              qualityModeControl={
+                <AutoStoryboardQualityModeControl
+                  value={autoStoryboardOverrides}
+                  onChange={setAutoStoryboardOverrides}
+                />
+              }
+              qualityModeRepairRounds={autoStoryboardQualityModeRounds}
+            />
+            <AutoStoryboardFrameStrategyCard
+              enabled={sequentialStrategyEnabled}
+              plan={autoStoryboardPlan}
+              value={autoStoryboardOverrides}
+              onChange={setAutoStoryboardOverrides}
+            />
+            {characterChoicePanel}
+            {creativeDirectionPanel}
+            <AutoStoryboardStoryMotionFields
+              value={autoStoryboardOverrides}
+              onChange={setAutoStoryboardOverrides}
+            />
+            {/* Feature 136 (section 11) — SequentialEvidenceReviewPanel renders
               SequentialGuardianNotice internally per its own composition
               order (disclosure header -> guardian notice -> highlights ->
               needsConfirmation -> free-text fields); writes through the
               SAME `autoStoryboardOverrides` state as the advanced panel
               below, never a separate payload. */}
-          <SequentialEvidenceReviewPanel
-            enabled={sequentialStrategyEnabled && sequentialStrategySelected}
-            evidencePreview={autoStoryboardEvidencePreview}
-            value={autoStoryboardOverrides}
-            onChange={setAutoStoryboardOverrides}
-            guardian={autoReviewGuardianState}
-            onOpenCharacterUpload={() => setAutoReviewCharacterMode("uploaded_reference")}
-          />
-          <AutoStoryboardAdvancedOverrides
-            plan={autoStoryboardPlan}
-            open={showAutoStoryboardAdvanced}
-            onOpenChange={setShowAutoStoryboardAdvanced}
-            value={autoStoryboardOverrides}
-            onChange={setAutoStoryboardOverrides}
-            sequentialStrategyEnabled={sequentialStrategyEnabled}
-            onResetToAuto={() => {
-              setAutoStoryboardOverrides({});
-              setShowAutoStoryboardAdvanced(false);
-            }}
-            imageModelOptions={autoReviewImageModelOptions.map(option => ({
-              value: option.value,
-              label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
-            }))}
-            videoModelOptions={autoReviewVideoModelOptions.map(option => ({
-              value: option.value,
-              label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
-            }))}
-            visionQaModelOptions={autoReviewVisionQaModelOptions}
-            videoSegmentPreview={{
-              loading: autoStoryboardVideoSegmentPreviewQuery.isFetching,
-              error:
-                autoStoryboardVideoSegmentPreviewQuery.error?.message ?? null,
-              effectiveMode:
-                autoStoryboardVideoSegmentPreviewQuery.data?.videoSegmentPlan
-                  .effectiveMode ?? null,
-              creditSource:
-                autoStoryboardVideoSegmentPreviewQuery.data?.creditEstimate
-                  .creditSource ?? null,
-              fallbackReason:
-                autoStoryboardVideoSegmentPreviewQuery.data?.fallbackReason ??
-                null,
-              segments:
-                autoStoryboardVideoSegmentPreviewQuery.data?.videoSegmentPlan.segments.map(
-                  segment => ({
-                    segmentId: segment.segmentId,
-                    shotIds: segment.shotIds,
-                    durationSeconds: segment.durationSeconds,
-                    referenceMode: segment.referenceMode,
-                  })
-                ) ?? [],
-              warnings:
-                autoStoryboardVideoSegmentPreviewQuery.data?.warnings ?? [],
-            }}
-          />
-          {selectedAutoStoryboardMcpProviderKey ? (
-            <div className="rounded-lg border bg-white p-4">
-              <McpConnectionPicker
-                assetType={
-                  selectedAutoStoryboardVideoModelProviderKey
-                    ? "video"
-                    : "image"
-                }
-                providerKey={selectedAutoStoryboardMcpProviderKey}
-                value={autoReviewMcpConnectionId}
-                sharedGroupId={autoReviewMcpSharedGroupId}
-                onChange={setAutoReviewMcpConnectionId}
-                onSharedGroupChange={setAutoReviewMcpSharedGroupId}
-              />
-            </div>
-          ) : null}
-        </>
-      ) : null}
-    </div>
-  ) : null;
+            <SequentialEvidenceReviewPanel
+              enabled={sequentialStrategyEnabled && sequentialStrategySelected}
+              evidencePreview={autoStoryboardEvidencePreview}
+              value={autoStoryboardOverrides}
+              onChange={setAutoStoryboardOverrides}
+              guardian={autoReviewGuardianState}
+              onOpenCharacterUpload={() =>
+                setAutoReviewCharacterMode("uploaded_reference")
+              }
+            />
+            <AutoStoryboardAdvancedOverrides
+              plan={autoStoryboardPlan}
+              open={showAutoStoryboardAdvanced}
+              onOpenChange={setShowAutoStoryboardAdvanced}
+              value={autoStoryboardOverrides}
+              onChange={setAutoStoryboardOverrides}
+              sequentialStrategyEnabled={sequentialStrategyEnabled}
+              onResetToAuto={() => {
+                setAutoStoryboardOverrides({});
+                setShowAutoStoryboardAdvanced(false);
+              }}
+              imageModelOptions={autoReviewImageModelOptions.map(option => ({
+                value: option.value,
+                label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
+              }))}
+              videoModelOptions={autoReviewVideoModelOptions.map(option => ({
+                value: option.value,
+                label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
+              }))}
+              visionQaModelOptions={autoReviewVisionQaModelOptions}
+              videoSegmentPreview={{
+                loading: autoStoryboardVideoSegmentPreviewQuery.isFetching,
+                error:
+                  autoStoryboardVideoSegmentPreviewQuery.error?.message ?? null,
+                effectiveMode:
+                  autoStoryboardVideoSegmentPreviewQuery.data?.videoSegmentPlan
+                    .effectiveMode ?? null,
+                creditSource:
+                  autoStoryboardVideoSegmentPreviewQuery.data?.creditEstimate
+                    .creditSource ?? null,
+                fallbackReason:
+                  autoStoryboardVideoSegmentPreviewQuery.data?.fallbackReason ??
+                  null,
+                segments:
+                  autoStoryboardVideoSegmentPreviewQuery.data?.videoSegmentPlan.segments.map(
+                    segment => ({
+                      segmentId: segment.segmentId,
+                      shotIds: segment.shotIds,
+                      durationSeconds: segment.durationSeconds,
+                      referenceMode: segment.referenceMode,
+                    })
+                  ) ?? [],
+                warnings:
+                  autoStoryboardVideoSegmentPreviewQuery.data?.warnings ?? [],
+              }}
+            />
+            {selectedAutoStoryboardMcpProviderKey ? (
+              <div className="rounded-lg border bg-white p-4">
+                <McpConnectionPicker
+                  assetType={
+                    selectedAutoStoryboardVideoModelProviderKey
+                      ? "video"
+                      : "image"
+                  }
+                  providerKey={selectedAutoStoryboardMcpProviderKey}
+                  value={autoReviewMcpConnectionId}
+                  sharedGroupId={autoReviewMcpSharedGroupId}
+                  onChange={setAutoReviewMcpConnectionId}
+                  onSharedGroupChange={setAutoReviewMcpSharedGroupId}
+                />
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    ) : null;
   const showStandardOrderControlPanel = shouldShowStandardOrderControls({
     autoSurfaceVisible: showAutoStoryboardReviewSurface,
     effectiveLaunchMode: effectiveAutoReviewLaunchMode,
   });
+
+  if (isAutoReviewJobSetupRoute) {
+    const setupProductName =
+      compactText(item.productName) || compactText(item.title) || productId;
+    const setupProductImageCount = productImageOptions.length;
+
+    return (
+      <main className="min-h-dvh bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.08),_transparent_42%),#f8fafc] px-3 py-4 text-slate-900 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <nav
+            aria-label="เส้นทางตั้งค่างาน"
+            className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-500"
+          >
+            <Link
+              href="/marketplace-capture"
+              className="transition hover:text-slate-950"
+            >
+              Marketplace Capture
+            </Link>
+            <span aria-hidden="true">/</span>
+            <Link
+              href={`/marketplace-capture/products/${encodeURIComponent(productId)}`}
+              className="max-w-[18rem] truncate transition hover:text-slate-950"
+            >
+              {setupProductName}
+            </Link>
+            <span aria-hidden="true">/</span>
+            <span className="font-medium text-slate-700">สร้าง Job Review</span>
+          </nav>
+
+          <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <MarketplaceAutoReviewJobNavigator
+              runs={autoReviewRunItems}
+              selectedRunId={null}
+              loading={autoReviewRuns.isFetching}
+              productId={productId}
+              setupMode
+              onOpenRun={runId =>
+                setLocation(
+                  `/marketplace/auto-review/${encodeURIComponent(runId)}`
+                )
+              }
+              onCreateNew={() =>
+                setLocation(
+                  `/marketplace/auto-review/new/${encodeURIComponent(productId)}`
+                )
+              }
+              className="order-2 xl:order-1 xl:sticky xl:top-4 xl:h-[calc(100dvh-2rem)] xl:min-h-0"
+            />
+
+            <div className="min-w-0 order-1 space-y-4 xl:order-2">
+          <header className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl shadow-violet-950/10">
+            <div className="flex flex-wrap items-start justify-between gap-5 p-5 sm:p-7">
+              <div className="min-w-0">
+                <Link
+                  href={`/marketplace-capture/products/${encodeURIComponent(productId)}`}
+                  className="inline-flex min-h-11 items-center rounded-lg text-sm text-slate-300 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+                >
+                  <ArrowLeft className="mr-1.5 h-4 w-4" /> กลับรายละเอียดสินค้า
+                </Link>
+                <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">
+                  <Sparkles className="h-4 w-4" /> Marketplace Auto Review
+                </div>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                  ตั้งค่า Job Review
+                </h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                  เลือกเฉพาะสินค้านี้และขอบเขตข้อมูลอ้างอิง จากนั้นระบบจะหยุดรอ
+                  ให้ตรวจทีละ checkpoint ใน Job Workbench ก่อนใช้เครดิตทุกครั้ง
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
+                    <Package className="h-3.5 w-3.5" /> {setupProductName}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
+                    Product ID: {productId}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
+                    รูปอ้างอิง {setupProductImageCount} รูป
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-px border-t border-white/10 bg-white/10 sm:grid-cols-3">
+              <div className="bg-white/[0.04] px-5 py-4 sm:px-7">
+                <p className="text-xs font-semibold uppercase tracking-wide text-violet-300">
+                  1 · Scope
+                </p>
+                <p className="mt-1 text-sm text-slate-200">
+                  ใช้ข้อมูลของสินค้านี้เป็นต้นทาง
+                </p>
+              </div>
+              <div className="bg-white/[0.04] px-5 py-4 sm:px-7">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-300">
+                  2 · Checkpoint
+                </p>
+                <p className="mt-1 text-sm text-slate-200">
+                  ตรวจและย้อนแก้ได้ทุกขั้นตอน
+                </p>
+              </div>
+              <div className="bg-white/[0.04] px-5 py-4 sm:px-7">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                  3 · Credit
+                </p>
+                <p className="mt-1 text-sm text-slate-200">
+                  ใช้เครดิตเมื่อกดยืนยันเท่านั้น
+                </p>
+              </div>
+            </div>
+          </header>
+
+          <MarketplaceAutoReviewProductImagePicker
+            images={productImageOptions}
+            primaryImageId={resolvedProductAnchorImage?.id ?? null}
+            selectedSupportingImageIds={autoReviewSelectedProductAngleImageIds}
+            angleLabelsByImageId={autoReviewProductAngleLabelsByImageId}
+            sequentialEnabled={sequentialStrategyEnabled && sequentialStrategySelected}
+            capacity={autoReviewReferenceCapacityMeter}
+            modelLabel={
+              autoStoryboardOverrides.imageModel ||
+              autoStoryboardPlan?.defaults.imageModel ||
+              ""
+            }
+            onPrimaryChange={selectProductAnchor}
+            onToggleSupportingImage={toggleAutoReviewReferenceSelect}
+            onAngleLabelChange={handleAutoReviewAngleLabelChange}
+          />
+
+          {autoStoryboardReviewSurface ? (
+            <section
+              className="mt-4 rounded-2xl border border-violet-200 bg-white p-4 shadow-sm md:p-6"
+              aria-label="ตั้งค่า Auto Review Job"
+            >
+              {autoStoryboardReviewSurface}
+            </section>
+          ) : (
+            <section
+              className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950"
+              role="alert"
+            >
+              <p className="font-semibold">ยังไม่สามารถสร้าง Job Review ได้</p>
+              <p className="mt-1 leading-6">
+                ตรวจสิทธิ์ Auto Review หรือกลับไปตรวจข้อมูลสินค้าก่อน
+                แล้วลองใหม่อีกครั้ง
+              </p>
+            </section>
+          )}
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-6">
@@ -5855,7 +6136,31 @@ export default function MarketplaceCaptureProductDetail() {
         className="hidden"
         onChange={handleUploadEnvironmentAnchor}
       />
-      <div className="mx-auto grid max-w-[1600px] gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div
+        className={`mx-auto grid max-w-[1800px] gap-5 ${
+          isAutoReviewJobSetupRoute
+            ? "xl:grid-cols-[280px_minmax(0,1fr)_420px]"
+            : "xl:grid-cols-[minmax(0,1fr)_420px]"
+        }`}
+      >
+        {isAutoReviewJobSetupRoute ? (
+          <MarketplaceAutoReviewJobNavigator
+            runs={autoReviewRunItems}
+            selectedRunId={null}
+            loading={autoReviewRuns.isFetching}
+            productId={productId}
+            setupMode
+            onOpenRun={runId =>
+              setLocation(`/marketplace/auto-review/${encodeURIComponent(runId)}`)
+            }
+            onCreateNew={() =>
+              setLocation(
+                `/marketplace/auto-review/new/${encodeURIComponent(productId)}`
+              )
+            }
+            className="xl:sticky xl:top-4 xl:h-[calc(100dvh-2rem)] xl:min-h-0"
+          />
+        ) : null}
         <div className="min-w-0 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -5878,26 +6183,100 @@ export default function MarketplaceCaptureProductDetail() {
             <LocaleToggle className="shrink-0" />
           </div>
 
-          {autoStoryboardReviewSurface ? (
+          {!isAutoReviewJobSetupRoute ? (
             <section
-              className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm md:p-5"
-              aria-label="Auto Storyboard Review first action"
+              className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 text-white shadow-xl shadow-slate-950/10"
+              aria-label="Auto Review jobs"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-5 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">
+                    <Sparkles className="h-4 w-4" /> Auto Review Jobs
+                  </div>
+                  <h2 className="mt-2 text-xl font-semibold text-white">
+                    งานวิดีโอของสินค้านี้
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                    หน้านี้ใช้ดูและแก้ไขข้อมูลสินค้าเท่านั้น
+                    การตั้งค่าและการสร้างวิดีโอทำใน Job Workbench แยกต่างหาก
+                    โดยระบบจะหยุดรอการตรวจทุก checkpoint ก่อนใช้เครดิตขั้นถัดไป
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300">
+                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
+                      สินค้า: {productId}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5">
+                      รูปอ้างอิง {productImageOptions.length} รูป
+                    </span>
+                    {activeStagedAutoReviewRun ? (
+                      <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1.5 text-amber-200">
+                        มี Job ที่ยังทำต่อได้
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  <Link
+                    href={`/marketplace/auto-review/new/${encodeURIComponent(productId)}`}
+                  >
+                    <Button
+                      type="button"
+                      className="min-h-11 bg-violet-500 text-white hover:bg-violet-400"
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      สร้าง Job Review ใหม่
+                    </Button>
+                  </Link>
+                  {latestJobWorkbenchRunId ? (
+                    <Link
+                      href={`/marketplace/auto-review/${encodeURIComponent(latestJobWorkbenchRunId)}`}
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-h-11 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        เปิด Job ล่าสุด
+                      </Button>
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+              <div className="border-t border-white/10 bg-white/[0.04] px-5 py-3 text-xs text-slate-300 sm:px-6">
+                ตรวจเนื้อเรื่อง → แก้บทพูด/shot → ยืนยัน Prompt → สร้างภาพ →
+                Storyboard Review / ตรวจผลภาพ → สร้างวิดีโอ → เสียง → ประกอบ
+              </div>
+            </section>
+          ) : null}
+
+          {isAutoReviewJobSetupRoute && autoStoryboardReviewSurface ? (
+            <section
+              className="rounded-2xl border border-violet-200 bg-white p-4 shadow-sm md:p-6"
+              aria-label="Auto Review Job setup"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
                     <Sparkles className="h-3.5 w-3.5" />
-                    Marketplace Auto Review
+                    Job Workbench · ตั้งค่างาน
                   </div>
                   <h2 className="mt-3 text-xl font-semibold">
-                    สร้างวิดีโอรีวิวจากสินค้านี้อัตโนมัติ
+                    สร้าง Job Review สำหรับสินค้านี้
                   </h2>
                   <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                    Auto Storyboard Review จะเลือก plan
-                    ที่เหมาะสมจากข้อมูลสินค้า และรูปที่มีอยู่
-                    โดยยังสลับกลับไปใช้ Standard Order ได้ทันที
+                    เลือกขอบเขตและข้อมูลอ้างอิงของสินค้าก่อนเริ่ม หลังจากกดเริ่ม
+                    ระบบจะพาไป Workbench เพื่อหยุดรอตรวจทุกจุด
+                    และแก้ย้อนกลับได้จนกว่าจะยืนยันประกอบวิดีโอ
                   </p>
                 </div>
+                <Link
+                  href={`/marketplace-capture/products/${encodeURIComponent(productId)}`}
+                >
+                  <Button type="button" variant="outline" size="sm">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> กลับรายละเอียดสินค้า
+                  </Button>
+                </Link>
               </div>
               {autoStoryboardReviewSurface}
             </section>
@@ -6251,7 +6630,9 @@ export default function MarketplaceCaptureProductDetail() {
                           if (affiliateUrl && navigator.clipboard)
                             void navigator.clipboard
                               .writeText(affiliateUrl)
-                              .then(() => toast.success("Affiliate link copied"));
+                              .then(() =>
+                                toast.success("Affiliate link copied")
+                              );
                         }}
                       >
                         <Copy className="mr-1 h-3.5 w-3.5" />
@@ -6463,2192 +6844,2376 @@ export default function MarketplaceCaptureProductDetail() {
           </section>
 
           {marketplaceIntelligenceEnabled ? (
-          <section
-            className="rounded-lg border border-sky-200 bg-white p-6 shadow-sm"
-            aria-label="Market Intelligence"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
-                  <Search className="h-3.5 w-3.5" />
-                  Market Intelligence
-                </div>
-                <h2 className="mt-3 text-xl font-semibold">
-                  วิเคราะห์ตลาดจาก keyword ก่อนผูกกับ SKU นี้
-                </h2>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                  ใช้ชื่อสินค้า ร้าน หรือหมวดหมู่จาก Marketplace Capture
-                  เพื่อสร้าง keyword snapshot, report, watchlist และ candidate batch
-                  โดยข้อมูล connector/evidence เป็นสิทธิ์ของ user ที่เชื่อมต่อเท่านั้น
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Link href={marketplaceIntelligenceHref}>
-                  <Button type="button" variant="outline" size="sm">
-                    <Search className="mr-2 h-4 w-4" />
-                    Find competitors
-                  </Button>
-                </Link>
-                <Link href="/marketplace-capture/intelligence/reports">
-                  <Button type="button" variant="outline" size="sm">
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Reports
-                  </Button>
-                </Link>
-                <Link href="/settings?tab=integrations">
-                  <Button type="button" variant="outline" size="sm">
-                    <Settings2 className="mr-2 h-4 w-4" />
-                    Connector settings
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-4">
-              {marketplaceIntelligenceEvidence.map(metric => (
-                <div key={metric.label} className="rounded-lg border bg-slate-50 p-3">
-                  <div className="text-xs font-medium text-slate-500">
-                    {metric.label}
+            <section
+              className="rounded-lg border border-sky-200 bg-white p-6 shadow-sm"
+              aria-label="Market Intelligence"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                    <Search className="h-3.5 w-3.5" />
+                    Market Intelligence
                   </div>
-                  <div className="mt-1 break-words text-sm font-semibold text-slate-900">
-                    {metric.value}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="text-sm font-semibold text-slate-900">
-                  Linked snapshot metric update
-                </div>
-                {matchingMarketplaceSnapshotItem ? (
-                  <div className="mt-2 space-y-3 text-sm text-slate-600">
-                    <p>
-                      พบ exact snapshot item จาก keyword{" "}
-                      <span className="font-medium text-slate-900">
-                        {matchingMarketplaceSnapshotItem.snapshot.keyword}
-                      </span>{" "}
-                      rank #{matchingMarketplaceSnapshotItem.item.rank} · {matchingMarketplaceSnapshotItem.snapshot.capturedAt}
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <div className="rounded-md bg-slate-50 p-2">
-                        <div className="text-xs text-slate-500">Snapshot price</div>
-                        <div className="font-semibold text-slate-900">
-                          {Number(matchingMarketplaceSnapshotItem.item.price ?? 0).toLocaleString()} THB
-                        </div>
-                      </div>
-                      <div className="rounded-md bg-slate-50 p-2">
-                        <div className="text-xs text-slate-500">Monthly sold</div>
-                        <div className="font-semibold text-slate-900">
-                          {formatCount(matchingMarketplaceSnapshotItem.item.monthlySoldCount as any, null)}
-                        </div>
-                      </div>
-                      <div className="rounded-md bg-slate-50 p-2">
-                        <div className="text-xs text-slate-500">Rating</div>
-                        <div className="font-semibold text-slate-900">
-                          {compactText(matchingMarketplaceSnapshotItem.item.rating) || "-"}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => createMarketplaceMetricEnrichment.mutate({
-                        productId,
-                        snapshotId: matchingMarketplaceSnapshotItem.snapshot.id,
-                        itemId: matchingMarketplaceSnapshotItem.item.itemId,
-                      })}
-                      disabled={createMarketplaceMetricEnrichment.isPending}
-                    >
-                      {createMarketplaceMetricEnrichment.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                      )}
-                      Confirm metric enrichment
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm text-slate-600">
-                    ยังไม่พบ snapshot item ที่ match ด้วย shop_id + item_id สำหรับ product นี้ ให้สร้าง keyword snapshot หรือ candidate batch ก่อนยืนยัน metric update.
+                  <h2 className="mt-3 text-xl font-semibold">
+                    วิเคราะห์ตลาดจาก keyword ก่อนผูกกับ SKU นี้
+                  </h2>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                    ใช้ชื่อสินค้า ร้าน หรือหมวดหมู่จาก Marketplace Capture
+                    เพื่อสร้าง keyword snapshot, report, watchlist และ candidate
+                    batch โดยข้อมูล connector/evidence เป็นสิทธิ์ของ user
+                    ที่เชื่อมต่อเท่านั้น
                   </p>
-                )}
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="text-sm font-semibold text-slate-900">
-                  Enrichment history
                 </div>
-                <div className="mt-2 space-y-2">
-                  {marketplaceMetricEnrichments.length > 0 ? marketplaceMetricEnrichments.slice(0, 3).map((entry: any) => (
-                    <div key={entry.id} className="rounded-md bg-slate-50 p-2 text-sm">
-                      <div className="font-medium text-slate-900">
-                        {entry.provenance?.title || entry.snapshotItemId}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {entry.capturedAt} · rank #{entry.metrics?.rank ?? "-"} · confidence {Math.round(Number(entry.confidence ?? 0) * 100)}%
-                      </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={marketplaceIntelligenceHref}>
+                    <Button type="button" variant="outline" size="sm">
+                      <Search className="mr-2 h-4 w-4" />
+                      Find competitors
+                    </Button>
+                  </Link>
+                  <Link href="/marketplace-capture/intelligence/reports">
+                    <Button type="button" variant="outline" size="sm">
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Reports
+                    </Button>
+                  </Link>
+                  <Link href="/settings?tab=integrations">
+                    <Button type="button" variant="outline" size="sm">
+                      <Settings2 className="mr-2 h-4 w-4" />
+                      Connector settings
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                {marketplaceIntelligenceEvidence.map(metric => (
+                  <div
+                    key={metric.label}
+                    className="rounded-lg border bg-slate-50 p-3"
+                  >
+                    <div className="text-xs font-medium text-slate-500">
+                      {metric.label}
                     </div>
-                  )) : (
-                    <p className="text-sm text-slate-600">
-                      ยังไม่มี metric enrichment ที่ user นี้ยืนยันไว้
+                    <div className="mt-1 break-words text-sm font-semibold text-slate-900">
+                      {metric.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">
+                    Linked snapshot metric update
+                  </div>
+                  {matchingMarketplaceSnapshotItem ? (
+                    <div className="mt-2 space-y-3 text-sm text-slate-600">
+                      <p>
+                        พบ exact snapshot item จาก keyword{" "}
+                        <span className="font-medium text-slate-900">
+                          {matchingMarketplaceSnapshotItem.snapshot.keyword}
+                        </span>{" "}
+                        rank #{matchingMarketplaceSnapshotItem.item.rank} ·{" "}
+                        {matchingMarketplaceSnapshotItem.snapshot.capturedAt}
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-md bg-slate-50 p-2">
+                          <div className="text-xs text-slate-500">
+                            Snapshot price
+                          </div>
+                          <div className="font-semibold text-slate-900">
+                            {Number(
+                              matchingMarketplaceSnapshotItem.item.price ?? 0
+                            ).toLocaleString()}{" "}
+                            THB
+                          </div>
+                        </div>
+                        <div className="rounded-md bg-slate-50 p-2">
+                          <div className="text-xs text-slate-500">
+                            Monthly sold
+                          </div>
+                          <div className="font-semibold text-slate-900">
+                            {formatCount(
+                              matchingMarketplaceSnapshotItem.item
+                                .monthlySoldCount as any,
+                              null
+                            )}
+                          </div>
+                        </div>
+                        <div className="rounded-md bg-slate-50 p-2">
+                          <div className="text-xs text-slate-500">Rating</div>
+                          <div className="font-semibold text-slate-900">
+                            {compactText(
+                              matchingMarketplaceSnapshotItem.item.rating
+                            ) || "-"}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() =>
+                          createMarketplaceMetricEnrichment.mutate({
+                            productId,
+                            snapshotId:
+                              matchingMarketplaceSnapshotItem.snapshot.id,
+                            itemId: matchingMarketplaceSnapshotItem.item.itemId,
+                          })
+                        }
+                        disabled={createMarketplaceMetricEnrichment.isPending}
+                      >
+                        {createMarketplaceMetricEnrichment.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                        )}
+                        Confirm metric enrichment
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-600">
+                      ยังไม่พบ snapshot item ที่ match ด้วย shop_id + item_id
+                      สำหรับ product นี้ ให้สร้าง keyword snapshot หรือ
+                      candidate batch ก่อนยืนยัน metric update.
                     </p>
                   )}
                 </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
+                  <div className="text-sm font-semibold text-slate-900">
+                    Enrichment history
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {marketplaceMetricEnrichments.length > 0 ? (
+                      marketplaceMetricEnrichments
+                        .slice(0, 3)
+                        .map((entry: any) => (
+                          <div
+                            key={entry.id}
+                            className="rounded-md bg-slate-50 p-2 text-sm"
+                          >
+                            <div className="font-medium text-slate-900">
+                              {entry.provenance?.title || entry.snapshotItemId}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {entry.capturedAt} · rank #
+                              {entry.metrics?.rank ?? "-"} · confidence{" "}
+                              {Math.round(Number(entry.confidence ?? 0) * 100)}%
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <p className="text-sm text-slate-600">
+                        ยังไม่มี metric enrichment ที่ user นี้ยืนยันไว้
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-              Keyword seed:{" "}
-              <span className="font-medium text-slate-900">
-                {marketplaceIntelligenceKeyword || productId}
-              </span>
-              {" "}· Product evidence remains provenance-only until a snapshot item is explicitly linked or converted into a candidate batch.
-            </div>
-          </section>
+              <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+                Keyword seed:{" "}
+                <span className="font-medium text-slate-900">
+                  {marketplaceIntelligenceKeyword || productId}
+                </span>{" "}
+                · Product evidence remains provenance-only until a snapshot item
+                is explicitly linked or converted into a candidate batch.
+              </div>
+            </section>
           ) : null}
 
-          <section className="rounded-lg border bg-white p-6 shadow-sm">
-            {showStandardOrderControlPanel ? (
-              <>
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-                      <Settings2 className="h-3.5 w-3.5" />
-                      Standard Order
-                    </div>
-                    <h2 className="mt-3 text-xl font-semibold">
-                      Custom controls สำหรับ flow เดิม
-                    </h2>
-                    <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                      ปรับ output, frame strategy, โมเดล, anchor
-                      และรายละเอียดอื่น สำหรับการสั่งงานแบบมาตรฐาน โดยไม่กระทบ
-                      Auto Storyboard Review ด้านบน
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-lg border bg-white p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+          {isAutoReviewJobSetupRoute && showStandardOrderControlPanel ? (
+            <section className="rounded-lg border bg-white p-6 shadow-sm">
+              {showStandardOrderControlPanel ? (
+                <>
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                        <Settings2 className="h-3.5 w-3.5" />
                         Standard Order
+                      </div>
+                      <h2 className="mt-3 text-xl font-semibold">
+                        Custom controls สำหรับ flow เดิม
+                      </h2>
+                      <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+                        ปรับ output, frame strategy, โมเดล, anchor
+                        และรายละเอียดอื่น สำหรับการสั่งงานแบบมาตรฐาน โดยไม่กระทบ
+                        Auto Storyboard Review ด้านบน
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        ใช้ flow เดิมสำหรับ storyboard/full video และ custom
-                        controls ทั้งหมด
-                      </p>
                     </div>
-                    <Button
-                      type="button"
-                      variant={
-                        effectiveAutoReviewLaunchMode === "standard_order"
-                          ? "default"
-                          : "outline"
-                      }
-                      size="sm"
-                      onClick={() => setAutoReviewLaunchMode("standard_order")}
-                    >
-                      Use Standard
-                    </Button>
                   </div>
-                  <div className="mt-3 grid w-full gap-2 sm:grid-cols-3">
-                    {autoReviewActionItems.map(actionItem => {
-                      const Icon = actionItem.icon;
-                      const isPending =
-                        startAutoReviewMutation.isPending &&
-                        pendingAutoReviewAction === actionItem.action;
-                      return (
-                        <Button
-                          key={actionItem.action}
-                          type="button"
-                          variant={actionItem.active ? "default" : "outline"}
-                          onClick={() => startAutoReview(actionItem.action)}
-                          disabled={autoReviewStartDisabled}
-                          aria-label={actionItem.label}
-                          aria-pressed={actionItem.active}
-                          className={`min-h-[4.5rem] justify-start whitespace-normal text-left disabled:cursor-not-allowed ${
-                            actionItem.active
-                              ? "bg-sky-600 text-white hover:bg-sky-700"
-                              : "bg-white"
-                          }`}
-                        >
-                          {isPending ? (
-                            <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
-                          ) : (
-                            <Icon className="mr-2 h-4 w-4 shrink-0" />
-                          )}
-                          <span className="min-w-0">
-                            <span className="block text-sm font-semibold leading-5">
-                              {actionItem.label}
-                            </span>
-                            <span className="block text-xs leading-4 opacity-80">
-                              {activeAutoReviewRun
-                                ? "มีงานกำลังรัน"
-                                : actionItem.description}
-                            </span>
-                          </span>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                {characterChoicePanel}
-
-                <div className="mt-5 grid gap-4 lg:grid-cols-3">
-                  <div className="rounded-lg border bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      ผลลัพธ์ที่ต้องการ
-                    </p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          [
-                            "storyboard_images",
-                            "Storyboard + รูป",
-                            "สร้าง project และรูปพร้อมตรวจใน Storyboard Review",
-                          ],
-                          [
-                            "full_video",
-                            "สร้างวิดีโอจนจบ",
-                            "สร้างภาพ วิดีโอรายช็อต ประกอบ editor และ render เข้า Library",
-                          ],
-                        ] as const
-                      ).map(([mode, label, description]) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          aria-pressed={autoReviewOutputMode === mode}
-                          onClick={() => {
-                            setAutoReviewOutputMode(mode);
-                            if (autoReviewAudioStrategy === "auto") {
-                              setAutoReviewAudioStrategy("native_video_audio");
-                            }
-                          }}
-                          className={`rounded-lg border p-3 text-left transition ${
-                            autoReviewOutputMode === mode
-                              ? "border-sky-500 bg-white shadow-sm ring-2 ring-sky-100"
-                              : "bg-white/70 hover:bg-white"
-                          }`}
-                        >
-                          <span className="block text-sm font-semibold text-slate-900">
-                            {label}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">
-                            {description}
-                          </span>
-                        </button>
-                      ))}
+                  <div className="mt-5 rounded-lg border bg-white p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          Standard Order
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          ใช้ flow เดิมสำหรับ storyboard/full video และ custom
+                          controls ทั้งหมด
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={
+                          effectiveAutoReviewLaunchMode === "standard_order"
+                            ? "default"
+                            : "outline"
+                        }
+                        size="sm"
+                        onClick={() =>
+                          setAutoReviewLaunchMode("standard_order")
+                        }
+                      >
+                        Use Standard
+                      </Button>
                     </div>
-                  </div>
-                  <div className="rounded-lg border bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      เส้นทางการสร้างภาพ
-                    </p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {(
-                        [
-                          [
-                            "storyboard_3x3_split",
-                            "3x3 + cut",
-                            "เร็วและเหมาะกับ storyboard",
-                          ],
-                          [
-                            "video_shot_start_stop",
-                            "Start/Stop",
-                            "คมชัดกว่าและเหมาะกับวิดีโอ",
-                          ],
-                        ] as const
-                      ).map(([strategy, label, description]) => (
-                        <button
-                          key={strategy}
-                          type="button"
-                          aria-pressed={autoReviewFrameStrategy === strategy}
-                          onClick={() => setAutoReviewFrameStrategy(strategy)}
-                          className={`rounded-lg border p-3 text-left transition ${
-                            autoReviewFrameStrategy === strategy
-                              ? "border-emerald-500 bg-white shadow-sm ring-2 ring-emerald-100"
-                              : "bg-white/70 hover:bg-white"
-                          }`}
-                        >
-                          <span className="block text-sm font-semibold text-slate-900">
-                            {label}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">
-                            {description}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      โมเดลสร้างภาพ
-                    </p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                      {autoReviewImageModelOptions.length === 0 ? (
-                        <div className="rounded-lg border border-dashed bg-white/60 p-3 text-xs text-slate-500">
-                          ยังไม่มี image model ที่พร้อมใช้งานสำหรับบัญชีนี้
-                        </div>
-                      ) : (
-                        autoReviewImageModelOptions.map(option => (
-                          <button
-                            key={option.value}
+                    <div className="mt-3 grid w-full gap-2 sm:grid-cols-3">
+                      {autoReviewActionItems.map(actionItem => {
+                        const Icon = actionItem.icon;
+                        const isPending =
+                          startAutoReviewMutation.isPending &&
+                          pendingAutoReviewAction === actionItem.action;
+                        return (
+                          <Button
+                            key={actionItem.action}
                             type="button"
-                            aria-pressed={autoReviewImageModel === option.value}
-                            onClick={() =>
-                              setAutoReviewImageModel(option.value)
-                            }
-                            className={`rounded-lg border p-3 text-left transition ${
-                              autoReviewImageModel === option.value
-                                ? "border-cyan-500 bg-white shadow-sm ring-2 ring-cyan-100"
-                                : "bg-white/70 hover:bg-white"
+                            variant={actionItem.active ? "default" : "outline"}
+                            onClick={() => startAutoReview(actionItem.action)}
+                            disabled={autoReviewStartDisabled}
+                            aria-label={actionItem.label}
+                            aria-pressed={actionItem.active}
+                            className={`min-h-[4.5rem] justify-start whitespace-normal text-left disabled:cursor-not-allowed ${
+                              actionItem.active
+                                ? "bg-sky-600 text-white hover:bg-sky-700"
+                                : "bg-white"
                             }`}
                           >
-                            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
-                              {option.label}
-                              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                                {option.transport === "mcp" ? "MCP" : "API"}
+                            {isPending ? (
+                              <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
+                            ) : (
+                              <Icon className="mr-2 h-4 w-4 shrink-0" />
+                            )}
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold leading-5">
+                                {actionItem.label}
                               </span>
-                              {option.provider ? (
-                                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                                  {option.provider}
-                                </span>
-                              ) : null}
-                              {option.creditCost != null ? (
-                                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                                  {option.creditCost}c
-                                </span>
-                              ) : null}
+                              <span className="block text-xs leading-4 opacity-80">
+                                {activeAutoReviewRun
+                                  ? "มีงานกำลังรัน"
+                                  : actionItem.description}
+                              </span>
                             </span>
-                            <span className="mt-1 block text-xs leading-5 text-slate-500">
-                              {option.description}
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                    {selectedStandardImageModelProviderKey ? (
-                      <div className="mt-3 rounded-lg border bg-white p-3">
-                        <McpConnectionPicker
-                          assetType="image"
-                          providerKey={selectedStandardImageModelProviderKey}
-                          value={autoReviewMcpConnectionId}
-                          sharedGroupId={autoReviewMcpSharedGroupId}
-                          onChange={setAutoReviewMcpConnectionId}
-                          onSharedGroupChange={setAutoReviewMcpSharedGroupId}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="rounded-lg border bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      โมเดลตรวจ QA (Vision)
-                    </p>
-                    <select
-                      aria-label="โมเดลตรวจ QA (Vision)"
-                      className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                      value={autoReviewVisionQaModel}
-                      onChange={event =>
-                        setAutoReviewVisionQaModel(event.target.value)
-                      }
-                    >
-                      <option value="">
-                        อัตโนมัติตามคุณภาพ (gpt-4o-mini / gpt-4o)
-                      </option>
-                      {autoReviewVisionQaModelOptions.map(option => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      เลือกโมเดลตรวจสอบภาพ/วิดีโอ (Vision QA) เอง
-                      แทนค่าที่ผูกกับโหมดคุณภาพ
-                    </p>
-                  </div>
-                  <div className="rounded-lg border bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      จำนวนช็อต
-                    </p>
-                    <div className="mt-3 grid grid-cols-3 gap-2">
-                      {([7, 8, 9] as const).map(count => (
-                        <button
-                          key={count}
-                          type="button"
-                          aria-pressed={autoReviewShotCount === count}
-                          onClick={() => setAutoReviewShotCount(count)}
-                          className={`rounded-lg border p-3 text-center transition ${
-                            autoReviewShotCount === count
-                              ? "border-indigo-500 bg-white shadow-sm ring-2 ring-indigo-100"
-                              : "bg-white/70 hover:bg-white"
-                          }`}
-                        >
-                          <span className="block text-sm font-semibold text-slate-900">
-                            {count}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">
-                            shots
-                          </span>
-                        </button>
-                      ))}
+                          </Button>
+                        );
+                      })}
                     </div>
                   </div>
-                  {sequentialStrategyEnabled && sequentialStrategySelected ? (
+
+                  {characterChoicePanel}
+
+                  <div className="mt-5 grid gap-4 lg:grid-cols-3">
                     <div className="rounded-lg border bg-slate-50 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        จำนวนรอบซ่อมภาพ (Quality mode)
+                        ผลลัพธ์ที่ต้องการ
                       </p>
-                      <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         {(
                           [
-                            ["fast_draft", "ประหยัด", "Economy", 1],
-                            ["balanced", "มาตรฐาน", "Standard", 3],
-                            ["premium_strict_qa", "พรีเมียม", "Premium", 4],
+                            [
+                              "storyboard_images",
+                              "Storyboard + รูป",
+                              "สร้าง project และรูปพร้อมตรวจใน Storyboard Review",
+                            ],
+                            [
+                              "full_video",
+                              "สร้างวิดีโอจนจบ",
+                              "สร้างภาพ วิดีโอรายช็อต ประกอบ editor และ render เข้า Library",
+                            ],
                           ] as const
-                        ).map(([mode, labelTh, labelEn, rounds]) => (
+                        ).map(([mode, label, description]) => (
                           <button
                             key={mode}
                             type="button"
-                            aria-pressed={autoReviewQualityMode === mode}
-                            onClick={() =>
-                              setAutoReviewQualityMode(previous =>
-                                previous === mode ? "" : mode
-                              )
-                            }
-                            className={`rounded-lg border p-3 text-center transition ${
-                              autoReviewQualityMode === mode
-                                ? "border-rose-500 bg-white shadow-sm ring-2 ring-rose-100"
+                            aria-pressed={autoReviewOutputMode === mode}
+                            onClick={() => {
+                              setAutoReviewOutputMode(mode);
+                              if (autoReviewAudioStrategy === "auto") {
+                                setAutoReviewAudioStrategy(
+                                  "native_video_audio"
+                                );
+                              }
+                            }}
+                            className={`rounded-lg border p-3 text-left transition ${
+                              autoReviewOutputMode === mode
+                                ? "border-sky-500 bg-white shadow-sm ring-2 ring-sky-100"
                                 : "bg-white/70 hover:bg-white"
                             }`}
                           >
                             <span className="block text-sm font-semibold text-slate-900">
-                              {labelTh} · {labelEn}
+                              {label}
                             </span>
                             <span className="mt-1 block text-xs leading-5 text-slate-500">
-                              สูงสุด {rounds} รอบ/ช็อต
+                              {description}
                             </span>
                           </button>
                         ))}
                       </div>
-                      <p className="mt-2 text-xs leading-5 text-slate-500">
-                        {autoReviewQualityModeEstimateText}
-                      </p>
                     </div>
-                  ) : null}
-                  <div className="rounded-lg border bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      เสียงพูด / บทพากย์
-                    </p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                      {(
-                        [
-                          [
-                            "native_video_audio",
-                            "มีเสียงพูด",
-                            "ให้ storyboard มีบทพูดไทยตามช็อต และใช้ต่อกับวิดีโอหรืออัดเสียงภายหลังได้",
-                          ],
-                          [
-                            "silent",
-                            "ไม่มีเสียงพูด",
-                            "ทำ storyboard แบบไม่มีบทพูด เหมาะกับงานภาพหรือเสียงพากย์ที่เตรียมเอง",
-                          ],
-                        ] as const
-                      ).map(([strategy, label, description]) => (
-                        <button
-                          key={strategy}
-                          type="button"
-                          aria-pressed={autoReviewAudioStrategy === strategy}
-                          onClick={() => setAutoReviewAudioStrategy(strategy)}
-                          className={`rounded-lg border p-3 text-left transition ${
-                            autoReviewAudioStrategy === strategy
-                              ? "border-orange-500 bg-white shadow-sm ring-2 ring-orange-100"
-                              : "bg-white/70 hover:bg-white"
-                          }`}
-                        >
-                          <span className="block text-sm font-semibold text-slate-900">
-                            {label}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">
-                            {description}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border bg-slate-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      ข้อความบนภาพ
-                    </p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                      {(
-                        [
-                          [
-                            "no_text",
-                            "ไม่มีข้อความ",
-                            "ภาพสะอาด ไม่มี caption/label บนภาพ",
-                          ],
-                          [
-                            "allow_text",
-                            "มีข้อความประกอบ",
-                            "อนุญาตข้อความสั้นที่ตรงกับ story เท่านั้น",
-                          ],
-                        ] as const
-                      ).map(([mode, label, description]) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          aria-pressed={autoReviewOverlayTextMode === mode}
-                          onClick={() => setAutoReviewOverlayTextMode(mode)}
-                          className={`rounded-lg border p-3 text-left transition ${
-                            autoReviewOverlayTextMode === mode
-                              ? "border-violet-500 bg-white shadow-sm ring-2 ring-violet-100"
-                              : "bg-white/70 hover:bg-white"
-                          }`}
-                        >
-                          <span className="block text-sm font-semibold text-slate-900">
-                            {label}
-                          </span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">
-                            {description}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 rounded-lg border bg-slate-50 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
+                    <div className="rounded-lg border bg-slate-50 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        เลือก anchors ก่อนเริ่ม
+                        เส้นทางการสร้างภาพ
                       </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        ต้องมีทั้ง 3 anchor: product + character + environment
-                        (required) | Required: product, character/person, and
-                        environment/place.
-                      </p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {(
+                          [
+                            [
+                              "storyboard_3x3_split",
+                              "3x3 + cut",
+                              "เร็วและเหมาะกับ storyboard",
+                            ],
+                            [
+                              "video_shot_start_stop",
+                              "Start/Stop",
+                              "คมชัดกว่าและเหมาะกับวิดีโอ",
+                            ],
+                          ] as const
+                        ).map(([strategy, label, description]) => (
+                          <button
+                            key={strategy}
+                            type="button"
+                            aria-pressed={autoReviewFrameStrategy === strategy}
+                            onClick={() => setAutoReviewFrameStrategy(strategy)}
+                            className={`rounded-lg border p-3 text-left transition ${
+                              autoReviewFrameStrategy === strategy
+                                ? "border-emerald-500 bg-white shadow-sm ring-2 ring-emerald-100"
+                                : "bg-white/70 hover:bg-white"
+                            }`}
+                          >
+                            <span className="block text-sm font-semibold text-slate-900">
+                              {label}
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">
+                              {description}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-500">
-                      {canStartAutoReview
-                        ? "พร้อมเริ่ม / Ready"
-                        : `ยังไม่พร้อม / Missing: ${missingAutoReviewAnchors.join(", ")}`}
-                    </div>
-                  </div>
-                  <div className="mt-3 grid gap-2 lg:grid-cols-3">
-                    <article
-                      onDragOver={event =>
-                        handleAnchorDragOver(event, "product")
-                      }
-                      onDragLeave={handleAnchorDragLeave}
-                      onDrop={handleDropProductAnchor}
-                      className={`relative rounded-lg border bg-white p-3 text-left transition ${
-                        activeAnchorDrop === "product"
-                          ? "border-sky-400 ring-4 ring-sky-100"
-                          : resolvedProductAnchorImageUrl
-                            ? "border-emerald-500 ring-2 ring-emerald-50"
-                            : "border-slate-200"
-                      }`}
-                    >
+                    <div className="rounded-lg border bg-slate-50 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Product anchor
+                        โมเดลสร้างภาพ
                       </p>
-                      <p className="mt-2 text-sm font-medium text-slate-900">
-                        {resolvedProductAnchorImageUrl
-                          ? "รูปสินค้าที่เลือกแล้ว"
-                          : "เลือก/วางรูปสินค้าที่ต้องใช้จริง"}
-                      </p>
-                      {resolvedProductAnchorImageUrl ? (
-                        <div className="mt-2 flex items-start gap-3">
-                          <img
-                            src={resolvedProductAnchorImageUrl}
-                            alt="Selected product anchor"
-                            className="h-20 w-20 rounded-md border object-cover"
-                            onLoad={event =>
-                              resolvedProductAnchorImage
-                                ? rememberImageDimensions(
-                                    resolvedProductAnchorImage.id,
-                                    event
-                                  )
-                                : undefined
-                            }
-                          />
-                          <div className="min-w-0 space-y-1 text-xs text-slate-500">
-                            <p className="font-medium text-slate-700">
-                              {formatImageDimensions(
-                                resolvedProductAnchorImageDimensions
-                              )}
-                            </p>
-                            <p className="truncate">
-                              {productImageSourceLabel(
-                                resolvedProductAnchorImage?.source
-                              )}
-                            </p>
-                            <p className="leading-5">
-                              {multiViewReferencePolicyText("product")}
-                            </p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                        {autoReviewImageModelOptions.length === 0 ? (
+                          <div className="rounded-lg border border-dashed bg-white/60 p-3 text-xs text-slate-500">
+                            ยังไม่มี image model ที่พร้อมใช้งานสำหรับบัญชีนี้
                           </div>
-                        </div>
-                      ) : productImageOptions.length > 0 ? (
-                        <>
-                          <div className="mt-2 grid grid-cols-3 gap-2">
-                            {productImageOptions
-                              .slice(0, 6)
-                              .map((image, index) => (
-                                <button
-                                  key={image.id}
-                                  type="button"
-                                  onClick={() => selectProductAnchor(image.id)}
-                                  className="h-16 rounded-md border bg-slate-50 p-1 transition hover:border-sky-500 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                                  aria-label={`Use product image ${index + 1} as product anchor`}
-                                >
-                                  <img
-                                    src={image.url}
-                                    alt=""
-                                    className="h-full w-full object-contain"
-                                    loading="lazy"
-                                  />
-                                </button>
-                              ))}
-                          </div>
-                          <p className="mt-2 text-xs leading-5 text-slate-500">
-                            เลือกรูปที่ตรงสี/รุ่น/รูปทรงจริง
-                            หรือวางไฟล์ใหม่ลงช่องนี้ หากใช้ multi-view sheet
-                            ต้องเป็นไฟล์เดียวที่รวมหลายมุมของสินค้าชิ้นเดียวกัน
-                          </p>
-                        </>
-                      ) : (
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          ลากไฟล์รูปสินค้ามาวาง หรือกดอัปโหลดเพื่อแนบเป็น anchor
-                          รองรับไฟล์เดียวแบบ multi-view sheet
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => uploadInputRef.current?.click()}
-                          disabled={isUploadingProductImage}
-                        >
-                          {isUploadingProductImage ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Upload className="mr-2 h-4 w-4" />
-                          )}
-                          อัปโหลดสินค้า
-                        </Button>
-                        {resolvedProductAnchorImageUrl ? (
-                          <>
-                            <Button
+                        ) : (
+                          autoReviewImageModelOptions.map(option => (
+                            <button
+                              key={option.value}
                               type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => uploadInputRef.current?.click()}
-                              disabled={isUploadingProductImage}
+                              aria-pressed={
+                                autoReviewImageModel === option.value
+                              }
+                              onClick={() =>
+                                setAutoReviewImageModel(option.value)
+                              }
+                              className={`rounded-lg border p-3 text-left transition ${
+                                autoReviewImageModel === option.value
+                                  ? "border-cyan-500 bg-white shadow-sm ring-2 ring-cyan-100"
+                                  : "bg-white/70 hover:bg-white"
+                              }`}
                             >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              เปลี่ยนรูป
-                            </Button>
+                              <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                                {option.label}
+                                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                  {option.transport === "mcp" ? "MCP" : "API"}
+                                </span>
+                                {option.provider ? (
+                                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                    {option.provider}
+                                  </span>
+                                ) : null}
+                                {option.creditCost != null ? (
+                                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                    {option.creditCost}c
+                                  </span>
+                                ) : null}
+                              </span>
+                              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                {option.description}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      {selectedStandardImageModelProviderKey ? (
+                        <div className="mt-3 rounded-lg border bg-white p-3">
+                          <McpConnectionPicker
+                            assetType="image"
+                            providerKey={selectedStandardImageModelProviderKey}
+                            value={autoReviewMcpConnectionId}
+                            sharedGroupId={autoReviewMcpSharedGroupId}
+                            onChange={setAutoReviewMcpConnectionId}
+                            onSharedGroupChange={setAutoReviewMcpSharedGroupId}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        โมเดลตรวจ QA (Vision)
+                      </p>
+                      <select
+                        aria-label="โมเดลตรวจ QA (Vision)"
+                        className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                        value={autoReviewVisionQaModel}
+                        onChange={event =>
+                          setAutoReviewVisionQaModel(event.target.value)
+                        }
+                      >
+                        <option value="">
+                          อัตโนมัติตามคุณภาพ (gpt-4o-mini / gpt-4o)
+                        </option>
+                        {autoReviewVisionQaModelOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        เลือกโมเดลตรวจสอบภาพ/วิดีโอ (Vision QA) เอง
+                        แทนค่าที่ผูกกับโหมดคุณภาพ
+                      </p>
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        จำนวนช็อต
+                      </p>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        {([7, 8, 9] as const).map(count => (
+                          <button
+                            key={count}
+                            type="button"
+                            aria-pressed={autoReviewShotCount === count}
+                            onClick={() => setAutoReviewShotCount(count)}
+                            className={`rounded-lg border p-3 text-center transition ${
+                              autoReviewShotCount === count
+                                ? "border-indigo-500 bg-white shadow-sm ring-2 ring-indigo-100"
+                                : "bg-white/70 hover:bg-white"
+                            }`}
+                          >
+                            <span className="block text-sm font-semibold text-slate-900">
+                              {count}
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">
+                              shots
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {sequentialStrategyEnabled && sequentialStrategySelected ? (
+                      <div className="rounded-lg border bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          จำนวนรอบซ่อมภาพ (Quality mode)
+                        </p>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {(
+                            [
+                              ["fast_draft", "ประหยัด", "Economy", 1],
+                              ["balanced", "มาตรฐาน", "Standard", 3],
+                              ["premium_strict_qa", "พรีเมียม", "Premium", 4],
+                            ] as const
+                          ).map(([mode, labelTh, labelEn, rounds]) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              aria-pressed={autoReviewQualityMode === mode}
+                              onClick={() =>
+                                setAutoReviewQualityMode(previous =>
+                                  previous === mode ? "" : mode
+                                )
+                              }
+                              className={`rounded-lg border p-3 text-center transition ${
+                                autoReviewQualityMode === mode
+                                  ? "border-rose-500 bg-white shadow-sm ring-2 ring-rose-100"
+                                  : "bg-white/70 hover:bg-white"
+                              }`}
+                            >
+                              <span className="block text-sm font-semibold text-slate-900">
+                                {labelTh} · {labelEn}
+                              </span>
+                              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                สูงสุด {rounds} รอบ/ช็อต
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          {autoReviewQualityModeEstimateText}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className="rounded-lg border bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        เสียงพูด / บทพากย์
+                      </p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                        {(
+                          [
+                            [
+                              "native_video_audio",
+                              "มีเสียงพูด",
+                              "ให้ storyboard มีบทพูดไทยตามช็อต และใช้ต่อกับวิดีโอหรืออัดเสียงภายหลังได้",
+                            ],
+                            [
+                              "silent",
+                              "ไม่มีเสียงพูด",
+                              "ทำ storyboard แบบไม่มีบทพูด เหมาะกับงานภาพหรือเสียงพากย์ที่เตรียมเอง",
+                            ],
+                          ] as const
+                        ).map(([strategy, label, description]) => (
+                          <button
+                            key={strategy}
+                            type="button"
+                            aria-pressed={autoReviewAudioStrategy === strategy}
+                            onClick={() => setAutoReviewAudioStrategy(strategy)}
+                            className={`rounded-lg border p-3 text-left transition ${
+                              autoReviewAudioStrategy === strategy
+                                ? "border-orange-500 bg-white shadow-sm ring-2 ring-orange-100"
+                                : "bg-white/70 hover:bg-white"
+                            }`}
+                          >
+                            <span className="block text-sm font-semibold text-slate-900">
+                              {label}
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">
+                              {description}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        ข้อความบนภาพ
+                      </p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                        {(
+                          [
+                            [
+                              "no_text",
+                              "ไม่มีข้อความ",
+                              "ภาพสะอาด ไม่มี caption/label บนภาพ",
+                            ],
+                            [
+                              "allow_text",
+                              "มีข้อความประกอบ",
+                              "อนุญาตข้อความสั้นที่ตรงกับ story เท่านั้น",
+                            ],
+                          ] as const
+                        ).map(([mode, label, description]) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            aria-pressed={autoReviewOverlayTextMode === mode}
+                            onClick={() => setAutoReviewOverlayTextMode(mode)}
+                            className={`rounded-lg border p-3 text-left transition ${
+                              autoReviewOverlayTextMode === mode
+                                ? "border-violet-500 bg-white shadow-sm ring-2 ring-violet-100"
+                                : "bg-white/70 hover:bg-white"
+                            }`}
+                          >
+                            <span className="block text-sm font-semibold text-slate-900">
+                              {label}
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">
+                              {description}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 rounded-lg border bg-slate-50 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          เลือก anchors ก่อนเริ่ม
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          ต้องมีทั้ง 3 anchor: product + character + environment
+                          (required) | Required: product, character/person, and
+                          environment/place.
+                        </p>
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {canStartAutoReview
+                          ? "พร้อมเริ่ม / Ready"
+                          : `ยังไม่พร้อม / Missing: ${missingAutoReviewAnchors.join(", ")}`}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2 lg:grid-cols-3">
+                      <article
+                        onDragOver={event =>
+                          handleAnchorDragOver(event, "product")
+                        }
+                        onDragLeave={handleAnchorDragLeave}
+                        onDrop={handleDropProductAnchor}
+                        className={`relative rounded-lg border bg-white p-3 text-left transition ${
+                          activeAnchorDrop === "product"
+                            ? "border-sky-400 ring-4 ring-sky-100"
+                            : resolvedProductAnchorImageUrl
+                              ? "border-emerald-500 ring-2 ring-emerald-50"
+                              : "border-slate-200"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Product anchor
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-slate-900">
+                          {resolvedProductAnchorImageUrl
+                            ? "รูปสินค้าที่เลือกแล้ว"
+                            : "เลือก/วางรูปสินค้าที่ต้องใช้จริง"}
+                        </p>
+                        {resolvedProductAnchorImageUrl ? (
+                          <div className="mt-2 flex items-start gap-3">
+                            <img
+                              src={resolvedProductAnchorImageUrl}
+                              alt="Selected product anchor"
+                              className="h-20 w-20 rounded-md border object-cover"
+                              onLoad={event =>
+                                resolvedProductAnchorImage
+                                  ? rememberImageDimensions(
+                                      resolvedProductAnchorImage.id,
+                                      event
+                                    )
+                                  : undefined
+                              }
+                            />
+                            <div className="min-w-0 space-y-1 text-xs text-slate-500">
+                              <p className="font-medium text-slate-700">
+                                {formatImageDimensions(
+                                  resolvedProductAnchorImageDimensions
+                                )}
+                              </p>
+                              <p className="truncate">
+                                {productImageSourceLabel(
+                                  resolvedProductAnchorImage?.source
+                                )}
+                              </p>
+                              <p className="leading-5">
+                                {multiViewReferencePolicyText("product")}
+                              </p>
+                            </div>
+                          </div>
+                        ) : productImageOptions.length > 0 ? (
+                          <>
+                            <div className="mt-2 grid grid-cols-3 gap-2">
+                              {productImageOptions
+                                .slice(0, 6)
+                                .map((image, index) => (
+                                  <button
+                                    key={image.id}
+                                    type="button"
+                                    onClick={() =>
+                                      selectProductAnchor(image.id)
+                                    }
+                                    className="h-16 rounded-md border bg-slate-50 p-1 transition hover:border-sky-500 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                    aria-label={`Use product image ${index + 1} as product anchor`}
+                                  >
+                                    <img
+                                      src={image.url}
+                                      alt=""
+                                      className="h-full w-full object-contain"
+                                      loading="lazy"
+                                    />
+                                  </button>
+                                ))}
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-slate-500">
+                              เลือกรูปที่ตรงสี/รุ่น/รูปทรงจริง
+                              หรือวางไฟล์ใหม่ลงช่องนี้ หากใช้ multi-view sheet
+                              ต้องเป็นไฟล์เดียวที่รวมหลายมุมของสินค้าชิ้นเดียวกัน
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            ลากไฟล์รูปสินค้ามาวาง หรือกดอัปโหลดเพื่อแนบเป็น
+                            anchor รองรับไฟล์เดียวแบบ multi-view sheet
+                          </p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => uploadInputRef.current?.click()}
+                            disabled={isUploadingProductImage}
+                          >
+                            {isUploadingProductImage ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Upload className="mr-2 h-4 w-4" />
+                            )}
+                            อัปโหลดสินค้า
+                          </Button>
+                          {resolvedProductAnchorImageUrl ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => uploadInputRef.current?.click()}
+                                disabled={isUploadingProductImage}
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                เปลี่ยนรูป
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedProductImageId(null)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                ลบรูปที่เลือก
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                      </article>
+                      <article
+                        onDragOver={event =>
+                          handleAnchorDragOver(event, "character")
+                        }
+                        onDragLeave={handleAnchorDragLeave}
+                        onDrop={event =>
+                          void handleDropAnchorImage(
+                            event,
+                            setCharacterAnchor,
+                            "character",
+                            "Character anchor"
+                          )
+                        }
+                        className={`rounded-lg border bg-white p-3 text-left transition ${
+                          activeAnchorDrop === "character"
+                            ? "border-sky-400 ring-4 ring-sky-100"
+                            : characterAnchorUrl
+                              ? "border-emerald-500 ring-2 ring-emerald-50"
+                              : "border-slate-200"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Character/person anchor
+                        </p>
+                        <p className="mt-2 text-sm font-medium text-slate-900">
+                          {characterAnchorUrl
+                            ? "อัปโหลดแล้ว"
+                            : "อัปโหลด/วางรูปคนหรือตัวแบบ"}
+                        </p>
+                        {characterAnchorUrl ? (
+                          <div className="mt-2 flex items-start gap-3">
+                            <img
+                              src={characterAnchorUrl}
+                              alt="Character anchor"
+                              className="h-20 w-20 rounded-md border object-cover"
+                            />
+                            <p className="text-xs leading-5 text-slate-500">
+                              {multiViewReferencePolicyText("character")}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            ลากไฟล์รูปคน/ตัวแบบมาวาง หรือคลิกเพื่ออัปโหลด
+                            PNG/JPG/SVG/WEBP ≤10MB รองรับไฟล์เดียวแบบ multi-view
+                            sheet
+                          </p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              characterAnchorUploadInputRef.current?.click()
+                            }
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {characterAnchorUrl ? "เปลี่ยนรูป" : "อัปโหลดคน"}
+                          </Button>
+                          {characterAnchorUrl ? (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => setSelectedProductImageId(null)}
+                              onClick={() => setCharacterAnchor(null)}
                               className="text-red-600 hover:text-red-700"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               ลบรูปที่เลือก
                             </Button>
-                          </>
-                        ) : null}
-                      </div>
-                    </article>
-                    <article
-                      onDragOver={event =>
-                        handleAnchorDragOver(event, "character")
-                      }
-                      onDragLeave={handleAnchorDragLeave}
-                      onDrop={event =>
-                        void handleDropAnchorImage(
-                          event,
-                          setCharacterAnchor,
-                          "character",
-                          "Character anchor"
-                        )
-                      }
-                      className={`rounded-lg border bg-white p-3 text-left transition ${
-                        activeAnchorDrop === "character"
-                          ? "border-sky-400 ring-4 ring-sky-100"
-                          : characterAnchorUrl
-                            ? "border-emerald-500 ring-2 ring-emerald-50"
-                            : "border-slate-200"
-                      }`}
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Character/person anchor
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-900">
-                        {characterAnchorUrl
-                          ? "อัปโหลดแล้ว"
-                          : "อัปโหลด/วางรูปคนหรือตัวแบบ"}
-                      </p>
-                      {characterAnchorUrl ? (
-                        <div className="mt-2 flex items-start gap-3">
-                          <img
-                            src={characterAnchorUrl}
-                            alt="Character anchor"
-                            className="h-20 w-20 rounded-md border object-cover"
-                          />
-                          <p className="text-xs leading-5 text-slate-500">
-                            {multiViewReferencePolicyText("character")}
-                          </p>
+                          ) : null}
                         </div>
-                      ) : (
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          ลากไฟล์รูปคน/ตัวแบบมาวาง หรือคลิกเพื่ออัปโหลด
-                          PNG/JPG/SVG/WEBP ≤10MB รองรับไฟล์เดียวแบบ multi-view
-                          sheet
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            characterAnchorUploadInputRef.current?.click()
-                          }
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {characterAnchorUrl ? "เปลี่ยนรูป" : "อัปโหลดคน"}
-                        </Button>
-                        {characterAnchorUrl ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setCharacterAnchor(null)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            ลบรูปที่เลือก
-                          </Button>
-                        ) : null}
-                      </div>
-                    </article>
-                    <article
-                      onDragOver={event =>
-                        handleAnchorDragOver(event, "environment")
-                      }
-                      onDragLeave={handleAnchorDragLeave}
-                      onDrop={event =>
-                        void handleDropAnchorImage(
-                          event,
-                          setEnvironmentAnchor,
-                          "environment",
-                          "Environment anchor"
-                        )
-                      }
-                      className={`rounded-lg border bg-white p-3 text-left transition ${
-                        activeAnchorDrop === "environment"
-                          ? "border-sky-400 ring-4 ring-sky-100"
-                          : environmentAnchorUrl
-                            ? "border-emerald-500 ring-2 ring-emerald-50"
-                            : "border-slate-200"
-                      }`}
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Environment/place anchor
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-900">
-                        {environmentAnchorUrl
-                          ? "อัปโหลดแล้ว"
-                          : "อัปโหลดรูปฉาก/พื้นที่"}
-                      </p>
-                      {environmentAnchorUrl ? (
-                        <div className="mt-2 flex items-start gap-3">
-                          <img
-                            src={environmentAnchorUrl}
-                            alt="Environment anchor"
-                            className="h-20 w-20 rounded-md border object-cover"
-                          />
-                          <p className="text-xs leading-5 text-slate-500">
-                            {multiViewReferencePolicyText("environment")}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                          ลากไฟล์รูปฉากมาวาง หรือคลิกเพื่ออัปโหลด
-                          PNG/JPG/SVG/WEBP ≤10MB รองรับไฟล์เดียวแบบ multi-view
-                          sheet
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            environmentAnchorUploadInputRef.current?.click()
-                          }
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          {environmentAnchorUrl ? "เปลี่ยนรูป" : "อัปโหลดฉาก"}
-                        </Button>
-                        {environmentAnchorUrl ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEnvironmentAnchor(null)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            ลบรูปที่เลือก
-                          </Button>
-                        ) : null}
-                      </div>
-                    </article>
-                  </div>
-                </div>
-              </>
-            ) : null}
-
-            <div
-              className={`${
-                showStandardOrderControlPanel ? "mt-4" : ""
-              } flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-slate-50 px-3 py-2`}
-            >
-              <div className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
-                {activeAutoReviewRun ? (
-                  <>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-                      <span>
-                        {statusAutoReviewRunState?.label ?? "กำลังทำงาน"}:{" "}
-                        {autoReviewStageLabel(
-                          String(activeAutoReviewRun.currentStage)
-                        )}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        ({activeAutoReviewRun.stageIndex}/
-                        {activeAutoReviewRun.stageCount})
-                      </span>
-                    </div>
-                    {statusAutoReviewRunState?.description ? (
-                      <p className="text-xs text-slate-500">
-                        {statusAutoReviewRunState.description}
-                      </p>
-                    ) : null}
-                    {statusAutoReviewRunBestAttemptHint ? (
-                      <p className="text-xs text-amber-700">
-                        {statusAutoReviewRunBestAttemptHint}
-                      </p>
-                    ) : null}
-                    {statusAutoReviewRun?.updatedAt ? (
-                      <p className="text-xs text-slate-400">
-                        อัปเดตล่าสุด {statusAutoReviewRunUpdatedAtText} ·
-                        ยังเช็กสถานะต่อเนื่อง
-                      </p>
-                    ) : null}
-                  </>
-                ) : isHidingPreviousAutoReviewFailures ||
-                  startAutoReviewMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
-                    <span>กำลังเริ่ม run ใหม่</span>
-                  </>
-                ) : latestVisibleAutoReviewRun?.status === "completed" ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    <span>งานล่าสุดเสร็จแล้ว</span>
-                  </>
-                ) : latestVisibleAutoReviewRun?.status === "failed" ? (
-                  <>
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
-                    <span>งานล่าสุดล้มเหลว</span>
-                  </>
-                ) : latestVisibleAutoReviewRun?.status === "cancelled" ? (
-                  <>
-                    <AlertTriangle className="h-4 w-4 text-slate-500" />
-                    <span>งานล่าสุดถูกยกเลิกแล้ว</span>
-                  </>
-                ) : (
-                  <span>ยังไม่มีงานอัตโนมัติสำหรับสินค้านี้</span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {activeAutoReviewRun ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      advanceAutoReviewMutation.mutate({
-                        runId: String(activeAutoReviewRun.id),
-                      })
-                    }
-                    disabled={advanceAutoReviewMutation.isPending}
-                  >
-                    {advanceAutoReviewMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                    )}
-                    เช็กสถานะ
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAutoReviewRuns(value => !value)}
-                >
-                  {showAutoReviewRuns ? "ซ่อนสถานะงาน" : "ดูสถานะงาน"}
-                </Button>
-              </div>
-            </div>
-
-            {showAutoReviewRuns ? (
-              <div className="mt-4 space-y-3">
-                {isHidingPreviousAutoReviewFailures ||
-                isStartingAutoReviewRun ? (
-                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-sky-900">
-                          {optimisticAutoReviewStatusText ||
-                            "ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว"}
-                        </p>
-                        <p className="mt-1 text-xs text-sky-700">
-                          ระบบกำลังสร้าง run ใหม่และซ่อน error จาก run เก่าไว้
-                          ระหว่างรอสถานะล่าสุดจาก backend
-                        </p>
-                      </div>
-                      <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
-                    </div>
-                  </div>
-                ) : statusAutoReviewRun ? (
-                  <div className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
+                      </article>
+                      <article
+                        onDragOver={event =>
+                          handleAnchorDragOver(event, "environment")
+                        }
+                        onDragLeave={handleAnchorDragLeave}
+                        onDrop={event =>
+                          void handleDropAnchorImage(
+                            event,
+                            setEnvironmentAnchor,
+                            "environment",
+                            "Environment anchor"
+                          )
+                        }
+                        className={`rounded-lg border bg-white p-3 text-left transition ${
+                          activeAnchorDrop === "environment"
+                            ? "border-sky-400 ring-4 ring-sky-100"
+                            : environmentAnchorUrl
+                              ? "border-emerald-500 ring-2 ring-emerald-50"
+                              : "border-slate-200"
+                        }`}
+                      >
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          สรุปงานล่าสุด
+                          Environment/place anchor
                         </p>
-                        <h3 className="mt-1 text-base font-semibold text-slate-950">
-                          ตอนนี้อยู่ที่:{" "}
-                          {compactText(statusActiveTimelineItem?.label) ||
-                            autoReviewStageLabel(
-                              compactText(
-                                statusActiveTimelineItem?.stageKey ??
-                                  statusProjection.currentStage ??
-                                  statusAutoReviewRun.currentStage
-                              )
-                            )}
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-600">
-                          {statusAutoReviewRun.productionRunId}
+                        <p className="mt-2 text-sm font-medium text-slate-900">
+                          {environmentAnchorUrl
+                            ? "อัปโหลดแล้ว"
+                            : "อัปโหลดรูปฉาก/พื้นที่"}
                         </p>
-                        {statusNextAction ? (
-                          <p className="mt-2 text-sm text-amber-700">
-                            ถัดไป: {statusNextAction}
-                          </p>
-                        ) : null}
-                        {statusAutoReviewRunBestAttemptHint ? (
-                          <p className="mt-2 text-sm text-amber-700">
-                            {statusAutoReviewRunBestAttemptHint}
-                          </p>
-                        ) : null}
-                        {statusImageTaskSummary ? (
-                          <p className="mt-2 text-sm text-slate-700">
-                            งานภาพ: {statusImageTaskSummary}
-                          </p>
-                        ) : null}
-                        {statusOutputLinks.length > 0 ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {statusOutputLinks.slice(0, 4).map((link: any) => (
-                              <a
-                                key={`${compactText(link.kind)}-${compactText(link.url)}`}
-                                href={compactText(link.url)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium shadow-sm ${
-                                  compactText(link.kind) === "storyboard_review"
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                    : "bg-white text-slate-700 hover:bg-slate-50"
-                                }`}
-                              >
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                {autoReviewLinkLabel(link)}
-                              </a>
-                            ))}
+                        {environmentAnchorUrl ? (
+                          <div className="mt-2 flex items-start gap-3">
+                            <img
+                              src={environmentAnchorUrl}
+                              alt="Environment anchor"
+                              className="h-20 w-20 rounded-md border object-cover"
+                            />
+                            <p className="text-xs leading-5 text-slate-500">
+                              {multiViewReferencePolicyText("environment")}
+                            </p>
                           </div>
-                        ) : null}
-                      </div>
-                      <div className="min-w-[11rem] text-right">
-                        <p className="text-sm font-semibold text-slate-900">
-                          {statusProgressPercent ?? 0}%
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          จบแล้ว {statusCompletedTimelineCount}/
-                          {statusTimelineItems.length || 0} ขั้นตอน
-                        </p>
-                        {statusAutoReviewRun?.updatedAt ? (
-                          <p className="mt-1 text-[11px] text-slate-400">
-                            อัปเดตล่าสุด {statusAutoReviewRunUpdatedAtText}
+                        ) : (
+                          <p className="mt-2 text-xs leading-5 text-slate-500">
+                            ลากไฟล์รูปฉากมาวาง หรือคลิกเพื่ออัปโหลด
+                            PNG/JPG/SVG/WEBP ≤10MB รองรับไฟล์เดียวแบบ multi-view
+                            sheet
                           </p>
-                        ) : null}
-                        <div className="mt-2 h-2 rounded-full bg-slate-100">
-                          <div
-                            className="h-2 rounded-full bg-sky-600"
-                            style={{
-                              width: `${Math.min(100, Math.max(0, statusProgressPercent ?? 0))}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-                {isStatusAutoReviewRunAwaitingPlanReview ? (
-                  <AutoReviewPlanReviewPanel
-                    planReview={statusAutoReviewRunPlanReview}
-                    plan={planReviewPlanData}
-                    planLoadError={planReviewLoadErrorMessage}
-                    onRetryLoadPlan={() => planReviewRunQuery.refetch()}
-                    onApprove={() =>
-                      approveAutoReviewPlanReviewMutation.mutate({
-                        runId: String(statusAutoReviewRun.id),
-                      })
-                    }
-                    approving={approveAutoReviewPlanReviewMutation.isPending}
-                    approveError={autoReviewPlanReviewApproveError}
-                    onRequestRedraft={notes =>
-                      requestAutoReviewPlanRedraftMutation.mutate({
-                        runId: String(statusAutoReviewRun.id),
-                        notes: notes || undefined,
-                      })
-                    }
-                    redrafting={requestAutoReviewPlanRedraftMutation.isPending}
-                    redraftError={autoReviewPlanReviewRedraftError}
-                    onCancelRun={() =>
-                      cancelAutoReviewMutation.mutate({
-                        runId: String(statusAutoReviewRun.id),
-                      })
-                    }
-                    cancelling={cancelAutoReviewMutation.isPending}
-                    onSaveShotDialogue={input => {
-                      setDialogueSaveError(null);
-                      setDialogueSavingShotId(input.shotId);
-                      updateAutoReviewPlanShotDialogueMutation.mutate({
-                        runId: String(statusAutoReviewRun.id),
-                        shotId: input.shotId,
-                        dialogue: input.dialogue,
-                      });
-                    }}
-                    dialogueSavingShotId={dialogueSavingShotId}
-                    dialogueSaveError={dialogueSaveError}
-                  />
-                ) : null}
-                {isStartingAutoReviewRun && !statusAutoReviewRun ? (
-                  <div className="rounded-lg border border-dashed border-sky-200 bg-white p-4 shadow-sm">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
-                          Timeline
-                        </p>
-                        <h3 className="mt-1 text-base font-semibold text-slate-950">
-                          กำลังสร้าง Timeline ของงานใหม่
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-600">
-                          เริ่มงานแล้ว กำลังรอ backend สร้าง run และส่งลำดับ
-                          ขั้นตอนมาแสดง
-                        </p>
-                        <div className="mt-4 space-y-2">
-                          <div className="h-3 w-44 rounded bg-slate-100 animate-pulse" />
-                          <div className="h-3 w-72 rounded bg-slate-100 animate-pulse" />
-                          <div className="h-3 w-60 rounded bg-slate-100 animate-pulse" />
-                        </div>
-                      </div>
-                      <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
-                    </div>
-                  </div>
-                ) : null}
-                {hiddenAutoReviewHistoryCount > 0 ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-xs text-slate-600">
-                      แสดงเฉพาะงานล่าสุดและงานที่ยังทำงานอยู่ เพื่อไม่ให้ error
-                      เก่าปะปนกับ run ใหม่
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAutoReviewHistory(value => !value)}
-                    >
-                      {showAutoReviewHistory
-                        ? "ซ่อนประวัติเก่า"
-                        : `แสดงประวัติเก่า ${hiddenAutoReviewHistoryCount}`}
-                    </Button>
-                  </div>
-                ) : null}
-                {autoReviewRuns.isFetching ? (
-                  <div className="inline-flex items-center gap-2 text-sm text-slate-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    กำลังโหลดสถานะงาน
-                  </div>
-                ) : null}
-                {visibleAutoReviewRunItems.length === 0 &&
-                !autoReviewRuns.isFetching &&
-                !isHidingPreviousAutoReviewFailures &&
-                !isStartingAutoReviewRun ? (
-                  <div className="rounded-lg border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
-                    ยังไม่มีประวัติงานอัตโนมัติ
-                  </div>
-                ) : null}
-                {visibleAutoReviewRunItems.map(run => {
-                  const timelineItems = getAutoReviewTimelineItems(run);
-                  const projection = getAutoReviewTimelineProjection(run);
-                  const projectionDetail = asRecord(projection.statusDetail);
-                  const runStateFamily = autoReviewStateFamily({
-                    status: run.status,
-                    detail: projectionDetail,
-                    stageKey: projection.currentStage ?? run.currentStage,
-                  });
-                  const firstIncompleteTimelineItem = timelineItems.find(
-                    item =>
-                      ![
-                        "completed",
-                        "completed_with_warnings",
-                        "skipped",
-                      ].includes(String(item?.status))
-                  );
-                  const liveTimelineItem = timelineItems.find(item =>
-                    [
-                      "running",
-                      "waiting_provider",
-                      "qa_pending",
-                      "repairing",
-                      "awaiting_credit_authorization",
-                      "blocked",
-                      "blocked_needs_user",
-                      "cancelled",
-                      "failed",
-                    ].includes(String(item?.status))
-                  );
-                  const projectedTimelineItem = timelineItems.find(
-                    item =>
-                      compactText(item?.stageKey) ===
-                      compactText(projection.currentStage ?? run.currentStage)
-                  );
-                  const activeTimelineItem =
-                    liveTimelineItem ??
-                    firstIncompleteTimelineItem ??
-                    projectedTimelineItem;
-                  const activeTimelineStageKey = compactText(
-                    activeTimelineItem?.stageKey ??
-                      projection.currentStage ??
-                      run.currentStage
-                  );
-                  const completedTimelineCount = timelineItems.filter(item =>
-                    [
-                      "completed",
-                      "completed_with_warnings",
-                      "skipped",
-                    ].includes(String(item?.status))
-                  ).length;
-                  const remainingTimelineCount = Math.max(
-                    0,
-                    timelineItems.length - completedTimelineCount
-                  );
-                  const runNextAction = compactText(
-                    projection.nextAction ?? projectionDetail.nextAction
-                  );
-                  const projectionProgress =
-                    typeof projection.progressPercent === "number"
-                      ? Math.round(projection.progressPercent)
-                      : null;
-                  const runId =
-                    compactText(run.id) || compactText(run.productionRunId);
-                  const runHyperframesRenderRef =
-                    hyperframesRenderRefFromAutoReviewRun(run);
-                  const runOutputLinks = [
-                    ...(Array.isArray(run?.apiProjection?.outputLinks)
-                      ? run.apiProjection.outputLinks
-                      : []),
-                    ...(Array.isArray(projection.outputLinks)
-                      ? projection.outputLinks
-                      : []),
-                  ]
-                    .map(link => ({
-                      ...asRecord(link),
-                      url: normalizeAutoReviewOutputLinkUrl(link, {
-                        productId: run.productId ?? productId,
-                        runId: runHyperframesRenderRef?.runId || runId,
-                        renderJobId: runHyperframesRenderRef?.renderJobId,
-                      }),
-                    }))
-                    .filter(
-                      (link, index, links) =>
-                        compactText(link?.url) &&
-                        links.findIndex(
-                          candidate =>
-                            compactText(candidate?.url) ===
-                            compactText(link?.url)
-                        ) === index
-                    );
-                  const runCreditSummary = formatAutoReviewCreditSummary(
-                    run.creditSummary ?? run.apiProjection?.creditSummary
-                  );
-                  const usesPreferredTimeline =
-                    Array.isArray(run?.apiProjection?.timeline?.items) &&
-                    run.apiProjection.timeline.items.length > 0;
-                  const lockedAnchors = getAutoReviewLockedAnchors(run);
-                  const automationSummary = getAutoReviewAutomationSummary(run);
-                  const isHistoricalAutoReviewRun =
-                    Boolean(
-                      showAutoReviewHistory &&
-                      latestAutoReviewRunId &&
-                      runId &&
-                      runId !== latestAutoReviewRunId
-                    ) && !isAutoReviewRunBlockingStart(run);
-                  const isRunCollapsed =
-                    Boolean(runId) &&
-                    (isHistoricalAutoReviewRun
-                      ? !collapsedAutoReviewRunIds.has(runId)
-                      : collapsedAutoReviewRunIds.has(runId));
-                  const timelinePanelId = runId ? `${runId}:timeline` : "";
-                  const isTimelineCollapsed =
-                    Boolean(timelinePanelId) &&
-                    collapsedAutoReviewPanelIds.has(timelinePanelId);
-                  const storyboardReviewLink = normalizeStoryboardReviewLink(
-                    run.links?.storyboardReview,
-                    {
-                      productId: run.productId ?? productId,
-                      runId: runHyperframesRenderRef?.runId || runId,
-                      renderJobId: runHyperframesRenderRef?.renderJobId,
-                    }
-                  );
-                  return (
-                    <article
-                      key={run.id}
-                      className="rounded-lg border bg-white p-4 shadow-sm"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${runStateFamily.className}`}
-                            >
-                              {runStateFamily.label}
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              {autoReviewStageLabel(String(run.currentStage))}
-                            </span>
-                            <span className="text-xs text-slate-400">
-                              {run.stageIndex}/{run.stageCount}
-                            </span>
-                            {projectionProgress != null ? (
-                              <span className="text-xs text-slate-400">
-                                {projectionProgress}%
-                              </span>
-                            ) : null}
-                            {isHistoricalAutoReviewRun ? (
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
-                                ประวัติเก่า
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-2 text-sm font-medium text-slate-900">
-                            {run.productionRunId}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {run.outputMode === "full_video"
-                              ? "Full video"
-                              : "Storyboard + images"}{" "}
-                            ·{" "}
-                            {run.frameStrategy === "video_shot_start_stop"
-                              ? "Start/Stop frame"
-                              : "3x3 split"}
-                            {run.metadataJson?.resolvedAudioStrategy
-                              ? ` · ${String(run.metadataJson.resolvedAudioStrategy).replaceAll("_", " ")}`
-                              : ""}
-                          </p>
-                          {!isRunCollapsed ? (
-                            <>
-                              <p className="mt-2 text-xs leading-5 text-slate-600">
-                                {runStateFamily.description}
-                                {projectionDetail.safeMessage
-                                  ? ` · ${autoReviewDisplayMessage(projectionDetail.safeMessage)}`
-                                  : ""}
-                              </p>
-                              <div className="mt-2 flex flex-wrap gap-1 text-[11px] text-slate-500">
-                                {autoReviewTechnicalIds({
-                                  status: run.status,
-                                  detail: projectionDetail,
-                                  stageKey:
-                                    projection.currentStage ?? run.currentStage,
-                                }).map(id => (
-                                  <span
-                                    key={id}
-                                    className="max-w-[12rem] truncate rounded bg-slate-100 px-2 py-0.5"
-                                  >
-                                    {id}
-                                  </span>
-                                ))}
-                              </div>
-                              {activeTimelineItem ? (
-                                <p className="mt-2 text-xs text-slate-500">
-                                  ตอนนี้:{" "}
-                                  {compactText(activeTimelineItem.label) ||
-                                    autoReviewStageLabel(
-                                      compactText(activeTimelineItem.stageKey)
-                                    )}{" "}
-                                  · เหลืออีก {remainingTimelineCount} ขั้นตอน
-                                </p>
-                              ) : null}
-                              {runNextAction ? (
-                                <p className="mt-1 text-xs text-amber-700">
-                                  ถัดไป: {runNextAction}
-                                </p>
-                              ) : null}
-                              {run.errorMessage ? (
-                                <p className="mt-2 text-sm text-red-600">
-                                  {autoReviewDisplayMessage(run.errorMessage)}
-                                </p>
-                              ) : null}
-                              {lockedAnchors.length > 0 ? (
-                                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                                  {lockedAnchors.map(anchor => (
-                                    <div
-                                      key={`${anchor.role}-${anchor.ref || anchor.url}`}
-                                      className="rounded-md border bg-slate-50 p-2"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        {anchor.url ? (
-                                          <img
-                                            src={anchor.url}
-                                            alt={`${anchor.role} locked anchor`}
-                                            className="h-10 w-10 rounded border bg-white object-cover"
-                                            loading="lazy"
-                                          />
-                                        ) : null}
-                                        <div className="min-w-0">
-                                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                                            {anchor.role} lock
-                                          </p>
-                                          <p className="truncate text-xs text-slate-700">
-                                            {shortAuditRef(anchor.ref) ||
-                                              shortAuditRef(anchor.source) ||
-                                              "locked"}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      {anchor.hash ? (
-                                        <p className="mt-1 truncate text-[11px] text-slate-500">
-                                          hash {shortAuditRef(anchor.hash, 18)}
-                                        </p>
-                                      ) : null}
-                                      {anchor.source ? (
-                                        <p className="mt-1 truncate text-[11px] text-slate-500">
-                                          source {anchor.source}
-                                        </p>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null}
-                              {automationSummary.length > 0 ? (
-                                <div className="mt-3 flex flex-wrap gap-1">
-                                  {automationSummary.map(item => (
-                                    <span
-                                      key={`${item.label}-${item.value}`}
-                                      className="rounded border bg-white px-2 py-1 text-[11px] text-slate-600"
-                                    >
-                                      <span className="font-semibold">
-                                        {item.label}
-                                      </span>{" "}
-                                      {item.value}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </>
-                          ) : null}
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {autoStoryboardPlan?.primaryAction.actionId ===
-                            "resume_auto_storyboard_review" &&
-                          autoStoryboardPlan.activeRunId ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
-                              onClick={() => startAutoStoryboardReview()}
-                            >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              {hyperframesCopy.resumeAutoReview}
-                            </Button>
-                          ) : null}
-                          {runId ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                toggleAutoReviewRunCollapsed(runId)
-                              }
-                            >
-                              {isRunCollapsed ? (
-                                <ChevronDown className="mr-2 h-4 w-4" />
-                              ) : (
-                                <ChevronUp className="mr-2 h-4 w-4" />
-                              )}
-                              {isRunCollapsed ? "ขยาย" : "ย่อ"}
-                            </Button>
-                          ) : null}
-                          {run.links?.productionProject ? (
-                            <a
-                              href={run.links.productionProject}
-                              target="_blank"
-                              rel="noreferrer"
-                              aria-label="Open Production project"
-                              className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                            >
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              Production
-                            </a>
-                          ) : null}
-                          {storyboardReviewLink ? (
-                            <a
-                              href={storyboardReviewLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              aria-label="Open Storyboard review"
-                              className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                            >
-                              Storyboard
-                            </a>
-                          ) : null}
-                          {run.links?.videoEditor ? (
-                            <a
-                              href={run.links.videoEditor}
-                              target="_blank"
-                              rel="noreferrer"
-                              aria-label="Open Video Editor"
-                              className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-                            >
-                              Video Editor
-                            </a>
-                          ) : null}
-                          {run.links?.libraryItem ? (
-                            <a
-                              href={run.links.libraryItem}
-                              target="_blank"
-                              rel="noreferrer"
-                              aria-label="Open final Library video"
-                              className="inline-flex h-9 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 shadow-sm hover:bg-emerald-100"
-                            >
-                              Library
-                            </a>
-                          ) : null}
-                          {isAutoReviewRunBlockingStart(run) ? (
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              environmentAnchorUploadInputRef.current?.click()
+                            }
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {environmentAnchorUrl ? "เปลี่ยนรูป" : "อัปโหลดฉาก"}
+                          </Button>
+                          {environmentAnchorUrl ? (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                              onClick={() =>
-                                cancelAutoReviewMutation.mutate({
-                                  runId: String(run.id),
-                                })
-                              }
-                              disabled={cancelAutoReviewMutation.isPending}
+                              onClick={() => setEnvironmentAnchor(null)}
+                              className="text-red-600 hover:text-red-700"
                             >
-                              ยกเลิก
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              ลบรูปที่เลือก
                             </Button>
                           ) : null}
                         </div>
-                      </div>
+                      </article>
+                    </div>
+                  </div>
+                </>
+              ) : null}
 
-                      {!isRunCollapsed ? (
-                        <div className="mt-4 rounded-lg border bg-slate-50 p-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-sm font-semibold text-slate-900">
-                                Timeline
-                              </h3>
-                              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-500">
-                                {usesPreferredTimeline ? "ละเอียด" : "สรุป"}
-                              </span>
-                              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-500">
-                                จบแล้ว {completedTimelineCount}/
-                                {timelineItems.length}
-                              </span>
-                            </div>
-                            {runCreditSummary ? (
-                              <p className="text-xs text-slate-600">
-                                Credit: {runCreditSummary}
-                              </p>
-                            ) : null}
-                            {timelinePanelId ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  toggleAutoReviewPanelCollapsed(
-                                    timelinePanelId
-                                  )
-                                }
-                              >
-                                {isTimelineCollapsed ? (
-                                  <ChevronDown className="mr-2 h-4 w-4" />
-                                ) : (
-                                  <ChevronUp className="mr-2 h-4 w-4" />
-                                )}
-                                {isTimelineCollapsed ? "ขยาย" : "ย่อ"}
-                              </Button>
-                            ) : null}
+              <div
+                className={`${showStandardOrderControlPanel ? "mt-4" : ""} ${
+                  isAutoReviewJobSetupRoute ? "" : "hidden"
+                } flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-slate-50 px-3 py-2`}
+              >
+                <div className="flex flex-1 flex-col gap-1 text-sm text-slate-600">
+                  {activeAutoReviewRun ? (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
+                        <span>
+                          {statusAutoReviewRunState?.label ?? "กำลังทำงาน"}:{" "}
+                          {autoReviewStageLabel(
+                            String(activeAutoReviewRun.currentStage)
+                          )}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          ({activeAutoReviewRun.stageIndex}/
+                          {activeAutoReviewRun.stageCount})
+                        </span>
+                      </div>
+                      {statusAutoReviewRunState?.description ? (
+                        <p className="text-xs text-slate-500">
+                          {statusAutoReviewRunState.description}
+                        </p>
+                      ) : null}
+                      {statusAutoReviewRunBestAttemptHint ? (
+                        <p className="text-xs text-amber-700">
+                          {statusAutoReviewRunBestAttemptHint}
+                        </p>
+                      ) : null}
+                      {statusAutoReviewRun?.updatedAt ? (
+                        <p className="text-xs text-slate-400">
+                          อัปเดตล่าสุด {statusAutoReviewRunUpdatedAtText} ·
+                          ยังเช็กสถานะต่อเนื่อง
+                        </p>
+                      ) : null}
+                    </>
+                  ) : isHidingPreviousAutoReviewFailures ||
+                    startAutoReviewMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
+                      <span>กำลังเริ่ม run ใหม่</span>
+                    </>
+                  ) : latestVisibleAutoReviewRun?.status === "completed" ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span>งานล่าสุดเสร็จแล้ว</span>
+                    </>
+                  ) : latestVisibleAutoReviewRun?.status === "failed" ? (
+                    <>
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <span>งานล่าสุดล้มเหลว</span>
+                    </>
+                  ) : latestVisibleAutoReviewRun?.status === "cancelled" ? (
+                    <>
+                      <AlertTriangle className="h-4 w-4 text-slate-500" />
+                      <span>งานล่าสุดถูกยกเลิกแล้ว</span>
+                    </>
+                  ) : (
+                    <span>ยังไม่มีงานอัตโนมัติสำหรับสินค้านี้</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {activeAutoReviewRun ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        advanceAutoReviewMutation.mutate({
+                          runId: String(activeAutoReviewRun.id),
+                        })
+                      }
+                      disabled={advanceAutoReviewMutation.isPending}
+                    >
+                      {advanceAutoReviewMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      เช็กสถานะ
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAutoReviewRuns(value => !value)}
+                  >
+                    {showAutoReviewRuns ? "ซ่อนสถานะงาน" : "ดูสถานะงาน"}
+                  </Button>
+                </div>
+              </div>
+
+              {isAutoReviewJobSetupRoute && showAutoReviewRuns ? (
+                <div className="mt-4 space-y-3">
+                  {stagedAutoReviewRunId ? (
+                    <section
+                      className="overflow-hidden rounded-2xl border border-violet-300 bg-slate-950 text-white shadow-xl shadow-violet-950/10"
+                      aria-label="Staged Job Workbench"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-5 p-5 sm:p-6">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">
+                            <Sparkles className="h-4 w-4" /> Staged Job
+                            Workbench
                           </div>
-                          {!isTimelineCollapsed ? (
-                            <>
-                              <p className="mt-2 text-xs leading-5 text-slate-600">
-                                แสดงสิ่งที่เกิดขึ้นแล้ว ขั้นตอนปัจจุบัน
-                                งานที่เหลือ blocker, output และสถานะ repair จาก
-                                backend projection
+                          <h3 className="mt-2 text-xl font-semibold text-white">
+                            งานนี้ย้ายไปทำใน Job Workbench แล้ว
+                          </h3>
+                          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                            Product Detail ใช้ตั้งค่าและดูประวัติเท่านั้น
+                            ส่วนการตรวจเนื้อเรื่อง Prompt ผลภาพ วิดีโอ เสียง
+                            และการประกอบ จะทำในหน้า job
+                            แยกโดยไม่ปะปนกับฟอร์มสินค้า
+                          </p>
+                          {statusNextAction ? (
+                            <p className="mt-3 text-sm font-medium text-violet-200">
+                              ถัดไป: {statusNextAction}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex min-w-[12rem] flex-col items-start gap-3 sm:items-end">
+                          <div className="text-left sm:text-right">
+                            <p className="text-xs uppercase tracking-wide text-slate-400">
+                              สถานะงาน
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-white">
+                              {statusAutoReviewRunState?.label ??
+                                "กำลังโหลดสถานะ"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-400">
+                              ความคืบหน้า {statusProgressPercent ?? 0}%
+                            </p>
+                          </div>
+                          <a
+                            href={`/marketplace/auto-review/${encodeURIComponent(stagedAutoReviewRunId)}`}
+                            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:w-auto"
+                          >
+                            เปิด Job Workbench{" "}
+                            <ExternalLink className="ml-2 h-4 w-4" />
+                          </a>
+                        </div>
+                      </div>
+                      <div className="border-t border-white/10 bg-white/[0.04] px-5 py-3 text-xs text-slate-300 sm:px-6">
+                        ลำดับงาน: ตรวจเนื้อเรื่อง → Prompt ภาพ → ผลภาพ → Prompt
+                        วิดีโอ → เสียง → การประกอบ
+                      </div>
+                    </section>
+                  ) : null}
+                  {!stagedAutoReviewRunId ? (
+                    <>
+                      {isHidingPreviousAutoReviewFailures ||
+                      isStartingAutoReviewRun ? (
+                        <div className="rounded-lg border border-sky-200 bg-sky-50 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-sky-900">
+                                {optimisticAutoReviewStatusText ||
+                                  "ส่งคำสั่งเริ่ม Auto Storyboard Review แล้ว"}
                               </p>
-                              {runOutputLinks.length > 0 ? (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                  <span className="mr-1 text-[11px] font-medium text-slate-500">
-                                    Outputs
-                                  </span>
-                                  {runOutputLinks
-                                    .slice(0, 5)
+                              <p className="mt-1 text-xs text-sky-700">
+                                ระบบกำลังสร้าง run ใหม่และซ่อน error จาก run
+                                เก่าไว้ ระหว่างรอสถานะล่าสุดจาก backend
+                              </p>
+                            </div>
+                            <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
+                          </div>
+                        </div>
+                      ) : statusAutoReviewRun ? (
+                        <div className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm">
+                          <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                สรุปงานล่าสุด
+                              </p>
+                              <h3 className="mt-1 text-base font-semibold text-slate-950">
+                                ตอนนี้อยู่ที่:{" "}
+                                {compactText(statusActiveTimelineItem?.label) ||
+                                  autoReviewStageLabel(
+                                    compactText(
+                                      statusActiveTimelineItem?.stageKey ??
+                                        statusProjection.currentStage ??
+                                        statusAutoReviewRun.currentStage
+                                    )
+                                  )}
+                              </h3>
+                              <p className="mt-1 text-sm text-slate-600">
+                                {statusAutoReviewRun.productionRunId}
+                              </p>
+                              {statusNextAction ? (
+                                <p className="mt-2 text-sm text-amber-700">
+                                  ถัดไป: {statusNextAction}
+                                </p>
+                              ) : null}
+                              {statusAutoReviewRunBestAttemptHint ? (
+                                <p className="mt-2 text-sm text-amber-700">
+                                  {statusAutoReviewRunBestAttemptHint}
+                                </p>
+                              ) : null}
+                              {statusImageTaskSummary ? (
+                                <p className="mt-2 text-sm text-slate-700">
+                                  งานภาพ: {statusImageTaskSummary}
+                                </p>
+                              ) : null}
+                              {statusOutputLinks.length > 0 ? (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {statusOutputLinks
+                                    .slice(0, 4)
                                     .map((link: any) => (
                                       <a
                                         key={`${compactText(link.kind)}-${compactText(link.url)}`}
                                         href={compactText(link.url)}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100"
+                                        className={`inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium shadow-sm ${
+                                          compactText(link.kind) ===
+                                          "storyboard_review"
+                                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                            : "bg-white text-slate-700 hover:bg-slate-50"
+                                        }`}
                                       >
+                                        <ExternalLink className="mr-2 h-4 w-4" />
                                         {autoReviewLinkLabel(link)}
                                       </a>
                                     ))}
-                                  {runOutputLinks.length > 5 ? (
-                                    <span className="text-[11px] text-slate-500">
-                                      +{runOutputLinks.length - 5}
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="min-w-[11rem] text-right">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {statusProgressPercent ?? 0}%
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                จบแล้ว {statusCompletedTimelineCount}/
+                                {statusTimelineItems.length || 0} ขั้นตอน
+                              </p>
+                              {statusAutoReviewRun?.updatedAt ? (
+                                <p className="mt-1 text-[11px] text-slate-400">
+                                  อัปเดตล่าสุด{" "}
+                                  {statusAutoReviewRunUpdatedAtText}
+                                </p>
+                              ) : null}
+                              <div className="mt-2 h-2 rounded-full bg-slate-100">
+                                <div
+                                  className="h-2 rounded-full bg-sky-600"
+                                  style={{
+                                    width: `${Math.min(100, Math.max(0, statusProgressPercent ?? 0))}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {isStatusAutoReviewRunAwaitingPlanReview ? (
+                        <AutoReviewPlanReviewPanel
+                          planReview={statusAutoReviewRunPlanReview}
+                          plan={planReviewPlanData}
+                          planLoadError={planReviewLoadErrorMessage}
+                          onRetryLoadPlan={() => planReviewRunQuery.refetch()}
+                          onApprove={() =>
+                            approveAutoReviewPlanReviewMutation.mutate({
+                              runId: String(statusAutoReviewRun.id),
+                            })
+                          }
+                          approving={
+                            approveAutoReviewPlanReviewMutation.isPending
+                          }
+                          approveError={autoReviewPlanReviewApproveError}
+                          onRequestRedraft={notes =>
+                            requestAutoReviewPlanRedraftMutation.mutate({
+                              runId: String(statusAutoReviewRun.id),
+                              notes: notes || undefined,
+                            })
+                          }
+                          redrafting={
+                            requestAutoReviewPlanRedraftMutation.isPending
+                          }
+                          redraftError={autoReviewPlanReviewRedraftError}
+                          onCancelRun={() =>
+                            cancelAutoReviewMutation.mutate({
+                              runId: String(statusAutoReviewRun.id),
+                            })
+                          }
+                          cancelling={cancelAutoReviewMutation.isPending}
+                          onSaveShotDialogue={input => {
+                            setDialogueSaveError(null);
+                            setDialogueSavingShotId(input.shotId);
+                            updateAutoReviewPlanShotDialogueMutation.mutate({
+                              runId: String(statusAutoReviewRun.id),
+                              shotId: input.shotId,
+                              dialogue: input.dialogue,
+                            });
+                          }}
+                          dialogueSavingShotId={dialogueSavingShotId}
+                          dialogueSaveError={dialogueSaveError}
+                        />
+                      ) : null}
+                      {isStartingAutoReviewRun && !statusAutoReviewRun ? (
+                        <div className="rounded-lg border border-dashed border-sky-200 bg-white p-4 shadow-sm">
+                          <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
+                                Timeline
+                              </p>
+                              <h3 className="mt-1 text-base font-semibold text-slate-950">
+                                กำลังสร้าง Timeline ของงานใหม่
+                              </h3>
+                              <p className="mt-1 text-sm text-slate-600">
+                                เริ่มงานแล้ว กำลังรอ backend สร้าง run
+                                และส่งลำดับ ขั้นตอนมาแสดง
+                              </p>
+                              <div className="mt-4 space-y-2">
+                                <div className="h-3 w-44 rounded bg-slate-100 animate-pulse" />
+                                <div className="h-3 w-72 rounded bg-slate-100 animate-pulse" />
+                                <div className="h-3 w-60 rounded bg-slate-100 animate-pulse" />
+                              </div>
+                            </div>
+                            <Loader2 className="h-5 w-5 animate-spin text-sky-600" />
+                          </div>
+                        </div>
+                      ) : null}
+                      {hiddenAutoReviewHistoryCount > 0 ? (
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                          <p className="text-xs text-slate-600">
+                            แสดงเฉพาะงานล่าสุดและงานที่ยังทำงานอยู่ เพื่อไม่ให้
+                            error เก่าปะปนกับ run ใหม่
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setShowAutoReviewHistory(value => !value)
+                            }
+                          >
+                            {showAutoReviewHistory
+                              ? "ซ่อนประวัติเก่า"
+                              : `แสดงประวัติเก่า ${hiddenAutoReviewHistoryCount}`}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {autoReviewRuns.isFetching ? (
+                        <div className="inline-flex items-center gap-2 text-sm text-slate-500">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          กำลังโหลดสถานะงาน
+                        </div>
+                      ) : null}
+                      {visibleAutoReviewRunItems.length === 0 &&
+                      !autoReviewRuns.isFetching &&
+                      !isHidingPreviousAutoReviewFailures &&
+                      !isStartingAutoReviewRun ? (
+                        <div className="rounded-lg border border-dashed bg-slate-50 p-4 text-sm text-slate-500">
+                          ยังไม่มีประวัติงานอัตโนมัติ
+                        </div>
+                      ) : null}
+                      {visibleAutoReviewRunItems.map(run => {
+                        const timelineItems = getAutoReviewTimelineItems(run);
+                        const projection = getAutoReviewTimelineProjection(run);
+                        const projectionDetail = asRecord(
+                          projection.statusDetail
+                        );
+                        const runStateFamily = autoReviewStateFamily({
+                          status: run.status,
+                          detail: projectionDetail,
+                          stageKey: projection.currentStage ?? run.currentStage,
+                        });
+                        const firstIncompleteTimelineItem = timelineItems.find(
+                          item =>
+                            ![
+                              "completed",
+                              "completed_with_warnings",
+                              "skipped",
+                            ].includes(String(item?.status))
+                        );
+                        const liveTimelineItem = timelineItems.find(item =>
+                          [
+                            "running",
+                            "waiting_provider",
+                            "qa_pending",
+                            "repairing",
+                            "awaiting_credit_authorization",
+                            "blocked",
+                            "blocked_needs_user",
+                            "cancelled",
+                            "failed",
+                          ].includes(String(item?.status))
+                        );
+                        const projectedTimelineItem = timelineItems.find(
+                          item =>
+                            compactText(item?.stageKey) ===
+                            compactText(
+                              projection.currentStage ?? run.currentStage
+                            )
+                        );
+                        const activeTimelineItem =
+                          liveTimelineItem ??
+                          firstIncompleteTimelineItem ??
+                          projectedTimelineItem;
+                        const activeTimelineStageKey = compactText(
+                          activeTimelineItem?.stageKey ??
+                            projection.currentStage ??
+                            run.currentStage
+                        );
+                        const completedTimelineCount = timelineItems.filter(
+                          item =>
+                            [
+                              "completed",
+                              "completed_with_warnings",
+                              "skipped",
+                            ].includes(String(item?.status))
+                        ).length;
+                        const remainingTimelineCount = Math.max(
+                          0,
+                          timelineItems.length - completedTimelineCount
+                        );
+                        const runNextAction = compactText(
+                          projection.nextAction ?? projectionDetail.nextAction
+                        );
+                        const projectionProgress =
+                          typeof projection.progressPercent === "number"
+                            ? Math.round(projection.progressPercent)
+                            : null;
+                        const runId =
+                          compactText(run.id) ||
+                          compactText(run.productionRunId);
+                        const runHyperframesRenderRef =
+                          hyperframesRenderRefFromAutoReviewRun(run);
+                        const runOutputLinks = [
+                          ...(Array.isArray(run?.apiProjection?.outputLinks)
+                            ? run.apiProjection.outputLinks
+                            : []),
+                          ...(Array.isArray(projection.outputLinks)
+                            ? projection.outputLinks
+                            : []),
+                        ]
+                          .map(link => ({
+                            ...asRecord(link),
+                            url: normalizeAutoReviewOutputLinkUrl(link, {
+                              productId: run.productId ?? productId,
+                              runId: runHyperframesRenderRef?.runId || runId,
+                              renderJobId: runHyperframesRenderRef?.renderJobId,
+                            }),
+                          }))
+                          .filter(
+                            (link, index, links) =>
+                              compactText(link?.url) &&
+                              links.findIndex(
+                                candidate =>
+                                  compactText(candidate?.url) ===
+                                  compactText(link?.url)
+                              ) === index
+                          );
+                        const runCreditSummary = formatAutoReviewCreditSummary(
+                          run.creditSummary ?? run.apiProjection?.creditSummary
+                        );
+                        const usesPreferredTimeline =
+                          Array.isArray(run?.apiProjection?.timeline?.items) &&
+                          run.apiProjection.timeline.items.length > 0;
+                        const lockedAnchors = getAutoReviewLockedAnchors(run);
+                        const automationSummary =
+                          getAutoReviewAutomationSummary(run);
+                        const isHistoricalAutoReviewRun =
+                          Boolean(
+                            showAutoReviewHistory &&
+                            latestAutoReviewRunId &&
+                            runId &&
+                            runId !== latestAutoReviewRunId
+                          ) && !isAutoReviewRunBlockingStart(run);
+                        const isRunCollapsed =
+                          Boolean(runId) &&
+                          (isHistoricalAutoReviewRun
+                            ? !collapsedAutoReviewRunIds.has(runId)
+                            : collapsedAutoReviewRunIds.has(runId));
+                        const timelinePanelId = runId
+                          ? `${runId}:timeline`
+                          : "";
+                        const isTimelineCollapsed =
+                          Boolean(timelinePanelId) &&
+                          collapsedAutoReviewPanelIds.has(timelinePanelId);
+                        const storyboardReviewLink =
+                          normalizeStoryboardReviewLink(
+                            run.links?.storyboardReview,
+                            {
+                              productId: run.productId ?? productId,
+                              runId: runHyperframesRenderRef?.runId || runId,
+                              renderJobId: runHyperframesRenderRef?.renderJobId,
+                            }
+                          );
+                        return (
+                          <article
+                            key={run.id}
+                            className="rounded-lg border bg-white p-4 shadow-sm"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${runStateFamily.className}`}
+                                  >
+                                    {runStateFamily.label}
+                                  </span>
+                                  <span className="text-xs text-slate-500">
+                                    {autoReviewStageLabel(
+                                      String(run.currentStage)
+                                    )}
+                                  </span>
+                                  <span className="text-xs text-slate-400">
+                                    {run.stageIndex}/{run.stageCount}
+                                  </span>
+                                  {projectionProgress != null ? (
+                                    <span className="text-xs text-slate-400">
+                                      {projectionProgress}%
+                                    </span>
+                                  ) : null}
+                                  {isHistoricalAutoReviewRun ? (
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                                      ประวัติเก่า
                                     </span>
                                   ) : null}
                                 </div>
-                              ) : null}
-                              <ol className="mt-3 space-y-2">
-                                {timelineItems.map((item, index) => {
-                                  const detail = asRecord(item?.detail);
-                                  const detailMessage =
-                                    autoReviewDisplayMessage(
-                                      detail.safeMessage ??
-                                        item?.blockerMessage ??
-                                        item?.errorMessage
-                                    );
-                                  const nextAction = compactText(
-                                    detail.nextAction
-                                  );
-                                  const reasonCodes = compactStringList(
-                                    detail.reasonCodes
-                                  );
-                                  const evidenceRefs = compactStringList(
-                                    item?.evidenceRefs
-                                  );
-                                  const qaRefs = compactStringList(
-                                    item?.qaVerdictRefs ?? item?.qaRefs
-                                  );
-                                  const repairRefs = compactStringList(
-                                    item?.repairRefs
-                                  );
-                                  const qualitySummary =
-                                    autoReviewTimelineQualitySummary({
-                                      status: item?.status,
-                                      reasonCodes,
-                                      qaRefs,
-                                      repairRefs,
-                                    });
-                                  const itemCreditSummary =
-                                    formatAutoReviewCreditSummary(item?.credit);
-                                  const outputLinks = Array.isArray(
-                                    item?.outputLinks
-                                  )
-                                    ? item.outputLinks
-                                    : [];
-                                  const itemStateFamily = autoReviewStateFamily(
-                                    {
-                                      status: item?.status,
-                                      detail,
-                                      stageKey: item?.stageKey,
-                                    }
-                                  );
-                                  const technicalIds = autoReviewTechnicalIds({
-                                    status: item?.status,
-                                    detail,
-                                    stageKey: item?.stageKey,
-                                  });
-                                  const imageAttemptCards =
-                                    compactText(item?.stageKey) ===
-                                    "image_generation"
-                                      ? autoReviewImageAttemptCards(run)
-                                      : [];
-                                  const promptSkillDebug =
-                                    autoReviewPromptSkillDebug(
-                                      item?.promptSkillDebug
-                                    );
-                                  const isCurrentTimelineStage =
-                                    activeTimelineStageKey &&
-                                    compactText(item?.stageKey) ===
-                                      activeTimelineStageKey;
-                                  return (
-                                    <li
-                                      key={`${compactText(item?.stageKey) || "stage"}-${index}`}
-                                      className={`relative overflow-hidden rounded-md border p-3 ${
-                                        isCurrentTimelineStage
-                                          ? autoReviewCurrentStageContainerClass(
-                                              {
-                                                status: item?.status,
-                                                detail,
-                                              }
-                                            )
-                                          : "bg-white"
-                                      }`}
-                                    >
-                                      {isCurrentTimelineStage ? (
+                                <p className="mt-2 text-sm font-medium text-slate-900">
+                                  {run.productionRunId}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {run.outputMode === "full_video"
+                                    ? "Full video"
+                                    : "Storyboard + images"}{" "}
+                                  ·{" "}
+                                  {run.frameStrategy === "video_shot_start_stop"
+                                    ? "Start/Stop frame"
+                                    : "3x3 split"}
+                                  {run.metadataJson?.resolvedAudioStrategy
+                                    ? ` · ${String(run.metadataJson.resolvedAudioStrategy).replaceAll("_", " ")}`
+                                    : ""}
+                                </p>
+                                {!isRunCollapsed ? (
+                                  <>
+                                    <p className="mt-2 text-xs leading-5 text-slate-600">
+                                      {runStateFamily.description}
+                                      {projectionDetail.safeMessage
+                                        ? ` · ${autoReviewDisplayMessage(projectionDetail.safeMessage)}`
+                                        : ""}
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap gap-1 text-[11px] text-slate-500">
+                                      {autoReviewTechnicalIds({
+                                        status: run.status,
+                                        detail: projectionDetail,
+                                        stageKey:
+                                          projection.currentStage ??
+                                          run.currentStage,
+                                      }).map(id => (
                                         <span
-                                          className={`absolute inset-y-0 left-0 w-1.5 ${autoReviewCurrentStageAccentClass(
-                                            {
-                                              status: item?.status,
-                                              detail,
-                                            }
-                                          )}`}
-                                          aria-hidden="true"
-                                        />
-                                      ) : null}
-                                      <div className="flex flex-wrap items-start justify-between gap-2">
-                                        <div className="min-w-0">
-                                          <div className="flex flex-wrap items-center gap-2">
-                                            <span
-                                              className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${itemStateFamily.className}`}
-                                            >
-                                              {itemStateFamily.label}
-                                            </span>
-                                            <span className="text-sm font-medium text-slate-900">
-                                              {compactText(item?.label) ||
-                                                autoReviewStageLabel(
-                                                  compactText(item?.stageKey)
-                                                )}
-                                            </span>
-                                            {isCurrentTimelineStage ? (
-                                              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-                                                ขั้นตอนปัจจุบัน
-                                              </span>
+                                          key={id}
+                                          className="max-w-[12rem] truncate rounded bg-slate-100 px-2 py-0.5"
+                                        >
+                                          {id}
+                                        </span>
+                                      ))}
+                                    </div>
+                                    {activeTimelineItem ? (
+                                      <p className="mt-2 text-xs text-slate-500">
+                                        ตอนนี้:{" "}
+                                        {compactText(
+                                          activeTimelineItem.label
+                                        ) ||
+                                          autoReviewStageLabel(
+                                            compactText(
+                                              activeTimelineItem.stageKey
+                                            )
+                                          )}{" "}
+                                        · เหลืออีก {remainingTimelineCount}{" "}
+                                        ขั้นตอน
+                                      </p>
+                                    ) : null}
+                                    {runNextAction ? (
+                                      <p className="mt-1 text-xs text-amber-700">
+                                        ถัดไป: {runNextAction}
+                                      </p>
+                                    ) : null}
+                                    {run.errorMessage ? (
+                                      <p className="mt-2 text-sm text-red-600">
+                                        {autoReviewDisplayMessage(
+                                          run.errorMessage
+                                        )}
+                                      </p>
+                                    ) : null}
+                                    {lockedAnchors.length > 0 ? (
+                                      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                        {lockedAnchors.map(anchor => (
+                                          <div
+                                            key={`${anchor.role}-${anchor.ref || anchor.url}`}
+                                            className="rounded-md border bg-slate-50 p-2"
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              {anchor.url ? (
+                                                <img
+                                                  src={anchor.url}
+                                                  alt={`${anchor.role} locked anchor`}
+                                                  className="h-10 w-10 rounded border bg-white object-cover"
+                                                  loading="lazy"
+                                                />
+                                              ) : null}
+                                              <div className="min-w-0">
+                                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                                  {anchor.role} lock
+                                                </p>
+                                                <p className="truncate text-xs text-slate-700">
+                                                  {shortAuditRef(anchor.ref) ||
+                                                    shortAuditRef(
+                                                      anchor.source
+                                                    ) ||
+                                                    "locked"}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            {anchor.hash ? (
+                                              <p className="mt-1 truncate text-[11px] text-slate-500">
+                                                hash{" "}
+                                                {shortAuditRef(anchor.hash, 18)}
+                                              </p>
                                             ) : null}
-                                            {typeof item?.progressPercent ===
-                                            "number" ? (
-                                              <span className="text-xs text-slate-400">
-                                                {Math.round(
-                                                  item.progressPercent
-                                                )}
-                                                %
-                                              </span>
+                                            {anchor.source ? (
+                                              <p className="mt-1 truncate text-[11px] text-slate-500">
+                                                source {anchor.source}
+                                              </p>
                                             ) : null}
                                           </div>
-                                          <p className="mt-1 text-xs text-slate-500">
-                                            {itemStateFamily.description}
-                                          </p>
-                                          {technicalIds.length > 0 ? (
-                                            <div className="mt-1 flex flex-wrap gap-1">
-                                              {technicalIds.map(id => (
-                                                <span
-                                                  key={id}
-                                                  className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500"
-                                                >
-                                                  {id}
-                                                </span>
-                                              ))}
-                                            </div>
-                                          ) : null}
-                                          {compactText(item?.activeSubstep) ? (
-                                            <p className="mt-1 text-xs text-slate-500">
-                                              ขั้นตอนย่อย:{" "}
-                                              {compactText(item.activeSubstep)}
-                                            </p>
-                                          ) : null}
-                                          {qualitySummary ? (
-                                            <div
-                                              className={`mt-2 rounded-md border px-3 py-2 text-xs ${
-                                                qualitySummary.tone ===
-                                                "success"
-                                                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                                  : qualitySummary.tone ===
-                                                      "error"
-                                                    ? "border-red-200 bg-red-50 text-red-800"
-                                                    : "border-amber-200 bg-amber-50 text-amber-800"
-                                              }`}
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    {automationSummary.length > 0 ? (
+                                      <div className="mt-3 flex flex-wrap gap-1">
+                                        {automationSummary.map(item => (
+                                          <span
+                                            key={`${item.label}-${item.value}`}
+                                            className="rounded border bg-white px-2 py-1 text-[11px] text-slate-600"
+                                          >
+                                            <span className="font-semibold">
+                                              {item.label}
+                                            </span>{" "}
+                                            {item.value}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                  </>
+                                ) : null}
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {autoStoryboardPlan?.primaryAction.actionId ===
+                                  "resume_auto_storyboard_review" &&
+                                autoStoryboardPlan.activeRunId ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                    onClick={() => startAutoStoryboardReview()}
+                                  >
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    {hyperframesCopy.resumeAutoReview}
+                                  </Button>
+                                ) : null}
+                                {runId ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      toggleAutoReviewRunCollapsed(runId)
+                                    }
+                                  >
+                                    {isRunCollapsed ? (
+                                      <ChevronDown className="mr-2 h-4 w-4" />
+                                    ) : (
+                                      <ChevronUp className="mr-2 h-4 w-4" />
+                                    )}
+                                    {isRunCollapsed ? "ขยาย" : "ย่อ"}
+                                  </Button>
+                                ) : null}
+                                {run.links?.productionProject ? (
+                                  <a
+                                    href={run.links.productionProject}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label="Open Production project"
+                                    className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                                  >
+                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                    Production
+                                  </a>
+                                ) : null}
+                                {storyboardReviewLink ? (
+                                  <a
+                                    href={storyboardReviewLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label="Open Storyboard review"
+                                    className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                                  >
+                                    Storyboard
+                                  </a>
+                                ) : null}
+                                {run.links?.videoEditor ? (
+                                  <a
+                                    href={run.links.videoEditor}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label="Open Video Editor"
+                                    className="inline-flex h-9 items-center rounded-md border bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                                  >
+                                    Video Editor
+                                  </a>
+                                ) : null}
+                                {run.links?.libraryItem ? (
+                                  <a
+                                    href={run.links.libraryItem}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label="Open final Library video"
+                                    className="inline-flex h-9 items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 text-sm font-medium text-emerald-700 shadow-sm hover:bg-emerald-100"
+                                  >
+                                    Library
+                                  </a>
+                                ) : null}
+                                {isAutoReviewRunBlockingStart(run) ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    onClick={() =>
+                                      cancelAutoReviewMutation.mutate({
+                                        runId: String(run.id),
+                                      })
+                                    }
+                                    disabled={
+                                      cancelAutoReviewMutation.isPending
+                                    }
+                                  >
+                                    ยกเลิก
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            {!isRunCollapsed ? (
+                              <div className="mt-4 rounded-lg border bg-slate-50 p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                      Timeline
+                                    </h3>
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-500">
+                                      {usesPreferredTimeline
+                                        ? "ละเอียด"
+                                        : "สรุป"}
+                                    </span>
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] text-slate-500">
+                                      จบแล้ว {completedTimelineCount}/
+                                      {timelineItems.length}
+                                    </span>
+                                  </div>
+                                  {runCreditSummary ? (
+                                    <p className="text-xs text-slate-600">
+                                      Credit: {runCreditSummary}
+                                    </p>
+                                  ) : null}
+                                  {timelinePanelId ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        toggleAutoReviewPanelCollapsed(
+                                          timelinePanelId
+                                        )
+                                      }
+                                    >
+                                      {isTimelineCollapsed ? (
+                                        <ChevronDown className="mr-2 h-4 w-4" />
+                                      ) : (
+                                        <ChevronUp className="mr-2 h-4 w-4" />
+                                      )}
+                                      {isTimelineCollapsed ? "ขยาย" : "ย่อ"}
+                                    </Button>
+                                  ) : null}
+                                </div>
+                                {!isTimelineCollapsed ? (
+                                  <>
+                                    <p className="mt-2 text-xs leading-5 text-slate-600">
+                                      แสดงสิ่งที่เกิดขึ้นแล้ว ขั้นตอนปัจจุบัน
+                                      งานที่เหลือ blocker, output และสถานะ
+                                      repair จาก backend projection
+                                    </p>
+                                    {runOutputLinks.length > 0 ? (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        <span className="mr-1 text-[11px] font-medium text-slate-500">
+                                          Outputs
+                                        </span>
+                                        {runOutputLinks
+                                          .slice(0, 5)
+                                          .map((link: any) => (
+                                            <a
+                                              key={`${compactText(link.kind)}-${compactText(link.url)}`}
+                                              href={compactText(link.url)}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100"
                                             >
-                                              <p className="font-semibold">
-                                                {qualitySummary.title}
-                                              </p>
-                                              {qualitySummary.items.length >
-                                              0 ? (
-                                                <ul className="mt-1 space-y-1">
-                                                  {qualitySummary.items.map(
-                                                    item => (
-                                                      <li key={item}>{item}</li>
-                                                    )
-                                                  )}
-                                                </ul>
-                                              ) : null}
-                                            </div>
-                                          ) : null}
-                                          {imageAttemptCards.length > 0 ? (
-                                            <div className="mt-3 space-y-2">
-                                              <p className="text-[11px] font-semibold text-slate-500">
-                                                ประวัติรูปแต่ละรอบ
-                                              </p>
-                                              {imageAttemptCards.map(card => (
-                                                <div
-                                                  key={`${run.id}-image-attempt-${card.attempt}`}
-                                                  className={`rounded-md border p-2 text-xs ${
-                                                    card.tone === "success"
-                                                      ? "border-emerald-200 bg-emerald-50/70 text-emerald-900"
-                                                      : card.tone === "error"
-                                                        ? "border-red-200 bg-red-50/70 text-red-900"
-                                                        : card.tone ===
-                                                            "warning"
-                                                          ? "border-amber-200 bg-amber-50/70 text-amber-900"
-                                                          : "border-slate-200 bg-slate-50 text-slate-700"
-                                                  }`}
-                                                >
-                                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <span className="font-semibold">
-                                                      {card.title}
+                                              {autoReviewLinkLabel(link)}
+                                            </a>
+                                          ))}
+                                        {runOutputLinks.length > 5 ? (
+                                          <span className="text-[11px] text-slate-500">
+                                            +{runOutputLinks.length - 5}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+                                    <ol className="mt-3 space-y-2">
+                                      {timelineItems.map((item, index) => {
+                                        const detail = asRecord(item?.detail);
+                                        const detailMessage =
+                                          autoReviewDisplayMessage(
+                                            detail.safeMessage ??
+                                              item?.blockerMessage ??
+                                              item?.errorMessage
+                                          );
+                                        const nextAction = compactText(
+                                          detail.nextAction
+                                        );
+                                        const reasonCodes = compactStringList(
+                                          detail.reasonCodes
+                                        );
+                                        const evidenceRefs = compactStringList(
+                                          item?.evidenceRefs
+                                        );
+                                        const qaRefs = compactStringList(
+                                          item?.qaVerdictRefs ?? item?.qaRefs
+                                        );
+                                        const repairRefs = compactStringList(
+                                          item?.repairRefs
+                                        );
+                                        const qualitySummary =
+                                          autoReviewTimelineQualitySummary({
+                                            status: item?.status,
+                                            reasonCodes,
+                                            qaRefs,
+                                            repairRefs,
+                                          });
+                                        const itemCreditSummary =
+                                          formatAutoReviewCreditSummary(
+                                            item?.credit
+                                          );
+                                        const outputLinks = Array.isArray(
+                                          item?.outputLinks
+                                        )
+                                          ? item.outputLinks
+                                          : [];
+                                        const itemStateFamily =
+                                          autoReviewStateFamily({
+                                            status: item?.status,
+                                            detail,
+                                            stageKey: item?.stageKey,
+                                          });
+                                        const technicalIds =
+                                          autoReviewTechnicalIds({
+                                            status: item?.status,
+                                            detail,
+                                            stageKey: item?.stageKey,
+                                          });
+                                        const imageAttemptCards =
+                                          compactText(item?.stageKey) ===
+                                          "image_generation"
+                                            ? autoReviewImageAttemptCards(run)
+                                            : [];
+                                        const promptSkillDebug =
+                                          autoReviewPromptSkillDebug(
+                                            item?.promptSkillDebug
+                                          );
+                                        const isCurrentTimelineStage =
+                                          activeTimelineStageKey &&
+                                          compactText(item?.stageKey) ===
+                                            activeTimelineStageKey;
+                                        return (
+                                          <li
+                                            key={`${compactText(item?.stageKey) || "stage"}-${index}`}
+                                            className={`relative overflow-hidden rounded-md border p-3 ${
+                                              isCurrentTimelineStage
+                                                ? autoReviewCurrentStageContainerClass(
+                                                    {
+                                                      status: item?.status,
+                                                      detail,
+                                                    }
+                                                  )
+                                                : "bg-white"
+                                            }`}
+                                          >
+                                            {isCurrentTimelineStage ? (
+                                              <span
+                                                className={`absolute inset-y-0 left-0 w-1.5 ${autoReviewCurrentStageAccentClass(
+                                                  {
+                                                    status: item?.status,
+                                                    detail,
+                                                  }
+                                                )}`}
+                                                aria-hidden="true"
+                                              />
+                                            ) : null}
+                                            <div className="flex flex-wrap items-start justify-between gap-2">
+                                              <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                  <span
+                                                    className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${itemStateFamily.className}`}
+                                                  >
+                                                    {itemStateFamily.label}
+                                                  </span>
+                                                  <span className="text-sm font-medium text-slate-900">
+                                                    {compactText(item?.label) ||
+                                                      autoReviewStageLabel(
+                                                        compactText(
+                                                          item?.stageKey
+                                                        )
+                                                      )}
+                                                  </span>
+                                                  {isCurrentTimelineStage ? (
+                                                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                                                      ขั้นตอนปัจจุบัน
                                                     </span>
-                                                    <div className="flex flex-wrap items-center gap-1">
-                                                      {card.selected ? (
-                                                        <span className="rounded bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-                                                          ใช้สร้าง Storyboard
-                                                          Review แล้ว
-                                                        </span>
-                                                      ) : null}
-                                                      <span className="rounded bg-white/80 px-2 py-0.5 text-[11px]">
-                                                        {card.status}
-                                                      </span>
-                                                    </div>
-                                                  </div>
-                                                  <p className="mt-1">
-                                                    {card.message}
-                                                  </p>
-                                                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                    <Button
-                                                      type="button"
-                                                      size="sm"
-                                                      variant={
-                                                        card.selected
-                                                          ? "secondary"
-                                                          : "default"
-                                                      }
-                                                      disabled={
-                                                        card.selected ||
-                                                        !card.canCreateStoryboardReview ||
-                                                        selectAutoReviewImageAttemptMutation.isPending
-                                                      }
-                                                      onClick={() =>
-                                                        selectAutoReviewImageAttemptMutation.mutate(
-                                                          {
-                                                            runId: compactText(
-                                                              run.id
-                                                            ),
-                                                            attempt:
-                                                              card.attempt,
-                                                          }
-                                                        )
-                                                      }
-                                                      className="h-8 gap-1 rounded-md text-xs"
-                                                    >
-                                                      {selectAutoReviewImageAttemptMutation.isPending ? (
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                      ) : (
-                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                  ) : null}
+                                                  {typeof item?.progressPercent ===
+                                                  "number" ? (
+                                                    <span className="text-xs text-slate-400">
+                                                      {Math.round(
+                                                        item.progressPercent
                                                       )}
-                                                      {card.selected
-                                                        ? "ใช้ชุดนี้อยู่"
-                                                        : "ใช้ภาพชุดนี้สร้าง Storyboard Review"}
-                                                    </Button>
-                                                    {card.hasPublishSafetyBlocker ? (
-                                                      <span className="text-[11px] font-semibold text-red-700">
-                                                        บล็อกการส่งต่อ:
-                                                        ภาพเด็กเสื้อผ้าไม่ครบหรือไม่เหมาะกับ
-                                                        publish
-                                                      </span>
-                                                    ) : !card.canCreateStoryboardReview ? (
-                                                      <span className="text-[11px] text-amber-700">
-                                                        ยังไม่มีภาพหรือเฟรมที่ใช้สร้างได้
-                                                      </span>
-                                                    ) : card.selected ? (
-                                                      <span className="text-[11px] text-sky-700">
-                                                        สร้าง Storyboard Review
-                                                        จากชุดนี้แล้ว
-                                                      </span>
-                                                    ) : (
-                                                      <span className="text-[11px] text-slate-500">
-                                                        ใช้เมื่อระบบเลือกชุดอื่นผิดจากที่ต้องการ
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                  {card.reasons.length > 0 ? (
-                                                    <div className="mt-2 flex flex-wrap gap-1">
-                                                      {card.reasons
-                                                        .slice(0, 5)
-                                                        .map(reason => (
-                                                          <span
-                                                            key={reason}
-                                                            className="rounded bg-white/80 px-2 py-0.5 text-[11px]"
-                                                          >
-                                                            {autoReviewFriendlyReason(
-                                                              reason
-                                                            )}
-                                                          </span>
-                                                        ))}
-                                                    </div>
-                                                  ) : null}
-                                                  {card.thumbnails.length >
-                                                  0 ? (
-                                                    <div className="mt-2 flex flex-wrap gap-2">
-                                                      {card.thumbnails.map(
-                                                        thumb => (
-                                                          <button
-                                                            key={`${card.attempt}-${thumb.unitId}-${thumb.url}`}
-                                                            type="button"
-                                                            onClick={() =>
-                                                              setPreviewAutoReviewImage(
-                                                                {
-                                                                  url: thumb.url,
-                                                                  title:
-                                                                    thumb.title,
-                                                                }
-                                                              )
-                                                            }
-                                                            className="group relative h-20 w-14 overflow-hidden rounded border bg-white shadow-sm"
-                                                            aria-label={`ดูภาพ ${thumb.title}`}
-                                                          >
-                                                            <img
-                                                              src={thumb.url}
-                                                              alt={thumb.title}
-                                                              className="h-full w-full object-cover"
-                                                              loading="lazy"
-                                                            />
-                                                            <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1 py-0.5 text-[10px] text-white">
-                                                              {thumb.status ||
-                                                                "image"}
-                                                            </span>
-                                                            <span className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-slate-700 opacity-0 shadow transition group-hover:opacity-100">
-                                                              <Maximize2 className="h-3 w-3" />
-                                                            </span>
-                                                          </button>
-                                                        )
-                                                      )}
-                                                    </div>
-                                                  ) : null}
-                                                  {card.promptHash ||
-                                                  card.promptLengthChars ? (
-                                                    <p className="mt-2 text-[11px] text-slate-500">
-                                                      prompt{" "}
-                                                      {card.promptHash
-                                                        ? shortAuditRef(
-                                                            card.promptHash,
-                                                            18
-                                                          )
-                                                        : "-"}{" "}
-                                                      {card.promptLengthChars
-                                                        ? `· ${card.promptLengthChars} chars`
-                                                        : ""}
-                                                    </p>
-                                                  ) : null}
-                                                  {card.prompt ||
-                                                  card.promptSnippet ? (
-                                                    <details className="mt-2 rounded-md border border-white/70 bg-white/70 px-2 py-1.5 text-[11px] text-slate-700">
-                                                      <summary className="cursor-pointer select-none font-semibold text-slate-700">
-                                                        ตรวจ Prompt รอบนี้{" "}
-                                                        <span className="font-normal text-slate-500">
-                                                          {card.prompt
-                                                            ? `เต็ม ${card.prompt.length.toLocaleString()} chars`
-                                                            : `preview ${card.promptLengthChars ? `${card.promptLengthChars.toLocaleString()} chars` : ""}`}
-                                                        </span>
-                                                      </summary>
-                                                      <textarea
-                                                        readOnly
-                                                        spellCheck={false}
-                                                        rows={14}
-                                                        value={
-                                                          card.prompt ||
-                                                          card.promptSnippet
-                                                        }
-                                                        className="mt-2 min-h-[18rem] w-full resize-y rounded-md border border-slate-200 bg-white p-2 font-mono text-[11px] leading-5 text-slate-700 shadow-inner"
-                                                        aria-label={`Prompt รูปชุดที่ ${card.attempt}`}
-                                                      />
-                                                    </details>
+                                                      %
+                                                    </span>
                                                   ) : null}
                                                 </div>
-                                              ))}
-                                            </div>
-                                          ) : null}
-                                          {promptSkillDebug ? (
-                                            <details
-                                              className="mt-3 rounded-md border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-slate-700"
-                                              open={
-                                                Boolean(
-                                                  isCurrentTimelineStage
-                                                ) ||
-                                                compactText(item?.status) ===
-                                                  "failed"
-                                              }
-                                            >
-                                              <summary className="cursor-pointer select-none font-semibold text-sky-800">
-                                                Prompt จาก skill{" "}
-                                                <span className="font-normal text-sky-700">
-                                                  {promptSkillDebug.length.toLocaleString()}{" "}
-                                                  chars
-                                                  {promptSkillDebug.maxOutputChars
-                                                    ? ` / limit ${promptSkillDebug.maxOutputChars.toLocaleString()}`
-                                                    : ""}
-                                                </span>
-                                              </summary>
-                                              <div className="mt-2 flex flex-wrap gap-1">
-                                                {[
-                                                  promptSkillDebug.skillId,
-                                                  promptSkillDebug.unitId,
-                                                  promptSkillDebug.reasonCode,
-                                                  promptSkillDebug.status,
-                                                  promptSkillDebug.modelId,
-                                                  promptSkillDebug.providerName,
-                                                  promptSkillDebug.finishReason,
-                                                ]
-                                                  .filter(Boolean)
-                                                  .slice(0, 8)
-                                                  .map((meta, metaIndex) => (
-                                                    <span
-                                                      key={`${meta}-${metaIndex}`}
-                                                      className="max-w-[14rem] truncate rounded bg-white px-2 py-0.5 text-[11px] text-slate-600"
-                                                    >
-                                                      {meta}
-                                                    </span>
-                                                  ))}
-                                                {promptSkillDebug.attempt ? (
-                                                  <span className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600">
-                                                    attempt{" "}
-                                                    {promptSkillDebug.attempt}
-                                                  </span>
-                                                ) : null}
-                                                {promptSkillDebug.promptAttempt ? (
-                                                  <span className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600">
-                                                    prompt attempt{" "}
-                                                    {
-                                                      promptSkillDebug.promptAttempt
-                                                    }
-                                                  </span>
-                                                ) : null}
-                                              </div>
-                                              {promptSkillDebug.blockers
-                                                .length > 0 ? (
-                                                <div className="mt-2 flex flex-wrap gap-1">
-                                                  <span className="mr-1 text-[11px] font-medium text-slate-500">
-                                                    Blockers
-                                                  </span>
-                                                  {promptSkillDebug.blockers
-                                                    .slice(0, 10)
-                                                    .map(blocker => (
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                  {itemStateFamily.description}
+                                                </p>
+                                                {technicalIds.length > 0 ? (
+                                                  <div className="mt-1 flex flex-wrap gap-1">
+                                                    {technicalIds.map(id => (
                                                       <span
-                                                        key={blocker}
-                                                        className="max-w-[14rem] truncate rounded bg-red-50 px-2 py-0.5 text-[11px] text-red-700"
+                                                        key={id}
+                                                        className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500"
                                                       >
-                                                        {blocker}
+                                                        {id}
                                                       </span>
                                                     ))}
-                                                  {promptSkillDebug.blockers
-                                                    .length > 10 ? (
-                                                    <span className="text-[11px] text-slate-500">
-                                                      +
-                                                      {promptSkillDebug.blockers
-                                                        .length - 10}
+                                                  </div>
+                                                ) : null}
+                                                {compactText(
+                                                  item?.activeSubstep
+                                                ) ? (
+                                                  <p className="mt-1 text-xs text-slate-500">
+                                                    ขั้นตอนย่อย:{" "}
+                                                    {compactText(
+                                                      item.activeSubstep
+                                                    )}
+                                                  </p>
+                                                ) : null}
+                                                {qualitySummary ? (
+                                                  <div
+                                                    className={`mt-2 rounded-md border px-3 py-2 text-xs ${
+                                                      qualitySummary.tone ===
+                                                      "success"
+                                                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                                        : qualitySummary.tone ===
+                                                            "error"
+                                                          ? "border-red-200 bg-red-50 text-red-800"
+                                                          : "border-amber-200 bg-amber-50 text-amber-800"
+                                                    }`}
+                                                  >
+                                                    <p className="font-semibold">
+                                                      {qualitySummary.title}
+                                                    </p>
+                                                    {qualitySummary.items
+                                                      .length > 0 ? (
+                                                      <ul className="mt-1 space-y-1">
+                                                        {qualitySummary.items.map(
+                                                          item => (
+                                                            <li key={item}>
+                                                              {item}
+                                                            </li>
+                                                          )
+                                                        )}
+                                                      </ul>
+                                                    ) : null}
+                                                  </div>
+                                                ) : null}
+                                                {imageAttemptCards.length >
+                                                0 ? (
+                                                  <div className="mt-3 space-y-2">
+                                                    <p className="text-[11px] font-semibold text-slate-500">
+                                                      ประวัติรูปแต่ละรอบ
+                                                    </p>
+                                                    {imageAttemptCards.map(
+                                                      card => (
+                                                        <div
+                                                          key={`${run.id}-image-attempt-${card.attempt}`}
+                                                          className={`rounded-md border p-2 text-xs ${
+                                                            card.tone ===
+                                                            "success"
+                                                              ? "border-emerald-200 bg-emerald-50/70 text-emerald-900"
+                                                              : card.tone ===
+                                                                  "error"
+                                                                ? "border-red-200 bg-red-50/70 text-red-900"
+                                                                : card.tone ===
+                                                                    "warning"
+                                                                  ? "border-amber-200 bg-amber-50/70 text-amber-900"
+                                                                  : "border-slate-200 bg-slate-50 text-slate-700"
+                                                          }`}
+                                                        >
+                                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                                            <span className="font-semibold">
+                                                              {card.title}
+                                                            </span>
+                                                            <div className="flex flex-wrap items-center gap-1">
+                                                              {card.selected ? (
+                                                                <span className="rounded bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                                                                  ใช้สร้าง
+                                                                  Storyboard
+                                                                  Review แล้ว
+                                                                </span>
+                                                              ) : null}
+                                                              <span className="rounded bg-white/80 px-2 py-0.5 text-[11px]">
+                                                                {card.status}
+                                                              </span>
+                                                            </div>
+                                                          </div>
+                                                          <p className="mt-1">
+                                                            {card.message}
+                                                          </p>
+                                                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                            <Button
+                                                              type="button"
+                                                              size="sm"
+                                                              variant={
+                                                                card.selected
+                                                                  ? "secondary"
+                                                                  : "default"
+                                                              }
+                                                              disabled={
+                                                                card.selected ||
+                                                                !card.canCreateStoryboardReview ||
+                                                                selectAutoReviewImageAttemptMutation.isPending
+                                                              }
+                                                              onClick={() =>
+                                                                selectAutoReviewImageAttemptMutation.mutate(
+                                                                  {
+                                                                    runId:
+                                                                      compactText(
+                                                                        run.id
+                                                                      ),
+                                                                    attempt:
+                                                                      card.attempt,
+                                                                  }
+                                                                )
+                                                              }
+                                                              className="h-8 gap-1 rounded-md text-xs"
+                                                            >
+                                                              {selectAutoReviewImageAttemptMutation.isPending ? (
+                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                              ) : (
+                                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                              )}
+                                                              {card.selected
+                                                                ? "ใช้ชุดนี้อยู่"
+                                                                : "ใช้ภาพชุดนี้สร้าง Storyboard Review"}
+                                                            </Button>
+                                                            {card.hasPublishSafetyBlocker ? (
+                                                              <span className="text-[11px] font-semibold text-red-700">
+                                                                บล็อกการส่งต่อ:
+                                                                ภาพเด็กเสื้อผ้าไม่ครบหรือไม่เหมาะกับ
+                                                                publish
+                                                              </span>
+                                                            ) : !card.canCreateStoryboardReview ? (
+                                                              <span className="text-[11px] text-amber-700">
+                                                                ยังไม่มีภาพหรือเฟรมที่ใช้สร้างได้
+                                                              </span>
+                                                            ) : card.selected ? (
+                                                              <span className="text-[11px] text-sky-700">
+                                                                สร้าง Storyboard
+                                                                Review
+                                                                จากชุดนี้แล้ว
+                                                              </span>
+                                                            ) : (
+                                                              <span className="text-[11px] text-slate-500">
+                                                                ใช้เมื่อระบบเลือกชุดอื่นผิดจากที่ต้องการ
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                          {card.reasons.length >
+                                                          0 ? (
+                                                            <div className="mt-2 flex flex-wrap gap-1">
+                                                              {card.reasons
+                                                                .slice(0, 5)
+                                                                .map(reason => (
+                                                                  <span
+                                                                    key={reason}
+                                                                    className="rounded bg-white/80 px-2 py-0.5 text-[11px]"
+                                                                  >
+                                                                    {autoReviewFriendlyReason(
+                                                                      reason
+                                                                    )}
+                                                                  </span>
+                                                                ))}
+                                                            </div>
+                                                          ) : null}
+                                                          {card.thumbnails
+                                                            .length > 0 ? (
+                                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                              {card.thumbnails.map(
+                                                                thumb => (
+                                                                  <button
+                                                                    key={`${card.attempt}-${thumb.unitId}-${thumb.url}`}
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                      setPreviewAutoReviewImage(
+                                                                        {
+                                                                          url: thumb.url,
+                                                                          title:
+                                                                            thumb.title,
+                                                                        }
+                                                                      )
+                                                                    }
+                                                                    className="group relative h-20 w-14 overflow-hidden rounded border bg-white shadow-sm"
+                                                                    aria-label={`ดูภาพ ${thumb.title}`}
+                                                                  >
+                                                                    <img
+                                                                      src={
+                                                                        thumb.url
+                                                                      }
+                                                                      alt={
+                                                                        thumb.title
+                                                                      }
+                                                                      className="h-full w-full object-cover"
+                                                                      loading="lazy"
+                                                                    />
+                                                                    <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1 py-0.5 text-[10px] text-white">
+                                                                      {thumb.status ||
+                                                                        "image"}
+                                                                    </span>
+                                                                    <span className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-slate-700 opacity-0 shadow transition group-hover:opacity-100">
+                                                                      <Maximize2 className="h-3 w-3" />
+                                                                    </span>
+                                                                  </button>
+                                                                )
+                                                              )}
+                                                            </div>
+                                                          ) : null}
+                                                          {card.promptHash ||
+                                                          card.promptLengthChars ? (
+                                                            <p className="mt-2 text-[11px] text-slate-500">
+                                                              prompt{" "}
+                                                              {card.promptHash
+                                                                ? shortAuditRef(
+                                                                    card.promptHash,
+                                                                    18
+                                                                  )
+                                                                : "-"}{" "}
+                                                              {card.promptLengthChars
+                                                                ? `· ${card.promptLengthChars} chars`
+                                                                : ""}
+                                                            </p>
+                                                          ) : null}
+                                                          {card.prompt ||
+                                                          card.promptSnippet ? (
+                                                            <details className="mt-2 rounded-md border border-white/70 bg-white/70 px-2 py-1.5 text-[11px] text-slate-700">
+                                                              <summary className="cursor-pointer select-none font-semibold text-slate-700">
+                                                                ตรวจ Prompt
+                                                                รอบนี้{" "}
+                                                                <span className="font-normal text-slate-500">
+                                                                  {card.prompt
+                                                                    ? `เต็ม ${card.prompt.length.toLocaleString()} chars`
+                                                                    : `preview ${card.promptLengthChars ? `${card.promptLengthChars.toLocaleString()} chars` : ""}`}
+                                                                </span>
+                                                              </summary>
+                                                              <textarea
+                                                                readOnly
+                                                                spellCheck={
+                                                                  false
+                                                                }
+                                                                rows={14}
+                                                                value={
+                                                                  card.prompt ||
+                                                                  card.promptSnippet
+                                                                }
+                                                                className="mt-2 min-h-[18rem] w-full resize-y rounded-md border border-slate-200 bg-white p-2 font-mono text-[11px] leading-5 text-slate-700 shadow-inner"
+                                                                aria-label={`Prompt รูปชุดที่ ${card.attempt}`}
+                                                              />
+                                                            </details>
+                                                          ) : null}
+                                                        </div>
+                                                      )
+                                                    )}
+                                                  </div>
+                                                ) : null}
+                                                {promptSkillDebug ? (
+                                                  <details
+                                                    className="mt-3 rounded-md border border-sky-200 bg-sky-50/70 px-3 py-2 text-xs text-slate-700"
+                                                    open={
+                                                      Boolean(
+                                                        isCurrentTimelineStage
+                                                      ) ||
+                                                      compactText(
+                                                        item?.status
+                                                      ) === "failed"
+                                                    }
+                                                  >
+                                                    <summary className="cursor-pointer select-none font-semibold text-sky-800">
+                                                      Prompt จาก skill{" "}
+                                                      <span className="font-normal text-sky-700">
+                                                        {promptSkillDebug.length.toLocaleString()}{" "}
+                                                        chars
+                                                        {promptSkillDebug.maxOutputChars
+                                                          ? ` / limit ${promptSkillDebug.maxOutputChars.toLocaleString()}`
+                                                          : ""}
+                                                      </span>
+                                                    </summary>
+                                                    <div className="mt-2 flex flex-wrap gap-1">
+                                                      {[
+                                                        promptSkillDebug.skillId,
+                                                        promptSkillDebug.unitId,
+                                                        promptSkillDebug.reasonCode,
+                                                        promptSkillDebug.status,
+                                                        promptSkillDebug.modelId,
+                                                        promptSkillDebug.providerName,
+                                                        promptSkillDebug.finishReason,
+                                                      ]
+                                                        .filter(Boolean)
+                                                        .slice(0, 8)
+                                                        .map(
+                                                          (meta, metaIndex) => (
+                                                            <span
+                                                              key={`${meta}-${metaIndex}`}
+                                                              className="max-w-[14rem] truncate rounded bg-white px-2 py-0.5 text-[11px] text-slate-600"
+                                                            >
+                                                              {meta}
+                                                            </span>
+                                                          )
+                                                        )}
+                                                      {promptSkillDebug.attempt ? (
+                                                        <span className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600">
+                                                          attempt{" "}
+                                                          {
+                                                            promptSkillDebug.attempt
+                                                          }
+                                                        </span>
+                                                      ) : null}
+                                                      {promptSkillDebug.promptAttempt ? (
+                                                        <span className="rounded bg-white px-2 py-0.5 text-[11px] text-slate-600">
+                                                          prompt attempt{" "}
+                                                          {
+                                                            promptSkillDebug.promptAttempt
+                                                          }
+                                                        </span>
+                                                      ) : null}
+                                                    </div>
+                                                    {promptSkillDebug.blockers
+                                                      .length > 0 ? (
+                                                      <div className="mt-2 flex flex-wrap gap-1">
+                                                        <span className="mr-1 text-[11px] font-medium text-slate-500">
+                                                          Blockers
+                                                        </span>
+                                                        {promptSkillDebug.blockers
+                                                          .slice(0, 10)
+                                                          .map(blocker => (
+                                                            <span
+                                                              key={blocker}
+                                                              className="max-w-[14rem] truncate rounded bg-red-50 px-2 py-0.5 text-[11px] text-red-700"
+                                                            >
+                                                              {blocker}
+                                                            </span>
+                                                          ))}
+                                                        {promptSkillDebug
+                                                          .blockers.length >
+                                                        10 ? (
+                                                          <span className="text-[11px] text-slate-500">
+                                                            +
+                                                            {promptSkillDebug
+                                                              .blockers.length -
+                                                              10}
+                                                          </span>
+                                                        ) : null}
+                                                      </div>
+                                                    ) : null}
+                                                    {promptSkillDebug.fullOutputLogPath ? (
+                                                      <p className="mt-2 truncate font-mono text-[11px] text-slate-500">
+                                                        log:{" "}
+                                                        {
+                                                          promptSkillDebug.fullOutputLogPath
+                                                        }
+                                                      </p>
+                                                    ) : null}
+                                                    <textarea
+                                                      readOnly
+                                                      spellCheck={false}
+                                                      rows={10}
+                                                      value={
+                                                        promptSkillDebug.prompt
+                                                      }
+                                                      className="mt-2 min-h-[12rem] w-full resize-y rounded-md border border-sky-200 bg-white p-2 font-mono text-[11px] leading-5 text-slate-700 shadow-inner"
+                                                      aria-label="Prompt จาก skill product-reference-storyboard"
+                                                    />
+                                                  </details>
+                                                ) : null}
+                                              </div>
+                                              {itemCreditSummary ? (
+                                                <span className="rounded bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+                                                  Credit: {itemCreditSummary}
+                                                </span>
+                                              ) : null}
+                                            </div>
+                                            {detailMessage ? (
+                                              <p
+                                                className={`mt-2 text-xs leading-5 ${
+                                                  String(detail.severity) ===
+                                                    "error" ||
+                                                  String(detail.severity) ===
+                                                    "blocked"
+                                                    ? "text-red-700"
+                                                    : "text-slate-600"
+                                                }`}
+                                              >
+                                                {detailMessage}
+                                              </p>
+                                            ) : null}
+                                            {nextAction ? (
+                                              <p className="mt-1 text-xs text-slate-500">
+                                                ถัดไป: {nextAction}
+                                              </p>
+                                            ) : null}
+                                            {reasonCodes.length > 0 ? (
+                                              <div className="mt-2 flex flex-wrap gap-1">
+                                                <span className="mr-1 text-[11px] font-medium text-slate-500">
+                                                  ตัวบล็อก
+                                                </span>
+                                                {reasonCodes
+                                                  .slice(0, 4)
+                                                  .map(ref => (
+                                                    <span
+                                                      key={ref}
+                                                      className="max-w-[12rem] truncate rounded bg-red-50 px-2 py-0.5 text-[11px] text-red-700"
+                                                    >
+                                                      {ref}
+                                                    </span>
+                                                  ))}
+                                              </div>
+                                            ) : null}
+                                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                              {evidenceRefs.length > 0 ? (
+                                                <div className="flex min-w-0 flex-wrap gap-1">
+                                                  <span className="font-medium">
+                                                    Evidence
+                                                  </span>
+                                                  {evidenceRefs
+                                                    .slice(0, 3)
+                                                    .map(ref => (
+                                                      <AutoReviewRefChip
+                                                        key={ref}
+                                                        value={ref}
+                                                        className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5"
+                                                      />
+                                                    ))}
+                                                  {evidenceRefs.length > 3 ? (
+                                                    <span>
+                                                      +{evidenceRefs.length - 3}
                                                     </span>
                                                   ) : null}
                                                 </div>
                                               ) : null}
-                                              {promptSkillDebug.fullOutputLogPath ? (
-                                                <p className="mt-2 truncate font-mono text-[11px] text-slate-500">
-                                                  log:{" "}
-                                                  {
-                                                    promptSkillDebug.fullOutputLogPath
-                                                  }
-                                                </p>
+                                              {qaRefs.length > 0 ? (
+                                                <div className="flex min-w-0 flex-wrap gap-1">
+                                                  <span className="font-medium">
+                                                    QA
+                                                  </span>
+                                                  {qaRefs
+                                                    .slice(0, 3)
+                                                    .map(ref => (
+                                                      <AutoReviewRefChip
+                                                        key={ref}
+                                                        value={ref}
+                                                        className="max-w-[11rem] truncate rounded bg-sky-50 px-2 py-0.5 text-sky-700"
+                                                      />
+                                                    ))}
+                                                  {qaRefs.length > 3 ? (
+                                                    <span>
+                                                      +{qaRefs.length - 3}
+                                                    </span>
+                                                  ) : null}
+                                                </div>
                                               ) : null}
-                                              <textarea
-                                                readOnly
-                                                spellCheck={false}
-                                                rows={10}
-                                                value={promptSkillDebug.prompt}
-                                                className="mt-2 min-h-[12rem] w-full resize-y rounded-md border border-sky-200 bg-white p-2 font-mono text-[11px] leading-5 text-slate-700 shadow-inner"
-                                                aria-label="Prompt จาก skill product-reference-storyboard"
-                                              />
-                                            </details>
-                                          ) : null}
-                                        </div>
-                                        {itemCreditSummary ? (
-                                          <span className="rounded bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
-                                            Credit: {itemCreditSummary}
-                                          </span>
-                                        ) : null}
-                                      </div>
-                                      {detailMessage ? (
-                                        <p
-                                          className={`mt-2 text-xs leading-5 ${
-                                            String(detail.severity) ===
-                                              "error" ||
-                                            String(detail.severity) ===
-                                              "blocked"
-                                              ? "text-red-700"
-                                              : "text-slate-600"
-                                          }`}
-                                        >
-                                          {detailMessage}
-                                        </p>
-                                      ) : null}
-                                      {nextAction ? (
-                                        <p className="mt-1 text-xs text-slate-500">
-                                          ถัดไป: {nextAction}
-                                        </p>
-                                      ) : null}
-                                      {reasonCodes.length > 0 ? (
-                                        <div className="mt-2 flex flex-wrap gap-1">
-                                          <span className="mr-1 text-[11px] font-medium text-slate-500">
-                                            ตัวบล็อก
-                                          </span>
-                                          {reasonCodes.slice(0, 4).map(ref => (
-                                            <span
-                                              key={ref}
-                                              className="max-w-[12rem] truncate rounded bg-red-50 px-2 py-0.5 text-[11px] text-red-700"
-                                            >
-                                              {ref}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      ) : null}
-                                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                                        {evidenceRefs.length > 0 ? (
-                                          <div className="flex min-w-0 flex-wrap gap-1">
-                                            <span className="font-medium">
-                                              Evidence
-                                            </span>
-                                            {evidenceRefs
-                                              .slice(0, 3)
-                                              .map(ref => (
-                                                <AutoReviewRefChip
-                                                  key={ref}
-                                                  value={ref}
-                                                  className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5"
-                                                />
-                                              ))}
-                                            {evidenceRefs.length > 3 ? (
-                                              <span>
-                                                +{evidenceRefs.length - 3}
-                                              </span>
+                                              {repairRefs.length > 0 ? (
+                                                <div className="flex min-w-0 flex-wrap gap-1">
+                                                  <span className="font-medium">
+                                                    Repair
+                                                  </span>
+                                                  {repairRefs
+                                                    .slice(0, 3)
+                                                    .map(ref => (
+                                                      <AutoReviewRefChip
+                                                        key={ref}
+                                                        value={ref}
+                                                        className="max-w-[11rem] truncate rounded bg-amber-50 px-2 py-0.5 text-amber-700"
+                                                      />
+                                                    ))}
+                                                  {repairRefs.length > 3 ? (
+                                                    <span>
+                                                      +{repairRefs.length - 3}
+                                                    </span>
+                                                  ) : null}
+                                                </div>
+                                              ) : null}
+                                            </div>
+                                            {outputLinks.length > 0 ? (
+                                              <div className="mt-2 flex flex-wrap gap-2">
+                                                {outputLinks.map(
+                                                  (link: any) => {
+                                                    const href =
+                                                      normalizeAutoReviewOutputLinkUrl(
+                                                        link,
+                                                        {
+                                                          productId:
+                                                            run.productId ??
+                                                            productId,
+                                                          runId:
+                                                            runHyperframesRenderRef?.runId ||
+                                                            runId,
+                                                          renderJobId:
+                                                            runHyperframesRenderRef?.renderJobId,
+                                                        }
+                                                      );
+                                                    if (!href) return null;
+                                                    const label =
+                                                      autoReviewLinkLabel(link);
+                                                    return (
+                                                      <a
+                                                        key={`${href}-${label}`}
+                                                        href={href}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center rounded border bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                                                        aria-label={`Open timeline output ${label}`}
+                                                      >
+                                                        <ExternalLink className="mr-1 h-3 w-3" />
+                                                        {label}
+                                                      </a>
+                                                    );
+                                                  }
+                                                )}
+                                              </div>
                                             ) : null}
-                                          </div>
-                                        ) : null}
-                                        {qaRefs.length > 0 ? (
-                                          <div className="flex min-w-0 flex-wrap gap-1">
-                                            <span className="font-medium">
-                                              QA
-                                            </span>
-                                            {qaRefs.slice(0, 3).map(ref => (
-                                              <AutoReviewRefChip
-                                                key={ref}
-                                                value={ref}
-                                                className="max-w-[11rem] truncate rounded bg-sky-50 px-2 py-0.5 text-sky-700"
-                                              />
-                                            ))}
-                                            {qaRefs.length > 3 ? (
-                                              <span>+{qaRefs.length - 3}</span>
-                                            ) : null}
-                                          </div>
-                                        ) : null}
-                                        {repairRefs.length > 0 ? (
-                                          <div className="flex min-w-0 flex-wrap gap-1">
-                                            <span className="font-medium">
-                                              Repair
-                                            </span>
-                                            {repairRefs.slice(0, 3).map(ref => (
-                                              <AutoReviewRefChip
-                                                key={ref}
-                                                value={ref}
-                                                className="max-w-[11rem] truncate rounded bg-amber-50 px-2 py-0.5 text-amber-700"
-                                              />
-                                            ))}
-                                            {repairRefs.length > 3 ? (
-                                              <span>
-                                                +{repairRefs.length - 3}
-                                              </span>
-                                            ) : null}
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                      {outputLinks.length > 0 ? (
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                          {outputLinks.map((link: any) => {
-                                            const href =
-                                              normalizeAutoReviewOutputLinkUrl(
-                                                link,
-                                                {
-                                                  productId:
-                                                    run.productId ?? productId,
-                                                  runId:
-                                                    runHyperframesRenderRef?.runId ||
-                                                    runId,
-                                                  renderJobId:
-                                                    runHyperframesRenderRef?.renderJobId,
-                                                }
-                                              );
-                                            if (!href) return null;
-                                            const label =
-                                              autoReviewLinkLabel(link);
-                                            return (
-                                              <a
-                                                key={`${href}-${label}`}
-                                                href={href}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="inline-flex items-center rounded border bg-white px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
-                                                aria-label={`Open timeline output ${label}`}
-                                              >
-                                                <ExternalLink className="mr-1 h-3 w-3" />
-                                                {label}
-                                              </a>
-                                            );
-                                          })}
-                                        </div>
-                                      ) : null}
-                                    </li>
-                                  );
-                                })}
-                              </ol>
-                            </>
-                          ) : null}
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </div>
-            ) : null}
-          </section>
+                                          </li>
+                                        );
+                                      })}
+                                    </ol>
+                                  </>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           <MarketplaceInsightsSection
             insights={insights}
@@ -8721,7 +9286,7 @@ export default function MarketplaceCaptureProductDetail() {
                       sequentialStrategyEnabled && sequentialStrategySelected;
                     const isAutoReviewAnchor = Boolean(
                       resolvedProductAnchorImage &&
-                        resolvedProductAnchorImage.id === imageId
+                      resolvedProductAnchorImage.id === imageId
                     );
                     const isAutoReviewAngleAttached =
                       sequentialPickerActive &&
@@ -8745,9 +9310,7 @@ export default function MarketplaceCaptureProductDetail() {
                           ? hyperframesCopy.referenceDeselectAriaLabel(
                               index + 1
                             )
-                          : hyperframesCopy.referenceSelectAriaLabel(
-                              index + 1
-                            )
+                          : hyperframesCopy.referenceSelectAriaLabel(index + 1)
                       : `Select product anchor image ${index + 1}. ${isSelected ? "Currently selected." : "Not selected."}`;
                     return (
                       <figure
@@ -8876,7 +9439,9 @@ export default function MarketplaceCaptureProductDetail() {
                               : isSelected
                           }
                           aria-label={cardAriaLabel}
-                          title={sequentialPickerActive ? cardAriaLabel : undefined}
+                          title={
+                            sequentialPickerActive ? cardAriaLabel : undefined
+                          }
                           className={`block w-full rounded text-left focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${sequentialPickerActive && isAutoReviewAnchor ? "cursor-default" : ""}`}
                         >
                           <div className="relative">
@@ -8889,7 +9454,8 @@ export default function MarketplaceCaptureProductDetail() {
                                 rememberImageDimensions(image.id, event)
                               }
                             />
-                            {sequentialPickerActive && isAutoReviewAngleAttached ? (
+                            {sequentialPickerActive &&
+                            isAutoReviewAngleAttached ? (
                               <span className="absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded bg-violet-600/95 px-2 py-1 text-xs font-semibold text-white shadow">
                                 <CheckCircle2
                                   className="h-3.5 w-3.5"
@@ -9017,7 +9583,9 @@ export default function MarketplaceCaptureProductDetail() {
                 the model registry. */}
             <div className="mt-4">
               <SequentialProductAngleChips
-                enabled={sequentialStrategyEnabled && sequentialStrategySelected}
+                enabled={
+                  sequentialStrategyEnabled && sequentialStrategySelected
+                }
                 capacity={autoReviewReferenceCapacityMeter}
                 modelLabel={
                   autoStoryboardOverrides.imageModel ||

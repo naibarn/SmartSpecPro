@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["story_summary", "shots", "reference_roles", "finish_reason"],
+  "properties": {
+    "story_summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "reference_roles": { "type": "array" },
+    "finish_reason": { "type": "string", "enum": ["completed", "bounded_fallback"] },
+    "shots": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": ["shot_id", "duration_seconds", "story_summary", "dialogue"],
+        "properties": {
+          "shot_id": { "type": "integer", "minimum": 1, "maximum": 9 },
+          "duration_seconds": { "const": 10 },
+          "story_summary": { "type": "string", "maxLength": 600 },
+          "dialogue": { "type": "string", "maxLength": 320 }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}
