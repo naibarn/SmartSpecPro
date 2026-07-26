@@ -224,3 +224,30 @@ Gap closure:
     - paid live Grok image regeneration; external account cost and user-visible asset replacement
   no_action_needed:
     - Worker release; 0.1.144 already forwards downloaded reference paths
+
+## Marketplace Auto Review legacy-vs-staged surface - 2026-07-26
+
+Loop policy:
+  orchestra_id: fable_style_coding_orchestra
+  purpose: prevent legacy aggregate timelines from masquerading as the staged 9-shot workbench
+  iteration: 1/4
+  tool_call_batches: 8/12
+  dispatch_waves: 0/2
+  active_subagents: 0/1
+  repair_rounds: 1/2
+  stop_conditions: focused_tests_passed, build_passed, no_open_in-scope-blockers
+  stop_reason: success
+
+[COMPLETE] evidence — screenshot and source routing prove the selected run is Legacy, not staged
+[COMPLETE] TDD — regression test requires legacy timeline to be hidden until explicitly opened
+[COMPLETE] implementation — added explicit legacy-history disclosure while preserving outputs and migration CTA
+[COMPLETE] verification — 19 focused tests, build, and diff check pass; full typecheck remains red only on unrelated existing files
+
+Gap closure:
+  must_do_now: none
+  should_offer_next:
+    - create/select a new staged job for browser smoke of the 9-shot board
+  safely_deferred:
+    - converting historical Legacy rows into staged checkpoints; requires a data migration and cannot be inferred safely
+  no_action_needed:
+    - paid image/video generation; this patch does not submit provider work

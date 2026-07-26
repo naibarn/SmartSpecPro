@@ -71,6 +71,18 @@ describe("MarketplaceAutoReviewLegacyDetails", () => {
     );
 
     expect(screen.getByText("Legacy Auto Review")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "ดูประวัติ Legacy เดิม" })
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { name: "สิ่งที่เกิดขึ้นแล้วในงานนี้" })
+    ).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "สร้างแนวคิดและโครงเรื่อง" })
+    ).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "ดูประวัติ Legacy เดิม" })
+    );
     expect(screen.getByText("สิ่งที่เกิดขึ้นแล้วในงานนี้")).toBeTruthy();
     expect(screen.getByText("สร้างแนวคิดและโครงเรื่อง")).toBeTruthy();
     expect(screen.getByText("กำลังตรวจผลภาพ")).toBeTruthy();
@@ -105,7 +117,9 @@ describe("MarketplaceAutoReviewLegacyDetails", () => {
       screen.getByText("สร้าง Job ใหม่เพื่อเปิดบอร์ด 9 ช็อต")
     ).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("button", { name: "สร้าง Job ใหม่เพื่อเปิดบอร์ด 9 ช็อต" })
+      screen.getByRole("button", {
+        name: "สร้าง Job ใหม่เพื่อเปิดบอร์ด 9 ช็อต",
+      })
     );
     expect(onCreateStaged).toHaveBeenCalledTimes(1);
   });

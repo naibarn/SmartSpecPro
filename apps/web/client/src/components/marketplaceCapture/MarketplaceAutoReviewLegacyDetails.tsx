@@ -9,6 +9,7 @@ import {
   Sparkles,
   XCircle,
 } from "lucide-react";
+import { useState } from "react";
 import { projectSequentialShotCards } from "@/lib/marketplaceSequentialStoryboardUi";
 import { SequentialShotReviewSection } from "./SequentialShotReviewSection";
 import type {
@@ -273,6 +274,7 @@ export function MarketplaceAutoReviewLegacyDetails({
   const status = statusPresentation(run.status);
   const StatusIcon = status.Icon;
   const errorMessage = text(run.errorMessage, statusDetail.safeMessage);
+  const [showLegacyHistory, setShowLegacyHistory] = useState(false);
 
   return (
     <section
@@ -313,7 +315,9 @@ export function MarketplaceAutoReviewLegacyDetails({
         <div className="mt-4 grid gap-2 text-xs text-amber-900 sm:grid-cols-3">
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
             <strong className="block text-amber-950">แก้ไขงานนี้</strong>
-            แก้ prompt รายช็อตหรือเปิดผลต่อใน Storyboard Review ได้
+            {sequentialShots.length > 0
+              ? "แก้ prompt รายช็อตหรือเปิดผลต่อใน Storyboard Review ได้"
+              : "เปิดดู output เดิมได้ แต่ไม่มีข้อมูลรายช็อตให้แก้ย้อนหลัง"}
           </p>
           <p className="rounded-lg border border-amber-200 bg-white/60 p-3">
             <strong className="block text-amber-950">ทำงานใหม่</strong>
@@ -465,10 +469,10 @@ export function MarketplaceAutoReviewLegacyDetails({
                 งานนี้ยังไม่มีข้อมูล 9 ช็อตสำหรับทำงานรายช็อต
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-violet-900">
-                Job นี้เป็น Legacy จึงเก็บเพียงผลลัพธ์และ timeline รวม ไม่ได้เก็บ
-                story / Prompt ภาพ / Prompt วิดีโอ / checkpoint แยกช็อตไว้ให้แก้
-                ย้อนหลัง ปุ่มสร้างภาพจาก timeline เดิมจึงไม่สามารถทำงานแบบ
-                credit-safe ได้
+                Job นี้เป็น Legacy จึงเก็บเพียงผลลัพธ์และ timeline รวม
+                ไม่ได้เก็บ story / Prompt ภาพ / Prompt วิดีโอ / checkpoint
+                แยกช็อตไว้ให้แก้ ย้อนหลัง ปุ่มสร้างภาพจาก timeline
+                เดิมจึงไม่สามารถทำงานแบบ credit-safe ได้
               </p>
             </div>
           </div>
@@ -506,107 +510,137 @@ export function MarketplaceAutoReviewLegacyDetails({
         </article>
       ) : null}
 
-      <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
+      <section
+        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+        aria-label="ตัวควบคุมประวัติ Legacy"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">
-              Run history
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              ประวัติ Legacy เดิม
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-950">
-              สิ่งที่เกิดขึ้นแล้วในงานนี้
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              แสดงครบทุก stage จาก run เดิม
-              เพื่อให้ตรวจสอบย้อนหลังได้ว่าเสียเครดิตและหยุดอยู่ที่จุดใด
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              timeline รวมนี้เป็นข้อมูลอ่านย้อนหลัง ไม่ใช่ Shot Workbench
+              และไม่สามารถยืนยันหรือสร้างสื่อจากแต่ละ stage ได้
             </p>
           </div>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
-            {items.length} ขั้นตอน
-          </span>
-        </header>
-        {items.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
-            ยังไม่มี timeline ที่ระบบส่งกลับมา แต่สามารถเปิด output
-            ที่มีอยู่จากปุ่มด้านบนได้
-          </p>
-        ) : (
-          <ol className="mt-5 space-y-3">
-            {items.map((item, index) => {
-              const itemStatus = statusPresentation(item.status);
-              const ItemStatusIcon = itemStatus.Icon;
-              const isCurrent = text(item.stageKey) === currentStage;
-              const detail = asRecord(item.detail);
-              const itemProgress = numberValue(item.progressPercent);
-              return (
-                <li key={`${text(item.stageKey)}-${index}`}>
-                  <article
-                    className={`rounded-xl border p-4 transition ${
-                      isCurrent
-                        ? "border-violet-300 bg-violet-50/60 shadow-sm"
-                        : "border-slate-200 bg-slate-50/60"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                          {numberValue(item.order, index + 1)}
-                        </span>
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-slate-900">
-                            {text(item.label) || stageLabel(item.stageKey)}
-                          </h3>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {formatDate(item.startedAt)}
-                            {item.completedAt
-                              ? ` → ${formatDate(item.completedAt)}`
-                              : ""}
-                            {text(item.activeSubstep)
-                              ? ` · ${item.activeSubstep}`
-                              : ""}
-                          </p>
+          <button
+            type="button"
+            aria-expanded={showLegacyHistory}
+            aria-controls="legacy-run-history"
+            className="inline-flex min-h-11 items-center rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            onClick={() => setShowLegacyHistory(current => !current)}
+          >
+            {showLegacyHistory
+              ? "ซ่อนประวัติ Legacy เดิม"
+              : "ดูประวัติ Legacy เดิม"}
+          </button>
+        </div>
+      </section>
+
+      <div id="legacy-run-history" hidden={!showLegacyHistory}>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <header className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">
+                Run history
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">
+                สิ่งที่เกิดขึ้นแล้วในงานนี้
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                แสดงครบทุก stage จาก run เดิม
+                เพื่อให้ตรวจสอบย้อนหลังได้ว่าเสียเครดิตและหยุดอยู่ที่จุดใด
+              </p>
+            </div>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+              {items.length} ขั้นตอน
+            </span>
+          </header>
+          {items.length === 0 ? (
+            <p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">
+              ยังไม่มี timeline ที่ระบบส่งกลับมา แต่สามารถเปิด output
+              ที่มีอยู่จากปุ่มด้านบนได้
+            </p>
+          ) : (
+            <ol className="mt-5 space-y-3">
+              {items.map((item, index) => {
+                const itemStatus = statusPresentation(item.status);
+                const ItemStatusIcon = itemStatus.Icon;
+                const isCurrent = text(item.stageKey) === currentStage;
+                const detail = asRecord(item.detail);
+                const itemProgress = numberValue(item.progressPercent);
+                return (
+                  <li key={`${text(item.stageKey)}-${index}`}>
+                    <article
+                      className={`rounded-xl border p-4 transition ${
+                        isCurrent
+                          ? "border-violet-300 bg-violet-50/60 shadow-sm"
+                          : "border-slate-200 bg-slate-50/60"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                            {numberValue(item.order, index + 1)}
+                          </span>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-slate-900">
+                              {text(item.label) || stageLabel(item.stageKey)}
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {formatDate(item.startedAt)}
+                              {item.completedAt
+                                ? ` → ${formatDate(item.completedAt)}`
+                                : ""}
+                              {text(item.activeSubstep)
+                                ? ` · ${item.activeSubstep}`
+                                : ""}
+                            </p>
+                          </div>
                         </div>
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${itemStatus.className}`}
+                        >
+                          <ItemStatusIcon className="h-3.5 w-3.5" />
+                          {timelineStatusLabel(item.status)}
+                        </span>
                       </div>
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${itemStatus.className}`}
-                      >
-                        <ItemStatusIcon className="h-3.5 w-3.5" />
-                        {timelineStatusLabel(item.status)}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-center gap-3">
-                      <progress
-                        className="h-1.5 min-w-0 flex-1 accent-violet-600"
-                        value={itemProgress}
-                        max={100}
-                        aria-label={`${text(item.label) || stageLabel(item.stageKey)} ${itemProgress}%`}
-                      />
-                      <span className="w-10 text-right text-xs font-medium text-slate-500">
-                        {itemProgress}%
-                      </span>
-                    </div>
-                    {text(detail.safeMessage) ? (
-                      <p className="mt-3 text-sm leading-6 text-slate-700">
-                        {detail.safeMessage}
+                      <div className="mt-3 flex items-center gap-3">
+                        <progress
+                          className="h-1.5 min-w-0 flex-1 accent-violet-600"
+                          value={itemProgress}
+                          max={100}
+                          aria-label={`${text(item.label) || stageLabel(item.stageKey)} ${itemProgress}%`}
+                        />
+                        <span className="w-10 text-right text-xs font-medium text-slate-500">
+                          {itemProgress}%
+                        </span>
+                      </div>
+                      {text(detail.safeMessage) ? (
+                        <p className="mt-3 text-sm leading-6 text-slate-700">
+                          {detail.safeMessage}
+                        </p>
+                      ) : null}
+                      {text(detail.nextAction) ? (
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          ทางไปต่อ: {detail.nextAction}
+                        </p>
+                      ) : null}
+                      <p className="mt-2 text-xs text-slate-500">
+                        เครดิต stage นี้: ใช้แล้ว{" "}
+                        {numberValue(item.credit?.spentCredits)} · คืนแล้ว{" "}
+                        {numberValue(item.credit?.refundedCredits)} · หลักฐาน{" "}
+                        {asArray(item.evidenceRefs).length} รายการ
                       </p>
-                    ) : null}
-                    {text(detail.nextAction) ? (
-                      <p className="mt-1 text-xs leading-5 text-slate-500">
-                        ทางไปต่อ: {detail.nextAction}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-xs text-slate-500">
-                      เครดิต stage นี้: ใช้แล้ว{" "}
-                      {numberValue(item.credit?.spentCredits)} · คืนแล้ว{" "}
-                      {numberValue(item.credit?.refundedCredits)} · หลักฐาน{" "}
-                      {asArray(item.evidenceRefs).length} รายการ
-                    </p>
-                  </article>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </article>
+                    </article>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </article>
+      </div>
 
       <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <header className="flex flex-wrap items-start justify-between gap-3">

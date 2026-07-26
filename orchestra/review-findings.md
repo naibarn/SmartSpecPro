@@ -316,6 +316,20 @@ Round 2:
   passes, local/public health checks pass after restart.
 - New impact surfaces: none.
 - Status: clean; no material findings remain.
+
+## Marketplace Auto Review legacy surface review - 2026-07-26
+
+### Round 1 - data contract and UX correction
+
+Result: CLEAN.
+
+- The screenshot's `Legacy` badge matches the route guard that bypasses the staged checkpoint surface.
+- Historical Legacy runs do not contain enough persisted data to synthesize nine editable shots safely; the UI now says so and routes the user to a new staged job.
+- Aggregate timeline cards are hidden by default and remain available through an explicit accessible disclosure.
+- Existing legacy sequential-shot data, output links, and history rendering are unchanged when the user opens the legacy history or when actual sequential data exists.
+- Focused Marketplace Auto Review tests pass (19 tests), the production build passes, and no changed-file TypeScript error was introduced.
+
+Convergence stop: one clean targeted review; no in-scope finding remains.
 ## Vertical Drama rapid prompt plus image timeout - round 1
 
 - Changed surfaces reviewed: per-shot page handler, prompt mutation missing-frame path, row-lock merge, focused tests.

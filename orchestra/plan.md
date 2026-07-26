@@ -127,3 +127,33 @@ text-to-image or image-to-image based on attached reference images.
 - Let that mutation create a minimal frame from persisted storyboard character facts and merge under the existing row lock.
 - Preserve sibling/concurrent frames and the latest selected image model from the locked plan.
 - Keep the explicit whole-episode start-frame-plan action unchanged.
+
+## Marketplace Auto Review legacy migration surface - 2026-07-26
+
+### Classification
+- scope: small UI correctness fix
+- risk: low
+- affected_domains: Marketplace Auto Review legacy route, job workbench UX, focused UI tests
+- chosen_route: direct TDD standard-light
+- bug_route: screenshot/data-first UI diagnosis
+- planned_agents: []
+
+### Evidence ledger
+- source: user screenshot plus local workflow routing/component source
+- identifier: legacy run `mar_a0fc7e4c1f9e57f8d4162f99fde00a35`
+- observed failure: the selected job is visibly marked `Legacy` but its aggregate timeline is rendered as the primary work surface, so rebuild/restart does not expose the new 9-shot board
+- data state: staged UI mounts only when `metadataJson.planningArchitecture === "staged_two_skill_v2"`; legacy runs do not contain the staged per-shot checkpoint contract
+- confidence: high
+- next evidence needed: browser smoke with a newly created staged run; no paid generation is required for this UI fix
+
+### Design
+- Keep legacy data read-only and truthful; do not fabricate missing shot prompts or checkpoint state.
+- Make the migration action to a new 9-shot staged Job Workbench the primary legacy path.
+- Collapse the old aggregate timeline by default behind an explicit `ดูประวัติ Legacy เดิม` control so it remains auditable without presenting it as an actionable workbench.
+- Preserve existing legacy sequential-shot editing when those records actually exist.
+
+### Success criteria
+1. A legacy run no longer presents its aggregate stage cards as the default work surface.
+2. The legacy page clearly directs the user to create a staged job with 9-shot, checkpoint-safe controls.
+3. The old timeline remains available on demand and existing outputs/legacy shot data are preserved.
+4. Focused UI tests and production build pass without introducing new type errors in touched files.
