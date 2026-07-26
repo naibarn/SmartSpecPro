@@ -62,6 +62,9 @@ describe("Marketplace staged auto-review workflow page wiring", () => {
     expect(productSource).toContain(
       "/marketplace/auto-review/${encodeURIComponent(stagedAutoReviewRunId)}"
     );
+    expect(productSource).toContain(
+      '"เปิด Job Workbench แล้ว กรุณาตรวจ Prompt และผลลัพธ์รายช็อตก่อนใช้เครดิต"'
+    );
     expect(storyboardSource).toContain(
       "/marketplace/auto-review/${encodeURIComponent(stagedWorkflowRunId)}"
     );

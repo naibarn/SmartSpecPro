@@ -61,6 +61,10 @@ export function StagedCheckpointReviewSurface(props: {
     trpc.marketplaceCapture.editStagedAutoReviewShot.useMutation(
       mutationOptions
     );
+  const generatePromptMutation =
+    trpc.marketplaceCapture.generateStagedAutoReviewShotPrompt.useMutation(
+      mutationOptions
+    );
   const editAudioMutation =
     trpc.marketplaceCapture.editStagedAutoReviewAudioPlan.useMutation(
       mutationOptions
@@ -91,6 +95,7 @@ export function StagedCheckpointReviewSurface(props: {
       ["accept-image", acceptImageMutation.isPending],
       ["reject", rejectMutation.isPending],
       ["edit-shot", editShotMutation.isPending],
+      ["generate-prompt", generatePromptMutation.isPending],
       ["edit-audio", editAudioMutation.isPending],
       ["edit-final", editFinalMutation.isPending],
       ["retry-shot", retryShotMutation.isPending],
@@ -105,6 +110,7 @@ export function StagedCheckpointReviewSurface(props: {
     editAudioMutation.isPending,
     editFinalMutation.isPending,
     editShotMutation.isPending,
+    generatePromptMutation.isPending,
     redraftMutation.isPending,
     rejectMutation.isPending,
     retryAudioMutation.isPending,
@@ -220,6 +226,22 @@ export function StagedCheckpointReviewSurface(props: {
       });
     }
   };
+  const onGeneratePrompt = (input: {
+    shotId: number;
+    stage: "image" | "video";
+  }) => {
+    if (!stateDigest) return;
+    generatePromptMutation.mutate({
+      runId,
+      shotId: input.shotId,
+      stage: input.stage,
+      expectedStateDigest: stateDigest,
+      idempotencyKey: uiIdempotencyKey(
+        `generate-prompt-${input.stage}`,
+        String(input.shotId)
+      ),
+    });
+  };
   return (
     <div className={props.className}>
       <StagedCheckpointReviewPanel
@@ -233,6 +255,7 @@ export function StagedCheckpointReviewSurface(props: {
         onApprove={onApprove}
         onReject={onReject}
         onEdit={onEdit}
+        onGeneratePrompt={onGeneratePrompt}
         onRetry={onRetry}
       />
     </div>

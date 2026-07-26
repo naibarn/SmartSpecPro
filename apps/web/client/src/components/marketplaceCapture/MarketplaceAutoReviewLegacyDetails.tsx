@@ -307,7 +307,7 @@ export function MarketplaceAutoReviewLegacyDetails({
             className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-amber-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
             <Sparkles className="h-4 w-4" />
-            สร้าง Job แบบตรวจทีละขั้น
+            เปิด Job Workbench ใหม่ · 9 ช็อต
           </button>
         </div>
         <div className="mt-4 grid gap-2 text-xs text-amber-900 sm:grid-cols-3">
@@ -445,6 +445,64 @@ export function MarketplaceAutoReviewLegacyDetails({
               />
             </div>
           ) : null}
+        </article>
+      ) : null}
+
+      {sequentialShots.length === 0 ? (
+        <article
+          className="rounded-2xl border-2 border-violet-200 bg-violet-50 p-5 shadow-sm sm:p-6"
+          aria-label="Shot Workbench ต้องสร้าง Job ใหม่"
+        >
+          <div className="flex flex-wrap items-start gap-3">
+            <span className="rounded-xl bg-violet-100 p-2 text-violet-700">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-700">
+                Shot Production Board
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-violet-950">
+                งานนี้ยังไม่มีข้อมูล 9 ช็อตสำหรับทำงานรายช็อต
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-violet-900">
+                Job นี้เป็น Legacy จึงเก็บเพียงผลลัพธ์และ timeline รวม ไม่ได้เก็บ
+                story / Prompt ภาพ / Prompt วิดีโอ / checkpoint แยกช็อตไว้ให้แก้
+                ย้อนหลัง ปุ่มสร้างภาพจาก timeline เดิมจึงไม่สามารถทำงานแบบ
+                credit-safe ได้
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            {[
+              ["01", "ตรวจเรื่องย่อ", "แก้เรื่องและบทพูดรายช็อต"],
+              ["02", "Prompt ภาพ", "สร้างและแก้ Prompt ภาพ"],
+              ["03", "ภาพอ้างอิง", "ยืนยันก่อนใช้เครดิตภาพ"],
+              ["04", "Prompt / วิดีโอ", "สร้างและตรวจวิดีโอรายช็อต"],
+            ].map(([number, title, description]) => (
+              <div
+                key={number}
+                className="rounded-xl border border-violet-200 bg-white p-3"
+              >
+                <span className="text-xs font-bold text-violet-600">
+                  {number}
+                </span>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {title}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  {description}
+                </p>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={onCreateStaged}
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-violet-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+          >
+            <Sparkles className="h-4 w-4" />
+            สร้าง Job ใหม่เพื่อเปิดบอร์ด 9 ช็อต
+          </button>
         </article>
       ) : null}
 

@@ -52,6 +52,7 @@ import {
   editStagedAutoReviewAudioPlan,
   editStagedAutoReviewFinalAssembly,
   editStagedAutoReviewShot,
+  generateStagedAutoReviewShotPrompt,
   getStagedAutoReviewCheckpointState,
   rejectStagedAutoReviewCheckpoint,
   redraftStagedAutoReviewPlan,
@@ -1531,6 +1532,25 @@ export const marketplaceCaptureRouter = router({
     .output(z.any())
     .mutation(async ({ input, ctx }) =>
       editStagedAutoReviewShot({ ...input, auth: authFromCtx(ctx) })
+    ),
+
+  generateStagedAutoReviewShotPrompt: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(9),
+        stage: z.enum(["image", "video"]),
+        expectedStateDigest: z.string().min(1).max(256),
+        idempotencyKey: z.string().min(8).max(200),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      generateStagedAutoReviewShotPrompt({
+        ...input,
+        auth: authFromCtx(ctx),
+        runtime: { publicUrl: ctx.publicUrl },
+      })
     ),
 
   acceptStagedAutoReviewImage: protectedProcedure

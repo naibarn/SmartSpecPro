@@ -78,7 +78,34 @@ describe("MarketplaceAutoReviewLegacyDetails", () => {
     expect(screen.getByAltText("ผลลัพธ์ภาพที่ 1")).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole("button", { name: /สร้าง Job แบบตรวจทีละขั้น/ })
+      screen.getByRole("button", { name: /เปิด Job Workbench ใหม่/ })
+    );
+    expect(onCreateStaged).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains why a legacy run has no 9-shot board and offers a staged job", () => {
+    const onCreateStaged = vi.fn();
+    render(
+      <MarketplaceAutoReviewLegacyDetails
+        productName="สินค้าทดสอบ"
+        onCreateStaged={onCreateStaged}
+        run={{
+          id: "mar-legacy-no-shot-pack",
+          status: "running",
+          currentStage: "image_generation",
+          metadataJson: {},
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText("งานนี้ยังไม่มีข้อมูล 9 ช็อตสำหรับทำงานรายช็อต")
+    ).toBeTruthy();
+    expect(
+      screen.getByText("สร้าง Job ใหม่เพื่อเปิดบอร์ด 9 ช็อต")
+    ).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: "สร้าง Job ใหม่เพื่อเปิดบอร์ด 9 ช็อต" })
     );
     expect(onCreateStaged).toHaveBeenCalledTimes(1);
   });

@@ -29,12 +29,18 @@ import {
   buildStagedVideoPromptContentHash,
 } from "./marketplaceAutoReviewStagedPromptCompiler";
 import {
+  PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
+  refreshSequentialShotPromptWithSkill,
+  type SequentialReferenceManifestEntry,
+} from "./productReviewSequentialStoryboardSkillRunner";
+import {
   buildStagedAudioPlan,
   buildStagedFinalAssemblyHash,
 } from "./marketplaceAutoReviewStagedAudioAssembly";
 import { buildStagedOperationEnvelope } from "./marketplaceAutoReviewStagedCheckpointService";
 
 export type StagedCheckpointAuth = { userId: number; tenantId?: string };
+export type StagedCheckpointRuntime = { publicUrl?: string | null };
 
 type StagedCheckpointRun = typeof marketplaceAutoReviewRuns.$inferSelect;
 
@@ -132,6 +138,12 @@ function parseStagedMetadata(run: StagedCheckpointRun) {
     });
   }
   return parsed.data;
+}
+
+function record(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : {};
 }
 
 function safeArtifactUrl(value: unknown): string | null {
@@ -875,6 +887,354 @@ export async function editStagedAutoReviewShot(input: {
           },
         },
         planRevision: metadata.planReview.planRevision,
+      };
+    },
+  });
+}
+
+function stagedAbsoluteReferenceUrl(
+  value: string,
+  publicUrl?: string | null
+): string {
+  if (/^https?:\/\//i.test(value)) return value;
+  const base = publicUrl?.trim() || process.env.NODE_BASE_URL?.trim();
+  if (!base) return "";
+  try {
+    return new URL(value, `${base.replace(/\/+$/, "")}/`).toString();
+  } catch {
+    return "";
+  }
+}
+
+function buildStagedSingleShotRefreshInput(input: {
+  run: StagedCheckpointRun;
+  metadata: ReturnType<typeof parseStagedMetadata>;
+  shotId: number;
+  publicUrl?: string | null;
+  tenantId?: string;
+}) {
+  const staged = input.metadata.stagedSequentialStoryboard;
+  const shot = staged.shots.find(item => item.shotId === input.shotId);
+  const plan = (input.metadata as any).stagedPipeline?.plan as
+    | StagedStoryArcPlan
+    | undefined;
+  const planShot = plan?.shots.find(item => item.shotId === input.shotId);
+  if (!shot || !plan || !planShot) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_invalid_shot_contract",
+    });
+  }
+  const productImages = Array.isArray(plan.product?.imageUrls)
+    ? plan.product.imageUrls.map(value => String(value).trim()).filter(Boolean)
+    : [];
+  const referenceManifest: SequentialReferenceManifestEntry[] =
+    productImages.map((url, index) => ({
+      index: index + 1,
+      role: index === 0 ? "product" : "product_angle",
+      url,
+      evidenceOnly: false,
+    }));
+  const skillVisionUrls = referenceManifest
+    .map(entry => stagedAbsoluteReferenceUrl(entry.url, input.publicUrl))
+    .filter(Boolean);
+  const productTruth = record((input.metadata as any).productTruth);
+  const previousShot = plan.shots.find(
+    item => item.shotId === input.shotId - 1
+  );
+  const nextShot = plan.shots.find(item => item.shotId === input.shotId + 1);
+  return {
+    tenantId: input.tenantId || input.run.tenantId || "",
+    userId: input.run.userId,
+    runId: input.run.id,
+    publicUrl: input.publicUrl,
+    originSurface: "marketplace_capture" as const,
+    targetShotId: input.shotId,
+    imageBudget: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
+    referenceManifest,
+    skillVisionUrls,
+    globalContinuity: {},
+    shotContract: {
+      purpose: planShot.title,
+      dialogue: planShot.dialogue,
+      duration_seconds: planShot.durationSeconds,
+      demonstration_type: "usage_demo" as const,
+      depicts_minor: false,
+      guardian_required: false,
+      visual_summary: planShot.visualSummary,
+    },
+    previousShotVisualSummary: previousShot?.visualSummary ?? null,
+    nextShotVisualSummary: nextShot?.visualSummary ?? null,
+    childSubjectPolicy: {
+      productChildRelated: false,
+      childDepictionPlanned: false,
+      guardianReferenceIndex: null,
+    },
+    blockedClaims: [],
+    forbiddenClaims: [],
+    productCategory:
+      typeof productTruth.productCategory === "string"
+        ? productTruth.productCategory
+        : null,
+  };
+}
+
+/**
+ * Generates one shot prompt through the existing single-shot skill seam.
+ * This operation never submits an image/video task or queues provider spend;
+ * only the later checkpoint approval can unlock media generation.
+ */
+export async function generateStagedAutoReviewShotPrompt(input: {
+  runId: string;
+  shotId: number;
+  stage: "image" | "video";
+  expectedStateDigest: string;
+  idempotencyKey: string;
+  auth: StagedCheckpointAuth;
+  runtime?: StagedCheckpointRuntime;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await requireOwnedRun(db, input.runId, input.auth);
+  assertStagedRunMutable(run);
+  const metadata = parseStagedMetadata(run);
+  if (stagedMetadataStateDigest(metadata) !== input.expectedStateDigest) {
+    throw new TRPCError({ code: "CONFLICT", message: "staged_state_drift" });
+  }
+  const shot = metadata.stagedSequentialStoryboard.shots.find(
+    item => item.shotId === input.shotId
+  );
+  const checkpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+    item =>
+      item.shotId === input.shotId &&
+      item.kind ===
+        (input.stage === "image" ? "image_prompt" : "video_prompt") &&
+      item.state !== "superseded"
+  );
+  if (!shot || !checkpoint || !isStagedCheckpointEditable(checkpoint)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "checkpoint_not_editable",
+    });
+  }
+  const taskKeys =
+    input.stage === "image"
+      ? [`image:${input.shotId}`, `video:${input.shotId}`]
+      : [`video:${input.shotId}`];
+  const stagedPipeline = record((metadata as any).stagedPipeline);
+  const mediaTaskInFlight = taskKeys.some(taskKey =>
+    ["pending", "processing", "submitted"].includes(
+      stagedTaskStatus(stagedPipeline, taskKey) ?? ""
+    )
+  );
+  if (mediaTaskInFlight) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "staged_media_task_in_flight",
+    });
+  }
+  if (input.stage === "video" && !shot.imageArtifactHash) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_image_artifact_missing",
+    });
+  }
+  if (input.stage === "video") {
+    const imageResultCheckpoint =
+      metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+        item =>
+          item.shotId === input.shotId &&
+          item.kind === "image_result" &&
+          item.state !== "superseded"
+      );
+    if (imageResultCheckpoint?.state !== "approved") {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "staged_image_result_not_approved",
+      });
+    }
+  }
+
+  const [existingJob] = await db
+    .select()
+    .from(marketplaceAutoReviewOutboxJobs)
+    .where(
+      eq(marketplaceAutoReviewOutboxJobs.idempotencyKey, input.idempotencyKey)
+    )
+    .limit(1);
+  if (existingJob) {
+    return {
+      runId: run.id,
+      operation: operationFromPayload(existingJob.payloadJson, run),
+      status: existingJob.status,
+    };
+  }
+
+  const refresh = await refreshSequentialShotPromptWithSkill(
+    buildStagedSingleShotRefreshInput({
+      run,
+      metadata,
+      shotId: input.shotId,
+      publicUrl: input.runtime?.publicUrl,
+      tenantId: input.auth.tenantId,
+    })
+  );
+  const generatedPrompt =
+    input.stage === "image"
+      ? refresh.startFrameImagePrompt.trim()
+      : String(refresh.videoPrompt ?? "").trim();
+  if (!generatedPrompt) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_prompt_generation_empty",
+    });
+  }
+
+  return mutateOwnedStagedMetadata({
+    runId: input.runId,
+    expectedStateDigest: input.expectedStateDigest,
+    idempotencyKey: input.idempotencyKey,
+    auth: input.auth,
+    mutate(current, operationId) {
+      const currentShot = current.stagedSequentialStoryboard.shots.find(
+        item => item.shotId === input.shotId
+      );
+      const currentCheckpoint =
+        current.stagedSequentialStoryboard.reviewCheckpoints.find(
+          item =>
+            item.shotId === input.shotId &&
+            item.kind ===
+              (input.stage === "image" ? "image_prompt" : "video_prompt") &&
+            item.state !== "superseded"
+        );
+      if (
+        !currentShot ||
+        !currentCheckpoint ||
+        !isStagedCheckpointEditable(currentCheckpoint)
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "staged_state_drift",
+        });
+      }
+      const revision = currentShot.revision + 1;
+      const imagePrompt = input.stage === "image";
+      const contentHash = imagePrompt
+        ? buildStagedImagePromptContentHash({
+            revision,
+            shotId: input.shotId,
+            prompt: generatedPrompt,
+            referenceManifestHash:
+              current.stagedSequentialStoryboard.referenceManifestHash ??
+              "none",
+          })
+        : buildStagedVideoPromptContentHash({
+            revision,
+            shotId: input.shotId,
+            prompt: generatedPrompt,
+            imageArtifactHash: currentShot.imageArtifactHash ?? "",
+          });
+      const replacement = buildStagedCheckpoint({
+        checkpointId: `${imagePrompt ? "image_prompt" : "video_prompt"}:${input.runId}:shot-${input.shotId}:r${revision}:generate-${operationId}`,
+        kind: imagePrompt ? "image_prompt" : "video_prompt",
+        shotId: input.shotId,
+        revision,
+        contentHash,
+        model: currentCheckpoint.approvedModel ?? "internal",
+        provider: currentCheckpoint.approvedProvider ?? "internal",
+        estimatedCredits: currentCheckpoint.estimatedCredits ?? 0,
+        referenceManifestHash:
+          current.stagedSequentialStoryboard.referenceManifestHash,
+      });
+      const invalidated =
+        current.stagedSequentialStoryboard.reviewCheckpoints.map(item => {
+          const invalidatedByImage =
+            imagePrompt &&
+            item.shotId === input.shotId &&
+            [
+              "image_prompt",
+              "image_result",
+              "video_prompt",
+              "video_result",
+            ].includes(item.kind);
+          const invalidatedByVideo =
+            !imagePrompt &&
+            item.shotId === input.shotId &&
+            ["video_prompt", "video_result"].includes(item.kind);
+          return (invalidatedByImage || invalidatedByVideo) &&
+            item.state !== "superseded"
+            ? {
+                ...item,
+                state: "superseded" as const,
+                rejectionReasonCode: "staged_prompt_generated",
+              }
+            : item;
+        });
+      const tasks = Object.fromEntries(
+        Object.entries(
+          ((current as any).stagedPipeline?.tasks ?? {}) as Record<
+            string,
+            unknown
+          >
+        ).filter(([key]) =>
+          imagePrompt
+            ? key !== `image:${input.shotId}` && key !== `video:${input.shotId}`
+            : key !== `video:${input.shotId}`
+        )
+      );
+      const nextShot = {
+        ...currentShot,
+        revision,
+        ...(imagePrompt
+          ? {
+              imagePrompt: generatedPrompt,
+              imagePromptHash: contentHash,
+              imageArtifactHash: null,
+              imageArtifactUrl: null,
+              videoPrompt: null,
+              videoPromptHash: null,
+              videoArtifactHash: null,
+              videoArtifactUrl: null,
+              state: "image_prompt_awaiting",
+            }
+          : {
+              videoPrompt: generatedPrompt,
+              videoPromptHash: contentHash,
+              videoArtifactHash: null,
+              videoArtifactUrl: null,
+              state: "video_prompt_awaiting",
+            }),
+      };
+      return {
+        metadata: {
+          ...current,
+          stagedPipeline: {
+            ...((current as any).stagedPipeline ?? {}),
+            tasks,
+            finalAssembly: null,
+            promptGeneration: {
+              ...record((current as any).stagedPipeline?.promptGeneration),
+              [`${input.stage}:${input.shotId}`]: {
+                generatedAt: new Date().toISOString(),
+                operationId,
+                source: "product-review-sequential-storyboard-skill",
+              },
+            },
+          },
+          stagedSequentialStoryboard: {
+            ...current.stagedSequentialStoryboard,
+            shots: current.stagedSequentialStoryboard.shots.map(item =>
+              item.shotId === input.shotId ? nextShot : item
+            ),
+            reviewCheckpoints: [...invalidated, replacement],
+          },
+        },
+        planRevision: current.planReview.planRevision,
       };
     },
   });

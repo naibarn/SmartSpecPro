@@ -48,6 +48,7 @@ function props() {
     onApprove: vi.fn(),
     onReject: vi.fn(),
     onEdit: vi.fn(),
+    onGeneratePrompt: vi.fn(),
     onRetry: vi.fn(),
   };
 }
@@ -268,7 +269,10 @@ describe("StagedCheckpointReviewPanel", () => {
       shotId: 1,
       imagePrompt: "Prompt ภาพฉบับแก้ไขเฉพาะช็อตที่ 1",
     });
-    expect(input.onRetry).toHaveBeenCalledWith({ shotId: 1, stage: "image" });
+    expect(input.onGeneratePrompt).toHaveBeenCalledWith({
+      shotId: 1,
+      stage: "image",
+    });
   });
 
   it("keeps retry available when only the video prompt was rejected", () => {
@@ -279,6 +283,7 @@ describe("StagedCheckpointReviewPanel", () => {
         {
           ...input.state.shots[0],
           imagePrompt: "ภาพที่ผ่านแล้ว",
+          imageArtifactHash: "accepted-image-hash",
           videoPrompt: "วิดีโอที่ต้องแก้",
         },
       ],
@@ -290,6 +295,14 @@ describe("StagedCheckpointReviewPanel", () => {
           state: "rejected",
           estimatedCredits: 4,
         },
+        {
+          ...baseCheckpoint,
+          kind: "image_result",
+          checkpointId: "image-result:run-1:shot-1:r1",
+          state: "approved",
+          contentHash: "accepted-image-hash",
+          estimatedCredits: 0,
+        },
       ],
     };
     render(<StagedCheckpointReviewPanel {...input} />);
@@ -299,7 +312,10 @@ describe("StagedCheckpointReviewPanel", () => {
         name: "สร้าง Prompt วิดีโอช็อตที่ 1 ใหม่",
       })
     );
-    expect(input.onRetry).toHaveBeenCalledWith({ shotId: 1, stage: "video" });
+    expect(input.onGeneratePrompt).toHaveBeenCalledWith({
+      shotId: 1,
+      stage: "video",
+    });
   });
 
   it("requires video result acceptance and exposes shot-local video repair", () => {

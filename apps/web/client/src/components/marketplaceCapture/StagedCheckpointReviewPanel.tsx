@@ -131,6 +131,10 @@ function isRetryAvailable(checkpoint: StagedCheckpoint | undefined) {
   return Boolean(checkpoint?.state === "awaiting" || isRetryable(checkpoint));
 }
 
+function isTaskInFlight(status: string | null | undefined) {
+  return ["pending", "processing", "submitted"].includes(String(status ?? ""));
+}
+
 function isRunEditable(state: StagedReviewState) {
   return !["completed", "failed", "cancelled"].includes(
     String(state.runStatus ?? "")
@@ -321,6 +325,10 @@ export function StagedCheckpointReviewPanel(props: {
   }) => void;
   onReject: (checkpoint: StagedCheckpoint) => void;
   onEdit: (input: StagedCheckpointEdit) => void;
+  onGeneratePrompt: (input: {
+    shotId: number;
+    stage: "image" | "video";
+  }) => void;
   onRetry: (input: StagedCheckpointRetry) => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -393,6 +401,8 @@ export function StagedCheckpointReviewPanel(props: {
         id.startsWith("approve-image-result")) ||
       (props.pendingAction === "reject" && id.startsWith("reject-")) ||
       (props.pendingAction === "edit-shot" && id.startsWith("edit-")) ||
+      (props.pendingAction === "generate-prompt" &&
+        id.startsWith("generate-prompt-")) ||
       (props.pendingAction === "retry-shot" && id.startsWith("retry-")) ||
       (props.pendingAction === "retry-audio" && id.startsWith("retry-audio"))
         ? "กำลังดำเนินการ…"
@@ -423,7 +433,8 @@ export function StagedCheckpointReviewPanel(props: {
           </p>
           <p className="mt-2 text-xs text-violet-700">
             ทุกช็อตแยกกัน: แก้ Prompt หรือ retry เฉพาะช็อตได้
-            และระบบจะใช้เครดิตเฉพาะตอนกดยืนยันสร้างเท่านั้น
+            เครดิตภาพ/วิดีโอจะใช้เฉพาะตอนกดยืนยันสร้าง ส่วนการสร้าง Prompt
+            อาจใช้เครดิต LLM แยกตาม policy
           </p>
         </div>
         {action("refresh", "รีเฟรชสถานะ", props.onRefresh)}
@@ -958,161 +969,219 @@ export function StagedCheckpointReviewPanel(props: {
                         </span>
                       ))}
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {imageCheckpoint?.state === "awaiting"
-                      ? action(
-                          `approve-image-${shot.shotId}`,
-                          `ยืนยันสร้างภาพช็อตที่ ${shot.shotId}`,
-                          () =>
-                            props.onApprove({
-                              checkpoint: imageCheckpoint,
-                              expected: expected(imageCheckpoint),
-                            }),
-                          "rounded bg-violet-700 px-3 py-2 text-sm text-white"
-                        )
-                      : null}
-                    {imageCheckpoint?.state === "awaiting"
-                      ? action(
-                          `reject-image-${shot.shotId}`,
-                          `ขอแก้ Prompt ภาพช็อตที่ ${shot.shotId}`,
-                          () => props.onReject(imageCheckpoint)
-                        )
-                      : null}
-                    {imageResultCheckpoint?.state === "awaiting"
-                      ? action(
-                          `approve-image-result-${shot.shotId}`,
-                          `ยอมรับผลภาพช็อตที่ ${shot.shotId}`,
-                          () =>
-                            props.onApprove({
-                              checkpoint: imageResultCheckpoint,
-                              expected: expected(imageResultCheckpoint),
-                            }),
-                          "rounded bg-emerald-700 px-3 py-2 text-sm text-white"
-                        )
-                      : null}
-                    {imageResultCheckpoint?.state === "awaiting"
-                      ? action(
-                          `reject-image-result-${shot.shotId}`,
-                          `ปฏิเสธผลภาพช็อตที่ ${shot.shotId}`,
-                          () => props.onReject(imageResultCheckpoint)
-                        )
-                      : null}
-                    {videoCheckpoint?.state === "awaiting"
-                      ? action(
-                          `approve-video-${shot.shotId}`,
-                          `ยืนยันและสร้างวิดีโอช็อตที่ ${shot.shotId}`,
-                          () =>
-                            props.onApprove({
-                              checkpoint: videoCheckpoint,
-                              expected: expected(videoCheckpoint),
-                            }),
-                          "rounded bg-violet-700 px-3 py-2 text-sm text-white"
-                        )
-                      : null}
-                    {videoResultCheckpoint?.state === "awaiting"
-                      ? action(
-                          `approve-video-result-${shot.shotId}`,
-                          `ยอมรับผลวิดีโอช็อตที่ ${shot.shotId}`,
-                          () =>
-                            props.onApprove({
-                              checkpoint: videoResultCheckpoint,
-                              expected: expected(videoResultCheckpoint),
-                            }),
-                          "rounded bg-emerald-700 px-3 py-2 text-sm text-white"
-                        )
-                      : null}
-                    {videoResultCheckpoint?.state === "awaiting"
-                      ? action(
-                          `reject-video-result-${shot.shotId}`,
-                          `ปฏิเสธผลวิดีโอช็อตที่ ${shot.shotId}`,
-                          () => props.onReject(videoResultCheckpoint)
-                        )
-                      : null}
-                    {videoCheckpoint?.state === "awaiting"
-                      ? action(
-                          `reject-video-${shot.shotId}`,
-                          `ขอแก้ Prompt วิดีโอช็อตที่ ${shot.shotId}`,
-                          () => props.onReject(videoCheckpoint)
-                        )
-                      : null}
-                    {videoCheckpoint?.state === "rejected"
-                      ? action(
-                          `retry-video-prompt-${shot.shotId}`,
-                          `สร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} ใหม่`,
-                          () =>
-                            props.onRetry({
-                              shotId: shot.shotId,
-                              stage: "video",
-                            })
-                        )
-                      : null}
-                    {imageCheckpoint &&
-                    isEditable(imageCheckpoint) &&
-                    (drafts[imageDraftKey] ?? shot.imagePrompt ?? "") !==
-                      (shot.imagePrompt ?? "")
-                      ? action(
-                          `edit-image-${shot.shotId}`,
-                          `บันทึก Prompt ภาพช็อตที่ ${shot.shotId}`,
-                          () =>
-                            props.onEdit({
-                              shotId: shot.shotId,
-                              imagePrompt: drafts[imageDraftKey],
-                            }),
-                          "rounded border border-slate-700 px-3 py-2 text-sm"
-                        )
-                      : null}
-                    {videoCheckpoint &&
-                    isEditable(videoCheckpoint) &&
-                    (drafts[videoDraftKey] ?? shot.videoPrompt ?? "") !==
-                      (shot.videoPrompt ?? "")
-                      ? action(
-                          `edit-video-${shot.shotId}`,
-                          `บันทึก Prompt วิดีโอช็อตที่ ${shot.shotId}`,
-                          () =>
-                            props.onEdit({
-                              shotId: shot.shotId,
-                              videoPrompt: drafts[videoDraftKey],
-                            }),
-                          "rounded border border-slate-700 px-3 py-2 text-sm"
-                        )
-                      : null}
-                    {imageCheckpoint?.state === "rejected" ||
-                    (isConsumed(imageCheckpoint) &&
-                      imageResultCheckpoint?.state === "approved")
-                      ? action(
-                          `retry-image-prompt-${shot.shotId}`,
-                          `สร้าง Prompt ภาพช็อตที่ ${shot.shotId} ใหม่`,
-                          () =>
-                            props.onRetry({
-                              shotId: shot.shotId,
-                              stage: "image",
-                            })
-                        )
-                      : null}
-                    {imageResultCheckpoint?.state === "rejected"
-                      ? action(
-                          `retry-image-${shot.shotId}`,
-                          `สร้างภาพช็อตที่ ${shot.shotId} ใหม่`,
-                          () =>
-                            props.onRetry({
-                              shotId: shot.shotId,
-                              stage: "image",
-                            })
-                        )
-                      : null}
-                    {videoResultCheckpoint?.state === "rejected" ||
-                    (isConsumed(videoCheckpoint) &&
-                      videoResultCheckpoint?.state === "approved")
-                      ? action(
-                          `retry-video-${shot.shotId}`,
-                          `สร้างวิดีโอช็อตที่ ${shot.shotId} ใหม่`,
-                          () =>
-                            props.onRetry({
-                              shotId: shot.shotId,
-                              stage: "video",
-                            })
-                        )
-                      : null}
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    <section
+                      className="rounded-xl border border-violet-200 bg-violet-50/60 p-3"
+                      aria-label={`การทำงานภาพช็อตที่ ${shot.shotId}`}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-violet-700">
+                        1 · Prompt ภาพ → ภาพ / เฟรมอ้างอิง
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        แก้หรือสร้าง Prompt ก่อน แล้วค่อยยืนยันสร้างภาพเพื่อใช้เครดิตภาพ
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {imageCheckpoint &&
+                        isEditable(imageCheckpoint) &&
+                        !isTaskInFlight(shot.imageTaskStatus) &&
+                        !isTaskInFlight(shot.videoTaskStatus)
+                          ? action(
+                              `generate-prompt-image-${shot.shotId}`,
+                              `สร้าง Prompt ภาพช็อตที่ ${shot.shotId} ใหม่`,
+                              () =>
+                                props.onGeneratePrompt({
+                                  shotId: shot.shotId,
+                                  stage: "image",
+                                }),
+                              "rounded border border-violet-300 bg-white px-3 py-2 text-sm text-violet-800"
+                            )
+                          : null}
+                        {imageCheckpoint?.state === "awaiting"
+                          ? action(
+                              `approve-image-${shot.shotId}`,
+                              `ยืนยันสร้างภาพช็อตที่ ${shot.shotId}`,
+                              () =>
+                                props.onApprove({
+                                  checkpoint: imageCheckpoint,
+                                  expected: expected(imageCheckpoint),
+                                }),
+                              "rounded bg-violet-700 px-3 py-2 text-sm text-white"
+                            )
+                          : null}
+                        {imageCheckpoint?.state === "awaiting"
+                          ? action(
+                              `reject-image-${shot.shotId}`,
+                              `ขอแก้ Prompt ภาพช็อตที่ ${shot.shotId}`,
+                              () => props.onReject(imageCheckpoint)
+                            )
+                          : null}
+                        {imageCheckpoint &&
+                        isEditable(imageCheckpoint) &&
+                        (drafts[imageDraftKey] ?? shot.imagePrompt ?? "") !==
+                          (shot.imagePrompt ?? "")
+                          ? action(
+                              `edit-image-${shot.shotId}`,
+                              `บันทึก Prompt ภาพช็อตที่ ${shot.shotId}`,
+                              () =>
+                                props.onEdit({
+                                  shotId: shot.shotId,
+                                  imagePrompt: drafts[imageDraftKey],
+                                }),
+                              "rounded border border-slate-700 px-3 py-2 text-sm"
+                            )
+                          : null}
+                        {imageCheckpoint?.state === "rejected" ||
+                        (isConsumed(imageCheckpoint) &&
+                          imageResultCheckpoint?.state === "approved")
+                          ? action(
+                              `retry-image-prompt-${shot.shotId}`,
+                              `เริ่มตรวจ Prompt ภาพช็อตที่ ${shot.shotId} ใหม่`,
+                              () =>
+                                props.onRetry({
+                                  shotId: shot.shotId,
+                                  stage: "image",
+                                })
+                            )
+                          : null}
+                        {imageResultCheckpoint?.state === "awaiting"
+                          ? action(
+                              `approve-image-result-${shot.shotId}`,
+                              `ยอมรับผลภาพช็อตที่ ${shot.shotId}`,
+                              () =>
+                                props.onApprove({
+                                  checkpoint: imageResultCheckpoint,
+                                  expected: expected(imageResultCheckpoint),
+                                }),
+                              "rounded bg-emerald-700 px-3 py-2 text-sm text-white"
+                            )
+                          : null}
+                        {imageResultCheckpoint?.state === "awaiting"
+                          ? action(
+                              `reject-image-result-${shot.shotId}`,
+                              `ปฏิเสธผลภาพช็อตที่ ${shot.shotId}`,
+                              () => props.onReject(imageResultCheckpoint)
+                            )
+                          : null}
+                        {imageResultCheckpoint?.state === "rejected"
+                          ? action(
+                              `retry-image-${shot.shotId}`,
+                              `สร้างภาพช็อตที่ ${shot.shotId} ใหม่`,
+                              () =>
+                                props.onRetry({
+                                  shotId: shot.shotId,
+                                  stage: "image",
+                                })
+                            )
+                          : null}
+                      </div>
+                    </section>
+                    <section
+                      className="rounded-xl border border-sky-200 bg-sky-50/60 p-3"
+                      aria-label={`การทำงานวิดีโอช็อตที่ ${shot.shotId}`}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-700">
+                        2 · Prompt วิดีโอ → วิดีโอรายช็อต
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        ต้องยอมรับภาพของช็อตนี้ก่อน แล้วค่อยสร้างหรือยืนยัน Prompt
+                        วิดีโอเพื่อใช้เครดิตวิดีโอ
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {videoCheckpoint &&
+                        shot.imageArtifactHash &&
+                        imageResultCheckpoint?.state === "approved" &&
+                        isEditable(videoCheckpoint) &&
+                        !isTaskInFlight(shot.videoTaskStatus)
+                          ? action(
+                              `generate-prompt-video-${shot.shotId}`,
+                              `สร้าง Prompt วิดีโอช็อตที่ ${shot.shotId} ใหม่`,
+                              () =>
+                                props.onGeneratePrompt({
+                                  shotId: shot.shotId,
+                                  stage: "video",
+                                }),
+                              "rounded border border-sky-300 bg-white px-3 py-2 text-sm text-sky-800"
+                            )
+                          : null}
+                        {videoCheckpoint?.state === "awaiting"
+                          ? action(
+                              `approve-video-${shot.shotId}`,
+                              `ยืนยันและสร้างวิดีโอช็อตที่ ${shot.shotId}`,
+                              () =>
+                                props.onApprove({
+                                  checkpoint: videoCheckpoint,
+                                  expected: expected(videoCheckpoint),
+                                }),
+                              "rounded bg-sky-700 px-3 py-2 text-sm text-white"
+                            )
+                          : null}
+                        {videoCheckpoint?.state === "awaiting"
+                          ? action(
+                              `reject-video-${shot.shotId}`,
+                              `ขอแก้ Prompt วิดีโอช็อตที่ ${shot.shotId}`,
+                              () => props.onReject(videoCheckpoint)
+                            )
+                          : null}
+                        {videoCheckpoint &&
+                        isEditable(videoCheckpoint) &&
+                        (drafts[videoDraftKey] ?? shot.videoPrompt ?? "") !==
+                          (shot.videoPrompt ?? "")
+                          ? action(
+                              `edit-video-${shot.shotId}`,
+                              `บันทึก Prompt วิดีโอช็อตที่ ${shot.shotId}`,
+                              () =>
+                                props.onEdit({
+                                  shotId: shot.shotId,
+                                  videoPrompt: drafts[videoDraftKey],
+                                }),
+                              "rounded border border-slate-700 px-3 py-2 text-sm"
+                            )
+                          : null}
+                        {videoCheckpoint?.state === "rejected"
+                          ? action(
+                              `retry-video-prompt-${shot.shotId}`,
+                              `เริ่มตรวจ Prompt วิดีโอช็อตที่ ${shot.shotId} ใหม่`,
+                              () =>
+                                props.onRetry({
+                                  shotId: shot.shotId,
+                                  stage: "video",
+                                })
+                            )
+                          : null}
+                        {videoResultCheckpoint?.state === "awaiting"
+                          ? action(
+                              `approve-video-result-${shot.shotId}`,
+                              `ยอมรับผลวิดีโอช็อตที่ ${shot.shotId}`,
+                              () =>
+                                props.onApprove({
+                                  checkpoint: videoResultCheckpoint,
+                                  expected: expected(videoResultCheckpoint),
+                                }),
+                              "rounded bg-emerald-700 px-3 py-2 text-sm text-white"
+                            )
+                          : null}
+                        {videoResultCheckpoint?.state === "awaiting"
+                          ? action(
+                              `reject-video-result-${shot.shotId}`,
+                              `ปฏิเสธผลวิดีโอช็อตที่ ${shot.shotId}`,
+                              () => props.onReject(videoResultCheckpoint)
+                            )
+                          : null}
+                        {videoResultCheckpoint?.state === "rejected" ||
+                        (isConsumed(videoCheckpoint) &&
+                          videoResultCheckpoint?.state === "approved")
+                          ? action(
+                              `retry-video-${shot.shotId}`,
+                              `สร้างวิดีโอช็อตที่ ${shot.shotId} ใหม่`,
+                              () =>
+                                props.onRetry({
+                                  shotId: shot.shotId,
+                                  stage: "video",
+                                })
+                            )
+                          : null}
+                      </div>
+                    </section>
                   </div>
                 </article>
               );

@@ -5104,6 +5104,19 @@ export default function MarketplaceCaptureProductDetail() {
 
   const startAutoReview = useCallback(
     (action: AutoReviewStartAction) => {
+      // Product Detail is the scope/asset surface. All new Auto Review work
+      // must enter the dedicated Job Workbench so the run is created with
+      // staged checkpoints and the 9-shot board instead of the legacy
+      // fire-and-forget pipeline.
+      if (!isAutoReviewJobSetupRoute) {
+        setLocation(
+          `/marketplace/auto-review/new/${encodeURIComponent(productId)}`
+        );
+        toast.info(
+          "เปิด Job Workbench แล้ว กรุณาตรวจ Prompt และผลลัพธ์รายช็อตก่อนใช้เครดิต"
+        );
+        return;
+      }
       if (activeAutoReviewRun) {
         toast.error(
           "มีงาน Auto Review ที่ยังไม่จบอยู่แล้ว กรุณาเช็กสถานะ/ซ่อม/ยกเลิกงานเดิมก่อนเริ่มงานใหม่ | Existing run is still active."
@@ -5205,9 +5218,11 @@ export default function MarketplaceCaptureProductDetail() {
       buildAutoReviewTransportMetadata,
       buildAutoReviewReferenceAnchors,
       characterAnchorUrl,
+      isAutoReviewJobSetupRoute,
       productId,
       resolvedProductAnchorImageUrl,
       selectedStandardImageModelTransport.transport,
+      setLocation,
       startAutoReviewMutation,
     ]
   );
