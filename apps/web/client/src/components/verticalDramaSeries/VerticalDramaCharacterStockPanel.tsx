@@ -38,6 +38,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { TRPCClientError } from "@trpc/client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { classifyError } from "@/lib/systemErrorMonitor";
+import {
+  isNetworkConnectionError,
+  retryDelayMs,
+  RETRYABLE_QUERY_MAX_ATTEMPTS,
+} from "@/lib/requestResilience";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import { VD_COPY } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
@@ -1305,6 +1312,116 @@ type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 
 /* -------------------------------------------------------------------------- */
+/* Media status-poll error classification — pure helpers                     */
+/* (planning/fix-character-image-false-failure/plan.md, section "A. Client") */
+/* -------------------------------------------------------------------------- */
+
+/** tRPC error `.data` shape, loosely typed like `systemErrorMonitor`'s own
+ *  private helper of the same purpose (not exported from there, so kept as a
+ *  small local copy rather than reaching into that module's internals). */
+type PollTrpcErrorData = { code?: string; httpStatus?: number };
+
+function getPollTrpcErrorData(error: unknown): PollTrpcErrorData | undefined {
+  if (!(error instanceof TRPCClientError)) return undefined;
+  return error.data as PollTrpcErrorData | undefined;
+}
+
+function isAbortLikeError(value: unknown): boolean {
+  if (typeof DOMException !== "undefined" && value instanceof DOMException) {
+    return value.name === "AbortError";
+  }
+  return value instanceof Error && value.name === "AbortError";
+}
+
+/**
+ * Fallback signal for the two real call sites this classifier serves —
+ * verified against actual server behavior (not guessed), 2026-07-31:
+ *  - `verticalDramaCharacters.settlePortraitCandidate`
+ *    (`server/routers/verticalDramaCharacters.ts` ~1609) lets a thrown
+ *    `Error("Get task failed: <upstream status>")` from
+ *    `mediaGenerationService.getTask` (`server/services/mediaGenerationService.ts`
+ *    ~2919) escape uncaught. tRPC's default unknown-error wrapping turns
+ *    that into `TRPCError(code: "INTERNAL_SERVER_ERROR", httpStatus: 500)`
+ *    — matches the production evidence
+ *    (`[tRPC] ERROR: verticalDramaCharacters.settlePortraitCandidate: Get
+ *    task failed: 429`). The *real* upstream status (429 in the evidence)
+ *    only survives in `.message`; `classifyError` below already treats
+ *    `httpStatus 500`/`INTERNAL_SERVER_ERROR` as transient, so this regex
+ *    is defense-in-depth there.
+ *  - `media.getTask` (`server/routers/media.ts` ~3723) explicitly catches
+ *    ANY thrown error from the same `mediaGenerationService.getTask` and
+ *    rethrows as `TRPCError(code: "NOT_FOUND", httpStatus: 404, message:
+ *    <original message>)` — httpStatus/code are 404/NOT_FOUND regardless of
+ *    the real cause, so for THIS endpoint the message text is the *only*
+ *    place the real signal (429/408/5xx/rate-limit/timeout) survives, which
+ *    is why this fallback is load-bearing (not merely defensive) for
+ *    `pollCharacterImageTask`.
+ */
+const TRANSIENT_POLL_MESSAGE_PATTERN =
+  /\b(429|408|5\d{2})\b|rate.?limit|too many requests|request timeout|\btimed?\s*out\b/i;
+
+export type MediaPollErrorClass = "transient" | "terminal";
+
+/**
+ * Classifies a THROWN status-poll error as TRANSIENT (we simply failed to
+ * OBSERVE the job — rate limit, network blip, gateway 5xx, or a client-side
+ * request timeout/abort) or TERMINAL (anything else — most likely a
+ * structural/programming error that will not resolve by retrying, e.g. a
+ * mismatched task id).
+ *
+ * Deliberately does NOT decide "the generation failed" in either case — per
+ * the plan's core principle, only a genuine server-reported
+ * `status === "failed"` result (returned, never thrown, by
+ * `settlePortraitCandidate`/`media.getTask`) may ever render as failed.
+ * Callers must land a TERMINAL-classified thrown error in the same
+ * non-destructive "outcome not yet confirmed" state a TRANSIENT error uses
+ * once its retry budget is exhausted (`buildPortraitCandidateUnresolvedOutcomePatch`)
+ * — TERMINAL here only means "stop retrying immediately", not "mark failed".
+ */
+export function classifyMediaPollError(error: unknown): MediaPollErrorClass {
+  if (classifyError(error) === "system") return "transient";
+  if (isAbortLikeError(error)) return "transient";
+  const cause = error instanceof Error ? (error as { cause?: unknown }).cause : undefined;
+  if (isNetworkConnectionError(cause) || isAbortLikeError(cause)) return "transient";
+  const data = getPollTrpcErrorData(error);
+  if (data?.httpStatus === 429 || data?.httpStatus === 408) return "transient";
+  if (data?.code === "TOO_MANY_REQUESTS" || data?.code === "TIMEOUT") return "transient";
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  if (TRANSIENT_POLL_MESSAGE_PATTERN.test(message)) return "transient";
+  return "terminal";
+}
+
+/** Reuses the shared query-retry budget (`requestResilience.ts`) as the cap
+ *  on CONSECUTIVE transient poll errors — bounds how long a persistent
+ *  provider outage can stall a poll loop before it gives up early, without
+ *  introducing a second bespoke magic number. A run that alternates
+ *  successful reads with occasional transient errors never hits this; it
+ *  only fires on an unbroken streak. Still bounded overall by each poll
+ *  loop's own existing attempt budget either way. */
+export const VD_MEDIA_POLL_MAX_CONSECUTIVE_TRANSIENT_ERRORS =
+  RETRYABLE_QUERY_MAX_ATTEMPTS;
+
+/**
+ * Shared "we could not confirm the outcome" copy — used both when a
+ * transient status-read error exhausts its retry budget and when a
+ * TERMINAL-classified (non-retryable) read error is hit directly.
+ * Deliberately NOT "ล้มเหลว"/"failed": failing to observe a job's status is
+ * not the job failing.
+ */
+export function buildPollUnresolvedOutcomeMessage(lang: Lang): string {
+  return t(
+    lang,
+    "ยังไม่ทราบผล — ระบบเก็บงานไว้ให้ตรวจสอบภายหลัง",
+    "Outcome not yet confirmed — the task remains saved for later review."
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* Portrait candidate — pure helpers                                         */
 /* (planning/vd-stuck-generation-and-lost-characters/plan.md, Set A —         */
 /* stuck / policy-rejected character portrait candidates never clear)        */
@@ -1334,6 +1451,33 @@ export function buildPortraitCandidateTimeoutPatch(
       "ใช้เวลานานเกินไป — กรุณาลองใหม่",
       "Taking too long — please retry."
     ),
+  };
+}
+
+/**
+ * Set B fix (planning/fix-character-image-false-failure/plan.md): the
+ * non-destructive landing patch `pollPortraitCandidateTask` applies when it
+ * cannot confirm the outcome — either a TRANSIENT status-read error
+ * exhausted its retry budget, or a TERMINAL-classified (non-retryable) read
+ * error was hit directly (`classifyMediaPollError`). Unlike
+ * `buildPortraitCandidateTimeoutPatch` (which is for the unrelated case
+ * where every read genuinely succeeded and the job simply never left
+ * "queued" within the SLA), status stays `"queued"` — a non-terminal value
+ * — deliberately so:
+ *  1. it is never rendered as "ล้มเหลว"/"Failed" (core principle: failing to
+ *     OBSERVE a job's status is not the job failing), and
+ *  2. the next durable-status refetch (`mergeDurablePortraitCandidateStatus`)
+ *     and the panel's own resume-on-mount effect (both already gated on
+ *     `status === "queued" | "submitting"`) can still advance the card to
+ *     its real outcome once it becomes observable again, instead of
+ *     freezing it at a wrong verdict.
+ */
+export function buildPortraitCandidateUnresolvedOutcomePatch(
+  lang: Lang,
+): Pick<VdPortraitCandidateUiItem, "status" | "errorMessage"> {
+  return {
+    status: "queued",
+    errorMessage: buildPollUnresolvedOutcomeMessage(lang),
   };
 }
 
@@ -2219,6 +2363,16 @@ export function VerticalDramaCharacterStockPanel({
     "outfit" | "age_stage"
   >("outfit");
   const [variantDescriptionInput, setVariantDescriptionInput] = useState("");
+  /** Free-text visual brief for the look's FIRST image — sent as
+   *  `customInstruction` on the auto-fire generation this dialog triggers on
+   *  submit (`planning/vd-character-full-body-framing/plan.md` C1). Distinct
+   *  from `variantDescriptionInput`, which is a persisted identity FACT about
+   *  the look; this one is ephemeral per-generation framing/composition
+   *  direction and is never stored on the character row. Seeded into
+   *  `customInstructionByCharacter` on success so the look's own chip button
+   *  and detail panel keep using it for later regenerations. */
+  const [variantImageInstructionInput, setVariantImageInstructionInput] =
+    useState("");
   const [variantReferenceMediaAssetId, setVariantReferenceMediaAssetId] =
     useState<string | null>(null);
   const [variantReferencePreviewUrl, setVariantReferencePreviewUrl] =
@@ -2234,6 +2388,7 @@ export function VerticalDramaCharacterStockPanel({
     setVariantLabelInput("");
     setVariantTypeInput("outfit");
     setVariantDescriptionInput("");
+    setVariantImageInstructionInput("");
     setVariantReferenceMediaAssetId(null);
     setVariantReferencePreviewUrl(null);
   };
@@ -2280,6 +2435,18 @@ export function VerticalDramaCharacterStockPanel({
       onSuccess: (res, variables) => {
         invalidate();
         setSelectedCharacterId(res.character.characterId);
+        // Carry the dialog's ephemeral visual brief over to the freshly
+        // created look BEFORE closing the dialog resets the input, so the
+        // look's own chip button and detail panel keep regenerating with the
+        // same framing the user asked for on the very first image
+        // (`planning/vd-character-full-body-framing/plan.md` C1).
+        const lookImageInstruction = variantImageInstructionInput.trim();
+        if (lookImageInstruction) {
+          setCustomInstructionByCharacter(prev => ({
+            ...prev,
+            [res.character.characterId]: lookImageInstruction,
+          }));
+        }
         closeVariantDialog();
 
         // `planning/vd-character-look-one-step-flow/plan.md` (2026-07-17) —
@@ -2320,7 +2487,14 @@ export function VerticalDramaCharacterStockPanel({
         toast.success(
           t(lang, "เพิ่มลุคแล้ว กำลังสร้างภาพลุค...", "Look added. Generating the look's image...")
         );
-        fireDirectCharacterImageGeneration(res.character.characterId);
+        // Pass the brief explicitly: the `setCustomInstructionByCharacter`
+        // above has not been committed to state yet at this point in the same
+        // event handler, so reading it back inside the fire helper would see
+        // the stale (empty) map.
+        fireDirectCharacterImageGeneration(
+          res.character.characterId,
+          lookImageInstruction
+        );
       },
       onError,
     });
@@ -2386,13 +2560,49 @@ export function VerticalDramaCharacterStockPanel({
   ) {
     const key = pollingCharacterKey(characterId, role);
     setPollingCharacters(prev => new Set(prev).add(key));
+    // Set B fix (planning/fix-character-image-false-failure/plan.md): a
+    // thrown status-read error (e.g. a 429 rate-limit on `media.getTask`,
+    // which this endpoint always re-wraps as a generic
+    // `NOT_FOUND`/404 — see `classifyMediaPollError`'s doc comment) used to
+    // become an unhandled promise rejection here, leaving the card stuck on
+    // "generating" forever. `hadUnresolvedRead` tracks whether ANY read in
+    // this run could not be confirmed, so the natural-timeout branch below
+    // can tell "genuinely too slow" (never touch this flag) apart from
+    // "we lost visibility at some point" (report the non-destructive
+    // "outcome not yet confirmed" message instead of the generic timeout one).
+    let hadUnresolvedRead = false;
+    let consecutiveTransientErrors = 0;
     try {
       for (
         let attempt = 0;
         attempt < VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS;
         attempt++
       ) {
-        const task = await utils.media.getTask.fetch({ taskId });
+        let task: unknown;
+        try {
+          task = await utils.media.getTask.fetch({ taskId });
+        } catch (pollError) {
+          const errorClass = classifyMediaPollError(pollError);
+          hadUnresolvedRead = true;
+          if (
+            errorClass === "transient" &&
+            consecutiveTransientErrors < VD_MEDIA_POLL_MAX_CONSECUTIVE_TRANSIENT_ERRORS
+          ) {
+            const delay = retryDelayMs(consecutiveTransientErrors);
+            consecutiveTransientErrors += 1;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          // Non-retryable (TERMINAL-classified) read error, or a transient
+          // one that exhausted its own consecutive-failure guard — never
+          // report this as a generation failure (core principle: we only
+          // failed to OBSERVE the status, the generation may still be
+          // running or may have already completed). Stop polling and let
+          // the user check back / find it in Media History.
+          toast.error(buildPollUnresolvedOutcomeMessage(lang));
+          return;
+        }
+        consecutiveTransientErrors = 0;
         const status = (task as { status?: string } | null)?.status;
         if (status === "completed") {
           const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
@@ -2486,7 +2696,9 @@ export function VerticalDramaCharacterStockPanel({
         );
       }
       toast.error(
-        t(lang, "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง", "Generation is taking too long — check back later.")
+        hadUnresolvedRead
+          ? buildPollUnresolvedOutcomeMessage(lang)
+          : t(lang, "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง", "Generation is taking too long — check back later.")
       );
     } finally {
       setPollingCharacters(prev => {
@@ -2533,12 +2745,29 @@ export function VerticalDramaCharacterStockPanel({
    * for the silent auto-fire path, `requireModelSelected`/
    * `requireMcpConnectionOrToast`/`requireHermesConnectionOrToast` for the
    * explicit chip-button click) — this function never guards, only fires.
+   *
+   * `planning/vd-character-full-body-framing/plan.md` C1 — ALSO forwards the
+   * free-text visual brief. This used to send no `customInstruction` at all,
+   * which is why a look generated through either of its two call sites
+   * silently ignored "ภาพเต็มตัว"/"full body": the text existed in panel state
+   * but no request ever carried it. `instructionOverride` exists for the
+   * auto-fire-on-submit case, where the brief was typed in the "เพิ่มลุค"
+   * dialog for a character whose id did not exist yet when the user typed it.
    */
-  const fireDirectCharacterImageGeneration = (characterId: string) => {
+  const fireDirectCharacterImageGeneration = (
+    characterId: string,
+    instructionOverride?: string
+  ) => {
+    const customInstruction = (
+      instructionOverride ??
+      customInstructionByCharacter[characterId] ??
+      ""
+    ).trim();
     generateImageMutation.mutate({
       seriesId,
       characterId,
       selectedImageModelId,
+      ...(customInstruction ? { customInstruction } : {}),
       ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
       ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
         ? { sharedGroupId: mcpSharedGroupId }
@@ -2631,17 +2860,53 @@ export function VerticalDramaCharacterStockPanel({
   ) {
     if (pollingPortraitCandidateAssetIds.has(assetLinkId)) return;
     setPollingPortraitCandidateAssetIds(prev => new Set(prev).add(assetLinkId));
+    // Set B fix (planning/fix-character-image-false-failure/plan.md): see
+    // `pollCharacterImageTask`'s matching comment — same rationale, applied
+    // to `settlePortraitCandidate` (whose own thrown 429 reads are the exact
+    // production evidence for this bug).
+    let hadUnresolvedRead = false;
+    let consecutiveTransientErrors = 0;
     try {
       for (
         let attempt = 0;
         attempt < VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS;
         attempt += 1
       ) {
-        const result = await settlePortraitCandidateMutation.mutateAsync({
-          seriesId,
-          assetLinkId,
-          ...(taskId ? { taskId } : {}),
-        });
+        let result: Awaited<
+          ReturnType<typeof settlePortraitCandidateMutation.mutateAsync>
+        >;
+        try {
+          result = await settlePortraitCandidateMutation.mutateAsync({
+            seriesId,
+            assetLinkId,
+            ...(taskId ? { taskId } : {}),
+          });
+        } catch (pollError) {
+          const errorClass = classifyMediaPollError(pollError);
+          hadUnresolvedRead = true;
+          if (
+            errorClass === "transient" &&
+            consecutiveTransientErrors < VD_MEDIA_POLL_MAX_CONSECUTIVE_TRANSIENT_ERRORS
+          ) {
+            const delay = retryDelayMs(consecutiveTransientErrors);
+            consecutiveTransientErrors += 1;
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+          // Non-retryable (TERMINAL-classified) read error, or a transient
+          // one that exhausted its own consecutive-failure guard — land in
+          // the same non-destructive "outcome not yet confirmed" state the
+          // budget-exhaustion path below uses. NEVER write `failed` here:
+          // this catch only ever means we could not OBSERVE the status, not
+          // that the provider reported the job as failed.
+          updatePortraitCandidateUi(
+            characterId,
+            assetLinkId,
+            buildPortraitCandidateUnresolvedOutcomePatch(lang),
+          );
+          return;
+        }
+        consecutiveTransientErrors = 0;
         if (result.status === "completed") {
           updatePortraitCandidateUi(characterId, assetLinkId, {
             status: "completed",
@@ -2695,27 +2960,41 @@ export function VerticalDramaCharacterStockPanel({
       // Set A fix #1: previously this only toasted, leaving the card frozen
       // on "กำลังสร้าง…" forever — now also patches a terminal `failed`
       // status (with a Retry button available once rendered) via
-      // `buildPortraitCandidateTimeoutPatch`.
+      // `buildPortraitCandidateTimeoutPatch`. Set B fix: that terminal
+      // `failed` verdict is only correct when every read genuinely
+      // succeeded and the job simply never left "queued" — if any read
+      // along the way was unreadable (`hadUnresolvedRead`), use the
+      // non-destructive outcome instead (core principle: never fail a job
+      // because we could not observe it).
       updatePortraitCandidateUi(
         characterId,
         assetLinkId,
-        buildPortraitCandidateTimeoutPatch(lang),
+        hadUnresolvedRead
+          ? buildPortraitCandidateUnresolvedOutcomePatch(lang)
+          : buildPortraitCandidateTimeoutPatch(lang),
       );
       toast.error(
-        t(
-          lang,
-          "ภาพตัวเลือกใช้เวลานานเกินไป ระบบจะเก็บงานไว้ให้ตรวจสอบภายหลัง",
-          "Candidate generation is taking longer than expected; the task remains saved for later review."
-        )
+        hadUnresolvedRead
+          ? buildPollUnresolvedOutcomeMessage(lang)
+          : t(
+              lang,
+              "ภาพตัวเลือกใช้เวลานานเกินไป ระบบจะเก็บงานไว้ให้ตรวจสอบภายหลัง",
+              "Candidate generation is taking longer than expected; the task remains saved for later review."
+            )
       );
     } catch (error) {
-      // Same Set A fix #1 rationale: a thrown poll error (network failure,
-      // etc.) must also leave a terminal state, not just an errorMessage on
-      // an otherwise still-"queued"-looking card.
-      updatePortraitCandidateUi(characterId, assetLinkId, {
-        status: "failed",
-        errorMessage: error instanceof Error ? error.message : "Polling failed",
-      });
+      // Defensive backstop only — every expected poll-error path is now
+      // handled by the per-iteration try/catch above and never reaches
+      // here. Kept as a safety net for anything unexpected escaping that
+      // handling (e.g. a bug in `updatePortraitCandidateUi`/`invalidate`
+      // itself); per the same Set B core principle, still never writes
+      // `failed` purely because of a caught exception here.
+      void error;
+      updatePortraitCandidateUi(
+        characterId,
+        assetLinkId,
+        buildPortraitCandidateUnresolvedOutcomePatch(lang),
+      );
     } finally {
       setPollingPortraitCandidateAssetIds(prev => {
         const next = new Set(prev);
@@ -5710,6 +5989,24 @@ export function VerticalDramaCharacterStockPanel({
                               characterId: selectedCharacter.characterId,
                               sheetType: selectedSheetType,
                               sheetLanguage,
+                              // Same "รายละเอียดเพิ่มเติม" textarea the
+                              // portrait button reads — a sheet is just as
+                              // valid a target for a framing/composition brief
+                              // (`planning/vd-character-full-body-framing/
+                              // plan.md` C5; it used to be dropped here).
+                              ...((
+                                customInstructionByCharacter[
+                                  selectedCharacter.characterId
+                                ] ?? ""
+                              ).trim()
+                                ? {
+                                    customInstruction: (
+                                      customInstructionByCharacter[
+                                        selectedCharacter.characterId
+                                      ] ?? ""
+                                    ).trim(),
+                                  }
+                                : {}),
                               // Always sent — see the matching comment on
                               // `generatePortraitCandidateBatchMutation.mutate` above.
                               selectedImageModelId,
@@ -7369,6 +7666,40 @@ export function VerticalDramaCharacterStockPanel({
                       )
                 }
               />
+            </div>
+            {/* Ephemeral per-generation visual brief — framing/composition
+            direction for the image this dialog is about to generate, NOT a
+            persisted fact about the look (that is the description field
+            above). Sent as `customInstruction`; before
+            `planning/vd-character-full-body-framing/plan.md` C1 there was no
+            way at all to ask a look's image for a different shot size. */}
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-variant-image-instruction" className="text-xs">
+                {t(
+                  lang,
+                  "รายละเอียดภาพ/กรอบภาพ (ไม่บังคับ)",
+                  "Image framing details (optional)"
+                )}
+              </Label>
+              <Textarea
+                id="vd-variant-image-instruction"
+                value={variantImageInstructionInput}
+                onChange={e => setVariantImageInstructionInput(e.target.value)}
+                maxLength={500}
+                rows={2}
+                placeholder={t(
+                  lang,
+                  "เช่น ภาพเต็มตัว เห็นตั้งแต่หัวจรดเท้า / ทำเป็น style sheet หลายท่า",
+                  "e.g. full-body, head to toe / a multi-pose style sheet"
+                )}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {t(
+                  lang,
+                  "ใช้กับภาพที่กำลังจะสร้างเท่านั้น — ไม่ถูกบันทึกเป็นข้อมูลของลุค",
+                  "Applies to the image about to be generated only — not saved as look data."
+                )}
+              </p>
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-xs">

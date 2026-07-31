@@ -61,6 +61,32 @@ function getMcpTaskHardTimeoutMs(mediaType: MediaTask["mediaType"]): number {
 export const getMcpTaskHardTimeoutMsForTest = (
   mediaType: MediaTask["mediaType"],
 ): number => getMcpTaskHardTimeoutMs(mediaType);
+/**
+ * Past the per-type hard timeout, `refreshMcpMediaTaskStatus` now confirms
+ * with the provider before writing a terminal failure (2026-07-31
+ * false-failure fix: character 69 asset 154 had a genuinely completed
+ * provider result overwritten by a clock-only timeout). If the provider is
+ * merely unreachable (network/HTTP failure, or it keeps reporting the job
+ * as still in progress with no verdict), we must not fail the task on the
+ * spot — the whole point is to stop guessing and ask — but we also must not
+ * retry an abandoned job forever. This multiplier bounds that grace window:
+ * once a task is this many multiples of its own hard timeout past creation,
+ * it is force-failed even if the provider never answers.
+ *
+ * Chosen as 2x (not a fixed extra duration) so it stays derived from the
+ * existing per-type constants with no new env knob to maintain, and gives
+ * the stale-task sweeper (`reconcileStaleMcpMediaTasks`, default hourly,
+ * minimum 15-minute stale threshold) a full additional hard-timeout window
+ * of repeated chances — many sweep passes — to observe the provider recover
+ * from a transient outage, matching the proven case where the underlying
+ * disruption was transient rather than a real provider failure. A task can
+ * only ever occupy this grace window once before being force-failed, so it
+ * is bounded and cannot retry forever.
+ */
+const MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER = 2;
+export const getMcpTaskAbsoluteGiveUpMsForTest = (
+  mediaType: MediaTask["mediaType"],
+): number => getMcpTaskHardTimeoutMs(mediaType) * MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER;
 const MCP_OUTPUT_MAX_BYTES_BY_TYPE: Record<MediaTask["mediaType"], number> = {
   image: 75 * 1024 * 1024,
   video: 1024 * 1024 * 1024,
@@ -1243,10 +1269,16 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
   const providerJobId = metadata?.providerJobId ?? task.taskId;
 
   const createdAtMs = Date.parse(task.createdAt);
-  if (
+  const hardTimeoutMs = getMcpTaskHardTimeoutMs(task.mediaType);
+  const isPastHardTimeout = Number.isFinite(createdAtMs) && Date.now() - createdAtMs > hardTimeoutMs;
+  // Bounded escape hatch for a hard-timed-out task the provider genuinely
+  // never answers about (see `MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER` doc) —
+  // only consulted once `isPastHardTimeout` is already true.
+  const isPastAbsoluteGiveUp =
     Number.isFinite(createdAtMs) &&
-    Date.now() - createdAtMs > getMcpTaskHardTimeoutMs(task.mediaType)
-  ) {
+    Date.now() - createdAtMs > hardTimeoutMs * MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER;
+
+  const writeHardTimeoutFailure = async (): Promise<MediaTask> => {
     const timedOutTask: MediaTask = {
       ...task,
       status: "failed",
@@ -1280,6 +1312,14 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
       });
     }
     return timedOutTask;
+  };
+
+  // A hard-timed-out task with no way to ever reach the provider (no
+  // metadata/connection/job id) has nothing left to confirm with — preserve
+  // the previous immediate-failure behavior rather than leaving it stuck
+  // "processing" forever.
+  if (isPastHardTimeout && (!metadata || !tenantId || !metadata.connectionId || !providerJobId)) {
+    return writeHardTimeoutFailure();
   }
 
   if (!metadata || !tenantId || !metadata.connectionId || !providerJobId) return task;
@@ -1345,11 +1385,23 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
       });
       return nextTask;
     }
+    // The provider was merely unreachable (network/HTTP failure, or a
+    // connection runtime we couldn't obtain) rather than giving a definitive
+    // verdict — must NOT be treated as terminal. If this task is hard-timed
+    // out, only force-fail once the bounded absolute give-up window has also
+    // elapsed; otherwise leave it for the next sweeper pass to try again.
+    if (isPastHardTimeout && isPastAbsoluteGiveUp) return writeHardTimeoutFailure();
     return task;
   }
 
   const normalizedStatus = normalizeProviderStatus(providerStatusResult);
-  if (normalizedStatus !== "completed" && normalizedStatus !== "failed") return task;
+  if (normalizedStatus !== "completed" && normalizedStatus !== "failed") {
+    // Reachable, but the provider has no definitive verdict yet (e.g. still
+    // "processing" on its side) — same bounded give-up discipline as the
+    // unreachable case above applies once hard-timed-out.
+    if (isPastHardTimeout && isPastAbsoluteGiveUp) return writeHardTimeoutFailure();
+    return task;
+  }
   let nextTask: MediaTask;
   if (normalizedStatus === "completed") {
     try {

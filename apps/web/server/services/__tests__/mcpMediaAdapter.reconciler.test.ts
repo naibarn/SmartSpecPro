@@ -142,7 +142,7 @@ describe("mcpMediaAdapter — stale reconciler + hard timeout", () => {
     expect(getMcpTaskHardTimeoutMsForTest("video")).toBe(24 * 60 * 60_000);
   });
 
-  it("hard-times-out an abandoned image task after the image-specific window", async () => {
+  it("hard-times-out an abandoned task with no way to ever reach the provider (missing connection metadata), without a provider call", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -150,12 +150,139 @@ describe("mcpMediaAdapter — stale reconciler + hard timeout", () => {
     const result = await refreshMcpMediaTaskStatus({
       ...baseTask,
       mediaType: "image",
-      createdAt: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
+      createdAt: new Date(Date.now() - 3 * 60 * 60_000).toISOString(), // past the 2h image hard timeout
+      parameters: {
+        transportMetadata: {
+          ...baseTask.parameters!.transportMetadata,
+          connectionId: undefined,
+        },
+      },
     });
 
     expect(result.status).toBe("failed");
     expect(result.errorMessage).toBe("หมดเวลารอผลจากผู้ให้บริการ");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Defect 2 fix (2026-07-31, planning/fix-character-image-false-failure):
+   * character 69 / asset 154 had `providerSummary: {"status":"failed",
+   * "isError":false,"hasContent":true,"hardTimeout":true}` — the clock-only
+   * timeout branch overwrote a job the provider had genuinely completed.
+   * Once hard-timed-out, the function must now ask the provider ONE more
+   * time before writing a terminal failure, and self-heal if it reports
+   * completion.
+   */
+  it("self-heals a hard-timed-out task when the provider confirms it actually completed", async () => {
+    const providerOutputUrl = "https://provider.example/generated/output.png";
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: "1",
+        result: { status: "completed", output: { imageUrl: providerOutputUrl } },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshMcpMediaTaskStatus } = await import("../mcpMediaAdapter");
+    const result = await refreshMcpMediaTaskStatus({
+      ...baseTask,
+      mediaType: "image",
+      createdAt: new Date(Date.now() - 3 * 60 * 60_000).toISOString(), // past the 2h image hard timeout
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.errorMessage).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalled();
+    expect(recordMcpUsageEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "generation_complete", status: "success" }),
+    );
+    expect(recordMcpUsageEventMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "generation_failed" }),
+    );
+  });
+
+  it("keeps a hard-timed-out task failed (today's shape) when the provider confirms it actually failed", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(
+      JSON.stringify({ jsonrpc: "2.0", id: "1", result: { status: "failed", reason: "provider render error" } }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshMcpMediaTaskStatus } = await import("../mcpMediaAdapter");
+    const result = await refreshMcpMediaTaskStatus({
+      ...baseTask,
+      mediaType: "image",
+      createdAt: new Date(Date.now() - 3 * 60 * 60_000).toISOString(), // past the 2h image hard timeout
+    });
+
+    expect(result.status).toBe("failed");
+    // Today's shape for a genuine provider-reported failure (not the
+    // clock-only "หมดเวลารอผลจากผู้ให้บริการ" message) — same as the
+    // non-timed-out path uses via `withFailedProviderResult`.
+    expect(result.errorMessage).toBe("MCP provider reported generation failed");
+    expect(recordMcpUsageEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "generation_failed", status: "failed" }),
+    );
+  });
+
+  it("does NOT write a terminal failure for a hard-timed-out task when the provider is merely unreachable, within the bounded grace window", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response("Internal Server Error", { status: 500 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshMcpMediaTaskStatus, getMcpTaskAbsoluteGiveUpMsForTest } = await import("../mcpMediaAdapter");
+    // Past the 2h image hard timeout, but well inside the 4h absolute
+    // give-up bound (2x the hard timeout) — must be left for the next
+    // sweeper pass, not force-failed.
+    expect(getMcpTaskAbsoluteGiveUpMsForTest("image")).toBe(4 * 60 * 60_000);
+    const result = await refreshMcpMediaTaskStatus({
+      ...baseTask,
+      mediaType: "image",
+      createdAt: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
+    });
+
+    expect(result.status).toBe("processing");
+    expect(fetchMock).toHaveBeenCalled();
+    expect(recordMcpUsageEventMock).not.toHaveBeenCalled();
+  });
+
+  it("bounded absolute give-up still force-fails a permanently unreachable task once the grace window is exhausted", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response("Internal Server Error", { status: 500 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshMcpMediaTaskStatus } = await import("../mcpMediaAdapter");
+    // Past the 4h absolute give-up bound for image tasks (2x the 2h hard timeout).
+    const result = await refreshMcpMediaTaskStatus({
+      ...baseTask,
+      mediaType: "image",
+      createdAt: new Date(Date.now() - 5 * 60 * 60_000).toISOString(),
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.errorMessage).toBe("หมดเวลารอผลจากผู้ให้บริการ");
+    expect(fetchMock).toHaveBeenCalled();
+    expect(recordMcpUsageEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "generation_failed", status: "failed", redactedSummary: expect.objectContaining({ hardTimeout: true }) }),
+    );
+  });
+
+  it("does not re-query the provider for an already-terminal task, even one old enough to be past the hard timeout", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshMcpMediaTaskStatus } = await import("../mcpMediaAdapter");
+    const alreadyFailed: MediaTask = {
+      ...baseTask,
+      status: "failed",
+      errorMessage: "already resolved",
+      createdAt: new Date(Date.now() - 30 * 60 * 60_000).toISOString(),
+    };
+    const result = await refreshMcpMediaTaskStatus(alreadyFailed);
+
+    expect(result).toBe(alreadyFailed);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(recordMcpUsageEventMock).not.toHaveBeenCalled();
   });
 
   it("marks a task failed when the provider positively rejects every status-check argument shape (job not found)", async () => {
@@ -193,21 +320,43 @@ describe("mcpMediaAdapter — stale reconciler + hard timeout", () => {
     expect(recordMcpUsageEventMock).not.toHaveBeenCalled();
   });
 
-  it("marks a task failed via hard timeout once it has been processing far longer than the max age, even without calling the provider", async () => {
+  it("does not force-fail a hard-timed-out video task that is still within its own (longer) absolute give-up window", async () => {
+    // `vi.fn()` with no implementation makes every candidate status-check
+    // call fail when the code awaits `response.text()` on `undefined` — the
+    // same class of "provider unreachable" failure as a real network error.
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshMcpMediaTaskStatus, getMcpTaskAbsoluteGiveUpMsForTest } = await import("../mcpMediaAdapter");
+    expect(getMcpTaskAbsoluteGiveUpMsForTest("video")).toBe(48 * 60 * 60_000);
+    const oldTask: MediaTask = {
+      ...baseTask,
+      createdAt: new Date(Date.now() - 30 * 60 * 60_000).toISOString(), // 30h ago: past the 24h hard timeout, but well inside the 48h give-up bound
+    };
+    const result = await refreshMcpMediaTaskStatus(oldTask);
+
+    expect(result.status).toBe("processing");
+    expect(fetchMock).toHaveBeenCalled();
+    expect(recordMcpUsageEventMock).not.toHaveBeenCalled();
+  });
+
+  it("force-fails a video task once it is past its own (longer) absolute give-up bound and the provider is still unreachable", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     const { refreshMcpMediaTaskStatus } = await import("../mcpMediaAdapter");
-    const oldTask: MediaTask = {
+    const abandonedTask: MediaTask = {
       ...baseTask,
-      createdAt: new Date(Date.now() - 30 * 60 * 60_000).toISOString(), // 30h ago
+      createdAt: new Date(Date.now() - 50 * 60 * 60_000).toISOString(), // 50h ago: past the 48h video give-up bound
     };
-    const result = await refreshMcpMediaTaskStatus(oldTask);
+    const result = await refreshMcpMediaTaskStatus(abandonedTask);
 
     expect(result.status).toBe("failed");
     expect(result.errorMessage).toBe("หมดเวลารอผลจากผู้ให้บริการ");
-    // Hard timeout short-circuits before any provider call is attempted.
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalled();
+    expect(recordMcpUsageEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "generation_failed", status: "failed" }),
+    );
   });
 
   it("reconcileStaleMcpMediaTasks scans stale rows and tolerates a per-task failure without aborting the sweep", async () => {
