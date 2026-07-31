@@ -20,10 +20,12 @@ describe("resolveCreateSeriesPresetAction", () => {
       lang: "th",
     });
 
-    expect(action).toEqual({
-      kind: "synthesize_from_premise_only",
-      label: "ให้ AI สร้างภาคต่อจากเรื่องเดิม + โจทย์",
-    });
+    expect(action.kind).toBe("synthesize_from_premise_only");
+    expect(action.label).toBe("ให้ AI สร้างภาคต่อจากเรื่องเดิม + โจทย์");
+    // Fix: CTA must state its outcome (fix-create-series-premise-blend
+    // plan, change 3) — every synthesize_* kind carries an outcomeHint so
+    // the surrounding panel can answer "what will pressing this do".
+    expect(action.outcomeHint).toBeTruthy();
   });
 
   it("premise + 0 presets -> synthesizes from the premise alone", () => {
@@ -33,7 +35,8 @@ describe("resolveCreateSeriesPresetAction", () => {
       lang: "th",
     });
     expect(action.kind).toBe("synthesize_from_premise_only");
-    expect(action.label).toBe("ให้ AI สร้างโครงเรื่องจากโจทย์");
+    expect(action.label).toBe("ให้ AI สร้างดราฟต์ซีรีย์จากโจทย์");
+    expect(action.outcomeHint).toBeTruthy();
   });
 
   it("premise + 1 preset -> synthesizes premise+preset (never verbatim)", () => {
@@ -43,7 +46,8 @@ describe("resolveCreateSeriesPresetAction", () => {
       lang: "th",
     });
     expect(action.kind).toBe("synthesize_premise_and_presets");
-    expect(action.label).toBe("ให้ AI ผสมโจทย์กับ preset");
+    expect(action.label).toBe("ให้ AI ผสมโจทย์กับ preset เป็นดราฟต์ซีรีย์");
+    expect(action.outcomeHint).toBeTruthy();
   });
 
   it("premise + 2-5 presets -> synthesizes premise+presets", () => {
@@ -54,7 +58,7 @@ describe("resolveCreateSeriesPresetAction", () => {
         lang: "th",
       });
       expect(action.kind).toBe("synthesize_premise_and_presets");
-      expect(action.label).toBe("ให้ AI ผสมโจทย์กับ preset");
+      expect(action.label).toBe("ให้ AI ผสมโจทย์กับ preset เป็นดราฟต์ซีรีย์");
     }
   });
 
@@ -68,7 +72,7 @@ describe("resolveCreateSeriesPresetAction", () => {
     expect(action.label).toBe("ใช้ Preset นี้");
   });
 
-  it("no premise + 2-5 presets -> synthesizes presets only (unchanged legacy label)", () => {
+  it("no premise + 2-5 presets -> synthesizes presets only", () => {
     for (let presetCount = 2; presetCount <= 5; presetCount++) {
       const action = resolveCreateSeriesPresetAction({
         hasUserPremise: false,
@@ -76,7 +80,8 @@ describe("resolveCreateSeriesPresetAction", () => {
         lang: "th",
       });
       expect(action.kind).toBe("synthesize_presets_only");
-      expect(action.label).toBe("ให้ AI ผสมเป็น Preset");
+      expect(action.label).toBe("ให้ AI ผสม Preset เป็นดราฟต์ซีรีย์");
+      expect(action.outcomeHint).toBeTruthy();
     }
   });
 
@@ -111,7 +116,7 @@ describe("resolveCreateSeriesPresetAction", () => {
         presetCount: 0,
         lang: "en",
       }).label
-    ).toBe("Let AI build the story from your premise");
+    ).toBe("Let AI build a series draft from your premise");
     expect(
       resolveCreateSeriesPresetAction({
         hasUserPremise: false,

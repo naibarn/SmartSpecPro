@@ -313,6 +313,15 @@ export interface CreateSeriesPresetAction {
    * anyway, e.g. a defensive check in the mutation handler).
    */
   blockedReason?: string;
+  /**
+   * Short answer to "what happens when I press this" for the AI-synthesis
+   * kinds — surfaced next to the CTA so the button label itself can stay
+   * concise while the panel still states the concrete outcome (title,
+   * logline, main plot, season arc, cast). Undefined for
+   * `apply_preset_verbatim` (nothing to explain — it just applies the
+   * preset) and `blocked` (explained by `blockedReason` instead).
+   */
+  outcomeHint?: string;
 }
 
 export function resolveCreateSeriesPresetAction(params: {
@@ -340,6 +349,20 @@ export function resolveCreateSeriesPresetAction(params: {
     };
   }
 
+  // What the synthesis actually produces, spelled out once here so every
+  // synthesize_* kind below can point the CTA's surrounding hint at it
+  // instead of leaving the button label ("ผสม"/"mix") as the only
+  // explanation of what pressing it does.
+  // Phase 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
+  // — widened to name every tab this fills in (per the owner's own request:
+  // "พอกดให้สร้าง ก็ช่วยสร้างข้อมูลช่องอื่น ๆ จนครบทุก tab"), including the
+  // title CANDIDATES (plural — Stage 1's `titleOptions`, still just one of
+  // several possibly-undefined server fields) and `locations`, which
+  // `applyPresetDraft` now actually writes (see its own doc comment).
+  const outcomeHint = th
+    ? "ระบบจะสร้างดราฟต์ซีรีย์ให้ครบทุกแท็บ: ชื่อเรื่อง (ให้เลือก 4-5 แบบ) เรื่องย่อ โครงเรื่องหลัก อาร์กของซีซัน ตัวละคร ฉาก/สถานที่ และ Visual Bible — แก้ไขทับได้ทุกช่องก่อนกดสร้างจริง"
+    : "This fills in every tab — title candidates to choose from, logline, main plot, season arc, cast, locations, and visual bible — all still editable before you confirm.";
+
   // A premise exists — it is always the spine; 0..5 presets are supplements.
   if (hasUserPremise) {
     return presetCount === 0
@@ -350,8 +373,9 @@ export function resolveCreateSeriesPresetAction(params: {
               ? "ให้ AI สร้างภาคต่อจากเรื่องเดิม + โจทย์"
               : "Let AI continue the original story with your premise"
             : th
-              ? "ให้ AI สร้างโครงเรื่องจากโจทย์"
-              : "Let AI build the story from your premise",
+              ? "ให้ AI สร้างดราฟต์ซีรีย์จากโจทย์"
+              : "Let AI build a series draft from your premise",
+          outcomeHint,
         }
       : {
           kind: "synthesize_premise_and_presets",
@@ -360,8 +384,9 @@ export function resolveCreateSeriesPresetAction(params: {
               ? "ให้ AI สร้างภาคต่อจากเรื่องเดิม + โจทย์ + preset"
               : "Let AI continue the original story with your premise and presets"
             : th
-              ? "ให้ AI ผสมโจทย์กับ preset"
-              : "Let AI mix your premise with the preset(s)",
+              ? "ให้ AI ผสมโจทย์กับ preset เป็นดราฟต์ซีรีย์"
+              : "Let AI blend your premise with the preset(s) into a series draft",
+          outcomeHint,
         };
   }
 
@@ -369,7 +394,10 @@ export function resolveCreateSeriesPresetAction(params: {
   if (presetCount >= 2) {
     return {
       kind: "synthesize_presets_only",
-      label: th ? "ให้ AI ผสมเป็น Preset" : "Mix into a preset",
+      label: th
+        ? "ให้ AI ผสม Preset เป็นดราฟต์ซีรีย์"
+        : "Let AI blend the presets into a series draft",
+      outcomeHint,
     };
   }
 
@@ -835,6 +863,19 @@ export function CreateSeriesWizard({
           occupation: c.occupation,
         })),
         visualBible: draft.visualBible,
+        // Stage 1/2 (fix-create-series-premise-blend plan-phase2-mode-first,
+        // gap analysis item 2) — `locations` was never written here before,
+        // leaving the "ตัวละคร & ฉาก" tab's location roster permanently
+        // empty. Same join convention as `characters` above (`"name —
+        // description"` per line, matching the server's
+        // `parseLocationsDraft`). Optional/additive: an older or shorter
+        // model response without `draft.locations` leaves `prev.locations`
+        // untouched — byte-identical to before this field existed.
+        locations: draft.locations
+          ? draft.locations
+              .map(l => `${l.name} — ${l.description}`)
+              .join("\n")
+          : prev.locations,
         // An AI-mixed draft is not itself a single stored preset row — clear
         // any single-preset `appliedPresetId` a prior "Use this preset" click
         // may have left behind so `create` doesn't stamp the wrong identity.
@@ -931,9 +972,18 @@ export function CreateSeriesWizard({
       businessContext: mixBusinessContext || undefined,
       productContext: form.productName || undefined,
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
-      toneHint: form.tone || undefined,
-      seriesTitleHint: form.title.trim() || undefined,
-      genreHint: form.genre.trim() || undefined,
+      // Clamp every bounded hint to the same create-series limits the server
+      // enforces (shared/verticalDramaSeries/createSeriesFieldLimits.ts).
+      // Unclamped `form.genre` is exactly what produced the 2026-07-31
+      // 09:14:56 production BAD_REQUEST — `{ code: "too_big", maximum: 100,
+      // path: ["genreHint"] }` — when a full story premise was typed into
+      // the 100-char genre field and sent straight through. The genre
+      // `<Input>` intentionally has no `maxLength` (see the rescue notice
+      // below), so clamping here is the only thing standing between an
+      // oversized value and a hard 400 before any LLM/skill call runs.
+      toneHint: clampToCreateSeriesLimit(form.tone, "tone"),
+      seriesTitleHint: clampToCreateSeriesLimit(form.title, "title"),
+      genreHint: clampToCreateSeriesLimit(form.genre, "genre"),
       // Preset Mix v2 (spec §8.2.2.C.1, section-15) — sent ALONGSIDE legacy
       // `selectedPresetIds` unconditionally; the SERVER decides whether the
       // tenant's `verticalDramaSeriesPresetMixV2` flag is on and only then
@@ -945,9 +995,9 @@ export function CreateSeriesWizard({
       })),
       // Feature 132 §4.2 (F132A) — sent UNCONDITIONALLY, same "server
       // decides" convention as `selections` above (verticalDramaUserPremise
-      // tenant flag gates whether the server honors it).
-      // TODO: server accepts this once verticalDramaSeries.ts's deferred
-      // userPremise wiring lands (section-02 plan item 3/4).
+      // tenant flag gates whether the server honors it). The server already
+      // accepts this field — see
+      // server/routers/__tests__/verticalDramaSeries.userPremise.test.ts.
       userPremise: form.userPremise.trim() || undefined,
       // Contract: `@shared/verticalDramaSeries/audienceAgeRating` — steers
       // preset-mix synthesis to match the series' target maturity tier.
@@ -958,6 +1008,36 @@ export function CreateSeriesWizard({
       // persist so the basics-only draft respects continuity.
       lineageContext: buildLineagePayload(),
     } as Parameters<typeof synthesizePresetMutation.mutate>[0]);
+  }
+
+  /**
+   * Rescue action for the misplaced-premise UX bug (2026-07-31 09:14:56
+   * production BAD_REQUEST) — the genre field is only 100 chars and reads
+   * naturally in Thai as "story direction", so a full premise regularly ends
+   * up typed there instead of in the 2000-char premise box above. Moves that
+   * text into `userPremise` and clears `genre`, never overwriting existing
+   * premise text: if a premise is already present, the genre text is
+   * appended after it instead of replacing it.
+   */
+  function handleMoveGenreToPremise() {
+    const misplacedText = form.genre.trim();
+    if (!misplacedText) return;
+    setForm(prev => {
+      const existingPremise = prev.userPremise.trim();
+      const combined = existingPremise
+        ? `${existingPremise}\n\n${misplacedText}`
+        : misplacedText;
+      return {
+        ...prev,
+        userPremise: clampToCreateSeriesLimit(combined, "userPremise") ?? "",
+        genre: "",
+      };
+    });
+    toast.success(
+      lang === "th"
+        ? "ย้ายข้อความไปยังช่องโจทย์เรื่องแล้ว"
+        : "Moved the text into the premise field"
+    );
   }
 
   // Stage 2.6 — the ONLY thing that varies per `createMode` is the step
@@ -1250,6 +1330,7 @@ export function CreateSeriesWizard({
             onSynthesizePreset={handleSynthesizePreset}
             onApplyPresetDraft={applyPresetDraft}
             onApplyPreset={applyPreset}
+            onMoveGenreToPremise={handleMoveGenreToPremise}
             products={products as MarketplaceProductOption[]}
             productsLoading={productsQuery.isLoading}
             productSearch={productSearch}
@@ -1385,6 +1466,15 @@ interface GenrePreset {
 
 interface SynthesizedGenrePresetDraftBase {
   title: string;
+  /**
+   * Stage 1 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
+   * — 4-5 candidate SERIES titles; `title` above is always one of them.
+   * Optional/additive on the server's Zod schema (`verticalDramaPresetSynthesis.ts`),
+   * so an older response (or a model that omits it) still parses — this
+   * client type mirrors that with `?`. Never fabricated client-side: absent
+   * simply means no title picker renders (see `PresetSynthesisActionPanel`).
+   */
+  titleOptions?: string[];
   category: string;
   logline: string;
   mainPlot: string;
@@ -1400,6 +1490,16 @@ interface SynthesizedGenrePresetDraftBase {
   };
   characters: GenrePresetCharacter[];
   visualBible: string;
+  /**
+   * Stage 1 — 3-6 recurring locations (skill.md "Locations" section),
+   * mirroring `characters`' minimal shape. Optional/additive, same
+   * backward-compatibility contract as `titleOptions` above. `applyPresetDraft`
+   * joins these into `form.locations` using the exact "name — description"
+   * per-line convention the server's `parseLocationsDraft` already expects
+   * (`server/routers/verticalDramaSeries.ts`) — never a new taxonomy invented
+   * here.
+   */
+  locations?: Array<{ name: string; description: string }>;
   mixRecipe?: {
     primaryFlavor?: string;
     supportingFlavors?: string[];
@@ -1512,6 +1612,7 @@ function WizardStep({
   onSynthesizePreset,
   onApplyPresetDraft,
   onApplyPreset,
+  onMoveGenreToPremise,
   products,
   productsLoading,
   productSearch,
@@ -1562,6 +1663,8 @@ function WizardStep({
   onSynthesizePreset: () => void;
   onApplyPresetDraft: (draft: SynthesizedGenrePresetDraft) => void;
   onApplyPreset: (preset: GenrePreset) => void;
+  /** Misplaced-premise rescue (fix-create-series-premise-blend plan) — moves an oversized genre value into `userPremise` and clears genre. */
+  onMoveGenreToPremise: () => void;
   products: MarketplaceProductOption[];
   productsLoading: boolean;
   productSearch: string;
@@ -1626,6 +1729,23 @@ function WizardStep({
   // Preset browser height: toggle between compact and tall; the list is also
   // user-draggable via CSS resize-y for anything in between.
   const [presetListExpanded, setPresetListExpanded] = useState(false);
+  // Phase 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
+  // — explicit up-front choice of which section is primary on step 1: the
+  // premise textarea or the preset library. PURELY a presentation gate (see
+  // `ModeSection` below, which renders the non-primary section inside a
+  // native, collapsed-by-default `<details>` — same disclosure pattern
+  // already used for "Blend details" further down in this file); it never
+  // adds a wizard step and never touches `resolveWizardSteps`/`stepComplete`.
+  // Declared here (not in `CreateSeriesWizard`) so it persists across step
+  // navigation exactly like `presetListExpanded` above (`WizardStep` stays
+  // mounted; only `stepId` changes), while remaining pure UI state that is
+  // never sent to `create` and never clears `form.userPremise`/preset
+  // selections when toggled. Defaults to `"premise"` — matches the
+  // pre-existing shipped default (premise-first hero, presets already
+  // labelled optional) and the plan's own stated default.
+  const [seriesMode, setSeriesMode] = useState<"premise" | "preset">(
+    "premise"
+  );
   // vd-premise-first-wizard follow-up (discoverability fix) — the weight
   // sliders live inside `MixAndMatchPresetPanel` (the preset rail), but the
   // "Adjust weights" link inside a blend report can now render either there
@@ -1658,6 +1778,72 @@ function WizardStep({
       );
       return (
         <div className="grid gap-4">
+          {/* Phase 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
+              — explicit up-front mode choice, ahead of every other section
+              in this step (including the lineage toggle below): the creator
+              picks BEFORE any data entry whether their own premise or the
+              preset library is primary. Presentation-only — `seriesMode`
+              never gates `resolveWizardSteps`/`stepComplete` and never
+              clears `form.userPremise` or the preset selections when
+              switched (see `ModeSection` usages below). */}
+          <div
+            className="rounded-xl border bg-muted/20 p-4 shadow-sm"
+            role="radiogroup"
+            aria-label={
+              th ? "เริ่มต้นสร้างซีรีย์ยังไง" : "How do you want to start"
+            }
+          >
+            <p className="text-sm font-semibold">
+              {th ? "เริ่มต้นสร้างซีรีย์ยังไง" : "How do you want to start"}
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={seriesMode === "premise"}
+                data-testid="vd-mode-premise"
+                onClick={() => setSeriesMode("premise")}
+                className={cn(
+                  "rounded-md border px-3 py-2.5 text-left transition-colors",
+                  seriesMode === "premise"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "bg-background hover:bg-accent"
+                )}
+              >
+                <span className="block text-sm font-semibold">
+                  {th ? "เขียนแนวเรื่องเอง" : "Write my own premise"}
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {th
+                    ? "พิมพ์โจทย์เรื่องที่อยากได้ แล้วให้ AI เติมช่องอื่นให้ครบทุกแท็บ — preset ยังเลือกเสริมได้ ไม่บังคับ"
+                    : "Type your story idea and let AI fill in every other tab — presets remain available as an optional extra"}
+                </span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={seriesMode === "preset"}
+                data-testid="vd-mode-preset"
+                onClick={() => setSeriesMode("preset")}
+                className={cn(
+                  "rounded-md border px-3 py-2.5 text-left transition-colors",
+                  seriesMode === "preset"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "bg-background hover:bg-accent"
+                )}
+              >
+                <span className="block text-sm font-semibold">
+                  {th ? "เลือกจาก preset" : "Start from presets"}
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {th
+                    ? "เลือก preset 1-5 แบบ — 1 แบบใช้ทันที, 2-5 แบบให้ AI ผสมกัน"
+                    : "Pick 1-5 presets — 1 applies directly, 2-5 get AI-blended together"}
+                </span>
+              </button>
+            </div>
+          </div>
+
           {/* Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) —
               the 3-way create-mode toggle + parent-series picker lives at the
               TOP of the `basic` step body (never a new wizard step — see the
@@ -1778,8 +1964,20 @@ function WizardStep({
 
           {/* Premise leads step 1 as a full-width hero input — everything
               below (presets, basic setup) builds on top of it, not the
-              reverse (see plan.md "target behaviour" table). */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+              reverse (see plan.md "target behaviour" table). Phase 2 —
+              demoted to a collapsed `ModeSection` (native `<details>`,
+              collapsed by default) whenever `seriesMode === "preset"`, so
+              the preset library reads as primary in that mode without
+              deleting the premise+preset blend capability underneath. */}
+          <ModeSection
+            primary={seriesMode === "premise"}
+            collapsedSummary={
+              th
+                ? "เพิ่มโจทย์เรื่องเสริม (ไม่บังคับ)"
+                : "Add a bonus premise (optional)"
+            }
+            className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm"
+          >
             <Field
               label={
                 th
@@ -1842,8 +2040,14 @@ function WizardStep({
                 premise yet, this renders nothing — the CTA stays in the
                 preset rail below, unchanged (see `MixAndMatchPresetPanel`'s
                 `actionSection` prop), since that is legacy behavior nobody
-                reported an issue with. Exactly one CTA renders at a time. */}
-            {hasUserPremise && (
+                reported an issue with. Exactly one CTA renders at a time.
+                Phase 2 — also gated on `seriesMode !== "preset"`: when the
+                preset library is the chosen primary section, the CTA always
+                renders in the (now-primary, always-open) rail instead — see
+                the mirrored condition on `actionSection` below — so a CTA is
+                never left stranded inside the now-collapsed premise
+                section. */}
+            {hasUserPremise && seriesMode !== "preset" && (
               <div className="mt-4 border-t border-primary/15 pt-4">
                 <PresetSynthesisActionPanel
                   lang={lang}
@@ -1855,6 +2059,8 @@ function WizardStep({
                   loading={mixDraftLoading}
                   errorMessage={mixDraftError}
                   draft={mixDraft}
+                  currentTitle={form.title}
+                  onSelectTitle={value => set("title", value)}
                   onGenerate={onSynthesizePreset}
                   onApplySinglePreset={onApplyPreset}
                   onApplyDraft={onApplyPresetDraft}
@@ -1863,7 +2069,7 @@ function WizardStep({
                 />
               </div>
             )}
-          </div>
+          </ModeSection>
 
           {/* Below the premise: basic setup (wide, primary data-entry column)
               is now on the LEFT where the preset library used to be, and the
@@ -2101,6 +2307,44 @@ function WizardStep({
                       }
                     />
                   </Field>
+                  {/* Misplaced-premise rescue (2026-07-31 09:14:56 production
+                      BAD_REQUEST) — "แนวเรื่อง" reads naturally in Thai as
+                      "story direction", so a full story premise regularly
+                      lands here instead of in the 2000-char premise box
+                      above (which is easy to scroll past). Genre is capped
+                      at 100 chars server-side; intentionally NO `maxLength`
+                      on the `<Input>` above — silently truncating keystrokes
+                      is what hid this bug from the user in the first place.
+                      Instead: let them type, then offer a one-click move
+                      once the text is clearly too long to be a genre label. */}
+                  {!isLineageMode &&
+                    form.genre.trim().length >
+                      CREATE_SERIES_FIELD_LIMITS.genre && (
+                      <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5">
+                        <AlertCircle
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600"
+                          aria-hidden="true"
+                        />
+                        <div className="flex-1 space-y-1.5">
+                          <p className="text-[11px] text-amber-900 dark:text-amber-200">
+                            {th
+                              ? `ข้อความนี้ยาว ${form.genre.trim().length} ตัวอักษร — ดูเหมือนโจทย์เรื่อง ไม่ใช่แนวเรื่อง (สูงสุด ${CREATE_SERIES_FIELD_LIMITS.genre} ตัวอักษร) ลองย้ายไปที่ช่อง "โจทย์เรื่องที่อยากได้" ด้านบนแทน — ระบบจะตัดข้อความส่วนเกินก่อนส่งให้ AI มิฉะนั้น`
+                              : `This text is ${form.genre.trim().length} characters — it looks like a story premise, not a genre label (max ${CREATE_SERIES_FIELD_LIMITS.genre} chars). Move it to the "Story premise" field above instead — otherwise the extra text is cut off before being sent to AI.`}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 gap-1 px-2 text-[11px]"
+                            onClick={onMoveGenreToPremise}
+                          >
+                            {th
+                              ? "ย้ายข้อความนี้ไปที่โจทย์เรื่อง"
+                              : "Move this text to the premise field"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   <Field
                     label={th ? "เรื่องย่อ (logline)" : "Logline"}
                     helperText={
@@ -2126,7 +2370,19 @@ function WizardStep({
               </div>
             </div>
 
-            <div className="flex min-h-[26rem] flex-col rounded-xl border bg-muted/20 p-4 shadow-sm xl:min-h-[calc(90dvh-22rem)]">
+            {/* Phase 2 — demoted to a collapsed `ModeSection` whenever
+                `seriesMode === "premise"` (the default), mirroring the
+                premise hero's own demotion when `seriesMode === "preset"`
+                above. */}
+            <ModeSection
+              primary={seriesMode === "preset"}
+              collapsedSummary={
+                th
+                  ? "เพิ่ม preset เสริมรสชาติ (ไม่บังคับ)"
+                  : "Add optional presets"
+              }
+              className="flex min-h-[26rem] flex-col rounded-xl border bg-muted/20 p-4 shadow-sm xl:min-h-[calc(90dvh-22rem)]"
+            >
               <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-1.5 text-sm font-semibold">
@@ -2206,8 +2462,12 @@ function WizardStep({
                 // there); rendering it again here would be a second,
                 // competing button firing the same mutation. Only render it
                 // in the rail for the unchanged no-premise legacy flow.
+                // Phase 2 — also renders here whenever `seriesMode ===
+                // "preset"` (mirrors the hero's own gate above), so the CTA
+                // always lives in whichever section is currently primary and
+                // open, never inside the collapsed one.
                 actionSection={
-                  hasUserPremise ? null : (
+                  hasUserPremise && seriesMode !== "preset" ? null : (
                     <PresetSynthesisActionPanel
                       lang={lang}
                       presets={presets}
@@ -2218,6 +2478,8 @@ function WizardStep({
                       loading={mixDraftLoading}
                       errorMessage={mixDraftError}
                       draft={mixDraft}
+                      currentTitle={form.title}
+                      onSelectTitle={value => set("title", value)}
                       onGenerate={onSynthesizePreset}
                       onApplySinglePreset={onApplyPreset}
                       onApplyDraft={onApplyPresetDraft}
@@ -2226,7 +2488,7 @@ function WizardStep({
                   )
                 }
               />
-            </div>
+            </ModeSection>
           </div>
         </div>
       );
@@ -3565,6 +3827,8 @@ function PresetSynthesisActionPanel({
   loading,
   errorMessage,
   draft,
+  currentTitle,
+  onSelectTitle,
   onGenerate,
   onApplySinglePreset,
   onApplyDraft,
@@ -3580,6 +3844,10 @@ function PresetSynthesisActionPanel({
   loading: boolean;
   errorMessage?: string;
   draft?: SynthesizedGenrePresetDraft;
+  /** Stage 2 — the wizard's current `form.title`, so the title picker below can highlight the option (if any) that's already selected. */
+  currentTitle: string;
+  /** Stage 2 — writes the chosen candidate into `form.title` directly (an explicit user pick, so it may replace an existing value — unlike `applyPresetDraft`'s own no-clobber `resolvedTitle` rule, which only applies to the AUTOMATIC apply). */
+  onSelectTitle: (title: string) => void;
   onGenerate: () => void;
   onApplySinglePreset: (preset: GenrePreset) => void;
   onApplyDraft: (draft: SynthesizedGenrePresetDraft) => void;
@@ -3660,6 +3928,17 @@ function PresetSynthesisActionPanel({
         )}
       </div>
 
+      {/* "What do I press, and what will the system do for me" — the button
+          label alone used to just say "ผสม" (mix), which didn't say what
+          pressing it actually produces. Only shown for the AI-synthesis
+          kinds; `apply_preset_verbatim` needs no explanation and `blocked`
+          has its own reason below. */}
+      {presetAction.outcomeHint && (
+        <p className="text-[11px] text-muted-foreground">
+          {presetAction.outcomeHint}
+        </p>
+      )}
+
       {/* Defensive fallback: a disabled CTA must never be silent about why.
           The real wizard always has defaults/basic facts, so zero presets
           normally resolves to `synthesize_from_basics`, not `blocked`. */}
@@ -3707,6 +3986,50 @@ function PresetSynthesisActionPanel({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-semibold">{draft.title}</p>
+              {/* Stage 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
+                  — 4-5 title candidates (`draft.titleOptions`), server-optional
+                  and additive: renders nothing when absent (older/shorter
+                  model response), same as today. `draft.title` above stays
+                  visible either way — a user who never opens the picker still
+                  sees exactly what applying the draft will set `form.title`
+                  to. Picking a candidate writes `form.title` directly
+                  (`onSelectTitle`); `applyPresetDraft`'s own no-clobber rule
+                  (never overwrite a title the user already typed) still
+                  governs what happens on "ใช้ draft นี้" for whichever title
+                  ends up in `form.title` at that point. */}
+              {draft.titleOptions && draft.titleOptions.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    {th
+                      ? "เลือกชื่อเรื่อง (หรือแก้ไขเองที่ช่อง \"ชื่อซีรีย์\" ด้านล่างได้เสมอ)"
+                      : 'Pick a title (or edit your own in the "Series title" field below — always editable)'}
+                  </p>
+                  <div
+                    className="mt-1 flex flex-wrap gap-1.5"
+                    role="group"
+                    aria-label={
+                      th ? "ตัวเลือกชื่อเรื่อง" : "Title candidates"
+                    }
+                  >
+                    {draft.titleOptions.map(option => (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={currentTitle.trim() === option}
+                        onClick={() => onSelectTitle(option)}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                          currentTitle.trim() === option
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "bg-background hover:bg-accent"
+                        )}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p className="mt-1 text-xs text-muted-foreground">
                 {draft.logline}
               </p>
@@ -3845,6 +4168,43 @@ function PresetSynthesisActionPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Phase 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
+ * — renders `children` either as the primary (open, unwrapped) section or
+ * demoted inside a native, collapsed-by-default `<details>` disclosure, per
+ * `primary`. Uses plain `<details>`/`<summary>` (the same pattern already
+ * used for "Blend details (technical)" above) rather than a `Collapsible`
+ * primitive: Radix's `CollapsibleContent` unmounts its children while
+ * closed, which would make the demoted section's inputs/buttons
+ * unreachable; `<details>` keeps its content in the DOM at all times
+ * (browsers hide it visually via layout, not by removing it), so switching
+ * `seriesMode` back and forth never loses anything the user already typed
+ * or selected inside the demoted section.
+ */
+function ModeSection({
+  primary,
+  collapsedSummary,
+  className,
+  children,
+}: {
+  primary: boolean;
+  collapsedSummary: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  if (primary) {
+    return <div className={className}>{children}</div>;
+  }
+  return (
+    <details className={className}>
+      <summary className="cursor-pointer list-none text-sm font-semibold text-muted-foreground">
+        {collapsedSummary}
+      </summary>
+      <div className="mt-3">{children}</div>
+    </details>
   );
 }
 

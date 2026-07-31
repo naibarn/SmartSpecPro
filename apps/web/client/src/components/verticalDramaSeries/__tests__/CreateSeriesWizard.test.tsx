@@ -321,7 +321,7 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
     fireEvent.click(
-      screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ })
+      screen.getByRole("button", { name: /ให้ AI ผสม Preset/ })
     );
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
@@ -667,7 +667,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
     fireEvent.click(
-      screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ })
+      screen.getByRole("button", { name: /ให้ AI ผสม Preset/ })
     );
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
@@ -806,7 +806,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     });
 
     const button = screen.getByRole("button", {
-      name: /ให้ AI สร้างโครงเรื่องจากโจทย์/,
+      name: /ให้ AI สร้างดราฟต์ซีรีย์จากโจทย์/,
     });
     expect(button).toBeEnabled();
     fireEvent.click(button);
@@ -868,7 +868,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.change(textarea, { target: { value: "มีโจทย์แล้ว" } });
 
     expect(
-      screen.getByRole("button", { name: /ให้ AI สร้างโครงเรื่องจากโจทย์/ })
+      screen.getByRole("button", { name: /ให้ AI สร้างดราฟต์ซีรีย์จากโจทย์/ })
     ).toBeInTheDocument();
   });
 
@@ -884,7 +884,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     // Exactly one matching button exists — `getByRole` (singular) would
     // throw "found multiple elements" if the CTA rendered in both places.
     const button = screen.getByRole("button", {
-      name: /ให้ AI สร้างโครงเรื่องจากโจทย์/,
+      name: /ให้ AI สร้างดราฟต์ซีรีย์จากโจทย์/,
     });
     const presetLibraryHeading = screen.getByText("คลัง Preset แนวเรื่อง");
 
@@ -927,6 +927,97 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       target: { value: "เรื่องย่อที่เขียนเอง" },
     });
     expect(loglineTextarea.value).toBe("เรื่องย่อที่เขียนเอง");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Misplaced-premise rescue + clamped hints                                   */
+/* (planning/fix-create-series-premise-blend/plan.md)                         */
+/* -------------------------------------------------------------------------- */
+
+describe("CreateSeriesWizard — misplaced-premise rescue and clamped hints (fix-create-series-premise-blend)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
+    mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+  });
+
+  function getGenreInput(): HTMLInputElement {
+    const label = screen.getByText("แนวเรื่อง");
+    return label
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
+  }
+
+  it("regression: a >100-char genre is clamped to <=100 chars in genreHint before the mutation fires (2026-07-31 09:14:56 too_big BAD_REQUEST)", () => {
+    renderWizard();
+    const genreInput = getGenreInput();
+    const oversizedGenre = "หมวดหมู่ยาวเกินไป ".repeat(10); // > 100 chars, no premise/presets typed
+    fireEvent.change(genreInput, { target: { value: oversizedGenre } });
+    expect(genreInput.value.trim().length).toBeGreaterThan(100);
+
+    // No premise, no presets, but genre is a non-empty basic fact -> the
+    // basics-only synthesis CTA is the one that fires `handleSynthesizePreset`.
+    fireEvent.click(
+      screen.getByRole("button", { name: /ให้ AI สร้างทั้งหมดให้/ })
+    );
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledTimes(1);
+    const call = mockSynthesizeMutate.mock.calls[0][0];
+    expect(call.genreHint).toBeDefined();
+    expect((call.genreHint as string).length).toBeLessThanOrEqual(100);
+  });
+
+  it("rescue notice moves an oversized genre into userPremise and clears genre, without clobbering an existing premise", () => {
+    renderWizard();
+    const textarea = screen
+      .getByText(/^โจทย์เรื่องที่อยากได้/)
+      .closest("div")
+      ?.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, {
+      target: { value: "โจทย์เดิมของผู้ใช้ต้องไม่หาย" },
+    });
+
+    const genreInput = getGenreInput();
+    const misplacedPremise = "นักสืบสาวไล่ล่าคดีฆาตกรรมต่อเนื่อง ".repeat(5);
+    fireEvent.change(genreInput, { target: { value: misplacedPremise } });
+    expect(genreInput.value.trim().length).toBeGreaterThan(100);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /ย้ายข้อความนี้ไปที่โจทย์เรื่อง/ })
+    );
+
+    // Genre is cleared...
+    expect(getGenreInput().value).toBe("");
+    // ...and the moved text is APPENDED after the existing premise, never
+    // overwriting it (both substrings survive).
+    const updatedTextarea = screen
+      .getByText(/^โจทย์เรื่องที่อยากได้/)
+      .closest("div")
+      ?.querySelector("textarea") as HTMLTextAreaElement;
+    expect(updatedTextarea.value).toContain("โจทย์เดิมของผู้ใช้ต้องไม่หาย");
+    expect(updatedTextarea.value).toContain(misplacedPremise.trim());
+    // The rescue notice/button disappears once genre is back under the limit.
+    expect(
+      screen.queryByRole("button", {
+        name: /ย้ายข้อความนี้ไปที่โจทย์เรื่อง/,
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  it("rescue notice does not render for a genre at or under the 100-char limit", () => {
+    renderWizard();
+    const genreInput = getGenreInput();
+    fireEvent.change(genreInput, { target: { value: "ดราม่าย้อนยุค" } });
+    expect(
+      screen.queryByRole("button", {
+        name: /ย้ายข้อความนี้ไปที่โจทย์เรื่อง/,
+      })
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -1006,5 +1097,203 @@ describe("CreateSeriesWizard — LLM model pin at creation", () => {
         defaultModelId: "anthropic/claude-quality-large",
       })
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Phase 2 — mode-first wizard: mode selector, title picker, locations fill  */
+/* (planning/fix-create-series-premise-blend/plan-phase2-mode-first.md)      */
+/* -------------------------------------------------------------------------- */
+
+describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker, locations)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
+    mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+  });
+
+  function getPremiseTextarea(): HTMLTextAreaElement {
+    const label = screen.getByText(/^โจทย์เรื่องที่อยากได้/);
+    return label
+      .closest("div")
+      ?.querySelector("textarea") as HTMLTextAreaElement;
+  }
+
+  function draftWithTitleOptionsAndLocations() {
+    return {
+      contract_version: 1,
+      title: "Default Draft Title",
+      titleOptions: [
+        "Default Draft Title",
+        "Alt Title Two",
+        "Alt Title Three",
+        "Alt Title Four",
+      ],
+      category: "sci_fi_mecha",
+      logline: "logline",
+      mainPlot: "main plot",
+      seasonArc: "season arc",
+      tone: "tone",
+      cliffhangerStyle: "cliff",
+      characters: [{ name: "G", role: "Lead", description: "desc" }],
+      visualBible: "visual bible",
+      locations: [
+        {
+          name: "Home Kitchen",
+          description: "an open kitchen with a dining nook",
+        },
+        { name: "Rooftop Bar", description: "a neon-lit rooftop bar" },
+        {
+          name: "Office Lobby",
+          description: "a glass-walled corporate lobby",
+        },
+      ],
+      warnings: [],
+    };
+  }
+
+  it("mode selector defaults to 'เขียนแนวเรื่องเอง' (own premise) on a fresh wizard", () => {
+    renderWizard();
+    expect(screen.getByTestId("vd-mode-premise")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("vd-mode-preset")).toHaveAttribute(
+      "aria-checked",
+      "false"
+    );
+  });
+
+  it("(e) switching mode does not change the wizard's step count", () => {
+    renderWizard();
+    const stepsBefore = screen
+      .getByRole("list", { name: "wizard steps" })
+      .querySelectorAll("li").length;
+
+    fireEvent.click(screen.getByTestId("vd-mode-preset"));
+
+    const stepsAfter = screen
+      .getByRole("list", { name: "wizard steps" })
+      .querySelectorAll("li").length;
+    expect(stepsAfter).toBe(stepsBefore);
+    expect(stepsBefore).toBeGreaterThan(0);
+  });
+
+  it("(d) switching mode does not destroy a typed premise or a selected preset", () => {
+    renderWizard();
+    fireEvent.change(getPremiseTextarea(), {
+      target: { value: "โจทย์ที่พิมพ์ไว้ต้องไม่หาย" },
+    });
+    selectCategoryAndPresets(["1"]);
+
+    fireEvent.click(screen.getByTestId("vd-mode-preset"));
+    fireEvent.click(screen.getByTestId("vd-mode-premise"));
+
+    expect(getPremiseTextarea().value).toBe("โจทย์ที่พิมพ์ไว้ต้องไม่หาย");
+
+    // The preset selection survived the round trip too — generating from
+    // this (now-restored) premise-primary mode still forwards preset "1".
+    fireEvent.click(
+      screen.getByRole("button", { name: /ให้ AI ผสมโจทย์กับ preset/ })
+    );
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPremise: "โจทย์ที่พิมพ์ไว้ต้องไม่หาย",
+        selectedPresetIds: ["1"],
+      })
+    );
+  });
+
+  it("(a) picking a title candidate writes it into form.title", () => {
+    mockSynthesizeMutationState = {
+      data: {
+        draft: draftWithTitleOptionsAndLocations(),
+        creditsUsed: 3,
+        model: "test-model",
+      },
+      isPending: false,
+    };
+    renderWizard();
+    selectCategoryAndPresets(["1", "2"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Alt Title Two" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
+
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Alt Title Two" })
+    );
+  });
+
+  it("(c) applying a draft with `locations` fills form.locations (sent as bible.locationsDraft) using the 'name — description' per-line convention", () => {
+    mockSynthesizeMutationState = {
+      data: {
+        draft: draftWithTitleOptionsAndLocations(),
+        creditsUsed: 3,
+        model: "test-model",
+      },
+      isPending: false,
+    };
+    renderWizard();
+    selectCategoryAndPresets(["1", "2"]);
+    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
+
+    const call = mockCreateMutate.mock.calls[0][0];
+    expect(call.bible.locationsDraft).toBe(
+      "Home Kitchen — an open kitchen with a dining nook\n" +
+        "Rooftop Bar — a neon-lit rooftop bar\n" +
+        "Office Lobby — a glass-walled corporate lobby"
+    );
+  });
+
+  it("(b) backward compat: a draft WITHOUT titleOptions/locations applies exactly as before — no title-candidate group renders, and form.locations stays untouched", () => {
+    mockSynthesizeMutationState = {
+      data: {
+        draft: {
+          contract_version: 1,
+          title: "No Extras Draft",
+          category: "sci_fi_mecha",
+          logline: "logline",
+          mainPlot: "main plot",
+          seasonArc: "season arc",
+          tone: "tone",
+          cliffhangerStyle: "cliff",
+          characters: [{ name: "H", role: "Lead", description: "desc" }],
+          visualBible: "visual bible",
+          warnings: [],
+        },
+        creditsUsed: 3,
+        model: "test-model",
+      },
+      isPending: false,
+    };
+    renderWizard();
+    selectCategoryAndPresets(["1", "2"]);
+
+    expect(
+      screen.queryByRole("group", { name: /ตัวเลือกชื่อเรื่อง/ })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
+
+    const call = mockCreateMutate.mock.calls[0][0];
+    expect(call.title).toBe("No Extras Draft");
+    expect(call.bible.locationsDraft).toBe("");
   });
 });
