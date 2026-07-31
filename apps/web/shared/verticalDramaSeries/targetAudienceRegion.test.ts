@@ -7,6 +7,7 @@ import {
   normalizeTargetAudienceRegion,
   buildTargetAudienceRegionInstruction,
   readTargetAudienceRegionFromBible,
+  isTargetAudienceRegionExplicitlySetInBible,
   resolveCharacterTargetAudienceRegion,
   readCharacterRegionOverrideFromData,
   buildCharacterRegionEthnicityInstruction,
@@ -88,6 +89,40 @@ describe("readTargetAudienceRegionFromBible", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Series-default deterministic enforcement                                   */
+/* (planning/vd-character-prompt-followups/plan.md Item 1, 2026-07-31)        */
+/* -------------------------------------------------------------------------- */
+
+describe("isTargetAudienceRegionExplicitlySetInBible", () => {
+  it("is true when the bible carries a valid region value", () => {
+    for (const region of VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS) {
+      expect(isTargetAudienceRegionExplicitlySetInBible({ targetAudienceRegion: region })).toBe(
+        true,
+      );
+    }
+  });
+
+  it("is false when the bible never set the field at all (the un-set global fallback case)", () => {
+    expect(isTargetAudienceRegionExplicitlySetInBible({})).toBe(false);
+    expect(isTargetAudienceRegionExplicitlySetInBible(null)).toBe(false);
+    expect(isTargetAudienceRegionExplicitlySetInBible(undefined)).toBe(false);
+  });
+
+  it("is false for an invalid/garbage stored value — does not confuse garbage with a real user choice", () => {
+    expect(isTargetAudienceRegionExplicitlySetInBible({ targetAudienceRegion: "atlantis" })).toBe(
+      false,
+    );
+    expect(isTargetAudienceRegionExplicitlySetInBible({ targetAudienceRegion: 42 })).toBe(false);
+  });
+
+  it("is true even when the explicitly-stored value happens to equal the hardcoded global default ('thai') — a real choice of 'thai' is still a choice", () => {
+    expect(isTargetAudienceRegionExplicitlySetInBible({ targetAudienceRegion: "thai" })).toBe(
+      true,
+    );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Per-character region/ethnicity override (planning/vd-per-character-        */
 /* ethnicity/plan.md)                                                         */
 /* -------------------------------------------------------------------------- */
@@ -156,6 +191,9 @@ describe("resolveCharacterTargetAudienceRegion — precedence", () => {
     expect(resolved.isExplicit).toBe(false);
     expect(resolved.region).toBe("south_asian");
     expect(resolved.descriptor).toBe(VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS.south_asian);
+    // Byte-identical default (no 3rd arg passed): never deterministically
+    // enforced unless the caller explicitly says the series chose it.
+    expect(resolved.enforceDeterministically).toBe(false);
   });
 
   it("level 4/5: falls through to the global 'thai' default when the series has no region set either", () => {
@@ -163,12 +201,50 @@ describe("resolveCharacterTargetAudienceRegion — precedence", () => {
     expect(resolved.source).toBe("series_default");
     expect(resolved.isExplicit).toBe(false);
     expect(resolved.region).toBe(VERTICAL_DRAMA_DEFAULT_TARGET_AUDIENCE_REGION);
+    expect(resolved.enforceDeterministically).toBe(false);
   });
 
   it("an invalid/garbage dropdown region value is ignored, falling through to the series default", () => {
     const resolved = resolveCharacterTargetAudienceRegion({ region: "atlantis" }, "western");
     expect(resolved.source).toBe("series_default");
     expect(resolved.region).toBe("western");
+  });
+
+  describe("Item 1 (planning/vd-character-prompt-followups/plan.md) — seriesRegionIsExplicit / enforceDeterministically", () => {
+    it("character_free_text and character_region are ALWAYS enforceDeterministically:true, regardless of the series flag", () => {
+      const freeText = resolveCharacterTargetAudienceRegion(
+        { ethnicityText: "Japanese-Thai mix" },
+        "thai",
+        false,
+      );
+      expect(freeText.enforceDeterministically).toBe(true);
+
+      const dropdown = resolveCharacterTargetAudienceRegion({ region: "western" }, "thai", false);
+      expect(dropdown.enforceDeterministically).toBe(true);
+    });
+
+    it("series_default is enforceDeterministically:true when the series owner explicitly chose the region", () => {
+      const resolved = resolveCharacterTargetAudienceRegion(undefined, "south_asian", true);
+      expect(resolved.source).toBe("series_default");
+      // isExplicit keeps its pre-existing per-character-only meaning — the
+      // payload fact / extra instruction line must NOT fire for a
+      // series-level default (that wording is per-character-specific).
+      expect(resolved.isExplicit).toBe(false);
+      expect(resolved.enforceDeterministically).toBe(true);
+      expect(resolved.region).toBe("south_asian");
+    });
+
+    it("series_default stays enforceDeterministically:false when the series never chose a region (un-set global fallback)", () => {
+      const resolved = resolveCharacterTargetAudienceRegion(undefined, "thai", false);
+      expect(resolved.source).toBe("series_default");
+      expect(resolved.enforceDeterministically).toBe(false);
+    });
+
+    it("an EXPLICIT per-character override still wins/stays enforced even when the series itself never set a region", () => {
+      const resolved = resolveCharacterTargetAudienceRegion({ region: "african" }, "thai", false);
+      expect(resolved.source).toBe("character_region");
+      expect(resolved.enforceDeterministically).toBe(true);
+    });
   });
 
   it("every preset region's descriptor contains at least one of its own anchor keywords (self-verifying, required for D2 idempotency)", () => {

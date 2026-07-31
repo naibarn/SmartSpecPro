@@ -74,6 +74,21 @@ import type { VerticalDramaSeriesLineage } from "@shared/verticalDramaSeries/lin
 const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-preset-synthesizer");
 const MIN_SELECTIONS = 2;
 const MAX_SELECTIONS = 5;
+/**
+ * Single source of truth for how long the LLM is told/allowed to make
+ * `title` (and each `titleOptions` candidate) — shared by the Zod schema
+ * bound below AND the "MUST be at most N characters" prompt instruction in
+ * `buildUserPrompt`/`buildUserPromptV2`, so the advisory text the model
+ * receives and the bound that actually forces a schema-validation retry can
+ * never drift apart (planning/vd-character-prompt-followups/plan.md Item 3).
+ * Deliberately independent of `CREATE_SERIES_FIELD_LIMITS.title` (255, the
+ * downstream Create Series TITLE field/DB limit — see
+ * `clampDraftForCreateSeries`/`clampTitleAndToneForCreateSeries`'s own belt
+ * clamp) and `CREATE_SERIES_FIELD_LIMITS.genre` (100, an unrelated field —
+ * `title` never feeds genre, see those functions' doc comments): a punchy
+ * series title is intentionally shorter than the hard transport ceiling.
+ */
+const SYNTHESIZED_TITLE_MAX_LENGTH = 150;
 const V2_SKILL_CONTRACT_MARKERS = [
   "Mix and Match v2",
   "contract_version",
@@ -150,9 +165,34 @@ const synthesizedWarningSchema = z.object({
   message: z.string().min(1),
 });
 
+/**
+ * `locations` entry (skill.md "Locations" section, added alongside
+ * `titleOptions` below). Deliberately mirrors `characters`' minimal shape
+ * (name + prose description) rather than inventing a location taxonomy in
+ * TS — the skill decides what makes a good recurring location; this schema
+ * only bounds the two fields' lengths.
+ */
+const synthesizedLocationSchema = z.object({
+  name: z.string().min(1).max(120),
+  description: z.string().min(1).max(500),
+});
+
 const synthesizedPresetDraftSchema = z.object({
   contract_version: z.literal(1),
-  title: z.string().min(1).max(150),
+  title: z.string().min(1).max(SYNTHESIZED_TITLE_MAX_LENGTH),
+  // 4-5 candidate SERIES titles (skill.md "Title Options" section). `title`
+  // above remains the recommended default and, per the skill contract, MUST
+  // be one of these entries — that consistency rule lives in the skill
+  // prose, not as a Zod cross-field refinement, so a model that gets it
+  // slightly wrong degrades to "just show the options" rather than failing
+  // the whole draft. `.optional()` keeps this additive: a model response
+  // that omits it (older skill version, or the model simply didn't return
+  // it) still parses exactly as before.
+  titleOptions: z
+    .array(z.string().trim().min(1).max(SYNTHESIZED_TITLE_MAX_LENGTH))
+    .min(4)
+    .max(5)
+    .optional(),
   category: z.string().min(1).max(60),
   logline: z.string().min(1),
   mainPlot: z.string().min(1),
@@ -162,6 +202,9 @@ const synthesizedPresetDraftSchema = z.object({
   creatorSummary: creatorSummarySchema,
   characters: z.array(synthesizedCharacterSchema).min(3).max(8),
   visualBible: z.string().min(1),
+  // 3-6 recurring locations (skill.md "Locations" section) — optional,
+  // additive, same backward-compatibility contract as `titleOptions` above.
+  locations: z.array(synthesizedLocationSchema).min(3).max(6).optional(),
   mixRecipe: z
     .object({
       primaryFlavor: z.string().min(1),
@@ -609,20 +652,66 @@ function uniqueStrings(values: string[]): string[] {
 }
 
 /**
- * The Create Series wizard maps `draft.title` -> `genre` and `draft.tone` ->
- * `tone` verbatim (see CreateSeriesWizard.tsx `applyPresetDraft`). Those two
- * create-series input fields have stricter length limits than this schema's
- * own `title`/`tone` bounds, so an LLM output that is valid here can still be
- * too long for `verticalDramaSeriesRouter.create`. Clamp to the shared
- * create-series limits (belt) in addition to the skill prompt guidance
- * (suspenders) so the wizard never receives an unusable draft.
+ * Clamps every `titleOptions` candidate to the same `"title"` create-series
+ * limit (255 — `CREATE_SERIES_FIELD_LIMITS.title`) that
+ * `clampDraftForCreateSeries`/`clampTitleAndToneForCreateSeries` apply to
+ * `title` itself — any candidate may later be picked as the recommended
+ * `title` (see CreateSeriesWizard.tsx's title-picker, which writes a chosen
+ * `titleOptions` entry straight into `form.title`), so it must satisfy the
+ * same bound `title` does. Previously this (and `clampDraftForCreateSeries`/
+ * `clampTitleAndToneForCreateSeries`) clamped against the unrelated
+ * `"genre"` limit (100) — `title` never feeds the genre field (see those
+ * functions' doc comments below) — so it needlessly truncated candidates
+ * that were already valid up to the schema's own 150-char ceiling
+ * (`SYNTHESIZED_TITLE_MAX_LENGTH`).
+ * Fixed: planning/vd-character-prompt-followups/plan.md Item 3. Pure/
+ * side-effect-free; `undefined` in, `undefined` out (the field is
+ * optional/additive).
+ */
+function clampTitleOptionsForCreateSeries(
+  titleOptions: string[] | undefined,
+): { titleOptions: string[] | undefined; changed: boolean } {
+  if (!titleOptions) return { titleOptions: undefined, changed: false };
+  const clamped = titleOptions.map(
+    (option) => clampToCreateSeriesLimit(option, "title") ?? option,
+  );
+  const changed = clamped.some((value, index) => value !== titleOptions[index]);
+  return { titleOptions: clamped, changed };
+}
+
+/**
+ * The Create Series wizard maps `draft.title` -> the series TITLE field and
+ * `draft.tone` -> `tone` (see CreateSeriesWizard.tsx `applyPresetDraft`);
+ * `draft.category` — NEVER `draft.title` — separately maps to `genre` via
+ * `resolveGenreAfterPresetDraft(prev.genre, draft.category, resolvedTitle)`,
+ * which clamps `draft.category` against `"genre"` (100) itself and only
+ * consults the resolved title for its `detectGenrePollution` similarity
+ * check, never assigns it into `genre`. `category` is additionally bounded
+ * to 60 chars by this schema's own `.max(60)`, well inside the genre limit
+ * regardless of how long `title` is. So `draft.title` below is clamped
+ * against the `"title"` create-series limit (255,
+ * `CREATE_SERIES_FIELD_LIMITS.title`) — its own field's real limit — not
+ * `"genre"` (100), which a prior version of this function mistakenly
+ * reused and which needlessly truncated titles between the skill's
+ * ~100-150-char guidance and the 255-char hard cap
+ * (planning/vd-character-prompt-followups/plan.md Item 3). Clamp to the
+ * shared create-series limits (belt) in addition to the skill prompt
+ * guidance / `SYNTHESIZED_TITLE_MAX_LENGTH` schema bound (suspenders) so the
+ * wizard never receives an unusable draft — in practice this clamp is a
+ * near-no-op because the Zod schema already rejects (forces a retry on) any
+ * `title` over `SYNTHESIZED_TITLE_MAX_LENGTH` (150), well under 255.
+ * `titleOptions` (when present) is clamped the same way, entry by entry,
+ * since any candidate may eventually be picked as `title`.
  */
 export function clampDraftForCreateSeries(
   draft: SynthesizedGenrePresetDraft,
 ): { draft: SynthesizedGenrePresetDraft; clamped: boolean } {
-  const clampedTitle = clampToCreateSeriesLimit(draft.title, "genre") ?? draft.title;
+  const clampedTitle = clampToCreateSeriesLimit(draft.title, "title") ?? draft.title;
   const clampedTone = clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone;
-  const clamped = clampedTitle !== draft.title || clampedTone !== draft.tone;
+  const { titleOptions: clampedTitleOptions, changed: titleOptionsChanged } =
+    clampTitleOptionsForCreateSeries(draft.titleOptions);
+  const clamped =
+    clampedTitle !== draft.title || clampedTone !== draft.tone || titleOptionsChanged;
 
   if (!clamped) {
     return { draft, clamped: false };
@@ -633,6 +722,7 @@ export function clampDraftForCreateSeries(
       ...draft,
       title: clampedTitle,
       tone: clampedTone,
+      ...(clampedTitleOptions ? { titleOptions: clampedTitleOptions } : {}),
       warnings: [
         ...draft.warnings,
         {
@@ -733,10 +823,12 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
         ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
         : `Set "mixRecipe.primaryFlavor" to "${hasLineageContext && hasUserPremise ? "series_lineage" : hasUserPremise ? "user_premise" : "ai_original"}" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.`,
       "Use compact JSON only.",
-      `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
+      `"title" MUST be at most ${SYNTHESIZED_TITLE_MAX_LENGTH} characters (it fills the series TITLE field — "category" is what fills the genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
       `Every character's "narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
       `Every character's "roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label.`,
+      'If you return "titleOptions", it MUST have 4 or 5 entries and MUST include "title" verbatim as one of them.',
+      'If you return "locations", it MUST have 3 to 6 entries, each with "name" and "description".',
     ],
   };
 
@@ -759,7 +851,7 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
     "Synthesize a new Vertical Drama Series genre preset from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
-    '{"contract_version":1,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}]}',
+    '{"contract_version":1,"title":string,"titleOptions":[string],"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"locations":[{"name":string,"description":string}],"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}]}',
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -1117,13 +1209,30 @@ export interface SynthesizeVerticalDramaPresetV2Params {
   userPremise?: string;
 }
 
-/** Generic sibling of `clampDraftForCreateSeries` (v1) — kept SEPARATE (not shared) so v1's own code path/behavior is never touched by this file's v2 additions. */
+/**
+ * Generic sibling of `clampDraftForCreateSeries` (v1) — kept SEPARATE (not
+ * shared) so v1's own code path/behavior is never touched by this file's v2
+ * additions. `titleOptions` is optional on `T` and clamped the same way
+ * `clampDraftForCreateSeries` clamps it (see `clampTitleOptionsForCreateSeries`).
+ * `title` is clamped against the `"title"` create-series limit (255), not
+ * `"genre"` (100) — see `clampDraftForCreateSeries`'s doc comment for the
+ * full trace of why `title` never feeds the genre field
+ * (planning/vd-character-prompt-followups/plan.md Item 3).
+ */
 function clampTitleAndToneForCreateSeries<
-  T extends { title: string; tone: string; warnings: Array<{ code: string; message: string }> },
+  T extends {
+    title: string;
+    tone: string;
+    titleOptions?: string[];
+    warnings: Array<{ code: string; message: string }>;
+  },
 >(draft: T): { draft: T; clamped: boolean } {
-  const clampedTitle = clampToCreateSeriesLimit(draft.title, "genre") ?? draft.title;
+  const clampedTitle = clampToCreateSeriesLimit(draft.title, "title") ?? draft.title;
   const clampedTone = clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone;
-  const clamped = clampedTitle !== draft.title || clampedTone !== draft.tone;
+  const { titleOptions: clampedTitleOptions, changed: titleOptionsChanged } =
+    clampTitleOptionsForCreateSeries(draft.titleOptions);
+  const clamped =
+    clampedTitle !== draft.title || clampedTone !== draft.tone || titleOptionsChanged;
 
   if (!clamped) {
     return { draft, clamped: false };
@@ -1134,6 +1243,7 @@ function clampTitleAndToneForCreateSeries<
       ...draft,
       title: clampedTitle,
       tone: clampedTone,
+      ...(clampedTitleOptions ? { titleOptions: clampedTitleOptions } : {}),
       warnings: [
         ...draft.warnings,
         {
@@ -1287,10 +1397,12 @@ function buildUserPromptV2(args: {
         ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
         : `Set "mixRecipe.primaryFlavor" to "${hasLineageContext && hasUserPremise ? "series_lineage" : hasUserPremise ? "user_premise" : "ai_original"}" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.`,
       "Use compact JSON only.",
-      `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
+      `"title" MUST be at most ${SYNTHESIZED_TITLE_MAX_LENGTH} characters (it fills the series TITLE field — "category" is what fills the genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
       `Every character's "narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
       `Every character's "roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label.`,
+      'If you return "titleOptions", it MUST have 4 or 5 entries and MUST include "title" verbatim as one of them.',
+      'If you return "locations", it MUST have 3 to 6 entries, each with "name" and "description".',
     ],
   };
 
@@ -1300,8 +1412,8 @@ function buildUserPromptV2(args: {
   // that case, and a shape line that still lists it caused the model to emit
   // an empty-string `visualIdentity` object that failed schema validation.
   const jsonShape = mergedVisualIdentity
-    ? '{"contract_version":2,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}],"visualIdentity":{"styleName":string,"lighting":string,"cameraGrammar":string,"characterArchetypes":[{"role":string,"look":string}],"positiveFragments":[string]}}'
-    : '{"contract_version":2,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}]}';
+    ? '{"contract_version":2,"title":string,"titleOptions":[string],"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"locations":[{"name":string,"description":string}],"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}],"visualIdentity":{"styleName":string,"lighting":string,"cameraGrammar":string,"characterArchetypes":[{"role":string,"look":string}],"positiveFragments":[string]}}'
+    : '{"contract_version":2,"title":string,"titleOptions":[string],"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"locations":[{"name":string,"description":string}],"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}]}';
 
   return [
     renderCriteriaVersionMarker(),

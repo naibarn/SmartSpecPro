@@ -92,6 +92,10 @@ import {
   normalizeCharacterVisualBibleAuthoritativeEvidence,
   resolveFaceSourceReferenceForCharacter,
   resolveCharacterVisualBibleModel,
+  LEAD_STAR_MARKER_PHRASES as leadStarMarkerPhrases,
+  LEAD_APPEAL_MARKER_PHRASES as leadAppealMarkerPhrases,
+  LEAD_ROLE_DRIFT_MARKER_PHRASES as leadRoleDriftMarkerPhrases,
+  LEAD_NEGATIVE_PROMPT_ROLE_DRIFT_GUARD_PHRASES as leadNegativePromptRoleDriftGuardPhrases,
 } from "../verticalDramaCharacterImageGeneration";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import { resolveCharacterTargetAudienceRegion } from "@shared/verticalDramaSeries/targetAudienceRegion";
@@ -740,6 +744,92 @@ describe("findLeadPromptQualityIssues", () => {
           /camera-ready lead beauty/i.test(issue.message),
       ),
     ).toBe(true);
+  });
+
+  it("still rejects a genuinely ordinary lead prompt (no star marker, no appeal signals, no negative-prompt guards)", () => {
+    const character = validCharacter("char-1", "lead_female");
+    character.primary_portrait_prompt =
+      "A portrait of an ordinary woman, brown hair, plain office clothes, neutral expression";
+    character.turnaround_prompt = character.primary_portrait_prompt;
+    character.full_body_prompt = character.primary_portrait_prompt;
+    character.expression_sheet_prompt = character.primary_portrait_prompt;
+    character.outfit_sheet_prompt = character.primary_portrait_prompt;
+    character.negative_prompt = "blurry, low quality";
+
+    const issues = findLeadPromptQualityIssues(character, "lead_female");
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "primary_portrait_prompt" }),
+        expect.objectContaining({ field: "negative_prompt" }),
+      ]),
+    );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Lead-quality rubric — skill/TS sync                                        */
+/* (`planning/vd-character-prompt-followups/plan.md` Item 2, 2026-07-31)      */
+/*                                                                             */
+/* Proves the "skill authors, TS only verifies" contract actually holds       */
+/* against the REAL loaded skill.md/SKILL.md files, not a fixture — if a      */
+/* phrase is ever added/removed from the TS canonical arrays without making   */
+/* the identical edit to both skill files, this test fails the build.         */
+/* -------------------------------------------------------------------------- */
+describe("lead-quality rubric — skill/TS vocabulary sync", () => {
+  function normalizeForPhraseMatch(text: string): string {
+    return text.toLowerCase().replace(/[-\s]+/g, " ");
+  }
+
+  async function readRealSkillFile(manifest: "skill.md" | "SKILL.md"): Promise<string> {
+    const realFs = await vi.importActual<typeof import("fs")>("fs");
+    const realPath = await vi.importActual<typeof import("path")>("path");
+    const candidates = [
+      realPath.resolve(process.cwd(), "skills/vertical-drama-character-visual-bible", manifest),
+      realPath.resolve(
+        process.cwd(),
+        "apps/web/skills/vertical-drama-character-visual-bible",
+        manifest,
+      ),
+    ];
+    const filePath = candidates.find((candidate) => realFs.existsSync(candidate));
+    if (!filePath) {
+      throw new Error(`vertical-drama-character-visual-bible/${manifest} not found`);
+    }
+    return realFs.readFileSync(filePath, "utf8");
+  }
+
+  it.each(["skill.md", "SKILL.md"] as const)(
+    "%s publishes every LEAD_STAR_MARKER_PHRASES / LEAD_APPEAL_MARKER_PHRASES / " +
+      "LEAD_ROLE_DRIFT_MARKER_PHRASES / LEAD_NEGATIVE_PROMPT_ROLE_DRIFT_GUARD_PHRASES phrase verbatim",
+    async (manifest) => {
+      const content = normalizeForPhraseMatch(await readRealSkillFile(manifest));
+
+      const allPhrases: string[] = [
+        ...Object.values(leadStarMarkerPhrases).flat(),
+        ...leadAppealMarkerPhrases,
+        ...leadRoleDriftMarkerPhrases,
+        ...leadNegativePromptRoleDriftGuardPhrases,
+      ];
+      for (const phrase of allPhrases) {
+        expect(content, `expected ${manifest} to contain "${phrase}"`).toContain(
+          normalizeForPhraseMatch(phrase),
+        );
+      }
+    },
+  );
+
+  it("both skill manifests stay byte-identical (dual-case skill trap)", async () => {
+    const skillMd = await readRealSkillFile("skill.md");
+    const SKILL_MD = await readRealSkillFile("SKILL.md");
+    expect(SKILL_MD).toBe(skillMd);
+  });
+
+  it("skill.md states the numeric thresholds the validator actually enforces", async () => {
+    const content = await readRealSkillFile("skill.md");
+    expect(content).toMatch(/at least one role-specific star phrase/i);
+    expect(content).toMatch(/at least two appeal signals/i);
+    expect(content).toMatch(/at least two role-drift\s+guard phrases/i);
   });
 });
 
@@ -2623,6 +2713,49 @@ describe("generateCharacterVisualPrompts — region/ethnicity anchor enforcement
 
     const result = await generateCharacterVisualPrompts(baseParams());
 
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(result.portraitPrompt).toBe(validCharacter().primary_portrait_prompt);
+  });
+
+  // Item 1 (planning/vd-character-prompt-followups/plan.md, 2026-07-31) — an
+  // unset character (no per-character override) whose only region source is
+  // an EXPLICITLY-CHOSEN series-level default must now get the SAME D1/D2
+  // deterministic enforcement as an explicit per-character override.
+  it("Item 1 — D2: an unset character inheriting an EXPLICITLY-CHOSEN series-level default still gets the anchor deterministically prepended when the model drops it", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
+      undefined,
+      "thai",
+      /* seriesRegionIsExplicit */ true,
+    );
+    expect(resolvedCharacterRegion.isExplicit).toBe(false);
+    expect(resolvedCharacterRegion.enforceDeterministically).toBe(true);
+    const stillMissingAttempt1 = validCharacter();
+    const stillMissingAttempt2 = validCharacter();
+    mockExecute
+      .mockResolvedValueOnce(successResponse(validOutput([stillMissingAttempt1])))
+      .mockResolvedValueOnce(successResponse(validOutput([stillMissingAttempt2])));
+
+    const result = await generateCharacterVisualPrompts(baseParams({ resolvedCharacterRegion }));
+
+    // Same bounded-retry-then-deterministic-fallback contract as the explicit
+    // per-character case — D1 retries once, D2 backstops afterward.
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(result.portraitPrompt.startsWith(resolvedCharacterRegion.descriptor)).toBe(true);
+  });
+
+  it("Item 1 — D2 does NOT fire when the series never chose a region at all (un-set global fallback, nobody picked it)", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
+      undefined,
+      "thai",
+      /* seriesRegionIsExplicit */ false,
+    );
+    expect(resolvedCharacterRegion.enforceDeterministically).toBe(false);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    const result = await generateCharacterVisualPrompts(baseParams({ resolvedCharacterRegion }));
+
+    // No corrective retry, no deterministic prepend — byte-identical to the
+    // pre-existing "no resolvedCharacterRegion at all" behavior.
     expect(mockExecute).toHaveBeenCalledTimes(1);
     expect(result.portraitPrompt).toBe(validCharacter().primary_portrait_prompt);
   });

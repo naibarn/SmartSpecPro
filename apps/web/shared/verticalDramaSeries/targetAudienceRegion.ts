@@ -130,6 +130,32 @@ export function readTargetAudienceRegionFromBible(
   return normalizeTargetAudienceRegion(bible?.targetAudienceRegion);
 }
 
+/**
+ * Was `targetAudienceRegion` ACTUALLY chosen by the series owner (a valid
+ * enum value stored on `bible.targetAudienceRegion`), as opposed to a series
+ * that never set it — where `readTargetAudienceRegionFromBible` above still
+ * returns a value, but only because `normalizeTargetAudienceRegion` silently
+ * falls back to the hardcoded global default (`"thai"`)?
+ *
+ * `readTargetAudienceRegionFromBible`'s return value alone cannot answer this
+ * — it always collapses "series set it" and "series never touched it" into
+ * one normalized region. This function is the missing distinction
+ * (`planning/vd-character-prompt-followups/plan.md` Item 1): it lets callers
+ * enforce the D1 (validator-retry)/D2 (anchor-prepend) deterministic guards
+ * for a series-level default the owner actually picked, WITHOUT also
+ * deterministically stamping a region nobody chose onto every series that
+ * never touched this setting.
+ */
+export function isTargetAudienceRegionExplicitlySetInBible(
+  bible: Record<string, unknown> | null | undefined,
+): boolean {
+  const value = bible?.targetAudienceRegion;
+  return (
+    typeof value === "string" &&
+    (VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS as readonly string[]).includes(value)
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* Per-character region/ethnicity override (planning/vd-per-character-        */
 /* ethnicity/plan.md, 2026-07-17)                                             */
@@ -186,8 +212,13 @@ export interface VerticalDramaCharacterRegionOverrideInput {
  * (global `"thai"` default) — the caller always passes
  * `readTargetAudienceRegionFromBible`'s result as `seriesDefaultRegion`,
  * which already collapses "series bible has a region" vs "series bible has
- * none" into one normalized region value, so there is nothing left for this
- * resolver to distinguish between those two levels.
+ * none" into one normalized region value, so this resolver alone cannot
+ * distinguish between those two levels from `seriesDefaultRegion` alone.
+ *
+ * `planning/vd-character-prompt-followups/plan.md` Item 1 (2026-07-31) adds
+ * that missing distinction via the SEPARATE `seriesRegionIsExplicit`
+ * parameter below (sourced from `isTargetAudienceRegionExplicitlySetInBible`)
+ * — see `enforceDeterministically`'s doc comment on the return type.
  *
  * Precedence level 3 ("explicit ethnicity already in the character's own
  * `description`") is DELIBERATELY NOT modeled here — it was, and remains,
@@ -207,10 +238,28 @@ export type VerticalDramaCharacterRegionSource =
 export interface VerticalDramaResolvedCharacterRegion {
   source: VerticalDramaCharacterRegionSource;
   /** `true` only for `"character_free_text"`/`"character_region"` — the two
-   *  sources that trigger the deterministic validator-retry (D1) and
-   *  fallback-prepend (D2) enforcement layers. `false` for `"series_default"`
-   *  — an unset character must stay byte-identical to pre-existing behavior. */
+   *  PER-CHARACTER sources. Gates the character-specific payload fact
+   *  (`region_ethnicity` on the character object) and the additional
+   *  `buildCharacterRegionEthnicityInstruction` override instruction line
+   *  (both phrased as "the user picked this fact for THIS character in the
+   *  character editor" — wording that would be FALSE for a series-level
+   *  default, so it must stay gated on this flag, not on
+   *  `enforceDeterministically` below). `false` for `"series_default"` —
+   *  unchanged from before Item 1, so an unset character's payload/prompt
+   *  stays byte-identical to pre-existing behavior. */
   isExplicit: boolean;
+  /** `true` whenever the deterministic D1 (validator corrective-retry) and
+   *  D2 (`ensureRegionEthnicityAnchorPresent` fallback-prepend) enforcement
+   *  layers should run (`planning/vd-character-prompt-followups/plan.md`
+   *  Item 1, 2026-07-31). `true` for both per-character explicit sources
+   *  (`isExplicit`) AND for `"series_default"` when the series owner
+   *  actually chose a region (`seriesRegionIsExplicit: true` passed into
+   *  `resolveCharacterTargetAudienceRegion`). `false` only when the region
+   *  is the un-set global fallback that nobody selected — deliberately NOT
+   *  deterministically enforced, so a series whose owner never touched this
+   *  setting is never silently stamped with "Thai/Southeast Asian features"
+   *  as if that were a user choice. */
+  enforceDeterministically: boolean;
   /** Nearest preset region — always a valid enum value, even for a free-text
    *  override (best-effort normalized from the character's own `region`
    *  field or the series default), so callers needing the enum (e.g. legacy
@@ -238,6 +287,15 @@ export interface VerticalDramaResolvedCharacterRegion {
  *   4/5. `seriesDefaultRegion` (already collapses the series default and the
  *      global `"thai"` default into one normalized value).
  *
+ * @param seriesRegionIsExplicit — (`planning/vd-character-prompt-followups/
+ *   plan.md` Item 1, 2026-07-31, additive/optional — defaults to `false` so
+ *   every pre-existing call site that doesn't pass it stays byte-identical)
+ *   the result of `isTargetAudienceRegionExplicitlySetInBible` on the SAME
+ *   series `bible` the caller derived `seriesDefaultRegion` from. Only
+ *   affects the `"series_default"` branch's `enforceDeterministically` flag
+ *   — never `isExplicit`, which keeps its exact pre-existing per-character-only
+ *   meaning (see that field's own doc comment on the return type).
+ *
  * Pure and side-effect-free — never touches the DB, matching the
  * `resolveEffectiveCharacterFacts`/`extractCharacterDescription` convention
  * in `verticalDramaCharacters.ts`.
@@ -245,6 +303,7 @@ export interface VerticalDramaResolvedCharacterRegion {
 export function resolveCharacterTargetAudienceRegion(
   characterOverride: VerticalDramaCharacterRegionOverrideInput | null | undefined,
   seriesDefaultRegion: VerticalDramaTargetAudienceRegion | null | undefined,
+  seriesRegionIsExplicit = false,
 ): VerticalDramaResolvedCharacterRegion {
   const freeText =
     typeof characterOverride?.ethnicityText === "string"
@@ -254,6 +313,7 @@ export function resolveCharacterTargetAudienceRegion(
     return {
       source: "character_free_text",
       isExplicit: true,
+      enforceDeterministically: true,
       region: normalizeTargetAudienceRegion(characterOverride?.region ?? seriesDefaultRegion),
       descriptor: `${freeText} ethnicity/appearance (explicitly specified by the user for this character)`,
       anchorKeywords: [freeText.toLowerCase()],
@@ -269,6 +329,7 @@ export function resolveCharacterTargetAudienceRegion(
     return {
       source: "character_region",
       isExplicit: true,
+      enforceDeterministically: true,
       region,
       descriptor: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[region],
       anchorKeywords: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_ANCHOR_KEYWORDS[region],
@@ -279,6 +340,9 @@ export function resolveCharacterTargetAudienceRegion(
   return {
     source: "series_default",
     isExplicit: false,
+    // Item 1: enforce D1/D2 for a series-level region the owner actually
+    // chose; leave the un-set global fallback un-enforced (nobody picked it).
+    enforceDeterministically: Boolean(seriesRegionIsExplicit),
     region: resolvedDefault,
     descriptor: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[resolvedDefault],
     anchorKeywords: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_ANCHOR_KEYWORDS[resolvedDefault],

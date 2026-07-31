@@ -469,17 +469,71 @@ actively steer away from the wrong look:
   adult beauty styling, glamorous makeup, seductive pose, revealing outfit, mature
   expression, romantic tension, fashion model look, plastic skin.
 
+### Validator-enforced portrait & negative-prompt vocabulary — MANDATORY
+
+The server's deterministic quality gate (`findLeadPromptQualityIssues`,
+`planning/vd-character-prompt-followups/plan.md` Item 2, 2026-07-31) checks
+`primary_portrait_prompt` and `negative_prompt` for the EXACT phrases below
+(case-insensitive, hyphen/space tolerant substring match). This is not
+decorative guidance — it is what a failed generation gets bounced back for on
+a retry, costing an extra model call. This section is the single published
+source for that checklist (the code-side source of truth is
+`verticalDramaCharacterImageGeneration.ts`'s `LEAD_STAR_MARKER_PHRASES` /
+`LEAD_APPEAL_MARKER_PHRASES` / `LEAD_ROLE_DRIFT_MARKER_PHRASES` /
+`LEAD_NEGATIVE_PROMPT_ROLE_DRIFT_GUARD_PHRASES`; a test fails the build if
+this section and that file ever diverge). Use natural prose, but make sure
+`primary_portrait_prompt` genuinely contains real phrases from these lists so
+the deterministic check can find them — do not invent synonyms that avoid
+every listed phrase.
+
+`primary_portrait_prompt` for a canonical lead (`lead_female`, `lead_male`,
+`lead`) requires AT LEAST ONE role-specific star phrase:
+- **Female lead:** exceptionally beautiful, strikingly beautiful, camera-ready
+  leading-lady, camera-ready beauty, camera-ready features, leading-lady
+  beauty, leading-lady features, leading-lady presence, star-level beauty,
+  beautiful heroine.
+- **Male lead:** exceptionally handsome, strikingly handsome, camera-ready
+  leading-man, camera-ready handsome, camera-ready features, leading-man
+  beauty, leading-man features, leading-man presence, star-level handsome,
+  star-level beauty, handsome hero, handsome leading man, heartthrob.
+- **Gender-unclear/neutral lead:** exceptionally beautiful, exceptionally
+  handsome, strikingly beautiful, strikingly handsome, camera-ready beauty,
+  camera-ready features, camera-ready presence, star-level beauty,
+  star-level handsome, star-level presence, leading-lady beauty, leading-lady
+  features, leading-lady presence, leading-man beauty, leading-man features,
+  leading-man presence, heartthrob.
+
+`primary_portrait_prompt` ALSO requires AT LEAST TWO appeal signals from:
+beautiful, handsome, magnetic, photogenic, camera-ready, charismatic, screen
+presence, leading-lady, leading-man.
+
+Every lead/villain prompt field (primary portrait, turnaround, full body,
+expression sheet, outfit sheet) is rejected if it drifts into villain-coded
+grammar — predatory gaze, elegant menace, dangerous aura, dangerous elegance,
+quiet calculation, calculating, manipulative smile, threatening presence,
+villain energy, dark villain, micro-frown, ominous, thriller color grade —
+unless balanced by an explicit safe/heroic emotion cue (warm, trustworthy,
+inviting, approachable, gentle, open, vulnerable, emotionally accessible,
+romantic-drama, heroic, reassuring, luminous).
+
+`negative_prompt` for every lead/villain tier requires AT LEAST TWO role-drift
+guard phrases from: predatory, menace, dangerous aura, dangerous elegance,
+quiet calculation, calculating, manipulative, threatening, villain,
+micro-frown, thriller color grade, ominous.
+
 ### Schema-retry repair contract
 
 When the server appends `Validation guidance` to a retry turn, treat that text as a
 contract-level repair order, not as creative content. If any of the five lead prompt
 fields is flagged, rewrite all five fields together so the face, expression, wardrobe,
 lighting, and camera language stay consistent. A lead-beauty failure requires an
-explicit role-specific star marker plus at least two appeal signals in every field. A
-villain-grammar failure requires removing the offending face/gaze/smile/wardrobe/key-
-light cues and relocating tension to the setting or posture. Never return unchanged
-failed prose, never copy the diagnostic into a prompt, and always return the complete
-JSON object with every required key.
+explicit role-specific star marker plus at least two appeal signals in
+`primary_portrait_prompt` (the canonical face anchor — see the vocabulary section
+above; the other four sheets may legitimately de-glam a lead, so beauty language is
+not force-required there). A villain-grammar failure requires removing the offending
+face/gaze/smile/wardrobe/key-light cues and relocating tension to the setting or
+posture. Never return unchanged failed prose, never copy the diagnostic into a prompt,
+and always return the complete JSON object with every required key.
 
 ## Child-safety subsection — MANDATORY, highest precedence
 
@@ -676,6 +730,19 @@ When `has_own_reference_image` is absent or false, ignore this section entirely 
 legacy/default behavior for a character's very first portrait (nothing to reference yet),
 unchanged.
 
+**What this lock does NOT cover: camera framing.** The lock governs IDENTITY — face, skin,
+hair, outfit, accessories, shoes. It says nothing about shot size, crop, camera distance,
+pose, or angle, and it must never be used to justify reproducing the reference photo's
+framing. A reference image is nearly always a chest-up portrait; if a locked-identity
+generation silently inherits that crop, a user who explicitly asked for a full-body or
+turnaround image gets a half-body one and has no way to tell why. So: when
+`custom_instruction` (or `requested_sheet_type`) asks for a different shot size, honor it
+in full and state the new framing explicitly and concretely — for a full-body request, say
+in your own prose that the entire figure is visible head-to-toe including footwear, with
+the whole body inside the frame — while keeping every identity detail locked to the
+reference exactly as this section requires. Identity from the reference, framing from the
+request; the two never compete.
+
 Good example (`has_own_reference_image: true`, description says "late-20s silk-shop owner
 ฝ้าย, regenerating her pose-library sheet"):
 > "solo portrait, exactly one person in frame: cinematic vertical portrait of ฝ้าย — the
@@ -790,7 +857,18 @@ the hint to every field regardless of relevance.
 **Precedence — this section is ALWAYS subordinate to, and never overrides:** "Own reference image locking"
 (when `has_own_reference_image` is true), "Face reference locking" (when
 `face_source_reference` is provided), the role-tier archetype table, and the child-safety
-subsection. If `custom_instruction` conflicts with any of these — for example it asks for an
+subsection.
+
+**Exception — camera framing is never a conflict.** None of the higher-priority rules above
+govern shot size, crop, camera distance, or pose (see "Own reference image locking"'s own
+"What this lock does NOT cover" note). A framing request in `custom_instruction` — full
+body, เต็มตัว, head-to-toe, wide shot, close-up, style/pose sheet — is therefore ALWAYS
+honored in full, even when a reference image is attached and every identity detail is
+locked to it. Never drop, soften, or quietly reinterpret a framing request on the grounds
+that a reference image or an identity lock is present; that is the single most common way
+this field silently fails the user.
+
+If `custom_instruction` conflicts with any of these — for example it asks for an
 outfit that contradicts a locked reference image, changes a locked distinguishing feature, or
 requests anything unsafe or non-age-appropriate for a `child`-tier character — the mandatory
 rule wins for **that conflicting aspect only**: reinterpret the free text safely or disregard
@@ -864,6 +942,54 @@ Resulting `primary_portrait_prompt` must be a full-body portrait that visibly de
 character in comfortable sleepwear. It must not silently return the default outfit or merely
 append the Thai sentence unchanged; the skill should author natural prompt prose such as a
 full-length vertical composition, relaxed comfortable pajamas, and an appropriate home setting.
+
+### Requested framing verdict — `primary_portrait_framing`
+
+Alongside the prompt fields, report YOUR OWN verdict on what shot size this generation calls
+for, as `primary_portrait_framing`, using exactly one of:
+
+| Value | Means |
+|---|---|
+| `close_up` | face/head-and-shoulders |
+| `half_body` | waist-up or chest-up — the default look of a portrait |
+| `full_body` | the entire figure head-to-toe, whole body inside the frame |
+| `style_sheet` | a multi-pose / multi-angle character style sheet on one canvas |
+
+Only YOU can decide this: you are the only party that has read `custom_instruction` together
+with every mandatory rule that outranks it. The server does not parse the user's text and
+must never guess — it only routes on this verdict. Specifically: when you answer
+`full_body`, the server renders your `full_body_prompt` instead of `primary_portrait_prompt`,
+so `full_body_prompt` must independently be a complete, self-contained, correctly identity-
+locked prompt in that case, not a terse variant. When you answer `style_sheet`, compose the
+sheet inside `primary_portrait_prompt` itself (there is no always-present sheet field to
+route to) — describe the layout in your own prose, e.g. several full-length poses of the
+same character side by side on one clean neutral canvas, consistent lighting and scale
+across every pose, plus whatever the brief actually asked for.
+
+Rules:
+
+- Omit the field entirely when the request is an ordinary portrait and nothing asked for a
+  different framing. Omission is the safe default and preserves legacy behavior.
+- The verdict must MATCH the prose you actually wrote. Answering `full_body` while
+  `full_body_prompt` still reads as a waist-up shot is a contract violation — the user gets
+  the wrong picture and nothing downstream can detect it.
+- An attached reference image never lowers the verdict. See the framing exception in the
+  "Custom instruction" section above.
+
+Worked example (`custom_instruction: "ภาพเต็มตัว ชุดสูทสีดำ"`, `has_own_reference_image: true`):
+
+```json
+{
+  "primary_portrait_framing": "full_body",
+  "full_body_prompt": "solo portrait, exactly one person in frame: full-length vertical shot of คิริน, standing at ease with his entire figure visible from head to toe, both feet and shoes fully inside the frame, the full length of a tailored black suit reading clearly from shoulder to hem. The attached reference image is his exact, definitive identity — match his face shape, skin tone, and hairstyle precisely. Composed wide enough that the whole body fits with clean headroom and floor space, even light across the full figure rather than a shallow-focus headshot, realistic fabric drape and skin texture, 9:16"
+}
+```
+
+Note what this example does NOT do: it does not end in `85mm f/1.8 portrait lens, shallow
+depth of field`. That phrasing is head-and-shoulders lens grammar and pulls a full-body
+request back toward a half-body crop — reach for wider framing language whenever the verdict
+is `full_body` or `style_sheet`, and reserve the 85mm portrait grammar for `close_up` and
+`half_body`.
 
 ## Character Design Bible sheet types — used only when requested_sheet_type is present
 

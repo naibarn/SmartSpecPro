@@ -51,6 +51,7 @@ import {
   readTargetAudienceRegionFromBible,
   readCharacterRegionOverrideFromData,
   resolveCharacterTargetAudienceRegion,
+  isTargetAudienceRegionExplicitlySetInBible,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
@@ -416,28 +417,85 @@ export async function resolveReferencePortraitUrl(
   referenceAssetLinkId: string | undefined,
   fallbackSourceCharacterId?: number | null,
 ): Promise<string | null> {
+  const resolved = await resolveReferencePortraitSource(
+    owner,
+    characterId,
+    referenceAssetLinkId,
+    fallbackSourceCharacterId,
+  );
+  return resolved.url;
+}
+
+/**
+ * Which of `resolveReferencePortraitUrl`'s three tiers actually produced the
+ * URL. Callers need this to answer a question the URL alone cannot:
+ * **is this image THIS character's own established likeness, or somebody
+ * else's borrowed one?**
+ *
+ * - `"explicit"` — the caller's own `referenceAssetLinkId` override (tier 1).
+ *   A user deliberately picked this image FOR this character.
+ * - `"own"` — this character's own approved portrait (tier 2).
+ * - `"inherited"` — the parent/twin-source character's portrait (tier 3),
+ *   borrowed because this character has none of its own yet.
+ * - `null` — no reference at all.
+ *
+ * `planning/vd-character-full-body-framing/plan.md` RC2: the two render
+ * endpoints used to collapse all three into `hasOwnReferenceImage:
+ * Boolean(url)`, which told the skill that a brand-new LOOK's borrowed parent
+ * portrait was the look's own definitive likeness. That flips on skill.md's
+ * strictest rule — "keep outfit, clothing, accessories, and shoes IDENTICAL
+ * to the reference" — for the one flow whose entire purpose is a DIFFERENT
+ * outfit, and (because the borrowed portrait is a half-body crop rendered
+ * through an image-EDIT call) also pins the new look to the parent's framing.
+ * `faceSourceReference` is the correct channel for an inherited likeness: it
+ * locks the face while deliberately leaving hair/wardrobe free to diverge.
+ */
+export type ReferencePortraitSource = "explicit" | "own" | "inherited";
+
+export async function resolveReferencePortraitSource(
+  owner: { tenantId: string; userId: number; seriesId: number },
+  characterId: number,
+  referenceAssetLinkId: string | undefined,
+  fallbackSourceCharacterId?: number | null,
+): Promise<{ url: string | null; source: ReferencePortraitSource | null }> {
   if (!referenceAssetLinkId) {
     const ownPortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
       owner,
       characterId,
     );
-    if (ownPortraitUrl) return ownPortraitUrl;
+    if (ownPortraitUrl) return { url: ownPortraitUrl, source: "own" };
     if (fallbackSourceCharacterId != null) {
-      return verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+      const inheritedUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
         owner,
         fallbackSourceCharacterId,
       );
+      return inheritedUrl
+        ? { url: inheritedUrl, source: "inherited" }
+        : { url: null, source: null };
     }
-    return null;
+    return { url: null, source: null };
   }
   try {
-    return await verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId(
+    const overrideUrl = await verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId(
       owner,
       parseId(referenceAssetLinkId, "reference asset link id"),
     );
+    return overrideUrl ? { url: overrideUrl, source: "explicit" } : { url: null, source: null };
   } catch (err) {
     mapStockError(err);
   }
+}
+
+/**
+ * `has_own_reference_image` is TRUE only when the attached reference really is
+ * this character's own established likeness — never for a borrowed
+ * parent/twin portrait (see `ReferencePortraitSource`). Shared by both render
+ * endpoints so the contract can never drift between them.
+ */
+export function referenceSourceIsOwnLikeness(
+  source: ReferencePortraitSource | null,
+): boolean {
+  return source === "explicit" || source === "own";
 }
 
 /**
@@ -2909,6 +2967,15 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      // Item 1 (planning/vd-character-prompt-followups/plan.md, 2026-07-31) —
+      // was this series-level region actually CHOSEN by the series owner, as
+      // opposed to the un-set global fallback nobody picked? Threaded into
+      // `resolveCharacterTargetAudienceRegion` below so the D1/D2
+      // deterministic enforcement layers also cover an explicit series
+      // default, never a fallback nobody selected.
+      const seriesRegionIsExplicit = isTargetAudienceRegionExplicitlySetInBible(
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
       // Per-character ethnicity/region override (planning/vd-per-character-
       // ethnicity/plan.md) — OVERRIDES the series default resolved above at
       // this call site. `isExplicit: false` (no per-character override set)
@@ -2917,6 +2984,7 @@ export const verticalDramaCharactersRouter = router({
       const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
         readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
         targetAudienceRegion,
+        seriesRegionIsExplicit,
       );
       const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
         tenantId,
@@ -3240,12 +3308,22 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      // Item 1 (planning/vd-character-prompt-followups/plan.md, 2026-07-31) —
+      // was this series-level region actually CHOSEN by the series owner, as
+      // opposed to the un-set global fallback nobody picked? Threaded into
+      // `resolveCharacterTargetAudienceRegion` below so the D1/D2
+      // deterministic enforcement layers also cover an explicit series
+      // default, never a fallback nobody selected.
+      const seriesRegionIsExplicit = isTargetAudienceRegionExplicitlySetInBible(
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
       // Per-character ethnicity/region override (planning/vd-per-character-
       // ethnicity/plan.md) — see `previewCharacterPrompt`'s identical site
       // for the full contract.
       const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
         readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
         targetAudienceRegion,
+        seriesRegionIsExplicit,
       );
       const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
         tenantId,
@@ -3267,12 +3345,16 @@ export const verticalDramaCharactersRouter = router({
       //    defaults to the parent/twin-source's portrait on a brand-new
       //    variant/twin's first render (Phase F1,
       //    `planning/vertical-drama-twin-variant-completeness/plan.md` W1).
-      const referencePortraitUrl = await resolveReferencePortraitUrl(
-        { tenantId, userId, seriesId },
-        characterId,
-        input.referenceAssetLinkId,
-        character.parentCharacterId ?? character.sharesFaceWithCharacterId,
-      );
+      //    The resolved TIER matters as much as the URL — a borrowed
+      //    parent/twin portrait must NOT be announced to the skill as this
+      //    character's own likeness (see `ReferencePortraitSource`).
+      const { url: referencePortraitUrl, source: referencePortraitSource } =
+        await resolveReferencePortraitSource(
+          { tenantId, userId, seriesId },
+          characterId,
+          input.referenceAssetLinkId,
+          character.parentCharacterId ?? character.sharesFaceWithCharacterId,
+        );
 
       // 1. Prompt generation — credit-gated + deducted internally. Skipped
       //    entirely when the caller already ran `previewCharacterPrompt` and
@@ -3332,7 +3414,7 @@ export const verticalDramaCharactersRouter = router({
             resolvedCharacterRegion,
             presetVisualIdentity,
             faceSourceReference,
-            hasOwnReferenceImage: Boolean(referencePortraitUrl),
+            hasOwnReferenceImage: referenceSourceIsOwnLikeness(referencePortraitSource),
             customInstruction: input.customInstruction,
             characterDesignContext,
           });
@@ -3658,6 +3740,11 @@ export const verticalDramaCharactersRouter = router({
          *  (default) resolves to `"turnaround"`. See
          *  `resolveCharacterSheetType`/`CHARACTER_SHEET_TYPE_VALUES`. */
         sheetType: z.enum(CHARACTER_SHEET_TYPE_VALUES).optional().default("auto"),
+        /** Free-text per-generation visual brief — identical field name, cap,
+         *  and contract as `generateCharacterImage`'s own `customInstruction`
+         *  (passed to the skill as `custom_instruction`, never appended to a
+         *  code-authored prompt string). */
+        customInstruction: z.string().trim().max(500).optional(),
         /** Language of the STATS TEXT/labels on the sheet — the character's
          *  own name is never translated, always rendered exactly as given.
          *  NOTE: the skill does not yet accept a language input (see
@@ -3732,12 +3819,22 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      // Item 1 (planning/vd-character-prompt-followups/plan.md, 2026-07-31) —
+      // was this series-level region actually CHOSEN by the series owner, as
+      // opposed to the un-set global fallback nobody picked? Threaded into
+      // `resolveCharacterTargetAudienceRegion` below so the D1/D2
+      // deterministic enforcement layers also cover an explicit series
+      // default, never a fallback nobody selected.
+      const seriesRegionIsExplicit = isTargetAudienceRegionExplicitlySetInBible(
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
       // Per-character ethnicity/region override (planning/vd-per-character-
       // ethnicity/plan.md) — see `previewCharacterPrompt`'s identical site
       // for the full contract.
       const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
         readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
         targetAudienceRegion,
+        seriesRegionIsExplicit,
       );
       const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
         tenantId,
@@ -3756,13 +3853,16 @@ export const verticalDramaCharactersRouter = router({
       // actual likeness — same established pattern `generateCharacterImage`
       // uses, including the parent/twin-source portrait fallback for a
       // brand-new variant/twin's first render (Phase F1,
-      // `planning/vertical-drama-twin-variant-completeness/plan.md` W1).
-      const referencePortraitUrl = await resolveReferencePortraitUrl(
-        { tenantId, userId, seriesId },
-        characterId,
-        input.referenceAssetLinkId,
-        character.parentCharacterId ?? character.sharesFaceWithCharacterId,
-      );
+      // `planning/vertical-drama-twin-variant-completeness/plan.md` W1). Same
+      // tier-aware `has_own_reference_image` contract as
+      // `generateCharacterImage` above (see `ReferencePortraitSource`).
+      const { url: referencePortraitUrl, source: referencePortraitSource } =
+        await resolveReferencePortraitSource(
+          { tenantId, userId, seriesId },
+          characterId,
+          input.referenceAssetLinkId,
+          character.parentCharacterId ?? character.sharesFaceWithCharacterId,
+        );
 
       // Prompt generation — credit-gated + deducted internally. Skipped
       // entirely when the caller already ran `previewCharacterPrompt` and
@@ -3823,7 +3923,14 @@ export const verticalDramaCharactersRouter = router({
             resolvedCharacterRegion,
             presetVisualIdentity,
             faceSourceReference,
-            hasOwnReferenceImage: Boolean(referencePortraitUrl),
+            hasOwnReferenceImage: referenceSourceIsOwnLikeness(referencePortraitSource),
+            // Same free-text visual brief the portrait endpoint accepts —
+            // a sheet is just as legitimate a target for "ภาพเต็มตัว" /
+            // "full-body pose sheet" as a portrait is, and dropping it here
+            // was why a framing request typed in the panel had no effect on
+            // the sheet button (`planning/vd-character-full-body-framing/
+            // plan.md` RC5).
+            customInstruction: input.customInstruction,
             // Only sent for a NON-turnaround format — plain "turnaround" is
             // already fully covered by the always-required
             // `turnaround_prompt` field, so no extra skill work is requested

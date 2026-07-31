@@ -360,6 +360,17 @@ const characterVisualBibleCharacterSchema = z
     full_body_prompt: z.string().min(1),
     expression_sheet_prompt: z.string().min(1),
     outfit_sheet_prompt: z.string().min(1),
+    // The skill's OWN verdict on what shot size this generation calls for
+    // (`planning/vd-character-full-body-framing/plan.md` C3; skill.md's
+    // "Requested framing verdict" section). Optional by design: absent on
+    // every legacy response and on any call the skill judges to be an
+    // ordinary portrait, in which case rendering behaves exactly as before.
+    // This is a VERDICT the skill reaches after reading `custom_instruction`
+    // plus every mandatory rule that outranks it — TypeScript only routes on
+    // it (see `renderBasePrompt` below) and never derives it from user text.
+    primary_portrait_framing: z
+      .enum(["close_up", "half_body", "full_body", "style_sheet"])
+      .optional(),
     // Optional — same rationale as the sibling prompt fields above: nothing
     // in `generateCharacterVisualPrompts` reads `attachment_package` (it is
     // pass-through-only bookkeeping data for the storyboard handoff), yet it
@@ -926,16 +937,24 @@ export interface GenerateCharacterVisualPromptsParams {
    * `data.region`/`data.ethnicityText` plus `targetAudienceRegion` above.
    * `undefined`, or an `isExplicit: false` value (no per-character override
    * set — the vast majority of characters, including every pre-existing
-   * one), makes every code path below byte-identical to before this field
-   * existed: no `region_ethnicity` payload fact is added
-   * (`buildCharacterVisualBibleInputPayload`), no extra instruction line is
-   * appended (`buildCharacterVisualPromptsUserPrompt`/
-   * `buildCharacterPortraitCandidatesUserPrompt`), the validator adds no
-   * extra issue, and the returned `primary_portrait_prompt` is never
-   * touched. `isExplicit: true` (the character has an explicit per-character
-   * region/free-text override) activates all three enforcement layers —
-   * see this file's own "Region/ethnicity enforcement" section below for
-   * why three layers, matching the plan's rationale exactly.
+   * one), makes the PAYLOAD-FACT and EXTRA-INSTRUCTION-LINE code paths below
+   * byte-identical to before this field existed: no `region_ethnicity`
+   * payload fact is added (`buildCharacterVisualBibleInputPayload`), no
+   * extra instruction line is appended
+   * (`buildCharacterVisualPromptsUserPrompt`/
+   * `buildCharacterPortraitCandidatesUserPrompt`). `isExplicit: true` (the
+   * character has an explicit per-character region/free-text override)
+   * activates those two layers — see this file's own "Region/ethnicity
+   * enforcement" section below for why, matching the plan's rationale
+   * exactly.
+   *
+   * The DETERMINISTIC validator-retry (D1) and fallback-prepend (D2) layers
+   * gate on the SEPARATE `enforceDeterministically` flag instead
+   * (`planning/vd-character-prompt-followups/plan.md` Item 1, 2026-07-31) —
+   * `true` for both per-character explicit sources AND for an explicitly
+   * user-chosen series-level default, `false` only for the un-set global
+   * fallback nobody picked. See that flag's own doc comment on
+   * `VerticalDramaResolvedCharacterRegion`.
    */
   resolvedCharacterRegion?: VerticalDramaResolvedCharacterRegion;
   /**
@@ -1414,8 +1433,21 @@ export async function resolveCharacterVisualBibleModel(
 /* -------------------------------------------------------------------------- */
 
 export interface GenerateCharacterVisualPromptsResult {
+  /**
+   * The prompt to RENDER. Normally `primary_portrait_prompt`; swapped for
+   * `full_body_prompt` when the skill's own `primary_portrait_framing` verdict
+   * is `"full_body"` (`planning/vd-character-full-body-framing/plan.md` C3).
+   * The deterministic region/ethnicity anchor is applied to whichever one is
+   * selected, so the guarantee never depends on the framing.
+   */
   portraitPrompt: string;
   negativePrompt: string | undefined;
+  /**
+   * The skill's framing verdict, echoed for callers/telemetry. `undefined`
+   * whenever the skill did not author one (legacy responses, ordinary
+   * portraits) — never inferred by this module.
+   */
+  primaryPortraitFraming?: "close_up" | "half_body" | "full_body" | "style_sheet";
   /**
    * 360/multi-angle "character sheet" turnaround prompt, for reference imagery
    * that prevents likeness drift across scenes. Read directly from the LLM
@@ -1520,66 +1552,113 @@ const LEAD_PROMPT_FIELDS = [
 
 type LeadPromptField = (typeof LEAD_PROMPT_FIELDS)[number];
 
-const LEAD_STAR_MARKERS: Record<"female" | "male" | "neutral", RegExp[]> = {
+/* -------------------------------------------------------------------------- */
+/* Principal-lead portrait quality rubric — SKILL AUTHORS, TS ONLY VERIFIES   */
+/* (`planning/vd-character-prompt-followups/plan.md` Item 2, 2026-07-31).    */
+/*                                                                            */
+/* Every phrase below MUST also appear, verbatim (case/hyphen/space           */
+/* tolerant), in `skills/vertical-drama-character-visual-bible/skill.md`'s    */
+/* own "Validator-enforced portrait & negative-prompt vocabulary" section     */
+/* (and its `SKILL.md` twin) — that markdown section is what actually tells   */
+/* the model to write these words; this file only checks the words landed.   */
+/* This is the SAME "TS computes/guards facts, the skill owns creative        */
+/* prose" pattern the audit already blessed for ethnicity                    */
+/* (`@shared/verticalDramaSeries/targetAudienceRegion.ts`'s                   */
+/* `VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_ANCHOR_KEYWORDS`) — these were      */
+/* previously a TS-private regex checklist the skill was never told about     */
+/* (audit evidence: journalctl 2026-07-31 09:59:43/10:00:32,                 */
+/* google/gemini-3.1-flash-lite, forced retries on a hidden rubric).          */
+/*                                                                            */
+/* Do NOT edit a phrase list here without making the IDENTICAL edit to BOTH   */
+/* skill files — `describe("lead-quality rubric — skill/TS sync")` below      */
+/* (this file's own test suite) fails the build if they diverge.             */
+/* -------------------------------------------------------------------------- */
+
+/** Plain-English phrases (not regex) — the single source of truth for both
+ *  the skill's published rubric text and this file's verifier regexes. */
+export const LEAD_STAR_MARKER_PHRASES: Record<"female" | "male" | "neutral", readonly string[]> = {
   female: [
-    /exceptionally\s+beautiful/i,
-    /strikingly\s+beautiful/i,
-    /camera[- ]ready\s+(?:leading[- ]lady|beauty|features)/i,
-    /leading[- ]lady\s+(?:beauty|features|presence)/i,
-    /star[- ]level\s+beauty/i,
-    /beautiful\s+heroine/i,
+    "exceptionally beautiful",
+    "strikingly beautiful",
+    "camera-ready leading-lady",
+    "camera-ready beauty",
+    "camera-ready features",
+    "leading-lady beauty",
+    "leading-lady features",
+    "leading-lady presence",
+    "star-level beauty",
+    "beautiful heroine",
   ],
   male: [
-    /exceptionally\s+handsome/i,
-    /strikingly\s+handsome/i,
-    /camera[- ]ready\s+(?:leading[- ]man|handsome|features)/i,
-    /leading[- ]man\s+(?:beauty|features|presence)/i,
-    /star[- ]level\s+(?:handsome|beauty)/i,
-    /handsome\s+(?:hero|leading man)/i,
-    /heartthrob/i,
+    "exceptionally handsome",
+    "strikingly handsome",
+    "camera-ready leading-man",
+    "camera-ready handsome",
+    "camera-ready features",
+    "leading-man beauty",
+    "leading-man features",
+    "leading-man presence",
+    "star-level handsome",
+    "star-level beauty",
+    "handsome hero",
+    "handsome leading man",
+    "heartthrob",
   ],
   neutral: [
-    /exceptionally\s+(?:beautiful|handsome)/i,
-    /strikingly\s+(?:beautiful|handsome)/i,
-    /camera[- ]ready\s+(?:beauty|features|presence)/i,
-    /star[- ]level\s+(?:beauty|handsome|presence)/i,
-    /leading[- ](?:lady|man)\s+(?:beauty|features|presence)/i,
-    /heartthrob/i,
+    "exceptionally beautiful",
+    "exceptionally handsome",
+    "strikingly beautiful",
+    "strikingly handsome",
+    "camera-ready beauty",
+    "camera-ready features",
+    "camera-ready presence",
+    "star-level beauty",
+    "star-level handsome",
+    "star-level presence",
+    "leading-lady beauty",
+    "leading-lady features",
+    "leading-lady presence",
+    "leading-man beauty",
+    "leading-man features",
+    "leading-man presence",
+    "heartthrob",
   ],
 };
 
-const LEAD_APPEAL_MARKERS = [
-  /beautiful/i,
-  /handsome/i,
-  /magnetic/i,
-  /photogenic/i,
-  /camera[- ]ready/i,
-  /charismatic/i,
-  /screen presence/i,
-  /leading[- ](?:lady|man)/i,
+export const LEAD_APPEAL_MARKER_PHRASES: readonly string[] = [
+  "beautiful",
+  "handsome",
+  "magnetic",
+  "photogenic",
+  "camera-ready",
+  "charismatic",
+  "screen presence",
+  "leading-lady",
+  "leading-man",
 ];
 
 /**
- * These are quality-control markers, not prompt-authorship directives. The skill
- * owns the wording; this gate only rejects a skill response that would visibly
- * turn a canonical lead into a villain or an ordinary extra, allowing the
- * shared JSON retry path to ask the skill for a corrected output.
+ * These are quality-control markers, not prompt-authorship directives. The
+ * skill owns the wording (already published, pre-dating this refactor, in
+ * skill.md's "Lead visual hierarchy" section); this gate only rejects a
+ * skill response that would visibly turn a canonical lead into a villain or
+ * an ordinary extra, allowing the shared JSON retry path to ask the skill
+ * for a corrected output. Checked against all five lead prompt fields.
  */
-const LEAD_ROLE_DRIFT_MARKERS = [
-  /predatory\s+gaze/i,
-  /predatory/i,
-  /elegant\s+menace/i,
-  /dangerous\s+(?:aura|elegance)/i,
-  /quiet\s+calculation/i,
-  /calculating/i,
-  /manipulative\s+smile/i,
-  /threatening\s+presence/i,
-  /villain\s+energy/i,
-  /dark\s+villain/i,
-  /micro[- ]frown/i,
-  /ominous/i,
-  /high[- ]contrast\s+(?:cinematic\s+)?thriller\s+color\s+grade/i,
-  /thriller\s+color\s+grade/i,
+export const LEAD_ROLE_DRIFT_MARKER_PHRASES: readonly string[] = [
+  "predatory gaze",
+  "elegant menace",
+  "dangerous aura",
+  "dangerous elegance",
+  "quiet calculation",
+  "calculating",
+  "manipulative smile",
+  "threatening presence",
+  "villain energy",
+  "dark villain",
+  "micro-frown",
+  "ominous",
+  "thriller color grade",
 ];
 
 const LEAD_SAFE_EMOTION_MARKERS = [
@@ -1597,19 +1676,61 @@ const LEAD_SAFE_EMOTION_MARKERS = [
   /luminous/i,
 ];
 
-const LEAD_ROLE_NEGATIVE_GUARD_MARKERS = [
-  /predatory/i,
-  /menace/i,
-  /dangerous\s+(?:aura|elegance)/i,
-  /quiet\s+calculation/i,
-  /calculating/i,
-  /manipulative/i,
-  /threatening/i,
-  /villain/i,
-  /micro[- ]frown/i,
-  /thriller\s+color\s+grade/i,
-  /ominous/i,
+/** Checked ONLY against `negative_prompt` — the "at least two role-drift
+ *  guard phrases" requirement (`planning/vd-character-prompt-followups/
+ *  plan.md` Item 2's "approved approach" section names this list
+ *  specifically). */
+export const LEAD_NEGATIVE_PROMPT_ROLE_DRIFT_GUARD_PHRASES: readonly string[] = [
+  "predatory",
+  "menace",
+  "dangerous aura",
+  "dangerous elegance",
+  "quiet calculation",
+  "calculating",
+  "manipulative",
+  "threatening",
+  "villain",
+  "micro-frown",
+  "thriller color grade",
+  "ominous",
 ];
+
+/**
+ * Converts a canonical plain-English phrase into a case-insensitive
+ * containment regex that tolerates a hyphen OR a space at every hyphen
+ * boundary within a word (e.g. "camera-ready" also matches "camera ready")
+ * and one-or-more whitespace between words — the exact tolerance the
+ * hand-written regexes this replaces already had.
+ */
+function phraseToLeadMarkerRegex(phrase: string): RegExp {
+  const pattern = phrase
+    .trim()
+    .split(/\s+/)
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("[- ]"),
+    )
+    .join("\\s+");
+  return new RegExp(pattern, "i");
+}
+
+function phrasesToLeadMarkerRegexes(phrases: readonly string[]): RegExp[] {
+  return phrases.map(phraseToLeadMarkerRegex);
+}
+
+const LEAD_STAR_MARKERS: Record<"female" | "male" | "neutral", RegExp[]> = {
+  female: phrasesToLeadMarkerRegexes(LEAD_STAR_MARKER_PHRASES.female),
+  male: phrasesToLeadMarkerRegexes(LEAD_STAR_MARKER_PHRASES.male),
+  neutral: phrasesToLeadMarkerRegexes(LEAD_STAR_MARKER_PHRASES.neutral),
+};
+
+const LEAD_APPEAL_MARKERS = phrasesToLeadMarkerRegexes(LEAD_APPEAL_MARKER_PHRASES);
+const LEAD_ROLE_DRIFT_MARKERS = phrasesToLeadMarkerRegexes(LEAD_ROLE_DRIFT_MARKER_PHRASES);
+const LEAD_ROLE_NEGATIVE_GUARD_MARKERS = phrasesToLeadMarkerRegexes(
+  LEAD_NEGATIVE_PROMPT_ROLE_DRIFT_GUARD_PHRASES,
+);
 
 function countPatternMatches(text: string, patterns: readonly RegExp[]): number {
   return patterns.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
@@ -2331,14 +2452,17 @@ export async function generateCharacterVisualPrompts(
         });
       }
 
-      // Region/ethnicity anchor enforcement (D1) — ONLY for an EXPLICIT
-      // per-character override (never for a character merely inheriting the
-      // series/global default — that would newly hard-gate every pre-existing
-      // series). See `regionAnchorCheckAttempts`'s doc comment above for why
+      // Region/ethnicity anchor enforcement (D1) — for an EXPLICIT
+      // per-character override AND for an explicitly user-chosen series-level
+      // default (`enforceDeterministically`, `planning/vd-character-prompt-
+      // followups/plan.md` Item 1, 2026-07-31); never for a character
+      // inheriting the UN-SET global fallback that nobody picked — that would
+      // newly hard-gate every pre-existing series that never touched this
+      // setting. See `regionAnchorCheckAttempts`'s doc comment above for why
       // this only ever fires on the first attempt.
       regionAnchorCheckAttempts += 1;
       if (
-        params.resolvedCharacterRegion?.isExplicit &&
+        params.resolvedCharacterRegion?.enforceDeterministically &&
         regionAnchorCheckAttempts === 1 &&
         !promptContainsRegionEthnicityAnchor(
           character.primary_portrait_prompt,
@@ -2349,8 +2473,8 @@ export async function generateCharacterVisualPrompts(
           code: z.ZodIssueCode.custom,
           path: ["characters", characterIndex, "primary_portrait_prompt"],
           message:
-            `primary_portrait_prompt must make this character's explicit ethnicity/region ` +
-            `requirement (${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
+            `primary_portrait_prompt must make this character's required ethnicity/region ` +
+            `(${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
             `in-line, in the prose — it currently reads as ethnicity-neutral.`,
         });
       }
@@ -2578,28 +2702,53 @@ export async function generateCharacterVisualPrompts(
     .join(", ");
 
   // D2 — last-resort DETERMINISTIC guarantee (planning/vd-per-character-
-  // ethnicity/plan.md). ONLY for an EXPLICIT per-character region/ethnicity
-  // override: if the validated `primary_portrait_prompt` still lacks the
-  // required anchor after D1's one corrective retry (see
-  // `regionAnchorCheckAttempts` above), deterministically prepend the
-  // descriptor before this string is ever persisted or sent to an image
-  // model. This is enforcing a USER-STATED FACT — the same class of
+  // ethnicity/plan.md; extended to an explicitly user-chosen series-level
+  // default by `planning/vd-character-prompt-followups/plan.md` Item 1,
+  // 2026-07-31 — see `enforceDeterministically`'s doc comment). For an
+  // EXPLICIT per-character region/ethnicity override OR a series-level
+  // default the owner actually picked: if the validated
+  // `primary_portrait_prompt` still lacks the required anchor after D1's one
+  // corrective retry (see `regionAnchorCheckAttempts` above), deterministically
+  // prepend the descriptor before this string is ever persisted or sent to an
+  // image model. This is enforcing a USER-STATED FACT — the same class of
   // deterministic guard as the DNA face-fingerprint check and the
   // fail-closed model-selection guards already in this codebase — never a
   // rewrite of the skill's own creative prose (it only ever prepends). A
-  // character with no explicit override (the vast majority) is completely
-  // untouched: `portraitPrompt` stays byte-identical to
-  // `matched.primary_portrait_prompt`.
-  const portraitPrompt = params.resolvedCharacterRegion?.isExplicit
-    ? ensureRegionEthnicityAnchorPresent(
-        matched.primary_portrait_prompt,
-        params.resolvedCharacterRegion,
-      )
-    : matched.primary_portrait_prompt;
+  // character whose region resolves to the UN-SET global fallback (nobody
+  // picked it) is completely untouched: `portraitPrompt` stays byte-identical
+  // to `matched.primary_portrait_prompt`.
+  //
+  // Which of the skill's own prompts actually gets RENDERED
+  // (`planning/vd-character-full-body-framing/plan.md` C3). The skill authors
+  // five prompts every call but only `primary_portrait_prompt` was ever sent
+  // to an image model — so a user asking for "ภาพเต็มตัว" could get a
+  // faithfully full-body `full_body_prompt` that was then silently discarded.
+  // `primary_portrait_framing` is the SKILL's own verdict on what framing the
+  // request calls for (it is the only party that has read `custom_instruction`
+  // and every mandatory rule around it); this code only routes on that
+  // verdict, and never inspects the user's text or invents a framing itself.
+  // Absent field (every legacy response) ⇒ byte-identical to before.
+  //
+  // Only `"full_body"` reroutes, because `full_body_prompt` is the one sibling
+  // field that is definitionally the same picture at a different shot size.
+  // `"style_sheet"` does NOT reroute: a multi-pose sheet has no dedicated
+  // always-present sibling (`sheet_prompt` exists only when the caller asked
+  // for a `requested_sheet_type`), so skill.md instructs the skill to compose
+  // the sheet inside `primary_portrait_prompt` itself for that case.
+  const renderBasePrompt =
+    matched.primary_portrait_framing === "full_body"
+      ? matched.full_body_prompt
+      : matched.primary_portrait_prompt;
+  const portraitPrompt = params.resolvedCharacterRegion?.enforceDeterministically
+    ? ensureRegionEthnicityAnchorPresent(renderBasePrompt, params.resolvedCharacterRegion)
+    : renderBasePrompt;
 
   return {
     portraitPrompt,
     negativePrompt,
+    ...(matched.primary_portrait_framing
+      ? { primaryPortraitFraming: matched.primary_portrait_framing }
+      : {}),
     turnaroundPrompt,
     fullBodyPrompt,
     expressionSheetPrompt,
@@ -2761,9 +2910,10 @@ export async function generateCharacterPortraitCandidates(
 
       // Region/ethnicity anchor enforcement (D1) — see
       // `generateCharacterVisualPrompts`'s identical check for the full
-      // contract (explicit-override-only, first-attempt-only).
+      // contract (explicit-override OR explicit series default via
+      // `enforceDeterministically`, first-attempt-only).
       if (
-        params.resolvedCharacterRegion?.isExplicit &&
+        params.resolvedCharacterRegion?.enforceDeterministically &&
         regionAnchorCheckAttempts === 1 &&
         !promptContainsRegionEthnicityAnchor(
           candidate.primary_portrait_prompt,
@@ -2774,8 +2924,8 @@ export async function generateCharacterPortraitCandidates(
           code: z.ZodIssueCode.custom,
           path: ["portrait_candidate_batch", "candidates", candidateIndex, "primary_portrait_prompt"],
           message:
-            `primary_portrait_prompt must make this character's explicit ethnicity/region ` +
-            `requirement (${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
+            `primary_portrait_prompt must make this character's required ethnicity/region ` +
+            `(${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
             `in-line, in the prose — it currently reads as ethnicity-neutral.`,
         });
       }
@@ -2954,7 +3104,7 @@ export async function generateCharacterPortraitCandidates(
     // `portraitPrompt` computation for the full contract. Every candidate is
     // the SAME character, so the SAME `resolvedCharacterRegion` applies to
     // each one individually.
-    const portraitPrompt = params.resolvedCharacterRegion?.isExplicit
+    const portraitPrompt = params.resolvedCharacterRegion?.enforceDeterministically
       ? ensureRegionEthnicityAnchorPresent(
           candidate.primary_portrait_prompt,
           params.resolvedCharacterRegion,

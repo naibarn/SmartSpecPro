@@ -56,7 +56,7 @@ Rules:
 - For Thai locale, ground the story in everyday Thai service, food shop, customer/staff, neighborhood, or lifestyle details when relevant.
 - Product or service tie-ins can create situations or reveal character, but must never magically solve the main conflict.
 - If selected flavors conflict, resolve them through `mixRecipe.rationale` and add a concise warning.
-- "title" MUST be at most 100 characters (it fills the series genre field) — keep it short and punchy.
+- "title" MUST be at most 150 characters (it fills the series TITLE field, which accepts up to 255 — "category" is what fills the genre field) — keep it short and punchy; a strong series title is normally far shorter than the cap.
 - "tone" MUST be at most 100 characters — a brief phrase, not a sentence.
 - Write natural, proofread user-facing copy: correct spelling, Thai spacing and punctuation, consistent names, complete sentences, and no translation artifacts.
 - Never expose JSON keys, category slugs, facet IDs, preset IDs, blend mechanics, or production metadata in `logline`, `mainPlot`, `seasonArc`, `creatorSummary`, `tone`, `cliffhangerStyle`, character descriptions, or `visualBible`.
@@ -94,6 +94,12 @@ Output skeleton:
 {
   "contract_version": 1,
   "title": "ร้านป้าจอย รับเรื่องทุกโต๊ะ",
+  "titleOptions": [
+    "ร้านป้าจอย รับเรื่องทุกโต๊ะ",
+    "โต๊ะเดียวก็เคลียร์ได้",
+    "ป้าจอยกับปมชุมชน",
+    "ก๋วยเตี๋ยวป้าจอย ซ่อนคดี"
+  ],
   "category": "thai-local-service-comedy-drama",
   "logline": "A neighborhood noodle shop turns daily customer complaints into warm, chaotic mini-drama.",
   "mainPlot": "One coherent premise...",
@@ -121,6 +127,11 @@ Output skeleton:
     }
   ],
   "visualBible": "Vertical mobile shots of a warm local food shop...",
+  "locations": [
+    { "name": "ร้านก๋วยเตี๋ยวป้าจอย", "description": "ร้านเล็กริมทางเดินตลาด แสงอุ่นจากหลอดไฟเก่า โต๊ะไม้ที่ลูกค้าประจำนั่งฟังกัน" },
+    { "name": "ตลาดเช้าใกล้ร้าน", "description": "ตลาดเช้าคึกคัก จุดที่ตัวละครมักปะทะกันเรื่องข่าวลือและข้อพิพาทค่าเช่า" },
+    { "name": "ห้องหลังร้าน", "description": "ห้องเก็บของแคบ ๆ ที่กลายเป็นที่ปรึกษาลับของครอบครัวป้าจอย" }
+  ],
   "mixRecipe": {
     "primaryFlavor": "restaurant_service_skit",
     "supportingFlavors": ["customer_staff_situation_comedy"],
@@ -129,6 +140,53 @@ Output skeleton:
   "warnings": []
 }
 ```
+
+## Title Options (`titleOptions`) — optional additive field
+
+When you return `titleOptions`, provide exactly 4 or 5 distinct candidate
+series titles as a plain array of strings. Every candidate follows the same
+150-character bound and "short and punchy" guidance as `title` above.
+
+Rules for choosing good candidates:
+
+- Each candidate must be a genuinely different take on the same story — vary
+  the hook (a character's name, the central conflict, the setting, or an
+  ironic twist), not just a rewording of the same phrase. Never return five
+  near-duplicates.
+- Every candidate must fit the synthesized tone and genre; never include a
+  title that would mislead the reader about the story's mood or content.
+- Never spoil the central mystery, twist, or ending in any candidate.
+- Match locale convention: for Thai locale, prefer natural Thai titles
+  (mixing in an English brand/product name only when it is a genuine part of
+  the premise); for other locales, write entirely in that locale's language.
+- `title` MUST be included verbatim as one of the `titleOptions` entries — it
+  is your recommended default, not a separate invention.
+- Omit `titleOptions` entirely only if you genuinely cannot produce 4-5
+  distinct, responsible candidates (this should be rare). Never pad the list
+  with weak or near-identical filler titles just to reach the count.
+
+## Locations (`locations`) — optional additive field
+
+When you return `locations`, provide 3 to 6 recurring settings the series
+will actually return to across episodes, as an array of
+`{ "name": string, "description": string }` objects.
+
+Rules:
+
+- `name` is a short label a creator would recognize at a glance (a shop name,
+  a room, a neighborhood spot) — not a full sentence.
+- `description` is one or two sentences of concrete, filmable visual detail:
+  what the place looks like, its mood or lighting, and why the story keeps
+  returning to it. Keep it consistent with `visualBible` and the synthesized
+  tone — never contradict them.
+- Choose locations that genuinely serve the recurring scene engine (where the
+  ensemble cast naturally gathers, works, or clashes), not generic filler
+  settings unconnected to the plot.
+- Reflect the premise: when a user premise or sequel lineage canon specifies a
+  setting, at least one location must be traceable to it.
+- Apply the same creator-facing-copy rule as the rest of this contract: never
+  expose JSON keys, facet names, preset IDs, or blend mechanics inside `name`
+  or `description`.
 
 ## Generate from basics (no preset required)
 

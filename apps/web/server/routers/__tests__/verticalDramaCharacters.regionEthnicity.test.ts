@@ -560,6 +560,53 @@ describe("previewCharacterPrompt — per-character region override", () => {
     );
   });
 
+  it("Item 1 (planning/vd-character-prompt-followups/plan.md): an unset character inheriting an EXPLICITLY-CHOSEN series-level region resolves enforceDeterministically:true (isExplicit stays false)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([characterRow()])) // data: null — no per-character override
+      .mockReturnValueOnce(
+        selectChain([{ ...SERIES_CONTEXT_ROW, bible: { targetAudienceRegion: "western" } }]),
+      );
+
+    await router.previewCharacterPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1" },
+    });
+
+    expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resolvedCharacterRegion: expect.objectContaining({
+          source: "series_default",
+          isExplicit: false,
+          enforceDeterministically: true,
+          region: "western",
+        }),
+      }),
+    );
+  });
+
+  it("Item 1: an unset character on a series that NEVER chose a region resolves enforceDeterministically:false (un-set global fallback, nobody picked it)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([characterRow()])) // data: null
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW])); // bible: null
+
+    await router.previewCharacterPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1" },
+    });
+
+    expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resolvedCharacterRegion: expect.objectContaining({
+          source: "series_default",
+          isExplicit: false,
+          enforceDeterministically: false,
+        }),
+      }),
+    );
+  });
+
   it("threads the resolved region into generateCharacterPortraitCandidates (candidate-batch branch)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))

@@ -312,14 +312,21 @@ describe("synthesizeVerticalDramaPreset", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("clamps a too-long title/tone before returning the draft (create-series field limits)", async () => {
-    // Exceeds CREATE_SERIES_FIELD_LIMITS.tone/.genre (100) but stays within this
-    // service's own (looser) synthesis schema bounds (tone <=160, title <=150) —
-    // exactly the "valid here, too long there" drift this fix guards against.
+  it("clamps a too-long tone before returning the draft, but preserves a title within the synthesis schema's own bound intact (create-series field limits — planning/vd-character-prompt-followups/plan.md Item 3)", async () => {
+    // `tone` exceeds CREATE_SERIES_FIELD_LIMITS.tone (100) but stays within
+    // this service's own (looser) synthesis schema bound (tone <=160) —
+    // the "valid here, too long there" drift `clampDraftForCreateSeries`
+    // guards against. `title` exceeds the UNRELATED
+    // CREATE_SERIES_FIELD_LIMITS.genre (100) bound but is well within both
+    // this service's own SYNTHESIZED_TITLE_MAX_LENGTH (150) schema bound AND
+    // the series TITLE field's real CREATE_SERIES_FIELD_LIMITS.title (255)
+    // limit — it must survive completely untouched, proving `title` is no
+    // longer needlessly truncated against the genre limit it never fed.
     const longTone = "a".repeat(120);
     const longTitle = "b".repeat(130);
     expect(longTone.length).toBeGreaterThan(CREATE_SERIES_FIELD_LIMITS.tone);
     expect(longTitle.length).toBeGreaterThan(CREATE_SERIES_FIELD_LIMITS.genre);
+    expect(longTitle.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.title);
 
     mockExecuteWithFallback.mockResolvedValue({
       type: "success",
@@ -337,7 +344,8 @@ describe("synthesizeVerticalDramaPreset", () => {
 
     const result = await synthesizeVerticalDramaPreset(baseParams());
 
-    expect(result.draft.title.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.genre);
+    expect(result.draft.title).toBe(longTitle);
+    expect(result.draft.title.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.title);
     expect(result.draft.tone.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.tone);
     expect(
       result.draft.warnings.some((w) => w.code === "preset_field_length_clamped"),
@@ -355,16 +363,30 @@ describe("clampDraftForCreateSeries", () => {
   it("clamps title and tone and appends a warning when either exceeds the create-series limits", () => {
     const overLimitDraft = {
       ...VALID_DRAFT,
-      title: "x".repeat(CREATE_SERIES_FIELD_LIMITS.genre + 20),
+      title: "x".repeat(CREATE_SERIES_FIELD_LIMITS.title + 20),
       tone: "y".repeat(CREATE_SERIES_FIELD_LIMITS.tone + 20),
     };
 
     const { draft, clamped } = clampDraftForCreateSeries(overLimitDraft as never);
 
     expect(clamped).toBe(true);
-    expect(draft.title.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.genre);
+    expect(draft.title.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.title);
     expect(draft.tone.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.tone);
     expect(draft.warnings.some((w) => w.code === "preset_field_length_clamped")).toBe(true);
+  });
+
+  it("does NOT clamp a title that only exceeds the unrelated CREATE_SERIES_FIELD_LIMITS.genre bound — title has its own, larger limit (planning/vd-character-prompt-followups/plan.md Item 3 regression)", () => {
+    const genreLengthTitle = "z".repeat(CREATE_SERIES_FIELD_LIMITS.genre + 20);
+    expect(genreLengthTitle.length).toBeGreaterThan(CREATE_SERIES_FIELD_LIMITS.genre);
+    expect(genreLengthTitle.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.title);
+
+    const { draft, clamped } = clampDraftForCreateSeries({
+      ...VALID_DRAFT,
+      title: genreLengthTitle,
+    } as never);
+
+    expect(clamped).toBe(false);
+    expect(draft.title).toBe(genreLengthTitle);
   });
 });
 
@@ -1659,3 +1681,292 @@ describe("synthesizeVerticalDramaPreset with a drifted userPremise", () => {
     expect(draft.warnings.some((w) => w.code === "premise_coverage_low")).toBe(false);
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* titleOptions + locations (Stage 1, `planning/fix-create-series-premise-    */
+/* blend/plan-phase2-mode-first.md`) — additive/optional output fields.      */
+/* -------------------------------------------------------------------------- */
+
+const VALID_DRAFT_WITH_TITLE_OPTIONS_AND_LOCATIONS = {
+  ...VALID_DRAFT,
+  titleOptions: [
+    "ชามนี้มีเรื่อง",
+    "โต๊ะเดียวก็เคลียร์ได้",
+    "ป้าจอยกับปมชุมชน",
+    "ก๋วยเตี๋ยวป้าจอย ซ่อนคดี",
+  ],
+  locations: [
+    { name: "ร้านก๋วยเตี๋ยวป้าจอย", description: "ร้านเล็กริมทางเดินตลาด แสงอุ่นจากหลอดไฟเก่า" },
+    { name: "ตลาดเช้าใกล้ร้าน", description: "ตลาดเช้าคึกคัก จุดที่ตัวละครมักปะทะกันเรื่องข่าวลือ" },
+    { name: "ห้องหลังร้าน", description: "ห้องเก็บของแคบ ๆ ที่กลายเป็นที่ปรึกษาลับของครอบครัว" },
+  ],
+};
+
+describe("synthesizeVerticalDramaPreset — titleOptions + locations (additive, optional)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("(a) parses titleOptions + locations and the values survive on the returned draft", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          { message: { content: JSON.stringify(VALID_DRAFT_WITH_TITLE_OPTIONS_AND_LOCATIONS) } },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset(baseParams());
+
+    expect(draft.titleOptions).toEqual(
+      VALID_DRAFT_WITH_TITLE_OPTIONS_AND_LOCATIONS.titleOptions,
+    );
+    expect(draft.titleOptions).toContain(draft.title);
+    expect(draft.locations).toEqual(VALID_DRAFT_WITH_TITLE_OPTIONS_AND_LOCATIONS.locations);
+  });
+
+  it("(b) a response OMITTING titleOptions/locations still parses (backward compatibility)", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [{ message: { content: JSON.stringify(VALID_DRAFT) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset(baseParams());
+
+    expect(draft.titleOptions).toBeUndefined();
+    expect(draft.locations).toBeUndefined();
+    expect(draft.title).toBe(VALID_DRAFT.title);
+  });
+
+  it("rejects titleOptions with fewer than 4 entries (schema shape validation)", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_DRAFT,
+                titleOptions: ["only one", "only two", "only three"],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    await expect(synthesizeVerticalDramaPreset(baseParams())).rejects.toBeInstanceOf(
+      VdSchemaValidationError,
+    );
+  });
+
+  it("rejects locations with fewer than 3 entries (schema shape validation)", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_DRAFT,
+                locations: [{ name: "only one", description: "d" }],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    await expect(synthesizeVerticalDramaPreset(baseParams())).rejects.toBeInstanceOf(
+      VdSchemaValidationError,
+    );
+  });
+
+  it("preserves a titleOptions entry that only exceeds the unrelated create-series genre limit — it is bounded by the title limit instead (planning/vd-character-prompt-followups/plan.md Item 3)", async () => {
+    const longOptions = [
+      "a".repeat(CREATE_SERIES_FIELD_LIMITS.genre + 30),
+      "short candidate two",
+      "short candidate three",
+      "short candidate four",
+    ];
+    expect(longOptions[0].length).toBeGreaterThan(CREATE_SERIES_FIELD_LIMITS.genre);
+    expect(longOptions[0].length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.title);
+
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          { message: { content: JSON.stringify({ ...VALID_DRAFT, titleOptions: longOptions }) } },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset(baseParams());
+
+    expect(draft.titleOptions?.[0]).toBe(longOptions[0]);
+    expect(draft.titleOptions?.[0].length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.title);
+    expect(draft.titleOptions?.[1]).toBe("short candidate two");
+    expect(
+      draft.warnings.some((w) => w.code === "preset_field_length_clamped"),
+    ).toBe(false);
+  });
+});
+
+describe("clampDraftForCreateSeries — titleOptions", () => {
+  it("leaves titleOptions untouched (and does not report clamped) when every entry is within limits", () => {
+    const { draft, clamped } = clampDraftForCreateSeries(
+      VALID_DRAFT_WITH_TITLE_OPTIONS_AND_LOCATIONS as never,
+    );
+    expect(clamped).toBe(false);
+    expect(draft.titleOptions).toEqual(VALID_DRAFT_WITH_TITLE_OPTIONS_AND_LOCATIONS.titleOptions);
+  });
+
+  it("is a no-op (undefined stays undefined) when titleOptions is absent", () => {
+    const { draft, clamped } = clampDraftForCreateSeries(VALID_DRAFT as never);
+    expect(clamped).toBe(false);
+    expect(draft.titleOptions).toBeUndefined();
+  });
+
+  it("still clamps a titleOptions entry that genuinely exceeds the title limit (belt-and-suspenders, planning/vd-character-prompt-followups/plan.md Item 3)", () => {
+    const overTitleLimitOption = "w".repeat(CREATE_SERIES_FIELD_LIMITS.title + 20);
+    const { draft, clamped } = clampDraftForCreateSeries({
+      ...VALID_DRAFT,
+      titleOptions: [
+        overTitleLimitOption,
+        "short candidate two",
+        "short candidate three",
+        "short candidate four",
+      ],
+    } as never);
+
+    expect(clamped).toBe(true);
+    expect(draft.titleOptions?.[0].length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.title);
+    expect(draft.titleOptions?.[1]).toBe("short candidate two");
+    expect(draft.warnings.some((w) => w.code === "preset_field_length_clamped")).toBe(true);
+  });
+});
+
+describe("synthesizeVerticalDramaPresetV2 — titleOptions + locations (superset inherited from v1 base schema)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("carries titleOptions + locations through the v2 path untouched", async () => {
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                contract_version: 2,
+                title: "Neon Circuit Bond",
+                titleOptions: [
+                  "Neon Circuit Bond",
+                  "Wired for Two",
+                  "Signal and Static",
+                  "The Circuit Between Us",
+                ],
+                category: "sci_fi_mecha",
+                logline: "logline",
+                mainPlot: "main plot",
+                seasonArc: "season arc",
+                tone: "เข้มข้นดิบเถื่อน",
+                cliffhangerStyle: "จบด้วยหักมุม",
+                creatorSummary: {
+                  whatItIsAbout: "เรื่องราวของทีมผู้พิทักษ์ที่ต้องปกป้องเมืองจากภัยใหม่",
+                  protagonistAndGoal: "ตัวเอกต้องรวมทีมเพื่อหยุดภัยและรักษาคนที่รัก",
+                  conflictAndDiscovery: "ทีมพบศัตรูที่รู้ความลับของพวกเขา",
+                  centralMystery: "ใครกำลังชักใยเหตุการณ์ทั้งหมด",
+                  decisionNotes: ["เน้นตัวเอกเป็นแกน", "ใช้ความลับเป็นปมต่อเนื่อง"],
+                },
+                characters: [
+                  { name: "A", role: "นางเอก", narrativeRole: "protagonist", roleTier: "lead_female", occupation: "นักสำรวจ", description: "d" },
+                  { name: "B", role: "พระเอก", narrativeRole: "co_protagonist", roleTier: "lead_male", occupation: "นักบิน", description: "d" },
+                  { name: "C", role: "ตัวร้าย", narrativeRole: "antagonist", roleTier: "villain_male_open", occupation: "ผู้นำกองกำลัง", description: "d" },
+                ],
+                visualBible: "prose",
+                locations: [
+                  { name: "Dockside hangar", description: "Rain-slick landing bay lit by mecha running lights." },
+                  { name: "Control tower", description: "Glass tower overlooking the city grid, blue emergency light." },
+                  { name: "Underground bunker", description: "Cramped bunker where the team plans covert runs." },
+                ],
+                mixRecipe: { primaryFlavor: "101", supportingFlavors: ["202"], rationale: "why" },
+                warnings: [],
+                blendFacets: VERTICAL_DRAMA_BLEND_FACETS.map((facet) => ({
+                  facet,
+                  contributions: [
+                    { presetId: "101", element: "spine", kept: true },
+                    { presetId: "202", element: "flavor", kept: true },
+                  ],
+                })),
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPresetV2({
+      userId: 7,
+      tenantId: "tenant-1",
+      locale: "th",
+      selections: [
+        { presetId: "101", weight: 3 },
+        { presetId: "202", weight: 2 },
+      ],
+      selectedPresets: [
+        {
+          id: "101",
+          title: "Neon Jungle Guardian",
+          category: "sci_fi_mecha",
+          logline: "l",
+          mainPlot: "m",
+          seasonArc: "s",
+          tone: "t",
+          cliffhangerStyle: "c",
+          characters: [],
+          visualBible: "v",
+        },
+        {
+          id: "202",
+          title: "My Giant Companion",
+          category: "sci_fi_mecha",
+          logline: "l",
+          mainPlot: "m",
+          seasonArc: "s",
+          tone: "t",
+          cliffhangerStyle: "c",
+          characters: [],
+          visualBible: "v",
+        },
+      ],
+      selectedCategories: [],
+      primarySelectionId: "101",
+    });
+
+    expect(draft.titleOptions).toEqual([
+      "Neon Circuit Bond",
+      "Wired for Two",
+      "Signal and Static",
+      "The Circuit Between Us",
+    ]);
+    expect(draft.locations).toEqual([
+      { name: "Dockside hangar", description: "Rain-slick landing bay lit by mecha running lights." },
+      { name: "Control tower", description: "Glass tower overlooking the city grid, blue emergency light." },
+      { name: "Underground bunker", description: "Cramped bunker where the team plans covert runs." },
+    ]);
+  });
+});
+
