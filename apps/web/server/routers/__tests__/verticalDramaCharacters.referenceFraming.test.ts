@@ -167,7 +167,10 @@ vi.mock("../media", () => ({
   reconcileTaskCredits: vi.fn(),
 }));
 
-import { verticalDramaCharactersRouter } from "../verticalDramaCharacters";
+import {
+  pickCharacterRenderModelId,
+  verticalDramaCharactersRouter,
+} from "../verticalDramaCharacters";
 
 const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
 
@@ -412,5 +415,130 @@ describe("generateCharacterSheet — reference tier + customInstruction", () => 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
       expect.objectContaining({ customInstruction: undefined }),
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Text-to-image vs image-to-image model split                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `planning/vd-character-image-edit-model/plan.md`. A character render is two
+ * different provider jobs — text-to-image with no reference, image-to-image
+ * (`gpt-image-2-image-to-image` / `operation: "image.edit"`) with one — and the
+ * strongest model for each is a different model. Only the server knows which
+ * job a given call is, so the client sends both picks and
+ * `pickCharacterRenderModelId` decides.
+ */
+describe("pickCharacterRenderModelId", () => {
+  it("uses the edit model when a reference is attached", () => {
+    expect(
+      pickCharacterRenderModelId({
+        hasReferenceImage: true,
+        selectedImageModelId: "kie-gpt-image-2",
+        selectedEditImageModelId: "seedream-5-pro",
+      }),
+    ).toBe("seedream-5-pro");
+  });
+
+  it("uses the text-to-image model when no reference is attached", () => {
+    expect(
+      pickCharacterRenderModelId({
+        hasReferenceImage: false,
+        selectedImageModelId: "kie-gpt-image-2",
+        selectedEditImageModelId: "seedream-5-pro",
+      }),
+    ).toBe("kie-gpt-image-2");
+  });
+
+  it("falls back to the single model when no edit model was chosen (previous behavior)", () => {
+    expect(
+      pickCharacterRenderModelId({
+        hasReferenceImage: true,
+        selectedImageModelId: "kie-gpt-image-2",
+      }),
+    ).toBe("kie-gpt-image-2");
+    expect(
+      pickCharacterRenderModelId({
+        hasReferenceImage: true,
+        selectedImageModelId: "kie-gpt-image-2",
+        selectedEditImageModelId: "   ",
+      }),
+    ).toBe("kie-gpt-image-2");
+  });
+});
+
+describe("generateCharacterImage — image-to-image model split", () => {
+  it("renders a look through the EDIT model, because a reference is attached", async () => {
+    queueRenderSelects(LOOK_CHARACTER_ROW);
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(PARENT_PORTRAIT_URL);
+
+    await router.generateCharacterImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "2",
+        selectedImageModelId: "kie-gpt-image-2",
+        selectedEditImageModelId: "seedream-5-pro",
+      },
+    });
+
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("seedream-5-pro");
+  });
+
+  it("renders a first portrait through the TEXT-TO-IMAGE model, because there is no reference", async () => {
+    queueRenderSelects(BASE_CHARACTER_ROW);
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await router.generateCharacterImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        selectedImageModelId: "kie-gpt-image-2",
+        selectedEditImageModelId: "seedream-5-pro",
+      },
+    });
+
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("kie-gpt-image-2");
+  });
+
+  it("keeps the single-model behavior when the caller sends no edit model", async () => {
+    queueRenderSelects(BASE_CHARACTER_ROW);
+    mockGetPrimaryPortraitUrl.mockResolvedValue(OWN_PORTRAIT_URL);
+
+    await router.generateCharacterImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        selectedImageModelId: "kie-gpt-image-2",
+      },
+    });
+
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("kie-gpt-image-2");
+  });
+});
+
+describe("generateCharacterSheet — image-to-image model split", () => {
+  it("renders through the EDIT model when the identity-lock reference is attached", async () => {
+    queueRenderSelects(BASE_CHARACTER_ROW);
+    mockGetPrimaryPortraitUrl.mockResolvedValue(OWN_PORTRAIT_URL);
+
+    await router.generateCharacterSheet({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        sheetType: "pose_library",
+        sheetLanguage: "en",
+        selectedImageModelId: "kie-gpt-image-2",
+        selectedEditImageModelId: "nano-banana-pro",
+      },
+    });
+
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("nano-banana-pro");
   });
 });

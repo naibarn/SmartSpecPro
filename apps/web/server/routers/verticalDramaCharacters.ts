@@ -733,6 +733,35 @@ export async function resolveVdCharacterMediaTransportDecision(
  * fail-closed convention.) The character tab passes the model per-request,
  * so this only needs to validate, not read a persisted plan.
  */
+/**
+ * Pick WHICH of the caller's two image models this particular render should
+ * use (`planning/vd-character-image-edit-model/plan.md`).
+ *
+ * A character render is one of two genuinely different jobs, and the strongest
+ * model for each is a different model. With no reference image it is
+ * text-to-image (kie's `gpt-image-2-text-to-image` is excellent at this). With
+ * a reference attached — every look, every twin, every regeneration — the
+ * provider call becomes image-to-image / `image.edit`, which that same model
+ * is weak at; Seedream 5 Pro or Nano Banana Pro hold identity far better
+ * there. One picker forced both jobs onto one model, so whichever the user
+ * chose, half their generations ran on the wrong engine.
+ *
+ * Only the SERVER knows whether a reference will actually be attached (three
+ * resolution tiers, incl. the parent-portrait fallback — see
+ * `resolveReferencePortraitSource`), so the client sends both choices and this
+ * decides. Falls back to `selectedImageModelId` whenever the caller supplied
+ * no edit model, which keeps every existing single-picker client byte-identical.
+ */
+export function pickCharacterRenderModelId(params: {
+  hasReferenceImage: boolean;
+  selectedImageModelId?: string;
+  selectedEditImageModelId?: string;
+}): string | undefined {
+  const editModelId = params.selectedEditImageModelId?.trim();
+  if (params.hasReferenceImage && editModelId) return editModelId;
+  return params.selectedImageModelId;
+}
+
 export async function resolveCharacterImageModelId(selectedImageModelId?: string): Promise<string> {
   const requested = selectedImageModelId?.trim();
   if (!requested) {
@@ -3230,6 +3259,11 @@ export const verticalDramaCharactersRouter = router({
         // validated + must be enabled. REQUIRED — no server-side fallback;
         // throws BAD_REQUEST when absent. See `resolveCharacterImageModelId`.
         selectedImageModelId: z.string().trim().min(1).max(128),
+        /** Caller-selected image-to-image / EDIT model — used instead of
+         *  `selectedImageModelId` whenever this render actually attaches a
+         *  reference image. Optional: omitting it keeps the previous
+         *  single-model behavior exactly. See `pickCharacterRenderModelId`. */
+        selectedEditImageModelId: z.string().trim().min(1).max(128).optional(),
         // Required only when the selected model is MCP-transport (e.g.
         // `higgsfield/*`, `magnific-mcp/*`) — see
         // `resolveVdCharacterMcpTransportMetadata`.
@@ -3442,8 +3476,19 @@ export const verticalDramaCharactersRouter = router({
       //    against the CALLER-SELECTED model (character tab's own picker),
       //    which is now REQUIRED — `resolveCharacterImageModelId` throws
       //    BAD_REQUEST when none was selected instead of silently falling
-      //    back to `DEFAULT_MODELS.image`.
-      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
+      //    back to `DEFAULT_MODELS.image`. Which of the caller's two picks
+      //    applies depends on whether a reference image is actually being
+      //    attached — this render is image-to-image when one is (see
+      //    `pickCharacterRenderModelId`). Pricing, credits, and transport all
+      //    follow the RESOLVED model from here on, so nothing downstream
+      //    needs to know which picker it came from.
+      const resolvedImageModelId = await resolveCharacterImageModelId(
+        pickCharacterRenderModelId({
+          hasReferenceImage: Boolean(referencePortraitUrl),
+          selectedImageModelId: input.selectedImageModelId,
+          selectedEditImageModelId: input.selectedEditImageModelId,
+        }),
+      );
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)
@@ -3757,6 +3802,11 @@ export const verticalDramaCharactersRouter = router({
         // Caller-selected image model — see `generateCharacterImage`'s same
         // field. REQUIRED — no server-side fallback.
         selectedImageModelId: z.string().trim().min(1).max(128),
+        /** Image-to-image / EDIT model — see `generateCharacterImage`'s
+         *  identical field and `pickCharacterRenderModelId`. A sheet render
+         *  attaches the identity-lock reference exactly like a portrait does,
+         *  so it splits on the same rule. */
+        selectedEditImageModelId: z.string().trim().min(1).max(128).optional(),
         mcpConnectionId: z.string().max(64).optional(),
         sharedGroupId: z.number().int().positive().optional(),
         // Feature 135 — Hermes Grok media worker (section 09). See
@@ -3981,8 +4031,16 @@ export const verticalDramaCharactersRouter = router({
       // Design Bible formats) is priced like the old `generateCharacterSheet`
       // — a single, more complex multi-panel image call. Prices + generates
       // against the CALLER-SELECTED model — see generateCharacterImage's same
-      // comment for rationale.
-      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
+      // comment for rationale — including the text-to-image vs image-to-image
+      // split, which applies here identically (a sheet render attaches the
+      // same identity-lock reference).
+      const resolvedImageModelId = await resolveCharacterImageModelId(
+        pickCharacterRenderModelId({
+          hasReferenceImage: Boolean(referencePortraitUrl),
+          selectedImageModelId: input.selectedImageModelId,
+          selectedEditImageModelId: input.selectedEditImageModelId,
+        }),
+      );
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)

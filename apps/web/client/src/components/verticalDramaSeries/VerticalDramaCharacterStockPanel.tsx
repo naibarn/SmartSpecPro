@@ -179,6 +179,14 @@ export function needsSetupBadgeLabel(
 const VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY =
   "smartspec_vd_character_image_model";
 
+/** Separate remembered model for image-to-image / EDIT renders
+ *  (`planning/vd-character-image-edit-model/plan.md`). Its own key, so an
+ *  existing user's remembered text-to-image model survives untouched and the
+ *  edit slot simply starts empty (= keep using the t2i model, previous
+ *  behavior). */
+const VD_CHARACTER_EDIT_IMAGE_MODEL_STORAGE_KEY =
+  "smartspec_vd_character_edit_image_model";
+
 /**
  * Character image providers can legitimately take longer than the old
  * five-minute browser window (especially MCP-backed models). Keep polling
@@ -942,6 +950,10 @@ export interface VdCharacterPromptConfirmPayload<TSnapshot> {
   // `requireModelSelected()` immediately before calling this, so it always
   // has a non-empty value to pass in.
   selectedImageModelId: string;
+  /** Image-to-image / EDIT model — optional, applied server-side only when
+   *  this render actually attaches a reference image
+   *  (`pickCharacterRenderModelId`). */
+  selectedEditImageModelId?: string;
   mcpConnectionId?: string;
   sharedGroupId?: number;
   /** Feature 135 — Hermes/Grok media worker transport. Mutually exclusive
@@ -966,6 +978,10 @@ export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
   // Required — see `VdCharacterPromptConfirmPayload.selectedImageModelId`'s
   // own doc comment for why this is no longer optional.
   selectedImageModelId: string;
+  /** Optional second pick — see `VdCharacterPromptConfirmPayload`'s own field.
+   *  Omitted from the payload when blank so a caller that never split its
+   *  models sends a byte-identical request to before. */
+  selectedEditImageModelId?: string;
   imageModelUsesMcp: boolean;
   mcpConnectionId?: string | null;
   sharedGroupId?: number | null;
@@ -999,6 +1015,9 @@ export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
       // Always sent (never conditionally spread) — see this function's
       // param doc comment.
       selectedImageModelId: params.selectedImageModelId,
+      ...(params.selectedEditImageModelId?.trim()
+        ? { selectedEditImageModelId: params.selectedEditImageModelId.trim() }
+        : {}),
       ...(params.imageModelUsesMcp && params.mcpConnectionId
         ? { mcpConnectionId: params.mcpConnectionId }
         : {}),
@@ -1910,11 +1929,33 @@ export function VerticalDramaCharacterStockPanel({
    *  to localStorage (same convention as MediaStudio.tsx's own
    *  `smartspec_video_voice_model` / `smartspec_video_music_model` keys) so
    *  the user doesn't have to re-pick a model every single generate. */
-  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
+  /** Which slot the shared `ModelSelectorDialog` is currently editing —
+   *  `null` when closed. ONE dialog serves both the text-to-image and the
+   *  image-to-image slot (`planning/vd-character-image-edit-model/plan.md`)
+   *  so the two pickers can never drift in behavior or model list. */
+  const [modelDialogTarget, setModelDialogTarget] = useState<
+    "create" | "edit" | null
+  >(null);
+  const isModelDialogOpen = modelDialogTarget !== null;
+  const setIsModelDialogOpen = (open: boolean) =>
+    setModelDialogTarget(open ? "create" : null);
   const [selectedImageModelId, setSelectedImageModelId] = useState(
     () => safeStorageGet(VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY) || ""
   );
+  /** Model for renders that attach a reference image (looks, twins, every
+   *  regeneration) — a genuinely different job from a first portrait, and the
+   *  best model for it is a different model. Empty = "no separate choice",
+   *  which the server reads as "keep using the text-to-image model", i.e.
+   *  exactly the previous single-picker behavior. */
+  const [selectedEditImageModelId, setSelectedEditImageModelId] = useState(
+    () => safeStorageGet(VD_CHARACTER_EDIT_IMAGE_MODEL_STORAGE_KEY) || ""
+  );
   const handleSelectImageModel = (modelId: string) => {
+    if (modelDialogTarget === "edit") {
+      setSelectedEditImageModelId(modelId);
+      safeStorageSet(VD_CHARACTER_EDIT_IMAGE_MODEL_STORAGE_KEY, modelId);
+      return;
+    }
     setSelectedImageModelId(modelId);
     safeStorageSet(VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY, modelId);
   };
@@ -1923,18 +1964,39 @@ export function VerticalDramaCharacterStockPanel({
   const selectedImageModelRecord = imageModels.find(
     m => m.modelId === selectedImageModelId
   );
+  const selectedEditImageModelRecord = imageModels.find(
+    m => m.modelId === selectedEditImageModelId
+  );
   /** Whether the currently-selected image model is MCP-transport (e.g.
    *  `higgsfield/*`, `magnific-mcp/*`) — mirrors
    *  `VerticalDramaEpisodePage.tsx`'s own `imageModelUsesMcp` derivation so
    *  the character tab shows the same MCP-connection picker + guard the
    *  episode workspace already has. */
+  /**
+   * Covers BOTH selected models, not just the text-to-image one. The client
+   * cannot know which of the two the server will pick — that depends on
+   * whether a reference image ends up attached, which only the server resolves
+   * (`pickCharacterRenderModelId`). Reproducing that three-tier lookup here
+   * would drift, so this is deliberately the UNION: if either model needs an
+   * MCP connection, ask for one. Over-asking costs the user one picker; under-
+   * asking costs them a failed generation, so the union is the fail-closed
+   * direction — the same convention as every other model guard in this panel.
+   */
   const imageModelUsesMcp =
-    Boolean(selectedImageModelId) &&
-    resolveMediaModelTransportConfig({
-      provider: selectedImageModelRecord?.provider,
-      modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
-      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
-    }).transport === "mcp";
+    (Boolean(selectedImageModelId) &&
+      resolveMediaModelTransportConfig({
+        provider: selectedImageModelRecord?.provider,
+        modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+        configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+      }).transport === "mcp") ||
+    (Boolean(selectedEditImageModelId) &&
+      resolveMediaModelTransportConfig({
+        provider: selectedEditImageModelRecord?.provider,
+        modelId: selectedEditImageModelRecord?.modelId ?? selectedEditImageModelId,
+        configJson: selectedEditImageModelRecord?.configJson as
+          | Record<string, unknown>
+          | undefined,
+      }).transport === "mcp");
   const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(
     readStoredMcpConnectionId
   );
@@ -1964,12 +2026,20 @@ export function VerticalDramaCharacterStockPanel({
    *  transport, so at most one of `imageModelUsesMcp`/`imageModelUsesHermes`
    *  is ever true. */
   const imageModelUsesHermes =
-    Boolean(selectedImageModelId) &&
-    resolveMediaModelTransportConfig({
-      provider: selectedImageModelRecord?.provider,
-      modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
-      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
-    }).transport === "hermes_worker";
+    (Boolean(selectedImageModelId) &&
+      resolveMediaModelTransportConfig({
+        provider: selectedImageModelRecord?.provider,
+        modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+        configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+      }).transport === "hermes_worker") ||
+    (Boolean(selectedEditImageModelId) &&
+      resolveMediaModelTransportConfig({
+        provider: selectedEditImageModelRecord?.provider,
+        modelId: selectedEditImageModelRecord?.modelId ?? selectedEditImageModelId,
+        configJson: selectedEditImageModelRecord?.configJson as
+          | Record<string, unknown>
+          | undefined,
+      }).transport === "hermes_worker");
   const [hermesConnectionId, setHermesConnectionIdState] = useState<string | null>(
     readStoredHermesConnectionId
   );
@@ -2794,6 +2864,9 @@ export function VerticalDramaCharacterStockPanel({
       seriesId,
       characterId,
       selectedImageModelId,
+      // A look/regeneration is exactly the case that renders image-to-image;
+      // the server applies it only when a reference is genuinely attached.
+      ...(selectedEditImageModelId ? { selectedEditImageModelId } : {}),
       ...(customInstruction ? { customInstruction } : {}),
       ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
       ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
@@ -3257,6 +3330,7 @@ export function VerticalDramaCharacterStockPanel({
       negativePrompt,
       approvedDesignSnapshot,
       selectedImageModelId,
+      selectedEditImageModelId,
       imageModelUsesMcp,
       mcpConnectionId,
       sharedGroupId: mcpSharedGroupId,
@@ -5033,6 +5107,9 @@ export function VerticalDramaCharacterStockPanel({
                                     characterId: c.characterId,
                                     sheetType: "auto",
                                     sheetLanguage,
+                                    ...(selectedEditImageModelId
+                                      ? { selectedEditImageModelId }
+                                      : {}),
                                     // Always sent — see the matching comment
                                     // on `generatePortraitCandidateBatchMutation.mutate`
                                     // above for why the conditional spread was
@@ -5891,22 +5968,63 @@ export function VerticalDramaCharacterStockPanel({
                           size="sm"
                           variant="outline"
                           className="gap-2"
-                          onClick={() => setIsModelDialogOpen(true)}
+                          onClick={() => setModelDialogTarget("create")}
+                          title={t(
+                            lang,
+                            "ใช้ตอนสร้างภาพใหม่ที่ยังไม่มีภาพอ้างอิง (text-to-image)",
+                            "Used for a new image with no reference yet (text-to-image)"
+                          )}
                         >
                           <Sparkles
                             aria-hidden="true"
                             className="h-3.5 w-3.5"
                           />
                           {selectedImageModelId
-                            ? `${t(lang, "โมเดล", "Model")}: ${
+                            ? `${t(lang, "โมเดลสร้างภาพใหม่", "New image")}: ${
                                 imageModels.find(
                                   m => m.modelId === selectedImageModelId
                                 )?.name ?? selectedImageModelId
                               }`
                             : t(
                                 lang,
-                                "เลือกโมเดลสร้างภาพ",
-                                "Choose image model"
+                                "เลือกโมเดลสร้างภาพใหม่",
+                                "Choose new-image model"
+                              )}
+                        </Button>
+                        {/* Second slot — `planning/vd-character-image-edit-
+                        model/plan.md`. A model that is excellent at
+                        text-to-image (gpt-image-2) can be poor at
+                        image-to-image, which is what every look/twin/
+                        regeneration actually runs. The server picks between
+                        the two based on whether a reference is really
+                        attached; leaving this empty keeps the single-model
+                        behavior. */}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => setModelDialogTarget("edit")}
+                          title={t(
+                            lang,
+                            "ใช้ตอนแก้ไข/ต่อยอดจากภาพเดิม เช่น เพิ่มลุคใหม่ หรือสร้างซ้ำ (image-to-image)",
+                            "Used when editing from an existing image — new looks, regenerations (image-to-image)"
+                          )}
+                        >
+                          <ImagePlus
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
+                          {selectedEditImageModelId
+                            ? `${t(lang, "โมเดลแก้ไขภาพ", "Edit image")}: ${
+                                imageModels.find(
+                                  m => m.modelId === selectedEditImageModelId
+                                )?.name ?? selectedEditImageModelId
+                              }`
+                            : t(
+                                lang,
+                                "เลือกโมเดลแก้ไขภาพ (ไม่บังคับ)",
+                                "Choose edit model (optional)"
                               )}
                         </Button>
                         <Button
@@ -6016,6 +6134,9 @@ export function VerticalDramaCharacterStockPanel({
                               characterId: selectedCharacter.characterId,
                               sheetType: selectedSheetType,
                               sheetLanguage,
+                              ...(selectedEditImageModelId
+                                ? { selectedEditImageModelId }
+                                : {}),
                               // Same "รายละเอียดเพิ่มเติม" textarea the
                               // portrait button reads — a sheet is just as
                               // valid a target for a framing/composition brief
@@ -7061,11 +7182,18 @@ export function VerticalDramaCharacterStockPanel({
                   );
                 })()}
 
+                {/* One dialog, two slots — `modelDialogTarget` decides which
+                    selection it shows and which one `handleSelectImageModel`
+                    writes back to. */}
                 <ModelSelectorDialog
                   open={isModelDialogOpen}
-                  onOpenChange={setIsModelDialogOpen}
+                  onOpenChange={open => setModelDialogTarget(open ? modelDialogTarget : null)}
                   models={imageModels}
-                  selectedModelId={selectedImageModelId}
+                  selectedModelId={
+                    modelDialogTarget === "edit"
+                      ? selectedEditImageModelId
+                      : selectedImageModelId
+                  }
                   onSelect={handleSelectImageModel}
                   mediaType="image"
                   isLoading={imageModelsQuery.isLoading}
@@ -7084,13 +7212,29 @@ export function VerticalDramaCharacterStockPanel({
                         onSharedGroupChange={setMcpSharedGroupId}
                         assetType="image"
                         providerKey={
+                          // Whichever of the two picks is the MCP one — the
+                          // panel shows this row when EITHER needs MCP (see
+                          // `imageModelUsesMcp`), so reading only the
+                          // text-to-image slot would leave the picker without
+                          // a provider when only the edit model is MCP.
                           resolveMediaModelTransportConfig({
                             provider: selectedImageModelRecord?.provider,
                             modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
                             configJson: selectedImageModelRecord?.configJson as
                               | Record<string, unknown>
                               | undefined,
-                          }).providerKey ?? undefined
+                          }).providerKey ??
+                          (selectedEditImageModelId
+                            ? (resolveMediaModelTransportConfig({
+                                provider: selectedEditImageModelRecord?.provider,
+                                modelId:
+                                  selectedEditImageModelRecord?.modelId ??
+                                  selectedEditImageModelId,
+                                configJson: selectedEditImageModelRecord?.configJson as
+                                  | Record<string, unknown>
+                                  | undefined,
+                              }).providerKey ?? undefined)
+                            : undefined)
                         }
                       />
                     </CardContent>
