@@ -119,6 +119,26 @@ export interface VerticalDramaSettingsTabProps {
   watermark?: unknown;
 }
 
+/**
+ * Labels for the 3x3 watermark anchor grid (widened from four corners on
+ * 2026-07-30). Kept as a data map rather than a nested ternary so adding an
+ * anchor cannot silently fall through to the wrong label.
+ */
+const VD_WATERMARK_POSITION_LABELS: Record<
+  (typeof VD_WATERMARK_POSITIONS)[number],
+  { th: string; en: string }
+> = {
+  top_left: { th: "บน–ซ้าย", en: "Top left" },
+  top_center: { th: "บน–กลาง", en: "Top centre" },
+  top_right: { th: "บน–ขวา", en: "Top right" },
+  middle_left: { th: "กลางจอ–ซ้าย", en: "Middle left" },
+  middle_center: { th: "กลางจอ–กลาง", en: "Middle centre" },
+  middle_right: { th: "กลางจอ–ขวา", en: "Middle right" },
+  bottom_left: { th: "ล่าง–ซ้าย", en: "Bottom left" },
+  bottom_center: { th: "ล่าง–กลาง", en: "Bottom centre" },
+  bottom_right: { th: "ล่าง–ขวา", en: "Bottom right" },
+};
+
 export function VerticalDramaSettingsTab({
   lang,
   seriesId,
@@ -215,9 +235,15 @@ export function VerticalDramaSettingsTab({
   // Manual LLM model override (added 2026-07-11, collapsed to a single
   // series-wide dropdown 2026-07-11) — eligible model list for the dropdown
   // below, and the dedicated mutation that persists it onto
-  // `llmModelPolicy`.
+  // `llmModelPolicy`. `includeModelId` grandfathers this series' already-
+  // persisted pin into the list even if it's since fallen out of the
+  // admin-curated recommended set (2026-07-31 quality-picker narrowing —
+  // see `listQualityPlanningModels`'s own doc comment), so this controlled
+  // `<Select value={defaultModelInput}>` always has a matching option.
   const planningModelsQuery =
-    trpc.verticalDramaSeries.listQualityPlanningModels.useQuery();
+    trpc.verticalDramaSeries.listQualityPlanningModels.useQuery({
+      includeModelId: defaultModelIdFromProps,
+    });
   const planningModels = planningModelsQuery.data ?? [];
   const llmModelPolicyMutation =
     trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
@@ -510,6 +536,7 @@ export function VerticalDramaSettingsTab({
         <VerticalDramaSeriesWatermarkCard
           lang={lang}
           readOnly={readOnly}
+          seriesId={seriesId}
           draft={watermarkDraft}
           onChange={setWatermarkDraft}
           saving={updateWatermarkMutation.isPending}
@@ -558,10 +585,18 @@ export function VerticalDramaSettingsTab({
 
 /** Corner -> Tailwind absolute-position classes for the 9:16 mock preview
  *  box below (`VerticalDramaSeriesWatermarkCard`'s own small helper). */
+/** Preview placement for all NINE anchors. `Record<VdWatermarkPosition, …>`
+ *  makes a missing entry a compile error, which is why widening the enum to a
+ *  3x3 grid had to update this map in the same change. */
 const WATERMARK_PREVIEW_CORNER_CLASS: Record<VdWatermarkPosition, string> = {
   top_left: "left-1 top-1",
+  top_center: "left-1/2 top-1 -translate-x-1/2",
   top_right: "right-1 top-1",
+  middle_left: "left-1 top-1/2 -translate-y-1/2",
+  middle_center: "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+  middle_right: "right-1 top-1/2 -translate-y-1/2",
   bottom_left: "left-1 bottom-1",
+  bottom_center: "left-1/2 bottom-1 -translate-x-1/2",
   bottom_right: "right-1 bottom-1",
 };
 
@@ -578,6 +613,7 @@ const WATERMARK_PREVIEW_CORNER_CLASS: Record<VdWatermarkPosition, string> = {
 function VerticalDramaSeriesWatermarkCard({
   lang,
   readOnly,
+  seriesId,
   draft,
   onChange,
   saving,
@@ -585,16 +621,64 @@ function VerticalDramaSeriesWatermarkCard({
 }: {
   lang: "th" | "en";
   readOnly: boolean;
+  seriesId: string;
   draft: VdSeriesWatermarkConfig;
   onChange: (next: VdSeriesWatermarkConfig) => void;
   saving: boolean;
   onSave: () => void;
 }) {
   const t = vdTextOverlayCopy(lang);
+  const uploadWatermarkImageMutation =
+    trpc.verticalDramaSeries.uploadSeriesWatermarkImage.useMutation();
+  const [watermarkUploadBusy, setWatermarkUploadBusy] = useState(false);
+  const [watermarkUploadError, setWatermarkUploadError] = useState<
+    string | null
+  >(null);
+  const [watermarkDragActive, setWatermarkDragActive] = useState(false);
 
   function patch(next: Partial<VdSeriesWatermarkConfig>) {
     onChange({ ...draft, ...next });
   }
+
+  const handleWatermarkFile = async (file: File | null | undefined) => {
+    if (!file) return;
+    setWatermarkUploadError(null);
+    if (!file.type.toLowerCase().startsWith("image/")) {
+      setWatermarkUploadError(
+        lang === "th"
+          ? "ไฟล์ต้องเป็นรูปภาพ (PNG / JPG / WebP / SVG)"
+          : "File must be an image (PNG / JPG / WebP / SVG)"
+      );
+      return;
+    }
+    setWatermarkUploadBusy(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result ?? ""));
+        reader.onerror = () => reject(new Error("read_failed"));
+        reader.readAsDataURL(file);
+      });
+      const result = await uploadWatermarkImageMutation.mutateAsync({
+        seriesId,
+        fileName: file.name,
+        fileType: file.type,
+        fileBase64: base64,
+      });
+      const url = typeof result?.url === "string" ? result.url : "";
+      if (!url) throw new Error("no_url");
+      // Fill the field only — saving stays an explicit user action.
+      patch({ imageUrl: url });
+    } catch (error) {
+      setWatermarkUploadError(
+        `${lang === "th" ? "อัปโหลดไม่สำเร็จ" : "Upload failed"}${
+          error instanceof Error && error.message ? `: ${error.message}` : ""
+        }`
+      );
+    } finally {
+      setWatermarkUploadBusy(false);
+    }
+  };
 
   return (
     <Card data-testid="vd-watermark-card">
@@ -659,6 +743,57 @@ function VerticalDramaSeriesWatermarkCard({
                   <Label className="text-xs font-medium text-muted-foreground">
                     {t.watermarkImageUrlLabel}
                   </Label>
+                  {/* Drag-and-drop upload (parity with the Marketplace overlay
+                      picker). The drop only fills the URL field — saving stays
+                      an explicit action, so a mis-drop is recoverable. */}
+                  <div
+                    className={`rounded-md border border-dashed p-2 text-xs ${
+                      watermarkDragActive
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-muted/30"
+                    }`}
+                    onDragOver={event => {
+                      if (readOnly) return;
+                      event.preventDefault();
+                      setWatermarkDragActive(true);
+                    }}
+                    onDragLeave={() => setWatermarkDragActive(false)}
+                    onDrop={event => {
+                      if (readOnly) return;
+                      event.preventDefault();
+                      setWatermarkDragActive(false);
+                      void handleWatermarkFile(event.dataTransfer?.files?.[0]);
+                    }}
+                    data-testid="vd-watermark-dropzone"
+                  >
+                    <p className="text-muted-foreground">
+                      {lang === "th"
+                        ? "ลากไฟล์จากเครื่องมาวางที่นี่ (อัปโหลดอัตโนมัติ) หรือกดเลือกไฟล์ · PNG / JPG / WebP / SVG · ไม่เกิน 10MB · แนะนำ PNG พื้นหลังโปร่งใส"
+                        : "Drag an image here (uploads automatically) or pick a file · PNG / JPG / WebP / SVG · max 10MB · transparent PNG recommended"}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        className="text-xs"
+                        disabled={readOnly || watermarkUploadBusy}
+                        onChange={event =>
+                          void handleWatermarkFile(event.target.files?.[0])
+                        }
+                        data-testid="vd-watermark-file-input"
+                      />
+                      {watermarkUploadBusy ? (
+                        <span className="text-primary" role="status">
+                          {lang === "th" ? "กำลังอัปโหลด…" : "Uploading…"}
+                        </span>
+                      ) : null}
+                    </div>
+                    {watermarkUploadError ? (
+                      <p className="mt-1 text-destructive" role="alert">
+                        {watermarkUploadError}
+                      </p>
+                    ) : null}
+                  </div>
                   <Input
                     value={draft.imageUrl ?? ""}
                     placeholder="https://…/logo.png"
@@ -666,6 +801,14 @@ function VerticalDramaSeriesWatermarkCard({
                     disabled={readOnly}
                     data-testid="vd-watermark-image-url"
                   />
+                  {draft.imageUrl ? (
+                    <img
+                      src={draft.imageUrl}
+                      alt=""
+                      className="h-14 w-14 rounded border border-border bg-muted object-contain"
+                      style={{ opacity: draft.opacity ?? 1 }}
+                    />
+                  ) : null}
                 </div>
               )}
 
@@ -686,13 +829,7 @@ function VerticalDramaSeriesWatermarkCard({
                   <SelectContent>
                     {VD_WATERMARK_POSITIONS.map(pos => (
                       <SelectItem key={pos} value={pos}>
-                        {pos === "top_left"
-                          ? t.watermarkPositionTopLeft
-                          : pos === "top_right"
-                            ? t.watermarkPositionTopRight
-                            : pos === "bottom_left"
-                              ? t.watermarkPositionBottomLeft
-                              : t.watermarkPositionBottomRight}
+                        {VD_WATERMARK_POSITION_LABELS[pos][lang === "th" ? "th" : "en"]}
                       </SelectItem>
                     ))}
                   </SelectContent>

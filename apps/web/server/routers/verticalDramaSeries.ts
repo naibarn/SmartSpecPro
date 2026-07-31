@@ -5714,14 +5714,15 @@ export const verticalDramaSeriesRouter = router({
    * eligible model set the "generate start-frame render plan" / "generate
    * storyboard" stages' automatic selector would pick from (the SAME
    * `contextLength >= 1,000,000 && !isFree && supportsThinking === true`
-   * filter "improve script" already uses), sorted cheapest-first (the same
-   * order the auto-selector would pick from) — for the series settings
-   * dropdown's "automatic" + explicit-model-list options. No input; not
-   * series-scoped (the eligible model catalog is tenant-independent).
+   * filter "improve script" already uses) — for the series settings
+   * dropdown's "automatic" + explicit-model-list options. Optional input;
+   * not series-scoped otherwise (the eligible model catalog is
+   * tenant-independent).
    *
-   * `loadEnabledLlmModelRows`/`selectQualityLargeContextEligibleModels` are
-   * loaded via a lazy `await import(...)` — see this file's own established
-   * "narrow vi.mock safety" convention documented on the Ad Banner
+   * `loadEnabledLlmModelRows`/`selectQualityLargeContextEligibleModels`/
+   * `selectRecommendedQualityLargeContextEligibleModels` are loaded via a
+   * lazy `await import(...)` — see this file's own established "narrow
+   * vi.mock safety" convention documented on the Ad Banner
    * Overlay/`runImproveScriptJob` import blocks above: both pull in a heavy
    * `routers/llmProviders.ts` transitive chain that would otherwise break
    * every sibling test file's narrow `vi.mock` graph the instant this module
@@ -5729,15 +5730,53 @@ export const verticalDramaSeriesRouter = router({
    * pure table definitions, no heavy transitive chain) are used here only to
    * join in a richer display label (`modelName`/provider `displayName`),
    * mirroring `multiProvider.ts`'s `listAdminModelCatalog` join.
+   *
+   * 2026-07-31 (admin-vetted quality picker) — narrowed from the full
+   * `selectQualityLargeContextEligibleModels` set to
+   * `selectRecommendedQualityLargeContextEligibleModels` (admin-curated
+   * `isRecommended` flag, falling back to the full eligible set when nothing
+   * is currently recommended — see that selector's own doc comment for why).
+   * `input.includeModelId` grandfathers an existing series' persisted
+   * `defaultModelId` pin into the returned list even when it's no longer in
+   * the recommended set (as long as it's still within the full eligible
+   * set), so the Settings tab's controlled `<Select value=...>` always has a
+   * matching option for whatever is already saved. `setSeriesLlmModelPolicy`
+   * below still validates against the FULL eligible set (unchanged) — a pin
+   * outside the recommended set was, and remains, a valid save; this only
+   * fixes the dropdown rendering a value it has no option for.
    */
-  listQualityPlanningModels: verticalDramaProcedure.query(async () => {
+  listQualityPlanningModels: verticalDramaProcedure
+    .input(
+      z
+        .object({ includeModelId: z.string().min(1).nullable().optional() })
+        .optional(),
+    )
+    .query(async ({ input }) => {
     const { loadEnabledLlmModelRows } =
       await import("../services/enabledLlmModels");
-    const { selectQualityLargeContextEligibleModels } =
-      await import("../services/verticalDramaImproveScript");
+    const {
+      selectQualityLargeContextEligibleModels,
+      selectRecommendedQualityLargeContextEligibleModels,
+    } = await import("../services/verticalDramaImproveScript");
 
     const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-    const eligible = selectQualityLargeContextEligibleModels(rows);
+    const recommended = selectRecommendedQualityLargeContextEligibleModels(rows);
+
+    const includeModelId = input?.includeModelId ?? null;
+    let eligible = recommended;
+    if (
+      includeModelId &&
+      !recommended.some((row) => row.modelId === includeModelId)
+    ) {
+      const fullEligible = selectQualityLargeContextEligibleModels(rows);
+      const grandfathered = fullEligible.find(
+        (row) => row.modelId === includeModelId,
+      );
+      if (grandfathered) {
+        eligible = [...recommended, grandfathered];
+      }
+    }
+
     if (eligible.length === 0) {
       return [] as Array<{ modelId: string; label: string }>;
     }
@@ -5852,6 +5891,74 @@ export const verticalDramaSeriesRouter = router({
    * input-parsing layer rejects it with a zod `BAD_REQUEST` before this
    * function runs.
    */
+  /**
+   * Drag-and-drop / file-picker upload for the series watermark image.
+   *
+   * Returns ONLY a storage URL — it deliberately does not write the series
+   * config, so the drop lands in the form and the user still presses
+   * "บันทึกลายน้ำ". Mirrors `uploadStagedAutoReviewOverlayImage`'s validation
+   * (size cap, extension allowlist, magic-byte sniff) rather than trusting the
+   * browser-reported `fileType`.
+   */
+  uploadSeriesWatermarkImage: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        fileName: z.string().min(1).max(255),
+        fileType: z.string().min(1).max(100),
+        fileBase64: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (!input.fileType.toLowerCase().startsWith("image/")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "watermark_upload_not_an_image",
+        });
+      }
+      const parts = input.fileBase64.split(",", 2);
+      const buf = Buffer.from(
+        parts.length === 2 ? parts[1] : input.fileBase64,
+        "base64"
+      );
+      const MAX_BYTES = 10 * 1024 * 1024;
+      if (buf.length > MAX_BYTES) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "watermark_upload_too_large:10MB",
+        });
+      }
+      const ext = (input.fileName.split(".").pop() || "")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .toLowerCase();
+      const ALLOWED = new Set(["jpg", "jpeg", "png", "webp", "svg"]);
+      if (ext && !ALLOWED.has(ext)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `watermark_upload_bad_extension:${ext}`,
+        });
+      }
+      const magic = buf.slice(0, 12);
+      const isValidImage =
+        (magic[0] === 0xff && magic[1] === 0xd8) || // JPEG
+        (magic[0] === 0x89 && magic[1] === 0x50) || // PNG
+        (magic[0] === 0x52 &&
+          magic[1] === 0x49 &&
+          magic[2] === 0x46 &&
+          magic[3] === 0x46) || // WEBP (RIFF)
+        magic[0] === 0x3c; // SVG (<)
+      if (!isValidImage) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "watermark_upload_content_mismatch",
+        });
+      }
+      const key = `vertical-drama/${input.seriesId}/watermark/${randomUUID()}${ext ? "." + ext : ""}`;
+      const { storagePut } = await import("../storage");
+      const { url } = await storagePut(key, buf, input.fileType);
+      return { url };
+    }),
+
   updateSeriesWatermark: verticalDramaProcedure
     .input(
       z.object({

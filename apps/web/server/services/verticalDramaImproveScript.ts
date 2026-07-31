@@ -298,34 +298,126 @@ export function selectQualityLargeContextEligibleModels(
 }
 
 /**
- * Picks the CHEAPEST enabled model (by summed input+output price per 1M
- * tokens) among those that (a) meet the `IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH`
- * floor, (b) are not free-tier, (c) pass this codebase's own "safe to
- * auto-pick" catalog-eligibility filter (`{ autoSelectionOnly: true }`), AND
- * (d) `supportsThinking === true`.
+ * Picks the automatic model for every VD stage that resolves through this
+ * function (directly or via `resolveVerticalDramaSeriesModel(seriesId,
+ * resolveQualityLargeContextModelId)` — the series' "อัตโนมัติ" default).
  *
- * Renamed from `resolveCheapestEligibleLargeContextModelId` (2026-07-10,
- * whole-block restoration) — the earlier price-only version successfully
- * fixed an overpriced-model incident, but was confirmed (via a throwaway
- * validation probe against real series-6 data) to still pick a model too
- * weak to execute the skill's nuanced multi-section enrichment
- * (`deepseek-v4-flash`, no "thinking"), producing shallow one-line episode
- * summaries. Requiring `supportsThinking === true` on top of the existing
- * price/context/eligibility filters selects a genuinely more capable model
- * (`google/gemini-3.1-flash-lite-preview` today) while still preferring the
- * cheapest option that clears every bar — this is a capability floor, not a
- * hardcoded model pin.
+ * 2026-07-31 (owner override, explicitly superseding the earlier "do not
+ * change auto-selection cost policy" instruction for THIS resolver only —
+ * "ถึงเลือกอัตโนมัติ ก็ควรได้ model หนึ่งในชุดนี้"): automatic selection must
+ * now draw from the admin-curated recommended set
+ * (`selectRecommendedQualityLargeContextEligibleModels`,
+ * `modelProviderMap.isRecommended`) — the same quality bar the manual
+ * picker (`listQualityPlanningModels`) already enforces — instead of the
+ * raw cheapest-first eligible set. This is what stops "อัตโนมัติ" from
+ * resolving to a model like `google/gemini-3.1-flash-lite`, the exact model
+ * behind the 2026-07-18 character-portrait lead-beauty-gate incident (see
+ * `selectPremiumLargeContextEligibleModels`'s doc comment above) — that
+ * incident was fixed for ONE stage (character visual bible) by switching to
+ * the most-expensive eligible model; this fixes the underlying quality gap
+ * for every OTHER stage still on this resolver, admin-curated-quality-first
+ * rather than price-first.
  *
- * Behavior is byte-identical to before the 2026-07-11 extraction — this now
- * just delegates the filter/sort to `selectQualityLargeContextEligibleModels`.
+ * ORDERING within the recommended set: admin `priority` ASC ("lower =
+ * higher priority" — `modelProviderMap.priority`), NOT cheapest-first. This
+ * intentionally makes automatic resolve to the exact model
+ * `listQualityPlanningModels` shows FIRST in the picker dropdown — a user
+ * who leaves the field on "อัตโนมัติ" gets precisely the top entry of the
+ * list they'd otherwise pick from manually, which is the coherent story
+ * between the two surfaces. (Cheapest-first-within-recommended was
+ * considered and rejected: it would let two admin-recommended models of
+ * similar quality resolve differently between "what's shown first" and
+ * "what auto-select actually uses," undermining the one lesson this
+ * function exists to encode — that the admin's curation, not raw price,
+ * should drive automatic selection.)
+ *
+ * FALLBACK (unchanged from pre-2026-07-31 behavior, deliberately NOT using
+ * `selectRecommendedQualityLargeContextEligibleModels`'s own
+ * priority-ordered fallback): when nothing in the eligible set is currently
+ * recommended, this falls back to the exact pre-existing behavior — cheapest
+ * among the FULL eligible set (`selectQualityLargeContextEligibleModels`)
+ * — so automatic selection is never left with nothing to resolve to, and an
+ * admin who hasn't curated any recommendations yet sees no regression from
+ * before this change. (The picker's OWN empty-recommended fallback sorts by
+ * priority instead, for its own, separate reason — coherence with the
+ * picker's non-fallback ordering above; the two fallbacks are allowed to
+ * differ because they're answering different questions: "what's the best
+ * single automatic pick" vs "what's a sensible full list to browse.")
+ *
+ * Was `resolveCheapestEligibleLargeContextModelId` /
+ * "byte-identical cheapest-first" through 2026-07-11 — see git history for
+ * that earlier contract; this is the first behavior change since then.
  */
 export async function resolveQualityLargeContextModelId(): Promise<string | null> {
   try {
     const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-    return selectQualityLargeContextEligibleModels(rows)[0]?.modelId ?? null;
+    const eligible = selectQualityLargeContextEligibleModels(rows);
+    const recommended = eligible.filter((row) => row.isRecommended === true);
+    if (recommended.length > 0) {
+      const ranked = [...recommended].sort((a, b) => a.priority - b.priority);
+      return ranked[0]?.modelId ?? null;
+    }
+    // Nothing currently recommended — preserve the pre-2026-07-31
+    // cheapest-first behavior across the full eligible set.
+    return eligible[0]?.modelId ?? null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Picker-specific view of the quality large-context eligible set (2026-07-31,
+ * "โมเดล LLM offers weak models" complaint — the manual model override
+ * dropdown in `listQualityPlanningModels` was surfacing
+ * `selectQualityLargeContextEligibleModels`'s cheapest-first order, which
+ * puts the WEAKEST model that clears the capability floor at the top of the
+ * list). Further restricts the eligible set to the admin-curated quality
+ * flag (`row.isRecommended === true` — `modelProviderMap.isRecommended`,
+ * the SAME column `intelligentModelSelector.ts`'s `recommendedOnly`
+ * capability requirement already filters on for skill-driven selection), so
+ * the picker only offers models a human has vetted as genuinely strong —
+ * not just anything that meets the bare context/thinking/non-free floor.
+ *
+ * Falls back to the FULL eligible set (unfiltered by `isRecommended`) when
+ * no eligible model is currently recommended, so this NEVER narrows the
+ * picker to an empty list over a non-empty eligible set — an admin who
+ * hasn't curated any recommendations yet (or whose whole recommended set
+ * just got disabled) still gets a working dropdown, just without the
+ * quality-vetted ordering.
+ *
+ * Sorted by the SAME admin-curated `priority` column already used to rank
+ * models within a provider (`modelProviderMap.priority`, "lower = higher
+ * priority" — see `loadEnabledLlmModelRows`'s own `ORDER BY priority` and
+ * `intelligentModelSelector.ts`'s `selectLlmModelCandidates`, which sorts its
+ * `recommendedOnly` candidates by this exact column) rather than
+ * cheapest-first — cheapest-first is exactly the ordering that surfaced the
+ * weakest model first in the original complaint, and `priority` is existing
+ * admin-authored metadata, not a new hardcoded ranking.
+ *
+ * SCOPE: primarily the picker (`listQualityPlanningModels`).
+ * `selectQualityLargeContextEligibleModels` itself, and
+ * `selectPremiumLargeContextEligibleModels`'s reversal for the
+ * character-visual-bible stage, keep their exact pre-existing cheapest-
+ * first / most-expensive-first cost policy untouched — this function never
+ * replaces or is called by either of them.
+ *
+ * 2026-07-31 update: `resolveQualityLargeContextModelId` (the "อัตโนมัติ"
+ * default used by `resolveStartFramePlanModel`, `resolveStoryboardModel`,
+ * the improve-script upgrade path, and every other VD stage that resolves
+ * through it — see that function's own doc comment) now applies this SAME
+ * membership-and-ordering rule (recommended-first, priority ASC) — but does
+ * NOT literally call this function, because its empty-recommended fallback
+ * must stay cheapest-first (the pre-2026-07-31 behavior) rather than this
+ * function's priority-ordered fallback. The two fallbacks intentionally
+ * differ; the recommended-and-non-empty case is intentionally identical.
+ */
+export function selectRecommendedQualityLargeContextEligibleModels(
+  rows: EnabledLlmModelRow[],
+): EnabledLlmModelRow[] {
+  const eligible = selectQualityLargeContextEligibleModels(rows);
+  const recommended = eligible.filter((row) => row.isRecommended === true);
+  const ranked = recommended.length > 0 ? recommended : eligible;
+  return [...ranked].sort((a, b) => a.priority - b.priority);
 }
 
 /**

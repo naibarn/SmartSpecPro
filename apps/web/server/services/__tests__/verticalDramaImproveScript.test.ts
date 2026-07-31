@@ -119,6 +119,7 @@ import {
   runImproveScriptJob,
   resolveQualityLargeContextModelId,
   selectQualityLargeContextEligibleModels,
+  selectRecommendedQualityLargeContextEligibleModels,
   selectPremiumLargeContextEligibleModels,
   resolvePremiumLargeContextModelId,
   resolveStartFramePlanModel,
@@ -533,7 +534,7 @@ describe("runImproveScriptJob — whole-block primary pass", () => {
 });
 
 describe("resolveQualityLargeContextModelId", () => {
-  it("(d) picks the cheapest THINKING-capable eligible model, skipping a cheaper non-thinking one", async () => {
+  it("(d) [empty-recommended fallback] picks the cheapest THINKING-capable eligible model, skipping a cheaper non-thinking one — none of these rows are isRecommended, so this covers the pre-2026-07-31 cheapest-first fallback path", async () => {
     const rows: EnabledLlmModelRow[] = [
       makeModelRow({
         modelId: "cheaper-non-thinking",
@@ -610,6 +611,137 @@ describe("resolveQualityLargeContextModelId", () => {
 
     expect(modelId).toBeNull();
   });
+
+  it("2026-07-31 owner override — resolves WITHIN the admin-recommended set, skipping a cheaper non-recommended model (automatic is no longer price-only)", async () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "cheapest-not-recommended",
+        contextLength: 1_050_000,
+        pricingInput: "0.01",
+        pricingOutput: "0.01",
+        supportsThinking: true,
+        isRecommended: false,
+        priority: 0,
+      }),
+      makeModelRow({
+        modelId: "recommended-more-expensive",
+        contextLength: 1_050_000,
+        pricingInput: "5.00",
+        pricingOutput: "5.00",
+        supportsThinking: true,
+        isRecommended: true,
+        priority: 10,
+      }),
+    ];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(rows);
+
+    const modelId = await resolveQualityLargeContextModelId();
+
+    // The cheapest row is NOT recommended and must be skipped, even though
+    // the pre-2026-07-31 contract would have picked it.
+    expect(modelId).toBe("recommended-more-expensive");
+  });
+
+  it("2026-07-31 owner override — within the recommended set, orders by admin `priority` ASC, NOT cheapest-first (matches listQualityPlanningModels' top entry)", async () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "recommended-cheaper-lower-priority",
+        contextLength: 1_050_000,
+        pricingInput: "0.10",
+        pricingOutput: "0.10",
+        supportsThinking: true,
+        isRecommended: true,
+        priority: 90, // higher number = LOWER priority
+      }),
+      makeModelRow({
+        modelId: "recommended-pricier-higher-priority",
+        contextLength: 1_050_000,
+        pricingInput: "9.00",
+        pricingOutput: "9.00",
+        supportsThinking: true,
+        isRecommended: true,
+        priority: 1, // lower number = HIGHER priority
+      }),
+    ];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(rows);
+
+    const modelId = await resolveQualityLargeContextModelId();
+
+    expect(modelId).toBe("recommended-pricier-higher-priority");
+    // Cross-check: this is exactly what selectRecommendedQualityLargeContextEligibleModels
+    // (the picker's own selector) would show FIRST for the same rows —
+    // proving the "automatic = top of the picker list" story holds.
+    expect(selectRecommendedQualityLargeContextEligibleModels(rows)[0]?.modelId).toBe(modelId);
+  });
+
+  it("2026-07-31 owner override — falls back to cheapest-first across the FULL eligible set (not priority-ordered) when nothing is recommended, preserving the pre-existing empty-recommended contract", async () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "not-recommended-cheaper",
+        contextLength: 1_050_000,
+        pricingInput: "0.10",
+        pricingOutput: "0.10",
+        supportsThinking: true,
+        isRecommended: false,
+        priority: 1, // highest admin priority, but STILL not recommended
+      }),
+      makeModelRow({
+        modelId: "not-recommended-pricier",
+        contextLength: 1_050_000,
+        pricingInput: "9.00",
+        pricingOutput: "9.00",
+        supportsThinking: true,
+        isRecommended: undefined,
+        priority: 50,
+      }),
+    ];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(rows);
+
+    const modelId = await resolveQualityLargeContextModelId();
+
+    // Cheapest wins here (price, not priority) — this is the DIFFERENT
+    // fallback tail described in this function's own doc comment: unlike
+    // `selectRecommendedQualityLargeContextEligibleModels`'s own fallback
+    // (which would sort this same set by priority and pick
+    // "not-recommended-cheaper" for the SAME reason it happens to also be
+    // priority 1 here), this resolver's fallback is price-only. Confirmed
+    // below with a scenario where priority and price disagree.
+    expect(modelId).toBe("not-recommended-cheaper");
+  });
+
+  it("2026-07-31 owner override — empty-recommended fallback is price-based even when it disagrees with priority order (proves it does NOT delegate to selectRecommendedQualityLargeContextEligibleModels's fallback)", async () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "not-recommended-cheaper-but-lower-priority",
+        contextLength: 1_050_000,
+        pricingInput: "0.10",
+        pricingOutput: "0.10",
+        supportsThinking: true,
+        isRecommended: false,
+        priority: 99, // LOWEST admin priority
+      }),
+      makeModelRow({
+        modelId: "not-recommended-pricier-but-higher-priority",
+        contextLength: 1_050_000,
+        pricingInput: "9.00",
+        pricingOutput: "9.00",
+        supportsThinking: true,
+        isRecommended: false,
+        priority: 1, // HIGHEST admin priority
+      }),
+    ];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(rows);
+
+    const resolverPick = await resolveQualityLargeContextModelId();
+    const pickerFallbackPick = selectRecommendedQualityLargeContextEligibleModels(rows)[0]?.modelId;
+
+    // The resolver picks the CHEAPER model; the picker's own fallback would
+    // pick the HIGHER-priority one — proving the two fallbacks genuinely
+    // differ, as documented.
+    expect(resolverPick).toBe("not-recommended-cheaper-but-lower-priority");
+    expect(pickerFallbackPick).toBe("not-recommended-pricier-but-higher-priority");
+    expect(resolverPick).not.toBe(pickerFallbackPick);
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -675,6 +807,125 @@ describe("selectQualityLargeContextEligibleModels", () => {
     const winner = await resolveQualityLargeContextModelId();
 
     expect(winner).toBe(selectQualityLargeContextEligibleModels(rows)[0]?.modelId);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* selectRecommendedQualityLargeContextEligibleModels — the picker-specific   */
+/* narrowing to the admin-curated `isRecommended` set (2026-07-31, "LLM       */
+/* model picker offers weak models" fix). Does NOT touch                     */
+/* `selectQualityLargeContextEligibleModels` itself or any of ITS callers —   */
+/* covered separately below and in the two blocks above/below this one.      */
+/* -------------------------------------------------------------------------- */
+
+describe("selectRecommendedQualityLargeContextEligibleModels", () => {
+  it("narrows the eligible set to isRecommended === true, sorted by priority ASC (lower = higher priority)", () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "recommended-lower-priority-number",
+        contextLength: 1_050_000,
+        pricingInput: "5.00",
+        pricingOutput: "5.00",
+        supportsThinking: true,
+        isRecommended: true,
+        priority: 10,
+      }),
+      makeModelRow({
+        modelId: "recommended-higher-priority-number",
+        contextLength: 1_050_000,
+        pricingInput: "0.10",
+        pricingOutput: "0.10",
+        supportsThinking: true,
+        isRecommended: true,
+        priority: 90,
+      }),
+      makeModelRow({
+        modelId: "eligible-but-not-recommended",
+        contextLength: 1_050_000,
+        pricingInput: "0.01",
+        pricingOutput: "0.01",
+        supportsThinking: true,
+        isRecommended: false,
+        priority: 0,
+      }),
+      makeModelRow({
+        modelId: "ineligible-non-thinking-but-recommended",
+        contextLength: 1_050_000,
+        pricingInput: "0.01",
+        pricingOutput: "0.01",
+        supportsThinking: false,
+        isRecommended: true,
+        priority: 0,
+      }),
+    ];
+
+    const picked = selectRecommendedQualityLargeContextEligibleModels(rows);
+
+    // Cheapest ("eligible-but-not-recommended", priced at 0.01+0.01) is
+    // EXCLUDED even though it would sort first under the cheapest-first
+    // sibling — this is exactly the "weakest model shows first" complaint
+    // being fixed. The non-thinking row is excluded regardless of the
+    // isRecommended flag (recommended never substitutes for the base
+    // eligibility bar). Priority ASC wins over price: the pricier
+    // "recommended-lower-priority-number" (priority 10) sorts before the
+    // cheaper "recommended-higher-priority-number" (priority 90).
+    expect(picked.map((row) => row.modelId)).toEqual([
+      "recommended-lower-priority-number",
+      "recommended-higher-priority-number",
+    ]);
+  });
+
+  it("falls back to the FULL eligible set (never an empty picker over a non-empty eligible set) when nothing is recommended", () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "eligible-a",
+        contextLength: 1_050_000,
+        pricingInput: "1.00",
+        pricingOutput: "1.00",
+        supportsThinking: true,
+        isRecommended: false,
+        priority: 20,
+      }),
+      makeModelRow({
+        modelId: "eligible-b",
+        contextLength: 1_050_000,
+        pricingInput: "0.10",
+        pricingOutput: "0.10",
+        supportsThinking: true,
+        isRecommended: undefined,
+        priority: 5,
+      }),
+    ];
+
+    const picked = selectRecommendedQualityLargeContextEligibleModels(rows);
+
+    expect(picked.map((row) => row.modelId)).toEqual(["eligible-b", "eligible-a"]);
+  });
+
+  it("returns [] when the base eligibility bar itself excludes everything, regardless of isRecommended", () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "recommended-but-free",
+        contextLength: 1_050_000,
+        supportsThinking: true,
+        isRecommended: true,
+        isFree: true,
+      }),
+    ];
+
+    expect(selectRecommendedQualityLargeContextEligibleModels(rows)).toEqual([]);
+  });
+
+  it("never mutates the input row array's order (returns a fresh array)", () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({ modelId: "a", contextLength: 1_050_000, supportsThinking: true, isRecommended: true, priority: 5 }),
+      makeModelRow({ modelId: "b", contextLength: 1_050_000, supportsThinking: true, isRecommended: true, priority: 1 }),
+    ];
+    const originalOrder = rows.map((row) => row.modelId);
+
+    selectRecommendedQualityLargeContextEligibleModels(rows);
+
+    expect(rows.map((row) => row.modelId)).toEqual(originalOrder);
   });
 });
 
