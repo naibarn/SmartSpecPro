@@ -231,6 +231,65 @@ function buildApiConfigFromModelConfig(
   return apiConfig;
 }
 
+/**
+ * Opt-in per-model provider input defaults —
+ * `configJson.apiConfig.defaultInputParams`
+ * (`planning/vd-media-model-default-input-params/plan.md`).
+ *
+ * Some providers REQUIRE a field that only the Media Studio dynamic form ever
+ * supplied. Kie's `seedream/5-pro-image-to-image` requires `quality`
+ * (`basic`/`high`); the catalog row declares it in `inputFields` with a
+ * default, but `inputFields` is a FORM schema — nothing applies it on a
+ * server-initiated generation. Every call from the Vertical Drama character
+ * tab therefore submitted without `quality` and kie answered "This field is
+ * required", leaving the task stuck in pending forever.
+ *
+ * Deliberately a NEW opt-in key rather than "apply every `inputFields`
+ * default": 90 of the 148 enabled models carry `inputFields` defaults, and
+ * most of them generate correctly today by letting the provider pick its own
+ * default. Changing the outbound payload of 90 models to fix one is not a
+ * trade worth making. A model that does not set `defaultInputParams` behaves
+ * byte-identically to before this existed.
+ *
+ * Scalars only — these become provider input fields, and an object/array here
+ * would be a config error rather than a value any provider expects.
+ */
+export function readModelDefaultInputParams(
+  configJson?: Record<string, unknown> | null,
+): Record<string, string | number | boolean> | undefined {
+  if (!configJson || typeof configJson !== "object" || Array.isArray(configJson)) {
+    return undefined;
+  }
+  const apiConfig = (configJson as { apiConfig?: unknown }).apiConfig;
+  if (!apiConfig || typeof apiConfig !== "object" || Array.isArray(apiConfig)) {
+    return undefined;
+  }
+  const raw = (apiConfig as { defaultInputParams?: unknown }).defaultInputParams;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+
+  const defaults: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      defaults[key] = value;
+    }
+  }
+  return Object.keys(defaults).length > 0 ? defaults : undefined;
+}
+
+/**
+ * Layers the model's `defaultInputParams` UNDER whatever the caller sent, so a
+ * caller that explicitly chose a value always wins and the defaults only fill
+ * genuine gaps. Returns the caller's own object untouched when the model
+ * declares no defaults.
+ */
+export function applyModelDefaultInputParams(
+  callerExtraParams: Record<string, any> | undefined,
+  defaults: Record<string, string | number | boolean> | undefined,
+): Record<string, any> | undefined {
+  if (!defaults) return callerExtraParams;
+  return { ...defaults, ...(callerExtraParams ?? {}) };
+}
+
 function resolveStaticModelConfigJson(modelId: string): Record<string, unknown> | null {
   const normalizedModelId = mapToApiModelId(modelId);
   const candidates = [
@@ -273,7 +332,14 @@ async function resolveEffectiveMediaRequestModel(input: {
   promptText?: string | null;
   requestedApiConfig?: Record<string, string>;
   fallbackModel: string;
-}): Promise<{ modelId: string; provider: string; apiConfig?: Record<string, string> }> {
+}): Promise<{
+  modelId: string;
+  provider: string;
+  apiConfig?: Record<string, string>;
+  /** See `readModelDefaultInputParams` — opt-in, `undefined` for every model
+   *  that does not declare any. */
+  defaultInputParams?: Record<string, string | number | boolean>;
+}> {
   const requestedProvider = resolveProviderFromApiConfig(input.requestedApiConfig);
   const requestedModel =
     input.requestedModel ?? inferMediaModelHintFromText(input.mediaType, input.promptText);
@@ -296,6 +362,7 @@ async function resolveEffectiveMediaRequestModel(input: {
         modelConfigJson: selection.model.configJson,
         requestedApiConfig: input.requestedApiConfig,
       }),
+      defaultInputParams: readModelDefaultInputParams(selection.model.configJson),
     };
   }
 
@@ -1428,6 +1495,16 @@ function getReferenceImageLimitForModel(modelId: string): number {
   return getReferenceImageLimitFromConfig(model?.configJson) ?? 5;
 }
 
+function isGptImageModel(modelId: string): boolean {
+  const normalized = (modelId || "").toLowerCase();
+  return normalized.includes("gpt-image") || normalized.includes("gpt_image");
+}
+
+function isBananaModel(modelId: string): boolean {
+  const normalized = (modelId || "").toLowerCase();
+  return normalized.includes("banana");
+}
+
 function resolveReferenceImageUrlsForModel(
   modelId: string,
   urls: string[] | undefined,
@@ -1438,9 +1515,24 @@ function resolveReferenceImageUrlsForModel(
   }
 
   const limit = getReferenceImageLimitForModel(modelId);
-  return urls
-    .slice(0, limit)
-    .map((url) => resolveReferenceUrl(url, publicUrl));
+  const sliced = urls.slice(0, limit);
+  const isGptImage = isGptImageModel(modelId) && !isBananaModel(modelId);
+
+  return sliced.map((url) => {
+    let resolved = resolveReferenceUrl(url, publicUrl);
+    if (isGptImage) {
+      resolved = resolved.replace(/\.webp(\?.*)?$/i, ".jpg$1");
+    }
+    return resolved;
+  });
+}
+
+export function resolveReferenceImageUrlsForModelForTest(
+  modelId: string,
+  urls: string[] | undefined,
+  publicUrl?: string | null,
+): string[] | undefined {
+  return resolveReferenceImageUrlsForModel(modelId, urls, publicUrl);
 }
 
 type ReferenceImageInputType = "array" | "url";
@@ -2093,7 +2185,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
-    const { modelId, provider, apiConfig: effectiveApiConfig } =
+    const { modelId, provider, apiConfig: effectiveApiConfig, defaultInputParams } =
       await resolveEffectiveMediaRequestModel({
         mediaType: "image",
         requestedModel: request.model,
@@ -2124,10 +2216,16 @@ export class MediaGenerationService {
     // Get publicUrl from request for resolving relative URLs to tenant domain
     const publicUrl = (request as any).publicUrl as string | undefined;
 
-    // Add extra params from dynamic input fields
-    // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
-    if ((request as any).extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams((request as any).extraParams, publicUrl, request.aspectRatio);
+    // Add extra params from dynamic input fields, layered over the model's own
+    // `defaultInputParams` (opt-in — see `readModelDefaultInputParams`; the
+    // caller's values always win). Resolve any relative URLs (e.g. image_input
+    // with /uploads/... paths).
+    const effectiveExtraParams = applyModelDefaultInputParams(
+      (request as any).extraParams,
+      defaultInputParams,
+    );
+    if (effectiveExtraParams) {
+      payload.extra_params = buildPythonBackendExtraParams(effectiveExtraParams, publicUrl, request.aspectRatio);
     }
 
     // Add reference images if provided (1-5 images)
@@ -2443,7 +2541,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
-    const { modelId, provider, apiConfig: effectiveApiConfig } =
+    const { modelId, provider, apiConfig: effectiveApiConfig, defaultInputParams } =
       isMcpTransportRequest(request)
         ? resolveMcpRequestedMediaModel({ mediaType: "image", request })
         : await resolveEffectiveMediaRequestModel({
@@ -2476,9 +2574,18 @@ export class MediaGenerationService {
     // Get publicUrl from request for resolving relative URLs to tenant domain
     const publicUrl = request.publicUrl;
 
-    // Add extraParams for model-specific fields
-    if (request.extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(request.extraParams, publicUrl, request.aspectRatio);
+    // Add extraParams for model-specific fields, layered over any provider
+    // input fields the model declares as defaults (see
+    // `readModelDefaultInputParams` — opt-in; `undefined` leaves this branch
+    // byte-identical to before). This is what carries a REQUIRED provider
+    // field on a server-initiated generation that never renders Media
+    // Studio's dynamic form.
+    const effectiveExtraParams = applyModelDefaultInputParams(
+      request.extraParams,
+      defaultInputParams,
+    );
+    if (effectiveExtraParams) {
+      payload.extra_params = buildPythonBackendExtraParams(effectiveExtraParams, publicUrl, request.aspectRatio);
     }
 
     // Add reference images if provided (1-5 images)
