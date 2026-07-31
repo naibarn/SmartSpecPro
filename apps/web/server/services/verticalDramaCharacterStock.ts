@@ -1116,6 +1116,116 @@ export class VerticalDramaCharacterStockService {
   }
 
   /**
+   * Make ONE of a character's portraits the main image
+   * (`planning/vd-character-primary-portrait-control/plan.md`).
+   *
+   * Every generated portrait, every dropped reference, and every candidate this
+   * character has ever had is stored with `role: "primary_portrait"` — so a
+   * character accumulates several rows that all claim to be "the" portrait, and
+   * which one wins is decided implicitly (newest approved, then newest
+   * updated). That is why the panel could show four tiles all labelled
+   * "primary portrait" with no way to say which one is actually in use.
+   *
+   * `approved` is the tiebreaker every consumer already honors first —
+   * `getPrimaryPortraitUrl` orders `approved DESC, updatedAt DESC`, and the
+   * panel's `resolveCharacterCardPortraitAsset` takes the approved row before
+   * any generated one. So making the choice explicit is exactly: approve the
+   * chosen row, un-approve its siblings. No role churn, no new column, and
+   * nothing downstream needs to learn a new concept.
+   *
+   * For an asset that is a first-portrait BATCH candidate this is the wrong
+   * entry point — `selectPortraitCandidate` must run instead, because choosing
+   * a candidate also locks the character's DNA snapshot. The router routes
+   * between the two; this method rejects candidates rather than silently
+   * skipping the DNA write.
+   */
+  async setPrimaryPortraitAsset(params: VerticalDramaCharacterStockOwner & {
+    characterId: number;
+    assetLinkId: number;
+  }): Promise<VerticalDramaCharacterAsset> {
+    return db.transaction(async (tx) => {
+      const [chosen] = await tx
+        .select()
+        .from(verticalDramaCharacterAssets)
+        .where(
+          and(
+            eq(verticalDramaCharacterAssets.id, params.assetLinkId),
+            eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
+            eq(verticalDramaCharacterAssets.userId, params.userId),
+            eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
+            eq(verticalDramaCharacterAssets.characterId, params.characterId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!chosen) {
+        throw new VerticalDramaCharacterStockError(
+          "asset_not_found",
+          "Character asset not found.",
+        );
+      }
+      if (chosen.mediaAssetId == null) {
+        throw new VerticalDramaCharacterStockError(
+          "asset_not_found",
+          "Character asset has no attached media and cannot be the main image.",
+        );
+      }
+      if (readPortraitCandidatePrivateMetadata(chosen.metadata)) {
+        throw new VerticalDramaCharacterStockError(
+          "asset_wrong_role",
+          "This image is a first-portrait candidate — select it through selectPortraitCandidate so the Character DNA is locked with it.",
+        );
+      }
+
+      const siblings = await tx
+        .select()
+        .from(verticalDramaCharacterAssets)
+        .where(
+          and(
+            eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
+            eq(verticalDramaCharacterAssets.userId, params.userId),
+            eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
+            eq(verticalDramaCharacterAssets.characterId, params.characterId),
+            eq(verticalDramaCharacterAssets.role, "primary_portrait"),
+            ne(verticalDramaCharacterAssets.id, params.assetLinkId),
+          ),
+        )
+        .for("update");
+
+      const now = new Date();
+      for (const sibling of siblings) {
+        if (!sibling.approved) continue;
+        await tx
+          .update(verticalDramaCharacterAssets)
+          .set({ approved: false, updatedAt: now })
+          .where(eq(verticalDramaCharacterAssets.id, sibling.id));
+      }
+
+      const [updated] = await tx
+        .update(verticalDramaCharacterAssets)
+        .set({
+          role: "primary_portrait",
+          approved: true,
+          qcStatus: "passed",
+          metadata: {
+            ...((chosen.metadata as Record<string, unknown> | null) ?? {}),
+            state: "approved" satisfies VerticalDramaCharacterAssetState,
+          },
+          updatedAt: now,
+        })
+        .where(eq(verticalDramaCharacterAssets.id, chosen.id))
+        .returning();
+      if (!updated) {
+        throw new VerticalDramaCharacterStockError(
+          "asset_not_found",
+          "Character asset not found.",
+        );
+      }
+      return characterAssetRowToContract(updated as VerticalDramaCharacterAssetRow);
+    });
+  }
+
+  /**
    * The character's current identity-lock reference — the `primary_portrait`
    * asset to feed back into the model (as `referenceImageUrls`) whenever
    * generating another image of the same character, so the render is

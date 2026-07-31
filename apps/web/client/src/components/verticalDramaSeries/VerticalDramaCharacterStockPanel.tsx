@@ -404,6 +404,39 @@ export function resolveCharacterCardPortraitAsset(
   return null;
 }
 
+/**
+ * How much of a first-portrait candidate batch to show
+ * (`planning/vd-character-primary-portrait-control/plan.md`).
+ *
+ * A batch's 3-5 alternates are stored durably and used to render forever, even
+ * long after the user picked one. Every unpicked face then keeps appearing next
+ * to the chosen one, and the panel stops answering the only question that
+ * matters at a glance: which face IS this character now. So once a batch is
+ * resolved, collapse to the winner and keep the rest one click away — they are
+ * still worth keeping (changing your mind is a real workflow), just not worth
+ * showing by default.
+ *
+ * An UNRESOLVED batch (nothing selected yet) always shows everything: that is
+ * the moment the alternates exist for.
+ */
+export function resolvePortraitCandidateVisibility<
+  TCandidate extends { status: string },
+>(params: {
+  candidates: readonly TCandidate[];
+  expanded: boolean;
+}): { visible: TCandidate[]; hiddenCount: number; isResolved: boolean } {
+  const isResolved = params.candidates.some(c => c.status === "selected");
+  if (!isResolved || params.expanded) {
+    return { visible: [...params.candidates], hiddenCount: 0, isResolved };
+  }
+  const visible = params.candidates.filter(c => c.status === "selected");
+  return {
+    visible,
+    hiddenCount: params.candidates.length - visible.length,
+    isResolved,
+  };
+}
+
 /** A single candidate the reference-image picker
  *  (planning/vertical-drama-reference-picker-outfit-lock/plan.md, Phase D3)
  *  can offer for the identity-lock reference of the NEXT
@@ -2449,6 +2482,21 @@ export function VerticalDramaCharacterStockPanel({
   /* W2 manual CRUD (plan: vertical-drama-twin-variant-completeness, F6) */
   /* ------------------------------------------------------------------ */
 
+  /** Batches the user explicitly expanded to see the faces they did NOT pick
+   *  (`resolvePortraitCandidateVisibility`). Session-only and opt-in: a
+   *  resolved batch collapses back to its winner on every fresh visit, which is
+   *  the whole point of the collapse. */
+  const [expandedCandidateBatchIds, setExpandedCandidateBatchIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const toggleCandidateBatchExpanded = (batchId: string) =>
+    setExpandedCandidateBatchIds(prev => {
+      const next = new Set(prev);
+      if (next.has(batchId)) next.delete(batchId);
+      else next.add(batchId);
+      return next;
+    });
+
   /** "เพิ่มลุค" dialog — `null` when closed, else the BASE character it's
    *  being opened for (`buildCharacterRosterEntries`'s top-level entry). */
   const [variantDialogCharacter, setVariantDialogCharacter] = useState<{
@@ -3179,6 +3227,30 @@ export function VerticalDramaCharacterStockPanel({
             "Primary portrait selected and Character DNA locked."
           )
         );
+      },
+      onError,
+    });
+
+  /**
+   * "Make this the main image" — `planning/vd-character-primary-portrait-
+   * control/plan.md`. One mutation for BOTH kinds of image: the server routes a
+   * first-portrait batch candidate through the DNA-locking path and everything
+   * else through the plain promotion, so this caller never has to know which
+   * kind it is pointing at. Until this existed there was no way at all to say
+   * which of a character's several `primary_portrait` rows was actually in use.
+   */
+  const setPrimaryPortraitMutation =
+    trpc.verticalDramaCharacters.setPrimaryPortrait.useMutation({
+      onSuccess: async (_result, variables) => {
+        // Point the identity-lock reference at the new main image too —
+        // otherwise the next generation would still condition on whatever
+        // tile the user had previously clicked in this strip.
+        setReferenceOverrideByCharacter(prev => ({
+          ...prev,
+          [variables.characterId]: variables.assetLinkId,
+        }));
+        await invalidate();
+        toast.success(t(lang, "ตั้งเป็นภาพหลักแล้ว", "Set as the main image"));
       },
       onError,
     });
@@ -5753,6 +5825,15 @@ export function VerticalDramaCharacterStockPanel({
                         referenceOverrideByCharacter[
                           selectedCharacter.characterId
                         ] ?? defaultReferenceAssetLinkId ?? undefined;
+                      // Read the MAIN image from the same resolver the card
+                      // thumbnail uses, so the "ภาพหลัก" badge always marks the
+                      // picture actually on screen rather than a second guess
+                      // at it.
+                      const mainPortraitAssetLinkId =
+                        resolveCharacterCardPortraitAsset(
+                          assets,
+                          selectedCharacter.characterId
+                        )?.assetLinkId ?? null;
                       return (
                         <div className="mt-1 flex flex-col gap-1">
                           <span className="text-[11px] font-medium text-foreground/80">
@@ -5763,52 +5844,104 @@ export function VerticalDramaCharacterStockPanel({
                               const isSelected =
                                 candidate.assetLinkId ===
                                 selectedReferenceAssetLinkId;
+                              // The MAIN image is whichever asset the card
+                              // thumbnail resolves to — same function, so the
+                              // badge can never disagree with the picture the
+                              // user is looking at. Distinct from
+                              // `isSelected`, which is only the identity-lock
+                              // reference for the NEXT generation.
+                              const isMainImage =
+                                candidate.sourceLabel === "own" &&
+                                mainPortraitAssetLinkId != null &&
+                                candidate.assetLinkId === mainPortraitAssetLinkId;
                               return (
-                                <button
+                                <div
                                   key={candidate.assetLinkId}
-                                  type="button"
-                                  disabled={readOnly}
-                                  aria-pressed={isSelected}
-                                  aria-label={t(
-                                    lang,
-                                    "เลือกภาพนี้เป็นภาพอ้างอิงตัวตน",
-                                    "Select this identity reference image"
-                                  )}
-                                  className={cn(
-                                    "flex flex-col items-center gap-0.5",
-                                    readOnly
-                                      ? "cursor-default"
-                                      : "cursor-pointer"
-                                  )}
-                                  onClick={() => {
-                                    if (readOnly) return;
-                                    setReferenceOverrideByCharacter(prev => ({
-                                      ...prev,
-                                      [selectedCharacter.characterId]:
-                                        candidate.assetLinkId,
-                                    }));
-                                  }}
+                                  className="flex flex-col items-center gap-0.5"
                                 >
-                                  <img
-                                    src={candidate.thumbnailUrl}
-                                    alt=""
+                                  <button
+                                    type="button"
+                                    disabled={readOnly}
+                                    aria-pressed={isSelected}
+                                    aria-label={t(
+                                      lang,
+                                      "เลือกภาพนี้เป็นภาพอ้างอิงตัวตน",
+                                      "Select this identity reference image"
+                                    )}
                                     className={cn(
-                                      "h-10 w-10 rounded border border-border object-cover",
-                                      isSelected &&
-                                        "border-primary ring-2 ring-primary"
+                                      "flex flex-col items-center gap-0.5",
+                                      readOnly
+                                        ? "cursor-default"
+                                        : "cursor-pointer"
                                     )}
-                                  />
-                                  {candidate.sourceLabel !== "own" &&
-                                    candidate.sourceName && (
-                                      <span className="max-w-[48px] truncate text-center text-[9px] text-muted-foreground">
-                                        {t(
+                                    onClick={() => {
+                                      if (readOnly) return;
+                                      setReferenceOverrideByCharacter(prev => ({
+                                        ...prev,
+                                        [selectedCharacter.characterId]:
+                                          candidate.assetLinkId,
+                                      }));
+                                    }}
+                                  >
+                                    <img
+                                      src={candidate.thumbnailUrl}
+                                      alt=""
+                                      className={cn(
+                                        "h-10 w-10 rounded border border-border object-cover",
+                                        isSelected &&
+                                          "border-primary ring-2 ring-primary"
+                                      )}
+                                    />
+                                    {candidate.sourceLabel !== "own" &&
+                                      candidate.sourceName && (
+                                        <span className="max-w-[48px] truncate text-center text-[9px] text-muted-foreground">
+                                          {t(
+                                            lang,
+                                            `จาก ${candidate.sourceName}`,
+                                            `from ${candidate.sourceName}`
+                                          )}
+                                        </span>
+                                      )}
+                                  </button>
+                                  {/* The control that was missing entirely
+                                  (`planning/vd-character-primary-portrait-
+                                  control/plan.md`): every one of these tiles is
+                                  stored as a `primary_portrait`, so without an
+                                  explicit action there was no way to say which
+                                  one the character actually uses. Only offered
+                                  on this character's OWN images — promoting
+                                  another character's portrait would be a
+                                  different (and wrong) operation. */}
+                                  {isMainImage ? (
+                                    <span className="rounded bg-primary/10 px-1 text-[9px] font-medium text-primary">
+                                      {t(lang, "ภาพหลัก", "Main")}
+                                    </span>
+                                  ) : (
+                                    !readOnly &&
+                                    candidate.sourceLabel === "own" && (
+                                      <button
+                                        type="button"
+                                        disabled={setPrimaryPortraitMutation.isPending}
+                                        className="rounded px-1 text-[9px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+                                        title={t(
                                           lang,
-                                          `จาก ${candidate.sourceName}`,
-                                          `from ${candidate.sourceName}`
+                                          "ใช้ภาพนี้เป็นภาพหลักของตัวละคร",
+                                          "Use this as the character's main image"
                                         )}
-                                      </span>
-                                    )}
-                                </button>
+                                        onClick={() =>
+                                          setPrimaryPortraitMutation.mutate({
+                                            seriesId,
+                                            characterId:
+                                              selectedCharacter.characterId,
+                                            assetLinkId: candidate.assetLinkId,
+                                          })
+                                        }
+                                      >
+                                        {t(lang, "ตั้งเป็นหลัก", "Set main")}
+                                      </button>
+                                    )
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
@@ -6294,6 +6427,15 @@ export function VerticalDramaCharacterStockPanel({
                           const isPreviewOnly =
                             isActive &&
                             batch.candidates.every(candidate => candidate.status === "previewed");
+                          // Once this batch has a winner, the faces the user
+                          // did NOT pick collapse behind a toggle — they were
+                          // showing up next to the chosen one everywhere and
+                          // made "which face is this character?" genuinely hard
+                          // to answer at a glance.
+                          const candidateVisibility = resolvePortraitCandidateVisibility({
+                            candidates: batch.candidates,
+                            expanded: expandedCandidateBatchIds.has(batch.batchId),
+                          });
                           return (
                             <section
                               key={batch.batchId}
@@ -6338,7 +6480,7 @@ export function VerticalDramaCharacterStockPanel({
                                 columns={{ minWidth: 142, max: 5, repeat: "fit" }}
                                 gap={3}
                               >
-                                {batch.candidates.map(candidate => {
+                                {candidateVisibility.visible.map(candidate => {
                                   const isSelected = candidate.status === "selected";
                                   const canSelect =
                                     Boolean(candidate.imageUrl) &&
@@ -6605,6 +6747,31 @@ export function VerticalDramaCharacterStockPanel({
                                   );
                                 })}
                               </Grid>
+
+                              {candidateVisibility.isResolved &&
+                                batch.candidates.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                    onClick={() =>
+                                      toggleCandidateBatchExpanded(batch.batchId)
+                                    }
+                                  >
+                                    {candidateVisibility.hiddenCount > 0
+                                      ? t(
+                                          lang,
+                                          `แสดงตัวเลือกที่ไม่ได้เลือก (${candidateVisibility.hiddenCount})`,
+                                          `Show ${candidateVisibility.hiddenCount} unpicked option${
+                                            candidateVisibility.hiddenCount === 1 ? "" : "s"
+                                          }`
+                                        )
+                                      : t(
+                                          lang,
+                                          "ซ่อนตัวเลือกที่ไม่ได้เลือก",
+                                          "Hide unpicked options"
+                                        )}
+                                  </button>
+                                )}
 
                               {isPreviewOnly && (
                                 <footer className="mt-3 flex flex-wrap items-center gap-2">

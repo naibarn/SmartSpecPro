@@ -7,6 +7,7 @@ import {
   decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
   resolveDirectCharacterImageInstruction,
+  resolvePortraitCandidateVisibility,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 
@@ -404,5 +405,63 @@ describe("resolveDirectCharacterImageInstruction", () => {
         instructionByCharacter: { "7": "ภาพเต็มตัว" },
       }),
     ).toBeUndefined();
+  });
+});
+
+/**
+ * `planning/vd-character-primary-portrait-control/plan.md` — a first-portrait
+ * batch's unpicked faces are stored durably and used to render forever, so long
+ * after the user chose one they kept appearing beside the winner and made
+ * "which face IS this character?" hard to answer at a glance.
+ */
+describe("resolvePortraitCandidateVisibility", () => {
+  const batch = [
+    { assetLinkId: "1", status: "superseded" },
+    { assetLinkId: "2", status: "selected" },
+    { assetLinkId: "3", status: "completed" },
+  ];
+
+  it("collapses a resolved batch to the picked face", () => {
+    const result = resolvePortraitCandidateVisibility({
+      candidates: batch,
+      expanded: false,
+    });
+    expect(result.isResolved).toBe(true);
+    expect(result.visible.map(c => c.assetLinkId)).toEqual(["2"]);
+    expect(result.hiddenCount).toBe(2);
+  });
+
+  it("shows everything once the user expands it", () => {
+    const result = resolvePortraitCandidateVisibility({
+      candidates: batch,
+      expanded: true,
+    });
+    expect(result.visible).toHaveLength(3);
+    expect(result.hiddenCount).toBe(0);
+    expect(result.isResolved).toBe(true);
+  });
+
+  it("shows everything while the batch is still undecided — that is what the alternates are for", () => {
+    const undecided = [
+      { assetLinkId: "1", status: "completed" },
+      { assetLinkId: "2", status: "completed" },
+    ];
+    const result = resolvePortraitCandidateVisibility({
+      candidates: undecided,
+      expanded: false,
+    });
+    expect(result.isResolved).toBe(false);
+    expect(result.visible).toHaveLength(2);
+    expect(result.hiddenCount).toBe(0);
+  });
+
+  it("handles an empty batch without claiming it is resolved", () => {
+    const result = resolvePortraitCandidateVisibility({
+      candidates: [],
+      expanded: false,
+    });
+    expect(result.isResolved).toBe(false);
+    expect(result.visible).toEqual([]);
+    expect(result.hiddenCount).toBe(0);
   });
 });

@@ -1831,6 +1831,60 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
+   * Make one of this character's existing portraits the MAIN image
+   * (`planning/vd-character-primary-portrait-control/plan.md`).
+   *
+   * Every generated portrait and every dropped reference is stored as
+   * `role: "primary_portrait"`, so a character ends up with several rows that
+   * all claim the title and the winner is decided implicitly by recency. This
+   * is the explicit control that was missing: the user points at one image and
+   * that becomes the card thumbnail AND the identity-lock reference every
+   * later generation conditions on.
+   *
+   * Routes to `selectPortraitCandidate` for a first-portrait BATCH candidate,
+   * because choosing one of those must also lock the Character DNA snapshot
+   * that was generated alongside it. Callers therefore only need this one
+   * mutation; they do not have to know which kind of image they are pointing at.
+   */
+  setPrimaryPortrait: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        assetLinkId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      const assetLinkId = parseId(input.assetLinkId, "asset link id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      const owner = { tenantId, userId, seriesId, characterId, assetLinkId };
+      try {
+        const asset = await verticalDramaCharacterStockService.setPrimaryPortraitAsset(owner);
+        return { asset, via: "direct" as const };
+      } catch (err) {
+        // A batch candidate must go through the DNA-locking path instead —
+        // the service refuses it rather than silently skipping that write.
+        if (
+          err instanceof VerticalDramaCharacterStockError &&
+          err.reason === "asset_wrong_role"
+        ) {
+          try {
+            const asset =
+              await verticalDramaCharacterStockService.selectPortraitCandidate(owner);
+            return { asset, via: "candidate" as const };
+          } catch (candidateErr) {
+            mapStockError(candidateErr);
+          }
+        }
+        mapStockError(err);
+      }
+    }),
+
+  /**
    * Build the browser-safe per-series character-asset manifest (approved /
    * pending / stale reference stock). Read-only.
    */

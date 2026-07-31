@@ -61,14 +61,36 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 
-const { mockGetPrimaryPortraitUrl, mockGetReferenceImageUrlByAssetLinkId } = vi.hoisted(() => ({
+const {
+  mockGetPrimaryPortraitUrl,
+  mockGetReferenceImageUrlByAssetLinkId,
+  mockSetPrimaryPortraitAsset,
+  mockSelectPortraitCandidate,
+} = vi.hoisted(() => ({
   mockGetPrimaryPortraitUrl: vi.fn(),
   mockGetReferenceImageUrlByAssetLinkId: vi.fn(),
+  mockSetPrimaryPortraitAsset: vi.fn(),
+  mockSelectPortraitCandidate: vi.fn(),
+}));
+/** Mirrors the real `VerticalDramaCharacterStockError`'s `reason` discriminator
+ *  — the router branches on it to decide whether an asset needs the
+ *  DNA-locking candidate path. */
+const { MockStockError } = vi.hoisted(() => ({
+  MockStockError: class extends Error {
+    constructor(
+      public readonly reason: string,
+      message: string,
+    ) {
+      super(message);
+    }
+  },
 }));
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
     getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl,
     getReferenceImageUrlByAssetLinkId: mockGetReferenceImageUrlByAssetLinkId,
+    setPrimaryPortraitAsset: mockSetPrimaryPortraitAsset,
+    selectPortraitCandidate: mockSelectPortraitCandidate,
     createPortraitCandidateDraftBatch: vi.fn(),
     getPortraitCandidateTaskInfo: vi.fn(),
     attachGeneratedPortraitCandidate: vi.fn(),
@@ -77,14 +99,7 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
     recordPortraitCandidateTask: vi.fn(),
     markPortraitCandidateSubmissionFailed: vi.fn(),
   },
-  VerticalDramaCharacterStockError: class extends Error {
-    constructor(
-      public readonly reason: string,
-      message: string,
-    ) {
-      super(message);
-    }
-  },
+  VerticalDramaCharacterStockError: MockStockError,
   VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE: "policy rejected",
 }));
 
@@ -540,5 +555,81 @@ describe("generateCharacterSheet — image-to-image model split", () => {
     });
 
     expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("nano-banana-pro");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* setPrimaryPortrait — the explicit "this is the main image" control          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `planning/vd-character-primary-portrait-control/plan.md`. Every generated
+ * portrait and every dropped reference is stored with role
+ * `primary_portrait`, so a character accumulates several rows that all claim
+ * the title and the winner was decided implicitly by recency — the panel could
+ * show four tiles all labelled "primary portrait" with no way to pick one.
+ * One mutation now serves both kinds of image: a first-portrait BATCH candidate
+ * must go through `selectPortraitCandidate` (it also locks the Character DNA
+ * snapshot), everything else through the plain promotion. The caller never has
+ * to know which kind it is pointing at.
+ */
+describe("setPrimaryPortrait", () => {
+  it("promotes an ordinary portrait through the direct path", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([BASE_CHARACTER_ROW]));
+    mockSetPrimaryPortraitAsset.mockResolvedValue({ assetLinkId: "263" });
+
+    const result = await router.setPrimaryPortrait({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1", assetLinkId: "263" },
+    });
+
+    expect(result).toMatchObject({ via: "direct" });
+    expect(mockSetPrimaryPortraitAsset).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      characterId: 1,
+      assetLinkId: 263,
+    });
+    expect(mockSelectPortraitCandidate).not.toHaveBeenCalled();
+  });
+
+  it("falls through to the DNA-locking path for a first-portrait batch candidate", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([BASE_CHARACTER_ROW]));
+    mockSetPrimaryPortraitAsset.mockRejectedValue(
+      new MockStockError("asset_wrong_role", "candidate must lock DNA"),
+    );
+    mockSelectPortraitCandidate.mockResolvedValue({ assetLinkId: "264" });
+
+    const result = await router.setPrimaryPortrait({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1", assetLinkId: "264" },
+    });
+
+    expect(result).toMatchObject({ via: "candidate" });
+    expect(mockSelectPortraitCandidate).toHaveBeenCalledWith(
+      expect.objectContaining({ characterId: 1, assetLinkId: 264 }),
+    );
+  });
+
+  it("does not swallow an unrelated failure into the candidate path", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([BASE_CHARACTER_ROW]));
+    mockSetPrimaryPortraitAsset.mockRejectedValue(
+      new MockStockError("asset_not_found", "gone"),
+    );
+
+    await expect(
+      router.setPrimaryPortrait({
+        ctx: ctx(),
+        input: { seriesId: "10", characterId: "1", assetLinkId: "999" },
+      }),
+    ).rejects.toBeTruthy();
+    expect(mockSelectPortraitCandidate).not.toHaveBeenCalled();
   });
 });
