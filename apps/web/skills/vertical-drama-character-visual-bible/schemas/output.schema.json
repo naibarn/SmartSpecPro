@@ -198,6 +198,11 @@
           "primary_portrait_prompt": {
             "type": "string"
           },
+          "primary_portrait_framing": {
+            "type": "string",
+            "enum": ["close_up", "half_body", "full_body", "style_sheet"],
+            "description": "Optional skill-authored verdict on the shot size this generation calls for. Omit for an ordinary portrait. When \"full_body\", the server renders full_body_prompt instead of primary_portrait_prompt. See skill.md, \"Requested framing verdict\"."
+          },
           "full_body_prompt": {
             "type": "string"
           },

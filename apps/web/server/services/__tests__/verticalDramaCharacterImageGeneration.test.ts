@@ -2987,3 +2987,92 @@ describe("generateCharacterPortraitCandidates — FIX A: lead-beauty graceful de
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* primary_portrait_framing — which prompt actually gets rendered              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `planning/vd-character-full-body-framing/plan.md` C3. The skill authors five
+ * prompts every call, but only `primary_portrait_prompt` was ever sent to an
+ * image model — so a user asking for "ภาพเต็มตัว" could get a faithfully
+ * full-body `full_body_prompt` that was then silently discarded, and always
+ * saw a half-body render. `primary_portrait_framing` is the SKILL's own
+ * verdict on the requested shot size; this module only routes on it and never
+ * parses the user's text itself (skill-first).
+ */
+describe("generateCharacterVisualPrompts — primary_portrait_framing routing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  function outputWithFraming(framing?: string) {
+    const character = { ...validCharacter(), ...(framing ? { primary_portrait_framing: framing } : {}) };
+    return validOutput([character]);
+  }
+
+  it("renders full_body_prompt when the skill's verdict is full_body", async () => {
+    const payload = outputWithFraming("full_body");
+    mockExecute.mockResolvedValue(successResponse(payload));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ customInstruction: "ภาพเต็มตัว ชุดสูทสีดำ" }),
+    );
+
+    expect(result.portraitPrompt).toBe(payload.characters[0].full_body_prompt);
+    expect(result.portraitPrompt).not.toBe(payload.characters[0].primary_portrait_prompt);
+    expect(result.primaryPortraitFraming).toBe("full_body");
+  });
+
+  it("keeps primary_portrait_prompt for style_sheet — there is no always-present sheet field to route to", async () => {
+    const payload = outputWithFraming("style_sheet");
+    mockExecute.mockResolvedValue(successResponse(payload));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(result.portraitPrompt).toBe(payload.characters[0].primary_portrait_prompt);
+    expect(result.primaryPortraitFraming).toBe("style_sheet");
+  });
+
+  it.each(["close_up", "half_body"])(
+    "keeps primary_portrait_prompt for the %s verdict",
+    async (framing) => {
+      const payload = outputWithFraming(framing);
+      mockExecute.mockResolvedValue(successResponse(payload));
+
+      const result = await generateCharacterVisualPrompts(baseParams());
+
+      expect(result.portraitPrompt).toBe(payload.characters[0].primary_portrait_prompt);
+      expect(result.primaryPortraitFraming).toBe(framing);
+    },
+  );
+
+  it("is byte-identical to legacy behavior when the skill omits the field", async () => {
+    const payload = outputWithFraming();
+    mockExecute.mockResolvedValue(successResponse(payload));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(result.portraitPrompt).toBe(payload.characters[0].primary_portrait_prompt);
+    expect(result.primaryPortraitFraming).toBeUndefined();
+    // The discarded-field bug is what this whole section exists to prevent —
+    // full_body_prompt must still be surfaced to callers either way.
+    expect(result.fullBodyPrompt).toBe(payload.characters[0].full_body_prompt);
+  });
+
+  it("rejects a framing value outside the skill's published enum", async () => {
+    mockExecute.mockResolvedValue(successResponse(outputWithFraming("waist_up")));
+
+    await expect(generateCharacterVisualPrompts(baseParams())).rejects.toThrow(
+      VdSchemaValidationError,
+    );
+  });
+});

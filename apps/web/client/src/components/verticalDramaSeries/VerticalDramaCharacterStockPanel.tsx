@@ -790,6 +790,33 @@ export function buildCreateCharacterTwinInput(params: {
   };
 }
 
+/**
+ * Which free-text visual brief a DIRECT (no-preview) character-image
+ * generation should carry — `planning/vd-character-full-body-framing/plan.md`
+ * C1. Extracted as a pure function for the same reason as
+ * `buildPreviewCharacterPromptInput` below: a full render test of this panel
+ * is impractical, so the decision itself is what gets pinned.
+ *
+ * `override` wins when supplied, because the "เพิ่มลุค" dialog's auto-fire
+ * runs in the same event handler that seeds `instructionByCharacter` — React
+ * has not committed that state yet, so reading the map back there would see a
+ * stale (empty) value and silently drop the user's brief. Returns `undefined`
+ * (not `""`) when there is nothing to send, so the caller omits the field
+ * entirely and the backend keeps its exact pre-feature default.
+ */
+export function resolveDirectCharacterImageInstruction(params: {
+  characterId: string;
+  instructionByCharacter: Record<string, string>;
+  override?: string;
+}): string | undefined {
+  const resolved = (
+    params.override ??
+    params.instructionByCharacter[params.characterId] ??
+    ""
+  ).trim();
+  return resolved || undefined;
+}
+
 /** Exact payload shape `verticalDramaCharacters.previewCharacterPrompt`
  *  expects (`server/routers/verticalDramaCharacters.ts`) — the
  *  `customInstruction` field name/cap (500 chars, enforced server-side via
@@ -2758,11 +2785,11 @@ export function VerticalDramaCharacterStockPanel({
     characterId: string,
     instructionOverride?: string
   ) => {
-    const customInstruction = (
-      instructionOverride ??
-      customInstructionByCharacter[characterId] ??
-      ""
-    ).trim();
+    const customInstruction = resolveDirectCharacterImageInstruction({
+      characterId,
+      instructionByCharacter: customInstructionByCharacter,
+      override: instructionOverride,
+    });
     generateImageMutation.mutate({
       seriesId,
       characterId,

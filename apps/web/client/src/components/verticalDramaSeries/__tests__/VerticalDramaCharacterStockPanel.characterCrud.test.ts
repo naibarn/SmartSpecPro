@@ -6,6 +6,7 @@ import {
   buildPreviewCharacterPromptInput,
   decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
+  resolveDirectCharacterImageInstruction,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 
@@ -344,5 +345,64 @@ describe("decideVariantAutoGenerateImage", () => {
         selectedImageModelId: "",
       })
     ).toEqual({ fire: false, reason: "has_reference_image" });
+  });
+});
+
+/**
+ * `planning/vd-character-full-body-framing/plan.md` C1 — the look-image
+ * generate paths (auto-fire on "เพิ่มลุค" submit, and the per-look chip
+ * button) used to send NO `customInstruction` at all, so a user asking for
+ * "ภาพเต็มตัว" had their text sit in panel state while every request went out
+ * without it and every look came back half-body.
+ */
+describe("resolveDirectCharacterImageInstruction", () => {
+  it("reads the character's own brief from the panel map", () => {
+    expect(
+      resolveDirectCharacterImageInstruction({
+        characterId: "7",
+        instructionByCharacter: { "7": "ภาพเต็มตัว ชุดสูทสีดำ" },
+      }),
+    ).toBe("ภาพเต็มตัว ชุดสูทสีดำ");
+  });
+
+  it("prefers the explicit override — the dialog's brief for a character whose state is not committed yet", () => {
+    expect(
+      resolveDirectCharacterImageInstruction({
+        characterId: "7",
+        instructionByCharacter: { "7": "stale value" },
+        override: "  ภาพเต็มตัว  ",
+      }),
+    ).toBe("ภาพเต็มตัว");
+  });
+
+  it("returns undefined (never an empty string) when nothing was typed", () => {
+    expect(
+      resolveDirectCharacterImageInstruction({
+        characterId: "7",
+        instructionByCharacter: {},
+      }),
+    ).toBeUndefined();
+    expect(
+      resolveDirectCharacterImageInstruction({
+        characterId: "7",
+        instructionByCharacter: { "7": "   " },
+      }),
+    ).toBeUndefined();
+    expect(
+      resolveDirectCharacterImageInstruction({
+        characterId: "7",
+        instructionByCharacter: { "7": "kept" },
+        override: "   ",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("does not leak another character's brief", () => {
+    expect(
+      resolveDirectCharacterImageInstruction({
+        characterId: "8",
+        instructionByCharacter: { "7": "ภาพเต็มตัว" },
+      }),
+    ).toBeUndefined();
   });
 });

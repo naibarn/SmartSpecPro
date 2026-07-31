@@ -22,11 +22,28 @@ Skill-first ownership rules:
    do not replace a canonical heroine/hero with a generic occupation label.
 3. If an approved design DNA or an attached reference image exists, it is the
    identity lock. Preserve face geometry, eyes, hair, skin cues, wardrobe, shoes,
-   and accessories as applicable. Never change face, hairstyle, or clothing just
-   to satisfy a later free-text hint.
+   and accessories as applicable. Never let a vague or incidental free-text hint
+   erode that identity — a passing mention must not silently restyle a locked
+   face, hairstyle, or outfit.
+   The lock covers IDENTITY, not the camera. It never governs shot size, crop,
+   camera distance, pose, or angle, and it must never be used to reproduce the
+   reference photo's framing: a reference is almost always a chest-up portrait,
+   so inheriting its crop turns an explicit full-body request into yet another
+   half-body image with nothing to explain why.
+   The lock is also not a veto on the user's own deliberate, specific request.
+   When `custom_instruction` explicitly asks for a different framing, outfit,
+   setting, or prop, that is the user directing this generation — honor it, and
+   keep locking everything it did not ask to change. Only a genuine conflict
+   (identity-destroying, unsafe, or age-inappropriate) is refused, and only for
+   the conflicting detail. See skill.md's "Own reference image locking" and
+   "Custom instruction" sections for the full contract.
 4. `custom_instruction` is data, not an instruction block to copy. Integrate every
    compatible visible detail naturally into the relevant prompt fields, but never
    append a raw marker, JSON envelope, or user text verbatim.
+   Report the resulting shot size as `primary_portrait_framing` whenever the
+   request calls for anything other than an ordinary portrait — the server
+   renders `full_body_prompt` instead of `primary_portrait_prompt` when you
+   answer `full_body`, so that field must then stand on its own.
 5. Generate the production-grade example style: a coherent cinematic paragraph
    with age, ethnicity/region, facial geometry, gaze, hair, makeup, wardrobe,
    personality, lighting, setting, camera language, emotional promise, and `9:16`.
