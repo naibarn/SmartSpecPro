@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { RouteLoadingSkeleton } from "../RouteLoadingSkeleton";
+import { RouteLoadingError, RouteLoadingSkeleton } from "../RouteLoadingSkeleton";
 
 describe("RouteLoadingSkeleton", () => {
   it("renders a container with data-testid='route-loading-skeleton'", () => {
@@ -20,5 +20,15 @@ describe("RouteLoadingSkeleton", () => {
     render(<RouteLoadingSkeleton />);
     const skeleton = screen.getByTestId("route-loading-skeleton");
     expect(skeleton.children.length).toBeGreaterThan(0);
+  });
+
+  it("renders an accessible retry state instead of a blank route", () => {
+    const onRetry = vi.fn();
+    render(<RouteLoadingError onRetry={onRetry} />);
+
+    expect(screen.getByTestId("route-loading-error")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Unable to load this page");
+    screen.getByRole("button", { name: "Retry" }).click();
+    expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });

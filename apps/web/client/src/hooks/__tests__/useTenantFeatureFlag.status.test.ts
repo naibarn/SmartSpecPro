@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import { useTenantFeatureFlagStatus } from "../useTenantFeatureFlag";
@@ -96,5 +96,31 @@ describe("useTenantFeatureFlagStatus", () => {
 
     await waitFor(() => expect(result.current.isResolved).toBe(true));
     expect(result.current.enabled).toBe(FEATURE_FLAG_DEFAULTS[FLAG]);
+  });
+
+  it("exposes a retryable error instead of treating a failed request as disabled", async () => {
+    mockFetch
+      .mockRejectedValueOnce(new Error("gateway timeout"))
+      .mockRejectedValueOnce(new Error("gateway timeout"))
+      .mockRejectedValueOnce(new Error("gateway timeout"))
+      .mockResolvedValueOnce(
+        makeResponse(200, { tenant: { featureFlags: { [FLAG]: true } } }),
+      );
+
+    const { result } = renderHook(() => useTenantFeatureFlagStatus(FLAG), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true), {
+      timeout: 6_000,
+    });
+    expect(result.current.isResolved).toBe(false);
+    expect(result.current.enabled).toBe(FEATURE_FLAG_DEFAULTS[FLAG]);
+
+    await act(async () => {
+      await result.current.retry();
+    });
+    await waitFor(() => expect(result.current.isResolved).toBe(true));
+    expect(result.current.enabled).toBe(true);
   });
 });

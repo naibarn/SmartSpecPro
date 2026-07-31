@@ -12,6 +12,7 @@
 
 import { Router, type Request, type Response } from "express";
 import { sdk } from "../_core/sdk";
+import { createSSEEvictionLogLimiter } from "./notificationStreamDiagnostics";
 
 const notificationStreamRouter = Router();
 
@@ -20,6 +21,7 @@ const MAX_SSE_PER_USER = 5;
 
 // Track active SSE subscribers per user to prevent resource leaks
 const activeSubscribers = new Map<number, Set<{ disconnect: () => void }>>();
+const evictionLogLimiter = createSSEEvictionLogLimiter();
 
 notificationStreamRouter.get("/api/notifications/stream", async (req: Request, res: Response) => {
   // Authenticate
@@ -52,7 +54,15 @@ notificationStreamRouter.get("/api/notifications/stream", async (req: Request, r
   if (userSubs.size >= MAX_SSE_PER_USER) {
     const oldest = userSubs.values().next().value;
     if (oldest) {
-      console.log("[NotificationStream] evicting_oldest_sse_connection", { userId });
+      const evictionLog = evictionLogLimiter.record(userId);
+      if (evictionLog.shouldLog) {
+        console.warn("[NotificationStream] evicting_oldest_sse_connection", {
+          userId,
+          tenantId: user.currentTenantId ?? null,
+          activeConnections: userSubs.size,
+          suppressedEvictions: evictionLog.suppressedCount,
+        });
+      }
       try { oldest.disconnect(); } catch { /* already closed */ }
       userSubs.delete(oldest);
     }

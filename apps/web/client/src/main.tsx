@@ -8,6 +8,7 @@ import * as systemErrorMonitor from "@/lib/systemErrorMonitor";
 import { trpc } from "@/lib/trpc";
 import { getPrivateVaultAccessToken } from "@/lib/privateVault";
 import { getProtectedSurfaceAccessToken } from "@/lib/protectedSurface";
+import { fetchWithTimeout } from "@/lib/authBootstrap";
 import {
   retryDelayMs,
   shouldRetryMutation,
@@ -424,10 +425,13 @@ const hasActiveSession = async (): Promise<boolean> => {
 
   authRecheckInFlight = (async () => {
     try {
-      const response = await globalThis.fetch(getSmartSpecWebEndpoint("/trpc/auth.me"), {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetchWithTimeout(
+        getSmartSpecWebEndpoint("/trpc/auth.me"),
+        {
+          method: "GET",
+          credentials: "include",
+        },
+      );
       if (!response.ok) return false;
 
       const payload = await response.json();

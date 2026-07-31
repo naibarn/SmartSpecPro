@@ -37,7 +37,10 @@ import { TenantProvider } from "./contexts/TenantContext";
 import { I18nextProvider } from "react-i18next";
 import { i18n } from "@/i18n";
 import { useNamespacePreloader } from "@/i18n/useNamespacePreloader";
-import { RouteLoadingSkeleton } from "@/components/RouteLoadingSkeleton";
+import {
+  RouteLoadingError,
+  RouteLoadingSkeleton,
+} from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 import { trpc } from "@/lib/trpc";
@@ -306,11 +309,20 @@ const HelpTopicPage = lazy(() => import("./pages/HelpTopic"));
 /**
  * Route-level guard for /admin/* routes.
  * Redirects unauthenticated users to /login and non-admins to /dashboard.
- * Renders nothing while auth is still loading to avoid a flash.
+ * Renders a visible skeleton while auth is loading and a retry state when the
+ * bootstrap request fails.
  */
 function RequireAdmin({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return null;
+  const { user, isLoading, authError, retryAuth } = useAuth();
+  if (isLoading) return <RouteLoadingSkeleton />;
+  if (authError) {
+    return (
+      <RouteLoadingError
+        description="Authentication is temporarily unavailable. Please try again."
+        onRetry={retryAuth}
+      />
+    );
+  }
   if (!user) return <Redirect to="/login" />;
   if (user.role !== "admin") return <Redirect to="/dashboard" />;
   return <>{children}</>;
@@ -324,10 +336,11 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 /**
  * Route-level guard for authenticated-only routes.
  * Redirects unauthenticated users to /login.
- * Renders nothing while auth is still loading to avoid a flash.
+ * Renders a visible skeleton while auth is loading and a retry state when the
+ * bootstrap request fails.
  */
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, authError, retryAuth } = useAuth();
   const [location] = useLocation();
   const safetyProfileStatus =
     trpc.users.getSafetyProfileCompletionStatus.useQuery(undefined, {
@@ -335,7 +348,15 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
       staleTime: 60_000,
       retry: false,
     });
-  if (isLoading) return null;
+  if (isLoading) return <RouteLoadingSkeleton />;
+  if (authError) {
+    return (
+      <RouteLoadingError
+        description="Authentication is temporarily unavailable. Please try again."
+        onRetry={retryAuth}
+      />
+    );
+  }
   if (!user) return <Redirect to="/login" />;
   const path = location.split("?")[0];
   const exemptFromSafetyProfileGate =
@@ -378,9 +399,17 @@ function RequireVerticalDramaSeries({
 }: {
   children: React.ReactNode;
 }) {
-  const { enabled, isResolved } = useTenantFeatureFlagStatus(
+  const { enabled, isResolved, isError, retry } = useTenantFeatureFlagStatus(
     "verticalDramaSeries"
   );
+  if (isError) {
+    return (
+      <RouteLoadingError
+        description="Tenant settings could not be loaded. Please try again."
+        onRetry={() => void retry()}
+      />
+    );
+  }
   if (!isResolved) {
     return <RouteLoadingSkeleton />;
   }
@@ -422,9 +451,17 @@ function RequireVerticalDramaSeries({
  * of flashing a false "not available" denial.
  */
 function RequireVideoIntelligence({ children }: { children: React.ReactNode }) {
-  const { enabled, isResolved } = useTenantFeatureFlagStatus(
+  const { enabled, isResolved, isError, retry } = useTenantFeatureFlagStatus(
     "videoIntelligencePlatformEnabled"
   );
+  if (isError) {
+    return (
+      <RouteLoadingError
+        description="Tenant settings could not be loaded. Please try again."
+        onRetry={() => void retry()}
+      />
+    );
+  }
   if (!isResolved) {
     return <RouteLoadingSkeleton />;
   }
@@ -451,8 +488,16 @@ function RequireVideoIntelligence({ children }: { children: React.ReactNode }) {
 }
 
 function RequireDomainAdmin({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return null;
+  const { user, isLoading, authError, retryAuth } = useAuth();
+  if (isLoading) return <RouteLoadingSkeleton />;
+  if (authError) {
+    return (
+      <RouteLoadingError
+        description="Authentication is temporarily unavailable. Please try again."
+        onRetry={retryAuth}
+      />
+    );
+  }
   if (!user) return <Redirect to="/login" />;
   if (user.role !== "admin" && user.role !== "domain_admin")
     return <Redirect to="/dashboard" />;

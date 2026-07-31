@@ -1,5 +1,57 @@
 # Orchestra Progress
 
+## Active task: layered loading resilience - 2026-08-01
+
+Loop policy:
+  orchestra_id: fable_style_coding_orchestra
+  purpose: implement approved SmartAIHub auth/tenant/page, analytics, and SSE resilience layers
+  iteration: 9/12
+  tool_call_batches: unknown/30
+  estimated_cost_usd: unknown <= 0.50
+  dispatch_waves: 0/6
+  active_subagents: 0/4
+  parallel_writers: 0/2
+  required_subagent_wait: 0/10 minutes
+  background_subagent_wait: 0/15 minutes
+  repair_rounds: 0/5
+  stop_conditions: success_criteria_met, tests_passed, no_open_blockers
+  stop_reason: success_with_rollout_deferred
+
+[COMPLETE] preflight — read AGENTS.md and approved design spec; existing worktree is heavily dirty and unrelated changes are preserved
+[COMPLETE] discovery — SocratiCode tools unavailable; targeted shell/source/runtime evidence already identified auth blank gate, analytics enum drift, and SSE eviction churn
+[COMPLETE] implementation — bounded auth/tenant bootstrap, shared visible retry states, analytics enum correction, and SSE eviction-log limiter
+[COMPLETE] focused verification — web 12 tests, Python analytics 24 tests, diff check, and local route/auth/tenant/backend probes pass
+[COMPLETE] build — `apps/web` production web + widget build pass
+[OPEN] repository typecheck — `npm run check` still reports unrelated existing errors in other app files; no errors reported in touched files
+[OPEN] production rollout — intentionally not deployed or restarted; explicit approval still required
+
+Verification evidence:
+  web_tests: `npm exec -- vitest run client/src/lib/__tests__/authBootstrap.test.ts client/src/components/__tests__/RouteLoadingSkeleton.test.tsx client/src/hooks/__tests__/useTenantFeatureFlag.status.test.ts server/routes/__tests__/notificationStreamDiagnostics.test.ts` -> 4 files, 12 passed
+  python_tests: `DEBUG=false uv run pytest --no-cov -q tests/unit/services/test_analytics_service.py` -> 24 passed, 4 deprecation warnings
+  build: `npm run build` -> web and widget built successfully
+  local_probes: route/auth.me/tenant/current/backend health -> HTTP 200; route 4.7ms, auth 4.0ms, tenant 2.8ms, backend 5.5ms
+  diff_check: targeted `git diff --check` -> clean
+
+Gap closure:
+  must_do_now: none; all approved code paths have focused coverage or build evidence
+  should_offer_next:
+    - authenticated browser smoke of the timeout/retry route state after deployment
+  safely_deferred:
+    - production deploy/restart and live analytics/SSE observation | external service side effect requires explicit approval
+    - full repository TypeScript/Ruff cleanup | unrelated pre-existing errors; residual risk is repository-wide gate noise
+  no_action_needed:
+    - Vertical Drama detail page-specific error/retry state | already present and verified by existing page tests/build
+
+Loop policy final:
+  iterations_used: 9/12
+  tool_call_batches_used: unknown/30; conservative proxy low
+  estimated_cost_usd: unknown/0.50; conservative proxy low
+  dispatch_waves_used: 0/6
+  timed_out_subagents: none
+  repair_rounds_used: 0/5
+  stop_conditions_met: [success_criteria_met, focused_tests_passed, no_in_scope_blockers]
+  stop_reason: success_with_rollout_deferred
+
 Loop policy:
   orchestra_id: fable_style_coding_orchestra
   purpose: implement Kie GPT Image 2 automatic mode routing

@@ -13,6 +13,8 @@ import io
 from app.models.credit import CreditTransaction
 from app.models.payment import PaymentTransaction
 
+LIVE_USAGE_TRANSACTION_TYPE = "usage"
+
 
 class AnalyticsService:
     """Service for usage analytics and reporting"""
@@ -51,7 +53,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
         )
@@ -182,7 +184,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
             .order_by(CreditTransaction.created_at)
@@ -243,7 +245,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
         )
@@ -318,7 +320,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
             .order_by(CreditTransaction.created_at.desc())
@@ -383,7 +385,7 @@ class AnalyticsService:
                 and_(
                     CreditTransaction.user_id == user_id,
                     CreditTransaction.created_at >= start_date,
-                    CreditTransaction.type == "deduction"
+                    CreditTransaction.type == LIVE_USAGE_TRANSACTION_TYPE
                 )
             )
         )

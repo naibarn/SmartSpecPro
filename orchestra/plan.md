@@ -1,5 +1,39 @@
 # Orchestra Plan
 
+## SmartAIHub layered loading resilience - 2026-08-01
+
+### Classification
+- scope: large implementation (shared web auth/tenant guards, Vertical Drama route, Python analytics, notification SSE)
+- risk: high (auth bootstrap and shared route guards)
+- chosen_route: data-first bug route -> direct-standard-light implementation waves
+- task_summary: prevent indefinite blank protected routes, repair analytics enum drift, and bound SSE churn/observability
+- bug_route: true
+- dispatch_preference: direct-standard-light
+- planned_agents: []
+- security_gate_required: false; auth UX state changes, not auth authorization or tenant isolation
+
+### Activation and constraints
+- Orchestra activated because the approved fix crosses frontend shared guards, a page route, Python analytics, and SSE runtime behavior.
+- Brainstorming design was written and approved before implementation: `docs/portable-skill-pack/specs/2026-07-31-layered-drama-series-loading-resilience-design.md`.
+- SocratiCode MCP tools were unavailable in this session; discovery falls back to targeted shell reads and this fallback is recorded in `orchestra/progress.md`.
+- Existing dirty worktree changes are unrelated and must be preserved; edits are limited to the approved files plus focused tests.
+- No deploy, restart, migration, or production data mutation is authorized in this turn.
+
+### Evidence ledger
+- source: screenshot + server logs + live route/API probes + DB enum inspection + source trace
+- identifier: `/drama-series/18?tab=episodes`; analytics `/api/v1/analytics/summary` and `/api/v1/analytics/time-series`; notification SSE user 1
+- observed failure: protected route can return a blank page while raw `auth.me` remains unresolved; analytics logs `invalid input value for enum transaction_type: "deduction"`; SSE repeatedly evicts old connections
+- data state: local origin/backend/DB/Redis healthy; route shell/assets return 200; live enum supports `usage` not `deduction`; series 18 data is present
+- confidence: high for the three scoped defects; public edge latency remains a separate contributing signal
+- next evidence needed: focused red tests and post-change local/runtime probes
+
+### Success criteria
+1. Auth/tenant/detail failures render bounded loading/error/retry states instead of indefinite blank UI.
+2. Valid unauthenticated responses still redirect to login; successful sessions still reach the route.
+3. Analytics no longer sends the invalid enum label and has regression coverage.
+4. SSE eviction behavior remains bounded, measurable, and does not flood logs.
+5. Focused tests, web typecheck, and production build pass; no production restart/deploy occurs.
+
 ## Task
 Implement one selectable Kie.ai GPT Image 2 model that routes automatically to
 text-to-image or image-to-image based on attached reference images.

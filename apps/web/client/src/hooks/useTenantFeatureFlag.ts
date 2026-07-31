@@ -16,6 +16,7 @@ import {
   FEATURE_FLAG_DEFAULTS,
   type TenantFeatureFlagKey,
 } from "@shared/featureFlags.ts";
+import { fetchWithTimeout } from "@/lib/authBootstrap";
 
 interface TenantCurrentResponse {
   tenant?: {
@@ -25,7 +26,9 @@ interface TenantCurrentResponse {
 }
 
 async function fetchTenantCurrent(): Promise<TenantCurrentResponse> {
-  const res = await fetch("/api/tenant/current");
+  const res = await fetchWithTimeout("/api/tenant/current", {
+    credentials: "include",
+  });
   if (!res.ok) {
     // Throw instead of returning `{}` so a transient outage (e.g. a 502 from
     // nginx while smartspec-web.service restarts) surfaces as a retryable
@@ -42,17 +45,16 @@ async function fetchTenantCurrent(): Promise<TenantCurrentResponse> {
 /**
  * Shared react-query options for the `["tenant", "current"]` query, reused
  * by every hook below so they observe one cached query with identical
- * staleness/retry behavior. Retries generously (up to 10 attempts, capped
- * exponential backoff) so a transient backend outage resolves on its own —
- * without this, a single failed request mid-restart would otherwise pin the
- * query in an errored state until the user manually reloads.
+ * staleness/retry behavior. Retry twice with capped exponential backoff so a
+ * short restart window can recover without leaving a route gate unresolved
+ * indefinitely; after that, callers can show an explicit retry action.
  */
 const TENANT_CURRENT_QUERY_OPTIONS = queryOptions({
   queryKey: ["tenant", "current"],
   queryFn: fetchTenantCurrent,
   staleTime: 60_000, // 1 minute
   gcTime: 5 * 60_000,
-  retry: (failureCount: number) => failureCount < 10,
+  retry: (failureCount: number) => failureCount < 2,
   retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 5000),
 });
 
@@ -69,8 +71,12 @@ const TENANT_CURRENT_QUERY_OPTIONS = queryOptions({
 export function useTenantFeatureFlagStatus(flag: TenantFeatureFlagKey): {
   enabled: boolean;
   isResolved: boolean;
+  isError: boolean;
+  retry: () => Promise<unknown>;
 } {
-  const { data, isSuccess } = useQuery(TENANT_CURRENT_QUERY_OPTIONS);
+  const { data, isSuccess, isError, refetch } = useQuery(
+    TENANT_CURRENT_QUERY_OPTIONS,
+  );
 
   const storedFlags = data?.tenant?.featureFlags;
   const enabled =
@@ -78,7 +84,7 @@ export function useTenantFeatureFlagStatus(flag: TenantFeatureFlagKey): {
       ? FEATURE_FLAG_DEFAULTS[flag]
       : storedFlags[flag];
 
-  return { enabled, isResolved: isSuccess };
+  return { enabled, isResolved: isSuccess, isError, retry: refetch };
 }
 
 /**

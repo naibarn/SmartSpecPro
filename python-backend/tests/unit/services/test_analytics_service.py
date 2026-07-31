@@ -36,7 +36,7 @@ class TestAnalyticsServiceWithMocks:
         tx.id = "tx-123"
         tx.user_id = "user-123"
         tx.amount = 100
-        tx.type = "deduction"
+        tx.type = "usage"
         tx.description = "LLM usage"
         tx.created_at = datetime.utcnow()
         tx.metadata = {
@@ -90,6 +90,24 @@ class TestAnalyticsServiceWithMocks:
         assert summary["usage"]["total_requests"] == 1
         assert summary["usage"]["total_credits"] == 100
         assert summary["payments"]["total_paid_usd"] == 10.00
+
+    @pytest.mark.asyncio
+    async def test_usage_queries_use_the_live_transaction_enum_value(
+        self, analytics_service, mock_db, sample_credit_transaction, sample_payment_transaction
+    ):
+        """Analytics must use the live `usage` enum, not the removed `deduction` value."""
+        credit_result = MagicMock()
+        credit_result.scalars.return_value.all.return_value = [sample_credit_transaction]
+        payment_result = MagicMock()
+        payment_result.scalars.return_value.all.return_value = [sample_payment_transaction]
+        mock_db.execute.side_effect = [credit_result, payment_result]
+
+        await analytics_service.get_usage_summary(user_id="user-123", days=30)
+
+        statement = mock_db.execute.call_args_list[0].args[0]
+        params = statement.compile().params
+        assert "usage" in params.values()
+        assert "deduction" not in params.values()
     
     @pytest.mark.asyncio
     async def test_get_usage_summary_invalid_days_too_low(self, analytics_service):

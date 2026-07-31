@@ -337,3 +337,51 @@ Convergence stop: one clean targeted review; no in-scope finding remains.
 - Final review: no remaining in-scope correctness finding; existing whole-episode action remains available and unchanged.
 - Gates: 19 focused tests pass; `git diff --check` passes; repository typecheck remains red only on pre-existing router lines 1709-1765, with no errors in touched ranges.
 - Stop reason: one clean targeted conductor review after the repair round.
+
+## SmartAIHub layered loading resilience - 2026-08-01
+
+### Round 1 - root-cause and contract review
+
+Result: CLEAN.
+
+- Evidence remains data-first: the blank route is caused by the shared auth gate
+  returning `null` while raw `auth.me` is unresolved; the local shell, backend,
+  DB, and Redis were responsive during the incident window.
+- Auth behavior is fail-safe for UX without changing authorization: positive
+  401/403 results still redirect, while timeout/network/5xx errors preserve the
+  user state and render a retryable error instead of clearing the session.
+- Tenant feature failures remain distinct from disabled flags. Shared route
+  guards now expose loading and retry states after bounded query retries.
+- The Vertical Drama detail page already had an explicit AppPage loading/error
+  state and retry action; no duplicate page-specific change was needed.
+- All five analytics transaction filters use the live `usage` enum, with a query
+  contract regression test; no data or migration change was introduced.
+- SSE retains the existing per-user cap and cleanup behavior; eviction logs now
+  include tenant/user/active-count context and are bounded per user by a
+  time-window limiter with stale-entry pruning.
+- Accessibility review: retry UI uses semantic `main`/`section`/`button`, an
+  alert role, keyboard focus styling, and focused component coverage.
+- Findings: none requiring code changes.
+
+### Round 2 - stale-gate and impact recheck
+
+Result: CLEAN.
+
+- Fresh web focused tests pass (12/12), Python analytics tests pass (24/24),
+  production web/widget build passes, targeted diff check is clean, and local
+  route/auth/tenant/backend probes return HTTP 200.
+- Full TypeScript check remains red only on unrelated pre-existing files; no
+  error points to a touched file. The protected-state browser E2E gate is not
+  claimed as pass because no authenticated test fixture is available in this
+  session.
+- The broader Vertical Drama detail test group has 50 passing tests; its 11
+  `finalRenderSuite` failures are caused by that fixture not mocking
+  `verticalDramaEpisodes.deleteEpisode` at render time, before the changed
+  route state, and are unrelated to this patch.
+- New impact surfaces: shared `AuthContext`, `main.tsx` auth recheck, tenant
+  feature guards, analytics Python service, and notification SSE diagnostics;
+  all have focused verification or build coverage.
+- No material finding or in-scope must-do-now gap remains.
+
+Convergence stop: two consecutive clean conductor review rounds; production
+deploy/restart remains intentionally deferred pending explicit approval.
