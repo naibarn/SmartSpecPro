@@ -1290,6 +1290,30 @@ export class VerticalDramaCharacterStockService {
     owner: VerticalDramaCharacterStockOwner,
     assetLinkId: number,
   ): Promise<string> {
+    const resolved = await this.getReferenceImageByAssetLinkId(owner, assetLinkId);
+    return resolved.url;
+  }
+
+  /**
+   * Same resolution as {@link getReferenceImageUrlByAssetLinkId} (which now
+   * delegates here), but ALSO reports which character row the pinned asset
+   * link actually belongs to.
+   *
+   * That ownership fact is not cosmetic: because this lookup is deliberately
+   * scoped to `(tenantId, userId, seriesId)` and NOT `characterId`, a "look"
+   * (variant) or twin can legitimately pin its PARENT's portrait as its
+   * identity-lock reference — and a borrowed portrait must never be announced
+   * downstream as that character's own established likeness
+   * (`hasOwnReferenceImage`), or the skill locks the new render's outfit to
+   * the parent's outfit. See `ReferencePortraitSource` in
+   * `routers/verticalDramaCharacters.ts` for the full contract; the caller
+   * compares this `characterId` against its render target to pick between the
+   * `"explicit"` and `"inherited"` tiers.
+   */
+  async getReferenceImageByAssetLinkId(
+    owner: VerticalDramaCharacterStockOwner,
+    assetLinkId: number,
+  ): Promise<{ url: string; characterId: number | null }> {
     const row = await this.loadOwnedRow(owner, assetLinkId);
     if (row.role !== "primary_portrait") {
       throw new VerticalDramaCharacterStockError(
@@ -1308,7 +1332,7 @@ export class VerticalDramaCharacterStockService {
     if (!mediaRow?.url) {
       throw new VerticalDramaCharacterStockError("asset_not_found", "Character asset has no attached media");
     }
-    return mediaRow.url;
+    return { url: mediaRow.url, characterId: row.characterId ?? null };
   }
 
   /**

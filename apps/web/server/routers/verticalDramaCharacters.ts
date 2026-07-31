@@ -392,9 +392,14 @@ function mapStockError(err: unknown): never {
  * W1). Three tiers, checked in order:
  *
  * 1. An explicit `referenceAssetLinkId` override takes precedence when
- *    present (routed through `getReferenceImageUrlByAssetLinkId` +
+ *    present (routed through `getReferenceImageByAssetLinkId` +
  *    `mapStockError`, same error-mapping convention every other
- *    stock-service call site in this file uses) — UNCHANGED.
+ *    stock-service call site in this file uses). Its TIER depends on who owns
+ *    the pinned link: the render target's own row -> `"explicit"`; any other
+ *    row (a look pinning its parent's portrait, a twin pinning its
+ *    face-source's) -> `"inherited"`, since a borrowed image is not this
+ *    character's own established likeness
+ *    (`planning/vd-look-image-not-replace-primary/plan.md` §3).
  * 2. Otherwise falls back to the pre-existing auto-resolution — this
  *    character's own approved portrait via `getPrimaryPortraitUrl` —
  *    UNCHANGED.
@@ -432,11 +437,14 @@ export async function resolveReferencePortraitUrl(
  * **is this image THIS character's own established likeness, or somebody
  * else's borrowed one?**
  *
- * - `"explicit"` — the caller's own `referenceAssetLinkId` override (tier 1).
- *   A user deliberately picked this image FOR this character.
+ * - `"explicit"` — the caller's own `referenceAssetLinkId` override (tier 1),
+ *   pointing at one of THIS character's own portraits. A user deliberately
+ *   picked this image FOR this character.
  * - `"own"` — this character's own approved portrait (tier 2).
- * - `"inherited"` — the parent/twin-source character's portrait (tier 3),
- *   borrowed because this character has none of its own yet.
+ * - `"inherited"` — somebody else's portrait, borrowed: either the
+ *   parent/twin-source's auto-resolved portrait (tier 3, this character has
+ *   none of its own yet) or a tier-1 override that points at another
+ *   character's row.
  * - `null` — no reference at all.
  *
  * `planning/vd-character-full-body-framing/plan.md` RC2: the two render
@@ -476,11 +484,27 @@ export async function resolveReferencePortraitSource(
     return { url: null, source: null };
   }
   try {
-    const overrideUrl = await verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId(
+    const override = await verticalDramaCharacterStockService.getReferenceImageByAssetLinkId(
       owner,
       parseId(referenceAssetLinkId, "reference asset link id"),
     );
-    return overrideUrl ? { url: overrideUrl, source: "explicit" } : { url: null, source: null };
+    if (!override.url) return { url: null, source: null };
+    // An explicit pick of ANOTHER character row's portrait (the picker is
+    // series-scoped, so a look can pin its parent's image — and the new
+    // per-look re-render dialog offers exactly that as "ใช้ภาพ primary เป็น
+    // reference") is a BORROWED likeness, not this character's own. Reporting
+    // it as `"explicit"` would set `hasOwnReferenceImage: true`, which turns on
+    // skill.md's strictest rule — "keep outfit, clothing, accessories and shoes
+    // IDENTICAL to the reference" — for the one flow whose entire purpose is a
+    // DIFFERENT outfit. `"inherited"` is the tier that already models exactly
+    // this (see `ReferencePortraitSource`); the face stays locked through the
+    // independent `faceSourceReference` channel either way.
+    const belongsToAnotherCharacter =
+      override.characterId != null && override.characterId !== characterId;
+    return {
+      url: override.url,
+      source: belongsToAnotherCharacter ? "inherited" : "explicit",
+    };
   } catch (err) {
     mapStockError(err);
   }

@@ -42,6 +42,7 @@ import {
   Package,
   Pencil,
   RotateCcw,
+  Shirt,
   Sparkles,
   Trash2,
   Upload,
@@ -854,6 +855,96 @@ export function buildShotCharacterReferencePickerGroups(
   return Array.from(groups.values());
 }
 
+/** One switchable look for a character chip on a shot card — the family's
+ *  base character plus every outfit/age-stage variant of it. */
+export interface VdShotCharacterLookOption {
+  /** `characterKey` — exactly what `requiredCharacterRefs` stores. */
+  key: string;
+  characterId: string;
+  /** The look's own label (`variantLabel`), or the character name for the
+   *  base entry. */
+  label: string;
+  portraitUrl: string | null;
+  isBase: boolean;
+  variantType?: "outfit" | "age_stage";
+}
+
+/**
+ * Every look this shot's character chip can be switched to, for the per-chip
+ * "เปลี่ยนลุคเฉพาะช็อตนี้" switcher.
+ *
+ * The per-shot picker (`buildShotCharacterReferencePickerGroups` +
+ * `ShotCharacterReferencePickerDialog`) has always been able to express this —
+ * uncheck the base row, check the look row — but as a multi-select checkbox
+ * list it models "which characters are in this shot", not "which look is this
+ * character wearing here". A user changing ลลิน from ชุดทำงาน to ชุดลำลอง for one
+ * shot had to know that a look IS a character row and that dropping one while
+ * adding the other is the same operation. This resolves the chip's own look
+ * FAMILY so the switch can be one click on the chip itself.
+ *
+ * The family is rooted at the base character (`parentCharacterId` when the chip
+ * is already a look, else the chip's own id) — so switching works identically
+ * whether the shot currently references the base or one of its looks. Returns
+ * an empty list when the family has nothing to switch between (no variants),
+ * which is the caller's signal not to render the affordance at all.
+ */
+export function buildShotCharacterLookOptions(
+  characterPortraits: VerticalDramaCharacterPortraitMap,
+  chipKey: string
+): VdShotCharacterLookOption[] {
+  const entries = Object.entries(characterPortraits);
+  const self = characterPortraits[chipKey];
+  if (!self) return [];
+  const rootCharacterId = self.parentCharacterId ?? self.characterId;
+  const rootEntry = entries.find(
+    ([, p]) => p.characterId === rootCharacterId && !p.parentCharacterId
+  );
+  const options: VdShotCharacterLookOption[] = [];
+  if (rootEntry) {
+    options.push({
+      key: rootEntry[0],
+      characterId: rootEntry[1].characterId,
+      label: rootEntry[1].name,
+      portraitUrl: rootEntry[1].portraitUrl,
+      isBase: true,
+    });
+  }
+  for (const [key, p] of entries) {
+    if (p.parentCharacterId !== rootCharacterId) continue;
+    options.push({
+      key,
+      characterId: p.characterId,
+      label: p.variantLabel ?? p.name,
+      portraitUrl: p.portraitUrl,
+      isBase: false,
+      variantType: p.variantType,
+    });
+  }
+  // Nothing to switch BETWEEN — the chip is a plain character with no looks.
+  return options.length > 1 ? options : [];
+}
+
+/**
+ * Replace ONE character key in a shot's reference list with another, in place.
+ *
+ * "Switch look for this shot" is a REPLACE, never an add: leaving both the base
+ * and the look selected would put the same person in the frame twice, which is
+ * exactly the failure the per-shot picker's checkbox model makes easy to
+ * produce by hand. Order is preserved (the chip stays where it was), and any
+ * pre-existing occurrence of the target key elsewhere in the list is dropped so
+ * the result can never contain duplicates. Selecting the key that is already
+ * there returns the list unchanged.
+ */
+export function swapShotCharacterRefKey(
+  keys: readonly string[],
+  fromKey: string,
+  toKey: string
+): string[] {
+  if (fromKey === toKey) return [...keys];
+  const swapped = keys.map(key => (key === fromKey ? toKey : key));
+  return swapped.filter((key, index) => swapped.indexOf(key) === index);
+}
+
 /**
  * Resolve which `locationKey` governs a given shot for the storyboard
  * panel's per-shot location chip (Phase D, `planning/polished-toasting-
@@ -1415,6 +1506,9 @@ interface VerticalDramaStoryboardPanelProps {
   /** Submits `assembleEpisodeVideo`. `allowPartial` mirrors the mutation's
    *  own input — omit/false to require every clip complete first. */
   onAssembleCompiledVideo?: (opts?: { allowPartial?: boolean }) => void;
+  /** Render-options controls, rendered INSIDE the compiled-video card so the
+   *  settings and the button they drive read as one section. */
+  renderOptionsSlot?: ReactNode;
   /** True while the submit mutation itself is in flight (distinct from the
    *  server-side job, which is reflected by `compiledVideo.status`). */
   assemblingCompiledVideo?: boolean;
@@ -1498,6 +1592,11 @@ export interface VerticalDramaCompiledVideoView {
   assembledAt?: string;
   status?: "pending" | "completed" | "failed";
   error?: string;
+  /** `planning/vd-remotion-render-option/plan.md` wave 2 — which render
+   *  engine actually produced this compiled video. Absent for compiled
+   *  videos rendered before this option existed (treated as the ffmpeg
+   *  default — no badge shown). */
+  renderEngine?: "ffmpeg" | "remotion_queue";
 }
 
 export function VerticalDramaStoryboardPanel({
@@ -1639,6 +1738,7 @@ export function VerticalDramaStoryboardPanel({
   usedVisionByShot = {},
   compiledVideo = null,
   onAssembleCompiledVideo,
+  renderOptionsSlot,
   assemblingCompiledVideo = false,
   productionWizardEnabled = false,
   advancedMetaOpen = false,
@@ -1932,6 +2032,15 @@ export function VerticalDramaStoryboardPanel({
   const [characterRefPickerDraft, setCharacterRefPickerDraft] = useState<
     string[]
   >([]);
+  /** Which character chip is showing the per-shot LOOK switcher — `{shotNumber,
+   *  chipKey}` while open. Like `locationPickerForShot`, a pick commits
+   *  immediately (single-select replace, no draft/save step): the whole point
+   *  is that switching ลลิน's outfit for THIS shot is one click, not a
+   *  check/uncheck pair in the multi-select picker. */
+  const [lookSwitcherForChip, setLookSwitcherForChip] = useState<{
+    shotNumber: number;
+    chipKey: string;
+  } | null>(null);
   /** Shot number currently showing the supplementary reference-frame dialog
    *  (Phase 6c, `planning/vd-start-frame-reference-mapping/plan.md`) — same
    *  single-open-at-a-time convention as `characterRefPickerForShot` above. */
@@ -4265,9 +4374,24 @@ export function VerticalDramaStoryboardPanel({
                         />
                         {keys.map(key => {
                           const portrait = characterPortraits[key];
+                          // Per-shot look switching
+                          // (`planning/vd-look-image-not-replace-primary/
+                          // plan.md` §5): the family this chip can switch
+                          // between. Empty (affordance hidden) unless the
+                          // character actually has looks.
+                          const lookOptions = buildShotCharacterLookOptions(
+                            characterPortraits,
+                            key
+                          );
+                          const lookSwitcherOpen =
+                            lookSwitcherForChip?.shotNumber === shotNumber &&
+                            lookSwitcherForChip?.chipKey === key;
                           return (
-                            <button
+                            <div
                               key={key}
+                              className="relative flex w-16 flex-col items-center"
+                            >
+                            <button
                               type="button"
                               className="group relative flex w-16 flex-col items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 text-center text-xs hover:bg-muted disabled:cursor-default disabled:opacity-100 data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
                               onClick={() =>
@@ -4346,9 +4470,105 @@ export function VerticalDramaStoryboardPanel({
                                 </span>
                               )}
                               <span className="w-full truncate leading-tight">
-                                {portrait?.name ?? key}
+                                {portrait?.variantLabel ??
+                                  portrait?.name ??
+                                  key}
                               </span>
                             </button>
+                            {lookOptions.length > 0 &&
+                            onSetShotCharacterReferences ? (
+                              <button
+                                type="button"
+                                className="absolute -right-1 -top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                                title={t(
+                                  locale,
+                                  `เปลี่ยนลุคของ ${portrait?.name ?? key} เฉพาะช็อต ${shotNumber}`,
+                                  `Switch ${portrait?.name ?? key}'s look for shot ${shotNumber} only`
+                                )}
+                                aria-label={t(
+                                  locale,
+                                  `เปลี่ยนลุคของ ${portrait?.name ?? key} เฉพาะช็อต ${shotNumber}`,
+                                  `Switch ${portrait?.name ?? key}'s look for shot ${shotNumber} only`
+                                )}
+                                aria-expanded={lookSwitcherOpen}
+                                onClick={() =>
+                                  setLookSwitcherForChip(current =>
+                                    current?.shotNumber === shotNumber &&
+                                    current?.chipKey === key
+                                      ? null
+                                      : { shotNumber, chipKey: key }
+                                  )
+                                }
+                                data-testid={`vd-storyboard-look-switch-${shotNumber}-${key}`}
+                              >
+                                <Shirt aria-hidden="true" className="h-3 w-3" />
+                              </button>
+                            ) : null}
+                            {lookSwitcherOpen ? (
+                              <div
+                                className="absolute left-1/2 top-full z-30 mt-1 w-44 -translate-x-1/2 rounded-lg border border-border bg-background p-1.5 shadow-lg"
+                                data-testid={`vd-storyboard-look-switch-menu-${shotNumber}-${key}`}
+                              >
+                                <p className="px-1 pb-1 text-[10px] leading-tight text-muted-foreground">
+                                  {t(
+                                    locale,
+                                    `ใช้เฉพาะช็อต ${shotNumber} — ช็อตอื่นไม่เปลี่ยน`,
+                                    `Applies to shot ${shotNumber} only — other shots are untouched.`
+                                  )}
+                                </p>
+                                {lookOptions.map(option => (
+                                  <button
+                                    key={option.key}
+                                    type="button"
+                                    disabled={
+                                      savingShotCharacterReferencesForShot ===
+                                      shotNumber
+                                    }
+                                    className={cn(
+                                      "flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-[11px] hover:bg-muted disabled:opacity-50",
+                                      option.key === key && "bg-muted font-medium"
+                                    )}
+                                    onClick={() => {
+                                      setLookSwitcherForChip(null);
+                                      if (option.key === key) return;
+                                      onSetShotCharacterReferences?.(
+                                        shotNumber,
+                                        swapShotCharacterRefKey(
+                                          keys,
+                                          key,
+                                          option.key
+                                        )
+                                      );
+                                    }}
+                                    data-testid={`vd-storyboard-look-switch-option-${shotNumber}-${key}-${option.key}`}
+                                  >
+                                    {option.portraitUrl ? (
+                                      <img
+                                        src={option.portraitUrl}
+                                        alt=""
+                                        className="h-6 w-5 shrink-0 rounded object-cover object-top"
+                                      />
+                                    ) : (
+                                      <span className="flex h-6 w-5 shrink-0 items-center justify-center rounded bg-muted text-[9px] text-muted-foreground">
+                                        ?
+                                      </span>
+                                    )}
+                                    <span className="min-w-0 flex-1 truncate">
+                                      {option.isBase
+                                        ? t(locale, "ลุคหลัก", "Main look")
+                                        : option.label}
+                                    </span>
+                                    {option.key === key ? (
+                                      <Check
+                                        aria-hidden="true"
+                                        className="h-3 w-3 shrink-0"
+                                      />
+                                    ) : null}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                            </div>
                           );
                         })}
                         {onSetShotCharacterReferences ? (
@@ -5540,6 +5760,13 @@ export function VerticalDramaStoryboardPanel({
         >
           <p className="text-sm font-medium">{t2.compiledVideoTitle}</p>
 
+          {/* The render OPTIONS used to sit in a separate card further down the
+              page, so users could not tell whether they applied to this
+              button or to something else (field feedback 2026-07-30). They are
+              rendered inside this same frame now, directly above the button
+              they configure. */}
+          {renderOptionsSlot}
+
           {compiledVideo?.status === "completed" && compiledVideo.videoUrl ? (
             <div className="flex flex-col gap-2">
               <div className="w-56 max-w-full overflow-hidden rounded-md border border-border bg-black">
@@ -5549,10 +5776,49 @@ export function VerticalDramaStoryboardPanel({
                   playsInline
                   preload="metadata"
                   className="aspect-[9/16] w-full bg-black"
+                  id="vd-compiled-video-player"
                   data-testid="vd-compiled-video-player"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
+                {/* Explicit fullscreen control (parity with the Marketplace
+                    final-render card). The native <video> controls already
+                    expose one, but it is easy to miss on a 9:16 preview this
+                    small — and iOS Safari does not implement
+                    `requestFullscreen` on elements at all, only the
+                    non-standard `webkitEnterFullscreen` on the video itself. */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 gap-1 px-1.5 text-[10px]"
+                  data-testid="vd-compiled-video-fullscreen"
+                  onClick={() => {
+                    const el = document.getElementById(
+                      "vd-compiled-video-player"
+                    ) as
+                      | (HTMLVideoElement & {
+                          webkitEnterFullscreen?: () => void;
+                        })
+                      | null;
+                    if (el?.requestFullscreen) {
+                      void el.requestFullscreen().catch(() => undefined);
+                    } else if (el?.webkitEnterFullscreen) {
+                      el.webkitEnterFullscreen();
+                    }
+                  }}
+                >
+                  {locale === "th" ? "เล่นเต็มจอ" : "Fullscreen"}
+                </Button>
+                {compiledVideo.renderEngine === "remotion_queue" ? (
+                  <Badge
+                    variant="outline"
+                    className="px-1.5 py-0 text-[9px]"
+                    data-testid="vd-compiled-video-remotion-badge"
+                  >
+                    Remotion
+                  </Badge>
+                ) : null}
                 {compiledVideo.durationSeconds ? (
                   <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
                     {compiledVideo.durationSeconds}
@@ -5637,32 +5903,22 @@ export function VerticalDramaStoryboardPanel({
                 </Button>
               )}
             </div>
-          ) : compiledVideo?.status === "pending" ||
-            compiledVideo?.pendingJobId ? (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2
-                  aria-hidden="true"
-                  className="h-4 w-4 animate-spin"
-                />
-                {t2.compiledVideoProcessing}
-              </div>
-              <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
-                <span>{t2.compiledVideoQueuedHint}</span>
-                <Link
-                  href="/render-jobs"
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                  data-testid="vd-compiled-video-render-jobs-link"
-                >
-                  {t2.compiledVideoOpenRenderJobs}
-                </Link>
-              </div>
-            </div>
           ) : compiledVideo?.status === "failed" ? (
+            // Checked BEFORE the pending branch on purpose. A failed state
+            // still carries `pendingJobId`, and the pending branch's
+            // `|| compiledVideo?.pendingJobId` used to match first — so a
+            // render that had already failed rendered as "กำลังประกอบ…"
+            // forever and this branch was unreachable (field report
+            // 2026-07-31).
             <div className="flex flex-col gap-2">
               <p className="text-sm text-destructive">
                 {t2.compiledVideoFailed}
                 {compiledVideo.error ? `: ${compiledVideo.error}` : ""}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {locale === "th"
+                  ? "กดปุ่มด้านล่างเพื่อสั่งประกอบใหม่ — ระบบจะใช้ Remotion ผ่านคิว render-jobs หากยังล้มเหลวซ้ำ ให้ตรวจว่าเครื่อง Worker ออนไลน์และติดตั้ง Remotion runtime แล้วที่หน้า Render Jobs"
+                  : "Press the button below to run the assembly again — it uses Remotion through the render-jobs queue. If it keeps failing, check on the Render Jobs page that a worker is online with the Remotion runtime installed."}
               </p>
               <Button
                 type="button"
@@ -5680,6 +5936,49 @@ export function VerticalDramaStoryboardPanel({
                   />
                 ) : null}
                 {t2.compiledVideoRetry}
+              </Button>
+            </div>
+          ) : compiledVideo?.status === "pending" ||
+            compiledVideo?.pendingJobId ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin"
+                />
+                {t2.compiledVideoProcessing}
+              </div>
+              <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
+                <span>{t2.compiledVideoQueuedHint}</span>
+                <Link
+                  href="/render-jobs"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                  data-testid="vd-compiled-video-render-jobs-link"
+                >
+                  {t2.compiledVideoOpenRenderJobs}
+                </Link>
+              </div>
+              {/* Escape hatch: never leave the user with a spinner and no
+                  action. If a job dies in a way the reconciler cannot see,
+                  starting a fresh one must still be possible. */}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="ml-6 w-fit gap-1.5"
+                onClick={() => onAssembleCompiledVideo()}
+                disabled={assemblingCompiledVideo}
+                data-testid="vd-compiled-video-force-restart"
+              >
+                {assemblingCompiledVideo ? (
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 animate-spin"
+                  />
+                ) : null}
+                {locale === "th"
+                  ? "เริ่มประกอบใหม่ (ถ้าค้างนานผิดปกติ)"
+                  : "Start a new assembly (if this is stuck)"}
               </Button>
             </div>
           ) : (

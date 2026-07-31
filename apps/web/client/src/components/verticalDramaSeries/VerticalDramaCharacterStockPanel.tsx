@@ -26,6 +26,7 @@ import {
   ImagePlus,
   Loader2,
   Merge,
+  Pencil,
   Plus,
   Shirt,
   Sparkles,
@@ -802,6 +803,60 @@ export function decideVariantAutoGenerateImage(params: {
     return { fire: false, reason: "missing_model" };
   }
   return { fire: true };
+}
+
+/**
+ * Which image the per-look re-render should condition on
+ * (`planning/vd-look-image-not-replace-primary/plan.md` §4C).
+ *
+ * - `"auto"` — send no `referenceAssetLinkId`; the server resolves its own
+ *   tiers (the look's own portrait, else the parent's borrowed one). Exactly
+ *   today's behavior for the chip's generate button.
+ * - `"primary"` — pin the BASE character's main portrait. The face anchor
+ *   users mean by "ใช้ภาพ primary เป็น reference"; the server reports this as
+ *   an `"inherited"` (borrowed) likeness, so the parent's wardrobe is NOT
+ *   locked onto the new look.
+ * - `"look"` — pin this look's own current image, to iterate on it.
+ */
+export type VdLookRenderReferenceChoice = "auto" | "primary" | "look";
+
+/** The subset of `generateCharacterImage`'s input this dialog decides. The
+ *  caller merges the model/transport fields it already sends everywhere else. */
+export interface VdLookRenderRequestFields {
+  characterId: string;
+  customInstruction?: string;
+  referenceAssetLinkId?: string;
+}
+
+/**
+ * Pure builder for the per-look "สร้างภาพใหม่ของลุคนี้" dialog's request.
+ *
+ * Both optional fields are OMITTED rather than sent empty: `customInstruction`
+ * is server-capped at 500 chars and an empty string would be a meaningless
+ * brief, and an absent `referenceAssetLinkId` is what selects the server's own
+ * auto-resolution tiers. A choice whose asset link does not exist (e.g.
+ * `"look"` before the look has any image) degrades to auto rather than sending
+ * an id the server would reject.
+ */
+export function buildLookRenderRequestFields(params: {
+  lookCharacterId: string;
+  instruction: string;
+  referenceChoice: VdLookRenderReferenceChoice;
+  primaryAssetLinkId: string | null;
+  lookAssetLinkId: string | null;
+}): VdLookRenderRequestFields {
+  const instruction = params.instruction.trim();
+  const referenceAssetLinkId =
+    params.referenceChoice === "primary"
+      ? params.primaryAssetLinkId
+      : params.referenceChoice === "look"
+        ? params.lookAssetLinkId
+        : null;
+  return {
+    characterId: params.lookCharacterId,
+    ...(instruction ? { customInstruction: instruction } : {}),
+    ...(referenceAssetLinkId ? { referenceAssetLinkId } : {}),
+  };
 }
 
 /** Exact payload shape `verticalDramaCharacters.createCharacterTwin` expects
@@ -2551,6 +2606,30 @@ export function VerticalDramaCharacterStockPanel({
   };
   const closeVariantDialog = () => setVariantDialogCharacter(null);
 
+  /**
+   * "สร้างภาพใหม่ของลุคนี้" dialog
+   * (`planning/vd-look-image-not-replace-primary/plan.md` §4C) — `null` when
+   * closed, else the LOOK (variant row) whose image is being re-rendered, plus
+   * the two reference images the user can choose between: the base character's
+   * main portrait and the look's own current image. Both `assetLinkId`s are
+   * resolved by the caller from the same `getCharacterCardPortraitAsset` the
+   * cards already render, so what the dialog offers is exactly what the user
+   * sees on screen.
+   */
+  const [lookRenderDialog, setLookRenderDialog] = useState<{
+    lookCharacterId: string;
+    lookLabel: string;
+    baseCharacterName: string;
+    primaryAssetLinkId: string | null;
+    primaryThumbnailUrl: string | null;
+    lookAssetLinkId: string | null;
+    lookThumbnailUrl: string | null;
+  } | null>(null);
+  const [lookRenderInstruction, setLookRenderInstruction] = useState("");
+  const [lookRenderReferenceChoice, setLookRenderReferenceChoice] =
+    useState<VdLookRenderReferenceChoice>("auto");
+  const closeLookRenderDialog = () => setLookRenderDialog(null);
+
   /** "เพิ่มแฝด" dialog — same open/closed convention as the variant dialog
    *  above, holding the SOURCE (face-sharing) character it was opened for. */
   const [twinDialogCharacter, setTwinDialogCharacter] = useState<{
@@ -2913,7 +2992,8 @@ export function VerticalDramaCharacterStockPanel({
    */
   const fireDirectCharacterImageGeneration = (
     characterId: string,
-    instructionOverride?: string
+    instructionOverride?: string,
+    referenceAssetLinkId?: string
   ) => {
     const customInstruction = resolveDirectCharacterImageInstruction({
       characterId,
@@ -2928,6 +3008,10 @@ export function VerticalDramaCharacterStockPanel({
       // the server applies it only when a reference is genuinely attached.
       ...(selectedEditImageModelId ? { selectedEditImageModelId } : {}),
       ...(customInstruction ? { customInstruction } : {}),
+      // Explicit reference pick from the per-look re-render dialog
+      // (`buildLookRenderRequestFields`). Absent = the server's own tier
+      // resolution, byte-identical to every other call site here.
+      ...(referenceAssetLinkId ? { referenceAssetLinkId } : {}),
       ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
       ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
         ? { sharedGroupId: mcpSharedGroupId }
@@ -4660,6 +4744,37 @@ export function VerticalDramaCharacterStockPanel({
                                   deleteCharacterMutation.isPending &&
                                   deleteCharacterMutation.variables
                                     ?.characterId === v.characterId;
+                                /* Open the per-look re-render dialog
+                                (`planning/vd-look-image-not-replace-primary/
+                                plan.md` §4C). Shared by the pencil badge ON
+                                the look image and the chip's own generate
+                                button — the badge exists because the chip
+                                button alone was a 20px unlabeled icon that
+                                nobody read as "edit this look's image". */
+                                const openLookRenderDialogForVariant = () => {
+                                  if (!requireModelSelected()) return;
+                                  if (!requireMcpConnectionOrToast()) return;
+                                  if (!requireHermesConnectionOrToast()) return;
+                                  const parentPortraitAsset =
+                                    getCharacterCardPortraitAsset(c.characterId);
+                                  setLookRenderInstruction(
+                                    customInstructionByCharacter[
+                                      v.characterId
+                                    ] ?? ""
+                                  );
+                                  setLookRenderReferenceChoice("auto");
+                                  setLookRenderDialog({
+                                    lookCharacterId: v.characterId,
+                                    lookLabel: variantLabel,
+                                    baseCharacterName: c.name,
+                                    primaryAssetLinkId:
+                                      parentPortraitAsset?.assetLinkId ?? null,
+                                    primaryThumbnailUrl:
+                                      parentPortraitAsset?.thumbnailUrl ?? null,
+                                    lookAssetLinkId: variantAssetLinkId,
+                                    lookThumbnailUrl: variantThumbnailUrl,
+                                  });
+                                };
                                 return (
                                   /* Card-level image controls (2026-07-11):
                                   a variant chip used to be ONE `<button>`
@@ -4792,6 +4907,50 @@ export function VerticalDramaCharacterStockPanel({
                                             className="h-5 w-5"
                                           />
                                         </span>
+                                      )}
+                                      {/* Always-visible "edit this look's
+                                      image" badge, sitting ON the image where
+                                      users look for it. Opens the same
+                                      re-render dialog as the chip's generate
+                                      button. */}
+                                      {!readOnly && (
+                                        <button
+                                          type="button"
+                                          disabled={
+                                            mutating ||
+                                            isImageGeneratingFor(v.characterId)
+                                          }
+                                          aria-label={t(
+                                            lang,
+                                            `แก้ไข/สร้างภาพใหม่ของลุค ${variantLabel}`,
+                                            `Edit / regenerate the ${variantLabel} look image`
+                                          )}
+                                          title={t(
+                                            lang,
+                                            "แก้ไขภาพลุคนี้ — พิมพ์บรรยายภาพใหม่ + เลือกภาพอ้างอิง",
+                                            "Edit this look's image — describe the new image + pick a reference"
+                                          )}
+                                          onClick={event => {
+                                            event.stopPropagation();
+                                            openLookRenderDialogForVariant();
+                                          }}
+                                          className="absolute -bottom-1 -left-1 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-md hover:bg-muted disabled:opacity-50"
+                                          data-testid={`vd-look-edit-image-${v.characterId}`}
+                                        >
+                                          {isImageGeneratingFor(
+                                            v.characterId
+                                          ) ? (
+                                            <Loader2
+                                              aria-hidden="true"
+                                              className="h-3 w-3 animate-spin"
+                                            />
+                                          ) : (
+                                            <Pencil
+                                              aria-hidden="true"
+                                              className="h-3 w-3"
+                                            />
+                                          )}
+                                        </button>
                                       )}
                                       {!readOnly &&
                                         variantAssetLinkId &&
@@ -4934,10 +5093,19 @@ export function VerticalDramaCharacterStockPanel({
                                     safely can, but this chip button is the
                                     retry path for whenever it couldn't (no
                                     model, no parent portrait yet at the time)
-                                    plus ordinary regeneration afterward. Same
-                                    guard functions + direct-generation call
-                                    as the roster card's own "auto" shortcuts
-                                    above — never opens the preview wizard. */}
+                                    plus ordinary regeneration afterward.
+
+                                    `planning/vd-look-image-not-replace-primary
+                                    /plan.md` §4C — it now opens the per-look
+                                    re-render dialog instead of firing blind,
+                                    so the user can type a fresh image brief
+                                    and choose WHICH image conditions the
+                                    render (the base character's primary, or
+                                    this look's own current image). The dialog
+                                    ends at the same guard functions + direct
+                                    generation call as the roster card's "auto"
+                                    shortcuts — still never the preview
+                                    wizard. */}
                                     {!readOnly && (
                                       <Button
                                         type="button"
@@ -4956,7 +5124,11 @@ export function VerticalDramaCharacterStockPanel({
                                         )}
                                         title={
                                           selectedImageModelId
-                                            ? t(lang, "สร้างภาพลุค", "Generate look image")
+                                            ? t(
+                                                lang,
+                                                "แก้ไข/สร้างภาพลุคใหม่",
+                                                "Edit / regenerate look image"
+                                              )
                                             : t(
                                                 lang,
                                                 "เลือกโมเดลภาพก่อนสร้าง",
@@ -4965,13 +5137,7 @@ export function VerticalDramaCharacterStockPanel({
                                         }
                                         onClick={event => {
                                           event.stopPropagation();
-                                          if (!requireModelSelected()) return;
-                                          if (!requireMcpConnectionOrToast()) return;
-                                          if (!requireHermesConnectionOrToast())
-                                            return;
-                                          fireDirectCharacterImageGeneration(
-                                            v.characterId
-                                          );
+                                          openLookRenderDialogForVariant();
                                         }}
                                       >
                                         {isImageGeneratingFor(v.characterId) ? (
@@ -8194,6 +8360,199 @@ export function VerticalDramaCharacterStockPanel({
                 <Plus aria-hidden="true" className="h-4 w-4" />
               )}
               {t(lang, "เพิ่มลุค", "Add look")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Per-look re-render dialog (`planning/vd-look-image-not-replace-
+      primary/plan.md` §4C) — "สร้างภาพใหม่ของลุคนี้": type a fresh image brief
+      and choose which image conditions the render. Everything it produces is
+      linked onto the LOOK's own row by the shared poll->link flow, never onto
+      the base character. */}
+      <Dialog
+        open={lookRenderDialog !== null}
+        onOpenChange={open => {
+          if (!open) closeLookRenderDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                lang,
+                `สร้างภาพใหม่ของลุค "${lookRenderDialog?.lookLabel ?? ""}"`,
+                `Generate a new image for the "${lookRenderDialog?.lookLabel ?? ""}" look`
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                lang,
+                `ภาพใหม่จะไปแทนภาพของลุคนี้เท่านั้น — ภาพหลักของ ${lookRenderDialog?.baseCharacterName ?? ""} ไม่ถูกแตะต้อง`,
+                `The new image replaces this look's image only — ${lookRenderDialog?.baseCharacterName ?? ""}'s main image is left untouched.`
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-look-render-instruction" className="text-xs">
+                {t(
+                  lang,
+                  "บรรยายรายละเอียดภาพใหม่",
+                  "Describe the new image"
+                )}
+              </Label>
+              <Textarea
+                id="vd-look-render-instruction"
+                value={lookRenderInstruction}
+                onChange={e => setLookRenderInstruction(e.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder={t(
+                  lang,
+                  "เช่น ภาพเต็มตัวกลางถนนตอนกลางคืน มือถือร่มสีดำ มองมาที่กล้อง",
+                  "e.g. full-body on a street at night, holding a black umbrella, looking at camera"
+                )}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {t(
+                  lang,
+                  "ใช้กับภาพที่กำลังจะสร้างครั้งนี้ — ไม่ถูกบันทึกเป็นข้อมูลของลุค",
+                  "Applies to the image about to be generated — not saved as look data."
+                )}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs">
+                {t(lang, "ภาพอ้างอิงที่จะใช้", "Reference image to use")}
+              </Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    {
+                      choice: "auto" as const,
+                      thumbnailUrl: null,
+                      available: true,
+                      labelTh: "อัตโนมัติ",
+                      labelEn: "Automatic",
+                    },
+                    {
+                      choice: "primary" as const,
+                      thumbnailUrl:
+                        lookRenderDialog?.primaryThumbnailUrl ?? null,
+                      available: Boolean(lookRenderDialog?.primaryAssetLinkId),
+                      labelTh: "ภาพหลัก (primary)",
+                      labelEn: "Main image (primary)",
+                    },
+                    {
+                      choice: "look" as const,
+                      thumbnailUrl: lookRenderDialog?.lookThumbnailUrl ?? null,
+                      available: Boolean(lookRenderDialog?.lookAssetLinkId),
+                      labelTh: "ภาพเดิมของลุคนี้",
+                      labelEn: "This look's current image",
+                    },
+                  ] as const
+                ).map(option => (
+                  <button
+                    key={option.choice}
+                    type="button"
+                    disabled={!option.available}
+                    aria-pressed={lookRenderReferenceChoice === option.choice}
+                    onClick={() => setLookRenderReferenceChoice(option.choice)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 rounded-md border p-1.5 text-[11px] transition-colors disabled:opacity-40",
+                      lookRenderReferenceChoice === option.choice
+                        ? "border-purple-400 bg-purple-50/60 ring-1 ring-purple-200"
+                        : "border-border hover:border-muted-foreground/40"
+                    )}
+                    data-testid={`vd-look-render-reference-${option.choice}`}
+                  >
+                    <div className="flex aspect-[9/16] w-full items-center justify-center overflow-hidden rounded bg-muted">
+                      {option.thumbnailUrl ? (
+                        <img
+                          src={option.thumbnailUrl}
+                          alt={t(lang, option.labelTh, option.labelEn)}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Sparkles
+                          aria-hidden="true"
+                          className="h-4 w-4 text-muted-foreground"
+                        />
+                      )}
+                    </div>
+                    <span className="text-center leading-tight">
+                      {t(lang, option.labelTh, option.labelEn)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {lookRenderReferenceChoice === "primary"
+                  ? t(
+                      lang,
+                      "ล็อกใบหน้าจากภาพหลัก แต่ปล่อยให้ชุด/ทรงผมเปลี่ยนตามคำบรรยายด้านบน",
+                      "Locks the face from the main image while leaving outfit/hair free to follow the brief above."
+                    )
+                  : lookRenderReferenceChoice === "look"
+                    ? t(
+                        lang,
+                        "ต่อยอดจากภาพเดิมของลุคนี้ — คงชุดและใบหน้าเดิมไว้",
+                        "Iterates on this look's current image — keeps its outfit and face."
+                      )
+                    : t(
+                        lang,
+                        "ให้ระบบเลือกภาพอ้างอิงเอง (ภาพของลุคนี้ถ้ามี ไม่งั้นภาพหลัก)",
+                        "Let the server pick (this look's own image if it has one, otherwise the main image)."
+                      )}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={closeLookRenderDialog}
+            >
+              {t(lang, "ยกเลิก", "Cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={!lookRenderDialog || generateImageMutation.isPending}
+              onClick={() => {
+                if (!lookRenderDialog) return;
+                if (!requireModelSelected()) return;
+                if (!requireMcpConnectionOrToast()) return;
+                if (!requireHermesConnectionOrToast()) return;
+                const request = buildLookRenderRequestFields({
+                  lookCharacterId: lookRenderDialog.lookCharacterId,
+                  instruction: lookRenderInstruction,
+                  referenceChoice: lookRenderReferenceChoice,
+                  primaryAssetLinkId: lookRenderDialog.primaryAssetLinkId,
+                  lookAssetLinkId: lookRenderDialog.lookAssetLinkId,
+                });
+                // Persist the brief for this look so later regenerations keep
+                // it, same as the "เพิ่มลุค" dialog's own seeding.
+                setCustomInstructionByCharacter(prev => ({
+                  ...prev,
+                  [lookRenderDialog.lookCharacterId]:
+                    lookRenderInstruction.trim(),
+                }));
+                closeLookRenderDialog();
+                fireDirectCharacterImageGeneration(
+                  request.characterId,
+                  request.customInstruction ?? "",
+                  request.referenceAssetLinkId
+                );
+              }}
+            >
+              {generateImageMutation.isPending ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <ImagePlus aria-hidden="true" className="h-4 w-4" />
+              )}
+              {t(lang, "สร้างภาพลุค", "Generate look image")}
             </Button>
           </DialogFooter>
         </DialogContent>

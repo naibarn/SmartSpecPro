@@ -1840,7 +1840,22 @@ describe("generateCharacterVisualPrompts", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects identity drift when an approved Character DNA is already canonical", async () => {
+  /**
+   * CONTRACT CHANGE (2026-07-31, `planning/vd-look-image-not-replace-primary/
+   * plan.md` §8): identity drift against an approved canonical DNA is now
+   * NEUTRALIZED by pinning (`pinApprovedCanonicalDesignDna`) instead of
+   * rejected with a `VdSchemaValidationError`.
+   *
+   * The policy is unchanged — an approved canonical identity must not change,
+   * and this test still proves the drifted hair never reaches the snapshot.
+   * What changed is the enforcement: the old check required the model to
+   * reproduce ~20 long prose fields with exact JSON equality and hard-failed
+   * the entire render (3 retries, then a 500) whenever it paraphrased. That
+   * cost a real user their re-render on 2026-07-31 21:26 (+07) and had already
+   * forced two narrowings of the fingerprint (2026-07-14, 2026-07-17), each
+   * after the same class of production 500.
+   */
+  it("neutralizes identity drift by pinning the approved canonical Character DNA instead of failing the render", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     const approvedCharacter = validCharacter();
     const context = partialHistoryContext();
@@ -1849,6 +1864,7 @@ describe("generateCharacterVisualPrompts", () => {
       model: "gpt-4o-mini",
       createdAt: "2026-07-13T00:00:00.000Z",
     }).designDna;
+    const approvedHair = context.approvedDesignDna.faceIdentity.hair;
     const driftedCharacter = validCharacter();
     driftedCharacter.character_design_dna.face_identity.hair =
       "waist-length platinum waves with a center part";
@@ -1864,12 +1880,17 @@ describe("generateCharacterVisualPrompts", () => {
       successResponse(validOutput([driftedCharacter])),
     );
 
-    await expect(
-      generateCharacterVisualPrompts(
-        baseParams({ characterDesignContext: context }),
-      ),
-    ).rejects.toThrow(VdSchemaValidationError);
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ characterDesignContext: context }),
+    );
+
+    // The drifted hair never survives — the approved identity wins.
+    expect(result.visualBibleSnapshot.designDna.faceIdentity.hair).toBe(approvedHair);
+    expect(result.visualBibleSnapshot.designDna.faceIdentity.hair).not.toContain("platinum");
+    // ...and the render actually proceeds, on ONE attempt, instead of burning
+    // three retries and throwing.
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("allows a wardrobe change on an approved character without flagging identity drift (beggar-outfit variant)", async () => {

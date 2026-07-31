@@ -663,6 +663,36 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
     expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
     expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
   });
+
+  /* `planning/vd-look-image-not-replace-primary/plan.md` §4A — the URL-only
+     method above now delegates here. The extra `characterId` is what lets the
+     router tell "the user pinned MY OWN portrait" (explicit, own likeness)
+     apart from "the user pinned SOMEBODY ELSE'S portrait" (inherited, borrowed
+     likeness) — a distinction the URL alone cannot carry. */
+  it("getReferenceImageByAssetLinkId also reports the owning characterId", async () => {
+    mockLimit
+      .mockResolvedValueOnce([portraitRow({ characterId: 9 })])
+      .mockResolvedValueOnce([{ url: "https://cdn.example.com/parent-portrait.png" }]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const resolved = await service.getReferenceImageByAssetLinkId(owner, 55);
+
+    expect(resolved).toEqual({
+      url: "https://cdn.example.com/parent-portrait.png",
+      characterId: 9,
+    });
+  });
+
+  it("getReferenceImageByAssetLinkId reports characterId: null for an unattached asset row", async () => {
+    mockLimit
+      .mockResolvedValueOnce([portraitRow({ characterId: null })])
+      .mockResolvedValueOnce([{ url: "https://cdn.example.com/orphan.png" }]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const resolved = await service.getReferenceImageByAssetLinkId(owner, 55);
+
+    expect(resolved.characterId).toBeNull();
+  });
 });
 
 /**

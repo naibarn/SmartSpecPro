@@ -72,6 +72,111 @@ import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalD
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 
+/** Minimum character shape {@link buildCharacterGalleryTiles} needs — a subset
+ *  of `verticalDramaCharacters.listCharacters`' DTO. */
+export interface VdGalleryCharacterFields {
+  characterId: string;
+  name?: string;
+  parentCharacterId?: string | null;
+  variantLabel?: string | null;
+}
+
+/** Minimum asset shape {@link buildCharacterGalleryTiles} needs — a subset of
+ *  the same query's `manifest.assets`. */
+export interface VdGalleryAssetFields {
+  assetLinkId: string;
+  characterId?: string | number | null;
+  mediaAssetId?: string | null;
+  role?: string | null;
+  state: string;
+  thumbnailUrl?: string | null;
+}
+
+/** One tile in the "ภาพตัวละครนี้" swap gallery, with the ONE fact the raw
+ *  asset row cannot answer: whose image is this? */
+export interface VdCharacterGalleryTile {
+  assetLinkId: string;
+  mediaAssetId: string;
+  thumbnailUrl: string | null;
+  /** `true` when the asset belongs to the swap target itself. */
+  isOwn: boolean;
+  /** `"look"` — one of the target's outfit/age-stage variants (or, when the
+   *  target IS a look, a sibling look). `"base"` — the family's base character
+   *  seen from a look. `null` for own images. */
+  ownerKind: "look" | "base" | null;
+  /** Display name for a non-own owner: the look's `variantLabel` (falling back
+   *  to its name) or the base character's name. `null` for own images. */
+  ownerName: string | null;
+}
+
+/**
+ * Build the character-gallery tiles for a swap target.
+ *
+ * IDENTITY-SAFE gallery (user rule, 2026-07-18): the gallery deliberately
+ * spans the whole LOOK FAMILY — the base character plus every outfit/age-stage
+ * variant — because those are all the same person, and swapping between them is
+ * a real workflow. It must never include `role === "portrait_candidate"` rows:
+ * those are first-batch casting options, deliberately generated as clearly
+ * DIFFERENT people.
+ *
+ * `planning/vd-look-image-not-replace-primary/plan.md` §2 — but the family span
+ * is exactly what made this gallery destructive. Every tile used to be captioned
+ * with its raw `role` string, which renders as `primary_p…` for ALL of them, and
+ * one click linked the chosen image as the SELECTED character's
+ * `primary_portrait`. So a look's freshly generated image sat unlabeled among
+ * the parent's own images (on the tab that auto-opens), and one click silently
+ * replaced the parent's main portrait with it — reproduced in production as
+ * `vertical_drama_character_assets` rows 275 (look 112, generated) / 277
+ * (parent 71, imported) sharing media asset 1207.
+ *
+ * Carrying the owner out of this function is what lets the UI both LABEL each
+ * tile and gate cross-row picks behind a confirmation.
+ */
+export function buildCharacterGalleryTiles(params: {
+  characters: readonly VdGalleryCharacterFields[];
+  assets: readonly VdGalleryAssetFields[];
+  targetCharacterId: number;
+}): VdCharacterGalleryTile[] {
+  if (!Number.isFinite(params.targetCharacterId)) return [];
+  const targetId = String(params.targetCharacterId);
+  const self = params.characters.find(c => String(c.characterId) === targetId);
+  // Look-family root: the base character (a variant's parent, else itself).
+  const rootId = self?.parentCharacterId ? String(self.parentCharacterId) : targetId;
+  const family = new Map<string, VdGalleryCharacterFields | undefined>([
+    [targetId, self],
+    [rootId, params.characters.find(c => String(c.characterId) === rootId)],
+  ]);
+  for (const c of params.characters) {
+    if (c.parentCharacterId != null && String(c.parentCharacterId) === rootId) {
+      family.set(String(c.characterId), c);
+    }
+  }
+  return params.assets
+    .filter(
+      a =>
+        a.characterId != null &&
+        family.has(String(a.characterId)) &&
+        Boolean(a.mediaAssetId) &&
+        a.role !== "portrait_candidate"
+    )
+    .map(a => {
+      const ownerId = String(a.characterId);
+      const owner = family.get(ownerId);
+      const isOwn = ownerId === targetId;
+      const ownerIsLook = Boolean(owner?.parentCharacterId);
+      return {
+        assetLinkId: a.assetLinkId,
+        mediaAssetId: a.mediaAssetId as string,
+        thumbnailUrl: a.thumbnailUrl ?? null,
+        isOwn,
+        ownerKind: isOwn ? null : ownerIsLook ? "look" : "base",
+        ownerName: isOwn
+          ? null
+          : ((ownerIsLook ? owner?.variantLabel : null) ?? owner?.name ?? null),
+      } satisfies VdCharacterGalleryTile;
+    });
+}
+
 /** History/Library scope toggle (2026-07-05, project-scoped media panel
  *  filter) — "this project" (default, when a seriesId is available) shows
  *  only images tagged with / linked to this series; "all" shows every
@@ -184,50 +289,33 @@ export function VerticalDramaCharacterReferencePanel({
     { enabled: Boolean(characterId) }
   );
   const numericCharacterId = Number(characterId);
-  /** IDENTITY-SAFE swap gallery (user rule, 2026-07-18): a reference swap may
-   * only offer images that are THE SAME PERSON as the selected primary —
-   * i.e. the character's own approved images plus its "looks" (outfit/
-   * age-stage variant rows, which share the face by design). It must NEVER
-   * offer `role === "portrait_candidate"` assets: those are the FIRST-BATCH
-   * casting options, deliberately generated as clearly DIFFERENT people, and
-   * only the chosen one was re-roled to `primary_portrait` on selection
-   * (`verticalDramaCharacterStock.ts` settle). Swapping to an unselected
-   * candidate silently recasts the shot with a different human. */
-  const swapCharacterFamilyIds = (() => {
-    if (!Number.isFinite(numericCharacterId)) return new Set<string>();
-    const characters = (manifestQuery.data?.characters ?? []) as Array<{
-      characterId: string;
-      parentCharacterId?: string | null;
-    }>;
-    const self = characters.find(
-      c => String(c.characterId) === String(numericCharacterId)
-    );
-    // Look-family root: the base character (a variant's parent, else itself).
-    const rootId = self?.parentCharacterId ?? String(numericCharacterId);
-    const family = new Set<string>([String(numericCharacterId), String(rootId)]);
-    for (const c of characters) {
-      if (c.parentCharacterId != null && String(c.parentCharacterId) === String(rootId)) {
-        family.add(String(c.characterId));
-      }
-    }
-    return family;
-  })();
-  const characterAssets = (
-    (manifestQuery.data?.manifest?.assets ?? []) as Array<{
-      assetLinkId: string;
-      characterId?: string | number | null;
-      mediaAssetId?: string | null;
-      role?: string | null;
-      state: string;
-      thumbnailUrl?: string | null;
-    }>
-  ).filter(
-    a =>
-      Number.isFinite(numericCharacterId) &&
-      swapCharacterFamilyIds.has(String(a.characterId)) &&
-      Boolean(a.mediaAssetId) &&
-      a.role !== "portrait_candidate"
-  );
+  /** See {@link buildCharacterGalleryTiles} for the identity-safe family rule
+   *  and why each tile has to carry its owner. */
+  const characterAssets = buildCharacterGalleryTiles({
+    characters: (manifestQuery.data?.characters ?? []) as VdGalleryCharacterFields[],
+    assets: (manifestQuery.data?.manifest?.assets ?? []) as VdGalleryAssetFields[],
+    targetCharacterId: numericCharacterId,
+  });
+  /** Two-step confirm for a CROSS-ROW swap (the panel's own inline-confirm
+   *  convention). Linking a tile sets `role: "primary_portrait"` on the swap
+   *  TARGET, so picking a look's image while the parent is selected silently
+   *  overwrites the parent's main portrait — the reported bug. Own-row tiles
+   *  still link in one click. Reset whenever the target changes. */
+  const [confirmingSwapAssetLinkId, setConfirmingSwapAssetLinkId] = useState<
+    string | null
+  >(null);
+  useEffect(() => {
+    setConfirmingSwapAssetLinkId(null);
+  }, [characterId]);
+  /** Swap-target display name, for the cross-row confirm copy — a look shows
+   *  its own label so "แทนภาพหลักของ …" never reads as the parent's name. */
+  const targetCharacter = (
+    (manifestQuery.data?.characters ?? []) as VdGalleryCharacterFields[]
+  ).find(c => String(c.characterId) === String(numericCharacterId));
+  const targetCharacterLabel =
+    (targetCharacter?.parentCharacterId ? targetCharacter?.variantLabel : null) ??
+    targetCharacter?.name ??
+    "";
 
   // Default to the character's own gallery the moment it has at least one
   // asset — "แสดงภาพที่มีของตัวละครนั้น ๆ" (show existing images for that
@@ -612,33 +700,101 @@ export function VerticalDramaCharacterReferencePanel({
                 )}
               </p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {characterAssets.map(asset => (
-                  <button
-                    key={asset.assetLinkId}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => asset.mediaAssetId && onLinkMediaAssetId?.(asset.mediaAssetId)}
-                    className="group relative aspect-[9/16] overflow-hidden rounded-md border border-border hover:ring-2 hover:ring-primary disabled:opacity-60"
-                    data-testid={`vd-character-gallery-asset-${asset.assetLinkId}`}
-                  >
-                    {asset.thumbnailUrl ? (
-                      <img
-                        src={asset.thumbnailUrl}
-                        alt={asset.role ?? "reference"}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
-                        {t(lang, "ไม่มีรูปย่อ", "No preview")}
-                      </div>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-[10px] text-white">
-                      {asset.role ?? asset.state}
-                    </div>
-                  </button>
-                ))}
-              </div>
+              <>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  {t(
+                    lang,
+                    `คลิกภาพเพื่อใช้เป็นภาพหลักของ ${targetCharacterLabel} — ภาพที่มาจากลุคอื่นจะถามยืนยันก่อน`,
+                    `Click an image to make it ${targetCharacterLabel}'s main image — images belonging to another look ask for confirmation first.`
+                  )}
+                </p>
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {characterAssets.map(asset => {
+                    const confirmingThisSwap =
+                      confirmingSwapAssetLinkId === asset.assetLinkId;
+                    // Owner caption — the tile used to show the raw `role`
+                    // string, which is `primary_portrait` for EVERY tile and so
+                    // told the user nothing about whose image they were about
+                    // to promote.
+                    const ownerCaption = asset.isOwn
+                      ? t(lang, "ภาพของตัวนี้", "This one's image")
+                      : asset.ownerKind === "look"
+                        ? t(
+                            lang,
+                            `ลุค: ${asset.ownerName ?? "-"}`,
+                            `Look: ${asset.ownerName ?? "-"}`
+                          )
+                        : t(
+                            lang,
+                            `ตัวหลัก: ${asset.ownerName ?? "-"}`,
+                            `Base: ${asset.ownerName ?? "-"}`
+                          );
+                    return (
+                      <button
+                        key={asset.assetLinkId}
+                        type="button"
+                        disabled={busy}
+                        title={
+                          asset.isOwn
+                            ? ownerCaption
+                            : t(
+                                lang,
+                                `${ownerCaption} — คลิกเพื่อใช้แทนภาพหลักของ ${targetCharacterLabel}`,
+                                `${ownerCaption} — click to replace ${targetCharacterLabel}'s main image`
+                              )
+                        }
+                        onClick={() => {
+                          if (!asset.mediaAssetId) return;
+                          if (!asset.isOwn && !confirmingThisSwap) {
+                            setConfirmingSwapAssetLinkId(asset.assetLinkId);
+                            return;
+                          }
+                          setConfirmingSwapAssetLinkId(null);
+                          onLinkMediaAssetId?.(asset.mediaAssetId);
+                        }}
+                        onBlur={() =>
+                          setConfirmingSwapAssetLinkId(prev =>
+                            prev === asset.assetLinkId ? null : prev
+                          )
+                        }
+                        className={cn(
+                          "group relative aspect-[9/16] overflow-hidden rounded-md border hover:ring-2 hover:ring-primary disabled:opacity-60",
+                          confirmingThisSwap
+                            ? "border-amber-400 ring-2 ring-amber-300"
+                            : asset.isOwn
+                              ? "border-border"
+                              : "border-dashed border-purple-300"
+                        )}
+                        data-testid={`vd-character-gallery-asset-${asset.assetLinkId}`}
+                      >
+                        {asset.thumbnailUrl ? (
+                          <img
+                            src={asset.thumbnailUrl}
+                            alt={ownerCaption}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
+                            {t(lang, "ไม่มีรูปย่อ", "No preview")}
+                          </div>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                          {ownerCaption}
+                        </div>
+                        {confirmingThisSwap ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-amber-950/75 p-1 text-[10px] font-medium leading-tight text-white">
+                            {t(
+                              lang,
+                              `แทนภาพหลักของ ${targetCharacterLabel}? คลิกอีกครั้งเพื่อยืนยัน`,
+                              `Replace ${targetCharacterLabel}'s main image? Click again to confirm.`
+                            )}
+                          </div>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </TabsContent>
 

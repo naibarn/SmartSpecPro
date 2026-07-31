@@ -82,7 +82,7 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
     getPrimaryPortraitUrl: vi.fn(),
-    getReferenceImageUrlByAssetLinkId: vi.fn(),
+    getReferenceImageByAssetLinkId: vi.fn(),
   },
   VerticalDramaCharacterStockError: class extends Error {
     constructor(
@@ -462,7 +462,7 @@ describe("resolveMediaAssetForImport's url schema — relative-URL acceptance (B
  * `planning/vertical-drama-reference-picker-outfit-lock/plan.md`) — the
  * shared helper both `generateCharacterImage` and `generateCharacterSheet`
  * call to resolve the identity-lock reference image. Covers the override
- * branch (present -> `getReferenceImageUrlByAssetLinkId` + error mapping)
+ * branch (present -> `getReferenceImageByAssetLinkId` + error mapping)
  * and confirms the absent branch is byte-identical to the pre-existing
  * `getPrimaryPortraitUrl` auto-resolution.
  */
@@ -472,7 +472,7 @@ describe("resolveReferencePortraitUrl — override branch (Phase D1)", () => {
   beforeEach(() => {
     (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>).mockReset();
     (
-      verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId as ReturnType<typeof vi.fn>
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
     ).mockReset();
   });
 
@@ -485,18 +485,18 @@ describe("resolveReferencePortraitUrl — override branch (Phase D1)", () => {
 
     expect(url).toBe("https://cdn.example.com/auto-portrait.png");
     expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenCalledWith(owner, 42);
-    expect(verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId).not.toHaveBeenCalled();
+    expect(verticalDramaCharacterStockService.getReferenceImageByAssetLinkId).not.toHaveBeenCalled();
   });
 
   it("present referenceAssetLinkId: calls the override method with the parsed id, never touches auto-resolution", async () => {
     (
-      verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId as ReturnType<typeof vi.fn>
-    ).mockResolvedValue("https://cdn.example.com/picked-portrait.png");
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ url: "https://cdn.example.com/picked-portrait.png", characterId: 42 });
 
     const url = await resolveReferencePortraitUrl(owner, 42, "55");
 
     expect(url).toBe("https://cdn.example.com/picked-portrait.png");
-    expect(verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId).toHaveBeenCalledWith(
+    expect(verticalDramaCharacterStockService.getReferenceImageByAssetLinkId).toHaveBeenCalledWith(
       owner,
       55,
     );
@@ -507,13 +507,13 @@ describe("resolveReferencePortraitUrl — override branch (Phase D1)", () => {
     await expect(resolveReferencePortraitUrl(owner, 42, "not-a-number")).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
-    expect(verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId).not.toHaveBeenCalled();
+    expect(verticalDramaCharacterStockService.getReferenceImageByAssetLinkId).not.toHaveBeenCalled();
   });
 
   it("routes a wrong-role rejection from the override method through mapStockError as BAD_REQUEST", async () => {
     const { VerticalDramaCharacterStockError } = await import("../../services/verticalDramaCharacterStock");
     (
-      verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId as ReturnType<typeof vi.fn>
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
     ).mockRejectedValue(new VerticalDramaCharacterStockError("asset_wrong_role", "not a primary_portrait"));
 
     await expect(resolveReferencePortraitUrl(owner, 42, "55")).rejects.toMatchObject({
@@ -524,7 +524,7 @@ describe("resolveReferencePortraitUrl — override branch (Phase D1)", () => {
   it("routes a not-found rejection (also covers cross-tenant/cross-user) from the override method through mapStockError as NOT_FOUND", async () => {
     const { VerticalDramaCharacterStockError } = await import("../../services/verticalDramaCharacterStock");
     (
-      verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId as ReturnType<typeof vi.fn>
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
     ).mockRejectedValue(new VerticalDramaCharacterStockError("asset_not_found", "Character asset not found"));
 
     await expect(resolveReferencePortraitUrl(owner, 42, "55")).rejects.toMatchObject({
@@ -546,7 +546,7 @@ describe("resolveReferencePortraitUrl — parent/twin-source fallback (Phase F1)
   beforeEach(() => {
     (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>).mockReset();
     (
-      verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId as ReturnType<typeof vi.fn>
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
     ).mockReset();
   });
 
@@ -564,8 +564,8 @@ describe("resolveReferencePortraitUrl — parent/twin-source fallback (Phase F1)
 
   it("(b) explicit override present: uses the override, ignores the fallback id entirely (tier 1 still wins)", async () => {
     (
-      verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId as ReturnType<typeof vi.fn>
-    ).mockResolvedValue("https://cdn.example.com/picked-portrait.png");
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({ url: "https://cdn.example.com/picked-portrait.png", characterId: 42 });
 
     const url = await resolveReferencePortraitUrl(owner, 42, "55", 10);
 

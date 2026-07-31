@@ -63,12 +63,12 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 
 const {
   mockGetPrimaryPortraitUrl,
-  mockGetReferenceImageUrlByAssetLinkId,
+  mockGetReferenceImageByAssetLinkId,
   mockSetPrimaryPortraitAsset,
   mockSelectPortraitCandidate,
 } = vi.hoisted(() => ({
   mockGetPrimaryPortraitUrl: vi.fn(),
-  mockGetReferenceImageUrlByAssetLinkId: vi.fn(),
+  mockGetReferenceImageByAssetLinkId: vi.fn(),
   mockSetPrimaryPortraitAsset: vi.fn(),
   mockSelectPortraitCandidate: vi.fn(),
 }));
@@ -88,7 +88,7 @@ const { MockStockError } = vi.hoisted(() => ({
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
     getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl,
-    getReferenceImageUrlByAssetLinkId: mockGetReferenceImageUrlByAssetLinkId,
+    getReferenceImageByAssetLinkId: mockGetReferenceImageByAssetLinkId,
     setPrimaryPortraitAsset: mockSetPrimaryPortraitAsset,
     selectPortraitCandidate: mockSelectPortraitCandidate,
     createPortraitCandidateDraftBatch: vi.fn(),
@@ -286,7 +286,7 @@ beforeEach(() => {
   mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: false });
   mockResolveFaceSourceReferenceForCharacter.mockResolvedValue(null);
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
-  mockGetReferenceImageUrlByAssetLinkId.mockResolvedValue(null);
+  mockGetReferenceImageByAssetLinkId.mockResolvedValue({ url: null, characterId: null });
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockRefundCredits.mockResolvedValue(undefined);
@@ -344,9 +344,12 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
 
   it("stays true for an explicit reference the user picked for THIS character", async () => {
     queueRenderSelects(LOOK_CHARACTER_ROW);
-    mockGetReferenceImageUrlByAssetLinkId.mockResolvedValue(
-      "https://cdn.example.test/picked.jpg",
-    );
+    // The pinned link belongs to the look itself (character 2) — its own
+    // established likeness, wardrobe included.
+    mockGetReferenceImageByAssetLinkId.mockResolvedValue({
+      url: "https://cdn.example.test/picked.jpg",
+      characterId: 2,
+    });
 
     await router.generateCharacterImage({
       ctx: ctx(),
@@ -362,6 +365,38 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
       expect.objectContaining({ hasOwnReferenceImage: true }),
     );
+  });
+
+  /* `planning/vd-look-image-not-replace-primary/plan.md` §3 — the per-look
+     re-render dialog lets a look pin its PARENT's primary portrait as the
+     reference. That image is a borrowed likeness: it must anchor the face
+     without claiming the parent's wardrobe is this look's own, or the skill's
+     "keep outfit/clothing/accessories/shoes IDENTICAL to the reference" rule
+     fires on the one flow whose whole purpose is a different outfit. */
+  it("is false for an explicit reference that belongs to ANOTHER character row (a look pinning its parent's primary)", async () => {
+    queueRenderSelects(LOOK_CHARACTER_ROW);
+    mockGetReferenceImageByAssetLinkId.mockResolvedValue({
+      url: PARENT_PORTRAIT_URL,
+      characterId: 1, // the parent, not the look (character 2)
+    });
+
+    await router.generateCharacterImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "2",
+        referenceAssetLinkId: "77",
+        selectedImageModelId: "kie-gpt-image-2",
+      },
+    });
+
+    expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
+      expect.objectContaining({ hasOwnReferenceImage: false }),
+    );
+    // Still attached — the face anchor is the entire point of the choice.
+    expect(mockGenerateImageAsync.mock.calls[0][0].referenceImageUrls).toEqual([
+      PARENT_PORTRAIT_URL,
+    ]);
   });
 
   it("is false when there is no reference at all (a character's very first portrait)", async () => {

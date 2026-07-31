@@ -1949,6 +1949,131 @@ function canonicalDesignIdentityFingerprint(
   });
 }
 
+/**
+ * Overwrite the model's reported canonical-identity DNA members with the
+ * already-approved ones, BEFORE validation
+ * (`planning/vd-look-image-not-replace-primary/plan.md` §8).
+ *
+ * The fingerprint guard below (`canonicalDesignIdentityFingerprint`) encodes a
+ * policy — "an approved canonical Character DNA identity must not change" — but
+ * enforced it by DEMANDING the model reproduce ~20 long prose fields with exact
+ * JSON equality, and hard-failing the whole render (3 retries, ~90s, then a
+ * 500) when it paraphrased instead. That is not a check the model can reliably
+ * pass: it is handed the approved DNA in camelCase and must retype it in
+ * snake_case. The fingerprint has already been narrowed twice for exactly this
+ * failure (2026-07-14 `costumeGrammar`, 2026-07-17 `designIntent`/
+ * `recallStack.silhouette`/`.color`) — each time after a real user hit a 500.
+ *
+ * Reproduced again 2026-07-31 21:26 (+07): regenerating an existing LOOK's
+ * image with `custom_instruction: "เปลี่ยนชุดเป็นชุดลำลอง ที่สามารถใส่นอนได้ เป็นภาพเต็มตัว"`
+ * failed all 3 attempts on `characters.0.character_design_dna`, so no image was
+ * ever submitted. Any character whose visual bible has been persisted once is
+ * otherwise one paraphrase away from never being renderable again.
+ *
+ * Pinning enforces the SAME policy by construction instead of detecting its
+ * violation and giving up: the canonical identity members become the approved
+ * ones verbatim, so the guard can no longer fire for a paraphrase — while every
+ * field the fingerprint deliberately excludes (wardrobe/costume grammar,
+ * `designIntent`, silhouette/color, and all the prompt prose the user's
+ * instruction is actually about) stays exactly as the skill authored it.
+ *
+ * `role_tier` is deliberately NOT pinned: a tier change is a genuine
+ * identity-CLASS change, it is already validated separately against the
+ * authoritative input tier (`isCompatibleReportedRoleTier`), and it is a closed
+ * vocabulary the model does not paraphrase.
+ */
+export function pinApprovedCanonicalDesignDna(
+  rawOutput: unknown,
+  approvedDna: VerticalDramaCharacterDesignDna,
+): { output: unknown; corrections: string[] } {
+  const corrections: string[] = [];
+  if (!rawOutput || typeof rawOutput !== "object") {
+    return { output: rawOutput, corrections };
+  }
+  const root = rawOutput as Record<string, unknown>;
+  const characters = root.characters;
+  if (!Array.isArray(characters)) return { output: rawOutput, corrections };
+
+  /** Flat `[snake-cased path, approved value]` table of exactly the members
+   *  `canonicalDesignIdentityFingerprint` compares (minus `role_tier`). */
+  const pinnedMembers: Array<[string, unknown]> = [
+    ["version", approvedDna.version],
+    ["series_dna_alignment", approvedDna.seriesDnaAlignment],
+    ["beauty_archetype", approvedDna.beautyArchetype],
+    ["age_range", approvedDna.ageRange],
+    ["face_identity.facial_geometry", approvedDna.faceIdentity.facialGeometry],
+    ["face_identity.eyes_and_gaze", approvedDna.faceIdentity.eyesAndGaze],
+    ["face_identity.brows", approvedDna.faceIdentity.brows],
+    ["face_identity.nose", approvedDna.faceIdentity.nose],
+    ["face_identity.lips_and_smile", approvedDna.faceIdentity.lipsAndSmile],
+    ["face_identity.skin_and_texture", approvedDna.faceIdentity.skinAndTexture],
+    ["face_identity.hair", approvedDna.faceIdentity.hair],
+    ["face_identity.distinctive_asymmetry", approvedDna.faceIdentity.distinctiveAsymmetry],
+    ["body_language.posture", approvedDna.bodyLanguage.posture],
+    ["body_language.gesture_pattern", approvedDna.bodyLanguage.gesturePattern],
+    ["body_language.movement_rhythm", approvedDna.bodyLanguage.movementRhythm],
+    ["body_language.tension_tell", approvedDna.bodyLanguage.tensionTell],
+    ["recall_stack.face", approvedDna.recallStack.face],
+    ["recall_stack.behavior", approvedDna.recallStack.behavior],
+    ["recall_stack.emotional_hook", approvedDna.recallStack.emotionalHook],
+    ["public_mask", approvedDna.publicMask],
+    ["hidden_truth", approvedDna.hiddenTruth],
+    ["narrative_promise", approvedDna.narrativePromise],
+    ["attractive_contradiction", approvedDna.attractiveContradiction],
+    ["forbidden_drift", approvedDna.forbiddenDrift],
+    [
+      "anti_clone_checks.distinct_facial_dimensions",
+      approvedDna.antiCloneChecks.distinctFacialDimensions,
+    ],
+    [
+      "anti_clone_checks.distinct_hair_dimensions",
+      approvedDna.antiCloneChecks.distinctHairDimensions,
+    ],
+    [
+      "anti_clone_checks.distinct_body_language_dimensions",
+      approvedDna.antiCloneChecks.distinctBodyLanguageDimensions,
+    ],
+    ["anti_clone_checks.signature_difference", approvedDna.antiCloneChecks.signatureDifference],
+  ];
+
+  const pinnedCharacters = characters.map((character, characterIndex) => {
+    if (!character || typeof character !== "object") return character;
+    const characterRecord = { ...(character as Record<string, unknown>) };
+    const dna = characterRecord.character_design_dna;
+    // Nothing to pin onto — let the schema report the missing DNA as it
+    // always has, rather than inventing one here.
+    if (!dna || typeof dna !== "object") return character;
+    const dnaRecord: Record<string, unknown> = { ...(dna as Record<string, unknown>) };
+
+    for (const [path, approvedValue] of pinnedMembers) {
+      if (approvedValue === undefined) continue;
+      const [head, tail] = path.split(".") as [string, string | undefined];
+      if (tail === undefined) {
+        if (JSON.stringify(dnaRecord[head]) !== JSON.stringify(approvedValue)) {
+          corrections.push(`characters.${characterIndex}.character_design_dna.${path}`);
+        }
+        dnaRecord[head] = approvedValue;
+        continue;
+      }
+      const nested = dnaRecord[head];
+      // A missing/mistyped nested object is a schema problem, not something to
+      // paper over — leave it for the parser to report.
+      if (!nested || typeof nested !== "object") continue;
+      const nestedRecord = { ...(nested as Record<string, unknown>) };
+      if (JSON.stringify(nestedRecord[tail]) !== JSON.stringify(approvedValue)) {
+        corrections.push(`characters.${characterIndex}.character_design_dna.${path}`);
+      }
+      nestedRecord[tail] = approvedValue;
+      dnaRecord[head] = nestedRecord;
+    }
+
+    characterRecord.character_design_dna = dnaRecord;
+    return characterRecord;
+  });
+
+  return { output: { ...root, characters: pinnedCharacters }, corrections };
+}
+
 function deriveAuthoritativeComparisonEvidence(
   context: VerticalDramaCharacterDesignContext,
 ): VerticalDramaCharacterDesignDna["comparisonEvidence"] {
@@ -2395,21 +2520,35 @@ export async function generateCharacterVisualPrompts(
   // this file's own "why D1 alone would sometimes throw instead of
   // guaranteeing the fact" reasoning in the plan.
   let regionAnchorCheckAttempts = 0;
+  let dnaPinCorrections: string[] = [];
   const normalizedOutputSchema = z.preprocess((rawOutput) => {
     const envelopeNormalized = normalizeCharacterVisualBibleEnvelope(rawOutput);
     const keyNormalized = normalizeCharacterVisualBibleDnaKeys(envelopeNormalized);
     keyCorrections = keyNormalized.corrections;
+    let normalized: unknown = keyNormalized.output;
     if (authoritativeEvidence) {
       const evidenceNormalized = normalizeCharacterVisualBibleAuthoritativeEvidence(
-        keyNormalized.output,
+        normalized,
         params.characterKey,
         authoritativeEvidence,
       );
       evidenceCorrections = evidenceNormalized.corrections;
-      return evidenceNormalized.output;
+      normalized = evidenceNormalized.output;
+    } else {
+      evidenceCorrections = [];
     }
-    evidenceCorrections = [];
-    return keyNormalized.output;
+    // Canonical identity pin — see `pinApprovedCanonicalDesignDna`. Runs LAST
+    // so it is the final word on the identity members, and only when this
+    // character already has an approved DNA to be locked to.
+    const approvedDna = params.characterDesignContext?.approvedDesignDna;
+    if (approvedDna) {
+      const pinned = pinApprovedCanonicalDesignDna(normalized, approvedDna);
+      dnaPinCorrections = pinned.corrections;
+      normalized = pinned.output;
+    } else {
+      dnaPinCorrections = [];
+    }
+    return normalized;
   }, characterVisualBibleOutputSchema);
   // Parameterized (2026-07-18, lead-beauty graceful-degradation fix — FIX A,
   // both accepted user decisions recorded on `resolveCharacterVisualBibleModel`'s
@@ -2631,6 +2770,24 @@ export async function generateCharacterVisualPrompts(
         seriesId: params.seriesId,
         characterKey: params.characterKey,
         corrections: keyCorrections.slice(0, 64),
+      },
+    });
+  }
+
+  // Identity-pin corrections stay observable: this is the ONLY signal that the
+  // model tried to re-author an approved canonical identity. Silently pinning
+  // without a trail would hide genuine model drift behind a green render.
+  if (dnaPinCorrections.length > 0) {
+    auditLogger.log({
+      eventType: "skill_execute",
+      userId: params.userId,
+      tenantId: params.tenantId,
+      skillSlug: SKILL_SLUG,
+      metadata: {
+        operation: "pin_approved_character_design_dna",
+        seriesId: params.seriesId,
+        characterKey: params.characterKey,
+        corrections: dnaPinCorrections.slice(0, 64),
       },
     });
   }
