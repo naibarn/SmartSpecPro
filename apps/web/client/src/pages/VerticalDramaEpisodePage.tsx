@@ -6186,7 +6186,15 @@ function EpisodeWorkspaceShell({
         onWidthChange={setRightPanelWidth}
         minWidth={EPISODE_RIGHT_PANEL_MIN_WIDTH}
         maxWidth={EPISODE_RIGHT_PANEL_MAX_WIDTH}
-        className="max-h-[min(48rem,82dvh)] md:h-full md:max-h-none"
+        // Independent scrolling (2026-07-31): the media panel used to be a
+        // plain grid item, so it scrolled away with the storyboard column and
+        // you had to scroll back up to reach it every time you wanted to swap a
+        // shot's image. `sticky` keeps it pinned in the viewport while the
+        // centre column scrolls past it; `dvh` (not `vh`) so mobile browser
+        // chrome collapsing does not clip it. The old `md:h-full` is
+        // deliberately gone — matching the grid row's height would make it
+        // exactly as tall as the storyboard and defeat the pin.
+        className="max-h-[min(48rem,82dvh)] md:sticky md:top-4 md:max-h-[calc(100dvh-2rem)]"
         collapsedContent={lang === "th" ? "สื่อ" : "Media"}
         collapseLabel={
           lang === "th" ? "ยุบ panel สื่อ" : "Collapse media panel"
@@ -6197,7 +6205,11 @@ function EpisodeWorkspaceShell({
         }
         testId="vd-episode-right-panel"
       >
-        <div className="flex h-full min-h-0 flex-col p-2.5 sm:p-3">
+        {/* `overflow-y-auto` here, not on the panel root (which stays
+            `overflow-hidden` for the resize handle): the panel's OWN content
+            scrolls inside the pinned frame, so a long media history is still
+            fully reachable without moving the storyboard. */}
+        <div className="flex h-full min-h-0 flex-col overflow-y-auto p-2.5 sm:p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold">
               {imageSwapTarget?.type === "startFrame"
