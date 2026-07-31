@@ -1194,10 +1194,28 @@ export class VerticalDramaCharacterStockService {
 
       const now = new Date();
       for (const sibling of siblings) {
-        if (!sibling.approved) continue;
+        const siblingState = deriveCharacterAssetState(sibling);
+        if (!sibling.approved && siblingState !== "approved") continue;
+        // Demote BOTH the column and `metadata.state`. `metadata.state` is not
+        // decoration: `deriveCharacterAssetState` returns it in preference to
+        // the column, and `linkAsset` stamps every linked image with
+        // `state: "approved"` — so clearing only the column left every sibling
+        // still REPORTING "approved" to the client, whose
+        // `resolveCharacterCardPortraitAsset` then kept picking whichever one
+        // happened to come first. Promoting an image visibly did nothing.
+        // `"generated"` is the same demotion `selectPortraitCandidate` applies
+        // to a superseded candidate, so both paths leave the character in one
+        // shape.
         await tx
           .update(verticalDramaCharacterAssets)
-          .set({ approved: false, updatedAt: now })
+          .set({
+            approved: false,
+            metadata: {
+              ...((sibling.metadata as Record<string, unknown> | null) ?? {}),
+              state: "generated" satisfies VerticalDramaCharacterAssetState,
+            },
+            updatedAt: now,
+          })
           .where(eq(verticalDramaCharacterAssets.id, sibling.id));
       }
 

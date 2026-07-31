@@ -905,3 +905,47 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Regression invariant behind "กดตั้งเป็นหลักแล้วภาพด้านบนไม่เปลี่ยน"
+ * (2026-07-31). `setPrimaryPortraitAsset` demotes a character's other
+ * portraits so exactly one is the main image. Its FIRST version cleared only
+ * the `approved` COLUMN — which does nothing visible, because
+ * `deriveCharacterAssetState` returns `metadata.state` in preference to that
+ * column, and `linkAsset` stamps every linked image with
+ * `state: "approved"`. The siblings therefore kept reporting `approved` to the
+ * client and the card kept rendering the same picture.
+ *
+ * This pins the trap itself: clearing the column is NOT enough to demote a row.
+ */
+describe("deriveCharacterAssetState — metadata.state outranks the approved column", () => {
+  it("still reports approved when the column is false but metadata says approved", () => {
+    expect(
+      deriveCharacterAssetState({
+        approved: false,
+        qcStatus: "passed",
+        metadata: { state: "approved" },
+      } as never),
+    ).toBe("approved");
+  });
+
+  it("reports generated once metadata.state is demoted too", () => {
+    expect(
+      deriveCharacterAssetState({
+        approved: false,
+        qcStatus: "passed",
+        metadata: { state: "generated" },
+      } as never),
+    ).toBe("generated");
+  });
+
+  it("falls back to the column only when metadata carries no state", () => {
+    expect(
+      deriveCharacterAssetState({
+        approved: true,
+        qcStatus: "passed",
+        metadata: {},
+      } as never),
+    ).toBe("approved");
+  });
+});

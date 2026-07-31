@@ -381,14 +381,26 @@ export function resolveCharacterCardPortraitAsset(
   const portraitAssets = assets.filter(
     a => a.characterId === characterId && a.role === "primary_portrait"
   );
-  const approved = portraitAssets.find(a => a.state === "approved");
-  const latestGenerated = [...portraitAssets]
-    .filter(a => a.state === "generated" || a.state === "imported")
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )[0];
-  const chosen = approved ?? latestGenerated;
+  const newestFirst = (
+    left: VerticalDramaCharacterAsset,
+    right: VerticalDramaCharacterAsset
+  ) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  // Precedence, most explicit first. `approved` (the column) is what
+  // `setPrimaryPortrait` writes and what `getPrimaryPortraitUrl` orders by, so
+  // it must outrank `state` here or the card can disagree with the image the
+  // server actually feeds back as the identity reference.
+  //
+  // Every tier is tie-broken by recency rather than array order. It used to be
+  // `.find(a => a.state === "approved")`, which silently depended on the order
+  // the manifest happened to arrive in — and since `linkAsset` stamps EVERY
+  // linked image with `state: "approved"`, a character with several portraits
+  // had several "approved" rows and the winner was effectively arbitrary.
+  const chosen =
+    [...portraitAssets].filter(a => a.approved).sort(newestFirst)[0] ??
+    [...portraitAssets].filter(a => a.state === "approved").sort(newestFirst)[0] ??
+    [...portraitAssets]
+      .filter(a => a.state === "generated" || a.state === "imported")
+      .sort(newestFirst)[0];
   if (chosen?.thumbnailUrl) {
     return { thumbnailUrl: chosen.thumbnailUrl, assetLinkId: chosen.assetLinkId };
   }
