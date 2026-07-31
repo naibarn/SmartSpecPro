@@ -60,6 +60,7 @@ describe("T1 — sequential shot regen procedures are registered additively", ()
 
     expect(procedures).toContain("regenerateAutoReviewSequentialShot");
     expect(procedures).toContain("saveAutoReviewSequentialShotOverride");
+    expect(procedures).toContain("generateAutoReviewSequentialShotPrompt");
 
     // Nothing removed (section 08 §7: additive-only router change).
     expect(procedures).toContain("startAutoReview");
@@ -131,6 +132,16 @@ describe("T3 — saveAutoReviewSequentialShotOverride input contract", () => {
     expect(result.data?.clear).toBe(false);
   });
 
+  it("accepts a per-shot story summary alongside editable prompts", () => {
+    const result = schema.safeParse({
+      runId: "mar_1",
+      shotId: 3,
+      visualSummary: "ผู้ใช้สาธิตการใช้งานสินค้าบนโต๊ะ",
+      dialogue: "นี่คือบทพูดของช็อตนี้",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("accepts any subset of the three text fields", () => {
     expect(
       schema.safeParse({ runId: "mar_1", shotId: 3, dialogue: "line" }).success
@@ -195,6 +206,26 @@ describe("T3 — saveAutoReviewSequentialShotOverride input contract", () => {
   });
 });
 
+describe("T3b — generateAutoReviewSequentialShotPrompt input contract", () => {
+  const schema = procedureInputSchema("generateAutoReviewSequentialShotPrompt");
+
+  it("accepts exactly one prompt stage for each shot", () => {
+    expect(
+      schema.safeParse({ runId: "mar_1", shotId: 1, stage: "image" }).success
+    ).toBe(true);
+    expect(
+      schema.safeParse({ runId: "mar_1", shotId: 9, stage: "video" }).success
+    ).toBe(true);
+  });
+
+  it("rejects a missing or unsupported stage", () => {
+    expect(schema.safeParse({ runId: "mar_1", shotId: 1 }).success).toBe(false);
+    expect(
+      schema.safeParse({ runId: "mar_1", shotId: 1, stage: "media" }).success
+    ).toBe(false);
+  });
+});
+
 describe("T4 — auth is enforced by the real protectedProcedure middleware", () => {
   it("rejects regenerateAutoReviewSequentialShot with no user", async () => {
     const caller = marketplaceCaptureRouter.createCaller(createContext(null));
@@ -210,6 +241,17 @@ describe("T4 — auth is enforced by the real protectedProcedure middleware", ()
         runId: "mar_1",
         shotId: 1,
         dialogue: "line",
+      })
+    ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("rejects generateAutoReviewSequentialShotPrompt with no user", async () => {
+    const caller = marketplaceCaptureRouter.createCaller(createContext(null));
+    await expect(
+      caller.generateAutoReviewSequentialShotPrompt({
+        runId: "mar_1",
+        shotId: 1,
+        stage: "image",
       })
     ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });

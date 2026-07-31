@@ -908,8 +908,197 @@ function EpisodeWorkspaceShell({
     void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
   };
 
+  // Bug #127 (`planning/vd-storyboard-runstage-async-job/plan.md`) —
+  // `storyboard_shotgrid`'s REAL (non dry_run/plan_only) `runStage`/
+  // `regenerateStage` mutations now return almost immediately with
+  // `result.status: "queued"` instead of awaiting the whole ~16k-token LLM
+  // generation inline (that used to routinely outlive Cloudflare's ~100s
+  // edge-proxy read timeout). The actual generation now runs in a BullMQ
+  // background worker and updates the matching `vertical_drama_episode_runs`
+  // row. This block polls that row (via `listEpisodeRuns`, the SAME manual
+  // bounded-loop idiom `pollVideoClipTask` below already uses — deliberately
+  // NOT `useQuery`'s `refetchInterval`, to stay consistent with this file's
+  // existing polling convention) until the run reaches a terminal status.
+  //
+  // `pollingStoryboardShotgrid` drives the storyboard panel's "generating"
+  // spinner across the WHOLE background job, not just the now-near-instant
+  // mutation round trip (see the `storyboardPanel` prop below).
+  const [pollingStoryboardShotgrid, setPollingStoryboardShotgrid] =
+    useState(false);
+  // Only one storyboard_shotgrid run can be in flight per episode at a time
+  // (server-side idempotency via `idempotencyKey`/`alreadySubmitted`), so a
+  // single shared in-flight PROMISE (not just a boolean guard, unlike
+  // `videoClipPollInFlightRef` below) is keyed by episode rather than by
+  // run id. Sharing the promise — rather than making a second caller a
+  // no-op — matters here because THREE call sites can all end up wanting to
+  // await the same real outcome (the shared `runStageMutation.onSuccess`
+  // below, `handleGenerateEpisodeStoryboard`'s chain, and the storyboard
+  // panel's own button all route through the same mutation): every caller
+  // just joins whichever poll loop is already running instead of starting a
+  // duplicate one or being left with no result to await.
+  const storyboardShotgridPollPromiseRef = useRef<Promise<
+    "succeeded" | "failed" | "timeout"
+  > | null>(null);
+  const STORYBOARD_SHOTGRID_POLL_INTERVAL_MS = 2500;
+  // Same 30-minute budget as `VIDEO_CLIP_POLL_MAX_ATTEMPTS` below — an LLM
+  // planning call plus queue wait time can legitimately take a while.
+  const STORYBOARD_SHOTGRID_POLL_MAX_ATTEMPTS = 720;
+
+  /** Shows the SAME terminal toast copy `runStageMutation`'s shared
+   *  `onSuccess` below already uses for every other stage, then invalidates
+   *  the run/checkpoint/episode-detail queries so the storyboard panel picks
+   *  up the real persisted result. Called exactly once per resolved run,
+   *  from whichever of the three storyboard_shotgrid call sites' poll
+   *  actually observes the terminal status.
+   *
+   *  Note: unlike `runStageMutation.onSuccess`'s inline `errors[0]?.message`
+   *  detail on failure, `listEpisodeRuns` (what the poll reads) does not
+   *  expose the run's `errors` column — only `status`/`nextAction`/
+   *  `artifactIds` etc. (see that procedure in
+   *  `verticalDramaEpisodes.ts`). The failure toast here is therefore
+   *  message-less; the user can still open the run detail / use Repair for
+   *  specifics. */
+  function announceStoryboardShotgridTerminal(outcome: {
+    status: "succeeded" | "failed";
+    nextAction: RunResult["next_action"];
+  }) {
+    invalidateRuns();
+    if (outcome.status === "failed") {
+      toast.error(
+        lang === "th"
+          ? `ขั้นตอนล้มเหลว — ลองใหม่หรือกด "ซ่อม"`
+          : `Stage failed — try again or use Repair.`
+      );
+    } else if (outcome.nextAction === "approve") {
+      toast.success(
+        lang === "th"
+          ? "สร้างเนื้อหาสำเร็จ รอการอนุมัติ"
+          : "Content generated — awaiting approval."
+      );
+    } else {
+      toast.success(
+        lang === "th"
+          ? "ขั้นตอนสำเร็จ ไปขั้นตอนถัดไป"
+          : "Stage complete — advancing."
+      );
+    }
+  }
+
+  /**
+   * Stages whose REAL run comes back `"queued"` and must therefore be polled
+   * instead of toasted as complete. Mirrors the server's
+   * `VERTICAL_DRAMA_ASYNC_STAGES`
+   * (`server/services/verticalDramaEpisodePipeline.ts`) — kept in sync
+   * manually because that module is server-only. Adding a stage there without
+   * adding it here would make the UI announce "stage complete" the instant the
+   * job was enqueued, before anything had actually run.
+   */
+  const VD_ASYNC_POLLED_STAGES: ReadonlySet<string> = new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]);
+
+  /** The actual bounded poll loop. Returns (and shares, via
+   *  `storyboardShotgridPollPromiseRef`) ONE promise per in-flight run so
+   *  concurrent callers all await the same result instead of racing —
+   *  announces the terminal toast/invalidate itself, exactly once, from
+   *  inside the loop body (not from each caller), so multiple awaiters never
+   *  double-toast. */
+  function pollStoryboardShotgridRun(
+    runId: number
+  ): Promise<"succeeded" | "failed" | "timeout"> {
+    if (storyboardShotgridPollPromiseRef.current) {
+      return storyboardShotgridPollPromiseRef.current;
+    }
+    const pollPromise = (async (): Promise<
+      "succeeded" | "failed" | "timeout"
+    > => {
+      setPollingStoryboardShotgrid(true);
+      try {
+        for (
+          let attempt = 0;
+          attempt < STORYBOARD_SHOTGRID_POLL_MAX_ATTEMPTS;
+          attempt++
+        ) {
+          const { runs } =
+            await utils.verticalDramaEpisodes.listEpisodeRuns.fetch({
+              seriesId,
+              episodeId,
+            });
+          const row = runs.find(r => String(r.runId) === String(runId));
+          if (row?.status === "succeeded" || row?.status === "failed") {
+            announceStoryboardShotgridTerminal({
+              status: row.status,
+              nextAction: row.nextAction as RunResult["next_action"],
+            });
+            return row.status;
+          }
+          await new Promise(resolve =>
+            setTimeout(resolve, STORYBOARD_SHOTGRID_POLL_INTERVAL_MS)
+          );
+        }
+        // Non-fatal — the job is very likely still running server-side
+        // (same soft-info posture `VerticalDramaDeepStoryDraftsPanel.tsx`
+        // uses for its own exhausted-poll-budget case); a later refresh (or
+        // this page's own `runsQuery` background refetch) will show the
+        // real result once it lands.
+        toast.info(
+          pickCopy(lang, verticalDramaCopy.storyJobStillRunningBackground)
+        );
+        return "timeout";
+      } finally {
+        setPollingStoryboardShotgrid(false);
+        storyboardShotgridPollPromiseRef.current = null;
+      }
+    })();
+    storyboardShotgridPollPromiseRef.current = pollPromise;
+    return pollPromise;
+  }
+
+  /** Entry point for all three call sites: given a `storyboard_shotgrid`
+   *  `runStage`/`regenerateStage` mutation's already-resolved output, waits
+   *  for the real terminal status if it's still `"queued"`/`"running"`
+   *  (Bug #127's async path) and returns it. Defensively handles the case
+   *  where `result.status` is somehow already terminal (e.g. some future
+   *  code path resolves synchronously again) without polling at all. */
+  async function submitAndPollStoryboardShotgrid(outcome: {
+    runId: number;
+    result: RunResult;
+  }): Promise<"succeeded" | "failed" | "timeout"> {
+    if (
+      outcome.result.status === "succeeded" ||
+      outcome.result.status === "failed"
+    ) {
+      announceStoryboardShotgridTerminal({
+        status: outcome.result.status,
+        nextAction: outcome.result.next_action,
+      });
+      return outcome.result.status;
+    }
+    return pollStoryboardShotgridRun(outcome.runId);
+  }
+
   const runStageMutation = trpc.verticalDramaEpisodes.runStage.useMutation({
-    onSuccess: data => {
+    onSuccess: (data, variables) => {
+      // Bug #127 — real-mode storyboard_shotgrid comes back almost
+      // instantly with `status: "queued"` while the actual generation runs
+      // in a background job. Every OTHER stage (and storyboard_shotgrid's
+      // own dry_run/plan_only previews) still resolves with a terminal
+      // status here exactly as before — this is the ONLY combination that
+      // needs to poll instead of toasting "stage complete" immediately,
+      // which would otherwise be actively misleading (nothing has finished
+      // yet). Fire-and-forget: the poll announces its own toast/invalidate
+      // once the real result is known; `handleGenerateEpisodeStoryboard`
+      // and the storyboard panel's own button both join this SAME poll
+      // (see `submitAndPollStoryboardShotgrid`'s doc comment) rather than
+      // starting a second one.
+      if (
+        VD_ASYNC_POLLED_STAGES.has(variables?.stage ?? "") &&
+        data.result.status === "queued"
+      ) {
+        void submitAndPollStoryboardShotgrid(data);
+        return;
+      }
       invalidateRuns();
       // Explicit status feedback — previously silent on success, which read
       // as "nothing happened" even when a real LLM generation succeeded or
@@ -939,7 +1128,30 @@ function EpisodeWorkspaceShell({
   });
   const regenerateStageMutation =
     trpc.verticalDramaEpisodes.regenerateStage.useMutation({
-      onSuccess: data => {
+      onSuccess: (data, variables) => {
+        // Bug #127 (regenerate path) — same async change as `runStage`
+        // applies to `regenerateStage`: for `storyboard_shotgrid` the old
+        // output is deleted and the mutation resolves almost instantly with
+        // `status: "queued"` while the real generation runs in a background
+        // job. Join the SAME shared poll `runStageMutation.onSuccess` above
+        // starts/joins (`submitAndPollStoryboardShotgrid`) instead of
+        // toasting "regenerated" now — the delete-old-runs side effect has
+        // already happened server-side, so refresh the runs list via
+        // `invalidateRuns()`, but let the poll announce the real terminal
+        // toast once the background job actually finishes. Reuses the
+        // generic "Stage complete"/"Stage failed" copy from
+        // `announceStoryboardShotgridTerminal` rather than this mutation's
+        // own "regenerated" copy — deliberate, to keep this fix minimal
+        // (the poll is shared across all three storyboard_shotgrid call
+        // sites and has no way to know which one triggered it).
+        if (
+          VD_ASYNC_POLLED_STAGES.has(variables?.stage ?? "") &&
+          data.result.status === "queued"
+        ) {
+          invalidateRuns();
+          void submitAndPollStoryboardShotgrid(data);
+          return;
+        }
         invalidateRuns();
         if (data.result.status === "failed") {
           const message = data.result.errors[0]?.message;
@@ -1023,6 +1235,31 @@ function EpisodeWorkspaceShell({
           });
           setGeneratingEpisodeStage(null);
           return;
+        }
+        // Bug #127 — `storyboard_shotgrid` (the last stage in this chain)
+        // now comes back `status: "queued"` in real mode; the shared
+        // `runStageMutation.onSuccess` above already started (or joined)
+        // the background poll for the SAME mutation call — await that same
+        // shared result here before letting this loop reach its "episode
+        // generated" success toast below, instead of declaring victory
+        // while the storyboard generation is still actually running.
+        if (VD_ASYNC_POLLED_STAGES.has(stage) && outcome.result.status === "queued") {
+          const finalStatus = await submitAndPollStoryboardShotgrid(outcome);
+          if (finalStatus !== "succeeded") {
+            setGenerateEpisodeFailure({
+              stage,
+              message:
+                finalStatus === "timeout"
+                  ? lang === "th"
+                    ? "การสร้างสตอรีบอร์ดใช้เวลานานกว่าปกติ ระบบยังทำงานอยู่เบื้องหลัง — กลับมาตรวจสอบภายหลัง"
+                    : "Storyboard generation is taking longer than usual and is still running in the background — check back shortly."
+                  : lang === "th"
+                    ? "สร้างสตอรีบอร์ดล้มเหลว — ลองใหม่หรือกด \"ซ่อม\""
+                    : "Storyboard generation failed — try again or use Repair.",
+            });
+            setGeneratingEpisodeStage(null);
+            return;
+          }
         }
         if (
           outcome.result.status === "approval_required" &&
@@ -4411,6 +4648,12 @@ function EpisodeWorkspaceShell({
         assembledAt?: string;
         status?: "pending" | "completed" | "failed";
         error?: string;
+        /** `planning/vd-remotion-render-option/plan.md` wave 2 — mirrors
+         *  `assemblyManifest.compiledVideo.renderEngine` (server-side,
+         *  `verticalDramaEpisodeVideoAssembly.ts`/`verticalDramaRemotionRender.ts`)
+         *  verbatim. Absent for compiled videos rendered before this option
+         *  existed (treated as `"ffmpeg"` by the panel's badge check). */
+        renderEngine?: "ffmpeg" | "remotion_queue";
       }
     | undefined;
 
@@ -4520,16 +4763,44 @@ function EpisodeWorkspaceShell({
    *  user edits the section's checkbox/select controls. Persistence across
    *  sessions is NOT required for this wave (plain in-memory state, same as
    *  every other episode-workspace draft toggle). */
+  // Persisted per episode (2026-07-31). The original comment here said
+  // "Persistence across sessions is NOT required for this wave (plain
+  // in-memory state)" — which meant every reload silently reset the render
+  // options, including the Remotion toggle the user had just ticked.
+  //
+  // `renderEngine` defaults to `"remotion_queue"` because the ffmpeg queue has
+  // no worker that can claim its jobs (see `assembleEpisodeVideo`'s
+  // `vd_assembly_remotion_failed_and_no_ffmpeg_worker` guard).
+  const finalRenderOptionsStorageKey = `vd:render-options:${seriesId}:${episodeId}`;
   const [finalRenderOptions, setFinalRenderOptions] =
-    useState<VerticalDramaFinalRenderOptionsView>({
-      includeDialogueAudio: false,
-      loudnessNormalize: false,
-      subtitlePreset: "classic_box",
-      // Render-options extension (2026-07-13) — mirrors the 3 fields above;
-      // matches `assembleEpisodeVideo`'s own server-side defaults.
-      subtitleFontSize: "medium",
-      showAgeBadge: false,
+    useState<VerticalDramaFinalRenderOptionsView>(() => {
+      const defaults: VerticalDramaFinalRenderOptionsView = {
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+        // Render-options extension (2026-07-13) — mirrors the 3 fields above;
+        // matches `assembleEpisodeVideo`'s own server-side defaults.
+        subtitleFontSize: "medium",
+        showAgeBadge: false,
+        renderEngine: "remotion_queue",
+      };
+      const raw = safeStorageGet(finalRenderOptionsStorageKey);
+      if (!raw) return defaults;
+      try {
+        // Merge over defaults so a payload saved by an older build (missing
+        // `renderEngine`, or missing a field added later) still resolves to a
+        // complete, valid object rather than partially-undefined state.
+        return { ...defaults, ...(JSON.parse(raw) as object) };
+      } catch {
+        return defaults;
+      }
     });
+  useEffect(() => {
+    safeStorageSet(
+      finalRenderOptionsStorageKey,
+      JSON.stringify(finalRenderOptions)
+    );
+  }, [finalRenderOptionsStorageKey, finalRenderOptions]);
   /** Durable (non-toast) proof of what the most recently SUBMITTED
    *  `assembleEpisodeVideo` call actually included — mirrors `scriptSummary`'s
    *  "not just a toast, which disappears" convention. `null` until the first
@@ -4544,6 +4815,11 @@ function EpisodeWorkspaceShell({
           dialogueAudioSegmentsIncluded: data.dialogueAudioSegmentsIncluded,
           subtitleLinesIncluded: data.subtitleLinesIncluded,
           excludedAdBanners: data.excludedAdBanners,
+          // `planning/vd-remotion-render-option/plan.md` wave 2 — present
+          // only when a `"remotion_queue"` request fell back to ffmpeg for
+          // this submission (see `assembleEpisodeVideo`'s response doc
+          // comment, `server/routers/verticalDramaEpisodes.ts`).
+          renderEngineFallbackReason: data.renderEngineFallbackReason,
         });
         toast.success(
           vdCopyWithParams(vdCopy(lang).finalRenderStartedSummaryTemplate, {
@@ -4551,6 +4827,14 @@ function EpisodeWorkspaceShell({
             audioSegments: data.dialogueAudioSegmentsIncluded,
           })
         );
+        if (data.renderEngineFallbackReason) {
+          toast.warning(
+            vdCopyWithParams(
+              vdCopy(lang).finalRenderEngineFallbackReasonTemplate,
+              { reason: data.renderEngineFallbackReason }
+            )
+          );
+        }
         if (data.excludedAdBanners?.length) {
           const designs = episodeDetailQuery.data?.adBannerDesignsSummary ?? [];
           const list = data.excludedAdBanners
@@ -4576,6 +4860,18 @@ function EpisodeWorkspaceShell({
         void episodeDetailQuery.refetch();
       },
       onError: err => {
+        // The raw server code is precise but unreadable; translate the one
+        // failure a user can actually act on (2026-07-31 gap audit: the
+        // ffmpeg fallback has no consumer, so a Remotion failure is terminal).
+        if (err.message?.startsWith("vd_assembly_remotion_failed_and_no_ffmpeg_worker")) {
+          const detail = err.message.split(":").slice(1).join(":").trim();
+          toast.error(
+            lang === "th"
+              ? `ส่งงานเข้าคิว Remotion ไม่สำเร็จ และไม่มีเครื่อง worker ที่รับงาน ffmpeg ได้ จึงยังประกอบวิดีโอไม่ได้${detail ? ` — ${detail}` : ""}`
+              : `Remotion queue submission failed and no worker can take the ffmpeg fallback, so assembly cannot proceed${detail ? ` — ${detail}` : ""}`
+          );
+          return;
+        }
         toast.error(
           err.message ||
             (lang === "th"
@@ -4605,6 +4901,13 @@ function EpisodeWorkspaceShell({
       // value (defaults "medium"/false match the server's own defaults).
       subtitleFontSize: finalRenderOptions.subtitleFontSize,
       showAgeBadge: finalRenderOptions.showAgeBadge,
+      // `planning/vd-remotion-render-option/plan.md` wave 2 — only sent when
+      // the user opted in; omitted (not `"ffmpeg"`) for every other call so
+      // the mutate payload stays BYTE-IDENTICAL to before this option
+      // existed whenever the toggle is off.
+      ...(finalRenderOptions.renderEngine === "remotion_queue"
+        ? { renderEngine: "remotion_queue" as const }
+        : {}),
       idempotencyKey: crypto.randomUUID(),
     });
   }
@@ -5226,7 +5529,25 @@ function EpisodeWorkspaceShell({
           regeneratingStage={
             regenerateStageMutation.isPending
               ? (regenerateStageMutation.variables?.stage ?? null)
-              : null
+              : // Bug #127 (regenerate path) — same gap as
+                // `storyboardPanel.generating` below: for `storyboard_shotgrid`
+                // the mutation itself now resolves near-instantly while the
+                // real generation runs in a background job, so
+                // `regenerateStageMutation.isPending` alone would flip this
+                // back to `null` right as the job is just starting — making
+                // the "Regenerate storyboard" button's own disabled/spinner
+                // state (`regeneratingStoryboard` in
+                // `VerticalDramaEpisodeWorkspace.tsx`) look like the
+                // regenerate finished instantly. `pollingStoryboardShotgrid`
+                // stays true for the WHOLE background job regardless of
+                // which of the three call sites (run / regenerate / panel
+                // button) started it — reusing it here also correctly keeps
+                // the regenerate button disabled if a plain "generate" run
+                // is already in flight for the same stage (only one can run
+                // at a time server-side).
+                pollingStoryboardShotgrid
+                ? "storyboard_shotgrid"
+                : null
           }
           onOpenRun={run => setLocation(run.artifactLedgerHref)}
           onOpenStageDetail={stage => setStageDetailStage(stage)}
@@ -5281,10 +5602,23 @@ function EpisodeWorkspaceShell({
               | undefined,
             loading: episodeDetailQuery.isLoading,
             error: episodeDetailQuery.error?.message ?? null,
+            // Bug #127 — the mutation itself now resolves almost instantly
+            // (real generation moved to a background job), so
+            // `runStageMutation.isPending` alone would flip back to `false`
+            // right as the actual work is just starting. OR in
+            // `pollingStoryboardShotgrid`, set/cleared by the shared poll
+            // (kicked off automatically by `runStageMutation.onSuccess`
+            // above once it sees this stage's `status: "queued"`), so the
+            // spinner stays up for the whole background job.
             generating:
-              runStageMutation.isPending &&
-              runStageMutation.variables?.stage === "storyboard_shotgrid",
+              (runStageMutation.isPending &&
+                runStageMutation.variables?.stage === "storyboard_shotgrid") ||
+              pollingStoryboardShotgrid,
             onGenerateReal: () =>
+              // Fire-and-forget, same as before this fix — the shared
+              // `runStageMutation.onSuccess` above owns starting/joining the
+              // poll and reporting the eventual toast/invalidate; no need to
+              // await or duplicate that logic here.
               runStageMutation.mutate({
                 seriesId,
                 episodeId,

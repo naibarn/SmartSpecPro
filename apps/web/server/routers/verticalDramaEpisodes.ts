@@ -19,6 +19,7 @@ import { db } from "../db";
 import {
   verticalDramaSeries,
   verticalDramaEpisodes,
+  workerJobs,
   verticalDramaApprovalCheckpoints,
   verticalDramaRunArtifacts,
   verticalDramaEpisodeRuns,
@@ -368,9 +369,17 @@ import {
   VerticalDramaEpisodePipeline,
   VERTICAL_DRAMA_PIPELINE_STAGES,
   VERTICAL_DRAMA_RUNNER_MODES,
+  VERTICAL_DRAMA_ASYNC_STAGES,
   type EpisodeRunOwner,
+  type RunStageOptions,
+  type RunStageOutcome,
 } from "../services/verticalDramaEpisodePipeline";
 import { createVerticalDramaProviderRoutingPort } from "../services/verticalDramaProviderRouting";
+// Bug #127 (`planning/vd-storyboard-runstage-async-job/plan.md`) —
+// `storyboard_shotgrid`'s real (non dry_run/plan_only) generation path is
+// dispatched as an async BullMQ job instead of running inline inside this
+// HTTP mutation; see `submitStoryboardShotgridAsync` below.
+import { enqueueVerticalDramaEpisodeStageJob } from "../services/verticalDramaEpisodeStageJobs";
 // Vertical Drama Render Queue plan §4.2 Wave 3 — `queueVerticalDramaFfmpegAssemblyJob`
 // (`../services/workerSchedulerService`) replaces the in-process
 // `submitAssemblyJob` launch inside `assembleEpisodeVideo`. Loaded via a
@@ -409,6 +418,7 @@ import {
   resolveEpisodeTextOverlayRunInputs,
   type EpisodeClipSource,
   type VerticalDramaVideoTaskPatch,
+  type CompiledVideoState,
   type RunAssemblyJobBannerInput,
   type RunAssemblyJobSubtitlesInput,
   type RunAssemblyJobTextOverlayEventInput,
@@ -588,6 +598,70 @@ function pipelineForMode(mode: string): VerticalDramaEpisodePipeline {
   return new VerticalDramaEpisodePipeline(
     createVerticalDramaProviderRoutingPort()
   );
+}
+
+/**
+ * Bug #127 (`planning/vd-storyboard-runstage-async-job/plan.md`) — shared
+ * async-submit helper for `storyboard_shotgrid`'s REAL (non dry_run/
+ * plan_only) generation path, used by BOTH `runStage` and `regenerateStage`
+ * (the only two mutations that can trigger a real `storyboard_shotgrid`
+ * run). Inserts (or reuses, if one is already in flight — idempotency, see
+ * `submitStoryboardShotgridStage`'s doc comment) a `queued`
+ * `vertical_drama_episode_runs` row and returns immediately: the actual LLM
+ * generation + persistence/validation/checkpoint work runs later, from a
+ * BullMQ background worker (`verticalDramaEpisodeStageJobs.ts`), never on
+ * this HTTP request — this is what stops Cloudflare's ~100s edge-proxy read
+ * timeout from ever being able to kill the generation again.
+ *
+ * `clearDownstreamOnSuccess` — threaded through from `regenerateStage`'s
+ * call site only; see `clearStoryboardShotgridDownstreamAfterRegenerate`'s
+ * doc comment in `verticalDramaEpisodePipeline.ts`.
+ */
+async function submitStoryboardShotgridAsync(
+  owner: EpisodeRunOwner,
+  opts: RunStageOptions,
+  clearDownstreamOnSuccess?: boolean,
+  stage: VerticalDramaPipelineStage = "storyboard_shotgrid"
+): Promise<RunStageOutcome> {
+  const pipeline = pipelineForMode(opts.mode);
+  const submitted = await pipeline.submitEpisodeStageAsync(owner, stage, opts);
+  if (!submitted.alreadySubmitted) {
+    const { enqueued } = await enqueueVerticalDramaEpisodeStageJob({
+      runId: submitted.runId,
+      owner,
+      opts,
+      stage,
+      clearDownstreamOnSuccess,
+    });
+    if (!enqueued) {
+      // Fail-fast (bug #127 hardening): the enqueue failed and has already
+      // marked the freshly-inserted row `failed` itself (see
+      // `enqueueVerticalDramaEpisodeStageJob`) — reflect that here instead
+      // of telling the client the run is `queued`, which would strand the
+      // UI polling a row no worker will ever touch. Deliberately not a
+      // thrown error: the row state is consistent and re-running the stage
+      // is safe, so the client gets a normal failed RunResult it already
+      // knows how to render.
+      return {
+        runId: submitted.runId,
+        result: {
+          ...submitted.result,
+          status: "failed",
+          next_action: "repair",
+          errors: [
+            {
+              code: "VD_STORYBOARD_GENERATION_FAILED",
+              message:
+                "Could not enqueue the background storyboard job — the run was marked failed immediately. Running the stage again is safe.",
+              repairable: true,
+            },
+          ],
+        },
+        staleStages: [],
+      };
+    }
+  }
+  return { runId: submitted.runId, result: submitted.result, staleStages: [] };
 }
 
 /** Confirm the caller owns the series (tenant + user), else NOT_FOUND. */
@@ -7669,18 +7743,46 @@ export const verticalDramaEpisodesRouter = router({
         resolveVerticalDramaTieInReplanFlag(tenantId),
         resolveVerticalDramaRetentionHooksFlag(tenantId),
       ]);
+      const stageOpts: RunStageOptions = {
+        mode: input.mode as never,
+        subShotFlagOn: flagOn,
+        subShotPolicy: policy,
+        idempotencyKey: input.idempotencyKey,
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      };
+
+      // Bug #127 (`planning/vd-storyboard-runstage-async-job/plan.md`) —
+      // `storyboard_shotgrid`'s REAL generation path (mode not dry_run/
+      // plan_only) never runs inline on this request anymore: it would
+      // routinely outlive Cloudflare's ~100s edge-proxy read timeout. Submit
+      // + return immediately instead; the client polls this stage's run
+      // status (`result.status: "queued"`/`"running"` -> `"succeeded"`/
+      // `"failed"`) the same way it already does for other async jobs.
+      // dry_run/plan_only previews for this stage, and EVERY other stage
+      // (paid or not), are completely untouched — still fully synchronous.
+      // Generalized 2026-07-31 from the single `storyboard_shotgrid` check to
+      // the whole set (`planning/vd-async-stage-jobs-generalization/plan.md`):
+      // `plan_episode_script` hits the very same Cloudflare ~100s wall, and
+      // its 524 left the user re-running a generation that had already
+      // succeeded server-side.
+      if (
+        VERTICAL_DRAMA_ASYNC_STAGES.has(input.stage) &&
+        !VERTICAL_DRAMA_DRY_RUN_MODES.has(input.mode)
+      ) {
+        return submitStoryboardShotgridAsync(
+          owner,
+          stageOpts,
+          undefined,
+          input.stage
+        );
+      }
+
       const outcome = await pipelineForMode(input.mode).runStage(
         owner,
         input.stage,
-        {
-          mode: input.mode as never,
-          subShotFlagOn: flagOn,
-          subShotPolicy: policy,
-          idempotencyKey: input.idempotencyKey,
-          deepStoryDraftsFlagOn,
-          tieInReplanFlagOn,
-          retentionHooksEnabled,
-        }
+        stageOpts
       );
       return outcome;
     }),
@@ -7766,18 +7868,36 @@ export const verticalDramaEpisodesRouter = router({
         resolveVerticalDramaTieInReplanFlag(tenantId),
         resolveVerticalDramaRetentionHooksFlag(tenantId),
       ]);
+      const stageOpts: RunStageOptions = {
+        mode: "full",
+        subShotFlagOn: flagOn,
+        subShotPolicy: policy,
+        idempotencyKey: input.idempotencyKey,
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      };
+
+      // Bug #127 (`planning/vd-storyboard-runstage-async-job/plan.md`) —
+      // same async treatment as `runStage`'s branch above:
+      // `regenerateStage` always runs in real "full" mode, so a
+      // `storyboard_shotgrid` regenerate would otherwise ALWAYS hit the same
+      // Cloudflare ~100s edge-proxy timeout. Submit + return immediately;
+      // the below-floor downstream-invalidation block (gated on a
+      // `"succeeded"` outcome, 2026-07-12 data-safety fix) runs from the
+      // background job's own success path instead
+      // (`clearStoryboardShotgridDownstreamAfterRegenerate`, threaded
+      // through as `clearDownstreamOnSuccess`) — see that function's doc
+      // comment in `verticalDramaEpisodePipeline.ts`. Every other stage's
+      // `regenerateStage` call is untouched, still fully synchronous.
+      if (input.stage === "storyboard_shotgrid") {
+        return submitStoryboardShotgridAsync(owner, stageOpts, true);
+      }
+
       const outcome = await pipelineForMode("full").runStage(
         owner,
         input.stage,
-        {
-          mode: "full",
-          subShotFlagOn: flagOn,
-          subShotPolicy: policy,
-          idempotencyKey: input.idempotencyKey,
-          deepStoryDraftsFlagOn,
-          tieInReplanFlagOn,
-          retentionHooksEnabled,
-        }
+        stageOpts
       );
 
       // Data-safety fix (2026-07-12) — the downstream invalidation below used
@@ -8335,6 +8455,101 @@ export const verticalDramaEpisodesRouter = router({
       const episodeId = parseId(input.episodeId, "episode id");
       const owner: EpisodeRunOwner = { tenantId, userId, seriesId, episodeId };
       const row = await loadOwnedEpisode(owner);
+
+      // `planning/vd-remotion-render-option/plan.md` wave 1 — reconcile an
+      // in-flight Remotion sub-episode render (`assembleEpisodeVideo`'s
+      // `renderEngine: "remotion_queue"` opt-in) the SAME way the client
+      // already polls this query while `compiledVideo.status === "pending"`.
+      // No-op for every pre-existing render (ffmpeg path, or no compiled
+      // video state at all). On reconcile, re-reads `assemblyManifest` so
+      // this response reflects the just-written completed/failed state
+      // immediately, without waiting for a second poll.
+      {
+        const compiledVideoState = (
+          row.assemblyManifest as { compiledVideo?: CompiledVideoState } | null
+        )?.compiledVideo;
+        // A pending ffmpeg assembly was NEVER reconciled: this block only ran
+        // for `remotion_queue`. Combined with the ffmpeg queue having no
+        // consumer at all (see the `vd_assembly_remotion_failed_and_no_ffmpeg_worker`
+        // guard in `assembleEpisodeVideo`), a fallback render sat on
+        // "กำลังประกอบวิดีโอรวม…" forever — the job had already FAILED and the
+        // user could not even start a new one. Resolve it from the worker job's
+        // own terminal state (field report 2026-07-31).
+        if (
+          compiledVideoState?.status === "pending" &&
+          compiledVideoState.renderEngine !== "remotion_queue" &&
+          compiledVideoState.pendingJobId
+        ) {
+          const [ffmpegJob] = await db
+            .select({
+              status: workerJobs.status,
+              failureReason: workerJobs.failureReason,
+            })
+            .from(workerJobs)
+            .where(eq(workerJobs.id, compiledVideoState.pendingJobId))
+            .limit(1);
+          const terminalFailure =
+            !ffmpegJob ||
+            ffmpegJob.status === "failed" ||
+            ffmpegJob.status === "cancelled";
+          if (terminalFailure) {
+            const reason = !ffmpegJob
+              ? "งานเรนเดอร์หายไปจากคิว (อาจถูกล้างหรือหมดอายุ)"
+              : (ffmpegJob.failureReason ??
+                "ตัวประกอบวิดีโอ (ffmpeg) รายงานว่างานล้มเหลว");
+            const nextManifest = {
+              ...((row.assemblyManifest as Record<string, unknown> | null) ?? {}),
+              compiledVideo: {
+                ...compiledVideoState,
+                status: "failed" as const,
+                error: reason,
+              },
+            };
+            await db
+              .update(verticalDramaEpisodes)
+              .set({ assemblyManifest: nextManifest, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episodeId),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
+              );
+            row.assemblyManifest = nextManifest as typeof row.assemblyManifest;
+          }
+        }
+        if (
+          compiledVideoState?.status === "pending" &&
+          compiledVideoState.renderEngine === "remotion_queue" &&
+          compiledVideoState.pendingJobId
+        ) {
+          const { reconcileVdRemotionAssembly } = await import(
+            "../services/verticalDramaRemotionRender"
+          );
+          const result = await reconcileVdRemotionAssembly(
+            owner,
+            compiledVideoState.pendingJobId,
+            compiledVideoState.renderSubmittedAt
+          ).catch(() => ({ reconciled: false as const }));
+          if (result.reconciled) {
+            const [fresh] = await db
+              .select({ assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+              .from(verticalDramaEpisodes)
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episodeId),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
+              )
+              .limit(1);
+            if (fresh) row.assemblyManifest = fresh.assemblyManifest;
+          }
+        }
+      }
+
       const [assetUrls, characterPortraits, qualityReview] = await Promise.all([
         resolveEpisodePlanAssetUrls(
           tenantId,
@@ -13018,6 +13233,7 @@ export const verticalDramaEpisodesRouter = router({
           idempotencyKey: input.idempotencyKey,
         });
       } catch (err) {
+        console.error("[generateShotStartFramePrompt] ERROR CATCH:", err);
         if (err instanceof StartFrameShotPromptInsufficientCreditsError) {
           throw new TRPCError({
             code: "FORBIDDEN",
@@ -13316,7 +13532,7 @@ export const verticalDramaEpisodesRouter = router({
       );
 
       const referenceFramePromptLanguage = resolveEffectiveImagePromptLanguage({
-        startFramePlan: basePlan,
+        startFramePlan: plan,
         motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
       });
 
@@ -16445,6 +16661,16 @@ export const verticalDramaEpisodesRouter = router({
         // whole feed for THIS render only, without touching the saved plan.
         includeTextOverlays: z.boolean().optional(),
         includeWatermark: z.boolean().optional(),
+        // `planning/vd-remotion-render-option/plan.md` wave 1 — OPT-IN
+        // Remotion render path for this sub-episode assembly. Omitted/
+        // `"ffmpeg"` is BYTE-IDENTICAL to every render before this option
+        // existed (the existing `vertical_drama_ffmpeg_assembly` queue path,
+        // unchanged). `"remotion_queue"` carries the SAME resolved
+        // `renderFeed` this mutation already builds below through
+        // `submitVdRemotionAssembly` instead — ANY failure there falls back
+        // to the ffmpeg path automatically (see below), never leaves the
+        // run stuck.
+        renderEngine: z.enum(["ffmpeg", "remotion_queue"]).optional(),
         idempotencyKey,
       })
     )
@@ -16653,37 +16879,115 @@ export const verticalDramaEpisodesRouter = router({
         ...(combinedSubtitles ? { subtitles: combinedSubtitles } : {}),
         ...(watermarkImageForJob ? { watermarkImage: watermarkImageForJob } : {}),
       };
-      // Lazy `await import(...)` — see this file's own import-block doc
-      // comment above (`queueVerticalDramaFfmpegAssemblyJob` reference) for
-      // why this is not a static top-level import.
-      const { queueVerticalDramaFfmpegAssemblyJob } = await import(
-        "../services/workerSchedulerService"
-      );
-      const { job } = await queueVerticalDramaFfmpegAssemblyJob({
-        tenantId,
-        requestedByUserId: userId,
-        kind: "sub_episode",
-        contractVersion: 1,
-        owner: {
+      // `planning/vd-remotion-render-option/plan.md` wave 1 — try the
+      // opt-in Remotion queue path FIRST when requested; ANY failure falls
+      // back to the existing ffmpeg queue path below (never leaves the run
+      // stuck — same "throw = fall back" convention
+      // `submitStagedRemotionFinalRenderOrFallback` uses for the marketplace
+      // equivalent). `usedRenderEngine`/`renderEngineFallbackReason` are
+      // surfaced in this mutation's response so the UI can show the
+      // fallback explicitly (wave 2).
+      let jobId: string | undefined;
+      let usedRenderEngine: "ffmpeg" | "remotion_queue" = "ffmpeg";
+      let renderEngineFallbackReason: string | undefined;
+
+      // Remotion is the DEFAULT engine (2026-07-31). It was opt-in, which meant
+      // the common path fell to the ffmpeg queue — and that queue has no
+      // consumer at all (the worker-app cannot claim
+      // `vertical_drama_ffmpeg_assembly`, and the inline in-process worker is
+      // off by policy). Opt-OUT keeps `"ffmpeg"` reachable for anyone who has
+      // the inline worker enabled.
+      if (input.renderEngine !== "ffmpeg") {
+        try {
+          const { submitVdRemotionAssembly } = await import(
+            "../services/verticalDramaRemotionRender"
+          );
+          const submitted = await submitVdRemotionAssembly({
+            owner,
+            clips: renderFeed.clips,
+            internalBaseUrl,
+            // The Remotion worker runs on ANOTHER machine, so asset URLs it
+            // must fetch have to be resolved against a publicly reachable
+            // origin — `internalBaseUrl` is frequently `http://localhost:3000`.
+            publicBaseUrl: runtimeConfig.publicUrl || ctx.publicUrl || null,
+            filename,
+            banners: renderFeed.banners,
+            dialogueAudio: renderFeed.dialogueAudio,
+            subtitles: renderFeed.subtitles,
+            watermarkImage: renderFeed.watermarkImage,
+            tenantId,
+            requestedByUserId: userId,
+            idempotencyKey: input.idempotencyKey,
+          });
+          jobId = submitted.jobId;
+          usedRenderEngine = "remotion_queue";
+        } catch (error) {
+          renderEngineFallbackReason =
+            error instanceof Error ? error.message : String(error);
+          console.warn(
+            `[verticalDramaEpisodes] Remotion render submission failed for series ${seriesId} episode ${episodeId}; falling back to the ffmpeg render queue`,
+            error,
+          );
+        }
+      }
+
+      if (!jobId) {
+        // GAP AUDIT 2026-07-31 — the ffmpeg fallback is only real when something
+        // can actually CLAIM a `vertical_drama_ffmpeg_assembly` job. The
+        // worker-app cannot: its `WorkerJobKind` set is Hermes*/Hyperframes/
+        // RemotionRenderVideo only. The single other consumer is the in-process
+        // inline ffmpeg worker, which is OFF by default (and must stay off —
+        // user policy: nothing renders inside `smartspec-web`).
+        //
+        // So with the inline worker disabled, "falling back" used to enqueue a
+        // job NOBODY would ever claim: the episode sat on "กำลังประกอบ…"
+        // forever with no error. Surface the real Remotion failure instead of
+        // queueing into a black hole.
+        const { getWebProcessRenderWorkerEnabled } = await import(
+          "../services/renderWorkerSettings"
+        );
+        const ffmpegConsumerAvailable = await getWebProcessRenderWorkerEnabled();
+        if (!ffmpegConsumerAvailable) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `vd_assembly_remotion_failed_and_no_ffmpeg_worker${
+              renderEngineFallbackReason ? `: ${renderEngineFallbackReason}` : ""
+            }`,
+          });
+        }
+        // Lazy `await import(...)` — see this file's own import-block doc
+        // comment above (`queueVerticalDramaFfmpegAssemblyJob` reference) for
+        // why this is not a static top-level import.
+        const { queueVerticalDramaFfmpegAssemblyJob } = await import(
+          "../services/workerSchedulerService"
+        );
+        const { job } = await queueVerticalDramaFfmpegAssemblyJob({
           tenantId,
-          userId: String(userId),
-          seriesId: String(seriesId),
-          episodeId: String(episodeId),
-        },
-        renderFeed,
-        display: {
-          seriesTitle: row.title ?? undefined,
-          episodeNumber: row.episodeNumber ?? undefined,
-          label: filename,
-        },
-        idempotencyKey: input.idempotencyKey,
-      });
-      await persistCompiledVideoState(owner, {
-        pendingJobId: job.id,
-        status: "pending",
-        error: undefined,
-      });
-      const jobId = job.id as string;
+          requestedByUserId: userId,
+          kind: "sub_episode",
+          contractVersion: 1,
+          owner: {
+            tenantId,
+            userId: String(userId),
+            seriesId: String(seriesId),
+            episodeId: String(episodeId),
+          },
+          renderFeed,
+          display: {
+            seriesTitle: row.title ?? undefined,
+            episodeNumber: row.episodeNumber ?? undefined,
+            label: filename,
+          },
+          idempotencyKey: input.idempotencyKey,
+        });
+        await persistCompiledVideoState(owner, {
+          pendingJobId: job.id,
+          status: "pending",
+          error: undefined,
+          renderEngine: "ffmpeg",
+        });
+        jobId = job.id as string;
+      }
 
       // W12-A voice chain manifest audit trail (additive, flag-gated) —
       // merges a RAW, shot-LOCAL-timed `dialogueAudioTimeline` snapshot into
@@ -16768,6 +17072,15 @@ export const verticalDramaEpisodesRouter = router({
         // `0`/`false` when the flag is off or nothing was enabled.
         textOverlayEventsIncluded,
         watermarkIncluded,
+        // `planning/vd-remotion-render-option/plan.md` wave 1 — which
+        // render engine actually handled THIS submission (never the
+        // requested one alone — a Remotion request that failed and fell
+        // back reports `"ffmpeg"` here, with the failure reason surfaced so
+        // the UI can show the fallback explicitly, wave 2).
+        renderEngine: usedRenderEngine,
+        ...(renderEngineFallbackReason
+          ? { renderEngineFallbackReason }
+          : {}),
       };
     }),
 });

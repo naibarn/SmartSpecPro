@@ -133,6 +133,14 @@ const { mockRepairStage, mockRunStage, mockRunEpisode } = vi.hoisted(() => ({
   mockRunEpisode: vi.fn().mockResolvedValue({ results: [] }),
 }));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {
     repairStage: mockRepairStage,
     runStage: mockRunStage,

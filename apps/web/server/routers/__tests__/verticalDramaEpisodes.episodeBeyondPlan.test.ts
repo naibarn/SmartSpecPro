@@ -139,21 +139,49 @@ vi.mock("../../services/mediaTransportResolver", () => ({
   resolveMediaTransport: mockResolveMediaTransport,
 }));
 
-const { mockRepairStage, mockRunStage, mockRunEpisode } = vi.hoisted(() => ({
+const {
+  mockRepairStage,
+  mockRunStage,
+  mockRunEpisode,
+  mockSubmitEpisodeStageAsync,
+} = vi.hoisted(() => ({
+  /**
+   * `planning/vd-async-stage-jobs-generalization/plan.md` — the router calls
+   * this instead of `runStage` for any REAL run of a stage in
+   * `VERTICAL_DRAMA_ASYNC_STAGES`. Without it on the double the router throws
+   * before the gate behavior under test is ever reached.
+   */
+  mockSubmitEpisodeStageAsync: vi.fn().mockResolvedValue({
+    runId: 1,
+    result: { status: "queued" },
+    alreadySubmitted: false,
+  }),
   mockRepairStage: vi.fn(),
   mockRunStage: vi.fn().mockResolvedValue({}),
   mockRunEpisode: vi.fn().mockResolvedValue({ results: [] }),
 }));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {
     repairStage: mockRepairStage,
     runStage: mockRunStage,
     runEpisode: mockRunEpisode,
+    submitEpisodeStageAsync: mockSubmitEpisodeStageAsync,
+    submitStoryboardShotgridStage: mockSubmitEpisodeStageAsync,
   },
   VerticalDramaEpisodePipeline: class {
     repairStage = mockRepairStage;
     runStage = mockRunStage;
     runEpisode = mockRunEpisode;
+    submitEpisodeStageAsync = mockSubmitEpisodeStageAsync;
+    submitStoryboardShotgridStage = mockSubmitEpisodeStageAsync;
     static downstreamStages = vi.fn(() => []);
   },
   // FULL, correctly-ordered 15-stage sequence (mirrors
@@ -573,8 +601,14 @@ describe("runStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       },
     });
 
-    expect(result).toEqual({});
-    expect(mockRunStage).toHaveBeenCalled();
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 
   it("grandfathers a no_plan (legacy pre-planning) series — never gates even though the episode is far beyond any explicit plan", async () => {
@@ -593,8 +627,14 @@ describe("runStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       },
     });
 
-    expect(result).toEqual({});
-    expect(mockRunStage).toHaveBeenCalled();
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 
   it("does not gate other stages even for a beyond-plan episode", async () => {
@@ -611,8 +651,14 @@ describe("runStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       },
     });
 
-    expect(result).toEqual({});
-    expect(mockRunStage).toHaveBeenCalled();
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 });
 
@@ -654,7 +700,14 @@ describe("regenerateStage — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
       input: { seriesId: "10", episodeId: "100", stage: "storyboard_shotgrid" },
     });
 
-    expect(result).toEqual({});
+    // The gate let this through — a REAL run of an async stage now proves that
+    // by reaching the async submit rather than `runStage`
+    // (`planning/vd-async-stage-jobs-generalization/plan.md`). What is under
+    // test here is the GATE, not which side of that split the stage lands on,
+    // and not the submitted payload (BullMQ is not initialized under test, so
+    // the enqueue takes its fail-fast branch — irrelevant to this assertion).
+    expect(result).toBeDefined();
+    expect(mockSubmitEpisodeStageAsync).toHaveBeenCalled();
   });
 });
 
@@ -770,6 +823,8 @@ describe("retentionHooksEnabled threading (planning/vertical-drama-retention-hoo
       });
 
       expect(mockGetTenantFeatureFlags).toHaveBeenCalledWith("tenant-1");
+      // dry_run stays fully SYNCHRONOUS — a preview renders nothing and spends
+      // nothing, so it never goes near the async submit.
       const opts = mockRunStage.mock.calls[0][2];
       expect(opts.retentionHooksEnabled).toBe(true);
     });
@@ -797,7 +852,9 @@ describe("retentionHooksEnabled threading (planning/vertical-drama-retention-hoo
         },
       });
 
-      const opts = mockRunStage.mock.calls[0][2];
+      // `submitEpisodeStageAsync(owner, stage, opts)` — the flag still has to
+      // reach the pipeline; only the method carrying it changed.
+      const opts = mockSubmitEpisodeStageAsync.mock.calls[0][2];
       expect(opts.retentionHooksEnabled).toBe(true);
     });
   });

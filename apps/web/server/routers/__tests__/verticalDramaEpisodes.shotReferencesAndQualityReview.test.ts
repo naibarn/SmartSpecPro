@@ -217,13 +217,34 @@ const { mockRepairStage, mockRunStage } = vi.hoisted(() => ({
   mockRunStage: vi.fn().mockResolvedValue({}),
 }));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {
     repairStage: mockRepairStage,
     runStage: mockRunStage,
+    // A REAL run of an async stage reaches this instead of `runStage`.
+    submitEpisodeStageAsync: vi.fn().mockResolvedValue({
+      runId: 1,
+      result: { status: "queued" },
+      alreadySubmitted: true,
+    }),
   },
   VerticalDramaEpisodePipeline: class {
     repairStage = mockRepairStage;
     runStage = mockRunStage;
+    // `pipelineForMode` CONSTRUCTS this class for real modes, so the async
+    // submit has to exist here too, not only on the singleton above.
+    submitEpisodeStageAsync = vi.fn().mockResolvedValue({
+      runId: 1,
+      result: { status: "queued" },
+      alreadySubmitted: true,
+    });
     static downstreamStages = vi.fn(() => []);
   },
   VERTICAL_DRAMA_PIPELINE_STAGES: [
@@ -6759,7 +6780,11 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on runStage / regenerate
         },
       });
 
-      expect(result).toEqual({});
+      // The tie-in gate let this through. `plan_episode_script` now runs via
+      // the async submit (`planning/vd-async-stage-jobs-generalization/plan.md`),
+      // so "not gated" is proved by getting a result back rather than by which
+      // pipeline method carried it.
+      expect(result).toBeDefined();
     });
   });
 

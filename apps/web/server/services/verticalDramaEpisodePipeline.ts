@@ -15,7 +15,7 @@
  * provider credentials.
  */
 
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
@@ -312,6 +312,26 @@ export const VERTICAL_DRAMA_APPROVAL_STAGES: ReadonlySet<VerticalDramaPipelineSt
  */
 export const VERTICAL_DRAMA_PAID_STAGES: ReadonlySet<VerticalDramaPipelineStage> =
   new Set(["render_or_import_start_frames", "render_or_import_video_clips"]);
+
+/**
+ * Stages whose REAL (non dry_run/plan_only) generation must NOT run inline on
+ * the HTTP request (`planning/vd-async-stage-jobs-generalization/plan.md` S2).
+ *
+ * Cloudflare cuts an origin read at ~100s and answers 524. That limit is not
+ * configurable below Enterprise, so our own 600s nginx / 620s Node timeouts
+ * cannot save a stage that runs longer — the work completes server-side while
+ * the user is shown a hard failure and invited to re-run it, paying for the
+ * same generation twice.
+ *
+ * `storyboard_shotgrid` was moved off the request for exactly this reason (bug
+ * #127). `plan_episode_script` hits the same wall — observed 2026-07-31, run
+ * #540 finished `succeeded` after its request had already 524'd.
+ *
+ * Dry-run/plan_only previews of these stages stay fully synchronous: they
+ * render nothing and spend nothing.
+ */
+export const VERTICAL_DRAMA_ASYNC_STAGES: ReadonlySet<VerticalDramaPipelineStage> =
+  new Set(["storyboard_shotgrid", "plan_episode_script"]);
 
 /** Stable machine-readable error code for a schema-validation failure (spec §11.5). */
 export const VD_SCHEMA_VALIDATION_FAILED = "VD_SCHEMA_VALIDATION_FAILED";
@@ -1280,6 +1300,15 @@ async function applyEpisodeSummaryMemoryWrites(
 
 export interface RunStageOptions {
   mode: VerticalDramaRunnerMode;
+  /**
+   * Set ONLY by the background stage-job runner
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S1): the id of the
+   * `queued` placeholder row this run must FINALIZE rather than insert
+   * alongside. The client polls that exact id, so a sibling row would leave it
+   * watching one that never reaches a terminal status. Absent on every
+   * synchronous call — behavior then is byte-identical to before it existed.
+   */
+  asyncRunId?: number;
   subShotFlagOn?: boolean;
   subShotPolicy?: VerticalDramaSubShotPolicy;
   idempotencyKey?: string;
@@ -1760,6 +1789,71 @@ function resolveStoryScriptLangFromLocale(
   return locale === "th" ? "th" : "en";
 }
 
+/**
+ * `regenerateStage`'s post-success downstream reset for `storyboard_shotgrid`
+ * ONLY — replicated here (rather than imported from
+ * `routers/verticalDramaEpisodes.ts`, which imports FROM this file) to avoid
+ * a service -> router circular import. Mirrors that mutation's inline
+ * post-success block EXACTLY (same `stagesToClear`/`downstreamColumnByStage`
+ * shape, including deleting the run row matching `stage` itself — an
+ * existing quirk of that block predating this change, carried forward
+ * unmodified since fixing it is out of this task's scope), just deferred to
+ * run from `runStoryboardShotgridStageJob`'s background success path instead
+ * of synchronously right after `runStage` returns. The router's own
+ * synchronous `regenerateStage` path for every OTHER stage is untouched.
+ */
+async function clearStoryboardShotgridDownstreamAfterRegenerate(
+  owner: EpisodeRunOwner
+): Promise<void> {
+  const stage: VerticalDramaPipelineStage = "storyboard_shotgrid";
+  const stagesToClear = [
+    stage,
+    ...VerticalDramaEpisodePipeline.downstreamStages(stage),
+  ];
+  await db
+    .delete(verticalDramaEpisodeRuns)
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodeRuns.userId, owner.userId),
+        eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+        eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+        inArray(verticalDramaEpisodeRuns.stage, stagesToClear)
+      )
+    );
+
+  const downstreamColumnByStage: Partial<
+    Record<VerticalDramaPipelineStage, keyof typeof verticalDramaEpisodes.$inferInsert>
+  > = {
+    start_frame_render_plan: "startFramePlan",
+    dialogue_audio_plan: "dialogueAudioPlan",
+    video_motion_prompt_pack: "motionPromptPack",
+    assemble_episode_manifest: "assemblyManifest",
+  };
+  const downstream = VerticalDramaEpisodePipeline.downstreamStages(stage);
+  const columnUpdates: Record<string, null> = {};
+  for (const s of downstream) {
+    const col = downstreamColumnByStage[s];
+    if (col) columnUpdates[col] = null;
+  }
+  if (downstream.includes("create_storyboard_review_project")) {
+    columnUpdates.storyboardReviewId = null;
+  }
+  if (Object.keys(columnUpdates).length > 0) {
+    await db
+      .update(verticalDramaEpisodes)
+      .set({ ...columnUpdates, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, owner.episodeId),
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+        )
+      );
+  }
+}
+
 export class VerticalDramaEpisodePipeline {
   constructor(
     private readonly providerPort: ProviderRoutingPort = createStubProviderRoutingPort(),
@@ -1818,6 +1912,38 @@ export class VerticalDramaEpisodePipeline {
     return row as VerticalDramaRunArtifactRow;
   }
 
+  /**
+   * `existingRunId` — the `queued` placeholder row a background stage job is
+   * already running against
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S1). When present,
+   * FINALIZE that row instead of inserting a sibling: the client is polling
+   * that exact id, and a second row for the same (episode, stage) would leave
+   * it watching a row that never reaches a terminal status.
+   *
+   * Falls back to the insert when the id no longer matches a row — the caller
+   * still gets a real run id, which every artifact FK downstream depends on.
+   * Every synchronous path passes nothing and is byte-identical to before.
+   */
+  /**
+   * `writeRun` for every branch inside `runStage`, which is the only caller
+   * that can be executing on behalf of a background stage job. Exists so the
+   * `asyncRunId` hand-off is expressed ONCE instead of at each of the eight
+   * terminal branches — missing one there would silently insert a duplicate
+   * run row and strand the client's poll.
+   */
+  private async writeRunForStage(
+    owner: EpisodeRunOwner,
+    stage: VerticalDramaPipelineStage,
+    mode: VerticalDramaRunnerMode,
+    opts: RunStageOptions,
+    result: Pick<
+      RunResult,
+      "status" | "next_action" | "artifactIds" | "warnings" | "errors"
+    >
+  ): Promise<number> {
+    return this.writeRun(owner, stage, mode, result, opts.asyncRunId);
+  }
+
   private async writeRun(
     owner: EpisodeRunOwner,
     stage: VerticalDramaPipelineStage,
@@ -1825,8 +1951,34 @@ export class VerticalDramaEpisodePipeline {
     result: Pick<
       RunResult,
       "status" | "next_action" | "artifactIds" | "warnings" | "errors"
-    >
+    >,
+    existingRunId?: number
   ): Promise<number> {
+    if (existingRunId != null) {
+      const [updated] = await db
+        .update(verticalDramaEpisodeRuns)
+        .set({
+          runMode: mode,
+          status: result.status,
+          nextAction: result.next_action,
+          artifactIds: result.artifactIds,
+          warnings: result.warnings,
+          errors: result.errors,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(verticalDramaEpisodeRuns.id, existingRunId),
+            eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+            eq(verticalDramaEpisodeRuns.userId, owner.userId),
+            eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+            eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+            eq(verticalDramaEpisodeRuns.stage, stage)
+          )
+        )
+        .returning({ id: verticalDramaEpisodeRuns.id });
+      if (updated) return updated.id;
+    }
     const [row] = await db
       .insert(verticalDramaEpisodeRuns)
       .values({
@@ -3515,7 +3667,7 @@ export class VerticalDramaEpisodePipeline {
         }
       } catch (error) {
         const genError = mapScriptGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -3704,7 +3856,7 @@ export class VerticalDramaEpisodePipeline {
         }
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -3916,7 +4068,7 @@ export class VerticalDramaEpisodePipeline {
           );
       } catch (error) {
         const genError = mapStartFrameGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -4057,7 +4209,7 @@ export class VerticalDramaEpisodePipeline {
           );
       } catch (error) {
         const genError = mapMotionPromptGenerationError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -4124,7 +4276,7 @@ export class VerticalDramaEpisodePipeline {
         // create and reopen paths) — no additional persistence needed here.
       } catch (error) {
         const genError = mapStoryboardReviewHandoffError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -4190,7 +4342,7 @@ export class VerticalDramaEpisodePipeline {
         };
       } catch (error) {
         const genError = mapMemoryPlanningError(error);
-        const runId = await this.writeRun(owner, stage, mode, {
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
           artifactIds: [],
@@ -4231,7 +4383,7 @@ export class VerticalDramaEpisodePipeline {
     );
     if (!validation.valid) {
       // Create the run row FIRST so the artifact FK (runId) is satisfiable.
-      const runId = await this.writeRun(owner, stage, mode, {
+      const runId = await this.writeRunForStage(owner, stage, mode, opts, {
         status: "failed",
         next_action: "repair",
         artifactIds: [],
@@ -4343,7 +4495,7 @@ export class VerticalDramaEpisodePipeline {
     }
 
     // Create the run row FIRST so the artifact FK (runId) is satisfiable.
-    const runId = await this.writeRun(owner, stage, mode, {
+    const runId = await this.writeRunForStage(owner, stage, mode, opts, {
       status,
       next_action: nextAction,
       artifactIds: [],
@@ -4400,6 +4552,488 @@ export class VerticalDramaEpisodePipeline {
       qc,
     };
     return { runId, result, staleStages: [], checkpointId };
+  }
+
+  /**
+   * Async submit for `storyboard_shotgrid`'s REAL (non dry_run/plan_only)
+   * generation path — bug #127
+   * (`planning/vd-storyboard-runstage-async-job/plan.md`):
+   * `generateStoryboardShotgrid`'s single ~16k-token LLM call routinely
+   * outlives Cloudflare's edge-proxy read timeout (~100s), which disconnects
+   * the browser before `runStage`'s synchronous `await` can ever resolve,
+   * even though nginx (`proxy_ignore_client_abort on`, 2026-07-24) now lets
+   * the work finish server-side once disconnected. This is the async
+   * replacement for `runStage`'s `storyboard_shotgrid` override ONLY — every
+   * other stage (and this stage's own dry_run/plan_only placeholder) is
+   * untouched and stays on `runStage`'s fully-synchronous path.
+   *
+   * Design (option A, `planning/vd-storyboard-runstage-async-job/plan.md`):
+   * reuse `vertical_drama_episode_runs` as the async status record instead
+   * of inventing a new table — its `status` column already defaults to
+   * `"queued"` and the `RunResult["status"]` union already includes
+   * `"queued"`/`"running"` (both previously unused).
+   *
+   * 1. Insert a `queued` run row IMMEDIATELY (no LLM call, nothing slow) and
+   *    return its id right away — the `runStage`/`regenerateStage` tRPC
+   *    mutations return to the client BEFORE any generation starts.
+   * 2. `runStoryboardShotgridStageJob` (below) does the actual generation +
+   *    every downstream persistence/validation/checkpoint step that used to
+   *    run inline inside `runStage`'s synchronous request, from a BullMQ
+   *    background worker (`verticalDramaEpisodeStageJobs.ts`), and UPDATEs
+   *    this same row instead of inserting a fresh one when it's done.
+   *
+   * Idempotency: a `queued`/`running` run already in flight for this exact
+   * (episode, stage) is reused instead of starting a second background LLM
+   * call — prevents a double-click (or a retry from
+   * `handleGenerateEpisodeStoryboard`) from double-charging credits.
+   */
+  async submitStoryboardShotgridStage(
+    owner: EpisodeRunOwner,
+    opts: RunStageOptions
+  ): Promise<{ runId: number; result: RunResult; alreadySubmitted: boolean }> {
+    return this.submitEpisodeStageAsync(owner, "storyboard_shotgrid", opts);
+  }
+
+  /**
+   * Stage-agnostic version of the above
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S3). Everything the
+   * storyboard submit did — idempotent reuse of an in-flight run, stale-run
+   * self-heal, `queued` placeholder insert — is stage-independent; only the
+   * stage name was hardcoded. `submitStoryboardShotgridStage` remains as a
+   * thin wrapper so existing callers and their tests are untouched.
+   */
+  async submitEpisodeStageAsync(
+    owner: EpisodeRunOwner,
+    stage: VerticalDramaPipelineStage,
+    opts: RunStageOptions
+  ): Promise<{ runId: number; result: RunResult; alreadySubmitted: boolean }> {
+
+    const [existing] = await db
+      .select()
+      .from(verticalDramaEpisodeRuns)
+      .where(
+        and(
+          eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodeRuns.userId, owner.userId),
+          eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+          eq(verticalDramaEpisodeRuns.stage, stage),
+          inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+        )
+      )
+      .orderBy(desc(verticalDramaEpisodeRuns.id))
+      .limit(1);
+
+    if (existing) {
+      // Stale-run self-heal (bug #127 hardening — mirrors the stale-pointer
+      // branch in `verticalDramaStoryJobs.ts`'s `enqueueVerticalDramaStoryJob`):
+      // a `queued`/`running` row whose last update is older than the
+      // staleness threshold has no live BullMQ job behind it (queue init
+      // missing — the outage that stranded runs #496/#501 — enqueue lost, or
+      // the worker died mid-run with `attempts: 1`). Reusing it would
+      // deadlock this (episode, stage) forever: every re-submit would return
+      // the dead row and skip the enqueue. Mark it failed and fall through
+      // to a fresh insert instead.
+      const lastUpdateMs = new Date(existing.updatedAt).getTime();
+      const isStale =
+        Number.isFinite(lastUpdateMs) &&
+        Date.now() - lastUpdateMs > STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS;
+      if (!isStale) {
+        return {
+          runId: existing.id,
+          alreadySubmitted: true,
+          result: {
+            runId: String(existing.id),
+            seriesId: String(owner.seriesId),
+            episodeId: String(owner.episodeId),
+            stage,
+            status: existing.status as RunResult["status"],
+            next_action: existing.nextAction as RunResult["next_action"],
+            artifactIds: (existing.artifactIds as string[] | null) ?? [],
+            errors: (existing.errors as RunResult["errors"] | null) ?? [],
+            warnings: (existing.warnings as VerticalDramaWarning[] | null) ?? [],
+          },
+        };
+      }
+      await markStoryboardShotgridRunFailed(
+        existing.id,
+        `Run sat at '${existing.status}' for over ${Math.round(
+          STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS / 60_000
+        )} minutes with no progress — self-healed to 'failed' at submit time so a fresh run could start (bug #127 hardening).`
+      );
+    }
+
+    const [row] = await db
+      .insert(verticalDramaEpisodeRuns)
+      .values({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        stage,
+        runMode: opts.mode,
+        status: "queued",
+        nextAction: "none",
+        artifactIds: [],
+        warnings: [],
+        errors: [],
+      })
+      .returning({ id: verticalDramaEpisodeRuns.id });
+
+    return {
+      runId: row.id,
+      alreadySubmitted: false,
+      result: {
+        runId: String(row.id),
+        seriesId: String(owner.seriesId),
+        episodeId: String(owner.episodeId),
+        stage,
+        status: "queued",
+        next_action: "none",
+        artifactIds: [],
+        errors: [],
+        warnings: [],
+      },
+    };
+  }
+
+  /**
+   * Background body for `submitStoryboardShotgridStage` above — runs from
+   * `verticalDramaEpisodeStageJobs.ts`'s BullMQ worker, never from an HTTP
+   * request. Mirrors `runStage`'s `storyboard_shotgrid` override (real
+   * generation + persist + best-effort location reconciliation) followed by
+   * the shared post-generation tail it used to fall through to (schema
+   * validation gate, `writeRun`, `writeArtifact`, approval-checkpoint
+   * creation) — reproduced here rather than shared with `runStage` because
+   * `storyboard_shotgrid` never reaches the paid-provider branch or either
+   * of the two stage-specific `else if`s in that shared tail (it is not in
+   * `VERTICAL_DRAMA_PAID_STAGES`, and `runStage`'s `approved` is hardcoded
+   * `true`), so the only paths that tail can actually take for THIS stage
+   * are exactly the ones reproduced below — this is the dead-code-eliminated
+   * version of that tail, scoped to this one stage, not a re-interpretation.
+   *
+   * `clearDownstreamOnSuccess` — set ONLY by `regenerateStage`'s router call
+   * site: on a successful generation, replicates that mutation's existing
+   * post-success downstream-invalidation block (delete stale run rows + null
+   * downstream jsonb columns), deferred to run here instead of synchronously
+   * after `runStage` returns. See
+   * `clearStoryboardShotgridDownstreamAfterRegenerate`'s doc comment.
+   *
+   * Requirement (bug #127 hard rule): ANY thrown error — including one from
+   * a step not already wrapped in a narrower try/catch below — MUST still
+   * leave the row `failed`, never stuck at `queued`/`running` forever. The
+   * outer try/catch is the last line of defense for that.
+   */
+  /**
+   * Background body for every OTHER async stage
+   * (`planning/vd-async-stage-jobs-generalization/plan.md` S4) — runs from the
+   * same BullMQ worker, never from an HTTP request.
+   *
+   * Deliberately delegates to `runStage` rather than reproducing its tail the
+   * way `runStoryboardShotgridStageJob` does. That method is a
+   * dead-code-eliminated copy of the tail, valid ONLY because
+   * `storyboard_shotgrid` can never reach the paid-provider branch or either
+   * stage-specific `else if`. Copying that shape for a stage with different
+   * downstream behavior would be wrong; `runStage` already handles every stage
+   * correctly, and `asyncRunId` is what stops it inserting a second run row
+   * beside the `queued` placeholder the client is polling.
+   *
+   * Same hard rule as the storyboard job: ANY thrown error must still leave
+   * the row `failed`, never stuck at `queued`/`running` forever.
+   */
+  async runEpisodeStageJob(
+    owner: EpisodeRunOwner,
+    runId: number,
+    stage: VerticalDramaPipelineStage,
+    opts: RunStageOptions
+  ): Promise<void> {
+    try {
+      // Guarded claim — identical rule to the storyboard job's: only a
+      // still-`queued`/`running` row may be claimed. A row the stale sweep
+      // already failed may have been re-submitted by the user, so running
+      // anyway would double-charge the LLM call.
+      const claimed = await db
+        .update(verticalDramaEpisodeRuns)
+        .set({ status: "running", updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodeRuns.id, runId),
+            inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+          )
+        )
+        .returning({ id: verticalDramaEpisodeRuns.id });
+      if (claimed.length === 0) {
+        debugError(
+          "vd_episode_stage_async_job",
+          `Skipping ${stage} job for run #${runId} (episode #${owner.episodeId}) — the row is no longer queued/running (stale-swept or already finalized), not re-claiming it`
+        );
+        return;
+      }
+
+      await this.runStage(owner, stage, { ...opts, asyncRunId: runId });
+    } catch (err) {
+      await markStoryboardShotgridRunFailed(
+        runId,
+        err instanceof Error ? err.message : String(err)
+      );
+      debugError(
+        "vd_episode_stage_async_job",
+        `${stage} job for run #${runId} (episode #${owner.episodeId}) threw — the run row was marked failed`,
+        err
+      );
+    }
+  }
+
+  async runStoryboardShotgridStageJob(
+    owner: EpisodeRunOwner,
+    runId: number,
+    opts: RunStageOptions,
+    clearDownstreamOnSuccess?: boolean
+  ): Promise<void> {
+    const stage: VerticalDramaPipelineStage = "storyboard_shotgrid";
+    let payload: Record<string, unknown> = { stage };
+    try {
+      // Guarded claim (bug #127 hardening): only a still-`queued`/`running`
+      // row may be claimed. If the stale sweep (or the submit-time self-heal
+      // in `submitStoryboardShotgridStage`) already marked this run `failed`
+      // — e.g. a >30 min BullMQ backlog delivered the job only after its row
+      // was swept — running anyway would resurrect a row the user has
+      // already been shown as failed (and may have re-submitted, so a fresh
+      // run for the same episode could be in flight), double-charging the
+      // LLM call.
+      const claimed = await db
+        .update(verticalDramaEpisodeRuns)
+        .set({ status: "running", updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodeRuns.id, runId),
+            inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+          )
+        )
+        .returning({ id: verticalDramaEpisodeRuns.id });
+      if (claimed.length === 0) {
+        debugError(
+          "vd_storyboard_async_job",
+          `Skipping storyboard_shotgrid job for run #${runId} (episode #${owner.episodeId}) — the row is no longer queued/running (stale-swept or already finalized), not re-claiming it`
+        );
+        return;
+      }
+
+      const episode = await this.loadEpisode(owner);
+
+      try {
+        const generated = await this.generateRealStoryboard(
+          owner,
+          episode,
+          opts.deepStoryDraftsFlagOn ?? false,
+          undefined,
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false
+        );
+        payload = { stage, ...generated.storyboard };
+        // Persist to the episode's own `storyboard` jsonb column — same
+        // tenant/user/series-scoped update pattern as `runStage`'s
+        // synchronous override.
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ storyboard: generated.storyboard, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
+          );
+
+        // Same best-effort location reconciliation as `runStage`'s
+        // synchronous override — see that block's doc comment for why a
+        // reconciliation failure must never fail the storyboard stage.
+        try {
+          const distinctLocationGroups: VerticalDramaStoryboardLocationGroup[] = (
+            generated.storyboard.distinct_locations ?? []
+          ).map(g => ({
+            locationKey: g.location_key,
+            locationName: g.location_name,
+            description: g.description,
+            shotNumbers: g.shot_numbers,
+          }));
+          const reconciliation = await reconcileEpisodeLocations(
+            owner,
+            distinctLocationGroups
+          );
+          const bindingByIncomingIdentity = new Map(
+            (reconciliation.locationBindings ?? []).map(binding => [
+              `${binding.incomingLocationKey}\u0000${binding.incomingLocationName}`,
+              binding.canonicalLocationKey,
+            ])
+          );
+          const canonicalDistinctLocations = (
+            generated.storyboard.distinct_locations ?? []
+          ).map(group => {
+            const canonicalLocationKey = bindingByIncomingIdentity.get(
+              `${group.location_key}\u0000${group.location_name}`
+            );
+            return canonicalLocationKey &&
+              canonicalLocationKey !== group.location_key
+              ? { ...group, location_key: canonicalLocationKey }
+              : group;
+          });
+          const hasCanonicalKeyChanges = canonicalDistinctLocations.some(
+            (group, index) =>
+              group !== generated.storyboard.distinct_locations?.[index]
+          );
+          if (hasCanonicalKeyChanges) {
+            const canonicalStoryboard = {
+              ...generated.storyboard,
+              distinct_locations: canonicalDistinctLocations,
+            };
+            await db
+              .update(verticalDramaEpisodes)
+              .set({ storyboard: canonicalStoryboard, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, owner.episodeId),
+                  eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+                  eq(verticalDramaEpisodes.userId, owner.userId),
+                  eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+                )
+              );
+            generated.storyboard = canonicalStoryboard;
+            payload = { stage, ...canonicalStoryboard };
+          }
+        } catch (reconcileError) {
+          debugError(
+            "vd_location_reconciliation",
+            `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
+            reconcileError
+          );
+        }
+      } catch (error) {
+        const genError = mapStoryboardGenerationError(error);
+        await this.finalizeAsyncStoryboardShotgridRun(owner, runId, stage, payload, {
+          status: "failed",
+          next_action: "repair",
+          errors: [genError],
+          warnings: [],
+        });
+        return;
+      }
+
+      // 1) Schema-validation gate — same as `runStage`'s shared tail.
+      const validation = validateStagePayload(
+        stage,
+        payload,
+        opts.sceneContractsEnabled ?? false
+      );
+      if (!validation.valid) {
+        await this.finalizeAsyncStoryboardShotgridRun(owner, runId, stage, payload, {
+          status: "failed",
+          next_action: "repair",
+          errors: validation.errors,
+          warnings: [],
+        });
+        return;
+      }
+
+      // 2)/3) Approval + paid gates are both no-ops for this stage in
+      // `runStage`'s shared tail — `storyboard_shotgrid` is not in
+      // `VERTICAL_DRAMA_PAID_STAGES`, and `approved` is hardcoded `true` —
+      // so that tail always falls through to `status: "succeeded"` /
+      // `next_action: "resume_next_stage"` for this stage, reproduced here.
+      // 4) Optional QC pass (section 08 seam) — same as `runStage`'s tail.
+      let qc: VerticalDramaQcResult | undefined;
+      if (this.providerPort.runQc) {
+        qc = await this.providerPort.runQc({
+          ...owner,
+          runId,
+          stage,
+          mode: opts.mode,
+          payload,
+        });
+      }
+
+      await this.finalizeAsyncStoryboardShotgridRun(owner, runId, stage, payload, {
+        status: "succeeded",
+        next_action: "resume_next_stage",
+        errors: [],
+        warnings: [],
+        qc,
+        createCheckpoint: true,
+      });
+
+      if (clearDownstreamOnSuccess) {
+        await clearStoryboardShotgridDownstreamAfterRegenerate(owner);
+      }
+    } catch (err) {
+      // Last-resort safety net (bug #127 hard requirement) — ANY error not
+      // already caught above still leaves the row `failed`, never stuck at
+      // `queued`/`running` forever.
+      await db
+        .update(verticalDramaEpisodeRuns)
+        .set({
+          status: "failed",
+          nextAction: "repair",
+          errors: [
+            {
+              code: "VD_STORYBOARD_GENERATION_FAILED",
+              message: err instanceof Error ? err.message : String(err),
+              repairable: true,
+            },
+          ],
+          updatedAt: new Date(),
+        })
+        .where(eq(verticalDramaEpisodeRuns.id, runId))
+        .catch(updateError => {
+          debugError(
+            "vd_storyboard_async_job",
+            `Failed to mark run #${runId} (episode #${owner.episodeId}) as failed after an unhandled storyboard_shotgrid job error — this row may be stuck at its previous status`,
+            updateError
+          );
+        });
+    }
+  }
+
+  /**
+   * Shared insert-then-UPDATE tail for `runStoryboardShotgridStageJob` —
+   * writes the artifact, UPDATEs the pre-created run row (never a fresh
+   * insert — the row was already inserted by `submitStoryboardShotgridStage`),
+   * and (on success) creates the stage's approval checkpoint. Mirrors
+   * `runStage`'s shared post-generation tail (`writeArtifact` + the run-row
+   * write + `ensurePendingCheckpoint`) exactly, scoped to this one stage/call
+   * site.
+   */
+  private async finalizeAsyncStoryboardShotgridRun(
+    owner: EpisodeRunOwner,
+    runId: number,
+    stage: VerticalDramaPipelineStage,
+    payload: Record<string, unknown>,
+    result: {
+      status: RunResult["status"];
+      next_action: RunResult["next_action"];
+      errors: RunResult["errors"];
+      warnings: VerticalDramaWarning[];
+      qc?: VerticalDramaQcResult;
+      createCheckpoint?: boolean;
+    }
+  ): Promise<void> {
+    const artifact = await this.writeArtifact(owner, runId, stage, payload, []);
+    const artifactIds = [String(artifact.id)];
+    await db
+      .update(verticalDramaEpisodeRuns)
+      .set({
+        status: result.status,
+        nextAction: result.next_action,
+        artifactIds,
+        warnings: result.warnings,
+        errors: result.errors,
+        updatedAt: new Date(),
+      })
+      .where(eq(verticalDramaEpisodeRuns.id, runId));
+
+    if (result.createCheckpoint) {
+      await this.ensurePendingCheckpoint(owner, runId, stage, artifactIds);
+    }
   }
 
   /**
@@ -4785,6 +5419,102 @@ export class VerticalDramaEpisodePipeline {
         asc(verticalDramaRunArtifacts.id)
       );
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Bug #127 hardening — stale/orphaned `storyboard_shotgrid` run self-heal    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How long a `storyboard_shotgrid` run may sit at `queued`/`running` without
+ * a single row update before it counts as orphaned. A healthy run flips
+ * `queued`→`running` within seconds of enqueue and the whole generation
+ * finishes well inside provider timeouts (≤10 min); 30 minutes of silence
+ * means the BullMQ job behind the row is gone (queue init missing — the
+ * runs #496/#501 outage — enqueue failure, or a worker crash with retries
+ * disabled: `attempts: 1`).
+ */
+export const STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS = 30 * 60 * 1000;
+
+/**
+ * Mark one `storyboard_shotgrid` run `failed` — guarded so an already
+ * `succeeded`/`failed`/`cancelled` row is never clobbered (only
+ * `queued`/`running` rows transition). Returns true when the row was
+ * actually transitioned. The error shape mirrors
+ * `runStoryboardShotgridStageJob`'s last-resort catch exactly so every
+ * consumer of run errors renders these self-heal failures the same way.
+ */
+export async function markStoryboardShotgridRunFailed(
+  runId: number,
+  message: string
+): Promise<boolean> {
+  const updated = await db
+    .update(verticalDramaEpisodeRuns)
+    .set({
+      status: "failed",
+      nextAction: "repair",
+      errors: [
+        { code: "VD_STORYBOARD_GENERATION_FAILED", message, repairable: true },
+      ],
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.id, runId),
+        inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+      )
+    )
+    .returning({ id: verticalDramaEpisodeRuns.id });
+  return updated.length > 0;
+}
+
+/**
+ * Orphaned-run sweep (bug #127 hardening): marks every `storyboard_shotgrid`
+ * run stuck at `queued`/`running` past the staleness threshold as `failed`,
+ * so `submitStoryboardShotgridStage`'s idempotency reuse can never deadlock
+ * on a row whose BullMQ job is gone, and the UI stops polling a run nothing
+ * will ever finish. Driven by `verticalDramaEpisodeStageJobs.ts`'s
+ * interval (which also fires it once at init, so orphans from before a
+ * restart — the runs #496/#501 class — heal immediately). Deliberately
+ * tenant-unscoped: this is a system janitor over rows that are dead by
+ * definition.
+ */
+export async function sweepStaleStoryboardShotgridRuns(
+  staleAfterMs: number = STORYBOARD_SHOTGRID_RUN_STALE_AFTER_MS
+): Promise<number[]> {
+  const cutoff = new Date(Date.now() - staleAfterMs);
+  const swept = await db
+    .update(verticalDramaEpisodeRuns)
+    .set({
+      status: "failed",
+      nextAction: "repair",
+      errors: [
+        {
+          code: "VD_STORYBOARD_GENERATION_FAILED",
+          message: `Run was stuck at queued/running for over ${Math.round(
+            staleAfterMs / 60_000
+          )} minutes with no progress — swept as failed (the background job behind it was lost; bug #127 hardening). Running the stage again is safe.`,
+          repairable: true,
+        },
+      ],
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.stage, "storyboard_shotgrid"),
+        inArray(verticalDramaEpisodeRuns.status, ["queued", "running"]),
+        lt(verticalDramaEpisodeRuns.updatedAt, cutoff)
+      )
+    )
+    .returning({ id: verticalDramaEpisodeRuns.id });
+  if (swept.length > 0) {
+    console.warn(
+      `[vd_episode_stage_jobs] Swept ${swept.length} stale storyboard_shotgrid run(s) to 'failed': ${swept
+        .map(r => `#${r.id}`)
+        .join(", ")}`
+    );
+  }
+  return swept.map(r => r.id);
 }
 
 /** Shared singleton wired with the dry-run-safe stub port. */
