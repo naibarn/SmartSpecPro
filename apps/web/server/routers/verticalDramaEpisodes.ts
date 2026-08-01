@@ -8803,31 +8803,48 @@ export const verticalDramaEpisodesRouter = router({
         import("../services/verticalDramaSceneContinuityLock"),
         import("../services/verticalDramaSceneVisualState"),
       ]);
+      let authoringLocation = facts.location;
+      let locationRow: Awaited<
+        ReturnType<typeof resolveLocationRosterRowByIdentity>
+      > = undefined;
+      try {
+        const locationIdentity: VerticalDramaLocationIdentity = {
+          locationKey,
+          name:
+            sceneString(facts.location.location_name) ??
+            sceneString(facts.location.locationName) ??
+            "",
+        };
+        locationRow = await resolveLocationRosterRowByIdentity(
+          tenantId,
+          userId,
+          seriesId,
+          locationIdentity,
+        );
+        if (locationRow) {
+          const rosterData = sceneRecord(locationRow.data);
+          authoringLocation = {
+            ...facts.location,
+            location_name:
+              sceneString(facts.location.location_name) ?? locationRow.name,
+            description:
+              sceneString(facts.location.description) ??
+              sceneString(rosterData.description),
+          };
+        }
+      } catch {
+        // Text-grounded authoring remains useful when the roster is unavailable.
+      }
       let locationImageUrl =
         sceneString(facts.location.location_image_url) ??
         sceneString(facts.location.reference_image_url) ??
         sceneString(facts.location.image_url);
-      if (!locationImageUrl) {
+      if (!locationImageUrl && locationRow) {
         try {
-          const locationIdentity: VerticalDramaLocationIdentity = {
-            locationKey,
-            name:
-              sceneString(facts.location.location_name) ??
-              sceneString(facts.location.locationName) ??
-              "",
-          };
-          const locationRow = await resolveLocationRosterRowByIdentity(
-            tenantId,
-            userId,
-            seriesId,
-            locationIdentity,
+          locationImageUrl = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
+            { tenantId, userId, seriesId },
+            locationRow.id,
           );
-          if (locationRow) {
-            locationImageUrl = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
-              { tenantId, userId, seriesId },
-              locationRow.id,
-            );
-          }
         } catch {
           // A text-grounded scene lock remains useful when no image is ready.
         }
@@ -8867,7 +8884,7 @@ export const verticalDramaEpisodesRouter = router({
             seriesId,
             episodeId,
             group: facts.group,
-            location: facts.location,
+            location: authoringLocation,
             shots: facts.shots,
             ...(locationImageUrl ? { locationImageUrl } : {}),
             membershipHash: facts.membershipHash,

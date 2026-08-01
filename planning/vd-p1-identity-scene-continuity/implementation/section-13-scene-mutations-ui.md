@@ -2,7 +2,7 @@
 
 Implemented the Feature 138 Scene Visual State surface:
 
-- Added flag-gated `planSceneVisualState` and `updateSceneVisualState` router mutations with owner checks, scene-group resolution (including per-shot location overrides), strict bounded manual patches, row-lock persistence, idempotent/force behavior, `expectedRevision` conflict protection, and explicit authoring error mapping.
+- Added flag-gated `planSceneVisualState` and `updateSceneVisualState` router mutations with owner checks, scene-group resolution (including per-shot location overrides), roster-backed location authoring facts/reference lookup, strict bounded manual patches, row-lock persistence, idempotent/force behavior, `expectedRevision` conflict protection, and explicit authoring error mapping.
 - Added `flags.sceneContinuity` to `getEpisodeDetail` without adding a new query position; it is resolved alongside the existing density flag read.
 - Added the props-only `VerticalDramaSceneLockRow`/dialog, location-bible wiring, per-shot scene-lock chip, and page/workspace mutation threading.
 - Added focused UI tests for the row and storyboard chip/flag behavior.
