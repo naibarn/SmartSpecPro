@@ -2,21 +2,21 @@
 
 Measurement checkout: `/home/dev/projects/SmartSpecPro`
 
-Measurement SHA at this run: `399942cc10af472195329a438424b6eb5b3b8a60`
+Measurement SHA at this run: `6086aeabc`
 
 The repository contains unrelated dirty worktree changes. Verification below
 is scoped to the VD P1 paths and does not claim a clean repository-wide build.
 
 ## Current-worktree rerun (2026-08-01)
 
-The current checkout was revalidated at HEAD `399942cc1`; the worktree still
+The current checkout was revalidated at HEAD `6086aeabc`; the worktree still
 contains unrelated staged/unstaged changes, so this is evidence for the current
 tree rather than a clean merge artifact.
 
 - Focused Section 14 suite: `37 passed / 1 skipped` (the opt-in live test is
   skipped by default).
 - Additional Feature 137/138/139 look, flag, scene, motion, router, and UI
-  regression suites: `114 passed / 1 skipped` (the skipped test is the opt-in
+  regression suites: `115 passed / 1 skipped` (the skipped test is the opt-in
   external-provider live test). This includes the read-only persisted scene
   anchor provenance badge when the scene-continuity flag is enabled.
 - Recorded live-gate replay with the opt-in sample: `1 passed`; this does not
@@ -57,7 +57,7 @@ All commands were run from `apps/web` so Vitest does not traverse the monorepo
   switch and an authorized recorded sample.
 - Scene mutation router suite: `8 tests passed`.
 - Scene lock UI suite: `3 tests passed`.
-- Storyboard scene-continuity UI suite: `2 tests passed`.
+- Storyboard scene-continuity UI suite: `3 tests passed`.
 - Workspace forwarding/fallback suite: `2 tests passed`.
 - Existing prompt regression suites used by this work were also run in the
   earlier focused pass: `62 tests passed`.
