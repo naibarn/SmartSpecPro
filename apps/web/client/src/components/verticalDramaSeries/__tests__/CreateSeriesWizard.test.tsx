@@ -216,6 +216,37 @@ function selectCategoryAndPresets(ids: string[]) {
   }
 }
 
+describe("CreateSeriesWizard — series look lock", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseTenantFeatureFlag.mockImplementation(
+      flag => flag === "verticalDramaSeriesLookLock"
+    );
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
+    mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockSeriesListQuery.mockReturnValue({ data: { series: [] }, isLoading: false });
+    mockGetSeriesQuery.mockReturnValue({ data: undefined, isLoading: false });
+    mockGetSeriesMemoryQuery.mockReturnValue({ data: undefined, isLoading: false });
+    mockPlanningModelsQuery.mockReturnValue({ data: [], isLoading: false });
+  });
+
+  it("sends the selected visual genre in the initial create payload", () => {
+    renderWizard();
+    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: "Look Locked Series" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "แอ็กชัน / มหากาพย์" }));
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    expect(mockCreateMutate).toHaveBeenCalledWith(expect.objectContaining({
+      lookLock: { mode: "genre", genreKey: "action_epic" },
+    }));
+  });
+});
+
 /**
  * Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — file-wide
  * defaults for every lineage mock. Runs BEFORE each describe block's own

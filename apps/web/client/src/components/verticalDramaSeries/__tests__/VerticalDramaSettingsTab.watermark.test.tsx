@@ -42,6 +42,9 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      setSeriesLookLock: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
       updateSeriesWatermark: {
         useMutation: (opts: { onSuccess?: () => void; onError?: (err: { message?: string }) => void }) => ({
           mutate: (input: unknown) => {

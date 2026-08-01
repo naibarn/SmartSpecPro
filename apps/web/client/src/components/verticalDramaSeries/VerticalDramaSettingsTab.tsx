@@ -58,6 +58,14 @@ import {
   type VdWatermarkPosition,
 } from "@shared/verticalDramaSeries/textOverlay";
 import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
+import {
+  readSeriesLookLockControl,
+  type VdLookLockGenre,
+} from "@shared/verticalDramaSeries/seriesLookLock";
+import {
+  SeriesLookLockPicker,
+  type SeriesLookLockPickerValue,
+} from "./SeriesLookLockPicker";
 
 const STATUS_OPTIONS: VerticalDramaSeriesStatus[] = [
   "draft",
@@ -113,6 +121,7 @@ export interface VerticalDramaSettingsTabProps {
    *  entirely (fail-closed, default `false`, same convention as every other
    *  Vertical Drama flag threaded into this component's siblings). */
   textOverlaySuiteEnabled?: boolean;
+  lookLockEnabled?: boolean;
   /** Raw `series.watermark` jsonb value — parsed defensively via
    *  `parseSeriesWatermarkConfig` inside this component (never trust a
    *  jsonb column's runtime shape client-side either). */
@@ -155,6 +164,7 @@ export function VerticalDramaSettingsTab({
   bible,
   llmModelPolicy,
   textOverlaySuiteEnabled = false,
+  lookLockEnabled = false,
   watermark,
 }: VerticalDramaSettingsTabProps) {
   const [, setLocation] = useLocation();
@@ -186,6 +196,16 @@ export function VerticalDramaSettingsTab({
   const [defaultModelInput, setDefaultModelInput] = useState<string | null>(
     defaultModelIdFromProps
   );
+  const bibleRecord = bible && typeof bible === "object"
+    ? bible as Record<string, unknown>
+    : {};
+  const lookControl = readSeriesLookLockControl(bibleRecord.lookLockControl);
+  const lookValueFromProps: SeriesLookLockPickerValue = lookControl
+    ? { mode: lookControl.mode, genreKey: lookControl.genreKey }
+    : bibleRecord.presetVisualIdentity
+      ? { mode: "inherit_source" }
+      : { mode: "none" };
+  const [lookInput, setLookInput] = useState<SeriesLookLockPickerValue>(lookValueFromProps);
 
   // Keep local form state in sync when the parent series data changes
   // (e.g. after a refetch triggered elsewhere).
@@ -203,6 +223,10 @@ export function VerticalDramaSettingsTab({
     setDefaultModelInput(defaultModelIdFromProps);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultModelIdFromProps]);
+  useEffect(() => {
+    setLookInput(lookValueFromProps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookControl?.mode, lookControl?.genreKey, lookControl?.revision, bibleRecord.presetVisualIdentity]);
 
   // Text Overlay Suite (F131AB, task #34) — series watermark local draft,
   // seeded from the parsed persisted config (never trust the raw jsonb
@@ -247,6 +271,7 @@ export function VerticalDramaSettingsTab({
   const planningModels = planningModelsQuery.data ?? [];
   const llmModelPolicyMutation =
     trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
+  const lookLockMutation = trpc.verticalDramaSeries.setSeriesLookLock.useMutation();
   const updateWatermarkMutation =
     trpc.verticalDramaSeries.updateSeriesWatermark.useMutation({
       onSuccess: () => {
@@ -267,10 +292,13 @@ export function VerticalDramaSettingsTab({
   const dirty = titleInput !== title || statusInput !== status;
   const regionDirty = regionInput !== bibleRegion;
   const llmModelPolicyDirty = defaultModelInput !== defaultModelIdFromProps;
+  const lookLockDirty = lookInput.mode !== lookValueFromProps.mode
+    || lookInput.genreKey !== lookValueFromProps.genreKey;
   const isSaving =
     updateMutation.isPending ||
     regionMutation.isPending ||
-    llmModelPolicyMutation.isPending;
+    llmModelPolicyMutation.isPending ||
+    lookLockMutation.isPending;
 
   const handleSave = async () => {
     try {
@@ -300,6 +328,18 @@ export function VerticalDramaSettingsTab({
           })
         );
       }
+      if (lookLockEnabled && lookLockDirty) {
+        mutations.push(
+          lookLockMutation.mutateAsync({
+            seriesId,
+            mode: lookInput.mode,
+            genreKey: lookInput.mode === "genre"
+              ? lookInput.genreKey as VdLookLockGenre
+              : undefined,
+            expectedRevision: lookControl?.revision ?? 0,
+          })
+        );
+      }
       await Promise.all(mutations);
       toast.success(lang === "th" ? "บันทึกการตั้งค่าแล้ว" : "Settings saved");
       void utils.verticalDramaSeries.get.invalidate();
@@ -310,6 +350,17 @@ export function VerticalDramaSettingsTab({
       void utils.verticalDramaSeries.list.invalidate();
       onSaved?.();
     } catch (err) {
+      const code = (err as { data?: { code?: string } } | null)?.data?.code;
+      if (code === "CONFLICT") {
+        toast.error(
+          lang === "th"
+            ? "ลุคซีรีส์ถูกแก้จากอีกหน้าต่าง กรุณาโหลดข้อมูลล่าสุดแล้วลองใหม่"
+            : "The series look changed elsewhere. Reload the latest data and try again."
+        );
+        void utils.verticalDramaSeries.get.invalidate();
+        onSaved?.();
+        return;
+      }
       const message = err instanceof Error ? err.message : undefined;
       toast.error(
         message ||
@@ -505,12 +556,24 @@ export function VerticalDramaSettingsTab({
             </p>
           </div>
 
+          {lookLockEnabled ? (
+            <SeriesLookLockPicker
+              lang={lang}
+              value={lookInput}
+              hasInheritedLook={Boolean(
+                lookControl?.inheritedIdentity || bibleRecord.presetVisualIdentity
+              )}
+              isDisabled={readOnly || isSaving}
+              onChange={setLookInput}
+            />
+          ) : null}
+
           {!readOnly && (
             <Button
               onClick={() => void handleSave()}
               disabled={
                 isSaving ||
-                (!dirty && !regionDirty && !llmModelPolicyDirty) ||
+                (!dirty && !regionDirty && !llmModelPolicyDirty && !lookLockDirty) ||
                 titleInput.trim().length === 0
               }
               className="w-fit gap-2"

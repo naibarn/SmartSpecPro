@@ -247,6 +247,9 @@ export default function VerticalDramaSeriesDetailPage() {
   const textOverlaySuiteEnabled = useTenantFeatureFlag(
     "verticalDramaSeriesTextOverlaySuite"
   );
+  const seriesLookLockEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesLookLock"
+  );
   // F132F (spec 132 §7.3/§10.1, added 2026-07-09) — gates the Characters
   // tab's speech-profile editing sub-section
   // (`VerticalDramaCharacterStockPanel.tsx`) and the voice-casting card's
@@ -559,6 +562,7 @@ export default function VerticalDramaSeriesDetailPage() {
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
                       textOverlaySuiteEnabled={textOverlaySuiteEnabled}
+                      lookLockEnabled={seriesLookLockEnabled}
                       watermark={series.watermark}
                     />
                   ) : tab === "product" ? (

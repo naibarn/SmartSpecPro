@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUpdateSeriesMutate = vi.fn();
 const mockSetLlmModelPolicyMutate = vi.fn();
+const mockSetSeriesLookLockMutate = vi.fn();
 
 const PLANNING_MODELS = [
   { modelId: "google/gemini-3.1-flash-lite-preview", label: "Google — Gemini 3.1 Flash Lite Preview" },
@@ -43,6 +44,15 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => ({
           mutateAsync: (input: unknown) => {
             mockSetLlmModelPolicyMutate(input);
+            return Promise.resolve({});
+          },
+          isPending: false,
+        }),
+      },
+      setSeriesLookLock: {
+        useMutation: () => ({
+          mutateAsync: (input: unknown) => {
+            mockSetSeriesLookLockMutate(input);
             return Promise.resolve({});
           },
           isPending: false,
@@ -201,6 +211,39 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdown", () =
     expect(mockSetLlmModelPolicyMutate).toHaveBeenCalledWith({
       seriesId: "10",
       defaultModelId: null,
+    });
+  });
+});
+
+describe("VerticalDramaSettingsTab — series look lock", () => {
+  it("stays absent when the rollout flag is off", () => {
+    render(<VerticalDramaSettingsTab {...baseProps} lookLockEnabled={false} />);
+    expect(screen.queryByText("ลุคภาพประจำซีรีส์")).not.toBeInTheDocument();
+  });
+
+  it("saves the selected genre with the fresh persisted revision", async () => {
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        lookLockEnabled
+        bible={{
+          lookLockControl: {
+            mode: "none",
+            revision: 4,
+            updatedAt: "2026-08-01T00:00:00.000Z",
+          },
+        }}
+      />
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "แอ็กชัน / มหากาพย์" }));
+    fireEvent.click(screen.getByRole("button", { name: "บันทึก" }));
+    await vi.waitFor(() => {
+      expect(mockSetSeriesLookLockMutate).toHaveBeenCalledWith({
+        seriesId: "10",
+        mode: "genre",
+        genreKey: "action_epic",
+        expectedRevision: 4,
+      });
     });
   });
 });

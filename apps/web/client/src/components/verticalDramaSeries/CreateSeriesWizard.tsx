@@ -78,7 +78,9 @@ import type {
   VdRelationshipState,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
 import { detectGenrePollution } from "@shared/verticalDramaSeries/genrePollutionGuard";
+import type { VdLookLockGenre, VdLookLockMode } from "@shared/verticalDramaSeries/seriesLookLock";
 import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
+import { SeriesLookLockPicker } from "./SeriesLookLockPicker";
 import { DisclosureBadge } from "./VerticalDramaSeriesMemoryStateTab";
 import {
   carryOverAvailabilityCopy,
@@ -219,6 +221,8 @@ interface WizardState {
    * and honored for every `createMode` (new / sequel / special edition).
    */
   defaultModelId: string | null;
+  lookLockMode: VdLookLockMode;
+  lookLockGenreKey?: VdLookLockGenre;
 }
 
 const INITIAL_WIZARD: WizardState = {
@@ -252,6 +256,8 @@ const INITIAL_WIZARD: WizardState = {
   uploadedReferences: [],
   uploadedSummary: "",
   defaultModelId: null,
+  lookLockMode: "none",
+  lookLockGenreKey: undefined,
 };
 
 /**
@@ -524,6 +530,8 @@ export function CreateSeriesWizard({
   // itself can only ever become non-`undefined` through UI this flag gates,
   // so flag-off is provably identical to the pre-existing wizard.
   const lineageEnabled = useTenantFeatureFlag("verticalDramaSeriesLineage");
+  const lookLockEnabled = useTenantFeatureFlag("verticalDramaSeriesLookLock");
+  const presetMixEnabled = useTenantFeatureFlag("verticalDramaSeriesPresetMixV2");
 
   const seriesListQuery = trpc.verticalDramaSeries.list.useQuery(
     { limit: 100 },
@@ -1235,6 +1243,14 @@ export function CreateSeriesWizard({
       // sends the exact same `null` this payload sent before this field
       // existed (byte-identical automatic behavior). Mode-independent.
       defaultModelId: form.defaultModelId,
+      lookLock: lookLockEnabled
+        ? {
+            mode: form.lookLockMode,
+            ...(form.lookLockMode === "genre" && form.lookLockGenreKey
+              ? { genreKey: form.lookLockGenreKey }
+              : {}),
+          }
+        : undefined,
       // Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — every
       // one of these 4 fields is `undefined` for the original wizard
       // (`form.createMode` starts and stays `undefined` unless the
@@ -1336,6 +1352,10 @@ export function CreateSeriesWizard({
             productSearch={productSearch}
             onProductSearchChange={setProductSearch}
             lineageEnabled={lineageEnabled}
+            lookLockEnabled={lookLockEnabled}
+            lookLockHasInheritedSource={Boolean(
+              form.parentSeriesId || (presetMixEnabled && form.appliedPresetId)
+            )}
             onSetCreateMode={handleSetCreateMode}
             parentSeriesOptions={parentSeriesOptions}
             parentSeriesOptionsLoading={seriesListQuery.isLoading}
@@ -1618,6 +1638,8 @@ function WizardStep({
   productSearch,
   onProductSearchChange,
   lineageEnabled,
+  lookLockEnabled,
+  lookLockHasInheritedSource,
   onSetCreateMode,
   parentSeriesOptions,
   parentSeriesOptionsLoading,
@@ -1671,6 +1693,8 @@ function WizardStep({
   onProductSearchChange: (value: string) => void;
   /** Stage 2.6 — false hides ALL lineage UI below (mode toggle never renders), so `createMode` can never be set for a tenant without the flag. */
   lineageEnabled: boolean;
+  lookLockEnabled: boolean;
+  lookLockHasInheritedSource: boolean;
   onSetCreateMode: (mode: VerticalDramaSeriesCreateMode | undefined) => void;
   parentSeriesOptions: ParentSeriesOption[];
   parentSeriesOptionsLoading: boolean;
@@ -1961,6 +1985,21 @@ function WizardStep({
               )}
             </div>
           )}
+
+          {lookLockEnabled ? (
+            <SeriesLookLockPicker
+              lang={lang}
+              value={{
+                mode: form.lookLockMode,
+                genreKey: form.lookLockGenreKey,
+              }}
+              hasInheritedLook={lookLockHasInheritedSource}
+              onChange={value => {
+                set("lookLockMode", value.mode);
+                set("lookLockGenreKey", value.genreKey);
+              }}
+            />
+          ) : null}
 
           {/* Premise leads step 1 as a full-width hero input — everything
               below (presets, basic setup) builds on top of it, not the

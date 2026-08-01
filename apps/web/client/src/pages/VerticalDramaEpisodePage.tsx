@@ -105,6 +105,7 @@ import {
   vdCopyWithParams,
 } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
+import { SeriesLookLockStatusChip } from "@/components/verticalDramaSeries/SeriesLookLockStatusChip";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import {
@@ -788,6 +789,8 @@ function EpisodeWorkspaceShell({
   const [, setLocation] = useLocation();
 
   const enabled = Boolean(seriesId && episodeId);
+  const seriesLookLockEnabled = useTenantFeatureFlag("verticalDramaSeriesLookLock");
+  const presetMixV2Enabled = useTenantFeatureFlag("verticalDramaSeriesPresetMixV2");
 
   const seriesQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
@@ -5395,6 +5398,12 @@ function EpisodeWorkspaceShell({
     // plenty of horizontal room for a ~300px column there.
     <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 space-y-4">
+        <SeriesLookLockStatusChip
+          lang={lang}
+          bible={seriesQuery.data?.series?.bible}
+          lookLockEnabled={seriesLookLockEnabled}
+          presetMixEnabled={presetMixV2Enabled}
+        />
         {hasStaleStoryboardArtifacts ? (
           <Card className="border-amber-500/50" role="status" aria-live="polite">
             <CardContent className="py-3 text-sm">
