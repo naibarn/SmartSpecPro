@@ -5782,7 +5782,7 @@ function EpisodeWorkspaceShell({
                 return next;
               });
               const sceneContinuityEnabled =
-                episodeDetailQuery.data?.flags?.sceneContinuity === true;
+                episodeDetailQuery.data?.flags?.sceneNeighborAnchors === true;
               if (!sceneContinuityEnabled) {
                 void Promise.all(
                   shotNumbers.map(shotNumber =>

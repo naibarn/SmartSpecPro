@@ -369,6 +369,7 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     });
     mockGetTenantFeatureFlags.mockResolvedValue({
       verticalDramaSceneContinuity: true,
+      verticalDramaSceneNeighborAnchors: true,
     });
     const setPlan = vi.fn(() => ({ where: vi.fn(() => Promise.resolve([])) }));
     mockDb.update.mockReturnValueOnce({ set: setPlan });

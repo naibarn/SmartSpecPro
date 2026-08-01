@@ -423,6 +423,7 @@ describe("generateShotStartFramePrompt", () => {
     });
     mockGetTenantFeatureFlags.mockResolvedValue({
       verticalDramaSceneContinuity: true,
+      verticalDramaSceneNeighborAnchors: true,
     });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))

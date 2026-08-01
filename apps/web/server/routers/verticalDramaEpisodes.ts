@@ -215,6 +215,7 @@ import {
   type VdSceneShotGroup,
   type VdSceneVisualState,
 } from "@shared/verticalDramaSeries/sceneContinuity";
+import { resolveVerticalDramaVisualConsistencyFlags } from "@shared/featureFlags";
 import {
   buildCharacterIdentityMapBlock,
   findCharacterImageIndexMappingMismatches,
@@ -3479,13 +3480,16 @@ async function resolveVerticalDramaDensityFlags(
   qualityLedgersEnabled: boolean;
   /** Feature 138 P1 — additive read flag for episode workspace scene locks. */
   sceneContinuityEnabled: boolean;
+  sceneNeighborAnchorsEnabled: boolean;
 }> {
   const flags = await getTenantFeatureFlags(tenantId);
+  const visualConsistencyFlags = resolveVerticalDramaVisualConsistencyFlags(flags);
   return {
     speechBudgetEnabled: flags?.verticalDramaSeriesSpeechBudget === true,
     arcReplanEnabled: flags?.verticalDramaSeriesArcReplan === true,
     qualityLedgersEnabled: flags?.verticalDramaQualityLedgers === true,
     sceneContinuityEnabled: flags?.verticalDramaSceneContinuity === true,
+    sceneNeighborAnchorsEnabled: visualConsistencyFlags.sceneNeighborAnchors,
   };
 }
 
@@ -3496,6 +3500,18 @@ async function resolveVerticalDramaSceneContinuityFlag(
   try {
     const flags = await getTenantFeatureFlags(tenantId);
     return flags?.verticalDramaSceneContinuity === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Feature 138 P1b — child canary; fails closed unless the parent is also on. */
+async function resolveVerticalDramaSceneNeighborAnchorsFlag(
+  tenantId: string
+): Promise<boolean> {
+  try {
+    const flags = await getTenantFeatureFlags(tenantId);
+    return resolveVerticalDramaVisualConsistencyFlags(flags).sceneNeighborAnchors;
   } catch {
     return false;
   }
@@ -9350,7 +9366,12 @@ export const verticalDramaEpisodesRouter = router({
       // Every new key is `null`/absent-equivalent when its flag is off, so
       // this never changes the shape of the fields already returned above.
       const [
-        { speechBudgetEnabled, arcReplanEnabled, sceneContinuityEnabled },
+        {
+          speechBudgetEnabled,
+          arcReplanEnabled,
+          sceneContinuityEnabled,
+          sceneNeighborAnchorsEnabled,
+        },
         qualityLoopFlags,
         deepStoryDraftsEnabled,
         voiceChainEnabled,
@@ -9697,6 +9718,7 @@ export const verticalDramaEpisodesRouter = router({
           // exactly.
           textOverlaySuite: textOverlaySuiteEnabled,
           sceneContinuity: sceneContinuityEnabled,
+          sceneNeighborAnchors: sceneNeighborAnchorsEnabled,
         },
       };
     }),
@@ -11067,11 +11089,11 @@ export const verticalDramaEpisodesRouter = router({
         frame.locationKey
       );
       const locationRefUrls = locationRefEntry?.url ? [locationRefEntry.url] : [];
-      const sceneContinuityEnabled =
-        (await resolveVerticalDramaSceneContinuityFlag(tenantId)) &&
+      const sceneNeighborAnchorsEnabled =
+        (await resolveVerticalDramaSceneNeighborAnchorsFlag(tenantId)) &&
         hasVerticalDramaSceneIdentity(row.storyboard, input.shotNumber, frame.locationKey);
       const sceneNeighborAnchor = await resolveShotSceneContinuityAnchor({
-        enabled: sceneContinuityEnabled,
+        enabled: sceneNeighborAnchorsEnabled,
         tenantId,
         userId,
         storyboard: row.storyboard,
@@ -11364,7 +11386,7 @@ export const verticalDramaEpisodesRouter = router({
       });
 
       if (
-        (imagePromptQc.prompt !== frame.imagePrompt || sceneContinuityEnabled) &&
+        (imagePromptQc.prompt !== frame.imagePrompt || sceneNeighborAnchorsEnabled) &&
         Array.isArray(plan.frames)
       ) {
         const updatedFrames = plan.frames.map(
@@ -11376,7 +11398,7 @@ export const verticalDramaEpisodesRouter = router({
                 ? { imagePrompt: imagePromptQc.prompt }
                 : {}),
             };
-            if (sceneContinuityEnabled) {
+            if (sceneNeighborAnchorsEnabled) {
               if (sceneNeighborAnchor) {
                 updatedFrame.sceneAnchor = {
                   anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
@@ -13734,8 +13756,11 @@ export const verticalDramaEpisodesRouter = router({
         input.shotNumber,
         frame.locationKey,
       ) && await resolveVerticalDramaSceneContinuityFlag(tenantId);
+      const sceneNeighborAnchorsEnabled =
+        hasVerticalDramaSceneIdentity(row.storyboard, input.shotNumber, frame.locationKey) &&
+        await resolveVerticalDramaSceneNeighborAnchorsFlag(tenantId);
       const sceneNeighborAnchor = await resolveShotSceneContinuityAnchor({
-        enabled: sceneContinuityEnabled,
+        enabled: sceneNeighborAnchorsEnabled,
         tenantId,
         userId,
         storyboard: row.storyboard,
@@ -14058,7 +14083,7 @@ export const verticalDramaEpisodesRouter = router({
                 anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
               }
             : undefined,
-          sceneContinuityEnabled,
+          sceneContinuityEnabled: sceneNeighborAnchorsEnabled,
           seriesLookRegister: shotStartFramePromptSeriesLookRegister,
           productLock: {
             active: shotStartFramePromptIsTieInShot,
@@ -14252,7 +14277,7 @@ export const verticalDramaEpisodesRouter = router({
             ? { promptAnalysis: shotStartFramePromptResult.promptAnalysis }
             : {}),
         };
-        if (sceneContinuityEnabled) {
+        if (sceneNeighborAnchorsEnabled) {
           if (sceneNeighborAnchor) {
             updatedFrame.sceneAnchor = {
               anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
