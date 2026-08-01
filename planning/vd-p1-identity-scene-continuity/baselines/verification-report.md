@@ -15,7 +15,7 @@ All commands were run from `apps/web` so Vitest does not traverse the monorepo
 - Flag-off parity harness: `7 tests passed`.
   Fixtures were captured from `9eda150ce11fecdc673d8505095e76435219cc22` and
   record that SHA in `server/services/__fixtures__/vdP1FlagOff/manifest.json`.
-- Both-flags-on interaction suite: `6 tests passed`.
+- Joint scene/motion/look interaction suite: `7 tests passed`.
 - Real-LLM evaluator offline suite: `8 tests passed`.
 - Real-LLM live suite: skipped by default; it requires the exact opt-in env
   switch and an authorized recorded sample.
