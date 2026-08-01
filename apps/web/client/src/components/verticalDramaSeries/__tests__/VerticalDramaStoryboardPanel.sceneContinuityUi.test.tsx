@@ -72,4 +72,33 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
       "อ้างอิงภาพที่อนุมัติแล้ว"
     );
   });
+
+  it("labels a latest-generated anchor distinctly", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        locale="en"
+        sceneContinuityEnabled
+        startFramePlan={{
+          ...baseProps.startFramePlan,
+          frames: [
+            {
+              ...baseProps.startFramePlan.frames[0],
+              sceneAnchor: {
+                ...baseProps.startFramePlan.frames[0].sceneAnchor,
+                source: "latest_generated",
+              },
+            },
+          ],
+        }}
+      />
+    );
+    expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveTextContent(
+      "Generated using shot 2 as reference"
+    );
+    expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveAttribute(
+      "title",
+      "Latest generated frame reference"
+    );
+  });
 });
