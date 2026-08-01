@@ -4,6 +4,39 @@ Measurement checkout: `/home/dev/projects/SmartSpecPro`
 
 Measurement SHA at this run: `6086aeabc`
 
+## Feature 138 P1b implementation update (2026-08-01)
+
+Neighbor anchoring is now implemented behind the child canary
+`verticalDramaSceneNeighborAnchors && verticalDramaSceneContinuity`.
+Flag-off behavior remains the legacy path; flag-on generation runs scene lanes
+in parallel and awaits each shot's completion before the next shot in that
+scene. Prompt/render provenance and `vd_scene_neighbor_anchor_attached` audit
+events are covered in the router tests.
+
+Implementation commits:
+
+- `7d5480713` scene-ordered batch planner
+- `df9b7868e` prompt/render anchor wiring and provenance
+- `f3accaa4e` parent + child canary gating
+- `0d950a053` generated-asset id type narrowing
+- `7a7794269` audit-event coverage and cap/trim reason normalization
+
+Focused rerun from `apps/web`: **10 files, 225 tests passed**. The direct web
+TypeScript check still exits non-zero on the repository's pre-existing
+unrelated type errors; no Feature 138 P1b errors remain after the resolver
+narrowing fix.
+
+The current local Postgres container was checked read-only: `media_models` has
+237 rows and `gpt-image-2-text-to-image` already reports
+`maxReferenceImages=16`, `input_urls.maxItems=16`, and `maxPromptLength=20000`.
+No live row mutation was performed in this pass.
+
+Remaining operational gates are the internal paid-provider/browser smoke with
+anchor coverage and p95 latency evidence, a fresh Section 14 Gate A/B rerun at
+the new HEAD, and the explicitly deferrable `repairShotImage` anchor path
+(P2). Production/remote database confirmation remains an operations task; the
+local row check is not a production rollout proof.
+
 The repository contains unrelated dirty worktree changes. Verification below
 is scoped to the VD P1 paths and does not claim a clean repository-wide build.
 

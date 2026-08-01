@@ -1,5 +1,26 @@
 # Orchestra Plan
 
+## Feature 138 P1b neighbor anchoring — 2026-08-01
+
+### Classification
+- scope: large implementation (router + prompt service + shared planner + client batch runner + focused tests)
+- risk: high (paid media reference routing, tenant-owned asset resolution, concurrency and persisted provenance)
+- chosen_route: existing approved Section 12 implementation plan -> direct TDD waves
+- task_summary: implement the flag-gated same-scene neighbor anchor path while preserving flag-off byte identity; defer live rollout evidence and production DB mutation when authority/evidence is unavailable
+- bug_route: false
+- dispatch_preference: direct-standard-light; no sub-agents
+- socraticode: unavailable in this session; targeted shell discovery used
+
+### Scope boundary
+- In scope: Section 12 sub-tasks 12.1–12.5 and required 12.7 audit events, plus tests and seed/config contract updates that are safe in-repo.
+- Deferred: 12.6 repair-path anchoring (explicitly deferrable), internal paid-provider/browser smoke, and live `media_models` row mutation unless a backed-up local target is proven.
+- Existing dirty worktree changes are preserved; use scoped temporary indexes for commits.
+
+### Current status
+- Code path complete and committed through `7a7794269`; focused validation is 225/225 passing.
+- Local DB read-only check already reports the required GPT Image 2 reference cap (16); no DB mutation was needed.
+- Remaining: Section 14 Gate A/B rerun at the new HEAD, internal paid/browser/p95 evidence, and explicit P2 deferral of `repairShotImage` anchoring.
+
 ## SmartAIHub layered loading resilience - 2026-08-01
 
 ### Classification
