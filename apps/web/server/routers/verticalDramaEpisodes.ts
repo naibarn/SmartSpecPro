@@ -1812,7 +1812,11 @@ async function resolveRequiredShotCharacterAttachmentManifest(
     return { primaryEntries: [], supplementaryEntries: [] };
   }
 
-  const rows = await db
+  type RequiredShotCharacterRow = Pick<
+    typeof verticalDramaCharacters.$inferSelect,
+    "id" | "name" | "characterKey"
+  >;
+  const rows = (await db
     .select({
       id: verticalDramaCharacters.id,
       name: verticalDramaCharacters.name,
@@ -1825,7 +1829,7 @@ async function resolveRequiredShotCharacterAttachmentManifest(
         eq(verticalDramaCharacters.seriesId, seriesId),
         inArray(verticalDramaCharacters.characterKey, orderedKeys),
       ),
-    );
+    )) as RequiredShotCharacterRow[];
   const rowByKey = new Map(rows.map(row => [row.characterKey, row]));
   const unknownKeys = orderedKeys.filter(key => !rowByKey.has(key));
   if (unknownKeys.length > 0) {
@@ -8870,7 +8874,7 @@ export const verticalDramaEpisodesRouter = router({
           presetMixEnabled: flags?.verticalDramaSeriesPresetMixV2 === true,
           lookLockEnabled: flags?.verticalDramaSeriesLookLock === true,
         });
-        lang = normalizeVerticalDramaSeriesLocale(seriesRow?.locale);
+        lang = resolveStoryScriptLangFromLocale(seriesRow?.locale);
       } catch {
         seriesLook = undefined;
       }

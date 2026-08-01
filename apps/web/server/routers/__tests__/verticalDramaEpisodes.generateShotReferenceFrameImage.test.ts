@@ -13,9 +13,14 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } =
+const {
+  mockGetModelsByTypeAsync,
+  mockGetStaticModelById,
+  mockResolveVerticalDramaCapabilities,
+} =
   vi.hoisted(() => ({
     mockGetModelsByTypeAsync: vi.fn(),
+    mockGetStaticModelById: vi.fn(() => undefined),
     mockResolveVerticalDramaCapabilities: vi.fn(() => ({
       supportsStartFrame: true,
       maxReferenceImages: 10,
@@ -26,6 +31,7 @@ const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } =
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  getStaticModelById: mockGetStaticModelById,
   resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
   deriveModelResolutionOptions: vi.fn(() => undefined),
 }));

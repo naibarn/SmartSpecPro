@@ -13,9 +13,14 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } =
+const {
+  mockGetModelsByTypeAsync,
+  mockGetStaticModelById,
+  mockResolveVerticalDramaCapabilities,
+} =
   vi.hoisted(() => ({
     mockGetModelsByTypeAsync: vi.fn(),
+    mockGetStaticModelById: vi.fn(() => undefined),
     // Hoisted (unlike `characterLockSoften.test.ts`'s inline mock) so tests
     // can override `maxReferenceImages` per case — the trim-cap integration
     // test needs a LOW cap, the ordering test needs a cap high enough that
@@ -30,6 +35,7 @@ const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } =
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  getStaticModelById: mockGetStaticModelById,
   resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
   deriveModelResolutionOptions: vi.fn(() => undefined),
 }));

@@ -23,10 +23,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetModelsByTypeAsync,
+  mockGetStaticModelById,
   mockResolveVerticalDramaCapabilities,
   mockDeriveModelResolutionOptions,
 } = vi.hoisted(() => ({
   mockGetModelsByTypeAsync: vi.fn(),
+  mockGetStaticModelById: vi.fn(() => undefined),
   mockResolveVerticalDramaCapabilities: vi.fn(() => ({
     supportsStartFrame: true,
     maxReferenceImages: 3,
@@ -42,6 +44,7 @@ const {
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  getStaticModelById: mockGetStaticModelById,
   resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
   deriveModelResolutionOptions: mockDeriveModelResolutionOptions,
   // Feature 135 — Hermes Grok media worker (section 09, remediation row 9):
@@ -3066,6 +3069,7 @@ describe("getEpisodeDetail — qualityReview field", () => {
       // F131AB (task #34) — see `verticalDramaEpisodes.textOverlayPlan.test.ts`
       // for dedicated flags.textOverlaySuite coverage.
       textOverlaySuite: false,
+      sceneContinuity: false,
     });
     // Pre-existing fields stay exactly as before — no extra db.select calls
     // beyond the original 3 (byte-identical flags-off proof; W10-B's own

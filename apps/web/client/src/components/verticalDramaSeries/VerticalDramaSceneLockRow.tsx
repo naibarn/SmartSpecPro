@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import {
   Dialog,
   DialogContent,
@@ -90,7 +90,7 @@ export function VerticalDramaSceneLockDialog(props: {
   saving?: boolean;
   onSubmit: (patch: VerticalDramaSceneVisualStatePatch) => void;
   onClose: () => void;
-}): JSX.Element {
+}): ReactElement {
   const normalized = normalizeState(props.locationKey, props.state);
   const [draft, setDraft] = useState<VerticalDramaSceneVisualStatePatch>({});
 
@@ -273,7 +273,7 @@ export function VerticalDramaSceneLockRow(props: {
     patch: VerticalDramaSceneVisualStatePatch,
     expectedRevision?: number
   ) => void;
-}): JSX.Element | null {
+}): ReactElement | null {
   const normalized = useMemo(
     () => normalizeState(props.locationKey, props.state),
     [props.locationKey, props.state]
