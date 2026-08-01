@@ -62,7 +62,6 @@ import {
   generateCharacterPortraitCandidates,
   InsufficientCreditsError,
   VdSchemaValidationError,
-  readPresetVisualIdentityFromBible,
   resolveFaceSourceReferenceForCharacter,
 } from "../services/verticalDramaCharacterImageGeneration";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
@@ -77,7 +76,10 @@ import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
 import { formatHermesErrorMessage } from "../../shared/hermesMedia";
 import { getModelsByTypeAsync, isDbModelCatalogLoaded } from "../services/modelRegistry";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
-import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import {
+  applySeriesLookToImagePrompt,
+  resolveEffectiveSeriesVisualIdentity,
+} from "@shared/verticalDramaSeries/seriesLookLock";
 import { verticalDramaApprovedCharacterDesignSnapshotSchema } from "@shared/verticalDramaSeries/characterProfile";
 import { loadCharacterDesignContext } from "../services/verticalDramaCharacterDesignContext";
 import { persistCharacterVisualBible } from "../services/verticalDramaCharacterDnaPersistence";
@@ -347,10 +349,13 @@ async function bestEffortLinkPrimaryPortrait(params: {
 async function resolveCharacterPresetVisualIdentity(
   tenantId: string,
   bible: Record<string, unknown> | null,
-): Promise<VerticalDramaPresetVisualIdentity | undefined> {
+) {
   const flags = await getTenantFeatureFlags(tenantId);
-  if (flags.verticalDramaSeriesPresetMixV2 !== true) return undefined;
-  return readPresetVisualIdentityFromBible(bible);
+  return resolveEffectiveSeriesVisualIdentity({
+    bible,
+    presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+    lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+  });
 }
 
 /**
@@ -1403,8 +1408,12 @@ export const verticalDramaCharactersRouter = router({
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
       const characterId = parseId(input.characterId, "character id");
-      await loadOwnedSeries(tenantId, userId, seriesId);
+      const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+        tenantId,
+        (seriesRow.bible as Record<string, unknown> | null) ?? null,
+      );
       const owner = { tenantId, userId, seriesId };
       const primaryPortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
         owner,
@@ -1527,6 +1536,11 @@ export const verticalDramaCharactersRouter = router({
       }> = [];
       for (const candidate of candidates) {
         try {
+          const assembledCandidatePrompt = applySeriesLookToImagePrompt({
+            prompt: candidate.portraitPrompt,
+            negativePrompt: candidate.negativePrompt,
+            identity: presetVisualIdentity,
+          });
           let taskId: string;
           if (transportDecision.kind === "hermes") {
             // Feature 135 — Hermes Grok media worker (section 09, row 3):
@@ -1539,7 +1553,7 @@ export const verticalDramaCharactersRouter = router({
               contractVersion: 1,
               operation: "image.generate",
               connectionId: transportDecision.connectionId,
-              prompt: candidate.portraitPrompt,
+              prompt: assembledCandidatePrompt.prompt,
               settings: {
                 model: hermesProviderModelId ?? resolvedImageModelId,
                 aspectRatio: "9:16",
@@ -1569,8 +1583,8 @@ export const verticalDramaCharactersRouter = router({
             });
             const task = await mediaGenerationService.generateImageAsync(
               {
-                prompt: candidate.portraitPrompt,
-                negativePrompt: candidate.negativePrompt,
+                prompt: assembledCandidatePrompt.prompt,
+                negativePrompt: assembledCandidatePrompt.negativePrompt,
                 model: resolvedImageModelId,
                 numImages: 1,
                 aspectRatio: "9:16",
@@ -3549,6 +3563,11 @@ export const verticalDramaCharactersRouter = router({
         promptCreditsUsed = promptResult.creditsUsed;
         visualBibleToPersist = promptResult.visualBibleSnapshot;
       }
+      ({ prompt: portraitPrompt, negativePrompt } = applySeriesLookToImagePrompt({
+        prompt: portraitPrompt,
+        negativePrompt,
+        identity: presetVisualIdentity,
+      }));
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
       //    from the prompt-generation LLM call above. Prices + generates
       //    against the CALLER-SELECTED model (character tab's own picker),
@@ -4102,6 +4121,12 @@ export const verticalDramaCharactersRouter = router({
         promptCreditsUsed = promptResult.creditsUsed;
         visualBibleToPersist = promptResult.visualBibleSnapshot;
       }
+
+      ({ prompt: sheetPromptText, negativePrompt } = applySeriesLookToImagePrompt({
+        prompt: sheetPromptText,
+        negativePrompt,
+        identity: presetVisualIdentity,
+      }));
 
       // Pricing: the plain turnaround stays priced like a single image (same
       // as the old, now-merged `generateCharacterTurnaround`); every other

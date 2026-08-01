@@ -201,9 +201,9 @@ import {
 // loaded via a runtime `import()` inside `generateStartFrameImage` instead,
 // mirroring `runArcDriftCheckAndProposeIfNeeded`'s established pattern.
 import {
-  verticalDramaPresetVisualIdentitySchema,
-  type VerticalDramaPresetVisualIdentity,
-} from "@shared/verticalDramaSeries/presetVisualIdentity";
+  applySeriesLookToImagePrompt,
+  resolveEffectiveSeriesVisualIdentity,
+} from "@shared/verticalDramaSeries/seriesLookLock";
 import {
   buildCharacterIdentityMapBlock,
   findCharacterImageIndexMappingMismatches,
@@ -4346,7 +4346,7 @@ export function buildDialogueAudioTimelineFromPlan(
  * `getEpisodeDetail`'s `episodeDraftAvailable` evidence field (additive;
  * surfacing this in the wizard/UI is a later wave — this wave only exposes
  * the boolean). Own light `bible`-only query (mirrors
- * `loadSeriesPresetVisualIdentity`'s shape above) — `getEpisodeDetail` does
+ * `loadEffectiveSeriesVisualIdentity`'s shape above) — `getEpisodeDetail` does
  * not otherwise load the series' `bible` column.
  *
  * Dynamic `import()` — mirrors `runArcDriftCheckAndProposeIfNeeded`'s
@@ -4406,6 +4406,7 @@ async function resolveVerticalDramaQualityLoopFlags(tenantId: string): Promise<{
   tieInQcEnabled: boolean;
   productionWizardEnabled: boolean;
   presetMixV2Enabled: boolean;
+  seriesLookLockEnabled: boolean;
   /**
    * W11.6 "Story Lock" (added 2026-07-08) — independent of the other flags
    * above (episode-level repair must stay execution-only whether the caller
@@ -4427,6 +4428,7 @@ async function resolveVerticalDramaQualityLoopFlags(tenantId: string): Promise<{
       flags?.verticalDramaSeriesProductionWizard === true &&
       qualityLoopV2Enabled,
     presetMixV2Enabled: flags?.verticalDramaSeriesPresetMixV2 === true,
+    seriesLookLockEnabled: flags?.verticalDramaSeriesLookLock === true,
     storyLockEnabled: flags?.verticalDramaSeriesStoryLock === true,
   };
 }
@@ -4482,11 +4484,12 @@ async function loadVerticalDramaQualityPolicy(
  * imports `verticalDramaStoryBible.ts` (see this file's `appendPreset...`
  * import doc comment above for why a static import of it is unsafe here).
  */
-async function loadSeriesPresetVisualIdentity(
+async function loadEffectiveSeriesVisualIdentity(
   tenantId: string,
   userId: number,
-  seriesId: number
-): Promise<VerticalDramaPresetVisualIdentity | undefined> {
+  seriesId: number,
+  flags?: { presetMixV2Enabled: boolean; seriesLookLockEnabled: boolean },
+) {
   const [row] = await db
     .select({ bible: verticalDramaSeries.bible })
     .from(verticalDramaSeries)
@@ -4498,13 +4501,12 @@ async function loadSeriesPresetVisualIdentity(
       )
     )
     .limit(1);
-  const raw = (row?.bible as { presetVisualIdentity?: unknown } | null)
-    ?.presetVisualIdentity;
-  if (!raw || typeof raw !== "object") return undefined;
-  const parsed = verticalDramaPresetVisualIdentitySchema.safeParse(raw);
-  return parsed.success
-    ? (parsed.data as VerticalDramaPresetVisualIdentity)
-    : undefined;
+  const resolvedFlags = flags ?? await resolveVerticalDramaQualityLoopFlags(tenantId);
+  return resolveEffectiveSeriesVisualIdentity({
+    bible: row?.bible,
+    presetMixEnabled: resolvedFlags.presetMixV2Enabled,
+    lookLockEnabled: resolvedFlags.seriesLookLockEnabled,
+  });
 }
 
 /**
@@ -6732,9 +6734,12 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       );
     }
   }
-  const { presetMixV2Enabled } = await resolveVerticalDramaQualityLoopFlags(tenantId);
-  if (presetMixV2Enabled) {
-    const presetVisualIdentity = await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId);
+  const { presetMixV2Enabled, seriesLookLockEnabled } =
+    await resolveVerticalDramaQualityLoopFlags(tenantId);
+  if (presetMixV2Enabled || seriesLookLockEnabled) {
+    const presetVisualIdentity = await loadEffectiveSeriesVisualIdentity(
+      tenantId, userId, seriesId, { presetMixV2Enabled, seriesLookLockEnabled },
+    );
     if (presetVisualIdentity) {
       prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(prompt, presetVisualIdentity);
     }
@@ -10200,42 +10205,23 @@ export const verticalDramaEpisodesRouter = router({
       // import-site doc comment above for why (transitively reaches
       // `adminProcedure` via `verticalDramaStoryBible.ts`, unlike this
       // shared identity TYPE, which is already statically imported).
-      const { presetMixV2Enabled } =
+      const { presetMixV2Enabled, seriesLookLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
-      if (presetMixV2Enabled) {
-        const presetVisualIdentity = await loadSeriesPresetVisualIdentity(
+      if (presetMixV2Enabled || seriesLookLockEnabled) {
+        const presetVisualIdentity = await loadEffectiveSeriesVisualIdentity(
           tenantId,
           userId,
-          seriesId
+          seriesId,
+          { presetMixV2Enabled, seriesLookLockEnabled },
         );
         if (presetVisualIdentity) {
-          const {
-            appendPresetVisualIdentityFragmentsToImagePrompt,
-            mergePresetVisualIdentityNegativeFragments,
-          } = await import("../services/verticalDramaStartFrameGeneration");
-          // NO CODE-SIDE PROMPT APPENDING (`planning/vd-start-frame-prompt-
-          // modes/plan.md`) — when `frame.promptMode` is stamped, this
-          // frame's `imagePrompt` was authored by one of the two new modes,
-          // whose own "SERIES VISUAL IDENTITY" skill section ALREADY wove
-          // these SAME fragments into its prose at prompt-authoring time
-          // (`generateShotStartFramePrompt`). Appending them again here
-          // would double them onto the final render prompt, so the
-          // positive-text append is skipped for a stamped frame; a legacy
-          // frame (no stamp) keeps this append exactly as before. The
-          // negative-prompt MERGE stays unconditional for every frame — it
-          // is a separate field (not prompt prose the skill authors), so it
-          // is never a double-append risk.
-          if (!frame.promptMode) {
-            softenedImagePrompt =
-              appendPresetVisualIdentityFragmentsToImagePrompt(
-                softenedImagePrompt,
-                presetVisualIdentity
-              );
-          }
-          softenedNegativePrompt = mergePresetVisualIdentityNegativeFragments(
-            softenedNegativePrompt,
-            presetVisualIdentity
-          );
+          const assembled = applySeriesLookToImagePrompt({
+            prompt: softenedImagePrompt,
+            negativePrompt: softenedNegativePrompt,
+            identity: presetVisualIdentity,
+          });
+          softenedImagePrompt = assembled.prompt;
+          softenedNegativePrompt = assembled.negativePrompt;
         }
       }
 
@@ -10834,28 +10820,23 @@ export const verticalDramaEpisodesRouter = router({
       // documented on this file's
       // `appendPresetVisualIdentityFragmentsToImagePrompt` import-site doc
       // comment near the top of the file.
-      const { presetMixV2Enabled } =
+      const { presetMixV2Enabled, seriesLookLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
-      if (presetMixV2Enabled) {
-        const presetVisualIdentity = await loadSeriesPresetVisualIdentity(
+      if (presetMixV2Enabled || seriesLookLockEnabled) {
+        const presetVisualIdentity = await loadEffectiveSeriesVisualIdentity(
           tenantId,
           userId,
-          seriesId
+          seriesId,
+          { presetMixV2Enabled, seriesLookLockEnabled },
         );
         if (presetVisualIdentity) {
-          const {
-            appendPresetVisualIdentityFragmentsToImagePrompt,
-            mergePresetVisualIdentityNegativeFragments,
-          } = await import("../services/verticalDramaStartFrameGeneration");
-          softenedImagePrompt =
-            appendPresetVisualIdentityFragmentsToImagePrompt(
-              softenedImagePrompt,
-              presetVisualIdentity
-            );
-          softenedNegativePrompt = mergePresetVisualIdentityNegativeFragments(
-            softenedNegativePrompt,
-            presetVisualIdentity
-          );
+          const assembled = applySeriesLookToImagePrompt({
+            prompt: softenedImagePrompt,
+            negativePrompt: softenedNegativePrompt,
+            identity: presetVisualIdentity,
+          });
+          softenedImagePrompt = assembled.prompt;
+          softenedNegativePrompt = assembled.negativePrompt;
         }
       }
 
@@ -11618,28 +11599,23 @@ export const verticalDramaEpisodesRouter = router({
       // anchored the same way (before the final prompt-QC step below) so a
       // repair render carries the series' preset visual identity too, not
       // only from-scratch start-frame renders.
-      const { presetMixV2Enabled } =
+      const { presetMixV2Enabled, seriesLookLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
-      if (presetMixV2Enabled) {
-        const presetVisualIdentity = await loadSeriesPresetVisualIdentity(
+      if (presetMixV2Enabled || seriesLookLockEnabled) {
+        const presetVisualIdentity = await loadEffectiveSeriesVisualIdentity(
           tenantId,
           userId,
-          seriesId
+          seriesId,
+          { presetMixV2Enabled, seriesLookLockEnabled },
         );
         if (presetVisualIdentity) {
-          const {
-            appendPresetVisualIdentityFragmentsToImagePrompt,
-            mergePresetVisualIdentityNegativeFragments,
-          } = await import("../services/verticalDramaStartFrameGeneration");
-          softenedRepairPrompt =
-            appendPresetVisualIdentityFragmentsToImagePrompt(
-              softenedRepairPrompt,
-              presetVisualIdentity
-            );
-          repairNegativePrompt = mergePresetVisualIdentityNegativeFragments(
-            repairNegativePrompt,
-            presetVisualIdentity
-          );
+          const assembled = applySeriesLookToImagePrompt({
+            prompt: softenedRepairPrompt,
+            negativePrompt: repairNegativePrompt,
+            identity: presetVisualIdentity,
+          });
+          softenedRepairPrompt = assembled.prompt;
+          repairNegativePrompt = assembled.negativePrompt;
         }
       }
 
@@ -11883,7 +11859,12 @@ export const verticalDramaEpisodesRouter = router({
       // a tie-in-carrying shot when the latest tie-in quality report is
       // failing or missing (VD_TIE_IN_BELOW_FLOOR). No-op for non-tie-in
       // shots/episodes, or when `verticalDramaSeriesTieInQc` is off.
-      const { tieInQcEnabled, presetMixV2Enabled, qualityLoopV2Enabled } =
+      const {
+        tieInQcEnabled,
+        presetMixV2Enabled,
+        seriesLookLockEnabled,
+        qualityLoopV2Enabled,
+      } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
       await assertTieInQualityGatePassed({
         owner: { tenantId, userId, seriesId, episodeId },
@@ -12246,11 +12227,12 @@ export const verticalDramaEpisodesRouter = router({
       // this router), so this is a plain function call, not a dynamic
       // import — see `appendPresetVisualIdentityStyleTokensToMotionPrompt`'s
       // own doc comment for the deterministic-append rationale.
-      if (presetMixV2Enabled) {
-        const presetVisualIdentity = await loadSeriesPresetVisualIdentity(
+      if (presetMixV2Enabled || seriesLookLockEnabled) {
+        const presetVisualIdentity = await loadEffectiveSeriesVisualIdentity(
           tenantId,
           userId,
-          seriesId
+          seriesId,
+          { presetMixV2Enabled, seriesLookLockEnabled },
         );
         if (presetVisualIdentity) {
           formatted.prompt =
@@ -13093,14 +13075,19 @@ export const verticalDramaEpisodesRouter = router({
       // DB read below stays gated on the SAME `presetMixV2Enabled` flag the
       // render-time append (`generateStartFrameImage`, below) already uses,
       // so it never runs for a tenant that hasn't enabled it).
-      const { presetMixV2Enabled: shotStartFramePromptPresetMixV2Enabled } =
-        await resolveVerticalDramaQualityLoopFlags(tenantId);
+      const {
+        presetMixV2Enabled: shotStartFramePromptPresetMixV2Enabled,
+        seriesLookLockEnabled: shotStartFramePromptLookLockEnabled,
+      } = await resolveVerticalDramaQualityLoopFlags(tenantId);
       let shotStartFramePromptPresetVisualIdentityFragments:
         | { positive: string[]; negative: string[] }
         | undefined;
-      if (shotStartFramePromptPresetMixV2Enabled) {
+      if (shotStartFramePromptPresetMixV2Enabled || shotStartFramePromptLookLockEnabled) {
         const shotStartFramePromptPresetVisualIdentity =
-          await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId);
+          await loadEffectiveSeriesVisualIdentity(tenantId, userId, seriesId, {
+            presetMixV2Enabled: shotStartFramePromptPresetMixV2Enabled,
+            seriesLookLockEnabled: shotStartFramePromptLookLockEnabled,
+          });
         if (shotStartFramePromptPresetVisualIdentity?.imagePromptFragments) {
           shotStartFramePromptPresetVisualIdentityFragments =
             shotStartFramePromptPresetVisualIdentity.imagePromptFragments;
@@ -14726,13 +14713,14 @@ export const verticalDramaEpisodesRouter = router({
       // FIRST-PASS prompt this procedure persists, so the preset's style
       // tokens are visible before the clip is ever paid-rendered, not only
       // injected right before the `generateVideoClip` render call.
-      const { presetMixV2Enabled } =
+      const { presetMixV2Enabled, seriesLookLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
-      if (presetMixV2Enabled) {
-        const presetVisualIdentity = await loadSeriesPresetVisualIdentity(
+      if (presetMixV2Enabled || seriesLookLockEnabled) {
+        const presetVisualIdentity = await loadEffectiveSeriesVisualIdentity(
           tenantId,
           userId,
-          seriesId
+          seriesId,
+          { presetMixV2Enabled, seriesLookLockEnabled },
         );
         if (presetVisualIdentity) {
           result.prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(

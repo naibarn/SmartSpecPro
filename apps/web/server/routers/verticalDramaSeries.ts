@@ -1857,7 +1857,11 @@ async function resolveSeasonLineageContext(
         userId,
         row.parentSeriesId
       );
-      live = await loadLineageContext(parentRow, { tenantId, userId });
+      const flags = await getTenantFeatureFlags(tenantId);
+      live = await loadLineageContext(parentRow, { tenantId, userId }, {
+        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+      });
     } catch (error) {
       // Parent deleted mid-request, cross-tenant race, or a transient DB
       // error — fall through to the `lineage` snapshot only, never throw.
@@ -3971,6 +3975,11 @@ export const createSeriesInput = z.object({
    * creation (same convention as `charactersDraft` seeding below).
    */
   appliedPresetId: z.string().trim().min(1).max(20).optional(),
+  lookLock: z.object({
+    mode: z.enum(["inherit_source", "genre", "manual", "none"]),
+    genreKey: z.enum(VD_LOOK_LOCK_GENRES).optional(),
+    manualPatch: z.unknown().optional(),
+  }).optional(),
   /**
    * Feature 132 §4.2 (F132A, user-premise-preset-mix) — free-form
    * "โจทย์เรื่องที่อยากได้" premise, a TOP-LEVEL sibling of `bible` (not
@@ -4039,6 +4048,20 @@ export const createSeriesInput = z.object({
         code: z.ZodIssueCode.custom,
         path: ["genre"],
         message: genrePollutionErrorMessage(reason),
+      });
+    }
+    if (data.lookLock?.mode === "genre" && !data.lookLock.genreKey) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["lookLock", "genreKey"],
+        message: "genreKey is required for genre mode",
+      });
+    }
+    if (data.lookLock?.mode === "manual" && data.lookLock.manualPatch === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["lookLock", "manualPatch"],
+        message: "manualPatch is required for manual mode",
       });
     }
     // Stage 2.1 — a `createMode` with no `parentSeriesId` is a malformed
@@ -4873,6 +4896,65 @@ export const verticalDramaSeriesRouter = router({
       // `locale: input.locale ?? "th"` above), so `bible` is no longer ever
       // persisted as `null` — the "no premise, no bible" branch now persists
       // an object carrying just `audienceAgeRating`.
+      let initialBible: Record<string, unknown> = {
+        ...(input.userPremise
+          ? { ...(input.bible ?? {}), userPremise: input.userPremise }
+          : (input.bible ?? {})),
+        audienceAgeRating: resolveAudienceAgeRating(input.audienceAgeRating),
+      };
+      let lookLockAppliedAtCreate = false;
+      if (input.lookLock) {
+        const flags = await getTenantFeatureFlags(tenantId);
+        if (flags.verticalDramaSeriesLookLock === true) {
+          try {
+            if (
+              input.lookLock.mode === "inherit_source" &&
+              input.appliedPresetId &&
+              flags.verticalDramaSeriesPresetMixV2 === true
+            ) {
+              const appliedPresetNumericId = Number(input.appliedPresetId);
+              if (Number.isFinite(appliedPresetNumericId)) {
+                const [presetRow] = await db
+                  .select({ visualIdentityJson: verticalDramaGenrePresets.visualIdentityJson })
+                  .from(verticalDramaGenrePresets)
+                  .where(
+                    and(
+                      eq(verticalDramaGenrePresets.id, appliedPresetNumericId),
+                      or(
+                        eq(verticalDramaGenrePresets.scope, "global"),
+                        and(
+                          eq(verticalDramaGenrePresets.scope, "private"),
+                          eq(verticalDramaGenrePresets.tenantId, tenantId),
+                          eq(verticalDramaGenrePresets.userId, userId)
+                        )
+                      )
+                    )
+                  )
+                  .limit(1);
+                const identity = presetRow?.visualIdentityJson as VerticalDramaPresetVisualIdentity | null;
+                if (identity) initialBible = stampPresetVisualIdentityIntoBible(initialBible, identity);
+              }
+            }
+            initialBible = applySeriesLookLockTransition({
+              bible: initialBible,
+              ...input.lookLock,
+              expectedRevision: 0,
+              now: new Date().toISOString(),
+            }).bible;
+            lookLockAppliedAtCreate = true;
+          } catch (error) {
+            if (error instanceof SeriesLookLockTransitionError) {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: error.message,
+                cause: error,
+              });
+            }
+            throw error;
+          }
+        }
+      }
+
       const insertValues: InsertVerticalDramaSeriesRow = {
         tenantId,
         userId,
@@ -4887,12 +4969,7 @@ export const verticalDramaSeriesRouter = router({
         tone: input.tone ?? null,
         targetAudience: input.targetAudience ?? null,
         agePolicyId: input.agePolicyId ?? null,
-        bible: {
-          ...(input.userPremise
-            ? { ...(input.bible ?? {}), userPremise: input.userPremise }
-            : (input.bible ?? {})),
-          audienceAgeRating: resolveAudienceAgeRating(input.audienceAgeRating),
-        },
+        bible: initialBible,
         memory: input.memory ?? null,
         // Stage 2.5 — `resolvedProductTieIn` is only ever non-null for
         // `createMode === "special_edition"` (see above); every other
@@ -5053,7 +5130,7 @@ export const verticalDramaSeriesRouter = router({
       // global, or the caller's OWN private preset) actually carries a
       // `visualIdentityJson`.
       let finalRow = row;
-      if (input.appliedPresetId) {
+      if (input.appliedPresetId && !lookLockAppliedAtCreate) {
         try {
           const flags = await getTenantFeatureFlags(tenantId);
           if (flags.verticalDramaSeriesPresetMixV2 === true) {
@@ -6443,6 +6520,9 @@ export const verticalDramaSeriesRouter = router({
       const lineageContext = await loadLineageContext(parentRow, {
         tenantId,
         userId,
+      }, {
+        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
       });
 
       try {
@@ -6533,6 +6613,9 @@ export const verticalDramaSeriesRouter = router({
       const lineageContext = await loadLineageContext(parentRow, {
         tenantId,
         userId,
+      }, {
+        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
       });
 
       try {

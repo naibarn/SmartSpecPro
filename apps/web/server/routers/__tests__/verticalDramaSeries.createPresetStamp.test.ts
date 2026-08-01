@@ -70,7 +70,7 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 
-import { verticalDramaSeriesRouter } from "../verticalDramaSeries";
+import { createSeriesInput, verticalDramaSeriesRouter } from "../verticalDramaSeries";
 
 const router = verticalDramaSeriesRouter as unknown as Record<string, Function>;
 
@@ -201,6 +201,40 @@ beforeEach(() => {
 });
 
 describe("create — preset visual-identity stamping (flag-gated, best-effort)", () => {
+  it("persists a selected genre look in the initial insert before create returns", async () => {
+    let inserted: any;
+    const chain: any = {
+      values: vi.fn((value: any) => {
+        inserted = value;
+        return chain;
+      }),
+      returning: vi.fn(async () => [{ ...INSERTED_ROW, bible: inserted.bible }]),
+    };
+    mockDb.insert.mockReturnValueOnce(chain);
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesLookLock: true });
+
+    const result = await router.create({
+      ctx: ctx(),
+      input: {
+        title: "My Series",
+        lookLock: { mode: "genre", genreKey: "horror_thriller" },
+      },
+    });
+
+    expect(inserted.bible).toMatchObject({
+      lookLockControl: { mode: "genre", genreKey: "horror_thriller", revision: 1 },
+      presetVisualIdentity: { styleName: "Controlled atmospheric thriller" },
+    });
+    expect((result.series as any).bible.lookLockControl.revision).toBe(1);
+  });
+
+  it("rejects an incomplete creation look choice at the input contract", () => {
+    expect(createSeriesInput.safeParse({
+      title: "My Series",
+      lookLock: { mode: "genre" },
+    }).success).toBe(false);
+  });
+
   it("flag OFF: never calls getTenantFeatureFlags's result-consuming preset lookup or a second db.update, even with appliedPresetId set", async () => {
     mockDb.insert.mockReturnValueOnce(insertChain([INSERTED_ROW]));
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: false });

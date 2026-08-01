@@ -94,10 +94,11 @@ function parentRow(
 }
 
 const OWNER = { tenantId: "tenant-1", userId: 42 };
+const LOOK_FLAGS = { presetMixEnabled: true, lookLockEnabled: true };
 
 describe("loadLineageContext", () => {
   it("degrades gracefully when the parent has NO recorded memory yet (the common case today)", async () => {
-    const context = await loadLineageContext(parentRow({ memory: null }), OWNER);
+    const context = await loadLineageContext(parentRow({ memory: null }), OWNER, LOOK_FLAGS);
     expect(context.hasMemory).toBe(false);
     expect(context.compactSummary).toBe("");
     expect(context.currentState.relationships).toEqual([]);
@@ -107,7 +108,7 @@ describe("loadLineageContext", () => {
 
   it("never throws on a malformed memory blob", async () => {
     await expect(
-      loadLineageContext(parentRow({ memory: "not-an-object" as any }), OWNER)
+      loadLineageContext(parentRow({ memory: "not-an-object" as any }), OWNER, LOOK_FLAGS)
     ).resolves.toMatchObject({ hasMemory: false });
   });
 
@@ -135,7 +136,8 @@ describe("loadLineageContext", () => {
 
     const context = await loadLineageContext(
       parentRow({ memory, targetEpisodeCount: 20 }),
-      OWNER
+      OWNER,
+      LOOK_FLAGS,
     );
 
     expect(context.hasMemory).toBe(true);
@@ -153,11 +155,35 @@ describe("loadLineageContext", () => {
   it("reads visual identity + audience rating from bible, defaulting the rating when absent", async () => {
     const context = await loadLineageContext(
       parentRow({ bible: { visualStyle: "x", cameraGrammar: "y" } }),
-      OWNER
+      OWNER,
+      LOOK_FLAGS,
     );
     expect(context.visualIdentity.visualStyle).toBe("x");
     expect(context.visualIdentity.cameraGrammar).toBe("y");
     expect(context.audienceAgeRating).toBe("18plus");
+  });
+
+  it("does not leak a stored look-lock identity when its governing flag is off", async () => {
+    const context = await loadLineageContext(
+      parentRow({
+        bible: {
+          presetVisualIdentity: {
+            styleName: "Stored locked look",
+            palette: ["a", "b", "c"],
+            lighting: "soft",
+            environmentMotifs: [], wardrobeGrammar: [], signaturePropsAndCompanions: [],
+            cameraGrammar: "still", characterArchetypes: [],
+            imagePromptFragments: { positive: ["soft"], negative: ["neon"] },
+          },
+          lookLockControl: {
+            mode: "genre", revision: 1, updatedAt: "2026-08-01T00:00:00.000Z",
+          },
+        },
+      }),
+      OWNER,
+      { presetMixEnabled: true, lookLockEnabled: false },
+    );
+    expect(context.visualIdentity.presetVisualIdentity).toBeUndefined();
   });
 
   it("loads the roster + location roster scoped to the parent series", async () => {
@@ -177,7 +203,7 @@ describe("loadLineageContext", () => {
       { id: 2, locationKey: "loc_cafe", name: "Cafe", data: {} },
     ]);
 
-    const context = await loadLineageContext(parentRow(), OWNER);
+    const context = await loadLineageContext(parentRow(), OWNER, LOOK_FLAGS);
     expect(context.roster).toHaveLength(1);
     expect(context.roster[0].characterKey).toBe("char_a");
     expect(context.locations).toHaveLength(1);

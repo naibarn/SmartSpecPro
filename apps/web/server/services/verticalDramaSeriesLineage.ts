@@ -38,6 +38,7 @@ import {
   type VdSeriesMemoryCurrentState,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
 import type { NarrativeRole, RoleTier } from "@shared/verticalDramaSeries/narrativeRole";
+import { resolveEffectiveSeriesVisualIdentity } from "@shared/verticalDramaSeries/seriesLookLock";
 
 export interface VerticalDramaLineageRosterCharacter {
   id: number;
@@ -138,7 +139,8 @@ function readParentMemory(raw: unknown): {
  */
 export async function loadLineageContext(
   parentRow: VerticalDramaSeriesRow,
-  owner: { tenantId: string; userId: number }
+  owner: { tenantId: string; userId: number },
+  lookFlags: { presetMixEnabled: boolean; lookLockEnabled: boolean },
 ): Promise<VerticalDramaLineageContext> {
   const bible = asRecord(parentRow.bible);
   const { compactSummary, currentState, hasMemory, lastFoldedEpisode } =
@@ -201,7 +203,10 @@ export async function loadLineageContext(
         typeof bible?.cameraGrammar === "string"
           ? bible.cameraGrammar
           : undefined,
-      presetVisualIdentity: bible?.presetVisualIdentity,
+      presetVisualIdentity: resolveEffectiveSeriesVisualIdentity({
+        bible,
+        ...lookFlags,
+      }),
     },
     compactSummary,
     currentState,

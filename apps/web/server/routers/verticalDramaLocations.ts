@@ -78,7 +78,6 @@ import {
 // keep the character/location systems decoupled" convention; that convention is
 // about feature-specific logic like `resolveMediaAssetForImport` below, which
 // IS duplicated rather than shared.
-import { readPresetVisualIdentityFromBible } from "../services/verticalDramaCharacterImageGeneration";
 // Image-model-picker resolution — GENERIC/model-agnostic helpers (nothing
 // character-specific), reused verbatim from `verticalDramaCharacters.ts`
 // rather than duplicated here: this feature's usual "duplicate small
@@ -100,7 +99,10 @@ import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTranspo
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
-import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import {
+  applySeriesLookToImagePrompt,
+  resolveEffectiveSeriesVisualIdentity,
+} from "@shared/verticalDramaSeries/seriesLookLock";
 // Whole-series location detection (`detectLocationsNow` below) — TYPE-ONLY
 // import only (erased at compile time, no runtime module load), same
 // "dynamic import, never static" convention `verticalDramaCharacters.ts`
@@ -221,10 +223,13 @@ function mapLocationStockError(err: unknown): never {
 async function resolveLocationPresetVisualIdentity(
   tenantId: string,
   bible: Record<string, unknown> | null,
-): Promise<VerticalDramaPresetVisualIdentity | undefined> {
+) {
   const flags = await getTenantFeatureFlags(tenantId);
-  if (flags.verticalDramaSeriesPresetMixV2 !== true) return undefined;
-  return readPresetVisualIdentityFromBible(bible);
+  return resolveEffectiveSeriesVisualIdentity({
+    bible,
+    presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+    lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+  });
 }
 
 /** Best-effort location description drawn from `verticalDramaLocations.data.description`. */
@@ -433,6 +438,7 @@ export const verticalDramaLocationsRouter = router({
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
         .limit(1);
+
       const presetVisualIdentity = await resolveLocationPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
@@ -545,7 +551,7 @@ export const verticalDramaLocationsRouter = router({
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
       const locationId = parseId(input.locationId, "location id");
-      await loadOwnedSeries(tenantId, userId, seriesId);
+      const ownedSeriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
       const location = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
 
       // 1. Prompt generation — credit-gated + deducted internally. Skipped
@@ -556,6 +562,10 @@ export const verticalDramaLocationsRouter = router({
       let negativePrompt: string | undefined;
       let promptModel: string | null = null;
       let promptCreditsUsed = 0;
+      let presetVisualIdentity = await resolveLocationPresetVisualIdentity(
+        tenantId,
+        (ownedSeriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       if (input.approvedPrompt) {
         establishingPlatePrompt = input.approvedPrompt;
@@ -571,7 +581,7 @@ export const verticalDramaLocationsRouter = router({
           .from(verticalDramaSeries)
           .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
           .limit(1);
-        const presetVisualIdentity = await resolveLocationPresetVisualIdentity(
+        presetVisualIdentity = await resolveLocationPresetVisualIdentity(
           tenantId,
           (seriesRow?.bible as Record<string, unknown> | null) ?? null,
         );
@@ -610,6 +620,11 @@ export const verticalDramaLocationsRouter = router({
         promptModel = promptResult.model;
         promptCreditsUsed = promptResult.creditsUsed;
       }
+      ({ prompt: establishingPlatePrompt, negativePrompt } = applySeriesLookToImagePrompt({
+        prompt: establishingPlatePrompt,
+        negativePrompt,
+        identity: presetVisualIdentity,
+      }));
 
       // Identity-lock reference — this location's existing approved plate
       // (if any), so a regeneration/refresh stays visually consistent with
