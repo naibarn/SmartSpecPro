@@ -1,0 +1,10 @@
+{
+  "fixtureId": "clean-same-scene",
+  "expectMotionProfile": true,
+  "expectSceneVisualState": true,
+  "expectedSceneMemberShots": { "hall": [1, 2] },
+  "imagePromptMaxChars": 3800,
+  "videoPromptMaxChars": 2000,
+  "sceneLockHeader": "SCENE CONTINUITY LOCK",
+  "motionSectionName": "MOTION PROFILE + MOTION CONTRACT"
+}
