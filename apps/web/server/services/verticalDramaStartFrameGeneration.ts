@@ -1026,40 +1026,9 @@ export async function generateStartFrameRenderPlan(
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* Preset visual identity flow-through (spec §8.2.2 flow-through rule,        */
-/* section-15 change D, Wave-4A completing the "start frames" leg of the      */
-/* rule — character refs were already wired by                               */
-/* `verticalDramaCharacterImageGeneration.ts`; motion prompts are the sibling */
-/* leg in `verticalDramaVideoMotionPromptGeneration.ts`).                     */
-/*                                                                            */
-/* Applied at GENERATION TIME (the router's `generateStartFrameImage`, not    */
-/* the render-PLAN LLM call above) — the SAME "deterministic append at the    */
-/* actual generation call" convention `verticalDramaProductTieIn.ts`'s        */
-/* product-lock functions (`mergeProductLockNegativePrompt`,                  */
-/* `appendProductPresenceDirective`) already use, so the fragments are        */
-/* guaranteed present on every render (including repairs/retries) regardless  */
-/* of what the one-time render-plan LLM call happened to produce for a given  */
-/* shot's stored `imagePrompt`. Pure — no DB/LLM — and both are no-ops when   */
-/* `identity` is absent (flag off, or the series carries no preset identity). */
-/*                                                                            */
-/* DEFERRED for vertical-drama-skill-first-architecture plan, Phase 3, item   */
-/* 3 (2026-07-11) — NOT converted to skill input, intentionally: these two    */
-/* functions have 3 call sites in `server/routers/verticalDramaEpisodes.ts`   */
-/* — `generateStartFrameImage`'s softenLevel===0 branch (in scope), PLUS      */
-/* `generateStartFrameAngleVariations` and `repairShotImage`, both explicitly */
-/* off-limits for this phase (Phase 1 of this same plan, already shipped —   */
-/* see that phase's own doc comments in the router). Moving this authorship  */
-/* into the planning skill and deleting these functions would leave those 2  */
-/* off-limits call sites either broken (function gone) or — if migrated      */
-/* halfway by only touching the in-scope call site — silently double-        */
-/* appending the SAME fragments (planning-time skill prose + this func) on   */
-/* every grid/repair render, since neither append is idempotent. Fixing this */
-/* properly requires touching `generateStartFrameAngleVariations`/           */
-/* `repairShotImage`, which is out of scope here. Recommend a dedicated      */
-/* follow-up phase that revisits Phase 1's grid/repair skill call together   */
-/* with this conversion.                                                     */
-/* -------------------------------------------------------------------------- */
+/* Legacy compatibility exports. Runtime provider paths now use the shared,
+ * idempotent `applySeriesLookToImagePrompt` final assembler instead. Keep
+ * these exports only until older tests/importers are migrated. */
 
 /**
  * Deterministically append the preset's `imagePromptFragments.positive`
@@ -1581,16 +1550,16 @@ export interface GenerateStartFrameShotPromptParams {
   /** Location reference image for `cinematic_narrative` mode's vision attachment. Ignored by every other mode. */
   locationReferenceImage?: { url: string; label: string };
   /**
-   * Series preset visual-identity image-prompt fragments (spec §8.2.2 flow-
-   * through rule) — for the two NEW modes ONLY, threaded in as a
-   * `SERIES VISUAL IDENTITY` fact so the skill weaves them into its own
-   * prose (NO CODE-SIDE PROMPT APPENDING — see this file's
-   * `appendPresetVisualIdentityFragmentsToImagePrompt` doc comment for the
-   * legacy code-append this replaces for stamped frames). Ignored by the
-   * legacy skill (mode absent) — that path keeps its existing render-time
-   * code append untouched.
+   * Compact Series Look Lock register for authoring. Raw provider fragments
+   * deliberately stay out of the LLM prompt; the final provider-bound
+   * assembler owns those exactly once after authoring.
    */
-  presetVisualIdentityFragments?: { positive: string[]; negative: string[] };
+  seriesLookRegister?: {
+    styleName: string;
+    palette: string[];
+    lighting: string;
+    cameraGrammar: string;
+  };
   /**
    * Product tie-in facts (spec §13) — for the two NEW modes ONLY, threaded
    * in as a `PRODUCT TIE-IN` fact (a DIFFERENT, mode-specific fact label
@@ -1634,8 +1603,8 @@ export function buildStartFrameShotPromptUserPrompt(
     params.requiredCharacterRefs?.length ?? params.characterReferenceManifest.length;
 
   // Two-mode start-frame image prompt switch
-  // (`planning/vd-start-frame-prompt-modes/plan.md`) — `SERIES VISUAL
-  // IDENTITY` / `PRODUCT TIE-IN` / `frame_analysis_inputs` are new-mode-only
+  // (`planning/vd-start-frame-prompt-modes/plan.md`) — `SERIES LOOK
+  // REGISTER` / `PRODUCT TIE-IN` / `frame_analysis_inputs` are new-mode-only
   // facts (the legacy skill's contract never expects them, and
   // `referenceFrameMode` always forces the legacy skill regardless of
   // `imagePromptMode` — see `selectShotStartFramePromptSystemPrompt`).
@@ -1643,9 +1612,7 @@ export function buildStartFrameShotPromptUserPrompt(
   const imageModelLabel = params.imageModelName
     ? `${params.imageModelName} (${params.imageModelId ?? ""})`
     : (params.imageModelId ?? "unknown");
-  const presetVisualIdentityFragmentsPresent =
-    (params.presetVisualIdentityFragments?.positive?.length ?? 0) > 0 ||
-    (params.presetVisualIdentityFragments?.negative?.length ?? 0) > 0;
+  const seriesLookRegister = params.seriesLookRegister;
 
   return [
     `contract_version: 1`,
@@ -1688,13 +1655,10 @@ export function buildStartFrameShotPromptUserPrompt(
             : ""
         }`
       : `product_lock: active=false`,
-    // Two-mode start-frame image prompt switch — the two NEW skills' own §7
-    // / §13 "SERIES VISUAL IDENTITY" sections are the ONLY place these
-    // fragments enter the prompt (NO CODE-SIDE PROMPT APPENDING); the legacy
-    // skill's contract never expects this fact, so it is gated on
-    // `isNewImagePromptMode` in addition to the fragments existing at all.
-    isNewImagePromptMode && presetVisualIdentityFragmentsPresent
-      ? `SERIES VISUAL IDENTITY (weave into your own prose; nothing downstream appends these): positive=[${(params.presetVisualIdentityFragments?.positive ?? []).join(", ")}] negative=[${(params.presetVisualIdentityFragments?.negative ?? []).join(", ")}]`
+    // Authoring sees stable style facts, never provider-bound positive or
+    // negative fragments. The final assembler applies those after authoring.
+    isNewImagePromptMode && seriesLookRegister
+      ? `SERIES LOOK REGISTER (facts only; keep shot variation within this register): style="${seriesLookRegister.styleName}" palette=[${seriesLookRegister.palette.join(", ")}] lighting="${seriesLookRegister.lighting}" still_camera="${seriesLookRegister.cameraGrammar}"`
       : null,
     // Two-mode start-frame image prompt switch — the two NEW skills' own §7
     // / §14 "PRODUCT TIE-IN" sections author the placement directive

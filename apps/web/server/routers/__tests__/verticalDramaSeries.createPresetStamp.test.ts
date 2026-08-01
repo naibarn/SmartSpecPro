@@ -228,6 +228,39 @@ describe("create — preset visual-identity stamping (flag-gated, best-effort)",
     expect((result.series as any).bible.lookLockControl.revision).toBe(1);
   });
 
+  it("validates an AI-mix candidate, drops client reference ids, and records ai_mix", async () => {
+    let inserted: any;
+    const chain: any = {
+      values: vi.fn((value: any) => {
+        inserted = value;
+        return chain;
+      }),
+      returning: vi.fn(async () => [{ ...INSERTED_ROW, bible: inserted.bible }]),
+    };
+    mockDb.insert.mockReturnValueOnce(chain);
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesLookLock: true });
+
+    await router.create({
+      ctx: ctx(),
+      input: {
+        title: "AI Mix Series",
+        lookLock: {
+          mode: "inherit_source",
+          candidateIdentity: { ...IDENTITY, referenceAssetIds: ["untrusted-client-id"] },
+        },
+      },
+    });
+
+    expect(inserted.bible.presetVisualIdentity).toEqual(IDENTITY);
+    expect(inserted.bible.presetVisualIdentity).not.toHaveProperty("referenceAssetIds");
+    expect(inserted.bible.lookLockControl).toMatchObject({
+      mode: "inherit_source",
+      inheritedSource: "ai_mix",
+      inheritedGovernance: "look_lock",
+      revision: 1,
+    });
+  });
+
   it("rejects an incomplete creation look choice at the input contract", () => {
     expect(createSeriesInput.safeParse({
       title: "My Series",

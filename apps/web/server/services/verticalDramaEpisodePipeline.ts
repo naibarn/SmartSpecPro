@@ -58,6 +58,7 @@ import {
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { resolveEffectiveImagePromptLanguage } from "@shared/verticalDramaSeries/imagePromptLanguage";
+import { resolveEffectiveSeriesVisualIdentity } from "@shared/verticalDramaSeries/seriesLookLock";
 // Part B2/B3 (planning/`polished-toasting-gadget.md`) — pure, shared
 // formatter for the compact episode plan-context block injected into the
 // start-frame + video motion prompt stages below. Safe as a static import
@@ -2365,6 +2366,28 @@ export class VerticalDramaEpisodePipeline {
       )
       .limit(1);
 
+    let seriesLookRegister: GenerateStoryboardShotgridParams["seriesLookRegister"];
+    try {
+      const { getTenantFeatureFlags } = await import("./tenantFeatureFlagService");
+      const flags = await getTenantFeatureFlags(owner.tenantId);
+      const identity = resolveEffectiveSeriesVisualIdentity({
+        bible: seriesRow?.bible,
+        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+      });
+      if (identity) {
+        seriesLookRegister = {
+          styleName: identity.styleName,
+          palette: identity.palette,
+          lighting: identity.lighting,
+          cameraGrammar: identity.cameraGrammar,
+        };
+      }
+    } catch {
+      // Fail closed: unavailable flags or malformed stored identity must not
+      // leak an unauthorized look into storyboard authoring.
+    }
+
     // Character variants (planning/vertical-drama-character-variants/plan.md
     // Phase D) — fetch the WHOLE roster in one query (unchanged query shape
     // otherwise) and partition it in-memory into base characters
@@ -2624,6 +2647,7 @@ export class VerticalDramaEpisodePipeline {
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
+      seriesLookRegister,
       episodeDraft: episodeDraft ?? undefined,
       existingLocations: existingLocations.length > 0 ? existingLocations : undefined,
       // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`

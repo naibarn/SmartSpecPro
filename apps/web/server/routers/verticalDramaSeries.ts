@@ -113,12 +113,14 @@ import {
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import {
   verticalDramaPresetMixSelectionSchema,
+  verticalDramaPresetVisualIdentitySchema,
   type VerticalDramaPresetVisualIdentity,
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import {
   VD_LOOK_LOCK_GENRES,
   SeriesLookLockTransitionError,
   applySeriesLookLockTransition,
+  resolveEffectiveSeriesVisualIdentity,
 } from "@shared/verticalDramaSeries/seriesLookLock";
 import {
   verticalDramaArcReplanProposalSchema,
@@ -3979,6 +3981,7 @@ export const createSeriesInput = z.object({
     mode: z.enum(["inherit_source", "genre", "manual", "none"]),
     genreKey: z.enum(VD_LOOK_LOCK_GENRES).optional(),
     manualPatch: z.unknown().optional(),
+    candidateIdentity: z.unknown().optional(),
   }).optional(),
   /**
    * Feature 132 §4.2 (F132A, user-premise-preset-mix) — free-form
@@ -4909,6 +4912,27 @@ export const verticalDramaSeriesRouter = router({
           try {
             if (
               input.lookLock.mode === "inherit_source" &&
+              input.lookLock.candidateIdentity !== undefined
+            ) {
+              const parsedCandidate = verticalDramaPresetVisualIdentitySchema.safeParse(
+                input.lookLock.candidateIdentity,
+              );
+              if (!parsedCandidate.success) {
+                throw new TRPCError({
+                  code: "BAD_REQUEST",
+                  message: "Invalid AI-mix visual identity candidate",
+                });
+              }
+              const { referenceAssetIds: _untrustedReferenceAssetIds, ...safeCandidate } =
+                parsedCandidate.data;
+              initialBible = stampPresetVisualIdentityIntoBible(
+                initialBible,
+                safeCandidate as VerticalDramaPresetVisualIdentity,
+              );
+            }
+            if (
+              input.lookLock.mode === "inherit_source" &&
+              input.lookLock.candidateIdentity === undefined &&
               input.appliedPresetId &&
               flags.verticalDramaSeriesPresetMixV2 === true
             ) {
@@ -4935,11 +4959,35 @@ export const verticalDramaSeriesRouter = router({
                 if (identity) initialBible = stampPresetVisualIdentityIntoBible(initialBible, identity);
               }
             }
+            if (
+              input.lookLock.mode === "inherit_source" &&
+              input.lookLock.candidateIdentity === undefined &&
+              !input.appliedPresetId &&
+              parentSeriesRow
+            ) {
+              const parentIdentity = resolveEffectiveSeriesVisualIdentity({
+                bible: parentSeriesRow.bible,
+                presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+                lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+              });
+              if (parentIdentity) {
+                initialBible = stampPresetVisualIdentityIntoBible(initialBible, parentIdentity);
+              }
+            }
             initialBible = applySeriesLookLockTransition({
               bible: initialBible,
               ...input.lookLock,
               expectedRevision: 0,
               now: new Date().toISOString(),
+              ...(input.lookLock.mode === "inherit_source" && input.lookLock.candidateIdentity !== undefined
+                ? { inheritedSource: "ai_mix" as const, inheritedGovernance: "look_lock" as const }
+                : {}),
+              ...(input.lookLock.mode === "inherit_source" &&
+              input.lookLock.candidateIdentity === undefined &&
+              !input.appliedPresetId &&
+              parentSeriesRow
+                ? { inheritedSource: "lineage" as const, inheritedGovernance: "look_lock" as const }
+                : {}),
             }).bible;
             lookLockAppliedAtCreate = true;
           } catch (error) {

@@ -346,6 +346,13 @@ export interface GenerateStoryboardShotgridParams {
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
   durationSeconds: number;
+  /** Flag-authorized compact look facts; raw provider fragments never enter storyboard authoring. */
+  seriesLookRegister?: {
+    styleName: string;
+    palette: string[];
+    lighting: string;
+    cameraGrammar: string;
+  };
   storySource: {
     logline?: string;
     keyBeats?: string[];
@@ -629,6 +636,9 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   const retentionHooksEnabled = params.opts?.retentionHooksEnabled === true;
   const genreSection =
     retentionHooksEnabled && params.genre ? `genre: ${params.genre}` : null;
+  const seriesLookRegisterSection = params.seriesLookRegister
+    ? `SERIES LOOK LOCK ACTIVE — keep shot-to-shot variation inside this register without copying these tokens verbatim: style="${params.seriesLookRegister.styleName}" palette=[${params.seriesLookRegister.palette.join(", ")}] lighting="${params.seriesLookRegister.lighting}" still_camera="${params.seriesLookRegister.cameraGrammar}"`
+    : null;
 
   const identityLockInstruction = charactersWithRef.length
     ? `Identity lock: ${charactersWithRef.map(c => c.characterId).join(", ")} ${
@@ -738,6 +748,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     `Episode duration: ${params.durationSeconds} seconds`,
     langInstruction,
     genreSection,
+    seriesLookRegisterSection,
     storySource.workingTitle ? `Working title: ${storySource.workingTitle}` : null,
     storySource.logline ? `Logline: ${storySource.logline}` : null,
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,

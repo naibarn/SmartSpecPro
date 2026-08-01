@@ -174,6 +174,8 @@ interface WizardState {
    * `visualIdentityJson` (if any) into the new series' bible.
    */
   appliedPresetId?: string;
+  /** Complete AI-mix look candidate; server validates and strips client asset ids before persistence. */
+  aiMixVisualIdentity?: VerticalDramaPresetVisualIdentity;
   /**
    * Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — season 2 /
    * special-edition create modes. `undefined` is the ONLY valid "original
@@ -833,6 +835,7 @@ export function CreateSeriesWizard({
     // can additively stamp this preset's `visualIdentityJson` (if any) into
     // the new series' bible; a no-op server side for presets without one.
     set("appliedPresetId", preset.id);
+    set("aiMixVisualIdentity", undefined);
     // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
     // creative-intent input, never overwritten by preset application.
     // Deliberately not touched here.
@@ -888,6 +891,8 @@ export function CreateSeriesWizard({
         // any single-preset `appliedPresetId` a prior "Use this preset" click
         // may have left behind so `create` doesn't stamp the wrong identity.
         appliedPresetId: undefined,
+        aiMixVisualIdentity:
+          draft.contract_version === 2 ? draft.visualIdentity : undefined,
         // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
         // creative-intent input, never overwritten by preset application.
         // `prev` is already spread above, so `userPremise` is deliberately not
@@ -1249,6 +1254,9 @@ export function CreateSeriesWizard({
             ...(form.lookLockMode === "genre" && form.lookLockGenreKey
               ? { genreKey: form.lookLockGenreKey }
               : {}),
+            ...(form.lookLockMode === "inherit_source" && form.aiMixVisualIdentity
+              ? { candidateIdentity: form.aiMixVisualIdentity }
+              : {}),
           }
         : undefined,
       // Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — every
@@ -1355,6 +1363,7 @@ export function CreateSeriesWizard({
             lookLockEnabled={lookLockEnabled}
             lookLockHasInheritedSource={Boolean(
               form.parentSeriesId || (presetMixEnabled && form.appliedPresetId)
+                || form.aiMixVisualIdentity
             )}
             onSetCreateMode={handleSetCreateMode}
             parentSeriesOptions={parentSeriesOptions}

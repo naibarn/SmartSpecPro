@@ -163,6 +163,17 @@ describe("look-lock validation and final prompt assembly", () => {
     });
     expect(twice).toEqual(once);
   });
+
+  it("deduplicates fragments after case and internal-whitespace normalization", () => {
+    const result = applySeriesLookToImagePrompt({
+      prompt: "portrait, SOFT   window light",
+      negativePrompt: "blur",
+      identity: inheritedIdentity,
+    });
+    expect(result.prompt).toBe(
+      "portrait, SOFT   window light, grounded production design",
+    );
+  });
 });
 
 describe("series look-lock transitions", () => {

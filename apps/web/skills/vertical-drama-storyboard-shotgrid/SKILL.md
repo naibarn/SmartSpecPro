@@ -97,6 +97,12 @@ these into concrete, varied visual direction per shot:
    describe this per-beat variation policy, not lock the whole episode to one
    dark palette.
 
+   When `SERIES LOOK LOCK ACTIVE` is supplied, all lighting and composition
+   variety must stay inside its compact style, palette, lighting and still-
+   camera register. Express those facts naturally; never copy register tokens
+   verbatim. Concrete location/time-of-day facts outrank the broad register.
+   When the activation fact is absent, this clause is dormant.
+
 ## Shot 1 hook realization — MANDATORY WHEN retention hooks enabled
 
 The input script (from `vertical-drama-script-builder`) carries its own `hook`

@@ -327,9 +327,10 @@ export function applySeriesLookLockTransition(params: {
 
 function appendUniqueCsv(base: string | undefined, additions: readonly string[]): string | undefined {
   const parts = (base ?? "").split(",").map(value => value.trim()).filter(Boolean);
-  const seen = new Set(parts.map(value => value.toLocaleLowerCase()));
+  const normalizeKey = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const seen = new Set(parts.map(normalizeKey));
   for (const addition of additions.map(value => value.trim()).filter(Boolean)) {
-    const key = addition.toLocaleLowerCase();
+    const key = normalizeKey(addition);
     if (!seen.has(key)) {
       seen.add(key);
       parts.push(addition);

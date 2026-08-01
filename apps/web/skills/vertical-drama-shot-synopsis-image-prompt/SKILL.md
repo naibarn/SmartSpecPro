@@ -91,4 +91,6 @@ any keys beyond the stated JSON contract.
 
 This skill does not auto-trigger. It is invoked only for
 `policy_safe_rewrite` mode. Application code owns reference mapping and final
-prompt assembly.
+prompt assembly. If a `SERIES LOOK REGISTER` activation fact is present, it
+is downstream-only context: do not copy it or use it to change the synopsis.
+When absent, no look-lock behavior applies.

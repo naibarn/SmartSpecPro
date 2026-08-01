@@ -134,12 +134,14 @@ describe("real-skill-file gate: vd-start-frame-prompt-modes (taught-not-wired fa
         expect(content).toContain(skill.signatureHeader);
       });
 
-      it("does not let policy mode author visual identity while cinematic mode still does", async () => {
+      it("keeps policy mode look-neutral while cinematic mode consumes only the compact register", async () => {
         const content = await readRealFile(lowercasePath);
         if (skill.mode === "policy_safe_rewrite") {
           expect(content).toContain("visual style");
+          expect(content).toContain("downstream-only context");
         } else {
-          expect(content).toContain("SERIES VISUAL IDENTITY");
+          expect(content).toContain("SERIES LOOK REGISTER");
+          expect(content).toContain("Raw positive/negative provider");
         }
       });
 

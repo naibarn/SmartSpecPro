@@ -10197,14 +10197,8 @@ export const verticalDramaEpisodesRouter = router({
       let softenedImagePrompt = stripExistingIdentityLockSuffix(frame.imagePrompt);
       let softenedNegativePrompt: string | undefined = frame.negativePrompt;
 
-      // Wave-4A (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
-      // — deterministically append the series' preset visual identity's
-      // image-prompt fragments, when present. Dynamic `import()` (not a
-      // static import) for the fragment-merge functions themselves — see
-      // this file's `appendPresetVisualIdentityFragmentsToImagePrompt`
-      // import-site doc comment above for why (transitively reaches
-      // `adminProcedure` via `verticalDramaStoryBible.ts`, unlike this
-      // shared identity TYPE, which is already statically imported).
+      // Final provider-bound Series Look assembler. Authoring never receives
+      // raw fragments, and this merge is idempotent across retries.
       const { presetMixV2Enabled, seriesLookLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
       if (presetMixV2Enabled || seriesLookLockEnabled) {
@@ -10811,15 +10805,8 @@ export const verticalDramaEpisodesRouter = router({
       let softenedImagePrompt = stripExistingIdentityLockSuffix(frame.imagePrompt);
       let softenedNegativePrompt: string | undefined = frame.negativePrompt;
 
-      // Wave-7D (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
-      // — same deterministic append `generateStartFrameImage` already does,
-      // anchored the same way (before the grid prompt is authored below — the
-      // grid skill call's `shot.currentPrompt` input is this same
-      // `softenedImagePrompt`, so the fragments flow straight through into
-      // the 9-panel grid render too). Dynamic `import()` for the same reason
-      // documented on this file's
-      // `appendPresetVisualIdentityFragmentsToImagePrompt` import-site doc
-      // comment near the top of the file.
+      // Same final provider-bound Series Look assembler as start-frame render;
+      // idempotency protects grid retries from duplicate fragments.
       const { presetMixV2Enabled, seriesLookLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
       if (presetMixV2Enabled || seriesLookLockEnabled) {
@@ -13068,19 +13055,14 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Preset visual identity flow-through (spec §8.2.2) — ONLY resolved
-      // for the two new modes' `SERIES VISUAL IDENTITY` fact (the service's
-      // user-prompt builder gates on `imagePromptMode` itself, so passing
-      // this unconditionally is harmless for the legacy path too — but the
-      // DB read below stays gated on the SAME `presetMixV2Enabled` flag the
-      // render-time append (`generateStartFrameImage`, below) already uses,
-      // so it never runs for a tenant that hasn't enabled it).
+      // Feature 139: authoring receives compact register facts only. Raw
+      // provider fragments are reserved for the final image assembler.
       const {
         presetMixV2Enabled: shotStartFramePromptPresetMixV2Enabled,
         seriesLookLockEnabled: shotStartFramePromptLookLockEnabled,
       } = await resolveVerticalDramaQualityLoopFlags(tenantId);
-      let shotStartFramePromptPresetVisualIdentityFragments:
-        | { positive: string[]; negative: string[] }
+      let shotStartFramePromptSeriesLookRegister:
+        | { styleName: string; palette: string[]; lighting: string; cameraGrammar: string }
         | undefined;
       if (shotStartFramePromptPresetMixV2Enabled || shotStartFramePromptLookLockEnabled) {
         const shotStartFramePromptPresetVisualIdentity =
@@ -13088,9 +13070,13 @@ export const verticalDramaEpisodesRouter = router({
             presetMixV2Enabled: shotStartFramePromptPresetMixV2Enabled,
             seriesLookLockEnabled: shotStartFramePromptLookLockEnabled,
           });
-        if (shotStartFramePromptPresetVisualIdentity?.imagePromptFragments) {
-          shotStartFramePromptPresetVisualIdentityFragments =
-            shotStartFramePromptPresetVisualIdentity.imagePromptFragments;
+        if (shotStartFramePromptPresetVisualIdentity) {
+          shotStartFramePromptSeriesLookRegister = {
+            styleName: shotStartFramePromptPresetVisualIdentity.styleName,
+            palette: shotStartFramePromptPresetVisualIdentity.palette,
+            lighting: shotStartFramePromptPresetVisualIdentity.lighting,
+            cameraGrammar: shotStartFramePromptPresetVisualIdentity.cameraGrammar,
+          };
         }
       }
 
@@ -13188,7 +13174,7 @@ export const verticalDramaEpisodesRouter = router({
                 label: shotStartFramePromptLocationEntry.name ?? "",
               }
             : undefined,
-          presetVisualIdentityFragments: shotStartFramePromptPresetVisualIdentityFragments,
+          seriesLookRegister: shotStartFramePromptSeriesLookRegister,
           productLock: {
             active: shotStartFramePromptIsTieInShot,
             productName:
@@ -13852,6 +13838,25 @@ export const verticalDramaEpisodesRouter = router({
       // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
       // entirely — see the matching comment in `generateStartFrameImage`.
       const shouldChargeImageCredits = imageCreditCost > 0;
+      let finalReferencePrompt = input.prompt;
+      let finalReferenceNegativePrompt = input.negativePrompt;
+      const { presetMixV2Enabled, seriesLookLockEnabled } =
+        await resolveVerticalDramaQualityLoopFlags(tenantId);
+      if (presetMixV2Enabled || seriesLookLockEnabled) {
+        const identity = await loadEffectiveSeriesVisualIdentity(
+          tenantId,
+          userId,
+          seriesId,
+          { presetMixV2Enabled, seriesLookLockEnabled },
+        );
+        const assembled = applySeriesLookToImagePrompt({
+          prompt: finalReferencePrompt,
+          negativePrompt: finalReferenceNegativePrompt,
+          identity,
+        });
+        finalReferencePrompt = assembled.prompt;
+        finalReferenceNegativePrompt = assembled.negativePrompt;
+      }
 
       // Feature 135 — Hermes Grok media worker (section 09, row 8): resolve
       // the transport-neutral decision BEFORE the credit reserve block below
@@ -13924,7 +13929,7 @@ export const verticalDramaEpisodesRouter = router({
           contractVersion: 1,
           operation: references.length > 0 ? "image.edit" : "image.generate",
           connectionId: transportDecision.connectionId,
-          prompt: input.prompt,
+          prompt: finalReferencePrompt,
           settings: {
             model: hermesProviderModelId,
             aspectRatio: "9:16",
@@ -13943,7 +13948,7 @@ export const verticalDramaEpisodesRouter = router({
           userId,
           mediaType: "image",
           model: hermesProviderModelId,
-          prompt: input.prompt,
+          prompt: finalReferencePrompt,
           extraParams: {
             __vd_series_id: String(seriesId),
             __vd_episode_id: String(episodeId),
@@ -13965,8 +13970,8 @@ export const verticalDramaEpisodesRouter = router({
       try {
         const task = await mediaGenerationService.generateImageAsync(
           {
-            prompt: input.prompt,
-            negativePrompt: input.negativePrompt,
+            prompt: finalReferencePrompt,
+            negativePrompt: finalReferenceNegativePrompt,
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",

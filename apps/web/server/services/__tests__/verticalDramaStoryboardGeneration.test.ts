@@ -203,6 +203,28 @@ describe("generateStoryboardShotgrid", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
+  it("sends only the compact active look register and never raw provider fragments", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStoryboardShotgrid(baseParams({
+      seriesLookRegister: {
+        styleName: "Intimate drama",
+        palette: ["warm cream", "muted navy", "soft rose"],
+        lighting: "soft window light",
+        cameraGrammar: "restrained still composition",
+      },
+    }));
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user",
+    );
+    expect(userMessage?.content).toContain("SERIES LOOK LOCK ACTIVE");
+    expect(userMessage?.content).toContain('style="Intimate drama"');
+    expect(userMessage?.content).not.toContain("positiveFragments");
+    expect(userMessage?.content).not.toContain("negativeFragments");
+  });
+
   it("throws RateLimitExceededError before checking credits or calling the LLM", async () => {
     mockIsAllowed.mockReturnValue(false);
     mockGetResetTime.mockReturnValue(30_000);

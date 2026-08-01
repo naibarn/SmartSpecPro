@@ -279,21 +279,17 @@ Log every rewrite in `analysis_summary.safety_adjustments` as
 `"original → rewritten"`. Never delete a story beat to make it safe —
 convert it, or depict the emotionally equivalent instant beside it.
 
-## 13. SERIES VISUAL IDENTITY (conditional — only when the caller supplies it)
+## 13. SERIES LOOK REGISTER (conditional — only when activation is supplied)
 
-The caller sometimes supplies a `SERIES VISUAL IDENTITY` fact holding the
-series preset's own look tokens (`positive` and `negative` fragments). When
-present, you are the ONLY place they enter the prompt — nothing downstream
-appends them for you.
+When the caller supplies `SERIES LOOK REGISTER`, treat its style, palette,
+lighting and still-camera grammar as compact factual boundaries. Keep the
+shot inside that visual register while expressing it naturally; never copy
+the register line or its tokens verbatim. Raw positive/negative provider
+fragments are intentionally absent and are appended downstream after this
+authoring step. When the activation fact is absent, ignore this section.
 
-- Weave every `positive` token into your own prose where it belongs
-  (lighting, palette, texture, production-design language), in your own
-  words — never paste them as a trailing comma-separated tail, and never
-  contradict them with a different look.
-- Fold every `negative` token into `negative_prompt` alongside your own
-  artifact list, de-duplicated.
-- The series look never overrides this shot's story, emotion, or identity
-  locks; it is the visual dialect the shot is spoken in.
+The register never overrides policy, character identity, concrete scene
+facts, required story action or motion constraints.
 
 ## 14. PRODUCT TIE-IN (conditional — only when the caller supplies it)
 

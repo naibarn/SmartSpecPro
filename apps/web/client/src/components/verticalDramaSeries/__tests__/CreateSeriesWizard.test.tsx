@@ -245,6 +245,48 @@ describe("CreateSeriesWizard — series look lock", () => {
       lookLock: { mode: "genre", genreKey: "action_epic" },
     }));
   });
+
+  it("forwards a complete AI-mix look candidate only when source inheritance is selected", () => {
+    const candidate = presetOne.visualIdentityJson!;
+    mockSynthesizeMutationState = {
+      data: {
+        draft: {
+          contract_version: 2,
+          title: "AI Look Series",
+          category: "sci_fi_mecha",
+          logline: "mixed logline",
+          mainPlot: "mixed main plot",
+          seasonArc: "mixed season arc",
+          tone: "mixed tone",
+          cliffhangerStyle: "mixed cliff",
+          characters: [{ name: "E", role: "Lead", description: "desc" }],
+          visualBible: "mixed visual bible",
+          visualIdentity: candidate,
+          mixRecipe: { primaryFlavor: "1", supportingFlavors: [], rationale: "mix" },
+          blendReport: {
+            contractVersion: 2,
+            facets: [],
+            contributionCoverage: {},
+            minFacetsPerPreset: 0,
+            underBlended: [],
+          },
+          warnings: [],
+        },
+        creditsUsed: 3,
+        model: "test-model",
+      },
+      isPending: false,
+    };
+    renderWizard();
+    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "ใช้ลุคจากต้นทาง" }));
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+
+    expect(mockCreateMutate).toHaveBeenCalledWith(expect.objectContaining({
+      lookLock: { mode: "inherit_source", candidateIdentity: candidate },
+    }));
+  });
 });
 
 /**

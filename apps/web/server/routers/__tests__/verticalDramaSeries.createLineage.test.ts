@@ -19,6 +19,7 @@
  *    cross-tenant parent -> NOT_FOUND.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getSeriesLookLockGenreIdentity } from "@shared/verticalDramaSeries/seriesLookLock";
 
 const { mockDb } = vi.hoisted(() => {
   const db: any = {
@@ -281,6 +282,65 @@ describe("create — season lineage (Stage 2.1/2.3)", () => {
     expect(result.series.id).toBe("10");
   });
 
+  it("copies the parent's authorized look as a lineage-governed revision-1 snapshot", async () => {
+    const parentIdentity = getSeriesLookLockGenreIdentity("drama_romance");
+    const parentWithLook = {
+      ...PARENT_ROW,
+      bible: {
+        presetVisualIdentity: parentIdentity,
+        lookLockControl: {
+          mode: "genre",
+          genreKey: "drama_romance",
+          revision: 2,
+          updatedAt: "2026-07-31T00:00:00.000Z",
+        },
+      },
+    };
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesLineage: true,
+      verticalDramaSeriesLookLock: true,
+      verticalDramaSeriesPresetMixV2: false,
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([parentWithLook]));
+    const chain: any = {
+      values: vi.fn((values: any) => {
+        chain.inserted = values;
+        return chain;
+      }),
+      returning: vi.fn(async () => [{ ...INSERTED_ROW, bible: chain.inserted.bible }]),
+    };
+    mockDb.insert.mockReturnValueOnce(chain);
+    mockCloneSeriesCastForLineage.mockResolvedValue({
+      charactersCloned: 0,
+      charactersWrittenOut: 0,
+      aliasesCloned: 0,
+      characterAssetsCloned: 0,
+      locationsCloned: 0,
+      locationAssetsCloned: 0,
+    });
+
+    await router.create({
+      ctx: ctx(),
+      input: {
+        title: "My Sequel",
+        parentSeriesId: "16",
+        createMode: "sequel",
+        lookLock: { mode: "inherit_source" },
+      },
+    });
+
+    expect(chain.inserted.bible).toMatchObject({
+      presetVisualIdentity: parentIdentity,
+      lookLockControl: {
+        mode: "inherit_source",
+        inheritedIdentity: parentIdentity,
+        inheritedSource: "lineage",
+        inheritedGovernance: "look_lock",
+        revision: 1,
+      },
+    });
+  });
+
   it("flag ON + parent NOT owned (cross-tenant/user): HARD THROWS NOT_FOUND, insert never runs", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesLineage: true });
     mockDb.select.mockReturnValueOnce(selectChain([])); // loadOwnedSeries finds nothing
@@ -360,7 +420,8 @@ describe("proposeSeasonCarryOver (Stage 2.2)", () => {
 
     expect(mockLoadLineageContext).toHaveBeenCalledWith(
       PARENT_ROW,
-      expect.objectContaining({ tenantId: "tenant-1", userId: 42 })
+      expect.objectContaining({ tenantId: "tenant-1", userId: 42 }),
+      { presetMixEnabled: false, lookLockEnabled: false },
     );
     expect(mockSynthesizeSeasonCarryOver).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -439,7 +500,8 @@ describe("proposeSpecialEditionBrief (Stage 2.5)", () => {
 
     expect(mockLoadLineageContext).toHaveBeenCalledWith(
       PARENT_ROW,
-      expect.objectContaining({ tenantId: "tenant-1", userId: 42 })
+      expect.objectContaining({ tenantId: "tenant-1", userId: 42 }),
+      { presetMixEnabled: false, lookLockEnabled: false },
     );
     expect(mockSynthesizeSpecialEditionBrief).toHaveBeenCalledWith(
       expect.objectContaining({

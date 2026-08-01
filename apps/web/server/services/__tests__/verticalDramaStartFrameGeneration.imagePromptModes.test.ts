@@ -3,7 +3,7 @@
  * (`planning/vd-start-frame-prompt-modes/plan.md`) — coverage for
  * `generateStartFrameShotPrompt`'s mode dispatch (legacy skill / mode 1
  * `policy_safe_rewrite` / mode 2 `cinematic_narrative`), the new
- * `TARGET IMAGE MODEL` / `SERIES VISUAL IDENTITY` / `PRODUCT TIE-IN` /
+ * `TARGET IMAGE MODEL` / `SERIES LOOK REGISTER` / `PRODUCT TIE-IN` /
  * `frame_analysis_inputs` fact lines, the mode-2-only vision attachment
  * (`buildStartFrameShotPromptVisionImages`), and the lenient extras
  * (`safety_adjustments` / `analysis_summary` / `quality_score` /
@@ -481,26 +481,34 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
     expect(prompt).not.toContain("TARGET IMAGE MODEL");
   });
 
-  it("emits SERIES VISUAL IDENTITY only for a new mode with non-empty fragments", () => {
-    const fragments = { positive: ["soft window light"], negative: ["oversaturated"] };
+  it("emits compact SERIES LOOK REGISTER only for a new mode", () => {
+    const register = {
+      styleName: "Intimate drama",
+      palette: ["warm cream", "muted navy", "soft rose"],
+      lighting: "soft window light",
+      cameraGrammar: "restrained still composition",
+    };
     const withMode = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative", presetVisualIdentityFragments: fragments }),
+      baseShotParams({ imagePromptMode: "cinematic_narrative", seriesLookRegister: register }),
     );
-    expect(withMode).toContain("SERIES VISUAL IDENTITY");
+    expect(withMode).toContain("SERIES LOOK REGISTER");
+    expect(withMode).toContain('style="Intimate drama"');
     expect(withMode).toContain("soft window light");
-    expect(withMode).toContain("oversaturated");
+    expect(withMode).toContain('still_camera="restrained still composition"');
+    expect(withMode).not.toContain("positive=[");
+    expect(withMode).not.toContain("negative=[");
 
     const legacyNoMode = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ presetVisualIdentityFragments: fragments }),
+      baseShotParams({ seriesLookRegister: register }),
     );
-    expect(legacyNoMode).not.toContain("SERIES VISUAL IDENTITY");
+    expect(legacyNoMode).not.toContain("SERIES LOOK REGISTER");
   });
 
-  it("omits SERIES VISUAL IDENTITY for a new mode when fragments are empty/absent", () => {
+  it("omits SERIES LOOK REGISTER for a new mode when the register is absent", () => {
     const prompt = buildStartFrameShotPromptUserPrompt(
       baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
     );
-    expect(prompt).not.toContain("SERIES VISUAL IDENTITY");
+    expect(prompt).not.toContain("SERIES LOOK REGISTER");
   });
 
   it("emits PRODUCT TIE-IN only for a new mode with an active product tie-in", () => {
@@ -520,7 +528,7 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
       baseShotParams({ imagePromptMode: "cinematic_narrative", referenceFrameMode: true, productTieIn }),
     );
     expect(prompt).not.toContain("PRODUCT TIE-IN");
-    expect(prompt).not.toContain("SERIES VISUAL IDENTITY");
+    expect(prompt).not.toContain("SERIES LOOK REGISTER");
   });
 
   it("emits frame_analysis_inputs ONLY for cinematic_narrative mode", () => {
