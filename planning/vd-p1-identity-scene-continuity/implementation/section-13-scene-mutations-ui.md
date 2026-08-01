@@ -11,10 +11,9 @@ Binding override applied: neighbor-anchor provenance remains hidden until the se
 
 Verification:
 
-- `VerticalDramaSceneLockRow.test.tsx`: 3 tests (one assertion update pending rerun after the expected-revision contract change).
+- `VerticalDramaSceneLockRow.test.tsx`: 3 tests passed after the expected-revision contract change.
 - `VerticalDramaStoryboardPanel.sceneContinuityUi.test.tsx`: 2 tests passed.
 - Existing start-frame/video router regressions: 62 tests passed.
 - Existing model-family/image-prompt-mode client regressions: 4 tests passed.
 - `git diff --check` clean for touched paths.
-- Full TypeScript output was filtered to touched paths; final process completion is still being collected because the repository baseline has a large unrelated diagnostic set.
-
+- Full TypeScript output was filtered to touched paths; no diagnostics were emitted for the touched paths. The repository still has a large unrelated baseline diagnostic set.
