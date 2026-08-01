@@ -44,7 +44,7 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the lock chip while keeping neighbor provenance hidden until P1b", () => {
+  it("shows the lock chip and persisted neighbor provenance when enabled", () => {
     render(
       <VerticalDramaStoryboardPanel
         {...baseProps}
@@ -64,8 +64,12 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
       "title",
       "ช่วงเย็น แสงทอง"
     );
-    expect(
-      screen.queryByTestId("vd-storyboard-scene-anchor-1")
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveTextContent(
+      "สร้างโดยอ้างอิงภาพช็อต 2"
+    );
+    expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveAttribute(
+      "title",
+      "อ้างอิงภาพที่อนุมัติแล้ว"
+    );
   });
 });

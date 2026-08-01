@@ -37,6 +37,7 @@ import {
   Expand,
   ImageOff,
   Loader2,
+  Link2,
   MapPin,
   Mic,
   Package,
@@ -4757,8 +4758,37 @@ export function VerticalDramaStoryboardPanel({
                             {t(locale, "ล็อกฉาก", "Scene lock")}
                           </Badge>
                         ) : null}
-                        {/* Neighbor-anchor provenance is intentionally hidden until
-                            the separate P1b child flag/anchor writer lands. */}
+                        {sceneContinuityEnabled &&
+                        frame?.sceneAnchor?.anchorShotNumber ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 px-1.5 py-0 text-[9px]"
+                            title={
+                              frame.sceneAnchor.source === "approved"
+                                ? t(
+                                    locale,
+                                    "อ้างอิงภาพที่อนุมัติแล้ว",
+                                    "Approved frame reference"
+                                  )
+                                : t(
+                                    locale,
+                                    "อ้างอิงภาพล่าสุด",
+                                    "Latest generated frame reference"
+                                  )
+                            }
+                            data-testid={`vd-storyboard-scene-anchor-${shotNumber}`}
+                          >
+                            <Link2
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5"
+                            />
+                            {t(
+                              locale,
+                              `สร้างโดยอ้างอิงภาพช็อต ${frame.sceneAnchor.anchorShotNumber}`,
+                              `Generated using shot ${frame.sceneAnchor.anchorShotNumber} as reference`
+                            )}
+                          </Badge>
+                        ) : null}
                       </div>
                     );
                   })()}
