@@ -2,21 +2,23 @@
 
 Measurement checkout: `/home/dev/projects/SmartSpecPro`
 
-Measurement SHA at this run: `4908bd6bf18e41f0617b2354b1576ead6fa54013`
+Measurement SHA at this run: `399942cc10af472195329a438424b6eb5b3b8a60`
 
 The repository contains unrelated dirty worktree changes. Verification below
 is scoped to the VD P1 paths and does not claim a clean repository-wide build.
 
 ## Current-worktree rerun (2026-08-01)
 
-The current checkout was revalidated at HEAD `a330e7725`; the worktree still
+The current checkout was revalidated at HEAD `399942cc1`; the worktree still
 contains unrelated staged/unstaged changes, so this is evidence for the current
 tree rather than a clean merge artifact.
 
 - Focused Section 14 suite: `37 passed / 1 skipped` (the opt-in live test is
   skipped by default).
 - Additional Feature 137/138/139 look, flag, scene, motion, router, and UI
-  regression suites: `77 passed`.
+  regression suites: `114 passed / 1 skipped` (the skipped test is the opt-in
+  external-provider live test). This includes the read-only persisted scene
+  anchor provenance badge when the scene-continuity flag is enabled.
 - Recorded live-gate replay with the opt-in sample: `1 passed`; this does not
   call an external provider.
 - Gate A: `5 failed / 263 passed`; the fail-set has `0` new identities versus
