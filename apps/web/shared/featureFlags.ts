@@ -184,6 +184,10 @@ export interface TenantFeatureFlags {
   verticalDramaSeriesTieInQc: boolean; // F131Q — §13.1 tie-in naturalness QC gates (fail-closed)
   verticalDramaSeriesProductionWizard: boolean; // F131R — §8.8 guided production wizard (fail-closed)
   verticalDramaSeriesPresetMixV2: boolean; // F131S — §8.2.2 preset visual identity + verifiable blending (fail-closed)
+  verticalDramaSeriesLookLock: boolean; // F139 — series-level visual look lock (fail-closed)
+  verticalDramaMotionContracts: boolean; // F137 — structured per-shot motion contracts (fail-closed)
+  verticalDramaSceneContinuity: boolean; // F138 P1a — persisted scene continuity state (fail-closed)
+  verticalDramaSceneNeighborAnchors: boolean; // F138 P1b — neighboring-scene anchor references; requires scene continuity (fail-closed)
   verticalDramaSeriesDeepStoryDrafts: boolean; // F131T — deep story drafts: chunked bible-stage 9-shot speakable dialogue drafts for every planned episode (fail-closed)
   verticalDramaSeriesVoiceChain: boolean; // F131U — per-character voice casting, voice catalog + paid preview, whole-episode dialogue TTS batch, audio timeline handoff (fail-closed)
   verticalDramaSeriesStoryLock: boolean; // F131V — story lock: story is finalized on the series Overview; episode-level improve/repair may change EXECUTION only, never story content (mechanically enforced, fail-closed)
@@ -404,6 +408,10 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaSeriesTieInQc",
   "verticalDramaSeriesProductionWizard",
   "verticalDramaSeriesPresetMixV2",
+  "verticalDramaSeriesLookLock",
+  "verticalDramaMotionContracts",
+  "verticalDramaSceneContinuity",
+  "verticalDramaSceneNeighborAnchors",
   "verticalDramaSeriesDeepStoryDrafts",
   "verticalDramaSeriesVoiceChain",
   "verticalDramaSeriesStoryLock",
@@ -618,6 +626,10 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaSeriesTieInQc: false,
   verticalDramaSeriesProductionWizard: false,
   verticalDramaSeriesPresetMixV2: false,
+  verticalDramaSeriesLookLock: false,
+  verticalDramaMotionContracts: false,
+  verticalDramaSceneContinuity: false,
+  verticalDramaSceneNeighborAnchors: false,
   verticalDramaSeriesDeepStoryDrafts: false,
   verticalDramaSeriesVoiceChain: false,
   verticalDramaSeriesStoryLock: false,
@@ -690,6 +702,10 @@ export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS = [
   "verticalDramaSeriesTieInQc",
   "verticalDramaSeriesProductionWizard",
   "verticalDramaSeriesPresetMixV2",
+  "verticalDramaSeriesLookLock",
+  "verticalDramaMotionContracts",
+  "verticalDramaSceneContinuity",
+  "verticalDramaSceneNeighborAnchors",
   "verticalDramaSeriesDeepStoryDrafts",
   "verticalDramaSeriesVoiceChain",
   "verticalDramaSeriesStoryLock",
@@ -705,6 +721,50 @@ export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS = [
 
 export type VerticalDramaSeriesFeatureFlagKey =
   (typeof VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS)[number];
+
+/** Independent rollout switches shared by Features 137, 138, and 139. */
+export const VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS = [
+  "verticalDramaSeriesLookLock",
+  "verticalDramaMotionContracts",
+  "verticalDramaSceneContinuity",
+  "verticalDramaSceneNeighborAnchors",
+] as const satisfies readonly TenantFeatureFlagKey[];
+
+export type VerticalDramaVisualConsistencyFlagKey =
+  (typeof VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS)[number];
+
+export function areVerticalDramaVisualConsistencyFlagsRegistered(): boolean {
+  return VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS.every(
+    (key) => ALLOWED_FEATURE_FLAGS.has(key) && FEATURE_FLAG_DEFAULTS[key] === false,
+  );
+}
+
+export interface ResolvedVerticalDramaVisualConsistencyFlags {
+  seriesLookLock: boolean;
+  motionContracts: boolean;
+  sceneContinuity: boolean;
+  sceneNeighborAnchors: boolean;
+  neighborConfigurationInvalid: boolean;
+}
+
+/**
+ * Resolves the four rollout switches without mutating tenant configuration.
+ * Neighbor anchors fail closed unless their Scene Continuity parent is on.
+ */
+export function resolveVerticalDramaVisualConsistencyFlags(
+  flags: Partial<TenantFeatureFlags> | null | undefined,
+): ResolvedVerticalDramaVisualConsistencyFlags {
+  const sceneContinuity = flags?.verticalDramaSceneContinuity === true;
+  const neighborRequested = flags?.verticalDramaSceneNeighborAnchors === true;
+
+  return {
+    seriesLookLock: flags?.verticalDramaSeriesLookLock === true,
+    motionContracts: flags?.verticalDramaMotionContracts === true,
+    sceneContinuity,
+    sceneNeighborAnchors: sceneContinuity && neighborRequested,
+    neighborConfigurationInvalid: neighborRequested && !sceneContinuity,
+  };
+}
 
 /**
  * One-way alias mapping: any legacy/local runtime alias -> its canonical
