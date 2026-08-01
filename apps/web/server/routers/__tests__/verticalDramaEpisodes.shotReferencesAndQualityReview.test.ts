@@ -3070,6 +3070,7 @@ describe("getEpisodeDetail — qualityReview field", () => {
       // for dedicated flags.textOverlaySuite coverage.
       textOverlaySuite: false,
       sceneContinuity: false,
+      sceneNeighborAnchors: false,
     });
     // Pre-existing fields stay exactly as before — no extra db.select calls
     // beyond the original 3 (byte-identical flags-off proof; W10-B's own
