@@ -17,7 +17,7 @@
 - Existing dirty worktree changes are preserved; use scoped temporary indexes for commits.
 
 ### Current status
-- Code path complete and committed through `65f8367ca`; focused validation is 226/226 passing.
+- Code path complete and committed through `120af6601`; focused validation is 226/226 passing.
 - Local DB read-only check already reports the required GPT Image 2 reference cap (16); no DB mutation was needed.
 - Remaining: internal paid/browser/p95 evidence and explicit P2 deferral of `repairShotImage` anchoring; fresh Section 14 Gate A/B rerun is complete with zero fail-set drift.
 

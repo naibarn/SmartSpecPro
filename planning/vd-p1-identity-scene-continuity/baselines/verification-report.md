@@ -20,7 +20,8 @@ Implementation commits:
 - `f3accaa4e` parent + child canary gating
 - `0d950a053` generated-asset id type narrowing
 - `7a7794269` audit-event coverage and cap/trim reason normalization
-- `927fb082b`, `d6c0ed96a`, `65f8367ca` merge-order and audit silence/drop tests
+- `927fb082b`, `d6c0ed96a`, `65f8367ca`, `120af6601` merge-order, audit, and
+  detail-flag contract tests
 
 Focused rerun from `apps/web`: **10 files, 226 tests passed**. The direct web
 TypeScript check still exits non-zero on the repository's pre-existing
