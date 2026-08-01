@@ -1,0 +1,95 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/planning/vd-p1-identity-scene-continuity/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/planning/vd-p1-identity-scene-continuity/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && npx vitest run",
+  "sections": [
+    "section-01-prereq-baseplan-fix",
+    "section-02-feature-flags",
+    "section-03-model-prompt-budget",
+    "section-04-motion-profile-module",
+    "section-05-scene-continuity-module",
+    "section-15-series-look-lock",
+    "section-06-motion-profile-contract",
+    "section-07-frame-observability-gate",
+    "section-08-motion-contract-skills",
+    "section-09-scene-visual-state-skill",
+    "section-10-scene-state-storage-carryover",
+    "section-11-scene-lock-injection",
+    "section-13-scene-mutations-ui",
+    "section-14-joint-verification",
+    "section-12-neighbor-anchoring"
+  ],
+  "sections_state": {
+    "section-01-prereq-baseplan-fix": {
+      "status": "complete",
+      "commit_hash": "9ad17f2a2"
+    },
+    "section-02-feature-flags": {
+      "status": "complete",
+      "commit_hash": "c73bf2208"
+    },
+    "section-03-model-prompt-budget": {
+      "status": "complete",
+      "commit_hash": "34f11f7ea"
+    },
+    "section-04-motion-profile-module": {
+      "status": "complete",
+      "commit_hash": "2e80a0600"
+    },
+    "section-05-scene-continuity-module": {
+      "status": "complete",
+      "commit_hash": "b23b317d7"
+    },
+    "section-15-series-look-lock": {
+      "status": "complete",
+      "commit_hash": "1bf506555"
+    },
+    "section-06-motion-profile-contract": {
+      "status": "complete",
+      "commit_hash": "454594e09"
+    },
+    "section-07-frame-observability-gate": {
+      "status": "complete",
+      "commit_hash": "41337a469"
+    },
+    "section-08-motion-contract-skills": {
+      "status": "complete",
+      "commit_hash": "12616bffc"
+    },
+    "section-09-scene-visual-state-skill": {
+      "status": "complete",
+      "commit_hash": "ace8d7cd2"
+    },
+    "section-10-scene-state-storage-carryover": {
+      "status": "complete",
+      "commit_hash": "94047aa56"
+    },
+    "section-11-scene-lock-injection": {
+      "status": "complete",
+      "commit_hash": "71b0897a0"
+    },
+    "section-13-scene-mutations-ui": {
+      "status": "complete",
+      "commit_hash": "32daee24d"
+    },
+    "section-14-joint-verification": {
+      "status": "complete",
+      "commit_hash": "f473e5b17",
+      "manual_smoke": "pending-external-tenant",
+      "real_llm_gate": "opt-in-pending-authorized-sample"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-01T01:07:37.157722+00:00"
+}
