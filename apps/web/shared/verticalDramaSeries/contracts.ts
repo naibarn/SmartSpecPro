@@ -29,6 +29,7 @@ import type {
   VdMotionContractStatus,
   VdMotionProfile,
 } from "./motionProfile";
+import type { VdSceneVisualState } from "./sceneContinuity";
 
 /* -------------------------------------------------------------------------- */
 /* Pipeline stages & warnings (spec §11.5)                                    */
@@ -498,6 +499,12 @@ export type VerticalDramaStartFramePlan = {
   imagePromptMode?: VdImagePromptMode | "auto";
   /** Language used by cinematic image/start-frame prompt generation. Policy-safe synopsis mode preserves the synopsis source language. */
   imagePromptLanguage?: VerticalDramaPromptLanguage;
+  /**
+   * Feature 138 P1 per-scene visual locks, keyed only by `locationKey`.
+   * Absent for legacy/flag-off plans. Regeneration preserves matching
+   * membership, drops generated mismatches, and marks manual mismatches stale.
+   */
+  sceneVisualStates?: Record<string, VdSceneVisualState>;
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;

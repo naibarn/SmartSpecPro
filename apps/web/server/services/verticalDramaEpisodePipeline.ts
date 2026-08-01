@@ -173,6 +173,7 @@ import {
 import { reconcileEpisodeLocations } from "./verticalDramaLocationReconciliation";
 import { verticalDramaLocationStockService } from "./verticalDramaLocationStock";
 import type { VerticalDramaStoryboardLocationGroup } from "@shared/verticalDramaSeries/storyboardLocations";
+import { buildSceneShotGroups } from "@shared/verticalDramaSeries/sceneContinuity";
 import { debugError } from "../_core/logger";
 
 /* -------------------------------------------------------------------------- */
@@ -2946,6 +2947,17 @@ export class VerticalDramaEpisodePipeline {
     const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>(
       (previousStartFrames ?? []).map(frame => [frame.shotNumber, frame]),
     );
+    const previousSceneVisualStates = (
+      episode.startFramePlan as { sceneVisualStates?: unknown } | null
+    )?.sceneVisualStates;
+    const sceneShotGroups = buildSceneShotGroups({
+      distinctLocations: storyboard?.distinct_locations,
+      overridesByShotNumber: new Map(
+        (previousStartFrames ?? [])
+          .filter(frame => typeof frame.locationKey === "string" && frame.locationKey.trim())
+          .map(frame => [frame.shotNumber, frame.locationKey]),
+      ),
+    });
 
     // Image prompt language is stored independently on `startFramePlan`.
     // Legacy episodes fall back to the former shared video setting until
@@ -3144,6 +3156,14 @@ export class VerticalDramaEpisodePipeline {
       promptLanguage: effectiveImagePromptLanguage,
       episodePlanContext,
       previousFramesByShotNumber,
+      ...(previousSceneVisualStates !== undefined
+        ? {
+            sceneVisualStatesCarryOver: {
+              previous: previousSceneVisualStates,
+              sceneShotGroups,
+            },
+          }
+        : {}),
       characters: characterIdentitySources,
       storyboardShots: shots.map(s => {
         // The real `storyboard_shotgrid` LLM output uses snake_case fields
@@ -3211,6 +3231,41 @@ export class VerticalDramaEpisodePipeline {
         };
       }),
     });
+    if (previousSceneVisualStates !== undefined) {
+      try {
+        const previousRecord =
+          typeof previousSceneVisualStates === "object" &&
+          previousSceneVisualStates !== null &&
+          !Array.isArray(previousSceneVisualStates)
+            ? previousSceneVisualStates as Record<string, unknown>
+            : {};
+        const nextStates = generated.plan.sceneVisualStates ?? {};
+        const dropped = Object.keys(previousRecord)
+          .filter(key => !(key in nextStates))
+          .sort();
+        const newlyStale = Object.entries(nextStates)
+          .filter(([key, state]) => {
+            const prior = previousRecord[key];
+            return state.stale === true &&
+              !(typeof prior === "object" && prior !== null &&
+                (prior as { stale?: unknown }).stale === true);
+          })
+          .map(([key]) => key)
+          .sort();
+        if (dropped.length > 0 || newlyStale.length > 0) {
+          debugError(
+            "vd_scene_visual_state_carryover",
+            `Scene visual state carry-over changed for episode #${owner.episodeId}: dropped=[${dropped.join(",")}] newlyStale=[${newlyStale.join(",")}]`,
+          );
+        }
+      } catch (carryoverLogError) {
+        debugError(
+          "vd_scene_visual_state_carryover",
+          `Scene visual state carry-over logging failed for episode #${owner.episodeId}; generation remains successful`,
+          carryoverLogError,
+        );
+      }
+    }
     return { ...generated, characters: characterIdentitySources };
   }
 

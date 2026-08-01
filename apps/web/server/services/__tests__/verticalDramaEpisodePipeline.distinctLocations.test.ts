@@ -118,6 +118,9 @@ vi.mock("../verticalDramaProductTieIn", () => ({
   resolveFrameProductReferenceAssetIds: vi.fn(),
 }));
 
+const { mockDebugError } = vi.hoisted(() => ({ mockDebugError: vi.fn() }));
+vi.mock("../../_core/logger", () => ({ debugError: mockDebugError }));
+
 const { mockGetActiveBreakdown, mockReadItemShotDrafts, mockReadItemCliffhangerLine } = vi.hoisted(
   () => ({
     mockGetActiveBreakdown: vi.fn(),
@@ -407,5 +410,83 @@ describe("generateRealStartFramePlan — location threading (Phase 1 location vi
     const shots = callArgs.storyboardShots as Array<{ shotNumber: number; location?: unknown }>;
     expect(shots.find(s => s.shotNumber === 1)!.location).toBeDefined();
     expect(shots.find(s => s.shotNumber === 4)!.location).toBeUndefined();
+  });
+});
+
+describe("generateRealStartFramePlan — scene visual state carry-over", () => {
+  const priorState = {
+    locationKey: "convenience_store_main",
+    membershipHash: "vd-scene-v1-test",
+    revision: 1,
+    lightingState: "cool fluorescent",
+    fixedElements: [],
+    spatialLayout: "aisles left to right",
+    stagingAxis: "counter side",
+    wardrobeInScene: [],
+    activeProps: [],
+    paletteMood: "cool white",
+    timeJumpSuspected: false,
+    coverageGaps: [],
+    memberShotNumbers: [1, 2, 3],
+    plannedAt: "2026-08-01T00:00:00.000Z",
+  };
+
+  function primeReads() {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow()]))
+      .mockReturnValueOnce(selectChain([]));
+  }
+
+  it("passes raw state and groups built with pre-regeneration location overrides", async () => {
+    primeReads();
+    const rawStates = { convenience_store_main: priorState };
+    await pipeline.generateRealStartFramePlan(owner, baseEpisode({
+      storyboard: TWO_GROUP_STORYBOARD,
+      startFramePlan: {
+        sceneVisualStates: rawStates,
+        frames: [{ shotNumber: 3, locationKey: "family_kitchen" }],
+      },
+    }));
+
+    expect(mockGenerateStartFrameRenderPlan.mock.calls[0][0].sceneVisualStatesCarryOver).toEqual({
+      previous: rawStates,
+      sceneShotGroups: [
+        { locationKey: "convenience_store_main", shotNumbers: [1, 2] },
+        { locationKey: "family_kitchen", shotNumbers: [3, 4, 5, 6, 7, 8, 9] },
+      ],
+    });
+  });
+
+  it("omits the entire params key when legacy state is absent", async () => {
+    primeReads();
+    await pipeline.generateRealStartFramePlan(owner, baseEpisode());
+    expect(mockGenerateStartFrameRenderPlan.mock.calls[0][0])
+      .not.toHaveProperty("sceneVisualStatesCarryOver");
+  });
+
+  it("passes empty membership groups without interpreting them as deletion", async () => {
+    primeReads();
+    const rawStates = { convenience_store_main: priorState };
+    await pipeline.generateRealStartFramePlan(owner, baseEpisode({
+      startFramePlan: { sceneVisualStates: rawStates, frames: [] },
+    }));
+    expect(mockGenerateStartFrameRenderPlan.mock.calls[0][0].sceneVisualStatesCarryOver)
+      .toEqual({ previous: rawStates, sceneShotGroups: [] });
+  });
+
+  it("logs dropped states best-effort without failing generation", async () => {
+    primeReads();
+    mockGenerateStartFrameRenderPlan.mockResolvedValueOnce({
+      plan: { mode: "single_frame_per_shot", selectedImageModelId: "model-x", frames: [] },
+      raw: {}, creditsUsed: 1, model: "gpt-x",
+    });
+    await expect(pipeline.generateRealStartFramePlan(owner, baseEpisode({
+      storyboard: TWO_GROUP_STORYBOARD,
+      startFramePlan: { sceneVisualStates: { convenience_store_main: priorState }, frames: [] },
+    }))).resolves.toBeDefined();
+    expect(mockDebugError).toHaveBeenCalledWith(
+      "vd_scene_visual_state_carryover",
+      expect.stringContaining("dropped=[convenience_store_main]"),
+    );
   });
 });

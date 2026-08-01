@@ -79,6 +79,12 @@ import {
 // identity object directly, so this file never needs the router's bible-
 // reading logic.
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import {
+  isSameSceneMembership,
+  resolveSceneVisualState,
+  type VdSceneShotGroup,
+  type VdSceneVisualState,
+} from "@shared/verticalDramaSeries/sceneContinuity";
 // Two-mode start-frame image prompt switch
 // (`planning/vd-start-frame-prompt-modes/plan.md`) — pure/shared family
 // resolver + skill-folder map + persisted stamp type, mirroring how
@@ -268,6 +274,8 @@ export interface StartFrameRenderPlanProjection {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
   imagePromptLanguage?: VerticalDramaPromptLanguage;
+  /** See `VerticalDramaStartFramePlan.sceneVisualStates` in the shared contract. */
+  sceneVisualStates?: Record<string, VdSceneVisualState>;
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;
@@ -300,6 +308,97 @@ export interface StartFrameRenderPlanProjection {
     };
     angleGridAssetIds?: number[];
   }>;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** The single sanitising read for persisted plan-level scene states. */
+export function readSceneVisualStatesFromPlan(
+  startFramePlan: unknown,
+): Record<string, VdSceneVisualState> {
+  try {
+    if (!isPlainRecord(startFramePlan) || !isPlainRecord(startFramePlan.sceneVisualStates)) {
+      return {};
+    }
+    const entries = Object.entries(startFramePlan.sceneVisualStates)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .flatMap(([locationKey, raw]) => {
+        const key = locationKey.trim();
+        const state = resolveSceneVisualState(raw);
+        return key && state ? [[key, { ...state, locationKey: key }] as const] : [];
+      });
+    return Object.fromEntries(entries);
+  } catch {
+    return {};
+  }
+}
+
+/** Pure regeneration carry-over with membership-aware invalidation. */
+export function carrySceneVisualStates(input: {
+  previous?: unknown;
+  sceneShotGroups?: readonly VdSceneShotGroup[];
+}): Record<string, VdSceneVisualState> | undefined {
+  const previous = readSceneVisualStatesFromPlan({ sceneVisualStates: input.previous });
+  const previousEntries = Object.entries(previous);
+  if (previousEntries.length === 0) return undefined;
+  if (!input.sceneShotGroups?.length) return previous;
+
+  const groupByKey = new Map(input.sceneShotGroups.map(group => [group.locationKey, group]));
+  const carried: Array<[string, VdSceneVisualState]> = [];
+  for (const [locationKey, state] of previousEntries) {
+    const membershipMatches = isSameSceneMembership(
+      state.memberShotNumbers,
+      groupByKey.get(locationKey)?.shotNumbers,
+    );
+    if (membershipMatches) {
+      carried.push([locationKey, state]);
+    } else if (state.manualEdit === true) {
+      carried.push([locationKey, { ...state, stale: true }]);
+    }
+  }
+  if (carried.length === 0) return undefined;
+  return Object.fromEntries(carried.sort(([left], [right]) => left.localeCompare(right)));
+}
+
+/** Pure write rule shared by lazy, explicit-plan, and manual callers. */
+export function upsertSceneVisualState(input: {
+  current: Record<string, VdSceneVisualState> | undefined;
+  next: VdSceneVisualState;
+  origin: "lazy" | "planned" | "manual";
+  force?: boolean;
+}): {
+  states: Record<string, VdSceneVisualState>;
+  written: boolean;
+  skippedReason?: "already_present" | "manual_edit_protected";
+} {
+  const locationKey = input.next.locationKey.trim();
+  const existing = input.current?.[locationKey];
+  const snapshot = Object.fromEntries(
+    Object.entries(input.current ?? {}).sort(([left], [right]) => left.localeCompare(right)),
+  );
+  if (input.origin === "lazy" && existing) {
+    return { states: snapshot, written: false, skippedReason: "already_present" };
+  }
+  if (input.origin === "planned" && existing?.manualEdit === true && input.force !== true) {
+    return { states: snapshot, written: false, skippedReason: "manual_edit_protected" };
+  }
+
+  const { manualEdit: _manualEdit, stale: _stale, ...fresh } = input.next;
+  const written: VdSceneVisualState = {
+    ...fresh,
+    locationKey,
+    ...(input.origin === "manual" ? { manualEdit: true } : {}),
+  };
+  const entries: Array<[string, VdSceneVisualState]> = [
+    ...Object.entries(snapshot).filter(([key]) => key !== locationKey),
+    [locationKey, written],
+  ];
+  return {
+    states: Object.fromEntries(entries.sort(([left], [right]) => left.localeCompare(right))),
+    written: true,
+  };
 }
 
 /** Project the raw skill output onto the pipeline's typed stage-payload shape. */
@@ -341,12 +440,13 @@ export function projectStartFramePlan(
    * Gap-5 fix (recorded, 2026-07-22) — the PRIOR persisted frame state,
    * keyed by shot number, so a plan REGENERATION can carry over per-frame
    * user/durable state this projection has no way to re-derive from the raw
-   * skill output: `approvedMediaAssetId` (the durable link to the APPROVED
-   * rendered image — costs real money to redo), `locationKey` (a manual
+   * skill output. The seven carried fields are `approvedMediaAssetId` (the
+   * durable link to the APPROVED rendered image — costs real money to redo),
+   * `locationKey` (a manual
    * per-shot location override), `angleGrid`/`angleGridAssetIds` (durable
-   * multi-angle picker state), and `productReferenceAssetIds` +
-   * `productRefsCustomized` (needed to satisfy the pipeline's OWN
-   * documented contract — `verticalDramaEpisodePipeline.ts`'s
+   * multi-angle picker state), `productReferenceAssetIds`,
+   * `productRefsCustomized`, and `canonicalShotSummary` (needed to satisfy
+   * the pipeline's OWN documented contract — `verticalDramaEpisodePipeline.ts`'s
    * `resolveFrameProductReferenceAssetIds` call reads `productRefsCustomized`
    * off the projected frame to decide whether auto-resolution may refill
    * `productReferenceAssetIds`; that flag could never survive a regen
@@ -362,12 +462,15 @@ export function projectStartFramePlan(
    * than whatever a prior regen happened to capture.
    *
    * Deliberately never carries over `imagePrompt`/`negativePrompt`
-   * (replacing them is the whole point of regenerating) or `promptMode`
-   * (correct by design — the new prompt comes from THIS legacy batch skill,
+   * (replacing them is the whole point of regenerating),
+   * `promptSafetyAdjustments`, `promptAnalysis`, or `promptMode`. The latter three are per-frame
+   * display/audit metadata stamped by the per-shot prompt engines, and a
+   * batch regeneration replaces the prompt they describe. Dropping
+   * `promptMode` is correct by design — the new prompt comes from THIS legacy batch skill,
    * a different engine than the one that may have stamped the prior
    * `promptMode`, so the engine badge must clear AND the render-time
    * preset-identity append — gated on `!frame.promptMode` — must resume for
-   * this frame).
+   * this frame.
    *
    * Pure/no-IO (same purity contract as the rest of this function) —
    * the caller (`verticalDramaEpisodePipeline.ts`'s
@@ -380,16 +483,22 @@ export function projectStartFramePlan(
    */
   previousFramesByShotNumber?: Map<number, VerticalDramaStartFramePlanFrame>,
   imagePromptLanguage?: VerticalDramaPromptLanguage,
+  sceneVisualStatesCarryOver?: {
+    previous?: unknown;
+    sceneShotGroups?: readonly VdSceneShotGroup[];
+  },
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
     callerImageModelId ||
     (typeof summary?.image_model === "string" ? (summary.image_model as string) : callerImageModelId);
+  const sceneVisualStates = carrySceneVisualStates(sceneVisualStatesCarryOver ?? {});
 
   return {
     mode: "single_frame_per_shot",
     selectedImageModelId,
     ...(imagePromptLanguage ? { imagePromptLanguage } : {}),
+    ...(sceneVisualStates ? { sceneVisualStates } : {}),
     frames: raw.start_frame_requests
       .slice()
       .sort((a, b) => a.shot_number - b.shot_number)
@@ -551,6 +660,11 @@ export interface GenerateStartFrameRenderPlanParams {
    * byte-identical projection.
    */
   previousFramesByShotNumber?: Map<number, VerticalDramaStartFramePlanFrame>;
+  /** Feature 138 P1 plan-level state carry-over; omitted preserves the old key set. */
+  sceneVisualStatesCarryOver?: {
+    previous?: unknown;
+    sceneShotGroups?: readonly VdSceneShotGroup[];
+  };
 }
 
 /**
@@ -1013,6 +1127,7 @@ export async function generateStartFrameRenderPlan(
     canonicalShotSummaryByShotNumber,
     params.previousFramesByShotNumber,
     params.promptLanguage,
+    params.sceneVisualStatesCarryOver,
   );
 
   return {
