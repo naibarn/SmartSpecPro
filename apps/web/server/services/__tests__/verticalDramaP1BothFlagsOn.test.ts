@@ -114,6 +114,32 @@ describe("VD P1 joint flag interactions", () => {
     expect(motionOff).not.toContain("MOTION PROFILE + MOTION CONTRACT");
   });
 
+  it("keeps the Feature 139 look register separate when all three authoring flags are on", () => {
+    const prompt = buildStartFrameShotPromptUserPrompt({
+      userId: 7,
+      tenantId: "tenant-1",
+      seriesId: 3,
+      episodeId: 11,
+      shotNumber: 1,
+      currentPrompt: "Hero enters the hall",
+      currentNegativePrompt: "blurry",
+      characterReferenceManifest: [],
+      imagePromptMode: "cinematic_narrative",
+      sceneContinuityLockBlock: SCENE_LOCK,
+      seriesLookRegister: {
+        styleName: "grounded drama",
+        palette: ["amber", "teal"],
+        lighting: "soft practicals",
+        cameraGrammar: "still observational",
+      },
+    });
+    expect(prompt.match(/SCENE CONTINUITY LOCK/g)).toHaveLength(1);
+    expect(prompt.match(/SERIES LOOK REGISTER/g)).toHaveLength(1);
+    expect(prompt.indexOf("SERIES LOOK REGISTER")).toBeLessThan(
+      prompt.indexOf(VD_SCENE_CONTINUITY_LOCK_HEADER)
+    );
+  });
+
   it("keeps policy-safe lock ordering stable when both reference and scene facts exist", () => {
     const prompt = buildDeterministicPolicySafeImagePrompt({
       rewrittenSynopsis: "Hero stands in the hall.",
