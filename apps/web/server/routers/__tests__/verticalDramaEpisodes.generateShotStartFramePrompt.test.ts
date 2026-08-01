@@ -494,6 +494,72 @@ describe("generateShotStartFramePrompt", () => {
     );
   });
 
+  it("records a cap drop when prompt authoring cannot attach the resolved anchor", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: { distinct_locations: [] },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "first shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "901",
+            locationKey: "loc_store",
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "second shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationKey: "loc_store",
+          },
+        ],
+      },
+    });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSceneContinuity: true,
+      verticalDramaSceneNeighborAnchors: true,
+    });
+    mockGenerateStartFrameShotPrompt.mockResolvedValueOnce({
+      prompt: "regenerated start-frame prompt",
+      negativePrompt: "regenerated negative prompt",
+      creditsUsed: 4,
+      model: "gpt-image-2-planner",
+      sceneAnchorAttached: false,
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, originalUrl: "https://cdn.example.com/shot-1.png" }]),
+      );
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn(() => updateChain([episodeRow])),
+    });
+
+    await router.generateShotStartFramePrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
+    });
+
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "vd_scene_neighbor_anchor_attached",
+        metadata: expect.objectContaining({
+          layer: "prompt",
+          dropped: true,
+          dropReason: "cap",
+        }),
+      }),
+    );
+  });
+
   it("threads the selected image model prompt budget through authoring and QC", async () => {
     const episodeRow = baseEpisodeRow();
     mockGetModelsByTypeAsync.mockResolvedValue([{
