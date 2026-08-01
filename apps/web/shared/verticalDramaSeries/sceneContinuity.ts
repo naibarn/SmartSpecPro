@@ -126,6 +126,50 @@ export function findSceneShotGroupForShot(
   return groups.find(group => group.shotNumbers.includes(shotNumber));
 }
 
+/**
+ * Split a generate-all request into scene-aware lanes. Shots in one scene are
+ * ordered so a completed earlier shot can become the next shot's anchor;
+ * shots in different scenes remain independently parallelizable. A shot that
+ * is not assigned to a scene gets its own lane because it cannot contribute a
+ * same-scene anchor.
+ */
+export function planSceneOrderedBatch(input: {
+  shotNumbers: readonly number[];
+  groups: readonly VdSceneShotGroup[];
+}): number[][] {
+  const requested = Array.from(
+    new Set(
+      input.shotNumbers.filter(
+        shotNumber => Number.isInteger(shotNumber) && shotNumber > 0,
+      ),
+    ),
+  ).sort((a, b) => a - b);
+  if (requested.length === 0) return [];
+
+  const requestedSet = new Set(requested);
+  const groupIndexByShot = new Map<number, number>();
+  const lanesByGroup = new Map<number, number[]>();
+  input.groups.forEach((group, groupIndex) => {
+    for (const shotNumber of group.shotNumbers) {
+      if (!requestedSet.has(shotNumber) || groupIndexByShot.has(shotNumber)) {
+        continue;
+      }
+      groupIndexByShot.set(shotNumber, groupIndex);
+      const lane = lanesByGroup.get(groupIndex) ?? [];
+      lane.push(shotNumber);
+      lanesByGroup.set(groupIndex, lane);
+    }
+  });
+
+  const lanes: number[][] = Array.from(lanesByGroup.values()).map(lane =>
+    lane.slice().sort((a, b) => a - b),
+  );
+  for (const shotNumber of requested) {
+    if (!groupIndexByShot.has(shotNumber)) lanes.push([shotNumber]);
+  }
+  return lanes.sort((a, b) => a[0] - b[0]);
+}
+
 export function isSameSceneMembership(
   a: readonly number[] | undefined,
   b: readonly number[] | undefined,
