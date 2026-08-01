@@ -2,7 +2,7 @@
 
 Version: 1.1.0
 Date: 2026-08-01
-Status: P1 implementation complete; rollout quality evidence pending
+Status: P1 implementation complete; automated interaction gates revalidated; internal genre-quality rollout evidence pending
 Priority: P1 (quality-critical; user-reported, and the fix is mostly wiring)
 Depends-on: Feature 131 (storyboard/start-frame pipeline), Feature 131S §8.2.2 (preset visual identity — already built)
 Related: Feature 137 (identity: the PERSON stays the same person), Feature 138 (scene: the PLACE stays the same place). **139 = the LOOK stays the same look.** Implemented as section 15 of `planning/vd-p1-identity-scene-continuity/` because it injects at the same four prompt builders as 138 P1.

@@ -118,6 +118,8 @@ import {
   type VerticalDramaShotReferenceView,
   type VerticalDramaStartFramePlanView,
   type VerticalDramaStoryboardView,
+  type VerticalDramaSceneVisualStatePatch,
+  type VerticalDramaSceneVisualStateView,
 } from "./VerticalDramaStoryboardPanel";
 import type {
   VerticalDramaTieInReportView,
@@ -425,6 +427,20 @@ export interface VerticalDramaStoryboardPanelData {
    *  location visual bible) — per-shot location override, distinct from the
    *  storyboard's own `distinct_locations[]` grouping. */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
+  /** Scene continuity lock affordances (Feature 138 P1). */
+  sceneContinuityEnabled?: boolean;
+  onPlanSceneVisualState?: (
+    locationKey: string,
+    force?: boolean,
+    expectedRevision?: number
+  ) => void;
+  planningSceneVisualStateForKey?: string | null;
+  onUpdateSceneVisualState?: (
+    locationKey: string,
+    patch: VerticalDramaSceneVisualStatePatch,
+    expectedRevision?: number
+  ) => void;
+  savingSceneVisualStateForKey?: string | null;
   onDropStartFrame?: (
     shotNumber: number,
     input: VerticalDramaStartFrameDropInput
@@ -1256,6 +1272,15 @@ export function VerticalDramaEpisodeWorkspace({
             storyboardPanel?.savingShotCharacterReferencesForShot
           }
           onSetShotLocation={storyboardPanel?.onSetShotLocation}
+          sceneContinuityEnabled={storyboardPanel?.sceneContinuityEnabled}
+          onPlanSceneVisualState={storyboardPanel?.onPlanSceneVisualState}
+          planningSceneVisualStateForKey={
+            storyboardPanel?.planningSceneVisualStateForKey
+          }
+          onUpdateSceneVisualState={storyboardPanel?.onUpdateSceneVisualState}
+          savingSceneVisualStateForKey={
+            storyboardPanel?.savingSceneVisualStateForKey
+          }
           onDropStartFrame={storyboardPanel?.onDropStartFrame}
           onGenerateAngleVariations={storyboardPanel?.onGenerateAngleVariations}
           generatingAngleVariationsForShot={
@@ -1945,6 +1970,8 @@ export function VerticalDramaEpisodeWorkspace({
                       />
                     ) : focusedStage === "storyboard_shotgrid" &&
                       !hasStoryboardShots ? (
+                      // Fallback has no storyboard shots or seriesId; scene affordances
+                      // are intentionally inert here and only the primary mount forwards them.
                       <VerticalDramaStoryboardPanel
                         locale={locale}
                         storyboard={storyboardPanel?.storyboard}

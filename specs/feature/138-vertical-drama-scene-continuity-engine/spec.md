@@ -2,7 +2,7 @@
 
 Version: 1.3.0
 Date: 2026-08-01
-Status: P1a implementation complete; P1b neighbor-anchor canary deferred; final Gate A/B rerun and internal smoke pending
+Status: P1a implementation complete; P1b neighbor-anchor canary deferred; current-worktree Gate A/B revalidated with no new failure identity; internal smoke pending
 Author: Conductor session with CMD-2/4 exploration agent (facts verified in code 2026-07-23)
 Priority: P1 (quality-critical for the drama-series product; sibling of Feature 137)
 Depends-on:

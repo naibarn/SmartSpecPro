@@ -144,6 +144,18 @@ import {
   type VerticalDramaReferenceFrameCharacterOption,
   type VerticalDramaReferenceFramePromptResult,
 } from "./VerticalDramaReferenceFrameDialog";
+import {
+  VerticalDramaSceneLockRow,
+  type VerticalDramaSceneVisualStatePatch,
+  type VerticalDramaSceneVisualStateView,
+  type VerticalDramaShotSceneAnchorView,
+} from "./VerticalDramaSceneLockRow";
+
+export type {
+  VerticalDramaSceneVisualStatePatch,
+  VerticalDramaSceneVisualStateView,
+  VerticalDramaShotSceneAnchorView,
+} from "./VerticalDramaSceneLockRow";
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
@@ -567,6 +579,7 @@ export interface VerticalDramaStartFramePlanFrame {
    *  type. Absent means "no override" — the effective location falls back
    *  to the storyboard's own `distinct_locations[]` grouping for this shot. */
   locationKey?: string;
+  sceneAnchor?: VerticalDramaShotSceneAnchorView;
   angleGrid?: VerticalDramaAngleGridView;
   /** Start-frame image-prompt engine stamp (`planning/vd-start-frame-prompt-
    *  modes/plan.md`) — recorded when this frame's image prompt was
@@ -591,6 +604,7 @@ export interface VerticalDramaStartFramePlanFrame {
 export interface VerticalDramaStartFramePlanView {
   mode?: string;
   selectedImageModelId?: string;
+  sceneVisualStates?: Record<string, VerticalDramaSceneVisualStateView>;
   frames?: VerticalDramaStartFramePlanFrame[];
 }
 
@@ -1085,6 +1099,19 @@ interface VerticalDramaStoryboardPanelProps {
    * The caller wires this straight to the `setShotLocation` mutation.
    */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
+  sceneContinuityEnabled?: boolean;
+  onPlanSceneVisualState?: (
+    locationKey: string,
+    force?: boolean,
+    expectedRevision?: number
+  ) => void;
+  planningSceneVisualStateForKey?: string | null;
+  onUpdateSceneVisualState?: (
+    locationKey: string,
+    patch: VerticalDramaSceneVisualStatePatch,
+    expectedRevision?: number
+  ) => void;
+  savingSceneVisualStateForKey?: string | null;
   /** Dragging an image directly onto a shot's start-frame slot replaces it immediately, same as `onDropCharacterReference`. */
   onDropStartFrame?: (
     shotNumber: number,
@@ -1626,6 +1653,11 @@ export function VerticalDramaStoryboardPanel({
   onSetShotCharacterReferences,
   savingShotCharacterReferencesForShot = null,
   onSetShotLocation,
+  sceneContinuityEnabled = false,
+  onPlanSceneVisualState,
+  planningSceneVisualStateForKey = null,
+  onUpdateSceneVisualState,
+  savingSceneVisualStateForKey = null,
   onDropStartFrame,
   onGenerateStartFramePlan,
   generatingStartFramePlan = false,
@@ -1747,6 +1779,7 @@ export function VerticalDramaStoryboardPanel({
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
+  const sceneVisualStates = startFramePlan?.sceneVisualStates;
   const canonicalAssemblyReadiness = resolveCanonicalShotAssembly({
     clips: motionPromptPack?.clips ?? [],
     storyboardShotNumbers: storyboard?.shots?.map(shot => shot.shot_number),
@@ -2619,6 +2652,12 @@ export function VerticalDramaStoryboardPanel({
             seriesId={seriesId}
             locale={locale}
             distinctLocations={storyboard.distinct_locations}
+            sceneContinuityEnabled={sceneContinuityEnabled}
+            sceneVisualStates={startFramePlan?.sceneVisualStates}
+            onPlanSceneVisualState={onPlanSceneVisualState}
+            planningSceneVisualStateForKey={planningSceneVisualStateForKey}
+            onUpdateSceneVisualState={onUpdateSceneVisualState}
+            savingSceneVisualStateForKey={savingSceneVisualStateForKey}
           />
         ) : null}
 
@@ -4699,6 +4738,27 @@ export function VerticalDramaStoryboardPanel({
                             <Pencil aria-hidden="true" className="h-3 w-3" />
                           </button>
                         ) : null}
+                        {sceneContinuityEnabled &&
+                        effectiveLocationKey &&
+                        sceneVisualStates?.[effectiveLocationKey] ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-violet-400/60 px-1.5 py-0 text-[9px] text-violet-700 dark:text-violet-300"
+                            title={
+                              sceneVisualStates[effectiveLocationKey]
+                                ?.lightingState || undefined
+                            }
+                            data-testid={`vd-storyboard-scene-lock-${shotNumber}`}
+                          >
+                            <Sparkles
+                              aria-hidden="true"
+                              className="h-2.5 w-2.5"
+                            />
+                            {t(locale, "ล็อกฉาก", "Scene lock")}
+                          </Badge>
+                        ) : null}
+                        {/* Neighbor-anchor provenance is intentionally hidden until
+                            the separate P1b child flag/anchor writer lands. */}
                       </div>
                     );
                   })()}
@@ -6445,10 +6505,30 @@ function VerticalDramaLocationsBibleCard({
   seriesId,
   locale,
   distinctLocations,
+  sceneContinuityEnabled = false,
+  sceneVisualStates,
+  onPlanSceneVisualState,
+  planningSceneVisualStateForKey = null,
+  onUpdateSceneVisualState,
+  savingSceneVisualStateForKey = null,
 }: {
   seriesId: string;
   locale: Lang;
   distinctLocations: VerticalDramaStoryboardDistinctLocationView[];
+  sceneContinuityEnabled?: boolean;
+  sceneVisualStates?: Record<string, VerticalDramaSceneVisualStateView>;
+  onPlanSceneVisualState?: (
+    locationKey: string,
+    force?: boolean,
+    expectedRevision?: number
+  ) => void;
+  planningSceneVisualStateForKey?: string | null;
+  onUpdateSceneVisualState?: (
+    locationKey: string,
+    patch: VerticalDramaSceneVisualStatePatch,
+    expectedRevision?: number
+  ) => void;
+  savingSceneVisualStateForKey?: string | null;
 }) {
   const utils = trpc.useUtils();
   const listQuery = trpc.verticalDramaLocations.list.useQuery({ seriesId });
@@ -6812,6 +6892,19 @@ function VerticalDramaLocationsBibleCard({
                   <p className="line-clamp-2 text-xs text-muted-foreground">
                     {group.description}
                   </p>
+                ) : null}
+
+                {sceneContinuityEnabled ? (
+                  <VerticalDramaSceneLockRow
+                    locale={locale}
+                    locationKey={locationKey}
+                    state={sceneVisualStates?.[locationKey]}
+                    enabled
+                    planning={planningSceneVisualStateForKey === locationKey}
+                    saving={savingSceneVisualStateForKey === locationKey}
+                    onPlan={onPlanSceneVisualState}
+                    onSubmitEdit={onUpdateSceneVisualState}
+                  />
                 ) : null}
 
                 {!roster ? (

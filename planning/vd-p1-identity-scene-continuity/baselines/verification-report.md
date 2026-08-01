@@ -7,6 +7,40 @@ Measurement SHA at this run: `4908bd6bf18e41f0617b2354b1576ead6fa54013`
 The repository contains unrelated dirty worktree changes. Verification below
 is scoped to the VD P1 paths and does not claim a clean repository-wide build.
 
+## Current-worktree rerun (2026-08-01)
+
+The current checkout was revalidated at HEAD `a330e7725`; the worktree still
+contains unrelated staged/unstaged changes, so this is evidence for the current
+tree rather than a clean merge artifact.
+
+- Focused Section 14 suite: `37 passed / 1 skipped` (the opt-in live test is
+  skipped by default).
+- Additional Feature 137/138/139 look, flag, scene, motion, router, and UI
+  regression suites: `77 passed`.
+- Recorded live-gate replay with the opt-in sample: `1 passed`; this does not
+  call an external provider.
+- Gate A: `5 failed / 263 passed`; the fail-set has `0` new identities versus
+  `gate-a-failset-current.txt`.
+- Gate B: `57 failed`; the fail-set has `0` new identities versus
+  `gate-b-failset-after.txt`.
+- Repository typecheck still exits 2 with unrelated errors; no new P1-specific
+  error was found. Targeted VD P1 `git diff --check` is clean; a separate
+  unrelated staged file still has pre-existing trailing whitespace.
+
+## Remaining work by specification
+
+- Feature 137: run the internal labeled P1 rollout rubric (at least 30
+  start-frame/motion fixtures and manual-regen observation across at least 3
+  episodes), then decide P1 GA. P2 video-safe frames/angle packs and P3 clip
+  identity QC remain explicitly deferred.
+- Feature 138: run the P1a internal same-scene rubric (at least 30 consecutive
+  frame pairs from at least 3 episodes). P1b neighbor anchoring is a separate
+  canary requiring latency, anchor coverage, and prompt/render asset-id
+  evidence; P2 coverage packs and continuity QC remain deferred.
+- Feature 139: run internal genre-quality labeling (at least 45 shot pairs,
+  one 9-shot episode per genre) and verify no duplicate look fragments,
+  identity regressions, stale writes, or cross-tenant access before GA.
+
 ## Completed automated evidence
 
 All commands were run from `apps/web` so Vitest does not traverse the monorepo

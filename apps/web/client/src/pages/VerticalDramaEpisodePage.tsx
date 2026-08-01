@@ -91,6 +91,7 @@ import type {
   VerticalDramaMotionPromptPackView,
   VerticalDramaQualityLoopStateView,
   VerticalDramaQualityPolicyView,
+  VerticalDramaSceneVisualStatePatch,
   VerticalDramaShotReferenceView,
   VerticalDramaStartFramePlanView,
   VerticalDramaStoryboardView,
@@ -2583,6 +2584,68 @@ function EpisodeWorkspaceShell({
       episodeId,
       shotNumber,
       locationKey,
+    });
+  }
+
+  const planSceneVisualStateMutation =
+    trpc.verticalDramaEpisodes.planSceneVisualState.useMutation({
+      onSuccess: result => {
+        if (!result.planned) {
+          toast.info(
+            result.skippedReason === "manual_edit"
+              ? lang === "th"
+                ? "ล็อกฉากนี้ถูกแก้ด้วยมือไว้ — กด “สร้างใหม่ทับของเดิม” ถ้าต้องการให้ AI เขียนทับ"
+                : "This lock was edited manually — use “Re-plan and overwrite” to let the AI replace it"
+              : lang === "th"
+                ? "ฉากนี้มีล็อกอยู่แล้ว"
+                : "This scene already has a lock"
+          );
+        } else {
+          toast.success(
+            lang === "th" ? "วางแผนล็อกฉากเรียบร้อย" : "Scene lock planned"
+          );
+        }
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handlePlanSceneVisualState(
+    locationKey: string,
+    force?: boolean,
+    expectedRevision = 0,
+  ) {
+    planSceneVisualStateMutation.mutate({
+      seriesId,
+      episodeId,
+      locationKey,
+      expectedRevision,
+      ...(force ? { force: true } : {}),
+    });
+  }
+
+  const updateSceneVisualStateMutation =
+    trpc.verticalDramaEpisodes.updateSceneVisualState.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th" ? "บันทึกล็อกฉากแล้ว" : "Scene lock saved"
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleUpdateSceneVisualState(
+    locationKey: string,
+    patch: VerticalDramaSceneVisualStatePatch,
+    expectedRevision = 0,
+  ) {
+    updateSceneVisualStateMutation.mutate({
+      seriesId,
+      episodeId,
+      locationKey,
+      expectedRevision,
+      patch,
     });
   }
 
@@ -5715,6 +5778,18 @@ function EpisodeWorkspaceShell({
             onSetShotCharacterReferences: handleSetShotCharacterReferences,
             savingShotCharacterReferencesForShot,
             onSetShotLocation: handleSetShotLocation,
+            sceneContinuityEnabled:
+              episodeDetailQuery.data?.flags?.sceneContinuity,
+            onPlanSceneVisualState: handlePlanSceneVisualState,
+            planningSceneVisualStateForKey:
+              planSceneVisualStateMutation.isPending
+                ? (planSceneVisualStateMutation.variables?.locationKey ?? null)
+                : null,
+            onUpdateSceneVisualState: handleUpdateSceneVisualState,
+            savingSceneVisualStateForKey:
+              updateSceneVisualStateMutation.isPending
+                ? (updateSceneVisualStateMutation.variables?.locationKey ?? null)
+                : null,
             onDropStartFrame: handleDropStartFrame,
             onGenerateAngleVariations: shotNumber => {
               void handleGeneratePromptAndImage(shotNumber, "angles");
