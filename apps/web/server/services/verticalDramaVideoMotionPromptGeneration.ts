@@ -948,7 +948,7 @@ export async function generateVideoMotionPromptPack(
         // anchoring is a plain-prose instruction in its "Single camera move
         // + speaker anchoring per clip" section instead — so this generator
         // never requests the per-shot-only structured field.
-        hasEstablishedCharacters: false,
+        frameAnalysisRequested: false,
       })
     : null;
   const nativeAudioDirectionEnabled =
@@ -1130,7 +1130,7 @@ async function resolveShotVideoPromptModel(
   return { model: fallbackModel, hasVision: false };
 }
 
-const shotVideoPromptOutputSchema = z
+export const shotVideoPromptOutputSchema = z
   .object({
     prompt: z.string().min(1),
     negative_motion_prompt: z.string().optional().default(""),
@@ -1193,11 +1193,17 @@ const shotVideoPromptOutputSchema = z
                 name: z.string(),
                 position: z.string(),
                 note: z.string().optional(),
+                facing: z.string().optional(),
+                eyes_visible: z.string().optional(),
+                occlusion: z.string().optional(),
+                face_size: z.string().optional(),
+                overlapped_by_other_face: z.boolean().optional(),
               })
               .passthrough(),
           )
           .optional(),
         position_source: z.string().optional(),
+        faces_separated: z.boolean().optional(),
       })
       .passthrough()
       .optional(),
@@ -1314,7 +1320,8 @@ export function buildTargetVideoModelFactBlock(params: {
   modelId: string;
   modelName?: string;
   maxReferenceImages?: number;
-  hasEstablishedCharacters: boolean;
+  frameAnalysisRequested: boolean;
+  frameObservabilityRequested?: boolean;
 }): string {
   const modelLabel = params.modelName
     ? `${params.modelName} (${params.modelId})`
@@ -1325,8 +1332,11 @@ export function buildTargetVideoModelFactBlock(params: {
     `- model: "${modelLabel}"`,
     `- negative_prompt_supported: ${videoPromptFamilySupportsNegativePrompt(params.family) ? "yes" : "no"}`,
     `- reference_images_accepted: ${params.maxReferenceImages ?? 0}`,
-    params.hasEstablishedCharacters
+    params.frameAnalysisRequested
       ? `- frame_analysis: REQUIRED — return the frame_analysis output field per the skill's "FRAME ANALYSIS FIRST" section, reading positions from the ATTACHED IMAGE.`
+      : null,
+    params.frameObservabilityRequested
+      ? `- frame_observability: REQUIRED — also fill the per-person observability fields (facing, eyes_visible, occlusion, face_size, overlapped_by_other_face) and the sibling faces_separated flag inside frame_analysis, per the skill's "FRAME ANALYSIS FIRST" section.`
       : null,
     `Apply the skill's "MODEL-FAMILY SHAPING" section for this family.`,
   ]
@@ -1418,14 +1428,42 @@ function findPositionAnchorIssues(
  * shape — mirrors this file's established "omit when there's nothing to
  * say" convention.
  */
-function normalizeFrameAnalysis(
+export type VdFrameAnalysis = {
+  people: Array<{
+    name: string;
+    position: string;
+    facing?: string;
+    eyesVisible?: string;
+    occlusion?: string;
+    faceSize?: string;
+    overlappedByOtherFace?: boolean;
+  }>;
+  positionSource?: string;
+  facesSeparated?: boolean;
+};
+
+export function normalizeFrameAnalysis(
   raw: ShotVideoPromptOutput["frame_analysis"],
-): { people: Array<{ name: string; position: string }>; positionSource?: string } | undefined {
+): VdFrameAnalysis | undefined {
   if (!raw || !Array.isArray(raw.people)) return undefined;
+  const normalizedString = (value: unknown) =>
+    typeof value === "string" && value.trim().length > 0
+      ? value.trim().toLowerCase().slice(0, 24)
+      : undefined;
   const people = raw.people
     .map(p => ({
       name: typeof p?.name === "string" ? p.name.trim().slice(0, 80) : "",
       position: typeof p?.position === "string" ? p.position.trim().slice(0, 80) : "",
+      facing: normalizedString(p?.facing),
+      eyesVisible: normalizedString(p?.eyes_visible),
+      occlusion: normalizedString(p?.occlusion),
+      faceSize: normalizedString(p?.face_size),
+      overlappedByOtherFace:
+        p?.overlapped_by_other_face === true
+          ? true
+          : p?.overlapped_by_other_face === false
+            ? false
+            : undefined,
     }))
     .filter(p => p.name.length > 0 && p.position.length > 0)
     .slice(0, 6);
@@ -1436,6 +1474,12 @@ function normalizeFrameAnalysis(
       typeof raw.position_source === "string" && raw.position_source.trim().length > 0
         ? raw.position_source.trim().slice(0, 40)
         : undefined,
+    facesSeparated:
+      raw.faces_separated === true
+        ? true
+        : raw.faces_separated === false
+          ? false
+          : undefined,
   };
 }
 
@@ -1445,6 +1489,8 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
   seriesId: number;
   episodeId: number;
   shotNumber: number;
+  /** Enables the flag-gated frame-observability and motion-contract channel. */
+  motionContractsEnabled?: boolean;
   /**
    * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W7,
    * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — the
@@ -1805,7 +1851,7 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
    * were established, no vision was attached, or the model returned nothing
    * usable — never a hard requirement.
    */
-  frameAnalysis?: { people: Array<{ name: string; position: string }>; positionSource?: string };
+  frameAnalysis?: VdFrameAnalysis;
   /**
    * Model-family-aware, vision-grounded video prompt quality upgrade — non-
    * blocking, human-readable warning(s) surfaced when the position-anchor
@@ -2141,6 +2187,10 @@ export async function generateVerticalDramaShotVideoPrompt(
   // call site in `verticalDramaEpisodes.ts`), so this is the exact same
   // "established characters" signal, computed once here.
   const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const motionContractsEnabled = params.motionContractsEnabled === true;
+  const frameAnalysisRequested =
+    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+  const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const family = resolveShotVideoPromptModelFamily(
     params.selectedVideoModelId,
     params.selectedVideoModel,
@@ -2150,7 +2200,8 @@ export async function generateVerticalDramaShotVideoPrompt(
     modelId: params.selectedVideoModelId,
     modelName: params.selectedVideoModel.name,
     maxReferenceImages: capabilities.maxReferenceImages,
-    hasEstablishedCharacters,
+    frameAnalysisRequested,
+    frameObservabilityRequested,
   });
 
   const userPromptText = buildShotVideoPromptUserPrompt(
@@ -2471,7 +2522,7 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
   /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.family`'s identical doc comment. */
   family: VideoPromptModelFamily;
   /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.frameAnalysis`'s identical doc comment. */
-  frameAnalysis?: { people: Array<{ name: string; position: string }>; positionSource?: string };
+  frameAnalysis?: VdFrameAnalysis;
   /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.warnings`'s identical doc comment. */
   warnings?: string[];
 }
@@ -2707,6 +2758,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   // structural check is used here rather than assuming that invariant, so
   // this stays correct even if a future caller supplies fewer.
   const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const motionContractsEnabled = params.motionContractsEnabled === true;
+  const frameAnalysisRequested =
+    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+  const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const family = resolveShotVideoPromptModelFamily(
     params.selectedVideoModelId,
     params.selectedVideoModel,
@@ -2716,7 +2771,8 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     modelId: params.selectedVideoModelId,
     modelName: params.selectedVideoModel.name,
     maxReferenceImages: capabilities.maxReferenceImages,
-    hasEstablishedCharacters,
+    frameAnalysisRequested,
+    frameObservabilityRequested,
   });
 
   const userPromptText = buildSpeakerSwitchUserPrompt(
@@ -3359,12 +3415,17 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
   const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const motionContractsEnabled = params.motionContractsEnabled === true;
+  const frameAnalysisRequested =
+    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+  const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
     family,
     modelId: params.selectedVideoModelId,
     modelName: params.selectedVideoModel.name,
     maxReferenceImages: capabilities.maxReferenceImages,
-    hasEstablishedCharacters,
+    frameAnalysisRequested,
+    frameObservabilityRequested,
   });
 
   const factSheetA = buildCandidateFactSheet(
@@ -3568,12 +3629,17 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
   const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const motionContractsEnabled = params.motionContractsEnabled === true;
+  const frameAnalysisRequested =
+    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+  const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
     family,
     modelId: params.selectedVideoModelId,
     modelName: params.selectedVideoModel.name,
     maxReferenceImages: capabilities.maxReferenceImages,
-    hasEstablishedCharacters,
+    frameAnalysisRequested,
+    frameObservabilityRequested,
   });
 
   const factSheetA = buildCandidateFactSheet(

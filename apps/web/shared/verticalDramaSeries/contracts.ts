@@ -969,8 +969,17 @@ export type VerticalDramaMotionPromptPack = {
      * generated before this task.
      */
     frameAnalysis?: {
-      people: Array<{ name: string; position: string }>;
+      people: Array<{
+        name: string;
+        position: string;
+        facing?: string;
+        eyesVisible?: string;
+        occlusion?: string;
+        faceSize?: string;
+        overlappedByOtherFace?: boolean;
+      }>;
       positionSource?: string;
+      facesSeparated?: boolean;
     };
     /**
      * Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-

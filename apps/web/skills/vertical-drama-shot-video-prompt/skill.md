@@ -70,10 +70,16 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
       {
         "name": "string (character name from the CHARACTER IDENTITY MAP)",
         "position": "left | center-left | center | center-right | right",
-        "note": "string (optional — short pose/orientation audit cue, never appearance prose)"
+        "note": "string (optional — short pose/orientation audit cue, never appearance prose)",
+        "facing": "frontal | three_quarter | profile | back_of_head | not_visible (optional — ONLY when frame_observability: REQUIRED)",
+        "eyes_visible": "both | one | none (optional — ONLY when frame_observability: REQUIRED)",
+        "occlusion": "none | partial | heavy (optional — ONLY when frame_observability: REQUIRED)",
+        "face_size": "large | medium | small | tiny (optional — ONLY when frame_observability: REQUIRED)",
+        "overlapped_by_other_face": "boolean (optional — ONLY when frame_observability: REQUIRED)"
       }
     ],
-    "position_source": "image | image_prompt_text"
+    "position_source": "image | image_prompt_text",
+    "faces_separated": "boolean (optional — ONLY when frame_observability: REQUIRED)"
   }
 }
 ```
@@ -173,6 +179,13 @@ positions from the image-prompt text instead, set `"position_source":
 "image_prompt_text"`, and still anchor every speech cue by name + position.
 When fewer than 2 characters are established, `frame_analysis` is optional —
 include it when it helps, or omit it.
+
+When the caller states `frame_observability: REQUIRED`, return the additional
+per-person observability fields and `faces_separated`. Read them only from the
+attached start frame: facing, visible eyes, occlusion, face size, whether
+another face overlaps this one, and whether all faces remain spatially
+separated. Never guess these values from prompt text. Without that activation
+fact, omit the observability-only fields.
 
 ## Hard rules — MANDATORY
 

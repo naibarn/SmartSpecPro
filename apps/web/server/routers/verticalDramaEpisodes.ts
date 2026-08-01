@@ -3647,6 +3647,14 @@ async function resolveVerticalDramaRetentionHooksFlag(
   return flags?.verticalDramaRetentionHooks === true;
 }
 
+/** Feature 137 P1 — fail-closed tenant gate for frame observability/motion contracts. */
+async function resolveVerticalDramaMotionContractsFlag(
+  tenantId: string
+): Promise<boolean> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  return flags?.verticalDramaMotionContracts === true;
+}
+
 /**
  * Retention hooks W5/W6 (`planning/vertical-drama-retention-hooks/plan.md`)
  * — nearest-first `retention_loop.type` of this series' last `limit` PRIOR
@@ -6626,6 +6634,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
    * default before calling this function.
    */
   qualityLoop?: boolean;
+  motionContractsEnabled: boolean;
 }) {
   const {
     tenantId,
@@ -6662,6 +6671,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     attachShotImage,
     additionalImageUrls,
     qualityLoop,
+    motionContractsEnabled,
   } = args;
 
   // Lip-sync discipline fix — same speaker-attribution mirror convention as
@@ -6682,6 +6692,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     characterReferenceImages,
     locationReferenceImage,
     qualityLoop,
+    motionContractsEnabled,
     shotContext: {
       canonicalShotSummary,
       beatIsSilent,
@@ -14138,6 +14149,8 @@ export const verticalDramaEpisodesRouter = router({
       // this mutation.
       const retentionHooksEnabled =
         await resolveVerticalDramaRetentionHooksFlag(tenantId);
+      const motionContractsEnabled =
+        await resolveVerticalDramaMotionContractsFlag(tenantId);
 
       // Shot context: description/camera/emotion from the storyboard shot.
       const storyboard = row.storyboard as VerticalDramaShotgrid | null;
@@ -14584,6 +14597,7 @@ export const verticalDramaEpisodesRouter = router({
           // Judged best-of-2 quality loop (`planning/vd-video-prompt-model-
           // family-quality/plan.md` Phase 2) — default ON.
           qualityLoop: input.qualityLoop ?? true,
+          motionContractsEnabled,
         });
       }
 
@@ -14595,7 +14609,7 @@ export const verticalDramaEpisodesRouter = router({
       // a splitting shot, which resolves its OWN reference set from
       // `subShotDecision.windows`, never pays for this resolution twice).
       const shotVideoCharacterReferenceImages =
-        (frame?.requiredCharacterRefs?.length ?? 0) >= 2
+        (frame?.requiredCharacterRefs?.length ?? 0) >= (motionContractsEnabled ? 1 : 2)
           ? await resolveShotVideoPromptCharacterReferenceImages(
               tenantId,
               userId,
@@ -14614,6 +14628,7 @@ export const verticalDramaEpisodesRouter = router({
         imageUrl,
         imagePrompt: frame?.imagePrompt,
         characterReferenceImages: shotVideoCharacterReferenceImages,
+        motionContractsEnabled,
         locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
         attachShotImage: input.attachShotImage,
         additionalImageUrls: input.additionalImageUrls,

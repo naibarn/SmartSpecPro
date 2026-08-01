@@ -188,7 +188,7 @@ describe("real-skill-file gate: vertical-drama-shot-video-prompt[-subshots] (tau
       modelId: "veo3/generate-veo-3-video-lite",
       modelName: "Veo 3.1 Lite",
       maxReferenceImages: 3,
-      hasEstablishedCharacters: true,
+      frameAnalysisRequested: true,
     });
     expect(factBlock).toContain("MODEL-FAMILY SHAPING");
     expect(factBlock).toContain('the skill\'s "FRAME ANALYSIS FIRST" section');
