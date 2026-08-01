@@ -468,6 +468,9 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     expect(mockDb.select).toHaveBeenCalledTimes(3);
     const [request] = mockGenerateImageAsync.mock.calls[0];
     expect(request.referenceImageUrls).toBeUndefined();
+    expect(mockAuditLog).not.toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "vd_scene_neighbor_anchor_attached" }),
+    );
   });
 
   it("byte-identical when the episode's storyboard has no distinct_locations data: zero new DB calls, referenceImageUrls unchanged", async () => {
