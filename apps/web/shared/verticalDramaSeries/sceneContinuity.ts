@@ -150,7 +150,9 @@ function summaryForShot(
   shotNumber: number,
 ): string {
   if (!source) return "";
-  const value = source instanceof Map ? source.get(shotNumber) : source[String(shotNumber)];
+  const value = source instanceof Map
+    ? source.get(shotNumber)
+    : (source as Readonly<Record<string, string | null | undefined>>)[String(shotNumber)];
   return cleanString(value);
 }
 
@@ -252,8 +254,9 @@ export function resolveSceneVisualState(raw: unknown): VdSceneVisualState | unde
       "character",
       "wardrobe",
     ) as Array<{ character: string; wardrobe: string }>;
-    const activeProps = Array.isArray(raw.activeProps ?? raw.active_props)
-      ? (raw.activeProps ?? raw.active_props as unknown[]).flatMap(entry => {
+    const activePropsRaw = raw.activeProps ?? raw.active_props;
+    const activeProps = Array.isArray(activePropsRaw)
+      ? activePropsRaw.flatMap(entry => {
           if (!isRecord(entry)) return [];
           const name = cleanString(entry.name);
           const placement = cleanString(entry.placement);
