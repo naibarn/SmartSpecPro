@@ -80,6 +80,21 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
     ],
     "position_source": "image | image_prompt_text",
     "faces_separated": "boolean (optional — ONLY when frame_observability: REQUIRED)"
+  },
+  "motion_profile": {
+    "characters": [
+      {
+        "name": "string (character name from the CHARACTER IDENTITY MAP)",
+        "start_facing": "frontal | three_quarter | profile | back_of_head | not_visible",
+        "end_facing": "frontal | three_quarter | profile | back_of_head | not_visible",
+        "turn_magnitude": "none | subtle | moderate | large",
+        "reveals_hidden_side": "boolean — true when the end pose exposes facial regions the start frame never showed"
+      }
+    ],
+    "camera_motion": "locked | push_in | pull_back | small_pan_tilt | small_lateral | orbit | large_reframe",
+    "new_character_enters": "boolean",
+    "identity_risk": "low | medium | high",
+    "risk_reasons": ["string (short, factual)"]
   }
 }
 ```
@@ -186,6 +201,18 @@ attached start frame: facing, visible eyes, occlusion, face size, whether
 another face overlaps this one, and whether all faces remain spatially
 separated. Never guess these values from prompt text. Without that activation
 fact, omit the observability-only fields.
+
+## MOTION PROFILE + MOTION CONTRACT — MANDATORY when the caller states `motion_profile: REQUIRED`
+
+Return `motion_profile` for solo and multi-character shots. Read each
+`start_facing` from the attached start-frame image; when vision is unavailable,
+use the supplied image-prompt text, matching `frame_analysis.position_source`.
+Derive `end_facing` from the authoritative shot beat and intended action, never
+from the frozen image. `turn_magnitude` describes head rotation, not whole-body
+movement. Set `reveals_hidden_side` whenever the end pose exposes facial regions
+not visible at the start. `camera_motion` must match the vocabulary actually used
+in `prompt`. Report `identity_risk` honestly; the caller derives a deterministic
+floor from the declarations and may raise the risk, never lower it.
 
 ## Hard rules — MANDATORY
 

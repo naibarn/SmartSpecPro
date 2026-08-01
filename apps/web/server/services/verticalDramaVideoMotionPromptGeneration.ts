@@ -120,6 +120,12 @@ import {
   videoPromptFamilySupportsNegativePrompt,
   type VideoPromptModelFamily,
 } from "@shared/verticalDramaSeries/videoPromptModelFamily";
+import {
+  parseMotionProfile,
+  type VdIdentityRisk,
+  type VdMotionProfile,
+  type VdMotionContractStatus,
+} from "@shared/verticalDramaSeries/motionProfile";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -449,6 +455,10 @@ export function projectMotionPromptPack(
     // independent of what's now embedded in `prompt`. `dialogue` stays a
     // SEPARATE persisted field, populated by `syncDialogueOntoMotionPromptClips`
     // (UI + audit + TTS depend on it) — this function never touches it.
+    // Feature 137 intentionally does not project `motionProfile` here: the
+    // bulk skill has no attached per-shot start frame, so `start_facing`
+    // would be an ungrounded guess. Only the per-shot/sub-shot paths persist
+    // the request-gated contract.
     clips: raw.video_clip_requests
       .slice()
       .sort((a, b) => a.clip_number - b.clip_number)
@@ -1207,6 +1217,25 @@ export const shotVideoPromptOutputSchema = z
       })
       .passthrough()
       .optional(),
+    /**
+     * Feature 137 P1 — optional, request-gated declaration of the facial and
+     * camera motion a candidate intends to perform. Deliberately lenient:
+     * weak-model enum variants and extra keys cross this boundary as strings
+     * and are classified by the total shared parser instead of failing the
+     * whole generation response.
+     */
+    motion_profile: z
+      .object({
+        characters: z
+          .array(z.object({ name: z.string() }).passthrough())
+          .optional(),
+        camera_motion: z.string().optional(),
+        new_character_enters: z.boolean().optional(),
+        identity_risk: z.string().optional(),
+        risk_reasons: z.array(z.string()).optional(),
+      })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 
@@ -1322,6 +1351,7 @@ export function buildTargetVideoModelFactBlock(params: {
   maxReferenceImages?: number;
   frameAnalysisRequested: boolean;
   frameObservabilityRequested?: boolean;
+  motionContractsEnabled?: boolean;
 }): string {
   const modelLabel = params.modelName
     ? `${params.modelName} (${params.modelId})`
@@ -1338,11 +1368,17 @@ export function buildTargetVideoModelFactBlock(params: {
     params.frameObservabilityRequested
       ? `- frame_observability: REQUIRED — also fill the per-person observability fields (facing, eyes_visible, occlusion, face_size, overlapped_by_other_face) and the sibling faces_separated flag inside frame_analysis, per the skill's "FRAME ANALYSIS FIRST" section.`
       : null,
+    params.motionContractsEnabled
+      ? `- motion_profile: REQUIRED — return the motion_profile output field per the skill's "${VD_MOTION_PROFILE_SKILL_SECTION_NAME}" section, grounding start_facing in the ATTACHED IMAGE and end_facing in the shot beat.`
+      : null,
     `Apply the skill's "MODEL-FAMILY SHAPING" section for this family.`,
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n");
 }
+
+/** Frozen skill section name shared by the request fact and real-file tests. */
+export const VD_MOTION_PROFILE_SKILL_SECTION_NAME = "MOTION PROFILE + MOTION CONTRACT";
 
 /**
  * Locate where a dialogue line's text starts inside `prompt`, tolerant of
@@ -1480,6 +1516,30 @@ export function normalizeFrameAnalysis(
         : raw.faces_separated === false
           ? false
           : undefined,
+  };
+}
+
+/**
+ * Resolve an optional wire profile into the bounded persisted form. Flag-off
+ * ignores even volunteered output; flag-on preserves missing-vs-invalid
+ * telemetry without inventing a low-risk profile.
+ */
+export function resolveShotVideoPromptMotionProfile(
+  raw: unknown,
+  motionContractsEnabled: boolean,
+): {
+  motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
+  effectiveRisk?: VdIdentityRisk;
+  motionContractStatus?: VdMotionContractStatus;
+} {
+  if (!motionContractsEnabled) return {};
+  const parsed = parseMotionProfile(raw);
+  if (parsed.status !== "emitted") return { motionContractStatus: parsed.status };
+  const motionProfile = { ...parsed.profile, effectiveRisk: parsed.effectiveRisk };
+  return {
+    motionProfile,
+    effectiveRisk: parsed.effectiveRisk,
+    motionContractStatus: "emitted",
   };
 }
 
@@ -1852,6 +1912,9 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
    * usable — never a hard requirement.
    */
   frameAnalysis?: VdFrameAnalysis;
+  motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
+  effectiveRisk?: VdIdentityRisk;
+  motionContractStatus?: VdMotionContractStatus;
   /**
    * Model-family-aware, vision-grounded video prompt quality upgrade — non-
    * blocking, human-readable warning(s) surfaced when the position-anchor
@@ -2202,6 +2265,7 @@ export async function generateVerticalDramaShotVideoPrompt(
     maxReferenceImages: capabilities.maxReferenceImages,
     frameAnalysisRequested,
     frameObservabilityRequested,
+    motionContractsEnabled,
   });
 
   const userPromptText = buildShotVideoPromptUserPrompt(
@@ -2419,6 +2483,7 @@ export async function generateVerticalDramaShotVideoPrompt(
     audioDirection: resolvedAudioDirection,
     family,
     frameAnalysis: normalizeFrameAnalysis(data.frame_analysis),
+    ...resolveShotVideoPromptMotionProfile(data.motion_profile, motionContractsEnabled),
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
@@ -2523,6 +2588,10 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
   family: VideoPromptModelFamily;
   /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.frameAnalysis`'s identical doc comment. */
   frameAnalysis?: VdFrameAnalysis;
+  /** Feature 137 P1 — same request-gated fields as the single-shot result. */
+  motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
+  effectiveRisk?: VdIdentityRisk;
+  motionContractStatus?: VdMotionContractStatus;
   /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.warnings`'s identical doc comment. */
   warnings?: string[];
 }
@@ -2773,6 +2842,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     maxReferenceImages: capabilities.maxReferenceImages,
     frameAnalysisRequested,
     frameObservabilityRequested,
+    motionContractsEnabled,
   });
 
   const userPromptText = buildSpeakerSwitchUserPrompt(
@@ -2986,6 +3056,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     audioDirection: resolvedAudioDirection,
     family,
     frameAnalysis: normalizeFrameAnalysis(data.frame_analysis),
+    ...resolveShotVideoPromptMotionProfile(data.motion_profile, motionContractsEnabled),
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
@@ -3426,6 +3497,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     maxReferenceImages: capabilities.maxReferenceImages,
     frameAnalysisRequested,
     frameObservabilityRequested,
+    motionContractsEnabled,
   });
 
   const factSheetA = buildCandidateFactSheet(
@@ -3481,17 +3553,30 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
   });
 
   if (!judgeOutcome) {
+    const fallbackCandidate =
+      motionContractsEnabled
+        ? candidates.find(candidate => candidate.motionContractStatus === "emitted") ?? candidateA
+        : candidateA;
+    const fallbackWarning =
+      fallbackCandidate === candidateA
+        ? `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped candidate A without judging.`
+        : `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped the contract-compliant fallback candidate without judging.`;
     return {
-      ...candidateA,
+      ...fallbackCandidate,
       creditsUsed: candidateA.creditsUsed + candidateB.creditsUsed,
-      warnings: appendWarnings(candidateA.warnings, [
-        `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped candidate A without judging.`,
-      ]),
+      warnings: appendWarnings(fallbackCandidate.warnings, [fallbackWarning]),
       promptQuality: { mode: "judged", candidates: 2, repaired: false },
     };
   }
 
-  const winnerIndex = Math.round(judgeOutcome.data.winner_index) === 1 ? 1 : 0;
+  const judgedWinnerIndex = Math.round(judgeOutcome.data.winner_index) === 1 ? 1 : 0;
+  const emittedCandidateIndex = motionContractsEnabled
+    ? candidates.findIndex(candidate => candidate.motionContractStatus === "emitted")
+    : -1;
+  const winnerIndex =
+    emittedCandidateIndex >= 0 && candidates[judgedWinnerIndex].motionContractStatus !== "emitted"
+      ? emittedCandidateIndex
+      : judgedWinnerIndex;
   const winner = candidates[winnerIndex];
   const winnerFactSheet = winnerIndex === 0 ? factSheetA : factSheetB;
   const normalizedVerdict: "accept" | "repair" =
@@ -3538,7 +3623,19 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     hasEstablishedCharacters,
   );
 
-  if (pickBetterCandidateByHardFacts(winnerFactSheet, repairedFactSheet) === "b") {
+  const repairedImprovesContract =
+    motionContractsEnabled &&
+    repairedResult.motionContractStatus === "emitted" &&
+    winner.motionContractStatus !== "emitted";
+  const repairedDegradesContract =
+    motionContractsEnabled &&
+    winner.motionContractStatus === "emitted" &&
+    repairedResult.motionContractStatus !== "emitted";
+  if (
+    repairedImprovesContract ||
+    (!repairedDegradesContract &&
+      pickBetterCandidateByHardFacts(winnerFactSheet, repairedFactSheet) === "b")
+  ) {
     return {
       ...repairedResult,
       creditsUsed: totalCreditsAfterRepair,
@@ -3640,6 +3737,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     maxReferenceImages: capabilities.maxReferenceImages,
     frameAnalysisRequested,
     frameObservabilityRequested,
+    motionContractsEnabled,
   });
 
   const factSheetA = buildCandidateFactSheet(
@@ -3696,17 +3794,30 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
   });
 
   if (!judgeOutcome) {
+    const fallbackCandidate =
+      motionContractsEnabled
+        ? candidates.find(candidate => candidate.motionContractStatus === "emitted") ?? candidateA
+        : candidateA;
+    const fallbackWarning =
+      fallbackCandidate === candidateA
+        ? `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped candidate A without judging.`
+        : `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped the contract-compliant fallback candidate without judging.`;
     return {
-      ...candidateA,
+      ...fallbackCandidate,
       creditsUsed: candidateA.creditsUsed + candidateB.creditsUsed,
-      warnings: appendWarnings(candidateA.warnings, [
-        `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped candidate A without judging.`,
-      ]),
+      warnings: appendWarnings(fallbackCandidate.warnings, [fallbackWarning]),
       promptQuality: { mode: "judged", candidates: 2, repaired: false },
     };
   }
 
-  const winnerIndex = Math.round(judgeOutcome.data.winner_index) === 1 ? 1 : 0;
+  const judgedWinnerIndex = Math.round(judgeOutcome.data.winner_index) === 1 ? 1 : 0;
+  const emittedCandidateIndex = motionContractsEnabled
+    ? candidates.findIndex(candidate => candidate.motionContractStatus === "emitted")
+    : -1;
+  const winnerIndex =
+    emittedCandidateIndex >= 0 && candidates[judgedWinnerIndex].motionContractStatus !== "emitted"
+      ? emittedCandidateIndex
+      : judgedWinnerIndex;
   const winner = candidates[winnerIndex];
   const winnerFactSheet = winnerIndex === 0 ? factSheetA : factSheetB;
   const normalizedVerdict: "accept" | "repair" =
@@ -3751,7 +3862,19 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     hasEstablishedCharacters,
   );
 
-  if (pickBetterCandidateByHardFacts(winnerFactSheet, repairedFactSheet) === "b") {
+  const repairedImprovesContract =
+    motionContractsEnabled &&
+    repairedResult.motionContractStatus === "emitted" &&
+    winner.motionContractStatus !== "emitted";
+  const repairedDegradesContract =
+    motionContractsEnabled &&
+    winner.motionContractStatus === "emitted" &&
+    repairedResult.motionContractStatus !== "emitted";
+  if (
+    repairedImprovesContract ||
+    (!repairedDegradesContract &&
+      pickBetterCandidateByHardFacts(winnerFactSheet, repairedFactSheet) === "b")
+  ) {
     return {
       ...repairedResult,
       creditsUsed: totalCreditsAfterRepair,

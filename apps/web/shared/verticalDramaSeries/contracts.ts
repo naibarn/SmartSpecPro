@@ -24,6 +24,11 @@ import type {
   VdImagePromptMode,
   VdImagePromptModeStamp,
 } from "./imagePromptModelFamily";
+import type {
+  VdIdentityRisk,
+  VdMotionContractStatus,
+  VdMotionProfile,
+} from "./motionProfile";
 
 /* -------------------------------------------------------------------------- */
 /* Pipeline stages & warnings (spec §11.5)                                    */
@@ -981,6 +986,15 @@ export type VerticalDramaMotionPromptPack = {
       positionSource?: string;
       facesSeparated?: boolean;
     };
+    /**
+     * Feature 137 P1 motion contract. Optional for old clips and bulk-pack
+     * output. `effectiveRisk` is the maximum of the skill declaration and
+     * the deterministic facts-based floor; consumers must never require it.
+     */
+    motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
+    effectiveRisk?: VdIdentityRisk;
+    /** Present only when the request-gated per-shot/sub-shot path ran. */
+    motionContractStatus?: VdMotionContractStatus;
     /**
      * Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
      * quality/plan.md` Phase 2) — compact record of how this clip's prompt

@@ -15,6 +15,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
+import { auditLogger } from "../services/auditLogger";
 import { db } from "../db";
 import {
   verticalDramaSeries,
@@ -6681,6 +6682,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     speakerName: l.characterKey ? characterNameByKey?.get(l.characterKey) : undefined,
   }));
 
+  const motionContractStartedAt = Date.now();
   const speakerSwitchGeneration = await generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch({
     userId,
     tenantId,
@@ -6729,6 +6731,25 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     attachShotImage,
     additionalImageUrls,
   });
+  if (speakerSwitchGeneration.motionContractStatus) {
+    auditLogger.log({
+      eventType: "vd_motion_contract_generated",
+      userId,
+      tenantId,
+      model: speakerSwitchGeneration.model,
+      metadata: {
+        seriesId,
+        episodeId,
+        shot: shotNumber,
+        effectiveRisk: speakerSwitchGeneration.effectiveRisk,
+        contractStatus: speakerSwitchGeneration.motionContractStatus,
+        modelFamily: speakerSwitchGeneration.family,
+        observabilityPresent: Boolean(speakerSwitchGeneration.frameAnalysis),
+        contractPresent: Boolean(speakerSwitchGeneration.motionProfile),
+        ms: Date.now() - motionContractStartedAt,
+      },
+    });
+  }
 
   // Same 2 passes the single-clip path applies (brand sanitize -> length-cap
   // QC), applied ONCE — no loop, this path now produces exactly one combined
@@ -6891,6 +6912,17 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     audioDirection: speakerSwitchGeneration.audioDirection,
     promptModelTarget: splitShotVideoPromptModelTarget,
     frameAnalysis: speakerSwitchGeneration.frameAnalysis,
+    ...(speakerSwitchGeneration.motionContractStatus
+      ? {
+          motionContractStatus: speakerSwitchGeneration.motionContractStatus,
+          ...(speakerSwitchGeneration.motionProfile
+            ? {
+                motionProfile: speakerSwitchGeneration.motionProfile,
+                effectiveRisk: speakerSwitchGeneration.effectiveRisk,
+              }
+            : {}),
+        }
+      : {}),
     // Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
     // quality/plan.md` Phase 2) — compact record of how this prompt was
     // produced (single vs judged-best-of-2, verdict, whether a repair round
@@ -14619,6 +14651,7 @@ export const verticalDramaEpisodesRouter = router({
             )
           : undefined;
 
+      const motionContractStartedAt = Date.now();
       const result = await generateJudgedVerticalDramaShotVideoPrompt({
         userId,
         tenantId,
@@ -14703,6 +14736,25 @@ export const verticalDramaEpisodesRouter = router({
         // family-quality/plan.md` Phase 2) — default ON.
         qualityLoop: input.qualityLoop ?? true,
       });
+      if (result.motionContractStatus) {
+        auditLogger.log({
+          eventType: "vd_motion_contract_generated",
+          userId,
+          tenantId,
+          model: result.model,
+          metadata: {
+            seriesId,
+            episodeId,
+            shot: input.shotNumber,
+            effectiveRisk: result.effectiveRisk,
+            contractStatus: result.motionContractStatus,
+            modelFamily: result.family,
+            observabilityPresent: Boolean(result.frameAnalysis),
+            contractPresent: Boolean(result.motionProfile),
+            ms: Date.now() - motionContractStartedAt,
+          },
+        });
+      }
 
       // Brand/public-figure sanitize pass (Thai ad-compliance + video-policy
       // guard, 2026-07-06) — provider-facing VIDEO prompts must never contain
@@ -14943,6 +14995,17 @@ export const verticalDramaEpisodesRouter = router({
               audioDirection: result.audioDirection,
               promptModelTarget: shotVideoPromptModelTarget,
               frameAnalysis: result.frameAnalysis,
+              ...(result.motionContractStatus
+                ? {
+                    motionContractStatus: result.motionContractStatus,
+                    ...(result.motionProfile
+                      ? {
+                          motionProfile: result.motionProfile,
+                          effectiveRisk: result.effectiveRisk,
+                        }
+                      : {}),
+                  }
+                : {}),
               promptQuality: result.promptQuality,
             },
           ];
@@ -14982,6 +15045,17 @@ export const verticalDramaEpisodesRouter = router({
                 audioDirection: result.audioDirection,
                 promptModelTarget: shotVideoPromptModelTarget,
                 frameAnalysis: result.frameAnalysis,
+                ...(result.motionContractStatus
+                  ? {
+                      motionContractStatus: result.motionContractStatus,
+                      ...(result.motionProfile
+                        ? {
+                            motionProfile: result.motionProfile,
+                            effectiveRisk: result.effectiveRisk,
+                          }
+                        : {}),
+                    }
+                  : {}),
                 promptQuality: result.promptQuality,
               },
             ],
