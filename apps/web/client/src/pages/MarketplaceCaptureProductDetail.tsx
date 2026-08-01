@@ -602,6 +602,47 @@ function formatCount(
   return value == null || value === "" ? "-" : String(value);
 }
 
+function snapshotNumericValue(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function snapshotDelta(current: unknown, previous: unknown): number | null {
+  const currentValue = snapshotNumericValue(current);
+  const previousValue = snapshotNumericValue(previous);
+  return currentValue == null || previousValue == null
+    ? null
+    : currentValue - previousValue;
+}
+
+function formatSignedCount(delta: number | null): string {
+  if (delta == null) return "-";
+  if (delta === 0) return "0";
+  const formatted = new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0,
+  }).format(Math.abs(delta));
+  return `${delta > 0 ? "+" : "−"}${formatted}`;
+}
+
+function formatSignedDecimal(delta: number | null, digits: number): string {
+  if (delta == null) return "-";
+  if (Math.abs(delta) < 10 ** -digits / 2) return "0";
+  return `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(digits)}`;
+}
+
+function formatPerDayRate(perDay: number | null): string {
+  if (perDay == null || !Number.isFinite(perDay)) return "-";
+  return `${perDay >= 10 || perDay <= -10 ? Math.round(perDay).toLocaleString("en-US") : perDay.toFixed(1)} / วัน`;
+}
+
+function deltaToneClassName(delta: number | null): string {
+  if (delta == null) return "text-slate-400";
+  if (delta > 0) return "text-emerald-600";
+  if (delta < 0) return "text-rose-600";
+  return "text-slate-500";
+}
+
 function compactLinkText(value: unknown): string {
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
   return typeof value === "string" ? value.trim() : "";
@@ -3697,6 +3738,59 @@ export default function MarketplaceCaptureProductDetail() {
     );
   }, [coverImageAssetId, heroProductImageId, heroProductImageUrl, images]);
   const history = (productData?.history ?? []) as any[];
+  const historyTimeline = useMemo(() => {
+    const ordered = [...history].sort(
+      (left, right) =>
+        new Date(right.capturedAt).getTime() -
+        new Date(left.capturedAt).getTime()
+    );
+    return ordered.map((snapshot, index) => {
+      const previous = ordered[index + 1] ?? null;
+      return {
+        snapshot,
+        previous,
+        soldDelta: snapshotDelta(
+          snapshot.soldCountNormalized,
+          previous?.soldCountNormalized
+        ),
+        reviewDelta: snapshotDelta(
+          snapshot.reviewCountNormalized,
+          previous?.reviewCountNormalized
+        ),
+      };
+    });
+  }, [history]);
+  const historyGrowth = useMemo(() => {
+    if (historyTimeline.length < 2) return null;
+    const latest = historyTimeline[0].snapshot;
+    const first = historyTimeline[historyTimeline.length - 1].snapshot;
+    const spanMs =
+      new Date(latest.capturedAt).getTime() -
+      new Date(first.capturedAt).getTime();
+    const days = Number.isFinite(spanMs)
+      ? Math.max(0, Math.round(spanMs / 86_400_000))
+      : 0;
+    const soldDelta = snapshotDelta(
+      latest.soldCountNormalized,
+      first.soldCountNormalized
+    );
+    const reviewDelta = snapshotDelta(
+      latest.reviewCountNormalized,
+      first.reviewCountNormalized
+    );
+    return {
+      snapshotCount: historyTimeline.length,
+      firstCapturedAt: first.capturedAt,
+      latestCapturedAt: latest.capturedAt,
+      days,
+      soldDelta,
+      reviewDelta,
+      ratingDelta: snapshotDelta(latest.ratingScore, first.ratingScore),
+      priceDelta: snapshotDelta(latest.priceCurrent, first.priceCurrent),
+      soldPerDay: days > 0 && soldDelta != null ? soldDelta / days : null,
+      reviewPerDay: days > 0 && reviewDelta != null ? reviewDelta / days : null,
+    };
+  }, [historyTimeline]);
   const health = productData?.health;
   const insights = [...((productInsights.data as any[] | undefined) ?? [])];
   const autoReviewRunItems = (autoReviewRuns.data ?? []) as any[];
@@ -9617,6 +9711,77 @@ export default function MarketplaceCaptureProductDetail() {
             {history.length > 0 ? (
               <>
                 <h2 className="mt-8 text-lg font-semibold">Update History</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  ทุกครั้งที่อัปโหลดสินค้านี้ซ้ำ ระบบจะบันทึกยอดขายและจำนวนรีวิว
+                  ณ วันนั้นไว้ ใช้ดูว่าสินค้ายังโตอยู่หรือไม่ก่อนตัดสินใจโปรโมท
+                </p>
+                {historyGrowth ? (
+                  <div className="mt-3 grid gap-3 rounded-md border bg-slate-50 p-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <div className="text-xs uppercase text-slate-500">
+                        ช่วงที่เก็บข้อมูล
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-slate-800">
+                        {historyGrowth.days} วัน
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {new Date(
+                          historyGrowth.firstCapturedAt
+                        ).toLocaleDateString()}{" "}
+                        →{" "}
+                        {new Date(
+                          historyGrowth.latestCapturedAt
+                        ).toLocaleDateString()}{" "}
+                        ({historyGrowth.snapshotCount} ครั้ง)
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase text-slate-500">
+                        ยอดขายเพิ่มขึ้น
+                      </div>
+                      <div
+                        className={`mt-1 text-sm font-semibold ${deltaToneClassName(historyGrowth.soldDelta)}`}
+                      >
+                        {formatSignedCount(historyGrowth.soldDelta)}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {formatPerDayRate(historyGrowth.soldPerDay)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase text-slate-500">
+                        รีวิวเพิ่มขึ้น
+                      </div>
+                      <div
+                        className={`mt-1 text-sm font-semibold ${deltaToneClassName(historyGrowth.reviewDelta)}`}
+                      >
+                        {formatSignedCount(historyGrowth.reviewDelta)}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {formatPerDayRate(historyGrowth.reviewPerDay)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase text-slate-500">
+                        Rating / ราคา
+                      </div>
+                      <div
+                        className={`mt-1 text-sm font-semibold ${deltaToneClassName(historyGrowth.ratingDelta)}`}
+                      >
+                        {formatSignedDecimal(historyGrowth.ratingDelta, 2)}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        ราคา {formatSignedDecimal(historyGrowth.priceDelta, 2)}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-md border bg-slate-50 p-3 text-sm text-slate-500">
+                    มีข้อมูลบันทึกไว้เพียงครั้งเดียว
+                    ยังเทียบการเปลี่ยนแปลงไม่ได้ — อัปโหลดสินค้านี้อีกครั้งในภายหลัง
+                    ระบบจะเทียบยอดขายและจำนวนรีวิวให้อัตโนมัติ
+                  </p>
+                )}
                 <div className="mt-3 overflow-x-auto rounded-md border">
                   <table className="min-w-full divide-y text-sm">
                     <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
@@ -9625,55 +9790,73 @@ export default function MarketplaceCaptureProductDetail() {
                         <th className="px-3 py-2">Price</th>
                         <th className="px-3 py-2">Commission</th>
                         <th className="px-3 py-2">Sold</th>
+                        <th className="px-3 py-2">Δ Sold</th>
                         <th className="px-3 py-2">Rating</th>
                         <th className="px-3 py-2">Reviews</th>
+                        <th className="px-3 py-2">Δ Reviews</th>
                         <th className="px-3 py-2">By user</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y bg-white">
-                      {history.map((snapshot: any) => (
-                        <tr key={snapshot.id}>
-                          <td className="px-3 py-2">
-                            {new Date(snapshot.capturedAt).toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2">
-                            {snapshot.priceCurrent ?? "-"}{" "}
-                            {snapshot.currency ?? "THB"}
-                          </td>
-                          <td className="px-3 py-2">
-                            <div>
-                              {formatCommissionRateValue(
-                                snapshot.commissionRatePercent
+                      {historyTimeline.map(
+                        ({ snapshot, previous, soldDelta, reviewDelta }) => (
+                          <tr key={snapshot.id}>
+                            <td className="px-3 py-2">
+                              {new Date(snapshot.capturedAt).toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2">
+                              {snapshot.priceCurrent ?? "-"}{" "}
+                              {snapshot.currency ?? "THB"}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div>
+                                {formatCommissionRateValue(
+                                  snapshot.commissionRatePercent
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {formatCommissionAmountValue(
+                                  snapshot.priceCurrent,
+                                  snapshot.commissionRatePercent,
+                                  snapshot.currency
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2">
+                              {formatCount(
+                                snapshot.soldCountNormalized,
+                                snapshot.soldCountText
                               )}
-                            </div>
-                            <div className="text-xs text-slate-500">
-                              {formatCommissionAmountValue(
-                                snapshot.priceCurrent,
-                                snapshot.commissionRatePercent,
-                                snapshot.currency
+                            </td>
+                            <td
+                              className={`px-3 py-2 font-medium ${deltaToneClassName(soldDelta)}`}
+                            >
+                              {previous
+                                ? formatSignedCount(soldDelta)
+                                : "baseline"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {snapshot.ratingScore ?? "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {formatCount(
+                                snapshot.reviewCountNormalized,
+                                snapshot.reviewCountText
                               )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2">
-                            {formatCount(
-                              snapshot.soldCountNormalized,
-                              snapshot.soldCountText
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
-                            {snapshot.ratingScore ?? "-"}
-                          </td>
-                          <td className="px-3 py-2">
-                            {formatCount(
-                              snapshot.reviewCountNormalized,
-                              snapshot.reviewCountText
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
-                            {snapshot.capturedByUserId ?? "-"}
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td
+                              className={`px-3 py-2 font-medium ${deltaToneClassName(reviewDelta)}`}
+                            >
+                              {previous
+                                ? formatSignedCount(reviewDelta)
+                                : "baseline"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {snapshot.capturedByUserId ?? "-"}
+                            </td>
+                          </tr>
+                        )
+                      )}
                     </tbody>
                   </table>
                 </div>

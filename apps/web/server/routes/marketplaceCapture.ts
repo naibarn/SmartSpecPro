@@ -17,7 +17,8 @@ import type { ProductionFlowNode, ProductionReferenceInput, ProductionShot, Prod
 import { createMarketplaceCaptureDraft, getMarketplaceCaptureForUser, getMarketplaceCandidateBatchForUser, saveMarketplaceCandidateBatch } from "../services/marketplaceCaptureService";
 import { uploadMarketplaceCaptureAsset } from "../services/marketplaceAssetService";
 import { analyzeMarketplaceCapture } from "../services/marketplaceExtractionService";
-import { confirmMarketplaceCapture } from "../services/marketplaceProductService";
+import { confirmMarketplaceCapture, lookupMarketplaceProductHistory } from "../services/marketplaceProductService";
+import { marketplacePlatforms } from "../../shared/marketplaceCapture";
 import {
   applyMarketplaceClaimResolution,
   buildBasicStorytellingHandoffFromCapture,
@@ -49,6 +50,19 @@ function sendError(res: Response, error: any) {
     },
   });
 }
+
+const optionalLookupText = (max: number) =>
+  z.preprocess(
+    value => (typeof value === "string" && value.trim() ? value.trim() : undefined),
+    z.string().max(max).optional()
+  );
+
+const productHistoryLookupQuerySchema = z.object({
+  platform: z.enum(marketplacePlatforms),
+  externalProductId: optionalLookupText(128),
+  externalShopId: optionalLookupText(128),
+  sourceUrl: optionalLookupText(2048),
+});
 
 function marketplaceCors(req: Request, res: Response, next: NextFunction) {
   const origin = String(req.headers.origin ?? "");
@@ -967,6 +981,21 @@ export function registerMarketplaceCaptureRoutes(app: Express) {
         throw Object.assign(new Error("A valid episodeId is required"), { status: 400, code: "invalid_request" });
       }
       res.json(await getDramaSeriesEpisodeDetailForExtension(auth, seriesId, episodeId));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/products/lookup", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      const query = productHistoryLookupQuerySchema.parse({
+        platform: req.query.platform,
+        externalProductId: req.query.externalProductId,
+        externalShopId: req.query.externalShopId,
+        sourceUrl: req.query.sourceUrl,
+      });
+      res.json(await lookupMarketplaceProductHistory(query, auth));
     } catch (error) {
       sendError(res, error);
     }

@@ -360,7 +360,7 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.133";
+const EXTENSION_VERSION = "0.1.135";
 const EXTENSION_BUILD_LABEL = "2026-07-16 09:30 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
@@ -641,6 +641,87 @@ function parseRating(raw: string | null | undefined): number | null {
   if (!raw) return null;
   const m = raw.match(/[1-5](?:\.\d+)?/);
   return m ? Number(m[0]) : null;
+}
+
+interface SavedProductSnapshot {
+  id: string;
+  capturedAt: string;
+  priceCurrent: number | null;
+  priceOriginal: number | null;
+  currency: string;
+  commissionRatePercent: number | null;
+  ratingScore: number | null;
+  soldCount: number | null;
+  soldCountText: string | null;
+  reviewCount: number | null;
+  reviewCountText: string | null;
+}
+
+interface SavedProductLookup {
+  found: boolean;
+  product: {
+    productId: string;
+    productName: string;
+    shopName: string | null;
+    productUrl: string;
+    accessType: "owner" | "group";
+    firstCapturedAt: string | null;
+    lastCapturedAt: string | null;
+    snapshotCount: number;
+  } | null;
+  latest: SavedProductSnapshot | null;
+  first: SavedProductSnapshot | null;
+  history: SavedProductSnapshot[];
+}
+
+type SavedProductLookupState = "idle" | "loading" | "ready" | "error";
+
+/** Stable identity string for a listing, safe to split back apart because every
+ *  part is percent-encoded (source URLs may legally contain the separator). */
+function productIdentityKey(product: ProductCapturePayload | null): string {
+  if (!product) return "";
+  return [product.platform, product.externalProductId ?? "", product.externalShopId ?? "", product.sourceUrl ?? ""]
+    .map((part) => encodeURIComponent(part))
+    .join("|");
+}
+
+function daysSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return null;
+  return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
+}
+
+function formatSignedCount(delta: number | null): string {
+  if (delta == null) return "-";
+  if (delta === 0) return "เท่าเดิม";
+  return `${delta > 0 ? "+" : "−"}${formatFullNumber(Math.abs(delta))}`;
+}
+
+function formatSignedDecimal(delta: number | null, digits: number): string {
+  if (delta == null) return "-";
+  if (Math.abs(delta) < 10 ** -digits / 2) return "เท่าเดิม";
+  return `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(digits)}`;
+}
+
+function deltaTone(delta: number | null): "up" | "down" | "flat" | "unknown" {
+  if (delta == null) return "unknown";
+  if (delta > 0) return "up";
+  if (delta < 0) return "down";
+  return "flat";
+}
+
+function formatPerDay(delta: number | null, days: number | null): string {
+  if (delta == null || days == null || days <= 0) return "";
+  const perDay = delta / days;
+  if (!Number.isFinite(perDay)) return "";
+  return `≈ ${perDay >= 10 ? Math.round(perDay).toLocaleString("en-US") : perDay.toFixed(1)} ต่อวัน`;
+}
+
+function savedCountLabel(value: number | null, text: string | null | undefined): string {
+  if (value != null) return formatFullNumber(value);
+  const raw = text?.trim();
+  return raw || "-";
 }
 
 function delay(ms: number) {
@@ -2033,6 +2114,10 @@ export default function App() {
   const [starterKeyword, setStarterKeyword] = useState("");
   const [product, setProduct] = useState<ProductCapturePayload | null>(null);
   const [liveProduct, setLiveProduct] = useState<ProductCapturePayload | null>(null);
+  const [savedLookup, setSavedLookup] = useState<SavedProductLookup | null>(null);
+  const [savedLookupState, setSavedLookupState] = useState<SavedProductLookupState>("idle");
+  const [savedLookupError, setSavedLookupError] = useState("");
+  const [savedLookupNonce, setSavedLookupNonce] = useState(0);
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [lastObservedAt, setLastObservedAt] = useState("");
   const [lastObserveReason, setLastObserveReason] = useState("");
@@ -2893,6 +2978,116 @@ export default function App() {
       "X-Marketplace-Extension-Origin": extensionOrigin,
     };
   }
+
+  const savedLookupIdentity = useMemo(
+    () => productIdentityKey(product ?? liveProduct),
+    [product, liveProduct]
+  );
+
+  useEffect(() => {
+    if (!savedLookupIdentity) {
+      setSavedLookup(null);
+      setSavedLookupState("idle");
+      setSavedLookupError("");
+      return;
+    }
+    if (!settings.token || !serverBaseUrl) {
+      setSavedLookup(null);
+      setSavedLookupState("error");
+      setSavedLookupError("ยังไม่ได้เชื่อมต่อ SmartAIHub จึงยังเทียบกับข้อมูลเดิมไม่ได้");
+      return;
+    }
+    const [platform, externalProductId, externalShopId, sourceUrl] = savedLookupIdentity
+      .split("|")
+      .map((part) => decodeURIComponent(part));
+    let cancelled = false;
+    setSavedLookupState("loading");
+    setSavedLookupError("");
+    (async () => {
+      try {
+        const params = new URLSearchParams({ platform });
+        if (externalProductId) params.set("externalProductId", externalProductId);
+        if (externalShopId) params.set("externalShopId", externalShopId);
+        if (sourceUrl) params.set("sourceUrl", sourceUrl);
+        const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/products/lookup?${params.toString()}`, {
+          headers: await extensionAuthHeaders(),
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const json = (await response.json()) as SavedProductLookup;
+        if (cancelled) return;
+        setSavedLookup(json);
+        setSavedLookupState("ready");
+      } catch (err) {
+        if (cancelled) return;
+        setSavedLookup(null);
+        setSavedLookupState("error");
+        setSavedLookupError(userFriendlyErrorMessage(err, extensionOrigin));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedLookupIdentity, serverBaseUrl, settings.token, savedLookupNonce]);
+
+  // Values the user is actually about to upload; before Scan & Review the only
+  // numbers we have are the live-detected ones.
+  const comparisonCurrentText = useMemo(() => {
+    if (product) {
+      return {
+        sold: editable.soldCountText,
+        review: editable.reviewCountText,
+        rating: editable.ratingScoreText,
+        price: editable.priceCurrentText,
+      };
+    }
+    if (liveProduct) {
+      return {
+        sold: liveProduct.soldCountText ?? "",
+        review: liveProduct.reviewCountText ?? "",
+        rating: liveProduct.ratingScoreText ?? "",
+        price: liveProduct.priceCurrentText ?? "",
+      };
+    }
+    return { sold: "", review: "", rating: "", price: "" };
+  }, [
+    product,
+    liveProduct,
+    editable.soldCountText,
+    editable.reviewCountText,
+    editable.ratingScoreText,
+    editable.priceCurrentText,
+  ]);
+
+  const savedComparison = useMemo(() => {
+    if (!savedLookup?.found || !savedLookup.product) return null;
+    const latest = savedLookup.latest;
+    const first = savedLookup.first;
+    const diff = (current: number | null, previous: number | null) =>
+      current == null || previous == null ? null : current - previous;
+    const current = {
+      sold: parseSold(comparisonCurrentText.sold),
+      review: parseSold(comparisonCurrentText.review),
+      rating: parseRating(comparisonCurrentText.rating),
+      price: parseNumber(comparisonCurrentText.price),
+    };
+    return {
+      product: savedLookup.product,
+      latest,
+      first,
+      current,
+      lastCapturedAt: latest?.capturedAt ?? savedLookup.product.lastCapturedAt,
+      firstCapturedAt: first?.capturedAt ?? savedLookup.product.firstCapturedAt,
+      daysSinceLast: daysSince(latest?.capturedAt ?? savedLookup.product.lastCapturedAt),
+      daysSinceFirst: daysSince(first?.capturedAt ?? savedLookup.product.firstCapturedAt),
+      soldDelta: diff(current.sold, latest?.soldCount ?? null),
+      reviewDelta: diff(current.review, latest?.reviewCount ?? null),
+      ratingDelta: diff(current.rating, latest?.ratingScore ?? null),
+      priceDelta: diff(current.price, latest?.priceCurrent ?? null),
+      soldDeltaSinceFirst: diff(current.sold, first?.soldCount ?? null),
+      reviewDeltaSinceFirst: diff(current.review, first?.reviewCount ?? null),
+    };
+  }, [savedLookup, comparisonCurrentText]);
 
   async function detect() {
     setError("");
@@ -5945,6 +6140,119 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {product || liveProduct ? (
+        <div className={`section history-compare${savedComparison ? " success-panel" : ""}`}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+            <strong>เทียบกับข้อมูลเดิมในระบบ</strong>
+            <button
+              className="button"
+              disabled={savedLookupState === "loading"}
+              onClick={() => setSavedLookupNonce((current) => current + 1)}
+            >
+              {savedLookupState === "loading" ? "กำลังตรวจสอบ…" : "ตรวจสอบอีกครั้ง"}
+            </button>
+          </div>
+          {savedLookupState === "loading" ? (
+            <div className="muted">กำลังตรวจสอบว่าสินค้านี้เคยบันทึกไว้แล้วหรือยัง…</div>
+          ) : null}
+          {savedLookupState === "error" ? <div className="warning">{savedLookupError}</div> : null}
+          {savedLookupState === "ready" && !savedComparison ? (
+            <div className="muted">
+              ยังไม่เคยบันทึกสินค้านี้ไว้ในระบบ — การอัปโหลดครั้งนี้จะเป็นการบันทึกครั้งแรก
+              และจะถูกเก็บไว้เป็นจุดอ้างอิงให้เปรียบเทียบยอดขาย/รีวิวในครั้งถัดไป
+            </div>
+          ) : null}
+          {savedComparison ? (
+            <>
+              <div className="muted">
+                เคยบันทึกไว้แล้ว: {savedComparison.product.productName}
+                {savedComparison.product.shopName ? ` | ร้าน ${savedComparison.product.shopName}` : ""}
+                {savedComparison.product.accessType === "group" ? " | แชร์จากกลุ่ม" : ""}
+              </div>
+              <div className="muted">
+                บันทึกครั้งล่าสุด {formatDateTime(savedComparison.lastCapturedAt)}
+                {savedComparison.daysSinceLast != null ? ` (${savedComparison.daysSinceLast} วันก่อน)` : ""}
+                {" | "}บันทึกครั้งแรก {formatDateTime(savedComparison.firstCapturedAt)}
+                {" | "}เก็บข้อมูลมาแล้ว {savedComparison.product.snapshotCount} ครั้ง
+              </div>
+              <table className="history-compare-table">
+                <thead>
+                  <tr>
+                    <th>ตัวชี้วัด</th>
+                    <th>ที่เคยบันทึกไว้</th>
+                    <th>ตอนนี้</th>
+                    <th>เปลี่ยนแปลง</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">ยอดขาย</th>
+                    <td>{savedCountLabel(savedComparison.latest?.soldCount ?? null, savedComparison.latest?.soldCountText)}</td>
+                    <td>{savedCountLabel(savedComparison.current.sold, comparisonCurrentText.sold)}</td>
+                    <td className={`delta ${deltaTone(savedComparison.soldDelta)}`}>
+                      {formatSignedCount(savedComparison.soldDelta)}
+                      {formatPerDay(savedComparison.soldDelta, savedComparison.daysSinceLast) ? (
+                        <div className="muted">{formatPerDay(savedComparison.soldDelta, savedComparison.daysSinceLast)}</div>
+                      ) : null}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">จำนวนรีวิว</th>
+                    <td>{savedCountLabel(savedComparison.latest?.reviewCount ?? null, savedComparison.latest?.reviewCountText)}</td>
+                    <td>{savedCountLabel(savedComparison.current.review, comparisonCurrentText.review)}</td>
+                    <td className={`delta ${deltaTone(savedComparison.reviewDelta)}`}>
+                      {formatSignedCount(savedComparison.reviewDelta)}
+                      {formatPerDay(savedComparison.reviewDelta, savedComparison.daysSinceLast) ? (
+                        <div className="muted">{formatPerDay(savedComparison.reviewDelta, savedComparison.daysSinceLast)}</div>
+                      ) : null}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Rating</th>
+                    <td>{savedComparison.latest?.ratingScore != null ? savedComparison.latest.ratingScore.toFixed(2) : "-"}</td>
+                    <td>{savedComparison.current.rating != null ? savedComparison.current.rating.toFixed(2) : "-"}</td>
+                    <td className={`delta ${deltaTone(savedComparison.ratingDelta)}`}>
+                      {formatSignedDecimal(savedComparison.ratingDelta, 2)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">ราคา</th>
+                    <td>
+                      {savedComparison.latest?.priceCurrent != null
+                        ? `${savedComparison.latest.priceCurrent.toLocaleString("en-US")} ${savedComparison.latest.currency}`
+                        : "-"}
+                    </td>
+                    <td>{savedComparison.current.price != null ? savedComparison.current.price.toLocaleString("en-US") : comparisonCurrentText.price || "-"}</td>
+                    <td className={`delta ${deltaTone(savedComparison.priceDelta)}`}>
+                      {formatSignedDecimal(savedComparison.priceDelta, 2)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              {savedComparison.product.snapshotCount > 1 ? (
+                <div className="muted">
+                  เทียบกับครั้งแรก ({formatDateTime(savedComparison.firstCapturedAt)}
+                  {savedComparison.daysSinceFirst != null ? `, ${savedComparison.daysSinceFirst} วัน` : ""}):
+                  {" "}ยอดขาย {formatSignedCount(savedComparison.soldDeltaSinceFirst)}
+                  {" | "}รีวิว {formatSignedCount(savedComparison.reviewDeltaSinceFirst)}
+                </div>
+              ) : null}
+              <div className="muted">
+                อัปโหลดครั้งนี้จะบันทึกทับรายการเดิม และเก็บตัวเลขปัจจุบันไว้เป็นประวัติเพิ่มอีก 1 รายการ
+              </div>
+              <a
+                className="candidate-url"
+                href={`${serverBaseUrl}${savedComparison.product.productUrl}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                เปิดหน้ารายละเอียดสินค้าในระบบ
+              </a>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
       {product ? (
         <div className="section">

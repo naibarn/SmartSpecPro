@@ -1900,6 +1900,128 @@ export async function getMarketplaceProductWithAccess(productId: string, auth: {
   };
 }
 
+type MarketplaceProductSnapshotRow = typeof marketplaceProductPriceSnapshots.$inferSelect;
+
+export type MarketplaceProductHistoryPoint = {
+  id: string;
+  capturedAt: string;
+  priceCurrent: number | null;
+  priceOriginal: number | null;
+  currency: string;
+  commissionRatePercent: number | null;
+  ratingScore: number | null;
+  soldCount: number | null;
+  soldCountText: string | null;
+  reviewCount: number | null;
+  reviewCountText: string | null;
+};
+
+function snapshotNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toIsoTimestamp(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function toProductHistoryPoint(row: MarketplaceProductSnapshotRow): MarketplaceProductHistoryPoint {
+  return {
+    id: row.id,
+    capturedAt: toIsoTimestamp(row.capturedAt) ?? new Date(0).toISOString(),
+    priceCurrent: snapshotNumber(row.priceCurrent),
+    priceOriginal: snapshotNumber(row.priceOriginal),
+    currency: row.currency ?? "THB",
+    commissionRatePercent: snapshotNumber(row.commissionRatePercent),
+    ratingScore: snapshotNumber(row.ratingScore),
+    soldCount: row.soldCountNormalized ?? null,
+    soldCountText: row.soldCountText ?? null,
+    reviewCount: row.reviewCountNormalized ?? null,
+    reviewCountText: row.reviewCountText ?? null,
+  };
+}
+
+const EMPTY_PRODUCT_HISTORY_LOOKUP = {
+  found: false as const,
+  product: null,
+  latest: null,
+  first: null,
+  history: [] as MarketplaceProductHistoryPoint[],
+};
+
+/**
+ * Answers "has this exact marketplace listing been saved before, and what were the
+ * numbers last time?" for the capture-review screen.
+ *
+ * Deliberately reuses findAccessibleDuplicate so the answer always matches the product
+ * that confirmMarketplaceCapture would actually update — a read-only group share does
+ * not match here because confirm would create a separate product for this user.
+ */
+export async function lookupMarketplaceProductHistory(
+  input: {
+    platform: MarketplacePlatform;
+    externalProductId?: string | null;
+    externalShopId?: string | null;
+    sourceUrl?: string | null;
+  },
+  auth: { userId: number; tenantId?: string },
+  options: { historyLimit?: number } = {}
+) {
+  const identity = {
+    platform: input.platform,
+    externalProductId: input.externalProductId?.trim() || null,
+    externalShopId: input.externalShopId?.trim() || null,
+    sourceUrl: input.sourceUrl?.trim() || null,
+  };
+  if (!identity.externalProductId && !identity.sourceUrl) return EMPTY_PRODUCT_HISTORY_LOOKUP;
+
+  const duplicate = await findAccessibleDuplicate(identity, auth);
+  if (!duplicate) return EMPTY_PRODUCT_HISTORY_LOOKUP;
+
+  const existing = duplicate.product;
+  const historyLimit = Math.min(Math.max(options.historyLimit ?? 20, 1), 100);
+  const db = getDb();
+  const [recentRows, oldestRows, countRows] = await Promise.all([
+    db.select().from(marketplaceProductPriceSnapshots)
+      .where(eq(marketplaceProductPriceSnapshots.productId, existing.id))
+      .orderBy(desc(marketplaceProductPriceSnapshots.capturedAt))
+      .limit(historyLimit),
+    db.select().from(marketplaceProductPriceSnapshots)
+      .where(eq(marketplaceProductPriceSnapshots.productId, existing.id))
+      .orderBy(marketplaceProductPriceSnapshots.capturedAt)
+      .limit(1),
+    db.select({ value: sql<number>`count(*)::int` }).from(marketplaceProductPriceSnapshots)
+      .where(eq(marketplaceProductPriceSnapshots.productId, existing.id)),
+  ]);
+
+  const history = recentRows.map(toProductHistoryPoint);
+  const latest = history[0] ?? null;
+  const first = oldestRows[0] ? toProductHistoryPoint(oldestRows[0]) : null;
+
+  return {
+    found: true as const,
+    product: {
+      productId: existing.id,
+      productName: existing.productName,
+      shopName: existing.shopName ?? null,
+      platform: existing.platform,
+      productUrl: `/marketplace-capture/products/${existing.id}`,
+      accessType: duplicate.accessType,
+      firstSeenAt: toIsoTimestamp(existing.createdAt),
+      lastUpdatedAt: toIsoTimestamp(existing.updatedAt),
+      firstCapturedAt: first?.capturedAt ?? toIsoTimestamp(existing.createdAt),
+      lastCapturedAt: latest?.capturedAt ?? toIsoTimestamp(existing.updatedAt),
+      snapshotCount: countRows[0]?.value ?? history.length,
+    },
+    latest,
+    first,
+    history,
+  };
+}
+
 function assertMarketplaceProductWriteAccess(bundle: Awaited<ReturnType<typeof getMarketplaceProductWithAccess>>) {
   if (bundle.product.accessType === "group" && bundle.product.groupShare?.permission !== "read_update") {
     throw new Error("Product is shared read-only");
