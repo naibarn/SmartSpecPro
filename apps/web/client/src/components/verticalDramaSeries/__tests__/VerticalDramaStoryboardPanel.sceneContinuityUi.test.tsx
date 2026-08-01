@@ -1,0 +1,71 @@
+/** @vitest-environment jsdom */
+
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { VerticalDramaStoryboardPanel } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
+
+const baseProps = {
+  locale: "th" as const,
+  storyboard: {
+    distinct_locations: [
+      { location_key: "hall", location_name: "โถง", shot_numbers: [1] },
+    ],
+    shots: [
+      { shot_number: 1, visual_description: "เดินผ่านโถง", characters: [] },
+    ],
+  },
+  startFramePlan: {
+    frames: [
+      {
+        shotNumber: 1,
+        imagePrompt: "hall",
+        sceneAnchor: {
+          anchorShotNumber: 2,
+          mediaAssetId: 7,
+          source: "approved",
+          attachedAt: "2026-08-01T00:00:00.000Z",
+        },
+      },
+    ],
+  },
+};
+
+describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
+  it("hides scene affordances while the flag is off", () => {
+    render(<VerticalDramaStoryboardPanel {...baseProps} />);
+    expect(
+      screen.getByTestId("vd-storyboard-location-chip-1")
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-storyboard-scene-lock-1")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-storyboard-scene-anchor-1")
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the lock chip while keeping neighbor provenance hidden until P1b", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        sceneContinuityEnabled
+        startFramePlan={{
+          ...baseProps.startFramePlan,
+          sceneVisualStates: {
+            hall: {
+              locationKey: "hall",
+              lightingState: "ช่วงเย็น แสงทอง",
+            },
+          },
+        }}
+      />
+    );
+    expect(screen.getByTestId("vd-storyboard-scene-lock-1")).toHaveAttribute(
+      "title",
+      "ช่วงเย็น แสงทอง"
+    );
+    expect(
+      screen.queryByTestId("vd-storyboard-scene-anchor-1")
+    ).not.toBeInTheDocument();
+  });
+});

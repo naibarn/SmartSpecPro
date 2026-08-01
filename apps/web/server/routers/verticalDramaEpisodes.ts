@@ -206,6 +206,12 @@ import {
   resolveEffectiveSeriesVisualIdentity,
 } from "@shared/verticalDramaSeries/seriesLookLock";
 import {
+  buildSceneShotGroups,
+  computeSceneMembershipHash,
+  type VdSceneShotGroup,
+  type VdSceneVisualState,
+} from "@shared/verticalDramaSeries/sceneContinuity";
+import {
   buildCharacterIdentityMapBlock,
   findCharacterImageIndexMappingMismatches,
   stripExistingIdentityLockSuffix,
@@ -542,6 +548,11 @@ const verticalDramaProcedure = protectedProcedure.use(
  */
 const verticalDramaVoiceChainProcedure = verticalDramaProcedure.use(
   requireFeatureFlag("verticalDramaSeriesVoiceChain")
+);
+
+/** Feature 138 P1 — explicit scene visual-state authoring and manual edits. */
+const verticalDramaSceneContinuityProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaSceneContinuity")
 );
 
 function requireTenantId(tenantId: string | null): string {
@@ -3458,12 +3469,15 @@ async function resolveVerticalDramaDensityFlags(
   arcReplanEnabled: boolean;
   /** Feature 132 §5 (F132B, ledgers-and-story-state) — gates `story_state` memory-event writes below. */
   qualityLedgersEnabled: boolean;
+  /** Feature 138 P1 — additive read flag for episode workspace scene locks. */
+  sceneContinuityEnabled: boolean;
 }> {
   const flags = await getTenantFeatureFlags(tenantId);
   return {
     speechBudgetEnabled: flags?.verticalDramaSeriesSpeechBudget === true,
     arcReplanEnabled: flags?.verticalDramaSeriesArcReplan === true,
     qualityLedgersEnabled: flags?.verticalDramaQualityLedgers === true,
+    sceneContinuityEnabled: flags?.verticalDramaSceneContinuity === true,
   };
 }
 
@@ -3491,6 +3505,171 @@ function hasVerticalDramaSceneIdentity(
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
     const shots = (entry as { shot_numbers?: unknown }).shot_numbers;
     return Array.isArray(shots) && shots.some(value => Number(value) === shotNumber);
+  });
+}
+
+type SceneMutationFacts = {
+  plan: VerticalDramaStartFramePlan;
+  group: VdSceneShotGroup;
+  storyboard: Record<string, unknown>;
+  location: Record<string, unknown>;
+  shots: Array<{
+    shotNumber: number;
+    summary?: string;
+    characters?: string[];
+  }>;
+  membershipHash: string;
+};
+
+function sceneRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function sceneString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function sceneNumber(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+/** Resolve the code-owned scene identity and factual authoring inputs. */
+function resolveSceneMutationFacts(
+  row: Awaited<ReturnType<typeof loadOwnedEpisode>>,
+  locationKey: string,
+): SceneMutationFacts {
+  const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+  if (!plan || !Array.isArray(plan.frames)) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "No start-frame plan exists yet for this episode",
+    });
+  }
+
+  const storyboard = sceneRecord(row.storyboard);
+  const overridesByShotNumber = new Map<number, string>();
+  for (const frame of plan.frames) {
+    const key = sceneString(frame.locationKey);
+    const shot = sceneNumber(frame.shotNumber);
+    if (key && shot) overridesByShotNumber.set(shot, key);
+  }
+  const groups = buildSceneShotGroups({
+    distinctLocations: storyboard.distinct_locations,
+    overridesByShotNumber,
+  });
+  const group = groups.find(candidate => candidate.locationKey === locationKey);
+  if (!group) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Unknown scene location key: ${locationKey}`,
+    });
+  }
+
+  const storyboardShots = Array.isArray(storyboard.shots)
+    ? storyboard.shots.map(sceneRecord)
+    : [];
+  const shotsByNumber = new Map<number, Record<string, unknown>>();
+  for (const shot of storyboardShots) {
+    const shotNumber = sceneNumber(shot.shot_number ?? shot.shotNumber);
+    if (shotNumber) shotsByNumber.set(shotNumber, shot);
+  }
+  const frameByShotNumber = new Map(
+    plan.frames.map(frame => [frame.shotNumber, frame]),
+  );
+  const summaries = new Map<number, string>();
+  const shots = group.shotNumbers.map(shotNumber => {
+    const raw = shotsByNumber.get(shotNumber) ?? {};
+    const frame = frameByShotNumber.get(shotNumber) as Record<string, unknown> | undefined;
+    const summary =
+      sceneString(frame?.canonicalShotSummary) ??
+      sceneString(raw.summary) ??
+      sceneString(raw.visual_description) ??
+      sceneString(raw.description);
+    if (summary) summaries.set(shotNumber, summary);
+    const rawCharacters = Array.isArray(raw.required_character_refs)
+      ? raw.required_character_refs
+      : Array.isArray(raw.characters)
+        ? raw.characters
+        : [];
+    const characters = rawCharacters.filter(
+      (value): value is string => typeof value === "string" && value.trim().length > 0,
+    );
+    return {
+      shotNumber,
+      ...(summary ? { summary } : {}),
+      ...(characters.length ? { characters } : {}),
+    };
+  });
+  const rawLocations = Array.isArray(storyboard.distinct_locations)
+    ? storyboard.distinct_locations.map(sceneRecord)
+    : [];
+  const location =
+    rawLocations.find(
+      candidate => sceneString(candidate.location_key) === locationKey,
+    ) ?? { location_key: locationKey };
+  const membershipHash = computeSceneMembershipHash({
+    episodeId: row.id,
+    locationKey,
+    memberShotNumbers: group.shotNumbers,
+    canonicalSummariesByShotNumber: summaries,
+  });
+  return { plan, group, storyboard, location, shots, membershipHash };
+}
+
+function isSceneServiceError(
+  error: unknown,
+  candidate: unknown,
+  name: string,
+): boolean {
+  if (typeof candidate === "function") {
+    try {
+      if (error instanceof (candidate as new (...args: never[]) => Error)) return true;
+    } catch {
+      // A narrow test double may be callable but not constructable.
+    }
+  }
+  const record = sceneRecord(error);
+  return record.name === name || record.code === name || record.code === "VD_RATE_LIMIT_EXCEEDED";
+}
+
+function mapSceneVisualStateAuthoringError(
+  error: unknown,
+  candidates?: {
+    InsufficientCreditsError?: unknown;
+    VdSchemaValidationError?: unknown;
+  },
+): never {
+  if (isSceneServiceError(error, candidates?.InsufficientCreditsError, "InsufficientCreditsError")) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Insufficient credits for scene continuity lock",
+      cause: error,
+    });
+  }
+  if (isSceneServiceError(error, candidates?.VdSchemaValidationError, "VdSchemaValidationError")) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Scene continuity lock authoring returned invalid data",
+      cause: error,
+    });
+  }
+  if (isSceneServiceError(error, undefined, "RateLimitExceededError")) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Scene continuity lock authoring is rate limited; try again shortly",
+      cause: error,
+    });
+  }
+  throw error;
+}
+
+function throwSceneRevisionConflict(expectedRevision: number, currentRevision: number): never {
+  throw new TRPCError({
+    code: "CONFLICT",
+    message: `Scene visual state is stale (expected revision ${expectedRevision}, current revision ${currentRevision})`,
   });
 }
 
@@ -6166,6 +6345,51 @@ async function runArcDriftCheckAndProposeIfNeeded(params: {
 /* -------------------------------------------------------------------------- */
 
 const idempotencyKey = z.string().trim().min(1).max(128).optional();
+
+const sceneVisualStatePatchSchema = z
+  .object({
+    lightingState: z.string().trim().max(2000).optional(),
+    fixedElements: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(300),
+            placement: z.string().trim().min(1).max(500),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
+    spatialLayout: z.string().trim().max(2000).optional(),
+    stagingAxis: z.string().trim().max(1000).optional(),
+    wardrobeInScene: z
+      .array(
+        z
+          .object({
+            character: z.string().trim().min(1).max(300),
+            wardrobe: z.string().trim().min(1).max(500),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
+    activeProps: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(300),
+            placement: z.string().trim().min(1).max(500),
+            fromShot: z.number().int().positive().optional(),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
+    paletteMood: z.string().trim().max(1000).optional(),
+    timeJumpSuspected: z.boolean().optional(),
+    coverageGaps: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+  })
+  .strict();
 /**
  * Character-lock auto-soften level (2026-07-06 prompt-safety upgrade,
  * skill-authored per `vertical-drama-skill-first-architecture` plan Phase
@@ -8534,6 +8758,335 @@ export const verticalDramaEpisodesRouter = router({
       return { event };
     }),
 
+  /** Feature 138 P1 — explicitly author one scene's visual continuity lock. */
+  planSceneVisualState: verticalDramaSceneContinuityProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        locationKey: z.string().trim().min(1).max(200),
+        force: z.boolean().optional(),
+        expectedRevision: z.number().int().min(0),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      const locationKey = input.locationKey.trim();
+      const facts = resolveSceneMutationFacts(row, locationKey);
+
+      const { readSceneVisualStatesFromPlan } = await import(
+        "../services/verticalDramaStartFrameGeneration"
+      );
+      const currentStates = readSceneVisualStatesFromPlan(facts.plan);
+      const currentState = currentStates[locationKey];
+      const currentRevision = currentState?.revision ?? 0;
+      if (input.expectedRevision !== currentRevision) {
+        throwSceneRevisionConflict(input.expectedRevision, currentRevision);
+      }
+      if (currentState && input.force !== true) {
+        return {
+          startFramePlan: facts.plan,
+          sceneVisualState: currentState,
+          planned: false as const,
+          skippedReason: currentState.manualEdit === true
+            ? ("manual_edit" as const)
+            : ("already_planned" as const),
+        };
+      }
+
+      const [{ buildSceneVisualStateAuthoringInput }, sceneService] = await Promise.all([
+        import("../services/verticalDramaSceneContinuityLock"),
+        import("../services/verticalDramaSceneVisualState"),
+      ]);
+      let locationImageUrl =
+        sceneString(facts.location.location_image_url) ??
+        sceneString(facts.location.reference_image_url) ??
+        sceneString(facts.location.image_url);
+      if (!locationImageUrl) {
+        try {
+          const locationIdentity: VerticalDramaLocationIdentity = {
+            locationKey,
+            name:
+              sceneString(facts.location.location_name) ??
+              sceneString(facts.location.locationName) ??
+              "",
+          };
+          const locationRow = await resolveLocationRosterRowByIdentity(
+            tenantId,
+            userId,
+            seriesId,
+            locationIdentity,
+          );
+          if (locationRow) {
+            locationImageUrl = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
+              { tenantId, userId, seriesId },
+              locationRow.id,
+            );
+          }
+        } catch {
+          // A text-grounded scene lock remains useful when no image is ready.
+        }
+      }
+
+      let seriesLook: ReturnType<typeof resolveEffectiveSeriesVisualIdentity>;
+      let lang: StoryScriptLang = "th";
+      try {
+        const [seriesRow] = await db
+          .select({ bible: verticalDramaSeries.bible, locale: verticalDramaSeries.locale })
+          .from(verticalDramaSeries)
+          .where(
+            and(
+              eq(verticalDramaSeries.id, seriesId),
+              eq(verticalDramaSeries.tenantId, tenantId),
+              eq(verticalDramaSeries.userId, userId),
+            ),
+          )
+          .limit(1);
+        const flags = await getTenantFeatureFlags(tenantId);
+        seriesLook = resolveEffectiveSeriesVisualIdentity({
+          bible: seriesRow?.bible,
+          presetMixEnabled: flags?.verticalDramaSeriesPresetMixV2 === true,
+          lookLockEnabled: flags?.verticalDramaSeriesLookLock === true,
+        });
+        lang = normalizeVerticalDramaSeriesLocale(seriesRow?.locale);
+      } catch {
+        seriesLook = undefined;
+      }
+
+      let authored: Awaited<ReturnType<typeof sceneService.generateSceneVisualState>>;
+      try {
+        authored = await sceneService.generateSceneVisualState(
+          buildSceneVisualStateAuthoringInput({
+            userId,
+            tenantId,
+            seriesId,
+            episodeId,
+            group: facts.group,
+            location: facts.location,
+            shots: facts.shots,
+            ...(locationImageUrl ? { locationImageUrl } : {}),
+            membershipHash: facts.membershipHash,
+            revision: (currentState?.revision ?? 0) + 1,
+            seriesLook,
+            lang,
+            idempotencyKey: input.idempotencyKey
+              ? `${input.idempotencyKey}:scene-visual-state:${locationKey}`
+              : undefined,
+          }),
+        );
+      } catch (error) {
+        mapSceneVisualStateAuthoringError(error, sceneService);
+      }
+
+      const persisted = await db.transaction(async tx => {
+        const [lockedRow] = await tx
+          .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        const freshPlan = lockedRow?.startFramePlan as VerticalDramaStartFramePlan | null;
+        if (!freshPlan || !Array.isArray(freshPlan.frames)) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "No start-frame plan exists yet for this episode",
+          });
+        }
+        const current = readSceneVisualStatesFromPlan(freshPlan);
+        const concurrent = current[locationKey];
+        const freshRevision = concurrent?.revision ?? 0;
+        if (input.expectedRevision !== freshRevision) {
+          throwSceneRevisionConflict(input.expectedRevision, freshRevision);
+        }
+        if (concurrent && input.force !== true) {
+          return {
+            startFramePlan: freshPlan,
+            sceneVisualState: concurrent,
+            planned: false as const,
+            skippedReason: concurrent.manualEdit === true
+              ? ("manual_edit" as const)
+              : ("already_planned" as const),
+          };
+        }
+        const { upsertSceneVisualState } = await import(
+          "../services/verticalDramaStartFrameGeneration"
+        );
+        const nextState: VdSceneVisualState = {
+          ...authored.state,
+          locationKey,
+          memberShotNumbers: facts.group.shotNumbers,
+          revision: authored.state.revision ?? (concurrent?.revision ?? 1),
+          stale: undefined,
+          manualEdit: undefined,
+        };
+        const merged = upsertSceneVisualState({
+          current,
+          next: nextState,
+          origin: "planned",
+          force: input.force,
+        });
+        if (!merged.written) {
+          return {
+            startFramePlan: freshPlan,
+            sceneVisualState: current[locationKey] ?? authored.state,
+            planned: false as const,
+            skippedReason: merged.skippedReason === "manual_edit_protected"
+              ? ("manual_edit" as const)
+              : ("already_planned" as const),
+          };
+        }
+        const updatedPlan: VerticalDramaStartFramePlan = {
+          ...freshPlan,
+          sceneVisualStates: merged.states,
+        };
+        const [updatedRow] = await tx
+          .update(verticalDramaEpisodes)
+          .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+            ),
+          )
+          .returning({ startFramePlan: verticalDramaEpisodes.startFramePlan });
+        return {
+          startFramePlan: (updatedRow?.startFramePlan as VerticalDramaStartFramePlan | null) ?? updatedPlan,
+          sceneVisualState: merged.states[locationKey]!,
+          planned: true as const,
+          creditsUsed: authored.creditsUsed,
+        };
+      });
+
+      auditLogger.log({
+        eventType: "vd_scene_state_planned",
+        userId,
+        tenantId,
+        metadata: {
+          locationKey,
+          episodeId,
+          planned: persisted.planned,
+          force: input.force === true,
+          creditsUsed: persisted.creditsUsed ?? 0,
+        },
+      });
+      return persisted;
+    }),
+
+  /** Feature 138 P1 — zero-cost manual Scene Visual State edit. */
+  updateSceneVisualState: verticalDramaSceneContinuityProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        locationKey: z.string().trim().min(1).max(200),
+        expectedRevision: z.number().int().min(0),
+        patch: sceneVisualStatePatchSchema,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      const locationKey = input.locationKey.trim();
+      const facts = resolveSceneMutationFacts(row, locationKey);
+      const { readSceneVisualStatesFromPlan, upsertSceneVisualState } = await import(
+        "../services/verticalDramaStartFrameGeneration"
+      );
+
+      return db.transaction(async tx => {
+        const [lockedRow] = await tx
+          .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        const freshPlan = lockedRow?.startFramePlan as VerticalDramaStartFramePlan | null;
+        if (!freshPlan || !Array.isArray(freshPlan.frames)) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "No start-frame plan exists yet for this episode",
+          });
+        }
+        const current = readSceneVisualStatesFromPlan(freshPlan);
+        const existing = current[locationKey];
+        const currentRevision = existing?.revision ?? 0;
+        if (input.expectedRevision !== currentRevision) {
+          throwSceneRevisionConflict(input.expectedRevision, currentRevision);
+        }
+        const now = new Date().toISOString();
+        const nextState: VdSceneVisualState = {
+          locationKey,
+          membershipHash: facts.membershipHash,
+          revision: currentRevision + 1,
+          lightingState: existing?.lightingState ?? "",
+          fixedElements: existing?.fixedElements ?? [],
+          spatialLayout: existing?.spatialLayout ?? "",
+          stagingAxis: existing?.stagingAxis ?? "",
+          wardrobeInScene: existing?.wardrobeInScene ?? [],
+          activeProps: existing?.activeProps ?? [],
+          paletteMood: existing?.paletteMood ?? "",
+          timeJumpSuspected: existing?.timeJumpSuspected ?? false,
+          coverageGaps: existing?.coverageGaps ?? [],
+          memberShotNumbers: facts.group.shotNumbers,
+          plannedAt: existing?.plannedAt ?? now,
+          ...(existing?.skillVersion ? { skillVersion: existing.skillVersion } : {}),
+          ...(input.patch as Partial<VdSceneVisualState>),
+          stale: undefined,
+          manualEdit: true,
+        };
+        const merged = upsertSceneVisualState({
+          current,
+          next: nextState,
+          origin: "manual",
+        });
+        const updatedPlan: VerticalDramaStartFramePlan = {
+          ...freshPlan,
+          sceneVisualStates: merged.states,
+        };
+        const [updatedRow] = await tx
+          .update(verticalDramaEpisodes)
+          .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+            ),
+          )
+          .returning({ startFramePlan: verticalDramaEpisodes.startFramePlan });
+        const persistedPlan =
+          (updatedRow?.startFramePlan as VerticalDramaStartFramePlan | null) ?? updatedPlan;
+        return {
+          startFramePlan: persistedPlan,
+          sceneVisualState: merged.states[locationKey]!,
+        };
+      });
+    }),
+
   /**
    * Read-only per-episode detail projection for stage-detail views that need
    * a persisted jsonb field directly (e.g. the dialogue/audio plan review
@@ -8660,7 +9213,7 @@ export const verticalDramaEpisodesRouter = router({
       // Every new key is `null`/absent-equivalent when its flag is off, so
       // this never changes the shape of the fields already returned above.
       const [
-        { speechBudgetEnabled, arcReplanEnabled },
+        { speechBudgetEnabled, arcReplanEnabled, sceneContinuityEnabled },
         qualityLoopFlags,
         deepStoryDraftsEnabled,
         voiceChainEnabled,
@@ -9006,6 +9559,7 @@ export const verticalDramaEpisodesRouter = router({
           // F131AB (task #34) — mirrors `resolveVerticalDramaTextOverlaySuiteFlag`
           // exactly.
           textOverlaySuite: textOverlaySuiteEnabled,
+          sceneContinuity: sceneContinuityEnabled,
         },
       };
     }),
