@@ -3570,6 +3570,7 @@ async function resolveShotSceneContinuityAnchor(input: {
         frame.locationKey,
       );
     if (
+      typeof latestGeneratedAssetId === "number" &&
       Number.isInteger(latestGeneratedAssetId) &&
       latestGeneratedAssetId > 0 &&
       locationKey
