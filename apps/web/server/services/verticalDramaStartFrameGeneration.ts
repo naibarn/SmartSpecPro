@@ -38,6 +38,7 @@ import {
 } from "./verticalDramaStoryBible";
 import { resolveStartFramePlanModel } from "./verticalDramaImproveScript";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
+import { VD_IMAGE_PROMPT_ABSOLUTE_MAX } from "./modelPromptBudget";
 import {
   buildTargetAudienceRegionInstruction,
   type VerticalDramaTargetAudienceRegion,
@@ -1600,6 +1601,8 @@ export interface GenerateStartFrameShotPromptParams {
    * carries — no new resolution needed.
    */
   productTieIn?: { active: boolean; productName?: string | null; productDescription?: string | null } | null;
+  /** Effective prompt budget for the selected image model; omitted keeps 3800. */
+  imagePromptMaxChars?: number;
 }
 
 export function buildStartFrameShotPromptUserPrompt(
@@ -2037,9 +2040,13 @@ export async function generateStartFrameShotPrompt(
       characterReferenceManifest: params.characterReferenceManifest,
       locationReferenceImage: params.locationReferenceImage,
     });
-    if (outputPrompt.length > VD_IMAGE_PROMPT_MAX) {
+    const imagePromptMaxChars = Math.min(
+      VD_IMAGE_PROMPT_ABSOLUTE_MAX,
+      Math.max(VD_IMAGE_PROMPT_MAX, Math.floor(params.imagePromptMaxChars ?? VD_IMAGE_PROMPT_MAX)),
+    );
+    if (outputPrompt.length > imagePromptMaxChars) {
       throw new VdSchemaValidationError(
-        `Policy-safe synopsis prompt exceeds ${VD_IMAGE_PROMPT_MAX} characters`,
+        `Policy-safe synopsis prompt exceeds ${imagePromptMaxChars} characters`,
         { length: outputPrompt.length },
       );
     }

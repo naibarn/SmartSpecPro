@@ -179,6 +179,10 @@ import {
 import {
   ensurePromptWithinLimit,
 } from "../services/verticalDramaPromptQc";
+import {
+  VD_IMAGE_PROMPT_ABSOLUTE_MAX,
+  resolveVdImagePromptBudgetForModel,
+} from "../services/modelPromptBudget";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
 // section-15 change D, Wave-4A/section-14 completing the "start
 // frames/motion prompts" leg of the rule — character refs were already
@@ -10559,6 +10563,10 @@ export const verticalDramaEpisodesRouter = router({
       const imagePromptQc = await ensurePromptWithinLimit({
         kind: "image",
         prompt: renderStartFramePrompt,
+        maxChars: resolveVdImagePromptBudgetForModel({
+          modelId: resolvedImageModelId,
+          configJson: pricingModel.configJson,
+        }),
         userId,
         tenantId,
         seriesId,
@@ -13024,6 +13032,7 @@ export const verticalDramaEpisodesRouter = router({
           : undefined;
       let shotStartFramePromptImageModelFamily: ImagePromptModelFamily = "other";
       let shotStartFramePromptImageModelName: string | undefined;
+      let shotStartFramePromptImagePromptMaxChars = VD_IMAGE_PROMPT_MAX;
       try {
         if (basePlan.selectedImageModelId) {
           const shotStartFramePromptImageModels = await getModelsByTypeAsync("image");
@@ -13038,6 +13047,17 @@ export const verticalDramaEpisodesRouter = router({
               provider: shotStartFramePromptImageModelRow.provider,
               configJson: shotStartFramePromptImageModelRow.configJson,
             });
+            try {
+              shotStartFramePromptImagePromptMaxChars = resolveVdImagePromptBudgetForModel({
+                modelId: shotStartFramePromptImageModelRow.id,
+                configJson: shotStartFramePromptImageModelRow.configJson,
+              });
+            } catch {
+              // Budget metadata is advisory for prompt authoring. Keep the
+              // legacy cap without discarding the independently resolved
+              // image-model family when registry fallback is unavailable.
+              shotStartFramePromptImagePromptMaxChars = VD_IMAGE_PROMPT_MAX;
+            }
           }
         }
       } catch {
@@ -13162,6 +13182,7 @@ export const verticalDramaEpisodesRouter = router({
           imageModelFamily: shotStartFramePromptImageModelFamily,
           imageModelName: shotStartFramePromptImageModelName,
           imageModelId: basePlan.selectedImageModelId || undefined,
+          imagePromptMaxChars: shotStartFramePromptImagePromptMaxChars,
           // `cinematic_narrative`-only vision grounding — reuses the
           // ALREADY-resolved character/location entries above (same
           // manifest order `characterReferenceManifest` uses), absolutized
@@ -13284,6 +13305,7 @@ export const verticalDramaEpisodesRouter = router({
         const shotStartFramePromptQc = await ensurePromptWithinLimit({
           kind: "image",
           prompt: shotStartFramePromptResult.prompt,
+          maxChars: shotStartFramePromptImagePromptMaxChars,
           userId,
           tenantId,
           seriesId,
@@ -13682,7 +13704,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
-        prompt: z.string().trim().min(1).max(VD_IMAGE_PROMPT_MAX),
+        prompt: z.string().trim().min(1).max(VD_IMAGE_PROMPT_ABSOLUTE_MAX),
         negativePrompt: z.string().max(2000).optional(),
         characterKeys: z.array(z.string().min(1)).min(1).max(10),
         resolution: z.string().trim().max(32).optional(),

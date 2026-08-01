@@ -273,6 +273,49 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
 });
 
 describe("policy-safe synopsis deterministic contract", () => {
+  it("accepts a policy-safe prompt above 3800 within the selected model budget", async () => {
+    const synopsis = "x".repeat(4001);
+    mockExecute.mockResolvedValue(successResponse({
+      rewritten_synopsis: synopsis,
+      safety_adjustments: [],
+    }));
+
+    const result = await generateStartFrameShotPrompt(baseShotParams({
+      imagePromptMode: "policy_safe_rewrite",
+      canonicalShotSummary: synopsis,
+      imagePromptMaxChars: 20_000,
+    }));
+
+    expect(result.prompt).toBe(synopsis);
+  });
+
+  it("keeps the legacy 3800 policy-safe limit when no model budget is supplied", async () => {
+    const synopsis = "x".repeat(4001);
+    mockExecute.mockResolvedValue(successResponse({
+      rewritten_synopsis: synopsis,
+      safety_adjustments: [],
+    }));
+
+    await expect(generateStartFrameShotPrompt(baseShotParams({
+      imagePromptMode: "policy_safe_rewrite",
+      canonicalShotSummary: synopsis,
+    }))).rejects.toThrow("exceeds 3800 characters");
+  });
+
+  it("reports the effective policy-safe budget in an over-limit error", async () => {
+    const synopsis = "x".repeat(20_001);
+    mockExecute.mockResolvedValue(successResponse({
+      rewritten_synopsis: synopsis,
+      safety_adjustments: [],
+    }));
+
+    await expect(generateStartFrameShotPrompt(baseShotParams({
+      imagePromptMode: "policy_safe_rewrite",
+      canonicalShotSummary: synopsis,
+      imagePromptMaxChars: 20_000,
+    }))).rejects.toThrow("exceeds 20000 characters");
+  });
+
   it("builds only REFERENCE MAPPING plus the rewritten synopsis", () => {
     expect(buildDeterministicPolicySafeImagePrompt({
       rewrittenSynopsis: "ภูมิยืนคุยกับปราง",

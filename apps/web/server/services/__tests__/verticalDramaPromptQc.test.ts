@@ -61,6 +61,8 @@ import {
   VD_IMAGE_PROMPT_MAX,
   VD_VIDEO_PROMPT_MAX,
   PromptProtectedFragmentsOverflowError,
+  assertProtectedFragmentsFit,
+  resolveEffectivePromptCap,
 } from "../verticalDramaPromptQc";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
@@ -126,6 +128,14 @@ describe("verticalDramaPromptQc", () => {
       expect(promptCapForKind("image")).toBe(VD_IMAGE_PROMPT_MAX);
       expect(promptCapForKind("video")).toBe(VD_VIDEO_PROMPT_MAX);
     });
+
+    it("widens only image caps and clamps the override", () => {
+      expect(resolveEffectivePromptCap("image")).toBe(VD_IMAGE_PROMPT_MAX);
+      expect(resolveEffectivePromptCap("image", 500)).toBe(VD_IMAGE_PROMPT_MAX);
+      expect(resolveEffectivePromptCap("image", 5000)).toBe(5000);
+      expect(resolveEffectivePromptCap("image", 99_999)).toBe(20_000);
+      expect(resolveEffectivePromptCap("video", 20_000)).toBe(VD_VIDEO_PROMPT_MAX);
+    });
   });
 
   describe("truncateAtSentenceBoundary", () => {
@@ -149,6 +159,56 @@ describe("verticalDramaPromptQc", () => {
   });
 
   describe("ensurePromptWithinLimit", () => {
+    it("accepts a wider per-model image prompt without an LLM call", async () => {
+      const prompt = "x".repeat(5000);
+      const result = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt,
+        maxChars: 20_000,
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result).toEqual({ prompt, refined: false, creditsUsed: 0, truncated: false });
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+
+    it("never narrows below the legacy image cap", async () => {
+      const prompt = "x".repeat(3000);
+      const result = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt,
+        maxChars: 500,
+        userId: 1,
+        seriesId: 6,
+      });
+      expect(result.prompt).toBe(prompt);
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+    });
+
+    it("measures protected image fragments against the effective override", () => {
+      expect(() =>
+        assertProtectedFragmentsFit("image", ["x".repeat(5000)], 6000),
+      ).not.toThrow();
+      expect(() =>
+        assertProtectedFragmentsFit("image", ["x".repeat(6001)], 6000),
+      ).toThrow(PromptProtectedFragmentsOverflowError);
+    });
+
+    it("does not widen video prompts through an image-model override", async () => {
+      const prompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 1);
+      mockExecuteRetry.mockResolvedValueOnce(refinerResult("short", "video"));
+      await ensurePromptWithinLimit({
+        kind: "video",
+        prompt,
+        maxChars: 20_000,
+        userId: 1,
+        seriesId: 6,
+      });
+      expect(mockExecuteRetry).toHaveBeenCalledTimes(1);
+    });
+
     it("within-cap prompt: returns as-is, refined=false, 0 credits, NO LLM call", async () => {
       const prompt = "a short image prompt";
       const result = await ensurePromptWithinLimit({

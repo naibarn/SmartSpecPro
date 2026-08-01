@@ -23,6 +23,7 @@ const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } = vi.ho
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  getStaticModelById: vi.fn(() => undefined),
   resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
   deriveModelResolutionOptions: vi.fn(() => undefined),
 }));
@@ -390,6 +391,40 @@ beforeEach(() => {
 });
 
 describe("generateShotStartFramePrompt", () => {
+  it("threads the selected image model prompt budget through authoring and QC", async () => {
+    const episodeRow = baseEpisodeRow();
+    mockGetModelsByTypeAsync.mockResolvedValue([{
+      id: "google-nano-banana-pro",
+      name: "Google Nano Banana Pro",
+      provider: "kie.ai",
+      configJson: { maxPromptLength: 20_000 },
+    }]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain());
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn(() => updateChain([episodeRow])),
+    });
+
+    await router.generateShotStartFramePrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        instruction: "make the lighting brighter",
+      },
+    });
+
+    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ imagePromptMaxChars: 20_000 }),
+    );
+    expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+      expect.objectContaining({ maxChars: 20_000 }),
+    );
+  });
+
   it("creates a minimal per-shot frame when no start-frame plan exists, without running the whole-episode planning stage", async () => {
     const episodeRow = baseEpisodeRow({
       startFramePlan: null,

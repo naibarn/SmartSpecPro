@@ -40,6 +40,7 @@ import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript"
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { debugLog, debugError } from "../_core/logger";
 import { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX } from "@shared/verticalDramaSeries";
+import { VD_IMAGE_PROMPT_ABSOLUTE_MAX } from "./modelPromptBudget";
 
 export { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX };
 
@@ -119,6 +120,21 @@ export function promptCapForKind(kind: VerticalDramaPromptKind): number {
   return kind === "image" ? VD_IMAGE_PROMPT_MAX : VD_VIDEO_PROMPT_MAX;
 }
 
+/** Resolve one call's cap while preserving the legacy floor and video limit. */
+export function resolveEffectivePromptCap(
+  kind: VerticalDramaPromptKind,
+  override?: number,
+): number {
+  const defaultCap = promptCapForKind(kind);
+  if (kind === "video" || override === undefined || !Number.isFinite(override)) {
+    return defaultCap;
+  }
+  return Math.min(
+    VD_IMAGE_PROMPT_ABSOLUTE_MAX,
+    Math.max(defaultCap, Math.floor(override)),
+  );
+}
+
 export interface EnsurePromptWithinLimitParams {
   kind: VerticalDramaPromptKind;
   prompt: string;
@@ -126,6 +142,8 @@ export interface EnsurePromptWithinLimitParams {
   context?: string;
   /** Exact fragments (normally native-audio dialogue) that must survive every refinement/truncation pass. */
   protectedFragments?: string[];
+  /** Optional selected-image-model cap for this call; widening-only. */
+  maxChars?: number;
   userId: number;
   tenantId?: string;
   seriesId: number;
@@ -145,12 +163,13 @@ export class PromptProtectedFragmentsOverflowError extends Error {
 export function assertProtectedFragmentsFit(
   kind: VerticalDramaPromptKind,
   protectedFragments: string[] | undefined,
+  maxCharsOverride?: number,
 ): void {
   const protectedLength = (protectedFragments ?? [])
     .map(value => value.trim())
     .filter(Boolean)
     .join("\n").length;
-  const maxChars = promptCapForKind(kind);
+  const maxChars = resolveEffectivePromptCap(kind, maxCharsOverride);
   if (protectedLength > maxChars) {
     throw new PromptProtectedFragmentsOverflowError(maxChars);
   }
@@ -352,9 +371,9 @@ export async function ensurePromptWithinLimit(
   params: EnsurePromptWithinLimitParams,
 ): Promise<EnsurePromptWithinLimitResult> {
   const { kind, prompt, context, userId, tenantId, seriesId, idempotencyKey } = params;
-  const maxChars = promptCapForKind(kind);
+  const maxChars = resolveEffectivePromptCap(kind, params.maxChars);
   const label = params.label ?? `${kind} prompt`;
-  assertProtectedFragmentsFit(kind, params.protectedFragments);
+  assertProtectedFragmentsFit(kind, params.protectedFragments, params.maxChars);
 
   if (prompt.length <= maxChars) {
     const finalized = finalizeProtectedFragments(prompt, params.protectedFragments, maxChars);

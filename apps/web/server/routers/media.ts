@@ -68,6 +68,7 @@ import {
   refreshModelCache,
   mapToApiModelId,
 } from "../services/modelRegistry";
+import { resolveModelMaxPromptLength } from "../services/modelPromptBudget";
 import {
   inferMediaModelHintFromText,
   resolveEnabledMediaModelSelection,
@@ -646,36 +647,6 @@ async function getModelWithPricing(modelId: string): Promise<{
     creditCost: staticModel?.creditCost ?? hardcoded?.creditCost ?? 10,
     configJson: (staticModel?.configJson as Record<string, any> | null | undefined) ?? null,
   };
-}
-
-function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null | undefined): number | null {
-  if (!configJson || typeof configJson !== "object") {
-    return null;
-  }
-
-  const raw = configJson.maxPromptLength ?? configJson.max_prompt_length;
-  if (typeof raw !== "number" && typeof raw !== "string") {
-    return null;
-  }
-
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  return Math.floor(parsed);
-}
-
-function resolveModelMaxPromptLength(
-  modelId: string,
-  configJson: Record<string, any> | null | undefined,
-): number | null {
-  const dbLimit = resolveConfiguredMaxPromptLength(configJson);
-  if (dbLimit !== null) {
-    return dbLimit;
-  }
-
-  return resolveConfiguredMaxPromptLength(getStaticModelById(modelId)?.configJson);
 }
 
 function assertMediaPromptWithinModelLimit(params: {
