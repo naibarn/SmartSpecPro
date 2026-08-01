@@ -6358,7 +6358,7 @@ const sceneVisualStatePatchSchema = z
           })
           .strict(),
       )
-      .max(20)
+      .max(40)
       .optional(),
     spatialLayout: z.string().trim().max(2000).optional(),
     stagingAxis: z.string().trim().max(1000).optional(),
@@ -6371,7 +6371,7 @@ const sceneVisualStatePatchSchema = z
           })
           .strict(),
       )
-      .max(20)
+      .max(40)
       .optional(),
     activeProps: z
       .array(
@@ -6383,11 +6383,11 @@ const sceneVisualStatePatchSchema = z
           })
           .strict(),
       )
-      .max(20)
+      .max(40)
       .optional(),
     paletteMood: z.string().trim().max(1000).optional(),
     timeJumpSuspected: z.boolean().optional(),
-    coverageGaps: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+    coverageGaps: z.array(z.string().trim().min(1).max(500)).max(40).optional(),
   })
   .strict();
 /**
