@@ -21,7 +21,7 @@ Evidence:
 - Gate A: 5 failures / 263 passes; final fail-set is identical to
   `gate-a-failset-current.txt`.
 - Gate B: 57 failures; `comm -13` against `gate-b-failset-after.txt` is empty.
-- Focused Section 14 run: 36 passed, 1 opt-in live test skipped.
+- Focused Section 14 run: 37 passed, 1 opt-in live test skipped.
 - Full typecheck remains non-green outside VD P1 (41 repository-wide errors);
   the changed-surface filter is empty.
 
