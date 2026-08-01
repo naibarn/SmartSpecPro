@@ -116,6 +116,11 @@ import {
   type VerticalDramaPresetVisualIdentity,
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import {
+  VD_LOOK_LOCK_GENRES,
+  SeriesLookLockTransitionError,
+  applySeriesLookLockTransition,
+} from "@shared/verticalDramaSeries/seriesLookLock";
+import {
   verticalDramaArcReplanProposalSchema,
   type VerticalDramaArcReplanProposal,
   type VerticalDramaEpisodeBreakdownItem,
@@ -755,6 +760,33 @@ const verticalDramaArcReplanProcedure = verticalDramaProcedure.use(
 const verticalDramaDeepStoryDraftsProcedure = verticalDramaProcedure.use(
   requireFeatureFlag("verticalDramaSeriesDeepStoryDrafts")
 );
+
+const verticalDramaSeriesLookLockProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaSeriesLookLock")
+);
+
+export const setSeriesLookLockInput = z.object({
+  seriesId: z.string().min(1),
+  mode: z.enum(["inherit_source", "genre", "manual", "none"]),
+  genreKey: z.enum(VD_LOOK_LOCK_GENRES).optional(),
+  manualPatch: z.unknown().optional(),
+  expectedRevision: z.number().int().min(0),
+}).superRefine((value, context) => {
+  if (value.mode === "genre" && !value.genreKey) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["genreKey"],
+      message: "genreKey is required for genre mode",
+    });
+  }
+  if (value.mode === "manual" && value.manualPatch === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["manualPatch"],
+      message: "manualPatch is required for manual mode",
+    });
+  }
+});
 
 /**
  * Base procedure for the read-only series share link OWNER mutations (task
@@ -4412,11 +4444,97 @@ export function extractEpisodeCompiledVideoSummary(
   return summary;
 }
 
+async function recordSeriesLookLockAuditEvent(params: {
+  userId: number;
+  seriesId: number;
+  mode: "inherit_source" | "genre" | "manual" | "none";
+  revision: number;
+  outcome: "updated" | "conflict";
+}): Promise<void> {
+  try {
+    await db.insert(apiAuditEvents).values({
+      traceId: randomUUID().replace(/-/g, "").slice(0, 32),
+      eventType: "vertical_drama_series_look_lock",
+      userId: params.userId,
+      endpoint: "verticalDramaSeries.setSeriesLookLock",
+      statusCode: params.outcome === "updated" ? 200 : 409,
+      metadata: params,
+    });
+  } catch (error) {
+    debugError("verticalDramaSeries.setSeriesLookLock", "Audit write failed", error);
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Router                                                                     */
 /* -------------------------------------------------------------------------- */
 
 export const verticalDramaSeriesRouter = router({
+  setSeriesLookLock: verticalDramaSeriesLookLockProcedure
+    .input(setSeriesLookLockInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      try {
+        const result = await db.transaction(async tx => {
+          const [row] = await tx
+            .select({ bible: verticalDramaSeries.bible })
+            .from(verticalDramaSeries)
+            .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+            .for("update");
+          if (!row) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+          }
+
+          const transition = applySeriesLookLockTransition({
+            bible: row.bible,
+            mode: input.mode,
+            genreKey: input.genreKey,
+            manualPatch: input.manualPatch,
+            expectedRevision: input.expectedRevision,
+            now: new Date().toISOString(),
+          });
+          await tx
+            .update(verticalDramaSeries)
+            .set({ bible: transition.bible, updatedAt: new Date() })
+            .where(seriesOwnershipWhere(tenantId, userId, seriesId));
+          return transition;
+        });
+        await recordSeriesLookLockAuditEvent({
+          userId,
+          seriesId,
+          mode: input.mode,
+          revision: result.control.revision,
+          outcome: "updated",
+        });
+        return { control: result.control };
+      } catch (error) {
+        if (error instanceof SeriesLookLockTransitionError && error.reason === "conflict") {
+          await recordSeriesLookLockAuditEvent({
+            userId,
+            seriesId,
+            mode: input.mode,
+            revision: error.currentRevision,
+            outcome: "conflict",
+          });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Series look changed; reload revision ${error.currentRevision}`,
+            cause: error,
+          });
+        }
+        if (error instanceof SeriesLookLockTransitionError) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error });
+        }
+        throw error;
+      }
+    }),
+
   /**
    * List series owned by the caller (tenant + user scoped), newest first, with
    * the light per-series aggregates the Series List surface renders: next

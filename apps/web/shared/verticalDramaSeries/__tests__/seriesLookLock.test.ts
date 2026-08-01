@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   VD_LOOK_LOCK_GENRES,
+  SeriesLookLockTransitionError,
+  applySeriesLookLockTransition,
   applySeriesLookToImagePrompt,
   getSeriesLookLockGenreIdentity,
   resolveEffectiveSeriesVisualIdentity,
@@ -160,5 +162,75 @@ describe("look-lock validation and final prompt assembly", () => {
       negativePrompt: "blur, neon cyberpunk",
     });
     expect(twice).toEqual(once);
+  });
+});
+
+describe("series look-lock transitions", () => {
+  const now = "2026-08-01T01:00:00.000Z";
+
+  it("captures the inherited source once and preserves unrelated bible fields", () => {
+    const first = applySeriesLookLockTransition({
+      bible: bible(),
+      mode: "genre",
+      genreKey: "fantasy_fairytale",
+      expectedRevision: 0,
+      now,
+      inheritedSource: "preset",
+      inheritedGovernance: "preset_mix",
+    });
+    expect(first.bible.story).toBe("unrelated");
+    expect(first.control).toMatchObject({
+      mode: "genre",
+      genreKey: "fantasy_fairytale",
+      inheritedIdentity,
+      inheritedSource: "preset",
+      inheritedGovernance: "preset_mix",
+      revision: 1,
+    });
+
+    const second = applySeriesLookLockTransition({
+      bible: first.bible,
+      mode: "genre",
+      genreKey: "action_epic",
+      expectedRevision: 1,
+      now,
+    });
+    expect(second.control.inheritedIdentity).toEqual(inheritedIdentity);
+    expect(second.control.revision).toBe(2);
+  });
+
+  it("restores the captured identity after genre, manual, and none transitions", () => {
+    const genre = applySeriesLookLockTransition({
+      bible: bible(), mode: "genre", genreKey: "drama_romance",
+      expectedRevision: 0, now,
+    });
+    const manual = applySeriesLookLockTransition({
+      bible: genre.bible, mode: "manual", expectedRevision: 1, now,
+      manualPatch: { styleName: "Edited series register" },
+    });
+    expect((manual.bible.presetVisualIdentity as VerticalDramaPresetVisualIdentity).styleName)
+      .toBe("Edited series register");
+    const none = applySeriesLookLockTransition({
+      bible: manual.bible, mode: "none", expectedRevision: 2, now,
+    });
+    expect(none.bible).not.toHaveProperty("presetVisualIdentity");
+    const restored = applySeriesLookLockTransition({
+      bible: none.bible, mode: "inherit_source", expectedRevision: 3, now,
+    });
+    expect(restored.bible.presetVisualIdentity).toEqual(inheritedIdentity);
+    expect(restored.control.revision).toBe(4);
+  });
+
+  it("rejects stale revisions and missing transition preconditions", () => {
+    expect(() => applySeriesLookLockTransition({
+      bible: bible(), mode: "none", expectedRevision: 2, now,
+    })).toThrowError(new SeriesLookLockTransitionError("conflict", 0));
+    expect(() => applySeriesLookLockTransition({
+      bible: {}, mode: "inherit_source", expectedRevision: 0, now,
+    })).toThrowError(new SeriesLookLockTransitionError("missing_inherited_identity", 0));
+    expect(() => applySeriesLookLockTransition({
+      bible: {}, mode: "manual", expectedRevision: 0, now,
+      manualPatch: { styleName: "No base" },
+    })).toThrowError(new SeriesLookLockTransitionError("missing_manual_base", 0));
   });
 });

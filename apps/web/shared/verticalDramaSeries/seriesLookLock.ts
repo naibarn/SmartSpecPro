@@ -122,7 +122,7 @@ function parseIdentity(value: unknown): VerticalDramaPresetVisualIdentity | unde
   return parsed.success ? parsed.data : undefined;
 }
 
-function parseControl(value: unknown): VdLookLockControl | undefined {
+export function readSeriesLookLockControl(value: unknown): VdLookLockControl | undefined {
   if (!isRecord(value)) return undefined;
   const modes: readonly string[] = ["inherit_source", "genre", "manual", "none"];
   if (!modes.includes(String(value.mode))) return undefined;
@@ -159,7 +159,7 @@ export function resolveEffectiveSeriesVisualIdentity(params: {
   if (!isRecord(params.bible)) return undefined;
   const current = parseIdentity(params.bible.presetVisualIdentity);
   const hasControl = Object.prototype.hasOwnProperty.call(params.bible, "lookLockControl");
-  const control = parseControl(params.bible.lookLockControl);
+  const control = readSeriesLookLockControl(params.bible.lookLockControl);
   if (!hasControl) return params.presetMixEnabled ? current : undefined;
   if (!control) return undefined;
 
@@ -234,6 +234,95 @@ export function validateSeriesLookManualPatch(
     value.imagePromptFragments = { positive, negative };
   }
   return { ok: true, value };
+}
+
+export type SeriesLookLockTransitionErrorReason =
+  | "conflict"
+  | "invalid_genre"
+  | "invalid_manual_patch"
+  | "missing_inherited_identity"
+  | "missing_manual_base";
+
+export class SeriesLookLockTransitionError extends Error {
+  constructor(
+    readonly reason: SeriesLookLockTransitionErrorReason,
+    readonly currentRevision: number,
+  ) {
+    super(`Series look-lock transition failed: ${reason}`);
+    this.name = "SeriesLookLockTransitionError";
+  }
+}
+
+export function applySeriesLookLockTransition(params: {
+  bible: unknown;
+  mode: VdLookLockMode;
+  genreKey?: VdLookLockGenre;
+  manualPatch?: unknown;
+  expectedRevision: number;
+  now: string;
+  inheritedSource?: VdLookLockInheritedSource;
+  inheritedGovernance?: VdLookLockGovernance;
+}): { bible: Record<string, unknown>; control: VdLookLockControl } {
+  const bible = isRecord(params.bible) ? { ...params.bible } : {};
+  const previousControl = readSeriesLookLockControl(bible.lookLockControl);
+  const currentRevision = previousControl?.revision ?? 0;
+  if (params.expectedRevision !== currentRevision) {
+    throw new SeriesLookLockTransitionError("conflict", currentRevision);
+  }
+
+  const currentIdentity = parseIdentity(bible.presetVisualIdentity);
+  const inheritedIdentity = previousControl?.inheritedIdentity ?? currentIdentity;
+  const inheritedSource = previousControl?.inheritedSource
+    ?? (inheritedIdentity ? params.inheritedSource ?? "preset" : undefined);
+  const inheritedGovernance = previousControl?.inheritedGovernance
+    ?? (inheritedIdentity ? params.inheritedGovernance ?? "preset_mix" : undefined);
+  const revision = currentRevision + 1;
+  let effectiveIdentity: VerticalDramaPresetVisualIdentity | undefined;
+
+  if (params.mode === "genre") {
+    if (!params.genreKey || !VD_LOOK_LOCK_GENRES.includes(params.genreKey)) {
+      throw new SeriesLookLockTransitionError("invalid_genre", currentRevision);
+    }
+    effectiveIdentity = getSeriesLookLockGenreIdentity(params.genreKey);
+  } else if (params.mode === "manual") {
+    const validated = validateSeriesLookManualPatch(params.manualPatch ?? {});
+    if (!validated.ok) {
+      throw new SeriesLookLockTransitionError("invalid_manual_patch", currentRevision);
+    }
+    const base = currentIdentity ?? inheritedIdentity;
+    if (!base) {
+      throw new SeriesLookLockTransitionError("missing_manual_base", currentRevision);
+    }
+    const candidate = {
+      ...base,
+      ...validated.value,
+      imagePromptFragments: validated.value.imagePromptFragments
+        ?? base.imagePromptFragments,
+    };
+    effectiveIdentity = parseIdentity(candidate);
+    if (!effectiveIdentity) {
+      throw new SeriesLookLockTransitionError("invalid_manual_patch", currentRevision);
+    }
+  } else if (params.mode === "inherit_source") {
+    if (!inheritedIdentity) {
+      throw new SeriesLookLockTransitionError("missing_inherited_identity", currentRevision);
+    }
+    effectiveIdentity = inheritedIdentity;
+  }
+
+  const control: VdLookLockControl = {
+    mode: params.mode,
+    revision,
+    updatedAt: params.now,
+    ...(params.mode === "genre" && params.genreKey ? { genreKey: params.genreKey } : {}),
+    ...(inheritedIdentity ? { inheritedIdentity } : {}),
+    ...(inheritedSource ? { inheritedSource } : {}),
+    ...(inheritedGovernance ? { inheritedGovernance } : {}),
+  };
+  bible.lookLockControl = control;
+  if (effectiveIdentity) bible.presetVisualIdentity = effectiveIdentity;
+  else delete bible.presetVisualIdentity;
+  return { bible, control };
 }
 
 function appendUniqueCsv(base: string | undefined, additions: readonly string[]): string | undefined {
