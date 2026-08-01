@@ -3607,7 +3607,7 @@ function logSceneNeighborAnchorEvent(input: {
   anchor?: VdSceneAnchor;
   layer: "prompt" | "render";
   dropped: boolean;
-  dropReason?: string;
+  dropReason?: "cap" | "trim";
 }): void {
   if (!input.anchor && !input.dropped) return;
   auditLogger.log({
@@ -11162,7 +11162,7 @@ export const verticalDramaEpisodesRouter = router({
           anchor: sceneNeighborAnchor,
           layer: "render",
           dropped: !anchorAttached,
-          ...(anchorAttached ? {} : { dropReason: "provider_reference_cap" }),
+          ...(anchorAttached ? {} : { dropReason: "trim" }),
         });
       }
       // Validate + recompute cost when the model has a resolution-tiered
@@ -14149,7 +14149,7 @@ export const verticalDramaEpisodesRouter = router({
             dropped: shotStartFramePromptResult.sceneAnchorAttached !== true,
             ...(shotStartFramePromptResult.sceneAnchorAttached === true
               ? {}
-              : { dropReason: "vision_unavailable_or_attachment_cap" }),
+              : { dropReason: "cap" }),
           });
         }
       } catch (err) {

@@ -4,7 +4,7 @@
  * `resolveShotLocationReferenceEntry` threaded through both
  * `generateStartFrameImage` and `generateStartFrameAngleVariations` via the
  * widened `mergeAndTrimReferenceImageUrls(characterRefUrls, locationRefUrls,
- * productRefUrls, maxReferenceImages)`.
+ * sceneAnchorRefUrls, productRefUrls, maxReferenceImages)`.
  *
  * Same "mock the whole module graph, invoke the exported procedure handler
  * directly" convention as `verticalDramaEpisodes.characterRefV2.test.ts`
@@ -56,6 +56,13 @@ const { mockDb } = vi.hoisted(() => ({
   },
 }));
 vi.mock("../../db", () => ({ db: mockDb }));
+
+const { mockAuditLog } = vi.hoisted(() => ({
+  mockAuditLog: vi.fn(),
+}));
+vi.mock("../../services/auditLogger", () => ({
+  auditLogger: { log: mockAuditLog },
+}));
 
 vi.mock("../../_core/trpc", () => {
   const createProcedure = () => {
@@ -404,6 +411,18 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
               }),
             }),
           ]),
+        }),
+      }),
+    );
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "vd_scene_neighbor_anchor_attached",
+        metadata: expect.objectContaining({
+          shotNumber: 2,
+          anchorShotNumber: 1,
+          source: "approved",
+          layer: "render",
+          dropped: false,
         }),
       }),
     );

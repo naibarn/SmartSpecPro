@@ -40,6 +40,13 @@ const { mockDb } = vi.hoisted(() => ({
 }));
 vi.mock("../../db", () => ({ db: mockDb }));
 
+const { mockAuditLog } = vi.hoisted(() => ({
+  mockAuditLog: vi.fn(),
+}));
+vi.mock("../../services/auditLogger", () => ({
+  auditLogger: { log: mockAuditLog },
+}));
+
 vi.mock("../../_core/trpc", () => {
   const createProcedure = () => {
     const proc: any = {
@@ -425,6 +432,13 @@ describe("generateShotStartFramePrompt", () => {
       verticalDramaSceneContinuity: true,
       verticalDramaSceneNeighborAnchors: true,
     });
+    mockGenerateStartFrameShotPrompt.mockResolvedValueOnce({
+      prompt: "regenerated start-frame prompt",
+      negativePrompt: "regenerated negative prompt",
+      creditsUsed: 4,
+      model: "gpt-image-2-planner",
+      sceneAnchorAttached: true,
+    });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ bible: null }])) // loadSeriesTargetAudienceRegion
@@ -465,6 +479,18 @@ describe("generateShotStartFramePrompt", () => {
           }),
         }),
       ]),
+    );
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "vd_scene_neighbor_anchor_attached",
+        metadata: expect.objectContaining({
+          shotNumber: 2,
+          anchorShotNumber: 1,
+          source: "approved",
+          layer: "prompt",
+          dropped: false,
+        }),
+      }),
     );
   });
 
