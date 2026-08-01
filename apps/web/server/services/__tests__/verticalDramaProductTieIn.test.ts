@@ -301,6 +301,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2"],
       [],
+      [],
       ["product-1"],
       undefined,
     );
@@ -309,13 +310,14 @@ describe("mergeAndTrimReferenceImageUrls", () => {
   });
 
   it("dedupes overlapping URLs", () => {
-    const { urls } = mergeAndTrimReferenceImageUrls(["a", "b"], [], ["b", "c"], undefined);
+    const { urls } = mergeAndTrimReferenceImageUrls(["a", "b"], [], [], ["b", "c"], undefined);
     expect(urls).toEqual(["a", "b", "c"]);
   });
 
   it("trims from the end (product refs) when over maxReferenceImages, prioritizing character refs", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2", "char-3"],
+      [],
       [],
       ["product-1", "product-2"],
       3,
@@ -325,7 +327,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
   });
 
   it("passes through unchanged when maxReferenceImages is 0/undefined", () => {
-    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], [], ["b"], 0);
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], [], [], ["b"], 0);
     expect(urls).toEqual(["a", "b"]);
     expect(trimmedCount).toBe(0);
   });
@@ -340,6 +342,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1"],
       ["loc-1"],
+      [],
       ["product-1"],
       undefined,
     );
@@ -351,6 +354,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1"],
       ["loc-1"],
+      [],
       ["product-1", "product-2"],
       2,
     );
@@ -362,6 +366,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2"],
       ["loc-1"],
+      [],
       ["product-1"],
       2,
     );
@@ -374,6 +379,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
       ["char-1", "char-2", "char-3"],
       ["loc-1"],
       [],
+      [],
       3,
     );
     expect(urls).toEqual(["char-1", "char-2", "char-3"]);
@@ -381,7 +387,7 @@ describe("mergeAndTrimReferenceImageUrls", () => {
   });
 
   it("dedupes across all three sources", () => {
-    const { urls } = mergeAndTrimReferenceImageUrls(["a"], ["a", "b"], ["b", "c"], undefined);
+    const { urls } = mergeAndTrimReferenceImageUrls(["a"], ["a", "b"], [], ["b", "c"], undefined);
     expect(urls).toEqual(["a", "b", "c"]);
   });
 
@@ -389,11 +395,99 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2"],
       [],
+      [],
       ["product-1", "product-2", "product-3"],
       3,
     );
     expect(urls).toEqual(["char-1", "char-2", "product-1"]);
     expect(trimmedCount).toBe(2);
+  });
+
+  it("keeps a realistic multi-character shot intact at GPT Image 2's 16-reference limit", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      [
+        "char-1-portrait",
+        "char-1-sheet",
+        "char-2-portrait",
+        "char-2-sheet",
+        "char-3-portrait",
+        "char-3-sheet",
+        "char-4-portrait",
+        "char-4-sheet",
+        "char-5-portrait",
+        "char-5-sheet",
+      ],
+      ["location-1"],
+      [],
+      ["product-1", "product-2"],
+      16,
+    );
+
+    expect(urls).toHaveLength(13);
+    expect(urls).toContain("char-5-portrait");
+    expect(urls).toContain("location-1");
+    expect(urls).toContain("product-2");
+    expect(trimmedCount).toBe(0);
+  });
+
+  it("places the scene anchor between location and product references", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1"],
+      ["location-1"],
+      ["anchor-2"],
+      ["product-1"],
+      undefined,
+    );
+    expect(urls).toEqual(["char-1", "location-1", "anchor-2", "product-1"]);
+    expect(trimmedCount).toBe(0);
+  });
+
+  it("trims product, then anchor, then location before character refs", () => {
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["char-1"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        3,
+      ),
+    ).toEqual({
+      urls: ["char-1", "location-1", "anchor-2"],
+      trimmedCount: 1,
+    });
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["char-1"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        2,
+      ),
+    ).toEqual({
+      urls: ["char-1", "location-1"],
+      trimmedCount: 2,
+    });
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["char-1"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        1,
+      ),
+    ).toEqual({ urls: ["char-1"], trimmedCount: 3 });
+  });
+
+  it("dedupes an anchor URL already present in a higher-priority source", () => {
+    expect(
+      mergeAndTrimReferenceImageUrls(
+        ["anchor-2"],
+        ["location-1"],
+        ["anchor-2"],
+        ["product-1"],
+        undefined,
+      ).urls,
+    ).toEqual(["anchor-2", "location-1", "product-1"]);
   });
 });
 
