@@ -3467,6 +3467,33 @@ async function resolveVerticalDramaDensityFlags(
   };
 }
 
+/** Feature 138 P1 — fail-closed gate for scene continuity lock resolution. */
+async function resolveVerticalDramaSceneContinuityFlag(
+  tenantId: string
+): Promise<boolean> {
+  try {
+    const flags = await getTenantFeatureFlags(tenantId);
+    return flags?.verticalDramaSceneContinuity === true;
+  } catch {
+    return false;
+  }
+}
+
+function hasVerticalDramaSceneIdentity(
+  storyboard: unknown,
+  shotNumber: number,
+  overrideLocationKey?: string | null,
+): boolean {
+  if (typeof overrideLocationKey === "string" && overrideLocationKey.trim()) return true;
+  const raw = storyboard as { distinct_locations?: unknown } | null;
+  if (!Array.isArray(raw?.distinct_locations)) return false;
+  return raw.distinct_locations.some(entry => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+    const shots = (entry as { shot_numbers?: unknown }).shot_numbers;
+    return Array.isArray(shots) && shots.some(value => Number(value) === shotNumber);
+  });
+}
+
 /**
  * Resolve the `verticalDramaSeriesTieInReplan` tenant flag (F131Y, task
  * #31, spec §7.7.3, added 2026-07-09) — gates `deferEpisodeTieIn`'s real
@@ -6610,6 +6637,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
    * convention immediately above.
    */
   locationReferenceImage?: { url: string; name?: string };
+  /** Pre-rendered scene continuity lock consumed by the speaker-switch builder. */
+  sceneContinuityLockBlock?: string;
   /**
    * planning/`polished-toasting-gadget.md` Fix B — threaded straight through
    * to `generateVerticalDramaShotVideoPromptSpeakerSwitch`'s own
@@ -6668,6 +6697,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     subShotWindows,
     characterReferenceImages,
     locationReferenceImage,
+    sceneContinuityLockBlock,
     repairInstruction,
     attachShotImage,
     additionalImageUrls,
@@ -6703,6 +6733,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       emotion: undefined,
       dialogueLines: dialogueLines.length ? dialogueLinesWithSpeakerNames : undefined,
       characterIdentityMap: shotVideoCharacterIdentityMapBlock,
+      sceneContinuityLockBlock,
       productContext: tieInPlacement
         ? {
             productName: tieInProductName,
@@ -12958,6 +12989,47 @@ export const verticalDramaEpisodesRouter = router({
         input.shotNumber,
         frame.locationKey
       );
+      const sceneContinuityEnabled = hasVerticalDramaSceneIdentity(
+        row.storyboard,
+        input.shotNumber,
+        frame.locationKey,
+      ) && await resolveVerticalDramaSceneContinuityFlag(tenantId);
+      let shotSceneContinuityLockBlock: string | undefined;
+      let shotSceneContinuityNewlyAuthored:
+        | import("@shared/verticalDramaSeries/sceneContinuity").VdSceneVisualState
+        | undefined;
+      if (sceneContinuityEnabled) {
+        const { resolveShotSceneContinuityLock } = await import(
+          "../services/verticalDramaSceneContinuityLock"
+        );
+        const lock = await resolveShotSceneContinuityLock({
+          enabled: true,
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          storyboard: row.storyboard,
+          startFramePlan: basePlan,
+          shotNumber: input.shotNumber,
+          authorIfMissing: true,
+          canonicalShotSummaryByShotNumber: (input.canonicalShotSummary?.trim() || frame.canonicalShotSummary?.trim())
+            ? new Map([[input.shotNumber, input.canonicalShotSummary?.trim() || frame.canonicalShotSummary!.trim()]])
+            : undefined,
+          locationImageUrlByLocationKey: shotStartFramePromptLocationEntry?.url && frame.locationKey
+            ? new Map([[frame.locationKey, resolveReferenceUrl(shotStartFramePromptLocationEntry.url, ctx.publicUrl ?? undefined)]])
+            : undefined,
+          idempotencyKey: input.idempotencyKey,
+        });
+        shotSceneContinuityLockBlock = lock.block;
+        shotSceneContinuityNewlyAuthored = lock.newlyAuthored;
+        if (lock.failure) {
+          console.warn("[vd_scene_continuity] explicit single-shot prompt proceeding unlocked", {
+            episodeId,
+            shotNumber: input.shotNumber,
+            reason: lock.failure.reason,
+          });
+        }
+      }
 
       // Resolve the independent image language, retaining the former shared
       // video-language value only as a compatibility fallback for episodes
@@ -13265,6 +13337,7 @@ export const verticalDramaEpisodesRouter = router({
                 hasReferenceImage: Boolean(shotStartFramePromptLocationEntry.url),
               }
             : undefined,
+          sceneContinuityLockBlock: shotSceneContinuityLockBlock,
           // Speaker-order composition fix — see this procedure's own
           // `shotStartFramePromptSpeakingOrder` resolution above. Omitted
           // entirely (not merely `undefined`) when no speakers resolved, so
@@ -13429,6 +13502,20 @@ export const verticalDramaEpisodesRouter = router({
           ...freshPlan,
           frames: updatedFrames,
         };
+        if (shotSceneContinuityNewlyAuthored) {
+          const {
+            readSceneVisualStatesFromPlan,
+            upsertSceneVisualState,
+          } = await import("../services/verticalDramaStartFrameGeneration");
+          const sceneMerge = upsertSceneVisualState({
+            current: readSceneVisualStatesFromPlan(freshPlan),
+            next: shotSceneContinuityNewlyAuthored,
+            origin: "lazy",
+          });
+          if (sceneMerge.written) {
+            updatedPlan.sceneVisualStates = sceneMerge.states;
+          }
+        }
 
         await tx
           .update(verticalDramaEpisodes)
@@ -13581,6 +13668,36 @@ export const verticalDramaEpisodesRouter = router({
         frame.locationKey
       );
 
+      // Supplementary reference frames are read-only consumers of the scene
+      // lock. They must never spend a second LLM call authoring a missing
+      // state; the primary start-frame authoring path owns that lifecycle.
+      let referenceFrameSceneContinuityLockBlock: string | undefined;
+      if (hasVerticalDramaSceneIdentity(row.storyboard, input.shotNumber, frame.locationKey) &&
+        await resolveVerticalDramaSceneContinuityFlag(tenantId)) {
+        const { resolveShotSceneContinuityLock } = await import(
+          "../services/verticalDramaSceneContinuityLock"
+        );
+        const lock = await resolveShotSceneContinuityLock({
+          enabled: true,
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          storyboard: row.storyboard,
+          startFramePlan: plan,
+          shotNumber: input.shotNumber,
+          authorIfMissing: false,
+          canonicalShotSummaryByShotNumber: frame.canonicalShotSummary?.trim()
+            ? new Map([[input.shotNumber, frame.canonicalShotSummary.trim()]])
+            : undefined,
+          locationImageUrlByLocationKey: referenceFrameLocationEntry?.url && frame.locationKey
+            ? new Map([[frame.locationKey, resolveReferenceUrl(referenceFrameLocationEntry.url, ctx.publicUrl ?? undefined)]])
+            : undefined,
+          idempotencyKey: input.idempotencyKey,
+        });
+        referenceFrameSceneContinuityLockBlock = lock.block;
+      }
+
       const referenceFramePromptLanguage = resolveEffectiveImagePromptLanguage({
         startFramePlan: plan,
         motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
@@ -13640,6 +13757,7 @@ export const verticalDramaEpisodesRouter = router({
                 hasReferenceImage: Boolean(referenceFrameLocationEntry.url),
               }
             : undefined,
+          sceneContinuityLockBlock: referenceFrameSceneContinuityLockBlock,
           idempotencyKey: input.idempotencyKey,
         });
       } catch (err) {
@@ -14201,6 +14319,34 @@ export const verticalDramaEpisodesRouter = router({
       const storyboardShot = storyboard?.shots?.find(
         s => s.shotNumber === input.shotNumber
       );
+      // Video prompt generation is a read-only scene-lock consumer. The
+      // start-frame authoring path (or batch pre-pass) is responsible for
+      // creating a missing state; this path must not introduce an extra paid
+      // authoring call while regenerating motion text.
+      let shotSceneContinuityLockBlock: string | undefined;
+      if (hasVerticalDramaSceneIdentity(row.storyboard, input.shotNumber, frame?.locationKey) &&
+        await resolveVerticalDramaSceneContinuityFlag(tenantId)) {
+        const { resolveShotSceneContinuityLock } = await import(
+          "../services/verticalDramaSceneContinuityLock"
+        );
+        const canonicalVideoSummary = frame?.canonicalShotSummary?.trim();
+        const lock = await resolveShotSceneContinuityLock({
+          enabled: true,
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          storyboard: row.storyboard,
+          startFramePlan: plan,
+          shotNumber: input.shotNumber,
+          authorIfMissing: false,
+          canonicalShotSummaryByShotNumber: canonicalVideoSummary
+            ? new Map([[input.shotNumber, canonicalVideoSummary]])
+            : undefined,
+          idempotencyKey: input.idempotencyKey,
+        });
+        shotSceneContinuityLockBlock = lock.block;
+      }
       // Retention hooks (W7) — this episode's total shot count, used ONLY to
       // derive `is_retention_ending_shot` (see
       // `GenerateVerticalDramaShotVideoPromptParams.totalShotCount`'s doc
@@ -14631,6 +14777,7 @@ export const verticalDramaEpisodesRouter = router({
           subShotWindows: subShotDecision.windows,
           characterReferenceImages: splitShotVideoCharacterReferenceImages,
           locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
+          sceneContinuityLockBlock: shotSceneContinuityLockBlock,
           // planning/`polished-toasting-gadget.md` Fix B — mirrors the
           // non-split branch's identical `repairInstruction: input.instruction`
           // below; `undefined` when the caller doesn't supply one (byte-
@@ -14696,6 +14843,7 @@ export const verticalDramaEpisodesRouter = router({
           emotion: undefined,
           dialogueLines: dialogueLines.length ? withSpeakerNames(dialogueLines) : undefined,
           characterIdentityMap: shotVideoCharacterIdentityMapBlock,
+          sceneContinuityLockBlock: shotSceneContinuityLockBlock,
           productContext: tieInPlacement
             ? {
                 productName: tieInProductName,

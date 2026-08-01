@@ -586,6 +586,8 @@ export interface GenerateStartFrameRenderPlanParams {
      * as before this field existed (byte-identical regression guard).
      */
     location?: { name: string; description: string; hasReferenceImage: boolean };
+    /** Pre-rendered scene continuity lock; this service never resolves scene identity. */
+    sceneContinuityLockBlock?: string;
     /**
      * Speaker-order composition fix — this shot's dialogue speakers, in
      * delivery order, deduped to first appearance (e.g. `["ฝ้าย",
@@ -819,6 +821,7 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
     allRequiredCharacterKeys,
     params.characters ?? [],
   );
+  const sceneContinuityLockSection = buildRenderPlanSceneContinuityLockSection(params.storyboardShots);
 
   // Part B2 — reference-only episode scene-setting context, near the top of
   // the prompt so the planning LLM reads it before the per-shot list.
@@ -837,6 +840,7 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
       ? `Preferred image model: ${params.selectedImageModelId}`
       : null,
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
+    sceneContinuityLockSection,
     characterIdentityMapBlock,
     // The skill's own "Attached Character Reference Image Indexing"
     // instruction (`skill.md`, "Encode emotion into every image prompt")
@@ -859,6 +863,30 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+export function buildRenderPlanSceneContinuityLockSection(
+  storyboardShots: readonly { shotNumber: number; sceneContinuityLockBlock?: string }[],
+): string | null {
+  const groups = new Map<string, number[]>();
+  for (const shot of storyboardShots) {
+    const block = shot.sceneContinuityLockBlock?.trim();
+    if (!block) continue;
+    const shots = groups.get(block) ?? [];
+    shots.push(shot.shotNumber);
+    groups.set(block, shots);
+  }
+  if (groups.size === 0) return null;
+  return [
+    "SCENE CONTINUITY LOCKS (one block per scene; each applies to the shots listed with it):",
+    ...Array.from(groups.entries())
+      .map(([block, shotNumbers]) => ({
+        block,
+        shotNumbers: Array.from(new Set(shotNumbers)).sort((a, b) => a - b),
+      }))
+      .sort((a, b) => (a.shotNumbers[0] ?? 0) - (b.shotNumbers[0] ?? 0))
+      .map(group => `Shots ${group.shotNumbers.join(", ")}:\n${group.block}`),
+  ].join("\n\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1422,6 +1450,7 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
   rewrittenSynopsis: string;
   characterReferenceManifest: GenerateStartFrameShotPromptCharacterManifestEntry[];
   locationReferenceImage?: { url: string; label: string };
+  sceneContinuityLockBlock?: string;
 }): string {
   const mappings = params.characterReferenceManifest
     .slice()
@@ -1432,9 +1461,8 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
     mappings.push(`Image ${locationIndex} = location: ${params.locationReferenceImage.label}`);
   }
   const synopsis = params.rewrittenSynopsis.trim();
-  return mappings.length > 0
-    ? `REFERENCE MAPPING: ${mappings.join("; ")}.\n${synopsis}`
-    : synopsis;
+  const mapping = mappings.length > 0 ? `REFERENCE MAPPING: ${mappings.join("; ")}.` : undefined;
+  return [mapping, params.sceneContinuityLockBlock?.trim(), synopsis].filter(Boolean).join("\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1587,6 +1615,8 @@ export interface GenerateStartFrameShotPromptParams {
    * producing a byte-identical prompt.
    */
   location?: { name: string; description: string; hasReferenceImage: boolean };
+  /** Pre-rendered lock block; blank/omitted preserves the legacy prompt. */
+  sceneContinuityLockBlock?: string;
   /**
    * Speaker-order composition fix — same shape/rationale as
    * `GenerateStartFrameRenderPlanParams.storyboardShots[].speakingOrder`
@@ -1801,6 +1831,7 @@ export function buildStartFrameShotPromptUserPrompt(
             : ""
         }`
       : null,
+    params.sceneContinuityLockBlock?.trim() ? params.sceneContinuityLockBlock.trim() : null,
     // Speaker-order composition fix — additive; `null` (filtered out
     // entirely, same convention as `location` immediately above) when
     // `speakingOrder` is absent/empty, so a call without it produces the
@@ -2118,6 +2149,7 @@ export async function generateStartFrameShotPrompt(
       rewrittenSynopsis,
       characterReferenceManifest: params.characterReferenceManifest,
       locationReferenceImage: params.locationReferenceImage,
+      sceneContinuityLockBlock: params.sceneContinuityLockBlock,
     });
     const imagePromptMaxChars = Math.min(
       VD_IMAGE_PROMPT_ABSOLUTE_MAX,
@@ -2126,7 +2158,12 @@ export async function generateStartFrameShotPrompt(
     if (outputPrompt.length > imagePromptMaxChars) {
       throw new VdSchemaValidationError(
         `Policy-safe synopsis prompt exceeds ${imagePromptMaxChars} characters`,
-        { length: outputPrompt.length },
+        {
+          length: outputPrompt.length,
+          ...(params.sceneContinuityLockBlock?.trim()
+            ? { sceneContinuityLockChars: params.sceneContinuityLockBlock.trim().length }
+            : {}),
+        },
       );
     }
     const inputTokens = policyCalls.reduce(

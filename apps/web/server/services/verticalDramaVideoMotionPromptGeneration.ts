@@ -1671,6 +1671,8 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
      * exact fact-line wording.
      */
     canonicalShotSummary?: string;
+    /** Pre-rendered scene continuity facts; this runner never resolves scenes. */
+    sceneContinuityLockBlock?: string;
     /**
      * Persistence/pin root-cause fix (`planning/vd-video-prompt-skill-first/
      * plan.md` Phase 2) — true when the caller has already determined this
@@ -2058,6 +2060,9 @@ function buildShotVideoPromptUserPrompt(
       : null,
     params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
+    shotContext.sceneContinuityLockBlock?.trim()
+      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${shotContext.sceneContinuityLockBlock.trim()}`
       : null,
     // reference images above; the actual creative use is in the
     // `repairInstruction` field or left to the model's own judgment).
@@ -2717,6 +2722,9 @@ function buildSpeakerSwitchUserPrompt(
     // `locationReferenceImageName`'s doc comment above.
     params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
+    shotContext.sceneContinuityLockBlock?.trim()
+      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${shotContext.sceneContinuityLockBlock.trim()}`
       : null,
     // VideoPromptAiEditDialog — factual announcement of user-supplied
     // additional images (same purely-factual convention as character/location

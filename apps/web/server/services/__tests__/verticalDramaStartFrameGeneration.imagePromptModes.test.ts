@@ -77,6 +77,7 @@ import {
   buildStartFrameShotPromptUserPrompt,
   buildStartFrameShotPromptVisionImages,
   buildDeterministicPolicySafeImagePrompt,
+  buildRenderPlanSceneContinuityLockSection,
   validatePolicySafeSynopsisRewrite,
   type GenerateStartFrameShotPromptParams,
 } from "../verticalDramaStartFrameGeneration";
@@ -469,6 +470,52 @@ describe("generateStartFrameShotPrompt — mode 2 vision resolution (D3: image-g
 });
 
 describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", () => {
+  it("injects a non-blank scene lock after location facts and treats blank as absent", () => {
+    const block = "SCENE CONTINUITY LOCK\nLIGHTING STATE: late afternoon";
+    const without = buildStartFrameShotPromptUserPrompt(baseShotParams({
+      location: { name: "Cafe", description: "small cafe", hasReferenceImage: false },
+      speakingOrder: ["Aria"],
+    }));
+    const withLock = buildStartFrameShotPromptUserPrompt(baseShotParams({
+      location: { name: "Cafe", description: "small cafe", hasReferenceImage: false },
+      speakingOrder: ["Aria"],
+      sceneContinuityLockBlock: block,
+    }));
+    expect(withLock).toContain(block);
+    expect(withLock.indexOf(block)).toBeGreaterThan(withLock.indexOf("location:"));
+    expect(withLock.indexOf(block)).toBeLessThan(withLock.indexOf("speaking_order:"));
+    expect(buildStartFrameShotPromptUserPrompt(baseShotParams({
+      sceneContinuityLockBlock: "   ",
+    }))).toBe(buildStartFrameShotPromptUserPrompt(baseShotParams()));
+    expect(withLock.replace(`${block}\n`, "")).toBe(without);
+  });
+
+  it("deduplicates render-plan lock blocks and groups shots deterministically", () => {
+    const a = "SCENE CONTINUITY LOCK\nLIGHTING STATE: day";
+    const b = "SCENE CONTINUITY LOCK\nLIGHTING STATE: night";
+    expect(buildRenderPlanSceneContinuityLockSection([
+      { shotNumber: 4, sceneContinuityLockBlock: b },
+      { shotNumber: 2, sceneContinuityLockBlock: a },
+      { shotNumber: 1, sceneContinuityLockBlock: a },
+      { shotNumber: 3, sceneContinuityLockBlock: a },
+      { shotNumber: 5, sceneContinuityLockBlock: b },
+    ])).toBe([
+      "SCENE CONTINUITY LOCKS (one block per scene; each applies to the shots listed with it):",
+      `Shots 1, 2, 3:\n${a}`,
+      `Shots 4, 5:\n${b}`,
+    ].join("\n\n"));
+    expect(buildRenderPlanSceneContinuityLockSection([{ shotNumber: 1, sceneContinuityLockBlock: " " }])).toBeNull();
+  });
+
+  it("places policy-safe lock text between mapping and synopsis", () => {
+    const block = "SCENE CONTINUITY LOCK\nFIXED ELEMENTS: bar counter";
+    expect(buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis: "อารียืนในคาเฟ่",
+      characterReferenceManifest: [{ index: 1, name: "อาเรีย" }],
+      sceneContinuityLockBlock: block,
+    })).toBe(`REFERENCE MAPPING: Image 1 = อาเรีย.\n${block}\nอารียืนในคาเฟ่`);
+  });
+
   it("emits TARGET IMAGE MODEL whenever the family is known, regardless of mode", () => {
     const prompt = buildStartFrameShotPromptUserPrompt(
       baseShotParams({ imageModelFamily: "gpt", imageModelName: "GPT Image", imageModelId: "gpt-image-1.5-all" }),

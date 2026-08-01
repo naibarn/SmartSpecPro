@@ -133,6 +133,13 @@ plan. Specifically, each `prompt` must include:
    night, secrecy, or dread. Across the 9 shots the episode's start frames must
    show real lighting variety (not one repeated "low-key rim light" line for
    every shot) unless the script's setting genuinely keeps every shot dark.
+   When the exact `SCENE CONTINUITY LOCK` block is present, its locked lighting
+   state overrides this variety guidance for the shots listed with that lock:
+   those shots share the same time of day, sun direction, and light quality.
+   Express per-shot emotion through framing, blocking, and micro-expression,
+   not through lighting changes. Lighting variety still applies between scenes.
+   Every other locked fact in that block — fixed elements, spatial layout,
+   staging axis, wardrobe, and active props — is equally fixed for those shots.
 5. **Composition that expresses the beat's power dynamic** — who is framed higher
    or lower in the frame, camera height relative to each character, and the
    physical distance between characters (closer for intimacy/threat, more

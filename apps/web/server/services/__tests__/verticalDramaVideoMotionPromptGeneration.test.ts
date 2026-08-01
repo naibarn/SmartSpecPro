@@ -1164,6 +1164,21 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
       : userMessage.content.map((c: any) => c.text ?? "").join("\n");
   }
 
+  it("emits the scene continuity lock as reference-only grounding in the single-shot builder", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+    const lock = "SCENE CONTINUITY LOCK\nLIGHTING STATE: late afternoon";
+    await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams({
+      shotContext: {
+        description: "A character stands in a kitchen",
+        camera: "medium shot",
+        sceneContinuityLockBlock: lock,
+      },
+    }));
+    const content = extractUserPromptText();
+    expect(content).toContain(`บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${lock}`);
+    expect(content.match(/SCENE CONTINUITY LOCK/g)).toHaveLength(1);
+  });
+
   it("dialogue fact attributes each line to the resolved speaker DISPLAY NAME (speakerName), not the raw characterKey", async () => {
     mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
 
@@ -1857,6 +1872,23 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
       nativeAudioDialogue: false,
       supportsNativeAudio: false,
     } as any);
+  });
+
+  it("emits the same reference-only scene lock in the speaker-switch builder", async () => {
+    mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+    const lock = "SCENE CONTINUITY LOCK\nFIXED ELEMENTS: kitchen counter";
+    await generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams({
+      shotContext: {
+        ...baseSpeakerSwitchParams().shotContext,
+        sceneContinuityLockBlock: lock,
+      },
+    }));
+    const userMessage = mockExecute.mock.calls[0][0].messages.find((m: any) => m.role === "user");
+    const content = typeof userMessage.content === "string"
+      ? userMessage.content
+      : userMessage.content.map((part: any) => part.text ?? "").join("\n");
+    expect(content).toContain(`บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${lock}`);
+    expect(content.match(/SCENE CONTINUITY LOCK/g)).toHaveLength(1);
   });
 
   it("returns ONE combined prompt/dialogue/durationSeconds result (not subShots[]), validated against the reused single-shot output schema", async () => {

@@ -175,6 +175,7 @@ import { verticalDramaLocationStockService } from "./verticalDramaLocationStock"
 import type { VerticalDramaStoryboardLocationGroup } from "@shared/verticalDramaSeries/storyboardLocations";
 import { buildSceneShotGroups } from "@shared/verticalDramaSeries/sceneContinuity";
 import { debugError } from "../_core/logger";
+import { resolveSceneContinuityLocks } from "./verticalDramaSceneContinuityLock";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
@@ -3106,6 +3107,7 @@ export class VerticalDramaEpisodePipeline {
     // Best-effort: a roster read failure must never fail storyboard→start-
     // frame planning, so it degrades to "no images known" (the prior behavior).
     let locationKeysWithApprovedImage = new Set<string>();
+    const locationImageUrlsByKey = new Map<string, string>();
     try {
       const rosterRows = await verticalDramaLocationStockService.listRows({
         tenantId: owner.tenantId,
@@ -3117,6 +3119,9 @@ export class VerticalDramaEpisodePipeline {
           .filter(r => Boolean(r.primaryReferenceUrl))
           .map(r => r.locationKey)
       );
+      for (const row of rosterRows) {
+        if (row.primaryReferenceUrl) locationImageUrlsByKey.set(row.locationKey, row.primaryReferenceUrl);
+      }
     } catch {
       // Keep the empty set — the location text fact still renders (name +
       // description); only the "environment lock applies" suffix is omitted.
@@ -3144,6 +3149,48 @@ export class VerticalDramaEpisodePipeline {
       }
     }
 
+    const sceneContinuityFlags = sceneShotGroups.length > 0
+      ? await import("./tenantFeatureFlagService")
+          .then(({ getTenantFeatureFlags }) => getTenantFeatureFlags(owner.tenantId))
+          .catch(() => undefined)
+      : undefined;
+    const sceneContinuityEnabled = sceneContinuityFlags?.verticalDramaSceneContinuity === true;
+    const sceneContinuitySeriesLook = sceneContinuityEnabled
+      ? resolveEffectiveSeriesVisualIdentity({
+          bible,
+          presetMixEnabled: sceneContinuityFlags?.verticalDramaSeriesPresetMixV2 === true,
+          lookLockEnabled: sceneContinuityFlags?.verticalDramaSeriesLookLock === true,
+        })
+      : undefined;
+    const sceneContinuityResolution = sceneContinuityEnabled
+      ? await resolveSceneContinuityLocks({
+          enabled: true,
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          storyboard,
+          startFramePlan: episode.startFramePlan as VerticalDramaStartFramePlan | null,
+          shotNumbers: shots.map(s => Number(s.shotNumber ?? s.shot_number)).filter(Number.isInteger),
+          authorIfMissing: true,
+          canonicalShotSummaryByShotNumber,
+          locationImageUrlByLocationKey: locationImageUrlsByKey,
+          seriesLook: sceneContinuitySeriesLook,
+          lang: resolveStoryScriptLangFromLocale(seriesRow?.locale),
+        })
+      : undefined;
+    if (sceneContinuityResolution?.diagnostics.authoringFailures.length) {
+      throw new Error(
+        `Scene continuity planning failed for ${sceneContinuityResolution.diagnostics.authoringFailures.map(f => f.locationKey).join(", ")}; retry the start-frame plan`,
+      );
+    }
+    const sceneVisualStatesForProjection = {
+      ...(previousSceneVisualStates && typeof previousSceneVisualStates === "object" && !Array.isArray(previousSceneVisualStates)
+        ? previousSceneVisualStates as Record<string, unknown>
+        : {}),
+      ...(sceneContinuityResolution?.newlyAuthoredByLocationKey ?? {}),
+    };
+
     const generated = await generateStartFrameRenderPlan({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -3156,10 +3203,10 @@ export class VerticalDramaEpisodePipeline {
       promptLanguage: effectiveImagePromptLanguage,
       episodePlanContext,
       previousFramesByShotNumber,
-      ...(previousSceneVisualStates !== undefined
+      ...(previousSceneVisualStates !== undefined || Object.keys(sceneVisualStatesForProjection).length > 0
         ? {
             sceneVisualStatesCarryOver: {
-              previous: previousSceneVisualStates,
+              previous: sceneVisualStatesForProjection,
               sceneShotGroups,
             },
           }
@@ -3228,6 +3275,9 @@ export class VerticalDramaEpisodePipeline {
               }
             : {}),
           ...(speakingOrder ? { speakingOrder } : {}),
+          ...(sceneContinuityResolution?.blockByShotNumber.has(shotNumber)
+            ? { sceneContinuityLockBlock: sceneContinuityResolution.blockByShotNumber.get(shotNumber) }
+            : {}),
         };
       }),
     });

@@ -193,6 +193,7 @@ export type AuditEventType =
   | "vertical_drama_season_critique_apply_error"
   | "vertical_drama_deep_generate_error"
   | "vd_motion_contract_generated"
+  | "vd_scene_state_planned"
   // Feature 136 (Marketplace Auto Review: Sequential Shot Storyboard)
   // section 12 §5.1/§5.3 — frozen 7-name observability event catalog.
   // Additive only; see `marketplaceAutoReviewObservability.ts`.
