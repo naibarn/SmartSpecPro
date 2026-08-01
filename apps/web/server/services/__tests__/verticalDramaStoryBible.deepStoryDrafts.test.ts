@@ -559,6 +559,26 @@ describe("generateStoryBibleDeep — cross-chunk continuity recap", () => {
     expect(userMessage.content).not.toContain("Continuity recap");
   });
 
+  it("adds identity-safe drafting guidance only when motion contracts are enabled", async () => {
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+    await generateStoryBibleDeep(baseDeepParams());
+    const without = mockExecuteWithFallback.mock.calls[0][0].messages.find(
+      (message: { role: string }) => message.role === "system",
+    ).content as string;
+
+    mockExecuteWithFallback.mockClear();
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+    await generateStoryBibleDeep(baseDeepParams({ motionContractsEnabled: true }));
+    const withFlag = mockExecuteWithFallback.mock.calls[0][0].messages.find(
+      (message: { role: string }) => message.role === "system",
+    ).content as string;
+    const line = '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.';
+
+    expect(without).not.toContain(line);
+    expect(withFlag).toContain(line);
+    expect(withFlag.replace(`${line}\n`, "")).toBe(without);
+  });
+
   it("seeds the FIRST chunk's recap from an explicit priorRecap (extendStoryDraftHorizon use case)", async () => {
     mockLlmResponseOnce(chunkResponsePayload([6]));
 

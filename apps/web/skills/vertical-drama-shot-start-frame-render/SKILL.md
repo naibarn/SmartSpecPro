@@ -267,6 +267,12 @@ contradicting details. A location's attached image index is its own
 distinct number, separate from any character's, in the order references are
 attached for that shot.
 
+When the caller states `scene_continuity_reference: attached`, an attached image
+labeled `Scene continuity reference (shot N): same scene, same lighting, same set`
+is the previous frame from this same scene. Use it only to preserve the set,
+lighting, wardrobe, and other already-visible continuity facts; it is not the
+new shot's composition, camera angle, blocking, or pose.
+
 When a shot carries no `location` fact at all (a storyboard generated
 before this feature existed), write the setting from the shot's own scene
 content exactly as before — this section adds no new requirement for that

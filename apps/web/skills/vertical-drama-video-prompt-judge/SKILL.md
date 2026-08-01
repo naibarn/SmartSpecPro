@@ -37,11 +37,14 @@ the `vertical-drama-shot-video-prompt` or `-subshots` skill), and gives you:
   the CHARACTER IDENTITY MAP, and the TARGET VIDEO MODEL fact block
   (family: grok / veo / seedance / other, native_audio, negative-prompt
   support).
-- Each candidate's `prompt`, `negative_motion_prompt`, `dialogue`, and
-  `frame_analysis`, plus a deterministic per-candidate FACT SHEET computed
+- Each candidate's `prompt`, `negative_motion_prompt`, `dialogue`,
+  `frame_analysis`, and `motion_profile` when the caller computed one,
+  plus a deterministic per-candidate FACT SHEET computed
   by the caller (character count, over-cap flag, per-line verbatim coverage
   and duplication, per-line name/position anchor presence, music-term hits,
-  and family-specific flags). Trust the fact sheet for anything mechanical —
+  family-specific flags, and identity risk / observability through
+  `effectiveRisk`, `faceObservability`, and `facesSeparated` when the
+  caller computed them). Trust the fact sheet for anything mechanical —
   it was computed by code, not guessed.
 - Usually the shot's real START-FRAME IMAGE, attached for you to look at.
 
@@ -130,6 +133,10 @@ Score higher the candidate that:
   sequential cut narration for seedance; conservative universal for other.
 - **Spends the budget well**: within cap with the priority order respected
   (who-speaks-where first, sound texture last; ~≤1800 chars preferred).
+- **Honors the motion contract its own frame reading demands.** Use the
+  code-computed `effectiveRisk` and `faceObservability` facts: preserve and
+  constrain a hidden, occluded, overlapped, or turning face, but do not clamp
+  a clearly frontal, fully visible low-risk face that can act naturally.
 
 `total` is your 0-100 holistic score per candidate (gates dominate; craft
 differentiates). Keep `strengths`/`violations` to one or two short clauses —

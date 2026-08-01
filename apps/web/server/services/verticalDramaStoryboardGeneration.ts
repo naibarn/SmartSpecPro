@@ -579,6 +579,8 @@ export interface GenerateStoryboardShotgridParams {
      * byte-identical prompt to before this flag existed.
      */
     sceneContractsEnabled?: boolean;
+    /** Feature 137 P1 — activates identity-safe shot-boundary guidance. */
+    motionContractsEnabled?: boolean;
     /**
      * Feature flag `verticalDramaRetentionHooks`
      * (`planning/vertical-drama-retention-hooks/plan.md` W3, added
@@ -728,6 +730,9 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
       ? 'Every shot in "shots" must ALSO include a "contract" object: when the matching draft shot above (in episode_draft) already has a "contract", copy it onto that SAME output shot VERBATIM — do not alter, drop, or re-derive it; for any shot with no draft contract, emit your own well-shaped "contract" object for that shot. A "contract" object has these 6 required fields: "storyFunction" (one clear function for this shot), "emotionalBeat" (one beat), "audienceTakeaway" (what the viewer must retain), "tensionSource" (the conflict/pressure present in this shot), "newClueIds" (array of new important names/objects/dates/lore terms this shot introduces — at most 2 per shot), "dialoguePurpose" (what the dialogue in this shot is for); and these 3 optional fields when applicable: "characterDecision" (set when a decision happens in this shot), "continuityDependency" (the earlier fact this shot relies on, if any), "anchorLine" (true when this shot carries an anchor line — no run of 3 or more consecutive shots without anchorLine: true).'
       : 'Every shot in "shots" must ALSO include a "contract" object with these 6 required fields: "storyFunction" (one clear function for this shot), "emotionalBeat" (one beat), "audienceTakeaway" (what the viewer must retain), "tensionSource" (the conflict/pressure present in this shot), "newClueIds" (array of new important names/objects/dates/lore terms this shot introduces — at most 2 per shot), "dialoguePurpose" (what the dialogue in this shot is for); and these 3 optional fields when applicable: "characterDecision" (set when a decision happens in this shot), "continuityDependency" (the earlier fact this shot relies on, if any), "anchorLine" (true when this shot carries an anchor line — no run of 3 or more consecutive shots without anchorLine: true).'
     : null;
+  const identitySafeShotBoundariesSection = params.opts?.motionContractsEnabled
+    ? '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.'
+    : null;
 
   // Repair-mode framing — see `GenerateStoryboardShotgridParams.repairContext`'s
   // doc comment. Additive; only rendered when a caller explicitly supplies
@@ -765,6 +770,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
     sceneContractSection,
+    identitySafeShotBoundariesSection,
     repairSection,
     VD_COMPACT_JSON_INSTRUCTION,
   ]

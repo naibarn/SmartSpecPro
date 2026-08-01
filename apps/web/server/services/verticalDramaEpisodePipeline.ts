@@ -1372,6 +1372,8 @@ export interface RunStageOptions {
    * byte-identical.
    */
   retentionHooksEnabled?: boolean;
+  /** Feature 137 P1 — request-gated motion and draft-boundary guidance. */
+  motionContractsEnabled?: boolean;
 }
 
 export interface RunStageOutcome {
@@ -2348,7 +2350,8 @@ export class VerticalDramaEpisodePipeline {
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
     sceneContractsEnabled: boolean = false,
-    retentionHooksEnabled: boolean = false
+    retentionHooksEnabled: boolean = false,
+    motionContractsEnabled: boolean = false
   ): Promise<{
     storyboard: StoryboardShotgridOutput;
     creditsUsed: number;
@@ -2661,6 +2664,7 @@ export class VerticalDramaEpisodePipeline {
         episodeDraftHydrationEnabled: episodeDraft !== null,
         sceneContractsEnabled,
         retentionHooksEnabled,
+        motionContractsEnabled,
       },
       storySource: {
         logline: matchingBreakdown?.logline,
@@ -3229,7 +3233,8 @@ export class VerticalDramaEpisodePipeline {
   private async generateRealMotionPromptPack(
     owner: EpisodeRunOwner,
     episode: VerticalDramaEpisodeRow,
-    retentionHooksEnabled: boolean = false
+    retentionHooksEnabled: boolean = false,
+    motionContractsEnabled: boolean = false
   ): Promise<{
     pack: VideoMotionPromptPackProjection;
     creditsUsed: number;
@@ -3427,6 +3432,7 @@ export class VerticalDramaEpisodePipeline {
       thaiAccent: existingLanguagePlan?.thaiAccent,
       episodePlanContext,
       retentionHooksEnabled,
+      motionContractsEnabled,
       storyboardShots: shots.map(s => ({
         shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
         description: String(s.description ?? s.visual_description ?? ""),
@@ -3778,7 +3784,8 @@ export class VerticalDramaEpisodePipeline {
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
           opts.sceneContractsEnabled ?? false,
-          opts.retentionHooksEnabled ?? false
+          opts.retentionHooksEnabled ?? false,
+          opts.motionContractsEnabled ?? false
         );
         payload = { stage, ...generated.storyboard };
         // Persist to the episode's own `storyboard` jsonb column (not
@@ -4158,7 +4165,8 @@ export class VerticalDramaEpisodePipeline {
         const generated = await this.generateRealMotionPromptPack(
           owner,
           episode,
-          opts.retentionHooksEnabled ?? false
+          opts.retentionHooksEnabled ?? false,
+          opts.motionContractsEnabled ?? false
         );
         // Phase 3.1: sync `dialogueAudioPlan` lines onto `clips[j].dialogue`
         // when the skill's own `.passthrough()` output didn't already carry
@@ -4852,7 +4860,8 @@ export class VerticalDramaEpisodePipeline {
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
           opts.sceneContractsEnabled ?? false,
-          opts.retentionHooksEnabled ?? false
+          opts.retentionHooksEnabled ?? false,
+          opts.motionContractsEnabled ?? false
         );
         payload = { stage, ...generated.storyboard };
         // Persist to the episode's own `storyboard` jsonb column — same
@@ -5184,6 +5193,7 @@ export class VerticalDramaEpisodePipeline {
        * to before this field existed.
        */
       retentionHooksEnabled?: boolean;
+      motionContractsEnabled?: boolean;
     }
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
@@ -5262,7 +5272,8 @@ export class VerticalDramaEpisodePipeline {
             false,
             args.instruction,
             args.sceneContractsEnabled ?? false,
-            args.retentionHooksEnabled ?? false
+            args.retentionHooksEnabled ?? false,
+            args.motionContractsEnabled ?? false
           );
           payload = { stage, ...generated.storyboard };
           await db

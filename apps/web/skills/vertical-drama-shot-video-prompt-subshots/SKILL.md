@@ -217,6 +217,42 @@ at the start. `camera_motion` must match the vocabulary actually used in
 `prompt`. Report `identity_risk` honestly; the caller derives a deterministic
 floor from the declarations and may raise the risk, never lower it.
 
+### Writing the motion contract — scale it to what you declared
+
+Evaluate the contract per timed segment against the same start frame. When your
+frame reading or planned motion creates identity risk, write a compact positive
+contract inside `prompt`: preserve each at-risk character's observed facial
+angle, keep motion to blink, breath, gaze, micro-expression, hands and shoulders,
+and do not reveal unseen facial regions. Activate this for a face outside
+frontal/three-quarter visibility, more than partial occlusion, overlap,
+moderate/large head turns, hidden-side reveal, orbit/large reframe, or a new
+character entering mid-shot.
+
+After every internal cut, re-anchor identity by name + screen position and
+re-state the preserved facial angle for each at-risk character. The prose camera
+move and `camera_motion` declaration must agree. Never under-declare a bigger
+move to evade the contract: the caller derives a risk floor and the judge sees
+both. This short lock outranks atmosphere and sound texture, never the speaking
+anchors.
+
+**Low risk adds no contract language.** Clearly visible frontal or three-quarter
+faces, none/subtle head turns, and locked/push-in camera should remain expressive;
+a default brake would make the clip static and lifeless.
+
+### Anti-morph negatives — family-shaped
+
+Only while the contract is active, reinforce it with relevant
+`negative_motion_prompt` concepts: camera orbit around the face,
+profile-to-frontal or back-to-frontal transformation, face occlusion or overlap
+between heads, facial-feature re-interpretation into a different person, and
+sudden expression jumps. Never contradict the declared shot: if
+`camera_motion` is legitimately `orbit`, omit the orbit negative.
+
+Use the caller's `negative_prompt_supported: yes|no` fact. When it is `no`,
+state the constraints positively inside `prompt`—preserved angle, no orbit,
+no overlap—because that family never receives the negative channel. Still
+return `negative_motion_prompt` for other consumers. Low-risk shots add none.
+
 ## Hard rules — MANDATORY
 
 1. **Never describe character appearance.** Identity for EVERY speaker
@@ -348,6 +384,8 @@ floor from the declarations and may raise the risk, never lower it.
    unchanged) must ALSO be stated positively inside `prompt` itself; treat
    `negative_motion_prompt` as supplementary reinforcement for models that
    support it.
+   When motion contracts are active, also apply the compact list under
+   "Anti-morph negatives — family-shaped" without contradicting the declared move.
 8. **Prompt length limit — MANDATORY, and now a SHARED budget across every
    segment in this ONE prompt.** `prompt` MUST be **2000 characters or
    fewer total**, including any embedded dialogue/delivery text for every

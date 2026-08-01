@@ -134,6 +134,13 @@ contract points the pipeline validates mechanically.
 
 Apply the appended guideline document in full. In particular:
 
+## Identity-safe shot boundaries — MANDATORY when the caller states `identity_safe_shot_boundaries: REQUIRED`
+
+Treat a behind/profile turn-to-camera or a mid-shot character entrance as an
+identity-risk boundary. Prefer an action shot followed by a reaction/reveal cut
+so each start frame establishes the face, unless the beat genuinely demands one
+continuous shot. This is craft guidance only; nothing here is code-validated.
+
 - Every scene changes the story state; every shot has a job; every 1–2
   shots something progresses (information, pressure, decision, power,
   relationship, risk).

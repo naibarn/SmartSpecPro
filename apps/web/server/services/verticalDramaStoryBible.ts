@@ -3572,6 +3572,8 @@ function buildDeepDraftPrompts(params: {
   userPremise?: string;
   /** Feature 132 §6 (F132C) — see `GenerateStoryBibleDeepParams.sceneContractsEnabled`'s own doc comment. */
   sceneContractsEnabled?: boolean;
+  /** Feature 137 P1 — activates identity-safe shot-boundary craft guidance. */
+  motionContractsEnabled?: boolean;
   /**
    * Series-level audience age rating (Phase 1) — see
    * `GenerateStoryBibleParams.audienceAgeRating`'s own doc comment; same
@@ -3681,6 +3683,9 @@ function buildDeepDraftPrompts(params: {
     buildFormatProfilePromptBlock(params.formatProfile, params.locale),
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     buildSceneContractPromptBlock(params.sceneContractsEnabled),
+    params.motionContractsEnabled
+      ? '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.'
+      : null,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string, "episode_memory": {"recap": string, "canonical_facts": string[], "threads_opened": [{"thread_id": string, "description": string, "thread_class": "plot"|"domestic"|"career"|"financial"|"health"|"relationship"}], "threads_resolved": string[], "relationship_changes": [{"pair": [string, string], "status": string, "disclosure": "secret"|"known_to_some"|"public"|"undeclared", "known_by": string[]}], "knowledge_changes": [{"character_key": string, "learned": string}]}}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
     `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts", and EVERY shot's "characters" (>= 1) and "location_key" filled in per this system prompt's shot-completeness/new-location rules.`,
@@ -3872,6 +3877,8 @@ export interface GenerateStoryBibleDeepParams {
    * existed (spec §16.5 "flag-off = current behavior").
    */
   sceneContractsEnabled?: boolean;
+  /** Feature 137 P1 — activates identity-safe shot-boundary craft guidance. */
+  motionContractsEnabled?: boolean;
   /**
    * Series-level audience age rating (Phase 1 of a 2-phase feature) — see
    * `GenerateStoryBibleParams.audienceAgeRating`'s own doc comment; same
@@ -4445,6 +4452,7 @@ export async function generateStoryBibleDeep(
       tieInDraftContext: params.tieInDraftContext,
       userPremise: params.userPremise,
       sceneContractsEnabled: params.sceneContractsEnabled,
+      motionContractsEnabled: params.motionContractsEnabled,
       audienceAgeRating: params.audienceAgeRating,
       knownLocations: knownLocationsForPrompt,
       knownCharacters: params.knownCharacters,
@@ -6074,6 +6082,7 @@ async function callPremiumFanoutCandidate(
     userPremise?: string;
     /** Feature 132 §6 (F132C) — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through. */
     sceneContractsEnabled?: boolean;
+    motionContractsEnabled?: boolean;
     /** Production-grade full-story generation — see `buildDeepDraftPrompts`'s own `knownLocations` doc comment; threaded straight through. */
     knownLocations?: Array<{
       locationKey: string;
@@ -6215,6 +6224,7 @@ async function runPremiumChunk(
     userPremise?: string;
     /** Feature 132 §6 (F132C) — threaded to the fan-out candidates and the missing-episode recovery retry below; also gates the contract deterministic-gate check further below. */
     sceneContractsEnabled?: boolean;
+    motionContractsEnabled?: boolean;
     /** Production-grade full-story generation — see `buildDeepDraftPrompts`'s own `knownLocations` doc comment; threaded to the fan-out candidates, the revise calls, and the deterministic completeness gate below. Mutated in place (append-only) as this chunk's OWN `new_locations` are accepted, so later revise rounds in this SAME chunk see them too. */
     knownLocations?: Array<{
       locationKey: string;
@@ -6669,6 +6679,7 @@ async function runPremiumChunk(
         tieInDraftContext: params.tieInDraftContext,
         userPremise: params.userPremise,
         sceneContractsEnabled: params.sceneContractsEnabled,
+        motionContractsEnabled: params.motionContractsEnabled,
         knownLocations: knownLocationsForPrompt,
         knownCharacters: params.knownCharacters,
         seasonLineage: params.seasonLineage,

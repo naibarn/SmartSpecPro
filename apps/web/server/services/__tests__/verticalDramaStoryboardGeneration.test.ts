@@ -225,6 +225,29 @@ describe("generateStoryboardShotgrid", () => {
     expect(userMessage?.content).not.toContain("negativeFragments");
   });
 
+  it("adds identity-safe drafting guidance only when motion contracts are enabled", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStoryboardShotgrid(baseParams());
+    const without = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user",
+    )?.content as string;
+
+    mockExecute.mockClear();
+    await generateStoryboardShotgrid(baseParams({
+      opts: { motionContractsEnabled: true },
+    }));
+    const withFlag = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user",
+    )?.content as string;
+    const line = '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.';
+
+    expect(without).not.toContain(line);
+    expect(withFlag).toContain(line);
+    expect(withFlag.replace(`${line}\n`, "")).toBe(without);
+  });
+
   it("throws RateLimitExceededError before checking credits or calling the LLM", async () => {
     mockIsAllowed.mockReturnValue(false);
     mockGetResetTime.mockReturnValue(30_000);

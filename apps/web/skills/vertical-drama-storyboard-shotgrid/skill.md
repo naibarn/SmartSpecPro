@@ -316,6 +316,18 @@ move there; or a `shot_numbers` split like `[1, 2, 3, 5, 7]` for one
 location and `[4, 6, 8, 9]` for another — not a contiguous, deliberate
 boundary, and not something the scene list actually establishes.
 
+## Identity-safe shot boundaries — MANDATORY when the caller states `identity_safe_shot_boundaries: REQUIRED`
+
+1. Treat a behind/profile character turning to camera, or a new character
+   entering mid-shot, as an identity-risk boundary. Prefer two shots—the action
+   beat, then the reaction/reveal cut—so each start frame establishes the face;
+   otherwise mark the beat for the existing sub-shot editor.
+2. Shots sharing one `distinct_locations` entry are one continuous scene and
+   must share time of day, sun direction, and light quality. Required lighting
+   variety applies between scenes, not within one continuous scene.
+3. This is guidance only; nothing here is code-validated. Set it aside when the
+   beat genuinely requires one continuous shot; drafts remain free-form.
+
 ## Character variant selection — MANDATORY WHEN a character has variants
 
 Some entries in the "Characters" list carry a nested "Variants available for

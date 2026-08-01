@@ -756,6 +756,8 @@ export interface GenerateVideoMotionPromptPackParams {
    * preserves today's byte-identical prompt.
    */
   retentionHooksEnabled?: boolean;
+  /** Feature 137 P1 — activates bulk identity guidance without changing output schema. */
+  motionContractsEnabled?: boolean;
 }
 
 function buildUserPrompt(
@@ -845,6 +847,9 @@ function buildUserPrompt(
     // requests. `null` (omitted) only when the caller supplied no
     // `selectedVideoModelId` at all.
     targetVideoModelFactBlock,
+    params.motionContractsEnabled
+      ? "motion_contracts: enabled — apply the skill's identity-preserving motion section to attached start frames."
+      : null,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -3171,6 +3176,19 @@ interface VdVideoPromptCandidateFactSheet {
   perLineVerbatimCoverage: Array<{ lineTh: string; occurrences: number }>;
   positionAnchorIssueCount: number;
   positionAnchorIssues: string[];
+  /** Reused from the candidate result; never recomputed here. */
+  effectiveRisk?: VdIdentityRisk;
+  /** Only people carrying at least one observability field are included. */
+  faceObservability?: Array<{
+    name: string;
+    facing?: string;
+    eyesVisible?: string;
+    occlusion?: string;
+    faceSize?: string;
+    overlappedByOtherFace?: boolean;
+  }>;
+  /** Mirror of frame_analysis.facesSeparated; omitted when unavailable. */
+  facesSeparated?: boolean;
 }
 
 const MUSIC_TERM_REGEX = /\b(music|soundtrack|score|melody|singing|humming|song|lyrics)\b/gi;
@@ -3189,7 +3207,8 @@ function buildCandidateFactSheet(
   data: {
     prompt: string;
     audioDirection?: string;
-    frameAnalysis?: { people?: Array<{ name: string; position: string }> } | undefined;
+    frameAnalysis?: VdFrameAnalysis;
+    motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
   },
   requiredDialogue: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
   family: VideoPromptModelFamily,
@@ -3212,6 +3231,24 @@ function buildCandidateFactSheet(
     requiredDialogue,
     hasEstablishedCharacters,
   );
+  const faceObservability = data.frameAnalysis?.people
+    .filter(person =>
+      person.facing !== undefined ||
+      person.eyesVisible !== undefined ||
+      person.occlusion !== undefined ||
+      person.faceSize !== undefined ||
+      person.overlappedByOtherFace !== undefined
+    )
+    .map(person => ({
+      name: person.name,
+      ...(person.facing !== undefined ? { facing: person.facing } : {}),
+      ...(person.eyesVisible !== undefined ? { eyesVisible: person.eyesVisible } : {}),
+      ...(person.occlusion !== undefined ? { occlusion: person.occlusion } : {}),
+      ...(person.faceSize !== undefined ? { faceSize: person.faceSize } : {}),
+      ...(person.overlappedByOtherFace !== undefined
+        ? { overlappedByOtherFace: person.overlappedByOtherFace }
+        : {}),
+    }));
   return {
     chars,
     overCap: chars > VD_VIDEO_PROMPT_MAX,
@@ -3223,6 +3260,11 @@ function buildCandidateFactSheet(
     })),
     positionAnchorIssueCount: positionAnchorIssues.length,
     positionAnchorIssues,
+    ...(data.motionProfile ? { effectiveRisk: data.motionProfile.effectiveRisk } : {}),
+    ...(faceObservability?.length ? { faceObservability } : {}),
+    ...(data.frameAnalysis?.facesSeparated !== undefined
+      ? { facesSeparated: data.frameAnalysis.facesSeparated }
+      : {}),
   };
 }
 
@@ -3272,6 +3314,7 @@ function buildJudgeUserPrompt(args: {
     negativeMotionPrompt?: string;
     dialogue?: Array<{ characterKey?: string; lineTh: string; emotion?: string }>;
     frameAnalysis?: { people?: Array<{ name: string; position: string }>; positionSource?: string };
+    motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
     factSheet: VdVideoPromptCandidateFactSheet;
   }>;
 }): string {
@@ -3294,8 +3337,9 @@ function buildJudgeUserPrompt(args: {
         `negative_motion_prompt: ${JSON.stringify(c.negativeMotionPrompt ?? "")}`,
         `dialogue: ${JSON.stringify(c.dialogue ?? [])}`,
         `frame_analysis: ${JSON.stringify(c.frameAnalysis ?? null)}`,
+        c.motionProfile ? `motion_profile: ${JSON.stringify(c.motionProfile)}` : null,
         `FACT SHEET (computed by code — trust for anything mechanical): ${JSON.stringify(c.factSheet)}`,
-      ].join("\n"),
+      ].filter((line): line is string => Boolean(line)).join("\n"),
     )
     .join("\n\n");
 
@@ -3501,13 +3545,13 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
   });
 
   const factSheetA = buildCandidateFactSheet(
-    { prompt: candidateA.prompt, audioDirection: candidateA.audioDirection, frameAnalysis: candidateA.frameAnalysis },
+    { prompt: candidateA.prompt, audioDirection: candidateA.audioDirection, frameAnalysis: candidateA.frameAnalysis, motionProfile: candidateA.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,
   );
   const factSheetB = buildCandidateFactSheet(
-    { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis },
+    { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,
@@ -3528,6 +3572,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
         negativeMotionPrompt: candidateA.negativeMotionPrompt,
         dialogue: candidateA.dialogue,
         frameAnalysis: candidateA.frameAnalysis,
+        motionProfile: candidateA.motionProfile,
         factSheet: factSheetA,
       },
       {
@@ -3535,6 +3580,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
         negativeMotionPrompt: candidateB.negativeMotionPrompt,
         dialogue: candidateB.dialogue,
         frameAnalysis: candidateB.frameAnalysis,
+        motionProfile: candidateB.motionProfile,
         factSheet: factSheetB,
       },
     ],
@@ -3617,7 +3663,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
 
   const totalCreditsAfterRepair = totalCreditsAfterJudge + repairedResult.creditsUsed;
   const repairedFactSheet = buildCandidateFactSheet(
-    { prompt: repairedResult.prompt, audioDirection: repairedResult.audioDirection, frameAnalysis: repairedResult.frameAnalysis },
+    { prompt: repairedResult.prompt, audioDirection: repairedResult.audioDirection, frameAnalysis: repairedResult.frameAnalysis, motionProfile: repairedResult.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,
@@ -3741,13 +3787,13 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
   });
 
   const factSheetA = buildCandidateFactSheet(
-    { prompt: candidateA.prompt, audioDirection: candidateA.audioDirection, frameAnalysis: candidateA.frameAnalysis },
+    { prompt: candidateA.prompt, audioDirection: candidateA.audioDirection, frameAnalysis: candidateA.frameAnalysis, motionProfile: candidateA.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,
   );
   const factSheetB = buildCandidateFactSheet(
-    { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis },
+    { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,
@@ -3769,6 +3815,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
         negativeMotionPrompt: candidateA.negativeMotionPrompt,
         dialogue: candidateA.dialogue,
         frameAnalysis: candidateA.frameAnalysis,
+        motionProfile: candidateA.motionProfile,
         factSheet: factSheetA,
       },
       {
@@ -3776,6 +3823,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
         negativeMotionPrompt: candidateB.negativeMotionPrompt,
         dialogue: candidateB.dialogue,
         frameAnalysis: candidateB.frameAnalysis,
+        motionProfile: candidateB.motionProfile,
         factSheet: factSheetB,
       },
     ],
@@ -3856,7 +3904,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
 
   const totalCreditsAfterRepair = totalCreditsAfterJudge + repairedResult.creditsUsed;
   const repairedFactSheet = buildCandidateFactSheet(
-    { prompt: repairedResult.prompt, audioDirection: repairedResult.audioDirection, frameAnalysis: repairedResult.frameAnalysis },
+    { prompt: repairedResult.prompt, audioDirection: repairedResult.audioDirection, frameAnalysis: repairedResult.frameAnalysis, motionProfile: repairedResult.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,

@@ -7789,11 +7789,13 @@ export const verticalDramaEpisodesRouter = router({
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
         retentionHooksEnabled,
+        motionContractsEnabled,
       ] = await Promise.all([
         resolveSubShotPolicy(tenantId, input.subShotPolicy),
         resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
         resolveVerticalDramaTieInReplanFlag(tenantId),
         resolveVerticalDramaRetentionHooksFlag(tenantId),
+        resolveVerticalDramaMotionContractsFlag(tenantId),
       ]);
       const stageOpts: RunStageOptions = {
         mode: input.mode as never,
@@ -7803,6 +7805,7 @@ export const verticalDramaEpisodesRouter = router({
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
         retentionHooksEnabled,
+        motionContractsEnabled,
       };
 
       // Bug #127 (`planning/vd-storyboard-runstage-async-job/plan.md`) —
@@ -7914,11 +7917,13 @@ export const verticalDramaEpisodesRouter = router({
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
         retentionHooksEnabled,
+        motionContractsEnabled,
       ] = await Promise.all([
         resolveSubShotPolicy(tenantId, input.subShotPolicy),
         resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
         resolveVerticalDramaTieInReplanFlag(tenantId),
         resolveVerticalDramaRetentionHooksFlag(tenantId),
+        resolveVerticalDramaMotionContractsFlag(tenantId),
       ]);
       const stageOpts: RunStageOptions = {
         mode: "full",
@@ -7928,6 +7933,7 @@ export const verticalDramaEpisodesRouter = router({
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
         retentionHooksEnabled,
+        motionContractsEnabled,
       };
 
       // Bug #127 (`planning/vd-storyboard-runstage-async-job/plan.md`) —
@@ -8087,6 +8093,7 @@ export const verticalDramaEpisodesRouter = router({
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
         retentionHooksEnabled,
+        motionContractsEnabled,
       ] = await Promise.all([
         resolveSubShotPolicy(tenantId, input.subShotPolicy),
         resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
@@ -8100,6 +8107,7 @@ export const verticalDramaEpisodesRouter = router({
         // with the flag on would get retention-hooks guidance one stage at
         // a time but not via "run whole episode").
         resolveVerticalDramaRetentionHooksFlag(tenantId),
+        resolveVerticalDramaMotionContractsFlag(tenantId),
       ]);
       return pipelineForMode(input.mode).runEpisode(owner, {
         mode: input.mode as never,
@@ -8110,6 +8118,7 @@ export const verticalDramaEpisodesRouter = router({
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
         retentionHooksEnabled,
+        motionContractsEnabled,
       });
     }),
 
@@ -8258,6 +8267,8 @@ export const verticalDramaEpisodesRouter = router({
         await resolveVerticalDramaQualityLoopFlags(tenantId);
       const retentionHooksEnabled =
         await resolveVerticalDramaRetentionHooksFlag(tenantId);
+      const motionContractsEnabled =
+        await resolveVerticalDramaMotionContractsFlag(tenantId);
       const instruction = storyLockEnabled
         ? appendVerticalDramaStoryLockRepairConstraint(
             input.instruction,
@@ -8274,6 +8285,7 @@ export const verticalDramaEpisodesRouter = router({
           subShotFlagOn: flagOn,
           subShotPolicy: policy,
           retentionHooksEnabled,
+          motionContractsEnabled,
         }
       );
       return outcome;

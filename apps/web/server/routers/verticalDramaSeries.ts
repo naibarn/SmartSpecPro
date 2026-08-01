@@ -1451,6 +1451,18 @@ async function resolveVerticalDramaFormatProfilesFlag(
   }
 }
 
+/** Feature 137 P1 tenant gate for draft-time identity-safe boundaries. */
+async function resolveVerticalDramaMotionContractsFlag(
+  tenantId: string
+): Promise<boolean> {
+  try {
+    const flags = await getTenantFeatureFlags(tenantId);
+    return flags?.verticalDramaMotionContracts === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Feature 132 §5 (F132B) — gates the `ledger_plan` step in the two
  * deep-draft job executors. Local fail-closed helper, matching the existing
@@ -1935,6 +1947,8 @@ export async function runGenerateStoryBibleDeepJob(
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
   const formatProfilesEnabled =
     await resolveVerticalDramaFormatProfilesFlag(tenantId);
+  const motionContractsEnabled =
+    await resolveVerticalDramaMotionContractsFlag(tenantId);
 
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
   const bible = (row.bible as Record<string, unknown> | null) ?? {};
@@ -2086,6 +2100,7 @@ export async function runGenerateStoryBibleDeepJob(
       // service's optional params default off; see #23's wiring note)
       totalEpisodeCount: row.targetEpisodeCount ?? undefined,
       formatProfilesEnabled,
+      motionContractsEnabled,
       // Task #22 — dormant (`undefined`) unless the bootstrap above actually
       // activated; see `resolveTieInDraftBootstrap`'s own doc comment.
       tieInDraftContext: tieInBootstrap.context,
@@ -2500,6 +2515,8 @@ export async function runExtendStoryDraftHorizonJob(
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
   const formatProfilesEnabled =
     await resolveVerticalDramaFormatProfilesFlag(tenantId);
+  const motionContractsEnabled =
+    await resolveVerticalDramaMotionContractsFlag(tenantId);
 
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
   const bible = (row.bible as Record<string, unknown> | null) ?? {};
@@ -2660,6 +2677,7 @@ export async function runExtendStoryDraftHorizonJob(
       // F131X + finale price_paid rule (see runGenerateStoryBibleDeepJob)
       totalEpisodeCount: row.targetEpisodeCount ?? undefined,
       formatProfilesEnabled,
+      motionContractsEnabled,
       // Task #22 (see runGenerateStoryBibleDeepJob) — dormant unless the
       // bootstrap above activated.
       tieInDraftContext: tieInBootstrap.context,

@@ -136,6 +136,18 @@ is a FAILED clip. Concretely:
    inside `prompt`; treat `negative_motion_prompt` as supplementary
    reinforcement for models that support it.
 
+## IDENTITY-PRESERVING MOTION — MANDATORY when start-frame images are attached
+
+Activate this section only when the caller also states
+`motion_contracts: enabled`; attached images alone are not activation. Read
+each labeled clip's own start frame. If a face is turned away, occluded, small
+in frame, or overlapped, preserve that observed facial angle and limit the
+character to blink, breath, gaze, micro-expression and hand/shoulder motion.
+Do not direct a turn to camera or an orbit that reveals an unseen side. When
+`negative_prompt_supported: no`, state these constraints positively inside
+the clip's `prompt` because the target model will not receive the negative
+channel.
+
 ## MODEL-FAMILY SHAPING — MANDATORY
 
 The caller supplies a `TARGET VIDEO MODEL` fact block naming the model every
