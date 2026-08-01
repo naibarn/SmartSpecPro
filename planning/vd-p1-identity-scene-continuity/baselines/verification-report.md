@@ -33,10 +33,10 @@ The current local Postgres container was checked read-only: `media_models` has
 No live row mutation was performed in this pass.
 
 Remaining operational gates are the internal paid-provider/browser smoke with
-anchor coverage and p95 latency evidence, a fresh Section 14 Gate A/B rerun at
-the new HEAD, and the explicitly deferrable `repairShotImage` anchor path
-(P2). Production/remote database confirmation remains an operations task; the
-local row check is not a production rollout proof.
+anchor coverage and p95 latency evidence, and the explicitly deferrable
+`repairShotImage` anchor path (P2). Production/remote database confirmation
+remains an operations task; the local row check is not a production rollout
+proof.
 
 Fresh Section 14 gate rerun after the final P1b commits:
 
