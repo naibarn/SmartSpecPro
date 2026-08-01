@@ -249,6 +249,9 @@ vi.mock("../../services/verticalDramaStartFrameGeneration", () => ({
   RateLimitExceededError: MockRateLimitExceededError,
   VdReferenceMappingError: MockVdReferenceMappingError,
 }));
+vi.mock("../../services/verticalDramaSceneContinuityLock", () => ({
+  resolveShotSceneContinuityLock: vi.fn(async () => ({})),
+}));
 
 // `verticalDramaEpisodes.ts` imports `ensurePromptWithinLimit` from
 // `verticalDramaPromptQc.ts`, which itself imports `verticalDramaStoryBible.ts`
@@ -391,6 +394,79 @@ beforeEach(() => {
 });
 
 describe("generateShotStartFramePrompt", () => {
+  it("passes the nearest same-scene neighbor into prompt vision and records anchor provenance", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: { distinct_locations: [] },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "first shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "901",
+            locationKey: "loc_store",
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "second shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationKey: "loc_store",
+          },
+        ],
+      },
+    });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSceneContinuity: true,
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ bible: null }])) // loadSeriesTargetAudienceRegion
+      .mockReturnValueOnce(selectChain([])) // current shot location roster lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, originalUrl: "https://cdn.example.com/shot-1.png" }]),
+      ); // neighbor anchor URL lookup
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    await router.generateShotStartFramePrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
+    });
+
+    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sceneContinuityEnabled: true,
+        sceneAnchorImage: {
+          url: "https://cdn.example.com/shot-1.png",
+          anchorShotNumber: 1,
+        },
+      }),
+    );
+    expect(capturedSet.startFramePlan.frames).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          shotNumber: 2,
+          sceneAnchor: expect.objectContaining({
+            anchorShotNumber: 1,
+            mediaAssetId: 901,
+            source: "approved",
+          }),
+        }),
+      ]),
+    );
+  });
+
   it("threads the selected image model prompt budget through authoring and QC", async () => {
     const episodeRow = baseEpisodeRow();
     mockGetModelsByTypeAsync.mockResolvedValue([{

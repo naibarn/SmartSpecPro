@@ -905,7 +905,7 @@ export function resolveFrameProductReferenceAssetIds(input: {
 }
 
 /**
- * Merge location + product reference URLs onto a shot's existing character
+ * Merge location + scene-anchor + product reference URLs onto a shot's existing character
  * reference URL list and trim to the resolved model's `maxReferenceImages`,
  * if any. Priority order (highest to lowest, per
  * `planning/polished-toasting-gadget.md` Phase 2 "Render-time attachment"):
@@ -922,10 +922,16 @@ export function resolveFrameProductReferenceAssetIds(input: {
 export function mergeAndTrimReferenceImageUrls(
   characterRefUrls: string[],
   locationRefUrls: string[],
+  sceneAnchorRefUrls: string[],
   productRefUrls: string[],
   maxReferenceImages: number | undefined,
 ): { urls: string[]; trimmedCount: number } {
-  const merged = [...characterRefUrls, ...locationRefUrls, ...productRefUrls].filter(
+  const merged = [
+    ...characterRefUrls,
+    ...locationRefUrls,
+    ...sceneAnchorRefUrls,
+    ...productRefUrls,
+  ].filter(
     (u, i, arr) => Boolean(u) && arr.indexOf(u) === i,
   );
   if (!maxReferenceImages || maxReferenceImages <= 0 || merged.length <= maxReferenceImages) {

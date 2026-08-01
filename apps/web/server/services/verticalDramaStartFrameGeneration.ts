@@ -1694,6 +1694,10 @@ export interface GenerateStartFrameShotPromptParams {
   characterReferenceImages?: { url: string; label: string }[];
   /** Location reference image for `cinematic_narrative` mode's vision attachment. Ignored by every other mode. */
   locationReferenceImage?: { url: string; label: string };
+  /** F138 P1b — same-scene neighbor frame attached to the prompt-authoring call. */
+  sceneAnchorImage?: { url: string; anchorShotNumber: number };
+  /** F138 P1b — raises the automatic vision cap to make room for the anchor. */
+  sceneContinuityEnabled?: boolean;
   /**
    * Compact Series Look Lock register for authoring. Raw provider fragments
    * deliberately stay out of the LLM prompt; the final provider-bound
@@ -1882,7 +1886,7 @@ export function buildStartFrameShotPromptUserPrompt(
     // attachment. `null` (filtered out entirely) for every other mode,
     // including legacy, which never attaches these images at all.
     isNewImagePromptMode && params.imagePromptMode === "cinematic_narrative"
-      ? `frame_analysis_inputs: character portraits and the location image are ATTACHED as images below`
+      ? `frame_analysis_inputs: character portraits, the location image, and any scene continuity reference are ATTACHED as images below`
       : null,
     // Independent image-prompt language — same default/wording convention
     // as `verticalDramaVideoMotionPromptGeneration.ts`'s
@@ -1958,8 +1962,14 @@ async function resolveStartFrameShotPromptModel(
  * this mode existed.
  */
 const VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES = 6;
+/** Automatic vision cap when one same-scene anchor is attached. */
+export const VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES_WITH_SCENE_ANCHOR = 7;
 /** Of that budget, at most this many are character portraits. */
 const VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS = 4;
+
+export function formatSceneContinuityVisionLabel(anchorShotNumber: number): string {
+  return `Scene continuity reference (shot ${anchorShotNumber}): same scene, same lighting, same set`;
+}
 
 /**
  * Build the vision images attached to a start-frame shot-prompt LLM call.
@@ -1987,6 +1997,8 @@ export function buildStartFrameShotPromptVisionImages(
   cinematicNarrativeVisionInputs?: {
     characterReferenceImages?: readonly { url: string; label: string }[];
     locationReferenceImage?: { url: string; label: string };
+    sceneAnchorImage?: { url: string; anchorShotNumber: number };
+    sceneContinuityEnabled?: boolean;
   },
 ): VisionAwareImageInput[] {
   const images: VisionAwareImageInput[] = [];
@@ -2015,11 +2027,63 @@ export function buildStartFrameShotPromptVisionImages(
         label: `Location reference: ${cinematicNarrativeVisionInputs.locationReferenceImage.label}`,
       });
     }
+    if (cinematicNarrativeVisionInputs.sceneAnchorImage) {
+      images.push({
+        url: cinematicNarrativeVisionInputs.sceneAnchorImage.url,
+        label: formatSceneContinuityVisionLabel(
+          cinematicNarrativeVisionInputs.sceneAnchorImage.anchorShotNumber,
+        ),
+      });
+    }
   }
-  // Final safety clamp on the AUTOMATIC portion only — see this function's
-  // doc comment. A no-op for mode 1 / legacy calls (`imageUrl` alone never
-  // comes anywhere near this cap).
-  const cappedAutoImages = images.slice(0, VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES);
+  // Final safety clamp on the AUTOMATIC portion only. Keep the explicit
+  // priority order here instead of relying on positional slicing: an anchor
+  // must be the first thing dropped if a future portrait/location expansion
+  // pushes the automatic list over its cap.
+  const cap =
+    cinematicNarrativeVisionInputs?.sceneContinuityEnabled === true
+      ? VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES_WITH_SCENE_ANCHOR
+      : VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES;
+  const cappedAutoImages = images.slice();
+  while (cappedAutoImages.length > cap) {
+    const anchorIndex = cappedAutoImages.findIndex(image =>
+      image.label?.startsWith("Scene continuity reference (shot "),
+    );
+    if (anchorIndex >= 0) {
+      const [dropped] = cappedAutoImages.splice(anchorIndex, 1);
+      const match = dropped.label?.match(/shot (\d+)/);
+      console.warn(
+        "[vd_shot_start_frame_prompt] scene continuity anchor dropped by the vision-attachment cap",
+        {
+          anchorShotNumber: match ? Number(match[1]) : undefined,
+          cap,
+          attached: cappedAutoImages.length,
+        },
+      );
+      continue;
+    }
+    const locationIndex = cappedAutoImages.findIndex(image =>
+      image.label?.startsWith("Location reference: "),
+    );
+    if (locationIndex >= 0) {
+      cappedAutoImages.splice(locationIndex, 1);
+      console.warn(
+        "[vd_shot_start_frame_prompt] location reference dropped by the vision-attachment cap",
+        { cap, attached: cappedAutoImages.length },
+      );
+      continue;
+    }
+    const portraitIndex = cappedAutoImages.findLastIndex(image =>
+      image.label?.startsWith("Image "),
+    );
+    if (portraitIndex >= 0) {
+      cappedAutoImages.splice(portraitIndex, 1);
+      continue;
+    }
+    // The shot's own image is intentionally never dropped. This defensive
+    // break prevents an unexpected future input shape from looping forever.
+    break;
+  }
   if (additionalImageUrls && additionalImageUrls.length > 0) {
     cappedAutoImages.push(...additionalImageUrls);
   }
@@ -2036,6 +2100,8 @@ export async function generateStartFrameShotPrompt(
   usedVision: boolean;
   /** Present iff a mode was actually used (absent for a legacy-skill call — mode omitted, or `referenceFrameMode` forced legacy). */
   usedMode?: VdImagePromptMode;
+  /** Whether the same-scene anchor made it into the automatic vision inputs. */
+  sceneAnchorAttached?: boolean;
   /** Ready to persist verbatim onto `startFramePlan.frames[].promptMode` — see that field's doc comment. Present iff `usedMode` is present. */
   frameStamp?: VdImagePromptModeStamp;
   /** Normalized `"original → rewritten"` pairs from whichever mode returned them. */
@@ -2081,7 +2147,11 @@ export async function generateStartFrameShotPrompt(
     params.imagePromptMode === "cinematic_narrative" && !params.referenceFrameMode;
   const hasModeTwoVisionInputs =
     isCinematicNarrativeMode &&
-    Boolean(params.characterReferenceImages?.length || params.locationReferenceImage);
+    Boolean(
+      params.characterReferenceImages?.length ||
+        params.locationReferenceImage ||
+        params.sceneAnchorImage,
+    );
   const wantsVision =
     !isPolicySafeSynopsisMode &&
     (Boolean(params.imageUrl) || (hasModeTwoVisionInputs && params.attachShotImage !== false));
@@ -2115,6 +2185,8 @@ export async function generateStartFrameShotPrompt(
       ? {
           characterReferenceImages: params.characterReferenceImages,
           locationReferenceImage: params.locationReferenceImage,
+          sceneAnchorImage: params.sceneAnchorImage,
+          sceneContinuityEnabled: params.sceneContinuityEnabled,
         }
       : undefined,
   );
@@ -2217,6 +2289,7 @@ export async function generateStartFrameShotPrompt(
       creditsUsed,
       model,
       usedVision: false,
+      sceneAnchorAttached: false,
       usedMode: "policy_safe_rewrite",
       frameStamp,
       ...(safetyAdjustments.length > 0 ? { safetyAdjustments } : {}),
@@ -2414,6 +2487,17 @@ export async function generateStartFrameShotPrompt(
     creditsUsed,
     model,
     usedVision: hasVision,
+    ...(params.sceneAnchorImage
+      ? {
+          sceneAnchorAttached:
+            hasVision &&
+            images.some(image =>
+              image.label?.startsWith(
+                `Scene continuity reference (shot ${params.sceneAnchorImage!.anchorShotNumber}):`,
+              ),
+            ),
+        }
+      : {}),
     ...(usedMode ? { usedMode } : {}),
     ...(frameStamp ? { frameStamp } : {}),
     ...(safetyAdjustments ? { safetyAdjustments } : {}),

@@ -481,6 +481,8 @@ export type VerticalDramaShotgrid = {
 export type VerticalDramaStartFramePlan = {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
+  /** Additive scene-anchor compatibility revision for generated-shot provenance. */
+  planRevision?: string | number;
   /**
    * Per-sub-episode start-frame image-prompt mode switch
    * (`planning/vd-start-frame-prompt-modes/plan.md`) — which of the two
@@ -533,6 +535,13 @@ export type VerticalDramaStartFramePlan = {
      */
     productRefsCustomized?: boolean;
     approvedMediaAssetId?: string;
+    /** Provenance for the same-scene neighbor image attached at render/prompt time. */
+    sceneAnchor?: {
+      anchorShotNumber: number;
+      mediaAssetId: number;
+      source: "approved" | "latest_generated";
+      attachedAt: string;
+    };
     /**
      * Per-shot location override (Phase D, `planning/polished-toasting-
      * gadget.md` — location visual bible). Set via the `setShotLocation`

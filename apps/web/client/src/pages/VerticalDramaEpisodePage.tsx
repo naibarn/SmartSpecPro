@@ -114,6 +114,10 @@ import {
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
 } from "@shared/verticalDramaSeries/characterLock";
 import type { VerticalDramaProductionWizardState } from "@shared/verticalDramaSeries/productionWizard";
+import {
+  buildSceneShotGroups,
+  planSceneOrderedBatch,
+} from "@shared/verticalDramaSeries/sceneContinuity";
 
 // Persistent right-side reference panel (image swap) — collapsed/width state
 // persisted the same way `StoryboardReviewPage.tsx`'s own right panel does,
@@ -1391,6 +1395,7 @@ function EpisodeWorkspaceShell({
   const [pollingStartFrameShots, setPollingStartFrameShots] = useState<
     Set<number>
   >(new Set());
+  const awaitStartFramePollKeysRef = useRef<Set<string>>(new Set());
   const resolveMediaAssetForImportMutation =
     trpc.verticalDramaCharacters.resolveMediaAssetForImport.useMutation();
 
@@ -1520,6 +1525,12 @@ function EpisodeWorkspaceShell({
     trpc.verticalDramaEpisodes.generateStartFrameImage.useMutation({
       onSuccess: (data, variables) => {
         void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        if (
+          typeof variables.idempotencyKey === "string" &&
+          awaitStartFramePollKeysRef.current.delete(variables.idempotencyKey)
+        ) {
+          return;
+        }
         void pollStartFrameTask(
           data.taskId,
           variables.shotNumber,
@@ -1532,6 +1543,9 @@ function EpisodeWorkspaceShell({
       // fails — otherwise a shot that never reaches `pollStartFrameTask`'s
       // own `finally` cleanup would stay disabled forever.
       onError: (err, variables) => {
+        if (typeof variables.idempotencyKey === "string") {
+          awaitStartFramePollKeysRef.current.delete(variables.idempotencyKey);
+        }
         // Stale reference-mapping guard (character set changed after the prompt
         // was authored) — give the user a one-click "regenerate prompt" action
         // instead of just a wall of text. Detected by the stable phrase the
@@ -3566,7 +3580,8 @@ function EpisodeWorkspaceShell({
     // has manually edited/approved without it being overwritten. If the shot
     // has no stored prompt at all, the silent-repair fallback below still
     // composes one regardless of this flag.
-    reauthor = true
+    reauthor = true,
+    awaitCompletion = false,
   ) {
     if (!requireModelSelectedOrToast("image")) return;
     if (!requireMcpConnectionOrToast("image")) return;
@@ -3673,11 +3688,12 @@ function EpisodeWorkspaceShell({
           resolution: selectedImageResolution || undefined,
         });
       } else {
-        generateStartFrameImageMutation.mutate({
+        const idempotencyKey = crypto.randomUUID();
+        const request = {
           seriesId,
           episodeId,
           shotNumber,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey,
           mcpConnectionId: imageModelUsesMcp
             ? (mcpConnectionId ?? undefined)
             : undefined,
@@ -3689,7 +3705,18 @@ function EpisodeWorkspaceShell({
               ? (hermesConnectionId ?? undefined)
               : undefined,
           resolution: selectedImageResolution || undefined,
-        });
+        };
+        if (awaitCompletion) {
+          awaitStartFramePollKeysRef.current.add(idempotencyKey);
+          try {
+            const data = await generateStartFrameImageMutation.mutateAsync(request);
+            await pollStartFrameTask(data.taskId, shotNumber);
+          } finally {
+            awaitStartFramePollKeysRef.current.delete(idempotencyKey);
+          }
+        } else {
+          generateStartFrameImageMutation.mutate(request);
+        }
       }
     } catch (err) {
       toast.error(
@@ -5754,10 +5781,43 @@ function EpisodeWorkspaceShell({
                 shotNumbers.forEach(n => next.add(n));
                 return next;
               });
+              const sceneContinuityEnabled =
+                episodeDetailQuery.data?.flags?.sceneContinuity === true;
+              if (!sceneContinuityEnabled) {
+                void Promise.all(
+                  shotNumbers.map(shotNumber =>
+                    handleGeneratePromptAndImage(shotNumber, "single")
+                  )
+                );
+                return;
+              }
+              const frameOverrides = new Map<number, string>();
+              for (const frame of episodeDetailQuery.data?.startFramePlan?.frames ?? []) {
+                if (frame.locationKey?.trim()) {
+                  frameOverrides.set(frame.shotNumber, frame.locationKey.trim());
+                }
+              }
+              const groups = buildSceneShotGroups({
+                distinctLocations: (
+                  episodeDetailQuery.data?.storyboard as
+                    | { distinct_locations?: unknown }
+                    | null
+                    | undefined
+                )?.distinct_locations,
+                overridesByShotNumber: frameOverrides,
+              });
+              const lanes = planSceneOrderedBatch({ shotNumbers, groups });
               void Promise.all(
-                shotNumbers.map(shotNumber =>
-                  handleGeneratePromptAndImage(shotNumber, "single")
-                )
+                lanes.map(async lane => {
+                  for (const shotNumber of lane) {
+                    await handleGeneratePromptAndImage(
+                      shotNumber,
+                      "single",
+                      true,
+                      true,
+                    );
+                  }
+                })
               );
             },
             characterPortraits: episodeDetailQuery.data?.characterPortraits as

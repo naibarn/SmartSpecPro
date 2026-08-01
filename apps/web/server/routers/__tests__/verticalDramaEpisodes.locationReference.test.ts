@@ -342,6 +342,114 @@ beforeEach(() => {
 });
 
 describe("generateStartFrameImage — location reference attachment (Phase 2 location visual bible)", () => {
+  it("attaches the nearest approved same-scene neighbor and persists its provenance when the flag is enabled", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: { distinct_locations: [STORE_LOCATION_GROUP] },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "first shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "901",
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "second shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+          },
+        ],
+      },
+    });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSceneContinuity: true,
+    });
+    const setPlan = vi.fn(() => ({ where: vi.fn(() => Promise.resolve([])) }));
+    mockDb.update.mockReturnValueOnce({ set: setPlan });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, originalUrl: "https://cdn.example.com/shot-1.png" }])
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(undefined);
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
+    });
+
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/shot-1.png",
+    ]);
+    expect(setPlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startFramePlan: expect.objectContaining({
+          frames: expect.arrayContaining([
+            expect.objectContaining({
+              shotNumber: 2,
+              sceneAnchor: expect.objectContaining({
+                anchorShotNumber: 1,
+                mediaAssetId: 901,
+                source: "approved",
+              }),
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("does not resolve or attach a neighbor when scene continuity is disabled", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: { distinct_locations: [STORE_LOCATION_GROUP] },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "first shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "901",
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "second shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(undefined);
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
+    });
+
+    expect(mockGetTenantFeatureFlags).toHaveBeenCalled();
+    expect(mockDb.select).toHaveBeenCalledTimes(3);
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toBeUndefined();
+  });
+
   it("byte-identical when the episode's storyboard has no distinct_locations data: zero new DB calls, referenceImageUrls unchanged", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode

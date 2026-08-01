@@ -208,6 +208,10 @@ import {
 import {
   buildSceneShotGroups,
   computeSceneMembershipHash,
+  findSceneShotGroupForShot,
+  selectSceneContinuityAnchor,
+  type VdSceneAnchor,
+  type VdLatestGeneratedSceneAsset,
   type VdSceneShotGroup,
   type VdSceneVisualState,
 } from "@shared/verticalDramaSeries/sceneContinuity";
@@ -3495,6 +3499,118 @@ async function resolveVerticalDramaSceneContinuityFlag(
   } catch {
     return false;
   }
+}
+
+type ResolvedSceneNeighborAnchor = VdSceneAnchor & { url: string };
+
+/**
+ * Resolve the nearest same-scene anchor for one shot. This is deliberately
+ * fail-open: the first operation is the flag guard, and no asset query is
+ * made unless the shared selector actually chooses an anchor.
+ */
+async function resolveShotSceneContinuityAnchor(input: {
+  enabled: boolean;
+  tenantId: string;
+  userId: number;
+  storyboard: unknown;
+  plan: VerticalDramaStartFramePlan | null;
+  shotNumber: number;
+  currentPlanRevision: string | number;
+}): Promise<ResolvedSceneNeighborAnchor | undefined> {
+  if (!input.enabled) return undefined;
+  const plan = input.plan;
+  if (!plan || !Array.isArray(plan.frames)) return undefined;
+
+  const overridesByShotNumber = new Map<number, string>();
+  for (const frame of plan.frames) {
+    if (typeof frame.locationKey === "string" && frame.locationKey.trim()) {
+      overridesByShotNumber.set(frame.shotNumber, frame.locationKey.trim());
+    }
+  }
+  const storyboardRecord = sceneRecord(input.storyboard);
+  const groups = buildSceneShotGroups({
+    distinctLocations: storyboardRecord.distinct_locations,
+    overridesByShotNumber,
+  });
+  const group = findSceneShotGroupForShot(groups, input.shotNumber);
+  if (!group) return undefined;
+
+  const approvedAssetIdByShotNumber = new Map<number, number | undefined>();
+  const latestGeneratedAssetByShotNumber = new Map<
+    number,
+    VdLatestGeneratedSceneAsset | undefined
+  >();
+  for (const frame of plan.frames) {
+    const approvedAssetId = Number(frame.approvedMediaAssetId);
+    if (Number.isInteger(approvedAssetId) && approvedAssetId > 0) {
+      approvedAssetIdByShotNumber.set(frame.shotNumber, approvedAssetId);
+    }
+    const latestGeneratedAssetId = frame.angleGridAssetIds?.at(-1);
+    const locationKey =
+      frame.locationKey?.trim() ||
+      resolveEffectiveShotLocationKey(
+        input.storyboard,
+        frame.shotNumber,
+        frame.locationKey,
+      );
+    if (
+      Number.isInteger(latestGeneratedAssetId) &&
+      latestGeneratedAssetId > 0 &&
+      locationKey
+    ) {
+      latestGeneratedAssetByShotNumber.set(frame.shotNumber, {
+        mediaAssetId: latestGeneratedAssetId,
+        status: "succeeded",
+        locationKey,
+        planRevision: input.currentPlanRevision,
+      });
+    }
+  }
+
+  const anchor = selectSceneContinuityAnchor({
+    shotNumber: input.shotNumber,
+    group,
+    currentPlanRevision: input.currentPlanRevision,
+    approvedAssetIdByShotNumber,
+    latestGeneratedAssetByShotNumber,
+  });
+  if (!anchor) return undefined;
+  const urlsByAssetId = await resolveMediaAssetUrlsByIds(input.tenantId, input.userId, [
+    anchor.mediaAssetId,
+  ]);
+  const url = urlsByAssetId.get(anchor.mediaAssetId);
+  return url ? { ...anchor, url } : undefined;
+}
+
+function logSceneNeighborAnchorEvent(input: {
+  traceId: string;
+  userId: number;
+  tenantId: string;
+  shotNumber: number;
+  anchor?: VdSceneAnchor;
+  layer: "prompt" | "render";
+  dropped: boolean;
+  dropReason?: string;
+}): void {
+  if (!input.anchor && !input.dropped) return;
+  auditLogger.log({
+    traceId: input.traceId,
+    eventType: "vd_scene_neighbor_anchor_attached",
+    userId: input.userId,
+    tenantId: input.tenantId,
+    metadata: {
+      shotNumber: input.shotNumber,
+      ...(input.anchor
+        ? {
+            anchorShotNumber: input.anchor.anchorShotNumber,
+            source: input.anchor.source,
+          }
+        : {}),
+      layer: input.layer,
+      dropped: input.dropped,
+      ...(input.dropReason ? { dropReason: input.dropReason } : {}),
+    },
+  });
 }
 
 function hasVerticalDramaSceneIdentity(
@@ -10951,6 +11067,22 @@ export const verticalDramaEpisodesRouter = router({
         frame.locationKey
       );
       const locationRefUrls = locationRefEntry?.url ? [locationRefEntry.url] : [];
+      const sceneContinuityEnabled =
+        (await resolveVerticalDramaSceneContinuityFlag(tenantId)) &&
+        hasVerticalDramaSceneIdentity(row.storyboard, input.shotNumber, frame.locationKey);
+      const sceneNeighborAnchor = await resolveShotSceneContinuityAnchor({
+        enabled: sceneContinuityEnabled,
+        tenantId,
+        userId,
+        storyboard: row.storyboard,
+        plan,
+        shotNumber: input.shotNumber,
+        currentPlanRevision:
+          plan.planRevision ?? row.updatedAt?.toISOString?.() ?? "legacy",
+      });
+      const sceneAnchorRefUrls = sceneNeighborAnchor
+        ? [sceneNeighborAnchor.url]
+        : [];
       // Product tie-in reference (spec: the product must physically appear
       // in the shot, not just be described in text) — appended AFTER
       // character/location refs so identity-lock and environment-lock always
@@ -10993,9 +11125,23 @@ export const verticalDramaEpisodesRouter = router({
       } = mergeAndTrimReferenceImageUrls(
         characterRefUrls,
         locationRefUrls,
+        sceneAnchorRefUrls,
         productRefUrls,
         imageCapabilities.maxReferenceImages
       );
+      if (sceneNeighborAnchor) {
+        const anchorAttached = referenceImageUrls.includes(sceneNeighborAnchor.url);
+        logSceneNeighborAnchorEvent({
+          traceId: input.idempotencyKey ?? crypto.randomUUID(),
+          userId,
+          tenantId,
+          shotNumber: input.shotNumber,
+          anchor: sceneNeighborAnchor,
+          layer: "render",
+          dropped: !anchorAttached,
+          ...(anchorAttached ? {} : { dropReason: "provider_reference_cap" }),
+        });
+      }
       // Validate + recompute cost when the model has a resolution-tiered
       // matrix (storyboard-complete plan Phase 6.2b) — `calculateCreditCost`
       // ignores `resolution` entirely for flat-priced models, so this is
@@ -11218,14 +11364,32 @@ export const verticalDramaEpisodesRouter = router({
       });
 
       if (
-        imagePromptQc.prompt !== frame.imagePrompt &&
+        (imagePromptQc.prompt !== frame.imagePrompt || sceneContinuityEnabled) &&
         Array.isArray(plan.frames)
       ) {
         const updatedFrames = plan.frames.map(
-          (f: { shotNumber: number; imagePrompt: string }) =>
-            f.shotNumber === input.shotNumber
-              ? { ...f, imagePrompt: imagePromptQc.prompt }
-              : f
+          f => {
+            if (f.shotNumber !== input.shotNumber) return f;
+            const updatedFrame = {
+              ...f,
+              ...(imagePromptQc.prompt !== frame.imagePrompt
+                ? { imagePrompt: imagePromptQc.prompt }
+                : {}),
+            };
+            if (sceneContinuityEnabled) {
+              if (sceneNeighborAnchor) {
+                updatedFrame.sceneAnchor = {
+                  anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
+                  mediaAssetId: sceneNeighborAnchor.mediaAssetId,
+                  source: sceneNeighborAnchor.source,
+                  attachedAt: new Date().toISOString(),
+                };
+              } else {
+                delete updatedFrame.sceneAnchor;
+              }
+            }
+            return updatedFrame;
+          },
         );
         const updatedPlan = { ...plan, frames: updatedFrames };
         await db
@@ -11591,6 +11755,7 @@ export const verticalDramaEpisodesRouter = router({
       } = mergeAndTrimReferenceImageUrls(
         characterRefUrls,
         locationRefUrls,
+        [],
         productRefUrls,
         angleImageCapabilities.maxReferenceImages
       );
@@ -13569,6 +13734,16 @@ export const verticalDramaEpisodesRouter = router({
         input.shotNumber,
         frame.locationKey,
       ) && await resolveVerticalDramaSceneContinuityFlag(tenantId);
+      const sceneNeighborAnchor = await resolveShotSceneContinuityAnchor({
+        enabled: sceneContinuityEnabled,
+        tenantId,
+        userId,
+        storyboard: row.storyboard,
+        plan: basePlan,
+        shotNumber: input.shotNumber,
+        currentPlanRevision:
+          basePlan.planRevision ?? row.updatedAt?.toISOString?.() ?? "legacy",
+      });
       let shotSceneContinuityLockBlock: string | undefined;
       let shotSceneContinuityNewlyAuthored:
         | import("@shared/verticalDramaSeries/sceneContinuity").VdSceneVisualState
@@ -13815,6 +13990,7 @@ export const verticalDramaEpisodesRouter = router({
         creditsUsed: number;
         model: string;
         usedVision?: boolean;
+        sceneAnchorAttached?: boolean;
         usedMode?: VdImagePromptMode;
         frameStamp?: VdImagePromptModeStamp;
         safetyAdjustments?: string[];
@@ -13876,6 +14052,13 @@ export const verticalDramaEpisodesRouter = router({
                 label: shotStartFramePromptLocationEntry.name ?? "",
               }
             : undefined,
+          sceneAnchorImage: sceneNeighborAnchor
+            ? {
+                url: resolveReferenceUrl(sceneNeighborAnchor.url, ctx.publicUrl ?? undefined),
+                anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
+              }
+            : undefined,
+          sceneContinuityEnabled,
           seriesLookRegister: shotStartFramePromptSeriesLookRegister,
           productLock: {
             active: shotStartFramePromptIsTieInShot,
@@ -13929,6 +14112,20 @@ export const verticalDramaEpisodesRouter = router({
           })),
           idempotencyKey: input.idempotencyKey,
         });
+        if (sceneNeighborAnchor) {
+          logSceneNeighborAnchorEvent({
+            traceId: input.idempotencyKey ?? crypto.randomUUID(),
+            userId,
+            tenantId,
+            shotNumber: input.shotNumber,
+            anchor: sceneNeighborAnchor,
+            layer: "prompt",
+            dropped: shotStartFramePromptResult.sceneAnchorAttached !== true,
+            ...(shotStartFramePromptResult.sceneAnchorAttached === true
+              ? {}
+              : { dropReason: "vision_unavailable_or_attachment_cap" }),
+          });
+        }
       } catch (err) {
         console.error("[generateShotStartFramePrompt] ERROR CATCH:", err);
         if (err instanceof StartFrameShotPromptInsufficientCreditsError) {
@@ -14055,6 +14252,18 @@ export const verticalDramaEpisodesRouter = router({
             ? { promptAnalysis: shotStartFramePromptResult.promptAnalysis }
             : {}),
         };
+        if (sceneContinuityEnabled) {
+          if (sceneNeighborAnchor) {
+            updatedFrame.sceneAnchor = {
+              anchorShotNumber: sceneNeighborAnchor.anchorShotNumber,
+              mediaAssetId: sceneNeighborAnchor.mediaAssetId,
+              source: sceneNeighborAnchor.source,
+              attachedAt: new Date().toISOString(),
+            };
+          } else {
+            delete updatedFrame.sceneAnchor;
+          }
+        }
         if (shotStartFramePromptIsManualAiEdit) {
           delete updatedFrame.promptMode;
           delete updatedFrame.promptSafetyAdjustments;
@@ -14575,6 +14784,7 @@ export const verticalDramaEpisodesRouter = router({
       } = mergeAndTrimReferenceImageUrls(
         characterRefUrls,
         locationRefUrls,
+        [], // NO scene anchor refs — supplementary reference frames are unchanged.
         [], // NO product refs — see this procedure's own doc comment.
         imageCapabilities.maxReferenceImages
       );
