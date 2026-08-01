@@ -19,7 +19,7 @@
 ### Current status
 - Code path complete and committed through `65f8367ca`; focused validation is 226/226 passing.
 - Local DB read-only check already reports the required GPT Image 2 reference cap (16); no DB mutation was needed.
-- Remaining: Section 14 Gate A/B rerun at the new HEAD, internal paid/browser/p95 evidence, and explicit P2 deferral of `repairShotImage` anchoring.
+- Remaining: internal paid/browser/p95 evidence and explicit P2 deferral of `repairShotImage` anchoring; fresh Section 14 Gate A/B rerun is complete with zero fail-set drift.
 
 ## SmartAIHub layered loading resilience - 2026-08-01
 

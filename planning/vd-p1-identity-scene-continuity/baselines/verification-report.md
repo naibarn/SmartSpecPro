@@ -38,6 +38,13 @@ the new HEAD, and the explicitly deferrable `repairShotImage` anchor path
 (P2). Production/remote database confirmation remains an operations task; the
 local row check is not a production rollout proof.
 
+Fresh Section 14 gate rerun after the final P1b commits:
+
+- Gate A: **5 failed / 263 passed**; fail-set is identical to
+  `gate-a-failset-current.txt` (zero new identities).
+- Gate B: **57 failed / 693 passed**; fail-set is byte-identical to
+  `gate-b-failset-after.txt` (zero new or removed identities).
+
 The repository contains unrelated dirty worktree changes. Verification below
 is scoped to the VD P1 paths and does not claim a clean repository-wide build.
 
