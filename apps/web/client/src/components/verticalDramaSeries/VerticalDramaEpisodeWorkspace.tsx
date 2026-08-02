@@ -1,3 +1,7 @@
+import {
+  VD_TEXT_OVERLAY_CARD_POSITIONS,
+  type VdWatermarkPosition,
+} from "@shared/verticalDramaSeries/textOverlay";
 /**
  * VerticalDramaEpisodeWorkspace — the episode workspace (spec §04 UI/UX Contract,
  * extended per the Presentation-Builder-style redesign).
@@ -22,6 +26,16 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ChevronDown, Loader2, RotateCcw } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -247,6 +261,23 @@ export interface VerticalDramaTextOverlayCharacterIntroCardsView {
   enabled: boolean;
 }
 
+/** Anchor labels shared with the series watermark picker — one placement
+ *  vocabulary across the product. */
+const VD_OVERLAY_ANCHOR_LABELS: Record<
+  VdWatermarkPosition,
+  { th: string; en: string }
+> = {
+  top_left: { th: "บน–ซ้าย", en: "Top left" },
+  top_center: { th: "บน–กลาง", en: "Top centre" },
+  top_right: { th: "บน–ขวา", en: "Top right" },
+  middle_left: { th: "กลางจอ–ซ้าย", en: "Middle left" },
+  middle_center: { th: "กลางจอ–กลาง", en: "Middle centre" },
+  middle_right: { th: "กลางจอ–ขวา", en: "Middle right" },
+  bottom_left: { th: "ล่าง–ซ้าย", en: "Bottom left" },
+  bottom_center: { th: "ล่าง–กลาง", en: "Bottom centre" },
+  bottom_right: { th: "ล่าง–ขวา", en: "Bottom right" },
+};
+
 export interface VerticalDramaTextOverlayCardView {
   id: string;
   kind: "time_setting" | "narrative_hook" | "custom";
@@ -254,6 +285,8 @@ export interface VerticalDramaTextOverlayCardView {
   text: string;
   durationSec: number;
   styleVariant?: "time_setting" | "narrative_hook";
+  /** 3x3 screen anchor; omitted keeps the style's own alignment. */
+  position?: VdWatermarkPosition;
   enabled: boolean;
 }
 
@@ -319,6 +352,18 @@ export interface VerticalDramaFinalRenderOptionsView {
    *  server default `false`. Independent of the subtitle options (no
    *  gating on `subtitlePreset`). */
   showAgeBadge?: boolean;
+  /** `planning/vd-remotion-render-option/plan.md` wave 2 — opt-in Remotion
+   *  render path (mirrors `assembleEpisodeVideo`'s own `renderEngine` input
+   *  field verbatim). Optional for the same backward-compatibility reason as
+   *  `subtitleFontSize`/`showAgeBadge` above. Absent/`"ffmpeg"` is
+   *  BYTE-IDENTICAL to every render before this option existed — only
+   *  `"remotion_queue"` opts into the new queue path, and the page-level
+   *  caller (`VerticalDramaEpisodePage.tsx`) only sends this field at all
+   *  when it is `"remotion_queue"`, omitting it entirely otherwise. Font-size
+   *  is NOT yet applied by the Remotion path (W1 contract limitation) — the
+   *  section below greys out the subtitle font-size picker whenever this is
+   *  `"remotion_queue"`. */
+  renderEngine?: "ffmpeg" | "remotion_queue";
 }
 
 /** Mirrors `VdEpisodeAdBannerExclusion` (`server/routers/verticalDramaEpisodes.ts`) as this file's own independent client view type. */
@@ -332,6 +377,12 @@ export interface VerticalDramaFinalRenderResultView {
   dialogueAudioSegmentsIncluded: number;
   subtitleLinesIncluded: number;
   excludedAdBanners?: VerticalDramaFinalRenderExclusionView[];
+  /** `planning/vd-remotion-render-option/plan.md` wave 2 — mirrors
+   *  `assembleEpisodeVideo`'s own `renderEngineFallbackReason` response
+   *  field. Present only when a `"remotion_queue"` request actually fell
+   *  back to ffmpeg for this submission; absent for every ffmpeg-requested
+   *  (or successful Remotion) submission. */
+  renderEngineFallbackReason?: string;
 }
 
 /** Data needed to render the "ตัวเลือกการเรนเดอร์วิดีโอ" section. */
@@ -340,6 +391,10 @@ export interface VerticalDramaFinalRenderOptionsPanelData {
   onChange?: (value: VerticalDramaFinalRenderOptionsView) => void;
   /** Durable (non-toast) proof of what the most recent successful `assembleEpisodeVideo` call actually included — same "durable card, not just a toast" convention as `scriptSummary`. `null`/absent before any render has completed this session. */
   lastResult?: VerticalDramaFinalRenderResultView | null;
+  /** `dialogueAudioPlan.dialogueLines.length` — see
+   *  `VerticalDramaFinalRenderOptionsSection`'s own prop doc. Omit to keep the
+   *  no-dialogue warning hidden. */
+  subtitleSourceLineCount?: number;
 }
 
 /** Data needed to render the storyboard_shotgrid stage's dedicated panel. */
@@ -374,7 +429,8 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     clipNumber: number,
     subShotNumber: number | undefined,
-    currentPrompt: string
+    currentPrompt: string,
+    shotImageUrl?: string
   ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
@@ -382,7 +438,11 @@ export interface VerticalDramaStoryboardPanelData {
   onGenerateStartFramePlan?: () => void;
   generatingStartFramePlan?: boolean;
   /** Opens the repair dialog for `start_frame_render_plan`, prefilled with the current image prompt. */
-  onEditStartFramePrompt?: (shotNumber: number, currentPrompt: string) => void;
+  onEditStartFramePrompt?: (
+    shotNumber: number,
+    currentPrompt: string,
+    shotImageUrl?: string
+  ) => void;
   /** Panel-level "generate video prompts" (2026-07-05 fix) — runs
    *  `dialogue_audio_plan` then `video_motion_prompt_pack` for real. */
   onGenerateVideoPromptPack?: () => void;
@@ -394,6 +454,13 @@ export interface VerticalDramaStoryboardPanelData {
   repairingMissingShotCharacters?: boolean;
   /** Renders a real AI image for this shot from its approved prompt. */
   onGenerateStartFrameImage?: (shotNumber: number) => void;
+  onRunFrameContinuityQc?: (shotNumber: number) => void;
+  runningFrameContinuityQcForShot?: number | null;
+  onRunVideoSafetyQc?: (shotNumber: number) => void;
+  runningVideoSafetyQcForShot?: number | null;
+  onGenerateVideoSafeStartFrame?: (shotNumber: number) => void;
+  generatingVideoSafeStartFrameForShot?: number | null;
+  onClearVideoStartFrame?: (shotNumber: number) => void;
   /** Every shot number currently submitted/polling — a Set (not a single
    *  number) since "generate all shot images" submits every shot at once;
    *  each shot's own spinner is independent of the others. */
@@ -429,6 +496,7 @@ export interface VerticalDramaStoryboardPanelData {
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
   /** Scene continuity lock affordances (Feature 138 P1). */
   sceneContinuityEnabled?: boolean;
+  sceneContinuityQcEnabled?: boolean;
   onPlanSceneVisualState?: (
     locationKey: string,
     force?: boolean,
@@ -553,6 +621,8 @@ export interface VerticalDramaStoryboardPanelData {
   /* ---- Video clip generation (`generateVideoClip`) ---- */
   onGenerateVideoClip?: (clipNumber: number) => void;
   generatingVideoClipForClip?: ReadonlySet<number>;
+  onRunClipIdentityQc?: (clipNumber: number) => void;
+  runningClipIdentityQcForClip?: ReadonlySet<number>;
   ttsFallbackByClip?: Record<number, boolean>;
   trimmedReferenceCountByClip?: Record<number, number>;
   /** Upload video file per shot (2026-07-07 upgrade) — see the same-named
@@ -1065,9 +1135,7 @@ export function VerticalDramaEpisodeWorkspace({
       typeof window === "undefined"
     )
       return;
-    setAdvancedStagesOpen(
-      safeStorageGet(advancedStagesStorageKey) === "true"
-    );
+    setAdvancedStagesOpen(safeStorageGet(advancedStagesStorageKey) === "true");
   }, [productionWizardEnabled, advancedStagesStorageKey]);
 
   function handleAdvancedStagesOpenChange(next: boolean) {
@@ -1218,6 +1286,21 @@ export function VerticalDramaEpisodeWorkspace({
         exactly as when the wizard flag is off. */}
       {hasStoryboardShots ? (
         <VerticalDramaStoryboardPanel
+          renderOptionsSlot={
+            hasStoryboardShots ? (
+              <VerticalDramaFinalRenderOptionsSection
+                locale={locale}
+                voiceChainEnabled={voiceChainEnabled}
+                value={finalRenderOptionsPanel?.value}
+                onChange={finalRenderOptionsPanel?.onChange}
+                lastResult={finalRenderOptionsPanel?.lastResult}
+                adBannerDesigns={adBannerPlanPanel?.designs}
+                subtitleSourceLineCount={
+                  finalRenderOptionsPanel?.subtitleSourceLineCount
+                }
+              />
+            ) : null
+          }
           locale={locale}
           seriesId={storyboardPanel?.seriesId}
           episodeNumber={storyboardPanel?.episodeNumber}
@@ -1247,6 +1330,21 @@ export function VerticalDramaEpisodeWorkspace({
           generatingStartFrameImageForShot={
             storyboardPanel?.generatingStartFrameImageForShot
           }
+          onRunFrameContinuityQc={storyboardPanel?.onRunFrameContinuityQc}
+          runningFrameContinuityQcForShot={
+            storyboardPanel?.runningFrameContinuityQcForShot
+          }
+          onRunVideoSafetyQc={storyboardPanel?.onRunVideoSafetyQc}
+          runningVideoSafetyQcForShot={
+            storyboardPanel?.runningVideoSafetyQcForShot
+          }
+          onGenerateVideoSafeStartFrame={
+            storyboardPanel?.onGenerateVideoSafeStartFrame
+          }
+          generatingVideoSafeStartFrameForShot={
+            storyboardPanel?.generatingVideoSafeStartFrameForShot
+          }
+          onClearVideoStartFrame={storyboardPanel?.onClearVideoStartFrame}
           onGenerateAllStartFrameImages={
             storyboardPanel?.onGenerateAllStartFrameImages
           }
@@ -1273,6 +1371,7 @@ export function VerticalDramaEpisodeWorkspace({
           }
           onSetShotLocation={storyboardPanel?.onSetShotLocation}
           sceneContinuityEnabled={storyboardPanel?.sceneContinuityEnabled}
+          sceneContinuityQcEnabled={storyboardPanel?.sceneContinuityQcEnabled}
           onPlanSceneVisualState={storyboardPanel?.onPlanSceneVisualState}
           planningSceneVisualStateForKey={
             storyboardPanel?.planningSceneVisualStateForKey
@@ -1371,6 +1470,10 @@ export function VerticalDramaEpisodeWorkspace({
           generatingVideoClipForClip={
             storyboardPanel?.generatingVideoClipForClip
           }
+          onRunClipIdentityQc={storyboardPanel?.onRunClipIdentityQc}
+          runningClipIdentityQcForClip={
+            storyboardPanel?.runningClipIdentityQcForClip
+          }
           ttsFallbackByClip={storyboardPanel?.ttsFallbackByClip}
           trimmedReferenceCountByClip={
             storyboardPanel?.trimmedReferenceCountByClip
@@ -1462,17 +1565,6 @@ export function VerticalDramaEpisodeWorkspace({
           exist. Rendered BEFORE the ad banner section so the assembly-related
           controls read top-to-bottom in the order they affect the same
           render. */}
-      {hasStoryboardShots ? (
-        <VerticalDramaFinalRenderOptionsSection
-          locale={locale}
-          voiceChainEnabled={voiceChainEnabled}
-          value={finalRenderOptionsPanel?.value}
-          onChange={finalRenderOptionsPanel?.onChange}
-          lastResult={finalRenderOptionsPanel?.lastResult}
-          adBannerDesigns={adBannerPlanPanel?.designs}
-        />
-      ) : null}
-
       {/* Ad Banner Overlay (F131W, task #30-A2, plan.md §6) — near the
           assembly controls above (same `hasStoryboardShots` gate: nothing to
           composite banners onto until a storyboard/clips exist). */}
@@ -1977,7 +2069,9 @@ export function VerticalDramaEpisodeWorkspace({
                         storyboard={storyboardPanel?.storyboard}
                         startFramePlan={storyboardPanel?.startFramePlan}
                         motionPromptPack={storyboardPanel?.motionPromptPack}
-                        canonicalShotDrafts={storyboardPanel?.canonicalShotDrafts}
+                        canonicalShotDrafts={
+                          storyboardPanel?.canonicalShotDrafts
+                        }
                         assetUrls={storyboardPanel?.assetUrls}
                         loading={storyboardPanel?.loading}
                         error={storyboardPanel?.error}
@@ -2721,9 +2815,7 @@ function VerticalDramaTextOverlayPlanSection({
     }
     if (draft.titleBumper?.enabled) {
       const secondary =
-        draft.titleBumper.text?.trim() ||
-        preview?.titleBumper.secondary ||
-        "";
+        draft.titleBumper.text?.trim() || preview?.titleBumper.secondary || "";
       lines.push(
         `${t.titleBumperTitle}: ${preview?.titleBumper.primary ?? ""} / ${secondary}`
       );
@@ -2757,9 +2849,7 @@ function VerticalDramaTextOverlayPlanSection({
     >
       <div>
         <h3 className="text-sm font-medium">{t.sectionTitle}</h3>
-        <p className="text-xs text-muted-foreground">
-          {t.sectionDescription}
-        </p>
+        <p className="text-xs text-muted-foreground">{t.sectionDescription}</p>
       </div>
 
       {/* End card */}
@@ -3010,9 +3100,7 @@ function VerticalDramaTextOverlayPlanSection({
         data-testid="vd-text-overlay-episode-indicator"
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">
-            {t.episodeIndicatorTitle}
-          </span>
+          <span className="text-xs font-medium">{t.episodeIndicatorTitle}</span>
           <Switch
             checked={draft.episodeIndicator?.enabled ?? false}
             onCheckedChange={next =>
@@ -3050,10 +3138,9 @@ function VerticalDramaTextOverlayPlanSection({
               </Select>
             </label>
             <p className="text-[11px] text-muted-foreground">
-              {vdTextOverlayCopyWithParams(
-                t.episodeIndicatorPreviewTemplate,
-                { label: preview?.episodeIndicator.label ?? "" }
-              )}
+              {vdTextOverlayCopyWithParams(t.episodeIndicatorPreviewTemplate, {
+                label: preview?.episodeIndicator.label ?? "",
+              })}
             </p>
           </div>
         ) : null}
@@ -3163,9 +3250,43 @@ function VerticalDramaTextOverlayPlanSection({
                       <SelectItem value="narrative_hook">
                         {t.cardKindNarrativeHook}
                       </SelectItem>
-                      <SelectItem value="custom">
-                        {t.cardKindCustom}
+                      <SelectItem value="custom">{t.cardKindCustom}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {/* Screen placement — same nine anchors as the series
+                      watermark and the Marketplace overlay picker. "ตามสไตล์"
+                      (undefined) keeps whatever alignment the chosen style
+                      bakes in, which is what every pre-existing card uses. */}
+                  <Select
+                    value={card.position ?? "__style__"}
+                    onValueChange={v =>
+                      updateCard(card.id, {
+                        position:
+                          v === "__style__"
+                            ? undefined
+                            : (v as VdWatermarkPosition),
+                      })
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-7 w-32"
+                      data-testid={`vd-text-overlay-card-position-${card.id}`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__style__">
+                        {locale === "th" ? "ตำแหน่งตามสไตล์" : "Style default"}
                       </SelectItem>
+                      {VD_TEXT_OVERLAY_CARD_POSITIONS.map(pos => (
+                        <SelectItem key={pos} value={pos}>
+                          {
+                            VD_OVERLAY_ANCHOR_LABELS[pos][
+                              locale === "th" ? "th" : "en"
+                            ]
+                          }
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <label className="flex items-center gap-1 text-[11px]">
@@ -3254,9 +3375,7 @@ function VerticalDramaTextOverlayPlanSection({
                 <Input
                   value={card.text}
                   placeholder={t.cardTextPlaceholder}
-                  onChange={e =>
-                    updateCard(card.id, { text: e.target.value })
-                  }
+                  onChange={e => updateCard(card.id, { text: e.target.value })}
                   data-testid={`vd-text-overlay-card-text-${card.id}`}
                 />
               </div>
@@ -3280,9 +3399,7 @@ function VerticalDramaTextOverlayPlanSection({
       >
         <h4 className="text-xs font-medium">{t.previewTitle}</h4>
         {previewLines.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">
-            {t.previewEmpty}
-          </p>
+          <p className="text-[11px] text-muted-foreground">{t.previewEmpty}</p>
         ) : (
           <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
             {previewLines.map((line, index) => (
@@ -3330,10 +3447,15 @@ function VerticalDramaTextOverlayPlanSection({
  * `voiceChainEnabled` gates ONLY the dialogue-audio checkbox (+ nested
  * loudness sub-checkbox) — same "feature-detected prop, off -> that part
  * renders nothing" convention as `adBannerOverlayEnabled`. The subtitle
- * preset picker is ALWAYS visible whenever this section renders at all:
- * subtitles are derived from the episode's SCRIPT text, not from any
- * generated audio (see `assembleEpisodeVideo`'s own doc comment,
- * `server/routers/verticalDramaEpisodes.ts`).
+ * preset picker is ALWAYS visible whenever this section renders at all.
+ *
+ * Subtitles do NOT require TTS audio, but they DO require the episode's
+ * dialogue plan: `resolveEpisodeDialogueAudioAndSubtitlesRunInputs`
+ * (`server/services/verticalDramaEpisodeVideoAssembly.ts`) builds every
+ * caption line from `dialogueAudioPlan.dialogueLines` and returns zero lines
+ * when that plan is absent — regardless of the preset chosen. `subtitleSourceLineCount`
+ * lets this section say so up front instead of letting the user discover it
+ * from a caption-free video (field incident 2026-08-01).
  */
 function VerticalDramaFinalRenderOptionsSection({
   locale,
@@ -3342,6 +3464,7 @@ function VerticalDramaFinalRenderOptionsSection({
   onChange,
   lastResult,
   adBannerDesigns = [],
+  subtitleSourceLineCount,
 }: {
   locale: VdLocale;
   voiceChainEnabled?: boolean;
@@ -3349,6 +3472,13 @@ function VerticalDramaFinalRenderOptionsSection({
   onChange?: (value: VerticalDramaFinalRenderOptionsView) => void;
   lastResult?: VerticalDramaFinalRenderResultView | null;
   adBannerDesigns?: VerticalDramaAdBannerDesignSummaryView[];
+  /** How many dialogue lines the episode's plan can turn into burned-in
+   *  subtitles — i.e. `dialogueAudioPlan.dialogueLines.length`, the exact
+   *  input `resolveEpisodeDialogueAudioAndSubtitlesRunInputs` reads server
+   *  side. `0` drives the "no dialogue script yet" warning below; `undefined`
+   *  (caller did not supply it) shows no warning at all, so every existing
+   *  caller/test renders byte-identically. */
+  subtitleSourceLineCount?: number;
 }) {
   const t = useMemo(() => vdCopy(locale), [locale]);
   const includeDialogueAudio = value?.includeDialogueAudio ?? false;
@@ -3356,6 +3486,12 @@ function VerticalDramaFinalRenderOptionsSection({
   const subtitlePreset = value?.subtitlePreset ?? "classic_box";
   const subtitleFontSize = value?.subtitleFontSize ?? "medium";
   const showAgeBadge = value?.showAgeBadge ?? false;
+  const renderEngine = value?.renderEngine ?? "ffmpeg";
+  // Remotion is the DEFAULT (2026-07-31): an UNSET engine means Remotion, and
+  // only an explicit "ffmpeg" opts out. The ffmpeg queue has no worker that can
+  // claim its jobs, so defaulting to it produced renders that never ran.
+  const remotionRenderEnabled = renderEngine !== "ffmpeg";
+  const [confirmServerFfmpeg, setConfirmServerFfmpeg] = useState(false);
 
   function emit(patch: Partial<VerticalDramaFinalRenderOptionsView>) {
     onChange?.({
@@ -3364,6 +3500,7 @@ function VerticalDramaFinalRenderOptionsSection({
       subtitlePreset,
       subtitleFontSize,
       showAgeBadge,
+      renderEngine,
       ...patch,
     });
   }
@@ -3433,7 +3570,9 @@ function VerticalDramaFinalRenderOptionsSection({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">{t.finalRenderSubtitlePresetNone}</SelectItem>
+            <SelectItem value="none">
+              {t.finalRenderSubtitlePresetNone}
+            </SelectItem>
             {VD_FINAL_RENDER_SUBTITLE_PRESET_IDS.map(id => (
               <SelectItem key={id} value={id}>
                 {vdFinalRenderSubtitlePresetLabel(id, locale)}
@@ -3441,6 +3580,23 @@ function VerticalDramaFinalRenderOptionsSection({
             ))}
           </SelectContent>
         </Select>
+        {/* Field incident 2026-08-01: a render with the "creator" preset
+            selected produced "0 subtitle lines" and a caption-free video, with
+            nothing on screen explaining why. Subtitle lines are built ONLY
+            from the episode's dialogue plan
+            (`resolveEpisodeDialogueAudioAndSubtitlesRunInputs`), so an episode
+            whose dialogue/voice step never ran has no text to burn in no
+            matter which preset is picked. The picker stays ENABLED — the
+            preset is still worth saving for the next render once dialogue
+            exists. */}
+        {subtitlePreset !== "none" && subtitleSourceLineCount === 0 ? (
+          <p
+            className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+            data-testid="vd-final-render-subtitle-no-dialogue-warning"
+          >
+            {t.finalRenderSubtitleNoDialogueWarning}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -3452,7 +3608,7 @@ function VerticalDramaFinalRenderOptionsSection({
         </label>
         <Select
           value={subtitleFontSize}
-          disabled={subtitlePreset === "none"}
+          disabled={subtitlePreset === "none" || remotionRenderEnabled}
           onValueChange={v =>
             emit({
               subtitleFontSize: v as VdFinalRenderSubtitleFontSizeValue,
@@ -3462,6 +3618,11 @@ function VerticalDramaFinalRenderOptionsSection({
           <SelectTrigger
             id="vd-final-render-subtitle-font-size"
             data-testid="vd-final-render-subtitle-font-size"
+            title={
+              remotionRenderEnabled
+                ? t.finalRenderSubtitleFontSizeRemotionDisabledHint
+                : undefined
+            }
           >
             <SelectValue />
           </SelectTrigger>
@@ -3473,7 +3634,88 @@ function VerticalDramaFinalRenderOptionsSection({
             ))}
           </SelectContent>
         </Select>
+        {remotionRenderEnabled ? (
+          <p
+            className="text-[11px] text-muted-foreground"
+            data-testid="vd-final-render-subtitle-font-size-remotion-hint"
+          >
+            {t.finalRenderSubtitleFontSizeRemotionDisabledHint}
+          </p>
+        ) : null}
       </div>
+
+      {/* `planning/vd-remotion-render-option/plan.md` wave 2 — opt-in
+          Remotion render toggle. Mirrors the age-badge checkbox's
+          checkbox+helper-text layout immediately above verbatim. */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="vd-final-render-use-remotion"
+            checked={remotionRenderEnabled}
+            onCheckedChange={checked => {
+              if (checked) {
+                emit({ renderEngine: "remotion_queue" });
+                return;
+              }
+              // Turning Remotion OFF means rendering with ffmpeg ON THE SERVER,
+              // which is resource-heavy and is why Remotion-on-worker is the
+              // default. Never let that happen from a single stray click —
+              // require an explicit confirmation (user policy 2026-07-31).
+              setConfirmServerFfmpeg(true);
+            }}
+            data-testid="vd-final-render-use-remotion"
+          />
+          <label htmlFor="vd-final-render-use-remotion" className="text-sm">
+            {t.finalRenderUseRemotionLabel}
+          </label>
+          <AlertDialog
+            open={confirmServerFfmpeg}
+            onOpenChange={setConfirmServerFfmpeg}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {locale === "th"
+                    ? "ยืนยันใช้ ffmpeg บนเซิร์ฟเวอร์?"
+                    : "Render with ffmpeg on the server?"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {locale === "th"
+                    ? "การปิด Remotion จะทำให้ประกอบวิดีโอด้วย ffmpeg บนเซิร์ฟเวอร์ ซึ่งกิน CPU และหน่วยความจำหนักมาก และอาจกระทบผู้ใช้คนอื่นทั้งระบบ แนะนำให้ใช้ Remotion ผ่านเครื่อง Worker แทน — ยืนยันจะใช้ ffmpeg บนเซิร์ฟเวอร์หรือไม่?"
+                    : "Turning Remotion off assembles the video with ffmpeg on the server. That is CPU- and memory-heavy and can affect everyone else using the system. Rendering with Remotion on a Worker machine is strongly preferred — continue with server-side ffmpeg?"}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="vd-ffmpeg-confirm-cancel">
+                  {locale === "th"
+                    ? "ยกเลิก (ใช้ Remotion ต่อ)"
+                    : "Cancel (keep Remotion)"}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  data-testid="vd-ffmpeg-confirm-accept"
+                  onClick={() => emit({ renderEngine: "ffmpeg" })}
+                >
+                  {locale === "th" ? "ยืนยันใช้ ffmpeg" : "Use server ffmpeg"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+        <p className="pl-6 text-[11px] text-muted-foreground">
+          {t.finalRenderUseRemotionHelp}
+        </p>
+      </div>
+
+      {lastResult?.renderEngineFallbackReason ? (
+        <div
+          className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+          data-testid="vd-final-render-engine-fallback-reason"
+        >
+          {vdCopyWithParams(t.finalRenderEngineFallbackReasonTemplate, {
+            reason: lastResult.renderEngineFallbackReason,
+          })}
+        </div>
+      ) : null}
 
       <div className="space-y-1">
         <div className="flex items-center gap-2">

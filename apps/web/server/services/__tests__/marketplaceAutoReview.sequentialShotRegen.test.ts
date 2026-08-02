@@ -507,6 +507,7 @@ describe("T9 — applySequentialShotOverrideToRunMetadataForTest", () => {
       metadata,
       shotId: 3,
       edit: {
+        visualSummary: "new visual summary",
         dialogue: "new dialogue",
         startFrameImagePrompt: "new image prompt",
       },
@@ -515,6 +516,7 @@ describe("T9 — applySequentialShotOverrideToRunMetadataForTest", () => {
     });
 
     expect((next.sequentialStoryboard as any).shotOverrides["3"]).toEqual({
+      visual_summary: "new visual summary",
       dialogue: "new dialogue",
       start_frame_image_prompt: "new image prompt",
       editedAt: "2026-01-01T00:00:00.000Z",

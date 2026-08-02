@@ -78,6 +78,13 @@ describe("HyperFrames auto plan contract", () => {
       // keys above (`buildDefaultHyperframesAutoPlanDefaults()` never sets
       // it; stays absent-by-default).
       startFramePromptStyle: "evidence_product",
+      // Creation-time drama casting (W2) — same decorative-only rationale as
+      // the keys above.
+      characterCast: "",
+      // Story/skill LLM (`planning/marketplace-four-character-cast/plan.md`) —
+      // same decorative-only rationale: absent-by-default so "แนะนำ
+      // (อัตโนมัติ)" stays the resolved-server-side behavior.
+      storyPlanningModel: "",
     });
   });
 

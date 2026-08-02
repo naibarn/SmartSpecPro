@@ -44,6 +44,9 @@ import {
 import { isCharacterLockPolicyFailureMessage } from "@shared/verticalDramaSeries/characterLock";
 import {
   VERTICAL_DRAMA_CHARACTER_ASSET_STATES,
+  VERTICAL_DRAMA_CHARACTER_ANGLE_DIRECTIVES,
+  VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES,
+  type VerticalDramaCharacterAngleRole,
   type VdCharacterNeedsSetupReason,
 } from "@shared/verticalDramaSeries/characterAssets";
 import {
@@ -80,6 +83,10 @@ import {
   applySeriesLookToImagePrompt,
   resolveEffectiveSeriesVisualIdentity,
 } from "@shared/verticalDramaSeries/seriesLookLock";
+import {
+  VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+  recordSeriesLookLockAuditEvent,
+} from "../services/verticalDramaSeriesLookLockAudit";
 import { verticalDramaApprovedCharacterDesignSnapshotSchema } from "@shared/verticalDramaSeries/characterProfile";
 import { loadCharacterDesignContext } from "../services/verticalDramaCharacterDesignContext";
 import { persistCharacterVisualBible } from "../services/verticalDramaCharacterDnaPersistence";
@@ -161,6 +168,12 @@ const verticalDramaProcedure = protectedProcedure.use(
  */
 const verticalDramaVoiceChainProcedure = verticalDramaProcedure.use(
   requireFeatureFlag("verticalDramaSeriesVoiceChain"),
+);
+
+/** Feature 137 P2 — character angle-pack generation is additive and
+ * fail-closed behind the existing video-safe rollout flag. */
+const verticalDramaCharacterAnglePackProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaVideoSafeStartFrames"),
 );
 
 /** Resolve a non-null tenant id or fail closed. */
@@ -351,11 +364,15 @@ async function resolveCharacterPresetVisualIdentity(
   bible: Record<string, unknown> | null,
 ) {
   const flags = await getTenantFeatureFlags(tenantId);
-  return resolveEffectiveSeriesVisualIdentity({
-    bible,
-    presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
-    lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
-  });
+  const lookLockEnabled = flags.verticalDramaSeriesLookLock === true;
+  return {
+    identity: resolveEffectiveSeriesVisualIdentity({
+      bible,
+      presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+      lookLockEnabled,
+    }),
+    lookLockEnabled,
+  };
 }
 
 /**
@@ -612,11 +629,17 @@ export async function resolveVdCharacterMcpTransportMetadata(params: {
     argumentShape,
   }) ?? rawProviderModelId;
 
-  // NOTE: deliberately no "mcpConnectionId is required" pre-check — see the
-  // matching comment in `verticalDramaEpisodes.ts`. `resolveMediaTransport`
-  // auto-resolves the caller's own eligible connection and raises a precise
-  // error itself when there genuinely is none / the choice is ambiguous.
-  return resolveMediaTransport({
+  // Fail closed before calling the transport resolver. The UI requires an
+  // explicit connected account for MCP models; accepting an omitted id here
+  // would make a model-picker mistake look like a gateway request and could
+  // bypass the user's selected transport.
+  if (!params.mcpConnectionId?.trim()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `MCP connection is required for model "${params.modelId}". Select a connected MCP account and try again.`,
+    });
+  }
+  const transportMetadata = await resolveMediaTransport({
     tenantId: params.tenantId,
     actorUserId: params.actorUserId,
     originSurface: "media_studio",
@@ -631,6 +654,13 @@ export async function resolveVdCharacterMcpTransportMetadata(params: {
     argumentShape,
     idempotencyKey: params.idempotencyKey,
   });
+  if (!transportMetadata) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `MCP connection is required for model "${params.modelId}". Select a connected MCP account and try again.`,
+    });
+  }
+  return transportMetadata;
 }
 
 /**
@@ -1410,7 +1440,7 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
-      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+      const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow.bible as Record<string, unknown> | null) ?? null,
       );
@@ -1541,6 +1571,15 @@ export const verticalDramaCharactersRouter = router({
             negativePrompt: candidate.negativePrompt,
             identity: presetVisualIdentity,
           });
+          if (lookLockEnabled && presetVisualIdentity) {
+            await recordSeriesLookLockAuditEvent({
+              eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+              tenantId,
+              userId,
+              seriesId,
+              path: "characters.generatePortraitCandidate",
+            });
+          }
           let taskId: string;
           if (transportDecision.kind === "hermes") {
             // Feature 135 — Hermes Grok media worker (section 09, row 3):
@@ -2791,6 +2830,47 @@ export const verticalDramaCharactersRouter = router({
       }
     }),
 
+  /** Persist one completed angle-pack render as a reviewable generated asset. */
+  linkCharacterAngleAsset: verticalDramaCharacterAnglePackProcedure
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        mediaAssetId: z.string().min(1),
+        role: z.enum(VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES),
+        anglePackId: z.string().uuid().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      const mediaAssetId = parseId(input.mediaAssetId, "media asset id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      try {
+        const asset = await verticalDramaCharacterStockService.linkAsset({
+          tenantId,
+          userId,
+          seriesId,
+          characterId,
+          mediaAssetId,
+          assetType: "character_reference",
+          role: input.role,
+          source: "generated",
+          containsHumanFace: true,
+          approvalRequired: true,
+          metadata: {
+            ...(input.anglePackId ? { anglePackId: input.anglePackId } : {}),
+            angleRole: input.role,
+          },
+        });
+        return { asset };
+      } catch (err) {
+        mapStockError(err);
+      }
+    }),
+
   /**
    * Resolve a Library item or an already-hosted URL (Media History result,
    * or a client-uploaded 3x3-cutter tile via `ai.upload`) into a canonical
@@ -3107,7 +3187,7 @@ export const verticalDramaCharactersRouter = router({
         targetAudienceRegion,
         seriesRegionIsExplicit,
       );
-      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+      const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
@@ -3451,7 +3531,7 @@ export const verticalDramaCharactersRouter = router({
         targetAudienceRegion,
         seriesRegionIsExplicit,
       );
-      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+      const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
@@ -3568,6 +3648,15 @@ export const verticalDramaCharactersRouter = router({
         negativePrompt,
         identity: presetVisualIdentity,
       }));
+      if (lookLockEnabled && presetVisualIdentity) {
+        await recordSeriesLookLockAuditEvent({
+          eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+          tenantId,
+          userId,
+          seriesId,
+          path: "characters.generateImage",
+        });
+      }
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
       //    from the prompt-generation LLM call above. Prices + generates
       //    against the CALLER-SELECTED model (character tab's own picker),
@@ -3830,6 +3919,93 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
+   * Generate the three canonical identity-angle references for one character.
+   * Each slot reuses the existing, credit-gated portrait generation path so
+   * model selection, MCP/Hermes routing, DNA persistence, and provider safety
+   * stay in one place. The client links each completed task into the existing
+   * character-asset ledger with its angle role and keeps approval explicit.
+   */
+  generateCharacterAnglePack: verticalDramaCharacterAnglePackProcedure
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        selectedImageModelId: z.string().trim().min(1).max(128),
+        selectedEditImageModelId: z.string().trim().min(1).max(128).optional(),
+        mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        hermesConnectionId: z.string().max(64).optional(),
+        referenceAssetLinkId: z.string().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+
+      const primaryPortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+        { tenantId, userId, seriesId },
+        characterId,
+      );
+      if (!primaryPortraitUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "สร้างชุดมุมอ้างอิงไม่ได้จนกว่าจะมีภาพ primary portrait ที่อนุมัติแล้ว",
+        });
+      }
+
+      // Calling the sibling mutation keeps all existing paid-generation
+      // safeguards in one implementation. The cast is intentionally local:
+      // this procedure is a thin orchestration wrapper and returns only the
+      // stable task metadata needed by the browser poller.
+      const routerValue = verticalDramaCharactersRouter as unknown as {
+        createCaller: (context: unknown) => {
+          generateCharacterImage: (value: unknown) => Promise<{
+            taskId: string;
+            creditsUsed?: { promptGeneration?: number };
+          }>;
+        };
+      };
+      const caller = routerValue.createCaller(ctx);
+      const tasks: Array<{
+        role: VerticalDramaCharacterAngleRole;
+        taskId: string;
+        creditsUsed?: { promptGeneration?: number };
+      }> = [];
+      for (const role of VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES) {
+        const result = await caller.generateCharacterImage({
+          seriesId: input.seriesId,
+          characterId: input.characterId,
+          selectedImageModelId: input.selectedImageModelId,
+          ...(input.selectedEditImageModelId
+            ? { selectedEditImageModelId: input.selectedEditImageModelId }
+            : {}),
+          ...(input.mcpConnectionId ? { mcpConnectionId: input.mcpConnectionId } : {}),
+          ...(input.sharedGroupId != null ? { sharedGroupId: input.sharedGroupId } : {}),
+          ...(input.hermesConnectionId ? { hermesConnectionId: input.hermesConnectionId } : {}),
+          ...(input.referenceAssetLinkId ? { referenceAssetLinkId: input.referenceAssetLinkId } : {}),
+          customInstruction:
+            `Identity angle-pack slot: ${VERTICAL_DRAMA_CHARACTER_ANGLE_DIRECTIVES[role]}. ` +
+            "Use the approved primary portrait as the same-person identity anchor. " +
+            "Render one clean 9:16 reference image only; no collage, no text, no extra people, no costume redesign.",
+        });
+        tasks.push({
+          role,
+          taskId: result.taskId,
+          creditsUsed: result.creditsUsed,
+        });
+      }
+
+      return {
+        anglePackId: crypto.randomUUID(),
+        characterId: input.characterId,
+        tasks,
+      };
+    }),
+
+  /**
    * Generate a Character Design Bible sheet — ONE reference image for
    * whichever `sheetType` the caller requests (vertical-drama-character-
    * sheet-consolidation plan, Phase B). Consolidates what used to be two
@@ -3983,7 +4159,7 @@ export const verticalDramaCharactersRouter = router({
         targetAudienceRegion,
         seriesRegionIsExplicit,
       );
-      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+      const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
@@ -4127,6 +4303,15 @@ export const verticalDramaCharactersRouter = router({
         negativePrompt,
         identity: presetVisualIdentity,
       }));
+      if (lookLockEnabled && presetVisualIdentity) {
+        await recordSeriesLookLockAuditEvent({
+          eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+          tenantId,
+          userId,
+          seriesId,
+          path: "characters.generateSheet",
+        });
+      }
 
       // Pricing: the plain turnaround stays priced like a single image (same
       // as the old, now-merged `generateCharacterTurnaround`); every other

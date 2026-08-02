@@ -10,6 +10,7 @@ import { getDb } from "../db";
 import { creditTransactions, groupMembers, llmProviders, userGroups, users, workers } from "../../drizzle/schema";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
+import { authEmailSchema } from "../services/emailNormalization";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { browserPolicyUserProfileSchema } from "../../shared/browserPolicy";
 import { SUPPORTED_LANGUAGES } from "../../shared/i18n";
@@ -91,7 +92,7 @@ const userFiltersSchema = z.object({
 
 const updateUserSchema = z.object({
   name: z.string().optional(),
-  email: z.string().email().optional(),
+  email: authEmailSchema.optional(),
   role: z.enum(["user", "admin", "domain_admin"]).optional(),
   plan: z.enum(["free", "starter", "pro", "enterprise"]).optional(),
   registeredDomain: z.string().optional(),
@@ -706,7 +707,7 @@ export const usersRouter = router({
    */
   deleteAccount: protectedProcedure
     .input(z.object({
-      confirmEmail: z.string().email(),
+      confirmEmail: authEmailSchema,
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();

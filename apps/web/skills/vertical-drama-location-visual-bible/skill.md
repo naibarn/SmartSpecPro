@@ -158,6 +158,18 @@ When `has_own_reference_image` is absent or false, ignore this section entirely 
 legacy/default behavior for a location's very first establishing plate (nothing to
 reference yet), unchanged.
 
+## Coverage-pack angle directive (optional)
+
+When the input carries `coverage_role`, preserve the exact same location identity and
+use that role as the camera/viewpoint directive. `reverse_angle` is a reverse view of
+the same space, `side_angle` is a lateral view of the same space, and `detail_corner`
+is a close environmental detail of one fixed corner or fixture. Never turn a coverage
+role into a new place, add people, or discard the permanent architecture/layout lock.
+When `coverage_gap` is present, make that supplied story-required element visibly
+present in the environment if it is consistent with the location facts; do not invent
+unrelated set dressing. If no coverage role is supplied, author the normal
+`establishing_plate` view.
+
 Good example (`has_own_reference_image: true`, regenerating the convenience-store
 location for a later episode):
 > "wide establishing shot, environment only, no people: the attached reference image is

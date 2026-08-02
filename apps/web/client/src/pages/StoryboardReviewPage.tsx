@@ -4194,6 +4194,10 @@ export default function StoryboardReviewPage() {
   const [sequentialSwappingShotId, setSequentialSwappingShotId] = useState<number | null>(
     null,
   );
+  const [sequentialPromptGeneration, setSequentialPromptGeneration] = useState<{
+    shotId: number;
+    stage: "image" | "video";
+  } | null>(null);
   const regenerateSequentialShotMutation =
     trpc.marketplaceCapture.regenerateAutoReviewSequentialShot.useMutation({
       onSuccess: () => {
@@ -4247,6 +4251,24 @@ export default function StoryboardReviewPage() {
       },
       onSettled: () => setSequentialSwappingShotId(null),
     });
+  const generateSequentialShotPromptMutation =
+    trpc.marketplaceCapture.generateAutoReviewSequentialShotPrompt.useMutation({
+      onSuccess: () => {
+        setSequentialPromptGeneration(null);
+        setSequentialShotError(null);
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: (error, variables) => {
+        setSequentialPromptGeneration(null);
+        setSequentialShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_prompt_generation_failed",
+          message: error.message,
+        });
+      },
+    });
   const handleRegenerateSequentialShot = useCallback(
     (shotId: number) => {
       if (!effectiveHyperframesRunId) return;
@@ -4258,6 +4280,7 @@ export default function StoryboardReviewPage() {
   const handleSaveSequentialShotEdits = useCallback(
     (input: {
       shotId: number;
+      storySummary: string;
       dialogue: string;
       imagePrompt: string;
       videoPrompt: string;
@@ -4267,6 +4290,7 @@ export default function StoryboardReviewPage() {
       saveSequentialShotOverrideMutation.mutate({
         runId: effectiveHyperframesRunId,
         shotId: input.shotId,
+        visualSummary: input.storySummary,
         dialogue: input.dialogue,
         startFrameImagePrompt: input.imagePrompt,
         videoPrompt: input.videoPrompt,
@@ -4285,6 +4309,22 @@ export default function StoryboardReviewPage() {
       });
     },
     [effectiveHyperframesRunId, selectSequentialShotAlternateMutation],
+  );
+  const handleGenerateSequentialShotPrompt = useCallback(
+    (input: { shotId: number; stage: "image" | "video" }) => {
+      if (!effectiveHyperframesRunId || sequentialPromptGeneration) return;
+      setSequentialShotError(null);
+      setSequentialPromptGeneration(input);
+      generateSequentialShotPromptMutation.mutate({
+        runId: effectiveHyperframesRunId,
+        ...input,
+      });
+    },
+    [
+      effectiveHyperframesRunId,
+      generateSequentialShotPromptMutation,
+      sequentialPromptGeneration,
+    ],
   );
   const createHyperframesPreviewMutation =
     trpc.marketplaceCapture.createHyperframesPreview.useMutation({
@@ -10438,6 +10478,8 @@ export default function StoryboardReviewPage() {
               shotError={sequentialShotError}
               onRegenerateShot={handleRegenerateSequentialShot}
               onSaveShotEdits={handleSaveSequentialShotEdits}
+              onGenerateShotPrompt={handleGenerateSequentialShotPrompt}
+              generatingPrompt={sequentialPromptGeneration}
               onSelectShotAlternate={handleSelectSequentialShotAlternate}
               locale={locale}
             />

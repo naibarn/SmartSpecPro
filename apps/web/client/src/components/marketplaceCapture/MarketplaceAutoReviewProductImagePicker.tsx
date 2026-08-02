@@ -66,7 +66,7 @@ export function MarketplaceAutoReviewProductImagePicker({
             <ImageIcon className="h-4 w-4 text-sky-600" />
             ภาพสินค้าอ้างอิง
           </span>
-          <span className="mt-1 block max-w-3xl text-xs leading-5 text-sky-900/70">
+          <span className="mt-1 block max-w-3xl text-xs leading-5 text-sky-800">
             เลือกภาพหลักที่ต้องการให้ระบบยึดเป็น Product Anchor
             และเลือกภาพมุมเสริมที่จะส่งเข้า storyboard นี้โดยเฉพาะ
           </span>
@@ -82,7 +82,7 @@ export function MarketplaceAutoReviewProductImagePicker({
         </p>
       ) : (
         <>
-          <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-sky-900/70">
+          <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-sky-800">
             {sequentialEnabled
               ? "1 · เลือกภาพหลักและภาพมุมเสริม"
               : "เลือกภาพหลัก 1 ภาพ"}
@@ -208,7 +208,7 @@ export function MarketplaceAutoReviewProductImagePicker({
               );
             })}
           </ul>
-          <p className="mt-3 text-xs leading-5 text-sky-900/70">
+          <p className="mt-3 text-xs leading-5 text-sky-800">
             {sequentialEnabled
               ? "ภาพหลักจะถูกล็อกเป็น Image 1 ส่วนภาพที่ติ๊กเลือกจะเป็น reference มุมเสริมของ Job นี้เท่านั้น ไม่เปลี่ยนข้อมูลสินค้าเดิม"
               : `ภาพที่เลือก: ${primaryImage ? imageLabel(primaryImage, images.indexOf(primaryImage)) : "ยังไม่ได้เลือก"}`}

@@ -172,7 +172,7 @@ export function AutoStoryboardReviewPlanSummary({
             type="button"
             onClick={handlePrimaryAction}
             disabled={primaryDisabled}
-            className="bg-sky-600 text-white hover:bg-sky-700"
+            className="bg-sky-700 text-white hover:bg-sky-800 disabled:opacity-90"
           >
             {starting || updating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

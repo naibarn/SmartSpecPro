@@ -10,6 +10,7 @@ import {
   deriveCharacterIntroCards,
   deriveEpisodeIndicatorLabel,
   deriveTitleBumperLines,
+  listEnabledWatermarkSlots,
   parseSeriesWatermarkConfig,
   parseTextOverlayPlan,
   resolveEndCardText,
@@ -24,6 +25,7 @@ import {
   VD_END_CARD_FALLBACK_TEXT_TH,
   VD_OPENER_RECAP_DURATION_BOUNDS,
   VD_TITLE_BUMPER_DURATION_SECONDS,
+  type VdSeriesWatermarkConfig,
   type VdTextOverlayPlan,
 } from "./textOverlay";
 
@@ -591,5 +593,97 @@ describe("parseSeriesWatermarkConfig", () => {
       scalePct: 50,
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("listEnabledWatermarkSlots (dual watermark, planning/vd-dual-watermark/plan.md)", () => {
+  it("returns [] for null/undefined config", () => {
+    expect(listEnabledWatermarkSlots(null)).toEqual([]);
+    expect(listEnabledWatermarkSlots(undefined)).toEqual([]);
+  });
+
+  it("legacy single-slot row: returns just the primary slot, secondary absent", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: true,
+      type: "text",
+      text: "@mychannel",
+    }) as VdSeriesWatermarkConfig;
+    expect(config.secondary).toBeUndefined();
+
+    const slots = listEnabledWatermarkSlots(config);
+    expect(slots).toEqual([
+      {
+        slotId: "primary",
+        slot: expect.objectContaining({ enabled: true, type: "text", text: "@mychannel" }),
+      },
+    ]);
+  });
+
+  it("both slots enabled: returns primary then secondary, in that order", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: true,
+      type: "text",
+      text: "@series-brand",
+      position: "top_left",
+      secondary: {
+        enabled: true,
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+        position: "bottom_right",
+      },
+    }) as VdSeriesWatermarkConfig;
+
+    const slots = listEnabledWatermarkSlots(config);
+    expect(slots.map(s => s.slotId)).toEqual(["primary", "secondary"]);
+    expect(slots[0]!.slot).toEqual(
+      expect.objectContaining({ type: "text", text: "@series-brand", position: "top_left" })
+    );
+    expect(slots[1]!.slot).toEqual(
+      expect.objectContaining({
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+        position: "bottom_right",
+      })
+    );
+  });
+
+  it("secondary-only enabled: returns just the secondary slot when primary is disabled", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: false,
+      type: "text",
+      text: "@series-brand",
+      secondary: {
+        enabled: true,
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+      },
+    }) as VdSeriesWatermarkConfig;
+
+    const slots = listEnabledWatermarkSlots(config);
+    expect(slots).toEqual([
+      {
+        slotId: "secondary",
+        slot: expect.objectContaining({
+          enabled: true,
+          type: "image",
+          imageUrl: "/api/storage/files/channel-logo.png",
+        }),
+      },
+    ]);
+  });
+
+  it("enabled: false on either slot drops it — both disabled returns []", () => {
+    const config = parseSeriesWatermarkConfig({
+      enabled: false,
+      type: "text",
+      text: "@series-brand",
+      secondary: {
+        enabled: false,
+        type: "image",
+        imageUrl: "/api/storage/files/channel-logo.png",
+      },
+    }) as VdSeriesWatermarkConfig;
+
+    expect(listEnabledWatermarkSlots(config)).toEqual([]);
   });
 });

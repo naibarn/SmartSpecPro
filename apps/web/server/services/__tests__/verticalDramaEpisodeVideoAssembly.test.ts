@@ -600,6 +600,7 @@ describe("runAssemblyJob — final render integration-lite (banners/dialogueAudi
       subtitleLineCount: 1,
       textOverlayEventCount: 0,
       watermarkIncluded: false,
+      watermarkCount: 0,
       renderedAt: expect.any(String),
     });
   });
@@ -982,7 +983,7 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
   it("builds watermark_text as entireClip:true, carrying opacity/marginPx", () => {
     const result = resolveEpisodeTextOverlayRunInputs({
       ...baseParams,
-      watermarkText: { text: "@brand", position: "bottom_right", opacity: 0.5, marginPx: 24 },
+      watermarkTexts: [{ text: "@brand", position: "bottom_right", opacity: 0.5, marginPx: 24 }],
     });
     expect(result.overlays).toEqual([
       expect.objectContaining({
@@ -991,6 +992,34 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
         variant: "bottom_right",
         opacity: 0.5,
         marginPx: 24,
+        entireClip: true,
+      }),
+    ]);
+  });
+
+  it("dual watermark: builds TWO independent watermark_text events, one per slot", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      watermarkTexts: [
+        { text: "@series-brand", position: "top_left", opacity: 0.4, marginPx: 20 },
+        { text: "@channel-brand", position: "bottom_right", opacity: 0.6, marginPx: 16 },
+      ],
+    });
+    expect(result.overlays).toEqual([
+      expect.objectContaining({
+        kind: "watermark_text",
+        text: "@series-brand",
+        variant: "top_left",
+        opacity: 0.4,
+        marginPx: 20,
+        entireClip: true,
+      }),
+      expect.objectContaining({
+        kind: "watermark_text",
+        text: "@channel-brand",
+        variant: "bottom_right",
+        opacity: 0.6,
+        marginPx: 16,
         entireClip: true,
       }),
     ]);
@@ -1034,7 +1063,7 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
       openerRecap: { text: "ความเดิม", durationSec: 3 },
       titleBumper: { primary: "ซีรีส์", secondary: "EP 1" },
       episodeIndicator: { label: "EP 1/10", position: "top_right" },
-      watermarkText: { text: "@brand", position: "top_left", opacity: 0.4, marginPx: 20 },
+      watermarkTexts: [{ text: "@brand", position: "top_left", opacity: 0.4, marginPx: 20 }],
       characterIntroCards: [{ characterKey: "char-a", shotNumber: 1, name: "มาลี" }],
       cards: [{ id: "c1", kind: "narrative_hook", text: "จะเกิดอะไรขึ้น", shotNumber: 1, durationSec: 2 }],
     });
@@ -1174,18 +1203,21 @@ describe("runAssemblyJob — Text Overlay Suite integration (task #34)", () => {
           fadeSec: 0.3,
         },
       ],
-      watermarkImage: {
-        imageUrl: "https://cdn.example.com/logo.png",
-        position: "top_right",
-        opacity: 0.45,
-        scalePct: 10,
-        marginPx: 32,
-      },
+      watermarkImages: [
+        {
+          slotId: "primary",
+          imageUrl: "https://cdn.example.com/logo.png",
+          position: "top_right",
+          opacity: 0.45,
+          scalePct: 10,
+          marginPx: 32,
+        },
+      ],
     });
 
     expect(fakeRunner).toHaveBeenCalledTimes(1);
     const ffArgs = capturedArgs[0]!;
-    expect(ffArgs.some(a => a.endsWith("watermark.png"))).toBe(true);
+    expect(ffArgs.some(a => a.endsWith("watermark-primary.png"))).toBe(true);
     const filterComplex = extractFilterComplex(ffArgs);
     const fullscreenIdx = filterComplex.indexOf("overlay=0:0");
     const watermarkIdx = filterComplex.indexOf("colorchannelmixer=aa=0.45");
@@ -1194,9 +1226,61 @@ describe("runAssemblyJob — Text Overlay Suite integration (task #34)", () => {
 
     const finalRender = (dbState.episode.assemblyManifest as any)?.finalRender;
     expect(finalRender.watermarkIncluded).toBe(true);
+    expect(finalRender.watermarkCount).toBe(1);
   });
 
-  it("is a complete no-op for the legacy concat path when neither overlays nor watermarkImage is supplied", async () => {
+  it("dual watermark: stages TWO watermark images without a filename collision", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 10);
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-dual-watermark-image",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      watermarkImages: [
+        {
+          slotId: "primary",
+          imageUrl: "https://cdn.example.com/series-logo.png",
+          position: "top_right",
+          opacity: 0.45,
+          scalePct: 10,
+          marginPx: 32,
+        },
+        {
+          slotId: "secondary",
+          imageUrl: "https://cdn.example.com/channel-logo.png",
+          position: "bottom_left",
+          opacity: 0.6,
+          scalePct: 8,
+          marginPx: 16,
+        },
+      ],
+    });
+
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const ffArgs = capturedArgs[0]!;
+    // Distinct staged local filenames — no collision between the two slots.
+    expect(ffArgs.some(a => a.endsWith("watermark-primary.png"))).toBe(true);
+    expect(ffArgs.some(a => a.endsWith("watermark-secondary.png"))).toBe(true);
+    const filterComplex = extractFilterComplex(ffArgs);
+    // Two independent overlay stages present in the filter graph.
+    expect(filterComplex).toContain("[wmimgprimary]");
+    expect(filterComplex).toContain("[wmimgsecondary]");
+
+    const finalRender = (dbState.episode.assemblyManifest as any)?.finalRender;
+    expect(finalRender.watermarkIncluded).toBe(true);
+    expect(finalRender.watermarkCount).toBe(2);
+  });
+
+  it("is a complete no-op for the legacy concat path when neither overlays nor watermarkImages is supplied", async () => {
     const capturedArgs: string[][] = [];
     const fakeRunner = vi.fn(async (ffArgs: string[]) => {
       capturedArgs.push(ffArgs);
@@ -1320,6 +1404,133 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
     expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
   });
 
+  /**
+   * Field incident 2026-08-01 (series 21 / episode 124): every storyboard shot
+   * showed dialogue, but the render burned in ZERO subtitles — captions were
+   * sourced only from `dialogueAudioPlan.dialogueLines`, and that episode never
+   * ran the dialogue/voice step. Its 20 lines lived on
+   * `motionPromptPack.clips[].dialogue` the whole time, on the very clips the
+   * render was already being handed.
+   */
+  describe("clip-authored dialogue fallback", () => {
+    const twoClips: VdDialogueTimelineClip[] = [
+      { clipNumber: 1, sourceShotNumbers: [1], durationSeconds: 10 },
+      { clipNumber: 2, sourceShotNumbers: [2], durationSeconds: 10 },
+    ];
+
+    it("builds subtitles from clip dialogue when the plan is absent", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1, 2],
+        clipDialogue: new Map([
+          [
+            1,
+            [
+              { text: "จะเอาอะไรอีก ฉันให้ไปเยอะแล้วนะ", speakerName: "ปราง" },
+              { text: "มือถือเครื่องเดียว ทำไมต้องตามไม่เลิก", speakerName: "ปราง" },
+            ],
+          ],
+          [2, [{ text: "งั้นฉันจะไม่ปล่อยเธอไปคนเดียวอีก", speakerName: "ภูมิ" }]],
+        ]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "creator_pop",
+      });
+
+      expect(result.subtitleLinesIncluded).toBe(3);
+      expect(result.subtitles?.preset).toBe("creator_pop");
+      const lines = result.subtitles!.lines;
+      expect(lines.map(line => line.speakerName)).toEqual(["ปราง", "ปราง", "ภูมิ"]);
+      // Clip 1 owns [0,10), clip 2 owns [10,20) — absolute, laid end to end,
+      // with clip 1's two lines splitting its window and the last one closing
+      // it out exactly.
+      expect(lines[0].startSec).toBe(0);
+      expect(lines[1].endSec).toBeCloseTo(10, 5);
+      expect(lines[2].startSec).toBeCloseTo(10, 5);
+      expect(lines[2].endSec).toBeCloseTo(20, 5);
+      // Strictly increasing, non-overlapping.
+      for (let i = 1; i < lines.length; i += 1) {
+        expect(lines[i].startSec).toBeGreaterThanOrEqual(lines[i - 1].endSec);
+        expect(lines[i].endSec).toBeGreaterThan(lines[i].startSec);
+      }
+    });
+
+    it("prefers a real dialogue plan over clip dialogue when both exist", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: plan(),
+        motionClips: twoClips,
+        includedClipNumbers: [1, 2],
+        clipDialogue: new Map([[1, [{ text: "clip text", speakerName: "X" }]]]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result.subtitleLinesIncluded).toBe(1);
+      expect(result.subtitles?.lines[0].text).toBe("We are not done here.");
+    });
+
+    it("skips clips that were excluded from this render", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1],
+        clipDialogue: new Map([
+          [1, [{ text: "kept", speakerName: "A" }]],
+          [2, [{ text: "dropped", speakerName: "B" }]],
+        ]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result.subtitleLinesIncluded).toBe(1);
+      expect(result.subtitles?.lines[0].text).toBe("kept");
+    });
+
+    it("treats a line with no speaker as narration (no speaker chip)", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1],
+        clipDialogue: new Map([[1, [{ text: "เสียงบรรยาย" }]]]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result.subtitles?.lines[0].speakerName).toBeUndefined();
+    });
+
+    it("stays a no-op when subtitles are switched off, even with clip dialogue present", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1],
+        clipDialogue: new Map([[1, [{ text: "hi", speakerName: "A" }]]]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "none",
+      });
+
+      expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
+    });
+
+    it("is byte-identical to before when no clipDialogue is supplied", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1, 2],
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
+    });
+  });
+
   it("returns a no-op result when neither includeDialogueAudio nor a real subtitlePreset is requested", () => {
     const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
       plan: plan(),
@@ -1368,9 +1579,21 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
     });
     expect(result.dialogueAudio).toBeUndefined();
     expect(result.dialogueAudioSegmentsIncluded).toBe(0);
-    expect(result.subtitles).toEqual({
-      preset: "classic_box",
-      lines: [{ startSec: 0, endSec: 2, speakerName: "Aria", text: "We are not done here." }],
+    expect(result.subtitles?.preset).toBe("classic_box");
+    expect(result.subtitles?.lines).toHaveLength(1);
+    expect(result.subtitles?.lines[0]).toMatchObject({
+      startSec: 0,
+      endSec: 2,
+      speakerName: "Aria",
+      text: "We are not done here.",
+    });
+    // Every clip-resolved line also carries its clip attribution, so a renderer
+    // that has probed the real clips can re-time it
+    // (`retimeSubtitleLinesToProbedClips`).
+    expect(result.subtitles?.lines[0]).toMatchObject({
+      clipNumber: 1,
+      clipLocalStartFrac: 0,
+      clipLocalEndFrac: 0.25, // 2s of the clip's planned 8s window
     });
     expect(result.subtitleLinesIncluded).toBe(1);
   });
@@ -1450,12 +1673,12 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
       subtitlePreset: "classic_box",
       loudnessNormalize: false,
     });
-    expect(result.subtitles?.lines[0]).toEqual({
+    expect(result.subtitles?.lines[0]).toMatchObject({
       startSec: 0,
       endSec: 2,
-      speakerName: undefined,
       text: "Once upon a time.",
     });
+    expect(result.subtitles?.lines[0].speakerName).toBeUndefined();
   });
 
   it("computes absolute startSec for dialogueAudio segments using the clip's planned duration, not shot-local time", () => {

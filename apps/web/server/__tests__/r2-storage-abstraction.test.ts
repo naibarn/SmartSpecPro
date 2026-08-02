@@ -125,4 +125,37 @@ describe("Node.js Storage Abstraction - R2 Env Var Fallback", () => {
       }),
     );
   });
+
+  it("returns null (not a thrown error) when streaming a missing key from R2", async () => {
+    // Regression: a missing-key GetObject used to throw uncaught, which skipped
+    // the /api/storage/files/* route's .jpg -> .webp fallback and surfaced a
+    // bare 404 even when the .webp original existed the whole time.
+    process.env.R2_ACCESS_KEY = "env-access-key";
+    process.env.R2_SECRET_KEY = "env-secret-key";
+    process.env.R2_ACCOUNT_ID = "my-account-id";
+    process.env.R2_BUCKET_NAME = "smartspecpro-production";
+
+    const notFound: any = new Error("The specified key does not exist.");
+    notFound.name = "NoSuchKey";
+    mockSend.mockRejectedValue(notFound);
+
+    const { storageStreamFile } = await import("../storage");
+    const result = await storageStreamFile("images/asset.jpg");
+
+    expect(result).toBeNull();
+  });
+
+  it("still throws for a genuine R2 error unrelated to a missing key", async () => {
+    process.env.R2_ACCESS_KEY = "env-access-key";
+    process.env.R2_SECRET_KEY = "env-secret-key";
+    process.env.R2_ACCOUNT_ID = "my-account-id";
+    process.env.R2_BUCKET_NAME = "smartspecpro-production";
+
+    mockSend.mockRejectedValue(new Error("connection reset"));
+
+    const { storageStreamFile } = await import("../storage");
+    await expect(storageStreamFile("images/asset.jpg")).rejects.toThrow(
+      "connection reset",
+    );
+  });
 });

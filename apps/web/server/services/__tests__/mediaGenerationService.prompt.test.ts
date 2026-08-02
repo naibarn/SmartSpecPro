@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPythonBackendExtraParamsForTest,
   normalizeMediaPrompt,
+  resolveReferenceImageUrlsForModelForTest,
 } from "../mediaGenerationService";
 
 describe("normalizeMediaPrompt", () => {
@@ -84,5 +85,46 @@ describe("buildPythonBackendExtraParams", () => {
       __marketplace_product_id: "mp_123",
       __auto_review_run_id: "auto_run_82",
     });
+  });
+});
+
+describe("resolveReferenceImageUrlsForModel webp vs jpg rules", () => {
+  it("converts .webp reference image URLs to .jpg for gpt-image models", () => {
+    const input = [
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.webp",
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_02.webp?v=1",
+    ];
+    const resolved = resolveReferenceImageUrlsForModelForTest(
+      "gpt-image-2-image-to-image",
+      input,
+      "https://smartaihub.app"
+    );
+    expect(resolved).toEqual([
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.jpg",
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_02.jpg?v=1",
+    ]);
+  });
+
+  it("preserves .webp reference image URLs as .webp for google-banana models (banana-2, banana-lite, banana-pro)", () => {
+    const input = [
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.webp",
+    ];
+    const resolvedBanana2 = resolveReferenceImageUrlsForModelForTest(
+      "google-banana-2",
+      input,
+      "https://smartaihub.app"
+    );
+    expect(resolvedBanana2).toEqual([
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.webp",
+    ]);
+
+    const resolvedBananaLite = resolveReferenceImageUrlsForModelForTest(
+      "nano-banana-2-lite",
+      input,
+      "https://smartaihub.app"
+    );
+    expect(resolvedBananaLite).toEqual([
+      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.webp",
+    ]);
   });
 });

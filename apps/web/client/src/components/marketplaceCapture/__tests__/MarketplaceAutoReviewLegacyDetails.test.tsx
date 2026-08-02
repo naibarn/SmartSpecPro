@@ -141,6 +141,7 @@ describe("MarketplaceAutoReviewLegacyDetails", () => {
               shots: Array.from({ length: 9 }, (_, index) => ({
                 shot_id: index + 1,
                 purpose: `purpose_${index + 1}`,
+                visual_summary: `เรื่องย่อช็อต ${index + 1}`,
                 dialogue: `บทพูด ${index + 1}`,
                 start_frame_image_prompt: `ภาพ ${index + 1}`,
                 video_prompt: `วิดีโอ ${index + 1}`,

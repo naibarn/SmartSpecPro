@@ -39,6 +39,7 @@ export function buildStagedVideoPromptContentHash(input: {
 export function compileStagedImagePrompt(input: {
   plan: StagedStoryArcPlan;
   shot: StagedStoryArcShot;
+  customManifest?: Array<{ url: string; role?: string; label?: string; active?: boolean }>;
 }) {
   const prompt = buildStagedImagePrompt(input);
   return {

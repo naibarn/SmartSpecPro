@@ -1,3 +1,7 @@
+import {
+  type VdSeriesWatermarkSlotId,
+  type VdWatermarkPosition,
+} from "@shared/verticalDramaSeries/textOverlay";
 /**
  * Vertical Drama Series — Final Render filter graph (task #21 / W12.5 "Final
  * Render Suite", phase A: RENDER ENGINE layer).
@@ -150,10 +154,16 @@ export interface SubtitlesInput {
  * exactly `videoDurationSeconds`, mirroring how a `fullscreen`
  * `ResolvedBanner` would if it covered the entire clip) — there is no
  * start/end window because a watermark is always "entire clip" by design.
+ *
+ * Dual watermark (`planning/vd-dual-watermark/plan.md`): a render can carry
+ * UP TO TWO of these (`BuildFinalRenderFfmpegArgsInput.watermarkImages`),
+ * one per `VdSeriesWatermarkSlotId` — `slotId` gives each its own ffmpeg
+ * filter-label suffix so two overlay stages never collide.
  */
 export interface ResolvedWatermarkImage {
+  slotId: VdSeriesWatermarkSlotId;
   localPngPath: string;
-  position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+  position: VdWatermarkPosition;
   /** 0.2-0.8 (validated by the caller's zod schema; this module trusts it). */
   opacity: number;
   /** 5-20 (% of the 1080px-wide compositing frame). */
@@ -175,13 +185,15 @@ export interface BuildFinalRenderFfmpegArgsInput {
   banners?: ResolvedBanner[];
   dialogueAudio?: DialogueAudioInput;
   subtitles?: SubtitlesInput | null;
-  /** Task #34 — a series' IMAGE watermark, composited as the ABSOLUTE
-   *  TOP-MOST layer (above fullscreen banners, plan.md "z-order บนสุดเหนือ
+  /** Task #34 — a series' IMAGE watermark(s), composited as the ABSOLUTE
+   *  TOP-MOST layer(s) (above fullscreen banners, plan.md "z-order บนสุดเหนือ
    *  ทุกชั้นรวม fullscreen banner — branding ต้องรอดเสมอ"). See
    *  `resolveWatermarkOverlayFragment`'s doc comment for the z-order
    *  implementation and its one documented scope limit (the TEXT watermark
-   *  variant does not get this same guarantee). */
-  watermarkImage?: ResolvedWatermarkImage;
+   *  variant does not get this same guarantee). Dual watermark
+   *  (`planning/vd-dual-watermark/plan.md`): up to 2 entries, each becoming
+   *  its own independent overlay stage — positions are fully independent. */
+  watermarkImages?: ResolvedWatermarkImage[];
 }
 
 /** One caption/subtitle line to burn in — shot-timeline-agnostic; the caller
@@ -192,6 +204,27 @@ export interface AssSubtitleLine {
   endSec: number;
   speakerName?: string;
   text: string;
+  /**
+   * Clip attribution for RE-TIMING against real, probed clip durations
+   * (`retimeSubtitleLinesToProbedClips`, `verticalDramaRemotionRender.ts`).
+   *
+   * `startSec`/`endSec` above are computed up front from the motion pack's
+   * PLANNED per-clip durations, which are a target, not a measurement: episode
+   * 124 planned 9x8s = 72s while the delivered clips ran 90.35s total, so its
+   * captions would have finished ~18s before the picture, drifting further
+   * with every clip. A renderer that knows each clip's REAL duration can place
+   * a line exactly — the offset of a line in clip N is the sum of the REAL
+   * durations of clips 1..N-1, plus its own position within clip N — but only
+   * if it knows WHICH clip the line belongs to and WHERE inside it.
+   *
+   * Fractions (0..1 of the clip's own window) rather than seconds, precisely
+   * because the clip's real length differs from the planned one. Optional:
+   * absent ⇒ consumers keep using `startSec`/`endSec` verbatim, exactly as
+   * before this field existed.
+   */
+  clipNumber?: number;
+  clipLocalStartFrac?: number;
+  clipLocalEndFrac?: number;
 }
 
 /**
@@ -743,6 +776,10 @@ export interface VdTextOverlayAssEvent {
   startSec: number;
   endSec: number;
   text: string;
+  /** Optional 3x3 screen anchor for per-episode cards. Applied as an inline
+   *  `\an` override on top of the style's own alignment; omitted leaves the
+   *  style untouched so pre-existing cards render byte-identically. */
+  position?: VdWatermarkPosition;
   /** A second, smaller line rendered below `text` via `\N` (end card's
    *  "follow line", character intro's role, title bumper's "EP N: ..." line).
    */
@@ -1056,6 +1093,17 @@ function overlayAlphaOverrideTag(opacity: number): string {
  * character intro's role, title bumper's "EP N: ..." line, and opener
  * recap's body (below the header) all reuse this one mechanism.
  */
+/** Numpad alignment for a 3x3 anchor: 7 8 9 / 4 5 6 / 1 2 3. */
+function assAlignmentForOverlayAnchor(position: VdWatermarkPosition): number {
+  const column = position.endsWith("_left") ? 0 : position.endsWith("_right") ? 2 : 1;
+  const rowBase = position.startsWith("top_")
+    ? 7
+    : position.startsWith("bottom_")
+      ? 1
+      : 4;
+  return rowBase + column;
+}
+
 function buildOverlayAssEvent(
   event: VdTextOverlayAssEvent,
   style: VdAssStyleSpec
@@ -1066,6 +1114,14 @@ function buildOverlayAssEvent(
   const fadeMs = Math.max(50, Math.min(400, Math.round((durationSec * 1000) / 2) - 10));
 
   const overrides: string[] = [`\\fad(${fadeMs},${fadeMs})`];
+  // Per-episode card placement. ASS alignment is the numpad layout, which maps
+  // 1:1 onto the 3x3 anchor grid used by the watermark and the Marketplace
+  // overlay picker — so one placement vocabulary drives every overlay in the
+  // product. Applied first so a kind-specific override below (e.g. the end
+  // card's `lower_band` `\pos()`) still wins for the kinds that have one.
+  if (event.position) {
+    overrides.push(`\\an${assAlignmentForOverlayAnchor(event.position)}`);
+  }
 
   if (event.kind === "end_card" && event.variant === "lower_band") {
     overrides.push("\\an2", "\\pos(540,1650)");
@@ -1091,20 +1147,19 @@ function buildOverlayAssEvent(
 }
 
 /**
- * Build one `Dialogue:` event. When `line.speakerName` is present, the text
- * is a two-line block: a bold, ~60%-sized speaker-name chip (via inline
- * override tags, reset with `{\r}` back to the preset's own base style)
- * followed by a forced line break (`\N`) and the normal-weight dialogue text.
+ * Build one `Dialogue:` event containing only the escaped (or karaoke-tagged)
+ * spoken dialogue text — no speaker-name chip.
  *
- * Deliberately NOT a second `drawtext` filter (the task allows either): a
- * dialogue-heavy episode can have dozens of lines, and one `drawtext` filter
- * PER LINE (each needing its own `enable='between(t,S,E)'`) would explode the
- * filter graph the same way N per-banner overlay stages do — a single ASS
- * event with an inline override handles per-line speaker styling with zero
- * additional filter stages, since libass already walks the whole cue list
- * for us. The speaker chip intentionally REUSES the preset's own text color
- * (bold + smaller size only) rather than inventing a new per-preset accent
- * color, so it always inherits that preset's already-tuned contrast.
+ * `line.speakerName` is deliberately NOT rendered: a bold, ~60%-sized
+ * speaker-name chip followed by a forced `\N` line break used to be burned in
+ * ahead of the dialogue body, but that was a product decision that has since
+ * been reversed — rendered captions must show ONLY the spoken text. Do not
+ * re-add a speaker chip here; `speakerName` still exists on `AssSubtitleLine`
+ * for non-rendering purposes (TTS voice selection, narration detection) and
+ * must stay wired for those, but it must never reach the burned-in text
+ * again. The Remotion render path (`buildVdCaptionLines` in
+ * `verticalDramaRemotionRender.ts`) mirrors this same removal so the two
+ * render engines stay byte-consistent.
  */
 function buildAssDialogueEvent(
   line: AssSubtitleLine,
@@ -1113,13 +1168,9 @@ function buildAssDialogueEvent(
   const start = assTimeStamp(line.startSec);
   const end = assTimeStamp(line.endSec);
   const durationSec = Math.max(0.01, line.endSec - line.startSec);
-  const body = style.supportsKaraoke
+  const text = style.supportsKaraoke
     ? buildKaraokeAssText(line.text, durationSec)
     : escapeAssInlineText(line.text);
-  const speaker = line.speakerName?.trim();
-  const text = speaker
-    ? `{\\b1\\fs${Math.round(style.fontSize * 0.6)}}${escapeAssInlineText(speaker)}:{\\r}\\N${body}`
-    : body;
   return `Dialogue: 0,${start},${end},${style.name},,0,0,0,,${text}`;
 }
 
@@ -1449,11 +1500,34 @@ function watermarkOverlayPositionExpr(
   position: ResolvedWatermarkImage["position"],
   marginPx: number
 ): { xExpr: string; yExpr: string } {
-  const isLeft = position === "top_left" || position === "bottom_left";
-  const isTop = position === "top_left" || position === "top_right";
+  // 3x3 anchor grid. `main_*` is the base frame and `overlay_*` the scaled
+  // watermark, so centring is `(main-overlay)/2` on that axis. Must stay in
+  // lockstep with the Remotion path's own geometry
+  // (`verticalDramaRemotionRender.ts`) or the same config renders in two
+  // different places depending on which engine ran.
+  const column = position.endsWith("_left")
+    ? "left"
+    : position.endsWith("_right")
+      ? "right"
+      : "center";
+  const row = position.startsWith("top_")
+    ? "top"
+    : position.startsWith("bottom_")
+      ? "bottom"
+      : "middle";
   return {
-    xExpr: isLeft ? `${marginPx}` : `main_w-overlay_w-${marginPx}`,
-    yExpr: isTop ? `${marginPx}` : `main_h-overlay_h-${marginPx}`,
+    xExpr:
+      column === "left"
+        ? `${marginPx}`
+        : column === "right"
+          ? `main_w-overlay_w-${marginPx}`
+          : `(main_w-overlay_w)/2`,
+    yExpr:
+      row === "top"
+        ? `${marginPx}`
+        : row === "bottom"
+          ? `main_h-overlay_h-${marginPx}`
+          : `(main_h-overlay_h)/2`,
   };
 }
 
@@ -1471,7 +1545,7 @@ function watermarkOverlayPositionExpr(
 export function resolveWatermarkOverlayFragment(
   watermark: ResolvedWatermarkImage,
   inputIndex: number,
-  opts: { baseLabel: string }
+  opts: { baseLabel: string; labelSuffix?: string }
 ): { filterFragments: string[]; outputLabel: string } {
   const targetWidthPx = Math.max(
     2,
@@ -1483,8 +1557,14 @@ export function resolveWatermarkOverlayFragment(
     watermark.position,
     watermark.marginPx
   );
-  const imgLabel = "wmimg";
-  const outLabel = "wm";
+  // Dual watermark (`planning/vd-dual-watermark/plan.md`): the caller passes
+  // a per-watermark `labelSuffix` (the `slotId`) when building a MULTI-
+  // watermark render so each overlay stage gets its own unique ffmpeg label
+  // pair — omitted defaults to the original single-watermark labels
+  // ("wmimg"/"wm"), byte-identical to before dual watermark existed.
+  const suffix = opts.labelSuffix ?? "";
+  const imgLabel = `wmimg${suffix}`;
+  const outLabel = `wm${suffix}`;
   const fragments = [
     `[${inputIndex}:v]scale=${evenWidthPx}:-2,format=rgba,colorchannelmixer=aa=${alpha}[${imgLabel}]`,
     `[${opts.baseLabel}][${imgLabel}]overlay=${xExpr}:${yExpr}[${outLabel}]`,
@@ -1600,9 +1680,10 @@ export function buildFinalRenderFfmpegArgs(
     dialogueSegments.length > 0 ||
     input.dialogueAudio?.loudnessNormalize === true;
   const wantsSubtitles = Boolean(input.subtitles);
-  const wantsWatermarkImage = Boolean(input.watermarkImage);
+  const watermarkImages = input.watermarkImages ?? [];
+  const wantsWatermarkImages = watermarkImages.length > 0;
   const wantsComplexGraph =
-    banners.length > 0 || wantsAudioMix || wantsSubtitles || wantsWatermarkImage;
+    banners.length > 0 || wantsAudioMix || wantsSubtitles || wantsWatermarkImages;
 
   if (!wantsComplexGraph) {
     return [
@@ -1659,7 +1740,9 @@ export function buildFinalRenderFfmpegArgs(
   // so pre-existing banner/dialogue-audio input indices are UNCHANGED
   // whenever no watermark is present (backward-compatible global input
   // ordering, same care `RunAssemblyJobBannerInput`'s own indexing takes).
-  const watermarkInputIndex = dialogueInputIndexStart + dialogueSegments.length;
+  // Dual watermark (`planning/vd-dual-watermark/plan.md`): each watermark
+  // gets its OWN sequential input index, in `watermarkImages` array order.
+  const watermarkInputIndexStart = dialogueInputIndexStart + dialogueSegments.length;
 
   const args: string[] = [
     "-y",
@@ -1674,10 +1757,8 @@ export function buildFinalRenderFfmpegArgs(
   for (const segment of dialogueSegments) {
     args.push("-i", segment.localPath);
   }
-  if (input.watermarkImage) {
-    args.push(
-      ...buildWatermarkInputArgs(input.watermarkImage, input.videoDurationSeconds)
-    );
+  for (const watermark of watermarkImages) {
+    args.push(...buildWatermarkInputArgs(watermark, input.videoDurationSeconds));
   }
 
   const filterParts: string[] = [`[0:v]${LEGACY_SCALE_PAD_VF}[vbase]`];
@@ -1716,8 +1797,8 @@ export function buildFinalRenderFfmpegArgs(
     currentVideoLabel = chain.outputLabel;
   }
 
-  // Task #34 — the IMAGE watermark is composited LAST among the video
-  // stages (after fullscreen banners), so it is the ABSOLUTE TOP-MOST layer
+  // Task #34 — the IMAGE watermark(s) are composited LAST among the video
+  // stages (after fullscreen banners), so each is the ABSOLUTE TOP-MOST layer
   // (plan.md "z-order บนสุดเหนือทุกชั้นรวม fullscreen banner"). Documented
   // scope limit: the ASS-rendered `watermark_text` variant (see
   // `VdTextOverlayAssEvent`) shares the SAME z-order slot as dialogue
@@ -1726,17 +1807,24 @@ export function buildFinalRenderFfmpegArgs(
   // stage itself would change the ALREADY-REGRESSION-LOCKED z-order for
   // dialogue captions (this module's own header doc comment: "video ->
   // bottom_band/side_vertical banners -> subtitles -> fullscreen banners"),
-  // which is out of scope for this feature. Only the IMAGE watermark gets
+  // which is out of scope for this feature. Only IMAGE watermarks get
   // the "always survives fullscreen" guarantee.
-  if (input.watermarkImage) {
-    const watermark = resolveWatermarkOverlayFragment(
-      input.watermarkImage,
-      watermarkInputIndex,
-      { baseLabel: currentVideoLabel }
+  //
+  // Dual watermark (`planning/vd-dual-watermark/plan.md`): each watermark is
+  // its OWN independent overlay stage chained onto `currentVideoLabel` in
+  // `watermarkImages` array order (slot 1 first) — positions are fully
+  // independent (each keeps its own configured corner/margin), and
+  // `resolveWatermarkOverlayFragment`'s `labelSuffix: watermark.slotId` keeps
+  // every stage's ffmpeg labels unique.
+  watermarkImages.forEach((watermark, index) => {
+    const stage = resolveWatermarkOverlayFragment(
+      watermark,
+      watermarkInputIndexStart + index,
+      { baseLabel: currentVideoLabel, labelSuffix: watermark.slotId }
     );
-    filterParts.push(...watermark.filterFragments);
-    currentVideoLabel = watermark.outputLabel;
-  }
+    filterParts.push(...stage.filterFragments);
+    currentVideoLabel = stage.outputLabel;
+  });
 
   const audio = buildAudioFilterGraph(
     input.dialogueAudio,

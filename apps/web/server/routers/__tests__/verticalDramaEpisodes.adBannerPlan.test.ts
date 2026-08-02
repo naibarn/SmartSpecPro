@@ -275,6 +275,31 @@ vi.mock("../../services/workerSchedulerService", () => ({
   queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
 }));
 
+// `planning/vd-remotion-render-option/plan.md` wave 1 (2026-07-31) — Remotion
+// is now the DEFAULT engine `assembleEpisodeVideo` tries FIRST (only an
+// explicit `renderEngine: "ffmpeg"`, or a Remotion failure, falls through to
+// `queueVerticalDramaFfmpegAssemblyJob` above). Mocked the same lazy-import
+// way so the router's `await import("../services/verticalDramaRemotionRender")`
+// resolves to this stub instead of the real module (which statically imports
+// `queueRemotionRenderVideoJob` from `workerSchedulerService` — an export the
+// mock above deliberately doesn't carry, since nothing in this suite exercises
+// the real Remotion submission plumbing). Every `assembleEpisodeVideo` test in
+// this file takes the DEFAULT path, so asserting on THIS mock's call args is
+// what proves the banner feed actually reaches production's real (Remotion)
+// engine — not a dead ffmpeg fallback nobody hits.
+const { mockSubmitVdRemotionAssembly } = vi.hoisted(() => ({
+  mockSubmitVdRemotionAssembly: vi.fn(async () => ({
+    jobId: "job-1",
+    created: true,
+    layerCount: 1,
+    videoDurationSeconds: 10,
+  })),
+}));
+vi.mock("../../services/verticalDramaRemotionRender", () => ({
+  submitVdRemotionAssembly: mockSubmitVdRemotionAssembly,
+  reconcileVdRemotionAssembly: vi.fn(async () => ({ reconciled: false })),
+}));
+
 vi.mock("../../services/appRuntimeConfig", () => ({
   getCachedAppRuntimeConfig: vi.fn(() => ({
     internalNodeUrl: "http://localhost:3000",
@@ -1031,7 +1056,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
 
     expect(result.jobId).toBe("job-1");
     expect(result.excludedAdBanners).toEqual([]);
-    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toBeUndefined();
   });
 
@@ -1053,7 +1081,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toBeUndefined();
   });
 
@@ -1083,7 +1114,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
     });
 
     expect(result.excludedAdBanners).toEqual([]);
-    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toEqual([
       {
         imageUrl: "https://cdn.example.com/banner-1.png",
@@ -1121,7 +1155,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners[0].entire).toBeUndefined();
   });
 
@@ -1154,7 +1191,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toEqual([
       expect.objectContaining({ startSec: 10, endSec: 14 }),
     ]);
@@ -1188,7 +1228,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
         code: "VD_EPISODE_AD_BANNER_APPROVAL_REQUIRED",
       }),
     ]);
-    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toBeUndefined();
   });
 
@@ -1217,7 +1260,10 @@ describe("assembleEpisodeVideo — Ad Banner Overlay feeding (F131W, #30-A2)", (
     });
 
     expect(result.excludedAdBanners).toEqual([]);
-    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
+    // Named-arg shape (`SubmitVdRemotionAssemblyInput`) — the Remotion submit
+    // takes `banners`/`subtitles`/`watermarkImages` at the TOP level, not
+    // nested under the ffmpeg queue's `renderFeed` wrapper.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.banners).toHaveLength(1);
   });
 

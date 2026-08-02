@@ -10,21 +10,22 @@ import {
 } from "../featureFlags";
 
 describe("Vertical Drama visual-consistency feature flags", () => {
-  it("registers the four frozen rollout keys", () => {
+  it("registers the five frozen rollout keys", () => {
     expect(VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS).toEqual([
       "verticalDramaSeriesLookLock",
       "verticalDramaMotionContracts",
       "verticalDramaSceneContinuity",
+      "verticalDramaSceneContinuityQc",
       "verticalDramaSceneNeighborAnchors",
     ]);
   });
 
-  it("allowlists, types, and defaults every flag to false", () => {
+  it("allowlists, types, and enables every completed consistency flag by default", () => {
     for (const key of VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS) {
       const typedKey: keyof TenantFeatureFlags = key;
       expect(typedKey).toBe(key);
       expect(ALLOWED_FEATURE_FLAGS.has(key)).toBe(true);
-      expect(FEATURE_FLAG_DEFAULTS[key]).toBe(false);
+      expect(FEATURE_FLAG_DEFAULTS[key]).toBe(true);
     }
     expect(areVerticalDramaVisualConsistencyFlagsRegistered()).toBe(true);
   });
@@ -33,6 +34,9 @@ describe("Vertical Drama visual-consistency feature flags", () => {
     for (const enabledKey of VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS) {
       const flags = {
         ...FEATURE_FLAG_DEFAULTS,
+        ...Object.fromEntries(
+          VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS.map(key => [key, false]),
+        ),
         [enabledKey]: true,
       };
       for (const key of VERTICAL_DRAMA_VISUAL_CONSISTENCY_FLAG_KEYS) {
@@ -49,6 +53,7 @@ describe("Vertical Drama visual-consistency feature flags", () => {
       }),
     ).toMatchObject({
       sceneContinuity: false,
+      sceneContinuityQc: false,
       sceneNeighborAnchors: false,
       neighborConfigurationInvalid: true,
     });
@@ -60,6 +65,7 @@ describe("Vertical Drama visual-consistency feature flags", () => {
       }),
     ).toMatchObject({
       sceneContinuity: true,
+      sceneContinuityQc: false,
       sceneNeighborAnchors: true,
       neighborConfigurationInvalid: false,
     });
@@ -70,6 +76,7 @@ describe("Vertical Drama visual-consistency feature flags", () => {
       seriesLookLock: false,
       motionContracts: false,
       sceneContinuity: false,
+      sceneContinuityQc: false,
       sceneNeighborAnchors: false,
       neighborConfigurationInvalid: false,
     });

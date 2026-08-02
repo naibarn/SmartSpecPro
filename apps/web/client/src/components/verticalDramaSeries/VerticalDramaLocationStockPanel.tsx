@@ -348,7 +348,7 @@ interface VdLocationListItem {
 }
 
 /**
- * One candidate `establishing_plate` image for a location, as returned by
+ * One candidate location image for a location, as returned by
  * `trpc.verticalDramaLocations.listLocationAssets` — mirrors
  * `verticalDramaLocations.ts`'s router-level DTO for that procedure
  * (`assetLinkId`/`mediaAssetId` stringified, same convention as every other
@@ -360,6 +360,8 @@ interface VdLocationAssetCandidate {
   url: string;
   approved: boolean;
   isPrimary: boolean;
+  role?: string;
+  metadata?: Record<string, unknown> | null;
   updatedAt: string;
 }
 
@@ -1124,16 +1126,27 @@ export function VerticalDramaLocationStockPanel({
                       <button
                         key={candidate.assetLinkId}
                         type="button"
-                        disabled={readOnly || candidate.isPrimary || setPrimaryMutation.isPending}
+                        disabled={
+                          readOnly ||
+                          candidate.isPrimary ||
+                          candidate.role !== "establishing_plate" ||
+                          setPrimaryMutation.isPending
+                        }
                         aria-pressed={candidate.isPrimary}
                         aria-label={
                           candidate.isPrimary
                             ? t(lang, "ภาพหลักปัจจุบัน", "Current primary image")
-                            : t(lang, "ตั้งเป็นภาพหลัก", "Set as primary image")
+                            : candidate.role !== "establishing_plate"
+                              ? t(lang, "ภาพ coverage (เลือกเป็นภาพหลักไม่ได้)", "Coverage image (not primary)")
+                              : t(lang, "ตั้งเป็นภาพหลัก", "Set as primary image")
                         }
                         className={cn(
                           "flex flex-col items-center gap-0.5",
-                          readOnly || candidate.isPrimary ? "cursor-default" : "cursor-pointer",
+                          readOnly ||
+                          candidate.isPrimary ||
+                          candidate.role !== "establishing_plate"
+                            ? "cursor-default"
+                            : "cursor-pointer",
                         )}
                         onClick={() => handleSetPrimary(selectedLocation, candidate)}
                         data-testid={`vd-location-candidate-${candidate.assetLinkId}`}
@@ -1158,6 +1171,17 @@ export function VerticalDramaLocationStockPanel({
                             {t(lang, "รอตรวจสอบ", "Pending")}
                           </span>
                         )}
+                        {candidate.role && candidate.role !== "establishing_plate" ? (
+                          <span className="text-[9px] text-sky-700 dark:text-sky-300">
+                            {candidate.role === "reverse_angle"
+                              ? t(lang, "มุมย้อน", "Reverse angle")
+                              : candidate.role === "side_angle"
+                                ? t(lang, "มุมด้านข้าง", "Side angle")
+                                : candidate.role === "detail_corner"
+                                  ? t(lang, "มุมรายละเอียด", "Detail corner")
+                                  : candidate.role}
+                          </span>
+                        ) : null}
                       </button>
                     ))}
                   </div>

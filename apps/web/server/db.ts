@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { normalizeAuthEmail } from "./services/emailNormalization";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
@@ -89,7 +90,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
-      const normalized = value ?? null;
+      const normalized = field === "email" && value !== null
+        ? normalizeAuthEmail(value)
+        : value ?? null;
       values[field] = normalized;
       updateSet[field] = normalized;
     };
@@ -193,7 +196,9 @@ export async function getUserByEmail(email: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const result = await db.select().from(users)
+    .where(sql`lower(btrim(${users.email})) = ${normalizeAuthEmail(email)}`)
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }

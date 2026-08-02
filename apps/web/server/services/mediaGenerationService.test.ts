@@ -149,8 +149,8 @@ describe("MEDIA_MODELS — HappyHorse video entries", () => {
         creditCost: 100,
       });
       expect(MEDIA_MODELS[id].configJson).toMatchObject({
-        apiEndpoint: "/api/v1/jobs/createTask",
-        apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+        apiEndpoint: "/jobs/createTask",
+        apiQueryEndpoint: "/jobs/recordInfo",
         apiPayloadFormat: "market",
         kieModelId: id,
       });
@@ -197,8 +197,8 @@ describe("MEDIA_MODELS — Gemini Omni video entry", () => {
       supportsDurations: [4, 6, 8, 10],
       supportsAspectRatios: ["16:9", "9:16"],
       configJson: {
-        apiEndpoint: "/api/v1/jobs/createTask",
-        apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+        apiEndpoint: "/jobs/createTask",
+        apiQueryEndpoint: "/jobs/recordInfo",
         apiPayloadFormat: "market",
         kieModelId: "gemini-omni-video",
         generateType: "multimodal-video",

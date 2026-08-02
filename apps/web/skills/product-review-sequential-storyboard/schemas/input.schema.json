@@ -63,9 +63,9 @@
     },
     "target_language": {
       "title": "Target dialogue language",
-      "description": "Fixed at th (Thai) for v1. All spoken dialogue is written in Thai regardless of this skill's own English rule prose.",
+      "description": "Backward-compatible alias for dialogue_language. The independent summary_language, dialogue_language, and prompt_language fields are authoritative.",
       "type": "string",
-      "const": "th",
+      "enum": ["th", "en"],
       "default": "th"
     },
     "shot_count": {

@@ -43,6 +43,10 @@ import {
   type VerticalDramaApprovedCharacterVisualBible,
 } from "@shared/verticalDramaSeries/characterProfile";
 import { isCharacterLockPolicyFailureMessage } from "@shared/verticalDramaSeries/characterLock";
+import {
+  VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES,
+  type VerticalDramaCharacterAngleRole,
+} from "@shared/verticalDramaSeries/characterAssets";
 
 /* -------------------------------------------------------------------------- */
 /* Ownership / param types                                                    */
@@ -97,6 +101,8 @@ export interface LinkCharacterAssetParams extends VerticalDramaCharacterStockOwn
   containsHumanFace?: boolean | null;
   checksumSha256?: string | null;
   metadata?: Record<string, unknown> | null;
+  /** Keep a generated asset in the review queue instead of auto-approving it. */
+  approvalRequired?: boolean;
 }
 
 export interface TransitionCharacterAssetParams extends VerticalDramaCharacterStockOwner {
@@ -392,6 +398,13 @@ const CHARACTER_SHEET_ROLES = [
   "character_sheet_turnaround",
   "character_sheet_full",
 ];
+
+const CHARACTER_ANGLE_ROLE_BY_FACING: Record<string, VerticalDramaCharacterAngleRole> = {
+  frontal: "angle_front",
+  front: "angle_front",
+  left_three_quarter: "angle_left_three_quarter",
+  right_three_quarter: "angle_right_three_quarter",
+};
 
 /** Shape `pickBestCharacterSheetAsset` needs from a candidate row — deliberately minimal/duck-typed. */
 export interface CharacterSheetAssetCandidate {
@@ -1366,6 +1379,33 @@ export class VerticalDramaCharacterStockService {
     return row?.id ?? null;
   }
 
+  /** Resolve an approved angle-pack asset for a declared facing. */
+  async getApprovedAngleAssetId(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+    desiredFacing?: string,
+  ): Promise<number | null> {
+    const angleRole = desiredFacing
+      ? CHARACTER_ANGLE_ROLE_BY_FACING[desiredFacing.trim().toLowerCase().replace(/[\s-]+/g, "_")]
+      : undefined;
+    if (!angleRole) return null;
+    const [row] = await db
+      .select({ id: mediaAssets.id })
+      .from(verticalDramaCharacterAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .where(and(
+        eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+        eq(verticalDramaCharacterAssets.userId, owner.userId),
+        eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+        eq(verticalDramaCharacterAssets.characterId, characterId),
+        eq(verticalDramaCharacterAssets.role, angleRole),
+        eq(verticalDramaCharacterAssets.approved, true),
+      ))
+      .orderBy(desc(verticalDramaCharacterAssets.updatedAt))
+      .limit(1);
+    return row?.id ?? null;
+  }
+
   /**
    * The character's identity-lock reference SET for image generation (F131Z
    * `verticalDramaSeriesCharacterRefV2`, option A —
@@ -1393,11 +1433,34 @@ export class VerticalDramaCharacterStockService {
   async getCharacterReferenceUrls(
     owner: VerticalDramaCharacterStockOwner,
     characterId: number,
-    opts: { includeSheet: boolean },
+    opts: { includeSheet: boolean; desiredFacing?: string },
   ): Promise<string[]> {
     const portraitUrl = await this.getPrimaryPortraitUrl(owner, characterId);
     const urls: string[] = portraitUrl ? [portraitUrl] : [];
     if (!opts.includeSheet) return urls;
+
+    const angleRole = opts.desiredFacing
+      ? CHARACTER_ANGLE_ROLE_BY_FACING[opts.desiredFacing]
+      : undefined;
+    if (angleRole) {
+      const [angleRow] = await db
+        .select({ url: mediaAssets.originalUrl })
+        .from(verticalDramaCharacterAssets)
+        .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+        .where(
+          and(
+            eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+            eq(verticalDramaCharacterAssets.userId, owner.userId),
+            eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+            eq(verticalDramaCharacterAssets.characterId, characterId),
+            eq(verticalDramaCharacterAssets.role, angleRole),
+            eq(verticalDramaCharacterAssets.approved, true),
+          ),
+        )
+        .orderBy(desc(verticalDramaCharacterAssets.updatedAt))
+        .limit(1);
+      if (angleRow?.url && !urls.includes(angleRow.url)) return [angleRow.url, ...urls];
+    }
 
     const sheetRows: CharacterSheetAssetRow[] = await db
       .select({
@@ -1457,6 +1520,8 @@ export class VerticalDramaCharacterStockService {
    * only" or product-reference rows that happen to share nulls.
    */
   async linkAsset(params: LinkCharacterAssetParams): Promise<VerticalDramaCharacterAsset> {
+    const approvalRequired = params.approvalRequired === true;
+    const nextState: VerticalDramaCharacterAssetState = approvalRequired ? "generated" : "approved";
     if (params.mediaAssetId != null) {
       await this.assertMediaAssetAttachable(params, params.mediaAssetId);
     }
@@ -1479,7 +1544,7 @@ export class VerticalDramaCharacterStockService {
         const meta: Record<string, unknown> = {
           ...((existing.metadata as Record<string, unknown> | null) ?? {}),
           ...(params.metadata ?? {}),
-          state: "approved" satisfies VerticalDramaCharacterAssetState,
+          state: nextState,
           source: params.source,
         };
         const [updated] = await db
@@ -1487,7 +1552,7 @@ export class VerticalDramaCharacterStockService {
           .set({
             assetType: params.assetType,
             role: params.role ?? existing.role,
-            approved: true,
+            approved: !approvalRequired,
             containsHumanFace: params.containsHumanFace ?? existing.containsHumanFace,
             checksumSha256: params.checksumSha256 ?? existing.checksumSha256,
             metadata: meta,
@@ -1509,13 +1574,13 @@ export class VerticalDramaCharacterStockService {
         mediaAssetId: params.mediaAssetId ?? null,
         assetType: params.assetType,
         role: params.role ?? null,
-        approved: true,
+        approved: !approvalRequired,
         containsHumanFace: params.containsHumanFace ?? null,
         qcStatus: "pending",
         checksumSha256: params.checksumSha256 ?? null,
         metadata: {
           ...(params.metadata ?? {}),
-          state: "approved" satisfies VerticalDramaCharacterAssetState,
+          state: nextState,
           source: params.source,
         },
       } as typeof verticalDramaCharacterAssets.$inferInsert)

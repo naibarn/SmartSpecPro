@@ -7,10 +7,12 @@ const {
   resetHarness,
   setBible,
   getWrittenBible,
+  getAuditValues,
 } = vi.hoisted(() => {
   let bible: unknown = null;
   let rowExists = true;
   let writtenBible: unknown;
+  let auditValues: unknown[] = [];
   const mockForUpdateLock = vi.fn(() => Promise.resolve(rowExists ? [{ bible }] : []));
   const selectBuilder = () => {
     const chain: any = {};
@@ -30,7 +32,12 @@ const {
   };
   const mockDb = {
     transaction: vi.fn((callback: (tx: any) => Promise<unknown>) => callback(mockTx)),
-    insert: vi.fn(() => ({ values: vi.fn().mockResolvedValue(undefined) })),
+    insert: vi.fn(() => ({
+      values: vi.fn((values: unknown) => {
+        auditValues.push(values);
+        return Promise.resolve(undefined);
+      }),
+    })),
     select: vi.fn(), update: vi.fn(), delete: vi.fn(),
   };
   return {
@@ -41,10 +48,12 @@ const {
       bible = null;
       rowExists = true;
       writtenBible = undefined;
+      auditValues = [];
       vi.clearAllMocks();
     },
     setBible: (value: unknown, exists = true) => { bible = value; rowExists = exists; },
     getWrittenBible: () => writtenBible,
+    getAuditValues: () => auditValues,
   };
 });
 
@@ -72,6 +81,10 @@ import {
   setSeriesLookLockInput,
   verticalDramaSeriesRouter,
 } from "../verticalDramaSeries";
+import {
+  VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+  recordSeriesLookLockAuditEvent,
+} from "../../services/verticalDramaSeriesLookLockAudit";
 
 const router = verticalDramaSeriesRouter as unknown as Record<string, Function>;
 const ctx = { tenantId: "tenant-1", user: { id: 42, role: "user" } };
@@ -112,6 +125,18 @@ describe("setSeriesLookLock", () => {
     expect(mockForUpdateLock).toHaveBeenCalledWith("update");
     expect(getWrittenBible()).toMatchObject({ story: "fresh concurrent edit" });
     expect(result.control).toMatchObject({ mode: "genre", revision: 1 });
+    expect(getAuditValues()).toEqual([
+      expect.objectContaining({
+        eventType: "vd_series_look_lock_changed",
+        metadata: expect.objectContaining({
+          tenantId: "tenant-1",
+          seriesId: 10,
+          mode: "genre",
+          revision: 1,
+          outcome: "updated",
+        }),
+      }),
+    ]);
   });
 
   it("rejects stale writes with the current revision and does not update", async () => {
@@ -127,6 +152,17 @@ describe("setSeriesLookLock", () => {
       input: { seriesId: "10", mode: "none", expectedRevision: 2 },
     })).rejects.toMatchObject({ code: "CONFLICT" });
     expect(mockTx.update).not.toHaveBeenCalled();
+    expect(getAuditValues()).toEqual([
+      expect.objectContaining({
+        eventType: "vd_series_look_lock_changed",
+        statusCode: 409,
+        metadata: expect.objectContaining({
+          tenantId: "tenant-1",
+          seriesId: 10,
+          outcome: "conflict",
+        }),
+      }),
+    ]);
   });
 
   it("returns NOT_FOUND for a series outside the ownership predicate", async () => {
@@ -135,5 +171,26 @@ describe("setSeriesLookLock", () => {
       ctx,
       input: { seriesId: "10", mode: "none", expectedRevision: 0 },
     })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("records the named applied event without prompt fragments", async () => {
+    await recordSeriesLookLockAuditEvent({
+      eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      path: "episodes.generateStartFrameImage",
+    });
+    expect(getAuditValues()).toEqual([
+      expect.objectContaining({
+        eventType: "vd_series_look_lock_applied",
+        metadata: {
+          tenantId: "tenant-1",
+          seriesId: 10,
+          path: "episodes.generateStartFrameImage",
+        },
+      }),
+    ]);
+    expect(JSON.stringify(getAuditValues())).not.toContain("imagePromptFragments");
   });
 });

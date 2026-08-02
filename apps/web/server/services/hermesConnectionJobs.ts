@@ -270,12 +270,18 @@ const WORKER_JOBS_IDEMPOTENCY_UNIQUE_CONSTRAINT = "worker_jobs_tenant_idempotenc
  *  the idempotency-key index — anything else (connection drop, syntax
  *  error, a totally unrelated constraint) must propagate to the caller
  *  instead of being silently reinterpreted as "someone else already
- *  enqueued this". */
+ *  enqueued this". Checks `.cause` too: drizzle-orm wraps the real postgres
+ *  error (carrying `.code`/`.constraint`) inside `.cause`, so a caught
+ *  error's own top-level `.code`/`.constraint` are undefined for a Drizzle
+ *  query error. */
 function isHermesJobIdempotencyKeyConflict(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const code = (error as { code?: unknown }).code;
+  const cause = (error as { cause?: unknown }).cause;
+  const causeRecord =
+    cause && typeof cause === "object" ? (cause as Record<string, unknown>) : undefined;
+  const code = (error as { code?: unknown }).code ?? causeRecord?.code;
   if (code === "23505") return true;
-  const constraint = (error as { constraint?: unknown }).constraint;
+  const constraint = (error as { constraint?: unknown }).constraint ?? causeRecord?.constraint;
   if (typeof constraint === "string" && constraint.includes(WORKER_JOBS_IDEMPOTENCY_UNIQUE_CONSTRAINT)) return true;
   const message = (error as { message?: unknown }).message;
   return typeof message === "string" && message.includes(WORKER_JOBS_IDEMPOTENCY_UNIQUE_CONSTRAINT);

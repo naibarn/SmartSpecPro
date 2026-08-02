@@ -33,7 +33,7 @@ export type StagedCheckpointSafeProjection = Pick<
   | "approvedProvider"
   | "approvedSafetyVerdict"
   | "approvedReferenceManifestHash"
-> & { consumed: boolean };
+> & { consumed: boolean; adherenceWarnings?: string[] };
 
 export type StagedCheckpointMutationResult =
   | {
@@ -77,6 +77,7 @@ export function projectStagedCheckpoints(
     approvedSafetyVerdict: checkpoint.approvedSafetyVerdict,
     approvedReferenceManifestHash: checkpoint.approvedReferenceManifestHash,
     consumed: Boolean(checkpoint.consumedAt || checkpoint.consumedByOperationId),
+    adherenceWarnings: (checkpoint as { adherenceWarnings?: string[] }).adherenceWarnings ?? undefined,
   }));
 }
 

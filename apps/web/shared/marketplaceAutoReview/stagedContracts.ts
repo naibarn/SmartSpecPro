@@ -42,6 +42,39 @@ export const STAGED_SAFE_REASON_CODES = [
   "staged_cancelled",
   "staged_invalid_idempotency",
   "staged_invalid_shot_contract",
+  "staged_video_duration_fitted_to_model",
+  "staged_tone_not_adhered",
+  "staged_structure_beat_missing",
+  "staged_conversation_turns_missing",
+  // P1 (marketplace-staged-skill-first-restore): non-blocking validator
+  // warning when a compiled image prompt doesn't reference every expected
+  // @ImageN character tag. Never triggers a TS code-append — see
+  // `handleImageProvider`'s validator comment.
+  "staged_prompt_reference_mapping_incomplete",
+  // P2 (marketplace-staged-skill-first-restore): a shot's skill-authored
+  // prompt attempt failed (or returned empty) and the bounded deterministic
+  // fallback (`compileStagedImagePrompt`) was used instead.
+  "staged_prompt_skill_fallback",
+  // W1 (marketplace-flexible-shots-and-creation-casting): the story-arc plan
+  // is LLM-judgment when cast is present or shotCount="auto" (see
+  // `generateStagedStoryArcPlanWithLLM`), and the LLM attempt failed or
+  // returned an invalid shot contract, so the bounded deterministic fallback
+  // (`buildStagedStoryArcPlan`) was used instead.
+  "staged_story_skill_fallback",
+  // marketplace-staged-remotion-final-render: the Remotion render-queue
+  // submission (`submitStagedRemotionFinalRender`) failed or the feature was
+  // disabled, so the run fell back to the legacy Python renderer for this
+  // final render instead of blocking the run.
+  "staged_remotion_render_fallback",
+  // marketplace-staged-remotion-final-render: a `remotion_render_video`
+  // worker job that this staged run submitted itself failed — surfaced on
+  // the "render" stage's `blocked_needs_user` statusDetail, retryable.
+  "staged_remotion_render_failed",
+  // worker-app-remotion-render-video §P3: the `remotion_render_video` worker
+  // job this staged run submitted sat `queued` (never claimed by a Lane B
+  // worker-app) past the queued TTL, so the run fell back to the legacy
+  // renderer instead of waiting indefinitely for an offline fleet.
+  "staged_remotion_worker_unavailable",
 ] as const;
 
 export const HumanApprovalCheckpointV1Schema = z
@@ -64,6 +97,13 @@ export const HumanApprovalCheckpointV1Schema = z
     approvedProvider: z.string().min(1).nullable(),
     approvedSafetyVerdict: z.string().min(1).nullable(),
     approvedReferenceManifestHash: z.string().min(1).nullable(),
+    // Additive, optional. Fail-open QC warnings from
+    // `assessStagedPlanAdherence` (tone/structure/conversation-turns
+    // adherence for the story_plan checkpoint) — informational only, never
+    // blocks approval. Absent on every checkpoint kind other than
+    // `story_plan`, and absent/empty when nothing was flagged, so existing
+    // persisted checkpoints keep validating unchanged.
+    adherenceWarnings: z.array(z.string()).optional(),
   })
   .passthrough()
   .superRefine((value, context) => {
@@ -88,6 +128,35 @@ export const HumanApprovalCheckpointV1Schema = z
     }
   });
 
+// Additive: a single turn in a two-person conversation shot. Kept structurally
+// independent from `StagedDialogueTurn` in `marketplaceAutoReviewStoryArcPlanner.ts`
+// (shared/ must not import from server/) but shape-compatible with it.
+export const StagedDialogueTurnV1Schema = z.object({
+  castId: z.string().min(1),
+  speakerName: z.string().min(1),
+  line: z.string(),
+});
+
+/** What a SUPPORTING character does in one shot — `action` required, `line`
+ *  optional (the inverse of a dialogue turn). See
+ *  `planning/marketplace-four-character-cast/plan.md` §3: a supporting
+ *  character in frame must serve the story, never just stand there. */
+export const StagedSupportingBeatV1Schema = z.object({
+  castId: z.string().min(1),
+  action: z.string().min(1),
+  line: z.string().optional(),
+});
+
+/** One cast member's per-shot look override — see `castLooks` below. */
+export const StagedCastLookV1Schema = z.object({
+  url: z.string().min(1),
+  portraitAssetId: z.string().optional(),
+  /** The VD variant row this look came from, so the switcher can show which
+   *  option is currently active without re-matching on URL. */
+  vdCharacterId: z.string().optional(),
+  variantLabel: z.string().optional(),
+});
+
 export const StagedShotStateV1Schema = z
   .object({
     shotId: z.number().int().positive(),
@@ -95,6 +164,23 @@ export const StagedShotStateV1Schema = z
     state: z.string().min(1),
     storySummary: z.string().min(1),
     dialogue: z.string(),
+    // Additive (opt-in): populated only when the shot is part of a
+    // two-person conversation. Absent for every existing solo/product-only
+    // run, so previously-persisted rows keep validating unchanged.
+    dialogueTurns: z.array(StagedDialogueTurnV1Schema).optional(),
+    // Which cast members are IN this shot. Historically written as the whole
+    // cast for every shot; from the 4-character roster
+    // (`planning/marketplace-four-character-cast/plan.md` P1) it is a real
+    // per-shot subset and it drives which character reference images the
+    // shot's start frame receives. Absent = "everyone", the legacy meaning.
+    castInShot: z.array(z.string().min(1)).optional(),
+    // Per-shot LOOK override, keyed by castId
+    // (`planning/marketplace-four-character-cast/plan.md` §4): swaps which
+    // image represents that person in THIS shot only. A look is an outfit, not
+    // a person, so it never consumes a roster slot. Absent for every existing
+    // run.
+    castLooks: z.record(StagedCastLookV1Schema).optional(),
+    supportingBeats: z.array(StagedSupportingBeatV1Schema).optional(),
     imagePromptHash: z.string().min(1).nullable(),
     imageArtifactHash: z.string().min(1).nullable(),
     videoPromptHash: z.string().min(1).nullable(),
@@ -113,7 +199,10 @@ export const StagedSequentialStoryboardStateV1Schema = z
     planRevision: z.number().int().positive(),
     storyPlanHash: z.string().min(1).nullable(),
     referenceManifestHash: z.string().min(1).nullable(),
-    shots: z.array(StagedShotStateV1Schema).length(9),
+    // Additive (feature/marketplace-flexible-shots): staged runs may now use
+    // 1..30 shots (fixed N chosen by the user, or model-decided within
+    // 7..30 when shotCount="auto"). Old 9-shot runs still validate.
+    shots: z.array(StagedShotStateV1Schema).min(1).max(30),
     reviewCheckpoints: z.array(HumanApprovalCheckpointV1Schema),
   })
   .passthrough();
@@ -178,6 +267,7 @@ export type StagedOperationRequestV1 = z.infer<
 export type StagedCheckpointApprovalExpectationV1 = z.infer<
   typeof StagedCheckpointApprovalExpectationV1Schema
 >;
+export type StagedDialogueTurnV1 = z.infer<typeof StagedDialogueTurnV1Schema>;
 
 export function isCheckpointApprovalMatch(
   checkpoint: HumanApprovalCheckpointV1,
@@ -200,17 +290,56 @@ export function isCheckpointApprovalMatch(
   );
 }
 
-export function validateNineShotContract(
-  shots: Array<{ durationSeconds?: number; shotId?: number }>
+// Duration is model-flexible (Veo 3.1 Lite only supports 8s; seedance/kling
+// support up to ~30s on newer model releases) so we accept an integer range
+// instead of a literal 10. The pipeline layer is responsible for snapping the
+// requested duration to whatever the selected model supports and recording
+// `staged_video_duration_fitted_to_model` when it does.
+const STAGED_SHOT_DURATION_MIN_SECONDS = 4;
+const STAGED_SHOT_DURATION_MAX_SECONDS = 30;
+const STAGED_SHOT_COUNT_MIN = 1;
+const STAGED_SHOT_COUNT_MAX = 30;
+
+// Additive (feature/marketplace-flexible-shots): generalized shot-contract
+// validator. When `expectedCount` is supplied, the shot array must contain
+// exactly that many shots (ids 1..expectedCount). When omitted, any count in
+// [1, 30] is accepted (ids must still be 1..N unique ascending) — this is the
+// "auto" case where the LLM decided the shot count.
+export function validateStagedShotContract(
+  shots: Array<{ durationSeconds?: number; shotId?: number }>,
+  options?: { expectedCount?: number }
 ): { valid: boolean; reasonCodes: StagedSafeReasonCode[] } {
+  const expectedCount = options?.expectedCount;
+  const countValid =
+    typeof expectedCount === "number"
+      ? shots.length === expectedCount
+      : shots.length >= STAGED_SHOT_COUNT_MIN &&
+        shots.length <= STAGED_SHOT_COUNT_MAX;
   const valid =
-    shots.length === 9 &&
+    countValid &&
     shots.every(
-      (shot, index) => shot.shotId === index + 1 && shot.durationSeconds === 10
+      (shot, index) =>
+        shot.shotId === index + 1 &&
+        typeof shot.durationSeconds === "number" &&
+        Number.isInteger(shot.durationSeconds) &&
+        shot.durationSeconds >= STAGED_SHOT_DURATION_MIN_SECONDS &&
+        shot.durationSeconds <= STAGED_SHOT_DURATION_MAX_SECONDS
     );
   return valid
     ? { valid: true, reasonCodes: [] }
     : { valid: false, reasonCodes: ["staged_invalid_shot_contract"] };
+}
+
+/**
+ * @deprecated Use `validateStagedShotContract(shots, { expectedCount: 9 })`
+ * directly for new call sites. Kept as a thin wrapper so existing importers
+ * (and their tests) that assumed a fixed 9-shot contract keep working
+ * unchanged.
+ */
+export function validateNineShotContract(
+  shots: Array<{ durationSeconds?: number; shotId?: number }>
+): { valid: boolean; reasonCodes: StagedSafeReasonCode[] } {
+  return validateStagedShotContract(shots, { expectedCount: 9 });
 }
 
 export function buildStagedApprovalIdempotencyKey(input: {

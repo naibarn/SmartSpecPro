@@ -796,6 +796,7 @@ function EpisodeWorkspaceShell({
   const enabled = Boolean(seriesId && episodeId);
   const seriesLookLockEnabled = useTenantFeatureFlag("verticalDramaSeriesLookLock");
   const presetMixV2Enabled = useTenantFeatureFlag("verticalDramaSeriesPresetMixV2");
+  const clipIdentityQcEnabled = useTenantFeatureFlag("verticalDramaClipIdentityQc");
 
   const seriesQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
@@ -1366,6 +1367,56 @@ function EpisodeWorkspaceShell({
       },
       onError: err => toast.error(err.message),
     });
+  const [runningFrameContinuityQcForShot, setRunningFrameContinuityQcForShot] =
+    useState<number | null>(null);
+  const [runningVideoSafetyQcForShot, setRunningVideoSafetyQcForShot] =
+    useState<number | null>(null);
+  const [generatingVideoSafeStartFrameForShot, setGeneratingVideoSafeStartFrameForShot] =
+    useState<number | null>(null);
+  const runFrameContinuityQcMutation =
+    trpc.verticalDramaEpisodes.runFrameContinuityQc.useMutation({
+      onSuccess: () => {
+        toast.success(lang === "th" ? "ตรวจความต่อเนื่องแล้ว" : "Continuity check complete");
+        setRunningFrameContinuityQcForShot(null);
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({ seriesId, episodeId });
+      },
+      onError: err => {
+        setRunningFrameContinuityQcForShot(null);
+        toast.error(err.message);
+      },
+    });
+  const runVideoSafetyQcMutation =
+    trpc.verticalDramaEpisodes.runStartFrameVideoSafetyQc.useMutation({
+      onSuccess: () => {
+        toast.success(lang === "th" ? "ตรวจความพร้อมวิดีโอแล้ว" : "Video-safety check complete");
+        setRunningVideoSafetyQcForShot(null);
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({ seriesId, episodeId });
+      },
+      onError: err => {
+        setRunningVideoSafetyQcForShot(null);
+        toast.error(err.message);
+      },
+    });
+  const setVideoStartFrameAssetMutation =
+    trpc.verticalDramaEpisodes.setVideoStartFrameAsset.useMutation({
+      onSuccess: () => {
+        toast.success(lang === "th" ? "อัปเดตเฟรมสำหรับวิดีโอแล้ว" : "Video start frame updated.");
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({ seriesId, episodeId });
+      },
+      onError: err => toast.error(err.message),
+    });
+  const generateVideoSafeStartFrameMutation =
+    trpc.verticalDramaEpisodes.generateVideoSafeStartFrame.useMutation({
+      onSuccess: (data, variables) => {
+        const taskId = (data as { taskId?: string } | null)?.taskId;
+        if (taskId) void pollVideoSafeStartFrameTask(taskId, variables.shotNumber);
+        else setGeneratingVideoSafeStartFrameForShot(null);
+      },
+      onError: err => {
+        setGeneratingVideoSafeStartFrameForShot(null);
+        toast.error(err.message);
+      },
+    });
   // Reuses the character system's own `linkAsset` — swapping a character's
   // reference image from here updates that character everywhere (the same
   // global portrait the character tab manages), not a per-shot override.
@@ -1518,6 +1569,51 @@ function EpisodeWorkspaceShell({
         next.delete(shotNumber);
         return next;
       });
+    }
+  }
+
+  /** Poll a video-safe regeneration without touching the approved/emotional
+   * start-frame slot. The completed asset is attached to the optional dual
+   * anchor only after the media task has a durable result URL. */
+  async function pollVideoSafeStartFrameTask(
+    taskId: string,
+    shotNumber: number,
+  ) {
+    setGeneratingVideoSafeStartFrameForShot(shotNumber);
+    try {
+      for (let attempt = 0; attempt < VD_START_FRAME_POLL_MAX_ATTEMPTS; attempt++) {
+        const task = await utils.media.getTask.fetch({ taskId });
+        const status = (task as { status?: string } | null)?.status;
+        if (status === "completed") {
+          const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
+          if (!resultUrl) throw new Error("Video-safe render completed without a result URL");
+          const resolved = await resolveMediaAssetForImportMutation.mutateAsync({
+            seriesId,
+            source: "url",
+            url: resultUrl,
+            mimeType: "image/png",
+          });
+          await setVideoStartFrameAssetMutation.mutateAsync({
+            seriesId,
+            episodeId,
+            shotNumber,
+            mediaAssetId: String(resolved.mediaAssetId),
+            source: "video_safe_regen",
+          });
+          toast.success(lang === "th" ? "สร้างเฟรมสำหรับวิดีโอสำเร็จ" : "Video-safe frame generated.");
+          return;
+        }
+        if (status === "failed") {
+          const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          throw new Error(errorMessage || (lang === "th" ? "สร้างเฟรมสำหรับวิดีโอล้มเหลว" : "Video-safe frame generation failed"));
+        }
+        await new Promise(resolve => setTimeout(resolve, VD_START_FRAME_POLL_INTERVAL_MS));
+      }
+      throw new Error(lang === "th" ? "การสร้างเฟรมสำหรับวิดีโอนานเกินไป" : "Video-safe frame generation timed out");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setGeneratingVideoSafeStartFrameForShot(null);
     }
   }
 
@@ -2660,6 +2756,52 @@ function EpisodeWorkspaceShell({
       locationKey,
       expectedRevision,
       patch,
+    });
+  }
+
+  function handleRunFrameContinuityQc(shotNumber: number) {
+    setRunningFrameContinuityQcForShot(shotNumber);
+    runFrameContinuityQcMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
+  function handleRunVideoSafetyQc(shotNumber: number) {
+    setRunningVideoSafetyQcForShot(shotNumber);
+    runVideoSafetyQcMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
+  function handleGenerateVideoSafeStartFrame(shotNumber: number) {
+    if (!requireModelSelectedOrToast("image")) return;
+    if (!requireMcpConnectionOrToast("image")) return;
+    if (!requireHermesConnectionOrToast("image")) return;
+    setGeneratingVideoSafeStartFrameForShot(shotNumber);
+    generateVideoSafeStartFrameMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      ...(mcpConnectionId ? { mcpConnectionId } : {}),
+      ...(mcpSharedGroupId ? { sharedGroupId: mcpSharedGroupId } : {}),
+      ...(hermesConnectionId ? { hermesConnectionId } : {}),
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
+  function handleClearVideoStartFrame(shotNumber: number) {
+    setVideoStartFrameAssetMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      mediaAssetId: null,
+      source: "manual_upload",
     });
   }
 
@@ -4231,6 +4373,17 @@ function EpisodeWorkspaceShell({
       mediaTaskId: taskId,
       source: "generated",
     });
+    if (clipIdentityQcEnabled) {
+      void runClipIdentityQcMutation.mutateAsync({
+        seriesId,
+        episodeId,
+        clipNumber,
+        idempotencyKey: crypto.randomUUID(),
+      }).catch(() => {
+        // Post-video QA is advisory; the clip completion must remain durable
+        // even when the sampler/provider is unavailable.
+      });
+    }
   }
 
   async function pollVideoClipTask(taskId: string, clipNumber: number) {
@@ -4316,6 +4469,16 @@ function EpisodeWorkspaceShell({
         { videoUrl: uri, source: "upload" },
         sourceShotNumber
       );
+      if (clipIdentityQcEnabled) {
+        void runClipIdentityQcMutation.mutateAsync({
+          seriesId,
+          episodeId,
+          clipNumber,
+          idempotencyKey: crypto.randomUUID(),
+        }).catch(() => {
+          // Imported clips receive the same advisory QA, fail-open behavior.
+        });
+      }
       toast.success(lang === "th" ? "อัปโหลดวิดีโอสำเร็จ" : "Video uploaded.");
     } catch (err) {
       toast.error(
@@ -4374,6 +4537,32 @@ function EpisodeWorkspaceShell({
         if (err.data?.code === "BAD_REQUEST") scrollToVdModelPicker("video");
       },
     });
+
+  const runClipIdentityQcMutation =
+    trpc.verticalDramaEpisodes.runClipIdentityQc.useMutation({
+      onSuccess: result => {
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        toast.success(
+          result.identityQc?.status === "samples_unavailable"
+            ? lang === "th"
+              ? "ตรวจวิดีโอแล้ว แต่ดึงภาพตัวอย่างไม่ได้ — คลิปยังใช้งานได้"
+              : "Video checked, but samples were unavailable — the clip remains usable."
+            : lang === "th"
+              ? "ตรวจความคงที่ของตัวตนในคลิปแล้ว"
+              : "Clip identity QC completed."
+        );
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleRunClipIdentityQc(clipNumber: number) {
+    runClipIdentityQcMutation.mutate({
+      seriesId,
+      episodeId,
+      clipNumber,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
 
   /** RESUME ON LOAD (2026-07-06 fix) — same convention as the angle-grid
    *  resume effect: runs on every `getEpisodeDetail` load/refetch and
@@ -5772,6 +5961,22 @@ function EpisodeWorkspaceShell({
               void handleGeneratePromptAndImage(shotNumber, "single", false);
             },
             generatingStartFrameImageForShot: pollingStartFrameShots,
+            onRunFrameContinuityQc: episodeDetailQuery.data?.flags?.sceneContinuityQc
+              ? handleRunFrameContinuityQc
+              : undefined,
+            runningFrameContinuityQcForShot,
+            onRunVideoSafetyQc: episodeDetailQuery.data?.flags?.videoSafeStartFrames
+              ? handleRunVideoSafetyQc
+              : undefined,
+            runningVideoSafetyQcForShot,
+            onGenerateVideoSafeStartFrame:
+              episodeDetailQuery.data?.flags?.videoSafeStartFrames
+                ? handleGenerateVideoSafeStartFrame
+                : undefined,
+            generatingVideoSafeStartFrameForShot,
+            onClearVideoStartFrame: episodeDetailQuery.data?.flags?.videoSafeStartFrames
+              ? handleClearVideoStartFrame
+              : undefined,
             onGenerateAllStartFrameImages: (shotNumbers: number[]) => {
               if (!requireModelSelectedOrToast("image")) return;
               if (!requireMcpConnectionOrToast("image")) return;
@@ -5840,6 +6045,8 @@ function EpisodeWorkspaceShell({
             onSetShotLocation: handleSetShotLocation,
             sceneContinuityEnabled:
               episodeDetailQuery.data?.flags?.sceneContinuity,
+            sceneContinuityQcEnabled:
+              episodeDetailQuery.data?.flags?.sceneContinuityQc,
             onPlanSceneVisualState: handlePlanSceneVisualState,
             planningSceneVisualStateForKey:
               planSceneVisualStateMutation.isPending
@@ -5940,6 +6147,14 @@ function EpisodeWorkspaceShell({
               });
             },
             generatingVideoClipForClip: pollingVideoClips,
+            onRunClipIdentityQc: clipIdentityQcEnabled
+              ? handleRunClipIdentityQc
+              : undefined,
+            runningClipIdentityQcForClip: runClipIdentityQcMutation.isPending
+              ? new Set([
+                  runClipIdentityQcMutation.variables?.clipNumber ?? -1,
+                ])
+              : new Set(),
             ttsFallbackByClip,
             trimmedReferenceCountByClip,
             onUploadVideoClip: handleUploadVideoClip,
@@ -6031,6 +6246,36 @@ function EpisodeWorkspaceShell({
             value: finalRenderOptions,
             onChange: setFinalRenderOptions,
             lastResult: finalRenderLastResult,
+            // Mirrors the server resolver's OWN source order
+            // (`resolveEpisodeDialogueAudioAndSubtitlesRunInputs`): the
+            // dialogue plan first, then the dialogue authored on the clips
+            // themselves. Counting only the plan is what made this warning
+            // claim "no dialogue" for an episode whose every shot card showed
+            // dialogue (field incident 2026-08-01).
+            subtitleSourceLineCount: (() => {
+              // `undefined` while the episode is still loading — the warning
+              // must never flash before we know what sources exist.
+              if (!episodeDetailQuery.data) return undefined;
+              const plan = episodeDetailQuery.data.dialogueAudioPlan as
+                | VerticalDramaDialogueAudioPlan
+                | null
+                | undefined;
+              if (Array.isArray(plan?.dialogueLines) && plan.dialogueLines.length > 0) {
+                return plan.dialogueLines.length;
+              }
+              const clips = episodeDetailQuery.data.motionPromptPack?.clips;
+              if (!Array.isArray(clips)) return 0;
+              return clips.reduce(
+                (total, clip) =>
+                  total +
+                  (Array.isArray(clip?.dialogue)
+                    ? clip.dialogue.filter(line =>
+                        String(line?.lineTh ?? "").trim()
+                      ).length
+                    : 0),
+                0
+              );
+            })(),
           }}
           scriptSummary={(() => {
             const script = episodeDetailQuery.data?.script as

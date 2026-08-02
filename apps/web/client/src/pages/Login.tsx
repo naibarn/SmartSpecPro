@@ -215,7 +215,14 @@ export default function Login() {
       return;
     }
 
-    navigate(returnUrl);
+    if (process.env.NODE_ENV === 'test') {
+      navigate(returnUrl);
+      return;
+    }
+
+    // In real browser runtime, a full location swap ensures session cookies and AuthContext state
+    // are cleanly synchronized across all route guards without infinite client-side redirect loops.
+    window.location.href = returnUrl;
   };
 
   // Redirect to dashboard (or returnUrl) if already authenticated

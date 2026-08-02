@@ -20,6 +20,7 @@ function shotCardFixture(
   return {
     shotId: 1,
     purpose: "hook_open",
+    visualSummary: "เปิดเรื่องและโชว์สินค้า",
     demonstrationType: "finished_product_showcase",
     depictsMinor: false,
     guardianRequired: false,
@@ -177,6 +178,7 @@ describe("SequentialShotReviewSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "บันทึกการแก้ไข" }));
     expect(onSaveShotEdits).toHaveBeenCalledWith({
       shotId: 5,
+      storySummary: shots[0].visualSummary,
       dialogue: "บทพูดใหม่",
       imagePrompt: shots[0].imagePrompt,
       videoPrompt: shots[0].videoPrompt,
@@ -195,6 +197,50 @@ describe("SequentialShotReviewSection", () => {
       />
     );
     expect(screen.getByRole("button", { name: "บันทึกการแก้ไข" })).toBeDisabled();
+  });
+
+  it("keeps image/video prompt generation as separate per-shot actions", () => {
+    const onGenerateShotPrompt = vi.fn();
+    const shots = [shotCardFixture({ shotId: 7 })];
+    const { rerender } = render(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onGenerateShotPrompt={onGenerateShotPrompt}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt ภาพใหม่" }));
+    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt วิดีโอใหม่" }));
+    expect(onGenerateShotPrompt).toHaveBeenNthCalledWith(1, {
+      shotId: 7,
+      stage: "image",
+    });
+    expect(onGenerateShotPrompt).toHaveBeenNthCalledWith(2, {
+      shotId: 7,
+      stage: "video",
+    });
+
+    rerender(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        generatingPrompt={{ shotId: 7, stage: "image" }}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onGenerateShotPrompt={onGenerateShotPrompt}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.getByRole("button", { name: "กำลังสร้าง Prompt ภาพ…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "สร้าง Prompt วิดีโอใหม่" })).toBeDisabled();
   });
 
   it("surfaces a preflight rejection on the affected card only, retaining the user's edited text", () => {
@@ -383,7 +429,7 @@ describe("SequentialShotReviewSection", () => {
       const currentThumb = within(card).getByTestId(
         "sequential-shot-alternate-4-2"
       );
-      expect(within(currentThumb).getByText("ใช้อยู่")).toBeTruthy();
+      expect(within(currentThumb).getByText("กำลังใช้")).toBeTruthy();
       expect(currentThumb).toBeDisabled();
 
       const otherThumb = within(card).getByTestId(

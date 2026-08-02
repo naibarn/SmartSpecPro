@@ -541,4 +541,103 @@ describe("AutoStoryboardAdvancedOverrides", () => {
       screen.getByText("อัตโนมัติตามคุณภาพ (gpt-4o-mini / gpt-4o)")
     ).toBeTruthy();
   });
+
+  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+  // flexible-shots-and-creation-casting/plan.md, W3).
+  describe("staged shot count (flexible shots)", () => {
+    it("is absent by default (legacy frame strategy, no staged prop wired)", () => {
+      render(
+        <AutoStoryboardAdvancedOverrides
+          plan={readyPlan()}
+          open
+          value={{}}
+          onChange={vi.fn()}
+          onOpenChange={vi.fn()}
+          onResetToAuto={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByLabelText("Shot count (Staged)")).toBeNull();
+      expect(screen.getByLabelText("Shots")).toBeTruthy();
+    });
+
+    it("swaps the legacy Shots select for the staged one when sequential_shot_storyboard is selected", () => {
+      render(
+        <AutoStoryboardAdvancedOverrides
+          plan={readyPlan()}
+          open
+          value={{ frameStrategy: "sequential_shot_storyboard" }}
+          onChange={vi.fn()}
+          onOpenChange={vi.fn()}
+          onResetToAuto={vi.fn()}
+          onStagedShotCountChange={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByLabelText("Shots")).toBeNull();
+      expect(screen.getByLabelText("Shot count (Staged)")).toBeTruthy();
+    });
+
+    it("renders auto and every fixed option up to 30, defaulting the displayed value to 9", () => {
+      render(
+        <AutoStoryboardAdvancedOverrides
+          plan={readyPlan()}
+          open
+          value={{ frameStrategy: "sequential_shot_storyboard" }}
+          onChange={vi.fn()}
+          onOpenChange={vi.fn()}
+          onResetToAuto={vi.fn()}
+          onStagedShotCountChange={vi.fn()}
+        />
+      );
+
+      const select = screen.getByLabelText(
+        "Shot count (Staged)"
+      ) as HTMLSelectElement;
+      const optionValues = Array.from(select.options).map(
+        option => option.value
+      );
+      expect(optionValues).toEqual([
+        "auto",
+        "7",
+        "8",
+        "9",
+        "10",
+        "12",
+        "15",
+        "18",
+        "21",
+        "24",
+        "27",
+        "30",
+      ]);
+      expect(select.value).toBe("9");
+    });
+
+    it("emits 'auto', numbers, and undefined (for the default 9) through onStagedShotCountChange", () => {
+      const onStagedShotCountChange = vi.fn();
+      render(
+        <AutoStoryboardAdvancedOverrides
+          plan={readyPlan()}
+          open
+          value={{ frameStrategy: "sequential_shot_storyboard" }}
+          onChange={vi.fn()}
+          onOpenChange={vi.fn()}
+          onResetToAuto={vi.fn()}
+          stagedShotCount={30}
+          onStagedShotCountChange={onStagedShotCountChange}
+        />
+      );
+
+      const select = screen.getByLabelText("Shot count (Staged)");
+      fireEvent.change(select, { target: { value: "auto" } });
+      expect(onStagedShotCountChange).toHaveBeenLastCalledWith("auto");
+
+      fireEvent.change(select, { target: { value: "15" } });
+      expect(onStagedShotCountChange).toHaveBeenLastCalledWith(15);
+
+      fireEvent.change(select, { target: { value: "9" } });
+      expect(onStagedShotCountChange).toHaveBeenLastCalledWith(undefined);
+    });
+  });
 });

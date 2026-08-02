@@ -65,12 +65,15 @@ import {
   resolveDialogueLineAbsoluteTimings,
   type VdDialogueTimelineClip,
 } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
+import { estimateVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 // Task #34 — pure Text Overlay Suite constants/helpers. Safe as a normal
 // static import (unlike `verticalDramaStoryBible.ts`, this shared module has
 // no transitive `adminProcedure`/router dependency — see
 // `server/services/verticalDramaTextOverlayResolution.ts`'s own doc comment
 // for the ONE module in this feature that DOES need a dynamic import).
 import {
+  type VdSeriesWatermarkSlotId,
+  type VdWatermarkPosition,
   VD_CHARACTER_INTRO_DURATION_SECONDS,
   VD_END_CARD_FOLLOW_LINE_TH,
   VD_OPENER_RECAP_HEADER_TH,
@@ -165,6 +168,24 @@ export interface CompiledVideoState {
   assembledAt?: string;
   status?: CompiledVideoStatus;
   error?: string;
+  /**
+   * Additive (`planning/vd-remotion-render-option/plan.md`, wave 1) — which
+   * render engine produced/owns this `compiledVideo` state. Omitted means
+   * `"ffmpeg"` (byte-identical to every render before this option existed).
+   * `"remotion_queue"` tells `reconcileVdRemotionAssembly` (not this file —
+   * see `verticalDramaRemotionRender.ts`) which worker-job queue to poll
+   * while `status === "pending"`.
+   */
+  renderEngine?: "ffmpeg" | "remotion_queue";
+  /**
+   * `Date.now()` when `submitVdRemotionAssembly` submitted `pendingJobId` to
+   * the `remotion_render_video` worker queue — the only clock
+   * `reconcileVdRemotionAssembly`'s queued-TTL fallback has, since
+   * `workerJobs` itself has no "submitted for Lane B" timestamp separate
+   * from `createdAt` (`planning/worker-app-remotion-render-video/plan.md`
+   * §P3). Absent for `renderEngine === "ffmpeg"` states.
+   */
+  renderSubmittedAt?: number;
 }
 
 export interface MissingClip {
@@ -689,8 +710,14 @@ export interface FinalRenderManifestSection {
    *  all share this one count). `0` when the flag is off or the episode's
    *  `textOverlayPlan` has nothing enabled. */
   textOverlayEventCount: number;
-  /** Task #34 — whether an IMAGE watermark was composited into this render. */
+  /** Task #34 — whether at least one IMAGE watermark was composited into
+   *  this render. Dual watermark (`planning/vd-dual-watermark/plan.md`):
+   *  `true` when either slot rendered an image; see `watermarkCount` for how
+   *  many. */
   watermarkIncluded: boolean;
+  /** Dual watermark — how many IMAGE watermark slots were actually
+   *  composited into this render (0, 1, or 2). */
+  watermarkCount: number;
   renderedAt: string;
 }
 
@@ -799,6 +826,9 @@ export interface RunAssemblyJobDialogueAudioInput {
 export interface RunAssemblyJobTextOverlayEventInput {
   kind: VdTextOverlayAssKind;
   text: string;
+  /** Optional 3x3 screen anchor (per-episode cards). Applied as an inline ASS
+   *  `\an` override; omitted keeps the style's baked-in alignment. */
+  position?: VdWatermarkPosition;
   secondaryText?: string;
   variant?: VdTextOverlayAssEvent["variant"];
   opacity?: number;
@@ -823,16 +853,22 @@ export interface RunAssemblyJobTextOverlayEventInput {
 }
 
 /**
- * A series' IMAGE watermark (task #34, plan.md ลายน้ำ `type: "image"`) —
- * REMOTE-url shaped like `RunAssemblyJobBannerInput`; the job downloads
- * `imageUrl` to a local staged PNG the same way clip/banner sources already
- * are. Always spans the whole video (no start/end window — see
- * `ResolvedWatermarkImage`'s own doc comment in
- * `verticalDramaFinalRenderGraph.ts`).
+ * ONE series watermark IMAGE slot (task #34, plan.md ลายน้ำ `type: "image"`;
+ * dual watermark, `planning/vd-dual-watermark/plan.md`) — REMOTE-url shaped
+ * like `RunAssemblyJobBannerInput`; the job downloads `imageUrl` to a local
+ * staged PNG the same way clip/banner sources already are. Always spans the
+ * whole video (no start/end window — see `ResolvedWatermarkImage`'s own doc
+ * comment in `verticalDramaFinalRenderGraph.ts`). A render can carry UP TO
+ * TWO of these (one per `VdSeriesWatermarkSlotId`) in `RunAssemblyJobArgs
+ * .watermarkImages`.
  */
 export interface RunAssemblyJobWatermarkImageInput {
+  /** Which configured slot this is (`"primary"` = series/title logo,
+   *  `"secondary"` = channel logo) — drives distinct staged filenames and
+   *  distinct Remotion layer ids so two watermarks never collide. */
+  slotId: VdSeriesWatermarkSlotId;
   imageUrl: string;
-  position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+  position: VdWatermarkPosition;
   opacity: number;
   scalePct: number;
   marginPx: number;
@@ -869,8 +905,9 @@ export interface RunAssemblyJobArgs {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
-  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. */
-  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
+  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. Dual
+   *  watermark: up to 2 entries, one per `VdSeriesWatermarkSlotId`. */
+  watermarkImages?: RunAssemblyJobWatermarkImageInput[];
   /** Test injection point for the total-source-duration probe the final-render
    *  path needs up front (banner timing/validation) — mirrors `ffmpegRunner`'s
    *  existing injection convention so tests never need a real `ffprobe`
@@ -923,7 +960,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       args.dialogueAudio?.segments?.length ||
       args.dialogueAudio?.loudnessNormalize ||
       args.subtitles ||
-      args.watermarkImage
+      (args.watermarkImages?.length ?? 0) > 0
     );
 
     let ffArgs: string[];
@@ -971,22 +1008,27 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         });
       }
 
-      // Task #34 — stage the series' IMAGE watermark (additive) BEFORE the
+      // Task #34 — stage the series' IMAGE watermark(s) (additive) BEFORE the
       // duration probe below, same download helper/convention as banners.
-      let resolvedWatermarkImage: ResolvedWatermarkImage | undefined;
-      if (args.watermarkImage) {
+      // Dual watermark (`planning/vd-dual-watermark/plan.md`): one file per
+      // `slotId` — distinct filenames by construction (there are at most two
+      // slots, "primary"/"secondary"), so two watermark images never
+      // collide on the same staged local path.
+      const resolvedWatermarkImages: ResolvedWatermarkImage[] = [];
+      for (const watermark of args.watermarkImages ?? []) {
         const dest = path.join(
           workDir,
-          `watermark${inferDownloadExtension(args.watermarkImage.imageUrl, ".png")}`
+          `watermark-${watermark.slotId}${inferDownloadExtension(watermark.imageUrl, ".png")}`
         );
-        await downloadClipToFile(args.watermarkImage.imageUrl, dest, internalBaseUrl);
-        resolvedWatermarkImage = {
+        await downloadClipToFile(watermark.imageUrl, dest, internalBaseUrl);
+        resolvedWatermarkImages.push({
+          slotId: watermark.slotId,
           localPngPath: dest,
-          position: args.watermarkImage.position,
-          opacity: args.watermarkImage.opacity,
-          scalePct: args.watermarkImage.scalePct,
-          marginPx: args.watermarkImage.marginPx,
-        };
+          position: watermark.position,
+          opacity: watermark.opacity,
+          scalePct: watermark.scalePct,
+          marginPx: watermark.marginPx,
+        });
       }
 
       // Total source duration, needed up front for banner timing/validation
@@ -1093,7 +1135,8 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
               }
             : undefined,
         subtitles: subtitlesForGraph ?? null,
-        watermarkImage: resolvedWatermarkImage,
+        watermarkImages:
+          resolvedWatermarkImages.length > 0 ? resolvedWatermarkImages : undefined,
       });
 
       finalRenderSummary = {
@@ -1103,7 +1146,8 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         subtitlePreset: args.subtitles?.preset,
         subtitleLineCount: args.subtitles?.lines?.length ?? 0,
         textOverlayEventCount: resolvedOverlayEvents.length,
-        watermarkIncluded: Boolean(resolvedWatermarkImage),
+        watermarkIncluded: resolvedWatermarkImages.length > 0,
+        watermarkCount: resolvedWatermarkImages.length,
         renderedAt: new Date().toISOString(),
       };
     }
@@ -1179,8 +1223,9 @@ export async function submitAssemblyJob(args: {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
-  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. */
-  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
+  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. Dual
+   *  watermark: up to 2 entries. */
+  watermarkImages?: RunAssemblyJobWatermarkImageInput[];
   probeDurationSecondsFn?: (filePath: string) => Promise<number | undefined>;
 }): Promise<{ jobId: string }> {
   const jobId = randomUUID();
@@ -1202,7 +1247,7 @@ export async function submitAssemblyJob(args: {
     banners: args.banners,
     dialogueAudio: args.dialogueAudio,
     subtitles: args.subtitles,
-    watermarkImage: args.watermarkImage,
+    watermarkImages: args.watermarkImages,
     probeDurationSecondsFn: args.probeDurationSecondsFn,
   });
 
@@ -1282,9 +1327,103 @@ export interface VdEpisodeDialogueAudioSubtitlesRunInputs {
   subtitleLinesIncluded: number;
 }
 
+/**
+ * One clip's own dialogue, as authored on `motionPromptPack.clips[].dialogue`
+ * and shown on the storyboard shot cards.
+ *
+ * Field incident 2026-08-01 (series 21 / episode 124): every shot had dialogue
+ * on screen, yet the render burned in ZERO subtitles and the UI insisted the
+ * episode "has no dialogue". Subtitles were sourced ONLY from
+ * `dialogueAudioPlan.dialogueLines`, which is written by the dialogue/voice
+ * step — an episode that never ran that step keeps its dialogue solely on the
+ * motion prompt pack (20 lines across 8 of 9 clips, in that case). The render
+ * was already being handed these very clips; only their `dialogue` was dropped.
+ */
+function clamp01(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
+}
+
+export interface VdClipAuthoredDialogueLine {
+  text: string;
+  /** Display name for the speaker chip; omitted for narration. */
+  speakerName?: string;
+}
+
+/**
+ * Turns per-clip authored dialogue into `VerticalDramaDialogueLine[]` shaped
+ * exactly like a real dialogue plan's, so the CLIP-LOCAL `start`/`end` written
+ * here flow through the SAME `resolveDialogueLineAbsoluteTimings` conversion
+ * every planned line uses (its `clip_timeline` branch) — no second timing model.
+ *
+ * Within a clip, each line gets a share of the clip window proportional to its
+ * estimated speech time (`estimateVerticalDramaSpeechSeconds`, the same
+ * estimator the storyboard cards display), laid end to end. That keeps a long
+ * line on screen longer than a short one instead of splitting the clip evenly,
+ * and it is fully deterministic.
+ */
+function buildDialogueLinesFromClipDialogue(
+  clipDialogue: Map<number, VdClipAuthoredDialogueLine[]> | undefined,
+  motionClips: VdDialogueTimelineClip[],
+  includedClipNumbers: number[]
+): VerticalDramaDialogueLine[] {
+  if (!clipDialogue || clipDialogue.size === 0) return [];
+  const includedSet = new Set(includedClipNumbers);
+  const built: VerticalDramaDialogueLine[] = [];
+
+  for (const clip of [...motionClips].sort((a, b) => a.clipNumber - b.clipNumber)) {
+    if (!includedSet.has(clip.clipNumber)) continue;
+    const authored = (clipDialogue.get(clip.clipNumber) ?? []).filter(line =>
+      line.text.trim()
+    );
+    if (authored.length === 0) continue;
+
+    const clipDurationSec = Math.max(0, clip.durationSeconds);
+    if (clipDurationSec <= 0) continue;
+
+    const weights = authored.map(line =>
+      Math.max(0.1, estimateVerticalDramaSpeechSeconds(line.text))
+    );
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+    let localCursorSec = 0;
+    authored.forEach((line, index) => {
+      // Last line closes out the clip exactly, so rounding can never leave a
+      // sliver of untitled tail.
+      const localEndSec =
+        index === authored.length - 1
+          ? clipDurationSec
+          : Math.min(
+              clipDurationSec,
+              localCursorSec + (weights[index] / totalWeight) * clipDurationSec
+            );
+      if (localEndSec > localCursorSec) {
+        built.push({
+          lineId: `clip-${clip.clipNumber}-line-${index + 1}`,
+          shotNumber: clip.sourceShotNumbers[0] ?? clip.clipNumber,
+          clipNumber: clip.clipNumber,
+          speakerName: line.speakerName?.trim() || "",
+          isNarration: !line.speakerName?.trim(),
+          text: line.text.trim(),
+          start: localCursorSec,
+          end: localEndSec,
+          targetDurationSeconds: localEndSec - localCursorSec,
+        });
+      }
+      localCursorSec = localEndSec;
+    });
+  }
+
+  return built;
+}
+
 export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
   plan: VerticalDramaDialogueAudioPlan | null | undefined;
   motionClips: VdDialogueTimelineClip[];
+  /** Per-clip authored dialogue, used as the subtitle source when `plan` has
+   *  no lines. Keyed by `clipNumber`. Absent/empty ⇒ behavior is
+   *  byte-identical to before this fallback existed. */
+  clipDialogue?: Map<number, VdClipAuthoredDialogueLine[]>;
   includedClipNumbers: number[];
   includeDialogueAudio: boolean;
   loudnessNormalize: boolean;
@@ -1298,7 +1437,15 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
    *  `resolveAudienceAgeRating`'s own "no rating? default to 18+" default). */
   audienceAgeRating?: AudienceAgeRating;
 }): VdEpisodeDialogueAudioSubtitlesRunInputs {
-  const lines = params.plan?.dialogueLines ?? [];
+  const planLines = params.plan?.dialogueLines ?? [];
+  const lines =
+    planLines.length > 0
+      ? planLines
+      : buildDialogueLinesFromClipDialogue(
+          params.clipDialogue,
+          params.motionClips,
+          params.includedClipNumbers
+        );
   const wantsSubtitles =
     params.subtitlePreset != null &&
     params.subtitlePreset !== "none" &&
@@ -1355,8 +1502,42 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
   const segments: RunAssemblyJobDialogueAudioSegmentInput[] = [];
   const subtitleLines: AssSubtitleLine[] = [];
 
+  // PLANNED per-clip windows, used only to express each caption's position as
+  // a fraction OF ITS OWN CLIP. A renderer that has probed the real clips can
+  // then re-time the line exactly (`AssSubtitleLine.clipNumber` doc comment);
+  // one that has not keeps using the absolute seconds below unchanged.
+  const plannedClipWindows = new Map<number, { offsetSec: number; durationSec: number }>();
+  {
+    const includedSet = new Set(params.includedClipNumbers);
+    let cumulativeSec = 0;
+    for (const clip of [...params.motionClips].sort(
+      (a, b) => a.clipNumber - b.clipNumber
+    )) {
+      if (!includedSet.has(clip.clipNumber)) continue;
+      const durationSec = Math.max(0, clip.durationSeconds);
+      plannedClipWindows.set(clip.clipNumber, { offsetSec: cumulativeSec, durationSec });
+      cumulativeSec += durationSec;
+    }
+  }
+
   for (const timing of timings) {
     if (wantsSubtitles && timing.text.trim()) {
+      const window =
+        timing.resolvedClipNumber != null
+          ? plannedClipWindows.get(timing.resolvedClipNumber)
+          : undefined;
+      const clipAttribution =
+        window && window.durationSec > 0
+          ? {
+              clipNumber: timing.resolvedClipNumber,
+              clipLocalStartFrac: clamp01(
+                (timing.absoluteStartSec - window.offsetSec) / window.durationSec
+              ),
+              clipLocalEndFrac: clamp01(
+                (timing.absoluteEndSec - window.offsetSec) / window.durationSec
+              ),
+            }
+          : {};
       subtitleLines.push({
         startSec: timing.absoluteStartSec,
         endSec: timing.absoluteEndSec,
@@ -1366,6 +1547,7 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
         // has no speaking character.
         speakerName: timing.isNarration ? undefined : timing.speakerName,
         text: timing.text,
+        ...clipAttribution,
       });
     }
     if (params.includeDialogueAudio) {
@@ -1430,6 +1612,9 @@ export interface VdEpisodeTextOverlayAnchorInput {
   shotNumber: number;
   offsetSec?: number;
   durationSec: number;
+  /** Optional 3x3 screen anchor. Omitted keeps the style's baked-in
+   *  alignment, so cards authored before this field render unchanged. */
+  position?: VdWatermarkPosition;
 }
 
 /**
@@ -1473,6 +1658,7 @@ export function resolveEpisodeTextOverlayAnchoredEvents(
       text: anchor.text,
       secondaryText: anchor.secondaryText,
       variant: anchor.variant,
+      position: anchor.position,
       startSec: timing.absoluteStartSec,
       endSec: timing.absoluteEndSec,
     };
@@ -1498,6 +1684,8 @@ export interface VdEpisodeTextOverlayCardInput {
   shotNumber: number;
   offsetSec?: number;
   durationSec: number;
+  /** Optional 3x3 screen anchor — see `VdEpisodeTextOverlayAnchorInput`. */
+  position?: VdWatermarkPosition;
 }
 
 /**
@@ -1524,12 +1712,17 @@ export interface VdEpisodeTextOverlayRunInputsParams {
   episodeIndicator?: { label: string; position: "top_left" | "top_right" } | null;
   characterIntroCards?: VdEpisodeTextOverlayCharacterIntroInput[];
   cards?: VdEpisodeTextOverlayCardInput[];
-  watermarkText?: {
+  /** One entry per enabled TEXT watermark slot (dual watermark,
+   *  `planning/vd-dual-watermark/plan.md`) — replaces the old singular
+   *  `watermarkText` param; each entry becomes its own `watermark_text`
+   *  overlay event, so a series can burn in a text-type primary AND a
+   *  text-type secondary watermark simultaneously. */
+  watermarkTexts?: Array<{
     text: string;
-    position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+    position: VdWatermarkPosition;
     opacity: number;
     marginPx: number;
-  } | null;
+  }>;
   motionClips: VdDialogueTimelineClip[];
   includedClipNumbers: number[];
 }
@@ -1602,13 +1795,14 @@ export function resolveEpisodeTextOverlayRunInputs(
     });
   }
 
-  if (params.watermarkText?.text?.trim()) {
+  for (const watermarkText of params.watermarkTexts ?? []) {
+    if (!watermarkText.text?.trim()) continue;
     overlays.push({
       kind: "watermark_text",
-      text: params.watermarkText.text,
-      variant: params.watermarkText.position,
-      opacity: params.watermarkText.opacity,
-      marginPx: params.watermarkText.marginPx,
+      text: watermarkText.text,
+      variant: watermarkText.position,
+      opacity: watermarkText.opacity,
+      marginPx: watermarkText.marginPx,
       // Advisory-only — re-resolved to [0, videoDurationSeconds] post-probe.
       startSec: 0,
       endSec: 0,
@@ -1636,6 +1830,7 @@ export function resolveEpisodeTextOverlayRunInputs(
         shotNumber: card.shotNumber,
         offsetSec: card.offsetSec,
         durationSec: card.durationSec,
+        position: card.position,
       })
     ),
   ];
@@ -1675,8 +1870,8 @@ export interface SequentialAssemblyJobSpec {
   subtitles?: RunAssemblyJobSubtitlesInput | null;
   /** Task #34 — additive; `verticalDramaSeries.ts`'s `assembleSeasonVideos`
    *  populates this per-episode from the SAME series watermark config
-   *  (batch-level "ใส่ลายน้ำ" toggle). */
-  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
+   *  (batch-level "ใส่ลายน้ำ" toggle). Dual watermark: up to 2 entries. */
+  watermarkImages?: RunAssemblyJobWatermarkImageInput[];
 }
 
 export interface SequentialAssemblyJobResult {
@@ -1747,7 +1942,7 @@ export async function submitSequentialAssemblyJobs(
           banners: spec.banners,
           dialogueAudio: spec.dialogueAudio,
           subtitles: spec.subtitles,
-          watermarkImage: spec.watermarkImage,
+          watermarkImages: spec.watermarkImages,
           probeDurationSecondsFn,
         });
       } catch {

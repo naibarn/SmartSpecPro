@@ -82,6 +82,8 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "Auto เริ่มได้โดยไม่ต้องเลือก template, engine, platform, frame strategy, shot count, audio หรือ text policy",
         visionQaModel: "โมเดลตรวจ QA (Vision)",
         visionQaModelAuto: "อัตโนมัติตามคุณภาพ (gpt-4o-mini / gpt-4o)",
+        storyPlanningModel: "โมเดล LLM (เขียนเนื้อเรื่อง/รัน skill)",
+        storyPlanningModelAuto: "แนะนำ (อัตโนมัติ)",
         overrideDiff: (fields: string[]) =>
           `ค่าที่ปรับจากแผนอัตโนมัติ: ${fields.join(", ")}`,
         overridePending:
@@ -211,7 +213,7 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         // shot has 2+ alternates (spec: fewer than 2 contributing waves
         // omits the metadata key entirely).
         spareImagesTitle: "ภาพสำรอง (ไม่เสียเครดิตเพิ่ม)",
-        spareImageCurrentBadge: "ใช้อยู่",
+        spareImageCurrentBadge: "กำลังใช้",
         spareImageAttemptLabel: (n: number) => `ครั้งที่ ${n}`,
         spareImageQualityScoreSuffix: (score: number) => ` · คะแนน ${score}`,
         spareImageSelectAriaLabel: (n: number) =>
@@ -223,6 +225,8 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         spareImagePreviewAriaLabel: (n: number) =>
           `ดูภาพสำรองครั้งที่ ${n} แบบเต็มจอ`,
         spareImageUseThisLabel: "ใช้ภาพนี้",
+        spareImageSelectionHint:
+          "คลิกภาพที่ต้องการใช้เป็นภาพหลักของช็อตนี้ ระบบจะสลับไปใช้ภาพที่สร้างไว้แล้วโดยไม่เสียเครดิตเพิ่ม",
         promptCharCount: (n: number, max: number) => `${n}/${max} ตัวอักษร`,
         promptOverBudget:
           "ยาวเกินงบตัวอักษรที่แนะนำ ระบบฝั่งเซิร์ฟเวอร์จะตรวจสอบอีกครั้งตอนบันทึก",
@@ -480,6 +484,8 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "Auto starts without selecting template, engine, platform, frame strategy, shot count, audio, or text policy.",
         visionQaModel: "Vision QA model",
         visionQaModelAuto: "Auto (follow quality mode: gpt-4o-mini / gpt-4o)",
+        storyPlanningModel: "Story / skill LLM",
+        storyPlanningModelAuto: "Recommended (automatic)",
         overrideDiff: (fields: string[]) => `Override diff: ${fields.join(", ")}`,
         overridePending:
           "Updating the auto plan with your optional choices. Template and engine remain backend-managed.",
@@ -608,7 +614,7 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         // shot has 2+ alternates (spec: fewer than 2 contributing waves
         // omits the metadata key entirely).
         spareImagesTitle: "Spare images (no extra credit)",
-        spareImageCurrentBadge: "In use",
+        spareImageCurrentBadge: "Currently used",
         spareImageAttemptLabel: (n: number) => `Attempt ${n}`,
         spareImageQualityScoreSuffix: (score: number) => ` · score ${score}`,
         spareImageSelectAriaLabel: (n: number) =>
@@ -620,6 +626,8 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         spareImagePreviewAriaLabel: (n: number) =>
           `Preview spare image attempt ${n} full-screen`,
         spareImageUseThisLabel: "Use this image",
+        spareImageSelectionHint:
+          "Click the image to make it the shot's primary frame. Existing generated media is reused with no extra credit.",
         promptCharCount: (n: number, max: number) => `${n}/${max} characters`,
         promptOverBudget:
           "Over the recommended character budget — the server re-validates on save.",

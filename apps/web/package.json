@@ -122,6 +122,7 @@
     "@smartspec/agent-experience": "file:../../packages/agent-experience",
     "@smartspec/db": "file:../../packages/db",
     "@smartspec/local-ai-core": "file:../../packages/local-ai-core",
+    "@smartspec/remotion-render": "file:../../packages/remotion-render",
     "@smartspec/shared": "file:../../packages/shared",
     "@smartspec/skills": "file:../../packages/skills",
     "@smartspec/ui": "file:../../packages/ui",

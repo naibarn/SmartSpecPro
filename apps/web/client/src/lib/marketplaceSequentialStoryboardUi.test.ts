@@ -81,6 +81,7 @@ describe("marketplaceSequentialStoryboardUi", () => {
       expect(cards).toHaveLength(9);
       expect(cards.map(card => card.shotId)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
       const first = cards[0];
+      expect(first.visualSummary).toBe("Product on table");
       expect(first.dialogue).toBe("สวัสดีค่ะ วันนี้มารีวิวสินค้าตัวนี้กัน");
       expect(first.imagePrompt).toBe(
         "A clean product hero shot on a wooden table."
@@ -130,6 +131,56 @@ describe("marketplaceSequentialStoryboardUi", () => {
         expect(card.edited).toBe(false);
         expect(card.editedAt).toBeNull();
       }
+    });
+
+    it("falls back to the persisted concept for legacy story/dialogue, while honoring an explicit blank override", () => {
+      const cards = projectSequentialShotCards({
+        concept: {
+          shots: [
+            {
+              storyboardGuide: "Concept story beat",
+              voiceover: "Concept dialogue",
+            },
+          ],
+        },
+        sequentialStoryboard: {
+          shots: [
+            shotFixture({
+              visual_summary: "",
+              dialogue: "",
+              start_frame_image_prompt: "legacy image prompt",
+              video_prompt: "legacy video prompt",
+            }),
+          ],
+          shotOverrides: {
+            "1": {
+              visual_summary: "",
+              dialogue: "",
+              editedAt: "2026-07-26T12:00:00.000Z",
+              editedBy: "user_1",
+            },
+          },
+        },
+      });
+
+      expect(cards[0].visualSummary).toBe("");
+      expect(cards[0].dialogue).toBe("");
+
+      const fallbackCards = projectSequentialShotCards({
+        concept: {
+          shots: [
+            {
+              storyboardGuide: "Concept story beat",
+              voiceover: "Concept dialogue",
+            },
+          ],
+        },
+        sequentialStoryboard: {
+          shots: [shotFixture({ visual_summary: "", dialogue: "" })],
+        },
+      });
+      expect(fallbackCards[0].visualSummary).toBe("Concept story beat");
+      expect(fallbackCards[0].dialogue).toBe("Concept dialogue");
     });
 
     it("tolerates undefined, {}, legacy 3x3 metadata, and malformed shots without throwing", () => {

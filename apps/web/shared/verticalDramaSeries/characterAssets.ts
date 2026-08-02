@@ -35,11 +35,36 @@ export type VerticalDramaCharacterAssetRole =
   | "primary_reference"
   | "primary_portrait"
   | "portrait_candidate"
+  | "angle_front"
+  | "angle_left_three_quarter"
+  | "angle_right_three_quarter"
   | "expression"
   | "wardrobe"
   | "pose"
   | "product"
   | "other";
+
+/** Canonical v1 identity-angle pack slots (Feature 137 P2). */
+export const VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES = [
+  "angle_front",
+  "angle_left_three_quarter",
+  "angle_right_three_quarter",
+] as const;
+
+export type VerticalDramaCharacterAngleRole =
+  (typeof VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES)[number];
+
+export const VERTICAL_DRAMA_CHARACTER_ANGLE_DIRECTIVES: Record<
+  VerticalDramaCharacterAngleRole,
+  string
+> = {
+  angle_front:
+    "front-facing head-and-shoulders portrait, eyes toward camera, neutral expression",
+  angle_left_three_quarter:
+    "left three-quarter facial angle, keep the character's left side visible, eyes toward camera",
+  angle_right_three_quarter:
+    "right three-quarter facial angle, keep the character's right side visible, eyes toward camera",
+};
 
 export type VerticalDramaPortraitCandidateStatus =
   | "previewed"

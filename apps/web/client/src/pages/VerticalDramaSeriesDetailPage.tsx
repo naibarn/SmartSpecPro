@@ -258,6 +258,9 @@ export default function VerticalDramaSeriesDetailPage() {
   const characterProfilesEnabled = useTenantFeatureFlag(
     "verticalDramaCharacterProfiles"
   );
+  const videoSafeStartFramesEnabled = useTenantFeatureFlag(
+    "verticalDramaVideoSafeStartFrames"
+  );
 
   const detailQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
@@ -517,6 +520,7 @@ export default function VerticalDramaSeriesDetailPage() {
                       readOnly={isArchived}
                       voiceChainEnabled={voiceChainEnabled}
                       characterProfilesEnabled={characterProfilesEnabled}
+                      videoSafeStartFramesEnabled={videoSafeStartFramesEnabled}
                     />
                   ) : tab === "scenes" ? (
                     <VerticalDramaLocationStockPanel

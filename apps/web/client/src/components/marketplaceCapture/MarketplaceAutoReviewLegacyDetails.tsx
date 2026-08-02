@@ -23,7 +23,35 @@ type LegacyDetailsProps = {
   onCreateStaged: () => void;
   onRegenerateShot?: (shotId: number) => void;
   onSaveShotEdits?: (input: SequentialShotEditorCardSaveInput) => void;
+  onGenerateShotPrompt?: (input: {
+    shotId: number;
+    stage: "image" | "video";
+  }) => void;
+  onGenerateShotContent?: (input: {
+    shotId: number;
+    stage: "summary" | "dialogue";
+  }) => void;
+  generatingPrompt?: {
+    shotId: number;
+    stage: "image" | "video" | "summary" | "dialogue";
+  } | null;
+  languagePlan?: {
+    summaryLanguage: "th" | "en";
+    dialogueLanguage: "th" | "en";
+    promptLanguage: "th" | "en";
+  };
+  onLanguagePlanChange?: (plan: {
+    summaryLanguage: "th" | "en";
+    dialogueLanguage: "th" | "en";
+    promptLanguage: "th" | "en";
+  }) => void;
   onSelectShotAlternate?: (input: { shotId: number; attempt: number }) => void;
+  onEditShotImage?: (input: { shotId: number; instruction: string }) => void;
+  onAcceptEditedShotImage?: (shotId: number) => void;
+  onDiscardEditedShotImage?: (shotId: number) => void;
+  onPollEditedShotImage?: (shotId: number) => void;
+  imageEditSubmittingShotId?: number | null;
+  imageEditResultByShot?: Record<number, { beforeUrl: string; afterUrl: string }>;
   busyShotId?: number | null;
   savingShotId?: number | null;
   swappingShotId?: number | null;
@@ -206,6 +234,18 @@ function outputLinkFor(
   return links.find(link => text(link.kind) === kind) ?? null;
 }
 
+function collectSequentialReferenceImages(run: Record<string, any>) {
+  const metadata = asRecord(run.metadataJson);
+  const sequential = asRecord(metadata.sequentialStoryboard);
+  return asArray(sequential.referenceManifest)
+    .map(entry => asRecord(entry))
+    .map(entry => ({
+      role: text(entry.role) || "reference",
+      url: safeUrl(entry.url),
+    }))
+    .filter(entry => entry.url);
+}
+
 function stageLabel(stage: unknown): string {
   const labels: Record<string, string> = {
     product_preflight: "ตรวจข้อมูลสินค้า",
@@ -233,7 +273,18 @@ export function MarketplaceAutoReviewLegacyDetails({
   onCreateStaged,
   onRegenerateShot,
   onSaveShotEdits,
+  onGenerateShotPrompt,
+  onGenerateShotContent,
+  generatingPrompt,
+  languagePlan,
+  onLanguagePlanChange,
   onSelectShotAlternate,
+  onEditShotImage,
+  onAcceptEditedShotImage,
+  onDiscardEditedShotImage,
+  onPollEditedShotImage,
+  imageEditSubmittingShotId,
+  imageEditResultByShot,
   busyShotId,
   savingShotId,
   swappingShotId,
@@ -251,6 +302,7 @@ export function MarketplaceAutoReviewLegacyDetails({
   const libraryLink = outputLinkFor(links, "library_item");
   const images = collectImageUrls(run);
   const sequentialShots = projectSequentialShotCards(run.metadataJson);
+  const sequentialReferenceImages = collectSequentialReferenceImages(run);
   const credits = creditSummary(run);
   const statusDetail = asRecord(
     run.statusDetail ?? timeline.statusDetail ?? projectionTimeline.statusDetail
@@ -430,9 +482,54 @@ export function MarketplaceAutoReviewLegacyDetails({
               {sequentialShots.length} ช็อต
             </span>
           </header>
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Product references ของ Job นี้
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  ภาพชุดนี้คือภาพสินค้าที่ถูกเลือกตอนสร้าง Job
+                  และถูกล็อกไว้กับงานเดิม
+                  ส่วนภาพสำรองในแต่ละช็อตด้านล่างคือภาพที่ระบบสร้างไว้แล้ว
+                  ไม่ใช่ภาพสินค้าใหม่
+                </p>
+              </div>
+              {sequentialReferenceImages.length > 0 ? (
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                  {sequentialReferenceImages.length} ภาพอ้างอิง
+                </span>
+              ) : null}
+            </div>
+            {sequentialReferenceImages.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {sequentialReferenceImages.map((reference, index) => (
+                  <figure
+                    key={`${reference.url}-${index}`}
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1.5"
+                  >
+                    <img
+                      src={reference.url}
+                      alt={`ภาพอ้างอิงสินค้า ${index + 1}`}
+                      className="h-16 w-12 rounded object-cover"
+                    />
+                    <figcaption className="pr-2 text-xs text-slate-600">
+                      {reference.role}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-amber-700">
+                งานเดิมไม่ได้เก็บรายการภาพอ้างอิงแยกไว้
+                จึงเลือกย้อนหลังจากหน้านี้ไม่ได้
+              </p>
+            )}
+          </div>
           {onRegenerateShot && onSaveShotEdits ? (
             <div className="mt-5">
               <SequentialShotReviewSection
+                key={text(run.id) || "legacy-sequential"}
                 shots={sequentialShots}
                 loopReport={null}
                 budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
@@ -442,9 +539,20 @@ export function MarketplaceAutoReviewLegacyDetails({
                 shotError={shotError}
                 onRegenerateShot={onRegenerateShot}
                 onSaveShotEdits={onSaveShotEdits}
+                onGenerateShotPrompt={onGenerateShotPrompt}
+                onGenerateShotContent={onGenerateShotContent}
+                generatingPrompt={generatingPrompt}
+                languagePlan={languagePlan}
+                onLanguagePlanChange={onLanguagePlanChange}
                 onSelectShotAlternate={
                   onSelectShotAlternate ?? (() => undefined)
                 }
+                onEditShotImage={onEditShotImage}
+                onAcceptEditedShotImage={onAcceptEditedShotImage}
+                onDiscardEditedShotImage={onDiscardEditedShotImage}
+                onPollEditedShotImage={onPollEditedShotImage}
+                imageEditSubmittingShotId={imageEditSubmittingShotId}
+                imageEditResultByShot={imageEditResultByShot}
                 locale="th"
               />
             </div>
@@ -689,7 +797,7 @@ export function MarketplaceAutoReviewLegacyDetails({
           {storyboardLink ? (
             <a
               href={safeUrl(storyboardLink.url)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
             >
               <Film className="h-4 w-4" /> เปิด Storyboard Review
               <ArrowUpRight className="h-4 w-4" />

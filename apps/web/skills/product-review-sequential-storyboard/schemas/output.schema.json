@@ -368,7 +368,27 @@
           "guardian_required": { "type": "boolean" },
           "transition_from_previous": { "type": "string" },
           "visual_summary": { "type": "string" },
-          "dialogue": { "type": "string", "description": "This shot's slice of the ONE continuous Thai review dialogue." },
+          "dialogue": { "type": "string", "description": "This shot's slice of the ONE continuous review dialogue in the selected dialogue_language." },
+          "summary_language": { "type": "string", "enum": ["th", "en"] },
+          "dialogue_language": { "type": "string", "enum": ["th", "en"] },
+          "prompt_language": { "type": "string", "enum": ["th", "en"] },
+          "camera_beats": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "required": ["beat_id", "duration_seconds", "camera", "movement", "action"],
+              "properties": {
+                "beat_id": { "type": "integer", "minimum": 1 },
+                "duration_seconds": { "type": "number", "minimum": 0.5, "maximum": 10 },
+                "camera": { "type": "string", "minLength": 1 },
+                "movement": { "type": "string", "minLength": 1 },
+                "action": { "type": "string", "minLength": 1 },
+                "transition": { "type": "string" }
+              },
+              "additionalProperties": true
+            }
+          },
           "estimated_speech_seconds": { "type": "number", "minimum": 0 },
           "start_frame_image_prompt": { "type": "string", "minLength": 1 },
           "image_prompt_character_count": { "type": "integer", "minimum": 0 },

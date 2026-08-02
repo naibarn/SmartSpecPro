@@ -8,10 +8,11 @@
  * payload). Disabled entirely when the series is archived (`readOnly`).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Loader2, Save, Trash2 } from "lucide-react";
+import { Loader2, Save, Trash2, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,8 @@ import {
   parseSeriesWatermarkConfig,
   VD_WATERMARK_POSITIONS,
   type VdSeriesWatermarkConfig,
+  type VdSeriesWatermarkSlot,
+  type VdSeriesWatermarkSlotId,
   type VdWatermarkPosition,
 } from "@shared/verticalDramaSeries/textOverlay";
 import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
@@ -148,6 +151,28 @@ const VD_WATERMARK_POSITION_LABELS: Record<
   bottom_right: { th: "ล่าง–ขวา", en: "Bottom right" },
 };
 
+/**
+ * Dual watermark (planning/vd-dual-watermark/plan.md) — UI-only fallback
+ * values for a slot that has never been configured. Slot 1 (series/title
+ * logo) defaults to `top_right`; slot 2 (channel logo) seeds `bottom_right`
+ * so a fresh pair does not stack in the same corner. These are display
+ * defaults ONLY — a slot is never written into the saved payload until the
+ * user actually touches one of its controls (see `patchSecondary` below).
+ */
+const DEFAULT_PRIMARY_WATERMARK_SLOT: VdSeriesWatermarkSlot = {
+  enabled: false,
+  type: "text",
+  text: "",
+  position: "top_right",
+  opacity: 0.45,
+  scalePct: 10,
+  marginPx: 32,
+};
+const DEFAULT_SECONDARY_WATERMARK_SLOT: VdSeriesWatermarkSlot = {
+  ...DEFAULT_PRIMARY_WATERMARK_SLOT,
+  position: "bottom_right",
+};
+
 export function VerticalDramaSettingsTab({
   lang,
   seriesId,
@@ -233,16 +258,7 @@ export function VerticalDramaSettingsTab({
   // shape — `parseSeriesWatermarkConfig` never throws, same convention as
   // every other Vertical Drama jsonb reader).
   const parsedWatermark = useMemo(
-    () =>
-      parseSeriesWatermarkConfig(watermark) ?? {
-        enabled: false,
-        type: "text" as const,
-        text: "",
-        position: "top_right" as const,
-        opacity: 0.45,
-        scalePct: 10,
-        marginPx: 32,
-      },
+    () => parseSeriesWatermarkConfig(watermark) ?? DEFAULT_PRIMARY_WATERMARK_SLOT,
     [watermark]
   );
   const [watermarkDraft, setWatermarkDraft] =
@@ -663,6 +679,40 @@ const WATERMARK_PREVIEW_CORNER_CLASS: Record<VdWatermarkPosition, string> = {
   bottom_right: "right-1 bottom-1",
 };
 
+/** Client-side cap for the watermark upload. Kept in sync with the server's
+ *  `uploadSeriesWatermarkImage` decoded-byte cap AND with the dedicated
+ *  `express.json` limit registered for that tRPC route in `server/_core/index.ts`
+ *  (base64 inflates by ~4/3, so the route limit must exceed this). */
+const WATERMARK_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+/** Fallback MIME for OS drags that report an empty `File.type`. */
+function guessImageMimeFromName(name: string | undefined): string {
+  const ext = (name || "").split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "png") return "image/png";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "webp") return "image/webp";
+  if (ext === "svg") return "image/svg+xml";
+  return "image/png";
+}
+
+/**
+ * Pulls an image URL out of a non-file drag (an image dragged from another tab
+ * or from the app's own galleries). Returns null when the payload isn't a
+ * usable image reference, so the caller can surface a real error instead of
+ * silently writing junk into the URL field.
+ */
+function readDroppedImageUrl(dt: DataTransfer | null | undefined): string | null {
+  if (!dt) return null;
+  const raw = (dt.getData?.("text/uri-list") || dt.getData?.("text/plain") || "")
+    .split(/[\r\n]+/)
+    .map(line => line.trim())
+    .find(line => line && !line.startsWith("#"));
+  if (!raw) return null;
+  if (/^data:image\//i.test(raw)) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return null;
+}
+
 /**
  * Text Overlay Suite (F131AB, task #34, plan.md v2 "ลายน้ำ") — the series
  * watermark settings card, rendered on the Settings tab (see
@@ -691,6 +741,157 @@ function VerticalDramaSeriesWatermarkCard({
   onSave: () => void;
 }) {
   const t = vdTextOverlayCopy(lang);
+
+  // Dual watermark (planning/vd-dual-watermark/plan.md) — slot 1 (series/
+  // title logo) stays inline at the top level of `draft`; slot 2 (channel
+  // logo) lives under `draft.secondary` and is only materialized into the
+  // draft the first time the user actually edits one of ITS controls (see
+  // `patchSecondary`) — a series that never touches slot 2 keeps saving a
+  // payload with no `secondary` key at all.
+  const primaryValue: VdSeriesWatermarkSlot = draft;
+  const secondaryValue: VdSeriesWatermarkSlot =
+    draft.secondary ?? DEFAULT_SECONDARY_WATERMARK_SLOT;
+
+  function patchPrimary(next: Partial<VdSeriesWatermarkSlot>) {
+    onChange({ ...draft, ...next });
+  }
+  function patchSecondary(next: Partial<VdSeriesWatermarkSlot>) {
+    onChange({ ...draft, secondary: { ...secondaryValue, ...next } });
+  }
+
+  const primaryHeading =
+    lang === "th"
+      ? "ลายน้ำเรื่อง (โลโก้ชื่อเรื่อง)"
+      : "Title watermark (series logo)";
+  const secondaryHeading =
+    lang === "th" ? "ลายน้ำช่อง (โลโก้ช่อง)" : "Channel watermark (channel logo)";
+
+  const previewVisible = primaryValue.enabled || secondaryValue.enabled;
+
+  return (
+    <Card data-testid="vd-watermark-card">
+      <CardHeader>
+        <CardTitle className="text-base">{t.watermarkCardTitle}</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          {t.watermarkCardDescription}
+        </p>
+      </CardHeader>
+      <CardContent className="grid max-w-4xl gap-6">
+        {/* `flex flex-col`, NOT `grid`, for the two slot columns and their
+            inner stacks: a grid container that ends up TALLER than its content
+            (which the short column always is, next to the tall one) stretches
+            its auto rows to fill that height, which shoved the second slot's
+            controls into the vertical middle of the card. Flex columns size to
+            their content and stay top-aligned. */}
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <div className="flex flex-col gap-4 rounded-lg border border-border/60 p-4">
+            <h4 className="text-sm font-semibold">{primaryHeading}</h4>
+            <VerticalDramaWatermarkSlotForm
+              lang={lang}
+              readOnly={readOnly}
+              seriesId={seriesId}
+              slotId="primary"
+              value={primaryValue}
+              onPatch={patchPrimary}
+            />
+          </div>
+          <div className="flex flex-col gap-4 rounded-lg border border-border/60 p-4">
+            <h4 className="text-sm font-semibold">{secondaryHeading}</h4>
+            <VerticalDramaWatermarkSlotForm
+              lang={lang}
+              readOnly={readOnly}
+              seriesId={seriesId}
+              slotId="secondary"
+              value={secondaryValue}
+              onPatch={patchSecondary}
+            />
+          </div>
+        </div>
+
+        {previewVisible ? (
+          <div className="flex flex-col items-start gap-1 border-t pt-4">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t.watermarkPreviewLabel}
+            </Label>
+            {/* ONE combined 9:16 preview showing both slots' markers at once
+                (rather than a preview per slot) — the whole point of the
+                preview is letting the user see whether the two logos would
+                overlap, which a split preview can't show. */}
+            <div
+              className="relative h-40 w-[90px] shrink-0 overflow-hidden rounded-md border bg-muted"
+              data-testid="vd-watermark-preview"
+            >
+              {primaryValue.enabled ? (
+                <span
+                  className={`absolute rounded bg-foreground/70 px-1 py-0.5 text-[9px] text-background ${WATERMARK_PREVIEW_CORNER_CLASS[primaryValue.position]}`}
+                  style={{ opacity: primaryValue.opacity }}
+                  data-testid="vd-watermark-preview-marker-primary"
+                >
+                  {primaryValue.type === "text" ? primaryValue.text || "LOGO" : "IMG"}
+                </span>
+              ) : null}
+              {secondaryValue.enabled ? (
+                <span
+                  className={`absolute rounded bg-primary/70 px-1 py-0.5 text-[9px] text-primary-foreground ${WATERMARK_PREVIEW_CORNER_CLASS[secondaryValue.position]}`}
+                  style={{ opacity: secondaryValue.opacity }}
+                  data-testid="vd-watermark-preview-marker-secondary"
+                >
+                  {secondaryValue.type === "text" ? secondaryValue.text || "CH" : "IMG"}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {!readOnly && (
+          <Button
+            onClick={onSave}
+            disabled={saving}
+            className="w-fit gap-2"
+            data-testid="vd-watermark-save"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Save className="h-4 w-4" aria-hidden="true" />
+            )}
+            {saving ? t.watermarkSaving : t.watermarkSaveButton}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Dual watermark (planning/vd-dual-watermark/plan.md) — the per-slot form
+ * (enable switch, type select, text/image field with drag-and-drop upload,
+ * position select, opacity/scale sliders, margin input). Rendered TWICE by
+ * `VerticalDramaSeriesWatermarkCard` (once per slot) so the two slots can
+ * never visually drift apart — there is exactly one JSX definition of "what
+ * a watermark slot's controls look like".
+ *
+ * Upload busy/error/drag state is LOCAL to this component instance, so the
+ * two rendered instances (primary/secondary) never share one flag — a
+ * shared busy flag would freeze BOTH slots' upload UI while either one was
+ * in flight (see MEMORY.md "Panel-wide pending dead button").
+ */
+function VerticalDramaWatermarkSlotForm({
+  lang,
+  readOnly,
+  seriesId,
+  slotId,
+  value,
+  onPatch,
+}: {
+  lang: "th" | "en";
+  readOnly: boolean;
+  seriesId: string;
+  slotId: VdSeriesWatermarkSlotId;
+  value: VdSeriesWatermarkSlot;
+  onPatch: (next: Partial<VdSeriesWatermarkSlot>) => void;
+}) {
+  const t = vdTextOverlayCopy(lang);
   const uploadWatermarkImageMutation =
     trpc.verticalDramaSeries.uploadSeriesWatermarkImage.useMutation();
   const [watermarkUploadBusy, setWatermarkUploadBusy] = useState(false);
@@ -698,19 +899,33 @@ function VerticalDramaSeriesWatermarkCard({
     string | null
   >(null);
   const [watermarkDragActive, setWatermarkDragActive] = useState(false);
+  const watermarkFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  function patch(next: Partial<VdSeriesWatermarkConfig>) {
-    onChange({ ...draft, ...next });
-  }
+  const testId = (name: string) => `vd-watermark-${name}-${slotId}`;
 
   const handleWatermarkFile = async (file: File | null | undefined) => {
     if (!file) return;
     setWatermarkUploadError(null);
-    if (!file.type.toLowerCase().startsWith("image/")) {
+    // Some OS drags report an empty `type` (notably `.svg` on Windows), so fall
+    // back to the extension rather than rejecting a legitimate image outright —
+    // the server re-validates extension + magic bytes either way.
+    const looksLikeImage =
+      file.type.toLowerCase().startsWith("image/") ||
+      (!file.type &&
+        /\.(png|jpe?g|webp|svg)$/i.test(file.name || ""));
+    if (!looksLikeImage) {
       setWatermarkUploadError(
         lang === "th"
           ? "ไฟล์ต้องเป็นรูปภาพ (PNG / JPG / WebP / SVG)"
           : "File must be an image (PNG / JPG / WebP / SVG)"
+      );
+      return;
+    }
+    if (file.size > WATERMARK_MAX_UPLOAD_BYTES) {
+      setWatermarkUploadError(
+        lang === "th"
+          ? "ไฟล์ใหญ่เกิน 10MB"
+          : "File is larger than the 10MB limit"
       );
       return;
     }
@@ -724,14 +939,14 @@ function VerticalDramaSeriesWatermarkCard({
       });
       const result = await uploadWatermarkImageMutation.mutateAsync({
         seriesId,
-        fileName: file.name,
-        fileType: file.type,
+        fileName: file.name || "watermark.png",
+        fileType: file.type || guessImageMimeFromName(file.name),
         fileBase64: base64,
       });
       const url = typeof result?.url === "string" ? result.url : "";
       if (!url) throw new Error("no_url");
       // Fill the field only — saving stays an explicit user action.
-      patch({ imageUrl: url });
+      onPatch(acceptImagePatch({ imageUrl: url }));
     } catch (error) {
       setWatermarkUploadError(
         `${lang === "th" ? "อัปโหลดไม่สำเร็จ" : "Upload failed"}${
@@ -743,260 +958,320 @@ function VerticalDramaSeriesWatermarkCard({
     }
   };
 
+  /**
+   * An image arriving by drop/upload is an unambiguous "make this an image
+   * watermark" instruction, so it also flips the slot into image mode and
+   * turns it on. Without this, dropping a logo on a slot left in the default
+   * TEXT mode silently did nothing visible — the image field (and its
+   * dropzone) is only rendered in image mode, so the user had no target and
+   * no feedback. Nothing is persisted until "บันทึกลายน้ำ", so a mis-drop is
+   * still fully recoverable.
+   */
+  const acceptImagePatch = (
+    patch: Partial<VdSeriesWatermarkSlot>
+  ): Partial<VdSeriesWatermarkSlot> => ({
+    ...patch,
+    type: "image",
+    enabled: true,
+  });
+
+  const handleWatermarkDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (readOnly || watermarkUploadBusy) return;
+    // Cancelling BOTH dragenter and dragover is what makes the element a real
+    // drop target; without it the browser keeps its default handler and opens
+    // the dropped file instead (navigating away from the settings page).
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    setWatermarkDragActive(true);
+  };
+
+  const handleWatermarkDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    if (readOnly || watermarkUploadBusy) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setWatermarkDragActive(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      void handleWatermarkFile(file);
+      return;
+    }
+    const droppedUrl = readDroppedImageUrl(event.dataTransfer);
+    if (droppedUrl) {
+      setWatermarkUploadError(null);
+      onPatch(acceptImagePatch({ imageUrl: droppedUrl }));
+      return;
+    }
+    setWatermarkUploadError(
+      lang === "th"
+        ? "ไม่พบไฟล์รูปในสิ่งที่ลากมา — ลากไฟล์จากเครื่อง หรือกดเลือกไฟล์"
+        : "No image found in the drop — drag a file from your computer or pick one"
+    );
+  };
+
   return (
-    <Card data-testid="vd-watermark-card">
-      <CardHeader>
-        <CardTitle className="text-base">{t.watermarkCardTitle}</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          {t.watermarkCardDescription}
-        </p>
-      </CardHeader>
-      <CardContent className="grid max-w-2xl gap-4 sm:grid-cols-[1fr_auto]">
-        <div className="grid gap-4">
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={draft.enabled}
-              onCheckedChange={next => patch({ enabled: Boolean(next) })}
-              disabled={readOnly}
-              data-testid="vd-watermark-enabled-toggle"
-            />
-            <Label className="text-sm font-medium">
-              {t.watermarkEnableLabel}
+    // `flex flex-col`, not `grid` — see the two-column wrapper's own comment in
+    // `VerticalDramaSeriesWatermarkCard`: a stretched grid container pushes
+    // these controls apart vertically when this slot is the shorter of the two.
+    //
+    // The drop handlers sit on the WHOLE slot, not on the image field alone:
+    // the image field only exists in image mode, so a slot in text mode (or a
+    // disabled one) had no drop target at all. Dropping anywhere in the slot
+    // now accepts the image and switches the slot to image mode.
+    <div
+      className={`flex flex-col gap-4 rounded-md transition-colors ${
+        watermarkDragActive ? "bg-primary/5 ring-2 ring-primary" : ""
+      }`}
+      onDragEnter={handleWatermarkDragOver}
+      onDragOver={handleWatermarkDragOver}
+      onDragLeave={event => {
+        const next = event.relatedTarget as Node | null;
+        if (next && event.currentTarget.contains(next)) return;
+        setWatermarkDragActive(false);
+      }}
+      onDrop={handleWatermarkDrop}
+      data-testid={testId("slot")}
+    >
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={value.enabled}
+          onCheckedChange={next => onPatch({ enabled: Boolean(next) })}
+          disabled={readOnly}
+          data-testid={testId("enabled-toggle")}
+        />
+        <Label className="text-sm font-medium">{t.watermarkEnableLabel}</Label>
+      </div>
+
+      {value.enabled ? (
+        <>
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t.watermarkTypeLabel}
             </Label>
+            <Select
+              value={value.type}
+              onValueChange={v => onPatch({ type: v as "text" | "image" })}
+              disabled={readOnly}
+            >
+              <SelectTrigger data-testid={testId("type")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">{t.watermarkTypeText}</SelectItem>
+                <SelectItem value="image">{t.watermarkTypeImage}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {draft.enabled ? (
-            <>
-              <div className="grid gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  {t.watermarkTypeLabel}
-                </Label>
-                <Select
-                  value={draft.type}
-                  onValueChange={v => patch({ type: v as "text" | "image" })}
-                  disabled={readOnly}
-                >
-                  <SelectTrigger data-testid="vd-watermark-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">{t.watermarkTypeText}</SelectItem>
-                    <SelectItem value="image">
-                      {t.watermarkTypeImage}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {draft.type === "text" ? (
-                <div className="grid gap-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground">
-                    {t.watermarkTextLabel}
-                  </Label>
-                  <Input
-                    value={draft.text ?? ""}
-                    placeholder={t.watermarkTextPlaceholder}
-                    onChange={e => patch({ text: e.target.value })}
-                    disabled={readOnly}
-                    data-testid="vd-watermark-text"
-                  />
-                </div>
-              ) : (
-                <div className="grid gap-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground">
-                    {t.watermarkImageUrlLabel}
-                  </Label>
-                  {/* Drag-and-drop upload (parity with the Marketplace overlay
-                      picker). The drop only fills the URL field — saving stays
-                      an explicit action, so a mis-drop is recoverable. */}
-                  <div
-                    className={`rounded-md border border-dashed p-2 text-xs ${
-                      watermarkDragActive
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-muted/30"
-                    }`}
-                    onDragOver={event => {
-                      if (readOnly) return;
-                      event.preventDefault();
-                      setWatermarkDragActive(true);
-                    }}
-                    onDragLeave={() => setWatermarkDragActive(false)}
-                    onDrop={event => {
-                      if (readOnly) return;
-                      event.preventDefault();
-                      setWatermarkDragActive(false);
-                      void handleWatermarkFile(event.dataTransfer?.files?.[0]);
-                    }}
-                    data-testid="vd-watermark-dropzone"
-                  >
-                    <p className="text-muted-foreground">
-                      {lang === "th"
-                        ? "ลากไฟล์จากเครื่องมาวางที่นี่ (อัปโหลดอัตโนมัติ) หรือกดเลือกไฟล์ · PNG / JPG / WebP / SVG · ไม่เกิน 10MB · แนะนำ PNG พื้นหลังโปร่งใส"
-                        : "Drag an image here (uploads automatically) or pick a file · PNG / JPG / WebP / SVG · max 10MB · transparent PNG recommended"}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                        className="text-xs"
-                        disabled={readOnly || watermarkUploadBusy}
-                        onChange={event =>
-                          void handleWatermarkFile(event.target.files?.[0])
-                        }
-                        data-testid="vd-watermark-file-input"
-                      />
-                      {watermarkUploadBusy ? (
-                        <span className="text-primary" role="status">
-                          {lang === "th" ? "กำลังอัปโหลด…" : "Uploading…"}
-                        </span>
-                      ) : null}
-                    </div>
-                    {watermarkUploadError ? (
-                      <p className="mt-1 text-destructive" role="alert">
-                        {watermarkUploadError}
-                      </p>
-                    ) : null}
-                  </div>
-                  <Input
-                    value={draft.imageUrl ?? ""}
-                    placeholder="https://…/logo.png"
-                    onChange={e => patch({ imageUrl: e.target.value })}
-                    disabled={readOnly}
-                    data-testid="vd-watermark-image-url"
-                  />
-                  {draft.imageUrl ? (
-                    <img
-                      src={draft.imageUrl}
-                      alt=""
-                      className="h-14 w-14 rounded border border-border bg-muted object-contain"
-                      style={{ opacity: draft.opacity ?? 1 }}
-                    />
-                  ) : null}
-                </div>
-              )}
-
-              <div className="grid gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  {t.watermarkPositionLabel}
-                </Label>
-                <Select
-                  value={draft.position}
-                  onValueChange={v =>
-                    patch({ position: v as VdWatermarkPosition })
-                  }
-                  disabled={readOnly}
-                >
-                  <SelectTrigger data-testid="vd-watermark-position">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VD_WATERMARK_POSITIONS.map(pos => (
-                      <SelectItem key={pos} value={pos}>
-                        {VD_WATERMARK_POSITION_LABELS[pos][lang === "th" ? "th" : "en"]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-muted-foreground">
-                    {t.watermarkOpacityLabel}
-                  </Label>
-                  <span className="text-xs text-muted-foreground">
-                    {Math.round(draft.opacity * 100)}%
-                  </span>
-                </div>
-                <Slider
-                  min={0.2}
-                  max={0.8}
-                  step={0.05}
-                  value={[draft.opacity]}
-                  onValueChange={([v]) =>
-                    patch({ opacity: v ?? draft.opacity })
-                  }
-                  disabled={readOnly}
-                  data-testid="vd-watermark-opacity"
-                />
-              </div>
-
-              <div className="grid gap-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-muted-foreground">
-                    {t.watermarkScalePctLabel}
-                  </Label>
-                  <span className="text-xs text-muted-foreground">
-                    {draft.scalePct}%
-                  </span>
-                </div>
-                <Slider
-                  min={5}
-                  max={20}
-                  step={1}
-                  value={[draft.scalePct]}
-                  onValueChange={([v]) =>
-                    patch({ scalePct: v ?? draft.scalePct })
-                  }
-                  disabled={readOnly}
-                  data-testid="vd-watermark-scale"
-                />
-              </div>
-
-              <div className="grid gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  {t.watermarkMarginPxLabel}
-                </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={200}
-                  className="w-24"
-                  value={draft.marginPx}
-                  onChange={e => patch({ marginPx: Number(e.target.value) })}
-                  disabled={readOnly}
-                  data-testid="vd-watermark-margin"
-                />
-              </div>
-            </>
+          {value.type === "text" ? (
+            <div className="grid gap-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t.watermarkTextLabel}
+              </Label>
+              <Input
+                value={value.text ?? ""}
+                placeholder={t.watermarkTextPlaceholder}
+                onChange={e => onPatch({ text: e.target.value })}
+                disabled={readOnly}
+                data-testid={testId("text")}
+              />
+            </div>
           ) : null}
 
-          {!readOnly && (
-            <Button
-              onClick={onSave}
-              disabled={saving}
-              className="w-fit gap-2"
-              data-testid="vd-watermark-save"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="h-4 w-4" aria-hidden="true" />
-              )}
-              {saving ? t.watermarkSaving : t.watermarkSaveButton}
-            </Button>
-          )}
-        </div>
+          {/* The logo drop area is rendered in BOTH modes, not only in image
+              mode. Hiding it in text mode left a slot with no drop target and
+              no upload button at all, so "drag a logo here" was impossible to
+              discover or perform without first knowing to flip the type
+              select. Dropping/picking an image flips the type itself (see
+              `acceptImagePatch`), so showing it in text mode is coherent.
 
-        {draft.enabled ? (
-          <div className="flex flex-col items-center gap-1">
-            <Label className="text-xs font-medium text-muted-foreground">
-              {t.watermarkPreviewLabel}
-            </Label>
+              The drop handlers sit on THIS wrapper, not on the dashed hint
+              alone, so dropping anywhere in the image field (hint strip, URL
+              input, preview) is accepted — users aimed at the URL box and the
+              file fell through to the browser, which then navigated away from
+              the page. `dragenter` + `dropEffect` are both required for
+              Chrome to treat the element as a real drop target. The drop only
+              fills the field — saving stays an explicit action, so a mis-drop
+              is recoverable. */}
+          {(
             <div
-              className="relative h-40 w-[90px] shrink-0 overflow-hidden rounded-md border bg-muted"
-              data-testid="vd-watermark-preview"
+              className={`grid gap-1.5 rounded-md p-1 transition-colors ${
+                watermarkDragActive ? "bg-primary/5 ring-2 ring-primary" : ""
+              }`}
+              onDragEnter={handleWatermarkDragOver}
+              onDragOver={handleWatermarkDragOver}
+              onDragLeave={event => {
+                const next = event.relatedTarget as Node | null;
+                if (next && event.currentTarget.contains(next)) return;
+                setWatermarkDragActive(false);
+              }}
+              onDrop={handleWatermarkDrop}
+              data-testid={testId("dropzone")}
             >
-              <span
-                className={`absolute rounded bg-foreground/70 px-1 py-0.5 text-[9px] text-background ${WATERMARK_PREVIEW_CORNER_CLASS[draft.position]}`}
-                style={{ opacity: draft.opacity }}
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t.watermarkImageUrlLabel}
+              </Label>
+              <div
+                className={`rounded-md border-2 border-dashed p-3 text-xs ${
+                  watermarkDragActive
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-muted/30"
+                }`}
+                data-testid={testId("dropzone-hint")}
               >
-                {draft.type === "text" ? draft.text || "LOGO" : "IMG"}
+                <p className="text-muted-foreground">
+                  {watermarkDragActive
+                    ? lang === "th"
+                      ? "วางไฟล์ที่นี่เพื่ออัปโหลด"
+                      : "Drop the file here to upload"
+                    : lang === "th"
+                      ? "ลากไฟล์จากเครื่องมาวางที่นี่ (อัปโหลดอัตโนมัติ) หรือกดเลือกไฟล์ · PNG / JPG / WebP / SVG · ไม่เกิน 10MB · แนะนำ PNG พื้นหลังโปร่งใส"
+                      : "Drag an image here (uploads automatically) or pick a file · PNG / JPG / WebP / SVG · max 10MB · transparent PNG recommended"}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={readOnly || watermarkUploadBusy}
+                    onClick={() => watermarkFileInputRef.current?.click()}
+                    data-testid={testId("file-picker")}
+                  >
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                    {lang === "th" ? "เลือกไฟล์" : "Choose file"}
+                  </Button>
+                  <input
+                    ref={watermarkFileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="sr-only"
+                    disabled={readOnly || watermarkUploadBusy}
+                    onChange={event => {
+                      void handleWatermarkFile(event.target.files?.[0]);
+                      // Allow re-picking the same file after an error.
+                      event.target.value = "";
+                    }}
+                    data-testid={testId("file-input")}
+                  />
+                  {watermarkUploadBusy ? (
+                    <span className="text-primary" role="status">
+                      {lang === "th" ? "กำลังอัปโหลด…" : "Uploading…"}
+                    </span>
+                  ) : null}
+                </div>
+                {value.type !== "image" ? (
+                  <p
+                    className="mt-1.5 text-[11px] text-primary"
+                    data-testid={testId("drop-anywhere-hint")}
+                  >
+                    {lang === "th"
+                      ? "ชุดนี้ตั้งเป็นลายน้ำข้อความอยู่ — วางรูปที่นี่แล้วจะสลับเป็นลายน้ำรูปภาพให้อัตโนมัติ"
+                      : "This slot is set to a text watermark — dropping an image here switches it to image mode automatically"}
+                  </p>
+                ) : null}
+                {watermarkUploadError ? (
+                  <p className="mt-1 text-destructive" role="alert">
+                    {watermarkUploadError}
+                  </p>
+                ) : null}
+              </div>
+              <Input
+                value={value.imageUrl ?? ""}
+                placeholder="https://…/logo.png"
+                onChange={e => onPatch({ imageUrl: e.target.value })}
+                disabled={readOnly}
+                data-testid={testId("image-url")}
+              />
+              {value.imageUrl ? (
+                <img
+                  src={value.imageUrl}
+                  alt=""
+                  className="h-14 w-14 rounded border border-border bg-muted object-contain"
+                  style={{ opacity: value.opacity ?? 1 }}
+                />
+              ) : null}
+            </div>
+          )}
+
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t.watermarkPositionLabel}
+            </Label>
+            <Select
+              value={value.position}
+              onValueChange={v => onPatch({ position: v as VdWatermarkPosition })}
+              disabled={readOnly}
+            >
+              <SelectTrigger data-testid={testId("position")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VD_WATERMARK_POSITIONS.map(pos => (
+                  <SelectItem key={pos} value={pos}>
+                    {VD_WATERMARK_POSITION_LABELS[pos][lang === "th" ? "th" : "en"]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t.watermarkOpacityLabel}
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                {Math.round(value.opacity * 100)}%
               </span>
             </div>
+            <Slider
+              min={0.2}
+              max={0.8}
+              step={0.05}
+              value={[value.opacity]}
+              onValueChange={([v]) => onPatch({ opacity: v ?? value.opacity })}
+              disabled={readOnly}
+              data-testid={testId("opacity")}
+            />
           </div>
-        ) : null}
-      </CardContent>
-    </Card>
+
+          <div className="grid gap-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t.watermarkScalePctLabel}
+              </Label>
+              <span className="text-xs text-muted-foreground">
+                {value.scalePct}%
+              </span>
+            </div>
+            <Slider
+              min={5}
+              max={20}
+              step={1}
+              value={[value.scalePct]}
+              onValueChange={([v]) => onPatch({ scalePct: v ?? value.scalePct })}
+              disabled={readOnly}
+              data-testid={testId("scale")}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t.watermarkMarginPxLabel}
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              max={200}
+              className="w-24"
+              value={value.marginPx}
+              onChange={e => onPatch({ marginPx: Number(e.target.value) })}
+              disabled={readOnly}
+              data-testid={testId("margin")}
+            />
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }

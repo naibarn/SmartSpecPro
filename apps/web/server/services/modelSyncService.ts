@@ -8,8 +8,10 @@
 
 import { db } from "../db";
 import { llmProviders, modelProviderMap } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { normalizeNvidiaHostedCatalogModel } from "./llmProviderCatalog";
+import { auditLogger } from "./auditLogger";
+import { MODEL_VISION_CAPABILITY_MIN_POOL } from "./modelVisionCapabilityBreaker";
 
 // Types
 interface OpenRouterModel {

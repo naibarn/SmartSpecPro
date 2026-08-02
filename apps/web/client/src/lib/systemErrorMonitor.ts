@@ -12,7 +12,10 @@
  */
 import { TRPCClientError } from "@trpc/client";
 import { toast } from "sonner";
-import { isHtmlApiErrorMessage } from "@/lib/apiResponseDiagnostics";
+import {
+  isHtmlApiErrorMessage,
+  isLostUpstreamApiErrorMessage,
+} from "@/lib/apiResponseDiagnostics";
 
 export type ErrorClass = "system" | "user" | "auth";
 
@@ -147,6 +150,22 @@ function currentUrl(): string {
 }
 
 /**
+ * True for errors that most likely mean "the backend is mid-restart /
+ * briefly unreachable" rather than a genuine application failure — either
+ * a pure network-connection failure (`isNetworkFailure`) or a gateway/proxy
+ * losing the upstream connection mid-request (Cloudflare 502/503/504/522/
+ * 524 HTML instead of JSON — see `isLostUpstreamApiErrorMessage`, matched
+ * against the exact message `assertJsonApiResponse` throws for those
+ * statuses). Used only to pick the softer "reconnecting" toast copy in
+ * `handleError` below — it does NOT affect `classifyError`'s system/user/
+ * auth classification, so query-retry behavior is unchanged.
+ */
+function isTransientReconnectClass(error: unknown): boolean {
+  if (isNetworkFailure(error)) return true;
+  return error instanceof Error && isLostUpstreamApiErrorMessage(error.message);
+}
+
+/**
  * Classifies the error and, for system-class errors, records it and shows
  * a single friendly Thai toast with a "report to admin" action. No-op for
  * "user" (existing per-call-site toasts already handle those) and "auth"
@@ -181,17 +200,20 @@ export function handleError(error: unknown, path?: string): void {
   recentToastAt.set(dedupeKey, now);
 
   // A pure network-connection failure (the request never reached the
-  // server at all) is most often a brief backend restart rather than a
-  // genuine application error, so show a softer "reconnecting" message
-  // instead of the generic "system malfunction" wording. This only changes
-  // the toast copy — dedupe (above) and the record buffer (above) are
-  // unchanged, and the report action is still available either way.
-  if (isNetworkFailure(error)) {
+  // server at all) OR a gateway/proxy losing the upstream mid-request
+  // (Cloudflare 502/503/504/522/524 HTML instead of JSON) is most often a
+  // brief backend restart rather than a genuine application error, so show
+  // a softer "reconnecting" message instead of the generic "system
+  // malfunction" wording. This only changes the toast copy — dedupe
+  // (above), the record buffer (above), and classifyError()'s "system"
+  // classification (which is what makes query retries fire in the first
+  // place) are all unchanged either way.
+  if (isTransientReconnectClass(error)) {
     toast.error("กำลังเชื่อมต่อใหม่...", {
       id: "system-error",
       duration: 8000,
       description:
-        "การเชื่อมต่อกับเซิร์ฟเวอร์ขาดหายชั่วคราว ระบบกำลังลองใหม่ให้อัตโนมัติ หากยังไม่หายกรุณาแจ้งปัญหา",
+        "เซิร์ฟเวอร์กำลังรีสตาร์ท/ขัดข้องชั่วคราว ระบบกำลังลองใหม่ให้อัตโนมัติ หากเป็นการกดสั่งงาน งานอาจสำเร็จแล้ว โปรดรอสักครู่แล้วรีเฟรชตรวจสอบก่อนกดซ้ำ",
       action: {
         label: "แจ้งปัญหา",
         onClick: () => dispatchReportEvent(resolvedPath),

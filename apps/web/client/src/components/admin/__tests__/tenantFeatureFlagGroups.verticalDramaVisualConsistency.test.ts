@@ -23,7 +23,10 @@ describe("Vertical Drama visual-consistency admin flags", () => {
       ["verticalDramaSeriesLookLock", "F139"],
       ["verticalDramaMotionContracts", "F137"],
       ["verticalDramaSceneContinuity", "F138 P1a"],
+      ["verticalDramaSceneContinuityQc", "F138 P2"],
       ["verticalDramaSceneNeighborAnchors", "F138 P1b"],
+      ["verticalDramaVideoSafeStartFrames", "F137 P2"],
+      ["verticalDramaClipIdentityQc", "F137 P3"],
     ]);
 
     for (const [key, feature] of expectedFeature) {

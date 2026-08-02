@@ -271,12 +271,30 @@ export type SequentialReferenceManifestEntry = {
   angleLabel?: string;
   url: string;
   evidenceOnly?: boolean;
+  /* Cast identity for `role === "character"` entries
+     (`planning/marketplace-four-character-cast/plan.md` §5). The skill used to
+     receive `role`/`angleLabel` only, so with more than one character it could
+     not tell who `@Image2..@Image5` were. All four are FACTS — who is in the
+     frame, what they are called, whether they are a lead or supporting, and
+     whether they are a minor — never creative direction. */
+  characterName?: string;
+  characterRole?: string;
+  variantLabel?: string;
+  depictsMinor?: boolean;
 };
 
 export type ChildSubjectPolicyInput = {
   productChildRelated: boolean;
   childDepictionPlanned?: boolean;
   guardianReferenceIndex?: number | null;
+};
+
+export type SequentialStoryboardLanguage = "th" | "en";
+
+export type SequentialStoryboardLanguagePlan = {
+  summaryLanguage: SequentialStoryboardLanguage;
+  dialogueLanguage: SequentialStoryboardLanguage;
+  promptLanguage: SequentialStoryboardLanguage;
 };
 
 /** Runtime-contract-only subset (pure, T3-testable without the full loop input). */
@@ -307,6 +325,17 @@ export type SequentialStoryboardRuntimeContractInput = {
    */
   guardianPresenceDirective?: string | null;
   demonstrationEvidenceDirective?: string | null;
+  /**
+   * Free-text per-shot instruction supplied by the user for AI-assisted
+   * prompt adjustment (e.g. "there's an 8-month-old baby in the scene"),
+   * distinct from the base story/dialogue content. Appended verbatim as its
+   * own clearly-delimited section, same conditional-append pattern as the
+   * guard directives above: absent/"" ⇒ no lines added.
+   */
+  userInstruction?: string | null;
+  summaryLanguage?: SequentialStoryboardLanguage | null;
+  dialogueLanguage?: SequentialStoryboardLanguage | null;
+  promptLanguage?: SequentialStoryboardLanguage | null;
 };
 
 export type SequentialStoryboardSkillLoopInput = {
@@ -386,6 +415,9 @@ export type SequentialStoryboardSkillLoopInput = {
   /** Feature 136 section 07 (§3.4) — see `SequentialStoryboardRuntimeContractInput`. */
   guardianPresenceDirective?: string | null;
   demonstrationEvidenceDirective?: string | null;
+  summaryLanguage?: SequentialStoryboardLanguage | null;
+  dialogueLanguage?: SequentialStoryboardLanguage | null;
+  promptLanguage?: SequentialStoryboardLanguage | null;
 };
 
 export type SequentialStoryboardClaimTraceEntry = {
@@ -425,6 +457,19 @@ export type SequentialStoryboardShot = {
    */
   start_frame_prompt_engine?: SequentialStoryboardStartFramePromptEngine;
   video_prompt_engine?: SequentialStoryboardVideoPromptEngine;
+  summary_language?: SequentialStoryboardLanguage;
+  dialogue_language?: SequentialStoryboardLanguage;
+  prompt_language?: SequentialStoryboardLanguage;
+  camera_beats?: SequentialStoryboardCameraBeat[];
+};
+
+export type SequentialStoryboardCameraBeat = {
+  beat_id: number;
+  duration_seconds: number;
+  camera: string;
+  movement: string;
+  action: string;
+  transition?: string;
 };
 
 export type SequentialStoryboardProductReferenceModelConflict = {
@@ -491,6 +536,7 @@ export type SequentialStoryboardPack = {
   loopReport: SequentialStoryboardLoopReport;
   finalQc: SequentialStoryboardFinalQc;
   referenceManifest?: SequentialReferenceManifestEntry[];
+  languagePlan?: SequentialStoryboardLanguagePlan;
   [key: string]: unknown;
 };
 
@@ -744,6 +790,16 @@ export function buildSequentialStoryboardRuntimeContract(
   lines.push(
     `video_structure_mode: ${input.videoStructureMode || "per_shot"}`
   );
+  lines.push(
+    `summary_language (selected): ${input.summaryLanguage || "th"}`
+  );
+  lines.push(
+    `dialogue_language (selected): ${input.dialogueLanguage || "th"}`
+  );
+  lines.push(`prompt_language (selected): ${input.promptLanguage || "en"}`);
+  lines.push(
+    "LANGUAGE SEPARATION LOCK: write visual_summary in summary_language, dialogue in dialogue_language, and start_frame_image_prompt/video_prompt in prompt_language. Never silently substitute one selected language for another."
+  );
 
   lines.push("## Reference Manifest (the ONLY valid @ImageN bindings)");
   for (const entry of input.referenceManifest) {
@@ -777,6 +833,13 @@ export function buildSequentialStoryboardRuntimeContract(
   if (input.demonstrationEvidenceDirective) {
     lines.push("## Demonstration Evidence Directive");
     lines.push(input.demonstrationEvidenceDirective);
+  }
+  // New capability — free-text per-shot instruction (see `userInstruction`
+  // doc comment). Same conditional-append pattern as the two directives
+  // above: absent/"" ⇒ no new lines, byte-identical contract without it.
+  if (input.userInstruction) {
+    lines.push("## User-Requested Adjustment");
+    lines.push(input.userInstruction);
   }
 
   const presetDirective = buildAutoReviewCreativePresetDirective({
@@ -870,8 +933,25 @@ function buildSequentialStoryboardMergedInputs(
       angleLabel: entry.angleLabel,
       url: entry.url,
       evidence_only: entry.evidenceOnly ?? false,
+      // Cast identity, spread conditionally so a run with no characters
+      // produces a byte-identical payload to before
+      // (`planning/marketplace-four-character-cast/plan.md` §5). Without these
+      // the skill sees N anonymous character images and cannot tell a lead
+      // from a supporting character, or an adult from a child.
+      ...(entry.characterName ? { character_name: entry.characterName } : {}),
+      ...(entry.characterRole ? { character_role: entry.characterRole } : {}),
+      ...(entry.variantLabel ? { look_label: entry.variantLabel } : {}),
+      ...(typeof entry.depictsMinor === "boolean"
+        ? { depicts_minor: entry.depictsMinor }
+        : {}),
     })),
-    target_language: "th",
+    // Backward-compatible schema alias. The independent language fields are
+    // authoritative; target_language remains present because older skill
+    // manifests require it during input audit.
+    target_language: input.dialogueLanguage ?? "th",
+    summary_language: input.summaryLanguage ?? "th",
+    dialogue_language: input.dialogueLanguage ?? "th",
+    prompt_language: input.promptLanguage ?? "en",
     shot_count: SEQUENTIAL_STORYBOARD_SHOT_COUNT,
     max_shot_duration_seconds: SEQUENTIAL_STORYBOARD_MAX_SHOT_DURATION_SECONDS,
     image_prompt_max_characters: imageBudget,
@@ -2158,7 +2238,7 @@ function buildProductionStartFramePromptEngineEffects(ctx: {
 /* always inject `invokeSkillRound` before reaching this closure.             */
 /* -------------------------------------------------------------------------- */
 
-function extractSequentialStoryboardLlmContent(response: unknown): string {
+export function extractSequentialStoryboardLlmContent(response: unknown): string {
   const content = (response as { choices?: Array<{ message?: { content?: unknown } }> })
     ?.choices?.[0]?.message?.content;
   if (typeof content === "string") return content.trim();
@@ -2639,6 +2719,9 @@ export async function runProductReviewSequentialStoryboardSkillLoop(
     videoModel: input.videoModel,
     guardianPresenceDirective: input.guardianPresenceDirective,
     demonstrationEvidenceDirective: input.demonstrationEvidenceDirective,
+    summaryLanguage: input.summaryLanguage,
+    dialogueLanguage: input.dialogueLanguage,
+    promptLanguage: input.promptLanguage,
   });
   const { systemPromptBase } = composeSequentialStoryboardSystemPromptBase({
     skill,
@@ -2924,6 +3007,11 @@ export type SequentialSingleShotRefreshInput = {
   globalContinuity?: Record<string, unknown> | null;
   shotContract: {
     purpose?: string;
+    /** The shot's own narrative brief (staged planner's `storySummary`),
+     *  distinct from `purpose` (title) and `visual_summary` (image
+     *  direction only) — input-only context, never part of the skill's
+     *  OUTPUT schema. */
+    story_summary?: string;
     dialogue: string;
     duration_seconds: number;
     demonstration_type: SequentialStoryboardShot["demonstration_type"];
@@ -2938,6 +3026,14 @@ export type SequentialSingleShotRefreshInput = {
   blockedClaims?: string[] | null;
   forbiddenClaims?: string[] | null;
   productCategory?: string | null;
+  /** Feature 136 section 07 (§3.4) — see `SequentialStoryboardRuntimeContractInput`. */
+  guardianPresenceDirective?: string | null;
+  demonstrationEvidenceDirective?: string | null;
+  /** See `SequentialStoryboardRuntimeContractInput.userInstruction`. */
+  userInstruction?: string | null;
+  summaryLanguage?: SequentialStoryboardLanguage | null;
+  dialogueLanguage?: SequentialStoryboardLanguage | null;
+  promptLanguage?: SequentialStoryboardLanguage | null;
 };
 
 export type SequentialSingleShotRefreshEffects = {
@@ -2968,6 +3064,12 @@ function buildSequentialSingleShotRefreshContract(
     blockedClaims: input.blockedClaims,
     forbiddenClaims: input.forbiddenClaims,
     childSubjectPolicy: input.childSubjectPolicy,
+    summaryLanguage: input.summaryLanguage,
+    dialogueLanguage: input.dialogueLanguage,
+    promptLanguage: input.promptLanguage,
+    guardianPresenceDirective: input.guardianPresenceDirective,
+    demonstrationEvidenceDirective: input.demonstrationEvidenceDirective,
+    userInstruction: input.userInstruction,
   });
   const lines = [
     base,
@@ -2981,8 +3083,12 @@ function buildSequentialSingleShotRefreshContract(
     "## Adjacent Shot Continuity",
     `previous_shot_visual_summary: ${input.previousShotVisualSummary || "(none — this is shot 1)"}`,
     `next_shot_visual_summary: ${input.nextShotVisualSummary || "(none — this is the last shot)"}`,
+    `summary_language: ${input.summaryLanguage || "th"}`,
+    `dialogue_language: ${input.dialogueLanguage || "th"}`,
+    `prompt_language: ${input.promptLanguage || "en"}`,
+    "LANGUAGE SEPARATION LOCK: visual_summary and dialogue must follow their own selected languages; both image and video prompts must follow prompt_language.",
     "## Output contract",
-    '  Return ONLY a JSON object: {"start_frame_image_prompt": string, "video_prompt": string, "image_prompt_character_count": number, "video_prompt_character_count": number}.',
+    '  Return ONLY a JSON object: {"start_frame_image_prompt": string, "video_prompt": string, "camera_beats": [{"beat_id": number, "duration_seconds": number, "camera": string, "movement": string, "action": string, "transition": string}]}.',
     "Rewrite ONLY this one shot. Never reference or alter any other shot. Never emit loopReport, finalQc, claim_trace, or any other shot's fields.",
   ];
   return lines.join("\n");
@@ -2995,9 +3101,49 @@ export function buildSequentialSingleShotRefreshContractForTest(
   return buildSequentialSingleShotRefreshContract(input);
 }
 
+/**
+ * Field incident 2026-07-29 (run mar_341efe636f0e6d11fc938a37dd4b19a1,
+ * shots 1 and 8, both single-shot-refresh attempts): the weak-model JSON
+ * failure class already documented at length in `extractJson`
+ * (verticalDramaStoryBible.ts) — "Expected ',' or ']' after array element" /
+ * "Unterminated string" — consistently landed inside the OPTIONAL
+ * `camera_beats` array (positions ~2400-3800, right after the two required
+ * string fields, which are each individually well-formed). Extracts a
+ * single top-level `"key":"value"` JSON string field via a quote-aware
+ * regex, bypassing a full `JSON.parse` of the whole response. Used only as
+ * a fallback AFTER `extractJson` has already thrown for the full response —
+ * never replaces the primary parse path, and only salvages the two
+ * REQUIRED fields (`start_frame_image_prompt`, `video_prompt`); it
+ * deliberately does not attempt to parse `camera_beats` at all, since a
+ * malformed array can't be regex-salvaged safely and the caller already
+ * treats `camera_beats` as fully optional.
+ */
+function extractJsonStringField(text: string, key: string): string | null {
+  const pattern = new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "s");
+  const match = text.match(pattern);
+  if (!match) return null;
+  try {
+    return JSON.parse(`"${match[1]}"`);
+  } catch {
+    return null;
+  }
+}
+
+/** Test-only wrapper (repo `...ForTest` convention). */
+export function extractJsonStringFieldForTest(
+  text: string,
+  key: string
+): string | null {
+  return extractJsonStringField(text, key);
+}
+
 function parseSequentialSingleShotRefreshOutput(
   raw: unknown
-): { start_frame_image_prompt: string; video_prompt?: string } | null {
+): {
+  start_frame_image_prompt: string;
+  video_prompt?: string;
+  camera_beats?: SequentialStoryboardCameraBeat[];
+} | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const value = raw as Record<string, unknown>;
   const startFrameImagePrompt =
@@ -3007,7 +3153,44 @@ function parseSequentialSingleShotRefreshOutput(
   if (!startFrameImagePrompt) return null;
   const videoPrompt =
     typeof value.video_prompt === "string" ? value.video_prompt.trim() : undefined;
-  return { start_frame_image_prompt: startFrameImagePrompt, video_prompt: videoPrompt };
+  const cameraBeats = Array.isArray(value.camera_beats)
+    ? value.camera_beats
+        .map((entry, index) => {
+          if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+            return null;
+          }
+          const beat = entry as Record<string, unknown>;
+          const camera = typeof beat.camera === "string" ? beat.camera.trim() : "";
+          const movement =
+            typeof beat.movement === "string" ? beat.movement.trim() : "";
+          const action = typeof beat.action === "string" ? beat.action.trim() : "";
+          if (!camera || !movement || !action) return null;
+          const duration = Number(beat.duration_seconds);
+          return {
+            beat_id: Number.isFinite(Number(beat.beat_id))
+              ? Math.max(1, Math.floor(Number(beat.beat_id)))
+              : index + 1,
+            duration_seconds: Number.isFinite(duration)
+              ? Math.max(0.5, Math.min(10, duration))
+              : 1,
+            camera,
+            movement,
+            action,
+            ...(typeof beat.transition === "string" && beat.transition.trim()
+              ? { transition: beat.transition.trim() }
+              : {}),
+          } satisfies SequentialStoryboardCameraBeat;
+        })
+        .filter((entry): entry is SequentialStoryboardCameraBeat => entry !== null)
+        .slice(0, 4)
+    : undefined;
+  return {
+    start_frame_image_prompt: startFrameImagePrompt,
+    video_prompt: videoPrompt,
+    ...(cameraBeats && cameraBeats.length > 0
+      ? { camera_beats: cameraBeats }
+      : {}),
+  };
 }
 
 /**
@@ -3169,12 +3352,37 @@ function buildProductionSequentialSingleShotRefreshEffects(ctx: {
           };
         },
       });
-      const parsed = parseSequentialStoryboardLlmOutput(
-        execution.value.rawContent
-      );
-      return (
-        parsed && typeof parsed === "object" ? parsed : {}
-      ) as Record<string, unknown>;
+      try {
+        const parsed = parseSequentialStoryboardLlmOutput(
+          execution.value.rawContent
+        );
+        return (
+          parsed && typeof parsed === "object" ? parsed : {}
+        ) as Record<string, unknown>;
+      } catch (error) {
+        // Weak-model JSON failure class fallback (see
+        // extractJsonStringField's doc comment above) — salvage the two
+        // required fields via lenient regex extraction when the full
+        // response fails to parse, instead of discarding a response that
+        // usually only has a malformed OPTIONAL `camera_beats` array.
+        const startFrame = extractJsonStringField(
+          execution.value.rawContent,
+          "start_frame_image_prompt"
+        );
+        if (!startFrame) throw error;
+        const video = extractJsonStringField(
+          execution.value.rawContent,
+          "video_prompt"
+        );
+        console.warn(
+          "[productReviewSequentialStoryboardSkillRunner][singleShotRefresh] salvaged start_frame_image_prompt/video_prompt via regex fallback after JSON parse failure (camera_beats likely malformed)",
+          { error: error instanceof Error ? error.message : String(error) }
+        );
+        return {
+          start_frame_image_prompt: startFrame,
+          ...(video ? { video_prompt: video } : {}),
+        };
+      }
     },
     emitAudit(event, payload) {
       console.info(
@@ -3203,6 +3411,7 @@ export async function refreshSequentialShotPromptWithSkill(
 ): Promise<{
   startFrameImagePrompt: string;
   videoPrompt?: string;
+  cameraBeats?: SequentialStoryboardCameraBeat[];
   degraded: boolean;
 }> {
   const synced = await syncSingleSkillIfChanged(
@@ -3259,6 +3468,9 @@ export async function refreshSequentialShotPromptWithSkill(
         return {
           startFrameImagePrompt: parsed.start_frame_image_prompt,
           videoPrompt: parsed.video_prompt,
+          ...(parsed.camera_beats
+            ? { cameraBeats: parsed.camera_beats }
+            : {}),
           degraded: false,
         };
       }

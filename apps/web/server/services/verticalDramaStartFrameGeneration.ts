@@ -307,6 +307,8 @@ export interface StartFrameRenderPlanProjection {
       dismissedIndexes?: number[];
     };
     angleGridAssetIds?: number[];
+    videoStartMediaAssetId?: string;
+    videoStartSource?: "video_safe_regen" | "angle_grid" | "manual_upload";
   }>;
 }
 
@@ -544,6 +546,12 @@ export function projectStartFramePlan(
           ...(previous?.angleGrid !== undefined ? { angleGrid: previous.angleGrid } : {}),
           ...(previous?.angleGridAssetIds !== undefined
             ? { angleGridAssetIds: previous.angleGridAssetIds }
+            : {}),
+          ...(previous?.videoStartMediaAssetId !== undefined
+            ? { videoStartMediaAssetId: previous.videoStartMediaAssetId }
+            : {}),
+          ...(previous?.videoStartSource !== undefined
+            ? { videoStartSource: previous.videoStartSource }
             : {}),
           // promptMode is DELIBERATELY never carried over — see this
           // function's own param doc comment above.
@@ -1399,11 +1407,12 @@ export const policySafeSynopsisOutputSchema = z.object({
 export type PolicySafeSynopsisOutput = z.infer<typeof policySafeSynopsisOutputSchema>;
 
 /**
- * Proves that the policy skill changed only the exact substrings it declared.
- * Any undeclared addition/deletion, or an ambiguous replacement target, fails
- * closed instead of silently turning synopsis-direct mode into creative mode.
+ * Applies only the declared policy-safe replacements to the authoritative
+ * synopsis. The model's `rewritten_synopsis` is intentionally not used for
+ * this reconstruction; it is only a consistency witness checked by
+ * `validatePolicySafeSynopsisRewrite`.
  */
-export function validatePolicySafeSynopsisRewrite(
+export function reconstructPolicySafeSynopsis(
   sourceSynopsis: string,
   output: PolicySafeSynopsisOutput,
 ): string {
@@ -1424,6 +1433,19 @@ export function validatePolicySafeSynopsisRewrite(
     }
     reconstructed = reconstructed.replace(adjustment.original, adjustment.rewritten);
   }
+  return reconstructed;
+}
+
+/**
+ * Proves that the policy skill changed only the exact substrings it declared.
+ * Any undeclared addition/deletion, or an ambiguous replacement target, fails
+ * closed instead of silently turning synopsis-direct mode into creative mode.
+ */
+export function validatePolicySafeSynopsisRewrite(
+  sourceSynopsis: string,
+  output: PolicySafeSynopsisOutput,
+): string {
+  const reconstructed = reconstructPolicySafeSynopsis(sourceSynopsis, output);
   const rewritten = output.rewritten_synopsis.trim();
   if (reconstructed !== rewritten) {
     throw new VdSchemaValidationError(
@@ -2214,7 +2236,30 @@ export async function generateStartFrameShotPrompt(
         `${userPrompt}\nCORRECTION: Your previous response changed text outside its declared exact replacements. Return a result reconstructable by applying each safety_adjustments item exactly once, in order, to the authoritative synopsis.`,
       );
       policyCalls.push(policyCall);
-      rewrittenSynopsis = validatePolicySafeSynopsisRewrite(canonicalSynopsis!, policyCall.data);
+      try {
+        rewrittenSynopsis = validatePolicySafeSynopsisRewrite(canonicalSynopsis!, policyCall.data);
+      } catch (error) {
+        // The model's `rewritten_synopsis` is a consistency witness, not an
+        // authority. Once the declared replacements themselves are valid, use
+        // their deterministic reconstruction so harmless Thai grammar glue
+        // (for example, adding "การ") cannot turn a safe shot into a 500.
+        // Any malformed/ambiguous replacement still throws from the helper.
+        rewrittenSynopsis = reconstructPolicySafeSynopsis(canonicalSynopsis!, policyCall.data);
+        console.warn(
+          "[vd_shot_start_frame_prompt] normalized policy-safe synopsis from declared replacements after retry",
+          {
+            seriesId: params.seriesId,
+            episodeId: params.episodeId,
+            shotNumber: params.shotNumber,
+            model,
+            validationIssue: error instanceof Error ? error.message : String(error),
+            declaredAdjustmentCount: policyCall.data.safety_adjustments.length,
+            sourceLength: canonicalSynopsis!.length,
+            modelRewriteLength: policyCall.data.rewritten_synopsis.trim().length,
+            reconstructedLength: rewrittenSynopsis.length,
+          },
+        );
+      }
     }
 
     const outputPrompt = buildDeterministicPolicySafeImagePrompt({

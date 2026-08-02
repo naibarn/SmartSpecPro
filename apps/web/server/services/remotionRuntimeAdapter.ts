@@ -50,6 +50,10 @@ import { accessSync, constants as fsConstants } from "node:fs";
 
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
+// Light, React-free entry — the root entry re-exports the compositions and
+// would evaluate React/JSX just to read one option (see the sidecar's note on
+// the 2026-07-30 "jsx3 is not a function" incident).
+import { resolveHardwareAcceleration } from "@smartspec/remotion-render/render-video-job";
 
 import { storageCopyToPath } from "../storage";
 import {
@@ -487,6 +491,7 @@ async function executeFinalCompositeRender(
       outputLocation: input.outputPath,
       inputProps,
       browserExecutable,
+      hardwareAcceleration: resolveHardwareAcceleration(),
     });
 
     return {
@@ -545,6 +550,7 @@ async function executeGenericTemplateRender(
     outputLocation: input.outputPath,
     inputProps,
     browserExecutable,
+    hardwareAcceleration: resolveHardwareAcceleration(),
   });
 
   return {

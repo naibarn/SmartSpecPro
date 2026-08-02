@@ -96,6 +96,10 @@ import {
   splitStoryboardGridRectsForTest,
   effectiveQualityModePolicyForTest,
   validateMarketplaceAutoReviewImagePromptPreflightForTest,
+  clearStagedRenderRefsFromMetadataForTest,
+  resolveStagedFinalRenderAudioUrl,
+  reconcileStagedRemotionFinalRenderForTest,
+  STAGED_REMOTION_QUEUED_TTL_MS,
 } from "../marketplaceAutoReviewService";
 import {
   CreativeConceptSetSchema,
@@ -1175,6 +1179,123 @@ function readyRenderGateMetadata(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+describe("Marketplace staged Remotion final render — audioUrl resolution & render-ref clearing", () => {
+  it("prefers stagedPipeline.audioUrl (written by the staged pipeline) over top-level metadata.audioUrl", () => {
+    const metadata = {
+      stagedPipeline: { audioUrl: "https://cdn.example.test/voiceover-staged.mp3" },
+      audioUrl: "https://cdn.example.test/voiceover-legacy.mp3",
+    } as any;
+    expect(resolveStagedFinalRenderAudioUrl(metadata)).toBe(
+      "https://cdn.example.test/voiceover-staged.mp3"
+    );
+  });
+
+  it("falls back to top-level metadata.audioUrl when stagedPipeline.audioUrl is absent", () => {
+    const metadata = { audioUrl: "https://cdn.example.test/voiceover-legacy.mp3" } as any;
+    expect(resolveStagedFinalRenderAudioUrl(metadata)).toBe(
+      "https://cdn.example.test/voiceover-legacy.mp3"
+    );
+  });
+
+  it("returns null (never drops silently into an unhandled undefined) when neither is set", () => {
+    expect(resolveStagedFinalRenderAudioUrl({} as any)).toBeNull();
+  });
+
+  it("clearStagedRenderRefsFromMetadataForTest strips renderJobId/renderEngine/renderSubmittedAt", () => {
+    const metadata = {
+      renderJobId: "job-dead-1",
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: 1700000000000,
+      stagedPipeline: { finalAssembly: { status: "failed" } },
+    } as any;
+    const cleared = clearStagedRenderRefsFromMetadataForTest(metadata);
+    expect((cleared as any).renderJobId).toBeUndefined();
+    expect((cleared as any).renderEngine).toBeUndefined();
+    expect((cleared as any).renderSubmittedAt).toBeUndefined();
+    expect(!("renderJobId" in (cleared as any))).toBe(true);
+    // Untouched fields survive.
+    expect((cleared as any).stagedPipeline.finalAssembly.status).toBe("failed");
+  });
+});
+
+describe("reconcileStagedRemotionFinalRender — §P3 queued-TTL fallback (worker-app-remotion-render-video plan)", () => {
+  function fakeReconcileDb(workerJobRow: Record<string, unknown> | undefined) {
+    const updateCalls: Record<string, unknown>[] = [];
+    const insertCalls: Record<string, unknown>[] = [];
+    const db = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => (workerJobRow ? [workerJobRow] : []),
+          }),
+        }),
+      }),
+      update: () => ({
+        set: (value: Record<string, unknown>) => {
+          updateCalls.push(value);
+          return {
+            where: () => ({
+              returning: async () => [{ id: "run-1", ...value }],
+            }),
+          };
+        },
+      }),
+      insert: () => ({
+        values: () => ({
+          onConflictDoUpdate: (arg: { set: Record<string, unknown> }) => {
+            insertCalls.push(arg.set);
+            return Promise.resolve();
+          },
+        }),
+      }),
+    } as any;
+    return { db, updateCalls, insertCalls };
+  }
+
+  const baseParams = {
+    tenantId: "tenant-1",
+    auth: { userId: 1 } as any,
+    run: { id: "run-1" } as any,
+    plan: basePlan as any,
+  };
+
+  it("is a no-op while the worker job is still queued and within the TTL", async () => {
+    const { db, updateCalls } = fakeReconcileDb({ id: "job-1", status: "queued" });
+    const metadata = {
+      renderJobId: "job-1",
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: Date.now() - (STAGED_REMOTION_QUEUED_TTL_MS - 60_000),
+    } as any;
+    await reconcileStagedRemotionFinalRenderForTest({ db, ...baseParams, metadata });
+    expect(updateCalls).toHaveLength(0);
+  });
+
+  it("clears render refs and stamps stagedRemotionQueueUnavailable once the queued TTL elapses", async () => {
+    const { db, updateCalls, insertCalls } = fakeReconcileDb({ id: "job-2", status: "queued" });
+    const metadata = {
+      renderJobId: "job-2",
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: Date.now() - (STAGED_REMOTION_QUEUED_TTL_MS + 60_000),
+    } as any;
+    await reconcileStagedRemotionFinalRenderForTest({ db, ...baseParams, metadata });
+
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0].renderJobId).toBeNull();
+    const nextMetadata = updateCalls[0].metadataJson as Record<string, unknown>;
+    expect(nextMetadata.renderJobId).toBeUndefined();
+    expect(nextMetadata.renderEngine).toBeUndefined();
+    expect(nextMetadata.renderSubmittedAt).toBeUndefined();
+    expect(nextMetadata.stagedRemotionQueueUnavailable).toBe(true);
+
+    expect(insertCalls).toHaveLength(1);
+    const stageSet = insertCalls[0] as Record<string, any>;
+    expect(stageSet.status).toBe("running");
+    const statusDetail = stageSet.outputJson.statusDetail;
+    expect(statusDetail.reasonCodes).toContain("staged_remotion_worker_unavailable");
+    expect(statusDetail.safeMessage).toContain("Worker");
+  });
+});
 
 describe("marketplace auto review audio/video planning", () => {
   it("requires an explicit product anchor when product images are ambiguous", () => {

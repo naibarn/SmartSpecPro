@@ -116,7 +116,7 @@ export function HyperframesStoryboardReviewPanel({
             disabled={creatingPreview}
             size={compact ? "sm" : "default"}
             className={cn(
-              "bg-sky-600 text-white hover:bg-sky-700",
+              "bg-sky-700 text-white hover:bg-sky-800 disabled:opacity-90",
               compact ? "h-8 px-3 text-xs" : ""
             )}
           >

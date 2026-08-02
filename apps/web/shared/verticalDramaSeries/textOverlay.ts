@@ -62,10 +62,21 @@ export const VD_END_CARD_STYLE_VARIANTS = [
 ] as const;
 export type VdEndCardStyleVariant = (typeof VD_END_CARD_STYLE_VARIANTS)[number];
 
+/**
+ * Nine screen anchors, row-major. Widened from the original four corners on
+ * 2026-07-30 for parity with the Marketplace overlay picker. The four corner
+ * values keep their exact original spelling, so every stored series watermark
+ * config keeps resolving to the same place.
+ */
 export const VD_WATERMARK_POSITIONS = [
   "top_left",
+  "top_center",
   "top_right",
+  "middle_left",
+  "middle_center",
+  "middle_right",
   "bottom_left",
+  "bottom_center",
   "bottom_right",
 ] as const;
 export type VdWatermarkPosition = (typeof VD_WATERMARK_POSITIONS)[number];
@@ -179,10 +190,21 @@ export type VdTextOverlayCardAnchor = z.infer<
   typeof vdTextOverlayCardAnchorSchema
 >;
 
+/**
+ * Where a per-episode card sits on screen. Same nine anchors as the series
+ * watermark (and the Marketplace overlay picker) so the whole product speaks
+ * one placement vocabulary. Optional — omitted keeps each style's own baked-in
+ * alignment, so every card authored before this field existed renders exactly
+ * as it did.
+ */
+export const VD_TEXT_OVERLAY_CARD_POSITIONS = VD_WATERMARK_POSITIONS;
+export type VdTextOverlayCardPosition = VdWatermarkPosition;
+
 export const vdTextOverlayCardSchema = z.object({
   id: z.string().min(1).max(64),
   kind: z.enum(VD_TEXT_OVERLAY_CARD_KINDS),
   anchor: vdTextOverlayCardAnchorSchema,
+  position: z.enum(VD_TEXT_OVERLAY_CARD_POSITIONS).optional(),
   text: z.string().trim().min(1).max(240),
   durationSec: z
     .number()
@@ -226,7 +248,13 @@ export function parseTextOverlayPlan(value: unknown): VdTextOverlayPlan | null {
 /* Series watermark config — zod schema + types                               */
 /* -------------------------------------------------------------------------- */
 
-export const vdSeriesWatermarkConfigSchema = z.object({
+/**
+ * ONE watermark slot. A series carries TWO independent slots (the series/title
+ * logo and the channel logo) — the user places each in its own corner, so the
+ * two slots share this exact shape and differ only in where they live in the
+ * stored config (see `vdSeriesWatermarkConfigSchema` below).
+ */
+const vdSeriesWatermarkSlotShape = {
   enabled: z.boolean(),
   type: z.enum(VD_WATERMARK_TYPES),
   text: z.string().trim().max(80).optional(),
@@ -252,10 +280,53 @@ export const vdSeriesWatermarkConfigSchema = z.object({
     .min(0)
     .max(200)
     .default(VD_WATERMARK_MARGIN_PX_DEFAULT),
+} as const;
+
+export const vdSeriesWatermarkSlotSchema = z.object(vdSeriesWatermarkSlotShape);
+export type VdSeriesWatermarkSlot = z.infer<typeof vdSeriesWatermarkSlotSchema>;
+
+/**
+ * The stored `vertical_drama_series.watermark` jsonb value.
+ *
+ * The FIRST slot is stored INLINE (the slot fields sit at the top level) and
+ * the second lives under `secondary` — deliberately not an array or a
+ * `{ primary, secondary }` pair, because every row written before the second
+ * slot existed is a bare single-slot object. Inlining slot 1 keeps every one
+ * of those rows parsing unchanged with `secondary === undefined`, so there is
+ * no data migration and no back-compat branch anywhere downstream.
+ */
+export const vdSeriesWatermarkConfigSchema = z.object({
+  ...vdSeriesWatermarkSlotShape,
+  /** Slot 2 — absent on every pre-dual-watermark row. */
+  secondary: vdSeriesWatermarkSlotSchema.optional(),
 });
 export type VdSeriesWatermarkConfig = z.infer<
   typeof vdSeriesWatermarkConfigSchema
 >;
+
+/** Stable identity for a slot — drives render-layer ids so a two-watermark
+ *  render never collides on one id, and so logs name the right slot. */
+export type VdSeriesWatermarkSlotId = "primary" | "secondary";
+
+/**
+ * The series' watermark slots in render order (slot 1 first), each tagged with
+ * its `slotId`. Slots that are absent or `enabled: false` are dropped, so a
+ * caller can iterate the result without re-checking `enabled`.
+ *
+ * This is the ONE place that knows slot 1 is stored inline and slot 2 under
+ * `secondary` — resolution and both render engines go through it rather than
+ * reaching into the config shape themselves.
+ */
+export function listEnabledWatermarkSlots(
+  config: VdSeriesWatermarkConfig | null | undefined
+): Array<{ slotId: VdSeriesWatermarkSlotId; slot: VdSeriesWatermarkSlot }> {
+  if (!config) return [];
+  const out: Array<{ slotId: VdSeriesWatermarkSlotId; slot: VdSeriesWatermarkSlot }> = [];
+  const { secondary, ...primary } = config;
+  if (primary.enabled) out.push({ slotId: "primary", slot: primary });
+  if (secondary?.enabled) out.push({ slotId: "secondary", slot: secondary });
+  return out;
+}
 
 /** Mirrors `parseTextOverlayPlan` — never throws. */
 export function parseSeriesWatermarkConfig(
@@ -533,9 +604,14 @@ export function resolveWatermarkCornerAutoAvoid(params: {
   if (params.watermarkPosition !== params.episodeIndicatorPosition) {
     return { position: params.watermarkPosition, adjusted: false };
   }
-  const moved: VdWatermarkPosition =
-    params.watermarkPosition === "top_right" ? "bottom_right" : "bottom_left";
-  return { position: moved, adjusted: true };
+  // Only the TOP row can collide with the episode indicator (which lives at
+  // top_left/top_right), so a collision is resolved by dropping straight down
+  // the same column — preserving the author's horizontal intent instead of
+  // always jumping to a bottom corner as the four-corner version did.
+  const moved: VdWatermarkPosition = params.watermarkPosition.startsWith("top_")
+    ? (params.watermarkPosition.replace("top_", "bottom_") as VdWatermarkPosition)
+    : params.watermarkPosition;
+  return { position: moved, adjusted: moved !== params.watermarkPosition };
 }
 
 /* -------------------------------------------------------------------------- */

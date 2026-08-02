@@ -694,13 +694,19 @@ const CHARACTER_ALIAS_UNIQUE_CONSTRAINT = "vds_character_alias_unique";
  * alias table's `(seriesId, normalizedAlias)` index — anything else
  * (connection drop, a totally unrelated constraint) must propagate to the
  * caller instead of being silently swallowed. Mirrors
- * `hermesConnectionJobs.ts`'s own `isHermesJobIdempotencyKeyConflict` shape.
+ * `hermesConnectionJobs.ts`'s own `isHermesJobIdempotencyKeyConflict` shape,
+ * including the `.cause` check for drizzle-orm-wrapped query errors (the real
+ * postgres `.code`/`.constraint` live under `.cause`, not on the error
+ * itself).
  */
 function isCharacterAliasUniqueViolation(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const code = (error as { code?: unknown }).code;
+  const cause = (error as { cause?: unknown }).cause;
+  const causeRecord =
+    cause && typeof cause === "object" ? (cause as Record<string, unknown>) : undefined;
+  const code = (error as { code?: unknown }).code ?? causeRecord?.code;
   if (code === "23505") return true;
-  const constraint = (error as { constraint?: unknown }).constraint;
+  const constraint = (error as { constraint?: unknown }).constraint ?? causeRecord?.constraint;
   if (typeof constraint === "string" && constraint.includes(CHARACTER_ALIAS_UNIQUE_CONSTRAINT)) return true;
   const message = (error as { message?: unknown }).message;
   return typeof message === "string" && message.includes(CHARACTER_ALIAS_UNIQUE_CONSTRAINT);

@@ -7,6 +7,7 @@ import {
   buildStagedApprovalIdempotencyKey,
   isCheckpointApprovalMatch,
   validateNineShotContract,
+  validateStagedShotContract,
 } from "../marketplaceAutoReview/stagedContracts";
 import {
   buildNineShotStoryboardFixture,
@@ -51,12 +52,15 @@ describe("Feature 141 staged contracts", () => {
   });
 
   it("rejects malformed shot count or duration", () => {
+    // durationSeconds:2 is below the accepted range (4..30) — this asserts
+    // the "malformed duration" half of the contract, independent of the
+    // exact bounds (which are covered in dedicated range tests below).
     const result = validateNineShotContract([
       ...Array.from({ length: 8 }, (_, index) => ({
         shotId: index + 1,
         durationSeconds: 10,
       })),
-      { shotId: 9, durationSeconds: 8 },
+      { shotId: 9, durationSeconds: 2 },
     ]);
     expect(result.valid).toBe(false);
     expect(result.reasonCodes).toContain("staged_invalid_shot_contract");
@@ -111,6 +115,76 @@ describe("Feature 141 staged contracts", () => {
       estimatedCredits: 0,
     };
     expect(isCheckpointApprovalMatch(checkpoint, expected)).toBe(false);
+  });
+
+  /**
+   * `planning/marketplace-flexible-shots-and-creation-casting/plan.md` W1:
+   * `validateNineShotContract` is now a thin deprecated wrapper around
+   * `validateStagedShotContract(shots, { expectedCount: 9 })` — it must
+   * still enforce exactly 9 for existing callers/persisted runs.
+   */
+  it("validateNineShotContract wrapper still enforces exactly 9 shots", () => {
+    const sevenShots = validateNineShotContract(
+      Array.from({ length: 7 }, (_, index) => ({
+        shotId: index + 1,
+        durationSeconds: 10,
+      }))
+    );
+    expect(sevenShots.valid).toBe(false);
+    expect(sevenShots.reasonCodes).toContain("staged_invalid_shot_contract");
+  });
+
+  it("validateStagedShotContract with expectedCount enforces an exact fixed count", () => {
+    const seven = validateStagedShotContract(
+      Array.from({ length: 7 }, (_, index) => ({
+        shotId: index + 1,
+        durationSeconds: 10,
+      })),
+      { expectedCount: 7 }
+    );
+    expect(seven).toEqual({ valid: true, reasonCodes: [] });
+
+    const wrongCount = validateStagedShotContract(
+      Array.from({ length: 8 }, (_, index) => ({
+        shotId: index + 1,
+        durationSeconds: 10,
+      })),
+      { expectedCount: 7 }
+    );
+    expect(wrongCount.valid).toBe(false);
+  });
+
+  it("validateStagedShotContract without expectedCount accepts any count in 1..30 (the 'auto' case)", () => {
+    const thirty = validateStagedShotContract(
+      Array.from({ length: 30 }, (_, index) => ({
+        shotId: index + 1,
+        durationSeconds: 30,
+      }))
+    );
+    expect(thirty).toEqual({ valid: true, reasonCodes: [] });
+
+    const one = validateStagedShotContract([{ shotId: 1, durationSeconds: 4 }]);
+    expect(one).toEqual({ valid: true, reasonCodes: [] });
+
+    const tooMany = validateStagedShotContract(
+      Array.from({ length: 31 }, (_, index) => ({
+        shotId: index + 1,
+        durationSeconds: 10,
+      }))
+    );
+    expect(tooMany.valid).toBe(false);
+  });
+
+  it("validateStagedShotContract rejects duration outside the extended 4..30s range", () => {
+    const tooLong = validateStagedShotContract([
+      { shotId: 1, durationSeconds: 31 },
+    ]);
+    expect(tooLong.valid).toBe(false);
+
+    const tooShort = validateStagedShotContract([
+      { shotId: 1, durationSeconds: 3 },
+    ]);
+    expect(tooShort.valid).toBe(false);
   });
 
   it("builds deterministic approval idempotency keys", () => {

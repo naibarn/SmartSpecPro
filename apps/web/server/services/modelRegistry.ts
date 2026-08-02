@@ -1491,6 +1491,34 @@ export function deriveModelResolutionOptions(
 }
 
 /**
+ * A DB-backed catalog REPLACES the static registry outright (see
+ * `loadModelsFromDatabase`) rather than merging with it, so a row whose
+ * `durations` column is NULL does not "inherit" the static default — it
+ * erases it. Field incident 2026-07-30: `veo3/generate-veo-3-video-lite`
+ * declares `durations: [8]` in `STATIC_MODEL_REGISTRY` (and the unit test
+ * asserting a 10s shot snaps to 8s passed happily against it), while the
+ * live DB row had NULL. In production the duration fitter therefore saw no
+ * constraint, submitted 10 seconds, and Kie.ai rejected the whole task with
+ * "Duration must be 4, 6 or 8 seconds". 56 of 111 enabled video rows are in
+ * that same NULL state.
+ *
+ * Fill from the static entry only when the DB row declares nothing. A DB row
+ * that DOES declare durations still wins outright — this can only add a
+ * constraint where there was none, never override operator-entered data.
+ */
+export function resolveDbModelDurations(dbModel: any): number[] | undefined {
+  const dbDurations = dbModel.durations;
+  if (Array.isArray(dbDurations) && dbDurations.length > 0) {
+    return dbDurations;
+  }
+  const staticDurations = getStaticModelById(String(dbModel.modelId ?? ""))
+    ?.durations;
+  return Array.isArray(staticDurations) && staticDurations.length > 0
+    ? [...staticDurations]
+    : undefined;
+}
+
+/**
  * Convert database model to ModelDefinition
  */
 function dbModelToDefinition(dbModel: any): ModelDefinition {
@@ -1539,7 +1567,7 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
     creditCost: dbModel.creditCost,
     aspectRatios,
     sizes: dbModel.sizes || undefined,
-    durations: dbModel.durations || undefined,
+    durations: resolveDbModelDurations(dbModel),
     voices: dbModel.voices || undefined,
     isEnabled: dbModel.isEnabled,
     priority: dbModel.priority,

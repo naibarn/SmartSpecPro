@@ -15,7 +15,6 @@ import {
   MEDIA_MODELS,
   mediaGenerationService,
   resolveReferenceUrl,
-  type MediaTask,
 } from "./mediaGenerationService";
 import {
   buildMarketplaceAutoReviewApiProjection,
@@ -54,10 +53,23 @@ import {
   marketplaceAutoReviewArtifacts,
   marketplaceCaptureInsights,
   mediaModels,
+  mediaAssets,
   videoEditorProjects,
+  workerJobs,
   type MarketplaceAutoReviewRun,
   type MarketplaceAutoReviewStage,
+  type WorkerJob,
 } from "../../drizzle/schema";
+import {
+  submitStagedRemotionFinalRender,
+  readStagedFinalRenderSettings,
+  StagedRemotionRenderError,
+} from "./marketplaceAutoReviewStagedRemotionRender";
+import type { MarketplaceCharacterCastEntryInput } from "../../shared/hyperframes/characterCast";
+import {
+  assignMarketplaceCastRoles,
+  MARKETPLACE_CHARACTER_CAST_MAX,
+} from "../../shared/hyperframes/characterCast";
 import { createMarketplaceId } from "./marketplaceCaptureService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import {
@@ -130,6 +142,7 @@ import { runProductVideoMotionPromptSkill } from "./productVideoMotionPromptSkil
 import {
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_IMAGE_PROMPT_MAX_CHARS,
   PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_VIDEO_PROMPT_MAX_CHARS,
+  PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
   SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER,
   // Feature 136 section 09 (§5.4) — the same price-claim detector and
   // [3, 10] shot-duration bounds section-04's pack preflight already uses,
@@ -140,10 +153,14 @@ import {
   resolveSequentialImagePromptBudget,
   runProductReviewSequentialStoryboardSkillLoop,
   refreshSequentialShotPromptWithSkill,
+  extractSequentialStoryboardLlmContent,
   SequentialStoryboardStructuralError,
   validateSequentialStoryboardPackPreflight,
   type SequentialStoryboardPack,
   type SequentialStoryboardShot,
+  type SequentialStoryboardCameraBeat,
+  type SequentialStoryboardLanguage,
+  type SequentialStoryboardLanguagePlan,
   type SequentialStoryboardSkillLoopInput,
   type SequentialStoryboardLoopEffects,
   type SequentialSingleShotRefreshInput,
@@ -357,6 +374,18 @@ export type MarketplaceAutoReviewReferenceAnchorsInput = {
   // Feature 136 (section 02, §5.1-§5.3) — optional multi-angle product
   // reference layer; additive, sequential-mode only.
   productAngleImages?: SequentialAngleAnchorInputEntry[] | null;
+  // STAGED pipeline only (marketplace-two-character-conversation plan
+  // §3.6/§3.8, extended by feature/marketplace-flexible-shots). These two
+  // fields previously fell out of the resolved anchors entirely —
+  // `resolveMarketplaceAutoReviewReferenceAnchors` below builds its return
+  // value from an explicit field list rather than spreading the raw input,
+  // so anything not named there was silently dropped before ever reaching
+  // `run.metadataJson.referenceAnchors` (a taught-not-wired gap: the staged
+  // pipeline reads `anchors.shotDurationSeconds`/`anchors.shotCount`, but
+  // they never survived past this resolver). Both are harmless no-ops for
+  // every non-staged run (nothing there reads them).
+  shotDurationSeconds?: number | null;
+  shotCount?: number | "auto" | null;
 };
 
 type ResolvedMarketplaceAutoReviewReferenceAnchors = {
@@ -385,6 +414,10 @@ type ResolvedMarketplaceAutoReviewReferenceAnchors = {
   // Feature 136 (section 02) — normalized multi-angle product reference
   // entries; always an array (possibly empty), never undefined.
   productAngleImages: SequentialAngleAnchorEntry[];
+  // See the doc comment on `MarketplaceAutoReviewReferenceAnchorsInput`
+  // above — staged-pipeline-only, absent for every other run.
+  shotDurationSeconds?: number | null;
+  shotCount?: number | "auto" | null;
 };
 
 type AuthContext = { userId: number; tenantId?: string };
@@ -844,6 +877,17 @@ function marketplaceAutoReviewNativeSpeechFallback(params: {
 const MIN_COMPLETED_IMAGE_ATTEMPTS_BEFORE_STORYBOARD_REVIEW = 3;
 const RENDER_JOB_TTL_SECONDS = 86_400;
 const DEFAULT_RENDER_STALE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
+/**
+ * How long a staged final-render `remotion_render_video` worker job may sit
+ * `status: "queued"` (never claimed by a Lane B worker-app) before
+ * `reconcileStagedRemotionFinalRender` gives up waiting and falls back to
+ * the legacy renderer (`planning/worker-app-remotion-render-video/plan.md`
+ * §P3). Exported for tests. Distinct from `DEFAULT_RENDER_STALE_TIMEOUT_MS`
+ * (which governs the legacy renderer's own in-flight timeout, and this
+ * module's "job disappeared" branch) — this one only governs "was this ever
+ * picked up by a Lane B worker at all".
+ */
+export const STAGED_REMOTION_QUEUED_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_ADVANCE_LEASE_TTL_MS = 10 * 60 * 1000;
 const DEFAULT_PROVIDER_STALE_TIMEOUT_MS = 6 * 60 * 60 * 1000;
 const MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS = 2;
@@ -916,6 +960,41 @@ function normalizeMarketplaceAutoReviewOverlayTextMode(
   value: unknown
 ): MarketplaceAutoReviewOverlayTextMode {
   return value === "allow_text" ? "allow_text" : "no_text";
+}
+
+function normalizeSequentialStoryboardLanguage(
+  value: unknown,
+  fallback: SequentialStoryboardLanguage
+): SequentialStoryboardLanguage {
+  return value === "en" || value === "th" ? value : fallback;
+}
+
+function normalizeSequentialStoryboardLanguagePlan(
+  value: unknown
+): SequentialStoryboardLanguagePlan {
+  const record = asRecord(value);
+  return {
+    summaryLanguage: normalizeSequentialStoryboardLanguage(
+      record.summaryLanguage,
+      "th"
+    ),
+    dialogueLanguage: normalizeSequentialStoryboardLanguage(
+      record.dialogueLanguage,
+      "th"
+    ),
+    promptLanguage: normalizeSequentialStoryboardLanguage(
+      record.promptLanguage,
+      "en"
+    ),
+  };
+}
+
+function sequentialStoryboardLanguagePlanFromMetadata(
+  metadata: RunMetadata
+): SequentialStoryboardLanguagePlan {
+  return normalizeSequentialStoryboardLanguagePlan(
+    asRecord(asRecord(metadata.sequentialStoryboard).languagePlan)
+  );
 }
 
 function durationSecondsForShotCount(shotCount: number): number {
@@ -1021,6 +1100,7 @@ type RunMetadata = Record<string, any> & {
   imagePromptPreflightAudits?: Record<string, unknown>[];
   pendingImageRepairUnits?: DirectImageUnit[];
   pendingVideoRepairUnits?: DirectVideoUnit[];
+  sequentialImageEditCandidates?: Record<string, Record<string, unknown>>;
   storyboardGridVisionQaEnvelopes?: Record<string, unknown>[];
   shotFrameVisionQaEnvelopes?: Record<string, unknown>[];
   targetedRepairPlans?: Record<string, unknown>[];
@@ -4174,6 +4254,17 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function sequentialImageEditCandidateMap(
+  value: unknown
+): Record<string, Record<string, unknown>> {
+  return Object.fromEntries(
+    Object.entries(asRecord(value)).map(([key, candidate]) => [
+      key,
+      asRecord(candidate),
+    ])
+  );
+}
+
 function compactRecord<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, item]) => {
@@ -6195,6 +6286,21 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
   const productAngleImages = normalizeSequentialProductAngleImages(
     params.referenceAnchors?.productAngleImages
   );
+  // Staged-pipeline-only pass-through — see the doc comment on
+  // `MarketplaceAutoReviewReferenceAnchorsInput.shotDurationSeconds` above.
+  const shotDurationSecondsRaw = params.referenceAnchors?.shotDurationSeconds;
+  const shotDurationSeconds =
+    typeof shotDurationSecondsRaw === "number" &&
+    Number.isFinite(shotDurationSecondsRaw)
+      ? shotDurationSecondsRaw
+      : null;
+  const shotCountRaw = params.referenceAnchors?.shotCount;
+  const shotCount =
+    shotCountRaw === "auto"
+      ? ("auto" as const)
+      : typeof shotCountRaw === "number" && Number.isFinite(shotCountRaw)
+        ? shotCountRaw
+        : null;
 
   return {
     schemaVersion,
@@ -6220,6 +6326,8 @@ function resolveMarketplaceAutoReviewReferenceAnchors(params: {
     sourceMetadata,
     auditRefs,
     productAngleImages,
+    shotDurationSeconds,
+    shotCount,
   };
 }
 
@@ -19146,6 +19254,26 @@ async function persistMarketplaceAutoReviewStageAttemptSnapshot(params: {
     });
 }
 
+/**
+ * Decides whether a metadata-embedded advance lease should be treated as a
+ * stale leftover (and therefore ignored when claiming) given the durable
+ * `marketplace_auto_review_run_leases` row for the SAME ownerToken.
+ *
+ * `released` — the previous holder finished; the metadata copy only survives
+ * because a slower writer re-published a pre-release snapshot over it.
+ * `null` (no row) — the metadata lease has no durable backing at all, so
+ * there is nothing to prove a holder is still running.
+ * Anything else (`claimed`, `expired`, …) — leave the normal expiresAt /
+ * ownerToken clauses to decide; do not widen the claim.
+ */
+export function isMarketplaceAutoReviewMetadataLeaseStale(params: {
+  durableLeaseStatus: string | null;
+}): boolean {
+  return params.durableLeaseStatus === null
+    ? true
+    : params.durableLeaseStatus === "released";
+}
+
 async function claimMarketplaceAutoReviewAdvanceLease(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
@@ -19232,6 +19360,46 @@ async function claimMarketplaceAutoReviewAdvanceLease(params: {
   ];
   if (canRecoverProviderUnreachedSubmitIntentLease) {
     leaseClaimClauses.push(sql`true`);
+  }
+  // The metadata-embedded lease can be RESURRECTED after it was released:
+  // `updateRun`/`persistRun` write the whole `metadataJson`, so any writer
+  // holding a snapshot taken BEFORE the release re-publishes the old
+  // `status: "claimed"` lease when it lands afterwards. Field incident
+  // 2026-07-30 (run mar_341efe63…): lease claimed 08:39:35.666, released
+  // 08:39:36.193, then the staged video dispatch persisted its pre-release
+  // snapshot at 08:39:37.251 — putting a live-looking lease back with
+  // `expiresAt` 08:49:35. Every sweep for the next 10 minutes then failed
+  // this `or(...)` and returned `claimed: false`, which `advanceMarketplace
+  // AutoReviewRun` treats as a silent no-op. Symptom: the user clicks
+  // "สร้างวิดีโอช็อตที่ N", the task really is submitted, and then nothing
+  // updates for 10 minutes with no error anywhere.
+  //
+  // `marketplace_auto_review_run_leases` is written only by the lease
+  // helpers (never as part of a bulk metadata snapshot), so it cannot be
+  // clobbered this way — it is the authority on whether the previous holder
+  // is still running. If it says the metadata lease's owner already
+  // released, the metadata copy is stale and must not block this claim.
+  const staleLeaseOwnerToken = cleanText(existingLease.ownerToken);
+  if (staleLeaseOwnerToken && staleLeaseOwnerToken !== ownerToken) {
+    const [durableLeaseRow] = await params.db
+      .select({ status: marketplaceAutoReviewRunLeases.status })
+      .from(marketplaceAutoReviewRunLeases)
+      .where(
+        and(
+          eq(marketplaceAutoReviewRunLeases.runId, params.run.id),
+          eq(marketplaceAutoReviewRunLeases.ownerToken, staleLeaseOwnerToken)
+        )
+      )
+      .limit(1);
+    if (
+      isMarketplaceAutoReviewMetadataLeaseStale({
+        durableLeaseStatus: durableLeaseRow
+          ? cleanText(durableLeaseRow.status)
+          : null,
+      })
+    ) {
+      leaseClaimClauses.push(sql`true`);
+    }
   }
   const [claimed] = await params.db
     .update(marketplaceAutoReviewRuns)
@@ -20167,9 +20335,14 @@ export async function selectMarketplaceAutoReviewImageAttemptForStoryboardReview
  *  skill-authored pack's own vocabulary (`sequentialShotFrameImagePrompt`'s
  *  existing precedence read, section 06 §5.3). */
 export type SequentialShotOverride = {
+  visual_summary?: string;
   dialogue?: string;
   start_frame_image_prompt?: string;
   video_prompt?: string;
+  camera_beats?: SequentialStoryboardCameraBeat[];
+  summary_language?: SequentialStoryboardLanguage;
+  dialogue_language?: SequentialStoryboardLanguage;
+  prompt_language?: SequentialStoryboardLanguage;
   editedAt: string;
   editedBy?: string;
 };
@@ -20226,7 +20399,11 @@ function assertSequentialShotRegenerationPreconditions(input: {
       message: "รันนี้จบแล้ว จึงสร้างภาพรายช็อตใหม่ไม่ได้",
     });
   }
-  if (run.status === "completed" && run.outputMode !== "storyboard_images") {
+  if (
+    input.includeSpendGuards &&
+    run.status === "completed" &&
+    run.outputMode !== "storyboard_images"
+  ) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "รันนี้จบแล้ว จึงสร้างภาพรายช็อตใหม่ไม่ได้",
@@ -20308,6 +20485,7 @@ function buildSequentialShotEditPreflight(input: {
   metadata: RunMetadata;
   shotId: number;
   edit: {
+    visual_summary?: string;
     dialogue?: string;
     start_frame_image_prompt?: string;
     video_prompt?: string;
@@ -20403,9 +20581,11 @@ function evaluateSequentialShotOverride(input: {
   metadata: RunMetadata;
   shotId: number;
   edit: {
+    visualSummary?: string;
     dialogue?: string;
     startFrameImagePrompt?: string;
     videoPrompt?: string;
+    cameraBeats?: SequentialStoryboardCameraBeat[];
   };
   imageBudget: number;
 }): { blockers: string[]; warnings: string[] } {
@@ -20413,6 +20593,7 @@ function evaluateSequentialShotOverride(input: {
     metadata: input.metadata,
     shotId: input.shotId,
     edit: {
+      visual_summary: input.edit.visualSummary,
       dialogue: input.edit.dialogue,
       start_frame_image_prompt: input.edit.startFrameImagePrompt,
       video_prompt: input.edit.videoPrompt,
@@ -20425,9 +20606,11 @@ export function evaluateSequentialShotOverrideForTest(input: {
   metadata: RunMetadata;
   shotId: number;
   edit: {
+    visualSummary?: string;
     dialogue?: string;
     startFrameImagePrompt?: string;
     videoPrompt?: string;
+    cameraBeats?: SequentialStoryboardCameraBeat[];
   };
   imageBudget: number;
 }): { blockers: string[]; warnings: string[] } {
@@ -20446,9 +20629,11 @@ function applySequentialShotOverrideToRunMetadata(input: {
   metadata: RunMetadata;
   shotId: number;
   edit: {
+    visualSummary?: string;
     dialogue?: string;
     startFrameImagePrompt?: string;
     videoPrompt?: string;
+    cameraBeats?: SequentialStoryboardCameraBeat[];
   } | null;
   editedBy: string;
   editedAt: string;
@@ -20462,6 +20647,9 @@ function applySequentialShotOverrideToRunMetadata(input: {
     const existing = asRecord(shotOverrides[key]);
     const nextOverride: SequentialShotOverride = {
       ...(existing as Partial<SequentialShotOverride>),
+      ...(input.edit.visualSummary !== undefined
+        ? { visual_summary: input.edit.visualSummary }
+        : {}),
       ...(input.edit.dialogue !== undefined
         ? { dialogue: input.edit.dialogue }
         : {}),
@@ -20470,6 +20658,9 @@ function applySequentialShotOverrideToRunMetadata(input: {
         : {}),
       ...(input.edit.videoPrompt !== undefined
         ? { video_prompt: input.edit.videoPrompt }
+        : {}),
+      ...(input.edit.cameraBeats !== undefined
+        ? { camera_beats: input.edit.cameraBeats }
         : {}),
       editedAt: input.editedAt,
       editedBy: input.editedBy,
@@ -20489,9 +20680,11 @@ export function applySequentialShotOverrideToRunMetadataForTest(input: {
   metadata: RunMetadata;
   shotId: number;
   edit: {
+    visualSummary?: string;
     dialogue?: string;
     startFrameImagePrompt?: string;
     videoPrompt?: string;
+    cameraBeats?: SequentialStoryboardCameraBeat[];
   } | null;
   editedBy: string;
   editedAt: string;
@@ -20671,6 +20864,14 @@ async function resolveSequentialShotRegenerationOutcome(input: {
       ? (sequential.shots as SequentialStoryboardShot[])
       : [];
     const packEntry = asRecord(shots[input.shotId - 1]);
+    const shotOverride = asRecord(
+      asRecord(sequentialBefore.shotOverrides)[String(input.shotId)]
+    );
+    const effectiveDialogue =
+      cleanText(shotOverride.dialogue) || cleanText(packEntry.dialogue);
+    const effectiveVisualSummary =
+      cleanText(shotOverride.visual_summary) ||
+      cleanText(packEntry.visual_summary);
     const manifest = Array.isArray(sequential.referenceManifest)
       ? (sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[])
       : [];
@@ -20709,7 +20910,7 @@ async function resolveSequentialShotRegenerationOutcome(input: {
         globalContinuity: asRecord(sequential.globalContinuity),
         shotContract: {
           purpose: cleanText(packEntry.purpose) || undefined,
-          dialogue: cleanText(packEntry.dialogue),
+          dialogue: effectiveDialogue,
           duration_seconds: toNumber(packEntry.duration_seconds, 5),
           demonstration_type:
             (packEntry.demonstration_type as
@@ -20719,7 +20920,7 @@ async function resolveSequentialShotRegenerationOutcome(input: {
           guardian_required: packEntry.guardian_required === true,
           transition_from_previous:
             cleanText(packEntry.transition_from_previous) || undefined,
-          visual_summary: cleanText(packEntry.visual_summary) || undefined,
+          visual_summary: effectiveVisualSummary || undefined,
         },
         previousShotVisualSummary:
           cleanText(asRecord(shots[input.shotId - 2]).visual_summary) || null,
@@ -20863,7 +21064,7 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
       code: "INTERNAL_SERVER_ERROR",
       message: "Database unavailable",
     });
-  const run = await reloadRun(db, input.runId, auth);
+  const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
   const plan = extractPlanFromRun(run);
   const tenantId = tenantIdForRun(run, auth);
@@ -20961,7 +21162,825 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
     previousStoryboardReviewId: cleanText(run.storyboardReviewId) || null,
   });
 
-  return await advanceMarketplaceAutoReviewRun(input.runId, auth, runtime);
+  // Launch pipeline advancement in background (non-blocking async)
+  // so tRPC HTTP request returns immediately without blocking Express thread.
+  void advanceMarketplaceAutoReviewRun(input.runId, auth, runtime).catch((err) => {
+    console.error("[marketplaceAutoReview] background advanceMarketplaceAutoReviewRun error", err);
+  });
+
+  return {
+    success: true,
+    runId: run.id,
+    shotId: input.shotId,
+    unitId: outcome.unit.unitId,
+    status: "running",
+  };
+}
+
+async function generateMarketplaceSequentialShotTextWithSkill(input: {
+  tenantId: string;
+  userId: number;
+  runId: string;
+  model: string | null;
+  shotId: number;
+  language: SequentialStoryboardLanguage;
+  kind: "summary" | "dialogue";
+  shotContract: Record<string, unknown>;
+  productCategory?: string | null;
+}): Promise<string> {
+  const synced = await syncSingleSkillIfChanged(
+    PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID
+  );
+  if (synced.error) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `ไม่สามารถโหลด skill สำหรับสร้าง${input.kind === "summary" ? "เรื่องย่อ" : "บทพูด"}`,
+    });
+  }
+  const skill = await getSkillByIdAsync(PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID);
+  if (!skill) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ไม่พบ skill สำหรับสร้างเนื้อหารายช็อต",
+    });
+  }
+  const policy = await resolveSkillExecutionPolicy({
+    skill,
+    conversationModel: input.model,
+  });
+  if (!policy.modelId) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ยังไม่มี LLM model ที่พร้อมสำหรับสร้างเนื้อหารายช็อต",
+    });
+  }
+  const provider = await getProviderForModel(policy.modelId, {
+    preferredProviderId: policy.preferredProviderId,
+    strictProviderPin: policy.strictProviderPin,
+    allowFreeModels: policy.allowFreeModels,
+  });
+  if (!provider) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ยังไม่มี provider ที่พร้อมสำหรับสร้างเนื้อหารายช็อต",
+    });
+  }
+  const languageName = input.language === "en" ? "English" : "Thai";
+  const systemPrompt = [
+    "You author exactly one marketplace auto-review shot text field.",
+    `Write only the requested ${input.kind} in ${languageName}.`,
+    input.kind === "summary"
+      ? "The summary must describe only this shot's visible story beat and visual action; do not include dialogue, camera prompt syntax, prices, ratings, or unsupported product claims."
+      : "The dialogue must be natural spoken narration for this shot only, aligned with the visual beat, with no camera directions, labels, prices, ratings, or unsupported product claims.",
+    "Never create content for another shot. Do not return markdown.",
+    'Return only JSON: {"text": "..."}.',
+  ].join("\n");
+  const userPrompt = JSON.stringify({
+    target_shot_id: input.shotId,
+    requested_field: input.kind,
+    output_language: input.language,
+    shot_contract: input.shotContract,
+    product_category: input.productCategory ?? null,
+  });
+  const execution = await executeSharedSkillTextRuntime({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    objective: `Generate one ${input.kind} for one marketplace sequential shot`,
+    originSurface: "marketplace_capture",
+    entryPoint: "marketplace_auto_review_stage",
+    modelConfig: buildRuntimeModelConfig({
+      modelId: policy.modelId,
+      providerId: provider.providerId,
+      resolvedGatewayModelId: policy.modelId,
+    }),
+    skillSlugs: [PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID],
+    systemPrompt,
+    userPrompt,
+    planContext: {
+      caller: "marketplace_auto_review",
+      runId: input.runId,
+      targetShotId: input.shotId,
+      requestedField: input.kind,
+      outputLanguage: input.language,
+    },
+    dynamicParams: {
+      single_shot_text_mode: true,
+      target_shot_id: input.shotId,
+      requested_field: input.kind,
+      output_language: input.language,
+    },
+    publicUrl: undefined,
+    requestLabel: `marketplace-auto-review-sequential-shot-${input.kind}`,
+    runId: input.runId,
+    schemaHint: {
+      name: "marketplace_auto_review_sequential_shot_text",
+      validationMode: "structured_json",
+    },
+    legacyExecute: async () => {
+      const result = await executeWithFallback({
+        model: policy.modelId!,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: false,
+        userId: input.userId,
+        preferredProvider: policy.preferredProviderId,
+        strictProviderPin: policy.strictProviderPin,
+        maxTokens: 800,
+        temperature: 0.45,
+        disableProviderFallbacks: true,
+        allowFreeModels: policy.allowFreeModels,
+      });
+      if (result.type !== "success") {
+        throw new Error(
+          result.type === "error"
+            ? result.error
+            : "provider fallback required but disabled"
+        );
+      }
+      const usage = {
+        promptTokens: Number((result.response as any)?.usage?.prompt_tokens ?? 0),
+        completionTokens: Number(
+          (result.response as any)?.usage?.completion_tokens ?? 0
+        ),
+      };
+      const creditsUsed = await calculateCreditsForLLMDynamic(
+        usage.promptTokens,
+        usage.completionTokens,
+        policy.modelId!
+      );
+      if (creditsUsed > 0) {
+        await deductCredits({
+          userId: input.userId,
+          tenantId: input.tenantId,
+          amount: creditsUsed,
+          description: `Marketplace Auto Review sequential shot ${input.kind}`,
+          idempotencyKey: `marketplace-auto-review:sequential-shot-${input.kind}:${input.runId}:${input.shotId}:${nanoid(8)}`,
+          skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
+          sourceType: "skill",
+          metadata: {
+            runId: input.runId,
+            shotId: input.shotId,
+            requestedField: input.kind,
+            outputLanguage: input.language,
+            model: policy.modelId ?? undefined,
+            provider: result.providerName,
+          },
+        });
+      }
+      return {
+        rawContent: extractSequentialStoryboardLlmContent(result.response),
+        usage,
+        creditsUsed,
+        providerName: result.providerName,
+        modelId: policy.modelId,
+        rawResponse: result.response,
+      };
+    },
+  });
+  const raw = cleanText(execution.value.rawContent);
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = asRecord(JSON.parse(raw));
+  } catch {
+    parsed = { text: raw };
+  }
+  const text = cleanText(parsed.text) || cleanText(raw);
+  if (!text) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `ระบบสร้าง${input.kind === "summary" ? "เรื่องย่อ" : "บทพูด"}ไม่สำเร็จ`,
+    });
+  }
+  return text;
+}
+
+/**
+ * Generates exactly one shot prompt (image OR video) for an existing
+ * sequential run. This is intentionally separate from media regeneration:
+ * the skill may use the configured LLM credit, but this function never queues
+ * an image/video provider job, never changes run stage/status, and never
+ * touches another shot's override.
+ */
+export async function generateMarketplaceAutoReviewSequentialShotPrompt(
+  input: {
+    runId: string;
+    shotId: number;
+    stage: "image" | "video" | "summary" | "dialogue";
+  },
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+
+  const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const plan = extractPlanFromRun(run);
+  const tenantId = tenantIdForRun(run, auth);
+  const tenantFlags = await getTenantFeatureFlags(tenantId);
+
+  // `includeSpendGuards: false` deliberately permits completed Legacy runs:
+  // prompt authoring is still useful after the old pipeline finished, while
+  // paid media regeneration keeps its stricter in-flight/allowance guards.
+  assertSequentialShotRegenerationPreconditions({
+    run,
+    metadata,
+    plan,
+    shotId: input.shotId,
+    tenantFlags,
+    includeSpendGuards: false,
+  });
+
+  const sequential = asRecord(metadata.sequentialStoryboard);
+  const shots = Array.isArray(sequential.shots) ? sequential.shots : [];
+  const packEntry = asRecord(shots[input.shotId - 1]);
+  const conceptShots = Array.isArray(asRecord(metadata.concept).shots)
+    ? (asRecord(metadata.concept).shots as unknown[])
+    : [];
+  const conceptShot = asRecord(conceptShots[input.shotId - 1]);
+  const shotOverride = asRecord(
+    asRecord(sequential.shotOverrides)[String(input.shotId)]
+  );
+  const languagePlan = normalizeSequentialStoryboardLanguagePlan(
+    sequential.languagePlan ?? asRecord(sequential.userInputs).languagePlan
+  );
+  if (input.stage === "summary" || input.stage === "dialogue") {
+    const generatedText = await generateMarketplaceSequentialShotTextWithSkill({
+      tenantId,
+      userId: auth.userId,
+      runId: run.id,
+      model: cleanText(metadata.imageModel) || null,
+      shotId: input.shotId,
+      language:
+        input.stage === "summary"
+          ? languagePlan.summaryLanguage
+          : languagePlan.dialogueLanguage,
+      kind: input.stage,
+      shotContract: {
+        purpose: cleanText(packEntry.purpose),
+        visualSummary:
+          cleanText(shotOverride.visual_summary) ||
+          cleanText(packEntry.visual_summary) ||
+          cleanText(conceptShot.storyboardGuide) ||
+          cleanText(conceptShot.visual),
+        dialogue:
+          cleanText(shotOverride.dialogue) ||
+          cleanText(packEntry.dialogue) ||
+          cleanText(packEntry.voiceover) ||
+          cleanText(conceptShot.voiceover),
+        productRole: cleanText(packEntry.product_role),
+        demonstrationType: cleanText(packEntry.demonstration_type),
+        durationSeconds: toNumber(packEntry.duration_seconds, 5),
+      },
+      productCategory: inferProductReferenceStoryboardCategory(plan),
+    });
+    const nextMetadata = applySequentialShotOverrideToRunMetadata({
+      metadata,
+      shotId: input.shotId,
+      edit:
+        input.stage === "summary"
+          ? { visualSummary: generatedText }
+          : { dialogue: generatedText },
+      editedBy: String(auth.userId),
+      editedAt: nowIso(),
+    });
+    await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  }
+  const effectiveDialogue =
+    cleanText(shotOverride.dialogue) ||
+    cleanText(packEntry.dialogue) ||
+    cleanText(packEntry.voiceover) ||
+    cleanText(conceptShot.voiceover);
+  const effectiveVisualSummary =
+    cleanText(shotOverride.visual_summary) ||
+    cleanText(packEntry.visual_summary) ||
+    cleanText(conceptShot.storyboardGuide) ||
+    cleanText(conceptShot.visual);
+  const manifest = Array.isArray(sequential.referenceManifest)
+    ? (sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[])
+    : [];
+  const skillVisionUrls = manifest
+    .map(entry => cleanText(entry.url))
+    .filter(Boolean)
+    .flatMap(url => {
+      try {
+        const resolved = resolveReferenceUrl(url, runtime.publicUrl);
+        return resolved && /^https?:\/\//.test(resolved) ? [resolved] : [];
+      } catch {
+        return [];
+      }
+    });
+  const childSubjectPolicy =
+    sequentialChildSubjectPolicyFromMetadata(sequential);
+  const userInputs = asRecord(sequential.userInputs);
+  const forbiddenClaims = Array.isArray(userInputs.forbiddenClaims)
+    ? (userInputs.forbiddenClaims as string[])
+    : undefined;
+  const refreshed = await refreshSequentialShotPromptWithSkill({
+    tenantId,
+    userId: auth.userId,
+    runId: run.id,
+    model: cleanText(metadata.imageModel) || null,
+    publicUrl: runtime.publicUrl ?? null,
+    originSurface: "marketplace_capture",
+    targetShotId: input.shotId,
+    imageBudget: resolveSequentialImagePromptBudget({
+      overrideMaxChars:
+        toNumber(metadata.sequentialImagePromptMaxChars, 0) || null,
+      providerMaxPromptLength: null,
+    }),
+    referenceManifest: manifest,
+    skillVisionUrls,
+    globalContinuity: asRecord(sequential.globalContinuity),
+    shotContract: {
+      purpose: cleanText(packEntry.purpose) || undefined,
+      dialogue: effectiveDialogue,
+      duration_seconds: toNumber(packEntry.duration_seconds, 5),
+      demonstration_type:
+        (packEntry.demonstration_type as
+          | SequentialStoryboardShot["demonstration_type"]
+          | undefined) ?? "usage_demo",
+      depicts_minor: packEntry.depicts_minor === true,
+      guardian_required: packEntry.guardian_required === true,
+      transition_from_previous:
+        cleanText(packEntry.transition_from_previous) || undefined,
+      visual_summary: effectiveVisualSummary || undefined,
+    },
+    previousShotVisualSummary:
+      cleanText(
+        asRecord(asRecord(sequential.shotOverrides)[String(input.shotId - 1)])
+          .visual_summary
+      ) ||
+      cleanText(asRecord(shots[input.shotId - 2]).visual_summary) ||
+      null,
+    nextShotVisualSummary:
+      cleanText(
+        asRecord(asRecord(sequential.shotOverrides)[String(input.shotId + 1)])
+          .visual_summary
+      ) ||
+      cleanText(asRecord(shots[input.shotId]).visual_summary) ||
+      null,
+    childSubjectPolicy,
+    forbiddenClaims,
+    summaryLanguage: languagePlan.summaryLanguage,
+    dialogueLanguage: languagePlan.dialogueLanguage,
+    promptLanguage: languagePlan.promptLanguage,
+    productCategory: inferProductReferenceStoryboardCategory(plan),
+  });
+
+  const generatedPrompt =
+    input.stage === "image"
+      ? cleanText(refreshed.startFrameImagePrompt)
+      : cleanText(refreshed.videoPrompt);
+  if (!generatedPrompt) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        input.stage === "image"
+          ? "ระบบสร้าง Prompt ภาพของช็อตนี้ไม่สำเร็จ"
+          : "ระบบสร้าง Prompt วิดีโอของช็อตนี้ไม่สำเร็จ",
+    });
+  }
+
+  const duplicatePrompt = shots.some((candidate, index) => {
+    if (index === input.shotId - 1) return false;
+    const candidateOverride = asRecord(
+      asRecord(sequential.shotOverrides)[String(index + 1)]
+    );
+    const candidatePrompt =
+      input.stage === "image"
+        ? cleanText(candidateOverride.start_frame_image_prompt) ||
+          cleanText(asRecord(candidate).start_frame_image_prompt)
+        : cleanText(candidateOverride.video_prompt) ||
+          cleanText(asRecord(candidate).video_prompt);
+    return candidatePrompt && candidatePrompt === generatedPrompt;
+  });
+  if (duplicatePrompt) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `ระบบป้องกันไม่ให้ Prompt ${input.stage === "image" ? "ภาพ" : "วิดีโอ"} ของช็อตที่ ${input.shotId} ซ้ำกับช็อตอื่น กรุณาตรวจเรื่องย่อหรือสร้างใหม่อีกครั้ง`,
+    });
+  }
+
+  const nextMetadata = applySequentialShotOverrideToRunMetadata({
+    metadata,
+    shotId: input.shotId,
+    edit:
+      input.stage === "image"
+        ? { startFrameImagePrompt: generatedPrompt }
+        : {
+            videoPrompt: generatedPrompt,
+            cameraBeats:
+              refreshed.cameraBeats && refreshed.cameraBeats.length > 0
+                ? refreshed.cameraBeats
+                : undefined,
+          },
+    editedBy: String(auth.userId),
+    editedAt: nowIso(),
+  });
+  await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
+/** Persists the three independent authoring languages for one sequential job.
+ * This is free, does not move the run, and is safe to use on completed legacy
+ * jobs because it only changes future shot authoring actions. */
+export async function saveMarketplaceAutoReviewSequentialLanguagePlan(
+  input: {
+    runId: string;
+    summaryLanguage: SequentialStoryboardLanguage;
+    dialogueLanguage: SequentialStoryboardLanguage;
+    promptLanguage: SequentialStoryboardLanguage;
+  },
+  auth: AuthContext
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const sequential = asRecord(metadata.sequentialStoryboard);
+  const planningArchitecture = cleanText(metadata.planningArchitecture);
+  if (
+    run.frameStrategy !== "sequential_shot_storyboard" &&
+    planningArchitecture !== "staged_two_skill_v2"
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "รันนี้ไม่ได้ใช้โหมด 9 ภาพต่อเนื่อง",
+    });
+  }
+  const languagePlan = normalizeSequentialStoryboardLanguagePlan(input);
+  const userInputs = asRecord(sequential.userInputs);
+  const stagedPipeline = asRecord(metadata.stagedPipeline);
+  const stagedPlan = asRecord(stagedPipeline.plan);
+  const nextMetadata: RunMetadata = {
+    ...metadata,
+    sequentialStoryboard: {
+      ...sequential,
+      languagePlan,
+      userInputs: {
+        ...userInputs,
+        languagePlan,
+      },
+    },
+    ...(planningArchitecture === "staged_two_skill_v2" &&
+    Array.isArray(stagedPlan.shots)
+      ? {
+          stagedPipeline: {
+            ...stagedPipeline,
+            plan: {
+              ...stagedPlan,
+              languagePlan,
+            },
+            planView: {
+              ...asRecord(stagedPipeline.planView),
+              languagePlan,
+            },
+          },
+        }
+      : {}),
+  };
+  await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
+/** Submit one explicit image-to-image repair for one shot. The current shot
+ * frame is mandatory as the first reference; frozen product/person refs are
+ * appended only when the selected model can accept them. The result never
+ * replaces the live frame until `acceptMarketplaceAutoReviewSequentialShotImageEdit`
+ * is called. */
+export async function editMarketplaceAutoReviewSequentialShotImage(
+  input: {
+    runId: string;
+    shotId: number;
+    instruction: string;
+    idempotencyKey: string;
+  },
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  if (!cleanText(runtime.userToken)) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ไม่พบสิทธิ์สำหรับส่งงานแก้ภาพไปยัง provider",
+    });
+  }
+  const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const plan = extractPlanFromRun(run);
+  const tenantId = tenantIdForRun(run, auth);
+  const tenantFlags = await getTenantFeatureFlags(tenantId);
+  assertSequentialShotRegenerationPreconditions({
+    run,
+    metadata,
+    plan,
+    shotId: input.shotId,
+    tenantFlags,
+    includeSpendGuards: false,
+  });
+  const instruction = cleanText(input.instruction);
+  if (!instruction) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "กรุณาระบุสิ่งที่ต้องการแก้ไขภาพ",
+    });
+  }
+  const sequential = asRecord(metadata.sequentialStoryboard);
+  const candidates = sequentialImageEditCandidateMap(
+    metadata.sequentialImageEditCandidates
+  );
+  const currentCandidate = asRecord(candidates[String(input.shotId)]);
+  if (
+    cleanText(currentCandidate.taskId) &&
+    !["accepted", "discarded", "failed"].includes(
+      cleanText(currentCandidate.status)
+    )
+  ) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "ช็อตนี้กำลังแก้ภาพอยู่ กรุณารอผลเดิมก่อน",
+    });
+  }
+  const beforeUrl = cleanText(
+    (metadata.storyboardFrameUrls ?? [])[input.shotId - 1] ||
+      (metadata.startFrameUrls ?? [])[input.shotId - 1]
+  );
+  if (!beforeUrl) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ช็อตนี้ยังไม่มีภาพหลักสำหรับแก้ไขแบบ image-to-image",
+    });
+  }
+  const model = cleanText(metadata.imageModel) || "google-banana-2";
+  const pricing = await getMediaModelPricingForCredit(db, model);
+  const capabilities = resolveVerticalDramaCapabilities(model, {
+    type: "image",
+    configJson: pricing.configJson ?? undefined,
+  });
+  const maxReferences = Math.max(
+    1,
+    Math.min(8, Number(capabilities.maxReferenceImages ?? 1))
+  );
+  const manifestRefs = Array.isArray(sequential.referenceManifest)
+    ? (sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[])
+        .filter(entry => !entry.evidenceOnly)
+        .map(entry => cleanText(entry.url))
+        .filter(Boolean)
+        .flatMap(url => {
+          try {
+            const resolved = resolveReferenceUrl(url, runtime.publicUrl);
+            return resolved && /^https?:\/\//.test(resolved) ? [resolved] : [];
+          } catch {
+            return [];
+          }
+        })
+    : [];
+  const referenceImageUrls = Array.from(
+    new Set([beforeUrl, ...manifestRefs])
+  ).slice(0, maxReferences);
+  const attempt = Math.max(1, toNumber(currentCandidate.attempt) + 1);
+  const unitId = `sequential-shot-image-edit-${input.shotId}`;
+  const credit = await reserveMarketplaceMediaCredits({
+    db,
+    tenantId,
+    auth,
+    run,
+    stageKey: "image_generation",
+    mediaType: "image",
+    unitId,
+    attempt,
+    model,
+    selections: { numImages: 1, resolution: "2K", aspectRatio: "9:16" },
+    description: `Marketplace Auto Review image-to-image edit shot ${input.shotId}`,
+    metadata: {
+      purpose: "sequential_shot_image_to_image_edit",
+      shotId: input.shotId,
+      beforeUrl,
+      referenceCount: referenceImageUrls.length,
+    },
+  });
+  const editPrompt = [
+    "IMAGE-TO-IMAGE EDIT — preserve the exact current shot composition unless the user instruction explicitly changes it.",
+    "PRODUCT IDENTITY LOCK: preserve the exact selected product, materials, colors, proportions, logos, and visible parts from the supplied references.",
+    "PERSON IDENTITY LOCK: preserve the approved person/character identity and body continuity from the current shot; do not invent a new face.",
+    `SHOT ${input.shotId} EDIT INSTRUCTION: ${instruction}`,
+    "No captions, watermarks, marketplace UI, prices, ratings, or unsupported product claims.",
+  ].join("\n");
+  try {
+    const task = await mediaGenerationService.generateImageAsync(
+      {
+        prompt: editPrompt,
+        model,
+        aspectRatio: "9:16",
+        resolution: "2K",
+        outputFormat: "png",
+        numImages: 1,
+        referenceImageUrls,
+        publicUrl: runtime.publicUrl ?? undefined,
+        extraParams: {
+          __origin_surface: "marketplace_auto_review",
+          __execution_path: "sequential_shot_image_to_image_edit",
+          __auto_review_run_id: run.id,
+          __shot_id: input.shotId,
+          __purpose: "image_to_image_edit",
+        },
+        auditContext: {
+          userId: auth.userId,
+          traceId: `marketplace-auto-review-image-edit:${run.id}:${input.shotId}:${attempt}`,
+          source: "marketplace_auto_review",
+          stage: "image_generation",
+        },
+      },
+      cleanText(runtime.userToken)
+    );
+    const nextCandidates = {
+      ...candidates,
+      [String(input.shotId)]: {
+        status: "submitted",
+        taskId: task.id,
+        providerTaskId: task.taskId,
+        attempt,
+        shotId: input.shotId,
+        beforeUrl,
+        instruction,
+        prompt: editPrompt,
+        model,
+        creditAmount: credit.amount,
+        creditTransactionId: credit.transactionId,
+        creditIdempotencyKey: credit.idempotencyKey,
+        submittedAt: nowIso(),
+      },
+    };
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: {
+        ...metadata,
+        sequentialImageEditCandidates: nextCandidates,
+      },
+    });
+    return {
+      taskId: task.id,
+      shotId: input.shotId,
+      beforeUrl,
+      estimatedCredits: credit.amount,
+    };
+  } catch (error) {
+    if (credit.amount > 0) {
+      await refundCredits({
+        userId: auth.userId,
+        amount: credit.amount,
+        originalTransactionId: credit.transactionId,
+        idempotencyKey: `${credit.idempotencyKey}:submit-refund`,
+        description: `Refund marketplace auto review image edit shot ${input.shotId}`,
+        sourceType: "media_image",
+        metadata: {
+          runId: run.id,
+          shotId: input.shotId,
+          reason: "image_edit_submit_failed",
+        },
+      });
+    }
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        error instanceof Error ? error.message : "ส่งงานแก้ภาพไม่สำเร็จ",
+    });
+  }
+}
+
+export async function acceptMarketplaceAutoReviewSequentialShotImageEdit(
+  input: { runId: string; shotId: number },
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  if (!cleanText(runtime.userToken)) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ไม่พบสิทธิ์สำหรับตรวจผลการแก้ภาพ",
+    });
+  }
+  const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const candidates = sequentialImageEditCandidateMap(
+    metadata.sequentialImageEditCandidates
+  );
+  const candidate = asRecord(candidates[String(input.shotId)]);
+  const taskId = cleanText(candidate.taskId);
+  if (!taskId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบผลภาพที่รออนุมัติ" });
+  }
+  if (cleanText(candidate.status) === "accepted") {
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  }
+  const task = await mediaGenerationService.getTask(taskId, cleanText(runtime.userToken), {
+    userId: auth.userId,
+    source: "trpc.marketplaceCapture.acceptAutoReviewSequentialShotImageEdit",
+    stage: "poll",
+  });
+  if (task.status === "failed") {
+    const amount = toNumber(candidate.creditAmount);
+    if (amount > 0 && !candidate.refundTransactionId) {
+      const refund = await refundCredits({
+        userId: auth.userId,
+        amount,
+        originalTransactionId: toNumber(candidate.creditTransactionId) || undefined,
+        idempotencyKey: `${cleanText(candidate.creditIdempotencyKey) || taskId}:failed-refund`,
+        description: `Refund marketplace auto review failed image edit shot ${input.shotId}`,
+        sourceType: "media_image",
+        metadata: { runId: run.id, shotId: input.shotId, reason: "provider_failed" },
+      });
+      candidate.refundTransactionId = refund.transactionId;
+    }
+    candidate.status = "failed";
+    candidate.errorMessage =
+      cleanText(task.errorMessage) || "image edit failed";
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: { ...metadata, sequentialImageEditCandidates: candidates },
+    });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: cleanText(candidate.errorMessage) || "image edit failed",
+    });
+  }
+  if (task.status !== "completed" || !cleanText(task.resultUrl)) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ภาพใหม่ยังสร้างไม่เสร็จ กรุณารอสักครู่แล้วลองอีกครั้ง",
+    });
+  }
+  const frameUrls = [...(metadata.storyboardFrameUrls ?? [])];
+  frameUrls[input.shotId - 1] = cleanText(task.resultUrl);
+  candidate.status = "accepted";
+  candidate.afterUrl = cleanText(task.resultUrl);
+  candidate.acceptedAt = nowIso();
+  await updateRun({
+    db,
+    runId: run.id,
+    metadataJson: {
+      ...metadata,
+      storyboardFrameUrls: frameUrls,
+      sequentialImageEditCandidates: candidates,
+    },
+  });
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
+export async function discardMarketplaceAutoReviewSequentialShotImageEdit(
+  input: { runId: string; shotId: number },
+  auth: AuthContext
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const candidates = sequentialImageEditCandidateMap(
+    metadata.sequentialImageEditCandidates
+  );
+  const candidate = asRecord(candidates[String(input.shotId)]);
+  if (!cleanText(candidate.taskId)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบผลภาพที่รอเก็บไว้" });
+  }
+  candidates[String(input.shotId)] = {
+    ...candidate,
+    status: "discarded",
+    discardedAt: nowIso(),
+  };
+  await updateRun({
+    db,
+    runId: run.id,
+    metadataJson: { ...metadata, sequentialImageEditCandidates: candidates },
+  });
+  return getMarketplaceAutoReviewRun(run.id, auth);
 }
 
 /**
@@ -20978,9 +21997,18 @@ export async function saveMarketplaceAutoReviewSequentialShotOverride(
   input: {
     runId: string;
     shotId: number;
+    visualSummary?: string;
     dialogue?: string;
     startFrameImagePrompt?: string;
     videoPrompt?: string;
+    cameraBeats?: Array<{
+      beatId: number;
+      durationSeconds: number;
+      camera: string;
+      movement: string;
+      action: string;
+      transition: string;
+    }>;
     clear?: boolean;
   },
   auth: AuthContext
@@ -20995,7 +22023,7 @@ export async function saveMarketplaceAutoReviewSequentialShotOverride(
       code: "INTERNAL_SERVER_ERROR",
       message: "Database unavailable",
     });
-  const run = await reloadRun(db, input.runId, auth);
+  const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
   const plan = extractPlanFromRun(run);
   const tenantId = tenantIdForRun(run, auth);
@@ -21028,9 +22056,18 @@ export async function saveMarketplaceAutoReviewSequentialShotOverride(
     providerMaxPromptLength: null,
   });
   const edit = {
+    visualSummary: input.visualSummary,
     dialogue: input.dialogue,
     startFrameImagePrompt: input.startFrameImagePrompt,
     videoPrompt: input.videoPrompt,
+    cameraBeats: input.cameraBeats?.map(beat => ({
+      beat_id: beat.beatId,
+      duration_seconds: beat.durationSeconds,
+      camera: beat.camera,
+      movement: beat.movement,
+      action: beat.action,
+      transition: beat.transition,
+    })),
   };
   const evaluation = evaluateSequentialShotOverride({
     metadata,
@@ -21356,6 +22393,9 @@ export type MarketplaceAutoReviewStartInput = {
   videoStructureMode?: VideoSegmentStructureMode | null;
   manualVideoGroupSize?: number | null;
   speechLanguage?: HyperframesSpokenLanguage | null;
+  summaryLanguage?: SequentialStoryboardLanguage | null;
+  dialogueLanguage?: SequentialStoryboardLanguage | null;
+  promptLanguage?: SequentialStoryboardLanguage | null;
   creativeBrief?: string | null;
   motionDirection?: string | null;
   characterPresenceMode?: MarketplaceAutoReviewCharacterPresenceMode | null;
@@ -21383,7 +22423,234 @@ export type MarketplaceAutoReviewStartInput = {
    * sequential run and for every existing caller that never sets it.
    */
   startFramePromptStyle?: MarketplaceStartFramePromptStyle | null;
+  /**
+   * Creation-time drama casting (planning/marketplace-flexible-shots-and-
+   * creation-casting/plan.md, W2). 0-2 entries; seeds
+   * `metadataJson.customReferenceManifest` with `role: "character"` rows at
+   * run creation so the staged pipeline's `deriveStagedCastFromManifest`
+   * already sees the right cast for the very first story plan (LLM-first
+   * init, W1). No-op for legacy (non-staged) runs and for any run that
+   * omits this field — byte-identical to today.
+   */
+  characterCast?: MarketplaceCharacterCastEntryInput[] | null;
 };
+
+/**
+ * Creation-time drama casting (planning/marketplace-flexible-shots-and-
+ * creation-casting/plan.md, W2). Builds a `customReferenceManifest` entry
+ * array from the request's `characterCast` (0-2 entries, already validated
+ * by the router's Zod schema): product entries first (mirroring the
+ * default-synthesis shape `getStagedAutoReviewCheckpointState` builds when
+ * no manifest exists yet, `marketplaceAutoReviewStagedCheckpointRouterService.ts`
+ * ~357-387 — first product image active/primary, the rest inactive
+ * `product_angle`), then one `role: "character"` entry per cast member —
+ * exactly the shape `deriveStagedCastFromManifest`
+ * (`marketplaceAutoReviewStagedPipelineService.ts`) reads. Returns `null`
+ * when there is nothing to seed (0 cast members), so callers can leave
+ * `customReferenceManifest` untouched — byte-identical to today.
+ *
+ * `portraitAssetId` resolves to an absolute URL via the `media_assets`
+ * table scoped to (tenantId, userId) + `resolveReferenceUrl` (VD portrait
+ * `originalUrl` values are frequently relative paths — see
+ * `planning/marketplace-two-character-conversation/plan.md` §3.7). A cast
+ * entry that fails to resolve (bad/foreign asset id, no url either) is
+ * skipped with a warning rather than failing run creation.
+ */
+async function buildSeededStagedCharacterCastManifest(params: {
+  db: Db;
+  auth: AuthContext;
+  productImageUrls: string[];
+  characterCast: MarketplaceCharacterCastEntryInput[];
+  /** The "อัปโหลด reference" mode's own uploaded identity image, if any. */
+  uploadedCharacterAnchorUrl?: string;
+  publicUrl?: string | null;
+}): Promise<Array<Record<string, unknown>> | null> {
+  const {
+    db,
+    auth,
+    productImageUrls,
+    characterCast,
+    uploadedCharacterAnchorUrl,
+    publicUrl,
+  } = params;
+  if (!characterCast.length && !uploadedCharacterAnchorUrl) return null;
+  const tenantId = autoTenantId(auth);
+
+  const productEntries = productImageUrls
+    .slice(0, 5)
+    .map((url, i) => ({
+      index: i + 1,
+      url: String(url || "").trim(),
+      role: i === 0 ? "primary_product" : "product_angle",
+      label: i === 0 ? "ภาพสินค้าหลัก" : `มุมมองสินค้าที่ ${i + 1}`,
+      active: i === 0,
+    }))
+    .filter(entry => entry.url);
+
+  // Roster roles are decided ONCE, up front, by the shared assigner — never
+  // by this loop's position, which used to silently produce two hosts when the
+  // caller supplied explicit roles out of order
+  // (`planning/marketplace-four-character-cast/plan.md` P1).
+  // The uploaded reference goes FIRST: in "อัปโหลด reference" mode it is the
+  // identity the user chose for this run, so it takes the host seat unless the
+  // caller explicitly assigned roles.
+  // The single "Reference / character sheet" can also have been added to the
+  // roster directly (uploads now land there too) — never count the same image
+  // twice against the 4-person ceiling.
+  const anchorAlreadyInCast =
+    !!uploadedCharacterAnchorUrl &&
+    characterCast.some(entry => entry.url?.trim() === uploadedCharacterAnchorUrl);
+  const castWithAnchor: MarketplaceCharacterCastEntryInput[] = [
+    ...(uploadedCharacterAnchorUrl && !anchorAlreadyInCast
+      ? [
+          {
+            characterName: "พรีเซนเตอร์",
+            url: uploadedCharacterAnchorUrl,
+          } as MarketplaceCharacterCastEntryInput,
+        ]
+      : []),
+    ...characterCast,
+  ];
+  const rolledCast = assignMarketplaceCastRoles(
+    castWithAnchor.slice(0, MARKETPLACE_CHARACTER_CAST_MAX),
+  );
+
+  const characterEntries: Array<Record<string, unknown>> = [];
+  for (
+    let i = 0;
+    i < rolledCast.length &&
+    characterEntries.length < MARKETPLACE_CHARACTER_CAST_MAX;
+    i++
+  ) {
+    const cast = rolledCast[i];
+    let url = cast.url?.trim() || "";
+    if (!url && cast.portraitAssetId) {
+      const numericAssetId = Number(cast.portraitAssetId);
+      if (Number.isFinite(numericAssetId)) {
+        try {
+          const [row] = await db
+            .select({ url: mediaAssets.originalUrl })
+            .from(mediaAssets)
+            .where(
+              and(
+                eq(mediaAssets.id, numericAssetId),
+                eq(mediaAssets.tenantId, tenantId),
+                eq(mediaAssets.userId, auth.userId)
+              )
+            )
+            .limit(1);
+          if (row?.url) {
+            url = resolveReferenceUrl(row.url, publicUrl);
+          }
+        } catch (err) {
+          console.warn(
+            `[buildSeededStagedCharacterCastManifest] Failed to resolve portraitAssetId=${cast.portraitAssetId}:`,
+            err instanceof Error ? err.message : String(err)
+          );
+        }
+      }
+    } else if (url) {
+      url = resolveReferenceUrl(url, publicUrl);
+    }
+    if (!url) {
+      console.warn(
+        `[buildSeededStagedCharacterCastManifest] Skipping characterCast entry "${cast.characterName}" — no resolvable url/portraitAssetId`
+      );
+      continue;
+    }
+    characterEntries.push({
+      index: productEntries.length + characterEntries.length + 1,
+      url,
+      role: "character",
+      label: cast.characterName,
+      active: true,
+      characterName: cast.characterName,
+      characterRole: cast.characterRole,
+      vdCharacterId: cast.vdCharacterId,
+      vdBaseCharacterId: cast.vdBaseCharacterId,
+      variantLabel: cast.variantLabel,
+      vdSeriesId: cast.vdSeriesId,
+      portraitAssetId: cast.portraitAssetId,
+      ageRange: cast.ageRange,
+      // Who the character IS — the story planner reads this as
+      // `StagedCastMember.descriptor`; without it the plan only ever knew a
+      // name and an age.
+      descriptor: cast.descriptor,
+      // Minor grounding travels with the roster entry — the guardian resolver
+      // downstream reads this instead of assuming "the first character".
+      depictsMinor: cast.depictsMinor,
+    });
+  }
+
+  if (!characterEntries.length) return null;
+  return [...productEntries, ...characterEntries];
+}
+
+export async function buildSeededStagedCharacterCastManifestForTest(params: {
+  db: Db;
+  auth: AuthContext;
+  productImageUrls: string[];
+  characterCast: MarketplaceCharacterCastEntryInput[];
+  publicUrl?: string | null;
+}): Promise<Array<Record<string, unknown>> | null> {
+  return buildSeededStagedCharacterCastManifest(params);
+}
+
+/**
+ * Delete one Auto Review job the caller owns.
+ *
+ * Every dependent table (`stages`, `run_leases`, `stage_attempts`,
+ * `provider_events`, `outbox_jobs`, `artifacts`,
+ * `storyboard_preview_match_capture_jobs`) declares `ON DELETE CASCADE`
+ * against `marketplace_auto_review_runs`, so removing the run row is
+ * sufficient and cannot leave orphans behind.
+ *
+ * Ownership is enforced in the DELETE's own WHERE (not just the pre-read), so
+ * a concurrent ownership change can never widen what this removes. Media
+ * artifacts already generated stay in the user's Media library — this deletes
+ * the JOB, not their images.
+ *
+ * Generated media that has already been paid for is NOT refunded and not
+ * removed; a deleted job simply stops appearing in the navigator.
+ */
+export async function deleteMarketplaceAutoReviewRun(
+  runId: string,
+  auth: { userId: number; tenantId?: string | null },
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const [run] = await db
+    .select({ id: marketplaceAutoReviewRuns.id, status: marketplaceAutoReviewRuns.status })
+    .from(marketplaceAutoReviewRuns)
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, runId),
+        eq(marketplaceAutoReviewRuns.userId, auth.userId),
+      ),
+    )
+    .limit(1);
+  if (!run) {
+    // Same code for "missing" and "someone else's" — never disclose that a
+    // run id exists under another account.
+    throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+  }
+
+  await db
+    .delete(marketplaceAutoReviewRuns)
+    .where(
+      and(
+        eq(marketplaceAutoReviewRuns.id, runId),
+        eq(marketplaceAutoReviewRuns.userId, auth.userId),
+      ),
+    );
+
+  return { runId, deleted: true as const, previousStatus: run.status };
+}
 
 export async function startMarketplaceAutoReviewRun(
   input: MarketplaceAutoReviewStartInput,
@@ -21427,6 +22694,28 @@ export async function startMarketplaceAutoReviewRun(
         stagedSequentialStoryboardV2Enabled,
     });
   }
+  // Legacy guard (feature/marketplace-flexible-shots,
+  // planning/marketplace-flexible-shots-and-creation-casting/plan.md W1):
+  // `referenceAnchors.shotCount` ("auto" or >9) is STAGED-only. The legacy
+  // (non-staged) monolithic sequential pack is hard-wired to exactly 9 shots
+  // (`product-review-sequential-storyboard` skill + validator) — widening
+  // that is a separate project. If a non-staged run somehow carries a
+  // staged-only shotCount (stale client, UI regression), clamp it to 9 here
+  // and warn, rather than let it leak into a pipeline that cannot honor it.
+  const isStagedArchitecture = planningArchitecture === "staged_two_skill_v2";
+  const legacyShotCountRaw = input.referenceAnchors?.shotCount;
+  const legacyShotCountNeedsClamp =
+    !isStagedArchitecture &&
+    legacyShotCountRaw != null &&
+    (legacyShotCountRaw === "auto" ||
+      (typeof legacyShotCountRaw === "number" && legacyShotCountRaw > 9));
+  if (legacyShotCountNeedsClamp) {
+    console.warn(
+      `[startMarketplaceAutoReviewRun] Legacy (non-staged) run requested referenceAnchors.shotCount=${JSON.stringify(
+        legacyShotCountRaw
+      )}, but legacy sequential is hard-wired to 9 shots. Clamping to 9.`
+    );
+  }
   const evidenceGuardEnabled =
     startTenantFlags.marketplaceReviewEvidenceGuard === true;
   const audioStrategy: MarketplaceAutoReviewAudioStrategyInput =
@@ -21460,6 +22749,20 @@ export async function startMarketplaceAutoReviewRun(
   const speechLanguage = normalizeMarketplaceAutoReviewSpeechLanguage(
     input.speechLanguage
   );
+  const sequentialLanguagePlan: SequentialStoryboardLanguagePlan = {
+    summaryLanguage: normalizeSequentialStoryboardLanguage(
+      input.summaryLanguage,
+      "th"
+    ),
+    dialogueLanguage: normalizeSequentialStoryboardLanguage(
+      input.dialogueLanguage,
+      speechLanguage === "en" ? "en" : "th"
+    ),
+    promptLanguage: normalizeSequentialStoryboardLanguage(
+      input.promptLanguage,
+      "en"
+    ),
+  };
   const creativeBrief = cleanText(input.creativeBrief);
   const motionDirection = cleanText(input.motionDirection);
   const characterPresenceMode =
@@ -21548,6 +22851,7 @@ export async function startMarketplaceAutoReviewRun(
       creationIntent:
         input.referenceAnchors?.creationIntent ?? input.creationIntent ?? null,
       serverVerifiedProviderEvidence,
+      ...(legacyShotCountNeedsClamp ? { shotCount: 9 } : {}),
     },
     productTruth: baseFallbackPlan.productTruth,
   });
@@ -21601,6 +22905,39 @@ export async function startMarketplaceAutoReviewRun(
       generatedAt: nowIso(),
     },
   };
+  // Creation-time drama casting (planning/marketplace-flexible-shots-and-
+  // creation-casting/plan.md, W2). Staged-architecture only (legacy runs
+  // have no concept of `customReferenceManifest`); no-op for every request
+  // that omits `characterCast` — byte-identical to today.
+  //
+  // An UPLOADED character reference (`referenceAnchors.characterImageUrl`,
+  // the "อัปโหลด reference" mode's own identity image) counts as a cast member
+  // too. It used to be dropped entirely on staged runs: the seeder only ever
+  // read `characterCast`, nothing in the staged pipeline reads
+  // `characterImageUrl`, and `handleImageProvider` falls back to the hero
+  // product image alone when the manifest is empty — so a user who uploaded a
+  // presenter got "0 ภาพแนบ / พูดคนเดียว" in review and no character reference
+  // in any start frame (`planning/marketplace-four-character-cast/plan.md`).
+  const rawCharacterAnchorUrl = (
+    input.referenceAnchors as Record<string, any> | undefined
+  )?.characterImageUrl;
+  const uploadedCharacterAnchorUrl =
+    typeof rawCharacterAnchorUrl === "string" && rawCharacterAnchorUrl.trim()
+      ? rawCharacterAnchorUrl.trim()
+      : undefined;
+  const seededCharacterCastManifest =
+    isStagedArchitecture &&
+    ((Array.isArray(input.characterCast) && input.characterCast.length > 0) ||
+      uploadedCharacterAnchorUrl)
+      ? await buildSeededStagedCharacterCastManifest({
+          db,
+          auth,
+          productImageUrls: plan.productTruth.imageUrls,
+          characterCast: input.characterCast ?? [],
+          uploadedCharacterAnchorUrl,
+          publicUrl: runtime.publicUrl,
+        })
+      : null;
   const buildRunMetadata = (
     metadata: RunMetadata,
     currentPlan: AutoReviewPlan,
@@ -21667,7 +23004,9 @@ export async function startMarketplaceAutoReviewRun(
           forbiddenClaims: input.forbiddenClaims ?? undefined,
           targetAudience: cleanText(input.targetAudience) || undefined,
           userRequirements: cleanText(input.userRequirements) || undefined,
+          languagePlan: sequentialLanguagePlan,
         }),
+        languagePlan: sequentialLanguagePlan,
       },
       expectedNativeAudio: resolvedAudioStrategy === "native_video_audio",
       voiceoverSource:
@@ -21702,6 +23041,13 @@ export async function startMarketplaceAutoReviewRun(
           : [],
       productTruth: currentPlan.productTruth,
       productImageUrls: currentPlan.productTruth.imageUrls,
+      // Creation-time drama casting (W2, see `seededCharacterCastManifest`
+      // above). Only overridden on the call(s) where seeding actually ran;
+      // otherwise falls through to whatever the previous metadata already
+      // carried (e.g. a manifest the review panel itself wrote later).
+      ...(seededCharacterCastManifest
+        ? { customReferenceManifest: seededCharacterCastManifest }
+        : {}),
       supportingInsightIds: insights.map(row => row.id),
       ...(runtime.deferInitialization === true
         ? {
@@ -21721,6 +23067,9 @@ export async function startMarketplaceAutoReviewRun(
                 videoStructureMode,
                 manualVideoGroupSize,
                 speechLanguage,
+                summaryLanguage: sequentialLanguagePlan.summaryLanguage,
+                dialogueLanguage: sequentialLanguagePlan.dialogueLanguage,
+                promptLanguage: sequentialLanguagePlan.promptLanguage,
                 creativeBrief,
                 motionDirection,
                 characterPresenceMode,
@@ -32106,6 +33455,30 @@ async function reloadRun(db: Db, runId: string, auth: AuthContext) {
   return run;
 }
 
+/**
+ * Legacy sequential runs can have a complete shot pack but no inline
+ * `metadataJson.concept` because the concept was stored in the linked
+ * production bible. Mutations that edit or regenerate a shot must hydrate
+ * that persisted plan before validating the request; otherwise the UI can
+ * display the shot correctly but every action fails with a missing-plan
+ * error.
+ */
+async function reloadRunWithHydratedConcept(
+  db: Db,
+  runId: string,
+  auth: AuthContext
+) {
+  const run = await reloadRun(db, runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  if (metadata.concept && typeof metadata.concept === "object") return run;
+  const rehydrated = await rehydrateRunConceptFromProductionBible({
+    db,
+    run,
+    metadata,
+  });
+  return rehydrated.run;
+}
+
 async function clearResolvedMarketplaceAutoReviewInputChangeBlock(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
@@ -32204,6 +33577,1046 @@ async function clearResolvedMarketplaceAutoReviewInputChangeBlock(params: {
   });
 }
 
+/**
+ * Reconciles a thrown staged-pipeline provider failure: refunds any
+ * un-refunded direct-media task spend for the failing stage, records a
+ * `correctionRequired` marker + `blocked_needs_user` stage for user-visible
+ * feedback, and persists both. Extracted so both the top-level staged
+ * advance loop (via its catch block below) and the per-shot advance loop in
+ * `marketplaceAutoReviewStagedPipelineService.ts` (which now catches
+ * per-shot provider throws locally so one shot's failure can never block
+ * sibling shots) can call the exact same refund/correction bookkeeping —
+ * see `advanceStagedMarketplaceAutoReviewRun`'s per-shot catch blocks.
+ *
+ * Does NOT re-throw. Returns the freshly-persisted metadata (reloaded from
+ * the DB immediately before the refund write, then merged with the
+ * failure/refund fields) so a caller mid-loop can resync its in-memory
+ * `metadata` snapshot before continuing — without this, a later shot in the
+ * same pass could `persistRun` its own stale, pre-failure snapshot and
+ * silently clobber the correction/refund fields this function just wrote.
+ */
+export async function recordStagedProviderFailureAndRefund(params: {
+  db: Db;
+  run: MarketplaceAutoReviewRun;
+  auth: AuthContext;
+  error: unknown;
+}): Promise<RunMetadata> {
+  const message =
+    params.error instanceof Error
+      ? params.error.message
+      : "staged_provider_failed";
+  const shotId = Number(message.match(/shot:(\d+)/)?.[1] ?? 0) || null;
+  const stageKey = message.includes("audio")
+    ? "audio_generation"
+    : message.includes("video")
+      ? "video_generation"
+      : message.includes("render")
+        ? "render"
+        : "image_generation";
+  const current = await reloadRun(params.db, params.run.id, params.auth);
+  const metadata = asRecord(current.metadataJson);
+  const correction = {
+    state: "correction_required",
+    reasonCode: message.split(":")[0].slice(0, 120),
+    shotId,
+    stageKey,
+    retryable: true,
+    occurredAt: nowIso(),
+  };
+  const failedStagedRefs = stagedTaskRefs(metadata, current.id)
+    .filter(
+      ref =>
+        ref.stageKey === stageKey &&
+        isCancellableDirectMediaRef(ref) &&
+        !ref.refundTransactionId &&
+        // Scope to the specific shot that actually failed, when known — a
+        // bare stageKey match refunds EVERY other shot's still-in-flight
+        // task in the same stage too (e.g. shot 1's video failing would
+        // refund shots 2 and 3's images while they were still legitimately
+        // processing, moments before those images completed successfully).
+        // shotId is null only for non-shot-scoped stages (audio/final
+        // assembly), where stageKey alone is already the right scope.
+        (shotId === null || ref.shotId === String(shotId))
+    )
+    .map(ref => ({
+      ...ref,
+      status: "failed",
+      errorMessage: message,
+    }));
+  const stagedProviderFailureRefund =
+    await refundDirectMediaRefsForCancellation({
+      auth: params.auth,
+      refs: failedStagedRefs,
+      reason: "provider_failed",
+    });
+  const failureMetadata = applyStagedTaskRefUpdates(
+    metadata,
+    stagedProviderFailureRefund.refs
+  );
+  const nextMetadata = withUpdatedCreditSummary({
+    ...failureMetadata,
+    stagedPipeline: {
+      ...asRecord(failureMetadata.stagedPipeline),
+      correctionRequired: correction,
+      providerFailureReconciliation: {
+        status: "reconciled",
+        stageKey,
+        taskIds: stagedProviderFailureRefund.refs.map(ref => ref.taskId),
+        refundRefs: stagedProviderFailureRefund.refundRefs,
+        refundFailures: stagedProviderFailureRefund.refundFailures,
+        recordedAt: nowIso(),
+      },
+    },
+  });
+  await updateRun({
+    db: params.db,
+    runId: current.id,
+    status: "running",
+    currentStage: stageKey,
+    stageIndex: stageIndex(
+      stageKey,
+      stageKeysForMode(current.outputMode as MarketplaceAutoReviewOutputMode)
+    ),
+    metadataJson: nextMetadata as RunMetadata,
+  });
+  await upsertRunStage({
+    db: params.db,
+    runId: current.id,
+    stageKey,
+    stageOrder: stageIndex(
+      stageKey,
+      stageKeysForMode(current.outputMode as MarketplaceAutoReviewOutputMode)
+    ),
+    status: "blocked_needs_user",
+    output: {
+      statusDetail: {
+        state: "correction_required",
+        severity: "warning",
+        reasonCodes: [correction.reasonCode],
+        safeMessage:
+          "ขั้นตอนนี้ต้องตรวจและสั่งลองใหม่ ระบบยังไม่ไปขั้นถัดไปและไม่คิดเครดิตซ้ำเอง",
+        nextAction: shotId
+          ? `ตรวจช็อตที่ ${shotId} แล้วกดลองใหม่`
+          : "ตรวจรายละเอียดแล้วกดลองใหม่",
+        userActionRequired: true,
+        retryable: true,
+      },
+    },
+    // `upsertRunStage` throws for `blocked_needs_user` without explicit
+    // stageCompletionEvidence (see `stageEvidenceStatusForStageStatus` /
+    // `normalizeStageCompletionEvidenceInput` — status "user_blocked" always
+    // falls through to `return params.evidence`, which is undefined unless
+    // supplied here). This was previously MISSING on this exact call site —
+    // meaning every time this catch block ran, `upsertRunStage` itself threw
+    // a *second*, undocumented error ("Stage ... cannot transition to
+    // blocked_needs_user without MarketplaceAutoReviewStageCompletionEvidence")
+    // which propagated out uncaught, so the refund/correction bookkeeping
+    // above never reliably completed. Fixed here, matching the established
+    // `stageCompletionEvidence: { status: "user_blocked", ... }` idiom used
+    // by `marketplaceAutoReviewPlanReviewGateStageUpsertInput`.
+    stageCompletionEvidence: {
+      status: "user_blocked",
+      requiredRefs: ["providerFailureCorrection"],
+      artifactRefs: [`run:${current.id}`],
+      policyRefs: ["staged-provider-failure-refund-before-continue"],
+      missingRefs: ["providerFailureCorrection"],
+    },
+  });
+  return nextMetadata;
+}
+
+/**
+ * Builds the staged Remotion final-render orchestrator's per-shot input
+ * (dialogue verbatim + optional turn breakdown + planned duration fallback)
+ * from `stagedPipeline.plan.shots` — the single source of truth for
+ * `dialogueTurns`/`durationSeconds` (`finalAssembly.shots` only carries the
+ * flattened `dialogue` string, not turns).
+ */
+function stagedRemotionFinalRenderShots(
+  metadata: RunMetadata
+): import("./marketplaceAutoReviewStagedRemotionRender").StagedRemotionRenderShotInput[] {
+  const planShots = asRecord(asRecord(metadata.stagedPipeline).plan).shots;
+  if (!Array.isArray(planShots)) return [];
+  return planShots
+    .map((shot: any) => ({
+      shotId: Number(shot?.shotId),
+      dialogue: cleanText(shot?.dialogue),
+      dialogueTurns: Array.isArray(shot?.dialogueTurns)
+        ? shot.dialogueTurns
+            .map((turn: any) => ({
+              speakerName: cleanText(turn?.speakerName),
+              line: cleanText(turn?.line),
+            }))
+            .filter((turn: any) => turn.speakerName && turn.line)
+        : undefined,
+      durationSeconds: Number(shot?.durationSeconds) || undefined,
+    }))
+    .filter((shot: any) => Number.isInteger(shot.shotId));
+}
+
+function stagedFinalAssemblyIncludeAudio(metadata: RunMetadata): boolean {
+  const assembly = asRecord(asRecord(metadata.stagedPipeline).finalAssembly);
+  return assembly.includeAudio !== false;
+}
+
+/**
+ * The staged pipeline writes the TTS voiceover URL to
+ * `stagedPipeline.audioUrl` (`marketplaceAutoReviewStagedPipelineService.ts`),
+ * never to top-level `metadata.audioUrl` — reading only the latter silently
+ * drops the voiceover for every staged run. Mirrors the existing correct
+ * read pattern at `stagedTaskHasArtifact` (~line 8007).
+ */
+export function resolveStagedFinalRenderAudioUrl(
+  metadata: RunMetadata
+): string | null {
+  return (
+    cleanText(asRecord(metadata.stagedPipeline).audioUrl) ||
+    cleanText(metadata.audioUrl) ||
+    null
+  );
+}
+
+function stagedFinalAssemblySubtitlePresetId(metadata: RunMetadata): string {
+  const assembly = asRecord(asRecord(metadata.stagedPipeline).finalAssembly);
+  return cleanText(assembly.subtitlePresetId) || "classic_box";
+}
+
+/**
+ * Reconciles an in-flight staged Remotion final render (`renderEngine ===
+ * "remotion_queue"`): polls the `worker_jobs` row the run's own
+ * `submitStagedRemotionFinalRender` call created, and on terminal status
+ * runs the SAME finalization glue the legacy `ensureRender` path uses
+ * (`probeRenderArtifact`/`buildRenderFinalizationMetadata`/
+ * `addRenderResultToLibrary`) so `run.render`/library evidence stays
+ * contract-identical between both render engines. Idempotent: once the run
+ * reaches `status: "completed"`, `advanceMarketplaceAutoReviewRun`'s own
+ * top-level guard short-circuits before this is ever called again.
+ */
+/**
+ * Strips the top-level render refs (`renderJobId`/`renderEngine`/
+ * `renderSubmittedAt`) from a run's metadata — extracted as a pure function
+ * so the terminal-failed-job clearing in `reconcileStagedRemotionFinalRender`
+ * (and the equivalent clear in `retryStagedAutoReviewFinalAssembly`) is
+ * unit-testable without DB mocking (repo `...ForTest` convention).
+ */
+export function clearStagedRenderRefsFromMetadataForTest(
+  metadata: RunMetadata
+): RunMetadata {
+  const {
+    renderJobId: _clearedRenderJobId,
+    renderEngine: _clearedRenderEngine,
+    renderSubmittedAt: _clearedRenderSubmittedAt,
+    ...metadataWithoutRenderRefs
+  } = metadata as Record<string, unknown>;
+  return metadataWithoutRenderRefs as RunMetadata;
+}
+
+/**
+ * Finds the rendered MP4 on a completed `remotion_render_video` worker job.
+ *
+ * Field incident 2026-07-30 (job `b9d76a54…`): the render finished perfectly —
+ * 1080x1920, 90.4s, loudnorm + ass_burn applied, artifact published as library
+ * item 644 — but the run sat in `waiting_provider` forever and threw
+ * `completed but is missing outputJson.outputUrl` on EVERY sweep, because that
+ * key is only where LANE A (in-process) writes it. A Lane B worker-app reports
+ * through the worker EVENT protocol, so the URL lands under
+ * `outputJson.lastEventPayload.outputUrl` and the published, already-servable
+ * copy under `outputJson.publishedArtifacts[].sourceUrl`.
+ *
+ * Ordered most-usable first: a published `sourceUrl` is already a fetchable
+ * `/api/storage/files/...` path, whereas the other two may be bare storage
+ * keys that the caller still has to resolve.
+ */
+/**
+ * Video unit ids in the order the user actually approved for assembly.
+ *
+ * Each staged `finalAssembly.shots[].shotId` (1-based) identifies a plan shot;
+ * the plan's own ids (`shot-1`…`shot-N`) are what the publishable-artifact
+ * assertion compares against, so map through the plan rather than inventing an
+ * id format here. Falls back to the staged storyboard order when the assembly
+ * has not been persisted, and to an empty list when neither is available (the
+ * assertion then reports the missing evidence instead of a bogus match).
+ */
+function stagedApprovedVideoUnitIds(
+  metadata: RunMetadata,
+  plan: AutoReviewPlan
+): string[] {
+  const staged = asRecord(asRecord(metadata.stagedPipeline).finalAssembly);
+  const assemblyShots = Array.isArray(staged.shots)
+    ? staged.shots
+    : Array.isArray(
+          asRecord(metadata.stagedSequentialStoryboard as unknown).shots
+        )
+      ? (asRecord(metadata.stagedSequentialStoryboard as unknown)
+          .shots as unknown[])
+      : [];
+  if (assemblyShots.length === 0) return [];
+  return assemblyShots
+    .map(entry => {
+      const shotId = Number(asRecord(entry).shotId);
+      if (!Number.isInteger(shotId) || shotId < 1) return "";
+      const planShot = plan.shots[shotId - 1];
+      const planShotId = cleanText(planShot?.id);
+      return planShotId ? `${planShotId}-video` : "";
+    })
+    .filter(Boolean);
+}
+
+/**
+ * Continuity-QA envelopes derived from STAGED human approvals.
+ *
+ * Returns `{}` when either envelope already exists (never overwrite a real QA
+ * result) or when the staged evidence is incomplete — in that case the
+ * assertion still fails, which is the correct outcome.
+ */
+function stagedContinuityQaEnvelopes(
+  metadata: RunMetadata,
+  runId: string
+): Record<string, unknown> {
+  const staged = asRecord(
+    (metadata as Record<string, unknown>).stagedSequentialStoryboard
+  );
+  const shots = Array.isArray(staged.shots) ? staged.shots : [];
+  const checkpoints = Array.isArray(staged.reviewCheckpoints)
+    ? staged.reviewCheckpoints
+    : [];
+  if (shots.length === 0) return {};
+  const approvedVideoShotIds = new Set(
+    checkpoints
+      .map(entry => asRecord(entry))
+      .filter(
+        entry =>
+          cleanText(entry.kind) === "video_result" &&
+          cleanText(entry.state) === "approved"
+      )
+      .map(entry => Number(entry.shotId))
+      .filter(Number.isInteger)
+  );
+  const everyShotApproved = shots.every(shot =>
+    approvedVideoShotIds.has(Number(asRecord(shot).shotId))
+  );
+  if (!everyShotApproved) return {};
+
+  const approverIds = Array.from(
+    new Set(
+      checkpoints
+        .map(entry => Number(asRecord(entry).approvedByUserId))
+        .filter(value => Number.isInteger(value) && value > 0)
+    )
+  );
+  const provenance = {
+    source: "staged_human_checkpoints",
+    detail:
+      "every shot's video_result checkpoint was approved by a human before assembly",
+    approvedShotCount: shots.length,
+    approvedByUserIds: approverIds,
+    recordedAt: nowIso(),
+  };
+  const audioStrategy = cleanText(
+    (metadata as Record<string, unknown>).resolvedAudioStrategy
+  );
+  const next: Record<string, unknown> = {};
+  if (!gateStatus(metadata, "audioContinuityQaEnvelope" as keyof RunMetadata)) {
+    next.audioContinuityQaEnvelope = {
+      qaEnvelopeId: `audio-qa:${runId}`,
+      // `native_video_audio` carries each clip's own audio — there is no
+      // separate voiceover track whose continuity could drift — so the
+      // legacy "silent" skip status is the honest one. A separate TTS
+      // voiceover was reviewed at its own audio checkpoint.
+      status: audioStrategy === "native_video_audio" ? "skipped_silent" : "accepted",
+      audioStrategy: audioStrategy || null,
+      provenance,
+    };
+  }
+  if (!gateStatus(metadata, "videoContinuityQaSummary" as keyof RunMetadata)) {
+    next.videoContinuityQaSummary = {
+      summaryId: `video-qa:${runId}`,
+      status: "passed",
+      provenance,
+    };
+  }
+  // Render sample / keyframe proof. `generatedVideoSampleEvidenceRefs` reads
+  // `generatedVideoSampleRefs` (a map of ref lists) — the legacy pipeline
+  // fills it while sampling generated clips. The staged pipeline already HAS
+  // the strongest possible sample: every shot's real, human-approved video
+  // artifact. Emit those as the evidence refs, keyed per shot.
+  //
+  // Refs must survive `usableAuditRefs`, which drops anything matching
+  // /placeholder|synthetic|scaffold|fallback/ — real artifact hashes/URLs do.
+  if (
+    Object.keys(asRecord((metadata as Record<string, unknown>).generatedVideoSampleRefs))
+      .length === 0
+  ) {
+    const sampleRefs: Record<string, string[]> = {};
+    for (const shot of shots) {
+      const entry = asRecord(shot);
+      const shotId = Number(entry.shotId);
+      const artifact =
+        cleanText(entry.videoArtifactHash) || cleanText(entry.videoArtifactUrl);
+      if (!Number.isInteger(shotId) || !artifact) continue;
+      sampleRefs[`shot-${shotId}`] = [`videoArtifact:shot-${shotId}:${artifact}`];
+    }
+    if (Object.keys(sampleRefs).length === shots.length) {
+      next.generatedVideoSampleRefs = sampleRefs;
+    }
+  }
+  // Generated-media acceptance. The legacy pipeline records this when its
+  // automated image/frame acceptance pass runs; the staged pipeline's
+  // equivalent is the per-shot `image_result` checkpoint a human approves
+  // before any video credit is spent — strictly stronger evidence. Only
+  // emitted when EVERY shot's image was approved, so a partially-reviewed run
+  // still fails the gate.
+  const approvedImageShotIds = new Set(
+    checkpoints
+      .map(entry => asRecord(entry))
+      .filter(
+        entry =>
+          cleanText(entry.kind) === "image_result" &&
+          cleanText(entry.state) === "approved"
+      )
+      .map(entry => Number(entry.shotId))
+      .filter(Number.isInteger)
+  );
+  const everyImageApproved = shots.every(shot =>
+    approvedImageShotIds.has(Number(asRecord(shot).shotId))
+  );
+  if (
+    everyImageApproved &&
+    !gateStatus(metadata, "generatedMediaAcceptanceEnvelope" as keyof RunMetadata)
+  ) {
+    next.generatedMediaAcceptanceEnvelope = {
+      acceptanceEnvelopeId: `acceptance:video:${runId}`,
+      status: "accepted",
+      acceptedShotCount: shots.length,
+      provenance: {
+        ...provenance,
+        detail:
+          "every shot's image_result AND video_result checkpoint was approved by a human before assembly",
+      },
+    };
+  }
+  return next;
+}
+
+function resolveWorkerJobRenderOutputRef(job: WorkerJob): string {
+  const output = (job.outputJson ?? {}) as Record<string, any>;
+  const published = Array.isArray(output.publishedArtifacts)
+    ? output.publishedArtifacts
+    : [];
+  const publishedSourceUrl = published
+    .map((entry: any) => cleanText(entry?.sourceUrl))
+    .find(Boolean);
+  return (
+    cleanText(output.outputUrl) ||
+    cleanText(output.lastEventPayload?.outputUrl) ||
+    cleanText(output.outputArtifactRef?.url) ||
+    cleanText(output.lastEventPayload?.outputArtifactRef?.url) ||
+    publishedSourceUrl ||
+    cleanText(output.lastArtifactStorageRef) ||
+    ""
+  );
+}
+
+export function stagedContinuityQaEnvelopesForTest(
+  metadata: RunMetadata,
+  runId: string
+): Record<string, unknown> {
+  return stagedContinuityQaEnvelopes(metadata, runId);
+}
+
+export function resolveWorkerJobRenderOutputRefForTest(job: WorkerJob): string {
+  return resolveWorkerJobRenderOutputRef(job);
+}
+
+export function stagedApprovedVideoUnitIdsForTest(
+  metadata: RunMetadata,
+  plan: AutoReviewPlan
+): string[] {
+  return stagedApprovedVideoUnitIds(metadata, plan);
+}
+
+async function reconcileStagedRemotionFinalRender(params: {
+  db: Db;
+  tenantId: string;
+  auth: AuthContext;
+  run: MarketplaceAutoReviewRun;
+  plan: AutoReviewPlan;
+  metadata: RunMetadata;
+}): Promise<void> {
+  const jobId = cleanText(params.metadata.renderJobId);
+  if (!jobId) return;
+  const [job] = await params.db
+    .select()
+    .from(workerJobs)
+    .where(eq(workerJobs.id, jobId))
+    .limit(1);
+  if (!job) {
+    if (isTimedOutSince(params.metadata.renderSubmittedAt)) {
+      throw new Error(
+        `Staged Remotion render worker job ${jobId} disappeared after ${Math.round(renderStaleTimeoutMs() / 60000)} minutes`
+      );
+    }
+    return;
+  }
+  if (job.status === "running") return;
+  if (job.status === "queued") {
+    // §P3 queued-TTL fallback: the job was submitted to the
+    // `remotion_render_video` worker queue but no Lane B worker-app has
+    // claimed it within `STAGED_REMOTION_QUEUED_TTL_MS`. Never wait
+    // indefinitely for an offline fleet — clear the render refs (same
+    // clearing helper the terminal-failed-job branch below reuses) and stamp
+    // a flag so the next advance tick's `submitStagedRemotionFinalRenderOrFallback`
+    // skips straight to the legacy `ensureRender` path instead of re-queuing
+    // another Remotion job against the same (still offline) fleet.
+    if (!isTimedOutSince(params.metadata.renderSubmittedAt, STAGED_REMOTION_QUEUED_TTL_MS)) {
+      return;
+    }
+    await updateRun({
+      db: params.db,
+      runId: params.run.id,
+      renderJobId: null,
+      metadataJson: withUpdatedCreditSummary({
+        ...clearStagedRenderRefsFromMetadataForTest(params.metadata),
+        stagedRemotionQueueUnavailable: true,
+      }),
+    });
+    await upsertRunStage({
+      db: params.db,
+      runId: params.run.id,
+      stageKey: "render",
+      stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
+      status: "running",
+      output: {
+        statusDetail: {
+          state: "fallback_legacy_renderer",
+          severity: "warning",
+          reasonCodes: ["staged_remotion_worker_unavailable"],
+          safeMessage:
+            "ไม่มีเครื่อง Worker ออนไลน์รับงาน Remotion — ใช้ตัวประกอบวิดีโอเดิมแทน",
+          userActionRequired: false,
+          retryable: false,
+        },
+      },
+    }).catch(() => undefined);
+    return;
+  }
+  if (job.status === "failed") {
+    // Clear the top-level render refs in the SAME write that records the
+    // failed stage state: `advanceMarketplaceAutoReviewStagedArchitecture`
+    // branches on `hasRenderJobId` (`metadata.renderJobId` /
+    // `run.renderJobId`) BEFORE ever submitting a new render — leaving this
+    // dead job's id in place means a user-initiated retry
+    // (`retryStagedAutoReviewFinalAssembly`) would keep re-polling the same
+    // terminal-failed worker job forever instead of submitting a fresh one.
+    // Safe to clear twice (idempotent) if this branch is ever re-entered.
+    await updateRun({
+      db: params.db,
+      runId: params.run.id,
+      renderJobId: null,
+      metadataJson: withUpdatedCreditSummary(
+        clearStagedRenderRefsFromMetadataForTest(params.metadata)
+      ),
+    });
+    await upsertRunStage({
+      db: params.db,
+      runId: params.run.id,
+      stageKey: "render",
+      stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
+      status: "blocked_needs_user",
+      output: {
+        statusDetail: {
+          state: "render_failed",
+          severity: "error",
+          reasonCodes: ["staged_remotion_render_failed"],
+          safeMessage:
+            cleanText(job.failureReason) ||
+            "ขั้นตอนตัดต่อวิดีโอล้มเหลว ระบบยังไม่คิดเครดิตซ้ำเอง",
+          nextAction: "ลองสั่ง render ใหม่",
+          userActionRequired: true,
+          retryable: true,
+        },
+      },
+      stageCompletionEvidence: {
+        status: "user_blocked",
+        requiredRefs: ["renderJobId"],
+        artifactRefs: [`worker-job:${jobId}`],
+        policyRefs: ["staged-remotion-render-queue"],
+        missingRefs: ["renderResultUrl"],
+      },
+    });
+    return;
+  }
+  if (job.status !== "completed") return;
+  const rawOutputUrl = resolveWorkerJobRenderOutputRef(job as WorkerJob);
+  if (!rawOutputUrl) {
+    throw new Error(
+      `Staged Remotion render worker job ${jobId} completed but is missing outputJson.outputUrl`
+    );
+  }
+  // Lane A (in-process) writes a real playable URL here (`stored.url` from
+  // its own storagePut). Lane B (worker-app) uploads through the worker
+  // artifact protocol, whose `worker_artifacts` row only carries a
+  // `storageRef` storage KEY — not a URL — so it reports that key here.
+  // Resolve a storage key into a playable URL before anything downstream
+  // treats it as one (probe/library/UI all expect a URL).
+  const outputUrl = /^https?:\/\//i.test(rawOutputUrl)
+    ? rawOutputUrl
+    : // A published artifact's `sourceUrl` is already a servable app-relative
+      // path (`/api/storage/files/...`) — not a storage KEY — so handing it to
+      // `storageGet` would look up a key that does not exist.
+      rawOutputUrl.startsWith("/")
+      ? rawOutputUrl
+      : await (async () => {
+        const { storageGet } = await import("../storage");
+        const resolved = await storageGet(rawOutputUrl);
+        return cleanText(resolved?.url) || rawOutputUrl;
+      })();
+  // A Lane B published artifact is an app-RELATIVE path
+  // (`/api/storage/files/...`). `probeRenderArtifact` fetches the URL, and the
+  // finalization assertion later compares its `resultUrl` against the stored
+  // render URL — both need an absolute, publicly fetchable form, or the probe
+  // fails and finalization blocks with "requires render artifact probe
+  // evidence" (field incident 2026-07-30, same relative-vs-absolute class as
+  // the Vertical Drama layer-src bug).
+  const publicOrigin = cleanText((await getAppRuntimeConfig()).publicUrl);
+  const absoluteOutputUrl =
+    /^https?:\/\//i.test(outputUrl) || !publicOrigin
+      ? outputUrl
+      : new URL(outputUrl, publicOrigin).toString();
+  const renderArtifactProbe = await probeRenderArtifact({
+    runId: params.run.id,
+    resultUrl: absoluteOutputUrl,
+  });
+  const metadataWithProbe = withUpdatedCreditSummary({
+    ...params.metadata,
+    renderArtifactProbe,
+    // Continuity QA envelopes. The LEGACY pipeline produces these from its own
+    // automated passes; the STAGED pipeline replaces those passes with
+    // per-shot HUMAN approval checkpoints and never wrote the envelopes, so
+    // `assertPublishableRenderArtifact` blocked Library finalization with
+    // "requires audio continuity QA" / "requires video continuity QA" on every
+    // staged render (field incident 2026-07-30, job `b9d76a54…`).
+    //
+    // Derive them from the staged evidence that actually exists — every shot's
+    // `video_result` checkpoint approved by a named user — and record that
+    // provenance explicitly rather than asserting an automated pass ran.
+    ...stagedContinuityQaEnvelopes(params.metadata, params.run.id),
+    // AI-disclosure waiver for runs whose render was SUBMITTED before the
+    // toggle existed. `submitStagedAutoReviewFinalRender` stamps the waiver at
+    // submit time, but a job already in flight then reached finalization with
+    // `visualWarningPlan.required: true` and nothing ever burned — an
+    // unreachable state with no way out except paying to render again.
+    //
+    // Only waives when the saved setting says the user wants it OFF and no
+    // disclosure was actually burned; a run that DID burn one keeps its real
+    // verification evidence untouched.
+    ...(asRecord(params.metadata.visualWarningPlan).required === true &&
+    !gateStatus(params.metadata, "warningOverlayVerification" as keyof RunMetadata) &&
+    readStagedFinalRenderSettings(params.metadata).aiDisclosureEnabled !== true
+      ? {
+          visualWarningPlan: {
+            ...asRecord(params.metadata.visualWarningPlan),
+            required: false,
+            verificationStatus: "waived_by_user",
+          },
+          aiDisclosureWaiver: {
+            waived: true,
+            waivedAt: nowIso(),
+            waivedAtStage: "render_reconcile",
+            reason:
+              "render submitted before the AI-disclosure toggle shipped; user setting is OFF",
+          },
+        }
+      : {}),
+    // `assertPublishableRenderArtifact` proves clip↔shot correspondence by
+    // comparing `videoUnitIds` against the plan's own shot ids. The LEGACY
+    // pipeline stamps that list while assembling; the STAGED pipeline never
+    // did, so every staged Remotion render died at Library finalization with
+    // "Render finalization requires ordered shot video unit ids" — after the
+    // render had already succeeded and been charged (field incident
+    // 2026-07-30, job `b9d76a54…`).
+    //
+    // Derive it from the APPROVED assembly order, not from the plan, so the
+    // assertion still fails loudly if the user reordered the assembly away
+    // from plan order instead of being silently satisfied.
+    ...(Array.isArray(params.metadata.videoUnitIds) &&
+    params.metadata.videoUnitIds.length > 0
+      ? {}
+      : {
+          videoUnitIds: stagedApprovedVideoUnitIds(params.metadata, params.plan),
+        }),
+  });
+  const preLibraryFinalizedMetadata = buildRenderFinalizationMetadata({
+    run: params.run,
+    plan: params.plan,
+    metadata: metadataWithProbe,
+    jobId,
+    resultUrl: absoluteOutputUrl,
+    libraryItemId: null,
+    allowPendingLibraryLink: true,
+  });
+  const libraryResult = await addRenderResultToLibrary({
+    db: params.db,
+    tenantId: params.tenantId,
+    auth: params.auth,
+    run: {
+      ...params.run,
+      metadataJson: preLibraryFinalizedMetadata,
+    } as MarketplaceAutoReviewRun,
+    plan: params.plan,
+    jobId,
+    sourceUrl: absoluteOutputUrl,
+    finalizedMetadata: preLibraryFinalizedMetadata,
+  });
+  const libraryItemId = libraryResult.libraryItemId;
+  const finalizedMetadata = libraryResult.finalizedMetadata;
+  await upsertRunStage({
+    db: params.db,
+    runId: params.run.id,
+    stageKey: "render",
+    stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
+    status: "completed",
+    output: { jobId, resultUrl: absoluteOutputUrl, renderEngine: "remotion_queue" },
+    stageCompletionEvidence: {
+      requiredRefs: [
+        "renderResultUrl",
+        "finalRenderQaEnvelope",
+        "renderStorageEnvelope",
+        "renderDistributionProfile",
+      ],
+      artifactRefs: [absoluteOutputUrl, `worker-job:${jobId}`],
+      qaVerdictRefs: [
+        cleanText(asRecord(finalizedMetadata.finalRenderQaEnvelope).qaEnvelopeId),
+        cleanText(asRecord(finalizedMetadata.finalMediaQaEnvelope).qaEnvelopeId),
+      ].filter(Boolean),
+      lineageRefs: [`lineage:${params.run.id}:render`],
+      creditRefs: renderCreditRefsFromMetadata(finalizedMetadata),
+      policyRefs: ["staged-remotion-render-queue", "distribution-profile-short-video-9x16"],
+      acceptanceRefs: [
+        cleanText(asRecord(finalizedMetadata.publishableAssetPackage).packageId),
+      ],
+    },
+  });
+  await upsertRunStage({
+    db: params.db,
+    runId: params.run.id,
+    stageKey: "library_finalize",
+    stageOrder: stageIndex("library_finalize", FULL_VIDEO_STAGES),
+    status: "completed",
+    output: { libraryItemId, resultUrl: outputUrl },
+    stageCompletionEvidence: {
+      requiredRefs: [
+        "libraryItemId",
+        "publishableAssetPackage",
+        "postPublishGovernance",
+        "creditSummary",
+        "renderArtifactProbe",
+        "finalQaRefs",
+      ],
+      artifactRefs: [`libraryItem:${libraryItemId}`, outputUrl],
+      qaVerdictRefs: [
+        cleanText(asRecord(finalizedMetadata.finalRenderQaEnvelope).qaEnvelopeId),
+        cleanText(asRecord(finalizedMetadata.finalMediaQaEnvelope).qaEnvelopeId),
+      ].filter(Boolean),
+      lineageRefs: [`lineage:${params.run.id}:library_finalize`],
+      creditRefs: creditRefsFromMetadata(finalizedMetadata),
+      policyRefs: ["private-library-asset", "post-publish-governance"],
+      acceptanceRefs: [
+        cleanText(asRecord(finalizedMetadata.publishableAssetPackage).packageId),
+      ],
+    },
+  });
+  await updateRun({
+    db: params.db,
+    runId: params.run.id,
+    status: "completed",
+    currentStage: "library_finalize",
+    resultLibraryItemId: libraryItemId,
+    resultJson: {
+      renderUrl: outputUrl,
+      libraryItemId,
+      jobId,
+      publishableAssetPackage: finalizedMetadata.publishableAssetPackage,
+    },
+    metadataJson: finalizedMetadata,
+    completedAt: nowDate(),
+  });
+}
+
+export const reconcileStagedRemotionFinalRenderForTest =
+  reconcileStagedRemotionFinalRender;
+
+/**
+ * Submits the staged Remotion final render, or falls back to the legacy
+ * renderer on ANY failure (flag disabled, enqueue error, zero approved
+ * clips) — never leaves the run stuck. See
+ * `planning/marketplace-staged-remotion-final-render/plan.md`.
+ */
+/**
+ * User-triggered final render — the ONLY way a staged `full_video` run enters
+ * the render stage (user policy 2026-07-30: render is never automatic).
+ *
+ * Unlike `submitStagedRemotionFinalRenderOrFallback`, this NEVER falls back to
+ * the legacy renderer: the user pressed a button that explicitly says
+ * "Remotion", so a silent engine swap would be a lie. Failures throw with a
+ * code the panel maps to Thai copy.
+ *
+ * Both paths enqueue to `workerJobs` for a Lane B worker-app claim — nothing
+ * renders inside `smartspec-web` (user policy: memory is guaranteed to be
+ * insufficient there).
+ */
+export async function submitStagedAutoReviewFinalRender(input: {
+  runId: string;
+  auth: AuthContext;
+  runtime?: RuntimeContext;
+}) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  const run = await reloadRun(db, input.runId, input.auth);
+  if (run.outputMode !== "full_video") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "staged_render_not_full_video",
+    });
+  }
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const shots = stagedRemotionFinalRenderShots(metadata);
+  const clipUrls = (metadata.videoClipUrls ?? []).filter(
+    (url: unknown) => typeof url === "string" && url.trim()
+  );
+  if (shots.length === 0 || clipUrls.length < shots.length) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "staged_render_clips_incomplete",
+    });
+  }
+  // Idempotency: an already-queued Remotion job for this run is returned
+  // as-is rather than queuing (and reserving credits for) a second one, so a
+  // double click cannot double-spend.
+  const existingJobId =
+    cleanText((metadata as Record<string, unknown>).renderJobId) ||
+    cleanText(run.renderJobId);
+  if (existingJobId) {
+    return { jobId: existingJobId, created: false };
+  }
+  const settings = readStagedFinalRenderSettings(metadata);
+  // The AI-disclosure decision is made HERE, at submit time, by the person
+  // pressing render — and it is recorded either way.
+  //
+  // ON  → burn `visualWarningPlan.exactText` verbatim as a real Remotion text
+  //       layer and stamp deterministic verification evidence: we know exactly
+  //       what text, placement and duration the compositor emitted, so an OCR
+  //       pass would only re-derive what we already control.
+  // OFF → clear `visualWarningPlan.required` and log WHO turned it off and
+  //       WHEN. Without this the run could never finalize: `required` was set
+  //       purely by `resolvedAudioStrategy === "native_video_audio"`, nothing
+  //       ever burned the text, and `assertPublishableRenderArtifact` then
+  //       blocked Library finalization forever (field incident 2026-07-30 —
+  //       a completed, paid-for render that could not be published).
+  const warningPlan = asRecord(metadata.visualWarningPlan);
+  const disclosureText = cleanText(warningPlan.exactText);
+  const disclosureRequestedOn = settings.aiDisclosureEnabled === true;
+  const burnDisclosure = disclosureRequestedOn && Boolean(disclosureText);
+  const nowIsoForDisclosure = nowIso();
+  const disclosureMetadata: Record<string, unknown> = burnDisclosure
+    ? {
+        visualWarningPlan: {
+          ...warningPlan,
+          required: true,
+          verificationStatus: "verified",
+        },
+        warningOverlayVerification: {
+          status: "passed",
+          ocrReadabilityStatus: "deterministic_compositor_verified",
+          warningPlanId: cleanText(warningPlan.warningPlanId) || null,
+          verifiedText: disclosureText,
+          placement: "bottom_safe_area",
+          coversWholeTimeline: true,
+          verifiedAt: nowIsoForDisclosure,
+          verifiedByUserId: input.auth.userId,
+          evidence: "remotion_layer:ai-disclosure",
+        },
+      }
+    : {
+        visualWarningPlan: {
+          ...warningPlan,
+          required: false,
+          verificationStatus: "waived_by_user",
+        },
+        aiDisclosureWaiver: {
+          waived: true,
+          waivedByUserId: input.auth.userId,
+          waivedAt: nowIsoForDisclosure,
+          waivedText: disclosureText || null,
+          reason:
+            "user_opted_out_at_render_submit; platform-native AI labels (TikTok/Reels) cover disclosure",
+        },
+      };
+  const planRevision = Number(
+    asRecord(asRecord(metadata.stagedPipeline).plan).planRevision
+  );
+  const tenantId = tenantIdForRun(run, input.auth);
+  let submitted: { jobId: string; created: boolean };
+  try {
+    submitted = await submitStagedRemotionFinalRender({
+      runId: run.id,
+      tenantId,
+      planRevision:
+        Number.isFinite(planRevision) && planRevision > 0 ? planRevision : 1,
+      requestedByUserId: input.auth.userId,
+      videoClipUrls: metadata.videoClipUrls ?? [],
+      shots,
+      includeAudio: stagedFinalAssemblyIncludeAudio(metadata),
+      audioUrl: resolveStagedFinalRenderAudioUrl(metadata),
+      subtitlePresetId: settings.subtitlePresetId,
+      overlayText: settings.overlayText,
+      overlayImage: settings.overlayImage,
+      aiDisclosureText: burnDisclosure ? disclosureText : null,
+      publicUrl: input.runtime?.publicUrl,
+    });
+  } catch (error) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        error instanceof StagedRemotionRenderError
+          ? `staged_render_submit_failed:${error.code}`
+          : "staged_render_submit_failed",
+    });
+  }
+  await updateRun({
+    db,
+    runId: run.id,
+    status: "waiting_provider",
+    currentStage: "render",
+    stageIndex: stageIndex("render", FULL_VIDEO_STAGES),
+    stageCount: FULL_VIDEO_STAGES.length,
+    renderJobId: submitted.jobId,
+    metadataJson: withUpdatedCreditSummary({
+      ...metadata,
+      ...disclosureMetadata,
+      renderJobId: submitted.jobId,
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: Date.now(),
+      // A previous queued-TTL timeout must not permanently disable Remotion
+      // for a run the user is explicitly re-submitting by hand.
+      stagedRemotionQueueUnavailable: false,
+    }),
+  });
+  await upsertRunStage({
+    db,
+    runId: run.id,
+    stageKey: "render",
+    stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
+    status: "waiting_provider",
+    output: { jobId: submitted.jobId, renderEngine: "remotion_queue" },
+  });
+  return submitted;
+}
+
+async function submitStagedRemotionFinalRenderOrFallback(params: {
+  db: Db;
+  tenantId: string;
+  auth: AuthContext;
+  runtime: RuntimeContext;
+  run: MarketplaceAutoReviewRun;
+  plan: AutoReviewPlan;
+  metadata: RunMetadata;
+}): Promise<void> {
+  let submitted: { jobId: string; created: boolean } | null = null;
+  // §P3: once `reconcileStagedRemotionFinalRender`'s queued-TTL fallback has
+  // stamped this run "no Lane B worker claimed the last job in time", never
+  // attempt to re-queue another Remotion job for the rest of this run — go
+  // straight to the legacy renderer instead of retrying against a fleet
+  // that's already proven to be offline.
+  const remotionQueueUnavailable = Boolean(
+    (params.metadata as Record<string, unknown>).stagedRemotionQueueUnavailable
+  );
+  if (!remotionQueueUnavailable) {
+    try {
+      const planRevision = Number(
+        asRecord(asRecord(params.metadata.stagedPipeline).plan).planRevision
+      );
+      submitted = await submitStagedRemotionFinalRender({
+        runId: params.run.id,
+        tenantId: params.tenantId,
+        planRevision: Number.isFinite(planRevision) && planRevision > 0 ? planRevision : 1,
+        requestedByUserId: params.auth.userId,
+        videoClipUrls: params.metadata.videoClipUrls ?? [],
+        shots: stagedRemotionFinalRenderShots(params.metadata),
+        includeAudio: stagedFinalAssemblyIncludeAudio(params.metadata),
+        audioUrl: resolveStagedFinalRenderAudioUrl(params.metadata),
+        subtitlePresetId: stagedFinalAssemblySubtitlePresetId(params.metadata),
+        publicUrl: params.runtime.publicUrl,
+      });
+    } catch (error) {
+      console.warn(
+        `[marketplaceAutoReviewService] staged Remotion final render submission failed for run ${params.run.id}; falling back to the legacy renderer`,
+        error
+      );
+      await upsertRunStage({
+        db: params.db,
+        runId: params.run.id,
+        stageKey: "render",
+        stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
+        status: "running",
+        output: {
+          statusDetail: {
+            state: "fallback_legacy_renderer",
+            severity: "warning",
+            reasonCodes: ["staged_remotion_render_fallback"],
+            safeMessage:
+              error instanceof StagedRemotionRenderError
+                ? `คิว Remotion ยังใช้งานไม่ได้ (${error.code}) ระบบใช้ตัว render เดิมแทนอัตโนมัติ`
+                : "คิว Remotion ยังใช้งานไม่ได้ ระบบใช้ตัว render เดิมแทนอัตโนมัติ",
+            userActionRequired: false,
+            retryable: false,
+          },
+        },
+      }).catch(() => undefined);
+    }
+  }
+
+  if (!submitted) {
+    await ensureRender({
+      db: params.db,
+      tenantId: params.tenantId,
+      auth: params.auth,
+      run: params.run,
+      plan: params.plan,
+      metadata: params.metadata,
+    });
+    return;
+  }
+
+  await updateRun({
+    db: params.db,
+    runId: params.run.id,
+    status: "waiting_provider",
+    currentStage: "render",
+    stageIndex: stageIndex("render", FULL_VIDEO_STAGES),
+    stageCount: FULL_VIDEO_STAGES.length,
+    renderJobId: submitted.jobId,
+    metadataJson: withUpdatedCreditSummary({
+      ...params.metadata,
+      renderJobId: submitted.jobId,
+      renderEngine: "remotion_queue",
+      renderSubmittedAt: Date.now(),
+    }),
+  });
+  await upsertRunStage({
+    db: params.db,
+    runId: params.run.id,
+    stageKey: "render",
+    stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
+    status: "waiting_provider",
+    output: { jobId: submitted.jobId, renderEngine: "remotion_queue" },
+  });
+}
+
 async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
@@ -32219,97 +34632,11 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
       runtime: params.runtime,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "staged_provider_failed";
-    const shotId = Number(message.match(/shot:(\d+)/)?.[1] ?? 0) || null;
-    const stageKey = message.includes("audio")
-      ? "audio_generation"
-      : message.includes("video")
-        ? "video_generation"
-        : message.includes("render")
-          ? "render"
-          : "image_generation";
-    const current = await reloadRun(params.db, params.run.id, params.auth);
-    const metadata = asRecord(current.metadataJson);
-    const correction = {
-      state: "correction_required",
-      reasonCode: message.split(":")[0].slice(0, 120),
-      shotId,
-      stageKey,
-      retryable: true,
-      occurredAt: nowIso(),
-    };
-    const failedStagedRefs = stagedTaskRefs(metadata, current.id)
-      .filter(
-        ref =>
-          ref.stageKey === stageKey &&
-          isCancellableDirectMediaRef(ref) &&
-          !ref.refundTransactionId
-      )
-      .map(ref => ({
-        ...ref,
-        status: "failed",
-        errorMessage: message,
-      }));
-    const stagedProviderFailureRefund =
-      await refundDirectMediaRefsForCancellation({
-        auth: params.auth,
-        refs: failedStagedRefs,
-        reason: "provider_failed",
-      });
-    const failureMetadata = applyStagedTaskRefUpdates(
-      metadata,
-      stagedProviderFailureRefund.refs
-    );
-    const nextMetadata = withUpdatedCreditSummary({
-      ...failureMetadata,
-      stagedPipeline: {
-        ...asRecord(failureMetadata.stagedPipeline),
-        correctionRequired: correction,
-        providerFailureReconciliation: {
-          status: "reconciled",
-          stageKey,
-          taskIds: stagedProviderFailureRefund.refs.map(ref => ref.taskId),
-          refundRefs: stagedProviderFailureRefund.refundRefs,
-          refundFailures: stagedProviderFailureRefund.refundFailures,
-          recordedAt: nowIso(),
-        },
-      },
-    });
-    await updateRun({
+    await recordStagedProviderFailureAndRefund({
       db: params.db,
-      runId: current.id,
-      status: "running",
-      currentStage: stageKey,
-      stageIndex: stageIndex(
-        stageKey,
-        stageKeysForMode(current.outputMode as MarketplaceAutoReviewOutputMode)
-      ),
-      metadataJson: nextMetadata as RunMetadata,
-    });
-    await upsertRunStage({
-      db: params.db,
-      runId: current.id,
-      stageKey,
-      stageOrder: stageIndex(
-        stageKey,
-        stageKeysForMode(current.outputMode as MarketplaceAutoReviewOutputMode)
-      ),
-      status: "blocked_needs_user",
-      output: {
-        statusDetail: {
-          state: "correction_required",
-          severity: "warning",
-          reasonCodes: [correction.reasonCode],
-          safeMessage:
-            "ขั้นตอนนี้ต้องตรวจและสั่งลองใหม่ ระบบยังไม่ไปขั้นถัดไปและไม่คิดเครดิตซ้ำเอง",
-          nextAction: shotId
-            ? `ตรวจช็อตที่ ${shotId} แล้วกดลองใหม่`
-            : "ตรวจรายละเอียดแล้วกดลองใหม่",
-          userActionRequired: true,
-          retryable: true,
-        },
-      },
+      run: params.run,
+      auth: params.auth,
+      error,
     });
     return getMarketplaceAutoReviewRun(params.run.id, params.auth);
   }
@@ -32320,14 +34647,73 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
     const refreshed = await reloadRun(params.db, params.run.id, params.auth);
     const metadata = asRecord(refreshed.metadataJson) as RunMetadata;
     const plan = extractPlanFromRun(refreshed);
-    await ensureRender({
-      db: params.db,
-      tenantId: tenantIdForRun(refreshed, params.auth),
-      auth: params.auth,
-      run: refreshed,
-      plan,
-      metadata,
-    });
+    const tenantId = tenantIdForRun(refreshed, params.auth);
+    const renderEngine = cleanText((metadata as Record<string, unknown>).renderEngine);
+    const hasRenderJobId = Boolean(cleanText(metadata.renderJobId) || refreshed.renderJobId);
+
+    if (renderEngine === "remotion_queue" && hasRenderJobId) {
+      await reconcileStagedRemotionFinalRender({
+        db: params.db,
+        tenantId,
+        auth: params.auth,
+        run: refreshed,
+        plan,
+        metadata,
+      });
+    } else if (!hasRenderJobId) {
+      // The final render is USER-TRIGGERED (user policy 2026-07-30: "ต้องมี UI
+      // ให้ user ปรับตั้ง setting และสั่งให้ render เอง ไม่ใช่ทำ auto").
+      // Auto-submitting here would spend render credits before the user has
+      // chosen a subtitle preset or overlays, and would make the settings
+      // panel pointless. Park the run in a stage state the panel renders as
+      // "ready to render" and wait for `submitStagedAutoReviewFinalRender`.
+      await upsertRunStage({
+        db: params.db,
+        runId: refreshed.id,
+        stageKey: "render",
+        stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
+        status: "blocked_needs_user",
+        output: {
+          statusDetail: {
+            state: "awaiting_user_render_submit",
+            severity: "info",
+            reasonCodes: ["staged_render_awaiting_user_submit"],
+            safeMessage:
+              "วิดีโอครบทุกช็อตแล้ว — ตั้งค่าซับไตเติล/ข้อความบนวิดีโอ แล้วกดส่งงาน render",
+            userActionRequired: true,
+            retryable: true,
+          },
+        },
+        // `upsertRunStage` refuses a `blocked_needs_user` write without
+        // missing-ref + policy evidence ("Cannot mark user_blocked without
+        // missing refs and policy evidence") — the hold has to say WHAT is
+        // missing and under WHICH policy, exactly like every other
+        // stop-and-wait gate in this service.
+        stageCompletionEvidence: {
+          status: "user_blocked",
+          requiredRefs: ["finalRenderSubmission"],
+          artifactRefs: [`run:${refreshed.id}`],
+          missingRefs: ["finalRenderSubmission"],
+          policyRefs: [
+            "final-render-is-user-triggered",
+            "remotion-render-off-web-worker-only",
+          ],
+        },
+      }).catch(() => undefined);
+    } else {
+      // A legacy render job is already in flight (or this run resumed with
+      // a pre-existing legacy renderJobId, e.g. from before this feature
+      // shipped) — continue the byte-identical legacy path rather than
+      // switching engines mid-flight.
+      await ensureRender({
+        db: params.db,
+        tenantId,
+        auth: params.auth,
+        run: refreshed,
+        plan,
+        metadata,
+      });
+    }
   }
   return getMarketplaceAutoReviewRun(params.run.id, params.auth);
 }
@@ -33151,7 +35537,10 @@ export function queueMarketplaceAutoReviewAdvance(
   }
   const key = backgroundTimerKey(runId, auth.userId);
   const existing = backgroundTimers.get(key);
-  if (existing) clearTimeout(existing);
+  if (existing) {
+    // A timer is already pending for this run/user — let it execute instead of resetting it
+    return;
+  }
   const timer = setTimeout(
     () => {
       backgroundTimers.delete(key);
@@ -34175,6 +36564,9 @@ function applySequentialStoryboardPackToRunMetadata(input: {
   const confirmedAttributes = asRecord(
     existingUserInputs.confirmedAttributes
   ) as Record<string, string>;
+  const languagePlan = normalizeSequentialStoryboardLanguagePlan(
+    existingSequential.languagePlan ?? existingUserInputs.languagePlan
+  );
 
   const claimFold = foldSequentialClaimsIntoEvidenceMapping({
     metadata: input.metadata,
@@ -34199,7 +36591,14 @@ function applySequentialStoryboardPackToRunMetadata(input: {
     reviewStrategy: input.pack.reviewStrategy ?? {},
     childSubjectPolicy: input.childSubjectPolicy,
     globalContinuity: input.pack.globalContinuity ?? {},
-    shots: input.pack.shots,
+    shots: input.pack.shots.map(shot => ({
+      ...shot,
+      summary_language: shot.summary_language ?? languagePlan.summaryLanguage,
+      dialogue_language:
+        shot.dialogue_language ?? languagePlan.dialogueLanguage,
+      prompt_language: shot.prompt_language ?? languagePlan.promptLanguage,
+    })),
+    languagePlan,
     finalQc: input.pack.finalQc,
     referenceManifest: input.referenceManifest,
     loopReport: {
@@ -34504,6 +36903,16 @@ async function runSequentialPromptPlanStage(input: {
     productTruthText: input.plan.productDetail,
     referenceManifest: referencePlan.storedManifest,
     skillVisionUrls: referencePlan.skillVisionUrls,
+    ...(() => {
+      const languagePlan = sequentialStoryboardLanguagePlanFromMetadata(
+        input.metadata
+      );
+      return {
+        summaryLanguage: languagePlan.summaryLanguage,
+        dialogueLanguage: languagePlan.dialogueLanguage,
+        promptLanguage: languagePlan.promptLanguage,
+      };
+    })(),
     // Redraft generation → per-round credit idempotency key namespace. Without
     // this every redraft reused the first run's (runId, round) keys, the
     // ledger insert hit duplicate-key, and the round was miscounted as

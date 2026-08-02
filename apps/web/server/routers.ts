@@ -2,8 +2,10 @@ import crypto from "crypto";
 import { COOKIE_NAME, THIRTY_DAYS_MS, TWENTY_FOUR_HOURS_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, router, loginProcedure, registerProcedure, verifyEmailProcedure, resetPasswordProcedure } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
+import { publicProcedure, protectedProcedure, adminProcedure, router, loginProcedure, registerProcedure, verifyEmailProcedure, resetPasswordProcedure, verifyResetCodeProcedure } from "./_core/trpc";
 import { z } from "zod";
+import { authEmailSchema, normalizeAuthEmail } from "./services/emailNormalization";
 import {
   getGalleryItems,
   getGalleryItemById,
@@ -674,7 +676,7 @@ const authRouter = router({
     }),
   login: loginProcedure
     .input(z.object({
-      email: z.string().email(),
+      email: authEmailSchema,
       password: z.string().min(1),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -686,25 +688,27 @@ const authRouter = router({
       const user = await getUserByEmail(input.email);
 
       if (!user) {
-        throw new Error('Invalid email or password');
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
       }
 
       // Block login for widget system accounts (defense-in-depth)
       if (/^widget-system@.+\.internal$/.test(input.email)) {
-        throw new Error('Invalid email or password');
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
       }
 
       // If user registered with password, verify it
-      if (user.password) {
-        const valid = await bcrypt.compare(input.password, user.password);
-        if (!valid) {
-          throw new Error('Invalid email or password');
-        }
+      if (!user.password) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
+      }
+
+      const valid = await bcrypt.compare(input.password, user.password);
+      if (!valid) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
       }
 
       // Check if email is verified
       if (user.isDisabled && user.loginMethod === 'email') {
-        throw new Error('Please verify your email before logging in');
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Please verify your email before logging in" });
       }
 
       // Check if this email should be granted admin role
@@ -757,7 +761,7 @@ const authRouter = router({
   register: registerProcedure
     .input(z.object({
       name: z.string().min(1).max(255),
-      email: z.string().email(),
+      email: authEmailSchema,
       password: strongPasswordSchema,
       company: z.string().max(255).optional(),
       plan: z.enum(['free', 'pro']).default('free'),
@@ -902,7 +906,7 @@ const authRouter = router({
 
   verifyEmail: verifyEmailProcedure
     .input(z.object({
-      email: z.string().email(),
+      email: authEmailSchema,
       code: z.string().length(6),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -927,7 +931,7 @@ const authRouter = router({
         .limit(1);
 
       if (!token) {
-        throw new Error('Invalid or expired verification code');
+        throw new TRPCError({ code: "BAD_REQUEST", message: 'Invalid or expired verification code' });
       }
 
       // Mark token as used
@@ -967,7 +971,7 @@ const authRouter = router({
 
   resendVerification: publicProcedure
     .input(z.object({
-      email: z.string().email(),
+      email: authEmailSchema,
     }))
     .mutation(async ({ input }) => {
       const { getUserByEmail } = await import("./db");
@@ -1017,7 +1021,7 @@ const authRouter = router({
 
   forgotPassword: resetPasswordProcedure
     .input(z.object({
-      email: z.string().optional(),
+      email: authEmailSchema.optional(),
       phone: z.string().optional(),
       channel: z.enum(["email", "backup_email", "sms"]).default("email"),
     }))
@@ -1029,7 +1033,7 @@ const authRouter = router({
       const { getUserByEmail } = await import("./db");
       const { getDb } = await import("./db");
       const { users, emailVerificationTokens } = await import("../drizzle/schema");
-      const { eq, and, isNull, gt } = await import("drizzle-orm");
+      const { eq, and, isNull, gt, sql } = await import("drizzle-orm");
 
       const db = await getDb();
       if (!db) throw new Error('Database not available');
@@ -1049,7 +1053,7 @@ const authRouter = router({
       } else if (input.channel === "backup_email") {
         if (!input.email) return { success: true };
         const [found] = await db.select({ id: users.id, name: users.name, password: users.password }).from(users)
-          .where(and(eq(users.backupEmail, input.email), eq(users.backupEmailVerified, true)))
+          .where(and(sql`lower(btrim(${users.backupEmail})) = ${input.email}`, eq(users.backupEmailVerified, true)))
           .limit(1);
         user = found;
         destination = input.email;
@@ -1094,9 +1098,9 @@ const authRouter = router({
       return { success: true };
     }),
 
-  verifyResetCode: publicProcedure
+  verifyResetCode: verifyResetCodeProcedure
     .input(z.object({
-      email: z.string().optional(),
+      email: authEmailSchema.optional(),
       phone: z.string().optional(),
       code: z.string().length(6),
       channel: z.enum(["email", "backup_email", "sms"]).default("email"),
@@ -1121,7 +1125,7 @@ const authRouter = router({
           gt(emailVerificationTokens.expiresAt, new Date()),
         )).limit(1);
 
-      if (!token) throw new Error('Invalid or expired reset code');
+      if (!token) throw new TRPCError({ code: "BAD_REQUEST", message: 'Invalid or expired reset code' });
 
       return { success: true };
     }),
@@ -1165,7 +1169,7 @@ const authRouter = router({
   }),
 
   sendBackupEmailCode: protectedProcedure
-    .input(z.object({ backupEmail: z.string().email() }))
+    .input(z.object({ backupEmail: authEmailSchema }))
     .mutation(async ({ input, ctx }) => {
       const { getDb } = await import("./db");
       const { users, emailVerificationTokens } = await import("../drizzle/schema");
@@ -1177,7 +1181,7 @@ const authRouter = router({
       // Ensure backup != primary
       const [user] = await db.select({ email: users.email }).from(users)
         .where(eq(users.id, ctx.user.id)).limit(1);
-      if (user?.email === input.backupEmail) {
+      if (user?.email && normalizeAuthEmail(user.email) === input.backupEmail) {
         throw new Error("Backup email cannot be the same as primary email");
       }
 
@@ -1227,7 +1231,7 @@ const authRouter = router({
           gt(emailVerificationTokens.expiresAt, new Date()),
         )).limit(1);
 
-      if (!token) throw new Error("Invalid or expired verification code");
+      if (!token) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired verification code" });
 
       await db.update(emailVerificationTokens)
         .set({ usedAt: new Date() })
@@ -1320,7 +1324,7 @@ const authRouter = router({
           gt(emailVerificationTokens.expiresAt, new Date()),
         )).limit(1);
 
-      if (!token) throw new Error("Invalid or expired verification code");
+      if (!token) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired verification code" });
 
       await db.update(emailVerificationTokens)
         .set({ usedAt: new Date() })
@@ -1519,7 +1523,7 @@ const authRouter = router({
   /** Verify 2FA code during login (public — uses pending session token) */
   verify2FA: loginProcedure
     .input(z.object({
-      email: z.string().email(),
+      email: authEmailSchema,
       code: z.string().min(1),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -1532,7 +1536,7 @@ const authRouter = router({
       const bcrypt = await import("bcrypt");
 
       const pending = await readPendingTwoFactorCookie(ctx.req);
-      if (!pending || pending.email.toLowerCase() !== input.email.toLowerCase()) {
+      if (!pending || normalizeAuthEmail(pending.email) !== input.email) {
         throw new Error("Your sign-in session expired. Please sign in again.");
       }
 
@@ -1590,9 +1594,9 @@ const authRouter = router({
   /** Request 2FA reset via backup email or SMS (when locked out) */
   request2FAReset: publicProcedure
     .input(z.object({
-      email: z.string().email(),
+      email: authEmailSchema,
       channel: z.enum(["backup_email", "sms"]),
-      backupEmail: z.string().optional(),
+      backupEmail: authEmailSchema.optional(),
       phone: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
@@ -1622,7 +1626,7 @@ const authRouter = router({
         if (!user.backupEmailVerified || !user.backupEmail) {
           throw new Error("Backup email is not configured or verified");
         }
-        if (input.backupEmail && input.backupEmail.toLowerCase() !== user.backupEmail.toLowerCase()) {
+        if (input.backupEmail && normalizeAuthEmail(user.backupEmail) !== input.backupEmail) {
           throw new Error("Backup email does not match");
         }
       } else {
@@ -1658,7 +1662,7 @@ const authRouter = router({
   /** Confirm 2FA reset with verification code (disables 2FA) */
   confirm2FAReset: publicProcedure
     .input(z.object({
-      email: z.string().email(),
+      email: authEmailSchema,
       code: z.string().length(6),
       channel: z.enum(["backup_email", "sms"]),
     }))
@@ -1687,7 +1691,7 @@ const authRouter = router({
         ))
         .limit(1);
 
-      if (!token) throw new Error("Invalid or expired code");
+      if (!token) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired code" });
 
       // Delete used token
       await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.id, token.id));
@@ -1721,7 +1725,7 @@ const authRouter = router({
 
   resetPassword: resetPasswordProcedure
     .input(z.object({
-      email: z.string().optional(),
+      email: authEmailSchema.optional(),
       phone: z.string().optional(),
       code: z.string().length(6),
       newPassword: strongPasswordSchema,
@@ -1748,9 +1752,9 @@ const authRouter = router({
           gt(emailVerificationTokens.expiresAt, new Date()),
         )).limit(1);
 
-      if (!token) throw new Error('Invalid or expired reset code');
+      if (!token) throw new TRPCError({ code: "BAD_REQUEST", message: 'Invalid or expired reset code' });
 
-      // Hash new password and update (set passwordChangedAt to invalidate old sessions)
+      // Hash new password and record the change time for audit/future session invalidation.
       const passwordHash = await bcrypt.hash(input.newPassword, 12);
       await db.update(users)
         .set({ password: passwordHash, passwordChangedAt: new Date() })
@@ -1798,11 +1802,13 @@ const authRouter = router({
         throw new Error('OAuth profile does not include an email address');
       }
 
+      const normalizedEmail = normalizeAuthEmail(pythonUser.email);
+
       const db = await getDb();
       if (!db) throw new Error('Database not available');
 
       // 2. Check if user already exists in Node.js DB
-      const existing = await getUserByEmail(pythonUser.email);
+      const existing = await getUserByEmail(normalizedEmail);
 
       if (existing) {
         // Existing user — block if disabled and email-registered (need email verification)
@@ -1812,7 +1818,7 @@ const authRouter = router({
 
         if (existing.twoFactorEnabled) {
           await setPendingTwoFactorCookie(ctx.req, ctx.res, {
-            email: existing.email || pythonUser.email,
+            email: existing.email || normalizedEmail,
             openId: existing.openId,
             name: existing.name || existing.email || "",
             provider: input.provider,
@@ -1880,8 +1886,8 @@ const authRouter = router({
 
       await db.insert(users).values({
         openId,
-        email: pythonUser.email,
-        name: pythonUser.full_name || pythonUser.email.split('@')[0],
+        email: normalizedEmail,
+        name: pythonUser.full_name || normalizedEmail.split('@')[0],
         loginMethod: input.provider,
         role: 'user',
         plan: 'free',
@@ -1894,7 +1900,7 @@ const authRouter = router({
 
       // 4. Create session
       const token = await sdk.createSessionToken(openId, {
-        name: pythonUser.full_name || pythonUser.email.split('@')[0],
+        name: pythonUser.full_name || normalizedEmail.split('@')[0],
       });
       const cookieOptions = getSessionCookieOptions(ctx.req);
       clearPendingTwoFactorCookie(ctx.req, ctx.res);
@@ -1904,7 +1910,7 @@ const authRouter = router({
         success: true,
         user: {
           id: 0,
-          email: pythonUser.email,
+          email: normalizedEmail,
           name: pythonUser.full_name,
           currentTenantId:
             tenantId !== null && tenantId !== undefined

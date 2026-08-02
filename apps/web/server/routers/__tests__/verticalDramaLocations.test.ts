@@ -565,6 +565,38 @@ describe("generateLocationImage", () => {
     expect(result.creditsUsed).toEqual({ promptGeneration: 2, imageRender: 5 });
   });
 
+  it("passes coverage role/gap to the prompt skill and preserves them in task metadata", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+
+    const result = await router.generateLocationImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        selectedImageModelId: "google-banana-2-lite",
+        coverageRole: "side_angle",
+        gapDescription: "the fixed checkout counter must remain visible",
+      },
+    });
+
+    expect(mockGenerateLocationVisualPrompts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coverageRole: "side_angle",
+        gapDescription: "the fixed checkout counter must remain visible",
+      }),
+    );
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.extraParams).toMatchObject({
+      __vd_location_coverage_role: "side_angle",
+      __vd_location_coverage_gap: "the fixed checkout counter must remain visible",
+    });
+    expect(result.coverageRole).toBe("side_angle");
+  });
+
   it("attaches the location's existing approved reference image as referenceImageUrls when present", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
@@ -973,6 +1005,8 @@ describe("listLocationAssets", () => {
           url: "https://cdn.example.com/candidate-a.png",
           approved: true,
           isPrimary: true,
+          role: "establishing_plate",
+          metadata: null,
           updatedAt: "2026-07-02T00:00:00.000Z",
         },
         {
@@ -981,6 +1015,8 @@ describe("listLocationAssets", () => {
           url: "https://cdn.example.com/candidate-b.png",
           approved: false,
           isPrimary: false,
+          role: "establishing_plate",
+          metadata: null,
           updatedAt: "2026-07-01T00:00:00.000Z",
         },
       ],

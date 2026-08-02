@@ -425,7 +425,8 @@ export function getProviderLimitConfig(providerName: string): ProviderLimitConfi
  */
 export function getMediaProviderLimitConfig(providerName: string): MediaProviderLimitConfig {
   const key = providerName.toLowerCase();
-  return MEDIA_PROVIDER_LIMITS[key] ?? MEDIA_PROVIDER_LIMITS['default-media'];
+  const normalized = key.replace(/_/g, ".");
+  return MEDIA_PROVIDER_LIMITS[key] ?? MEDIA_PROVIDER_LIMITS[normalized] ?? MEDIA_PROVIDER_LIMITS['default-media'];
 }
 
 export function getDocumentOcrProviderLimitConfig(providerName: string) {
@@ -573,7 +574,8 @@ export async function scheduleWithLimiter<T>(
  * Uses 'media:' prefix to distinguish from LLM limiters
  */
 export function getMediaProviderLimiter(providerName: string): Bottleneck {
-  const key = `media:${providerName.toLowerCase()}`;
+  const normalizedProvider = providerName.toLowerCase().replace(/_/g, ".");
+  const key = `media:${normalizedProvider}`;
 
   if (limiters.has(key)) {
     return limiters.get(key)!;

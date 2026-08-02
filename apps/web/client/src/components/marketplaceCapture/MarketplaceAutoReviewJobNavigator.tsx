@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -6,6 +7,8 @@ import {
   Loader2,
   Plus,
   Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
 
 export type MarketplaceAutoReviewJobSummary = Record<string, any>;
@@ -19,6 +22,12 @@ interface MarketplaceAutoReviewJobNavigatorProps {
   setupMode?: boolean;
   onOpenRun: (runId: string) => void;
   onCreateNew: () => void;
+  /** Delete one job. Omit to hide the affordance entirely (read-only mounts).
+   *  Dependent rows cascade server-side; already-generated media stays in the
+   *  user's Media library. */
+  onDeleteRun?: (runId: string) => void;
+  /** Run id currently being deleted, for the row's spinner. */
+  deletingRunId?: string | null;
   className?: string;
 }
 
@@ -200,8 +209,17 @@ export function MarketplaceAutoReviewJobNavigator({
   setupMode = false,
   onOpenRun,
   onCreateNew,
+  onDeleteRun,
+  deletingRunId = null,
   className = "",
 }: MarketplaceAutoReviewJobNavigatorProps) {
+  // Two-step inline confirm — this codebase's convention for a destructive
+  // row action (see the character/look delete buttons in the VD panels).
+  // Deleting a job is irreversible: the run row cascades to its stages,
+  // attempts, artifacts and outbox jobs.
+  const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState<
+    string | null
+  >(null);
   const visibleRuns = sortMarketplaceAutoReviewRunsNewestFirst(
     runs.filter(run => text(run.id, run.productionRunId))
   );
@@ -268,7 +286,7 @@ export function MarketplaceAutoReviewJobNavigator({
                 ? `${Math.min(stageIndex, stageCount)}/${stageCount}`
                 : null;
             return (
-              <li key={runId}>
+              <li key={runId} className="relative">
                 <button
                   type="button"
                   className={`w-full rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
@@ -322,6 +340,63 @@ export function MarketplaceAutoReviewJobNavigator({
                     {formatDate(run.updatedAt ?? run.createdAt)}
                   </span>
                 </button>
+                {/* Delete — sits OUTSIDE the card button (buttons can't nest)
+                    and is absolutely positioned over its top-right corner.
+                    Two-step confirm, since a deleted job takes its stages,
+                    attempts and artifacts with it. */}
+                {onDeleteRun ? (
+                  confirmingDeleteRunId === runId ? (
+                    <span className="absolute right-2 top-2 z-20 flex items-center gap-1 rounded-md border border-white/20 bg-slate-900/95 px-1 py-0.5 shadow-lg">
+                      <span className="px-1 text-[10px] text-slate-200">
+                        ลบงานนี้?
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded p-1 text-slate-300 hover:text-white"
+                        aria-label={`ยกเลิกการลบ ${jobTitle(run, index)}`}
+                        onClick={() => setConfirmingDeleteRunId(null)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={deletingRunId === runId}
+                        className="rounded bg-red-500/90 p-1 text-white hover:bg-red-500 disabled:opacity-60"
+                        aria-label={`ยืนยันลบ ${jobTitle(run, index)}`}
+                        data-testid={`job-delete-confirm-${runId}`}
+                        onClick={() => {
+                          setConfirmingDeleteRunId(null);
+                          onDeleteRun(runId);
+                        }}
+                      >
+                        {deletingRunId === runId ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={deletingRunId === runId}
+                      // ALWAYS visible, never hover-only: an affordance the
+                      // user cannot see is one they will report as missing —
+                      // the same mistake the look selector made earlier today.
+                      className="absolute right-8 top-2 z-10 rounded-md border border-white/10 bg-slate-900/70 p-1 text-slate-400 transition hover:border-red-400/40 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-60"
+                      aria-label={`ลบ ${jobTitle(run, index)}`}
+                      title="ลบงานนี้"
+                      data-testid={`job-delete-${runId}`}
+                      onClick={() => setConfirmingDeleteRunId(runId)}
+                    >
+                      {deletingRunId === runId ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                    </button>
+                  )
+                ) : null}
               </li>
             );
           })}
@@ -333,8 +408,8 @@ export function MarketplaceAutoReviewJobNavigator({
           type="button"
           className={`inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${
             setupMode
-              ? "bg-white/10 text-white hover:bg-white/15"
-              : "bg-violet-500 text-white hover:bg-violet-400"
+              ? "bg-white/20 text-white hover:bg-white/25"
+              : "bg-violet-700 text-white hover:bg-violet-800"
           }`}
           onClick={onCreateNew}
         >

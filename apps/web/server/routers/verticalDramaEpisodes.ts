@@ -206,6 +206,10 @@ import {
   resolveEffectiveSeriesVisualIdentity,
 } from "@shared/verticalDramaSeries/seriesLookLock";
 import {
+  VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+  recordSeriesLookLockAuditEvent,
+} from "../services/verticalDramaSeriesLookLockAudit";
+import {
   buildSceneShotGroups,
   computeSceneMembershipHash,
   findSceneShotGroupForShot,
@@ -215,6 +219,8 @@ import {
   type VdSceneShotGroup,
   type VdSceneVisualState,
 } from "@shared/verticalDramaSeries/sceneContinuity";
+import type { RunFrameContinuityQcResult } from "../services/verticalDramaFrameContinuityQc";
+import { verticalDramaQcService } from "../services/verticalDramaQc";
 import { resolveVerticalDramaVisualConsistencyFlags } from "@shared/featureFlags";
 import {
   buildCharacterIdentityMapBlock,
@@ -328,6 +334,7 @@ import type {
   // existing structured warning shape, reused to record any position-anchor
   // compliance warning the service surfaces (item C).
   VerticalDramaWarning,
+  type VdMotionProfile,
 } from "@shared/verticalDramaSeries";
 // Model-family-aware, vision-grounded video prompt quality upgrade — the
 // persisted-clip metadata type; the resolver function itself is called only
@@ -438,6 +445,7 @@ import {
   type RunAssemblyJobBannerInput,
   type RunAssemblyJobSubtitlesInput,
   type RunAssemblyJobTextOverlayEventInput,
+  type VdClipAuthoredDialogueLine,
   type RunAssemblyJobWatermarkImageInput,
   type VdEpisodeTextOverlayCardInput,
   type VdEpisodeTextOverlayCharacterIntroInput,
@@ -532,6 +540,11 @@ import {
 // `verticalDramaSeriesArcReplan` flag is actually on, which no pre-existing
 // test enables.
 import { debugError } from "../_core/logger";
+import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
+import {
+  normalizeClipIdentityQcAnalysis,
+  resolveClipIdentityQcStatus,
+} from "@shared/verticalDramaSeries/clipIdentityQc";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                         */
@@ -558,6 +571,21 @@ const verticalDramaVoiceChainProcedure = verticalDramaProcedure.use(
 /** Feature 138 P1 — explicit scene visual-state authoring and manual edits. */
 const verticalDramaSceneContinuityProcedure = verticalDramaProcedure.use(
   requireFeatureFlag("verticalDramaSceneContinuity")
+);
+
+/** Feature 138 P2 — shared advisory frame QC; requires the P1 scene lock. */
+const verticalDramaSceneContinuityQcProcedure = verticalDramaSceneContinuityProcedure.use(
+  requireFeatureFlag("verticalDramaSceneContinuityQc")
+);
+
+/** Feature 137 P2 — video-safe anchor/QC path; advisory and user-triggered. */
+const verticalDramaVideoSafeStartFramesProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaVideoSafeStartFrames")
+);
+
+/** Feature 137 P3 — sampled post-video identity QA, advisory/fail-open. */
+const verticalDramaClipIdentityQcProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaClipIdentityQc")
 );
 
 function requireTenantId(tenantId: string | null): string {
@@ -1412,6 +1440,8 @@ async function resolveEpisodePlanAssetUrls(
   for (const frame of frames) {
     if (frame?.approvedMediaAssetId)
       ids.add(String(frame.approvedMediaAssetId));
+    if (frame?.videoStartMediaAssetId)
+      ids.add(String(frame.videoStartMediaAssetId));
     // Reference-mapping fix Phase 5d (`vd-start-frame-reference-mapping/
     // plan.md`) — additive: folds each frame's persisted alternate-angle
     // "backup still" ids into the SAME batch query/flat id->url map this
@@ -1563,7 +1593,8 @@ async function resolveClipRequiredCharacterPortraitAssetIds(
   userId: number,
   seriesId: number,
   startFramePlan: VerticalDramaStartFramePlan | null,
-  sourceShotNumbers: number[]
+  sourceShotNumbers: number[],
+  motionProfile?: VdMotionProfile,
 ): Promise<number[]> {
   const frameByShotNumber = new Map(
     (startFramePlan?.frames ?? []).map(frame => [frame.shotNumber, frame])
@@ -1585,6 +1616,7 @@ async function resolveClipRequiredCharacterPortraitAssetIds(
     .select({
       id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
+      name: verticalDramaCharacters.name,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -1605,12 +1637,12 @@ async function resolveClipRequiredCharacterPortraitAssetIds(
   // un-annotated pattern, which has the same gap — untouched here, out of
   // scope). Annotating both sides here keeps THIS new query's row/map types
   // sound without touching that pre-existing code.
-  const characterRowByKey: Map<string, { id: number; characterKey: string }> =
+  const characterRowByKey: Map<string, { id: number; characterKey: string; name: string }> =
     new Map(
       characterRows.map(
         (
-          row: { id: number; characterKey: string }
-        ): [string, { id: number; characterKey: string }] => [
+          row: { id: number; characterKey: string; name: string }
+        ): [string, { id: number; characterKey: string; name: string }] => [
           row.characterKey,
           row,
         ]
@@ -1619,12 +1651,32 @@ async function resolveClipRequiredCharacterPortraitAssetIds(
 
   const owner = { tenantId, userId, seriesId };
   const portraitAssetIds: number[] = [];
+  const profileFacingByName = new Map(
+    (motionProfile?.characters ?? []).flatMap(character => {
+      const normalizeFacing = (value: string): string | undefined => {
+        const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+        return ["frontal", "front", "left_three_quarter", "right_three_quarter"].includes(normalized)
+          ? normalized
+          : undefined;
+      };
+      const facing = normalizeFacing(character.endFacing) ?? normalizeFacing(character.startFacing);
+      return facing ? [[character.name, facing] as const] : [];
+    }),
+  );
   for (const characterKey of orderedCharacterKeys) {
     const characterRow = characterRowByKey.get(characterKey);
     if (!characterRow) continue;
-    const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
+    const desiredFacing = profileFacingByName.get(characterKey) ?? profileFacingByName.get(characterRow.name);
+    const angleAssetId = desiredFacing
+      ? await verticalDramaCharacterStockService.getApprovedAngleAssetId(
+          owner,
+          characterRow.id,
+          desiredFacing,
+        )
+      : null;
+    const assetId = angleAssetId ?? await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
       owner,
-      characterRow.id
+      characterRow.id,
     );
     if (assetId != null) portraitAssetIds.push(assetId);
   }
@@ -3193,12 +3245,15 @@ async function resolveVdMcpTransportMetadata(params: {
       argumentShape,
     }) ?? rawProviderModelId;
 
-  // NOTE: deliberately no "mcpConnectionId is required" pre-check here.
-  // `resolveMediaTransport` auto-resolves the caller's own eligible connection
-  // when the client doesn't pin one (the picker fills it in asynchronously and
-  // its localStorage cache silently no-ops on full storage, so a null id here
-  // does NOT mean the user lacks an account), and raises a precise error itself
-  // when there genuinely is none / the choice is ambiguous.
+  // Fail closed before the transport resolver. The episode UI requires an
+  // explicit connected account for MCP models; accepting an omitted id here
+  // could silently route a selected MCP model through the gateway path.
+  if (!params.mcpConnectionId?.trim()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `MCP connection is required for model "${params.modelId}". Select a connected MCP account and try again.`,
+    });
+  }
   return resolveMediaTransport({
     tenantId: params.tenantId,
     actorUserId: params.actorUserId,
@@ -3481,6 +3536,10 @@ async function resolveVerticalDramaDensityFlags(
   /** Feature 138 P1 — additive read flag for episode workspace scene locks. */
   sceneContinuityEnabled: boolean;
   sceneNeighborAnchorsEnabled: boolean;
+  /** Feature 138 P2 — advisory continuity badges/QC actions. */
+  sceneContinuityQcEnabled: boolean;
+  /** Feature 137 P2 — video-safe frame/QC actions. */
+  videoSafeStartFramesEnabled: boolean;
 }> {
   const flags = await getTenantFeatureFlags(tenantId);
   const visualConsistencyFlags = resolveVerticalDramaVisualConsistencyFlags(flags);
@@ -3490,6 +3549,9 @@ async function resolveVerticalDramaDensityFlags(
     qualityLedgersEnabled: flags?.verticalDramaQualityLedgers === true,
     sceneContinuityEnabled: flags?.verticalDramaSceneContinuity === true,
     sceneNeighborAnchorsEnabled: visualConsistencyFlags.sceneNeighborAnchors,
+    sceneContinuityQcEnabled: visualConsistencyFlags.sceneContinuityQc,
+    videoSafeStartFramesEnabled:
+      flags?.verticalDramaVideoSafeStartFrames === true,
   };
 }
 
@@ -4057,7 +4119,7 @@ async function loadRecentVerticalDramaRetentionLoopTypes(
 
 /**
  * `getEpisodeDetail.textOverlayPreview` / `assembleEpisodeVideo`'s
- * `overlays`/`watermarkImage` engine feed both delegate to the SAME shared
+ * `overlays`/`watermarkImages` engine feed both delegate to the SAME shared
  * resolution service (`server/services/verticalDramaTextOverlayResolution.ts`)
  * so `verticalDramaSeries.ts`'s `assembleSeasonVideos` (season batch) can
  * reuse the identical logic without a cross-router import — see that
@@ -4138,12 +4200,45 @@ async function buildEpisodeTextOverlayPreview(params: {
 }
 
 /**
+ * Collects each clip's authored dialogue (`motionPromptPack.clips[].dialogue`
+ * — exactly what the storyboard shot cards display) into the map
+ * `resolveEpisodeDialogueAudioAndSubtitlesRunInputs` uses as its subtitle
+ * source of last resort.
+ *
+ * Field incident 2026-08-01 (series 21 / episode 124): an episode with 20
+ * authored dialogue lines across 8 of 9 clips rendered with ZERO subtitles,
+ * because captions were sourced only from the dialogue/voice step's
+ * `dialogueAudioPlan` — which that episode never ran.
+ *
+ * `characterKey` is the speaker chip label (already a display name in
+ * practice); a line without one is treated as narration by the resolver.
+ */
+function buildClipAuthoredDialogueMap(
+  clips: Array<{
+    clipNumber: number;
+    dialogue?: Array<{ lineTh?: string; characterKey?: string }>;
+  }>
+): Map<number, VdClipAuthoredDialogueLine[]> {
+  const map = new Map<number, VdClipAuthoredDialogueLine[]>();
+  for (const clip of clips) {
+    const lines = (clip.dialogue ?? [])
+      .map(line => ({
+        text: String(line.lineTh ?? "").trim(),
+        speakerName: line.characterKey?.trim() || undefined,
+      }))
+      .filter(line => line.text.length > 0);
+    if (lines.length > 0) map.set(clip.clipNumber, lines);
+  }
+  return map;
+}
+
+/**
  * Resolve an episode's saved `textOverlayPlan` (+ the series' watermark
- * config) into the render engine's `overlays`/`watermarkImage` inputs (task
- * #34) — a thin wrapper around the shared
- * `resolveVdEpisodeTextOverlayEngineInputs` (see that function's own doc
- * comment for the full "why shared, not router-local like ad banners"
- * rationale).
+ * config) into the render engine's `overlays`/`watermarkImages` inputs (task
+ * #34; dual watermark, `planning/vd-dual-watermark/plan.md`) — a thin
+ * wrapper around the shared `resolveVdEpisodeTextOverlayEngineInputs` (see
+ * that function's own doc comment for the full "why shared, not
+ * router-local like ad banners" rationale).
  */
 async function resolveEpisodeTextOverlayEngineInputs(params: {
   tenantId: string;
@@ -4158,7 +4253,7 @@ async function resolveEpisodeTextOverlayEngineInputs(params: {
   includeWatermark: boolean;
 }): Promise<{
   overlays: RunAssemblyJobTextOverlayEventInput[];
-  watermarkImage: RunAssemblyJobWatermarkImageInput | null;
+  watermarkImages: RunAssemblyJobWatermarkImageInput[];
   overlaysIncluded: number;
 }> {
   const { resolveVdEpisodeTextOverlayEngineInputs } = await import(
@@ -9242,6 +9337,724 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Feature 138 P2 — run the shared advisory vision QC for one rendered
+   * start-frame. The current frame, same-scene neighbor, approved location
+   * plate, and persisted Scene Visual State are sent in one call. Missing
+   * assets/provider failures are fail-open: a warning report is persisted and
+   * the shot remains renderable.
+   */
+  runFrameContinuityQc: verticalDramaSceneContinuityQcProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const owner: EpisodeRunOwner = {
+        tenantId,
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+      };
+      const row = await loadOwnedEpisode(owner);
+      const { evaluateSceneContinuityAnalysis, runFrameContinuityQc } = await import(
+        "../services/verticalDramaFrameContinuityQc"
+      );
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find((candidate) => candidate.shotNumber === input.shotNumber);
+      if (!plan || !frame) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `No start-frame entry for shot ${input.shotNumber}`,
+        });
+      }
+
+      const [runRow] = await db
+        .insert(verticalDramaEpisodeRuns)
+        .values({
+          tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          stage: "start_frame_image",
+          runMode: "full",
+          status: "running",
+          nextAction: "none",
+          artifactIds: [],
+          warnings: [],
+          errors: [],
+        })
+        .returning({ id: verticalDramaEpisodeRuns.id });
+      const runId = Number(runRow.id);
+
+      const currentAssetId = Number(frame.approvedMediaAssetId);
+      const currentAssetUrls = await resolveMediaAssetUrlsByIds(
+        tenantId,
+        owner.userId,
+        Number.isInteger(currentAssetId) && currentAssetId > 0 ? [currentAssetId] : [],
+      );
+      const locationKey =
+        frame.locationKey?.trim() ||
+        resolveEffectiveShotLocationKey(row.storyboard, input.shotNumber, frame.locationKey);
+      const sceneState = locationKey ? plan.sceneVisualStates?.[locationKey] : undefined;
+      const neighbor = await resolveShotSceneContinuityAnchor({
+        enabled: true,
+        tenantId,
+        userId: owner.userId,
+        storyboard: row.storyboard,
+        plan,
+        shotNumber: input.shotNumber,
+        currentPlanRevision: plan.planRevision ?? row.updatedAt?.toISOString?.() ?? "legacy",
+      });
+      const locationReference = await resolveShotLocationReferenceEntry(
+        tenantId,
+        owner.userId,
+        owner.seriesId,
+        row.storyboard,
+        input.shotNumber,
+        frame.locationKey,
+      );
+
+      let qcResult: RunFrameContinuityQcResult;
+      try {
+        qcResult = await runFrameContinuityQc({
+          userId: owner.userId,
+          tenantId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          shotNumber: input.shotNumber,
+          currentFrameUrl: currentAssetUrls.get(currentAssetId),
+          neighborFrameUrl: neighbor?.url,
+          locationReferenceUrl: locationReference?.url,
+          sceneState,
+          anchorShotNumber: neighbor?.anchorShotNumber,
+          locationKey,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (error) {
+        auditLogger.log({
+          traceId: input.idempotencyKey ?? crypto.randomUUID(),
+          eventType: "vd_frame_continuity_qc",
+          userId: owner.userId,
+          tenantId,
+          metadata: {
+            episodeId: owner.episodeId,
+            shotNumber: input.shotNumber,
+            outcome: "failed_open",
+            reason: error instanceof Error ? error.message : String(error),
+          },
+        });
+        qcResult = {
+          evaluation: evaluateSceneContinuityAnalysis(undefined),
+          usedVision: false,
+          skillVersion: "vertical-drama-start-frame-video-safety-qa@1",
+          creditsUsed: 0,
+        };
+      }
+
+      const analyzedAt = new Date().toISOString();
+      const updatedPlan = {
+        ...plan,
+        frames: plan.frames.map((candidate) => {
+          if (candidate.shotNumber !== input.shotNumber) return candidate;
+          return {
+            ...candidate,
+            ...(qcResult.analysis
+              ? {
+                  sceneContinuity: {
+                    ...qcResult.analysis,
+                    ...(currentAssetId > 0 ? { analyzedAssetId: String(currentAssetId) } : {}),
+                    analyzedAt,
+                    skillVersion: qcResult.skillVersion,
+                  },
+                }
+              : {}),
+            ...(qcResult.videoSafety
+              ? {
+                  videoSafety: {
+                    ...qcResult.videoSafety,
+                    ...(currentAssetId > 0 ? { analyzedAssetId: String(currentAssetId) } : {}),
+                    analyzedAt,
+                    skillVersion: qcResult.skillVersion,
+                  },
+                }
+              : {}),
+          };
+        }),
+      } as VerticalDramaStartFramePlan;
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, owner.episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, owner.userId),
+            eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+          ),
+        );
+
+      const issues = qcResult.evaluation.issues.map((issue, index) => ({
+        issueId: `${issue.issueId}-${index + 1}`,
+        severity: issue.severity,
+        targetType: "shot" as const,
+        targetId: String(input.shotNumber),
+        message: issue.message,
+        ...(issue.evidence ? { evidence: issue.evidence } : {}),
+      }));
+      const report = {
+        qcReportId: `qc-start_frame_image-${owner.episodeId}-${input.shotNumber}-${runId}`,
+        seriesId: String(owner.seriesId),
+        episodeId: String(owner.episodeId),
+        runId: String(runId),
+        stage: "start_frame_image" as const,
+        passed: true as const,
+        score: qcResult.evaluation.score,
+        issues,
+        recommendedRepairs: issues.length > 0
+          ? [{
+              repairId: `repair-start-frame-continuity-${runId}`,
+              stage: "start_frame_image" as const,
+              action: "regenerate_start_frame" as const,
+              instruction: "Review the continuity warnings, then regenerate this shot's start frame if needed.",
+              autoRunnable: false,
+            }]
+          : [],
+        createdAt: analyzedAt,
+      };
+      let qcReportId: string | null = null;
+      try {
+        const persisted = await verticalDramaQcService.persistReport({ ...owner, runId }, report);
+        qcReportId = String(persisted.id);
+      } catch (error) {
+        auditLogger.log({
+          traceId: input.idempotencyKey ?? crypto.randomUUID(),
+          eventType: "vd_frame_continuity_qc",
+          userId: owner.userId,
+          tenantId,
+          metadata: {
+            episodeId: owner.episodeId,
+            shotNumber: input.shotNumber,
+            outcome: "report_persist_failed",
+            reason: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
+      await db
+        .update(verticalDramaEpisodeRuns)
+        .set({
+          status: "succeeded",
+          warnings: issues.map((issue) => issue.message),
+          errors: [],
+          updatedAt: new Date(),
+        })
+        .where(eq(verticalDramaEpisodeRuns.id, runId));
+      auditLogger.log({
+        traceId: input.idempotencyKey ?? crypto.randomUUID(),
+        eventType: "vd_frame_continuity_qc",
+        userId: owner.userId,
+        tenantId,
+        metadata: {
+          episodeId: owner.episodeId,
+          shotNumber: input.shotNumber,
+          outcome: qcResult.usedVision ? "completed" : "unavailable",
+          usedVision: qcResult.usedVision,
+          issueCount: issues.length,
+          score: qcResult.evaluation.score,
+          creditsUsed: qcResult.creditsUsed,
+        },
+      });
+      return {
+        runId: String(runId),
+        qcReportId,
+        sceneContinuity: qcResult.analysis,
+        videoSafety: qcResult.videoSafety,
+        evaluation: qcResult.evaluation,
+        usedVision: qcResult.usedVision,
+        creditsUsed: qcResult.creditsUsed,
+        skillVersion: qcResult.skillVersion,
+      };
+    }),
+
+  /** Feature 137 P2 — advisory video-safety QC for one rendered start frame. */
+  runStartFrameVideoSafetyQc: verticalDramaVideoSafeStartFramesProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const owner: EpisodeRunOwner = {
+        tenantId,
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+      };
+      const row = await loadOwnedEpisode(owner);
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find(candidate => candidate.shotNumber === input.shotNumber);
+      if (!plan || !frame) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: `No start-frame entry for shot ${input.shotNumber}` });
+      }
+      const [runRow] = await db.insert(verticalDramaEpisodeRuns).values({
+        tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        stage: "start_frame_image",
+        runMode: "full",
+        status: "running",
+        nextAction: "none",
+        artifactIds: [],
+        warnings: [],
+        errors: [],
+      }).returning({ id: verticalDramaEpisodeRuns.id });
+      const runId = Number(runRow.id);
+      const currentAssetId = Number(frame.approvedMediaAssetId);
+      const currentAssetUrls = await resolveMediaAssetUrlsByIds(
+        tenantId,
+        owner.userId,
+        Number.isInteger(currentAssetId) && currentAssetId > 0 ? [currentAssetId] : [],
+      );
+      const locationKey = frame.locationKey?.trim() || resolveEffectiveShotLocationKey(
+        row.storyboard,
+        input.shotNumber,
+        frame.locationKey,
+      );
+      const neighbor = await resolveShotSceneContinuityAnchor({
+        enabled: true,
+        tenantId,
+        userId: owner.userId,
+        storyboard: row.storyboard,
+        plan,
+        shotNumber: input.shotNumber,
+        currentPlanRevision: plan.planRevision ?? row.updatedAt?.toISOString?.() ?? "legacy",
+      });
+      const locationReference = await resolveShotLocationReferenceEntry(
+        tenantId,
+        owner.userId,
+        owner.seriesId,
+        row.storyboard,
+        input.shotNumber,
+        frame.locationKey,
+      );
+      const { runFrameContinuityQc } = await import("../services/verticalDramaFrameContinuityQc");
+      let qcResult: RunFrameContinuityQcResult;
+      try {
+        qcResult = await runFrameContinuityQc({
+          userId: owner.userId,
+          tenantId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          shotNumber: input.shotNumber,
+          currentFrameUrl: currentAssetUrls.get(currentAssetId),
+          neighborFrameUrl: neighbor?.url,
+          locationReferenceUrl: locationReference?.url,
+          sceneState: locationKey ? plan.sceneVisualStates?.[locationKey] : undefined,
+          anchorShotNumber: neighbor?.anchorShotNumber,
+          locationKey,
+          requestVideoSafety: true,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch {
+        qcResult = {
+          evaluation: { passed: true, score: 1, issues: [] },
+          usedVision: false,
+          skillVersion: "vertical-drama-start-frame-video-safety-qa@1",
+          creditsUsed: 0,
+        };
+      }
+      const videoSafety = qcResult.videoSafety;
+      const analyzedAt = new Date().toISOString();
+      if (videoSafety) {
+        const updatedPlan: VerticalDramaStartFramePlan = {
+          ...plan,
+          frames: plan.frames.map(candidate => candidate.shotNumber === input.shotNumber
+            ? {
+                ...candidate,
+                videoSafety: {
+                  ...videoSafety,
+                  ...(currentAssetId > 0 ? { analyzedAssetId: String(currentAssetId) } : {}),
+                  analyzedAt,
+                  skillVersion: qcResult.skillVersion,
+                },
+              }
+            : candidate),
+        };
+        await db.update(verticalDramaEpisodes)
+          .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+          .where(and(
+            eq(verticalDramaEpisodes.id, owner.episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, owner.userId),
+            eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+          ));
+      }
+      const issues: Array<{
+        issueId: string;
+        severity: "warning";
+        targetType: "shot";
+        targetId: string;
+        message: string;
+      }> = [];
+      if (videoSafety?.video_safe_verdict && videoSafety.video_safe_verdict !== "safe") {
+        issues.push({
+          issueId: "video_safe_verdict",
+          severity: "warning",
+          targetType: "shot",
+          targetId: String(input.shotNumber),
+          message: `Video-safe verdict: ${videoSafety.video_safe_verdict}.`,
+        });
+      }
+      if (videoSafety?.faces_separated === false) {
+        issues.push({ issueId: "video_faces_overlap", severity: "warning", targetType: "shot", targetId: String(input.shotNumber), message: "Faces may overlap in the start frame." });
+      }
+      if (videoSafety?.face_touching_frame_edge === true) {
+        issues.push({ issueId: "video_face_frame_edge", severity: "warning", targetType: "shot", targetId: String(input.shotNumber), message: "A face appears too close to the frame edge for a stable video anchor." });
+      }
+      if (videoSafety?.action_matches_intent === false) {
+        issues.push({ issueId: "video_action_mismatch", severity: "warning", targetType: "shot", targetId: String(input.shotNumber), message: videoSafety.action_mismatch_note ?? "The visible action may not match the shot intent." });
+      }
+      const report = {
+        qcReportId: `qc-start_frame_image-video-safety-${owner.episodeId}-${input.shotNumber}-${runId}`,
+        seriesId: String(owner.seriesId),
+        episodeId: String(owner.episodeId),
+        runId: String(runId),
+        stage: "start_frame_image" as const,
+        passed: true as const,
+        score: Math.max(0, 1 - issues.length * 0.1),
+        issues,
+        recommendedRepairs: issues.length > 0 ? [{
+          repairId: `repair-video-safe-start-frame-${runId}`,
+          stage: "start_frame_image" as const,
+          action: "regenerate_start_frame" as const,
+          instruction: "Review the video-safety warnings, then create or select a video-safe start frame.",
+          autoRunnable: false,
+        }] : [],
+        createdAt: analyzedAt,
+      };
+      let qcReportId: string | null = null;
+      try {
+        const persisted = await verticalDramaQcService.persistReport({ ...owner, runId }, report);
+        qcReportId = String(persisted.id);
+      } catch {
+        // Advisory persistence must never turn a completed QA call into a user-visible 500.
+      }
+      await db.update(verticalDramaEpisodeRuns)
+        .set({ status: "succeeded", warnings: issues.map(issue => issue.message), errors: [], updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodeRuns.id, runId));
+      return {
+        runId: String(runId),
+        qcReportId,
+        videoSafety,
+        usedVision: qcResult.usedVision,
+        creditsUsed: qcResult.creditsUsed,
+        skillVersion: qcResult.skillVersion,
+        issues,
+      };
+    }),
+
+  /**
+   * Feature 137 P3 — sample one completed/imported clip on the Python media
+   * queue, then run one multimodal identity comparison in Node. Sampling and
+   * vision are both advisory: provider/ffmpeg/LLM failures persist a visible
+   * `samples_unavailable` warning and never remove the clip or auto-spend on
+   * regeneration.
+   */
+  runClipIdentityQc: verticalDramaClipIdentityQcProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        clipNumber: z.number().int().positive(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const owner: EpisodeRunOwner = {
+        tenantId,
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+      };
+      const row = await loadOwnedEpisode(owner);
+      const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const clip = pack?.clips?.find(candidate => candidate.clipNumber === input.clipNumber);
+      const sourceUrl = clip?.videoTask?.videoUrl
+        ? resolveReferenceUrl(clip.videoTask.videoUrl, ctx.publicUrl)
+        : "";
+      if (!pack || !clip || !sourceUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `ยังตรวจคลิป ${input.clipNumber} ไม่ได้: ต้องมีวิดีโอที่เสร็จแล้วก่อน`,
+        });
+      }
+
+      const [runRow] = await db.insert(verticalDramaEpisodeRuns).values({
+        tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        stage: "video_clip",
+        runMode: "full",
+        status: "running",
+        nextAction: "none",
+        artifactIds: [],
+        warnings: [],
+        errors: [],
+      }).returning({ id: verticalDramaEpisodeRuns.id });
+      const runId = Number(runRow.id);
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const primaryShotNumber = clip.parentShotNumber ?? clip.sourceShotNumbers?.[0];
+      const frame = primaryShotNumber != null
+        ? plan?.frames?.find(candidate => candidate.shotNumber === primaryShotNumber)
+        : undefined;
+      const startFrameAssetId = Number(
+        frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId ?? clip.startFrameAssetId,
+      );
+      const startFrameUrls = await resolveMediaAssetUrlsByIds(
+        tenantId,
+        owner.userId,
+        Number.isInteger(startFrameAssetId) && startFrameAssetId > 0 ? [startFrameAssetId] : [],
+      );
+      const startFrameUrl = startFrameUrls.get(startFrameAssetId);
+
+      // A consolidated/speaker-switch clip can span several source shots. Its
+      // identity QA roster must cover the union of every source frame, not only
+      // the first/parent shot used as the video start-frame anchor.
+      const sourceShotNumbers = Array.from(new Set([
+        ...(clip.sourceShotNumbers ?? []),
+        ...(clip.parentShotNumber != null ? [clip.parentShotNumber] : []),
+      ]));
+      const requiredCharacterKeys = Array.from(new Set(
+        sourceShotNumbers.flatMap(shotNumber =>
+          plan?.frames?.find(candidate => candidate.shotNumber === shotNumber)
+            ?.requiredCharacterRefs ?? [],
+        ),
+      ));
+      const characterRows = requiredCharacterKeys.length > 0
+        ? await db.select({
+            id: verticalDramaCharacters.id,
+            characterKey: verticalDramaCharacters.characterKey,
+            name: verticalDramaCharacters.name,
+          }).from(verticalDramaCharacters).where(and(
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.seriesId, owner.seriesId),
+            inArray(verticalDramaCharacters.characterKey, requiredCharacterKeys),
+          ))
+        : [];
+      const profileCharacters = clip.motionProfile?.characters ?? [];
+      const normalizeFacing = (value: unknown): string | undefined => {
+        if (typeof value !== "string") return undefined;
+        const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+        if (["frontal", "front", "left_three_quarter", "right_three_quarter"].includes(normalized)) return normalized;
+        return undefined;
+      };
+      const desiredFacingFor = (character: { characterKey: string; name: string }): string | undefined => {
+        const profile = profileCharacters.find(entry =>
+          entry.name === character.name || entry.name === character.characterKey,
+        );
+        // The motion contract only declares a generic three-quarter pose. Do
+        // not guess left/right; use a front slot only when the declared clip
+        // facing is explicitly frontal and otherwise keep portrait fallback.
+        return normalizeFacing(profile?.endFacing) ?? normalizeFacing(profile?.startFacing);
+      };
+      const ownerStock = { tenantId, userId: owner.userId, seriesId: owner.seriesId };
+      const characterReferences = (await Promise.all(
+        characterRows.map(async character => {
+          const urls = await verticalDramaCharacterStockService.getCharacterReferenceUrls(
+            ownerStock,
+            character.id,
+            { includeSheet: true, desiredFacing: desiredFacingFor(character) },
+          );
+          const url = urls[0];
+          return url
+            ? { characterKey: character.characterKey, name: character.name, url }
+            : undefined;
+        }),
+      )).filter((reference): reference is { characterKey: string; name: string; url: string } => Boolean(reference));
+
+      let warning: string | undefined;
+      let sampleUrls: string[] = [];
+      let analysis: ReturnType<typeof normalizeClipIdentityQcAnalysis> | undefined;
+      let usedVision = false;
+      let creditsUsed = 0;
+      let model: string | undefined;
+      let skillVersion = "vertical-drama-clip-identity-qa@1";
+      try {
+        const runtime = await getAppRuntimeConfig();
+        const internalToken = await getPreferredInternalToken();
+        const samplingResponse = await fetch(
+          `${runtime.pythonBackendUrl}/api/internal/vertical-drama/clip-qc-frames`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Proxy-Token": internalToken,
+            },
+            body: JSON.stringify({
+              source_url: sourceUrl,
+              positions: [0.10, 0.40, 0.70, 0.95],
+              max_frames: 6,
+              user_id: owner.userId,
+              wait: true,
+              wait_seconds: 145,
+            }),
+            signal: AbortSignal.timeout(155_000),
+          },
+        );
+        if (!samplingResponse.ok) {
+          throw new Error(`Clip sample worker returned HTTP ${samplingResponse.status}`);
+        }
+        const sampling = await samplingResponse.json() as {
+          status?: string;
+          samples?: Array<{ url?: string }>;
+          warning?: string;
+        };
+        sampleUrls = (sampling.samples ?? [])
+          .map(sample => sample.url?.trim())
+          .filter((url): url is string => Boolean(url));
+        if (sampling.status === "sampling" || sampleUrls.length === 0) {
+          warning = sampling.warning ?? "ยังดึงภาพตัวอย่างจากคลิปไม่ได้ในเวลาที่กำหนด";
+        } else if (!startFrameUrl) {
+          warning = "ไม่พบภาพ start frame ที่อนุมัติแล้วสำหรับเทียบ identity";
+        } else if (characterReferences.length === 0) {
+          warning = "ไม่พบภาพอ้างอิงตัวละครที่อนุมัติแล้วสำหรับตรวจ identity";
+        } else {
+          const { runClipIdentityQc, CLIP_IDENTITY_QC_SKILL_VERSION } = await import(
+            "../services/verticalDramaClipIdentityQc"
+          );
+          const qcResult = await runClipIdentityQc({
+            userId: owner.userId,
+            tenantId,
+            seriesId: owner.seriesId,
+            episodeId: owner.episodeId,
+            clipNumber: input.clipNumber,
+            startFrameUrl,
+            sampleUrls,
+            characterReferenceUrls: characterReferences,
+            idempotencyKey: input.idempotencyKey,
+          });
+          analysis = qcResult.analysis;
+          usedVision = qcResult.usedVision;
+          creditsUsed = qcResult.creditsUsed;
+          model = qcResult.model;
+          skillVersion = CLIP_IDENTITY_QC_SKILL_VERSION;
+          if (!analysis) warning = "ไม่มีผลวิเคราะห์จาก vision model";
+        }
+      } catch (error) {
+        warning = error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500);
+      }
+
+      const identityStatus = analysis
+        ? resolveClipIdentityQcStatus(analysis)
+        : "samples_unavailable" as const;
+      const analyzedAt = new Date().toISOString();
+      const qcReportId = `qc-video_clip-identity-${owner.episodeId}-${input.clipNumber}-${runId}`;
+      const identityQc = {
+        status: identityStatus,
+        ...(analysis ? {
+          verdict: identityStatus === "pass"
+            ? "consistent" as const
+            : identityStatus === "warn"
+              ? "minor_drift" as const
+              : "identity_break" as const,
+          characters: analysis.characters,
+        } : { verdict: "unavailable" as const }),
+        ...(sampleUrls.length > 0 ? { sampleUrls } : {}),
+        ...(startFrameAssetId > 0 ? { analyzedAssetId: String(startFrameAssetId) } : {}),
+        analyzedAt,
+        skillVersion,
+        ...(warning ? { warning } : {}),
+        qcReportId,
+      };
+      const updatedPack: VerticalDramaMotionPromptPack = {
+        ...pack,
+        clips: pack.clips.map(candidate =>
+          candidate.clipNumber === input.clipNumber
+            ? { ...candidate, identityQc }
+            : candidate,
+        ),
+      };
+      await db.update(verticalDramaEpisodes).set({
+        motionPromptPack: updatedPack,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(verticalDramaEpisodes.id, owner.episodeId),
+        eq(verticalDramaEpisodes.tenantId, tenantId),
+        eq(verticalDramaEpisodes.userId, owner.userId),
+        eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+      ));
+
+      const issues = analysis?.characters
+        .filter(character => character.verdict !== "consistent")
+        .map((character, index) => ({
+          issueId: `identity-${index + 1}`,
+          severity: "warning" as const,
+          targetType: "clip" as const,
+          targetId: String(input.clipNumber),
+          message: `${character.name ?? character.characterKey ?? "Character"}: ${character.note ?? character.verdict}`,
+          ...(character.worstFrameIndex != null ? { evidence: `sample_frame_index:${character.worstFrameIndex}` } : {}),
+        })) ?? (warning ? [{
+          issueId: "samples_unavailable",
+          severity: "warning" as const,
+          targetType: "clip" as const,
+          targetId: String(input.clipNumber),
+          message: `Clip identity samples unavailable: ${warning}`,
+        }] : []);
+      const report = {
+        qcReportId,
+        seriesId: String(owner.seriesId),
+        episodeId: String(owner.episodeId),
+        runId: String(runId),
+        stage: "video_clip" as const,
+        passed: true,
+        score: Math.max(0, 1 - issues.length * 0.1),
+        issues,
+        recommendedRepairs: issues.length > 0 ? [{
+          repairId: `repair-video-clip-identity-${runId}`,
+          stage: "video_clip" as const,
+          action: "regenerate_clip" as const,
+          instruction: "ตรวจหมายเหตุ identity แล้ว regenerate หรือ re-import คลิปนี้ด้วยตนเอง",
+          autoRunnable: false,
+        }] : [],
+        createdAt: analyzedAt,
+      };
+      let persistedReportId: string | null = null;
+      try {
+        const persisted = await verticalDramaQcService.persistReport({ ...owner, runId }, report);
+        persistedReportId = String(persisted.id);
+      } catch (error) {
+        debugError("verticalDramaEpisodes.runClipIdentityQc", "persist clip identity QC report failed", error);
+      }
+      await db.update(verticalDramaEpisodeRuns).set({
+        status: "succeeded",
+        warnings: issues.map(issue => issue.message),
+        errors: [],
+        updatedAt: new Date(),
+      }).where(eq(verticalDramaEpisodeRuns.id, runId));
+      return {
+        runId: String(runId),
+        qcReportId: persistedReportId ?? qcReportId,
+        identityQc,
+        usedVision,
+        model,
+        creditsUsed,
+        sampleUrls,
+        skillVersion,
+      };
+    }),
+
+  /**
    * Read-only per-episode detail projection for stage-detail views that need
    * a persisted jsonb field directly (e.g. the dialogue/audio plan review
    * panel) rather than only the mutation response that produced it.
@@ -9372,6 +10185,8 @@ export const verticalDramaEpisodesRouter = router({
           arcReplanEnabled,
           sceneContinuityEnabled,
           sceneNeighborAnchorsEnabled,
+          sceneContinuityQcEnabled,
+          videoSafeStartFramesEnabled,
         },
         qualityLoopFlags,
         deepStoryDraftsEnabled,
@@ -9720,6 +10535,8 @@ export const verticalDramaEpisodesRouter = router({
           textOverlaySuite: textOverlaySuiteEnabled,
           sceneContinuity: sceneContinuityEnabled,
           sceneNeighborAnchors: sceneNeighborAnchorsEnabled,
+          sceneContinuityQc: sceneContinuityQcEnabled,
+          videoSafeStartFrames: videoSafeStartFramesEnabled,
         },
       };
     }),
@@ -10035,6 +10852,76 @@ export const verticalDramaEpisodesRouter = router({
         row.motionPromptPack
       );
       return { startFramePlan: updatedPlan, assetUrls };
+    }),
+
+  /** Feature 137 P2 — choose a separate I2V anchor without replacing the
+   * storyboard/emotional frame. This is a zero-cost, ownership-checked patch. */
+  setVideoStartFrameAsset: verticalDramaVideoSafeStartFramesProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        /** Null clears the optional video anchor and restores approved-frame fallback. */
+        mediaAssetId: z.string().min(1).nullable(),
+        source: z.enum(["video_safe_regen", "angle_grid", "manual_upload"]).default("manual_upload"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      if (!plan?.frames?.length) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No start-frame plan exists yet for this episode" });
+      }
+      const frameIndex = plan.frames.findIndex(frame => frame.shotNumber === input.shotNumber);
+      if (frameIndex < 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `No start-frame plan entry for shot ${input.shotNumber}` });
+      }
+      const updatedFrames = plan.frames.slice();
+      if (input.mediaAssetId === null) {
+        const { videoStartMediaAssetId: _assetId, videoStartSource: _source, ...rest } =
+          updatedFrames[frameIndex];
+        updatedFrames[frameIndex] = rest;
+      } else {
+        const numericAssetId = Number(input.mediaAssetId);
+        if (!Number.isInteger(numericAssetId) || numericAssetId <= 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid media asset id" });
+        }
+        const [asset] = await db
+          .select({ id: mediaAssets.id })
+          .from(mediaAssets)
+          .where(
+            and(
+              eq(mediaAssets.id, numericAssetId),
+              eq(mediaAssets.tenantId, tenantId),
+              eq(mediaAssets.userId, userId),
+            ),
+          )
+          .limit(1);
+        if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Media asset not found" });
+        updatedFrames[frameIndex] = {
+          ...updatedFrames[frameIndex],
+          videoStartMediaAssetId: input.mediaAssetId,
+          videoStartSource: input.source,
+        };
+      }
+      const updatedPlan: VerticalDramaStartFramePlan = { ...plan, frames: updatedFrames };
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+          ),
+        );
+      return { startFramePlan: updatedPlan };
     }),
 
   /**
@@ -10884,6 +11771,37 @@ export const verticalDramaEpisodesRouter = router({
    * already-built, already-tested procedures; no new "finalize" endpoint
    * needed.
    */
+  /** Feature 137 P2 — user-triggered video-safe render reuses the existing
+   * start-frame render/credit/transport path with `videoSafe: true`. */
+  generateVideoSafeStartFrame: verticalDramaVideoSafeStartFramesProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        hermesConnectionId: z.string().max(64).optional(),
+        resolution: z.string().trim().max(32).optional(),
+        softenLevel,
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const forwarded = { ...input, videoSafe: true as const };
+      const routerValue = verticalDramaEpisodesRouter as unknown as {
+        createCaller?: (context: unknown) => { generateStartFrameImage: (value: unknown) => Promise<unknown> };
+        generateStartFrameImage?: (value: unknown) => Promise<unknown>;
+      };
+      if (typeof routerValue.createCaller === "function") {
+        return routerValue.createCaller(ctx).generateStartFrameImage(forwarded);
+      }
+      if (typeof routerValue.generateStartFrameImage === "function") {
+        return routerValue.generateStartFrameImage({ ctx, input: forwarded });
+      }
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Start-frame render route is unavailable" });
+    }),
+
   generateStartFrameImage: verticalDramaProcedure
     .input(
       z.object({
@@ -10905,6 +11823,8 @@ export const verticalDramaEpisodesRouter = router({
         // if the model has no resolution axis; validated against the
         // model's derived options otherwise.
         resolution: z.string().trim().max(32).optional(),
+        /** Feature 137 P2 wrapper: append the video-safe contract block. */
+        videoSafe: z.boolean().optional(),
         softenLevel,
         idempotencyKey,
       })
@@ -11016,7 +11936,27 @@ export const verticalDramaEpisodesRouter = router({
           });
           softenedImagePrompt = assembled.prompt;
           softenedNegativePrompt = assembled.negativePrompt;
+          if (seriesLookLockEnabled) {
+            await recordSeriesLookLockAuditEvent({
+              eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+              tenantId,
+              userId,
+              seriesId,
+              path: "episodes.generateStartFrameImage",
+            });
+          }
         }
+      }
+
+      // Feature 137 P2 — the normal emotional frame remains untouched; the
+      // wrapper route opts into this compact, model-agnostic contract block
+      // before the existing prompt-budget/QC and paid-render path.
+      if (input.videoSafe === true) {
+        softenedImagePrompt = `${softenedImagePrompt}\n\nVIDEO-SAFE START FRAME CONTRACT: preserve the same scene moment, blocking, wardrobe, lighting, and emotion; keep every established face readable at a natural three-quarter or frontal angle with both eyes, nose, mouth, jaw, and hairline visible; avoid face overlap, profile-to-frontal transformation, camera orbit, and sudden identity or expression changes; favor restrained camera motion, blink, breath, gaze, and small hand beats suitable for image-to-video.`;
+        softenedNegativePrompt = [
+          softenedNegativePrompt,
+          "profile-to-frontal transformation, camera orbit, face overlap, cropped face, hidden eyes, sudden identity change",
+        ].filter(Boolean).join(", ");
       }
 
       // Identity-lock references — resolve each required character's
@@ -11672,6 +12612,15 @@ export const verticalDramaEpisodesRouter = router({
           });
           softenedImagePrompt = assembled.prompt;
           softenedNegativePrompt = assembled.negativePrompt;
+          if (seriesLookLockEnabled) {
+            await recordSeriesLookLockAuditEvent({
+              eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+              tenantId,
+              userId,
+              seriesId,
+              path: "episodes.generateStartFrameAngleVariations",
+            });
+          }
         }
       }
 
@@ -12452,6 +13401,15 @@ export const verticalDramaEpisodesRouter = router({
           });
           softenedRepairPrompt = assembled.prompt;
           repairNegativePrompt = assembled.negativePrompt;
+          if (seriesLookLockEnabled) {
+            await recordSeriesLookLockAuditEvent({
+              eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+              tenantId,
+              userId,
+              seriesId,
+              path: "episodes.repairShotImage",
+            });
+          }
         }
       }
 
@@ -12791,6 +13749,7 @@ export const verticalDramaEpisodesRouter = router({
         configJson: model.configJson,
       });
       const maxReferenceImages = capabilities.maxReferenceImages ?? 0;
+      const videoStartFrameAssetId = Number(primaryStartFrame?.videoStartMediaAssetId);
       const approvedStartFrameAssetId = Number(
         primaryStartFrame?.approvedMediaAssetId
       );
@@ -12803,9 +13762,12 @@ export const verticalDramaEpisodesRouter = router({
       // exists. Legacy clips still use their projected id when the plan has
       // no approved frame.
       const startFrameAssetId =
-        Number.isInteger(approvedStartFrameAssetId) &&
-        approvedStartFrameAssetId > 0
-          ? approvedStartFrameAssetId
+        Number.isInteger(videoStartFrameAssetId) &&
+        videoStartFrameAssetId > 0
+          ? videoStartFrameAssetId
+          : Number.isInteger(approvedStartFrameAssetId) &&
+              approvedStartFrameAssetId > 0
+            ? approvedStartFrameAssetId
           : Number.isInteger(projectedStartFrameAssetId) &&
               projectedStartFrameAssetId > 0
             ? projectedStartFrameAssetId
@@ -12899,7 +13861,8 @@ export const verticalDramaEpisodesRouter = router({
                 userId,
                 seriesId,
                 row.startFramePlan as VerticalDramaStartFramePlan | null,
-                clip.sourceShotNumbers
+                clip.sourceShotNumbers,
+                clip.motionProfile,
               );
             characterPortraitReferenceAssetIds = requiredPortraitAssetIds
               .filter(id => !alreadyReferencedAssetIds.has(id))
@@ -14840,6 +15803,15 @@ export const verticalDramaEpisodesRouter = router({
         });
         finalReferencePrompt = assembled.prompt;
         finalReferenceNegativePrompt = assembled.negativePrompt;
+        if (seriesLookLockEnabled) {
+          await recordSeriesLookLockAuditEvent({
+            eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+            tenantId,
+            userId,
+            seriesId,
+            path: "episodes.generateShotReferenceFrameImage",
+          });
+        }
       }
 
       // Feature 135 — Hermes Grok media worker (section 09, row 8): resolve
@@ -17870,6 +18842,11 @@ export const verticalDramaEpisodesRouter = router({
             })
           ),
           includedClipNumbers: resolved.ordered.map(c => c.clipNumber),
+          // Subtitle source of last resort — the dialogue the user actually
+          // sees on the storyboard shot cards. Used only when the dialogue
+          // plan has no lines (see the resolver's own doc comment; field
+          // incident 2026-08-01, series 21 / episode 124).
+          clipDialogue: buildClipAuthoredDialogueMap(pack?.clips ?? []),
           includeDialogueAudio:
             voiceChainEnabled && input.includeDialogueAudio === true,
           loudnessNormalize: input.loudnessNormalize === true,
@@ -17881,21 +18858,33 @@ export const verticalDramaEpisodesRouter = router({
       );
 
       // Text Overlay Suite (F131AB, task #34) — additive, flag-gated feed
-      // into the render engine's `overlays`/`watermarkImage` inputs (merged
+      // into the render engine's `overlays`/`watermarkImages` inputs (merged
       // into the SAME `subtitles` object dialogue captions use — see
       // `buildAssSubtitleFile`'s own doc comment for why one `.ass` file
       // safely carries both). `includeTextOverlays`/`includeWatermark`
       // default to "apply" (only an explicit `false` opts out for this one
-      // render — see this mutation's own input doc comment).
+      // render — see this mutation's own input doc comment). Dual watermark
+      // (`planning/vd-dual-watermark/plan.md`): `includeWatermark` is a
+      // single all-or-nothing opt-out covering BOTH configured slots.
       const textOverlaySuiteEnabled =
         await resolveVerticalDramaTextOverlaySuiteFlag(tenantId);
       let textOverlayEventsIncluded = 0;
       let watermarkIncluded = false;
       let combinedSubtitles = dialogueRunInputs.subtitles;
-      let watermarkImageForJob: RunAssemblyJobWatermarkImageInput | undefined;
-      if (textOverlaySuiteEnabled && input.includeTextOverlays !== false) {
-        const textOverlayPlan = parseTextOverlayPlan(row.textOverlayPlan);
-        const { overlays, watermarkImage, overlaysIncluded } =
+      let watermarkImagesForJob: RunAssemblyJobWatermarkImageInput[] | undefined;
+      // `includeTextOverlays` and `includeWatermark` are INDEPENDENT opt-outs:
+      // entering this block on either one (and passing `plan: null` when text
+      // overlays are off) is what keeps them independent. Gating the whole
+      // block on `includeTextOverlays` alone silently dropped a configured
+      // watermark whenever a caller turned text overlays off. Mirrors the
+      // season-batch path's `if (applyTextOverlays || applyWatermark)`.
+      const wantsTextOverlays = input.includeTextOverlays !== false;
+      const wantsWatermark = input.includeWatermark !== false;
+      if (textOverlaySuiteEnabled && (wantsTextOverlays || wantsWatermark)) {
+        const textOverlayPlan = wantsTextOverlays
+          ? parseTextOverlayPlan(row.textOverlayPlan)
+          : null;
+        const { overlays, watermarkImages, overlaysIncluded } =
           await resolveEpisodeTextOverlayEngineInputs({
             tenantId,
             userId,
@@ -17912,11 +18901,11 @@ export const verticalDramaEpisodesRouter = router({
               })
             ),
             includedClipNumbers: resolved.ordered.map(c => c.clipNumber),
-            includeWatermark: input.includeWatermark !== false,
+            includeWatermark: wantsWatermark,
           });
         textOverlayEventsIncluded = overlaysIncluded;
-        watermarkIncluded = Boolean(watermarkImage);
-        watermarkImageForJob = watermarkImage ?? undefined;
+        watermarkIncluded = watermarkImages.length > 0;
+        watermarkImagesForJob = watermarkImages.length > 0 ? watermarkImages : undefined;
         if (overlays.length > 0) {
           combinedSubtitles = {
             preset: dialogueRunInputs.subtitles?.preset ?? "no_subtitle_style",
@@ -17952,7 +18941,7 @@ export const verticalDramaEpisodesRouter = router({
           ? { dialogueAudio: dialogueRunInputs.dialogueAudio }
           : {}),
         ...(combinedSubtitles ? { subtitles: combinedSubtitles } : {}),
-        ...(watermarkImageForJob ? { watermarkImage: watermarkImageForJob } : {}),
+        ...(watermarkImagesForJob ? { watermarkImages: watermarkImagesForJob } : {}),
       };
       // `planning/vd-remotion-render-option/plan.md` wave 1 — try the
       // opt-in Remotion queue path FIRST when requested; ANY failure falls
@@ -17989,7 +18978,7 @@ export const verticalDramaEpisodesRouter = router({
             banners: renderFeed.banners,
             dialogueAudio: renderFeed.dialogueAudio,
             subtitles: renderFeed.subtitles,
-            watermarkImage: renderFeed.watermarkImage,
+            watermarkImages: renderFeed.watermarkImages,
             tenantId,
             requestedByUserId: userId,
             idempotencyKey: input.idempotencyKey,

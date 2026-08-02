@@ -668,15 +668,53 @@ export async function storageStreamFile(
   isPartial: boolean;
 } | null> {
   const config = await getActiveStorageConfig();
+  const key = normalizeKey(relKey);
+
+  if (config.provider === "local") {
+    const filePath = path.join(getUploadsDir(), key);
+    if (!fs.existsSync(filePath)) return null;
+    const stat = fs.statSync(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType =
+      ext === ".jpg" || ext === ".jpeg"
+        ? "image/jpeg"
+        : ext === ".webp"
+        ? "image/webp"
+        : ext === ".png"
+        ? "image/png"
+        : ext === ".mp4"
+        ? "video/mp4"
+        : "application/octet-stream";
+    return {
+      stream: fs.createReadStream(filePath),
+      contentType,
+      contentLength: stat.size,
+      totalLength: stat.size,
+      isPartial: false,
+    };
+  }
+
   if (config.provider !== "s3") return null;
 
-  const key = normalizeKey(relKey);
   const cmd: any = { Bucket: config.bucket, Key: key };
   if (range) {
     cmd.Range = range;
   }
 
-  const response = await config.client.send(new GetObjectCommand(cmd));
+  let response;
+  try {
+    response = await config.client.send(new GetObjectCommand(cmd));
+  } catch (error: any) {
+    // Missing key must return null (matching the "local" provider branch
+    // above) so callers can fall back — e.g. the /api/storage/files/* route
+    // retrying a .jpg miss as .webp. Left uncaught, this NoSuchKey exception
+    // instead skipped that fallback and surfaced as a bare 404 even when the
+    // .webp original was present the whole time.
+    if (error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
   if (!response.Body) return null;
 
   const isPartial = response.$metadata.httpStatusCode === 206;

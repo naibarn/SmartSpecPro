@@ -543,6 +543,46 @@ export type VerticalDramaStartFramePlan = {
       attachedAt: string;
     };
     /**
+     * Feature 138 P2 / Feature 137 shared frame-QC result. Advisory only:
+     * warnings are surfaced to the shot card and never block approval or
+     * paid generation. The asset/time/version stamps make a result stale
+     * when the approved frame is replaced.
+     */
+    sceneContinuity?: {
+      location_match: "match" | "minor_drift" | "different_place";
+      lighting_match: "match" | "minor_drift" | "different_time";
+      wardrobe_match: Array<{
+        character: string;
+        verdict: "match" | "changed";
+      }>;
+      prop_persistence: Array<{
+        name: string;
+        expected: boolean;
+        present: boolean;
+      }>;
+      staging_axis_ok: boolean;
+      notes: string[];
+      analyzedAssetId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+    };
+    /** Feature 137 P2 — optional I2V-only anchor selected by the user. */
+    videoStartMediaAssetId?: string;
+    videoStartSource?: "video_safe_regen" | "angle_grid" | "manual_upload";
+    /** Feature 137 P2 — optional advisory video-safety analysis. */
+    videoSafety?: {
+      characters?: Array<Record<string, unknown>>;
+      faces_separated?: boolean;
+      face_touching_frame_edge?: boolean;
+      action_matches_intent?: boolean;
+      action_mismatch_note?: string | null;
+      video_safe_verdict?: "safe" | "conditional" | "risky";
+      reasons: string[];
+      analyzedAssetId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+    };
+    /**
      * Per-shot location override (Phase D, `planning/polished-toasting-
      * gadget.md` — location visual bible). Set via the `setShotLocation`
      * mutation (`verticalDramaEpisodes.ts`) — a pure data patch, no
@@ -1011,6 +1051,29 @@ export type VerticalDramaMotionPromptPack = {
     effectiveRisk?: VdIdentityRisk;
     /** Present only when the request-gated per-shot/sub-shot path ran. */
     motionContractStatus?: VdMotionContractStatus;
+    /**
+     * Feature 137 P3 post-video identity QA.  Sampling/vision is advisory and
+     * fail-open: a missing sample must never make an otherwise renderable clip
+     * unavailable.  Kept optional so pre-P3 motion packs round-trip unchanged.
+     */
+    identityQc?: {
+      status: "pending" | "sampling" | "pass" | "warn" | "fail" | "samples_unavailable";
+      verdict?: "consistent" | "minor_drift" | "identity_break" | "unavailable";
+      characters?: Array<{
+        characterKey?: string;
+        name?: string;
+        verdict: "consistent" | "minor_drift" | "identity_break";
+        driftKind?: "face" | "hair" | "age" | "wardrobe" | "character_swap";
+        worstFrameIndex?: number;
+        note?: string;
+      }>;
+      sampleUrls?: string[];
+      analyzedAssetId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+      warning?: string;
+      qcReportId?: string;
+    };
     /**
      * Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
      * quality/plan.md` Phase 2) — compact record of how this clip's prompt

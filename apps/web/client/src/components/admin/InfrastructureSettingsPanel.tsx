@@ -304,6 +304,7 @@ export default function InfrastructureSettingsPanel() {
     llm_gateway_service_account_id: "",
   });
   const [webProcessRenderWorkerEnabled, setWebProcessRenderWorkerEnabled] = useState(false);
+  const [confirmServerFfmpegWorker, setConfirmServerFfmpegWorker] = useState(false);
 
   const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
   const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudrun">("localhost");
@@ -452,6 +453,23 @@ export default function InfrastructureSettingsPanel() {
     onSuccess: () => refetchInfrastructureSettings(),
     onError: (err: any) => toast.error(`Failed to save: ${err.message}`),
   });
+  const applyRenderWorkerSetting = (checked: boolean) => {
+    const previousValue = webProcessRenderWorkerEnabled;
+    setWebProcessRenderWorkerEnabled(checked);
+    updateRenderWorkerSettingMutation.mutate(
+      {
+        category: "infrastructure" as any,
+        key: "web_process_render_worker_enabled",
+        value: checked ? "true" : "false",
+        description:
+          "Web server process also claims and renders ffmpeg video-assembly jobs from the render queue",
+      },
+      {
+        onError: () => setWebProcessRenderWorkerEnabled(previousValue),
+      },
+    );
+  };
+
 
   const setModeMutation = trpc.infrastructure.setTaskProcessingMode.useMutation({
     onSuccess: (data) => {
@@ -1172,24 +1190,49 @@ done`}
           <Switch
             checked={webProcessRenderWorkerEnabled}
             onCheckedChange={(checked) => {
-              const previousValue = webProcessRenderWorkerEnabled;
-              setWebProcessRenderWorkerEnabled(checked);
-              updateRenderWorkerSettingMutation.mutate(
-                {
-                  category: "infrastructure" as any,
-                  key: "web_process_render_worker_enabled",
-                  value: checked ? "true" : "false",
-                  description:
-                    "Web server process also claims and renders ffmpeg video-assembly jobs from the render queue",
-                },
-                {
-                  onError: () => setWebProcessRenderWorkerEnabled(previousValue),
-                },
-              );
+              // Turning this ON is the ONE switch in the whole system that lets
+              // ffmpeg render inside the web server process. It is CPU- and
+              // memory-heavy and degrades the app for every tenant, so it must
+              // never flip from a single stray click (user policy 2026-07-31).
+              // Turning it OFF is always safe and needs no confirmation.
+              if (checked) {
+                setConfirmServerFfmpegWorker(true);
+                return;
+              }
+              applyRenderWorkerSetting(false);
             }}
             disabled={updateRenderWorkerSettingMutation.isPending}
           />
         </div>
+        <AlertDialog
+          open={confirmServerFfmpegWorker}
+          onOpenChange={setConfirmServerFfmpegWorker}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                เปิดให้เซิร์ฟเวอร์เว็บ render ด้วย ffmpeg?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                สวิตช์นี้ทำให้ process ของเว็บรับงาน render แล้วเรียก ffmpeg
+                ในเครื่องเดียวกับที่ให้บริการผู้ใช้ — กิน CPU และหน่วยความจำหนักมาก
+                และกระทบผู้ใช้ทุก tenant พร้อมกัน แนวทางหลักของระบบคือให้ Remotion
+                ทำงานบนเครื่อง Worker แทน เปิดเฉพาะกรณีจำเป็นจริง ๆ และควรปิดกลับทันทีเมื่อเสร็จ
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="server-ffmpeg-worker-cancel">
+                ยกเลิก
+              </AlertDialogCancel>
+              <AlertDialogAction
+                data-testid="server-ffmpeg-worker-accept"
+                onClick={() => applyRenderWorkerSetting(true)}
+              >
+                ยืนยันเปิด
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DashboardCard>
 
       {/* ============================================ */}

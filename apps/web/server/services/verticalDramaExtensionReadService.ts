@@ -28,6 +28,19 @@ import type {
   VerticalDramaStartFramePlan,
   VerticalDramaMotionPromptPack,
 } from "../../shared/verticalDramaSeries/contracts";
+// Both of these are documented (in their own header doc comments) as
+// deliberately lightweight, DB-free, non-router modules — the same
+// convention `server/routers/verticalDramaCharacters.ts` itself relies on to
+// import them safely. `resolveEffectiveCharacterFacts`/`extractCharacterDescription`
+// themselves live in that router file, whose module graph pulls in
+// `protectedProcedure`/`requireFeatureFlag`/`mediaGenerationService`/
+// `creditService`/etc. — importing them here would drag this read-only
+// service into that entire router's dependency graph for the sake of two
+// pure functions, so §5(d) of this task replicates them locally instead
+// (see `extractCharacterDescriptionForPicker`/`resolveEffectiveCharacterFactsForPicker`
+// below) and only statically imports the two small leaf helpers.
+import { readBibleRefinedCharacterProfiles, type VdBibleRefinedCharacter } from "./verticalDramaBibleRefinedCharacters";
+import { normalizeStoryCharacterName } from "./verticalDramaCharacterRosterAutoRegister";
 
 /* -------------------------------------------------------------------------- */
 /* Shared helpers                                                             */
@@ -784,5 +797,306 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       updatedAt: toIsoOrNull(episodeRow.updatedAt),
       shots,
     },
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* 4. List Drama-series characters for the Marketplace character picker      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Local replica of `server/routers/verticalDramaCharacters.ts`'s
+ * `extractCharacterDescription` — byte-for-byte the same projection logic
+ * (see that function's own doc comment for the "why `data.description` leads"
+ * rationale). Kept in sync manually; do not diverge without checking that
+ * file first.
+ */
+function extractCharacterDescriptionForPicker(data: Record<string, unknown> | null): string | undefined {
+  if (!data) return undefined;
+  const parts: string[] = [];
+  if (typeof data.description === "string" && data.description.trim()) {
+    parts.push(`Description: ${data.description.trim()}`);
+  }
+  if (typeof data.personality === "string" && data.personality.trim()) {
+    parts.push(`Personality: ${data.personality.trim()}`);
+  }
+  if (typeof data.backstory === "string" && data.backstory.trim()) {
+    parts.push(`Backstory: ${data.backstory.trim()}`);
+  }
+  if (typeof data.identityLock === "string" && data.identityLock.trim()) {
+    parts.push(`Identity lock: ${data.identityLock.trim()}`);
+  }
+  if (Array.isArray(data.wardrobeRules)) {
+    const rules = data.wardrobeRules.filter(
+      (rule): rule is string => typeof rule === "string" && rule.trim().length > 0,
+    );
+    if (rules.length > 0) parts.push(`Wardrobe rules: ${rules.join("; ")}`);
+  }
+  return parts.length > 0 ? parts.join(" | ") : undefined;
+}
+
+/**
+ * Local replica of `server/routers/verticalDramaCharacters.ts`'s
+ * `resolveEffectiveCharacterFacts` — same roster-wins/bible-fills-gaps
+ * semantics for `role`/`occupation`/`description` (see that function's own
+ * doc comment). Uses the same two dependency-safe leaf imports that source
+ * function itself uses (`readBibleRefinedCharacterProfiles`,
+ * `normalizeStoryCharacterName`), so behavior stays identical even though
+ * the surrounding function body is duplicated rather than imported.
+ */
+function resolveEffectiveCharacterFactsForPicker(
+  character: { name: string; role: string | null; occupation: string | null; data: Record<string, unknown> | null },
+  bible: Record<string, unknown> | null,
+): { role: string | null; occupation: string | null; description: string | undefined } {
+  const rosterDescription = extractCharacterDescriptionForPicker(character.data);
+  const hasRosterRole = typeof character.role === "string" && character.role.trim().length > 0;
+  const hasRosterOccupation = typeof character.occupation === "string" && character.occupation.trim().length > 0;
+
+  let role = character.role;
+  let occupation = character.occupation;
+  let description = rosterDescription;
+
+  if (hasRosterRole && hasRosterOccupation && description !== undefined) {
+    return { role, occupation, description };
+  }
+  if (typeof character.name !== "string" || character.name.trim().length === 0) {
+    return { role, occupation, description };
+  }
+
+  const bibleCharacters: ReadonlyArray<VdBibleRefinedCharacter> = readBibleRefinedCharacterProfiles(bible);
+  const normalizedTarget = normalizeStoryCharacterName(character.name);
+  const bibleEntry = bibleCharacters.find((entry) => {
+    if (normalizeStoryCharacterName(entry.name) === normalizedTarget) return true;
+    return (entry.aliases ?? []).some((alias) => normalizeStoryCharacterName(alias) === normalizedTarget);
+  });
+  if (!bibleEntry) {
+    return { role, occupation, description };
+  }
+
+  if (!hasRosterRole && typeof bibleEntry.role === "string" && bibleEntry.role.trim()) {
+    role = bibleEntry.role;
+  }
+  if (!hasRosterOccupation && typeof bibleEntry.occupation === "string" && bibleEntry.occupation.trim()) {
+    occupation = bibleEntry.occupation;
+  }
+  if (description === undefined && typeof bibleEntry.description === "string" && bibleEntry.description.trim()) {
+    description = `Description: ${bibleEntry.description.trim()}`;
+  }
+  return { role, occupation, description };
+}
+
+/** `data.visualBible.ageRange` — free text; there is no dedicated age/gender column. */
+function extractCharacterAgeRangeForPicker(data: Record<string, unknown> | undefined): string | null {
+  const visualBible = asRecord(data?.visualBible);
+  const raw = visualBible?.ageRange;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+}
+
+function parsePickerSeriesId(value: string): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    throw Object.assign(new Error("A valid seriesId is required"), { status: 400, code: "invalid_request" });
+  }
+  return numeric;
+}
+
+export interface DramaSeriesCharacterLookForPicker {
+  characterId: string;
+  variantLabel: string | null;
+  variantType: string | null;
+  portraitUrl: string | null;
+  portraitAssetId: string | null;
+}
+
+export interface DramaSeriesCharacterForPicker {
+  characterId: string;
+  characterKey: string;
+  name: string;
+  role: string | null;
+  narrativeRole: string | null;
+  roleTier: string | null;
+  occupation: string | null;
+  description: string | null;
+  ageRange: string | null;
+  portraitUrl: string | null;
+  portraitAssetId: string | null;
+  hasPortrait: boolean;
+  looks: DramaSeriesCharacterLookForPicker[];
+}
+
+/**
+ * Marketplace two-character conversation picker (spec
+ * `planning/marketplace-two-character-conversation/plan.md` §3.7): lists a
+ * caller-owned Vertical Drama series' character roster so the Marketplace
+ * Auto Review workflow can let a user pick 2 characters and have them
+ * converse under their real story names — deliberately bypasses the
+ * `verticalDramaSeries` tenant feature flag (this is a Marketplace surface;
+ * gating it would FORBIDDEN a Marketplace-only tenant), mirroring this
+ * file's own established precedent (see this file's header doc comment).
+ *
+ * READ-ONLY. Every query is scoped to `(tenantId, userId, seriesId)` —
+ * deliberately NOT the tenant+series-only predicate
+ * `verticalDramaEpisodes.ts`'s `resolveSeriesCharacterPortraits` uses (that
+ * one is safe only because its caller already re-verifies ownership); this
+ * function has no such caller-side check, so it enforces `userId` itself on
+ * every table it touches. An unowned/missing series resolves to a 404-style
+ * thrown error (never a 403), matching `loadOwnedSeries` in
+ * `verticalDramaCharacters.ts` and every other function in this file.
+ *
+ * "ลุค" (character variants/twins) are separate rows in
+ * `vertical_drama_characters` linked via `parentCharacterId` — this
+ * nests them under their parent's `looks[]` instead of returning them as
+ * their own top-level entries (a flat list would show the same character
+ * repeated once per look).
+ *
+ * Portrait resolution is fully batched (one query for every character's
+ * `primary_portrait` link across the whole roster + looks, then one
+ * `loadMediaAssetUrlsById` call) — no N+1 per character/look, even on a
+ * large roster.
+ */
+export async function listDramaSeriesCharactersForPicker(
+  auth: { userId: number; tenantId: string },
+  params: { seriesId: string },
+): Promise<{ seriesId: string; seriesTitle: string; characters: DramaSeriesCharacterForPicker[] }> {
+  const db = getDb();
+  const tenantId = requireTenantId(auth);
+  const seriesId = parsePickerSeriesId(params.seriesId);
+
+  const [seriesRow] = await db
+    .select({ id: verticalDramaSeries.id, title: verticalDramaSeries.title, bible: verticalDramaSeries.bible })
+    .from(verticalDramaSeries)
+    .where(and(
+      eq(verticalDramaSeries.id, seriesId),
+      eq(verticalDramaSeries.tenantId, tenantId),
+      eq(verticalDramaSeries.userId, auth.userId),
+    ))
+    .limit(1);
+  if (!seriesRow) {
+    throw Object.assign(new Error("Drama series not found"), { status: 404, code: "not_found" });
+  }
+  const bible = asRecord(seriesRow.bible) ?? null;
+
+  const characterRows = await db
+    .select({
+      id: verticalDramaCharacters.id,
+      characterKey: verticalDramaCharacters.characterKey,
+      name: verticalDramaCharacters.name,
+      role: verticalDramaCharacters.role,
+      narrativeRole: verticalDramaCharacters.narrativeRole,
+      roleTier: verticalDramaCharacters.roleTier,
+      occupation: verticalDramaCharacters.occupation,
+      data: verticalDramaCharacters.data,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
+      variantLabel: verticalDramaCharacters.variantLabel,
+      variantType: verticalDramaCharacters.variantType,
+    })
+    .from(verticalDramaCharacters)
+    .where(and(
+      eq(verticalDramaCharacters.tenantId, tenantId),
+      eq(verticalDramaCharacters.userId, auth.userId),
+      eq(verticalDramaCharacters.seriesId, seriesId),
+    ))
+    .orderBy(asc(verticalDramaCharacters.id));
+
+  const rowIdSet = new Set(characterRows.map((row) => row.id));
+
+  // Batched primary-portrait resolution: one query across every character +
+  // look row's id, mirroring `verticalDramaCharacterStockService.getPrimaryPortraitAssetId`'s
+  // own predicate/join/order exactly (tenant+user+series scoped, role =
+  // 'primary_portrait', inner-joined to media_assets so a dangling/deleted
+  // link can never win), just batched instead of one query per character. A
+  // global `ORDER BY approved DESC, updatedAt DESC` preserves each
+  // character's own relative ranking, so the first row seen per
+  // `characterId` while iterating is that character's best portrait —
+  // identical to what a per-character `.limit(1)` call would return.
+  const portraitAssetIdByCharacterId = new Map<number, number>();
+  if (rowIdSet.size > 0) {
+    const portraitRows = await db
+      .select({
+        characterId: verticalDramaCharacterAssets.characterId,
+        mediaAssetId: mediaAssets.id,
+        approved: verticalDramaCharacterAssets.approved,
+        updatedAt: verticalDramaCharacterAssets.updatedAt,
+      })
+      .from(verticalDramaCharacterAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .where(and(
+        eq(verticalDramaCharacterAssets.tenantId, tenantId),
+        eq(verticalDramaCharacterAssets.userId, auth.userId),
+        eq(verticalDramaCharacterAssets.seriesId, seriesId),
+        eq(verticalDramaCharacterAssets.role, "primary_portrait"),
+        inArray(verticalDramaCharacterAssets.characterId, Array.from(rowIdSet)),
+      ))
+      .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt));
+    for (const row of portraitRows) {
+      if (row.characterId === null) continue;
+      if (portraitAssetIdByCharacterId.has(row.characterId)) continue; // first hit = best per character
+      portraitAssetIdByCharacterId.set(row.characterId, row.mediaAssetId);
+    }
+  }
+
+  const mediaUrlById = await loadMediaAssetUrlsById(
+    db,
+    tenantId,
+    auth.userId,
+    Array.from(portraitAssetIdByCharacterId.values()),
+  );
+
+  function toPortraitFields(characterId: number): { portraitUrl: string | null; portraitAssetId: string | null } {
+    const assetId = portraitAssetIdByCharacterId.get(characterId) ?? null;
+    const asset = assetId !== null ? mediaUrlById.get(assetId) : undefined;
+    return {
+      portraitUrl: asset?.originalUrl ?? null,
+      portraitAssetId: assetId !== null ? String(assetId) : null,
+    };
+  }
+
+  // Group "look" rows (parentCharacterId set, and the parent is actually
+  // present in this series' roster) under their parent — never as their own
+  // top-level entry.
+  const looksByParentId = new Map<number, DramaSeriesCharacterLookForPicker[]>();
+  for (const row of characterRows) {
+    if (row.parentCharacterId === null || !rowIdSet.has(row.parentCharacterId)) continue;
+    const bucket = looksByParentId.get(row.parentCharacterId) ?? [];
+    bucket.push({
+      characterId: String(row.id),
+      variantLabel: row.variantLabel ?? null,
+      variantType: row.variantType ?? null,
+      ...toPortraitFields(row.id),
+    });
+    looksByParentId.set(row.parentCharacterId, bucket);
+  }
+
+  const characters: DramaSeriesCharacterForPicker[] = [];
+  for (const row of characterRows) {
+    // Skip rows already nested as a look under their parent above.
+    if (row.parentCharacterId !== null && rowIdSet.has(row.parentCharacterId)) continue;
+
+    const data = asRecord(row.data) ?? null;
+    const facts = resolveEffectiveCharacterFactsForPicker(
+      { name: row.name, role: row.role, occupation: row.occupation, data },
+      bible,
+    );
+
+    characters.push({
+      characterId: String(row.id),
+      characterKey: row.characterKey,
+      name: row.name,
+      role: facts.role,
+      narrativeRole: row.narrativeRole ?? null,
+      roleTier: row.roleTier ?? null,
+      occupation: facts.occupation,
+      description: facts.description ?? null,
+      ageRange: extractCharacterAgeRangeForPicker(data ?? undefined),
+      ...toPortraitFields(row.id),
+      hasPortrait: portraitAssetIdByCharacterId.has(row.id),
+      looks: looksByParentId.get(row.id) ?? [],
+    } satisfies DramaSeriesCharacterForPicker);
+  }
+
+  return {
+    seriesId: String(seriesRow.id),
+    seriesTitle: seriesRow.title,
+    characters,
   };
 }

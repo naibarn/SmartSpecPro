@@ -667,7 +667,7 @@ describe("escapeFfmpegFilterPath", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("buildAssSubtitleFile", () => {
-  it("classic_box: emits the mapped Style line + a speaker-chip line + a plain narration line", () => {
+  it("classic_box: emits the mapped Style line + dialogue events with ONLY the spoken text (no speaker-name chip, even when speakerName is present)", () => {
     const ass = buildAssSubtitleFile(
       [
         { startSec: 0, endSec: 2.5, speakerName: "สมชาย", text: "สวัสดีครับ" },
@@ -683,9 +683,15 @@ describe("buildAssSubtitleFile", () => {
     expect(ass).toContain(
       "Style: VdClassicBox,Noto Sans Thai,60,&H00FFFFFF,&H000000FF,&H7A000000,&HA0000000,0,0,0,0,100,100,0,0,3,2,0,2,96,96,170,1"
     );
+    // The speakerName line: no bold/smaller-size speaker chip, no forced
+    // "\N" line break before the body, no trailing colon — just the escaped
+    // dialogue text (regression: speaker name was previously burned into
+    // the caption as "สมชาย: สวัสดีครับ").
     expect(ass).toContain(
-      "Dialogue: 0,0:00:00.00,0:00:02.50,VdClassicBox,,0,0,0,,{\\b1\\fs36}สมชาย:{\\r}\\Nสวัสดีครับ"
+      "Dialogue: 0,0:00:00.00,0:00:02.50,VdClassicBox,,0,0,0,,สวัสดีครับ"
     );
+    expect(ass).not.toContain("สมชาย");
+    expect(ass).not.toContain("\\b1\\fs");
     expect(ass).toContain(
       "Dialogue: 0,0:00:02.50,0:00:05.00,VdClassicBox,,0,0,0,,ข้อความบรรยาย"
     );
@@ -921,6 +927,7 @@ describe("buildAssSubtitleFile — text overlay events (task #34)", () => {
 
 describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
   const watermark: ResolvedWatermarkImage = {
+    slotId: "primary",
     localPngPath: "/tmp/watermark.png",
     position: "top_right",
     opacity: 0.45,
@@ -933,7 +940,7 @@ describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
       concatListPath: CONCAT_LIST_PATH,
       output: OUTPUT_PATH,
       videoDurationSeconds: 30,
-      watermarkImage: watermark,
+      watermarkImages: [watermark],
     });
     expect(args).toContain("-filter_complex");
     expect(extractFilterComplex(args)).toContain("colorchannelmixer=aa=0.45");
@@ -958,7 +965,7 @@ describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
       output: OUTPUT_PATH,
       videoDurationSeconds: 30,
       banners: [banner],
-      watermarkImage: watermark,
+      watermarkImages: [watermark],
     });
     // Same [1:v] banner reference in both — banner input index unchanged.
     expect(extractFilterComplex(withoutWatermark)).toContain("[1:v]scale=");
@@ -980,7 +987,7 @@ describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
       output: OUTPUT_PATH,
       videoDurationSeconds: 30,
       banners: [fullscreenBanner],
-      watermarkImage: watermark,
+      watermarkImages: [watermark],
     });
     const graph = extractFilterComplex(args);
     const fullscreenOverlayIdx = graph.indexOf("overlay=0:0");
@@ -988,7 +995,7 @@ describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
     expect(fullscreenOverlayIdx).toBeGreaterThan(-1);
     expect(watermarkScaleIdx).toBeGreaterThan(fullscreenOverlayIdx);
     // Final map targets the watermark's own output label.
-    expect(args).toContain("[wm]");
+    expect(args).toContain("[wmprimary]");
   });
 
   it("positions top_right with a main_w-overlay_w-margin expression", () => {
@@ -996,7 +1003,7 @@ describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
       concatListPath: CONCAT_LIST_PATH,
       output: OUTPUT_PATH,
       videoDurationSeconds: 30,
-      watermarkImage: watermark,
+      watermarkImages: [watermark],
     });
     expect(extractFilterComplex(args)).toContain(
       "overlay=main_w-overlay_w-32:32"
@@ -1008,14 +1015,14 @@ describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
       concatListPath: CONCAT_LIST_PATH,
       output: OUTPUT_PATH,
       videoDurationSeconds: 30,
-      watermarkImage: { ...watermark, position: "bottom_left", marginPx: 20 },
+      watermarkImages: [{ ...watermark, position: "bottom_left", marginPx: 20 }],
     });
     expect(extractFilterComplex(args)).toContain(
       "overlay=20:main_h-overlay_h-20"
     );
   });
 
-  it("is a complete no-op (identical args) when watermarkImage is omitted", () => {
+  it("is a complete no-op (identical args) when watermarkImages is omitted", () => {
     const withUndefined = buildFinalRenderFfmpegArgs({
       concatListPath: CONCAT_LIST_PATH,
       output: OUTPUT_PATH,
@@ -1027,9 +1034,40 @@ describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
       output: OUTPUT_PATH,
       videoDurationSeconds: 30,
       dialogueAudio: { segments: [{ localPath: "/tmp/a.mp3", startSec: 0 }] },
-      watermarkImage: undefined,
+      watermarkImages: undefined,
     });
     expect(withExplicitUndefined).toEqual(withUndefined);
+  });
+
+  it("dual watermark: composites TWO independent watermark stages with distinct labels and positions", () => {
+    const secondary: ResolvedWatermarkImage = {
+      slotId: "secondary",
+      localPngPath: "/tmp/watermark-secondary.png",
+      position: "bottom_left",
+      opacity: 0.6,
+      scalePct: 8,
+      marginPx: 16,
+    };
+    const args = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      watermarkImages: [watermark, secondary],
+    });
+    const graph = extractFilterComplex(args);
+    // Two independent input images (0=concat, 1=primary watermark, 2=secondary watermark).
+    expect(graph).toContain("[1:v]scale=");
+    expect(graph).toContain("[2:v]scale=");
+    // Distinct filter labels per slot — no collision.
+    expect(graph).toContain("[wmimgprimary]");
+    expect(graph).toContain("[wmimgsecondary]");
+    expect(graph).toContain("[wmprimary]");
+    expect(graph).toContain("[wmsecondary]");
+    // Independent positions — primary top_right, secondary bottom_left.
+    expect(graph).toContain("overlay=main_w-overlay_w-32:32");
+    expect(graph).toContain("overlay=16:main_h-overlay_h-16");
+    // Final map targets the LAST watermark stage's output (chained).
+    expect(args).toContain("[wmsecondary]");
   });
 });
 
@@ -1037,6 +1075,7 @@ describe("buildWatermarkInputArgs", () => {
   it("loops the watermark PNG for the full probed video duration", () => {
     const args = buildWatermarkInputArgs(
       {
+        slotId: "primary",
         localPngPath: "/tmp/w.png",
         position: "top_right",
         opacity: 0.4,
@@ -1052,7 +1091,7 @@ describe("buildWatermarkInputArgs", () => {
 describe("resolveWatermarkOverlayFragment", () => {
   it("scales to scalePct% of the 1080px frame width, rounded to an even pixel count", () => {
     const { filterFragments } = resolveWatermarkOverlayFragment(
-      { localPngPath: "/tmp/w.png", position: "top_right", opacity: 0.45, scalePct: 15, marginPx: 32 },
+      { slotId: "primary", localPngPath: "/tmp/w.png", position: "top_right", opacity: 0.45, scalePct: 15, marginPx: 32 },
       1,
       { baseLabel: "vbase" }
     );
@@ -1062,7 +1101,7 @@ describe("resolveWatermarkOverlayFragment", () => {
 
   it("rounds an odd target width up to the nearest even number", () => {
     const { filterFragments } = resolveWatermarkOverlayFragment(
-      { localPngPath: "/tmp/w.png", position: "top_right", opacity: 0.45, scalePct: 5, marginPx: 32 },
+      { slotId: "primary", localPngPath: "/tmp/w.png", position: "top_right", opacity: 0.45, scalePct: 5, marginPx: 32 },
       1,
       { baseLabel: "vbase" }
     );
@@ -1072,11 +1111,22 @@ describe("resolveWatermarkOverlayFragment", () => {
 
   it("clamps opacity into [0,1] defensively", () => {
     const { filterFragments } = resolveWatermarkOverlayFragment(
-      { localPngPath: "/tmp/w.png", position: "top_right", opacity: 5, scalePct: 10, marginPx: 32 },
+      { slotId: "primary", localPngPath: "/tmp/w.png", position: "top_right", opacity: 5, scalePct: 10, marginPx: 32 },
       1,
       { baseLabel: "vbase" }
     );
     expect(filterFragments[0]).toContain("colorchannelmixer=aa=1");
+  });
+
+  it("uses a distinct labelSuffix (dual watermark) so two stages never collide", () => {
+    const { filterFragments, outputLabel } = resolveWatermarkOverlayFragment(
+      { slotId: "secondary", localPngPath: "/tmp/w2.png", position: "bottom_left", opacity: 0.5, scalePct: 8, marginPx: 16 },
+      2,
+      { baseLabel: "wmprimary", labelSuffix: "secondary" }
+    );
+    expect(filterFragments[0]).toContain("[wmimgsecondary]");
+    expect(filterFragments[1]).toContain("[wmprimary][wmimgsecondary]overlay=");
+    expect(outputLabel).toBe("wmsecondary");
   });
 });
 

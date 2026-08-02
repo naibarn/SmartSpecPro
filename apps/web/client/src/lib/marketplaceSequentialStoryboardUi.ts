@@ -97,9 +97,22 @@ export type SequentialShotAlternate = {
   isSelected: boolean;
 };
 
+export type SequentialShotImageEditCandidate = {
+  status: "submitted" | "completed" | "accepted" | "discarded" | "failed";
+  taskId: string;
+  beforeUrl: string;
+  afterUrl?: string;
+  instruction?: string;
+  errorMessage?: string;
+};
+
 export type SequentialShotCardModel = {
   shotId: number;
   purpose: string;
+  /** Human-readable story/visual beat for this shot. Legacy runs may have
+   *  omitted `visual_summary`; projection falls back to the persisted concept
+   *  shot's storyboard guide when available. */
+  visualSummary: string;
   demonstrationType: string;
   depictsMinor: boolean;
   guardianRequired: boolean;
@@ -108,6 +121,7 @@ export type SequentialShotCardModel = {
   imagePromptChars: number;
   videoPrompt: string;
   videoPromptChars: number;
+  cameraBeats?: SequentialCameraBeatModel[];
   claimSources: SequentialClaimSource[];
   qcStatus: string;
   qcScores?: Record<string, number>;
@@ -121,8 +135,18 @@ export type SequentialShotCardModel = {
    *  `metadataJson.sequentialShotAlternates[String(shotId)]`, mirroring
    *  `storyboardFrameUrls` — never nested under `sequentialStoryboard`. */
   alternates: SequentialShotAlternate[];
+  imageEditCandidate?: SequentialShotImageEditCandidate | null;
   edited: boolean;
   editedAt?: string | null;
+};
+
+export type SequentialCameraBeatModel = {
+  beatId: number;
+  durationSeconds: number;
+  camera: string;
+  movement: string;
+  action: string;
+  transition: string;
 };
 
 export type SequentialLoopReportRound = {
@@ -161,6 +185,32 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function projectCameraBeats(value: unknown): SequentialCameraBeatModel[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry, index) => {
+    const record = asRecord(entry);
+    const camera = cleanText(record.camera);
+    const movement = cleanText(record.movement);
+    const action = cleanText(record.action);
+    if (!camera || !movement || !action) return [];
+    const duration = Number(record.duration_seconds);
+    return [
+      {
+        beatId: Number.isFinite(Number(record.beat_id))
+          ? Math.max(1, Math.floor(Number(record.beat_id)))
+          : index + 1,
+        durationSeconds: Number.isFinite(duration)
+          ? Math.max(0.5, Math.min(10, duration))
+          : 1,
+        camera,
+        movement,
+        action,
+        transition: cleanText(record.transition),
+      },
+    ];
+  });
 }
 
 function sequentialStoryboardRecord(
@@ -228,6 +278,9 @@ export function projectSequentialShotCards(
   const shotAlternates = asRecord(
     asRecord(metadataJson).sequentialShotAlternates
   );
+  const imageEditCandidates = asRecord(
+    asRecord(metadataJson).sequentialImageEditCandidates
+  );
 
   const cards: SequentialShotCardModel[] = [];
   for (const rawShot of rawShots) {
@@ -237,14 +290,57 @@ export function projectSequentialShotCards(
 
     const override = asRecord(overrides[String(shotId)]);
     const edited = Object.keys(override).length > 0;
+    const overrideHas = (key: string) =>
+      Object.prototype.hasOwnProperty.call(override, key);
 
-    const dialogue =
-      cleanText(override.dialogue) || cleanText(rawShot.dialogue);
-    const imagePrompt =
-      cleanText(override.start_frame_image_prompt) ||
-      cleanText(rawShot.start_frame_image_prompt);
-    const videoPrompt =
-      cleanText(override.video_prompt) || cleanText(rawShot.video_prompt);
+    const concept = asRecord(asRecord(metadataJson).concept);
+    const conceptShots = Array.isArray(concept.shots)
+      ? (concept.shots as unknown[])
+      : [];
+    const conceptShot = asRecord(conceptShots[shotId - 1]);
+    const visualSummary = overrideHas("visual_summary")
+      ? cleanText(override.visual_summary)
+      : cleanText(rawShot.visual_summary) ||
+        cleanText(conceptShot.storyboardGuide) ||
+        cleanText(conceptShot.visual);
+    const dialogue = overrideHas("dialogue")
+      ? cleanText(override.dialogue)
+      : cleanText(rawShot.dialogue) ||
+        cleanText(rawShot.voiceover) ||
+        cleanText(conceptShot.voiceover);
+    const cameraBeats = projectCameraBeats(
+      overrideHas("camera_beats")
+        ? override.camera_beats
+        : rawShot.camera_beats
+    );
+    const imagePrompt = overrideHas("start_frame_image_prompt")
+      ? cleanText(override.start_frame_image_prompt)
+      : cleanText(rawShot.start_frame_image_prompt);
+    const videoPrompt = overrideHas("video_prompt")
+      ? cleanText(override.video_prompt)
+      : cleanText(rawShot.video_prompt);
+    const imageEditRecord = asRecord(imageEditCandidates[String(shotId)]);
+    const imageEditStatus = cleanText(imageEditRecord.status);
+    const imageEditCandidate =
+      cleanText(imageEditRecord.taskId) &&
+      ["submitted", "completed", "accepted", "discarded", "failed"].includes(
+        imageEditStatus
+      )
+        ? ({
+            status: imageEditStatus as SequentialShotImageEditCandidate["status"],
+            taskId: cleanText(imageEditRecord.taskId),
+            beforeUrl: cleanText(imageEditRecord.beforeUrl),
+            ...(cleanText(imageEditRecord.afterUrl)
+              ? { afterUrl: cleanText(imageEditRecord.afterUrl) }
+              : {}),
+            ...(cleanText(imageEditRecord.instruction)
+              ? { instruction: cleanText(imageEditRecord.instruction) }
+              : {}),
+            ...(cleanText(imageEditRecord.errorMessage)
+              ? { errorMessage: cleanText(imageEditRecord.errorMessage) }
+              : {}),
+          } satisfies SequentialShotImageEditCandidate)
+        : null;
 
     const claimTrace = Array.isArray(rawShot.claim_trace)
       ? rawShot.claim_trace
@@ -266,6 +362,7 @@ export function projectSequentialShotCards(
     cards.push({
       shotId,
       purpose: cleanText(rawShot.purpose),
+      visualSummary,
       demonstrationType: cleanText(rawShot.demonstration_type),
       depictsMinor: rawShot.depicts_minor === true,
       guardianRequired: rawShot.guardian_required === true,
@@ -274,6 +371,7 @@ export function projectSequentialShotCards(
       imagePromptChars: imagePrompt.length,
       videoPrompt,
       videoPromptChars: videoPrompt.length,
+      cameraBeats,
       claimSources,
       qcStatus: cleanText(qc.status),
       qcScores: Object.keys(qcScores).length > 0 ? qcScores : undefined,
@@ -282,6 +380,7 @@ export function projectSequentialShotCards(
       alternates: projectSequentialShotAlternateEntries(
         shotAlternates[String(shotId)]
       ),
+      imageEditCandidate,
       edited,
       editedAt: edited ? cleanText(override.editedAt) || null : null,
     });
@@ -425,7 +524,9 @@ function extractRunGuardianManifestAttached(metadataJson: unknown): boolean {
   const manifest = Array.isArray(sequential.referenceManifest)
     ? sequential.referenceManifest
     : [];
-  return manifest.some(entry => isPlainObject(entry) && entry.role === "character");
+  return manifest.some(
+    entry => isPlainObject(entry) && entry.role === "character"
+  );
 }
 
 /**

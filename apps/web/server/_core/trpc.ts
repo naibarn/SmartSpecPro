@@ -95,6 +95,10 @@ export const resetPasswordProcedure = t.procedure.use(
   createRateLimitMiddleware({ namespace: "reset-password", limit: 5, windowMs: 60_000 }),
 );
 
+export const verifyResetCodeProcedure = t.procedure.use(
+  createRateLimitMiddleware({ namespace: "verify-reset-code", limit: 10, windowMs: 60_000 }),
+);
+
 // Rate-limited admin procedure — auth check first (rejects unauthenticated
 // before consuming a rate-limit bucket), then rate limit to prevent abuse
 export const rateLimitedAdminProcedure = t.procedure

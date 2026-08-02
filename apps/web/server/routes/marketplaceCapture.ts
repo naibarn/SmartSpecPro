@@ -37,6 +37,10 @@ import {
   listDramaSeriesEpisodesForExtension,
   getDramaSeriesEpisodeDetailForExtension,
 } from "../services/verticalDramaExtensionReadService";
+import {
+  listMarketplaceAutoReviewProjectsForExtension,
+  getMarketplaceAutoReviewProjectForExtension,
+} from "../services/marketplaceAutoReviewExtensionReadService";
 
 function sendError(res: Response, error: any) {
   const status = Number(error?.status || (error instanceof z.ZodError ? 400 : 500));
@@ -981,6 +985,31 @@ export function registerMarketplaceCaptureRoutes(app: Express) {
         throw Object.assign(new Error("A valid episodeId is required"), { status: 400, code: "invalid_request" });
       }
       res.json(await getDramaSeriesEpisodeDetailForExtension(auth, seriesId, episodeId));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/auto-review/projects", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      res.json(await listMarketplaceAutoReviewProjectsForExtension(auth, {
+        query: typeof req.query.query === "string" ? req.query.query : "",
+        limit: Number(req.query.limit ?? 30),
+      }));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/auto-review/project", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      const runId = typeof req.query.runId === "string" ? req.query.runId : "";
+      if (!runId) {
+        throw Object.assign(new Error("A valid runId is required"), { status: 400, code: "invalid_request" });
+      }
+      res.json(await getMarketplaceAutoReviewProjectForExtension(auth, runId));
     } catch (error) {
       sendError(res, error);
     }

@@ -380,6 +380,8 @@ export async function runMarketplaceAutoReviewJob(
     }
 
     for (const run of runs) {
+      // Yield to the Event Loop between processing runs so HTTP I/O is never blocked
+      await new Promise(resolve => setImmediate(resolve));
       const tenantId = String(run.tenantId ?? "").trim();
       if (!tenantId) {
         skippedRuns += 1;
@@ -410,10 +412,14 @@ export async function runMarketplaceAutoReviewJob(
         );
         advancedRuns += 1;
       } catch (error) {
-        errors.push({
-          runId: run.id,
-          message: error instanceof Error ? error.message : String(error),
-        });
+        const message = error instanceof Error ? error.message : String(error);
+        // The tick log only prints `errors.length`, so a run failing every
+        // sweep was invisible without attaching a debugger. Log the actual
+        // message once per occurrence (2026-07-31 diagnosis aid).
+        console.warn(
+          `[marketplace-auto-review] advance failed for run ${run.id}: ${message}`
+        );
+        errors.push({ runId: run.id, message });
       }
     }
 

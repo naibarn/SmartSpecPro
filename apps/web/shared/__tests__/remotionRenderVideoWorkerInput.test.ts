@@ -51,17 +51,28 @@ describe("remotionRenderVideoWorkerInputSchema (Feature 133 section-03 golden fi
   });
 
   it("embeds a schema-valid RemotionTemplateConfig", () => {
-    // Embedded verbatim, not re-declared (research A1) — same schema instance.
-    expect(remotionRenderVideoWorkerInputSchema.shape.remotionTemplate).toBe(
-      RemotionTemplateConfigSchema,
-    );
-
+    // NOTE (worker-app-remotion-render-video P1, 2026-07-30): this no longer
+    // asserts the SAME schema instance as `apps/web/shared/remotion/
+    // layerTemplateSchemas.ts`'s `RemotionTemplateConfigSchema` — the
+    // `remotion_render_video` job contract (this schema) moved to
+    // `@smartspec/remotion-render` (see `../workerRuntime.ts`'s doc comment)
+    // so the `apps/worker-app` sidecar can import it without depending on
+    // `apps/web` at all. `apps/web`'s own `layerTemplateSchemas.ts` was
+    // independently updated (as part of that move) to keep the SAME layer
+    // shapes (including the `audio` layer variant), so both schemas still
+    // accept/reject the same fixtures — asserted below via cross-parse
+    // rather than reference identity.
     const validFixture = readFixture<{ remotionTemplate: unknown }>(
       "remotionRenderVideoWorkerInput-valid.json",
     );
     expect(RemotionTemplateConfigSchema.safeParse(validFixture.remotionTemplate).success).toBe(
       true,
     );
+    expect(
+      remotionRenderVideoWorkerInputSchema.shape.remotionTemplate.safeParse(
+        validFixture.remotionTemplate,
+      ).success,
+    ).toBe(true);
   });
 
   it("requires a non-empty capabilityFamilies-relevant contract (compositionId literal)", () => {

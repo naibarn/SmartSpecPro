@@ -23,6 +23,8 @@ import {
   calculateCreditsFromCost,
   deductCreditsForModel,
   hasEnoughCredits,
+  deductCredits,
+  addCredits,
 } from "./creditService";
 
 beforeEach(() => {
@@ -253,6 +255,98 @@ describe("deductCreditsForModel", () => {
 
     expect(result.creditsUsed).toBeGreaterThan(0);
     expect(result.wasFree).toBe(false);
+  });
+});
+
+// --- Idempotency safety net (duplicate idempotencyKey inserts) ---
+// Regression coverage: drizzle-orm wraps every DB error in a DrizzleQueryError
+// whose own `.code`/`.constraint` are undefined — the real postgres fields
+// live under `.cause`. The safety net used to check only the top level, so it
+// never matched and a legitimate idempotent retry threw instead of returning
+// the already-recorded transaction.
+function drizzleWrappedUniqueViolation(constraint: string) {
+  const err: any = new Error(
+    'Failed query: insert into "credit_transactions" (...) returning "id"'
+  );
+  err.cause = { code: "23505", constraint };
+  return err;
+}
+
+describe("deductCredits idempotency safety net", () => {
+  it("returns the existing transaction instead of throwing on a Drizzle-wrapped duplicate idempotencyKey", async () => {
+    mockTransaction.mockImplementation(async () => {
+      throw drizzleWrappedUniqueViolation("credit_transactions_idempotency_key_unique");
+    });
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi
+            .fn()
+            .mockResolvedValue([{ id: 91834, amount: -35, balanceAfter: 375856 }]),
+        }),
+      }),
+    });
+
+    const result = await deductCredits({
+      userId: 1,
+      amount: 35,
+      description: "Marketplace staged storyboard image shot 1",
+      idempotencyKey: "staged:mar_test:image:shot-1-r2",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      creditsUsed: 35,
+      newBalance: 375856,
+      transactionId: 91834,
+    });
+  });
+
+  it("still throws for a DB error unrelated to the idempotency constraint", async () => {
+    mockTransaction.mockImplementation(async () => {
+      throw drizzleWrappedUniqueViolation("users_email_unique");
+    });
+
+    await expect(
+      deductCredits({
+        userId: 1,
+        amount: 10,
+        description: "test",
+        idempotencyKey: "some-key",
+      })
+    ).rejects.toThrow();
+  });
+});
+
+describe("addCredits idempotency safety net", () => {
+  it("returns the existing transaction instead of throwing on a Drizzle-wrapped duplicate idempotencyKey", async () => {
+    mockTransaction.mockImplementation(async () => {
+      throw drizzleWrappedUniqueViolation("credit_transactions_idempotency_key_unique");
+    });
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi
+            .fn()
+            .mockResolvedValue([{ id: 91915, amount: 35, balanceAfter: 375891 }]),
+        }),
+      }),
+    });
+
+    const result = await addCredits({
+      userId: 1,
+      amount: 35,
+      type: "refund",
+      description: "Marketplace staged image provider submission failed",
+      idempotencyKey: "staged:mar_test:image:shot-1-r2:refund",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      creditsAdded: 35,
+      newBalance: 375891,
+      transactionId: 91915,
+    });
   });
 });
 

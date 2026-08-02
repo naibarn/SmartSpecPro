@@ -3,12 +3,6 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
   HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
 } from "./hyperframes/limits";
-import { RemotionTemplateConfigSchema } from "./remotion/layerTemplateSchemas";
-// Reused verbatim (never re-declared) — the same 10-value caption preset
-// enum already used by `document.captions.presetId`
-// (`shared/videoIntelligence/projectSchemas.ts`'s `CaptionPresetIdSchema`)
-// and `server/services/verticalDramaFinalRenderGraph.ts`'s `CaptionPresetId`.
-import { HyperframesFinalCompositeSubtitlePresetSchema } from "./hyperframes/runtimeApiSchemas";
 
 export const WORKER_RUNTIME_PROTOCOL_VERSION = "2026-04-06";
 export const WORKER_RUNTIME_FAMILY_SCHEMA_VERSION = "2026-04-08";
@@ -1306,169 +1300,44 @@ export const hyperframesFinalCompositeFailurePayloadSchema = z.object({
 /**
  * `remotion_render_video` worker job contract (Feature 133, Phase 1 MVP,
  * section-03 — `specs/feature/133-content-video-intelligence-platform/spec.md`
- * §6). This is the server-authoritative payload schema shared by both
- * execution lanes (Lane A in-process, Lane B `apps/worker-app` fleet). It
- * embeds `RemotionTemplateConfigSchema` verbatim (never re-declared) and is
- * intentionally `.strict()` on every nested object: an unknown or renamed
- * field must be a hard parse failure so the golden-fixture round-trip test
- * (`shared/__fixtures__/remotionRenderVideoWorkerInput-*.json`) is a real
- * server⇄worker drift guard, not a silent-strip no-op.
+ * §6) — MOVED into `@smartspec/remotion-render` (2026-07-30,
+ * worker-app-remotion-render-video P1): the `apps/worker-app` Remotion
+ * sidecar bundles ONLY that package (no dependency on `apps/web` at all), so
+ * this file was never importable from the sidecar bundle. Re-exported here
+ * (never re-declared) for this file's existing importers
+ * (`workerSchedulerService.ts`, `workerRegistryService.ts`,
+ * `hyperframesRenderWorker.ts`, etc.) — see
+ * `packages/remotion-render/src/remotionRenderVideoSchema.ts` for the actual
+ * schema/constants and its doc comment for the one documented exception
+ * (the `captionPresetId` enum's 10 literal values are a narrow, cross-referenced
+ * duplicate of `HyperframesFinalCompositeSubtitlePresetSchema` below, since
+ * that module cannot be imported from the package).
  *
- * `REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES` is the anti-mis-claim safety
- * mechanism (spec §6.3): it MUST stay non-empty. The server does not filter
- * job claims by jobType, so a non-empty capability-family requirement is the
- * only thing that prevents a HyperFrames-only worker from claiming and then
- * failing a Remotion render job.
+ * IMPORTANT — import from the `/render-video-schema` subpath, NOT
+ * `/render-video-job`. This file is reachable from CLIENT code, and the
+ * job entry bundles the Node orchestrator (`node:fs`/`node:path`/
+ * `node:child_process`); pulling it into the browser graph breaks the Vite
+ * build with `"join" is not exported by "__vite-browser-external"` (field
+ * incident 2026-07-30). The schema bundle is built `platform: "neutral"`
+ * so it can never regain a Node import silently.
  */
-export const REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES = [
-  "remotion-render",
-  "chromium-render",
-  "ffmpeg-probe",
-] as const;
-
-const remotionRenderVideoProgressStageValues = [
-  "resolve_inputs",
-  "stage_assets",
-  "bundle_composition",
-  "select_composition",
-  "render_frames",
-  "run_post_passes",
-  "verify_outputs",
-  "upload_artifacts",
-  "server_verify_artifacts",
-  "publish_artifacts",
-] as const;
-
-export const REMOTION_RENDER_VIDEO_PROGRESS_STAGES = [
-  ...remotionRenderVideoProgressStageValues,
-];
-
-const remotionRenderVideoFailureCodeValues = [
-  "contract_version_unsupported",
-  "asset_stage_failed",
-  "bundle_failed",
-  "composition_select_failed",
-  "chromium_launch_failed",
-  "render_failed",
-  "post_pass_failed",
-  "artifact_upload_failed",
-  "server_verification_failed",
-] as const;
-
-export const REMOTION_RENDER_VIDEO_FAILURE_CODES = [
-  ...remotionRenderVideoFailureCodeValues,
-];
-
-export const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION = "2026-07-12";
-export const REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION = "remotion-1";
-
-export type RemotionRenderVideoProgressStage =
-  (typeof remotionRenderVideoProgressStageValues)[number];
-export type RemotionRenderVideoFailureCode =
-  (typeof remotionRenderVideoFailureCodeValues)[number];
-export type RemotionRenderVideoCapabilityFamily =
-  (typeof REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES)[number];
-
-export const remotionRenderVideoProgressStageSchema = z.enum(
-  remotionRenderVideoProgressStageValues,
-);
-export const remotionRenderVideoFailureCodeSchema = z.enum(
-  remotionRenderVideoFailureCodeValues,
-);
-export const remotionRenderVideoCapabilityFamilySchema = z.enum(
+export {
   REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
-);
-
-const remotionRenderVideoRenderProfileSchema = z.object({
-  profile: z.enum(["preview", "final"]),
-  width: z.number().int().min(320).max(4096),
-  height: z.number().int().min(320).max(4096),
-  fps: z.number().int().min(12).max(60),
-  codec: z.literal("h264").default("h264"),
-  loudnessNormalize: z.boolean().default(true),
-  burnInAssCaptions: z.boolean().default(false),
-}).strict();
-
-const remotionRenderVideoAssetManifestSchema = z.object({
-  sources: z.array(
-    z.object({
-      role: z.enum(["video", "image", "audio", "font"]),
-      url: workerDownloadUrlSchema,
-      sha256: workerStableHashSchema,
-    }).strict(),
-  ),
-}).strict();
-
-/**
- * Owned by section-01 (`server/services/videoProjectCompiler.ts`'s
- * `SegmentPlan` type, cross-section consistency resolution #4,
- * `sections/index.md`): `{ parts: { index, durationInFrames }[] }`. Section-01
- * exports no Zod schema for it, so this is a structurally-identical local
- * schema (not an import — `shared/workerRuntime.ts` must not depend on
- * `server/services/*`) that any real `SegmentPlan` value satisfies.
- */
-const remotionRenderVideoSegmentPlanSchema = z.object({
-  parts: z.array(
-    z.object({
-      index: z.number().int().min(0),
-      durationInFrames: z.number().int().min(1),
-    }).strict(),
-  ).min(1),
-}).strict();
-
-export const remotionRenderVideoWorkerInputSchema = z.object({
-  kind: z.literal("remotion_render_video").default("remotion_render_video"),
-  schemaVersion: z.literal(1).default(1),
-  platformContractVersion: z.string().trim().min(1).max(120),
-  rendererPolicyVersion: z.string().trim().min(1).max(120),
-  videoProjectId: z.string().trim().min(1).max(160),
-  projectRevision: z.number().int().min(1),
-  traceId: z.string().trim().min(1).max(200),
-  renderProfile: remotionRenderVideoRenderProfileSchema,
-  // Embedded verbatim (research A1) — layer shapes are never re-declared.
-  remotionTemplate: RemotionTemplateConfigSchema,
-  // Must equal GENERIC_TEMPLATE_COMPOSITION_ID (server/remotion/Root.tsx).
-  // Re-declared as a literal here (not imported) so this shared/ schema
-  // never depends on a server-only .tsx composition module.
-  compositionId: z.literal("GenericTemplate"),
-  assetManifest: remotionRenderVideoAssetManifestSchema,
-  postPasses: z.array(z.enum(["loudnorm", "ass_burn", "segment_concat"])).default([]),
-  segmentPlan: remotionRenderVideoSegmentPlanSchema.nullable().default(null),
-  // Stable hash of `remotionTemplate` — dedupe + tamper check.
-  remotionTemplateHash: workerStableHashSchema,
-  // Authoritative; the worker must not recompute this from the template.
-  durationInFrames: z.number().int().min(1),
-  // ADDITIVE (implementation-progress.md gap #3 closure): real caption cues
-  // to burn in when `postPasses` includes `"ass_burn"`. Absolute-timeline
-  // seconds (already offset by scene start, NOT scene-relative ms like
-  // `CaptionCueSchema`/`document.scenes[].captionCues`) so the worker never
-  // has to re-derive per-scene timing. Genuinely optional — omitted entirely
-  // by every pre-existing caller/fixture, so this cannot break any frozen
-  // `.strict()` contract or golden fixture.
-  captionLines: z
-    .array(
-      z.object({
-        startSec: z.number().min(0),
-        endSec: z.number().min(0),
-        text: z.string().trim().min(1).max(2_000),
-      }).strict(),
-    )
-    .optional(),
-  // ADDITIVE (implementation-progress.md gap #3 closure, part 2): which of
-  // the 10 shared caption presets to render `captionLines` with when
-  // `postPasses` includes `"ass_burn"`. Reused verbatim from
-  // `HyperframesFinalCompositeSubtitlePresetSchema` (never re-declared).
-  // Genuinely optional — omitted by every pre-existing caller/fixture, so
-  // this cannot break any frozen `.strict()` contract or golden fixture.
-  // When omitted, the worker falls back to a real (non-`"no_subtitle_style"`)
-  // rendering preset so burn-in without an explicit preset still produces
-  // visible captions (see `hyperframesRenderWorker.ts`).
-  captionPresetId: HyperframesFinalCompositeSubtitlePresetSchema.optional(),
-}).strict();
-
-export type RemotionRenderVideoWorkerInput = z.infer<
-  typeof remotionRenderVideoWorkerInputSchema
->;
+  REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
+  REMOTION_RENDER_VIDEO_FAILURE_CODES,
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+  REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+  remotionRenderVideoProgressStageSchema,
+  remotionRenderVideoFailureCodeSchema,
+  remotionRenderVideoCapabilityFamilySchema,
+  remotionRenderVideoWorkerInputSchema,
+} from "@smartspec/remotion-render/render-video-schema";
+export type {
+  RemotionRenderVideoProgressStage,
+  RemotionRenderVideoFailureCode,
+  RemotionRenderVideoCapabilityFamily,
+  RemotionRenderVideoWorkerInput,
+} from "@smartspec/remotion-render/render-video-schema";
 
 export const localAiProviderConfigSchema = z.object({
   providerId: localAiProviderSchema,

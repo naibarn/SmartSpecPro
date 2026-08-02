@@ -87,18 +87,18 @@ export function MarketplaceAutoReviewLaunchModeSwitch({
             }
             disabled={mode.disabled}
             onClick={() => onChange(mode.value)}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`flex min-h-12 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-90 ${
               active
                 ? "bg-white text-slate-950 shadow-sm dark:bg-slate-100 dark:text-slate-950"
                 : mode.unavailable
-                  ? "text-amber-700 hover:bg-white/70 dark:text-amber-300 dark:hover:bg-slate-800"
+                  ? "text-amber-800 hover:bg-white/70 dark:text-amber-300 dark:hover:bg-slate-800"
                   : "text-slate-600 hover:bg-white/70 dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
           >
             <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 text-left">
               <span className="block leading-5">{mode.label}</span>
-              <span className="block text-xs font-normal leading-4 text-slate-500 dark:text-slate-400">
+              <span className="block text-xs font-normal leading-4 text-slate-600 dark:text-slate-400">
                 {mode.description}
               </span>
             </span>

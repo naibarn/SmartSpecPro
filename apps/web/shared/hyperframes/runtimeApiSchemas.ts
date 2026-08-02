@@ -165,6 +165,9 @@ export const StartAutoStoryboardReviewInputSchema = ProductIdInputSchema.extend(
     idempotencyKey: z.string().min(1).max(192).optional(),
     overrides: HyperframesAutoPlanOverrideInputSchema.optional().default({}),
     workflowMode: z.enum(["standard", "job_workbench"]).optional(),
+    summaryLanguage: z.enum(["th", "en"]).optional(),
+    dialogueLanguage: z.enum(["th", "en"]).optional(),
+    promptLanguage: z.enum(["th", "en"]).optional(),
     transportMetadata: HyperframesAutoReviewTransportMetadataSchema,
     referenceAnchors: z
       .object({

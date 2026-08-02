@@ -35,6 +35,7 @@ import {
   deriveCharacterIntroCards,
   deriveEpisodeIndicatorLabel,
   deriveTitleBumperLines,
+  listEnabledWatermarkSlots,
   parseSeriesWatermarkConfig,
   resolveEndCardText,
   resolveOpenerRecapText,
@@ -45,6 +46,7 @@ import {
   type VdOpenerRecapTextSource,
   type VdSeriesWatermarkConfig,
   type VdTextOverlayPlan,
+  type VdWatermarkPosition,
 } from "@shared/verticalDramaSeries/textOverlay";
 // The render-engine service (`verticalDramaEpisodeVideoAssembly.ts`) has no
 // import of THIS module (one-directional — see that file's own import list),
@@ -210,8 +212,9 @@ export async function loadVdSeriesTextOverlayContext(
 
 /**
  * Resolve an episode's saved `textOverlayPlan` (+ the series' watermark
- * config) into the render engine's `overlays`/`watermarkImage` inputs (task
- * #34) — the ONE shared implementation both `verticalDramaEpisodes.ts`'s
+ * config) into the render engine's `overlays`/`watermarkImages` inputs (task
+ * #34; dual watermark, `planning/vd-dual-watermark/plan.md`) — the ONE
+ * shared implementation both `verticalDramaEpisodes.ts`'s
  * `assembleEpisodeVideo` (single-episode) and `verticalDramaSeries.ts`'s
  * `assembleSeasonVideos` (season batch) call, so the two render paths can
  * never drift (mirrors `resolveEpisodeAdBannerRunInputs`'s own "resolve
@@ -219,9 +222,20 @@ export async function loadVdSeriesTextOverlayContext(
  * both routers since ad banners' own version is deliberately router-local —
  * see that function's doc comment for why THIS feature made the opposite
  * choice). `includeWatermark` is the render-time opt-out (default-on-when-
- * configured — plan.md "default เปิดเมื่อซีรีส์ config ไว้"); text/mid-
+ * configured — plan.md "default เปิดเมื่อซีรีส์ config ไว้"), applied as a
+ * SINGLE all-or-nothing toggle covering BOTH watermark slots; text/mid-
  * episode-card/character-intro kinds have NO separate render-time toggle —
  * whatever is `enabled` in the SAVED plan is what renders.
+ *
+ * `listEnabledWatermarkSlots` (`@shared/verticalDramaSeries/textOverlay.ts`)
+ * is the ONE place that knows slot 1 is stored inline and slot 2 lives under
+ * `secondary` — every enabled slot here becomes either its own
+ * `watermark_text` overlay event (TEXT slots) or its own entry in
+ * `watermarkImages` (IMAGE slots), tagged with `slotId` so both render
+ * engines can give each its own asset/layer. The corner auto-avoid vs.
+ * `episodeIndicator` (plan.md "episodeIndicator กับ watermark มุมเดียวกัน →
+ * auto-เลี่ยงคนละมุม") applies to the PRIMARY slot only — the secondary
+ * (channel logo) slot always renders exactly where the user placed it.
  */
 export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
   owner: VdTextOverlayAutoTextOwner;
@@ -234,7 +248,7 @@ export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
   includeWatermark: boolean;
 }): Promise<{
   overlays: RunAssemblyJobTextOverlayEventInput[];
-  watermarkImage: RunAssemblyJobWatermarkImageInput | null;
+  watermarkImages: RunAssemblyJobWatermarkImageInput[];
   overlaysIncluded: number;
 }> {
   const { owner, plan } = params;
@@ -260,15 +274,54 @@ export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
       : Promise.resolve([]),
   ]);
 
-  // Watermark/episode-indicator corner clash auto-avoid (plan.md
-  // "episodeIndicator กับ watermark มุมเดียวกัน → auto-เลี่ยงคนละมุม").
-  let watermarkPosition = seriesContext.watermark?.position ?? "top_right";
-  if (seriesContext.watermark?.enabled && plan?.episodeIndicator?.enabled) {
-    watermarkPosition = resolveWatermarkCornerAutoAvoid({
-      watermarkPosition,
-      episodeIndicatorEnabled: true,
-      episodeIndicatorPosition: plan.episodeIndicator.position,
-    }).position;
+  // Watermark slots (dual watermark — series/title logo + channel logo,
+  // `planning/vd-dual-watermark/plan.md`). `listEnabledWatermarkSlots` is
+  // the ONE place that knows slot 1 is stored inline and slot 2 lives under
+  // `secondary`; `includeWatermark` is a single all-or-nothing render-time
+  // opt-out covering BOTH slots (returns `[]` when off).
+  const enabledWatermarkSlots = params.includeWatermark
+    ? listEnabledWatermarkSlots(seriesContext.watermark)
+    : [];
+
+  const watermarkTexts: Array<{
+    text: string;
+    position: VdWatermarkPosition;
+    opacity: number;
+    marginPx: number;
+  }> = [];
+  const watermarkImages: RunAssemblyJobWatermarkImageInput[] = [];
+
+  for (const { slotId, slot } of enabledWatermarkSlots) {
+    // Corner auto-avoid (plan.md "episodeIndicator กับ watermark มุมเดียวกัน
+    // → auto-เลี่ยงคนละมุม") applies to the PRIMARY slot only — the
+    // secondary (channel logo) slot renders exactly where the user placed
+    // it, since the user is the one giving the two slots different corners.
+    let position = slot.position;
+    if (slotId === "primary" && plan?.episodeIndicator?.enabled) {
+      position = resolveWatermarkCornerAutoAvoid({
+        watermarkPosition: position,
+        episodeIndicatorEnabled: true,
+        episodeIndicatorPosition: plan.episodeIndicator.position,
+      }).position;
+    }
+
+    if (slot.type === "text" && slot.text?.trim()) {
+      watermarkTexts.push({
+        text: slot.text.trim(),
+        position,
+        opacity: slot.opacity,
+        marginPx: slot.marginPx,
+      });
+    } else if (slot.type === "image" && slot.imageUrl?.trim()) {
+      watermarkImages.push({
+        slotId,
+        imageUrl: slot.imageUrl.trim(),
+        position,
+        opacity: slot.opacity,
+        scalePct: slot.scalePct,
+        marginPx: slot.marginPx,
+      });
+    }
   }
 
   const cardsInput: VdEpisodeTextOverlayCardInput[] = (plan?.cards ?? [])
@@ -280,21 +333,12 @@ export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
       shotNumber: card.anchor.shotNumber,
       offsetSec: card.anchor.offsetSec,
       durationSec: card.durationSec,
+      position: card.position,
     }));
 
   const characterIntroInput: VdEpisodeTextOverlayCharacterIntroInput[] = needsCharacterIntro
     ? characterIntroCards
     : [];
-
-  const wantsWatermark = params.includeWatermark && seriesContext.watermark?.enabled === true;
-  const wantsWatermarkText =
-    wantsWatermark &&
-    seriesContext.watermark?.type === "text" &&
-    Boolean(seriesContext.watermark.text?.trim());
-  const wantsWatermarkImage =
-    wantsWatermark &&
-    seriesContext.watermark?.type === "image" &&
-    Boolean(seriesContext.watermark.imageUrl?.trim());
 
   const { overlays, overlayCount } = resolveEpisodeTextOverlayRunInputs({
     endCard:
@@ -330,27 +374,10 @@ export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
       : null,
     characterIntroCards: characterIntroInput,
     cards: cardsInput,
-    watermarkText: wantsWatermarkText
-      ? {
-          text: seriesContext.watermark!.text!.trim(),
-          position: watermarkPosition,
-          opacity: seriesContext.watermark!.opacity,
-          marginPx: seriesContext.watermark!.marginPx,
-        }
-      : null,
+    watermarkTexts,
     motionClips: params.motionClips,
     includedClipNumbers: params.includedClipNumbers,
   });
 
-  const watermarkImage: RunAssemblyJobWatermarkImageInput | null = wantsWatermarkImage
-    ? {
-        imageUrl: seriesContext.watermark!.imageUrl!.trim(),
-        position: watermarkPosition,
-        opacity: seriesContext.watermark!.opacity,
-        scalePct: seriesContext.watermark!.scalePct,
-        marginPx: seriesContext.watermark!.marginPx,
-      }
-    : null;
-
-  return { overlays, watermarkImage, overlaysIncluded: overlayCount };
+  return { overlays, watermarkImages, overlaysIncluded: overlayCount };
 }

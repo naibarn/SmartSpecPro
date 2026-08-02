@@ -29,6 +29,7 @@ import {
   Pencil,
   Plus,
   Shirt,
+  ScanFace,
   Sparkles,
   Trash2,
   UploadCloud,
@@ -1858,6 +1859,8 @@ export interface VerticalDramaCharacterStockPanelProps {
    *  `VerticalDramaSeriesDetailPage.tsx`'s
    *  `useTenantFeatureFlag("verticalDramaCharacterProfiles")`). */
   characterProfilesEnabled?: boolean;
+  /** Feature 137 P2 angle-pack generation gate (default-off). */
+  videoSafeStartFramesEnabled?: boolean;
   className?: string;
 }
 
@@ -1870,6 +1873,7 @@ export function VerticalDramaCharacterStockPanel({
   readOnly = false,
   voiceChainEnabled = false,
   characterProfilesEnabled = false,
+  videoSafeStartFramesEnabled = false,
   className,
 }: VerticalDramaCharacterStockPanelProps) {
   const lang = useVerticalDramaLang();
@@ -2534,6 +2538,20 @@ export function VerticalDramaCharacterStockPanel({
     },
     onError,
   });
+  const linkAngleAssetMutation =
+    trpc.verticalDramaCharacters.linkCharacterAngleAsset.useMutation({
+      onSuccess: () => {
+        invalidate();
+        toast.success(
+          t(
+            lang,
+            "เพิ่มภาพมุมอ้างอิงเข้าคิวตรวจแล้ว",
+            "Angle reference added to the review queue.",
+          ),
+        );
+      },
+      onError,
+    });
 
   const deleteAssetMutation = trpc.verticalDramaCharacters.deleteAsset.useMutation({
     onSuccess: () => {
@@ -2856,15 +2874,31 @@ export function VerticalDramaCharacterStockPanel({
               url: resultUrl,
               mimeType: guessImageMimeTypeFromUrl(resultUrl),
             });
-            await linkMutation.mutateAsync({
-              seriesId,
-              characterId,
-              mediaAssetId: resolved.mediaAssetId,
-              assetType: "character_reference",
-              role,
-              source: "generated",
-              ...(metadata ? { metadata } : {}),
-            });
+            if (
+              role === "angle_front" ||
+              role === "angle_left_three_quarter" ||
+              role === "angle_right_three_quarter"
+            ) {
+              await linkAngleAssetMutation.mutateAsync({
+                seriesId,
+                characterId,
+                mediaAssetId: resolved.mediaAssetId,
+                role,
+                ...(metadata && typeof metadata.anglePackId === "string"
+                  ? { anglePackId: metadata.anglePackId }
+                  : {}),
+              });
+            } else {
+              await linkMutation.mutateAsync({
+                seriesId,
+                characterId,
+                mediaAssetId: resolved.mediaAssetId,
+                assetType: "character_reference",
+                role,
+                source: "generated",
+                ...(metadata ? { metadata } : {}),
+              });
+            }
           } catch (err) {
             toast.error(
               t(
@@ -2888,6 +2922,12 @@ export function VerticalDramaCharacterStockPanel({
           const roleLabelTh =
             role === "primary_portrait"
               ? "ภาพตัวละคร"
+              : role === "angle_front"
+                ? "มุมหน้า"
+                : role === "angle_left_three_quarter"
+                  ? "มุมซ้ายสามส่วน"
+                  : role === "angle_right_three_quarter"
+                    ? "มุมขวาสามส่วน"
               : role === "character_sheet_turnaround"
                 ? "ชีทตัวละคร"
                 : role === "character_sheet_full"
@@ -2897,6 +2937,12 @@ export function VerticalDramaCharacterStockPanel({
           const roleLabelEn =
             role === "primary_portrait"
               ? "Character image"
+              : role === "angle_front"
+                ? "Front angle"
+                : role === "angle_left_three_quarter"
+                  ? "Left three-quarter angle"
+                  : role === "angle_right_three_quarter"
+                    ? "Right three-quarter angle"
               : role === "character_sheet_turnaround"
                 ? "Character sheet"
                 : role === "character_sheet_full"
@@ -3067,6 +3113,39 @@ export function VerticalDramaCharacterStockPanel({
           res.assetRole,
           res.creditsUsed?.promptGeneration ?? 0,
           res.assetMetadata
+        );
+      },
+      onError: onImageModelError,
+    });
+
+  const generateAnglePackMutation =
+    trpc.verticalDramaCharacters.generateCharacterAnglePack.useMutation({
+      onSuccess: (
+        res: {
+          anglePackId: string;
+          tasks: Array<{
+            role: string;
+            taskId: string;
+            creditsUsed?: { promptGeneration?: number };
+          }>;
+        },
+        variables: { characterId: string },
+      ) => {
+        for (const task of res.tasks) {
+          void pollCharacterImageTask(
+            task.taskId,
+            variables.characterId,
+            task.role,
+            task.creditsUsed?.promptGeneration ?? 0,
+            { anglePackId: res.anglePackId, angleRole: task.role },
+          );
+        }
+        toast.success(
+          t(
+            lang,
+            "ส่งงานสร้างชุดมุมอ้างอิง 3 มุมแล้ว — ตรวจและอนุมัติแต่ละภาพได้ในคลังตัวละคร",
+            "Three identity-angle renders submitted — review and approve each image in the character stock.",
+          ),
         );
       },
       onError: onImageModelError,
@@ -3708,8 +3787,12 @@ export function VerticalDramaCharacterStockPanel({
     Array.from(pollingCharacters).some(
       key =>
         key.startsWith(`${characterId}::`) &&
-        key !== pollingCharacterKey(characterId, "primary_portrait")
+      key !== pollingCharacterKey(characterId, "primary_portrait")
     );
+
+  const isAnglePackGeneratingFor = (characterId: string) =>
+    generateAnglePackMutation.isPending &&
+    generateAnglePackMutation.variables?.characterId === characterId;
 
   /**
    * Per-card drop-to-assign (roster card grid, spec fix-round-3 Section A):
@@ -6498,6 +6581,67 @@ export function VerticalDramaCharacterStockPanel({
                           )}
                           {t(lang, "สร้างชีทตัวละคร", "Generate character sheet")}
                         </Button>
+                        {videoSafeStartFramesEnabled && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-2"
+                            disabled={
+                              mutating ||
+                              isAnglePackGeneratingFor(selectedCharacter.characterId) ||
+                              isSheetGeneratingFor(selectedCharacter.characterId) ||
+                              !selectedImageModelId
+                            }
+                            title={t(
+                              lang,
+                              "สร้างภาพอ้างอิงหน้า/ซ้ายสามส่วน/ขวาสามส่วน แล้วอนุมัติแยกแต่ละช่อง",
+                              "Generate front, left 3/4, and right 3/4 identity references for separate approval.",
+                            )}
+                            onClick={() => {
+                              if (!requireModelSelected()) return;
+                              if (!requireMcpConnectionOrToast()) return;
+                              if (!requireHermesConnectionOrToast()) return;
+                              generateAnglePackMutation.mutate({
+                                seriesId,
+                                characterId: selectedCharacter.characterId,
+                                selectedImageModelId,
+                                ...(selectedEditImageModelId
+                                  ? { selectedEditImageModelId }
+                                  : {}),
+                                ...(imageModelUsesMcp && mcpConnectionId
+                                  ? { mcpConnectionId }
+                                  : {}),
+                                ...(imageModelUsesMcp &&
+                                mcpConnectionId &&
+                                mcpSharedGroupId != null
+                                  ? { sharedGroupId: mcpSharedGroupId }
+                                  : {}),
+                                ...(imageModelUsesHermes && hermesConnectionId
+                                  ? { hermesConnectionId }
+                                  : {}),
+                                ...(referenceOverrideByCharacter[
+                                  selectedCharacter.characterId
+                                ]
+                                  ? {
+                                      referenceAssetLinkId:
+                                        referenceOverrideByCharacter[
+                                          selectedCharacter.characterId
+                                        ],
+                                    }
+                                  : {}),
+                              });
+                            }}
+                            data-testid="vd-generate-character-angle-pack"
+                          >
+                            {isAnglePackGeneratingFor(selectedCharacter.characterId) ? (
+                              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <ScanFace aria-hidden="true" className="h-3.5 w-3.5" />
+                            )}
+                            {t(lang, "สร้างชุดมุม 3 มุม", "Generate 3-angle pack")}
+                          </Button>
+                        )}
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <span>{t(lang, "ภาษา:", "Language:")}</span>
                           <button

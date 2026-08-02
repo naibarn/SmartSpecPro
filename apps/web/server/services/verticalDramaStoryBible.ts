@@ -1703,6 +1703,13 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   const parsed = extractJson(responseContent);
   const validation = args.schema.safeParse(parsed);
   if (!validation.success) {
+    console.error("[runVisionAwareJsonAttempt] Schema validation failed:", {
+      model: args.model,
+      responseContentLength: responseContent.length,
+      responseContentSnippet: responseContent.slice(0, 1000),
+      parsedType: typeof parsed,
+      validationError: validation.error,
+    });
     throw new VdSchemaValidationError(
       "Vision-aware response failed schema validation",
       validation.error,
@@ -1732,16 +1739,46 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       schema: args.schema,
     });
   } catch (firstError) {
-    if (!(firstError instanceof VdSchemaValidationError)) throw firstError;
+    console.warn(`[executeVisionAwareJsonCallWithRetry] First attempt failed with model ${args.model}:`, firstError instanceof Error ? firstError.message : firstError);
     const retryText = `${args.userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
-    return runVisionAwareJsonAttempt<T>({
-      model: args.model,
-      systemPrompt: args.systemPrompt,
-      content: buildVisionAwareContent(retryText, args.hasVision, args.images),
-      userId: args.userId,
-      maxTokens: args.retryMaxTokens,
-      schema: args.schema,
-    });
+    try {
+      return await runVisionAwareJsonAttempt<T>({
+        model: args.model,
+        systemPrompt: args.systemPrompt,
+        content: buildVisionAwareContent(retryText, args.hasVision, args.images),
+        userId: args.userId,
+        maxTokens: args.retryMaxTokens,
+        schema: args.schema,
+      });
+    } catch (retryError) {
+      console.warn(`[executeVisionAwareJsonCallWithRetry] Retry attempt failed with model ${args.model}. Attempting fallback model gpt-4o-mini...`, retryError instanceof Error ? retryError.message : retryError);
+      const fallbackModel = "gpt-4o-mini";
+      if (args.model !== fallbackModel) {
+        try {
+          return await runVisionAwareJsonAttempt<T>({
+            model: fallbackModel,
+            systemPrompt: args.systemPrompt,
+            content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
+            userId: args.userId,
+            maxTokens: args.retryMaxTokens,
+            schema: args.schema,
+          });
+        } catch (fallbackErr) {
+          console.warn(`[executeVisionAwareJsonCallWithRetry] Fallback model ${fallbackModel} failed. Attempting text-only mode...`, fallbackErr instanceof Error ? fallbackErr.message : fallbackErr);
+        }
+      }
+      if (args.hasVision && args.images.length > 0) {
+        return await runVisionAwareJsonAttempt<T>({
+          model: args.model !== fallbackModel ? fallbackModel : args.model,
+          systemPrompt: args.systemPrompt,
+          content: args.userPromptText,
+          userId: args.userId,
+          maxTokens: args.retryMaxTokens,
+          schema: args.schema,
+        });
+      }
+      throw retryError;
+    }
   }
 }
 

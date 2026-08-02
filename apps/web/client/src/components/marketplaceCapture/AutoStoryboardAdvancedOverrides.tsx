@@ -23,6 +23,9 @@ interface AutoStoryboardAdvancedOverridesProps {
   imageModelOptions?: ReadonlyArray<{ value: string; label: string }>;
   videoModelOptions?: ReadonlyArray<{ value: string; label: string }>;
   visionQaModelOptions?: ReadonlyArray<{ value: string; label: string }>;
+  /** Recommended-first LLM list for authoring the story / running the
+   *  storyboard skill. First entry is the recommended default. */
+  storyPlanningModelOptions?: ReadonlyArray<{ value: string; label: string }>;
   /**
    * Feature 136 (section 11, §6.6). Flag-gated: `frameStrategyOptions`
    * conditionally appends the sequential option; the array is otherwise
@@ -31,6 +34,37 @@ interface AutoStoryboardAdvancedOverridesProps {
    * unchanged.
    */
   sequentialStrategyEnabled?: boolean;
+  /**
+   * Marketplace two-character-conversation feature (planning/marketplace-
+   * two-character-conversation/plan.md §3.6/§3.8), Wave 3 frontend — the
+   * STAGED pipeline's per-shot requested video duration. Deliberately a
+   * dedicated prop pair (not folded into `value`/`onChange`'s
+   * `HyperframesAutoPlanOverrideInput`, whose schema is `.strict()` in
+   * `shared/hyperframes/autoPlan.ts` and unrelated to the STAGED run's own
+   * `referenceAnchors.shotDurationSeconds` field) so this stays fully
+   * additive without touching that shared contract. `undefined` (both here
+   * and at the caller) omits the field entirely — the run-start mutation's
+   * `referenceAnchors` gets no `shotDurationSeconds` key at all, matching
+   * today's implicit 10s default byte-for-byte.
+   */
+  shotDurationSeconds?: number;
+  onShotDurationSecondsChange?: (value: number | undefined) => void;
+  /**
+   * Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+   * flexible-shots-and-creation-casting/plan.md, W1/W3) — the STAGED
+   * pipeline's flexible shot count (7-30, or "auto" to let the story-arc LLM
+   * planner pick a count based on content + the requested per-shot
+   * duration). Deliberately a dedicated prop pair, same precedent as
+   * `shotDurationSeconds` above: NOT folded into `value`/`onChange`'s
+   * `HyperframesAutoPlanOverrideInput` (whose own `.strict()` `shotCount`
+   * field is legacy-only, hard-capped 7-9, and feeds a completely different
+   * machinery). `undefined` (both here and at the caller) omits the field
+   * entirely — the run-start mutation's `referenceAnchors` gets no
+   * `shotCount` key at all, matching today's implicit 9-shot default
+   * byte-for-byte.
+   */
+  stagedShotCount?: "auto" | number;
+  onStagedShotCountChange?: (value: "auto" | number | undefined) => void;
   videoSegmentPreview?: {
     loading?: boolean;
     error?: string | null;
@@ -188,8 +222,13 @@ export function AutoStoryboardAdvancedOverrides({
   imageModelOptions: providedImageModelOptions,
   videoModelOptions: providedVideoModelOptions,
   visionQaModelOptions: providedVisionQaModelOptions,
+  storyPlanningModelOptions,
   videoSegmentPreview,
   sequentialStrategyEnabled = false,
+  shotDurationSeconds,
+  onShotDurationSecondsChange,
+  stagedShotCount,
+  onStagedShotCountChange,
 }: AutoStoryboardAdvancedOverridesProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const fields = plan?.overrideDiff.fields ?? [];
@@ -206,7 +245,14 @@ export function AutoStoryboardAdvancedOverrides({
     frames: thai ? "เฟรม" : "Frames",
     imageModel: thai ? "โมเดลภาพ" : "Image model",
     videoModel: thai ? "โมเดลวิดีโอ" : "Video model",
+    shotDurationSeconds: thai
+      ? "ความยาวต่อช็อต (วินาที)"
+      : "Per-shot duration (seconds)",
+    stagedShotCount: thai
+      ? "จำนวนช็อต (Staged)"
+      : "Shot count (Staged)",
     visionQaModel: copy.visionQaModel,
+    storyPlanningModel: copy.storyPlanningModel,
     videoStructure: thai ? "โครงสร้างวิดีโอ" : "Video structure",
     manualGroupSize: thai ? "กำหนดจำนวนช็อตต่อคลิป" : "Manual group size",
     speechLanguage: thai ? "ภาษาพูด" : "Spoken language",
@@ -229,6 +275,7 @@ export function AutoStoryboardAdvancedOverrides({
     imageModel: labels.imageModel,
     videoModel: labels.videoModel,
     visionQaModel: labels.visionQaModel,
+    storyPlanningModel: labels.storyPlanningModel,
     videoStructureMode: labels.videoStructure,
     manualVideoGroupSize: labels.manualGroupSize,
     speechLanguage: labels.speechLanguage,
@@ -291,6 +338,28 @@ export function AutoStoryboardAdvancedOverrides({
     { value: "8", label: thai ? "8 ช็อต" : "8 shots" },
     { value: "9", label: thai ? "9 ช็อต" : "9 shots" },
   ] as const;
+  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+  // flexible-shots-and-creation-casting/plan.md, W1/W3) — STAGED-only,
+  // separate from `shotCountOptions` above (legacy, hard-capped 7-9).
+  const stagedShotCountOptions = [
+    {
+      value: "auto",
+      label: thai
+        ? "อัตโนมัติ (ระบบเลือกตามเนื้อหา — แนะนำ)"
+        : "Automatic (AI decides based on content — recommended)",
+    },
+    { value: "7", label: thai ? "7 ช็อต" : "7 shots" },
+    { value: "8", label: thai ? "8 ช็อต" : "8 shots" },
+    { value: "9", label: thai ? "9 ช็อต (ค่าเริ่มต้น)" : "9 shots (default)" },
+    { value: "10", label: thai ? "10 ช็อต" : "10 shots" },
+    { value: "12", label: thai ? "12 ช็อต" : "12 shots" },
+    { value: "15", label: thai ? "15 ช็อต" : "15 shots" },
+    { value: "18", label: thai ? "18 ช็อต" : "18 shots" },
+    { value: "21", label: thai ? "21 ช็อต" : "21 shots" },
+    { value: "24", label: thai ? "24 ช็อต" : "24 shots" },
+    { value: "27", label: thai ? "27 ช็อต" : "27 shots" },
+    { value: "30", label: thai ? "30 ช็อต" : "30 shots" },
+  ] as const;
   const frameStrategyOptions = [
     {
       value: "storyboard_3x3_split",
@@ -341,6 +410,20 @@ export function AutoStoryboardAdvancedOverrides({
     value,
     label: thai ? `${value} ช็อตต่อคลิป` : `${value} shots per clip`,
   }));
+  // Marketplace two-character-conversation feature (§3.6) — small fixed set
+  // of common per-shot durations for the STAGED pipeline's requested video
+  // length. Server-side, the pipeline still snaps this to whatever the
+  // selected video model actually supports at dispatch time (e.g. Veo 3.1
+  // only supports 8s), so this is a "requested" duration, not a guarantee.
+  const shotDurationSecondsOptions = [
+    { value: "5", label: thai ? "5 วินาที" : "5 seconds" },
+    { value: "8", label: thai ? "8 วินาที" : "8 seconds" },
+    { value: "10", label: thai ? "10 วินาที" : "10 seconds" },
+    { value: "15", label: thai ? "15 วินาที" : "15 seconds" },
+    { value: "20", label: thai ? "20 วินาที" : "20 seconds" },
+    { value: "24", label: thai ? "24 วินาที" : "24 seconds" },
+    { value: "30", label: thai ? "30 วินาที" : "30 seconds" },
+  ] as const;
   const speechLanguageOptions = [
     { value: "en", label: thai ? "อังกฤษ (ค่าเริ่มต้น)" : "English (default)" },
     { value: "th", label: thai ? "ไทย" : "Thai" },
@@ -437,6 +520,15 @@ export function AutoStoryboardAdvancedOverrides({
     "h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
   const labelClass = "text-xs font-semibold text-slate-500 dark:text-slate-400";
   const selectedVideoStructure = selectedValueFor("videoStructureMode");
+  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+  // flexible-shots-and-creation-casting/plan.md, W3) — the legacy 7-9 "Shots"
+  // select only feeds the non-staged hyperframes template machinery and
+  // means nothing once the STAGED sequential pipeline is selected (that
+  // pipeline reads `stagedShotCount`/`referenceAnchors.shotCount` instead,
+  // 7-30 + "auto"). Rather than show two shot-count controls at once, swap
+  // between them based on the currently selected `frameStrategy`.
+  const isSequentialFrameStrategySelected =
+    selectedValueFor("frameStrategy") === "sequential_shot_storyboard";
   const previewSegments = videoSegmentPreview?.segments ?? [];
   const previewTotalShots = previewSegments.reduce(
     (sum, segment) => sum + segment.shotIds.length,
@@ -538,21 +630,62 @@ export function AutoStoryboardAdvancedOverrides({
                 ))}
               </select>
             </label>
-            <label className="space-y-1">
-              <span className={labelClass}>{labels.shots}</span>
-              <select
-                aria-label={labels.shots}
-                className={fieldClass}
-                value={selectedValueFor("shotCount")}
-                onChange={event => update("shotCount", event.target.value)}
-              >
-                {shotCountOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!isSequentialFrameStrategySelected ? (
+              <label className="space-y-1">
+                <span className={labelClass}>{labels.shots}</span>
+                <select
+                  aria-label={labels.shots}
+                  className={fieldClass}
+                  value={selectedValueFor("shotCount")}
+                  onChange={event => update("shotCount", event.target.value)}
+                >
+                  {shotCountOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {isSequentialFrameStrategySelected && onStagedShotCountChange ? (
+              <label className="space-y-1">
+                <span className={labelClass}>{labels.stagedShotCount}</span>
+                <select
+                  aria-label={labels.stagedShotCount}
+                  aria-describedby="staged-shot-count-caption"
+                  className={fieldClass}
+                  value={
+                    stagedShotCount !== undefined
+                      ? String(stagedShotCount)
+                      : "9"
+                  }
+                  onChange={event => {
+                    const raw = event.target.value;
+                    onStagedShotCountChange(
+                      raw === "9"
+                        ? undefined
+                        : raw === "auto"
+                          ? "auto"
+                          : Number(raw)
+                    );
+                  }}
+                >
+                  {stagedShotCountOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p
+                  id="staged-shot-count-caption"
+                  className="text-xs leading-5 text-slate-500 dark:text-slate-400"
+                >
+                  {thai
+                    ? "โหมดอัตโนมัติให้ AI เลือกจำนวนช็อตตามรายละเอียดสินค้า โดยอิงความยาวต่อช็อตที่เลือก"
+                    : "Automatic mode lets the AI choose the shot count based on the product's content, using the selected per-shot duration as the pacing guide."}
+                </p>
+              </label>
+            ) : null}
             <label className="space-y-1">
               <span className={labelClass}>{labels.frames}</span>
               <select
@@ -598,6 +731,42 @@ export function AutoStoryboardAdvancedOverrides({
                 ))}
               </select>
             </label>
+            {onShotDurationSecondsChange ? (
+              <label className="space-y-1">
+                <span className={labelClass}>{labels.shotDurationSeconds}</span>
+                <select
+                  aria-label={labels.shotDurationSeconds}
+                  aria-describedby="shot-duration-caveat"
+                  className={fieldClass}
+                  value={
+                    shotDurationSeconds != null ? String(shotDurationSeconds) : ""
+                  }
+                  onChange={event => {
+                    const raw = event.target.value;
+                    onShotDurationSecondsChange(
+                      raw === "" ? undefined : Number(raw)
+                    );
+                  }}
+                >
+                  <option value="">
+                    {thai ? "อัตโนมัติ (10 วินาที)" : "Automatic (10 seconds)"}
+                  </option>
+                  {shotDurationSecondsOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p
+                  id="shot-duration-caveat"
+                  className="text-xs leading-5 text-slate-500 dark:text-slate-400"
+                >
+                  {thai
+                    ? "ระบบจะปรับให้เข้ากับโมเดลวิดีโอที่เลือกโดยอัตโนมัติหากจำเป็น"
+                    : "The system will automatically adjust this to fit the selected video model if needed."}
+                </p>
+              </label>
+            ) : null}
             <label className="space-y-1">
               <span className={labelClass}>{labels.visionQaModel}</span>
               <select
@@ -616,6 +785,30 @@ export function AutoStoryboardAdvancedOverrides({
                 ))}
               </select>
             </label>
+            {/* Story / skill LLM — "อัตโนมัติ" resolves from the admin-curated
+                RECOMMENDED set, not the cheapest eligible model
+                (`planning/marketplace-four-character-cast/plan.md`). */}
+            {storyPlanningModelOptions && storyPlanningModelOptions.length > 0 ? (
+              <label className="space-y-1">
+                <span className={labelClass}>{labels.storyPlanningModel}</span>
+                <select
+                  aria-label={labels.storyPlanningModel}
+                  className={fieldClass}
+                  value={selectedValueFor("storyPlanningModel")}
+                  onChange={event =>
+                    update("storyPlanningModel", event.target.value)
+                  }
+                  data-testid="auto-overrides-story-planning-model"
+                >
+                  <option value="">{copy.storyPlanningModelAuto}</option>
+                  {storyPlanningModelOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="space-y-1">
               <span className={labelClass}>{labels.videoStructure}</span>
               <select

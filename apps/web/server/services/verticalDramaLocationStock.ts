@@ -721,6 +721,8 @@ export class VerticalDramaLocationStockService {
       url: string;
       approved: boolean;
       isPrimary: boolean;
+      role: string | null;
+      metadata: Record<string, unknown> | null;
       updatedAt: Date;
     }>
   > {
@@ -731,6 +733,8 @@ export class VerticalDramaLocationStockService {
       mediaAssetId: number;
       url: string | null;
       approved: boolean;
+      role: string | null;
+      metadata: Record<string, unknown> | null;
       updatedAt: Date;
     };
     const candidateRows: CandidateRow[] = await db
@@ -739,6 +743,8 @@ export class VerticalDramaLocationStockService {
         mediaAssetId: mediaAssets.id,
         url: mediaAssets.originalUrl,
         approved: verticalDramaLocationAssets.approved,
+        role: verticalDramaLocationAssets.role,
+        metadata: verticalDramaLocationAssets.metadata,
         updatedAt: verticalDramaLocationAssets.updatedAt,
       })
       .from(verticalDramaLocationAssets)
@@ -749,7 +755,6 @@ export class VerticalDramaLocationStockService {
           eq(verticalDramaLocationAssets.userId, owner.userId),
           eq(verticalDramaLocationAssets.seriesId, owner.seriesId),
           eq(verticalDramaLocationAssets.locationId, locationId),
-          eq(verticalDramaLocationAssets.role, "establishing_plate"),
         ),
       )
       .orderBy(desc(verticalDramaLocationAssets.updatedAt));
@@ -765,11 +770,18 @@ export class VerticalDramaLocationStockService {
     // locally against the rows already fetched above instead of a second
     // round-trip.
     let primaryId: number | undefined;
-    if (marker != null && rows.some((r) => r.id === marker && r.approved)) {
+    const roleScopedPrimaryCandidates = rows.filter(r => r.role === "establishing_plate");
+    // Older rows and lightweight consumers may not project the additive role
+    // field. Preserve the pre-coverage primary selection in that case; once a
+    // role is present, only establishing plates can become the default.
+    const primaryCandidates = roleScopedPrimaryCandidates.length > 0
+      ? roleScopedPrimaryCandidates
+      : rows;
+    if (marker != null && primaryCandidates.some((r) => r.id === marker && r.approved)) {
       primaryId = marker;
     } else {
       let bestUpdatedAt = -Infinity;
-      for (const r of rows) {
+      for (const r of primaryCandidates) {
         if (!r.approved) continue;
         const t = new Date(r.updatedAt).getTime();
         if (t > bestUpdatedAt) {
@@ -785,6 +797,8 @@ export class VerticalDramaLocationStockService {
       url: r.url,
       approved: r.approved,
       isPrimary: r.id === primaryId,
+      role: r.role,
+      metadata: r.metadata,
       updatedAt: r.updatedAt,
     }));
   }

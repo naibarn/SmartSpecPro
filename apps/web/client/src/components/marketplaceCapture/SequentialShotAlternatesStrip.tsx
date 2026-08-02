@@ -101,10 +101,13 @@ export function SequentialShotAlternatesStrip({
       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
         {copy.spareImagesTitle}
       </p>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+        {copy.spareImageSelectionHint} · {copy.spareImageUseThisLabel}
+      </p>
       <div
         className={cn(
           "flex gap-2",
-          layout === "wrap" ? "flex-wrap" : "overflow-x-auto pb-1",
+          layout === "wrap" ? "flex-wrap" : "overflow-x-auto pb-1"
         )}
       >
         {alternates.map(alternate => {
@@ -144,7 +147,7 @@ export function SequentialShotAlternatesStrip({
                 THUMBNAIL_SIZE_CLASSES[size],
                 alternate.isSelected
                   ? "border-emerald-500 ring-2 ring-emerald-100"
-                  : "border-slate-200 hover:border-sky-500 disabled:opacity-60",
+                  : "border-slate-200 hover:border-sky-500 disabled:opacity-90"
               )}
             >
               <img
@@ -159,10 +162,15 @@ export function SequentialShotAlternatesStrip({
               {alternate.isSelected ? (
                 <Badge
                   variant="default"
-                  className="absolute right-0 top-0 rounded-none rounded-bl-md border-0 bg-emerald-600 px-1 py-0 text-[9px] text-white"
+                  className="absolute right-0 top-0 rounded-none rounded-bl-md border-0 bg-emerald-700 px-1 py-0 text-[9px] text-white"
                 >
                   {copy.spareImageCurrentBadge}
                 </Badge>
+              ) : null}
+              {!alternate.isSelected ? (
+                <span className="absolute inset-x-0 top-0 bg-sky-700/90 px-1 py-0.5 text-center text-[9px] font-semibold text-white">
+                  {copy.spareImageUseThisLabel}
+                </span>
               ) : null}
             </button>
           );

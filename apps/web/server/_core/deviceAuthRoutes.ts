@@ -15,6 +15,7 @@ import { revokeJti } from "./revocation";
 import { getUserByOpenId, getDb } from "../db";
 import { getCreditBalance, giveSignupBonus } from "../services/creditService";
 import { getRedisClient } from "../services/redis";
+import { normalizeAuthEmail } from "../services/emailNormalization";
 
 // Device code store — Redis-backed with in-memory fallback
 interface DeviceCodeEntry {
@@ -273,14 +274,16 @@ export function registerDeviceAuthRoutes(app: Express) {
   app.post("/auth/desktop/login", loginLimiter, async (req: Request, res: Response) => {
     const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (typeof email !== "string" || !email || typeof password !== "string" || !password) {
       res.status(400).json({ error: { message: "Email and password are required" } });
       return;
     }
 
+    const normalizedEmail = normalizeAuthEmail(email);
+
     try {
       // Account lockout check
-      if (await checkAccountLockout(email.toLowerCase())) {
+      if (await checkAccountLockout(normalizedEmail)) {
         res.status(429).json({ error: { message: "Account temporarily locked due to too many failed attempts. Try again in 15 minutes." } });
         return;
       }
@@ -289,9 +292,9 @@ export function registerDeviceAuthRoutes(app: Express) {
       const bcrypt = await import("bcrypt");
       const argon2 = await import("argon2");
 
-      const user = await getUserByEmail(email);
+      const user = await getUserByEmail(normalizedEmail);
       if (!user) {
-        await trackFailedLogin(email.toLowerCase());
+        await trackFailedLogin(normalizedEmail);
         res.status(401).json({ error: { message: "Invalid email or password" } });
         return;
       }
@@ -317,7 +320,7 @@ export function registerDeviceAuthRoutes(app: Express) {
         valid = await bcrypt.compare(password, user.password);
       }
       if (!valid) {
-        await trackFailedLogin(email.toLowerCase());
+        await trackFailedLogin(normalizedEmail);
         res.status(401).json({ error: { message: "Invalid email or password" } });
         return;
       }
@@ -342,7 +345,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       }
 
       // Clear failed login counter on success
-      await clearFailedLogins(email.toLowerCase());
+      await clearFailedLogins(normalizedEmail);
 
       // Issue JWT tokens (same as device flow)
       const scopes = ["llm:chat", "mcp:read"];

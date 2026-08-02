@@ -36,16 +36,23 @@ function makeNetworkError(): TypeError {
 
 describe("requestResilience", () => {
   describe("shouldRetryQuery", () => {
-    it("is configured for 4 retry attempts", () => {
-      expect(RETRYABLE_QUERY_MAX_ATTEMPTS).toBe(4);
+    it("is configured for 14 retry attempts", () => {
+      expect(RETRYABLE_QUERY_MAX_ATTEMPTS).toBe(14);
     });
 
-    it("retries a network TypeError while failureCount < 4, and stops at 4", () => {
+    it("retries a network TypeError while failureCount < 14, and stops at 14", () => {
       const error = makeNetworkError();
       for (let failureCount = 0; failureCount < RETRYABLE_QUERY_MAX_ATTEMPTS; failureCount++) {
         expect(shouldRetryQuery(failureCount, error)).toBe(true);
       }
       expect(shouldRetryQuery(RETRYABLE_QUERY_MAX_ATTEMPTS, error)).toBe(false);
+    });
+
+    it("refuses to retry once failureCount reaches the 14-attempt cap", () => {
+      // Locks in the literal policy value (not just the constant) so this
+      // test fails loudly if RETRYABLE_QUERY_MAX_ATTEMPTS is ever changed
+      // without updating this expectation deliberately.
+      expect(shouldRetryQuery(14, makeNetworkError())).toBe(false);
     });
 
     it("does not retry a 4xx TRPCClientError", () => {
@@ -70,11 +77,11 @@ describe("requestResilience", () => {
   });
 
   describe("shouldRetryMutation", () => {
-    it("is configured for 5 retry attempts", () => {
-      expect(RETRYABLE_MUTATION_MAX_ATTEMPTS).toBe(5);
+    it("is configured for 10 retry attempts", () => {
+      expect(RETRYABLE_MUTATION_MAX_ATTEMPTS).toBe(10);
     });
 
-    it("retries a network TypeError while failureCount < 5, and stops at 5", () => {
+    it("retries a network TypeError while failureCount < 10, and stops at 10", () => {
       const error = makeNetworkError();
       for (
         let failureCount = 0;
@@ -84,6 +91,10 @@ describe("requestResilience", () => {
         expect(shouldRetryMutation(failureCount, error)).toBe(true);
       }
       expect(shouldRetryMutation(RETRYABLE_MUTATION_MAX_ATTEMPTS, error)).toBe(false);
+    });
+
+    it("refuses to retry once failureCount reaches the 10-attempt cap", () => {
+      expect(shouldRetryMutation(10, makeNetworkError())).toBe(false);
     });
 
     it("does not retry a 5xx TRPCClientError (the write may have already landed)", () => {
@@ -107,6 +118,29 @@ describe("requestResilience", () => {
       expect(retryDelayMs(2)).toBe(4000);
       expect(retryDelayMs(3)).toBe(5000);
       expect(retryDelayMs(10)).toBe(5000);
+    });
+  });
+
+  describe("cumulative retry backoff (restart-window absorption)", () => {
+    function cumulativeDelayMs(maxAttempts: number): number {
+      let total = 0;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        total += retryDelayMs(attempt);
+      }
+      return total;
+    }
+
+    it("accumulates >= 60s of backoff across the new query schedule, comfortably absorbing a ~25s restart", () => {
+      const cumulativeMs = cumulativeDelayMs(RETRYABLE_QUERY_MAX_ATTEMPTS);
+      // 1000 + 2000 + 4000 + 5000*11 (attempts 3..13) = 62000ms.
+      expect(cumulativeMs).toBe(62_000);
+      expect(cumulativeMs).toBeGreaterThanOrEqual(60_000);
+    });
+
+    it("computes cumulative backoff for the mutation schedule (network-failure-only retries)", () => {
+      const cumulativeMs = cumulativeDelayMs(RETRYABLE_MUTATION_MAX_ATTEMPTS);
+      // 1000 + 2000 + 4000 + 5000*7 (attempts 3..9) = 42000ms.
+      expect(cumulativeMs).toBe(42_000);
     });
   });
 });

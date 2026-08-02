@@ -96,6 +96,21 @@ import {
 } from "@/lib/marketplaceSequentialStoryboardUi";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { getMarketplaceHyperframesUiCopy } from "@/components/marketplaceCapture/hyperframesUiCopy";
+// Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+// flexible-shots-and-creation-casting/plan.md, W3) — reuses the SAME Drama
+// Series character picker dialog the review panel already ships, so the
+// creation page can seed `characterCast` before the first run/plan exists.
+import { MarketplaceDramaCharacterPickerDialog } from "@/components/marketplaceCapture/MarketplaceDramaCharacterPickerDialog";
+import type { ReferenceManifestItem } from "@/components/marketplaceCapture/StagedCheckpointReviewPanel";
+import { buildStagedShotLookOptions } from "@/components/marketplaceCapture/StagedShotCharacterRow";
+import type {
+  MarketplaceCharacterCastEntryInput,
+  MarketplaceCharacterCastRole,
+} from "@shared/hyperframes/characterCast";
+import {
+  MARKETPLACE_CHARACTER_CAST_MAX,
+  MARKETPLACE_CHARACTER_DESCRIPTOR_MAX,
+} from "@shared/hyperframes/characterCast";
 import type {
   HyperframesAutoPlanOverrideInput,
   HyperframesAutoStoryboardReviewPlan,
@@ -404,7 +419,11 @@ const AUTO_REVIEW_CHARACTER_MODES: Array<
   {
     id: "uploaded_reference",
     label: "อัปโหลด reference",
-    description: "ล็อกหน้าหรือตัวแบบจากภาพ/character sheet",
+    // Names the Drama Series path explicitly: the cast picker lives inside
+    // this mode only, so a user hunting for it has no other signpost
+    // (`planning/marketplace-four-character-cast/plan.md`).
+    description:
+      "ล็อกหน้าหรือตัวแบบจากภาพ/character sheet หรือเลือกนักแสดงจาก Drama Series",
   },
   {
     id: "product_only",
@@ -2415,7 +2434,7 @@ function ProductMediaCard({
             playsInline
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-slate-400">
+          <div className="flex h-full items-center justify-center text-slate-600">
             {mediaIcon(asset.mediaType)}
           </div>
         )}
@@ -2425,7 +2444,7 @@ function ProductMediaCard({
         {onDelete ? (
           <button
             type="button"
-            className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-100 bg-white/95 text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-100 bg-white/95 text-red-700 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-90"
             title="Delete from Media Library"
             aria-label={`Delete ${asset.title} from Media Library`}
             disabled={isDeleting}
@@ -2604,6 +2623,36 @@ export default function MarketplaceCaptureProductDetail() {
     useState<HyperframesAutoPlanOverrideInput>(() =>
       loadStoredAutoStoryboardOverrides()
     );
+  // Marketplace two-character-conversation feature (planning/marketplace-
+  // two-character-conversation/plan.md §3.6/§3.8) — STAGED pipeline's
+  // requested per-shot video duration. `undefined` (the default) omits
+  // `referenceAnchors.shotDurationSeconds` entirely, matching today's
+  // implicit 10s default byte-for-byte; kept as its own piece of state
+  // rather than folded into `autoStoryboardOverrides` (see the doc comment
+  // on `AutoStoryboardAdvancedOverrides`'s `shotDurationSeconds` prop for why).
+  const [autoReviewShotDurationSeconds, setAutoReviewShotDurationSeconds] =
+    useState<number | undefined>(undefined);
+  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+  // flexible-shots-and-creation-casting/plan.md, W1/W3) — STAGED pipeline's
+  // flexible shot count. Same "own state, merged into
+  // buildAutoReviewReferenceAnchors() as shotCount, omitted when untouched"
+  // precedent as `autoReviewShotDurationSeconds` above. `undefined` keeps
+  // today's implicit 9-shot default byte-for-byte.
+  const [autoReviewStagedShotCount, setAutoReviewStagedShotCount] = useState<
+    "auto" | number | undefined
+  >(undefined);
+  const [autoReviewLanguagePlan, setAutoReviewLanguagePlan] = useState({
+    summaryLanguage: "th" as "th" | "en",
+    dialogueLanguage: "th" as "th" | "en",
+    promptLanguage: "en" as "th" | "en",
+  });
+  useEffect(() => {
+    setAutoReviewLanguagePlan({
+      summaryLanguage: "th",
+      dialogueLanguage: "th",
+      promptLanguage: "en",
+    });
+  }, [productId]);
   // Display-only estimate for the Auto flow's promoted quality-mode control
   // (2026-07-23 user feedback). Reads the SAME `autoStoryboardOverrides`
   // state AutoStoryboardAdvancedOverrides's qualityMode dropdown reads, so
@@ -2654,6 +2703,21 @@ export default function MarketplaceCaptureProductDetail() {
     useState<UploadedReferenceAnchor | null>(null);
   const [autoReviewCharacterMode, setAutoReviewCharacterMode] =
     useState<AutoReviewCharacterMode>("hands_only");
+  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+  // flexible-shots-and-creation-casting/plan.md, W3) — creation-time drama
+  // cast, picked via the SAME `MarketplaceDramaCharacterPickerDialog` the
+  // review panel already uses (`feedback_reuse_existing_ui_patterns`). Max 2
+  // entries. Empty array = today's byte-identical behavior — `characterCast`
+  // is omitted entirely from both the legacy and hyperframes run-start
+  // mutations (see `autoReviewCharacterCastPayload` below).
+  const [autoReviewCharacterCast, setAutoReviewCharacterCast] = useState<
+    ReferenceManifestItem[]
+  >([]);
+  /** Hidden file input for uploading character images straight into the cast
+   *  roster (shares the 4-person cap with Drama Series picks). */
+  const autoReviewCastUploadInputRef = useRef<HTMLInputElement>(null);
+  const [autoReviewDramaPickerOpen, setAutoReviewDramaPickerOpen] =
+    useState(false);
   const [autoReviewCharacterGender, setAutoReviewCharacterGender] =
     useState("female");
   const [autoReviewCharacterAge, setAutoReviewCharacterAge] =
@@ -2916,6 +2980,31 @@ export default function MarketplaceCaptureProductDetail() {
     trpc.llmProviders.availableModels.useQuery(undefined, {
       staleTime: 5 * 60 * 1000,
     });
+  /**
+   * LLM choices for authoring the story plan / running the storyboard skill.
+   *
+   * `listQualityPlanningModels` is already the RECOMMENDED-first, quality-gated
+   * set the staged panel's redraft picker uses — reusing it keeps the creation
+   * choice and the redraft choice drawn from one list. Leaving the select on
+   * "แนะนำ (อัตโนมัติ)" sends nothing and lets the server resolve from the same
+   * curated set (`planning/marketplace-four-character-cast/plan.md`).
+   */
+  const autoReviewStoryPlanningModelsQuery =
+    trpc.marketplaceCapture.listQualityPlanningModels.useQuery(undefined, {
+      staleTime: 5 * 60 * 1000,
+    });
+  const autoReviewStoryPlanningModelOptions = useMemo(() => {
+    const rows = (autoReviewStoryPlanningModelsQuery.data ?? []) as Array<{
+      modelId?: string;
+      label?: string;
+    }>;
+    return rows
+      .map(row => ({
+        value: String(row?.modelId ?? "").trim(),
+        label: String(row?.label ?? row?.modelId ?? "").trim(),
+      }))
+      .filter(option => option.value);
+  }, [autoReviewStoryPlanningModelsQuery.data]);
   const autoReviewVisionQaModelOptions = useMemo(() => {
     // Quality QA picker: restrict to the admin-curated recommended set
     // (model_provider_map.isRecommended) so users can only pick vetted
@@ -4630,16 +4719,50 @@ export default function MarketplaceCaptureProductDetail() {
     autoReviewPropDetails,
     autoReviewSecondaryCharacterDetails,
   ]);
+  // Drama Series cast members satisfy the character-reference requirement —
+  // each carries its own portrait, seeded into the run's manifest server-side
+  // (field incident 2026-07-30: start was blocked with 2 VD characters
+  // already picked).
+  /**
+   * A Drama Series cast belongs to ONE presenter mode: `uploaded_reference`.
+   *
+   * A picked character IS a reference identity — a real portrait, name, age and
+   * personality. Every other mode contradicts that:
+   *
+   * - `hands_only` ("ไม่สร้างหน้าคน") and `product_only` ("ไม่ใช้คน") instruct the
+   *   model NOT to render a person at all, yet the request would still ship
+   *   2-4 character portraits and a two-person conversation cast.
+   * - `described_character` builds its identity from the เพศ/วัย/ลักษณะ/ลุค
+   *   dropdowns and sends a `describedSummary` for a GENERATED person. Layering
+   *   real portraits on top gives the model two competing identities — pick
+   *   "ผู้หญิง 20-29" while casting คิริน (male) and the directive and the
+   *   reference image flatly disagree.
+   *
+   * So the mode wins and the cast is offered in `uploaded_reference` only. The
+   * picked cast is KEPT in state, so switching modes never destroys casting
+   * work (`planning/marketplace-four-character-cast/plan.md`).
+   */
+  const autoReviewModeUsesCast =
+    autoReviewCharacterMode === "uploaded_reference";
+
+  const hasCharacterReference = Boolean(
+    characterAnchorUrl ||
+      // Only counts when the mode actually renders people — a cast picked and
+      // then left behind under Hands-only/Product-only must not satisfy the
+      // character-reference requirement
+      // (`planning/marketplace-four-character-cast/plan.md`).
+      (autoReviewModeUsesCast && autoReviewCharacterCast.length > 0)
+  );
   const canStartAutoReview = Boolean(
     resolvedProductAnchorImageUrl &&
-    (autoReviewCharacterMode !== "uploaded_reference" || characterAnchorUrl)
+    (autoReviewCharacterMode !== "uploaded_reference" || hasCharacterReference)
   );
   const missingAutoReviewAnchors = useMemo(() => {
     const missing: string[] = [];
     if (!resolvedProductAnchorImageUrl) missing.push("Product image anchor");
     if (
       autoReviewCharacterMode === "uploaded_reference" &&
-      !characterAnchorUrl
+      !hasCharacterReference
     ) {
       missing.push("Character/person reference");
     }
@@ -4647,7 +4770,7 @@ export default function MarketplaceCaptureProductDetail() {
   }, [
     autoReviewCharacterMode,
     resolvedProductAnchorImageUrl,
-    characterAnchorUrl,
+    hasCharacterReference,
   ]);
 
   useEffect(() => {
@@ -4813,6 +4936,59 @@ export default function MarketplaceCaptureProductDetail() {
     [handleUploadAnchorImage]
   );
 
+  /**
+   * Upload one or more images straight into the CAST list
+   * (`planning/marketplace-four-character-cast/plan.md`).
+   *
+   * The single "Reference / character sheet" box could only ever hold ONE
+   * image — a second upload replaced the first — so an uploaded-reference run
+   * could never have more than one person, while a Drama Series run could have
+   * four. Uploads now land in the same roster as drama picks and share the same
+   * ceiling, so both routes feed the story planner identically.
+   *
+   * Reuses `uploadAnchorFile` (type/size validation, hashing, upload) and just
+   * swaps its "set the single anchor" callback for an append.
+   */
+  const handleUploadCharacterCastImages = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []);
+      // Reset immediately so re-picking the SAME file still fires onChange.
+      event.target.value = "";
+      for (const file of files) {
+        await uploadAnchorFile(
+          file,
+          anchor => {
+            setAutoReviewCharacterCast(current => {
+              if (current.length >= MARKETPLACE_CHARACTER_CAST_MAX) {
+                return current;
+              }
+              const url = compactText(anchor?.url);
+              if (!url) return current;
+              // Never add the same image twice (double-drop, or the file that
+              // is already the single character sheet).
+              if (current.some(item => item.url === url)) return current;
+              return [
+                ...current,
+                {
+                  url,
+                  role: "character",
+                  label: anchor?.fileName || `ตัวละครที่ ${current.length + 1}`,
+                  active: true,
+                  characterName:
+                    anchor?.fileName?.replace(/\.[^/.]+$/, "") ||
+                    `ตัวละครที่ ${current.length + 1}`,
+                } as ReferenceManifestItem,
+              ];
+            });
+          },
+          "character",
+          "ภาพตัวละคร"
+        );
+      }
+    },
+    [uploadAnchorFile]
+  );
+
   const handleUploadEnvironmentAnchor = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       void handleUploadAnchorImage(
@@ -4856,6 +5032,119 @@ export default function MarketplaceCaptureProductDetail() {
     },
     [selectedProductImageId]
   );
+
+  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+  // flexible-shots-and-creation-casting/plan.md, W3) — maps the picker's
+  // `ReferenceManifestItem[]` (host/guest already assigned by the dialog's
+  // own `handleConfirm`) onto `MarketplaceCharacterCastEntryInput[]`, the
+  // exact shape both run-start mutations accept. `[]` (no cast picked) is
+  // the byte-identical "omit the field" case at both call sites below.
+  const autoReviewCharacterCastPayload = useMemo(
+    (): MarketplaceCharacterCastEntryInput[] =>
+      !autoReviewModeUsesCast
+        ? []
+        : autoReviewCharacterCast
+        .slice(0, MARKETPLACE_CHARACTER_CAST_MAX)
+        .map((item, index) => ({
+        characterName:
+          item.characterName || item.label || `Character ${index + 1}`,
+        ...(item.characterRole ? { characterRole: item.characterRole } : {}),
+        ...(item.vdCharacterId ? { vdCharacterId: item.vdCharacterId } : {}),
+        // Look identity — without these the per-shot look switcher has no
+        // family to switch within
+        // (`planning/marketplace-four-character-cast/plan.md` §4).
+        ...(item.vdBaseCharacterId
+          ? { vdBaseCharacterId: item.vdBaseCharacterId }
+          : {}),
+        ...(item.variantLabel ? { variantLabel: item.variantLabel } : {}),
+        ...(typeof item.depictsMinor === "boolean"
+          ? { depictsMinor: item.depictsMinor }
+          : {}),
+        ...(item.vdSeriesId ? { vdSeriesId: item.vdSeriesId } : {}),
+        ...(item.portraitAssetId
+          ? { portraitAssetId: item.portraitAssetId }
+          : {}),
+        ...(item.url ? { url: item.url } : {}),
+        ...(item.ageRange ? { ageRange: item.ageRange } : {}),
+        // Who the character is — the story planner's `descriptor`.
+        ...(item.descriptor ? { descriptor: item.descriptor } : {}),
+      })),
+    [autoReviewCharacterCast, autoReviewModeUsesCast]
+  );
+  const addAutoReviewDramaCharacters = useCallback(
+    (items: ReferenceManifestItem[]) => {
+      if (items.length === 0) return;
+      setAutoReviewCharacterCast(current => {
+        const remaining = Math.max(
+          0,
+          MARKETPLACE_CHARACTER_CAST_MAX - current.length
+        );
+        return [...current, ...items.slice(0, remaining)];
+      });
+    },
+    []
+  );
+  /** Patch one creation-time cast member in place — role, look, or minor
+   *  grounding. Position is preserved so positional `castId`s stay stable. */
+  const updateAutoReviewCastMember = useCallback(
+    (index: number, patch: Partial<ReferenceManifestItem>) => {
+      setAutoReviewCharacterCast(current =>
+        current.map((item, itemIndex) =>
+          itemIndex === index ? { ...item, ...patch } : item
+        )
+      );
+    },
+    []
+  );
+  /** Look families for the creation-page look selector — the same
+   *  `listDramaCharactersForPicker` data the picker dialog uses. */
+  const autoReviewCastSeriesId = autoReviewCharacterCast.find(
+    item => item.vdSeriesId
+  )?.vdSeriesId;
+  const autoReviewCastLookQuery =
+    trpc.marketplaceCapture.listDramaCharactersForPicker.useQuery(
+      { seriesId: autoReviewCastSeriesId ?? "" },
+      { enabled: Boolean(autoReviewCastSeriesId), staleTime: 60_000 }
+    );
+  const autoReviewCastLookSourcesByCharacterId = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        characterId: string;
+        parentCharacterId?: string | null;
+        name?: string;
+        variantLabel?: string | null;
+        portraitUrl?: string | null;
+      }
+    > = {};
+    const characters =
+      (autoReviewCastLookQuery.data as { characters?: Array<any> } | undefined)
+        ?.characters ?? [];
+    for (const character of characters) {
+      map[String(character.characterId)] = {
+        characterId: String(character.characterId),
+        parentCharacterId: null,
+        name: character.name,
+        portraitUrl: character.portraitUrl,
+      };
+      for (const look of character.looks ?? []) {
+        map[String(look.characterId)] = {
+          characterId: String(look.characterId),
+          parentCharacterId: String(character.characterId),
+          name: character.name,
+          variantLabel: look.variantLabel,
+          portraitUrl: look.portraitUrl,
+        };
+      }
+    }
+    return map;
+  }, [autoReviewCastLookQuery.data]);
+
+  const removeAutoReviewCastMember = useCallback((index: number) => {
+    setAutoReviewCharacterCast(current =>
+      current.filter((_, itemIndex) => itemIndex !== index)
+    );
+  }, []);
 
   const buildAutoReviewReferenceAnchors = useCallback(
     (creationIntent: AutoReviewStartAction) => {
@@ -5054,6 +5343,26 @@ export default function MarketplaceCaptureProductDetail() {
         ...(autoReviewProductAngleLabels.length > 0
           ? { productAngleImages: autoReviewProductAngleLabels }
           : {}),
+        // Marketplace two-character-conversation feature (planning/
+        // marketplace-two-character-conversation/plan.md §3.6) — omitted
+        // entirely when the user never touches the duration selector, so
+        // the STAGED pipeline's implicit 10s default stays byte-identical.
+        ...(autoReviewShotDurationSeconds
+          ? { shotDurationSeconds: autoReviewShotDurationSeconds }
+          : {}),
+        // Marketplace flexible-shots-and-creation-casting (planning/
+        // marketplace-flexible-shots-and-creation-casting/plan.md, W1/W3) —
+        // STAGED-only. Omitted entirely when the user never touches the
+        // shot-count selector, matching today's implicit 9-shot default.
+        ...(autoReviewStagedShotCount !== undefined
+          ? { shotCount: autoReviewStagedShotCount }
+          : {}),
+        // Story/skill LLM. Omitted when left on "แนะนำ (อัตโนมัติ)", which is
+        // what lets the server resolve from the curated recommended set.
+        ...(typeof autoStoryboardOverrides.storyPlanningModel === "string" &&
+        autoStoryboardOverrides.storyPlanningModel.trim()
+          ? { storyPlanningModel: autoStoryboardOverrides.storyPlanningModel.trim() }
+          : {}),
       };
     },
     [
@@ -5061,8 +5370,11 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewCharacterMode,
       autoReviewCreativePresets,
       autoReviewProductAngleLabels,
+      autoReviewShotDurationSeconds,
+      autoReviewStagedShotCount,
       autoReviewStorytellingStructure,
       autoReviewTone,
+      autoStoryboardOverrides,
       characterAnchor,
       characterAnchorUrl,
       environmentAnchor,
@@ -5072,6 +5384,19 @@ export default function MarketplaceCaptureProductDetail() {
       resolvedProductAnchorImageUrl,
     ]
   );
+
+  // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
+  // flexible-shots-and-creation-casting/plan.md, W2/W3) — the hyperframes
+  // run-start twin threads `characterCast` through `overrides.characterCast`
+  // (added to `HyperframesAutoPlanOverrideInputSchema` in W2), never through
+  // `referenceAnchors` — that field only exists on the legacy top-level
+  // mutation input. Deliberately NOT folded into `autoStoryboardOverrides`
+  // state itself so "Use Auto plan" (`setAutoStoryboardOverrides({})`) never
+  // silently drops a cast the user explicitly picked.
+  const autoStoryboardOverridesWithCast =
+    autoReviewCharacterCastPayload.length > 0
+      ? { ...autoStoryboardOverrides, characterCast: autoReviewCharacterCastPayload }
+      : autoStoryboardOverrides;
 
   async function startAutoStoryboardReview() {
     if (!productId || !autoStoryboardPlan) return;
@@ -5087,10 +5412,16 @@ export default function MarketplaceCaptureProductDetail() {
     }
     if (
       autoReviewCharacterMode === "uploaded_reference" &&
-      !characterAnchorUrl
+      !characterAnchorUrl &&
+      // Drama Series cast members ARE the character reference — each carries
+      // its own portrait URL/assetId that the server seeds into the run's
+      // manifest. Blocking here when cast is picked (field incident
+      // 2026-07-30: "Missing character/person reference" toast with 2 VD
+      // characters already selected) forced a redundant manual upload.
+      autoReviewCharacterCastPayload.length === 0
     ) {
       toast.error(
-        "Missing character/person reference. กรุณาอัปโหลดรูปตัวแบบ หรือเลือก Hands-only/Product-only ก่อนเริ่ม"
+        "Missing character/person reference. กรุณาอัปโหลดรูปตัวแบบ เลือกตัวละครจาก Drama Series หรือเลือก Hands-only/Product-only ก่อนเริ่ม"
       );
       return;
     }
@@ -5147,7 +5478,7 @@ export default function MarketplaceCaptureProductDetail() {
         productId,
         expectedPlanHash: autoStoryboardPlan.planHash,
         idempotencyKey: `hf-auto-resume:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
-        overrides: autoStoryboardOverrides,
+        overrides: autoStoryboardOverridesWithCast,
         ...(isAutoReviewJobSetupRoute
           ? { workflowMode: "job_workbench" as const }
           : {}),
@@ -5187,7 +5518,10 @@ export default function MarketplaceCaptureProductDetail() {
       productId,
       expectedPlanHash: autoStoryboardPlan.planHash,
       idempotencyKey: `hf-auto-start:${autoStoryboardPlan.planHash}:${startAttemptKey}`,
-      overrides: autoStoryboardOverrides,
+      overrides: autoStoryboardOverridesWithCast,
+      summaryLanguage: autoReviewLanguagePlan.summaryLanguage,
+      dialogueLanguage: autoReviewLanguagePlan.dialogueLanguage,
+      promptLanguage: autoReviewLanguagePlan.promptLanguage,
       ...(isAutoReviewJobSetupRoute
         ? { workflowMode: "job_workbench" as const }
         : {}),
@@ -5225,10 +5559,10 @@ export default function MarketplaceCaptureProductDetail() {
       }
       if (
         autoReviewCharacterMode === "uploaded_reference" &&
-        !characterAnchorUrl
+        !hasCharacterReference
       ) {
         toast.error(
-          "Missing character/person anchor URL. กรุณาอัปโหลดรูปตัวแบบ/คนที่ใช้เป็น Anchor หรือเลือกโหมด Hands-only/Product-only ก่อนเริ่ม"
+          "Missing character/person anchor URL. กรุณาอัปโหลดรูปตัวแบบ เลือกตัวละครจาก Drama Series หรือเลือกโหมด Hands-only/Product-only ก่อนเริ่ม"
         );
         return;
       }
@@ -5280,6 +5614,9 @@ export default function MarketplaceCaptureProductDetail() {
         overlayTextMode: autoReviewOverlayTextMode,
         imageModel: autoReviewImageModel,
         visionQaModel: trimmedVisionQaModel || undefined,
+        summaryLanguage: autoReviewLanguagePlan.summaryLanguage,
+        dialogueLanguage: autoReviewLanguagePlan.dialogueLanguage,
+        promptLanguage: autoReviewLanguagePlan.promptLanguage,
         // Feature: Standard Order credit-cap selector. "" (no selection)
         // omits the key entirely — byte-identical to today's payload for
         // every caller that never touches the new selector; the server's
@@ -5294,13 +5631,23 @@ export default function MarketplaceCaptureProductDetail() {
           autoReviewCharacterPresenceMode !== "auto"
             ? autoReviewCharacterPresenceMode
             : undefined,
+        // Marketplace flexible-shots-and-creation-casting (planning/
+        // marketplace-flexible-shots-and-creation-casting/plan.md, W2/W3) —
+        // top-level field, same convention as `characterPresenceMode`/
+        // `motionDirection` above. Omitted when no cast was picked.
+        characterCast:
+          autoReviewCharacterCastPayload.length > 0
+            ? autoReviewCharacterCastPayload
+            : undefined,
       });
     },
     [
       activeAutoReviewRun,
       autoReviewAudioStrategy,
+      autoReviewCharacterCastPayload,
       autoReviewFrameStrategy,
       autoReviewImageModel,
+      autoReviewLanguagePlan,
       autoReviewMotionDirection,
       autoReviewCharacterPresenceMode,
       autoReviewQualityMode,
@@ -5608,6 +5955,243 @@ export default function MarketplaceCaptureProductDetail() {
         ))}
       </div>
 
+      {/* Hands-only / Product-only explicitly instruct the model NOT to render
+          a person, so offering a cast there is a contradiction. The already
+          picked cast is KEPT in state (not cleared) so switching back restores
+          it — losing the user's casting work on a mis-click would be worse
+          than hiding the panel
+          (`planning/marketplace-four-character-cast/plan.md`). */}
+      {tenantFeatureFlags.verticalDramaSeries && !autoReviewModeUsesCast ? (
+        <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-4 text-slate-600">
+          🎬 นักแสดงจาก Drama Series ใช้ได้เฉพาะโหมด "อัปโหลด reference" เท่านั้น —
+          เพราะตัวละครที่เลือกคือ identity จากภาพจริง ส่วนโหมดนี้กำหนดตัวละครจากตัวเลือก
+          หรือไม่ใช้คนเลย
+          {autoReviewCharacterCast.length > 0
+            ? ` (ตัวละคร ${autoReviewCharacterCast.length} คนที่เลือกไว้ยังถูกเก็บไว้ สลับไปโหมด "อัปโหลด reference" เมื่อไรก็ใช้ได้ทันที)`
+            : ""}
+        </p>
+      ) : null}
+      {tenantFeatureFlags.verticalDramaSeries && autoReviewModeUsesCast ? (
+        <div className="mt-4 space-y-3 rounded-lg border border-violet-200 bg-violet-50/40 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-violet-900">
+              🎬 นักแสดงจาก Drama Series (ไม่บังคับ)
+            </p>
+            {autoReviewCharacterCast.length > 0 ? (
+              <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-violet-800 shadow-2xs">
+                {/* Leads only — supporting characters add people to the frame
+                    without making it a conversation, matching the server's
+                    `resolveStagedConversationMode`. */}
+                {autoReviewCharacterCast.filter(
+                  item => item.characterRole !== "support"
+                ).length >= 2
+                  ? "👥 โหมดสนทนา 2 คน"
+                  : "🎤 พูดคนเดียว"}
+                {autoReviewCharacterCast.filter(
+                  item => item.characterRole === "support"
+                ).length > 0
+                  ? ` + ตัวประกอบ ${autoReviewCharacterCast.filter(item => item.characterRole === "support").length}`
+                  : ""}
+              </span>
+            ) : null}
+          </div>
+          {autoReviewCharacterCast.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {autoReviewCharacterCast.map((item, index) => (
+                <div
+                  key={`${item.vdCharacterId ?? item.url}-${index}`}
+                  className="relative rounded-lg border border-violet-200 bg-white p-2 text-center shadow-2xs"
+                >
+                  <img
+                    src={item.url}
+                    alt={item.characterName || `Character ${index + 1}`}
+                    className="mx-auto h-12 w-12 rounded-full object-cover"
+                  />
+                  <p className="mt-1 truncate text-[11px] font-semibold text-slate-800">
+                    {item.characterName}
+                  </p>
+                  {/* Casting is completed HERE, before the story is authored
+                      — role, look and minor grounding are all editable so a
+                      change never costs a second story generation
+                      (`planning/marketplace-four-character-cast/plan.md`). */}
+                  <select
+                    value={item.characterRole ?? ""}
+                    onChange={event =>
+                      updateAutoReviewCastMember(index, {
+                        characterRole:
+                          event.target.value === ""
+                            ? undefined
+                            : (event.target.value as MarketplaceCharacterCastRole),
+                      })
+                    }
+                    className="mt-1 w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-slate-700"
+                    aria-label={`บทบาทของ ${item.characterName || `ตัวละครที่ ${index + 1}`}`}
+                  >
+                    <option value="">บทบาท…</option>
+                    <option value="host">เปิดเรื่อง/ถาม</option>
+                    <option value="guest">ตอบ/รีวิว</option>
+                    <option value="support">ตัวประกอบ</option>
+                  </select>
+                  {(() => {
+                    const options = buildStagedShotLookOptions({
+                      member: {
+                        castId: `cast-${index + 1}`,
+                        name: item.characterName || "",
+                        url: item.url,
+                        vdCharacterId: item.vdCharacterId,
+                      },
+                      lookSourcesByCharacterId:
+                        autoReviewCastLookSourcesByCharacterId,
+                    });
+                    // See the staged panel's matching branch: rendering
+                    // nothing for a look-less VD character reads as a broken
+                    // feature, so say it explicitly.
+                    if (options.length === 0) {
+                      if (!item.vdCharacterId) return null;
+                      return (
+                        <span
+                          className="mt-1 block truncate rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-[10px] text-slate-500"
+                          title="ตัวละครนี้ยังไม่มีลุคอื่นในซีรีย์ — สร้างลุคได้ที่หน้า Drama Series > ตัวละคร > เพิ่มลุค"
+                          data-testid={`creation-cast-look-empty-${index + 1}`}
+                        >
+                          👕 ยังไม่มีลุคอื่น
+                        </span>
+                      );
+                    }
+                    return (
+                      <select
+                        value={item.vdCharacterId ?? ""}
+                        onChange={event => {
+                          const chosen = options.find(
+                            option => option.characterId === event.target.value
+                          );
+                          if (!chosen?.portraitUrl) return;
+                          updateAutoReviewCastMember(index, {
+                            url: chosen.portraitUrl,
+                            vdCharacterId: chosen.characterId,
+                            variantLabel: chosen.isBase ? undefined : chosen.label,
+                            // Cleared because it points at the PREVIOUS look's
+                            // asset and wins over `url` at generation time.
+                            portraitAssetId: undefined,
+                          });
+                        }}
+                        className="mt-1 w-full rounded border border-violet-200 bg-violet-50 px-1 py-0.5 text-[10px] text-violet-800"
+                        aria-label={`ลุคของ ${item.characterName || `ตัวละครที่ ${index + 1}`}`}
+                        data-testid={`creation-cast-look-${index + 1}`}
+                      >
+                        {options.map(option => (
+                          <option key={option.key} value={option.characterId}>
+                            {option.isBase ? "👕 ลุคหลัก" : `👕 ${option.label}`}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+                  {/* Optional free-text identity. Left blank, the planner
+                      defaults from the ROLE (presenter / assistant / support)
+                      in the run's own language — see
+                      `resolveStagedCastDescriptor`. Typed in Thai or English,
+                      it is passed through verbatim and wins outright. */}
+                  <input
+                    type="text"
+                    value={item.descriptor ?? ""}
+                    onChange={event =>
+                      updateAutoReviewCastMember(index, {
+                        descriptor: event.target.value || undefined,
+                      })
+                    }
+                    maxLength={MARKETPLACE_CHARACTER_DESCRIPTOR_MAX}
+                    placeholder={
+                      item.characterRole === "guest"
+                        ? "เช่น ผู้ช่วยสาธิต / assistant"
+                        : item.characterRole === "support"
+                          ? "เช่น ลูกค้าที่เดินผ่าน / passer-by"
+                          : "เช่น ผู้บรรยายสินค้า / presenter"
+                    }
+                    className="mt-1 w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-slate-700 placeholder:text-slate-400"
+                    aria-label={`คำอธิบายตัวละคร ${item.characterName || `ที่ ${index + 1}`} (ไม่บังคับ)`}
+                    data-testid={`creation-cast-descriptor-${index + 1}`}
+                  />
+                  <label className="mt-1 flex items-center justify-center gap-1 text-[10px] text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={item.depictsMinor === true}
+                      onChange={event =>
+                        updateAutoReviewCastMember(index, {
+                          depictsMinor: event.target.checked ? true : false,
+                        })
+                      }
+                      aria-label={`${item.characterName || `ตัวละครที่ ${index + 1}`} เป็นเด็ก/เยาวชน`}
+                    />
+                    เป็นเด็ก/เยาวชน
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeAutoReviewCastMember(index)}
+                    className="absolute right-1 top-1 rounded-full bg-white/90 p-0.5 text-slate-500 hover:text-rose-600"
+                    aria-label={`ลบ ${item.characterName || `ตัวละครที่ ${index + 1}`}`}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {/* Upload straight into the roster — shares the 4-person ceiling with
+              Drama Series picks so both routes reach the story planner the
+              same way (`planning/marketplace-four-character-cast/plan.md`). */}
+          <input
+            ref={autoReviewCastUploadInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={event => void handleUploadCharacterCastImages(event)}
+          />
+          <button
+            type="button"
+            onClick={() => autoReviewCastUploadInputRef.current?.click()}
+            disabled={autoReviewCharacterCast.length >= MARKETPLACE_CHARACTER_CAST_MAX}
+            className="w-full rounded-lg border border-dashed border-violet-300 bg-white px-3 py-2 text-xs font-semibold text-violet-800 shadow-2xs transition hover:border-violet-400 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-60"
+            data-testid="auto-review-cast-upload"
+          >
+            ⬆️ อัปโหลดภาพตัวละคร (เลือกได้หลายรูป)
+          </button>
+          <button
+            type="button"
+            onClick={() => setAutoReviewDramaPickerOpen(true)}
+            disabled={autoReviewCharacterCast.length >= MARKETPLACE_CHARACTER_CAST_MAX}
+            className="w-full rounded-lg border border-violet-300 bg-white px-3 py-2 text-xs font-semibold text-violet-800 shadow-2xs transition hover:border-violet-400 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            🎬 เลือกจาก Drama Series
+          </button>
+          {/* Cast-first: the story LLM call happens the moment the run starts,
+              so any cast change after that costs a second generation. Say so
+              here, where it can still be acted on for free
+              (`planning/marketplace-four-character-cast/plan.md`). */}
+          <p className="text-[10px] leading-4 text-violet-700">
+            เลือกได้สูงสุด {MARKETPLACE_CHARACTER_CAST_MAX} คน — ผู้พูดหลัก 2 คน (host/guest)
+            ที่เหลือเป็น "ตัวประกอบ" ซึ่งจะปรากฏเฉพาะช็อตที่มีบทบาทช่วยเล่าเรื่อง
+          </p>
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] leading-4 text-amber-800">
+            ⚠️ เลือกตัวละคร ลุค และบทบาทให้ครบก่อนกดเริ่มงาน — ระบบจะเขียนเนื้อเรื่องทันทีที่เริ่ม
+            ถ้ามาแก้ตัวละครทีหลังจะต้องสั่ง "ร่างเนื้อเรื่องใหม่" และเสียเครดิตรอบสอง
+          </p>
+          <MarketplaceDramaCharacterPickerDialog
+            open={autoReviewDramaPickerOpen}
+            onOpenChange={setAutoReviewDramaPickerOpen}
+            maxSelectable={Math.max(
+              0,
+              MARKETPLACE_CHARACTER_CAST_MAX - autoReviewCharacterCast.length
+            )}
+            existingRoles={autoReviewCharacterCast
+              .map(item => item.characterRole)
+              .filter((role): role is MarketplaceCharacterCastRole => !!role)}
+            onConfirm={addAutoReviewDramaCharacters}
+          />
+        </div>
+      ) : null}
+
       {autoReviewCharacterMode === "described_character" ? (
         <div className="mt-4 grid gap-4">
           {renderCharacterChoiceGroup(
@@ -5891,7 +6475,7 @@ export default function MarketplaceCaptureProductDetail() {
               <Button
                 type="button"
                 size="sm"
-                className="bg-sky-600 text-white hover:bg-sky-700"
+                className="bg-sky-700 text-white hover:bg-sky-800"
                 aria-label="ทำงานต่อจากงานเดิม"
                 onClick={() => startAutoStoryboardReview()}
               >
@@ -5967,6 +6551,8 @@ export default function MarketplaceCaptureProductDetail() {
               showActiveRunStatus={!isAutoReviewJobSetupRoute}
               onResetToAuto={() => {
                 setAutoStoryboardOverrides({});
+                setAutoReviewShotDurationSeconds(undefined);
+                setAutoReviewStagedShotCount(undefined);
                 setShowAutoStoryboardAdvanced(false);
               }}
               qualityModeControl={
@@ -5989,6 +6575,44 @@ export default function MarketplaceCaptureProductDetail() {
               value={autoStoryboardOverrides}
               onChange={setAutoStoryboardOverrides}
             />
+            <section
+              className="space-y-3 rounded-xl border border-sky-200 bg-sky-50/70 p-4 shadow-sm dark:border-sky-900 dark:bg-sky-950/30"
+              aria-label="ภาษาสำหรับสร้าง Auto Storyboard"
+            >
+              <div>
+                <h3 className="text-sm font-semibold text-sky-950 dark:text-sky-100">
+                  ภาษาเนื้อหาแยกตามประเภท
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-sky-800 dark:text-sky-200">
+                  เลือกภาษาเรื่องย่อ บทพูด และ Prompt แยกกันได้ ระบบจะใช้ค่าชุดนี้เป็นค่าเริ่มต้นของ Job และยังเปลี่ยนใหม่รายช็อตใน Job Workbench ได้
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {([
+                  ["summaryLanguage", "ภาษาเรื่องย่อ"],
+                  ["dialogueLanguage", "ภาษาบทพูด"],
+                  ["promptLanguage", "ภาษา Prompt ภาพ/วิดีโอ"],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="space-y-1 text-xs font-medium text-sky-950 dark:text-sky-100">
+                    <span>{label}</span>
+                    <select
+                      value={autoReviewLanguagePlan[key]}
+                      onChange={event =>
+                        setAutoReviewLanguagePlan(current => ({
+                          ...current,
+                          [key]: event.target.value as "th" | "en",
+                        }))
+                      }
+                      className="min-h-10 w-full rounded-md border border-sky-200 bg-white px-3 text-sm text-slate-900 dark:border-sky-800 dark:bg-slate-950 dark:text-slate-100"
+                      data-testid={`auto-review-language-${key}`}
+                    >
+                      <option value="th">ไทย</option>
+                      <option value="en">English</option>
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </section>
             {/* Feature 136 (section 11) — SequentialEvidenceReviewPanel renders
               SequentialGuardianNotice internally per its own composition
               order (disclosure header -> guardian notice -> highlights ->
@@ -6014,6 +6638,8 @@ export default function MarketplaceCaptureProductDetail() {
               sequentialStrategyEnabled={sequentialStrategyEnabled}
               onResetToAuto={() => {
                 setAutoStoryboardOverrides({});
+                setAutoReviewShotDurationSeconds(undefined);
+                setAutoReviewStagedShotCount(undefined);
                 setShowAutoStoryboardAdvanced(false);
               }}
               imageModelOptions={autoReviewImageModelOptions.map(option => ({
@@ -6024,7 +6650,12 @@ export default function MarketplaceCaptureProductDetail() {
                 value: option.value,
                 label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
               }))}
+              shotDurationSeconds={autoReviewShotDurationSeconds}
+              onShotDurationSecondsChange={setAutoReviewShotDurationSeconds}
+              stagedShotCount={autoReviewStagedShotCount}
+              onStagedShotCountChange={setAutoReviewStagedShotCount}
               visionQaModelOptions={autoReviewVisionQaModelOptions}
+              storyPlanningModelOptions={autoReviewStoryPlanningModelOptions}
               videoSegmentPreview={{
                 loading: autoStoryboardVideoSegmentPreviewQuery.isFetching,
                 error:
@@ -6330,7 +6961,7 @@ export default function MarketplaceCaptureProductDetail() {
                   >
                     <Button
                       type="button"
-                      className="min-h-11 bg-violet-500 text-white hover:bg-violet-400"
+                      className="min-h-11 bg-violet-700 text-white hover:bg-violet-800"
                     >
                       <Sparkles className="mr-2 h-4 w-4" />
                       สร้าง Job Review ใหม่
@@ -6398,7 +7029,7 @@ export default function MarketplaceCaptureProductDetail() {
             <div className="grid gap-5 md:grid-cols-[260px_minmax(0,1fr)]">
               {heroProductImage ? (
                 <div className="relative overflow-hidden rounded-lg border border-emerald-200 bg-emerald-50">
-                  <div className="absolute left-3 top-3 z-10 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                  <div className="absolute left-3 top-3 z-10 rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white shadow-sm">
                     Hero / Default
                   </div>
                   <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
@@ -7192,7 +7823,7 @@ export default function MarketplaceCaptureProductDetail() {
                             aria-pressed={actionItem.active}
                             className={`min-h-[4.5rem] justify-start whitespace-normal text-left disabled:cursor-not-allowed ${
                               actionItem.active
-                                ? "bg-sky-600 text-white hover:bg-sky-700"
+                                ? "bg-sky-700 text-white hover:bg-sky-800 disabled:opacity-90"
                                 : "bg-white"
                             }`}
                           >
@@ -7205,7 +7836,7 @@ export default function MarketplaceCaptureProductDetail() {
                               <span className="block text-sm font-semibold leading-5">
                                 {actionItem.label}
                               </span>
-                              <span className="block text-xs leading-4 opacity-80">
+                              <span className="block text-xs leading-4 opacity-90">
                                 {activeAutoReviewRun
                                   ? "มีงานกำลังรัน"
                                   : actionItem.description}
@@ -7861,7 +8492,7 @@ export default function MarketplaceCaptureProductDetail() {
                             String(activeAutoReviewRun.currentStage)
                           )}
                         </span>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-slate-600">
                           ({activeAutoReviewRun.stageIndex}/
                           {activeAutoReviewRun.stageCount})
                         </span>
@@ -7877,7 +8508,7 @@ export default function MarketplaceCaptureProductDetail() {
                         </p>
                       ) : null}
                       {statusAutoReviewRun?.updatedAt ? (
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-600">
                           อัปเดตล่าสุด {statusAutoReviewRunUpdatedAtText} ·
                           ยังเช็กสถานะต่อเนื่อง
                         </p>
@@ -7983,7 +8614,7 @@ export default function MarketplaceCaptureProductDetail() {
                           </div>
                           <a
                             href={`/marketplace/auto-review/${encodeURIComponent(stagedAutoReviewRunId)}`}
-                            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-violet-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:w-auto"
+                            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:w-auto"
                           >
                             เปิด Job Workbench{" "}
                             <ExternalLink className="ml-2 h-4 w-4" />
@@ -8084,7 +8715,7 @@ export default function MarketplaceCaptureProductDetail() {
                                 {statusTimelineItems.length || 0} ขั้นตอน
                               </p>
                               {statusAutoReviewRun?.updatedAt ? (
-                                <p className="mt-1 text-[11px] text-slate-400">
+                                <p className="mt-1 text-[11px] text-slate-600">
                                   อัปเดตล่าสุด{" "}
                                   {statusAutoReviewRunUpdatedAtText}
                                 </p>
@@ -8354,16 +8985,16 @@ export default function MarketplaceCaptureProductDetail() {
                                       String(run.currentStage)
                                     )}
                                   </span>
-                                  <span className="text-xs text-slate-400">
+                                  <span className="text-xs text-slate-600">
                                     {run.stageIndex}/{run.stageCount}
                                   </span>
                                   {projectionProgress != null ? (
-                                    <span className="text-xs text-slate-400">
+                                    <span className="text-xs text-slate-600">
                                       {projectionProgress}%
                                     </span>
                                   ) : null}
                                   {isHistoricalAutoReviewRun ? (
-                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                                       ประวัติเก่า
                                     </span>
                                   ) : null}
@@ -8401,7 +9032,7 @@ export default function MarketplaceCaptureProductDetail() {
                                       }).map(id => (
                                         <span
                                           key={id}
-                                          className="max-w-[12rem] truncate rounded bg-slate-100 px-2 py-0.5"
+                                          className="max-w-[12rem] truncate rounded bg-slate-100 px-2 py-0.5 text-slate-600"
                                         >
                                           {id}
                                         </span>
@@ -8781,7 +9412,7 @@ export default function MarketplaceCaptureProductDetail() {
                                                   ) : null}
                                                   {typeof item?.progressPercent ===
                                                   "number" ? (
-                                                    <span className="text-xs text-slate-400">
+                                                    <span className="text-xs text-slate-600">
                                                       {Math.round(
                                                         item.progressPercent
                                                       )}
@@ -8797,7 +9428,7 @@ export default function MarketplaceCaptureProductDetail() {
                                                     {technicalIds.map(id => (
                                                       <span
                                                         key={id}
-                                                        className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500"
+                                                        className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600"
                                                       >
                                                         {id}
                                                       </span>
@@ -9215,7 +9846,7 @@ export default function MarketplaceCaptureProductDetail() {
                                                       <AutoReviewRefChip
                                                         key={ref}
                                                         value={ref}
-                                                        className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5"
+                                                        className="max-w-[11rem] truncate rounded bg-slate-100 px-2 py-0.5 text-slate-600"
                                                       />
                                                     ))}
                                                   {evidenceRefs.length > 3 ? (
@@ -9592,12 +10223,12 @@ export default function MarketplaceCaptureProductDetail() {
                             ) : null}
                           </figcaption>
                           {isSelected ? (
-                            <span className="mt-1 inline-block rounded bg-sky-600 px-2 py-0.5 text-xs text-white">
+                            <span className="mt-1 inline-block rounded bg-sky-700 px-2 py-0.5 text-xs text-white">
                               Selected Anchor
                             </span>
                           ) : null}
                           {isHero ? (
-                            <span className="ml-1 mt-1 inline-block rounded bg-emerald-600 px-2 py-0.5 text-xs text-white">
+                            <span className="ml-1 mt-1 inline-block rounded bg-emerald-700 px-2 py-0.5 text-xs text-white">
                               Hero / Default
                             </span>
                           ) : null}
@@ -9656,7 +10287,7 @@ export default function MarketplaceCaptureProductDetail() {
                         {image.removableId ? (
                           <button
                             type="button"
-                            className="mt-2 w-full rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                            className="mt-2 w-full rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-50 disabled:opacity-90"
                             onClick={() =>
                               setProductImageAsHero(image.removableId)
                             }
@@ -9963,7 +10594,7 @@ export default function MarketplaceCaptureProductDetail() {
                     aria-selected={mediaTab === tab}
                     onClick={() => setMediaTab(tab)}
                     disabled={panelTab === "product" && tab !== "image"}
-                    className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-90 ${
                       mediaTab === tab
                         ? "border-slate-900 bg-slate-900 text-white"
                         : "bg-white text-slate-600 hover:bg-slate-50"

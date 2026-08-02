@@ -123,6 +123,11 @@ import {
   resolveEffectiveSeriesVisualIdentity,
 } from "@shared/verticalDramaSeries/seriesLookLock";
 import {
+  VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+  VD_SERIES_LOOK_LOCK_CHANGED_EVENT,
+  recordSeriesLookLockAuditEvent,
+} from "../services/verticalDramaSeriesLookLockAudit";
+import {
   verticalDramaArcReplanProposalSchema,
   type VerticalDramaArcReplanProposal,
   type VerticalDramaEpisodeBreakdownItem,
@@ -4488,27 +4493,6 @@ export function extractEpisodeCompiledVideoSummary(
   return summary;
 }
 
-async function recordSeriesLookLockAuditEvent(params: {
-  userId: number;
-  seriesId: number;
-  mode: "inherit_source" | "genre" | "manual" | "none";
-  revision: number;
-  outcome: "updated" | "conflict";
-}): Promise<void> {
-  try {
-    await db.insert(apiAuditEvents).values({
-      traceId: randomUUID().replace(/-/g, "").slice(0, 32),
-      eventType: "vertical_drama_series_look_lock",
-      userId: params.userId,
-      endpoint: "verticalDramaSeries.setSeriesLookLock",
-      statusCode: params.outcome === "updated" ? 200 : 409,
-      metadata: params,
-    });
-  } catch (error) {
-    debugError("verticalDramaSeries.setSeriesLookLock", "Audit write failed", error);
-  }
-}
-
 /* -------------------------------------------------------------------------- */
 /* Router                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -4550,6 +4534,8 @@ export const verticalDramaSeriesRouter = router({
           return transition;
         });
         await recordSeriesLookLockAuditEvent({
+          eventType: VD_SERIES_LOOK_LOCK_CHANGED_EVENT,
+          tenantId,
           userId,
           seriesId,
           mode: input.mode,
@@ -4560,6 +4546,8 @@ export const verticalDramaSeriesRouter = router({
       } catch (error) {
         if (error instanceof SeriesLookLockTransitionError && error.reason === "conflict") {
           await recordSeriesLookLockAuditEvent({
+            eventType: VD_SERIES_LOOK_LOCK_CHANGED_EVENT,
+            tenantId,
             userId,
             seriesId,
             mode: input.mode,
@@ -5242,6 +5230,16 @@ export const verticalDramaSeriesRouter = router({
             error
           );
         }
+      }
+
+      if (lookLockAppliedAtCreate && input.lookLock?.mode !== "none") {
+        await recordSeriesLookLockAuditEvent({
+          eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+          tenantId,
+          userId,
+          seriesId: Number(finalRow.id),
+          path: "series.create",
+        });
       }
 
       return { series: { ...finalRow, id: String(finalRow.id) } };
@@ -8520,7 +8518,8 @@ export const verticalDramaSeriesRouter = router({
         filename: string;
         dialogueAudio?: RunAssemblyJobDialogueAudioInput;
         subtitles?: RunAssemblyJobSubtitlesInput;
-        watermarkImage?: RunAssemblyJobWatermarkImageInput;
+        /** Dual watermark (`planning/vd-dual-watermark/plan.md`): up to 2 entries. */
+        watermarkImages?: RunAssemblyJobWatermarkImageInput[];
       }> = [];
       const skipped: Array<{ episodeId: string; reason: string }> = [];
       let dialogueAudioSegmentsIncluded = 0;
@@ -8588,14 +8587,12 @@ export const verticalDramaSeriesRouter = router({
         // `buildAssSubtitleFile`'s own doc comment for why one `.ass` file
         // safely carries both).
         let combinedSubtitles = dialogueRunInputs.subtitles;
-        let episodeWatermarkImage:
-          | RunAssemblyJobWatermarkImageInput
-          | undefined;
+        let episodeWatermarkImages: RunAssemblyJobWatermarkImageInput[] = [];
         if (applyTextOverlays || applyWatermark) {
           const plan = applyTextOverlays
             ? parseTextOverlayPlan(row.textOverlayPlan)
             : null;
-          const { overlays, watermarkImage, overlaysIncluded } =
+          const { overlays, watermarkImages, overlaysIncluded } =
             await resolveVdEpisodeTextOverlayEngineInputs({
               owner: { tenantId, userId, seriesId },
               episodeNumber: row.episodeNumber,
@@ -8623,8 +8620,8 @@ export const verticalDramaSeriesRouter = router({
               overlays,
             };
           }
-          if (watermarkImage) {
-            episodeWatermarkImage = watermarkImage;
+          if (watermarkImages.length > 0) {
+            episodeWatermarkImages = watermarkImages;
             episodesWithWatermark += 1;
           }
         }
@@ -8639,7 +8636,8 @@ export const verticalDramaSeriesRouter = router({
           }),
           dialogueAudio: dialogueRunInputs.dialogueAudio,
           subtitles: combinedSubtitles,
-          watermarkImage: episodeWatermarkImage,
+          watermarkImages:
+            episodeWatermarkImages.length > 0 ? episodeWatermarkImages : undefined,
         });
       }
 
@@ -8672,7 +8670,7 @@ export const verticalDramaSeriesRouter = router({
             filename: spec.filename,
             ...(spec.dialogueAudio ? { dialogueAudio: spec.dialogueAudio } : {}),
             ...(spec.subtitles ? { subtitles: spec.subtitles } : {}),
-            ...(spec.watermarkImage ? { watermarkImage: spec.watermarkImage } : {}),
+            ...(spec.watermarkImages ? { watermarkImages: spec.watermarkImages } : {}),
           };
           const { job } = await queueVerticalDramaFfmpegAssemblyJob({
             tenantId,

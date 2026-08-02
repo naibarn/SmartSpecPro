@@ -1382,6 +1382,9 @@ export async function startAutoStoryboardReviewForApi(input: {
   idempotencyKey?: string;
   overrides?: Record<string, unknown>;
   workflowMode?: "standard" | "job_workbench";
+  summaryLanguage?: "th" | "en";
+  dialogueLanguage?: "th" | "en";
+  promptLanguage?: "th" | "en";
   transportMetadata?: Record<string, unknown> | null;
   referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
   runtime?: Record<string, unknown>;
@@ -1484,6 +1487,9 @@ export async function startAutoStoryboardReviewForApi(input: {
       videoStructureMode: plan.defaults.videoStructureMode,
       manualVideoGroupSize: plan.defaults.manualVideoGroupSize,
       speechLanguage: plan.defaults.speechLanguage,
+      summaryLanguage: input.summaryLanguage,
+      dialogueLanguage: input.dialogueLanguage,
+      promptLanguage: input.promptLanguage,
       creativeBrief: plan.defaults.creativeBrief,
       motionDirection: plan.defaults.motionDirection,
       characterPresenceMode: plan.defaults.characterPresenceMode,
@@ -1508,6 +1514,10 @@ export async function startAutoStoryboardReviewForApi(input: {
       // cinematic-prompt style, same additive pattern as the five fields
       // above (the `expectedPlanHash` guard already covers this field too).
       startFramePromptStyle: plan.defaults.startFramePromptStyle,
+      // Creation-time drama casting (planning/marketplace-flexible-shots-
+      // and-creation-casting/plan.md, W2) — forwarded exactly like every
+      // other `plan.defaults.*` override above.
+      characterCast: plan.defaults.characterCast,
       workflowMode: input.workflowMode,
     },
     input.auth,

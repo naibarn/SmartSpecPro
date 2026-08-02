@@ -2,7 +2,16 @@
  * System-wide client resilience policy for react-query + the tRPC fetch
  * transport.
  *
- * Fixed, user-approved policy — do not widen without explicit re-approval:
+ * Fixed, user-approved policy — do not widen without explicit re-approval.
+ * Re-approved 2026-07-28 (feedback ticket #150): the user explicitly asked
+ * that the client quietly wait out a smartspec-web service-restart window
+ * (~20-30s) instead of surfacing an error mid-restart. As a result,
+ * RETRYABLE_QUERY_MAX_ATTEMPTS and RETRYABLE_MUTATION_MAX_ATTEMPTS were
+ * widened (see below) so the query retry schedule alone accumulates
+ * >=60s of cumulative backoff delay (see retryDelayMs) — comfortably
+ * covering a ~25s restart plus per-attempt request time. This widening
+ * ONLY changes the attempt counts; the mutation double-charge invariant
+ * in point 2 below is unchanged.
  *
  *  1. QUERIES (reads, idempotent) retry any TRANSIENT error — i.e.
  *     `classifyError(error) === "system"` (network failure, restart-time
@@ -30,10 +39,10 @@
 import { classifyError, isNetworkFailure } from "@/lib/systemErrorMonitor";
 
 /** Max number of RETRY attempts (on top of the initial call) for queries. */
-export const RETRYABLE_QUERY_MAX_ATTEMPTS = 4;
+export const RETRYABLE_QUERY_MAX_ATTEMPTS = 14;
 
 /** Max number of RETRY attempts (on top of the initial call) for mutations. */
-export const RETRYABLE_MUTATION_MAX_ATTEMPTS = 5;
+export const RETRYABLE_MUTATION_MAX_ATTEMPTS = 10;
 
 /**
  * Ceiling for a single tRPC HTTP request before it is aborted client-side.

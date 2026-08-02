@@ -51,6 +51,7 @@ import {
   type SequentialStoryboardLoopEffects,
   type PersistedLoopState,
   type LoopRoundReport,
+  extractJsonStringFieldForTest,
 } from "../productReviewSequentialStoryboardSkillRunner";
 
 const mockSyncSingleSkillIfChanged = vi.mocked(syncSingleSkillIfChanged);
@@ -936,3 +937,62 @@ describe("T10 — degraded fallback (structural failure survives all bounded att
 // test file, marketplaceAutoReview.draftFailureClassifier.test.ts). This
 // test covered ONLY that now-deleted builder, so it was deleted with it —
 // nothing else in this file referenced it.
+
+/**
+ * Field incident 2026-07-29 (run mar_341efe636f0e6d11fc938a37dd4b19a1,
+ * shots 1 and 8): the single-shot-refresh flow's weak-model JSON failures
+ * ("Expected ',' or ']' after array element" / "Unterminated string")
+ * consistently landed inside the OPTIONAL `camera_beats` array while the two
+ * REQUIRED string fields (`start_frame_image_prompt`, `video_prompt`) were
+ * individually well-formed. `extractJsonStringField` salvages those two
+ * fields via a quote-aware regex when the full JSON.parse of the response
+ * fails, so a malformed camera_beats no longer discards a usable response.
+ */
+describe("extractJsonStringField (single-shot-refresh JSON salvage fallback)", () => {
+  it("extracts a simple string field from a well-formed JSON object", () => {
+    const text = '{"start_frame_image_prompt":"hello world","video_prompt":"a video"}';
+    expect(extractJsonStringFieldForTest(text, "start_frame_image_prompt")).toBe(
+      "hello world"
+    );
+    expect(extractJsonStringFieldForTest(text, "video_prompt")).toBe("a video");
+  });
+
+  it("correctly unescapes embedded quotes and backslashes in the field value", () => {
+    const text = '{"start_frame_image_prompt":"she said \\"hi\\" and left","video_prompt":"line1\\nline2"}';
+    expect(extractJsonStringFieldForTest(text, "start_frame_image_prompt")).toBe(
+      'she said "hi" and left'
+    );
+    expect(extractJsonStringFieldForTest(text, "video_prompt")).toBe("line1\nline2");
+  });
+
+  it("salvages both required fields when a trailing camera_beats array is missing a comma (the actual production failure class)", () => {
+    // Mirrors the real incident shape: two well-formed string fields
+    // followed by a camera_beats array where one element is missing a
+    // comma before the next `{`, which is exactly the class of error
+    // `extractJson` (verticalDramaStoryBible.ts) reported in production.
+    const malformed =
+      '{"start_frame_image_prompt":"ภาพช็อตที่ 8","video_prompt":"วิดีโอช็อตที่ 8",' +
+      '"camera_beats":[{"beat_id":1,"duration_seconds":3,"camera":"wide","movement":"push-in","action":"a"}' +
+      '{"beat_id":2,"duration_seconds":4,"camera":"medium","movement":"pan","action":"b"}]}';
+
+    // Sanity-check the fixture actually reproduces a JSON.parse failure —
+    // otherwise this test would be validating nothing.
+    expect(() => JSON.parse(malformed)).toThrow();
+
+    expect(extractJsonStringFieldForTest(malformed, "start_frame_image_prompt")).toBe(
+      "ภาพช็อตที่ 8"
+    );
+    expect(extractJsonStringFieldForTest(malformed, "video_prompt")).toBe(
+      "วิดีโอช็อตที่ 8"
+    );
+  });
+
+  it("returns null when the field is genuinely absent (does not fabricate content)", () => {
+    const text = '{"video_prompt":"only this field is present"}';
+    expect(extractJsonStringFieldForTest(text, "start_frame_image_prompt")).toBeNull();
+  });
+
+  it("returns null (rather than throwing) on completely non-JSON input", () => {
+    expect(extractJsonStringFieldForTest("not json at all", "start_frame_image_prompt")).toBeNull();
+  });
+});

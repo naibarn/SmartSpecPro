@@ -4,7 +4,7 @@
   "required": ["product", "shots", "reference_manifest", "safety_policy"],
   "properties": {
     "product": { "type": "object" },
-    "shots": { "type": "array", "minItems": 9, "maxItems": 9 },
+    "shots": { "type": "array", "minItems": 1, "maxItems": 30 },
     "reference_manifest": { "type": "array" },
     "safety_policy": { "type": "object" }
   },

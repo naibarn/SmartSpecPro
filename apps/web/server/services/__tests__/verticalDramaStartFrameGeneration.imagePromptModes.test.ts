@@ -352,6 +352,56 @@ describe("policy-safe synopsis deterministic contract", () => {
     expect(result.prompt).toBe("อารียืนอยู่ในห้องประชุม");
     expect(mockExecute).toHaveBeenCalledTimes(2);
   });
+
+  it("uses deterministic declared replacements when Thai output adds an undeclared grammar word", async () => {
+    const canonicalSynopsis =
+      "ถังเหล็กเก่ากระแทกขอบบ่อ พิมพ์ดาวเห็นห่อผ้าชุ่มน้ำด้านใน เธอรีบคว้าไว้ก่อนที่หลวงราชเดชาจะเอื้อมถึง เป็นช่วงชิงหลักฐานกันในระยะประชิด";
+    const invalidModelOutput = {
+      rewritten_synopsis:
+        "ถังเหล็กเก่ากระแทกขอบบ่อ พิมพ์ดาวเห็นห่อผ้าชุ่มน้ำด้านใน เธอรีบคว้าไว้ก่อนที่หลวงราชเดชาจะเอื้อมถึง เป็นการแย่งชิงหลักฐานกันในระยะประชิด",
+      safety_adjustments: [{
+        original: "ช่วงชิง",
+        rewritten: "แย่งชิง",
+        reason: "violence",
+      }],
+    };
+    mockExecute
+      .mockResolvedValueOnce(successResponse(invalidModelOutput))
+      .mockResolvedValueOnce(successResponse(invalidModelOutput));
+
+    const result = await generateStartFrameShotPrompt(
+      baseShotParams({
+        imagePromptMode: "policy_safe_rewrite",
+        canonicalShotSummary: canonicalSynopsis,
+      }),
+    );
+
+    expect(result.prompt).toBe(
+      "ถังเหล็กเก่ากระแทกขอบบ่อ พิมพ์ดาวเห็นห่อผ้าชุ่มน้ำด้านใน เธอรีบคว้าไว้ก่อนที่หลวงราชเดชาจะเอื้อมถึง เป็นแย่งชิงหลักฐานกันในระยะประชิด",
+    );
+    expect(result.safetyAdjustments).toEqual(["ช่วงชิง → แย่งชิง"]);
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+  });
+
+  it("still fails closed when the retry declares an invalid replacement target", async () => {
+    const invalidModelOutput = {
+      rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
+      safety_adjustments: [{
+        original: "คำที่ไม่มีอยู่ในต้นฉบับ",
+        rewritten: "คำใหม่",
+        reason: "violence",
+      }],
+    };
+    mockExecute
+      .mockResolvedValueOnce(successResponse(invalidModelOutput))
+      .mockResolvedValueOnce(successResponse(invalidModelOutput));
+
+    await expect(
+      generateStartFrameShotPrompt(
+        baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+      ),
+    ).rejects.toThrow("adjustment target must occur exactly once");
+  });
 });
 
 describe("generateStartFrameShotPrompt — lenient extras parsed and normalized (d)", () => {

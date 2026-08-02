@@ -113,12 +113,18 @@ notificationStreamRouter.get("/api/notifications/stream", async (req: Request, r
     // Register in active subscribers map
     subEntry = {
       disconnect: () => {
-        try {
-          subscriber?.unsubscribe(channel);
-          subscriber?.disconnect();
-        } catch { /* already closed */ }
-        if (heartbeatTimer) clearInterval(heartbeatTimer);
-        res.end();
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+        if (subscriber) {
+          try {
+            subscriber.unsubscribe(channel).catch(() => {});
+            subscriber.disconnect();
+          } catch { /* already closed */ }
+          subscriber = null;
+        }
+        try { res.end(); } catch { /* already closed */ }
       },
     };
     userSubs.add(subEntry);

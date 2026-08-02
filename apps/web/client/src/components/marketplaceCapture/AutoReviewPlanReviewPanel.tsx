@@ -1034,7 +1034,7 @@ function PlanReviewShotRow({
       ) : null}
       <button
         type="button"
-        className="mt-1 text-xs font-medium text-sky-700 hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline dark:text-sky-400"
+        className="mt-1 text-xs font-medium text-sky-700 hover:underline disabled:cursor-not-allowed disabled:opacity-90 disabled:no-underline dark:text-sky-400"
         disabled={busy}
         onClick={() => onRequestVisualFix(shot.shotId)}
       >
@@ -1050,7 +1050,7 @@ function PlanReviewShotRow({
             <button
               type="button"
               aria-label={copy.planReviewEditShotDialogueAriaLabel(shot.shotId)}
-              className="rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-700"
+              className="rounded p-1 text-slate-600 hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-90 dark:hover:bg-slate-700"
               disabled={busy}
               onClick={() => {
                 setDraft(shot.dialogue);

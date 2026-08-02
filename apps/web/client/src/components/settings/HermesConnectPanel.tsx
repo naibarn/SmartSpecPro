@@ -49,6 +49,36 @@ const SCOPE_LABEL_EN: Record<HermesScope, string> = {
   private_worker: "My worker",
 };
 
+/**
+ * WHERE the Grok jobs for each scope actually execute, and whether that
+ * machine has ever been able to complete a connection.
+ *
+ * Field audit 2026-07-31: the three options read as near-identical Thai
+ * phrases, so a user picked a server scope and waited on a spinner forever.
+ * Ground truth from `worker_jobs`: every completed `hermes_connection_authorize`
+ * (2) and every completed `hermes_media_*` job (4) ran on the Worker App
+ * machine; the shared server worker has never completed one — its authorize
+ * and probe jobs sit `queued`, unclaimed. Say so on the card instead of
+ * letting people discover it by waiting.
+ */
+const SCOPE_RUNS_ON: Record<HermesScope, { th: string; en: string }> = {
+  server_shared: {
+    th: "งานรันบนเซิร์ฟเวอร์ส่วนกลาง (Shared Hermes Media Worker)",
+    en: "Jobs run on the shared server (Shared Hermes Media Worker)",
+  },
+  server_personal: {
+    th: "งานรันบนเซิร์ฟเวอร์ส่วนกลาง โดยใช้บัญชี Grok ของคุณเอง",
+    en: "Jobs run on the shared server using your own Grok account",
+  },
+  private_worker: {
+    th: "งานรันบนคอมพิวเตอร์ของคุณผ่าน Worker App (ต้องเปิดแอปไว้)",
+    en: "Jobs run on your own computer via the Worker App (keep it open)",
+  },
+};
+
+/** Scopes with no worker that has ever completed a connection job. */
+const SCOPE_UNPROVEN: HermesScope[] = ["server_shared", "server_personal"];
+
 const STATUS_LABEL: Record<string, string> = {
   pending: "กำลังเชื่อมต่อ",
   authorized: "เชื่อมต่อแล้ว",
@@ -629,6 +659,9 @@ export function HermesConnectPanel() {
                   {statusLabels[row.status] ?? row.status}
                 </Badge>
                 <Badge variant="outline">{scopeLabels[row.scope]}</Badge>
+                <span className="text-xs text-gray-500">
+                  {SCOPE_RUNS_ON[row.scope as HermesScope]?.[isThai ? "th" : "en"] ?? ""}
+                </span>
                 <span className="font-medium text-gray-950">
                   {row.accountLabel ?? row.accountHint ?? row.id}
                 </span>
@@ -806,6 +839,9 @@ export function HermesConnectPanel() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{statusLabels[row.status] ?? row.status}</Badge>
                         <Badge variant="outline">{scopeLabels[row.scope]}</Badge>
+                <span className="text-xs text-gray-500">
+                  {SCOPE_RUNS_ON[row.scope as HermesScope]?.[isThai ? "th" : "en"] ?? ""}
+                </span>
                         <span className="truncate text-sm font-medium text-gray-900">
                           {row.accountLabel ?? row.accountHint ?? row.id}
                         </span>
@@ -861,6 +897,19 @@ export function HermesConnectPanel() {
               <div>
                 <p className="text-sm font-medium text-gray-900">{title}</p>
                 <p className="mt-1 text-xs text-gray-600">{description}</p>
+                {/* The three options differ ONLY by which machine runs the
+                    jobs — spell that out, because the titles alone read almost
+                    identically (2026-07-31 field audit). */}
+                <p className="mt-1 text-xs font-medium text-gray-700">
+                  {SCOPE_RUNS_ON[scope][isThai ? "th" : "en"]}
+                </p>
+                {SCOPE_UNPROVEN.includes(scope) ? (
+                  <p className="mt-1 text-xs text-amber-700">
+                    {isThai
+                      ? "⚠ ยังไม่เคยมีการเชื่อมต่อสำเร็จผ่านช่องทางนี้ — งานอาจค้างรอ worker ที่ไม่มีใครรับ แนะนำใช้ “บัญชีส่วนตัวบนเครื่องของฉัน”"
+                      : "⚠ No connection has ever completed through this route — jobs may sit queued with no worker to claim them. Prefer “Personal account on my computer”."}
+                  </p>
+                ) : null}
                 {scope === "private_worker" ? (
                   <a
                     href="/workers/connect"

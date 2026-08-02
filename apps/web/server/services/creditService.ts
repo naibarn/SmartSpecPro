@@ -6,7 +6,7 @@
 import { db } from "../db";
 import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations, llmProviders } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { getRedisClient, isRedisAvailable } from "./redis";
 import { getTraceId } from "./traceContext";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
@@ -30,6 +30,36 @@ type DbCreditSourceType = Exclude<
   CreditSourceType,
   "vision_analysis" | "embedding_generation" | "reference_resolution"
 >;
+
+/** `credit_transactions.traceId` is `varchar(32)`. */
+const CREDIT_TRACE_ID_MAX_LENGTH = 32;
+
+/**
+ * Clamp a trace id to what `credit_transactions.traceId` can physically hold.
+ *
+ * Field incident 2026-07-30: the staged marketplace final render passed
+ * `staged-final-render:<runId>:r<rev>` (58 chars) and Postgres rejected the
+ * whole reservation INSERT with `22001 value too long for type character
+ * varying(32)`. The caller caught it, logged it, and silently fell back to
+ * the legacy renderer — so the Remotion final render simply never happened
+ * and the run stalled with no user-visible error. Any trace id containing a
+ * 36-char run id overflows this column, so this is a trap every caller walks
+ * into, not a one-off.
+ *
+ * A plain prefix truncation would collapse every run of the same kind onto
+ * one identical trace id, which defeats the point of a trace. Keep a
+ * readable prefix and append a short digest of the FULL value so distinct
+ * traces stay distinct and the row is still greppable by prefix.
+ */
+export function clampCreditTraceId(
+  traceId: string | null | undefined
+): string | null {
+  const value = typeof traceId === "string" ? traceId.trim() : "";
+  if (!value) return null;
+  if (value.length <= CREDIT_TRACE_ID_MAX_LENGTH) return value;
+  const digest = createHash("sha256").update(value).digest("hex").slice(0, 8);
+  return `${value.slice(0, CREDIT_TRACE_ID_MAX_LENGTH - digest.length - 1)}:${digest}`;
+}
 
 function normalizeCreditSourceType(
   sourceType?: CreditSourceType | null,
@@ -390,6 +420,29 @@ export async function hasEnoughCredits(userId: number, amount: number): Promise<
   return balance !== null && balance.credits >= amount;
 }
 
+/** True only for an actual Postgres unique-violation (SQLSTATE 23505) on an
+ *  idempotency-key index. drizzle-orm wraps the real postgres error (the one
+ *  carrying `.code`/`.constraint`) inside `.cause` — a caught error's own
+ *  top-level `.code`/`.constraint` are `undefined` for a Drizzle query error,
+ *  so checking only those (as this used to) never matches, and a legitimate
+ *  idempotent retry throws instead of returning the already-recorded
+ *  transaction. Mirrors `presentationPlaybackExport.ts`'s
+ *  `isIdempotencyUniqueConstraintError`. */
+function isIdempotencyKeyUniqueViolation(err: unknown): boolean {
+  const candidate = err as {
+    code?: string;
+    constraint?: string;
+    cause?: { code?: string; constraint?: string };
+  };
+  const code = candidate?.code ?? candidate?.cause?.code;
+  const constraint = candidate?.constraint ?? candidate?.cause?.constraint;
+  return (
+    code === "23505" &&
+    typeof constraint === "string" &&
+    constraint.includes("idempotency")
+  );
+}
+
 /**
  * Deduct credits from user account
  * Returns the transaction record or throws if insufficient credits
@@ -472,7 +525,7 @@ export async function deductCredits(params: DeductCreditsParams) {
         metadata,
         balanceAfter: newBalance,
         idempotencyKey: idempotencyKey ?? null,
-        traceId: getTraceId() ?? metadata?.traceId ?? null,
+        traceId: clampCreditTraceId(getTraceId() ?? metadata?.traceId ?? null),
         conversationId: params.conversationId ?? null,
         skillSlug: params.skillSlug ?? null,
         sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
@@ -482,7 +535,7 @@ export async function deductCredits(params: DeductCreditsParams) {
     });
   } catch (err: any) {
     // Handle unique constraint violation on idempotencyKey (DB safety net)
-    if (idempotencyKey && err?.code === "23505" && err?.constraint?.includes("idempotency")) {
+    if (idempotencyKey && isIdempotencyKeyUniqueViolation(err)) {
       const existing = await db
         .select({ id: creditTransactions.id, amount: creditTransactions.amount, balanceAfter: creditTransactions.balanceAfter })
         .from(creditTransactions)
@@ -595,7 +648,7 @@ export async function addCredits(params: AddCreditsParams) {
         balanceAfter: newBalance,
         referenceId,
         idempotencyKey: idempotencyKey ?? null,
-        traceId: getTraceId() ?? null,
+        traceId: clampCreditTraceId(getTraceId() ?? null),
         conversationId: params.conversationId ?? null,
         skillSlug: params.skillSlug ?? null,
         sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
@@ -604,7 +657,7 @@ export async function addCredits(params: AddCreditsParams) {
       transactionId = txRecord?.id || 0;
     });
   } catch (err: any) {
-    if (idempotencyKey && err?.code === "23505" && err?.constraint?.includes("idempotency")) {
+    if (idempotencyKey && isIdempotencyKeyUniqueViolation(err)) {
       const existing = await db
         .select({ id: creditTransactions.id, amount: creditTransactions.amount, balanceAfter: creditTransactions.balanceAfter })
         .from(creditTransactions)

@@ -8,7 +8,7 @@ import {
   Sparkles,
   Square,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { StagedCheckpointReviewSurface } from "@/components/marketplaceCapture/StagedCheckpointReviewSurface";
 import { MarketplaceAutoReviewJobNavigator } from "@/components/marketplaceCapture/MarketplaceAutoReviewJobNavigator";
@@ -96,13 +96,14 @@ export default function MarketplaceAutoReviewWorkflowPage() {
       enabled: Boolean(runId),
       retry: false,
       refetchOnWindowFocus: true,
-      staleTime: 0,
+      staleTime: 5_000,
       refetchInterval: query => {
         const status = (query.state.data as any)?.status;
-        return status && TERMINAL_STATUSES.has(String(status)) ? false : 5000;
+        return status && TERMINAL_STATUSES.has(String(status)) ? false : 12_000;
       },
     }
   );
+  const trpcUtils = trpc.useUtils();
   const run = runQuery.data as Record<string, any> | undefined;
   const metadata =
     run?.metadataJson && typeof run.metadataJson === "object"
@@ -121,15 +122,52 @@ export default function MarketplaceAutoReviewWorkflowPage() {
     {
       enabled: Boolean(productId),
       refetchOnWindowFocus: true,
-      staleTime: 10_000,
+      staleTime: 15_000,
       refetchInterval: query => {
         const runs = (query.state.data as any[]) ?? [];
         return runs.some(item => !TERMINAL_STATUSES.has(String(item?.status)))
-          ? 10_000
-          : 30_000;
+          ? 30_000
+          : 60_000;
       },
     }
   );
+  /**
+   * Delete a job from the navigator.
+   *
+   * Dependent rows cascade server-side; already-generated media stays in the
+   * user's Media library. If the job being deleted is the one currently open,
+   * navigate to the newest remaining job (or the product's "new job" screen)
+   * rather than leaving the page bound to a run that no longer exists.
+   */
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
+  const deleteRunMutation =
+    trpc.marketplaceCapture.deleteAutoReviewRun.useMutation({
+      onSuccess: (_result, variables) => {
+        const deletedId = variables.runId;
+        const remaining = ((jobsQuery.data as any[]) ?? []).filter(
+          item => String(item?.id ?? item?.productionRunId) !== deletedId
+        );
+        void jobsQuery.refetch();
+        if (deletedId === runId) {
+          const nextId = String(
+            remaining[0]?.id ?? remaining[0]?.productionRunId ?? ""
+          );
+          setLocation(
+            nextId
+              ? `/marketplace/auto-review/${encodeURIComponent(nextId)}`
+              : productId
+                ? `/marketplace/auto-review/new/${encodeURIComponent(productId)}`
+                : "/marketplace"
+          );
+        }
+      },
+      onSettled: () => setDeletingRunId(null),
+    });
+  const handleDeleteRun = (targetRunId: string) => {
+    setDeletingRunId(targetRunId);
+    deleteRunMutation.mutate({ runId: targetRunId });
+  };
+
   const productQuery = trpc.marketplaceCapture.getProduct.useQuery(
     { productId },
     { enabled: Boolean(productId), retry: false, staleTime: 60_000 }
@@ -175,6 +213,44 @@ export default function MarketplaceAutoReviewWorkflowPage() {
     blockerId: string;
     message: string;
   } | null>(null);
+  const [legacyPromptGeneration, setLegacyPromptGeneration] = useState<{
+    shotId: number;
+    stage: "image" | "video" | "summary" | "dialogue";
+  } | null>(null);
+  const [legacyImageEditSubmittingShotId, setLegacyImageEditSubmittingShotId] =
+    useState<number | null>(null);
+  const [legacyImageEditResultByShot, setLegacyImageEditResultByShot] = useState<
+    Record<number, { beforeUrl: string; afterUrl: string }>
+  >({});
+  const imageEditPollInFlightRef = useRef<Set<number>>(new Set());
+  const persistedLanguagePlan = (() => {
+    const sequential =
+      metadata.sequentialStoryboard &&
+      typeof metadata.sequentialStoryboard === "object"
+        ? metadata.sequentialStoryboard
+        : {};
+    const plan =
+      sequential.languagePlan && typeof sequential.languagePlan === "object"
+        ? sequential.languagePlan
+        : sequential.userInputs?.languagePlan;
+    return {
+      summaryLanguage: plan?.summaryLanguage === "en" ? "en" : "th",
+      dialogueLanguage: plan?.dialogueLanguage === "en" ? "en" : "th",
+      promptLanguage: plan?.promptLanguage === "th" ? "th" : "en",
+    } as const;
+  })();
+  useEffect(() => {
+    // Job navigation reuses this page instance. Clear card-local mutation
+    // indicators so a request from the previously selected job cannot make
+    // the same shot number in the newly selected job look busy.
+    setLegacyRegeneratingShotId(null);
+    setLegacySavingShotId(null);
+    setLegacySwappingShotId(null);
+    setLegacyPromptGeneration(null);
+    setLegacyImageEditSubmittingShotId(null);
+    setLegacyImageEditResultByShot({});
+    setLegacyShotError(null);
+  }, [runId]);
   const regenerateLegacyShotMutation =
     trpc.marketplaceCapture.regenerateAutoReviewSequentialShot.useMutation({
       onSuccess: async () => {
@@ -223,6 +299,114 @@ export default function MarketplaceAutoReviewWorkflowPage() {
         onSettled: () => setLegacySwappingShotId(null),
       }
     );
+  const generateLegacyPromptMutation =
+    trpc.marketplaceCapture.generateAutoReviewSequentialShotPrompt.useMutation({
+      onSuccess: async () => {
+        setLegacyPromptGeneration(null);
+        setLegacyShotError(null);
+        await runQuery.refetch();
+      },
+      onError: (error, variables) => {
+        setLegacyPromptGeneration(null);
+        setLegacyShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_prompt_generation_failed",
+          message: error.message,
+        });
+      },
+    });
+  const saveLegacyLanguagePlanMutation =
+    trpc.marketplaceCapture.saveAutoReviewSequentialLanguagePlan.useMutation({
+      onSuccess: async () => {
+        await runQuery.refetch();
+      },
+    });
+  const editLegacyImageMutation =
+    trpc.marketplaceCapture.editAutoReviewSequentialShotImage.useMutation({
+      onSuccess: data => {
+        void pollLegacyImageEditTask(
+          data.taskId,
+          data.shotId,
+          data.beforeUrl
+        );
+      },
+      onError: (error, variables) => {
+        setLegacyImageEditSubmittingShotId(null);
+        setLegacyShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_image_edit_failed",
+          message: error.message,
+        });
+      },
+    });
+  const acceptLegacyImageMutation =
+    trpc.marketplaceCapture.acceptAutoReviewSequentialShotImageEdit.useMutation({
+      onSuccess: async () => {
+        setLegacyImageEditResultByShot({});
+        await runQuery.refetch();
+      },
+      onError: (error, variables) => {
+        setLegacyShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_image_edit_accept_failed",
+          message: error.message,
+        });
+      },
+    });
+  const discardLegacyImageMutation =
+    trpc.marketplaceCapture.discardAutoReviewSequentialShotImageEdit.useMutation({
+      onSuccess: async () => {
+        setLegacyImageEditResultByShot({});
+        await runQuery.refetch();
+      },
+      onError: (error, variables) => {
+        setLegacyShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_image_edit_discard_failed",
+          message: error.message,
+        });
+      },
+    });
+
+  async function pollLegacyImageEditTask(
+    taskId: string,
+    shotId: number,
+    beforeUrl: string
+  ) {
+    if (imageEditPollInFlightRef.current.has(shotId)) return;
+    imageEditPollInFlightRef.current.add(shotId);
+    try {
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const task = await trpcUtils.media.getTask.fetch({ taskId });
+        const afterUrl =
+          typeof task?.resultUrl === "string" ? task.resultUrl : "";
+        if (task?.status === "completed" && afterUrl) {
+          setLegacyImageEditResultByShot(current => ({
+            ...current,
+            [shotId]: { beforeUrl, afterUrl },
+          }));
+          return;
+        }
+        if (task?.status === "failed") {
+          setLegacyShotError({
+            shotId,
+            blockerId: "sequential_shot_image_edit_provider_failed",
+            message: task.errorMessage || "สร้างภาพแก้ไขไม่สำเร็จ",
+          });
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      setLegacyShotError({
+        shotId,
+        blockerId: "sequential_shot_image_edit_timeout",
+        message: "การแก้ภาพใช้เวลานานเกินไป กรุณาตรวจสอบแล้วลองใหม่",
+      });
+    } finally {
+      imageEditPollInFlightRef.current.delete(shotId);
+      setLegacyImageEditSubmittingShotId(null);
+    }
+  }
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.08),_transparent_42%),#f8fafc] px-3 py-4 sm:px-6 lg:px-8">
@@ -275,6 +459,8 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                 );
               }
             }}
+            onDeleteRun={handleDeleteRun}
+            deletingRunId={deleteRunMutation.isPending ? deletingRunId : null}
             className="order-2 xl:order-1 xl:sticky xl:top-4 xl:h-[calc(100dvh-2rem)] xl:min-h-0"
           />
           <div className="min-w-0 order-1 xl:order-2">
@@ -366,7 +552,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                         <span>หยุดถาวรและคืนเครดิตที่ยังค้างกับ provider</span>
                         <button
                           type="button"
-                          className="inline-flex min-h-9 items-center rounded-md bg-red-500 px-3 py-1.5 font-semibold text-white hover:bg-red-400 disabled:opacity-60"
+                          className="inline-flex min-h-9 items-center rounded-md bg-red-700 px-3 py-1.5 font-semibold text-white hover:bg-red-800 disabled:opacity-90"
                           onClick={() => cancelMutation.mutate({ runId })}
                           disabled={cancelMutation.isPending}
                         >
@@ -466,6 +652,7 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                 savingShotId={legacySavingShotId}
                 swappingShotId={legacySwappingShotId}
                 shotError={legacyShotError}
+                generatingPrompt={legacyPromptGeneration}
                 onRegenerateShot={shotId => {
                   if (!runId) return;
                   setLegacyShotError(null);
@@ -479,11 +666,68 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                   saveLegacyShotMutation.mutate({
                     runId,
                     shotId: input.shotId,
+                    visualSummary: input.storySummary,
                     dialogue: input.dialogue,
                     startFrameImagePrompt: input.imagePrompt,
                     videoPrompt: input.videoPrompt,
+                    cameraBeats: input.cameraBeats,
                   });
                 }}
+                onGenerateShotPrompt={input => {
+                  if (!runId || legacyPromptGeneration) return;
+                  setLegacyShotError(null);
+                  setLegacyPromptGeneration(input);
+                  generateLegacyPromptMutation.mutate({ runId, ...input });
+                }}
+                onGenerateShotContent={input => {
+                  if (!runId || legacyPromptGeneration) return;
+                  setLegacyShotError(null);
+                  setLegacyPromptGeneration(input);
+                  generateLegacyPromptMutation.mutate({ runId, ...input });
+                }}
+                languagePlan={persistedLanguagePlan}
+                onLanguagePlanChange={plan => {
+                  if (!runId || saveLegacyLanguagePlanMutation.isPending) return;
+                  saveLegacyLanguagePlanMutation.mutate({ runId, ...plan });
+                }}
+                onEditShotImage={({ shotId, instruction }) => {
+                  if (!runId || legacyImageEditSubmittingShotId !== null) return;
+                  setLegacyShotError(null);
+                  setLegacyImageEditSubmittingShotId(shotId);
+                  editLegacyImageMutation.mutate({
+                    runId,
+                    shotId,
+                    instruction,
+                    idempotencyKey: crypto.randomUUID(),
+                  });
+                }}
+                onAcceptEditedShotImage={shotId => {
+                  if (!runId) return;
+                  acceptLegacyImageMutation.mutate({ runId, shotId });
+                }}
+                onDiscardEditedShotImage={shotId => {
+                  if (!runId) return;
+                  discardLegacyImageMutation.mutate({ runId, shotId });
+                }}
+                onPollEditedShotImage={shotId => {
+                  const candidates =
+                    metadata.sequentialImageEditCandidates ?? {};
+                  const candidate = candidates[String(shotId)] ?? {};
+                  const taskId =
+                    typeof candidate.taskId === "string"
+                      ? candidate.taskId
+                      : "";
+                  const beforeUrl =
+                    typeof candidate.beforeUrl === "string"
+                      ? candidate.beforeUrl
+                      : "";
+                  if (!taskId || !beforeUrl) return;
+                  setLegacyShotError(null);
+                  setLegacyImageEditSubmittingShotId(shotId);
+                  void pollLegacyImageEditTask(taskId, shotId, beforeUrl);
+                }}
+                imageEditSubmittingShotId={legacyImageEditSubmittingShotId}
+                imageEditResultByShot={legacyImageEditResultByShot}
                 onSelectShotAlternate={input => {
                   if (!runId) return;
                   setLegacyShotError(null);

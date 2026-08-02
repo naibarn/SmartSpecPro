@@ -47,15 +47,15 @@ const batchParams = (motionContractsEnabled?: boolean) => ({
 });
 
 describe("VD P1 joint flag interactions", () => {
-  it("keeps the motion and scene flags registered and dark by default", () => {
+  it("keeps the motion and scene flags registered and enabled by default", () => {
     expect(ALLOWED_FEATURE_FLAGS.has("verticalDramaMotionContracts")).toBe(
       true
     );
     expect(ALLOWED_FEATURE_FLAGS.has("verticalDramaSceneContinuity")).toBe(
       true
     );
-    expect(FEATURE_FLAG_DEFAULTS.verticalDramaMotionContracts).toBe(false);
-    expect(FEATURE_FLAG_DEFAULTS.verticalDramaSceneContinuity).toBe(false);
+    expect(FEATURE_FLAG_DEFAULTS.verticalDramaMotionContracts).toBe(true);
+    expect(FEATURE_FLAG_DEFAULTS.verticalDramaSceneContinuity).toBe(true);
   });
 
   it("adds exactly one grouped scene-lock block to the batch prompt", () => {

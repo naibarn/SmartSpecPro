@@ -847,6 +847,17 @@ export const VD_COPY = {
     finalRenderShowAgeBadgeLabel: "Show audience-age badge",
     finalRenderShowAgeBadgeHelp:
       "Burns the series' age rating as a small corner badge",
+    /* ---- Remotion render option (`planning/vd-remotion-render-option/plan.md`
+     *  wave 2), added 2026-07-30 ---- */
+    finalRenderUseRemotionLabel: "🎬 Use Remotion render (new queue)",
+    finalRenderUseRemotionHelp:
+      "Renders through the render-jobs queue, supporting CSS subtitle presets and on-video text — if it fails, the system automatically falls back to the existing ffmpeg render.",
+    finalRenderSubtitleFontSizeRemotionDisabledHint:
+      "Subtitle font size is not yet applied in Remotion render mode.",
+    finalRenderSubtitleNoDialogueWarning:
+      "This episode has no dialogue script yet, so no subtitles can be burned in — the preset will apply once you generate the dialogue/voice step.",
+    finalRenderEngineFallbackReasonTemplate:
+      "Remotion render unavailable: {reason} — used ffmpeg instead.",
     finalRenderResultTitle: "Last render result",
     finalRenderResultSubtitleLinesTemplate: "{n} subtitle line(s) included",
     finalRenderResultAudioSegmentsTemplate:
@@ -1527,6 +1538,17 @@ export const VD_COPY = {
     finalRenderShowAgeBadgeLabel: "แสดง badge อายุผู้ชม",
     finalRenderShowAgeBadgeHelp:
       "ติดป้ายเรตอายุมุมวิดีโอ (จากที่ตั้งไว้ในซีรีย์)",
+    /* ---- Remotion render option (`planning/vd-remotion-render-option/plan.md`
+     *  wave 2), added 2026-07-30 ---- */
+    finalRenderUseRemotionLabel: "🎬 ใช้ Remotion render (คิวใหม่)",
+    finalRenderUseRemotionHelp:
+      "เรนเดอร์ผ่านคิว render-jobs รองรับซับไตเติล CSS preset และข้อความบนวิดีโอ — หากไม่สำเร็จระบบจะถอยไปใช้ ffmpeg เดิมอัตโนมัติ",
+    finalRenderSubtitleFontSizeRemotionDisabledHint:
+      "ขนาดตัวอักษรซับไตเติลยังไม่ถูกนำไปใช้ในโหมด Remotion render",
+    finalRenderSubtitleNoDialogueWarning:
+      "ตอนนี้ยังไม่มีบทพูด ซับไตเติลจึงจะไม่ถูกฝังลงวิดีโอ — กรุณาสร้างบทพูด/เสียงพูดก่อน แล้ว preset ที่เลือกไว้จะถูกนำไปใช้",
+    finalRenderEngineFallbackReasonTemplate:
+      "Remotion ใช้ไม่ได้: {reason} — ใช้ ffmpeg แทนแล้ว",
     finalRenderResultTitle: "ผลการเรนเดอร์ล่าสุด",
     finalRenderResultSubtitleLinesTemplate: "ฝังซับไตเติล {n} บรรทัด",
     finalRenderResultAudioSegmentsTemplate: "รวมเสียงพูด {n} ช่วง",

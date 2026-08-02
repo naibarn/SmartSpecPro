@@ -42,6 +42,7 @@ import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript"
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import type { VerticalDramaLocationCoverageRole } from "@shared/verticalDramaSeries/locationAssets";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -152,6 +153,10 @@ export interface GenerateLocationVisualPromptsParams {
    * character system's `hasOwnReferenceImage`.
    */
   hasOwnReferenceImage?: boolean;
+  /** Feature 138 P2 — optional coverage-pack angle directive. */
+  coverageRole?: VerticalDramaLocationCoverageRole;
+  /** Feature 138 P2 — a concrete planner-reported coverage gap to ground. */
+  gapDescription?: string;
   idempotencyKey?: string;
 }
 
@@ -195,6 +200,8 @@ export function buildLocationVisualPromptsUserPrompt(params: GenerateLocationVis
       ? { preset_visual_identity: buildLocationPresetVisualIdentityFacts(params.presetVisualIdentity) }
       : {}),
     ...(params.hasOwnReferenceImage ? { has_own_reference_image: true } : {}),
+    ...(params.coverageRole ? { coverage_role: params.coverageRole } : {}),
+    ...(params.gapDescription ? { coverage_gap: params.gapDescription } : {}),
   };
 
   return [

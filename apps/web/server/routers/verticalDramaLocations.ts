@@ -61,7 +61,11 @@ import {
   verticalDramaLocationStockService,
   VerticalDramaLocationStockError,
 } from "../services/verticalDramaLocationStock";
-import { VERTICAL_DRAMA_LOCATION_ASSET_STATES } from "@shared/verticalDramaSeries/locationAssets";
+import {
+  VERTICAL_DRAMA_LOCATION_ASSET_STATES,
+  VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES,
+  type VerticalDramaLocationCoverageRole,
+} from "@shared/verticalDramaSeries/locationAssets";
 import { mediaGenerationService } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
@@ -103,6 +107,10 @@ import {
   applySeriesLookToImagePrompt,
   resolveEffectiveSeriesVisualIdentity,
 } from "@shared/verticalDramaSeries/seriesLookLock";
+import {
+  VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+  recordSeriesLookLockAuditEvent,
+} from "../services/verticalDramaSeriesLookLockAudit";
 // Whole-series location detection (`detectLocationsNow` below) — TYPE-ONLY
 // import only (erased at compile time, no runtime module load), same
 // "dynamic import, never static" convention `verticalDramaCharacters.ts`
@@ -124,6 +132,17 @@ import type { StoryScriptLang, StoryScriptEpisodeInput } from "@shared/verticalD
 
 const verticalDramaProcedure = protectedProcedure.use(
   requireFeatureFlag("verticalDramaSeries"),
+);
+
+/** Feature 138 P2 coverage-pack entry point. The legacy location renderer
+ * remains available for establishing plates; this explicit route is the
+ * opt-in surface for reverse/side/detail coverage work. The child flag is
+ * chained behind the scene-continuity parent, matching episode QC routes. */
+const verticalDramaSceneContinuityProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaSceneContinuity"),
+);
+const verticalDramaSceneContinuityQcProcedure = verticalDramaSceneContinuityProcedure.use(
+  requireFeatureFlag("verticalDramaSceneContinuityQc"),
 );
 
 /** Resolve a non-null tenant id or fail closed. */
@@ -225,11 +244,15 @@ async function resolveLocationPresetVisualIdentity(
   bible: Record<string, unknown> | null,
 ) {
   const flags = await getTenantFeatureFlags(tenantId);
-  return resolveEffectiveSeriesVisualIdentity({
-    bible,
-    presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
-    lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
-  });
+  const lookLockEnabled = flags.verticalDramaSeriesLookLock === true;
+  return {
+    identity: resolveEffectiveSeriesVisualIdentity({
+      bible,
+      presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+      lookLockEnabled,
+    }),
+    lookLockEnabled,
+  };
 }
 
 /** Best-effort location description drawn from `verticalDramaLocations.data.description`. */
@@ -411,7 +434,13 @@ export const verticalDramaLocationsRouter = router({
    * spend.
    */
   previewLocationPrompt: verticalDramaProcedure
-    .input(seriesScope.extend({ locationId: z.string().min(1) }))
+    .input(
+      seriesScope.extend({
+        locationId: z.string().min(1),
+        coverageRole: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
+        gapDescription: z.string().trim().max(500).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -439,7 +468,7 @@ export const verticalDramaLocationsRouter = router({
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
         .limit(1);
 
-      const presetVisualIdentity = await resolveLocationPresetVisualIdentity(
+      const { identity: presetVisualIdentity } = await resolveLocationPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
@@ -460,6 +489,10 @@ export const verticalDramaLocationsRouter = router({
           seriesContext: buildLocationSeriesContext(seriesRow),
           presetVisualIdentity,
           hasOwnReferenceImage: Boolean(hasOwnReferenceAssetId),
+          ...(input.coverageRole
+            ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
+            : {}),
+          ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -532,6 +565,9 @@ export const verticalDramaLocationsRouter = router({
         // `resolveVdCharacterMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
         sharedGroupId: z.number().int().positive().optional(),
+        // Feature 138 P2 — optional coverage-pack angle directive.
+        coverageRole: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
+        gapDescription: z.string().trim().max(500).optional(),
         // Feature 135 — Hermes Grok media worker (section 09, row 4).
         // Required only when the resolved model is Hermes-transport and the
         // caller has no default Hermes connection for images.
@@ -562,7 +598,7 @@ export const verticalDramaLocationsRouter = router({
       let negativePrompt: string | undefined;
       let promptModel: string | null = null;
       let promptCreditsUsed = 0;
-      let presetVisualIdentity = await resolveLocationPresetVisualIdentity(
+      let { identity: presetVisualIdentity, lookLockEnabled } = await resolveLocationPresetVisualIdentity(
         tenantId,
         (ownedSeriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
@@ -581,10 +617,10 @@ export const verticalDramaLocationsRouter = router({
           .from(verticalDramaSeries)
           .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
           .limit(1);
-        presetVisualIdentity = await resolveLocationPresetVisualIdentity(
+        ({ identity: presetVisualIdentity, lookLockEnabled } = await resolveLocationPresetVisualIdentity(
           tenantId,
           (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-        );
+        ));
         const hasOwnReferenceAssetId = await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
           { tenantId, userId, seriesId },
           locationId,
@@ -602,6 +638,10 @@ export const verticalDramaLocationsRouter = router({
             seriesContext: buildLocationSeriesContext(seriesRow),
             presetVisualIdentity,
             hasOwnReferenceImage: Boolean(hasOwnReferenceAssetId),
+            ...(input.coverageRole
+              ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
+              : {}),
+            ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -620,11 +660,20 @@ export const verticalDramaLocationsRouter = router({
         promptModel = promptResult.model;
         promptCreditsUsed = promptResult.creditsUsed;
       }
-      ({ prompt: establishingPlatePrompt, negativePrompt } = applySeriesLookToImagePrompt({
-        prompt: establishingPlatePrompt,
-        negativePrompt,
-        identity: presetVisualIdentity,
-      }));
+      if (lookLockEnabled && presetVisualIdentity) {
+        ({ prompt: establishingPlatePrompt, negativePrompt } = applySeriesLookToImagePrompt({
+          prompt: establishingPlatePrompt,
+          negativePrompt,
+          identity: presetVisualIdentity,
+        }));
+        await recordSeriesLookLockAuditEvent({
+          eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
+          tenantId,
+          userId,
+          seriesId,
+          path: "locations.generateImage",
+        });
+      }
 
       // Identity-lock reference — this location's existing approved plate
       // (if any), so a regeneration/refresh stays visually consistent with
@@ -731,7 +780,12 @@ export const verticalDramaLocationsRouter = router({
           mediaType: "image",
           model: hermesProviderModelId,
           prompt: establishingPlatePrompt,
-          extraParams: { __vd_series_id: String(seriesId), __vd_location_id: String(locationId) },
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_location_id: String(locationId),
+            ...(input.coverageRole ? { __vd_location_coverage_role: input.coverageRole } : {}),
+            ...(input.gapDescription ? { __vd_location_coverage_gap: input.gapDescription } : {}),
+          },
           droppedReferenceCount,
         });
         return {
@@ -741,6 +795,8 @@ export const verticalDramaLocationsRouter = router({
           promptModel,
           creditsUsed: { promptGeneration: promptCreditsUsed, imageRender: 0 },
           droppedReferenceCount,
+          ...(input.coverageRole ? { coverageRole: input.coverageRole } : {}),
+          ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
         };
       }
 
@@ -786,6 +842,8 @@ export const verticalDramaLocationsRouter = router({
             extraParams: {
               __vd_series_id: String(seriesId),
               __vd_location_id: String(locationId),
+              ...(input.coverageRole ? { __vd_location_coverage_role: input.coverageRole } : {}),
+              ...(input.gapDescription ? { __vd_location_coverage_gap: input.gapDescription } : {}),
             },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
@@ -820,7 +878,47 @@ export const verticalDramaLocationsRouter = router({
         negativePrompt,
         promptModel,
         creditsUsed: { promptGeneration: promptCreditsUsed, imageRender: imageCreditCost },
+        ...(input.coverageRole ? { coverageRole: input.coverageRole } : {}),
+        ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
       };
+    }),
+
+  /**
+   * Feature 138 P2 named coverage-pack API. It deliberately delegates to the
+   * existing renderer so reference attachment, model validation, credits,
+   * Hermes/MCP routing, and task provenance cannot drift between the two
+   * surfaces. `role` is translated to the renderer's `coverageRole` field.
+   */
+  generateLocationCoverageImage: verticalDramaSceneContinuityQcProcedure
+    .input(
+      seriesScope.extend({
+        locationId: z.string().min(1),
+        role: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
+        gapDescription: z.string().trim().max(500).optional(),
+        selectedImageModelId: z.string().trim().min(1).max(128),
+        mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        hermesConnectionId: z.string().max(64).optional(),
+        approvedPrompt: z.string().min(1).optional(),
+        approvedNegativePrompt: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const routerValue = verticalDramaLocationsRouter as unknown as {
+        createCaller?: (context: unknown) => {
+          generateLocationImage: (value: unknown) => Promise<unknown>;
+        };
+      };
+      if (typeof routerValue.createCaller !== "function") {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Location image renderer is unavailable",
+        });
+      }
+      return routerValue.createCaller(ctx).generateLocationImage({
+        ...input,
+        coverageRole: input.role,
+      });
     }),
 
   /**
@@ -1129,6 +1227,8 @@ export const verticalDramaLocationsRouter = router({
           url: row.url,
           approved: row.approved,
           isPrimary: row.isPrimary,
+          role: row.role ?? "establishing_plate",
+          metadata: row.metadata ?? null,
           updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
         })),
       };

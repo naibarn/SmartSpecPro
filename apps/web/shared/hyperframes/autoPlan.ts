@@ -19,6 +19,7 @@ import {
   DEFAULT_MARKETPLACE_START_FRAME_PROMPT_STYLE,
   MARKETPLACE_START_FRAME_PROMPT_STYLES,
 } from "../marketplaceCapture/startFramePromptStyle";
+import { MarketplaceCharacterCastInputSchema } from "./characterCast";
 
 export const HyperframesSpokenLanguageSchema = z.enum([
   "en",
@@ -76,6 +77,14 @@ const feature136AutoPlanOverrideFieldSchemas = {
    * §5), never here.
    */
   startFramePromptStyle: z.enum(MARKETPLACE_START_FRAME_PROMPT_STYLES).optional(),
+  /**
+   * Creation-time drama casting (planning/marketplace-flexible-shots-and-
+   * creation-casting/plan.md, W2). Same "optional, no `.default()`"
+   * rationale as the fields above — an unconditional default would inject a
+   * new key into every `getAutoStoryboardReviewPlan` response and break
+   * byte-identical output for every request that never asks for a cast.
+   */
+  characterCast: MarketplaceCharacterCastInputSchema,
 };
 
 export const HyperframesAutoPlanDefaultsSchema = z
@@ -114,6 +123,10 @@ export const HyperframesAutoPlanDefaultsSchema = z
       .default("auto"),
     qualityMode: z.enum(["fast", "balanced", "high"]),
     visionQaModel: z.string().min(1).max(120).nullable().optional().default(null),
+    // LLM that authors the story plan / runs the storyboard skill. Absent =
+    // "อัตโนมัติ", which resolves from the admin-curated RECOMMENDED set
+    // (`planning/marketplace-four-character-cast/plan.md`).
+    storyPlanningModel: z.string().min(1).max(120).optional(),
     renderEngine: MarketplaceAutoReviewRenderEngineSchema,
     compositionMode: MarketplaceAutoReviewCompositionModeSchema,
     renderIntent: HyperframesRenderIntentSchema,
@@ -237,6 +250,7 @@ const HyperframesAutoPlanOverrideFieldSchemas = {
     .optional(),
   qualityMode: z.enum(["fast", "balanced", "high"]).optional(),
   visionQaModel: z.string().min(1).max(120).optional().nullable(),
+  storyPlanningModel: z.string().min(1).max(120).optional().nullable(),
   platformPresetId: z
     .enum(["generic_vertical_9_16", "tiktok_reels_shorts_9_16"])
     .optional(),
@@ -269,6 +283,7 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   characterPresenceMode: "auto",
   qualityMode: "balanced",
   visionQaModel: "",
+  storyPlanningModel: "",
   // Feature 136 — decorative string entries only, required by the
   // `satisfies Record<...>` compile-time constraint below.
   // `buildDefaultHyperframesAutoPlanDefaults` must NOT read these: the five
@@ -283,6 +298,11 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   // `buildDefaultHyperframesAutoPlanDefaults` must NOT read this: the field
   // stays absent-by-default (same rationale as the five fields above).
   startFramePromptStyle: DEFAULT_MARKETPLACE_START_FRAME_PROMPT_STYLE,
+  // Creation-time drama casting — decorative string entry only, required by
+  // the `satisfies Record<...>` compile-time constraint below.
+  // `buildDefaultHyperframesAutoPlanDefaults` must NOT read this: the field
+  // stays absent-by-default (same rationale as the fields above).
+  characterCast: "",
 } as const satisfies Record<keyof HyperframesAutoPlanOverrideInput, string>;
 
 /**
@@ -533,6 +553,16 @@ export function normalizeHyperframesAutoPlanOverrides(
     );
   if (startFramePromptStyle.success && startFramePromptStyle.data) {
     normalized.startFramePromptStyle = startFramePromptStyle.data;
+  }
+  // Creation-time drama casting (W2) — array field, same "assign only when
+  // present" convention as `forbiddenClaims`/`confirmedAttributes` above (an
+  // explicit empty array is still a meaningful override: "no cast").
+  const characterCast =
+    HyperframesAutoPlanOverrideFieldSchemas.characterCast.safeParse(
+      overrides.characterCast
+    );
+  if (characterCast.success && characterCast.data !== undefined) {
+    normalized.characterCast = characterCast.data;
   }
   return normalized;
 }
