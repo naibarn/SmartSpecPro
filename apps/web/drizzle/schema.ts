@@ -647,7 +647,11 @@ export const users = pgTable("users", {
     .defaultNow()
     .notNull(),
   passwordChangedAt: timestamp("passwordChangedAt", { withTimezone: true }),
-});
+}, t => [
+  uniqueIndex("users_email_lower_trim_unique")
+    .on(sql`lower(btrim(${t.email}))`)
+    .where(sql`${t.email} IS NOT NULL`),
+]);
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
