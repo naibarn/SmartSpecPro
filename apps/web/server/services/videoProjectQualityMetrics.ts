@@ -91,8 +91,10 @@ export function computeDurationVsNarration(document: VideoProjectDocument): Scen
 /** Caption cues reading faster than this (characters/second) are flagged as
  *  uncomfortably fast for a viewer to read (a commonly cited subtitle
  *  guideline band; documented Phase-1 constant, not derived from external
- *  input). */
-const CAPTION_MAX_COMFORTABLE_CPS = 17;
+ *  input). Exported (Feature 142, section-06) so the repair applier's
+ *  captions handler reuses this EXACT threshold rather than re-deriving it —
+ *  see section-06 §6.1. */
+export const CAPTION_MAX_COMFORTABLE_CPS = 17;
 
 export interface CaptionCpsMetric {
   sceneId: string;

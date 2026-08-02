@@ -278,12 +278,24 @@ vi.mock("../../services/videoProjectReviewAdapter", () => ({
 }));
 vi.mock("../../services/videoProjectQualityLoop", () => ({
   runVideoProjectQualityLoop: vi.fn(),
+  clampQualityLoopRounds: vi.fn((maxLoops: number) => Math.min(Math.max(1, Math.trunc(maxLoops)), 5)),
 }));
 // Feature 142, section-05 (additive) — newly imported by the router; this
 // file doesn't exercise the scene-plan stage, so a simple default double
 // (mirrors the videoProjectReviewAdapter mock above).
 vi.mock("../../services/videoProjectScenePlanAdapter", () => ({
   makeRunPlanSkill: vi.fn(),
+}));
+// Feature 142, section-06 (additive) — newly imported by the router; this
+// file doesn't exercise the quality_repair stage, so a simple default
+// double (mirrors the mocks above) keeps the real LLM/DB-touching modules
+// out of this file's import graph.
+vi.mock("../../services/videoProjectRepairApplier", () => ({
+  createRepairRoundSession: vi.fn(),
+  assertReviewRevisionCurrent: vi.fn(),
+}));
+vi.mock("../../services/videoProjectRepairRewriter", () => ({
+  makeRepairEffects: vi.fn(),
 }));
 
 import { videoProjectsRouter, deriveCaptionCues, buildCaptionLinesForRender } from "../videoProjects";

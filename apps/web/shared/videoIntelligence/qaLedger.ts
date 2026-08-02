@@ -89,6 +89,17 @@ function normalizeExistingLedger(existing: unknown): QaLedger {
  * counting every review ever recorded (never trimmed). Never mutates
  * `existing` — always returns a new object/array.
  */
+/**
+ * ADDITIVE (Feature 142, section-06) — read-only normalisation, exported so a
+ * caller (the `quality_repair` executor) can read the newest stored review
+ * without duplicating `normalizeExistingLedger`'s tolerant-parsing rules.
+ * Never writes; safe to call on a value that was never written by this
+ * module.
+ */
+export function readQaLedger(existing: unknown): QaLedger {
+  return normalizeExistingLedger(existing);
+}
+
 export function mergeQaLedger(existing: unknown, entry: QaLedgerEntry): QaLedger {
   const normalized = normalizeExistingLedger(existing);
   const nextEntries = [...normalized.entries, entry];

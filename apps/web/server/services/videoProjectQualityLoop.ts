@@ -1,26 +1,24 @@
 /**
- * Single-round QA loop (Feature 133, section-06 §5.3, Phase 1 / MVP). Mirrors
- * the Vertical Drama DI shape (`verticalDramaQualityLoop.ts`, research A10)
- * with the SAME effect names — `runReview` / `repairStage` / `persistReview`
- * / `recomputeMetrics` (renamed from `recomputeDensityMetrics`) — so a
- * future Phase 3 bounded multi-round auto-improve loop is a policy change,
- * not a rewrite. This file is a fresh module: it does NOT import
+ * Bounded multi-round QA loop (Feature 133/142, section-06). Mirrors the
+ * Vertical Drama DI shape (`verticalDramaQualityLoop.ts`, research A10) with
+ * the SAME effect names — `runReview` / `repairStage` / `persistReview` /
+ * `recomputeMetrics`. This file is a fresh module: it does NOT import
  * `verticalDramaQualityLoop` internals (research C2 — no cross-module
  * private imports; that module is a different domain, only its DI *shape*
  * is reused here).
  *
- * MVP: exactly ONE review round, always. `policy.maxLoops` defaults to `1`
- * and — unlike a future Phase 3 loop — a caller-supplied larger value is
- * still capped to a single round in Phase 1 (see the `// Phase 3:` marker
- * below). `repairStage` and `recomputeMetrics` are part of the effects
- * interface for forward-compat only and MUST NOT be called anywhere in this
- * file's MVP path (enforced by `videoProjectQualityLoop.test.ts`).
+ * Runs *review -> repair -> recompute -> re-review*, capped by
+ * `clampQualityLoopRounds(policy.maxLoops)`, early-exiting once
+ * `review.score >= policy.targetScore`. `bestReview` is the highest-scoring
+ * round; on a tie the LATER round wins (it judges the document as it now
+ * stands). `maxLoops: 0` still yields exactly one round with no repair — the
+ * documented no-deploy kill switch (`spec.md` §13).
  *
  * Pure orchestrator: every side effect (running the review skill, repairing
  * a stage, persisting a review, recomputing metrics) is INJECTED via the
  * `effects` parameter, so this file has no DB/LLM/render imports of its own.
- * The actual LLM call (to the `video-project-quality-review` skill) and DB
- * persistence are wired by the caller in section-07.
+ * The actual LLM calls (review + repair rewrites) and DB persistence are
+ * wired by the caller in `server/routers/videoProjects.ts`.
  */
 import type { VideoProjectQualityMetrics } from "./videoProjectQualityMetrics";
 
@@ -44,8 +42,8 @@ export type VideoProjectReview = {
 
 export type VideoProjectQualityLoopPolicy = {
   targetScore: number;
-  /** Defaults to `1` when omitted. Phase 1 always runs exactly one round
-   *  regardless of this value — see this file's header comment. */
+  /** Defaults to `1` when omitted. Clamped to `[1, QUALITY_LOOP_MAX_ROUNDS]`
+   *  via `clampQualityLoopRounds` — see this file's header comment. */
   maxLoops?: number;
 };
 
@@ -58,10 +56,8 @@ export type VideoProjectQualityLoopPolicy = {
  */
 export type VideoProjectQualityLoopEffects = {
   runReview(input: { projectId: string; metrics: VideoProjectQualityMetrics }): Promise<VideoProjectReview>;
-  /** Unused in the MVP single-round path — present for Phase 3 forward-compat. */
   repairStage(stage: QualityRepairStage, instruction: string): Promise<void>;
   persistReview(review: VideoProjectReview): Promise<void>;
-  /** Unused in the MVP single-round path — present for Phase 3 forward-compat. */
   recomputeMetrics(projectId: string): Promise<VideoProjectQualityMetrics>;
 };
 
@@ -91,7 +87,7 @@ type ForbiddenQualityLoopEffectKeys = Extract<
 export type AssertNoMediaGenerationEffectMember = AssertNever<ForbiddenQualityLoopEffectKeys>;
 
 export type VideoProjectQualityLoopState = {
-  /** === 1 in MVP. */
+  /** Number of rounds actually run. */
   rounds: number;
   bestReview: VideoProjectReview;
   history: VideoProjectReview[];
@@ -102,7 +98,7 @@ export interface RunVideoProjectQualityLoopArgs {
   /** `{ targetScore, maxLoops? }` — `maxLoops` defaults to 1. */
   policy: VideoProjectQualityLoopPolicy;
   /** Optional pre-computed first review — when provided, `effects.runReview`
-   *  is not called. */
+   *  is not called for round 1. */
   initialReview?: VideoProjectReview | null;
   /** Deterministic facts fed INTO the review (`videoProjectQualityMetrics.ts`). */
   metrics: VideoProjectQualityMetrics;
@@ -110,26 +106,83 @@ export interface RunVideoProjectQualityLoopArgs {
 }
 
 /**
- * Runs the Phase 1 single-round QA loop (section-06 §5.3):
- * 1. Use `initialReview` if provided, else call `effects.runReview` once.
- * 2. Call `effects.persistReview(review)` once.
- * 3. Return `{ rounds: 1, bestReview: review, history: [review] }`.
+ * Hard ceiling on the number of rounds a single loop run may execute. The
+ * document schema (`VideoProjectQaSchema`) permits `maxLoops` up to 20 and
+ * the estimator quotes ~5 calls per round — an unclamped 20 is therefore a
+ * 100-call authorisation nobody confirmed a price for. `getStageEstimate`
+ * (`server/routers/videoProjects.ts`) uses this SAME clamp so the quoted
+ * ceiling and the round count the loop actually runs never disagree.
+ */
+export const QUALITY_LOOP_MAX_ROUNDS = 5;
+
+/** Clamps a requested `maxLoops` into `[1, QUALITY_LOOP_MAX_ROUNDS]`.
+ *  `maxLoops: 0` (or any value below 1) still yields `1` — the documented
+ *  no-deploy kill switch (`spec.md` §13): even "no repairs" runs one review
+ *  round. */
+export function clampQualityLoopRounds(maxLoops: number): number {
+  const truncated = Math.trunc(maxLoops);
+  return Math.min(Math.max(1, truncated), QUALITY_LOOP_MAX_ROUNDS);
+}
+
+/**
+ * Runs the bounded multi-round QA loop (section-06 §6.7):
  *
- * `repairStage` / `recomputeMetrics` are never called here — see this file's
- * header comment.
+ * ```
+ * rounds = clampQualityLoopRounds(policy.maxLoops ?? 1)
+ * review = initialReview ?? await runReview({ projectId, metrics })
+ * for round in 1..rounds:
+ *     await persistReview(review)
+ *     if review.score >= policy.targetScore: break
+ *     if round === rounds: break
+ *     instructions = review.repairInstructions ?? []
+ *     if instructions.length === 0: break
+ *     for { stage, instruction } of instructions: await repairStage(stage, instruction)
+ *     metrics = await recomputeMetrics(projectId)
+ *     review  = await runReview({ projectId, metrics })
+ * return { rounds: <rounds actually run>, bestReview, history }
+ * ```
+ *
+ * `bestReview` tracks the highest `score` seen; a tie is won by the LATER
+ * round (it judges the document as it now stands). The loop stays pure — it
+ * never touches the document, the DB, or an LLM directly; every effect is
+ * injected by the caller.
  */
 export async function runVideoProjectQualityLoop(
   args: RunVideoProjectQualityLoopArgs,
 ): Promise<VideoProjectQualityLoopState> {
-  // Phase 3: bounded multi-round loop here (policy.maxLoops would drive how
-  // many `review -> repairStage -> recomputeMetrics -> re-review` rounds
-  // run). Phase 1 always runs exactly one round, no matter what
-  // `args.policy.maxLoops` requests.
-  const review = args.initialReview
+  const totalRounds = clampQualityLoopRounds(args.policy.maxLoops ?? 1);
+
+  let metrics = args.metrics;
+  let review = args.initialReview
     ? args.initialReview
-    : await args.effects.runReview({ projectId: args.projectId, metrics: args.metrics });
+    : await args.effects.runReview({ projectId: args.projectId, metrics });
 
-  await args.effects.persistReview(review);
+  const history: VideoProjectReview[] = [];
+  let bestReview = review;
+  let roundsRun = 0;
 
-  return { rounds: 1, bestReview: review, history: [review] };
+  for (let round = 1; round <= totalRounds; round++) {
+    roundsRun = round;
+
+    await args.effects.persistReview(review);
+    history.push(review);
+    // Highest score wins; on a tie the LATER round wins (>= keeps
+    // overwriting on equal scores).
+    if (review.score >= bestReview.score) bestReview = review;
+
+    if (review.score >= args.policy.targetScore) break;
+    if (round === totalRounds) break;
+
+    const instructions = review.repairInstructions ?? [];
+    if (instructions.length === 0) break;
+
+    for (const { stage, instruction } of instructions) {
+      await args.effects.repairStage(stage, instruction);
+    }
+
+    metrics = await args.effects.recomputeMetrics(args.projectId);
+    review = await args.effects.runReview({ projectId: args.projectId, metrics });
+  }
+
+  return { rounds: roundsRun, bestReview, history };
 }

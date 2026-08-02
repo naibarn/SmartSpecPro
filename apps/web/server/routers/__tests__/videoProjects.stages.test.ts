@@ -237,11 +237,32 @@ vi.mock("../../services/videoProjectScenePlanAdapter", () => ({
   makeRunPlanSkill: mockMakeRunPlanSkill,
 }));
 
-const { mockRunVideoProjectQualityLoop } = vi.hoisted(() => ({
+const { mockRunVideoProjectQualityLoop, mockClampQualityLoopRounds } = vi.hoisted(() => ({
   mockRunVideoProjectQualityLoop: vi.fn(),
+  mockClampQualityLoopRounds: vi.fn((maxLoops: number) => Math.min(Math.max(1, Math.trunc(maxLoops)), 5)),
 }));
 vi.mock("../../services/videoProjectQualityLoop", () => ({
   runVideoProjectQualityLoop: mockRunVideoProjectQualityLoop,
+  clampQualityLoopRounds: mockClampQualityLoopRounds,
+}));
+
+// section-06 — the repair applier/session and the repair rewriter are
+// mocked the SAME way as videoProjectReviewAdapter/videoProjectQualityLoop
+// above: this router test exercises WIRING only, never the real
+// applier/rewriter logic (those have their own dedicated, zero-router-mock
+// test files).
+const { mockCreateRepairRoundSession, mockAssertReviewRevisionCurrent } = vi.hoisted(() => ({
+  mockCreateRepairRoundSession: vi.fn(),
+  mockAssertReviewRevisionCurrent: vi.fn(),
+}));
+vi.mock("../../services/videoProjectRepairApplier", () => ({
+  createRepairRoundSession: mockCreateRepairRoundSession,
+  assertReviewRevisionCurrent: mockAssertReviewRevisionCurrent,
+}));
+
+const { mockMakeRepairEffects } = vi.hoisted(() => ({ mockMakeRepairEffects: vi.fn() }));
+vi.mock("../../services/videoProjectRepairRewriter", () => ({
+  makeRepairEffects: mockMakeRepairEffects,
 }));
 
 import { videoProjectsRouter, runVideoIntelligenceJobExecutor } from "../videoProjects";
@@ -292,6 +313,7 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     document: baseDocument(),
     sourceRefs: null,
     studioType: "motion",
+    qaLedger: null,
     ...overrides,
   };
 }
@@ -337,6 +359,28 @@ beforeEach(() => {
     sha256ByUrl: vi.fn(() => undefined),
   });
   mockSaveVideoProjectDocument.mockResolvedValue({ revision: 8 });
+
+  mockAssertReviewRevisionCurrent.mockImplementation(() => {});
+  mockMakeRepairEffects.mockReturnValue({ rewriteForStage: vi.fn(async () => []) });
+  mockCreateRepairRoundSession.mockImplementation(({ document: sessionDocument, baseRevision }: any) => ({
+    repairStage: vi.fn(async () => {}),
+    recomputeMetrics: vi.fn(async () => ({
+      sceneDurations: [],
+      captionCps: [],
+      layerCounts: { perScene: [], total: 0, maxLayersPerScene: 0 },
+      safeAreaViolations: [],
+      claimCoverage: { coverage: 1, mappedCount: 0, unmappedCount: 0, prohibitedCount: 0 },
+      renderCost: { score: 1, cls: "low", recommendPreRender: false },
+    })),
+    snapshot: () => ({
+      document: sessionDocument,
+      revision: baseRevision,
+      roundsPersisted: 0,
+      applied: [],
+      skipped: [],
+      rolledBack: [],
+    }),
+  }));
 });
 
 /* -------------------------------------------------------------------------- */
@@ -1046,6 +1090,269 @@ describe("runVideoIntelligenceJobExecutor (scene_plan)", () => {
   });
 
   it("makes ZERO deductCredits calls on the scene-plan path", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Execution — quality_repair via runVideoIntelligenceJobExecutor (section-06)*/
+/* -------------------------------------------------------------------------- */
+
+describe("runVideoIntelligenceJobExecutor (quality_repair)", () => {
+  function jobPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      kind: "quality_repair" as const,
+      tenantId: "tenant-1",
+      userId: 42,
+      projectId: 1,
+      input: {
+        traceId: "trace-repair-1",
+        modelId: "model-a",
+        modelSource: "recommended",
+        previousStatus: "qa",
+        baseRevision: 7,
+        stages: [],
+        ...overrides,
+      },
+    };
+  }
+
+  function storedReview(overrides: Record<string, unknown> = {}) {
+    return {
+      score: 4,
+      scorecard: { content: 4 },
+      issues: [{ dimension: "content", severity: "high", message: "needs work" }],
+      repairInstructions: [{ stage: "narration", instruction: "tighten it" }],
+      ...overrides,
+    };
+  }
+
+  function ledgerWith(review: Record<string, unknown> | null, revision = 7) {
+    if (review === null) return null;
+    return {
+      entries: [
+        {
+          at: "2026-01-01T00:00:00.000Z",
+          round: 1,
+          revision,
+          review,
+          creditsUsed: 5,
+          modelId: "model-a",
+          traceId: "trace-review-1",
+        },
+      ],
+      totalCount: 1,
+    };
+  }
+
+  beforeEach(() => {
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ revision: 7, qaLedger: ledgerWith(storedReview()) }),
+    );
+    // Default: a single-round pass-through — the loop calls persistReview
+    // once with the SAME reference it was handed as `initialReview` (the
+    // stored review), which the router must recognise as already-ledgered.
+    mockRunVideoProjectQualityLoop.mockImplementation(async (args: any) => {
+      await args.effects.persistReview(args.initialReview);
+      return { rounds: 1, bestReview: args.initialReview, history: [args.initialReview] };
+    });
+  });
+
+  it("loads the newest QaLedgerEntry as the review to apply", async () => {
+    const newest = storedReview({ score: 5 });
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({
+        revision: 7,
+        qaLedger: {
+          entries: [storedReview({ score: 1 }), newest].map((review, i) => ({
+            at: "2026-01-01T00:00:00.000Z",
+            round: i + 1,
+            revision: 7,
+            review,
+            creditsUsed: 0,
+            modelId: "model-a",
+            traceId: "trace-x",
+          })),
+          totalCount: 2,
+        },
+      }),
+    );
+
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    const call = mockRunVideoProjectQualityLoop.mock.calls[0][0];
+    expect(call.initialReview).toEqual(newest);
+  });
+
+  it("throws VI_REPAIR_NO_INSTRUCTIONS when the ledger is empty", async () => {
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7, qaLedger: null }));
+
+    await expect(runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())).rejects.toThrow(
+      /VI_REPAIR_NO_INSTRUCTIONS/,
+    );
+  });
+
+  it("throws VI_REPAIR_NO_INSTRUCTIONS when the newest entry has no repairInstructions", async () => {
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ revision: 7, qaLedger: ledgerWith(storedReview({ repairInstructions: [] })) }),
+    );
+
+    await expect(runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())).rejects.toThrow(
+      /VI_REPAIR_NO_INSTRUCTIONS/,
+    );
+  });
+
+  it("throws VI_REPAIR_STALE_REVIEW when the ledger review's revision != the project revision", async () => {
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ revision: 9, qaLedger: ledgerWith(storedReview(), 7) }),
+    );
+    mockAssertReviewRevisionCurrent.mockImplementation(({ reviewedRevision, currentRevision }: any) => {
+      if (reviewedRevision !== currentRevision) {
+        throw new Error("VI_REPAIR_STALE_REVIEW: stale");
+      }
+    });
+
+    await expect(runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())).rejects.toThrow(
+      /VI_REPAIR_STALE_REVIEW/,
+    );
+    expect(mockCreateRepairRoundSession).not.toHaveBeenCalled();
+    expect(mockSaveVideoProjectDocument).not.toHaveBeenCalled();
+    expect(mockAppendQaLedgerEntry).not.toHaveBeenCalled();
+  });
+
+  it("uses the modelId carried in the payload and does NOT re-resolve", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload({ modelId: "carried-model" }) as any, vi.fn());
+
+    expect(mockResolveStructuredStageModelSelection).not.toHaveBeenCalled();
+    expect(mockAssertStructuredStageModelAvailable).toHaveBeenCalledWith(
+      "carried-model",
+      undefined,
+      { source: "recommended" },
+    );
+    expect(mockMakeRepairEffects).toHaveBeenCalledWith(expect.objectContaining({ modelId: "carried-model" }));
+  });
+
+  it("fails with VI_NO_RECOMMENDED_MODEL when the carried model is no longer available", async () => {
+    mockAssertStructuredStageModelAvailable.mockRejectedValueOnce(
+      new MockVideoIntelligenceModelError("VI_NO_RECOMMENDED_MODEL: revoked"),
+    );
+
+    await expect(runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())).rejects.toThrow(
+      /VI_NO_RECOMMENDED_MODEL/,
+    );
+  });
+
+  it("wires persistDocument to save with reason 'quality_repair'", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    const sessionArgs = mockCreateRepairRoundSession.mock.calls[0][0];
+    await sessionArgs.persistDocument({ scenes: [] } as any, 7);
+
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 1, baseRevision: 7, reason: "quality_repair" }),
+    );
+  });
+
+  it("appends a QaLedgerEntry for a NEW re-review round, but not for the already-ledgered initial review", async () => {
+    const initial = storedReview();
+    const nextRound = storedReview({ score: 8, repairInstructions: [] });
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7, qaLedger: ledgerWith(initial) }));
+    mockRunVideoProjectQualityLoop.mockImplementation(async (args: any) => {
+      await args.effects.persistReview(args.initialReview); // already ledgered -> skipped
+      await args.effects.persistReview(nextRound); // a genuinely new round -> appended
+      return { rounds: 2, bestReview: nextRound, history: [args.initialReview, nextRound] };
+    });
+
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(mockAppendQaLedgerEntry).toHaveBeenCalledTimes(1);
+    const [, projectIdArg, entryArg] = mockAppendQaLedgerEntry.mock.calls[0]!;
+    expect(projectIdArg).toBe(1);
+    expect(entryArg).toMatchObject({ round: 2, review: nextRound, traceId: "trace-repair-1" });
+  });
+
+  it("is a safe no-op on redelivery — the second run throws before any write", async () => {
+    // First run "succeeds" and (in the real system) bumps the revision.
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+    vi.clearAllMocks();
+    mockGetTenantFeatureFlags.mockResolvedValue({ videoIntelligencePlatformEnabled: true });
+    mockAssertStructuredStageModelAvailable.mockResolvedValue(undefined);
+
+    // Second run (redelivery): the stored review's revision (7) no longer
+    // matches the NOW-current project revision (8) — the guard must fire.
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ revision: 8, qaLedger: ledgerWith(storedReview(), 7) }),
+    );
+    mockAssertReviewRevisionCurrent.mockImplementation(({ reviewedRevision, currentRevision }: any) => {
+      if (reviewedRevision !== currentRevision) {
+        throw new Error("VI_REPAIR_STALE_REVIEW: stale");
+      }
+    });
+
+    await expect(runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())).rejects.toThrow(
+      /VI_REPAIR_STALE_REVIEW/,
+    );
+    // No repair document write and no ledger append — the ONLY write that
+    // happens is `withStageStatusRestore`'s status-restore-on-failure
+    // (restoring `previousStatus`, which is unconditional on ANY thrown
+    // error and orthogonal to this guard).
+    expect(mockSaveVideoProjectDocument).not.toHaveBeenCalled();
+    expect(mockAppendQaLedgerEntry).not.toHaveBeenCalled();
+    expect(mockCreateRepairRoundSession).not.toHaveBeenCalled();
+  });
+
+  it("returns a serialisable result carrying appliedStages, revisionBefore/After and scoreBefore/After", async () => {
+    const result = (await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())) as Record<string, unknown>;
+
+    expect(() => JSON.stringify(result)).not.toThrow();
+    expect(result).toMatchObject({
+      kind: "quality_repair",
+      revisionBefore: 7,
+      scoreBefore: 4,
+      scoreAfter: 4,
+    });
+    expect(Array.isArray(result.appliedStages)).toBe(true);
+    expect(Array.isArray(result.skippedStages)).toBe(true);
+    expect(Array.isArray(result.rolledBackStages)).toBe(true);
+  });
+
+  it("sets status 'qa' on finish", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(expect.anything(), 1, { status: "qa" });
+  });
+
+  it("restores previousStatus when the loop throws", async () => {
+    mockRunVideoProjectQualityLoop.mockRejectedValueOnce(new Error("loop exploded"));
+
+    await expect(
+      runVideoIntelligenceJobExecutor(jobPayload({ previousStatus: "content" }) as any, vi.fn()),
+    ).rejects.toThrow(/loop exploded/);
+
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(expect.anything(), 1, { status: "content" });
+  });
+
+  it("emits start and finish audit events carrying appliedStages/skippedStages/revisionBefore/revisionAfter", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "video_project_stage",
+        metadata: expect.objectContaining({ stage: "quality_repair", phase: "finish" }),
+      }),
+    );
+    const finishCall = mockAuditLog.mock.calls.find(
+      call => (call[0] as any).metadata?.phase === "finish" && (call[0] as any).metadata?.stage === "quality_repair",
+    );
+    expect(finishCall![0].metadata).toMatchObject({
+      revisionBefore: 7,
+    });
+  });
+
+  it("makes ZERO deductCredits calls on the repair path", async () => {
     await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
 
     expect(mockDeductCredits).not.toHaveBeenCalled();

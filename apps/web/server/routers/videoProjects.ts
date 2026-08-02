@@ -106,7 +106,12 @@ import {
   type StructuredStageModelSource,
 } from "../services/videoIntelligenceModelResolver";
 import { makeRunReview, buildDocumentSummary } from "../services/videoProjectReviewAdapter";
-import { runVideoProjectQualityLoop } from "../services/videoProjectQualityLoop";
+import {
+  runVideoProjectQualityLoop,
+  clampQualityLoopRounds,
+  type VideoProjectQualityLoopEffects,
+  type VideoProjectReview,
+} from "../services/videoProjectQualityLoop";
 import { planScenes, type ScenePlanMode } from "../services/videoProjectScenePlanner";
 import { makeRunPlanSkill } from "../services/videoProjectScenePlanAdapter";
 import {
@@ -115,7 +120,9 @@ import {
   type StageEstimateBasis,
   type VideoIntelligenceStage,
 } from "../services/videoProjectStageEstimator";
-import { type QaLedgerEntry } from "../../shared/videoIntelligence/qaLedger";
+import { createRepairRoundSession, assertReviewRevisionCurrent } from "../services/videoProjectRepairApplier";
+import { makeRepairEffects } from "../services/videoProjectRepairRewriter";
+import { type QaLedgerEntry, readQaLedger } from "../../shared/videoIntelligence/qaLedger";
 
 /* -------------------------------------------------------------------------- */
 /* Zod input building blocks                                                  */
@@ -567,11 +574,10 @@ async function buildStageEstimate(
     modelSelection.modelId,
   );
 
-  // TODO(section-06): swap in `clampQualityLoopRounds` once section-06 lands
-  // so the quoted round count and the round count the loop actually runs are
-  // the same clamp. An unclamped value can only over-state the estimate (the
-  // safe direction), never under-state it — see spec §6.4 step 6.
-  const maxLoops = Math.max(1, document.qa.maxLoops);
+  // Section-06: uses the SAME clamp `runVideoProjectQualityLoop` applies at
+  // execution time, so the quoted round count and the round count the loop
+  // actually runs never disagree (spec §6.4 step 6).
+  const maxLoops = clampQualityLoopRounds(document.qa.maxLoops);
   const typicalCredits = estimateVideoProjectQualityLoopCredits(perRoundCredits, maxLoops);
   const ceilingCredits = estimateVideoProjectQualityLoopCredits(
     perRoundCredits * STAGE_CEILING_CALLS_PER_ROUND,
@@ -704,18 +710,16 @@ async function dispatchStageJob(args: {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Phase 1 scope boundary (documented, not a bug): the scene-plan and
- * quality-repair LLM stages enqueue real jobs with real ownership/traceId/
- * queue plumbing (fully wired and testable), but the actual skill/LLM
- * invocation inside each is intentionally NOT fabricated here — per the
- * platform's skill-first rule (`memory/feedback_skill_first_authoring.md`:
- * "TS only computes facts as review input, never hardcode... a hard-gate
- * that replaces LLM judgment"), synthesizing a fake scene plan or fake
- * repair in TS would be worse than leaving it unwired. Each stage below
- * computes its real, deterministic facts (metrics/claim validation) and then
- * fails the job with a specific, greppable `VI_*_NOT_WIRED` error rather than
- * fabricating judgment. `quality_review` (section-04) is the first of the
- * three to be fully wired — sections 05/06 close the other two.
+ * All three LLM-backed stage executors below (`quality_review` §section-04,
+ * `scene_plan` §section-05, `quality_repair` §section-06) are now fully
+ * wired — each computes its real, deterministic facts (metrics/claim
+ * validation/targets) in TypeScript and lets a skill-authored LLM call own
+ * every judgment call (skill-first rule,
+ * `memory/feedback_skill_first_authoring.md`); TypeScript never fabricates a
+ * plan, a review, or a repair. Historically (Phase 1 / section-04) the
+ * scene-plan and quality-repair executors instead failed fast with a
+ * greppable `VI_*_NOT_WIRED` error rather than synthesize fake judgment —
+ * that scope boundary is now closed.
  */
 /**
  * Feature 142, section-05: the Scene Plan stage's real executor. Reads the
@@ -979,14 +983,226 @@ async function executeQualityReviewStage(
   };
 }
 
+/**
+ * Feature 142, section-06: the Quality Repair stage's real executor. Loads
+ * the newest stored review from `qaLedger`, enforces the revision guard
+ * BEFORE any write (a BullMQ redelivery must be a byte-identical no-op),
+ * then runs the bounded multi-round loop wired to the repair round session
+ * (`videoProjectRepairApplier.ts`) and the rewriter's `RepairEffects`
+ * (`videoProjectRepairRewriter.ts`). Persists exactly ONE
+ * `video_project_revisions` row per repair round (reason "quality_repair"),
+ * never per handler (traps #6).
+ */
 async function executeQualityRepairStage(
   payload: VideoIntelligenceJobPayload,
+  auth: ProjectAuthScope,
   onProgress: (progress: VideoIntelligenceJobProgress) => void,
 ): Promise<unknown> {
   onProgress({ stage: "quality_repair_start" });
-  throw new Error(
-    "VI_QUALITY_REPAIR_NOT_WIRED: automated quality-repair application is not yet wired in Phase 1",
-  );
+
+  const traceId = typeof payload.input.traceId === "string" ? payload.input.traceId : mintTraceId();
+  const modelId =
+    typeof payload.input.modelId === "string" && payload.input.modelId.trim().length > 0
+      ? payload.input.modelId
+      : null;
+  const modelSource: StructuredStageModelSource =
+    payload.input.modelSource === "explicit_pin" ? "explicit_pin" : "recommended";
+
+  // A missing/blank modelId is a programming error at dispatch time — the
+  // model must be resolved ONCE at dispatch (spec §6.8 step 1), never here.
+  if (!modelId) {
+    throw new Error(
+      "VI_NO_RECOMMENDED_MODEL: quality_repair job payload is missing a dispatch-resolved modelId " +
+        "(programming error — the model must be resolved once at dispatch, never at execution time)",
+    );
+  }
+
+  // Fail rather than substitute when the dispatch-pinned model has since
+  // been revoked/disabled — never silently swap in a different model the
+  // user never confirmed a price for.
+  await assertStructuredStageModelAvailable(modelId, undefined, { source: modelSource });
+
+  const { projectRow, document, compileResult } = await compileProjectInternal(auth, payload.projectId);
+  const renderCost = compileResult.cost;
+
+  const ledger = readQaLedger(projectRow.qaLedger);
+  const latestEntry = ledger.entries[ledger.entries.length - 1];
+  if (!latestEntry || !latestEntry.review.repairInstructions || latestEntry.review.repairInstructions.length === 0) {
+    throw new Error(
+      "VI_REPAIR_NO_INSTRUCTIONS: no stored quality-review entry with repairInstructions is available to repair",
+    );
+  }
+
+  // Nothing is written before this line — that is what makes a redelivery a
+  // byte-identical no-op (spec §6.8 step 4).
+  assertReviewRevisionCurrent({ reviewedRevision: latestEntry.revision, currentRevision: projectRow.revision });
+
+  onProgress({ stage: "quality_repair_applying" });
+
+  const sourceRefs = (projectRow.sourceRefs as { productIds?: string[] } | null) ?? null;
+  const productIds = sourceRefs?.productIds ?? [];
+  const resolvedCatalog = productIds.length > 0 ? await resolveCatalogFactsForProject(productIds, auth) : null;
+
+  let totalCreditsUsed = 0;
+  let lastModelIdUsed: string | null = modelId;
+
+  const rewriteEffects = makeRepairEffects({
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    traceId,
+    modelId,
+    projectId: payload.projectId,
+    // 🔴 Reports spend that ALREADY happened inside callLLMStructured — this
+    // callback NEVER charges credits itself (traps #1).
+    onUsage: usage => {
+      totalCreditsUsed += usage.creditsUsed;
+      lastModelIdUsed = usage.modelId ?? lastModelIdUsed;
+    },
+  });
+
+  const baseRevision =
+    typeof payload.input.baseRevision === "number" ? payload.input.baseRevision : projectRow.revision;
+
+  // An optional caller-requested subset of stages (payload.input.stages,
+  // §2/§4.1's `applyQualityRepairs` mutation input) narrows which of the
+  // skill-authored `repairInstructions` this run acts on. An empty/absent
+  // list means "every stage the review flagged" — the common case.
+  const requestedStages = Array.isArray(payload.input.stages)
+    ? (payload.input.stages as unknown[]).filter((s): s is string => typeof s === "string")
+    : [];
+  const storedReview = latestEntry.review as unknown as VideoProjectReview;
+  const scopedReview: VideoProjectReview =
+    requestedStages.length > 0
+      ? {
+          ...storedReview,
+          repairInstructions: (storedReview.repairInstructions ?? []).filter(entry =>
+            requestedStages.includes(entry.stage),
+          ),
+        }
+      : storedReview;
+
+  let currentReview: VideoProjectReview = scopedReview;
+  const initialReviewRef = currentReview;
+
+  const session = createRepairRoundSession({
+    document,
+    baseRevision,
+    resolvedCatalog,
+    effects: rewriteEffects,
+    reviewFor: () => currentReview,
+    persistDocument: (doc, base) =>
+      saveVideoProjectDocument(auth, {
+        id: payload.projectId,
+        baseRevision: base,
+        document: doc,
+        reason: "quality_repair",
+      }),
+    renderCostFor: () => renderCost,
+  });
+
+  onProgress({ stage: "quality_repair_rereview" });
+
+  // A fresh `runReview` per round, built from the CURRENT (possibly
+  // already-repaired) document — otherwise round 2 would judge the
+  // pre-repair text and the loop could never converge (spec §6.8 step 7).
+  const runReview: VideoProjectQualityLoopEffects["runReview"] = async input => {
+    const snapshot = session.snapshot();
+    const documentSummary = buildDocumentSummary(snapshot.document);
+    const claimValidation = validateProjectClaims(snapshot.document, resolvedCatalog);
+    const reviewFn = makeRunReview({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      traceId,
+      modelId,
+      documentSummary,
+      claimValidation,
+      onUsage: usage => {
+        totalCreditsUsed += usage.creditsUsed;
+        lastModelIdUsed = usage.modelId ?? lastModelIdUsed;
+      },
+    });
+    return reviewFn(input);
+  };
+
+  let round = 0;
+  let ledgerEntryCount = ledger.entries.length;
+
+  const state = await runVideoProjectQualityLoop({
+    projectId: String(payload.projectId),
+    policy: { targetScore: document.qa.targetScore, maxLoops: document.qa.maxLoops },
+    initialReview: currentReview,
+    metrics: computeQualityMetrics({
+      document,
+      claimValidation: validateProjectClaims(document, resolvedCatalog),
+      renderCost,
+    }),
+    effects: {
+      runReview,
+      repairStage: session.repairStage,
+      persistReview: async reviewEntry => {
+        currentReview = reviewEntry;
+        round += 1;
+        // Skip re-appending the FIRST review — it is already in the ledger
+        // (the stored review this repair applied); re-appending would
+        // duplicate a round the user already saw.
+        if (reviewEntry === initialReviewRef) return;
+
+        const snapshot = session.snapshot();
+        const entry: QaLedgerEntry = {
+          at: new Date().toISOString(),
+          round,
+          revision: snapshot.revision,
+          review: reviewEntry,
+          creditsUsed: totalCreditsUsed,
+          modelId: lastModelIdUsed,
+          traceId,
+        };
+        const ledgerResult = await appendQaLedgerEntry(auth, payload.projectId, entry);
+        ledgerEntryCount = ledgerResult.entryCount;
+      },
+      recomputeMetrics: session.recomputeMetrics,
+    },
+  });
+
+  onProgress({ stage: "quality_repair_persisted" });
+
+  const finalSnapshot = session.snapshot();
+  const blocksFinalRender = validateProjectClaims(finalSnapshot.document, resolvedCatalog).blocksFinalRender;
+  await updateVideoProjectFields(auth, payload.projectId, { status: "qa" });
+
+  // Secret-safety: `extra` carries stage names, numbers and model names
+  // only — never prompt text, never rewritten copy, never catalog
+  // credentials (spec §6.8 step 9).
+  logStage("quality_repair", payload.projectId, traceId, "finish", {
+    appliedStages: finalSnapshot.applied,
+    skippedStages: finalSnapshot.skipped,
+    rolledBackStages: finalSnapshot.rolledBack,
+    revisionBefore: baseRevision,
+    revisionAfter: finalSnapshot.revision,
+    rounds: state.rounds,
+    scoreBefore: initialReviewRef.score,
+    scoreAfter: state.bestReview.score,
+    modelUsed: lastModelIdUsed,
+    creditsUsed: totalCreditsUsed,
+    ledgerEntryCount,
+  });
+
+  return {
+    kind: "quality_repair" as const,
+    traceId,
+    revisionBefore: baseRevision,
+    revisionAfter: finalSnapshot.revision,
+    rounds: state.rounds,
+    appliedStages: finalSnapshot.applied,
+    skippedStages: finalSnapshot.skipped,
+    rolledBackStages: finalSnapshot.rolledBack,
+    review: state.bestReview,
+    scoreBefore: initialReviewRef.score,
+    scoreAfter: state.bestReview.score,
+    creditsUsed: totalCreditsUsed,
+    modelId: lastModelIdUsed,
+    blocksFinalRender,
+  };
 }
 
 /**
@@ -1056,7 +1272,9 @@ export const runVideoIntelligenceJobExecutor: VideoIntelligenceJobExecutor = asy
         executeQualityReviewStage(payload, auth, onProgress),
       );
     case "quality_repair":
-      return executeQualityRepairStage(payload, onProgress);
+      return withStageStatusRestore(payload, auth, () =>
+        executeQualityRepairStage(payload, auth, onProgress),
+      );
     default:
       throw new Error(`Unknown video intelligence job kind: ${(payload as { kind: string }).kind}`);
   }
