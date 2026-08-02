@@ -267,6 +267,36 @@ describe("VideoStudioWorkspacePage — stage rail + render", () => {
     );
   });
 
+  /**
+   * Regression: a freshly created project has `document: null` until the user
+   * initializes it in the Brief stage. Every other stage is gated on
+   * `draftDocument`, but Render was not — so it mounted `RenderPanel`, which
+   * fired `compileProject`/`getRenderCostEstimate` (both enabled because
+   * `hasUnsavedChanges` is false when the draft is still null) and the server
+   * threw `VI_DOCUMENT_INVALID`, surfacing a raw Zod dump to the user instead
+   * of the friendly "initialize it in the Brief stage first" banner.
+   *
+   * Fixed and deployed 2026-08-02, BEFORE this feature branch existed; the
+   * branch was cut from an older HEAD, so this test is re-applied here to stop
+   * the merge silently reverting the fix.
+   */
+  it("does not mount the Render panel (and fires no compile query) when the project has no document yet", () => {
+    getProjectQueryMock.mockReturnValue({
+      data: { ...PROJECT, document: null },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<VideoStudioWorkspacePage />);
+    fireEvent.click(screen.getByTestId("video-studio-stage-render"));
+
+    expect(screen.queryByTestId("video-studio-render-panel")).not.toBeInTheDocument();
+    expect(compileProjectQueryMock).not.toHaveBeenCalled();
+    expect(costEstimateQueryMock).not.toHaveBeenCalled();
+  });
+
   it("shows breadcrumb links back to the Dashboard and the Video Studio list", () => {
     render(<VideoStudioWorkspacePage />);
     const dashboardLink = screen.getByRole("link", { name: /dashboard|แดชบอร์ด/i });

@@ -255,7 +255,7 @@ export default function VideoStudioWorkspacePage() {
             />
           ) : null}
 
-          {stage === "render" ? (
+          {stage === "render" && draftDocument ? (
             <RenderPanel
               lang={lang}
               projectId={projectId}
