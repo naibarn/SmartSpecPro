@@ -170,6 +170,10 @@ import {
   initVerticalDramaStoryJobsQueue,
   closeVerticalDramaStoryJobsQueue,
 } from "../services/verticalDramaStoryJobs";
+import {
+  initVideoIntelligenceJobsQueue,
+  closeVideoIntelligenceJobsQueue,
+} from "../services/videoIntelligenceJobs";
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
@@ -1696,6 +1700,17 @@ async function main() {
     console.error("[Startup] Failed to initialize vertical drama story jobs queue:", error);
   }
 
+  // Initialize Video Intelligence Jobs queue (BullMQ — Video Studio's async
+  // scene-plan / quality-review / quality-repair stages, feature 142
+  // section-01). A missing init here strands every dispatched stage at
+  // `queued` forever — the identical "taught-but-not-wired" failure class
+  // that stranded vertical-drama runs #496/#501.
+  try {
+    await initVideoIntelligenceJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize video intelligence jobs queue:", error);
+  }
+
   // Initialize Webhook API Delivery queue (BullMQ — outbound delivery to external webhook endpoints)
   try {
     await initWebhookApiDeliveryQueue();
@@ -2056,6 +2071,7 @@ process.on("SIGTERM", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
@@ -2123,6 +2139,7 @@ process.on("SIGINT", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});

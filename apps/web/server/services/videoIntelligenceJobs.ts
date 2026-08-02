@@ -38,6 +38,7 @@
  */
 import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 import { getRedisClient } from "./redis";
 import { debugError } from "../_core/logger";
@@ -58,6 +59,19 @@ const VIDEO_INTELLIGENCE_JOBS_WORKER_CONCURRENCY = 3;
 
 const JOB_RECORD_TTL_SECONDS = 2 * 60 * 60; // 2h
 const ACTIVE_POINTER_TTL_SECONDS = 2 * 60 * 60; // 2h
+
+/** How often the orphan sweep fires. Mirrors
+ *  STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS (verticalDramaEpisodeStageJobs.ts). */
+export const VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+
+/** A record whose `updatedAt` is older than this is considered orphaned
+ *  (spec §12.5: 15 min here, 30 min for the VD equivalent). */
+export const VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS = 15 * 60 * 1000;
+
+/** Poison-pill cap: how many times one job may be recovered before it is
+ *  marked `failed`. MANDATORY — without it a job that reliably kills its
+ *  worker is re-enqueued forever. */
+export const VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES = 1;
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -98,6 +112,10 @@ export interface VideoIntelligenceJobRecord extends VideoIntelligenceJobPayload 
   error: string | null;
   createdAt: string;
   updatedAt: string;
+  /** How many times the orphan sweep has recovered this job. OPTIONAL on
+   *  purpose: records already in Redis when this deploys were written
+   *  without it, and `undefined` must read as 0. */
+  orphanRecoveries?: number;
 }
 
 /** Generic executor signature — dispatches a job payload to kind-specific
@@ -116,6 +134,10 @@ export interface VideoIntelligenceJobRedisAdapter {
   get: (key: string) => Promise<string | null>;
   set: (key: string, value: string, mode: "EX", seconds: number) => Promise<unknown>;
   del: (key: string) => Promise<unknown>;
+  /** NEW — one SCAN page: `[nextCursor, keys]`. Optional so existing test
+   *  doubles keep compiling; the production adapter ALWAYS provides it.
+   *  When absent the sweep logs once and no-ops rather than throwing. */
+  scan?: (cursor: string, match: string, count: number) => Promise<[string, string[]]>;
 }
 
 export interface VideoIntelligenceJobStoreDependencies {
@@ -129,6 +151,8 @@ function defaultRedisAdapter(): VideoIntelligenceJobRedisAdapter {
     get: (key: string) => client.get(key),
     set: (key: string, value: string, mode: "EX", seconds: number) => client.set(key, value, mode, seconds),
     del: (key: string) => client.del(key),
+    scan: (cursor: string, match: string, count: number) =>
+      client.scan(cursor, "MATCH", match, "COUNT", count),
   };
 }
 
@@ -218,9 +242,56 @@ export async function enqueueVideoIntelligenceJob(
   try {
     await enqueueBullmqJob(jobId);
   } catch (error) {
-    // Best-effort — mirrors `verticalDramaStoryJobs.ts`'s own "queue
-    // unavailable -> job stays queued until a worker comes up" degradation.
+    // FAIL-FAST (section-01 hardening, mirrors `verticalDramaEpisodeStageJobs.ts`'s
+    // own enqueue docblock): unlike `verticalDramaStoryJobs.ts`'s self-contained
+    // Redis-JSON record — where a later worker can still pick up a job that was
+    // merely never enqueued — this record has NO job behind it at all once
+    // `queue.add` throws, so "leave it queued" really means "orphan it forever"
+    // for the record's full 2h TTL and blocks the project's active pointer for
+    // just as long. Instead the record is marked `failed` immediately (before
+    // clearing the active pointer, so a concurrent `getActiveGenerationJob`
+    // never sees a pointer to a still-`queued` record), the pointer is cleared
+    // (guarded so it only clears a pointer still pointing at THIS jobId — same
+    // guard the worker's own `finally` uses), and the caller gets a real
+    // terminal error instead of a `{ jobId }` for a job that will never run.
     debugError("videoIntelligenceJobs", `Failed to enqueue BullMQ job for video intelligence job ${jobId}`, error);
+
+    const message = error instanceof Error ? error.message : String(error);
+    try {
+      await writeRecord(
+        {
+          ...record,
+          status: "failed",
+          error: `VI_QUEUE_UNAVAILABLE: ${message}`,
+          updatedAt: new Date(deps.now()).toISOString(),
+        },
+        deps,
+      );
+    } catch (writeError) {
+      debugError(
+        "videoIntelligenceJobs",
+        `Failed to mark video intelligence job ${jobId} failed after its enqueue failed`,
+        writeError,
+      );
+    }
+
+    try {
+      const currentPointer = await deps.redis.get(pointerKey);
+      if (currentPointer === jobId) {
+        await deps.redis.del(pointerKey);
+      }
+    } catch (pointerError) {
+      debugError(
+        "videoIntelligenceJobs",
+        `Failed to clear the active pointer for video intelligence job ${jobId} after its enqueue failed`,
+        pointerError,
+      );
+    }
+
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `VI_QUEUE_UNAVAILABLE: ${message}`,
+    });
   }
 
   return { jobId, deduped: false };
@@ -341,7 +412,175 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
   if (!queue) {
     throw new Error(`${VIDEO_INTELLIGENCE_JOBS_QUEUE} queue is not initialized`);
   }
-  await queue.add("run", { jobId }, { removeOnComplete: true, removeOnFail: true });
+  // Custom job id (`jobId`, a `randomUUID()` value with no `:`, so it is
+  // always a valid BullMQ custom id) — a prerequisite for a safe sweep
+  // re-enqueue: BullMQ ignores an `add` for an existing custom id, so a
+  // sweep re-enqueue of a merely-backlogged job can never execute the same
+  // job twice. `attempts: 1`: the worker body never rethrows, so a retry
+  // could only fire on a genuine crash, and blind redelivery of an LLM
+  // stage costs real credits.
+  await queue.add(
+    "run",
+    { jobId },
+    { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Orphan sweep (heals jobs whose worker died mid-flight, spec §12.5)        */
+/* -------------------------------------------------------------------------- */
+
+function jobRecordFromKey(key: string): string | null {
+  const prefix = "vi:job:";
+  if (!key.startsWith(prefix) || key.startsWith(`${prefix}active:`)) return null;
+  return key.slice(prefix.length);
+}
+
+/**
+ * Heals jobs whose worker died mid-flight (spec §12.5). A record older than
+ * `VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS` is recovered ONCE — reset to
+ * `queued`, `orphanRecoveries` incremented, re-enqueued through the
+ * injectable `enqueueBullmqJob` seam — and on a SECOND orphaning is marked
+ * `failed` instead. The cap is mandatory: without it a job that reliably
+ * kills its worker is re-enqueued forever.
+ *
+ * `requeued` tracks records recovered from `running` (a worker genuinely
+ * died mid-flight); `stuckQueued` tracks records that were already `queued`
+ * but stale (fail-fast enqueue means a fresh `queued` record always has a
+ * job behind it, so a stale one means the BullMQ job itself vanished — the
+ * exact stranding this section closes). Both buckets are re-enqueued
+ * identically; they are reported separately only for observability.
+ *
+ * Never throws — every per-record failure is caught, logged, and the sweep
+ * continues. One bad record must not disarm the sweep for every other
+ * project. Exported so the unit suite can drive it with injected deps
+ * directly, not the timer.
+ */
+export async function sweepOrphanedVideoIntelligenceJobs(
+  dependencies?: Partial<VideoIntelligenceJobStoreDependencies> & {
+    enqueueBullmqJob?: (jobId: string) => Promise<void>;
+  },
+): Promise<{ requeued: string[]; failed: string[]; stuckQueued: string[] }> {
+  const deps = resolveDeps(dependencies);
+  const enqueueBullmqJob = dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob;
+  const result = { requeued: [] as string[], failed: [] as string[], stuckQueued: [] as string[] };
+
+  if (typeof deps.redis.scan !== "function") {
+    debugError(
+      "videoIntelligenceJobs",
+      "sweepOrphanedVideoIntelligenceJobs: adapter provides no scan method — skipping this tick",
+      null,
+    );
+    return result;
+  }
+
+  const jobIds: string[] = [];
+  let cursor = "0";
+  let pages = 0;
+  const MAX_PAGES = 20;
+  do {
+    const [nextCursor, keys] = await deps.redis.scan(cursor, "vi:job:*", 100);
+    cursor = nextCursor;
+    for (const key of keys) {
+      const jobId = jobRecordFromKey(key);
+      if (jobId) jobIds.push(jobId);
+    }
+    pages += 1;
+  } while (cursor !== "0" && pages < MAX_PAGES);
+
+  const nowMs = deps.now();
+
+  for (const jobId of jobIds) {
+    try {
+      const record = await readRecord(jobId, deps);
+      if (!record) continue;
+      if (record.status !== "running" && record.status !== "queued") continue;
+
+      const updatedAtMs = Date.parse(record.updatedAt);
+      if (Number.isNaN(updatedAtMs) || nowMs - updatedAtMs <= VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS) {
+        continue;
+      }
+
+      const wasQueued = record.status === "queued";
+      const recoveries = record.orphanRecoveries ?? 0;
+
+      if (recoveries < VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES) {
+        // Refresh `updatedAt` BEFORE the enqueue so a slow enqueue cannot
+        // cause a re-sweep of this same record on the next tick. The active
+        // pointer is left alone — it still correctly points at this job.
+        await writeRecord(
+          {
+            ...record,
+            status: "queued",
+            progress: null,
+            orphanRecoveries: recoveries + 1,
+            updatedAt: new Date(nowMs).toISOString(),
+          },
+          deps,
+        );
+        await enqueueBullmqJob(jobId);
+        if (wasQueued) {
+          result.stuckQueued.push(jobId);
+        } else {
+          result.requeued.push(jobId);
+        }
+      } else {
+        // Poison pill — clear the active pointer (guarded against this
+        // jobId) and mark the record terminally failed.
+        await writeRecord(
+          {
+            ...record,
+            status: "failed",
+            error: "VI_QUEUE_UNAVAILABLE: job orphaned past its recovery budget",
+            updatedAt: new Date(nowMs).toISOString(),
+          },
+          deps,
+        );
+        const pointerKey = activePointerKey(record.tenantId, record.projectId);
+        const currentPointer = await deps.redis.get(pointerKey).catch(() => null);
+        if (currentPointer === jobId) {
+          await deps.redis.del(pointerKey).catch(() => {});
+        }
+        result.failed.push(jobId);
+      }
+    } catch (error) {
+      debugError(
+        "videoIntelligenceJobs",
+        `sweepOrphanedVideoIntelligenceJobs: failed to process job ${jobId} — continuing with the rest of the sweep`,
+        error,
+      );
+    }
+  }
+
+  return result;
+}
+
+let sweepTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Never throws — mirrors `runStaleRunSweepTick` (`verticalDramaEpisodeStageJobs.ts`). */
+async function runOrphanSweepTick(sweep: () => Promise<unknown>): Promise<void> {
+  try {
+    await sweep();
+  } catch (error) {
+    debugError("videoIntelligenceJobs", "Orphan sweep tick failed", error);
+  }
+}
+
+/** Arms the periodic sweep. Called BEFORE (and regardless of) BullMQ init
+ *  succeeding — the sweep matters most precisely when BullMQ/Redis is
+ *  broken. Fires once immediately so pre-restart orphans heal right away. */
+function startOrphanSweep(sweep: () => Promise<unknown>): void {
+  if (sweepTimer) return;
+  sweepTimer = setInterval(() => {
+    void runOrphanSweepTick(sweep);
+  }, VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS);
+  void runOrphanSweepTick(sweep);
+}
+
+export interface VideoIntelligenceJobsQueueInitDependencies {
+  /** Test-only override. Production calls init() with no arguments — the
+   *  wiring guard counts `name()` literally. */
+  sweep?: () => Promise<unknown>;
 }
 
 /**
@@ -352,8 +591,19 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
  * circular import (the router already statically imports
  * `enqueueVideoIntelligenceJob`/`getGenerationJobStatus`/`getActiveGenerationJob`
  * from this file).
+ *
+ * The periodic orphan sweep (`sweepOrphanedVideoIntelligenceJobs`) is armed
+ * FIRST, outside this BullMQ try/catch and before the `if (queue) return`
+ * early exit, so a second init call still leaves the sweep armed and a
+ * broken BullMQ/Redis connection never disarms the exact mechanism that
+ * heals jobs stranded by that same brokenness.
  */
-export async function initVideoIntelligenceJobsQueue(): Promise<void> {
+export async function initVideoIntelligenceJobsQueue(
+  dependencies?: VideoIntelligenceJobsQueueInitDependencies,
+): Promise<void> {
+  const sweep = dependencies?.sweep ?? (() => sweepOrphanedVideoIntelligenceJobs());
+  startOrphanSweep(sweep);
+
   if (queue) return;
   try {
     const { Queue, Worker } = await import("bullmq");
@@ -372,12 +622,17 @@ export async function initVideoIntelligenceJobsQueue(): Promise<void> {
     worker.on("failed", (bullJob: any, err: Error) => {
       console.error(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] Job ${bullJob?.id} failed:`, err.message);
     });
+    console.log(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] queue + worker registered`);
   } catch (err) {
     console.warn(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] BullMQ initialization skipped:`, (err as Error).message);
   }
 }
 
 export async function closeVideoIntelligenceJobsQueue(): Promise<void> {
+  if (sweepTimer) {
+    clearInterval(sweepTimer);
+    sweepTimer = null;
+  }
   try {
     await worker?.close();
     await queue?.close();
