@@ -36,6 +36,10 @@ import {
   MOTION_TEMPLATE_IDS,
   type AspectRatio,
 } from "@shared/videoIntelligence/motionTemplates";
+import type {
+  AssertNever,
+  ForbiddenMediaGenerationEffectMembers,
+} from "@shared/videoIntelligence/effectGuards";
 
 import { MOTION_TEMPLATE_REGISTRY, type MotionTemplate } from "../remotion/templates";
 import {
@@ -150,23 +154,14 @@ export type ScenePlanEffects = {
   persistDocument(doc: VideoProjectDocument, reason: string): Promise<{ revision: number }>;
 };
 
-type AssertNever<T extends never> = T;
-type ForbiddenScenePlanEffectKeys = Extract<
-  keyof ScenePlanEffects,
-  | "render"
-  | "renderVideo"
-  | "queueRender"
-  | "generateImage"
-  | "generateVideo"
-  | "generateAudio"
-  | "generateMedia"
-  | "synthesizeSpeech"
-  | "runFfmpeg"
->;
-/** Compile-time assertion — `pnpm check` fails if a media-generation member
- *  is ever added to `ScenePlanEffects`. Type-only, zero runtime cost. */
+/** Compile-time assertion (unified section-08 §4.1 via the shared helper) —
+ *  `pnpm check` fails if a media-generation member is ever added to
+ *  `ScenePlanEffects`. Type-only, zero runtime cost. Exported alias name kept
+ *  unchanged — section-08's fs guard references it by name. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type AssertScenePlanHasNoMediaGeneration = AssertNever<ForbiddenScenePlanEffectKeys>;
+export type AssertScenePlanHasNoMediaGeneration = AssertNever<
+  ForbiddenMediaGenerationEffectMembers<ScenePlanEffects>
+>;
 
 /* -------------------------------------------------------------------------- */
 /* 4.4 — The planner entry point                                             */

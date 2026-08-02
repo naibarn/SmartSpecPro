@@ -30,6 +30,7 @@
  * revocation or an admin edit takes effect immediately.
  */
 import type { EnabledLlmModelRow } from "./enabledLlmModels";
+import { reportVideoIntelligenceSchemaFailure } from "./videoIntelligenceObservability";
 
 /** Sentinel the model pickers store when the user chose "automatic". */
 export const AUTOMATIC_LLM_MODEL_VALUE = "__automatic__";
@@ -402,6 +403,17 @@ async function handleStructuredOutputViolation(
 ): Promise<void> {
   const deps = await resolveDeps(dependencies);
   const detail = args.zodIssuePaths.join(",").slice(0, MAX_ZOD_ISSUE_DETAIL_LENGTH);
+
+  // section-08 §6.6: emitted for EVERY reported contract failure, revoked or
+  // not — the numerator of the schema-failure-rate alert. Distinct from the
+  // `recommended_model_revoked` emission below, which stays revocation-only.
+  // ONE choke point: this call never moves into an adapter (sections 03/05/06).
+  reportVideoIntelligenceSchemaFailure({
+    stage: args.stage ?? "model_quality_breaker",
+    modelId: args.modelId,
+    traceId: args.traceId,
+    issuePathCount: args.zodIssuePaths.length,
+  });
 
   const result = await deps.recordStrike({
     modelId: args.modelId,

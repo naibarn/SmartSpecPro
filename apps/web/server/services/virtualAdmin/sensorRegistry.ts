@@ -97,6 +97,7 @@ export async function registerAllSensors(): Promise<void> {
     import("./sensors/apiLatency"),
     import("./sensors/mediaPipeline"),
     import("./sensors/teamEscalation"),
+    import("./sensors/videoIntelligenceHealth"),
   ]);
   for (const mod of sensorModules) {
     registerSensor(mod.default);

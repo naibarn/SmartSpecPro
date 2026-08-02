@@ -42,6 +42,12 @@ import { TRPCError } from "@trpc/server";
 
 import { getRedisClient } from "./redis";
 import { debugError } from "../_core/logger";
+import {
+  armVideoIntelligenceRegistrationCheck,
+  clearVideoIntelligenceRegistrationCheck,
+  markVideoIntelligenceQueueRegistered,
+  reportVideoIntelligenceSweepFindings,
+} from "./videoIntelligenceObservability";
 import { db } from "../db";
 import { workerJobs, type WorkerJob } from "../../drizzle/schema";
 import {
@@ -552,6 +558,12 @@ export async function sweepOrphanedVideoIntelligenceJobs(
     }
   }
 
+  // Reports the sweep's own findings as a machine-readable audit signal
+  // (section-08 §6.5) — inside the sweep's existing never-throw envelope;
+  // `reportVideoIntelligenceSweepFindings` swallows its own errors, so this
+  // can never disarm or fail the sweep itself.
+  reportVideoIntelligenceSweepFindings(result);
+
   return result;
 }
 
@@ -603,6 +615,11 @@ export async function initVideoIntelligenceJobsQueue(
 ): Promise<void> {
   const sweep = dependencies?.sweep ?? (() => sweepOrphanedVideoIntelligenceJobs());
   startOrphanSweep(sweep);
+  // Armed BEFORE (and regardless of) BullMQ init succeeding, same reasoning
+  // as the sweep above — the boot self-check matters most when BullMQ is
+  // broken, since that is exactly when registration never happens
+  // (section-08 §6.4).
+  armVideoIntelligenceRegistrationCheck();
 
   if (queue) return;
   try {
@@ -623,6 +640,7 @@ export async function initVideoIntelligenceJobsQueue(
       console.error(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] Job ${bullJob?.id} failed:`, err.message);
     });
     console.log(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] queue + worker registered`);
+    markVideoIntelligenceQueueRegistered({ workerConcurrency: VIDEO_INTELLIGENCE_JOBS_WORKER_CONCURRENCY });
   } catch (err) {
     console.warn(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] BullMQ initialization skipped:`, (err as Error).message);
   }
@@ -633,6 +651,7 @@ export async function closeVideoIntelligenceJobsQueue(): Promise<void> {
     clearInterval(sweepTimer);
     sweepTimer = null;
   }
+  clearVideoIntelligenceRegistrationCheck();
   try {
     await worker?.close();
     await queue?.close();

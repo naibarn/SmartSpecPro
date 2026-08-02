@@ -123,6 +123,7 @@ import {
 import { createRepairRoundSession, assertReviewRevisionCurrent } from "../services/videoProjectRepairApplier";
 import { makeRepairEffects } from "../services/videoProjectRepairRewriter";
 import { type QaLedgerEntry, readQaLedger } from "../../shared/videoIntelligence/qaLedger";
+import { recordVideoIntelligenceStageRun } from "../services/videoIntelligenceObservability";
 
 /* -------------------------------------------------------------------------- */
 /* Zod input building blocks                                                  */
@@ -639,6 +640,24 @@ async function dispatchStageJob(args: {
     });
   }
   const document = parsedDocument.data;
+
+  // section-08 §6.3: baseRevision -> CONFLICT check, placed BEFORE the model
+  // resolve/estimate/credit pre-check so a doomed (stale-revision) request
+  // costs exactly one row read and nothing else — zero writes, zero pricing
+  // reads, zero model resolution (spec §8 trap #7). `requestedBaseRevision`
+  // stays optional: an omitted value pins the CURRENT revision below (never
+  // a conflict), so a caller that does not track revisions is never forced
+  // to. Same TRPCError CONFLICT shape/message style as `saveDocument`'s own
+  // `VideoProjectRevisionConflictError` mapping (videoProjects.ts) so the
+  // client's existing CONFLICT banner/reload path needs no client change.
+  if (typeof requestedBaseRevision === "number" && requestedBaseRevision !== projectRow.revision) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message:
+        `VIDEO_PROJECT_REVISION_CONFLICT: project ${projectId} expected base revision ` +
+        `${requestedBaseRevision} but current revision is ${projectRow.revision}`,
+    });
+  }
 
   let built: Awaited<ReturnType<typeof buildStageEstimate>>;
   try {
@@ -1213,6 +1232,19 @@ async function executeQualityRepairStage(
  * ONLY place a failed stage's status gets restored. Also emits a `finish`
  * audit event carrying the error, so a failed stage is as observable as a
  * successful one.
+ *
+ * section-08 §6.3 in-worker concurrency case: `saveVideoProjectDocument`
+ * throws `VideoProjectRevisionConflictError` when a human saved between
+ * dispatch and execution. Caught here (so the status is still restored) and
+ * rethrown as a plain `Error` whose message starts with
+ * `VI_REVISION_CONFLICT:` — a worker has no tRPC error codes, and this
+ * `VI_`-prefixed string is what the client's job-error allowlist renders
+ * verbatim instead of a generic fallback. NEVER swallowed: silently
+ * absorbing this error would let the AI silently overwrite a concurrent
+ * human edit (spec §8 trap #8).
+ *
+ * Also records a stage run (section-08 §6 — the schema-failure-rate
+ * denominator) on BOTH the success and the failure path.
  */
 async function withStageStatusRestore<T>(
   payload: VideoIntelligenceJobPayload,
@@ -1220,8 +1252,12 @@ async function withStageStatusRestore<T>(
   run: () => Promise<T>,
 ): Promise<T> {
   try {
-    return await run();
+    const result = await run();
+    recordVideoIntelligenceStageRun(payload.kind);
+    return result;
   } catch (error) {
+    recordVideoIntelligenceStageRun(payload.kind);
+
     const previousStatus =
       typeof payload.input.previousStatus === "string" ? payload.input.previousStatus : null;
     if (previousStatus) {
@@ -1236,12 +1272,17 @@ async function withStageStatusRestore<T>(
       }
     }
 
+    const outgoingError =
+      error instanceof VideoProjectRevisionConflictError
+        ? new Error(`VI_REVISION_CONFLICT: ${error.message}`)
+        : error;
+
     const traceId = typeof payload.input.traceId === "string" ? payload.input.traceId : mintTraceId();
     logStage(payload.kind, payload.projectId, traceId, "finish", {
-      error: error instanceof Error ? error.message : String(error),
+      error: outgoingError instanceof Error ? outgoingError.message : String(outgoingError),
     });
 
-    throw error;
+    throw outgoingError;
   }
 }
 

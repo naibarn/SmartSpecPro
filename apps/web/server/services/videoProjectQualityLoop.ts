@@ -21,6 +21,10 @@
  * wired by the caller in `server/routers/videoProjects.ts`.
  */
 import type { VideoProjectQualityMetrics } from "./videoProjectQualityMetrics";
+import type {
+  AssertNever,
+  ForbiddenMediaGenerationEffectMembers,
+} from "@shared/videoIntelligence/effectGuards";
 
 /** Repair stages (spec §12): content | narration | scenes | motion | captions | claims. */
 export type QualityRepairStage = "content" | "narration" | "scenes" | "motion" | "captions" | "claims";
@@ -62,29 +66,21 @@ export type VideoProjectQualityLoopEffects = {
 };
 
 /**
- * Compile-time guarantee (section-06 §5.3 / §7 gate #2): `pnpm check`
- * enforces that `VideoProjectQualityLoopEffects` never gains a
- * media-generation / render member. If a forbidden key name is ever added to
- * the interface, `ForbiddenQualityLoopEffectKeys` becomes a non-`never`
- * string-literal type and `AssertNever<ForbiddenQualityLoopEffectKeys>` stops
- * satisfying its `T extends never` constraint — tsc fails to compile this
- * file. Type-only construct; zero runtime cost.
+ * Compile-time guarantee (section-06 §5.3 / §7 gate #2, unified section-08
+ * §4.1 via the shared `effectGuards.ts` primitives): `pnpm check` enforces
+ * that `VideoProjectQualityLoopEffects` never gains a media-generation /
+ * render member. If a forbidden key name is ever added to the interface,
+ * `ForbiddenMediaGenerationEffectMembers<VideoProjectQualityLoopEffects>`
+ * resolves to a non-`never` string-literal type and stops satisfying
+ * `AssertNever`'s `T extends never` constraint — tsc fails to compile this
+ * file. Type-only construct; zero runtime cost. Exported alias name kept
+ * unchanged — section-08's fs guard and this section's own trap reference it
+ * by name.
  */
-type AssertNever<T extends never> = T;
-type ForbiddenQualityLoopEffectKeys = Extract<
-  keyof VideoProjectQualityLoopEffects,
-  | "render"
-  | "renderVideo"
-  | "queueRender"
-  | "generateImage"
-  | "generateVideo"
-  | "generateAudio"
-  | "generateMedia"
-  | "synthesizeSpeech"
-  | "runFfmpeg"
->;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type AssertNoMediaGenerationEffectMember = AssertNever<ForbiddenQualityLoopEffectKeys>;
+export type AssertNoMediaGenerationEffectMember = AssertNever<
+  ForbiddenMediaGenerationEffectMembers<VideoProjectQualityLoopEffects>
+>;
 
 export type VideoProjectQualityLoopState = {
   /** Number of rounds actually run. */

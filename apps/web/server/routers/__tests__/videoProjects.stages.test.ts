@@ -266,6 +266,7 @@ vi.mock("../../services/videoProjectRepairRewriter", () => ({
 }));
 
 import { videoProjectsRouter, runVideoIntelligenceJobExecutor } from "../videoProjects";
+import { VideoProjectRevisionConflictError } from "../../services/videoProjectRepo";
 import type { VideoProjectDocument } from "../../../shared/videoIntelligence/projectSchemas";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -579,6 +580,246 @@ describe("runScenePlanStage / applyQualityRepairs (dispatch)", () => {
 
     expect(result.jobId).toBe("existing-1");
     expect(mockUpdateVideoProjectFields).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Concurrency — baseRevision -> CONFLICT at dispatch (section-08 §6.3)      */
+/* -------------------------------------------------------------------------- */
+
+describe("concurrency (baseRevision)", () => {
+  it("throws CONFLICT when input.baseRevision is older than the project revision", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 5 }));
+
+    await expect(
+      router.runQualityReview({ ctx: ctx(), input: { projectId: 1, baseRevision: 3 } }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("writes NOTHING on a stale baseRevision — no status stamp, no job record, no enqueue", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 5 }));
+
+    await expect(
+      router.runQualityReview({ ctx: ctx(), input: { projectId: 1, baseRevision: 3 } }),
+    ).rejects.toThrow();
+
+    expect(mockUpdateVideoProjectFields).not.toHaveBeenCalled();
+    expect(mockEnqueueVideoIntelligenceJob).not.toHaveBeenCalled();
+  });
+
+  it("does not resolve a model or price an estimate on a stale baseRevision — fails cheapest, first", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 5 }));
+
+    await expect(
+      router.runQualityReview({ ctx: ctx(), input: { projectId: 1, baseRevision: 3 } }),
+    ).rejects.toThrow();
+
+    expect(mockResolveStructuredStageModelSelection).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+  });
+
+  it("accepts a matching baseRevision", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 5 }));
+
+    const result = await router.runQualityReview({
+      ctx: ctx(),
+      input: { projectId: 1, baseRevision: 5 },
+    });
+
+    expect(result.jobId).toBe("job-1");
+    expect(mockEnqueueVideoIntelligenceJob).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts an omitted baseRevision and pins the current revision into the payload", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 9 }));
+
+    await router.runQualityReview({ ctx: ctx(), input: { projectId: 1 } });
+
+    const call = mockEnqueueVideoIntelligenceJob.mock.calls[0]![0];
+    expect(call.input.baseRevision).toBe(9);
+  });
+
+  it("applies the same rule to all three stage mutations", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 5 }));
+    await expect(
+      router.runScenePlanStage({ ctx: ctx(), input: { projectId: 1, baseRevision: 3 } }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 5 }));
+    await expect(
+      router.runQualityReview({ ctx: ctx(), input: { projectId: 1, baseRevision: 3 } }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 5 }));
+    await expect(
+      router.applyQualityRepairs({ ctx: ctx(), input: { projectId: 1, baseRevision: 3 } }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  describe("in-worker VideoProjectRevisionConflictError mapping", () => {
+    function scenePlanJobPayload(overrides: Record<string, unknown> = {}) {
+      return {
+        kind: "scene_plan" as const,
+        tenantId: "tenant-1",
+        userId: 42,
+        projectId: 1,
+        input: {
+          traceId: "trace-conflict-1",
+          modelId: "model-a",
+          modelSource: "recommended",
+          previousStatus: "content",
+          baseRevision: 3,
+          ...overrides,
+        },
+      };
+    }
+
+    beforeEach(() => {
+      mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7 }));
+      mockMakeRunPlanSkill.mockReturnValue(
+        vi.fn(async () => ({
+          scenes: [
+            {
+              sceneId: "scene-1",
+              templateId: "kinetic_typography",
+              templateParams: { words: ["Hi"] },
+              startMs: 0,
+              endMs: 5000,
+              rationale: "hook",
+              onScreenStatements: [],
+            },
+          ],
+          summary: "planned scene-1",
+        })),
+      );
+      mockSaveVideoProjectDocument.mockRejectedValueOnce(
+        new VideoProjectRevisionConflictError(1, 3, 7),
+      );
+    });
+
+    it("maps an in-worker VideoProjectRevisionConflictError to a VI_REVISION_CONFLICT job error", async () => {
+      await expect(
+        runVideoIntelligenceJobExecutor(scenePlanJobPayload() as any, vi.fn()),
+      ).rejects.toThrow(/VI_REVISION_CONFLICT:/);
+    });
+
+    it("restores previousStatus when the in-worker save conflicts", async () => {
+      await expect(
+        runVideoIntelligenceJobExecutor(
+          scenePlanJobPayload({ previousStatus: "content" }) as any,
+          vi.fn(),
+        ),
+      ).rejects.toThrow(/VI_REVISION_CONFLICT:/);
+
+      expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(expect.anything(), 1, {
+        status: "content",
+      });
+    });
+
+    it("never swallows the conflict — it always rejects, never resolves to a success-shaped result", async () => {
+      await expect(
+        runVideoIntelligenceJobExecutor(scenePlanJobPayload() as any, vi.fn()),
+      ).rejects.toBeInstanceOf(Error);
+    });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Credit integrity (section-08 §5.5)                                        */
+/* -------------------------------------------------------------------------- */
+
+describe("credit integrity", () => {
+  it("makes ZERO deductCredits calls across dispatch and execution for all three stages", async () => {
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7 }));
+    await router.runScenePlanStage({ ctx: ctx(), input: { projectId: 1 } });
+    await router.runQualityReview({ ctx: ctx(), input: { projectId: 1 } });
+    await router.applyQualityRepairs({ ctx: ctx(), input: { projectId: 1 } });
+
+    mockMakeRunPlanSkill.mockReturnValue(
+      vi.fn(async () => ({
+        scenes: [
+          {
+            sceneId: "scene-1",
+            templateId: "kinetic_typography",
+            templateParams: { words: ["Hi"] },
+            startMs: 0,
+            endMs: 5000,
+            rationale: "hook",
+            onScreenStatements: [],
+          },
+        ],
+        summary: "planned scene-1",
+      })),
+    );
+    mockMakeRunReview.mockReturnValue(
+      vi.fn(async () => ({ score: 8, scorecard: { clarity: 8 }, issues: [] })),
+    );
+    mockRunVideoProjectQualityLoop.mockImplementation(async (args: any) => {
+      const review = args.initialReview ?? (await args.effects.runReview({ projectId: args.projectId, metrics: args.metrics }));
+      await args.effects.persistReview(review);
+      return { rounds: 1, bestReview: review, history: [review] };
+    });
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ revision: 7, qaLedger: null }),
+    );
+
+    await runVideoIntelligenceJobExecutor(
+      {
+        kind: "scene_plan",
+        tenantId: "tenant-1",
+        userId: 42,
+        projectId: 1,
+        input: { traceId: "t1", modelId: "model-a", modelSource: "recommended", previousStatus: "content", baseRevision: 7 },
+      } as any,
+      vi.fn(),
+    );
+    await runVideoIntelligenceJobExecutor(
+      {
+        kind: "quality_review",
+        tenantId: "tenant-1",
+        userId: 42,
+        projectId: 1,
+        input: { traceId: "t2", modelId: "model-a", modelSource: "recommended", previousStatus: "content", baseRevision: 7 },
+      } as any,
+      vi.fn(),
+    );
+
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("reports creditsUsed from the LLM result without charging it", async () => {
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7 }));
+    mockMakeRunReview.mockReturnValue(
+      vi.fn(async () => ({ score: 8, scorecard: { clarity: 8 }, issues: [] })),
+    );
+    mockRunVideoProjectQualityLoop.mockImplementation(async (args: any) => {
+      const review = await args.effects.runReview({ projectId: args.projectId, metrics: args.metrics });
+      await args.effects.persistReview(review);
+      return { rounds: 1, bestReview: review, history: [review] };
+    });
+
+    const result = (await runVideoIntelligenceJobExecutor(
+      {
+        kind: "quality_review",
+        tenantId: "tenant-1",
+        userId: 42,
+        projectId: 1,
+        input: { traceId: "t1", modelId: "model-a", modelSource: "recommended", previousStatus: "content", baseRevision: 7 },
+      } as any,
+      vi.fn(),
+    )) as Record<string, unknown>;
+
+    expect(typeof result.creditsUsed).toBe("number");
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("uses hasEnoughCredits as a READ-ONLY pre-check — no reservation, no charge", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 7 }));
+
+    await router.runQualityReview({ ctx: ctx(), input: { projectId: 1 } });
+
+    expect(mockHasEnoughCredits).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });
 

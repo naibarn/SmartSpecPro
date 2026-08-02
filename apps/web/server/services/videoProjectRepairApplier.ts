@@ -27,6 +27,10 @@
  * this comment, and an fs source guard in the rewriter's own test file.
  */
 import { VideoProjectDocumentSchema, type VideoProjectDocument, type Scene } from "@shared/videoIntelligence/projectSchemas";
+import type {
+  AssertNever,
+  ForbiddenMediaGenerationEffectMembers,
+} from "@shared/videoIntelligence/effectGuards";
 
 import {
   computeCaptionCps,
@@ -62,21 +66,14 @@ export type RepairEffects = {
   }): Promise<RepairRewrite[]>;
 };
 
-type AssertNever<T extends never> = T;
-type ForbiddenRepairEffectKeys = Extract<
-  keyof RepairEffects,
-  | "render"
-  | "renderVideo"
-  | "queueRender"
-  | "generateImage"
-  | "generateVideo"
-  | "generateAudio"
-  | "generateMedia"
-  | "synthesizeSpeech"
-  | "runFfmpeg"
->;
+/** Compile-time assertion (unified section-08 §4.1 via the shared helper) —
+ *  `pnpm check` fails if a media-generation member is ever added to
+ *  `RepairEffects`. Exported alias name kept unchanged — section-08's fs
+ *  guard references it by name. */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type AssertNoMediaGenerationRepairEffectMember = AssertNever<ForbiddenRepairEffectKeys>;
+export type AssertNoMediaGenerationRepairEffectMember = AssertNever<
+  ForbiddenMediaGenerationEffectMembers<RepairEffects>
+>;
 
 /* -------------------------------------------------------------------------- */
 /* Target-ref parsing                                                         */
