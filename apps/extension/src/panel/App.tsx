@@ -93,7 +93,7 @@ interface ProgressStep {
   status: "pending" | "active" | "done" | "error";
 }
 
-type PanelTab = "capture" | "products" | "localAI" | "production" | "storyboard" | "drama" | "ask" | "config";
+type PanelTab = "capture" | "products" | "localAI" | "production" | "storyboard" | "drama" | "autoReview" | "ask" | "config";
 type ImageFilter = "all" | ImageCandidate["kind"];
 
 interface AskResult {
@@ -330,6 +330,39 @@ interface DramaEpisodeDetail {
   shots: DramaShot[];
 }
 
+interface AutoReviewProjectSummary {
+  id: string;
+  productId: string;
+  productName: string;
+  thumbnailUrl: string | null;
+  status: string;
+  shotsReadyCount: number | null;
+  shotsTotal: number;
+  updatedAt: string;
+  createdAt: string;
+}
+
+interface AutoReviewShot {
+  shotId: number;
+  title: string | null;
+  storySummary: string | null;
+  dialogue: string | null;
+  imagePrompt: string | null;
+  videoPrompt: string | null;
+  imageArtifactUrl: string | null;
+  videoArtifactUrl: string | null;
+  state: string;
+}
+
+interface AutoReviewProjectDetail {
+  id: string;
+  productId: string;
+  productName: string;
+  status: string;
+  updatedAt: string;
+  shots: AutoReviewShot[];
+}
+
 interface ProductionMediaFileEntry {
   status: "loading" | "ready" | "failed";
   file?: File;
@@ -361,7 +394,7 @@ const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
 const EXTENSION_VERSION = "0.1.135";
-const EXTENSION_BUILD_LABEL = "2026-07-16 09:30 +07";
+const EXTENSION_BUILD_LABEL = "2026-07-29 14:45 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -2196,6 +2229,11 @@ export default function App() {
   const [dramaEpisodeBusy, setDramaEpisodeBusy] = useState(false);
   const [dramaGridCuts, setDramaGridCuts] = useState<Record<number, { status: "loading" | "ready" | "failed"; tiles: Array<{ index: number; dataUrl: string }> }>>({});
   const dramaGridCutStartedRef = useRef<Set<number>>(new Set());
+  const [autoReviewProjectSearch, setAutoReviewProjectSearch] = useState("");
+  const [autoReviewProjects, setAutoReviewProjects] = useState<AutoReviewProjectSummary[]>([]);
+  const [autoReviewProjectsBusy, setAutoReviewProjectsBusy] = useState(false);
+  const [selectedAutoReviewProject, setSelectedAutoReviewProject] = useState<AutoReviewProjectDetail | null>(null);
+  const [autoReviewProjectBusy, setAutoReviewProjectBusy] = useState(false);
   const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
   const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
   const [affiliateLinkBusy, setAffiliateLinkBusy] = useState<Record<string, boolean>>({});
@@ -2312,6 +2350,11 @@ export default function App() {
   useEffect(() => {
     if (activeTab !== "drama" || dramaProjects.length > 0 || dramaProjectsBusy || !settings.token) return;
     run(() => loadDramaSeriesProjects());
+  }, [activeTab, settings.token]);
+
+  useEffect(() => {
+    if (activeTab !== "autoReview" || autoReviewProjects.length > 0 || autoReviewProjectsBusy || !settings.token) return;
+    run(() => loadAutoReviewProjects());
   }, [activeTab, settings.token]);
 
   useEffect(() => {
@@ -3996,6 +4039,61 @@ export default function App() {
     await prepareDragMediaFiles(jobs);
   }
 
+  async function loadAutoReviewProjects(search = autoReviewProjectSearch) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setAutoReviewProjectsBusy(true);
+    setStatus("Loading Product Review projects");
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "50");
+      if (search.trim()) params.set("query", search.trim());
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/auto-review/projects?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const projects = Array.isArray(json.projects) ? json.projects as AutoReviewProjectSummary[] : [];
+      setAutoReviewProjects(projects);
+      setStatus(`Loaded ${projects.length} Product Review projects`);
+    } finally {
+      setAutoReviewProjectsBusy(false);
+    }
+  }
+
+  async function loadAutoReviewProject(runId: string) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setAutoReviewProjectBusy(true);
+    setProductionMediaFiles({});
+    setStatus("Loading Product Review shots");
+    try {
+      const params = new URLSearchParams();
+      params.set("runId", runId);
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/auto-review/project?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const project = json.project as AutoReviewProjectDetail | null | undefined;
+      setSelectedAutoReviewProject(project ?? null);
+      if (project) {
+        void prepareAutoReviewProjectMediaFiles(project);
+      }
+      setStatus("Product Review shots ready");
+    } finally {
+      setAutoReviewProjectBusy(false);
+    }
+  }
+
+  async function prepareAutoReviewProjectMediaFiles(project: AutoReviewProjectDetail) {
+    const jobs: ProductionMediaPrepareJob[] = project.shots.flatMap((shot) => [
+      { url: shot.imageArtifactUrl, title: `auto-review-shot-${shot.shotId}-image` },
+      { url: shot.videoArtifactUrl, title: `auto-review-shot-${shot.shotId}-video`, kind: "video" as const },
+    ]);
+    await prepareDragMediaFiles(jobs);
+  }
+
   async function cutDramaShotGrid(shot: DramaShot) {
     const sourceUrl = shot.gridImageUrl?.trim();
     if (!sourceUrl) return;
@@ -4551,6 +4649,14 @@ export default function App() {
           onClick={() => setActiveTab("drama")}
         >
           Drama Series
+        </button>
+        <button
+          className={tabButtonClass("autoReview")}
+          role="tab"
+          aria-selected={activeTab === "autoReview"}
+          onClick={() => setActiveTab("autoReview")}
+        >
+          Product Reviews
         </button>
         <button
           className={tabButtonClass("ask")}
@@ -5760,6 +5866,122 @@ export default function App() {
                     </div>
                   )) : (
                     <div className="muted">This episode has no shots yet.</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      ) : null}
+
+      {activeTab === "autoReview" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Product Reviews">
+        {!selectedAutoReviewProject ? (
+          <div className="section">
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div>
+                <strong>Product Auto Review Projects</strong>
+                <div className="muted">Recent Marketplace Auto Review projects from SmartAIHub, newest first. Select a project to browse its 9 shots.</div>
+              </div>
+              <button className="button" disabled={autoReviewProjectsBusy || !settings.token} onClick={() => run(() => loadAutoReviewProjects())}>
+                {autoReviewProjectsBusy ? "Loading..." : "Refresh"}
+              </button>
+            </div>
+            {!settings.token ? (
+              <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Product Review projects.</div>
+            ) : null}
+            <div className="production-search-row">
+              <input
+                className="input"
+                placeholder="Search product name"
+                value={autoReviewProjectSearch}
+                onChange={(event) => setAutoReviewProjectSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") run(() => loadAutoReviewProjects());
+                }}
+              />
+              <button className="button primary" disabled={autoReviewProjectsBusy || !settings.token} onClick={() => run(() => loadAutoReviewProjects())}>Search</button>
+            </div>
+            <div className="compact-summary" style={{ marginTop: 8 }}>
+              <strong>Projects ({autoReviewProjects.length})</strong>
+              <span className="muted">max 50</span>
+            </div>
+            {autoReviewProjects.length > 0 ? autoReviewProjects.map((project) => (
+              <button
+                type="button"
+                className="production-project-card"
+                key={project.id}
+                onClick={() => run(() => loadAutoReviewProject(project.id))}
+              >
+                {project.thumbnailUrl ? (
+                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" />
+                ) : (
+                  <div className="production-project-thumb empty" />
+                )}
+                <span className="production-project-body">
+                  <span className="production-project-title">{project.productName || project.id}</span>
+                  <span className="muted">{project.status} | {project.shotsReadyCount ?? 0}/{project.shotsTotal} shots ready | {formatDateTime(project.updatedAt)}</span>
+                </span>
+              </button>
+            )) : (
+              <div className="muted">{autoReviewProjectsBusy ? "Loading projects..." : "No Product Review projects found."}</div>
+            )}
+          </div>
+        ) : (
+          <div className="section">
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                <button className="button" type="button" onClick={() => setSelectedAutoReviewProject(null)}>← Projects</button>
+                <button
+                  className="button"
+                  type="button"
+                  disabled={autoReviewProjectBusy || !settings.token}
+                  onClick={() => run(() => loadAutoReviewProject(selectedAutoReviewProject.id))}
+                >
+                  {autoReviewProjectBusy ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+            </div>
+            {autoReviewProjectBusy ? (
+              <div className="muted">Loading Product Review shots...</div>
+            ) : (
+              <>
+                <div style={{ marginTop: 8 }}>
+                  <strong>{selectedAutoReviewProject.productName || selectedAutoReviewProject.id}</strong>
+                  <div className="muted">{selectedAutoReviewProject.status} | {formatDateTime(selectedAutoReviewProject.updatedAt)}</div>
+                </div>
+                <div className="production-shot-list">
+                  {selectedAutoReviewProject.shots.length > 0 ? selectedAutoReviewProject.shots.map((shot) => (
+                    <div className="production-shot-card" key={shot.shotId}>
+                      <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <div>
+                          <strong>Shot {shot.shotId}</strong>
+                          {shot.title ? <div className="muted">{shot.title}</div> : null}
+                          {shot.storySummary ? <div className="muted">{shot.storySummary}</div> : null}
+                          {shot.dialogue ? <div className="muted">{shot.dialogue}</div> : null}
+                        </div>
+                      </div>
+                      <div className="production-shot-assets">
+                        {productionMediaCard({
+                          label: "Generated image",
+                          url: shot.imageArtifactUrl,
+                          urls: [shot.imageArtifactUrl],
+                          title: `auto-review-shot-${shot.shotId}-image`,
+                        })}
+                        {shot.videoArtifactUrl ? productionMediaCard({
+                          label: "Generated video",
+                          url: shot.videoArtifactUrl,
+                          urls: [shot.videoArtifactUrl],
+                          title: `auto-review-shot-${shot.shotId}-video`,
+                          kind: "video",
+                        }) : null}
+                      </div>
+                      {productionPromptBox("Image prompt", shot.imagePrompt ?? undefined, "No image prompt saved for this shot yet.")}
+                      {productionPromptBox("Video prompt", shot.videoPrompt ?? undefined, "No video prompt saved for this shot yet.")}
+                    </div>
+                  )) : (
+                    <div className="muted">This project has no shots yet.</div>
                   )}
                 </div>
               </>

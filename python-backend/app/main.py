@@ -76,6 +76,7 @@ from app.api import (
      internal_onedrive,  # Internal OneDrive sync API
      admin_alerts,  # Admin alert threshold checking
      internal_library,  # Internal library scope propagation API
+    internal_vertical_drama,  # Vertical Drama clip QC media-worker API
     internal_sandbox,  # Internal sandbox dispatch/cancel API
     internal_guardrails,  # Internal guardrails test API
     internal_openai_agents_runtime,  # Internal OpenAI Agents runtime API
@@ -486,6 +487,7 @@ app.include_router(onedrive.router, tags=["OneDrive"])
 app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
 app.include_router(admin_alerts.router, tags=["Admin Alerts"])
 app.include_router(internal_library.router, tags=["Internal Library"])
+app.include_router(internal_vertical_drama.router, tags=["Internal Vertical Drama"])
 app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
 app.include_router(internal_guardrails.router, tags=["Internal Guardrails"])
 app.include_router(internal_openai_agents_runtime.router, tags=["Internal OpenAI Agents Runtime"])

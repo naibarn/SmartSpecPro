@@ -123,6 +123,35 @@ const RemotionScene3dLayerSchema = RemotionLayerBaseSchema.extend({
     .default({}),
 }).strict();
 
+/**
+ * Additive `audio` variant (Feature 133, Phase 1 MVP — see
+ * `specs/feature/133-content-video-intelligence-platform/sections/section-01-neutral-schema-audio-layer-compiler.md`
+ * §4.2). Closes the Phase-7 "no audio layer" gap for narration/music/SFX.
+ * `<Audio>` has no visual box, so the inherited `x`/`y`/`width`/`height`
+ * base fields are present (schema consistency with every other variant) but
+ * ignored at render time — see `AudioLayerContent` in
+ * `GenericTemplateComposition.tsx`.
+ *
+ * SYNCED from `apps/web/shared/remotion/layerTemplateSchemas.ts` (2026-07-30,
+ * worker-app-remotion-render-video P1) — that file independently declared
+ * this variant ahead of this package (pre-existing drift: apps/web's Lane A
+ * render worker has never actually been rewired onto this package, see this
+ * package's module doc comment; the `remotion_render_video` job contract's
+ * `remotionTemplate` field needs the audio layer type here too, since this
+ * package is now the sidecar's ONLY source for `RemotionTemplateConfigSchema`
+ * — see `remotionRenderVideoSchema.ts`). Keep byte-identical if either copy
+ * changes until the two `layerTemplateSchemas.ts` files are fully unified.
+ */
+const RemotionAudioLayerSchema = RemotionLayerBaseSchema.extend({
+  type: z.literal("audio"),
+  src: z.string().trim().url().max(4096),
+  trimStartSec: z.number().min(0).default(0),
+  volume: z.number().min(0).max(1).default(1),
+  loop: z.boolean().default(false),
+  fadeInMs: z.number().int().min(0).default(0),
+  fadeOutMs: z.number().int().min(0).default(0),
+}).strict();
+
 export const RemotionLayerSchema = z.discriminatedUnion("type", [
   RemotionImageLayerSchema,
   RemotionVideoLayerSchema,
@@ -130,6 +159,7 @@ export const RemotionLayerSchema = z.discriminatedUnion("type", [
   RemotionSvgLayerSchema,
   RemotionMotionGraphicLayerSchema,
   RemotionScene3dLayerSchema,
+  RemotionAudioLayerSchema,
 ]);
 
 export type RemotionLayer = z.infer<typeof RemotionLayerSchema>;
@@ -141,6 +171,7 @@ export type RemotionMotionGraphicLayer = z.infer<
   typeof RemotionMotionGraphicLayerSchema
 >;
 export type RemotionScene3dLayer = z.infer<typeof RemotionScene3dLayerSchema>;
+export type RemotionAudioLayer = z.infer<typeof RemotionAudioLayerSchema>;
 
 export const RemotionTemplateConfigSchema = z
   .object({

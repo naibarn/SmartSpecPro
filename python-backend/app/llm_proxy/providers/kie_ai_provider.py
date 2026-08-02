@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import time
 from typing import Any
 from urllib.parse import urlparse, urlunparse
@@ -244,6 +245,91 @@ def _default_reference_image_key_for_model(api_model: str | None) -> str:
     if api_model == NANO_BANANA_2_LITE_API_MODEL:
         return "image_urls"
     return "image_input"
+
+
+# Matches one or more leading `/api/v1/`-style prefixes. `self.base_url` already
+# ends in `/api/v1`, so any such prefix stored in model config must be removed or
+# the request lands on `https://api.kie.ai/api/v1/api/v1/...`.
+_API_VERSION_PREFIX_RE = re.compile(r"^(?:/?api/v\d+/)+", re.IGNORECASE)
+
+# Kie.ai's default job-submission endpoint, relative to base_url.
+DEFAULT_CREATE_TASK_ENDPOINT = "jobs/createTask"
+
+
+def _clean_endpoint(endpoint: str | None) -> str:
+    """Normalize a configured Kie.ai endpoint into a base_url-relative path.
+
+    An unset/blank endpoint means "use the default createTask job endpoint", so
+    callers can compare the result against DEFAULT_CREATE_TASK_ENDPOINT to decide
+    between the generic job API and a model-specific custom endpoint.
+
+    Only `api/vN/` prefixes are stripped — a bare `/v1/...` path is left alone so
+    endpoints such as `/v1/text-to-speech/{voice_id}` keep their existing routing.
+    """
+    if endpoint is None:
+        return DEFAULT_CREATE_TASK_ENDPOINT
+
+    cleaned = str(endpoint).strip()
+    if not cleaned:
+        return DEFAULT_CREATE_TASK_ENDPOINT
+
+    cleaned = _API_VERSION_PREFIX_RE.sub("", cleaned).lstrip("/")
+    return cleaned or DEFAULT_CREATE_TASK_ENDPOINT
+
+
+def _is_reference_url_key(key: str) -> bool:
+    lowered = key.lower()
+    return lowered.endswith("url") or lowered.endswith("urls")
+
+
+def _normalize_ref_urls_for_model(model: str | None, input_params: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``input_params`` with reference URL fields cleaned up.
+
+    The target field name itself is catalog-driven (see
+    ``_resolve_reference_image_input_config``); this only sanitizes the values so
+    a blank or partially-populated reference list never reaches Kie.ai as an
+    empty string / list of empties, which the API rejects with an opaque error.
+
+    Non-URL fields and unrecognized value shapes are passed through untouched.
+    """
+    if not isinstance(input_params, dict):
+        return input_params
+
+    normalized: dict[str, Any] = {}
+    dropped: list[str] = []
+    for key, value in input_params.items():
+        if not _is_reference_url_key(str(key)):
+            normalized[key] = value
+            continue
+
+        if isinstance(value, str):
+            cleaned_url = value.strip()
+            if cleaned_url:
+                normalized[key] = cleaned_url
+            else:
+                dropped.append(str(key))
+            continue
+
+        if isinstance(value, list):
+            cleaned_urls = [
+                item.strip() for item in value if isinstance(item, str) and item.strip()
+            ]
+            # Non-string entries (e.g. the `{"url": ..., "start": ...}` objects used
+            # by object-array video inputs) are preserved as-is; only Nones are dropped.
+            non_str = [item for item in value if not isinstance(item, str) and item is not None]
+            cleaned_list: list[Any] = cleaned_urls + non_str
+            if cleaned_list:
+                normalized[key] = cleaned_list
+            else:
+                dropped.append(str(key))
+            continue
+
+        normalized[key] = value
+
+    if dropped:
+        logger.info("kie_ai_dropped_empty_reference_fields", model=model, fields=dropped)
+
+    return normalized
 
 
 def _resolve_reference_video_input_config(
@@ -849,29 +935,30 @@ class KieAIProvider:
     async def create_task(
         self,
         model: str,
-        input_params: dict[str, Any],
-        callback_url: str | None = None,
+        input_params: dict,
+        callback_url: str | None = None
     ) -> dict:
         """
-        Create a generation task
+        Create a generation task via Kie.ai createTask endpoint.
 
         Args:
-            model: Model name (e.g., "nano-banana-pro", "veo-3-1", "kling-2-6")
+            model: Kie.ai model identifier (e.g. 'nano-banana-pro')
             input_params: Model-specific input parameters
             callback_url: Optional webhook URL for task completion notification
 
         Returns:
             Task creation response with taskId
         """
+        norm_params = _normalize_ref_urls_for_model(model, input_params)
         payload = {
             "model": model,
-            "input": input_params
+            "input": norm_params
         }
 
         if callback_url:
             payload["callBackUrl"] = callback_url
 
-        logger.info("kie_ai_create_task", model=model, input_keys=list(input_params.keys()))
+        logger.info("kie_ai_create_task", model=model, input_keys=list(norm_params.keys()))
         return await self._make_request("POST", "jobs/createTask", data=payload)
 
     async def create_omni_character_asset(
@@ -988,7 +1075,7 @@ class KieAIProvider:
             payload["callBackUrl"] = effective_callback_url
 
         result, upgrade_task_id = await self._submit_generation_task(
-            lambda: self._make_request("POST", endpoint.removeprefix("/api/v1/"), data=payload),
+            lambda: self._make_request("POST", _clean_endpoint(endpoint), data=payload),
             operation="veo_4k_upgrade",
         )
         logger.info(
@@ -1505,14 +1592,16 @@ class KieAIProvider:
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
         async def submit_request() -> dict[str, Any]:
-            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-                payload = {"prompt": prompt, **input_params}
+            norm_input_params = _normalize_ref_urls_for_model(api_model, input_params)
+            clean_ep = _clean_endpoint(api_endpoint)
+            if clean_ep != "jobs/createTask":
+                payload = {"prompt": prompt, **norm_input_params}
                 if api_model:
                     payload["model"] = api_model
                 if callback_url:
                     payload["callBackUrl"] = callback_url
-                return await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
-            return await self.create_task(api_model, input_params, callback_url)
+                return await self._make_request("POST", clean_ep, data=payload)
+            return await self.create_task(api_model, norm_input_params, callback_url)
 
         result, task_id = await self._submit_generation_task(
             submit_request,
@@ -1662,7 +1751,9 @@ class KieAIProvider:
             callback_url = None
 
         async def submit_request() -> dict[str, Any]:
-            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+            norm_input_params = _normalize_ref_urls_for_model(api_model, input_params)
+            clean_ep = _clean_endpoint(api_endpoint)
+            if clean_ep != DEFAULT_CREATE_TASK_ENDPOINT:
                 if _is_veo_extend_request(api_endpoint, api_config, input_params):
                     payload = _build_veo_extend_payload(
                         prompt=prompt,
@@ -1672,19 +1763,19 @@ class KieAIProvider:
                         callback_url=callback_url,
                     )
                 else:
-                    payload = {"prompt": prompt, **input_params}
+                    payload = {"prompt": prompt, **norm_input_params}
                     if api_model:
                         payload["model"] = api_model
                     if callback_url:
                         payload["callBackUrl"] = callback_url
-                response = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
+                response = await self._make_request("POST", clean_ep, data=payload)
                 logger.info("kie_ai_custom_endpoint_response", endpoint=api_endpoint, result_keys=list(response.keys()) if isinstance(response, dict) else "not_dict", result_type=type(response).__name__)
 
-                if "veo" in api_endpoint.lower():
+                if "veo" in str(api_endpoint).lower():
                     import json as _json
                     logger.warning("VEO_RESPONSE_DEBUG", endpoint=api_endpoint, full_response=_json.dumps(response, indent=2, default=str))
                 return response
-            return await self.create_task(api_model, input_params, callback_url)
+            return await self.create_task(api_model, norm_input_params, callback_url)
 
         result, task_id = await self._submit_generation_task(
             submit_request,
@@ -1800,14 +1891,16 @@ class KieAIProvider:
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
         async def submit_request() -> dict[str, Any]:
-            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-                payload = dict(input_params)
+            norm_input_params = _normalize_ref_urls_for_model(api_model, input_params)
+            clean_ep = _clean_endpoint(api_endpoint)
+            if clean_ep != "jobs/createTask":
+                payload = dict(norm_input_params)
                 if api_model:
                     payload["model"] = api_model
                 if callback_url:
                     payload["callBackUrl"] = callback_url
-                return await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
-            return await self.create_task(api_model, input_params, callback_url)
+                return await self._make_request("POST", clean_ep, data=payload)
+            return await self.create_task(api_model, norm_input_params, callback_url)
 
         result, task_id = await self._submit_generation_task(
             submit_request,

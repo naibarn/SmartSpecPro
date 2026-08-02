@@ -35,6 +35,8 @@ import asyncio
 import json
 import shutil
 import tempfile
+import os
+import subprocess
 
 logger = structlog.get_logger()
 
@@ -276,6 +278,113 @@ async def _rehost_provider_result_url(
         })
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+async def _extract_clip_qc_frames_async(
+    *,
+    source_url: str,
+    positions: list[float],
+    max_frames: int,
+    user_id: str | int,
+    task_id: str,
+) -> dict[str, Any]:
+    """Extract bounded clip samples on the media worker and rehost to R2.
+
+    This deliberately runs one ffmpeg process at a time. Video QC is advisory
+    and must not contend with the render workers or turn a malformed clip into
+    an unbounded subprocess fan-out.
+    """
+    from app.services.media_pipeline import download_media, _ffprobe_metadata
+    from app.services.generation.r2_storage import get_r2_storage
+
+    normalized_positions = [
+        max(0.0, min(1.0, float(position)))
+        for position in positions[:max_frames]
+    ] or [0.10, 0.40, 0.70, 0.95]
+    tmp_dir = tempfile.mkdtemp(prefix=f"vertical_drama_clip_qc_{task_id}_")
+    try:
+        video_path, _, _ = await download_media(source_url, tmp_dir)
+        probe = await asyncio.to_thread(_ffprobe_metadata, video_path)
+        duration = max(0.0, float(probe.get("duration_seconds") or 0.0))
+        r2 = get_r2_storage()
+        samples: list[dict[str, Any]] = []
+        for index, position in enumerate(normalized_positions):
+            seek_time = duration * position if duration > 0 else 0.0
+            frame_path = os.path.join(tmp_dir, f"sample-{index}.jpg")
+            command = [
+                "ffmpeg", "-y", "-ss", f"{seek_time:.3f}", "-i", video_path,
+                "-frames:v", "1", "-q:v", "3", frame_path,
+            ]
+            try:
+                await asyncio.to_thread(
+                    subprocess.run,
+                    command,
+                    capture_output=True,
+                    timeout=30,
+                    check=True,
+                )
+                def _read_frame_bytes() -> bytes:
+                    with open(frame_path, "rb") as frame_file:
+                        return frame_file.read()
+
+                frame_bytes = await asyncio.to_thread(_read_frame_bytes)
+                key = f"temp/vertical-drama/clip-qc/{user_id}/{task_id}/sample-{index}.jpg"
+                public_url = await r2.upload_bytes(frame_bytes, key, content_type="image/jpeg")
+                samples.append({
+                    "index": index,
+                    "position": position,
+                    "url": public_url,
+                })
+            except Exception as exc:
+                logger.warning(
+                    "extract_clip_qc_frame_failed",
+                    task_id=task_id,
+                    index=index,
+                    position=position,
+                    error=str(exc),
+                )
+        if not samples:
+            raise RuntimeError("ffmpeg did not produce any clip QC samples")
+        return {
+            "status": "completed",
+            "task_id": task_id,
+            "samples": samples,
+            "duration_seconds": duration,
+        }
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@celery_app.task(bind=True, max_retries=1, queue="media")
+def extract_clip_qc_frames(
+    self,
+    source_url: str,
+    positions: list[float] | None = None,
+    max_frames: int = 6,
+    user_id: str | int = "0",
+):
+    """Feature 137 P3: bounded sequential clip sampling for identity QA."""
+    task_id = str(self.request.id)
+    try:
+        return _run_async(
+            _extract_clip_qc_frames_async(
+                source_url=source_url,
+                positions=positions or [0.10, 0.40, 0.70, 0.95],
+                max_frames=max(1, min(int(max_frames), 6)),
+                user_id=user_id,
+                task_id=task_id,
+            )
+        )
+    except Exception as exc:
+        logger.warning("extract_clip_qc_frames_failed", task_id=task_id, error=str(exc))
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc, countdown=15)
+        return {
+            "status": "samples_unavailable",
+            "task_id": task_id,
+            "warning": str(exc)[:500],
+            "samples": [],
+        }
 
 
 async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_seconds: int) -> None:

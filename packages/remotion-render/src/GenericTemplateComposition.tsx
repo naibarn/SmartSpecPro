@@ -25,6 +25,7 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
   Img,
   OffthreadVideo,
   Sequence,
@@ -35,6 +36,7 @@ import {
 import { ThreeCanvas } from "@remotion/three";
 
 import type {
+  RemotionAudioLayer,
   RemotionLayer,
   RemotionMotionGraphicLayer,
   RemotionScene3dLayer,
@@ -241,6 +243,52 @@ const Scene3dLayerContent: React.FC<{
   );
 };
 
+/**
+ * `<Audio>` has no visual box, so this layer type ignores `x`/`y`/`width`/
+ * `height` entirely (those fields still exist on the schema for consistency
+ * with every other variant — see `RemotionAudioLayerSchema`'s doc comment).
+ * `volume` is a per-frame envelope: `fadeInMs`/`fadeOutMs` are converted to
+ * frames via `fps` and interpolated the same way every other layer derives
+ * per-frame values from `useCurrentFrame()`.
+ */
+const AudioLayerContent: React.FC<{
+  layer: RemotionAudioLayer;
+  fps: number;
+}> = ({ layer, fps }) => {
+  const frame = useCurrentFrame();
+  const fadeInFrames = Math.round((layer.fadeInMs / 1000) * fps);
+  const fadeOutFrames = Math.round((layer.fadeOutMs / 1000) * fps);
+  const fadeInEndFrame = Math.min(fadeInFrames, layer.durationFrames);
+  const fadeOutStartFrame = Math.max(
+    fadeInEndFrame,
+    layer.durationFrames - fadeOutFrames
+  );
+
+  let envelope = 1;
+  if (fadeInFrames > 0 && frame < fadeInEndFrame) {
+    envelope = interpolate(frame, [0, fadeInEndFrame], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
+  } else if (fadeOutFrames > 0 && frame > fadeOutStartFrame) {
+    envelope = interpolate(
+      frame,
+      [fadeOutStartFrame, layer.durationFrames],
+      [1, 0],
+      { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+    );
+  }
+
+  return (
+    <Audio
+      src={layer.src}
+      volume={layer.volume * envelope}
+      loop={layer.loop}
+      trimBefore={Math.max(0, Math.round(layer.trimStartSec * fps))}
+    />
+  );
+};
+
 function layerContent(
   layer: RemotionLayer,
   fps: number,
@@ -266,6 +314,8 @@ function layerContent(
           canvasHeight={canvasHeight}
         />
       );
+    case "audio":
+      return <AudioLayerContent layer={layer} fps={fps} />;
     default: {
       const exhaustiveCheck: never = layer;
       return exhaustiveCheck;

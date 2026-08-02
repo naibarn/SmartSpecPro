@@ -303,3 +303,21 @@ Gap closure:
     - converting historical Legacy rows into staged checkpoints; requires a data migration and cannot be inferred safely
   no_action_needed:
     - paid image/video generation; this patch does not submit provider work
+
+## Feature 137 P3 + facing-aware consumer - 2026-08-01
+
+Loop policy:
+  orchestra_id: feature_137_p3_identity_qc
+  purpose: close code-side P3 gaps without claiming live provider evidence
+  iteration: 1/2
+  active_subagents: 0
+  repair_rounds: 1/2
+  stop_conditions: focused_tests_passed, diff_clean, no_changed_surface_type_errors
+  stop_reason: success; live rollout evidence remains intentionally deferred
+
+[COMPLETE] sampling — media-queue ffmpeg sampler, R2 rehost, bounded wait/poll endpoint
+[COMPLETE] QC — one-call vision skill, fail-open persistence, manual-only repair
+[COMPLETE] consumer — explicit-facing angle selection with primary fallback
+[COMPLETE] UX — clip badge, issue notes, manual re-check; generated/imported trigger parity
+[COMPLETE] verification — shared 2 tests; Python endpoint 2 tests; diff check clean
+[DEFERRED] external evidence — authorized provider/browser smoke and labeled calibration

@@ -53,3 +53,45 @@ await build({
   logLevel: "info",
 });
 console.log("[remotion-render] build complete: dist/index.js");
+
+// Second, lightweight bundle: `remotionRenderVideoSchema.ts` +
+// `renderVideoJob.ts` + `ffmpegUtil.ts` + `postPassArgs.ts` ONLY — no React,
+// no Remotion composition modules, no `@react-three/fiber`. This is what
+// `apps/web` imports (`@smartspec/remotion-render/render-video-job`) so its
+// `remotion_render_video` schema/orchestration consumers (including its
+// Vitest suite) never have to resolve a working `react/jsx-runtime`. See
+// `src/renderVideoJobEntry.ts`'s doc comment.
+console.log("[remotion-render] esbuild (render-video-job bundle)...");
+await build({
+  entryPoints: ["src/renderVideoJobEntry.ts"],
+  outfile: "dist/renderVideoJobEntry.js",
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  target: "node22",
+  external: ["zod"],
+  logLevel: "info",
+});
+console.log("[remotion-render] build complete: dist/renderVideoJobEntry.js");
+
+// Third bundle — SCHEMA ONLY, browser-safe. Field incident 2026-07-30: the
+// client build broke with `"join" is not exported by "__vite-browser-external"`
+// because `apps/web/shared/workerRuntime.ts` (imported by CLIENT code) was
+// re-exporting from the `render-video-job` bundle, which contains the Node
+// orchestrator (`node:fs`/`node:path`/`node:child_process`). Vite externalises
+// those for the browser and the build fails. `remotionRenderVideoSchema.ts`
+// imports only `zod` + `layerTemplateSchemas`, so this bundle is safe to pull
+// into a browser graph. `platform: "neutral"` makes any accidental future Node
+// import a hard build error here instead of a downstream Vite failure.
+console.log("[remotion-render] esbuild (render-video-schema bundle)...");
+await build({
+  entryPoints: ["src/remotionRenderVideoSchema.ts"],
+  outfile: "dist/remotionRenderVideoSchema.js",
+  bundle: true,
+  platform: "neutral",
+  format: "esm",
+  target: "es2022",
+  external: ["zod"],
+  logLevel: "info",
+});
+console.log("[remotion-render] build complete: dist/remotionRenderVideoSchema.js");

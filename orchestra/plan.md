@@ -212,3 +212,24 @@ text-to-image or image-to-image based on attached reference images.
 2. The legacy page clearly directs the user to create a staged job with 9-shot, checkpoint-safe controls.
 3. The old timeline remains available on demand and existing outputs/legacy shot data are preserved.
 4. Focused UI tests and production build pass without introducing new type errors in touched files.
+
+## Feature 137 P3 + facing-aware consumer closeout - 2026-08-01
+
+### Classification
+- scope: medium/high cross-runtime feature wave
+- risk: medium; advisory/fail-open, default-on with explicit tenant opt-out, no automatic paid regeneration
+- affected_domains: vertical-drama contracts, Node router/service/UI, Python media queue, specs/verification
+- chosen_route: standard-light conductor review; SocratiCode unavailable, shell fallback
+- planned_agents: []
+
+### Evidence ledger
+- P3 sampler: Python `media` queue, sequential ffmpeg samples at bounded positions, R2 rehost, token-protected internal endpoint
+- P3 QC: one vision call over start frame + samples + approved character refs; persisted `clips[].identityQc` and `video_clip` report
+- UX: default-visible clip badge, notes, and manual re-check; generated and imported clips share the same trigger
+- facing: approved angle-pack lookup is selected only for explicit supported facings and falls back to primary portrait
+
+### Success criteria
+1. Sampler failure produces `samples_unavailable` and never blocks or auto-spends.
+2. Old motion packs remain valid because all P3 fields are optional.
+3. Focused shared/Python tests pass; changed-surface type errors are absent; diff check is clean.
+4. Remaining work is limited to internal provider/browser smoke and labeled rollout calibration.

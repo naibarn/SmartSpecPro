@@ -32,6 +32,7 @@ import { basename, join, resolve, sep } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 
+import { resolveHardwareAcceleration } from "./hardwareAcceleration";
 import { ROOT_ENTRY_POINT } from "./rootEntryPoint";
 import {
   MARKETPLACE_AUTO_REVIEW_COMPOSITION_ID,
@@ -191,6 +192,7 @@ export async function renderFinalComposite(
     outputLocation: outputPath,
     inputProps,
     browserExecutable: input.browserExecutable,
+    hardwareAcceleration: resolveHardwareAcceleration(),
     onProgress: progress => {
       const percent = Math.min(
         95,

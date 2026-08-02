@@ -67,6 +67,32 @@ function loadCompositionApi() {
   return compositionApiPromise;
 }
 
+/**
+ * Whether Remotion may hand H.264 encoding to the GPU.
+ *
+ * `renderMedia()` defaults `hardwareAcceleration` to `"disable"`, which pins
+ * the encode to libx264 regardless of what hardware is present — measured
+ * 2026-08-02 on a worker with an RTX 5060 Ti, Task Manager's Video Encode
+ * graph sat at 0% for the whole render while the CPU carried it.
+ *
+ * `"if-possible"`, never `"required"`: a machine with no NVENC then falls
+ * back to libx264 silently instead of failing the job outright.
+ *
+ * CAUTION when touching the other `renderMedia()` options: Remotion drops
+ * back to software encoding whenever `crf`, `encodingMaxRate`, or
+ * `encodingBufferSize` is set (see `hasSpecifiedUnsupportedHardwareQualify
+ * Settings` in @remotion/renderer). None of this repo's calls set them —
+ * adding one turns NVENC off again with nothing but a log line to show for
+ * it.
+ *
+ * Shares `SMARTAIHUB_ENABLE_GPU_ENCODING` with the HyperFrames lane (Rust
+ * `DEFAULT_RENDER_ENV` sets it to "1") so GPU encoding has ONE operator
+ * switch across both renderers, not two.
+ */
+function resolveHardwareAcceleration() {
+  return process.env.SMARTAIHUB_ENABLE_GPU_ENCODING === "0" ? "disable" : "if-possible";
+}
+
 function argValue(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : "";
@@ -247,6 +273,7 @@ function makeRenderVideoRenderFn(browserExecutable) {
       outputLocation: outputPath,
       inputProps,
       browserExecutable,
+      hardwareAcceleration: resolveHardwareAcceleration(),
     });
     return {
       outputPath,

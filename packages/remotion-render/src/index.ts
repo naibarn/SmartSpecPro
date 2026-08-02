@@ -65,9 +65,77 @@ export {
   parseRemotionSidecarManifest,
 } from "./manifest";
 export type { RemotionSidecarManifest } from "./manifest";
+export { resolveHardwareAcceleration } from "./hardwareAcceleration";
+export type { RemotionHardwareAcceleration } from "./hardwareAcceleration";
 export { renderFinalComposite } from "./renderFinalComposite";
 export type {
   SidecarEvent,
   RenderFinalCompositeInput,
   RenderFinalCompositeResult,
 } from "./renderFinalComposite";
+
+// `remotion_render_video` worker-job contract (Feature 133) — single source
+// of truth; `apps/web/shared/workerRuntime.ts` re-exports these.
+export {
+  REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+  REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
+  REMOTION_RENDER_VIDEO_FAILURE_CODES,
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+  REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+  remotionRenderVideoProgressStageSchema,
+  remotionRenderVideoFailureCodeSchema,
+  remotionRenderVideoCapabilityFamilySchema,
+  remotionRenderVideoCaptionPresetIdSchema,
+  remotionRenderVideoWorkerInputSchema,
+} from "./remotionRenderVideoSchema";
+export type {
+  RemotionRenderVideoProgressStage,
+  RemotionRenderVideoFailureCode,
+  RemotionRenderVideoCapabilityFamily,
+  RemotionRenderVideoWorkerInput,
+} from "./remotionRenderVideoSchema";
+
+// `remotion_render_video` job orchestrator — shared by Lane A (`apps/web`)
+// and Lane B (the `apps/worker-app` Remotion sidecar's `render-video` mode).
+export {
+  RemotionRenderVideoJobError,
+  classifyRemotionRenderFailure,
+  defaultStageRemotionRenderVideoAssets,
+  runRemotionRenderVideoJob,
+  executeRemotionRenderVideoJob,
+} from "./renderVideoJob";
+export type {
+  RemotionRenderVideoJobExecutorDeps,
+  RemotionRenderVideoProgressEvent,
+  RemotionRenderVideoAssetStageResult,
+  RemotionRenderVideoRenderInput,
+  RemotionRenderVideoRenderResult,
+  RemotionRenderVideoStorageResult,
+  RunRemotionRenderVideoJobInput,
+} from "./renderVideoJob";
+
+// Portable ffmpeg/ffprobe process helpers + post-pass argv builders.
+export {
+  defaultFfmpegRunner,
+  probeDurationSeconds,
+  resolveFfBinary,
+} from "./ffmpegUtil";
+export type { FfmpegRunner } from "./ffmpegUtil";
+export {
+  buildLoudnormPassArgs,
+  buildAssBurnPassArgs,
+  buildConcatListFileContent,
+  buildConcatFfmpegArgs,
+  planPostPasses,
+  buildAssBurnSubtitleFileContent,
+  escapeFfmpegFilterPath,
+  REMOTION_POST_PASS_LOUDNORM_FILTER,
+} from "./postPassArgs";
+export type {
+  PostPassStep,
+  PlanPostPassesPaths,
+  PlanPostPassesPayload,
+  ConcatCommandSpec,
+  AssSubtitleLine,
+  AssSubtitleBuildOpts,
+} from "./postPassArgs";
