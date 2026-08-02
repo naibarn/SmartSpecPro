@@ -33,6 +33,7 @@ import {
   type BrandKitRow,
   type InsertBrandKitRow,
 } from "../../drizzle/schema";
+import { mergeQaLedger, type QaLedgerEntry } from "../../shared/videoIntelligence/qaLedger";
 
 export type ProjectAuthScope = { tenantId: string; userId: number };
 
@@ -341,4 +342,40 @@ export async function deleteVideoProject(scope: ProjectAuthScope, id: number): P
     .where(projectScopeWhere(scope, id))
     .returning({ id: videoProjects.id });
   return rows.length > 0;
+}
+
+/**
+ * ADDITIVE — Feature 142, section-04. Owner-scoped read-modify-write of
+ * `video_projects.qaLedger`, wrapped in `db.transaction(...)` so a
+ * concurrent append can never interleave and lose an entry. Does NOT touch
+ * `document`, `revision`, or `video_project_revisions` — reviews are not
+ * documents (spec §6.2 / traps #3).
+ */
+export async function appendQaLedgerEntry(
+  scope: ProjectAuthScope,
+  projectId: number,
+  entry: QaLedgerEntry,
+): Promise<{ entryCount: number; totalCount: number }> {
+  return db.transaction(async tx => {
+    const rows = await tx
+      .select()
+      .from(videoProjects)
+      .where(projectScopeWhere(scope, projectId))
+      .limit(1);
+    const current = rows[0] as VideoProjectRow | undefined;
+    if (!current) {
+      throw new VideoProjectNotFoundError(
+        `video_project ${projectId} not found for this tenant+user scope`,
+      );
+    }
+
+    const merged = mergeQaLedger(current.qaLedger, entry);
+
+    await tx
+      .update(videoProjects)
+      .set({ qaLedger: merged as unknown as Record<string, unknown>, updatedAt: new Date() })
+      .where(projectScopeWhere(scope, projectId));
+
+    return { entryCount: merged.entries.length, totalCount: merged.totalCount };
+  });
 }

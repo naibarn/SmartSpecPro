@@ -64,6 +64,7 @@ import {
   listBrandKits,
   updateBrandKit,
   deleteBrandKit,
+  appendQaLedgerEntry,
   VideoProjectRevisionConflictError,
   VideoProjectNotFoundError,
   type ProjectAuthScope,
@@ -80,13 +81,17 @@ import {
   getGenerationJobStatus as getVideoIntelligenceJobStatus,
   getActiveGenerationJob as getActiveVideoIntelligenceJob,
   type VideoIntelligenceJobExecutor,
+  type VideoIntelligenceJobKind,
   type VideoIntelligenceJobPayload,
   type VideoIntelligenceJobProgress,
 } from "../services/videoIntelligenceJobs";
 import { validateProjectClaims, type ResolvedCatalogFacts } from "../services/validateProjectClaims";
-import { computeQualityMetrics } from "../services/videoProjectQualityMetrics";
+import {
+  computeQualityMetrics,
+  estimateVideoProjectQualityLoopCredits,
+} from "../services/videoProjectQualityMetrics";
 import { synthesize, calculateTTSCredits } from "../services/ttsService";
-import { hasEnoughCredits, deductCredits } from "../services/creditService";
+import { hasEnoughCredits, deductCredits, calculateCreditsForLLMDynamic } from "../services/creditService";
 import { storagePut } from "../storage";
 import {
   renderTranscriptCuesAsSrt,
@@ -94,6 +99,21 @@ import {
   type HyperframesTranscriptCue,
 } from "../services/hyperframesTranscriptionService";
 import { listMarketplaceInsightsByProduct } from "../services/marketplaceInsightService";
+import {
+  resolveStructuredStageModelSelection,
+  assertStructuredStageModelAvailable,
+  VideoIntelligenceModelError,
+  type StructuredStageModelSource,
+} from "../services/videoIntelligenceModelResolver";
+import { makeRunReview, buildDocumentSummary } from "../services/videoProjectReviewAdapter";
+import { runVideoProjectQualityLoop } from "../services/videoProjectQualityLoop";
+import {
+  estimateStageTokens,
+  STAGE_CEILING_CALLS_PER_ROUND,
+  type StageEstimateBasis,
+  type VideoIntelligenceStage,
+} from "../services/videoProjectStageEstimator";
+import { type QaLedgerEntry } from "../../shared/videoIntelligence/qaLedger";
 
 /* -------------------------------------------------------------------------- */
 /* Zod input building blocks                                                  */
@@ -502,22 +522,198 @@ export function buildCaptionLinesForRender(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Stage estimate + dispatch preamble (Feature 142, section-04)              */
+/* -------------------------------------------------------------------------- */
+
+/** `getStageEstimate` output shape (section-04 spec §4.4) — reused by the
+ *  dispatch preamble so the quoted number and the id pinned into the job
+ *  payload always come from the exact same computation. */
+type VideoIntelligenceStageEstimate = {
+  stage: VideoIntelligenceStage;
+  modelId: string;
+  maxLoops: number;
+  perRoundCredits: number;
+  typicalCredits: number;
+  ceilingCredits: number;
+  callsPerRoundCeiling: number;
+  basis: StageEstimateBasis;
+  isCeiling: true;
+};
+
+/**
+ * Resolves the model, sizes the document, and prices both the per-round and
+ * ceiling credit cost — the ONE place this section computes a credit number.
+ * Never a hardcoded constant (spec §6.4): `perRoundCredits` comes from
+ * `calculateCreditsForLLMDynamic` against real model pricing and real,
+ * document-derived token counts. Throws `VideoIntelligenceModelError` when no
+ * recommended, structured-output-capable model is available — callers map
+ * this to `VI_NO_RECOMMENDED_MODEL`.
+ */
+async function buildStageEstimate(
+  document: VideoProjectDocument,
+  stage: VideoIntelligenceStage,
+): Promise<{
+  estimate: VideoIntelligenceStageEstimate;
+  modelId: string;
+  modelSource: StructuredStageModelSource;
+}> {
+  const modelSelection = await resolveStructuredStageModelSelection(null);
+  const basis = estimateStageTokens(document, stage);
+  const perRoundCredits = await calculateCreditsForLLMDynamic(
+    basis.estimatedInputTokens,
+    basis.estimatedOutputTokens,
+    modelSelection.modelId,
+  );
+
+  // TODO(section-06): swap in `clampQualityLoopRounds` once section-06 lands
+  // so the quoted round count and the round count the loop actually runs are
+  // the same clamp. An unclamped value can only over-state the estimate (the
+  // safe direction), never under-state it — see spec §6.4 step 6.
+  const maxLoops = Math.max(1, document.qa.maxLoops);
+  const typicalCredits = estimateVideoProjectQualityLoopCredits(perRoundCredits, maxLoops);
+  const ceilingCredits = estimateVideoProjectQualityLoopCredits(
+    perRoundCredits * STAGE_CEILING_CALLS_PER_ROUND,
+    maxLoops,
+  );
+
+  return {
+    estimate: {
+      stage,
+      modelId: modelSelection.modelId,
+      maxLoops,
+      perRoundCredits,
+      typicalCredits,
+      ceilingCredits,
+      callsPerRoundCeiling: STAGE_CEILING_CALLS_PER_ROUND,
+      basis,
+      isCeiling: true,
+    },
+    modelId: modelSelection.modelId,
+    modelSource: modelSelection.source,
+  };
+}
+
+/**
+ * Shared dispatch preamble for the three LLM stages (`scene_plan`,
+ * `quality_review`, `quality_repair`). Order is load-bearing (spec §6.5):
+ *   flag → auth (caller's job) → project/document → model resolve →
+ *   estimate → credit pre-check → status stamp → enqueue (restore status on
+ *   failure). Nothing is stamped or enqueued until affordability is known,
+ * and the status is written BEFORE enqueue returns so the client can never
+ * re-enable a credit-spending button mid-flight.
+ *
+ * 🔴 Makes ZERO `deductCredits` calls of its own — `hasEnoughCredits` below
+ * is a read-only pre-check; the quoted ceiling is never charged here.
+ * `callLLMStructured` (inside the executor's `runReview` effect) is the only
+ * thing that ever charges credits for these stages.
+ */
+async function dispatchStageJob(args: {
+  auth: ProjectAuthScope;
+  projectId: number;
+  stage: VideoIntelligenceStage;
+  kind: VideoIntelligenceJobKind;
+  nextStatus: string;
+  requestedBaseRevision?: number;
+  extraInput?: Record<string, unknown>;
+}): Promise<{ jobId: string; traceId: string; estimate: VideoIntelligenceStageEstimate }> {
+  const { auth, projectId, stage, kind, nextStatus, requestedBaseRevision, extraInput } = args;
+
+  const projectRow = await getVideoProject(auth, projectId);
+  if (!projectRow) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Video project not found" });
+  }
+
+  const parsedDocument = VideoProjectDocumentSchema.safeParse(projectRow.document);
+  if (!parsedDocument.success) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `VI_DOCUMENT_INVALID: ${parsedDocument.error.message}`,
+    });
+  }
+  const document = parsedDocument.data;
+
+  let built: Awaited<ReturnType<typeof buildStageEstimate>>;
+  try {
+    built = await buildStageEstimate(document, stage);
+  } catch (error) {
+    if (error instanceof VideoIntelligenceModelError) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    }
+    throw error;
+  }
+
+  // Credit pre-check BEFORE any write — an unaffordable request must never
+  // occupy the 2-hour per-project active pointer (spec §6.5 / traps #5).
+  // Read-only: `hasEnoughCredits` never reserves or deducts.
+  const affordable = await hasEnoughCredits(auth.userId, built.estimate.ceilingCredits);
+  if (!affordable) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `VI_INSUFFICIENT_CREDITS: not enough credits for the quoted ${built.estimate.ceilingCredits}-credit ceiling`,
+    });
+  }
+
+  const previousStatus = projectRow.status;
+  const traceId = mintTraceId();
+  logStage(stage, projectId, traceId, "start");
+
+  // Status stamped BEFORE enqueue returns (spec §6.5 / traps #2) — the test
+  // suite asserts this by mock call ORDER, not final state: stamping late is
+  // the recorded cause of a double-charge defect elsewhere in this codebase.
+  await updateVideoProjectFields(auth, projectId, { status: nextStatus });
+
+  const baseRevision = requestedBaseRevision ?? projectRow.revision;
+
+  let enqueueResult: { jobId: string; deduped: boolean };
+  try {
+    enqueueResult = await enqueueVideoIntelligenceJob({
+      kind,
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      projectId,
+      input: {
+        traceId,
+        modelId: built.modelId,
+        modelSource: built.modelSource,
+        previousStatus,
+        baseRevision,
+        ...extraInput,
+      },
+    });
+  } catch (error) {
+    // Restore on ANY enqueue failure (including section-01's
+    // VI_QUEUE_UNAVAILABLE) — never swallow, always rethrow the real error.
+    await updateVideoProjectFields(auth, projectId, { status: previousStatus }).catch(restoreError => {
+      debugError(
+        "videoProjects",
+        `Failed to restore status for project ${projectId} after a failed ${stage} enqueue`,
+        restoreError,
+      );
+    });
+    throw error;
+  }
+
+  return { jobId: enqueueResult.jobId, traceId, estimate: built.estimate };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Async job executor (kind-specific logic, dispatched by                    */
 /* videoIntelligenceJobs.ts's BullMQ worker + this router's own queries)     */
 /* -------------------------------------------------------------------------- */
 
 /**
  * Phase 1 scope boundary (documented, not a bug): the scene-plan and
- * quality-review/-repair LLM stages enqueue real jobs with real
- * ownership/traceId/queue plumbing (fully wired and testable), but the
- * actual skill/LLM invocation inside each is intentionally NOT fabricated
- * here — per the platform's skill-first rule
- * (`memory/feedback_skill_first_authoring.md`: "TS only computes facts as
- * review input, never hardcode... a hard-gate that replaces LLM judgment"),
- * synthesizing a fake score or fake scene plan in TS would be worse than
- * leaving it unwired. Each stage below computes its real, deterministic
- * facts (metrics/claim validation) and then fails the job with a specific,
- * greppable `VI_*_NOT_WIRED` error rather than fabricating judgment.
+ * quality-repair LLM stages enqueue real jobs with real ownership/traceId/
+ * queue plumbing (fully wired and testable), but the actual skill/LLM
+ * invocation inside each is intentionally NOT fabricated here — per the
+ * platform's skill-first rule (`memory/feedback_skill_first_authoring.md`:
+ * "TS only computes facts as review input, never hardcode... a hard-gate
+ * that replaces LLM judgment"), synthesizing a fake scene plan or fake
+ * repair in TS would be worse than leaving it unwired. Each stage below
+ * computes its real, deterministic facts (metrics/claim validation) and then
+ * fails the job with a specific, greppable `VI_*_NOT_WIRED` error rather than
+ * fabricating judgment. `quality_review` (section-04) is the first of the
+ * three to be fully wired — sections 05/06 close the other two.
  */
 async function executeScenePlanStage(
   payload: VideoIntelligenceJobPayload,
@@ -529,22 +725,135 @@ async function executeScenePlanStage(
   );
 }
 
+/**
+ * Feature 142, section-04: the Quality Review stage's real executor. Reads
+ * the dispatch-resolved `modelId`/`modelSource` from the job payload (never
+ * re-resolves — traps #4), fails rather than substitutes when that model has
+ * since been revoked/disabled (AD-3), then runs the section-06 QA loop
+ * wired to section-03's `runReview` effect. Persists the review to
+ * `video_projects.qaLedger` (never `video_project_revisions` — traps #3).
+ */
 async function executeQualityReviewStage(
   payload: VideoIntelligenceJobPayload,
   auth: ProjectAuthScope,
   onProgress: (progress: VideoIntelligenceJobProgress) => void,
 ): Promise<unknown> {
+  const traceId = typeof payload.input.traceId === "string" ? payload.input.traceId : mintTraceId();
+  const modelId =
+    typeof payload.input.modelId === "string" && payload.input.modelId.trim().length > 0
+      ? payload.input.modelId
+      : null;
+  const modelSource: StructuredStageModelSource =
+    payload.input.modelSource === "explicit_pin" ? "explicit_pin" : "recommended";
+
+  // A missing/blank modelId is a programming error at dispatch time — the
+  // model must be resolved ONCE at dispatch (spec §6.6 step 1), never here.
+  if (!modelId) {
+    throw new Error(
+      "VI_NO_RECOMMENDED_MODEL: quality_review job payload is missing a dispatch-resolved modelId " +
+        "(programming error — the model must be resolved once at dispatch, never at execution time)",
+    );
+  }
+
+  // Fail rather than substitute when the dispatch-pinned model has since
+  // been revoked/disabled (spec §6.6 step 2 / AD-3) — never silently swap in
+  // a different model the user never confirmed a price for.
+  await assertStructuredStageModelAvailable(modelId, undefined, { source: modelSource });
+
   onProgress({ stage: "quality_review_metrics" });
-  const { document, compileResult } = await compileProjectInternal(auth, payload.projectId);
+  const { projectRow, document, compileResult } = await compileProjectInternal(auth, payload.projectId);
   const cost = compileResult.cost;
 
   const claimValidation = validateProjectClaims(document, null);
   const metrics = computeQualityMetrics({ document, claimValidation, renderCost: cost });
   onProgress({ stage: "quality_review_metrics_done" });
 
-  throw new Error(
-    `VI_QUALITY_REVIEW_NOT_WIRED: the video-project-quality-review skill invocation is not yet wired in Phase 1 (computed metrics: layers=${metrics.layerCounts.total}, claimCoverage=${metrics.claimCoverage.coverage})`,
-  );
+  const documentSummary = buildDocumentSummary(document);
+  // The CURRENT revision at execution time (read fresh, not the dispatch-time
+  // `baseRevision`) — this is what section-06's `VI_REPAIR_STALE_REVIEW`
+  // guard compares against (spec §6.6 step 3).
+  const revisionReviewed = projectRow.revision;
+
+  let round = 0;
+  let ledgerEntryCount = 0;
+  let totalCreditsUsed = 0;
+  let lastModelIdUsed: string | null = modelId;
+
+  const runReview = makeRunReview({
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    traceId,
+    modelId,
+    documentSummary,
+    claimValidation,
+    // 🔴 Reports spend that ALREADY happened inside callLLMStructured — this
+    // callback NEVER calls deductCredits (AD-7 / traps #1).
+    onUsage: usage => {
+      totalCreditsUsed += usage.creditsUsed;
+      lastModelIdUsed = usage.modelId ?? lastModelIdUsed;
+    },
+  });
+
+  onProgress({ stage: "quality_review_judging" });
+
+  const state = await runVideoProjectQualityLoop({
+    projectId: String(payload.projectId),
+    policy: { targetScore: document.qa.targetScore, maxLoops: document.qa.maxLoops },
+    metrics,
+    effects: {
+      runReview,
+      persistReview: async review => {
+        round += 1;
+        const entry: QaLedgerEntry = {
+          at: new Date().toISOString(),
+          round,
+          revision: revisionReviewed,
+          review,
+          creditsUsed: totalCreditsUsed,
+          modelId: lastModelIdUsed,
+          traceId,
+        };
+        const ledgerResult = await appendQaLedgerEntry(auth, payload.projectId, entry);
+        ledgerEntryCount = ledgerResult.entryCount;
+      },
+      // section-06 replaces this — unused in this section's single-round MVP path.
+      repairStage: async () => {},
+      // section-06 replaces this — unused in this section's single-round MVP path.
+      recomputeMetrics: async () => metrics,
+    },
+  });
+
+  onProgress({ stage: "quality_review_persisted" });
+
+  const blocksFinalRender = claimValidation.blocksFinalRender;
+  const nextStatus =
+    state.bestReview.score >= document.qa.targetScore && !blocksFinalRender ? "ready" : "qa";
+  await updateVideoProjectFields(auth, payload.projectId, { status: nextStatus });
+
+  const highSeverityCount = state.bestReview.issues.filter(issue => issue.severity === "high").length;
+
+  // Secret-safety: `extra` carries model names and numbers only — never
+  // prompt text, never catalog credentials (spec §6.6 step 8).
+  logStage("quality_review", payload.projectId, traceId, "finish", {
+    score: state.bestReview.score,
+    issueCount: state.bestReview.issues.length,
+    highSeverityCount,
+    claimCoverage: metrics.claimCoverage.coverage,
+    modelUsed: lastModelIdUsed,
+    creditsUsed: totalCreditsUsed,
+  });
+
+  return {
+    kind: "quality_review" as const,
+    traceId,
+    revision: revisionReviewed,
+    rounds: state.rounds,
+    review: state.bestReview,
+    creditsUsed: totalCreditsUsed,
+    modelId: lastModelIdUsed,
+    blocksFinalRender,
+    ledgerEntryCount,
+  };
 }
 
 async function executeQualityRepairStage(
@@ -555,6 +864,46 @@ async function executeQualityRepairStage(
   throw new Error(
     "VI_QUALITY_REPAIR_NOT_WIRED: automated quality-repair application is not yet wired in Phase 1",
   );
+}
+
+/**
+ * Restores `payload.input.previousStatus` when a stage throws, then rethrows
+ * so the job record still records the real error (spec §6.7). Restore
+ * failures are logged and swallowed — they must never mask the original
+ * error. `runVideoIntelligenceJob` never rethrows, so this wrapper is the
+ * ONLY place a failed stage's status gets restored. Also emits a `finish`
+ * audit event carrying the error, so a failed stage is as observable as a
+ * successful one.
+ */
+async function withStageStatusRestore<T>(
+  payload: VideoIntelligenceJobPayload,
+  auth: ProjectAuthScope,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    const previousStatus =
+      typeof payload.input.previousStatus === "string" ? payload.input.previousStatus : null;
+    if (previousStatus) {
+      try {
+        await updateVideoProjectFields(auth, payload.projectId, { status: previousStatus });
+      } catch (restoreError) {
+        debugError(
+          "videoProjects",
+          `Failed to restore status for project ${payload.projectId} after a failed ${payload.kind} job`,
+          restoreError,
+        );
+      }
+    }
+
+    const traceId = typeof payload.input.traceId === "string" ? payload.input.traceId : mintTraceId();
+    logStage(payload.kind, payload.projectId, traceId, "finish", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    throw error;
+  }
 }
 
 /** BullMQ worker entry point (`videoIntelligenceJobs.ts`'s `initVideoIntelligenceJobsQueue`
@@ -578,7 +927,9 @@ export const runVideoIntelligenceJobExecutor: VideoIntelligenceJobExecutor = asy
       onProgress({ stage: "narration_noop" });
       return { skipped: true, reason: "narration runs synchronously via runNarrationStage" };
     case "quality_review":
-      return executeQualityReviewStage(payload, auth, onProgress);
+      return withStageStatusRestore(payload, auth, () =>
+        executeQualityReviewStage(payload, auth, onProgress),
+      );
     case "quality_repair":
       return executeQualityRepairStage(payload, onProgress);
     default:
@@ -844,23 +1195,23 @@ export const videoProjectsRouter = router({
   /* ---- 4.2 Stage runners --------------------------------------------------- */
 
   runScenePlanStage: videoIntelligenceGenProcedure
-    .input(z.object({ projectId: z.number().int().positive() }))
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        baseRevision: z.number().int().min(1).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await assertVideoIntelligenceEnabled(ctx.tenantId);
       const auth = requireAuthScope(ctx);
-      const projectRow = await getVideoProject(auth, input.projectId);
-      if (!projectRow) throw new TRPCError({ code: "NOT_FOUND", message: "Video project not found" });
-
-      const traceId = mintTraceId();
-      logStage("scene_plan", input.projectId, traceId, "start");
-      const { jobId } = await enqueueVideoIntelligenceJob({
-        kind: "scene_plan",
-        tenantId: auth.tenantId,
-        userId: auth.userId,
+      return dispatchStageJob({
+        auth,
         projectId: input.projectId,
-        input: { traceId },
+        stage: "scene_plan",
+        kind: "scene_plan",
+        nextStatus: "scenes",
+        requestedBaseRevision: input.baseRevision,
       });
-      return { jobId, traceId };
     }),
 
   runNarrationStage: videoIntelligenceGenProcedure
@@ -977,48 +1328,75 @@ export const videoProjectsRouter = router({
     }),
 
   runQualityReview: videoIntelligenceGenProcedure
-    .input(z.object({ projectId: z.number().int().positive() }))
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        baseRevision: z.number().int().min(1).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await assertVideoIntelligenceEnabled(ctx.tenantId);
       const auth = requireAuthScope(ctx);
-      const projectRow = await getVideoProject(auth, input.projectId);
-      if (!projectRow) throw new TRPCError({ code: "NOT_FOUND", message: "Video project not found" });
-
-      const traceId = mintTraceId();
-      logStage("quality_review", input.projectId, traceId, "start");
-      const { jobId } = await enqueueVideoIntelligenceJob({
-        kind: "quality_review",
-        tenantId: auth.tenantId,
-        userId: auth.userId,
+      return dispatchStageJob({
+        auth,
         projectId: input.projectId,
-        input: { traceId },
+        stage: "quality_review",
+        kind: "quality_review",
+        nextStatus: "qa",
+        requestedBaseRevision: input.baseRevision,
       });
-      return { jobId, traceId };
     }),
 
   applyQualityRepairs: videoIntelligenceGenProcedure
     .input(
       z.object({
         projectId: z.number().int().positive(),
+        baseRevision: z.number().int().min(1).optional(),
         stages: z.array(z.string().min(1)).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await assertVideoIntelligenceEnabled(ctx.tenantId);
       const auth = requireAuthScope(ctx);
-      const projectRow = await getVideoProject(auth, input.projectId);
-      if (!projectRow) throw new TRPCError({ code: "NOT_FOUND", message: "Video project not found" });
-
-      const traceId = mintTraceId();
-      logStage("quality_repair", input.projectId, traceId, "start");
-      const { jobId } = await enqueueVideoIntelligenceJob({
-        kind: "quality_repair",
-        tenantId: auth.tenantId,
-        userId: auth.userId,
+      return dispatchStageJob({
+        auth,
         projectId: input.projectId,
-        input: { traceId, stages: input.stages ?? [] },
+        stage: "quality_repair",
+        kind: "quality_repair",
+        nextStatus: "qa",
+        requestedBaseRevision: input.baseRevision,
+        extraInput: { stages: input.stages ?? [] },
       });
-      return { jobId, traceId };
+    }),
+
+  /**
+   * Feature 142, section-04: a credit estimate for the WHOLE loop, derived
+   * from real model pricing and real document size — never a hardcoded
+   * constant. Registered on the CRUD procedure (60/min), not the gen
+   * procedure, because this is a read the UI calls on panel open and must
+   * not consume the 20/min generation budget the actual run needs.
+   */
+  getStageEstimate: videoIntelligenceCrudProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().positive(),
+        stage: z.enum(["scene_plan", "quality_review", "quality_repair"]),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      await assertVideoIntelligenceEnabled(ctx.tenantId);
+      const auth = requireAuthScope(ctx);
+      const { document } = await loadDocumentOrThrow(auth, input.projectId);
+
+      try {
+        const { estimate } = await buildStageEstimate(document, input.stage);
+        return estimate;
+      } catch (error) {
+        if (error instanceof VideoIntelligenceModelError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        throw error;
+      }
     }),
 
   approveStage: videoIntelligenceCrudProcedure

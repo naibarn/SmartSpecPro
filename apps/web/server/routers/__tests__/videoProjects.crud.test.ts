@@ -124,6 +124,10 @@ vi.mock("../../services/videoProjectRepo", () => ({
   listBrandKits: mockListBrandKits,
   updateBrandKit: mockUpdateBrandKit,
   deleteBrandKit: mockDeleteBrandKit,
+  // Feature 142, section-04 (additive) — this file doesn't exercise the QA
+  // ledger append, but the router imports it, so the mock factory must
+  // still export it.
+  appendQaLedgerEntry: vi.fn(() => Promise.resolve({ entryCount: 1, totalCount: 1 })),
   VideoProjectRevisionConflictError: MockVideoProjectRevisionConflictError,
   VideoProjectNotFoundError: MockVideoProjectNotFoundError,
 }));
@@ -211,6 +215,11 @@ vi.mock("../../services/videoProjectQualityMetrics", () => ({
     claimCoverage: { coverage: 1, mappedCount: 0, unmappedCount: 0, prohibitedCount: 0 },
     renderCost: { score: 0, cls: "low", recommendPreRender: false },
   })),
+  // Feature 142, section-04 (additive) — real formula so this file's
+  // behaviour is unaffected either way; the router imports this export.
+  estimateVideoProjectQualityLoopCredits: vi.fn(
+    (perRound: number, maxRounds: number) => Math.max(0, perRound) * Math.max(1, Math.trunc(maxRounds)),
+  ),
 }));
 
 const { mockSynthesize, mockCalculateTTSCredits } = vi.hoisted(() => ({
@@ -229,6 +238,9 @@ const { mockHasEnoughCredits, mockDeductCredits } = vi.hoisted(() => ({
 vi.mock("../../services/creditService", () => ({
   hasEnoughCredits: mockHasEnoughCredits,
   deductCredits: mockDeductCredits,
+  // Feature 142, section-04 (additive) — this file doesn't exercise
+  // getStageEstimate/dispatch pricing, but the router imports it.
+  calculateCreditsForLLMDynamic: vi.fn(() => Promise.resolve(1)),
 }));
 
 const { mockStoragePut } = vi.hoisted(() => ({ mockStoragePut: vi.fn() }));
@@ -241,6 +253,31 @@ vi.mock("../../services/hyperframesTranscriptionService", () => ({
 
 vi.mock("../../services/marketplaceInsightService", () => ({
   listMarketplaceInsightsByProduct: vi.fn(() => Promise.resolve([])),
+}));
+
+// Feature 142, section-04 (additive) — newly imported by the router; this
+// file doesn't exercise the LLM-backed stages, so simple default doubles.
+vi.mock("../../services/videoIntelligenceModelResolver", () => ({
+  resolveStructuredStageModelSelection: vi.fn(() =>
+    Promise.resolve({
+      modelId: "model-a",
+      source: "recommended",
+      pricingInputPerMTokUsd: 1,
+      pricingOutputPerMTokUsd: 2,
+      isFree: false,
+    }),
+  ),
+  assertStructuredStageModelAvailable: vi.fn(() => Promise.resolve()),
+  VideoIntelligenceModelError: class VideoIntelligenceModelError extends Error {
+    code = "VI_NO_RECOMMENDED_MODEL";
+  },
+}));
+vi.mock("../../services/videoProjectReviewAdapter", () => ({
+  makeRunReview: vi.fn(),
+  buildDocumentSummary: vi.fn(() => ({ topic: null })),
+}));
+vi.mock("../../services/videoProjectQualityLoop", () => ({
+  runVideoProjectQualityLoop: vi.fn(),
 }));
 
 import { videoProjectsRouter, deriveCaptionCues, buildCaptionLinesForRender } from "../videoProjects";

@@ -41,9 +41,12 @@ import {
   listBrandKits,
   updateBrandKit,
   deleteBrandKit,
+  appendQaLedgerEntry,
   VideoProjectRevisionConflictError,
+  VideoProjectNotFoundError,
   type ProjectAuthScope,
 } from "../videoProjectRepo";
+import type { QaLedgerEntry } from "../../../shared/videoIntelligence/qaLedger";
 import type {
   VideoProjectRow,
   VideoProjectRevisionRow,
@@ -431,5 +434,70 @@ describe("brand-kit CRUD is tenant+owner scoped", () => {
     const result = await deleteBrandKit(SCOPE, 999);
 
     expect(result).toBe(false);
+  });
+});
+
+describe("appendQaLedgerEntry", () => {
+  function entry(over: Partial<QaLedgerEntry> = {}): QaLedgerEntry {
+    return {
+      at: "2026-01-01T00:00:00.000Z",
+      round: 1,
+      revision: 3,
+      review: { score: 8, scorecard: { clarity: 8 }, issues: [] },
+      creditsUsed: 5,
+      modelId: "openai/gpt-4o-mini",
+      traceId: "trace-1",
+      ...over,
+    };
+  }
+
+  it("wraps the read-modify-write in a transaction and merges into video_projects.qaLedger", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([project({ id: 7, qaLedger: null })]));
+    const updChain = updateChain([project({ id: 7 })]);
+    mockDb.update.mockReturnValueOnce(updChain);
+
+    const result = await appendQaLedgerEntry(SCOPE, 7, entry());
+
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ entryCount: 1, totalCount: 1 });
+    const setArg = updChain.set.mock.calls[0][0];
+    expect(setArg.qaLedger).toEqual({ entries: [entry()], totalCount: 1 });
+  });
+
+  it("appends to an existing ledger rather than overwriting it", async () => {
+    const firstEntry = entry({ round: 1, traceId: "trace-1" });
+    mockDb.select.mockReturnValueOnce(
+      selectChain([project({ id: 7, qaLedger: { entries: [firstEntry], totalCount: 1 } })]),
+    );
+    const updChain = updateChain([project({ id: 7 })]);
+    mockDb.update.mockReturnValueOnce(updChain);
+
+    const secondEntry = entry({ round: 2, traceId: "trace-2" });
+    const result = await appendQaLedgerEntry(SCOPE, 7, secondEntry);
+
+    expect(result).toEqual({ entryCount: 2, totalCount: 2 });
+    const setArg = updChain.set.mock.calls[0][0];
+    expect(setArg.qaLedger).toEqual({ entries: [firstEntry, secondEntry], totalCount: 2 });
+  });
+
+  it("does NOT touch document or revision", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([project({ id: 7, revision: 9, document: { schemaVersion: 1 } })]));
+    const updChain = updateChain([project({ id: 7 })]);
+    mockDb.update.mockReturnValueOnce(updChain);
+
+    await appendQaLedgerEntry(SCOPE, 7, entry());
+
+    const setArg = updChain.set.mock.calls[0][0];
+    expect(setArg.document).toBeUndefined();
+    expect(setArg.revision).toBeUndefined();
+  });
+
+  it("throws VideoProjectNotFoundError when the row is missing for this scope (no cross-tenant leak)", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+
+    await expect(appendQaLedgerEntry(SCOPE, 999, entry())).rejects.toBeInstanceOf(
+      VideoProjectNotFoundError,
+    );
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
