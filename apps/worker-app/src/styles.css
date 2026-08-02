@@ -569,3 +569,91 @@ h2 {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Jobs-in-flight list (2026-07-30): the worker runs the render lane and the
+   Hermes media lane concurrently, so the panel lists every in-flight job
+   instead of a single slot that one lane could clear out from under another. */
+.active-job-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.active-job-row {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.active-job-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.active-job-head strong {
+  font-size: 0.95rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Tabbed layout (2026-07-31). The app used to be one long scrolling grid that
+   mixed connection, render, Hermes and settings, so nothing read as a distinct
+   area of responsibility. One tab = one job the user came to do.
+   --------------------------------------------------------------------------- */
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0 14px;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  overflow-x: auto;
+}
+
+.tab-button {
+  flex: 1 1 0;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.tab-button:hover {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.tab-button.active {
+  background: var(--panel-bg, #ffffff);
+  border-color: rgba(148, 163, 184, 0.4);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.tab-label {
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.tab-hint {
+  font-size: 0.72rem;
+  opacity: 0.65;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}

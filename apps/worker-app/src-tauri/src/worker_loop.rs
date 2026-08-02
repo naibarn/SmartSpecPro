@@ -36,11 +36,18 @@ use crate::worker_control_plane::{
     WorkerJobEventPayload, WorkerLoopConnection,
 };
 use crate::worker_executor::{
-    build_failure_event, build_progress_event_plan, build_required_artifact_uploads,
+    build_failure_event, build_progress_event_plan, build_remotion_render_video_artifacts,
+    build_remotion_render_video_completed_event, build_remotion_render_video_failure_event,
+    build_remotion_render_video_output_json, build_remotion_render_video_progress_event,
+    build_remotion_render_video_sidecar_command, build_required_artifact_uploads,
     build_sidecar_command, build_sidecar_manifest, build_worker_job_display_metadata,
-    classify_job_type, compact_json_artifact_metadata, prepare_hyperframes_execution_plan,
-    sanitize_segment, validate_final_video_artifact, ClaimedWorkerJob, SidecarCommandPlan,
+    classify_job_type, compact_json_artifact_metadata, parse_remotion_sidecar_event,
+    prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
+    remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
+    validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
+    SidecarCommandPlan,
     WorkerEventPlan, WorkerJobKind, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
+    REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_JOB_TYPE,
 };
 
 /// Feature 135 §11 — hermes has its own single-job slot, independent of the
@@ -60,6 +67,21 @@ pub fn build_worker_claim_capability_hints(render_ready: bool, hermes_media_adve
     if render_ready {
         hints.push("hyperframes-final-composite".to_string());
         hints.push(HYPERFRAMES_JOB_TYPE.to_string());
+        // `planning/worker-app-remotion-render-video/plan.md` P2 — the
+        // Remotion `render-video` sidecar reuses the SAME bundled
+        // Chromium/ffmpeg/node runtime-pack binaries the HyperFrames render
+        // doctor already gates on, so "render_ready" is the correct
+        // readiness signal for these families too. Both the primary
+        // capability-family superset check
+        // (`workerSchedulerService.ts#workerJobMatchesSelection`) AND the
+        // defense-in-depth `REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY`
+        // check (`workerRegistryService.ts`) require `"remotion-render"` to
+        // be present before this worker may claim a `remotion_render_video`
+        // job at all.
+        for family in REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES {
+            hints.push(family.to_string());
+        }
+        hints.push(REMOTION_RENDER_VIDEO_JOB_TYPE.to_string());
     }
     if hermes_media_advertised {
         hints.push(HERMES_MEDIA_CLAIM_CAPABILITY.to_string());
@@ -659,6 +681,39 @@ async fn worker_loop_tick(
             });
             Ok(())
         }
+        WorkerJobKind::RemotionRenderVideo => {
+            // `planning/worker-app-remotion-render-video/plan.md` P2 —
+            // shares the render concurrency slot with HyperFrames (both are
+            // Chromium/ffmpeg-heavy and draw on the same runtime-pack
+            // binaries), so it participates in the same `render_active`
+            // accounting `can_claim_render_job` gates on.
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let doctor_owned = doctor.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_remotion_render_video_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &doctor_owned,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
         WorkerJobKind::HermesMediaImage | WorkerJobKind::HermesMediaVideo => {
             hermes_active.store(true, Ordering::Relaxed);
             let executor = executor.clone();
@@ -947,14 +1002,18 @@ async fn execute_hermes_media_job(
                 "Hermes media job completed and artifacts uploaded.",
                 None,
             );
-            set_executor_complete(executor, "Hermes media job completed and artifacts uploaded.");
+            set_executor_job_complete(
+                executor,
+                &job.id,
+                "Hermes media job completed and artifacts uploaded.",
+            );
         }
         Err(error) => {
             let failure = build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, "hermes_media_failed", error);
             let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
             let error_msg = format!("Hermes media job failed: {error}");
             set_executor_last_job(executor, &job, "error", &error_msg, None);
-            set_executor_error(executor, error_msg);
+            set_executor_job_error(executor, &job.id, error_msg);
         }
     }
     result
@@ -1390,7 +1449,7 @@ async fn execute_hyperframes_job(
             &error_msg,
             Some(render_log_path.to_string_lossy().to_string()),
         );
-        set_executor_error(executor, error_msg);
+        set_executor_job_error(executor, &job.id, error_msg);
     } else {
         set_executor_last_job(
             executor,
@@ -1399,7 +1458,7 @@ async fn execute_hyperframes_job(
             "Job completed and artifacts uploaded.",
             Some(render_log_path.to_string_lossy().to_string()),
         );
-        set_executor_complete(executor, "Job completed and artifacts uploaded.");
+        set_executor_job_complete(executor, &job.id, "Job completed and artifacts uploaded.");
     }
 
     if render_log_path.exists() {
@@ -1476,7 +1535,7 @@ async fn execute_hyperframes_job_inner(
     let mut next_sequence_number = 1;
 
     for event in progress_plan.iter().take(2) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -1525,7 +1584,7 @@ async fn execute_hyperframes_job_inner(
     .map_err(|error| format!("failed to write doctor report: {error}"))?;
 
     for event in progress_plan.iter().skip(2).take(2) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -1551,7 +1610,7 @@ async fn execute_hyperframes_job_inner(
         managed_wsl_root,
         managed_wsl_workspace_root,
     )?;
-    update_executor_progress(executor, 55, "Running official HyperFrames sidecar.");
+    update_executor_progress(executor, &job.id, 55, "Running official HyperFrames sidecar.");
     next_sequence_number = run_sidecar_with_active_heartbeat(
         executor,
         connection,
@@ -1567,7 +1626,7 @@ async fn execute_hyperframes_job_inner(
     let final_video_size_bytes = validate_final_video_artifact(&plan.final_video_path)?;
 
     for event in progress_plan.iter().skip(4).take(2) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -1581,6 +1640,7 @@ async fn execute_hyperframes_job_inner(
     for upload in build_required_artifact_uploads(job, &plan) {
         update_executor_progress(
             executor,
+            &job.id,
             82,
             format!("Uploading artifact: {}", upload.file_name),
         );
@@ -1662,7 +1722,7 @@ async fn execute_hyperframes_job_inner(
     }
 
     for event in progress_plan.iter().skip(6) {
-        update_progress_from_event(executor, event);
+        update_progress_from_event(executor, &job.id, event);
         send_progress_event_with_next_sequence(
             app_data_dir,
             connection,
@@ -1673,6 +1733,564 @@ async fn execute_hyperframes_job_inner(
         .await?;
     }
     Ok(())
+}
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — top-level entry
+/// point for a claimed `remotion_render_video` job. Mirrors
+/// `execute_hyperframes_job`'s shape (resolve workspace → run inner →
+/// report failure/success → best-effort log upload) but the inner function
+/// spawns the Remotion `render-video` sidecar mode instead.
+async fn execute_remotion_render_video_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    doctor: &DoctorSummary,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
+    let result = execute_remotion_render_video_job_inner(
+        executor,
+        resource_dir,
+        app_data_dir,
+        connection,
+        &job,
+        doctor,
+        &workspace_root,
+        settings,
+        cancel,
+    )
+    .await;
+    let workspace_dir = workspace_root.join(crate::worker_executor::sanitize_segment(&job.id));
+    let render_log_path = workspace_dir.join("render.log");
+
+    if let Err(error) = &result {
+        let failure = build_remotion_render_video_failure_event(
+            &job,
+            FAILURE_EVENT_SEQUENCE_NUMBER,
+            "render_failed",
+            error,
+        );
+        let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+        crate::diagnostics::append_diagnostic_event(
+            app_data_dir,
+            "job.failed",
+            json!({
+                "jobId": job.id,
+                "jobType": job.job_type,
+                "error": error
+            }),
+        );
+        let error_msg = format!("Job failed: {error}");
+        set_executor_last_job(
+            executor,
+            &job,
+            "error",
+            &error_msg,
+            Some(render_log_path.to_string_lossy().to_string()),
+        );
+        set_executor_job_error(executor, &job.id, error_msg);
+    } else {
+        set_executor_last_job(
+            executor,
+            &job,
+            "success",
+            "Job completed and artifacts uploaded.",
+            Some(render_log_path.to_string_lossy().to_string()),
+        );
+        set_executor_job_complete(executor, &job.id, "Job completed and artifacts uploaded.");
+    }
+
+    if render_log_path.exists() {
+        let _ = upload_worker_artifact_file_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            "remotion_render_log_file",
+            &render_log_path,
+            "render.log",
+            "text/plain",
+            &job.lease_owner_token,
+            &job.assignment_attempt,
+            json!({}),
+        )
+        .await;
+    }
+
+    result
+}
+
+/// Sidecar-agnostic outcome of running the Remotion `render-video`
+/// process to completion — either the sidecar's `completed` event (with the
+/// sequence number the caller should continue from) or a
+/// `(failure_code, message)` pair suitable for
+/// `build_remotion_render_video_failure_event`.
+#[derive(Debug, Clone, PartialEq)]
+enum RemotionRenderOutcome {
+    Completed {
+        output_path: String,
+        duration_sec: f64,
+        sha256: String,
+        width_px: u32,
+        height_px: u32,
+    },
+    Failed {
+        failure_code: String,
+        message: String,
+    },
+}
+
+async fn execute_remotion_render_video_job_inner(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    doctor: &DoctorSummary,
+    workspace_root: &Path,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
+    // Same runtime-pack resolution `execute_hyperframes_job_inner` uses —
+    // the Remotion `render-video` sidecar lives under the SAME runtime pack
+    // (`runtime-pack/remotion-sidecar/render.mjs`, a sibling of
+    // `runtime-pack/hyperframes-sidecar/`), so the manifest-declared
+    // HyperFrames sidecar path is only used here to derive the shared
+    // runtime root (`build_remotion_render_video_sidecar_command` picks its
+    // own `remotion-sidecar` script path — see `SidecarKind`).
+    let sidecar_executable = if settings.runtime_environment.is_managed_wsl() {
+        PathBuf::from("managed-wsl-runtime")
+    } else {
+        let (manifest_path, sidecar_root) =
+            runtime_pack_paths(resource_dir, &effective_runtime_dir);
+        let manifest = read_runtime_pack_manifest(&manifest_path)?;
+        sidecar_path_from_manifest(&manifest, &sidecar_root)
+    };
+
+    let plan = prepare_remotion_render_video_execution_plan(job, workspace_root)?;
+    fs::create_dir_all(&plan.output_dir)
+        .map_err(|error| format!("failed to create worker output dir: {error}"))?;
+
+    // FROZEN sidecar contract (P1) — the job's `inputJson` is written
+    // verbatim, byte-for-byte, as the payload file; Rust never mutates it
+    // (unlike the HyperFrames path, asset staging happens INSIDE the
+    // sidecar via `defaultStageRemotionRenderVideoAssets`, not here).
+    fs::write(
+        &plan.payload_path,
+        serde_json::to_vec_pretty(&job.input_json).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("failed to write remotion_render_video payload: {error}"))?;
+
+    let mut next_sequence_number = 1u32;
+    if let Some(event) = build_remotion_render_video_progress_event(
+        job,
+        next_sequence_number,
+        "resolve_inputs",
+        5,
+        None,
+    ) {
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            event,
+            &mut next_sequence_number,
+        )
+        .await?;
+    }
+
+    let managed_wsl_root = settings
+        .runtime_environment
+        .is_managed_wsl()
+        .then_some(settings.managed_wsl_root.as_str());
+    let managed_wsl_workspace_root = settings
+        .runtime_environment
+        .is_managed_wsl()
+        .then_some(settings.managed_wsl_workspace_root.as_str());
+    let command = build_remotion_render_video_sidecar_command(
+        &sidecar_executable,
+        &plan,
+        settings.uses_wsl2_runtime(),
+        managed_wsl_root,
+        managed_wsl_workspace_root,
+    )?;
+    update_executor_progress(executor, &job.id, 20, "Running Remotion render-video sidecar.");
+
+    let (outcome, sequence_after_run) = run_remotion_sidecar_and_collect(
+        executor,
+        connection,
+        job,
+        settings,
+        doctor,
+        &command,
+        cancel,
+        app_data_dir,
+        next_sequence_number,
+    )
+    .await?;
+    next_sequence_number = sequence_after_run;
+
+    let (output_path, duration_sec, sha256, _width_px, _height_px) = match outcome {
+        RemotionRenderOutcome::Completed {
+            output_path,
+            duration_sec,
+            sha256,
+            width_px,
+            height_px,
+        } => (output_path, duration_sec, sha256, width_px, height_px),
+        RemotionRenderOutcome::Failed {
+            failure_code,
+            message,
+        } => {
+            return Err(format!("{failure_code}: {message}"));
+        }
+    };
+
+    // Field incident 2026-07-30 (first real Lane B render:
+    // `Remotion render-video output is missing: The system cannot find the
+    // path specified. (os error 3)`): the sidecar runs INSIDE WSL, so the
+    // `outputPath` it reports is a WSL path (`/home/<user>/...`) that this
+    // Windows-side process cannot stat. Rust already knows where the file
+    // physically is — it passed `to_wsl_path(&plan.output_dir)` as
+    // `--output-dir` — so resolve the artifact against its OWN
+    // `plan.output_dir`, taking only the file NAME from the sidecar. This
+    // mirrors the HyperFrames path, which likewise uses its own
+    // `plan.final_video_path` rather than trusting a sidecar-echoed path.
+    let reported_output = PathBuf::from(&output_path);
+    let output_file_name = reported_output
+        .file_name()
+        .ok_or_else(|| format!("sidecar reported an unusable output path: {output_path}"))?;
+    let output_path = plan.output_dir.join(output_file_name);
+    validate_workspace_path(workspace_root, &output_path)
+        .map_err(|error| format!("sidecar reported an output path outside the worker workspace: {error}"))?;
+    let output_metadata = fs::metadata(&output_path)
+        .map_err(|error| {
+            format!(
+                "Remotion render-video output is missing at {}: {error}",
+                output_path.display()
+            )
+        })?;
+    let size_bytes = output_metadata.len();
+
+    update_executor_progress(executor, &job.id, 82, "Uploading Remotion render-video artifact.");
+    let upload = ArtifactUploadPlan {
+        artifact_type: "remotion_render_mp4".into(),
+        file_name: "render.mp4".into(),
+        content_type: "video/mp4".into(),
+        path: output_path,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+    };
+    let upload_response = upload_worker_artifact_file_with_refresh(
+        app_data_dir,
+        connection,
+        &job.id,
+        &upload.artifact_type,
+        &upload.path,
+        &upload.file_name,
+        &upload.content_type,
+        &upload.lease_owner_token,
+        &upload.assignment_attempt,
+        json!({ "assignmentAttempt": job.assignment_attempt, "checksumSha256": sha256 }),
+    )
+    .await?;
+
+    // Known scope gap (see this task's final report): the only durable
+    // reference this Rust process holds for the uploaded artifact is
+    // `storageRef` (a storage key, not a resolved playback URL — the
+    // `worker_artifacts` table has no `url` column; a real GET url is only
+    // resolvable server-side via `storageGet(storageRef)`). Lane A's
+    // `outputUrl` is a real resolved URL from its own `storagePut()`. Using
+    // `storageRef` here is the best value obtainable from
+    // `apps/worker-app` alone; closing this gap for real requires an
+    // `apps/web`-side change (out of this task's file scope) to resolve a
+    // playback URL from `storageRef` when persisting `outputJson.outputUrl`.
+    let storage_ref = upload_response
+        .artifact
+        .get("storageRef")
+        .and_then(Value::as_str)
+        .unwrap_or(&upload.file_name)
+        .to_string();
+    let content_hash = remotion_render_video_content_hash(&sha256);
+    let artifacts = build_remotion_render_video_artifacts(
+        &job.input_json,
+        &storage_ref,
+        &storage_ref,
+        &content_hash,
+        size_bytes,
+        duration_sec,
+    );
+    let output_json = build_remotion_render_video_output_json(
+        &job.input_json,
+        &storage_ref,
+        artifacts[0].clone(),
+        artifacts,
+    );
+
+    for stage in ["server_verify_artifacts", "publish_artifacts"] {
+        if let Some(event) =
+            build_remotion_render_video_progress_event(job, next_sequence_number, stage, 95, None)
+        {
+            send_progress_event_with_next_sequence(
+                app_data_dir,
+                connection,
+                &job.id,
+                event,
+                &mut next_sequence_number,
+            )
+            .await?;
+        }
+    }
+
+    let completed_event =
+        build_remotion_render_video_completed_event(job, next_sequence_number, output_json);
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        completed_event,
+        &mut next_sequence_number,
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// Spawns the Remotion `render-video` sidecar, tails its stdout for
+/// `SMARTAIHUB_EVENT` lines, forwards recognized progress stages as
+/// `job.progress` events (unrecognized stages are logged and skipped, never
+/// fatal), and returns the terminal `completed`/`failed` outcome. If the
+/// process exits non-zero without ever emitting a `failed` event, the
+/// outcome is synthesized as `render_failed` with a tail of captured
+/// stderr/stdout.
+#[allow(clippy::too_many_arguments)]
+async fn run_remotion_sidecar_and_collect(
+    executor: &Arc<Mutex<ExecutorState>>,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    doctor: &DoctorSummary,
+    command: &SidecarCommandPlan,
+    cancel: &Arc<AtomicBool>,
+    app_data_dir: &Path,
+    mut next_sequence_number: u32,
+) -> Result<(RemotionRenderOutcome, u32), String> {
+    let log_path = command.current_dir.join("render.log");
+    let log_file = fs::File::create(&log_path)
+        .map_err(|error| format!("failed to create render.log: {error}"))?;
+    let log_file_err = log_file
+        .try_clone()
+        .map_err(|error| format!("failed to clone render.log handle: {error}"))?;
+
+    let mut cmd = Command::new(&command.executable);
+    cmd.args(&command.args)
+        .current_dir(&command.current_dir)
+        .envs(&command.envs)
+        .stdout(Stdio::from(log_file))
+        .stderr(Stdio::from(log_file_err));
+
+    if command.stdin_data.is_some() {
+        cmd.stdin(Stdio::piped());
+    } else {
+        cmd.stdin(Stdio::null());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|error| format!("failed to start Remotion render-video sidecar: {error}"))?;
+
+    if let Some(stdin_data) = &command.stdin_data {
+        if let Some(mut stdin) = child.stdin.take() {
+            let data = stdin_data.clone();
+            std::thread::spawn(move || {
+                use std::io::Write;
+                let _ = stdin.write_all(data.as_bytes());
+            });
+        }
+    }
+
+    let mut log_reader = fs::File::open(&log_path).map(std::io::BufReader::new).ok();
+    let mut tail_lines: Vec<String> = Vec::new();
+    let mut completed: Option<RemotionRenderOutcome> = None;
+
+    let started_at = Instant::now();
+    let timeout = Duration::from_secs(3600);
+    let mut last_heartbeat = Instant::now() - ACTIVE_HEARTBEAT_INTERVAL;
+
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            terminate_sidecar_child(&mut child, command);
+            return Err("worker loop stopped while Remotion sidecar was running".into());
+        }
+        if started_at.elapsed() >= timeout {
+            terminate_sidecar_child(&mut child, command);
+            return Err("Remotion render-video sidecar timed out after 1 hour".into());
+        }
+        if last_heartbeat.elapsed() >= ACTIVE_HEARTBEAT_INTERVAL {
+            let _ =
+                crate::commands::try_refresh_connection_if_needed(app_data_dir, connection).await;
+            let connection_snapshot = clone_connection(connection)?;
+            let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None, true, false).await;
+            last_heartbeat = Instant::now();
+        }
+
+        // Drain any newly written lines before checking exit status so a
+        // `completed`/`failed` event emitted right before the process exits
+        // is never lost to a race against `try_wait`.
+        if let Some(reader) = &mut log_reader {
+            use std::io::BufRead;
+            let mut line = String::new();
+            while let Ok(bytes) = reader.read_line(&mut line) {
+                if bytes == 0 {
+                    break;
+                }
+                let trimmed = line.trim().to_string();
+                if !trimmed.is_empty() {
+                    tail_lines.push(trimmed.clone());
+                    if tail_lines.len() > LIVE_RENDER_LOG_TAIL_LINES * 2 {
+                        let keep_from = tail_lines.len().saturating_sub(LIVE_RENDER_LOG_TAIL_LINES);
+                        tail_lines.drain(0..keep_from);
+                    }
+                    match parse_remotion_sidecar_event(&trimmed) {
+                        Some(RemotionSidecarEvent::Progress { stage, message }) => {
+                            if let Some(event) = build_remotion_render_video_progress_event(
+                                job,
+                                next_sequence_number,
+                                &stage,
+                                60,
+                                message.as_deref(),
+                            ) {
+                                update_executor_progress(
+                                    executor,
+                                    &job.id,
+                                    60,
+                                    message.clone().unwrap_or_else(|| stage.clone()),
+                                );
+                                if let Err(error) = send_progress_event_with_next_sequence(
+                                    app_data_dir,
+                                    connection,
+                                    &job.id,
+                                    event,
+                                    &mut next_sequence_number,
+                                )
+                                .await
+                                {
+                                    terminate_sidecar_child(&mut child, command);
+                                    return Err(format!(
+                                        "Active render progress event failed while Remotion sidecar was running: {error}"
+                                    ));
+                                }
+                            } else {
+                                // Unknown stage — the server would reject
+                                // this event outright; log it locally and
+                                // move on instead of crashing or forwarding
+                                // an invalid stage.
+                                crate::diagnostics::append_diagnostic_event(
+                                    app_data_dir,
+                                    "remotion.progress.unknown_stage",
+                                    json!({ "jobId": job.id, "stage": stage }),
+                                );
+                            }
+                        }
+                        Some(RemotionSidecarEvent::Completed {
+                            output_path,
+                            duration_sec,
+                            sha256,
+                            width_px,
+                            height_px,
+                        }) => {
+                            completed = Some(RemotionRenderOutcome::Completed {
+                                output_path,
+                                duration_sec,
+                                sha256,
+                                width_px,
+                                height_px,
+                            });
+                        }
+                        Some(RemotionSidecarEvent::Failed {
+                            failure_code,
+                            message,
+                        }) => {
+                            completed = Some(RemotionRenderOutcome::Failed {
+                                failure_code,
+                                message,
+                            });
+                        }
+                        None => {}
+                    }
+                }
+                line.clear();
+            }
+        }
+
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let outcome = classify_remotion_sidecar_exit(
+                    status.success(),
+                    completed,
+                    &tail_lines,
+                    status.to_string(),
+                );
+                return Ok((outcome, next_sequence_number));
+            }
+            Ok(None) => {
+                sleep_cancelable(Duration::from_millis(500), cancel).await;
+            }
+            Err(error) => {
+                return Err(format!("failed to monitor Remotion sidecar: {error}"));
+            }
+        }
+    }
+}
+
+/// Pure exit-classification helper for `run_remotion_sidecar_and_collect` —
+/// separated out so the "process exited without ever reporting a terminal
+/// sidecar event" fallback logic is unit-testable without spawning a real
+/// child process. `already_captured` is whatever `completed`/`failed` event
+/// was parsed from stdout WHILE the process was still running (if any) —
+/// this always wins over exit-status inference. Only when nothing was
+/// captured does exit status matter: a non-zero exit synthesizes
+/// `render_failed` with a tail of captured log lines (task requirement); a
+/// zero exit with nothing captured is ALSO `render_failed` (the frozen
+/// sidecar contract guarantees exactly one of `completed`/`failed` on every
+/// run, so a clean exit with neither is itself a contract violation, not a
+/// silent success).
+fn classify_remotion_sidecar_exit(
+    exited_successfully: bool,
+    already_captured: Option<RemotionRenderOutcome>,
+    tail_lines: &[String],
+    status_display: String,
+) -> RemotionRenderOutcome {
+    if let Some(outcome) = already_captured {
+        return outcome;
+    }
+    if exited_successfully {
+        return RemotionRenderOutcome::Failed {
+            failure_code: "render_failed".into(),
+            message: "Remotion render-video sidecar exited successfully without reporting a completed event".into(),
+        };
+    }
+    let tail = build_failure_log_excerpt(tail_lines.to_vec());
+    RemotionRenderOutcome::Failed {
+        failure_code: "render_failed".into(),
+        message: format!(
+            "Remotion render-video sidecar exited with {status_display}.\n\nLogs:\n{tail}"
+        ),
+    }
 }
 
 async fn stage_hyperframes_source_videos(
@@ -1700,6 +2318,7 @@ async fn stage_hyperframes_source_videos(
     for (index, source_video) in source_videos.iter_mut().enumerate() {
         update_executor_progress(
             executor,
+            &job.id,
             22, // roughly corresponds to stage_assets percent
             format!("Downloading source video {}/{}", index + 1, total_videos),
         );
@@ -2421,33 +3040,29 @@ fn clone_connection(
         .map_err(|_| "worker loop connection lock poisoned".to_string())
 }
 
+// The three loop-lifecycle transitions below run on EVERY tick (10s), including
+// while a spawned render job is still executing. They report the state of the
+// LOOP, never of the jobs — so they delegate to `apply_loop_status`, which
+// preserves anything still in flight (2026-08-01 incident: a lone render job
+// vanished from the panel one tick after it started).
 fn set_executor_polling(executor: &Arc<Mutex<ExecutorState>>, message: impl Into<String>) {
     if let Ok(mut state) = executor.lock() {
         state.accepting_jobs = true;
-        state.status = ExecutorStatus::Polling;
-        state.clear_current_job();
-        state.progress_percent = 0;
-        state.last_message = message.into();
+        state.apply_loop_status(ExecutorStatus::Polling, message.into());
     }
 }
 
 fn set_executor_paused(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
     if let Ok(mut state) = executor.lock() {
         state.accepting_jobs = false;
-        state.status = ExecutorStatus::Paused;
-        state.clear_current_job();
-        state.progress_percent = 0;
-        state.last_message = message.into();
+        state.apply_loop_status(ExecutorStatus::Paused, message.into());
     }
 }
 
 fn set_executor_idle(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
     if let Ok(mut state) = executor.lock() {
         state.accepting_jobs = false;
-        state.status = ExecutorStatus::Idle;
-        state.clear_current_job();
-        state.progress_percent = 0;
-        state.last_message = message.into();
+        state.apply_loop_status(ExecutorStatus::Idle, message.into());
     }
 }
 
@@ -2478,13 +3093,23 @@ fn set_executor_job(executor: &Arc<Mutex<ExecutorState>>, job: &ClaimedWorkerJob
     }
 }
 
+/// Records progress for `job_id`. Writes BOTH the per-job entry (authoritative
+/// while several lanes run at once) and the legacy top-level fields, but the
+/// legacy fields are only touched when this job is the displayed primary —
+/// otherwise a Hermes job's progress would visibly rewind an in-flight render's
+/// percentage (2026-07-30 incident).
 fn update_executor_progress(
     executor: &Arc<Mutex<ExecutorState>>,
+    job_id: &str,
     progress_percent: u8,
     message: impl Into<String>,
 ) {
+    let message = message.into();
     if let Ok(mut state) = executor.lock() {
-        state.update_progress(progress_percent, message.into());
+        state.update_job_progress(job_id, progress_percent, &message);
+        if state.current_job_id.as_deref() == Some(job_id) {
+            state.update_progress(progress_percent, message);
+        }
     }
 }
 
@@ -2500,7 +3125,11 @@ fn set_executor_sidecar_progress(
     }
 }
 
-fn update_progress_from_event(executor: &Arc<Mutex<ExecutorState>>, event: &WorkerEventPlan) {
+fn update_progress_from_event(
+    executor: &Arc<Mutex<ExecutorState>>,
+    job_id: &str,
+    event: &WorkerEventPlan,
+) {
     let percent = event
         .payload_json
         .get("percent")
@@ -2513,16 +3142,50 @@ fn update_progress_from_event(executor: &Arc<Mutex<ExecutorState>>, event: &Work
         .and_then(Value::as_str)
         .unwrap_or("HyperFrames progress")
         .to_string();
-    update_executor_progress(executor, percent, message);
+    update_executor_progress(executor, job_id, percent, message);
 }
 
-fn set_executor_complete(executor: &Arc<Mutex<ExecutorState>>, message: &str) {
+/// Lane-scoped completion. Removes ONLY `job_id` from the in-flight set and,
+/// when other lanes are still working, leaves the executor in `Running` with
+/// a promoted primary job instead of reporting the whole worker idle.
+///
+/// Field incident 2026-07-30: a Hermes image job finishing mid-render called
+/// the global `set_executor_complete` above, which cleared the single
+/// current-job slot — the app showed "No active job" while the same worker was
+/// at `render_frames 60%` on the server.
+fn set_executor_job_complete(
+    executor: &Arc<Mutex<ExecutorState>>,
+    job_id: &str,
+    message: &str,
+) {
     if let Ok(mut state) = executor.lock() {
+        state.finish_job(job_id);
         state.accepting_jobs = true;
-        state.status = ExecutorStatus::Polling;
-        state.clear_current_job();
-        state.progress_percent = 100;
-        state.last_message = message.into();
+        if state.current_job_id.is_some() {
+            state.status = ExecutorStatus::Running;
+        } else {
+            state.status = ExecutorStatus::Polling;
+            state.progress_percent = 100;
+            state.last_message = message.into();
+        }
+    }
+}
+
+/// Lane-scoped failure counterpart of `set_executor_job_complete`. A failure
+/// in one lane must not flip the whole worker to `Error` (and stop it
+/// accepting jobs) while another lane is mid-render.
+fn set_executor_job_error(executor: &Arc<Mutex<ExecutorState>>, job_id: &str, message: String) {
+    if let Ok(mut state) = executor.lock() {
+        state.finish_job(job_id);
+        if state.current_job_id.is_some() {
+            state.status = ExecutorStatus::Running;
+            state.accepting_jobs = true;
+            state.last_message = message;
+        } else {
+            state.accepting_jobs = false;
+            state.status = ExecutorStatus::Error;
+            state.last_message = message;
+        }
     }
 }
 
@@ -2588,6 +3251,68 @@ mod tests {
     use super::*;
     use crate::credentials::ensure_device_proof_material;
     use crate::worker_control_plane::WorkerApiTokens;
+
+    #[test]
+    fn remotion_claim_hints_include_capability_families_only_when_render_ready() {
+        let ready = build_worker_claim_capability_hints(true, false);
+        assert!(ready.contains(&"remotion-render".to_string()));
+        assert!(ready.contains(&"chromium-render".to_string()));
+        assert!(ready.contains(&"ffmpeg-probe".to_string()));
+        assert!(ready.contains(&REMOTION_RENDER_VIDEO_JOB_TYPE.to_string()));
+
+        let not_ready = build_worker_claim_capability_hints(false, false);
+        assert!(!not_ready.contains(&"remotion-render".to_string()));
+        assert!(not_ready.is_empty());
+    }
+
+    #[test]
+    fn remotion_sidecar_exit_prefers_captured_terminal_event_over_exit_status() {
+        let captured = RemotionRenderOutcome::Completed {
+            output_path: "/workspace/out/render.mp4".into(),
+            duration_sec: 12.5,
+            sha256: "abc123".into(),
+            width_px: 1080,
+            height_px: 1920,
+        };
+        let outcome = classify_remotion_sidecar_exit(
+            false,
+            Some(captured.clone()),
+            &[],
+            "exit status: 1".into(),
+        );
+        assert_eq!(outcome, captured);
+    }
+
+    #[test]
+    fn remotion_sidecar_non_zero_exit_without_failed_event_synthesizes_render_failed() {
+        let outcome = classify_remotion_sidecar_exit(
+            false,
+            None,
+            &["fatal: chromium crashed".to_string()],
+            "exit status: 1".into(),
+        );
+        match outcome {
+            RemotionRenderOutcome::Failed { failure_code, message } => {
+                assert_eq!(failure_code, "render_failed");
+                assert!(message.contains("chromium crashed"));
+            }
+            RemotionRenderOutcome::Completed { .. } => panic!("expected a Failed outcome"),
+        }
+    }
+
+    #[test]
+    fn remotion_sidecar_zero_exit_without_completed_event_is_also_render_failed() {
+        // The frozen sidecar contract guarantees exactly one of
+        // completed/failed on every run — a clean exit with neither
+        // captured is a contract violation, not a silent success.
+        let outcome = classify_remotion_sidecar_exit(true, None, &[], "exit status: 0".into());
+        match outcome {
+            RemotionRenderOutcome::Failed { failure_code, .. } => {
+                assert_eq!(failure_code, "render_failed");
+            }
+            RemotionRenderOutcome::Completed { .. } => panic!("expected a Failed outcome"),
+        }
+    }
 
     #[test]
     fn fix_a_heartbeat_runtime_metadata_carries_real_hermes_readiness() {

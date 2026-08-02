@@ -13,6 +13,70 @@ use crate::runtime_manifest::DoctorSummary;
 pub const HYPERFRAMES_JOB_TYPE: &str = "hyperframes_final_composite";
 pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
 
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — the
+/// `remotion_render_video` worker job type (Lane B). Matches
+/// `apps/web/shared/workerRuntime.ts` / `packages/remotion-render/src/
+/// remotionRenderVideoSchema.ts`'s `remotionRenderVideoWorkerInputSchema`'s
+/// `kind` literal exactly.
+pub const REMOTION_RENDER_VIDEO_JOB_TYPE: &str = "remotion_render_video";
+
+/// Frozen 1:1 with `REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts` — the server's
+/// anti-mis-claim gate (`workerSchedulerService.ts#workerJobMatchesSelection`
+/// AND `workerRegistryService.ts`'s defense-in-depth
+/// `REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY` check) requires the
+/// claiming worker's `capability_hints` to be a superset of this exact list.
+pub const REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES: [&str; 3] =
+    ["remotion-render", "chromium-render", "ffmpeg-probe"];
+
+/// Frozen 1:1 with `remotionRenderVideoProgressStageValues` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts` — order
+/// matters (it is the pipeline's declared stage sequence), and
+/// `workerRegistryService.ts#assertRuntimeSpecificJobEventContract` rejects
+/// any `job.progress` event whose `stage` is not in this exact list.
+pub const REMOTION_RENDER_VIDEO_PROGRESS_STAGES: [&str; 10] = [
+    "resolve_inputs",
+    "stage_assets",
+    "bundle_composition",
+    "select_composition",
+    "render_frames",
+    "run_post_passes",
+    "verify_outputs",
+    "upload_artifacts",
+    "server_verify_artifacts",
+    "publish_artifacts",
+];
+
+/// Frozen 1:1 with `remotionRenderVideoFailureCodeValues` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts` —
+/// `workerRegistryService.ts#assertRuntimeSpecificJobEventContract` rejects
+/// any `job.failed` event whose `failureCode` is not in this exact list.
+pub const REMOTION_RENDER_VIDEO_FAILURE_CODES: [&str; 9] = [
+    "contract_version_unsupported",
+    "asset_stage_failed",
+    "bundle_failed",
+    "composition_select_failed",
+    "chromium_launch_failed",
+    "render_failed",
+    "post_pass_failed",
+    "artifact_upload_failed",
+    "server_verification_failed",
+];
+
+/// The sidecar's own filename for `render-video` mode's fallback failure
+/// code — see `runRenderVideoMode`'s `resolveRenderVideoFailureCode` in
+/// `apps/worker-app/runtime-pack/remotion-sidecar/render.mjs` (identical
+/// fallback value on the Node side).
+pub const REMOTION_RENDER_VIDEO_DEFAULT_FAILURE_CODE: &str = "render_failed";
+
+pub fn is_known_remotion_render_video_progress_stage(stage: &str) -> bool {
+    REMOTION_RENDER_VIDEO_PROGRESS_STAGES.contains(&stage)
+}
+
+pub fn is_known_remotion_render_video_failure_code(code: &str) -> bool {
+    REMOTION_RENDER_VIDEO_FAILURE_CODES.contains(&code)
+}
+
 /// Feature 135 §11 — dispatch classification. `worker_loop.rs`/`commands.rs`
 /// use this to route a claimed job to either the (existing) HyperFrames
 /// render flow or the (new) Hermes media/connection-control flow. Unknown
@@ -21,6 +85,7 @@ pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkerJobKind {
     Hyperframes,
+    RemotionRenderVideo,
     HermesMediaImage,
     HermesMediaVideo,
     HermesConnectionAuthorize,
@@ -32,6 +97,7 @@ pub enum WorkerJobKind {
 pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
     match job_type {
         HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
+        REMOTION_RENDER_VIDEO_JOB_TYPE => WorkerJobKind::RemotionRenderVideo,
         HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
         HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
         HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
@@ -111,6 +177,62 @@ pub struct HyperframesExecutionPlan {
     pub render_log_path: PathBuf,
     pub max_duration_sec: u16,
     pub asset_count: usize,
+}
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — workspace layout
+/// for a `remotion_render_video` job. Unlike
+/// `HyperframesExecutionPlan`, there is no `renderIntent`/`compositionHtml`
+/// preflight (the payload is a self-contained
+/// `RemotionRenderVideoWorkerInput` JSON document, not an HTML+manifest
+/// pair) and asset staging is delegated entirely to the sidecar (it fetches
+/// `assetManifest.sources` itself via
+/// `defaultStageRemotionRenderVideoAssets`) — Rust only stages the payload
+/// file and the output directory.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RemotionRenderVideoExecutionPlan {
+    pub job_id: String,
+    pub assignment_attempt: String,
+    pub workspace_dir: PathBuf,
+    /// `<workspace_dir>/remotion-render-video-input.json` — the job's
+    /// `inputJson` written verbatim (FROZEN sidecar contract — see
+    /// `planning/worker-app-remotion-render-video/plan.md` P2 brief).
+    pub payload_path: PathBuf,
+    pub output_dir: PathBuf,
+}
+
+pub fn prepare_remotion_render_video_execution_plan(
+    job: &ClaimedWorkerJob,
+    workspace_root: &Path,
+) -> Result<RemotionRenderVideoExecutionPlan, String> {
+    if job.job_type != REMOTION_RENDER_VIDEO_JOB_TYPE {
+        return Err(format!("unsupported worker job type: {}", job.job_type));
+    }
+    if job.assignment_attempt.trim().is_empty() {
+        return Err("assignmentAttempt is required before execution".into());
+    }
+    if job.input_json.is_null() || !job.input_json.is_object() {
+        return Err("remotion_render_video job is missing inputJson".into());
+    }
+
+    let job_segment = sanitize_segment(&job.id);
+    if job_segment.is_empty() {
+        return Err("job id is invalid for workspace staging".into());
+    }
+    let workspace_dir = workspace_root.join(job_segment);
+    let output_dir = safe_join(&workspace_dir, "out")?;
+    let payload_path = safe_join(&workspace_dir, "remotion-render-video-input.json")?;
+    validate_workspace_path(workspace_root, &workspace_dir)?;
+    validate_workspace_path(workspace_root, &output_dir)?;
+    validate_workspace_path(workspace_root, &payload_path)?;
+
+    Ok(RemotionRenderVideoExecutionPlan {
+        job_id: job.id.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        workspace_dir,
+        payload_path,
+        output_dir,
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -427,6 +549,66 @@ pub fn prepare_hyperframes_execution_plan(
     })
 }
 
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — which sidecar
+/// `build_sidecar_command_for_kind` is building an invocation for. The two
+/// kinds share the exact same workspace-staging/trap/cleanup scaffold; only
+/// the pieces that genuinely differ between the two Node sidecar CLIs
+/// (script directory, CLI mode word, payload flag, whether a `--format`
+/// argument exists, and whether the HyperFrames-only `hyperframes` CLI
+/// lint/validate preflight applies) are parameterized — see this function's
+/// call sites (`build_sidecar_command`, unchanged behavior, and the new
+/// `build_remotion_render_video_sidecar_command`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SidecarKind {
+    Hyperframes,
+    RemotionRenderVideo,
+}
+
+impl SidecarKind {
+    /// Directory name under `runtime-pack/` this sidecar's `render.mjs`
+    /// lives in — also the pgrep-cleanup pattern fragment (generalizes the
+    /// previously-hardcoded `"hyperframes-sidecar/render.mjs"` literal).
+    fn script_dir_name(self) -> &'static str {
+        match self {
+            SidecarKind::Hyperframes => "hyperframes-sidecar",
+            SidecarKind::RemotionRenderVideo => "remotion-sidecar",
+        }
+    }
+
+    /// The sidecar CLI's first positional argument (FROZEN contract for
+    /// `RemotionRenderVideo` — see
+    /// `apps/worker-app/runtime-pack/remotion-sidecar/render.mjs`'s module
+    /// doc comment).
+    fn mode_arg(self) -> &'static str {
+        match self {
+            SidecarKind::Hyperframes => "render",
+            SidecarKind::RemotionRenderVideo => "render-video",
+        }
+    }
+
+    /// The flag name preceding the job's input file path.
+    fn payload_flag(self) -> &'static str {
+        match self {
+            SidecarKind::Hyperframes => "--manifest",
+            SidecarKind::RemotionRenderVideo => "--payload",
+        }
+    }
+
+    /// Only the HyperFrames sidecar takes an explicit `--format mp4` flag.
+    fn append_format_mp4(self) -> bool {
+        matches!(self, SidecarKind::Hyperframes)
+    }
+
+    /// Only the HyperFrames sidecar needs the `hyperframes` CLI's
+    /// `lint`/`validate` preflight (it operates on an HTML composition
+    /// directory) — the Remotion `render-video` payload is a self-contained
+    /// JSON document validated by the sidecar itself via
+    /// `remotionRenderVideoWorkerInputSchema.parse`.
+    fn uses_hyperframes_cli_preflight(self) -> bool {
+        matches!(self, SidecarKind::Hyperframes)
+    }
+}
+
 pub fn build_sidecar_command(
     sidecar_executable: &Path,
     plan: &HyperframesExecutionPlan,
@@ -434,12 +616,63 @@ pub fn build_sidecar_command(
     managed_wsl_root: Option<&str>,
     managed_wsl_workspace_root: Option<&str>,
 ) -> Result<SidecarCommandPlan, String> {
+    build_sidecar_command_for_kind(
+        SidecarKind::Hyperframes,
+        sidecar_executable,
+        &plan.workspace_dir,
+        &plan.output_dir,
+        &plan.sidecar_manifest_path,
+        use_wsl2,
+        managed_wsl_root,
+        managed_wsl_workspace_root,
+    )
+}
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — same command
+/// builder, targeting the Remotion `render-video` sidecar mode instead.
+pub fn build_remotion_render_video_sidecar_command(
+    sidecar_executable: &Path,
+    plan: &RemotionRenderVideoExecutionPlan,
+    use_wsl2: bool,
+    managed_wsl_root: Option<&str>,
+    managed_wsl_workspace_root: Option<&str>,
+) -> Result<SidecarCommandPlan, String> {
+    build_sidecar_command_for_kind(
+        SidecarKind::RemotionRenderVideo,
+        sidecar_executable,
+        &plan.workspace_dir,
+        &plan.output_dir,
+        &plan.payload_path,
+        use_wsl2,
+        managed_wsl_root,
+        managed_wsl_workspace_root,
+    )
+}
+
+fn build_sidecar_command_for_kind(
+    kind: SidecarKind,
+    sidecar_executable: &Path,
+    workspace_dir: &Path,
+    output_dir: &Path,
+    payload_path: &Path,
+    use_wsl2: bool,
+    managed_wsl_root: Option<&str>,
+    managed_wsl_workspace_root: Option<&str>,
+) -> Result<SidecarCommandPlan, String> {
     if sidecar_executable.as_os_str().is_empty() {
-        return Err("HyperFrames sidecar executable path is empty".into());
+        return Err("sidecar executable path is empty".into());
     }
 
     let runtime_root = runtime_root_for_sidecar(sidecar_executable);
-    let current_dir = plan.workspace_dir.clone();
+    let current_dir = workspace_dir.to_path_buf();
+    let script_dir_name = kind.script_dir_name();
+    let mode_arg = kind.mode_arg();
+    let payload_flag = kind.payload_flag();
+    let payload_file_name = payload_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("sidecar-input.json")
+        .to_string();
 
     if use_wsl2 {
         if let Some(managed_wsl_root) = managed_wsl_root
@@ -453,14 +686,98 @@ pub fn build_sidecar_command(
                 .filter(|root| !root.is_empty())
                 .map(wsl_shell_assignment_expr)
                 .unwrap_or_else(|| "\"\"".into());
-            let job_segment = plan
-                .workspace_dir
+            let job_segment = workspace_dir
                 .file_name()
                 .and_then(|name| name.to_str())
                 .map(shell_single_quote)
                 .ok_or_else(|| "managed WSL workspace job segment is invalid".to_string())?;
-            let windows_workspace = shell_single_quote(&to_wsl_path(&plan.workspace_dir));
-            let windows_output_dir = shell_single_quote(&to_wsl_path(&plan.output_dir));
+            let windows_workspace = shell_single_quote(&to_wsl_path(workspace_dir));
+            let windows_output_dir = shell_single_quote(&to_wsl_path(output_dir));
+            let hf_cli_declaration = if kind.uses_hyperframes_cli_preflight() {
+                "HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n"
+            } else {
+                ""
+            };
+            let preflight_block = if kind.uses_hyperframes_cli_preflight() {
+                format!(
+                    "if [ ! -f \"$WSL_JOB_WORKSPACE/index.html\" ]; then\n\
+                    echo \"[ERROR] Missing index.html: $WSL_JOB_WORKSPACE/index.html\" >&2\n\
+                    exit 21\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$WSL_MANIFEST\" ]; then\n\
+                    echo \"[ERROR] Missing {payload_file_name}: $WSL_MANIFEST\" >&2\n\
+                    exit 22\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$NODE_BIN\" ]; then\n\
+                    echo \"[ERROR] Node not executable: $NODE_BIN\" >&2\n\
+                    exit 23\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$HF_CLI\" ]; then\n\
+                    echo \"[ERROR] HyperFrames CLI not found: $HF_CLI\" >&2\n\
+                    exit 24\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$RENDER_SIDECAR\" ]; then\n\
+                    echo \"[ERROR] Render sidecar not found: $RENDER_SIDECAR\" >&2\n\
+                    exit 25\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$FFMPEG_PATH\" ]; then\n\
+                    echo \"[ERROR] FFmpeg not executable: $FFMPEG_PATH\" >&2\n\
+                    exit 26\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$BROWSER_PATH\" ]; then\n\
+                    echo \"[ERROR] Browser not executable: $BROWSER_PATH\" >&2\n\
+                    exit 27\n\
+                    fi\n\
+                    \n\
+                    echo \"[Preflight] Running HyperFrames lint...\"\n\
+                    \"$NODE_BIN\" \"$HF_CLI\" lint --composition . || true\n\
+                    \n\
+                    echo \"[Preflight] Running HyperFrames validate...\"\n\
+                    \"$NODE_BIN\" \"$HF_CLI\" validate --composition . || true\n"
+                )
+            } else {
+                format!(
+                    "if [ ! -f \"$WSL_MANIFEST\" ]; then\n\
+                    echo \"[ERROR] Missing {payload_file_name}: $WSL_MANIFEST\" >&2\n\
+                    exit 22\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$NODE_BIN\" ]; then\n\
+                    echo \"[ERROR] Node not executable: $NODE_BIN\" >&2\n\
+                    exit 23\n\
+                    fi\n\
+                    \n\
+                    if [ ! -f \"$RENDER_SIDECAR\" ]; then\n\
+                    echo \"[ERROR] Render sidecar not found: $RENDER_SIDECAR\" >&2\n\
+                    exit 25\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$FFMPEG_PATH\" ]; then\n\
+                    echo \"[ERROR] FFmpeg not executable: $FFMPEG_PATH\" >&2\n\
+                    exit 26\n\
+                    fi\n\
+                    \n\
+                    if [ ! -x \"$BROWSER_PATH\" ]; then\n\
+                    echo \"[ERROR] Browser not executable: $BROWSER_PATH\" >&2\n\
+                    exit 27\n\
+                    fi\n"
+                )
+            };
+            let invocation_line = if kind.append_format_mp4() {
+                format!(
+                    "timeout --signal=TERM --kill-after=20s \"$RENDER_TIMEOUT_SECONDS\" \\\n  setsid \"$NODE_BIN\" \"$RENDER_SIDECAR\" \\\n  {mode_arg} \\\n  {payload_flag} \"$WSL_MANIFEST\" \\\n  --workspace \"$WSL_JOB_WORKSPACE\" \\\n  --output-dir \"$WSL_OUTPUT_DIR\" \\\n  --format mp4 &\n"
+                )
+            } else {
+                format!(
+                    "timeout --signal=TERM --kill-after=20s \"$RENDER_TIMEOUT_SECONDS\" \\\n  setsid \"$NODE_BIN\" \"$RENDER_SIDECAR\" \\\n  {mode_arg} \\\n  {payload_flag} \"$WSL_MANIFEST\" \\\n  --workspace \"$WSL_JOB_WORKSPACE\" \\\n  --output-dir \"$WSL_OUTPUT_DIR\" &\n"
+                )
+            };
             let script = format!(
                 "set -Eeuo pipefail\n\
                 \n\
@@ -478,11 +795,10 @@ pub fn build_sidecar_command(
                 \n\
                 WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\n\
                 WSL_OUTPUT_DIR=\"$WSL_JOB_WORKSPACE/out\"\n\
-                WSL_MANIFEST=\"$WSL_JOB_WORKSPACE/sidecar-input.json\"\n\
+                WSL_MANIFEST=\"$WSL_JOB_WORKSPACE/{payload_file_name}\"\n\
                 \n\
                 NODE_BIN=\"$ROOT/runtime-pack/node/bin/node\"\n\
-                HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n\
-                RENDER_SIDECAR=\"$ROOT/runtime-pack/hyperframes-sidecar/render.mjs\"\n\
+                {hf_cli_declaration}RENDER_SIDECAR=\"$ROOT/runtime-pack/{script_dir_name}/render.mjs\"\n\
                 \n\
                 export SMARTAIHUB_RUNTIME_ROOT=\"$ROOT\"\n\
                 export SMARTAIHUB_MANAGED_WSL_JOB_WORKSPACE=\"$WSL_JOB_WORKSPACE\"\n\
@@ -541,52 +857,13 @@ pub fn build_sidecar_command(
                 \n\
                 echo \"[Preflight] Checking required files...\"\n\
                 \n\
-                if [ ! -f \"$WSL_JOB_WORKSPACE/index.html\" ]; then\n\
-                  echo \"[ERROR] Missing index.html: $WSL_JOB_WORKSPACE/index.html\" >&2\n\
-                  exit 21\n\
-                fi\n\
-                \n\
-                if [ ! -f \"$WSL_MANIFEST\" ]; then\n\
-                  echo \"[ERROR] Missing sidecar-input.json: $WSL_MANIFEST\" >&2\n\
-                  exit 22\n\
-                fi\n\
-                \n\
-                if [ ! -x \"$NODE_BIN\" ]; then\n\
-                  echo \"[ERROR] Node not executable: $NODE_BIN\" >&2\n\
-                  exit 23\n\
-                fi\n\
-                \n\
-                if [ ! -f \"$HF_CLI\" ]; then\n\
-                  echo \"[ERROR] HyperFrames CLI not found: $HF_CLI\" >&2\n\
-                  exit 24\n\
-                fi\n\
-                \n\
-                if [ ! -f \"$RENDER_SIDECAR\" ]; then\n\
-                  echo \"[ERROR] Render sidecar not found: $RENDER_SIDECAR\" >&2\n\
-                  exit 25\n\
-                fi\n\
-                \n\
-                if [ ! -x \"$FFMPEG_PATH\" ]; then\n\
-                  echo \"[ERROR] FFmpeg not executable: $FFMPEG_PATH\" >&2\n\
-                  exit 26\n\
-                fi\n\
-                \n\
-                if [ ! -x \"$BROWSER_PATH\" ]; then\n\
-                  echo \"[ERROR] Browser not executable: $BROWSER_PATH\" >&2\n\
-                  exit 27\n\
-                fi\n\
-                \n\
-                echo \"[Preflight] Running HyperFrames lint...\"\n\
-                \"$NODE_BIN\" \"$HF_CLI\" lint --composition . || true\n\
-                \n\
-                echo \"[Preflight] Running HyperFrames validate...\"\n\
-                \"$NODE_BIN\" \"$HF_CLI\" validate --composition . || true\n\
+                {preflight_block}\
                 \n\
                 echo \"[Render] Starting render with timeout ${{RENDER_TIMEOUT_SECONDS}}s...\"\n\
                 \n\
                 set +e\n\
                 \n\
-                timeout --signal=TERM --kill-after=20s \"$RENDER_TIMEOUT_SECONDS\" \\\n  setsid \"$NODE_BIN\" \"$RENDER_SIDECAR\" \\\n  render \\\n  --manifest \"$WSL_MANIFEST\" \\\n  --workspace \"$WSL_JOB_WORKSPACE\" \\\n  --output-dir \"$WSL_OUTPUT_DIR\" \\\n  --format mp4 &\n\
+                {invocation_line}\
                 \n\
                 render_pid=$!\n\
                 wait \"$render_pid\"\n\
@@ -603,7 +880,7 @@ pub fn build_sidecar_command(
                 exit \"$render_status\""
             );
             let cleanup_script = format!(
-                "set +e\nROOT={root_expr}\nCONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\nif [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n  RUNTIME_PARENT=$(dirname \"$ROOT\")\n  CONFIGURED_WORKSPACE_ROOT=\"$RUNTIME_PARENT/workspace\"\nfi\nJOB_SEGMENT={job_segment}\nworkspace=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\nfor pid in $(pgrep -f \"hyperframes-sidecar/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -TERM -\"$pgid\" 2>/dev/null || true\n  else\n    kill -TERM \"$pid\" 2>/dev/null || true\n  fi\ndone\nsleep 2\nfor pid in $(pgrep -f \"hyperframes-sidecar/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -KILL -\"$pgid\" 2>/dev/null || true\n  else\n    kill -KILL \"$pid\" 2>/dev/null || true\n  fi\ndone"
+                "set +e\nROOT={root_expr}\nCONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\nif [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n  RUNTIME_PARENT=$(dirname \"$ROOT\")\n  CONFIGURED_WORKSPACE_ROOT=\"$RUNTIME_PARENT/workspace\"\nfi\nJOB_SEGMENT={job_segment}\nworkspace=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\nfor pid in $(pgrep -f \"{script_dir_name}/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -TERM -\"$pgid\" 2>/dev/null || true\n  else\n    kill -TERM \"$pid\" 2>/dev/null || true\n  fi\ndone\nsleep 2\nfor pid in $(pgrep -f \"{script_dir_name}/render.mjs.*--workspace $workspace\" || true); do\n  pgid=$(ps -o pgid= -p \"$pid\" | tr -d ' ')\n  if [ -n \"$pgid\" ]; then\n    kill -KILL -\"$pgid\" 2>/dev/null || true\n  else\n    kill -KILL \"$pid\" 2>/dev/null || true\n  fi\ndone"
             );
             let args = vec!["-e".into(), "bash".into(), "-s".into()];
             let cleanup_args = vec!["-e".into(), "bash".into(), "-s".into()];
@@ -624,57 +901,65 @@ pub fn build_sidecar_command(
             for (key, value) in DEFAULT_RENDER_ENV {
                 envs.insert((*key).into(), (*value).into());
             }
-            let preview_script = format!(
-                "set -Eeuo pipefail\n\
-                \n\
-                ROOT={root_expr}\n\
-                JOB_SEGMENT={job_segment}\n\
-                \n\
-                CONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\n\
-                if [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n\
-                  CONFIGURED_WORKSPACE_ROOT=\"$(dirname \"$ROOT\")/workspace\"\n\
-                fi\n\
-                \n\
-                WINDOWS_WORKSPACE={windows_workspace}\n\
-                WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\n\
-                \n\
-                NODE_BIN=\"$ROOT/runtime-pack/node/bin/node\"\n\
-                HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n\
-                \n\
-                export SMARTAIHUB_RUNTIME_ROOT=\"$ROOT\"\n\
-                export BROWSER_PATH=\"$ROOT/runtime-pack/browser/chrome\"\n\
-                export CHROME_PATH=\"$BROWSER_PATH\"\n\
-                export PUPPETEER_EXECUTABLE_PATH=\"$BROWSER_PATH\"\n\
-                export HYPERFRAMES_BROWSER_PATH=\"$BROWSER_PATH\"\n\
-                export HYPERFRAMES_NO_AUTO_INSTALL=1\n\
-                \n\
-                echo \"[Preview] Preparing WSL workspace...\"\n\
-                rm -rf \"$WSL_JOB_WORKSPACE\"\n\
-                mkdir -p \"$WSL_JOB_WORKSPACE\"\n\
-                \n\
-                cp -a \"$WINDOWS_WORKSPACE\"/. \"$WSL_JOB_WORKSPACE\"/\n\
-                \n\
-                cd \"$WSL_JOB_WORKSPACE\"\n\
-                \n\
-                if [ ! -f index.html ]; then\n\
-                  echo \"[ERROR] Missing index.html\" >&2\n\
-                  exit 21\n\
-                fi\n\
-                \n\
-                echo \"[Preview] Starting HyperFrames preview...\"\n\
-                \"$NODE_BIN\" \"$HF_CLI\" preview --composition . --host 0.0.0.0\n"
-            );
+            // Preview mode is a HyperFrames-only concept (it serves the
+            // staged HTML composition directory for live browser preview) —
+            // `remotion_render_video`'s payload is a JSON document with no
+            // analogous preview surface, so this stays `None` for that kind.
+            let preview_script = if kind.uses_hyperframes_cli_preflight() {
+                Some(format!(
+                    "set -Eeuo pipefail\n\
+                    \n\
+                    ROOT={root_expr}\n\
+                    JOB_SEGMENT={job_segment}\n\
+                    \n\
+                    CONFIGURED_WORKSPACE_ROOT={workspace_root_expr}\n\
+                    if [ -z \"$CONFIGURED_WORKSPACE_ROOT\" ]; then\n\
+                      CONFIGURED_WORKSPACE_ROOT=\"$(dirname \"$ROOT\")/workspace\"\n\
+                    fi\n\
+                    \n\
+                    WINDOWS_WORKSPACE={windows_workspace}\n\
+                    WSL_JOB_WORKSPACE=\"$CONFIGURED_WORKSPACE_ROOT/$JOB_SEGMENT\"\n\
+                    \n\
+                    NODE_BIN=\"$ROOT/runtime-pack/node/bin/node\"\n\
+                    HF_CLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\n\
+                    \n\
+                    export SMARTAIHUB_RUNTIME_ROOT=\"$ROOT\"\n\
+                    export BROWSER_PATH=\"$ROOT/runtime-pack/browser/chrome\"\n\
+                    export CHROME_PATH=\"$BROWSER_PATH\"\n\
+                    export PUPPETEER_EXECUTABLE_PATH=\"$BROWSER_PATH\"\n\
+                    export HYPERFRAMES_BROWSER_PATH=\"$BROWSER_PATH\"\n\
+                    export HYPERFRAMES_NO_AUTO_INSTALL=1\n\
+                    \n\
+                    echo \"[Preview] Preparing WSL workspace...\"\n\
+                    rm -rf \"$WSL_JOB_WORKSPACE\"\n\
+                    mkdir -p \"$WSL_JOB_WORKSPACE\"\n\
+                    \n\
+                    cp -a \"$WINDOWS_WORKSPACE\"/. \"$WSL_JOB_WORKSPACE\"/\n\
+                    \n\
+                    cd \"$WSL_JOB_WORKSPACE\"\n\
+                    \n\
+                    if [ ! -f index.html ]; then\n\
+                      echo \"[ERROR] Missing index.html\" >&2\n\
+                      exit 21\n\
+                    fi\n\
+                    \n\
+                    echo \"[Preview] Starting HyperFrames preview...\"\n\
+                    \"$NODE_BIN\" \"$HF_CLI\" preview --composition . --host 0.0.0.0\n"
+                ))
+            } else {
+                None
+            };
             return Ok(SidecarCommandPlan {
                 executable,
                 args,
                 current_dir,
                 envs: envs.clone(),
                 stdin_data: Some(script),
-                preview_stdin_data: Some(preview_script),
+                preview_stdin_data: preview_script,
                 cleanup: Some(SidecarCleanupPlan {
                     executable: PathBuf::from("wsl.exe"),
                     args: cleanup_args,
-                    current_dir: plan.workspace_dir.clone(),
+                    current_dir: workspace_dir.to_path_buf(),
                     envs,
                     stdin_data: Some(cleanup_script),
                 }),
@@ -685,26 +970,28 @@ pub fn build_sidecar_command(
         let runtime_pack_root = runtime_root.join("runtime-pack");
         let node_binary = runtime_pack_root.join("node").join("bin").join("node");
         let render_script = runtime_pack_root
-            .join("hyperframes-sidecar")
+            .join(script_dir_name)
             .join("render.mjs");
         let ffmpeg_path = runtime_pack_root.join("bin").join("ffmpeg");
         let ffprobe_path = runtime_pack_root.join("bin").join("ffprobe");
         let browser_path = runtime_pack_root.join("browser").join("chrome");
 
-        let args = vec![
+        let mut args = vec![
             "-e".into(),
             to_wsl_path(&node_binary),
             to_wsl_path(&render_script),
-            "render".into(),
-            "--manifest".into(),
-            to_wsl_path(&plan.sidecar_manifest_path),
+            mode_arg.to_string(),
+            payload_flag.to_string(),
+            to_wsl_path(payload_path),
             "--workspace".into(),
-            to_wsl_path(&plan.workspace_dir),
+            to_wsl_path(workspace_dir),
             "--output-dir".into(),
-            to_wsl_path(&plan.output_dir),
-            "--format".into(),
-            "mp4".into(),
+            to_wsl_path(output_dir),
         ];
+        if kind.append_format_mp4() {
+            args.push("--format".into());
+            args.push("mp4".into());
+        }
 
         let mut envs = std::collections::HashMap::new();
         envs.insert(
@@ -775,18 +1062,20 @@ pub fn build_sidecar_command(
         PathBuf::from("node")
     };
 
-    let args = vec![
+    let mut args = vec![
         sidecar_executable.to_string_lossy().to_string(),
-        "render".into(),
-        "--manifest".into(),
-        plan.sidecar_manifest_path.to_string_lossy().to_string(),
+        mode_arg.to_string(),
+        payload_flag.to_string(),
+        payload_path.to_string_lossy().to_string(),
         "--workspace".into(),
-        plan.workspace_dir.to_string_lossy().to_string(),
+        workspace_dir.to_string_lossy().to_string(),
         "--output-dir".into(),
-        plan.output_dir.to_string_lossy().to_string(),
-        "--format".into(),
-        "mp4".into(),
+        output_dir.to_string_lossy().to_string(),
     ];
+    if kind.append_format_mp4() {
+        args.push("--format".into());
+        args.push("mp4".into());
+    }
 
     let mut envs = std::collections::HashMap::new();
     envs.insert(
@@ -991,6 +1280,234 @@ pub fn validate_final_video_artifact(path: &Path) -> Result<u64, String> {
     }
 
     Ok(size_bytes)
+}
+
+/// `planning/worker-app-remotion-render-video/plan.md` P2 — one parsed
+/// `SMARTAIHUB_EVENT` stdout line from the Remotion `render-video` sidecar
+/// mode (frozen contract — see this repo's
+/// `apps/worker-app/runtime-pack/remotion-sidecar/render.mjs` module doc
+/// comment).
+#[derive(Debug, Clone, PartialEq)]
+pub enum RemotionSidecarEvent {
+    Progress {
+        stage: String,
+        message: Option<String>,
+    },
+    Completed {
+        output_path: String,
+        duration_sec: f64,
+        sha256: String,
+        width_px: u32,
+        height_px: u32,
+    },
+    Failed {
+        failure_code: String,
+        message: String,
+    },
+}
+
+/// Parses one stdout line from the Remotion `render-video` sidecar mode.
+/// Returns `None` for anything that isn't a well-formed
+/// `SMARTAIHUB_EVENT {...}` line with a recognized `eventType` — callers
+/// must treat `None` as "ordinary log output, ignore it", never as an error.
+pub fn parse_remotion_sidecar_event(line: &str) -> Option<RemotionSidecarEvent> {
+    let payload = line.trim().strip_prefix("SMARTAIHUB_EVENT ")?;
+    let value: Value = serde_json::from_str(payload).ok()?;
+    let event_type = value.get("eventType").and_then(Value::as_str)?;
+    match event_type {
+        "progress" => {
+            let stage = value.get("stage").and_then(Value::as_str)?.to_string();
+            let message = value
+                .get("message")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            Some(RemotionSidecarEvent::Progress { stage, message })
+        }
+        "completed" => {
+            let output_path = value.get("outputPath").and_then(Value::as_str)?.to_string();
+            let duration_sec = value.get("durationSec").and_then(Value::as_f64).unwrap_or(0.0);
+            let sha256 = value.get("sha256").and_then(Value::as_str)?.to_string();
+            let width_px = value.get("widthPx").and_then(Value::as_u64).unwrap_or(0) as u32;
+            let height_px = value.get("heightPx").and_then(Value::as_u64).unwrap_or(0) as u32;
+            Some(RemotionSidecarEvent::Completed {
+                output_path,
+                duration_sec,
+                sha256,
+                width_px,
+                height_px,
+            })
+        }
+        "failed" => {
+            let failure_code = value
+                .get("failureCode")
+                .and_then(Value::as_str)?
+                .to_string();
+            let message = value
+                .get("message")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            Some(RemotionSidecarEvent::Failed {
+                failure_code,
+                message,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Builds a `job.progress` event for a `remotion_render_video` job — returns
+/// `None` (never an error/panic) when `stage` is not one of
+/// `REMOTION_RENDER_VIDEO_PROGRESS_STAGES`, since the server rejects any
+/// `job.progress` event with an unrecognized stage
+/// (`workerRegistryService.ts#assertRuntimeSpecificJobEventContract`) — the
+/// caller must log and skip sending it rather than crash or forward it.
+pub fn build_remotion_render_video_progress_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    stage: &str,
+    percent: u8,
+    message: Option<&str>,
+) -> Option<WorkerEventPlan> {
+    if !is_known_remotion_render_video_progress_stage(stage) {
+        return None;
+    }
+    Some(WorkerEventPlan {
+        event_type: "job.progress".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "stage": stage,
+            "percent": percent.min(100),
+            "message": message.unwrap_or(""),
+        }),
+    })
+}
+
+/// Builds a `job.failed` event for a `remotion_render_video` job. Unlike the
+/// progress builder, this never returns `None` — an unrecognized
+/// `failure_code` (e.g. a sidecar exiting non-zero without ever emitting a
+/// `failed` event) is coerced to `REMOTION_RENDER_VIDEO_DEFAULT_FAILURE_CODE`
+/// (`"render_failed"`) rather than dropped, since a failure MUST always be
+/// reported.
+pub fn build_remotion_render_video_failure_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    failure_code: &str,
+    message: &str,
+) -> WorkerEventPlan {
+    let safe_code = if is_known_remotion_render_video_failure_code(failure_code) {
+        failure_code
+    } else {
+        REMOTION_RENDER_VIDEO_DEFAULT_FAILURE_CODE
+    };
+    WorkerEventPlan {
+        event_type: "job.failed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "failureCode": safe_code,
+            "message": message,
+            "recoverable": true,
+        }),
+    }
+}
+
+/// Builds the `outputJson` shape for a completed `remotion_render_video`
+/// job — field-for-field identical to Lane A's returned object
+/// (`executeRemotionRenderVideoJob` /
+/// `packages/remotion-render/src/renderVideoJob.ts#runRemotionRenderVideoJob`'s
+/// success return value: `{ videoProjectId, projectRevision, traceId,
+/// outputUrl, outputArtifactRef, artifacts }`) so the marketplace/VD
+/// reconcilers (`marketplaceAutoReviewService.ts`,
+/// `verticalDramaRemotionRender.ts`) that read `outputJson.outputUrl` work
+/// unchanged regardless of which lane produced the render.
+pub fn build_remotion_render_video_output_json(
+    input_json: &Value,
+    output_url: &str,
+    output_artifact_ref: Value,
+    artifacts: Vec<Value>,
+) -> Value {
+    json!({
+        "videoProjectId": input_json.get("videoProjectId").cloned().unwrap_or(Value::Null),
+        "projectRevision": input_json.get("projectRevision").cloned().unwrap_or(Value::Null),
+        "traceId": input_json.get("traceId").cloned().unwrap_or(Value::Null),
+        "outputUrl": output_url,
+        "outputArtifactRef": output_artifact_ref,
+        "artifacts": artifacts,
+    })
+}
+
+/// Builds the final `job.completed` event for a `remotion_render_video` job
+/// — `payload_json` is the full `outputJson`-shaped record (see
+/// `build_remotion_render_video_output_json`), not a bare stage/percent
+/// marker, so whatever server-side wiring resolves `outputJson.outputUrl`
+/// for the marketplace/VD reconcilers has the same field names Lane A
+/// produces.
+pub fn build_remotion_render_video_completed_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    output_json: Value,
+) -> WorkerEventPlan {
+    WorkerEventPlan {
+        event_type: "job.completed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: output_json,
+    }
+}
+
+/// Same 4-entry `artifacts` array shape Lane A returns (mp4 + 3 inline
+/// metadata entries) — see `runRemotionRenderVideoJob`'s success return
+/// value in `packages/remotion-render/src/renderVideoJob.ts`.
+pub fn build_remotion_render_video_artifacts(
+    input_json: &Value,
+    storage_ref: &str,
+    output_url: &str,
+    content_hash: &str,
+    size_bytes: u64,
+    duration_sec: f64,
+) -> Vec<Value> {
+    vec![
+        json!({
+            "artifactType": "remotion_render_mp4",
+            "storageRef": storage_ref,
+            "url": output_url,
+            "contentHash": content_hash,
+            "mimeType": "video/mp4",
+            "sizeBytes": size_bytes,
+        }),
+        json!({
+            "artifactType": "remotion_render_manifest",
+            "inline": {
+                "compositionId": input_json.get("compositionId").cloned().unwrap_or(Value::Null),
+                "width": input_json.get("renderProfile").and_then(|profile| profile.get("width")).cloned().unwrap_or(Value::Null),
+                "height": input_json.get("renderProfile").and_then(|profile| profile.get("height")).cloned().unwrap_or(Value::Null),
+                "fps": input_json.get("renderProfile").and_then(|profile| profile.get("fps")).cloned().unwrap_or(Value::Null),
+                "durationInFrames": input_json.get("durationInFrames").cloned().unwrap_or(Value::Null),
+                "postPasses": input_json.get("postPasses").cloned().unwrap_or_else(|| json!([])),
+                "renderResult": Value::Null,
+            },
+        }),
+        json!({
+            "artifactType": "remotion_render_log",
+            "inline": { "stagesCompleted": REMOTION_RENDER_VIDEO_PROGRESS_STAGES },
+        }),
+        json!({
+            "artifactType": "remotion_render_probe_report",
+            "inline": { "durationSec": duration_sec, "sizeBytes": size_bytes },
+        }),
+    ]
+}
+
+/// `hf_<sha256[:48]>` — matches `renderVideoJob.ts`'s `contentHashId()`
+/// helper exactly (a cosmetic id-format detail of the `remotion_render_mp4`
+/// artifact's `contentHash` field, not a distinct hashing algorithm).
+pub fn remotion_render_video_content_hash(sha256_hex: &str) -> String {
+    format!("hf_{}", &sha256_hex[..sha256_hex.len().min(48)])
 }
 
 fn to_wsl_path(path: &Path) -> String {

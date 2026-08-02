@@ -3,7 +3,7 @@ use crate::credentials::{
     save_connection_with_device_proof, save_device_proof_material, StoredWorkerConnection,
     WorkerDeviceProofMaterial,
 };
-use crate::diagnostics::{append_diagnostic_event, diagnostic_log_path};
+use crate::diagnostics::{append_diagnostic_event, diagnostic_log_path, token_reference};
 use crate::executor_state::ExecutorState;
 use crate::runtime_manifest::{
     doctor_from_installed_or_default_paths, read_runtime_pack_manifest, DoctorCheck, DoctorSummary,
@@ -28,6 +28,59 @@ use crate::control_plane::{
 use crate::executor_state::ExecutorStatus;
 use crate::worker_control_plane::{post_worker_json, WorkerApiTokens, WorkerLoopConnection};
 use crate::worker_loop::{start_worker_loop, WorkerLoopStatus};
+
+/// Serialises EVERY refresh-token rotation in this process.
+///
+/// The refresh token is single-use: the server revokes the presented `jti` the
+/// moment it issues a replacement. Four independent drivers rotate it — the
+/// launch/hourly health check, the React renewal timer, `startLoop`, and the
+/// worker loop's expiry guard — all reading the same `connection.json`. Two of
+/// them overlapping means one presents a token the other already spent, which
+/// surfaces as `401 Worker token has been revoked` on a connection that is
+/// perfectly valid. The whole read → rotate → persist sequence must be atomic,
+/// so the lock is held across the network call, not just around the file I/O.
+static REFRESH_GATE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// How recently a rotation must have succeeded for the next caller to reuse
+/// its result instead of rotating again.
+///
+/// This is what turns "two callers raced" into "the second one got the first
+/// one's tokens". It also stops the hourly health check from burning a
+/// rotation on credentials with hours of life left — every rotation is a
+/// chance to lose the replacement in transit and lock the machine out.
+const REFRESH_COALESCE_WINDOW_SECONDS: i64 = 120;
+
+/// Tokens with at least this much life left do not need rotating.
+const REFRESH_MIN_REMAINING_SECONDS: i64 = 30 * 60;
+
+/// True when `stored` was refreshed inside the coalescing window AND its
+/// tokens still have comfortable life left.
+fn refresh_can_be_coalesced(stored: &StoredWorkerConnection) -> bool {
+    let Some(last_refreshed_at) = stored.last_refreshed_at.as_deref() else {
+        return false;
+    };
+    let Ok(last_refreshed) = OffsetDateTime::parse(last_refreshed_at, &Rfc3339) else {
+        return false;
+    };
+    let now = OffsetDateTime::now_utc().unix_timestamp();
+    if now - last_refreshed.unix_timestamp() > REFRESH_COALESCE_WINDOW_SECONDS {
+        return false;
+    }
+    remaining_token_seconds(stored) > REFRESH_MIN_REMAINING_SECONDS
+}
+
+/// Seconds until the FIRST of the execution/upload tokens expires. The upload
+/// token has the shorter TTL (2h vs 8h), so it decides.
+fn remaining_token_seconds(stored: &StoredWorkerConnection) -> i64 {
+    let now = OffsetDateTime::now_utc().unix_timestamp();
+    let execution = jwt_exp_epoch_seconds(&stored.tokens.execution_token);
+    let upload = jwt_exp_epoch_seconds(&stored.tokens.upload_token);
+    match (execution, upload) {
+        (Some(execution), Some(upload)) => execution.min(upload) - now,
+        (Some(single), None) | (None, Some(single)) => single - now,
+        (None, None) => 0,
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct WorkerTokenBindingSummary {
@@ -202,11 +255,28 @@ pub async fn worker_app_get_saved_connection(
 pub async fn worker_app_clear_saved_connection(
     app: tauri::AppHandle,
     state: tauri::State<'_, WorkerAppState>,
+    reason: Option<String>,
 ) -> Result<(), String> {
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    // Clearing the connection is the app's most destructive local action — it
+    // silently demotes a working machine to "must reconnect by hand", which is
+    // indistinguishable from "autostart never ran" the next morning. It is
+    // also triggered automatically on some refresh errors, so the reason must
+    // outlive the session that decided it.
+    crate::diagnostics::log_warn(
+        &app_data_dir,
+        "connection.cleared",
+        json!({
+            "reason": reason.unwrap_or_else(|| "unspecified".to_string()),
+            "workerId": load_connection(&app_data_dir)
+                .ok()
+                .flatten()
+                .map(|stored| stored.worker.id),
+        }),
+    );
     clear_connection(&app_data_dir)?;
     set_active_connected_device_proof(&state, None)?;
     if let Ok(mut pending) = state.pending_connect_device_proof.lock() {
@@ -381,12 +451,28 @@ PY
 
 extract_zip() {
   python3 - "$1" "$2" <<'PY'
+import os
 import sys
 import zipfile
 
+# Field incident 2026-07-30 (Lane B smoke render failed
+# `bundle_failed: spawn .../@esbuild/linux-x64/bin/esbuild EACCES`):
+# `extractall()` applies a default mode and DROPS the Unix permission bits
+# stored in each entry's `external_attr`, so every bundled executable lands
+# without its +x bit. Historically that was papered over by the hardcoded
+# `chmod +x` list below (node/ffmpeg/ffprobe/chrome) — which silently fails
+# to cover anything new, e.g. the Remotion sidecar's own
+# `node_modules/@esbuild/linux-x64/bin/esbuild`. Restore the recorded mode
+# for every entry instead, so any future bundled binary just works.
 archive, dest = sys.argv[1], sys.argv[2]
 with zipfile.ZipFile(archive) as zf:
-    zf.extractall(dest)
+    for info in zf.infolist():
+        extracted = zf.extract(info, dest)
+        mode = info.external_attr >> 16
+        # Older archives (built before the packaging fix) record mode 0 —
+        # leave those to the chmod fallback rather than chmod'ing to 000.
+        if mode:
+            os.chmod(extracted, mode & 0o7777)
 print(f"Extracted: {archive}")
 PY
 }
@@ -502,6 +588,13 @@ if [ -d "$STAGE/sidecars" ]; then
 fi
 rm -rf "$STAGE"
 chmod +x "$ROOT/runtime-pack/node/bin/node" "$ROOT/runtime-pack/bin/ffmpeg" "$ROOT/runtime-pack/bin/ffprobe" || true
+# Belt-and-braces for archives built before the permission-preserving
+# packaging fix (mode 0 entries): every bundled node_modules binary needs
+# +x, most importantly the Remotion sidecar's esbuild, whose missing +x is
+# what surfaced as `bundle_failed: ... esbuild EACCES`. `.../bin/*` and
+# `@esbuild/*/bin/*` are the only executables npm ships in a dep tree.
+find "$ROOT/runtime-pack" -type d -name node_modules -prune -exec \
+  find {} -type f \( -path '*/bin/*' -o -name 'esbuild' \) -exec chmod +x {} \; \; 2>/dev/null || true
 find "$ROOT/runtime-pack/browser" -maxdepth 1 -type f \( \
   -name 'chrome' -o \
   -name 'chrome_crashpad_handler' -o \
@@ -1810,43 +1903,321 @@ pub async fn worker_app_poll_connect_session(
     Ok(response)
 }
 
-#[tauri::command]
-pub async fn worker_app_refresh_connect_tokens(
-    app: tauri::AppHandle,
-    server_url: String,
-    refresh_token: String,
-) -> Result<WorkerConnectTokens, String> {
-    if refresh_token.trim().is_empty() {
-        return Err("refresh token is required".into());
+// `worker_app_refresh_connect_tokens` was removed on 2026-08-02.
+//
+// It rotated the single-use refresh token and returned the replacement to its
+// caller WITHOUT persisting it or taking the refresh gate — the exact shape
+// that spends a token with nothing on disk to show for it and locks the
+// machine out until the user redoes browser approval. Nothing invoked it (the
+// UI has always used `worker_app_refresh_saved_connection`, which persists),
+// so it was a live hazard with no user. Anything needing a rotation must go
+// through `worker_app_refresh_saved_connection`.
+
+/// Health + expiry summary for the SAVED connection.
+///
+/// Added 2026-07-31: the app restored a saved connection on every launch but
+/// never checked whether the server still accepts it, so a revoked/expired
+/// worker looked "connected" and silently claimed nothing. `checkedAt` proves
+/// a real round-trip happened rather than a cache read.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionHealth {
+    /// `false` means the saved credentials no longer work — the user must
+    /// reconnect. The UI raises a NATIVE dialog for this.
+    pub healthy: bool,
+    pub connected: bool,
+    pub reason: Option<String>,
+    pub worker_name: Option<String>,
+    /// Refresh-token expiry (RFC3339), decoded from the JWT's `exp` claim.
+    pub expires_at: Option<String>,
+    pub hours_until_expiry: Option<i64>,
+    /// `true` when the refresh token expires within 24h — the user should
+    /// reconnect before it lapses.
+    pub expiring_soon: bool,
+    pub checked_at: String,
+}
+
+/// Why a read-only access probe could not answer.
+enum ProbeOutcome {
+    /// The server actively refused the credentials — this is a real verdict
+    /// and the user must reconnect.
+    Rejected(String),
+    /// The probe could not be made with the credentials on hand (execution
+    /// token missing or about to expire). Not a verdict about the connection.
+    NeedsRefresh(String),
+}
+
+/// How much life the execution token needs for a probe to be meaningful.
+const PROBE_MIN_EXECUTION_TOKEN_SECONDS: i64 = 60;
+
+/// Asks the control plane whether it still accepts this worker, WITHOUT
+/// spending the refresh token.
+///
+/// `GET /api/workers/:id/policy` runs the full worker auth stack — token
+/// signature, revocation denylist, device proof, tenant feature flag, and
+/// `readWorkerRevokedAt` on the worker record — and mutates nothing.
+///
+/// A transport failure is deliberately NOT a rejection: "the server did not
+/// answer" and "the server said no" are different facts, and reporting the
+/// first as the second is how a Wi-Fi hiccup at login turns into a
+/// "reconnect required" dialog on a healthy machine.
+async fn probe_worker_access(
+    app_data_dir: &Path,
+    stored: &StoredWorkerConnection,
+) -> Result<(), ProbeOutcome> {
+    let execution_token = stored.tokens.execution_token.trim().to_string();
+    if execution_token.is_empty() {
+        return Err(ProbeOutcome::NeedsRefresh(
+            "saved connection has no execution token".into(),
+        ));
     }
+    let remaining = jwt_exp_epoch_seconds(&execution_token)
+        .map(|exp| exp - OffsetDateTime::now_utc().unix_timestamp())
+        .unwrap_or(0);
+    if remaining < PROBE_MIN_EXECUTION_TOKEN_SECONDS {
+        return Err(ProbeOutcome::NeedsRefresh(format!(
+            "execution token expires in {remaining}s"
+        )));
+    }
+    let device_proof = match load_connection_device_proof(app_data_dir) {
+        Ok(Some(device_proof)) => device_proof,
+        Ok(None) => {
+            return Err(ProbeOutcome::NeedsRefresh(
+                "no device proof bound to the saved connection".into(),
+            ))
+        }
+        Err(error) => return Err(ProbeOutcome::NeedsRefresh(error)),
+    };
+
+    let path = format!("/api/workers/{}/policy", stored.worker.id);
+    let result = crate::worker_control_plane::get_worker_json::<Value>(
+        &stored.server_url,
+        &path,
+        &execution_token,
+        &device_proof,
+    )
+    .await;
+
+    match result {
+        Ok(_) => {
+            append_diagnostic_event(
+                app_data_dir,
+                "connection.probe.ok",
+                json!({
+                    "workerId": stored.worker.id,
+                    "executionTokenRemainingSeconds": remaining,
+                }),
+            );
+            Ok(())
+        }
+        Err(error) => {
+            let rejected = is_worker_auth_rejection(&error);
+            crate::diagnostics::log_event(
+                app_data_dir,
+                if rejected {
+                    crate::diagnostics::LogLevel::Error
+                } else {
+                    crate::diagnostics::LogLevel::Warn
+                },
+                "connection.probe.failed",
+                json!({
+                    "workerId": stored.worker.id,
+                    "error": error,
+                    "treatedAsRejection": rejected,
+                }),
+            );
+            if rejected {
+                Err(ProbeOutcome::Rejected(error))
+            } else {
+                // Unreachable server, timeout, 5xx, rate limit: say nothing
+                // about the credentials. Retry on the next scheduled check.
+                Err(ProbeOutcome::NeedsRefresh(error))
+            }
+        }
+    }
+}
+
+/// True only for verdicts the SERVER issued about these credentials.
+fn is_worker_auth_rejection(error: &str) -> bool {
+    let normalized = error.to_lowercase();
+    // 429 is a rate limit, not an auth verdict, and it embeds no auth wording.
+    if normalized.contains("(429)") {
+        return false;
+    }
+    normalized.contains("(401)")
+        || normalized.contains("(403)")
+        || normalized.contains("revoked")
+        || normalized.contains("device")
+}
+
+/// Reads the `exp` claim out of a JWT WITHOUT verifying the signature.
+///
+/// Verification is the server's job — the client only needs the timestamp to
+/// warn the user. Deliberately tolerant: any malformed segment yields `None`
+/// (no expiry shown) rather than an error, because a token this client cannot
+/// parse is still one the SERVER may accept.
+fn jwt_exp_epoch_seconds(token: &str) -> Option<i64> {
+    use base64::Engine as _;
+    let payload_b64 = token.split('.').nth(1)?;
+    let decoded = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload_b64.as_bytes())
+        .ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
+    claims.get("exp").and_then(serde_json::Value::as_i64)
+}
+
+#[tauri::command]
+pub async fn worker_app_check_connection_health(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<ConnectionHealth, String> {
+    let checked_at = now_rfc3339();
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
-    let device_proof = ensure_device_proof_material(&app_data_dir)?;
-    let tokens =
-        refresh_worker_connect_tokens(server_url.trim(), refresh_token.trim(), &device_proof)
-            .await?;
-    validate_connection_tokens_match_device_proof(
-        &app_data_dir,
-        "connection.refresh.manual",
-        &tokens,
-        &device_proof,
-    )?;
-    Ok(tokens)
+    let Some(stored) = load_connection(&app_data_dir)? else {
+        return Ok(ConnectionHealth {
+            healthy: false,
+            connected: false,
+            reason: Some("No saved Worker App connection.".into()),
+            worker_name: None,
+            expires_at: None,
+            hours_until_expiry: None,
+            expiring_soon: false,
+            checked_at,
+        });
+    };
+    let worker_name = Some(stored.worker.display_name.clone());
+
+    // A real round-trip is still required — a read-only "is the file there"
+    // check would report healthy for a revoked worker. But it must not be a
+    // REFRESH: that spends the single-use refresh token on a question that did
+    // not need it, once per launch and once per hour. `probe_worker_access`
+    // asks the same auth stack with the execution token and changes nothing,
+    // and it additionally catches an admin revocation of the worker record,
+    // which the refresh endpoint never checks.
+    let probed = match probe_worker_access(&app_data_dir, &stored).await {
+        Ok(()) => Ok(stored.clone()),
+        Err(ProbeOutcome::Rejected(reason)) => Err(reason),
+        // The execution token is too old to probe with (or absent). Fall back
+        // to a rotation — which is the correct action anyway at that point.
+        Err(ProbeOutcome::NeedsRefresh(detail)) => {
+            append_diagnostic_event(
+                &app_data_dir,
+                "connection.health.probe_needs_refresh",
+                json!({ "detail": detail }),
+            );
+            worker_app_refresh_saved_connection(app.clone(), state, Some("health_check".into()))
+                .await
+        }
+    };
+    match probed {
+        Ok(connection) => {
+            let exp = connection
+                .tokens
+                .refresh_token
+                .as_deref()
+                .and_then(jwt_exp_epoch_seconds);
+            let (expires_at, hours_until_expiry) = match exp {
+                Some(epoch) => {
+                    let now = chrono::Utc::now().timestamp();
+                    let hours = (epoch - now) / 3600;
+                    (
+                        chrono::DateTime::from_timestamp(epoch, 0)
+                            .map(|dt| dt.to_rfc3339()),
+                        Some(hours),
+                    )
+                }
+                None => (None, None),
+            };
+            append_diagnostic_event(
+                &app_data_dir,
+                "connection.health.ok",
+                json!({
+                    "workerName": worker_name,
+                    "refreshTokenExpiresAt": expires_at,
+                    "hoursUntilExpiry": hours_until_expiry,
+                }),
+            );
+            Ok(ConnectionHealth {
+                healthy: true,
+                connected: true,
+                reason: None,
+                worker_name,
+                expires_at,
+                // Warn a full day ahead so there is time to act.
+                expiring_soon: hours_until_expiry.is_some_and(|h| h <= 24),
+                hours_until_expiry,
+                checked_at,
+            })
+        }
+        Err(error) => {
+            // This is the verdict behind the "reconnect required" dialog. It
+            // is recorded separately from `connection.refresh.failed` because
+            // the user only ever sees THIS one, and a bug report needs the two
+            // side by side to tell a real revocation from a lost race.
+            crate::diagnostics::log_error(
+                &app_data_dir,
+                "connection.health.unhealthy",
+                json!({
+                    "workerName": worker_name,
+                    "reason": error,
+                }),
+            );
+            Ok(ConnectionHealth {
+                healthy: false,
+                connected: true,
+                reason: Some(error),
+                worker_name,
+                expires_at: None,
+                hours_until_expiry: None,
+                expiring_soon: false,
+                checked_at,
+            })
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn worker_app_refresh_saved_connection(
     app: tauri::AppHandle,
     state: tauri::State<'_, WorkerAppState>,
+    caller: Option<String>,
 ) -> Result<StoredWorkerConnection, String> {
+    // `caller` is optional so older frontends keep working, but it is the
+    // field that makes concurrent rotations readable in the log: several
+    // independent drivers (launch health check, renewal timer, loop start,
+    // background loop) all rotate the SAME single-use refresh token.
+    let caller = caller.unwrap_or_else(|| "unspecified".to_string());
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    // Held across the network call: the token read below must still be the
+    // unspent one when the request reaches the server.
+    let _gate = REFRESH_GATE.lock().await;
     let mut stored = load_connection(&app_data_dir)?
         .ok_or_else(|| "Worker App is not connected yet.".to_string())?;
+    // Read AFTER taking the lock — a caller that queued behind a rotation must
+    // see its result, not the token it spent.
+    if refresh_can_be_coalesced(&stored) {
+        append_diagnostic_event(
+            &app_data_dir,
+            "connection.refresh.coalesced",
+            json!({
+                "caller": caller,
+                "lastRefreshedAt": stored.last_refreshed_at,
+                "remainingTokenSeconds": remaining_token_seconds(&stored),
+            }),
+        );
+        set_active_connected_device_proof(
+            &state,
+            load_connection_device_proof(&app_data_dir)?,
+        )?;
+        update_running_loop_connection(&state, &stored, &app_data_dir)?;
+        return Ok(stored);
+    }
     let refresh_token = stored
         .tokens
         .refresh_token
@@ -1860,11 +2231,18 @@ pub async fn worker_app_refresh_saved_connection(
         &app_data_dir,
         "connection.refresh.saved.device_proof_selected",
         json!({
+            "caller": caller,
             "deviceProof": local_device_proof_summary_json(&summarize_local_device_proof(&device_proof)),
         }),
     );
-    stored.tokens =
-        refresh_worker_connect_tokens(&stored.server_url, &refresh_token, &device_proof).await?;
+    stored.tokens = refresh_worker_connect_tokens(
+        &app_data_dir,
+        &format!("saved_connection:{caller}"),
+        &stored.server_url,
+        &refresh_token,
+        &device_proof,
+    )
+    .await?;
     validate_connection_tokens_match_device_proof(
         &app_data_dir,
         "connection.refresh.saved",
@@ -1874,6 +2252,24 @@ pub async fn worker_app_refresh_saved_connection(
     set_active_connected_device_proof(&state, Some(device_proof.clone()))?;
     stored.last_refreshed_at = Some(now_rfc3339());
     save_connection_with_device_proof(&app_data_dir, &stored, &device_proof)?;
+    // Logged AFTER the write: a rotation is only survivable once the new
+    // refresh token is on disk. An `ok` with no matching `persisted` in the
+    // log is the signature of a token rotated on the server but lost here —
+    // which locks this machine out until the user reconnects.
+    append_diagnostic_event(
+        &app_data_dir,
+        "connection.refresh.persisted",
+        json!({
+            "caller": caller,
+            "workerId": stored.worker.id,
+            "refreshToken": stored
+                .tokens
+                .refresh_token
+                .as_deref()
+                .map(token_reference)
+                .unwrap_or(Value::Null),
+        }),
+    );
     update_running_loop_connection(&state, &stored, &app_data_dir)?;
     Ok(stored)
 }
@@ -2114,9 +2510,433 @@ pub struct StartupModeStatus {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticsLogLocation {
+    pub log_path: String,
+    pub app_data_dir: String,
+    /// Current file first, then rotated generations — the order to read them
+    /// in when reconstructing what happened before a failure.
+    pub files: Vec<String>,
+}
+
+/// Where the on-disk log lives, so the user can attach it to a bug report
+/// without being told to hunt through `%APPDATA%`.
 #[tauri::command]
-pub async fn worker_app_configure_startup(enabled: bool) -> Result<StartupModeStatus, String> {
-    configure_windows_login_startup(enabled)
+pub async fn worker_app_get_diagnostics_log(
+    app: tauri::AppHandle,
+) -> Result<DiagnosticsLogLocation, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    Ok(DiagnosticsLogLocation {
+        log_path: diagnostic_log_path(&app_data_dir).to_string_lossy().to_string(),
+        app_data_dir: app_data_dir.to_string_lossy().to_string(),
+        files: crate::diagnostics::diagnostic_log_paths(&app_data_dir)
+            .into_iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect(),
+    })
+}
+
+#[tauri::command]
+pub async fn worker_app_configure_startup(
+    app: tauri::AppHandle,
+    enabled: bool,
+) -> Result<StartupModeStatus, String> {
+    let result = configure_windows_login_startup(enabled);
+    // "I ticked the box and it does not start at login" is unanswerable
+    // without knowing what the OS reported at the moment the box was ticked,
+    // and which executable path got registered — an entry pointing at a path
+    // from a previous install verifies as ON and still starts nothing.
+    if let Ok(app_data_dir) = app.path().app_data_dir() {
+        let details = json!({
+            "requested": enabled,
+            "executable": std::env::current_exe()
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_else(|_| "unknown".into()),
+            "osReportsEnabled": query_login_startup_enabled(),
+            "error": result.as_ref().err(),
+        });
+        match result.as_ref() {
+            Ok(_) => append_diagnostic_event(&app_data_dir, "startup.configure.ok", details),
+            Err(_) => {
+                crate::diagnostics::log_error(&app_data_dir, "startup.configure.failed", details)
+            }
+        }
+    }
+    result
+}
+
+/// Reads the ACTUAL OS autostart state rather than trusting the settings file.
+///
+/// Field audit 2026-07-31: the checkbox rendered `settings.startWithWindows`
+/// (a JSON file this app writes) while the real state lives in the Windows
+/// `Run` key. Those diverge whenever the entry is removed outside the app —
+/// an uninstall/reinstall, a cleanup tool, antivirus — leaving the UI claiming
+/// autostart is ON when Windows will never start anything.
+#[cfg(target_os = "windows")]
+pub fn query_login_startup_enabled() -> bool {
+    std::process::Command::new("reg")
+        .args([
+            "query",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+            "/v",
+            "SmartAIHubWorkerApp",
+        ])
+        .output()
+        .map(|out| out.status.success())
+        .unwrap_or(false)
+}
+
+#[cfg(target_os = "macos")]
+pub fn query_login_startup_enabled() -> bool {
+    std::env::var("HOME")
+        .map(|home| {
+            std::path::Path::new(&home)
+                .join("Library/LaunchAgents/app.smartaihub.workerapp.login.plist")
+                .exists()
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn query_login_startup_enabled() -> bool {
+    false
+}
+
+/// Reports the REAL autostart state, so the UI can reconcile its checkbox with
+/// the OS instead of echoing what it last wrote.
+/// Result of launching the interactive Hermes terminal.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesTuiLaunch {
+    pub launched: bool,
+    /// The exact command a user can paste into their own terminal. Always
+    /// returned, even on success, so the guide in the UI is never guesswork.
+    pub command: String,
+    pub message: String,
+}
+
+/// Opens `hermes --tui` in a REAL terminal window.
+///
+/// The worker otherwise drives Hermes non-interactively (`hermes -z <envelope>
+/// --provider xai-oauth …`), which is the wrong shape for a human: the TUI
+/// wants a tty. So spawn the platform's terminal rather than trying to render
+/// a terminal inside this app.
+#[tauri::command]
+pub async fn worker_app_open_hermes_tui(
+    app: tauri::AppHandle,
+    extra_args: Option<Vec<String>>,
+) -> Result<HermesTuiLaunch, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    // NOTE the ORDER: this returns (manifest_path, pack_root). Binding it the
+    // other way round made `manifest_path` the pack DIRECTORY, and reading a
+    // directory as a file fails with "Access is denied. (os error 5)" on
+    // Windows — reported as "Hermes runtime is not installed yet" even though
+    // the pack was installed and the doctor read it fine (2026-07-31).
+    let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+    let manifest = crate::hermes_runtime::read_hermes_runtime_manifest(&manifest_path)
+        .map_err(|error| format!("Hermes runtime is not installed yet: {error}"))?;
+    let hermes = pack_root.join(&manifest.hermes_relative_path);
+    if !hermes.exists() {
+        return Err(format!(
+            "Hermes CLI not found at {} — install the Hermes runtime first.",
+            hermes.display()
+        ));
+    }
+    let hermes_str = hermes.to_string_lossy().to_string();
+    let mut args: Vec<String> = extra_args.unwrap_or_default();
+    if args.is_empty() {
+        args.push("--tui".to_string());
+    }
+    // The manifest stores a POSIX-ish relative path, so the joined result can
+    // read `...\\hermes-runtime\\python/hermes.exe`. Harmless for
+    // `Command::new`, but confusing in a copyable command string.
+    let hermes_display = hermes_str.replace('/', std::path::MAIN_SEPARATOR_STR);
+    let printable = format!("\"{hermes_display}\" {}", args.join(" "));
+
+    // `cmd /K` takes the command as ONE argument. Passing the already-quoted
+    // string through `Command::args` made Rust escape it a SECOND time, so the
+    // shell received a literal `'\"C:\...\hermes.exe\"'` and reported
+    // "is not recognized as an internal or external command" (2026-07-31).
+    // `raw_arg` bypasses Rust's escaping so `cmd` sees exactly what we built.
+    #[cfg(target_os = "windows")]
+    let spawned = {
+        use std::os::windows::process::CommandExt as _;
+        let mut command = std::process::Command::new("cmd");
+        command.raw_arg("/C");
+        command.raw_arg("start");
+        command.raw_arg("\"Hermes\"");
+        command.raw_arg("cmd");
+        command.raw_arg("/K");
+        command.raw_arg(&printable);
+        command.spawn()
+    };
+
+    #[cfg(target_os = "macos")]
+    let spawned = std::process::Command::new("osascript")
+        .args([
+            "-e",
+            &format!("tell application \"Terminal\" to do script \"{printable}\""),
+        ])
+        .spawn();
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let spawned = std::process::Command::new("x-terminal-emulator")
+        .args(["-e", &printable])
+        .spawn();
+
+    match spawned {
+        Ok(_) => Ok(HermesTuiLaunch {
+            launched: true,
+            command: printable,
+            message: "Hermes TUI opened in a new terminal window.".into(),
+        }),
+        // A missing terminal emulator is common on locked-down machines —
+        // hand the user the exact command instead of just failing.
+        Err(error) => Ok(HermesTuiLaunch {
+            launched: false,
+            command: printable,
+            message: format!(
+                "Could not open a terminal automatically ({error}). Copy the command below and run it yourself."
+            ),
+        }),
+    }
+}
+
+/// Result of the browser-based xAI/Grok sign-in.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesSignInStart {
+    pub started: bool,
+    pub user_code: Option<String>,
+    pub verification_url: Option<String>,
+    pub expires_at: Option<String>,
+    pub message: String,
+}
+
+/// Starts the xAI device-code sign-in and OPENS THE BROWSER.
+///
+/// Replaces the previous "spawn a terminal and let the user type" approach
+/// (2026-07-31): a device-code flow ends in a browser anyway, so dropping the
+/// user at a `cmd` prompt was strictly worse — and the shell quoting for the
+/// spawned command was broken on top of that.
+///
+/// `--no-browser` makes Hermes PRINT the code + URL instead of trying to open
+/// a browser itself from a non-interactive child process; this app then opens
+/// the URL and shows the code.
+#[tauri::command]
+pub async fn worker_app_hermes_signin_xai(
+    app: tauri::AppHandle,
+) -> Result<HermesSignInStart, String> {
+    use std::io::{BufRead, BufReader};
+
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+    let manifest = crate::hermes_runtime::read_hermes_runtime_manifest(&manifest_path)
+        .map_err(|error| format!("Hermes runtime is not installed yet: {error}"))?;
+    let hermes = pack_root.join(&manifest.hermes_relative_path);
+    if !hermes.exists() {
+        return Err(format!(
+            "Hermes CLI not found at {} — install the Hermes runtime first.",
+            hermes.display()
+        ));
+    }
+
+    // Spawned with an argv array (no shell), so paths containing spaces need no
+    // quoting at all — the broken `cmd /K "\"C:\...\hermes.exe\""` string is
+    // gone with the terminal approach that produced it.
+    let mut command = std::process::Command::new(&hermes);
+    command
+        .args(["auth", "add", "xai-oauth", "--no-browser"])
+        .stdout(std::process::Stdio::piped())
+        // Hermes may print the device code on stderr, and merging both streams
+        // means the parser sees everything it printed. Reading only stdout is
+        // why this returned "did not print a device code within 45 seconds"
+        // even though the CLI had produced output (2026-07-31).
+        .stderr(std::process::Stdio::piped())
+        // A GUI process has no usable stdin. Leaving it INHERITED meant any
+        // prompt Hermes emitted blocked on a handle that would never deliver
+        // anything, so it printed nothing and simply waited out the timeout.
+        // A closed stdin makes it fail fast and say so instead.
+        .stdin(std::process::Stdio::null());
+    // Without CREATE_NO_WINDOW a GUI app spawning a CONSOLE executable gets a
+    // blank black console window (stdout is piped away, so it shows nothing)
+    // that sits there while Hermes waits for browser approval — exactly what a
+    // user reported as "ค้างอยู่" (2026-07-31). Every other spawn in this
+    // codebase already sets this flag; these new commands had missed it.
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt as _;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let mut child = command
+        .spawn()
+        .map_err(|error| format!("failed to start Hermes sign-in: {error}"))?;
+
+    // Read only until the device code appears — the process then WAITS for the
+    // user to approve in the browser, so waiting for exit here would block the
+    // UI for the whole approval window.
+    // Read on a worker thread with a hard deadline. Hermes keeps the pipe open
+    // while it waits for the user to approve in the browser, so a plain
+    // blocking read here would never return and the command would hang.
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    // Both streams feed the SAME channel — whichever carries the code wins.
+    for stream in [
+        child.stdout.take().map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+        child.stderr.take().map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        let tx = tx.clone();
+        std::thread::spawn(move || {
+            let mut captured = String::new();
+            let reader = BufReader::new(stream);
+            for line in reader.lines().map_while(Result::ok) {
+                captured.push_str(&line);
+                captured.push('\n');
+                let parsed =
+                    crate::hermes_executor::parse_hermes_device_code_output_for_app(&captured);
+                if (parsed.0.is_some() && parsed.1.is_some()) || captured.len() > 64_000 {
+                    break;
+                }
+            }
+            let _ = tx.send(captured);
+        });
+    }
+    drop(tx);
+    // NEVER hang and never fail blind: whatever Hermes printed (even nothing)
+    // comes back so the panel can show it. An earlier version returned Err on
+    // timeout, which left the button spinning with no explanation — the exact
+    // silent-failure shape this whole flow keeps falling into (2026-07-31).
+    let captured = rx
+        .recv_timeout(std::time::Duration::from_secs(20))
+        .unwrap_or_default();
+    let timed_out = captured.is_empty();
+    if timed_out {
+        // Do not leave an orphan process holding the provider's device-code
+        // session open.
+        let _ = child.kill();
+    }
+    let (user_code, verification_url, expires_at) =
+        crate::hermes_executor::parse_hermes_device_code_output_for_app(&captured);
+
+    if let Some(url) = verification_url.as_deref() {
+        // Opening the browser is the whole point of this command.
+        let _ = tauri_plugin_opener::open_url(url, None::<&str>);
+    }
+
+    Ok(HermesSignInStart {
+        started: user_code.is_some(),
+        message: if user_code.is_some() {
+            "Browser opened. Enter the code below to finish signing in, then press \"Refresh sign-in status\".".into()
+        } else if timed_out {
+            format!(
+                "Hermes printed nothing within 20 seconds, so it may be waiting on something this app cannot see. Run this in the Hermes TUI to sign in manually and read the real output:\n\n\"{}\" auth add xai-oauth --no-browser",
+                hermes.display()
+            )
+        } else {
+            format!(
+                "Hermes ran but did not print a device code. Raw output was:\n\n{}\n\nIf this looks like a prompt, run it in the Hermes TUI instead — it needs a terminal.",
+                captured.trim()
+            )
+        },
+        user_code,
+        verification_url,
+        expires_at,
+    })
+}
+
+/// Provider login state, read from `hermes auth list` (pooled credentials).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesAuthSummary {
+    pub available: bool,
+    /// Raw `hermes auth list` output — shown verbatim so the UI never has to
+    /// guess at a provider list that Hermes may extend between versions.
+    pub raw: String,
+    pub providers: Vec<String>,
+    pub xai_logged_in: bool,
+}
+
+#[tauri::command]
+pub async fn worker_app_hermes_auth_summary(
+    app: tauri::AppHandle,
+) -> Result<HermesAuthSummary, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    // NOTE the ORDER: this returns (manifest_path, pack_root). Binding it the
+    // other way round made `manifest_path` the pack DIRECTORY, and reading a
+    // directory as a file fails with "Access is denied. (os error 5)" on
+    // Windows — reported as "Hermes runtime is not installed yet" even though
+    // the pack was installed and the doctor read it fine (2026-07-31).
+    let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+    let Ok(manifest) = crate::hermes_runtime::read_hermes_runtime_manifest(&manifest_path) else {
+        return Ok(HermesAuthSummary {
+            available: false,
+            raw: String::new(),
+            providers: vec![],
+            xai_logged_in: false,
+        });
+    };
+    let hermes = pack_root.join(&manifest.hermes_relative_path);
+    let mut list_command = std::process::Command::new(&hermes);
+    list_command.args(["auth", "list"]);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt as _;
+        list_command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let output = list_command.output();
+    let Ok(output) = output else {
+        return Ok(HermesAuthSummary {
+            available: false,
+            raw: String::new(),
+            providers: vec![],
+            xai_logged_in: false,
+        });
+    };
+    let raw = String::from_utf8_lossy(&output.stdout).to_string();
+    // `hermes auth list` prints "<provider> (<n> credentials):" headers.
+    let providers: Vec<String> = raw
+        .lines()
+        .filter(|line| !line.starts_with(' ') && line.contains("credential"))
+        .filter_map(|line| line.split_whitespace().next().map(str::to_string))
+        .collect();
+    let xai_logged_in = providers
+        .iter()
+        .any(|p| p.starts_with("xai") || p == "grok");
+    Ok(HermesAuthSummary {
+        available: output.status.success(),
+        raw,
+        providers,
+        xai_logged_in,
+    })
+}
+
+#[tauri::command]
+pub async fn worker_app_get_startup_status() -> Result<StartupModeStatus, String> {
+    let enabled = query_login_startup_enabled();
+    Ok(StartupModeStatus {
+        start_with_windows: enabled,
+        service_available: false,
+        message: if enabled {
+            "Autostart on sign-in is active.".into()
+        } else {
+            "Autostart on sign-in is off.".into()
+        },
+    })
 }
 
 #[cfg(target_os = "windows")]
@@ -2153,15 +2973,29 @@ fn configure_windows_login_startup(enabled: bool) -> Result<StartupModeStatus, S
             .status()
             .map_err(|error| format!("failed to remove Windows login startup: {error}"))?
     };
-    if !status.success() {
+    // `reg delete` exits non-zero when the value is simply absent. Turning
+    // autostart OFF when it is already off is a no-op, not a failure — the old
+    // code surfaced an error for it.
+    if !status.success() && enabled {
         return Err(format!(
             "Windows startup registry command failed with {status}"
         ));
     }
+    // Verify against the OS instead of assuming the command did what we asked.
+    // "the `reg` process exited 0" is not the same claim as "Windows will
+    // start this app at sign-in".
+    let actual = query_login_startup_enabled();
+    if actual != enabled {
+        return Err(format!(
+            "Windows startup entry did not change as requested (registry now reports {}). \
+             Check whether another tool or policy manages HKCU\\...\\Run.",
+            if actual { "enabled" } else { "disabled" }
+        ));
+    }
     Ok(StartupModeStatus {
-        start_with_windows: enabled,
+        start_with_windows: actual,
         service_available: false,
-        message: if enabled {
+        message: if actual {
             "Worker App will start when this Windows user signs in. This is not a Windows service."
                 .into()
         } else {
@@ -2170,15 +3004,89 @@ fn configure_windows_login_startup(enabled: bool) -> Result<StartupModeStatus, S
     })
 }
 
-#[cfg(not(target_os = "windows"))]
+/// macOS login-item equivalent of the Windows `Run` registry key: a per-user
+/// LaunchAgent. Added 2026-07-31 — the toggle previously did nothing at all on
+/// macOS ("can only be configured from the Windows build"), so a Mac user
+/// could tick it and get no autostart and no error.
+///
+/// `RunAtLoad` starts the app at LOGIN (not at boot) — the same scope as the
+/// Windows HKCU Run key, and the same limitation: it needs a logged-in user
+/// session. Boot-time start without login is the separate "run as a service"
+/// feature.
+#[cfg(target_os = "macos")]
+fn configure_windows_login_startup(enabled: bool) -> Result<StartupModeStatus, String> {
+    use std::io::Write as _;
+
+    const LABEL: &str = "app.smartaihub.workerapp.login";
+    let home = std::env::var("HOME").map_err(|_| "HOME is not set".to_string())?;
+    let agents_dir = std::path::Path::new(&home).join("Library/LaunchAgents");
+    let plist_path = agents_dir.join(format!("{LABEL}.plist"));
+
+    if !enabled {
+        // `launchctl unload` fails when it was never loaded — that is not an
+        // error for "make sure autostart is off".
+        let _ = std::process::Command::new("launchctl")
+            .args(["unload", &plist_path.to_string_lossy()])
+            .status();
+        let _ = std::fs::remove_file(&plist_path);
+        return Ok(StartupModeStatus {
+            start_with_windows: false,
+            service_available: false,
+            message: "Login autostart is disabled.".into(),
+        });
+    }
+
+    let exe = std::env::current_exe()
+        .map_err(|error| format!("cannot resolve the app executable: {error}"))?;
+    std::fs::create_dir_all(&agents_dir)
+        .map_err(|error| format!("cannot create {}: {error}", agents_dir.display()))?;
+    let plist = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>{LABEL}</string>
+  <key>ProgramArguments</key><array><string>{exe}</string></array>
+  <key>RunAtLoad</key><true/>
+</dict>
+</plist>
+"#,
+        exe = exe.to_string_lossy()
+    );
+    let mut file = std::fs::File::create(&plist_path)
+        .map_err(|error| format!("cannot write {}: {error}", plist_path.display()))?;
+    file.write_all(plist.as_bytes())
+        .map_err(|error| format!("cannot write {}: {error}", plist_path.display()))?;
+    let _ = std::process::Command::new("launchctl")
+        .args(["unload", &plist_path.to_string_lossy()])
+        .status();
+    let status = std::process::Command::new("launchctl")
+        .args(["load", &plist_path.to_string_lossy()])
+        .status()
+        .map_err(|error| format!("launchctl load failed: {error}"))?;
+    if !status.success() {
+        return Err(format!("launchctl load failed with {status}"));
+    }
+    let actual = query_login_startup_enabled();
+    if !actual {
+        return Err("LaunchAgent was not created — autostart is NOT active.".into());
+    }
+    Ok(StartupModeStatus {
+        start_with_windows: true,
+        service_available: false,
+        message: "Worker App will start when you log in to macOS (LaunchAgent).".into(),
+    })
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn configure_windows_login_startup(enabled: bool) -> Result<StartupModeStatus, String> {
     Ok(StartupModeStatus {
         start_with_windows: false,
         service_available: false,
         message: if enabled {
-            "Windows login autostart can only be configured from the Windows build.".into()
+            "Login autostart is only supported on the Windows and macOS builds.".into()
         } else {
-            "Windows login autostart is disabled.".into()
+            "Login autostart is disabled.".into()
         },
     })
 }
@@ -2217,12 +3125,34 @@ async fn poll_worker_connect_session(
     parse_json_response::<WorkerConnectPollResponse>(response).await
 }
 
+/// Rotates the worker access tokens, and RECORDS the attempt either way.
+///
+/// The refresh token is single-use: the server revokes the presented `jti` the
+/// moment it issues a replacement. That makes every rotation a point of no
+/// return, so a postmortem needs three facts that used to be unrecorded —
+/// which code path asked (`caller`), WHICH token was presented
+/// (`refreshToken.jti`, so a reused/stale one is visible), and what the server
+/// said. Without them "Worker token has been revoked" is unattributable: it
+/// looks identical whether an admin revoked the worker, a second copy of the
+/// app rotated first, or this process raced itself.
 async fn refresh_worker_connect_tokens(
+    app_data_dir: &Path,
+    caller: &str,
     server_url: &str,
     refresh_token: &str,
     device_proof: &WorkerDeviceProofMaterial,
 ) -> Result<WorkerConnectTokens, String> {
-    let envelope = post_worker_json::<WorkerConnectRefreshEnvelope, _>(
+    let started = Instant::now();
+    append_diagnostic_event(
+        app_data_dir,
+        "connection.refresh.attempt",
+        json!({
+            "caller": caller,
+            "serverUrl": server_url,
+            "refreshToken": token_reference(refresh_token),
+        }),
+    );
+    let result = post_worker_json::<WorkerConnectRefreshEnvelope, _>(
         server_url,
         "/api/workers/connect/refresh",
         refresh_token,
@@ -2230,8 +3160,49 @@ async fn refresh_worker_connect_tokens(
         device_proof,
     )
     .await
-    .map_err(|error| format!("unable to refresh worker access: {error}"))?;
-    Ok(envelope.tokens)
+    .map_err(|error| format!("unable to refresh worker access: {error}"));
+
+    match result {
+        Ok(envelope) => {
+            append_diagnostic_event(
+                app_data_dir,
+                "connection.refresh.ok",
+                json!({
+                    "caller": caller,
+                    "elapsedMs": started.elapsed().as_millis() as u64,
+                    "presentedRefreshToken": token_reference(refresh_token),
+                    "issuedExecutionToken": token_reference(&envelope.tokens.execution_token),
+                    "issuedUploadToken": token_reference(&envelope.tokens.upload_token),
+                    "issuedRefreshToken": envelope
+                        .tokens
+                        .refresh_token
+                        .as_deref()
+                        .map(token_reference)
+                        .unwrap_or(Value::Null),
+                }),
+            );
+            Ok(envelope.tokens)
+        }
+        Err(error) => {
+            crate::diagnostics::log_error(
+                app_data_dir,
+                "connection.refresh.failed",
+                json!({
+                    "caller": caller,
+                    "elapsedMs": started.elapsed().as_millis() as u64,
+                    "serverUrl": server_url,
+                    "presentedRefreshToken": token_reference(refresh_token),
+                    "error": error,
+                    // The server revokes the presented jti on a SUCCESSFUL
+                    // rotation, so a "revoked" verdict means this exact token
+                    // was already spent — by another caller, another instance,
+                    // or a rotation whose response we never persisted.
+                    "tokenAlreadySpent": error.to_lowercase().contains("revoked"),
+                }),
+            );
+            Err(error)
+        }
+    }
 }
 
 async fn fetch_runtime_manifest(
@@ -2756,8 +3727,33 @@ pub async fn try_refresh_connection_if_needed(
         return Ok(());
     }
 
+    // Same gate as the command path — the worker loop is the fourth driver
+    // that can rotate this single-use token.
+    let _gate = REFRESH_GATE.lock().await;
     let mut stored = load_connection(app_data_dir)?
         .ok_or_else(|| "Worker App is not connected yet.".to_string())?;
+
+    // Another caller may have rotated while this one waited for the gate. Its
+    // tokens are already on disk and already valid — adopt them.
+    if refresh_can_be_coalesced(&stored) {
+        append_diagnostic_event(
+            app_data_dir,
+            "connection.refresh.coalesced",
+            json!({
+                "caller": "worker_loop_expiry_guard",
+                "lastRefreshedAt": stored.last_refreshed_at,
+                "remainingTokenSeconds": remaining_token_seconds(&stored),
+            }),
+        );
+        let mut lock = running_connection
+            .lock()
+            .map_err(|_| "worker connection lock poisoned".to_string())?;
+        lock.tokens = WorkerApiTokens {
+            execution_token: stored.tokens.execution_token.clone(),
+            upload_token: stored.tokens.upload_token.clone(),
+        };
+        return Ok(());
+    }
 
     let refresh_token = stored
         .tokens
@@ -2770,8 +3766,14 @@ pub async fn try_refresh_connection_if_needed(
         None => ensure_device_proof_material(app_data_dir)?,
     };
 
-    let new_tokens =
-        refresh_worker_connect_tokens(&stored.server_url, &refresh_token, &device_proof).await?;
+    let new_tokens = refresh_worker_connect_tokens(
+        app_data_dir,
+        "worker_loop_expiry_guard",
+        &stored.server_url,
+        &refresh_token,
+        &device_proof,
+    )
+    .await?;
 
     stored.tokens = new_tokens;
     stored.last_refreshed_at = Some(
@@ -2800,6 +3802,151 @@ pub async fn worker_app_open_file(app: tauri::AppHandle, path: String) -> Result
     app.opener()
         .open_path(path, None::<&str>)
         .map_err(|e| e.to_string())
+}
+
+
+#[cfg(test)]
+mod connection_health_tests {
+    use super::jwt_exp_epoch_seconds;
+    use base64::Engine as _;
+
+    fn jwt_with_payload(payload: &str) -> String {
+        let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
+        format!("header.{b64}.signature")
+    }
+
+    #[test]
+    fn reads_the_exp_claim() {
+        let token = jwt_with_payload(r#"{"sub":"worker-1","exp":1785500000}"#);
+        assert_eq!(jwt_exp_epoch_seconds(&token), Some(1785500000));
+    }
+
+    #[test]
+    fn returns_none_when_exp_is_absent() {
+        let token = jwt_with_payload(r#"{"sub":"worker-1"}"#);
+        assert_eq!(jwt_exp_epoch_seconds(&token), None);
+    }
+
+    /// A token this client cannot parse may still be one the SERVER accepts,
+    /// so every malformed shape degrades to "no expiry shown" rather than an
+    /// error that would look like a broken connection.
+    #[test]
+    fn tolerates_malformed_tokens_without_erroring() {
+        assert_eq!(jwt_exp_epoch_seconds(""), None);
+        assert_eq!(jwt_exp_epoch_seconds("not-a-jwt"), None);
+        assert_eq!(jwt_exp_epoch_seconds("header.!!!not-base64!!!.sig"), None);
+        assert_eq!(jwt_exp_epoch_seconds(&jwt_with_payload("not json")), None);
+        assert_eq!(
+            jwt_exp_epoch_seconds(&jwt_with_payload(r#"{"exp":"tomorrow"}"#)),
+            None
+        );
+    }
+}
+
+/// Guards the rotation-race fix: four independent drivers rotate one
+/// single-use refresh token, and the coalescing rules below are what stop the
+/// loser of that race from presenting a token the winner already spent.
+#[cfg(test)]
+mod refresh_coalescing_tests {
+    use super::{
+        is_worker_auth_rejection, refresh_can_be_coalesced, remaining_token_seconds,
+        REFRESH_COALESCE_WINDOW_SECONDS,
+    };
+    use super::{WorkerConnectTokens, WorkerConnectWorker};
+    use crate::credentials::StoredWorkerConnection;
+    use base64::Engine as _;
+    use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+
+    fn token_expiring_in(seconds: i64) -> String {
+        let exp = OffsetDateTime::now_utc().unix_timestamp() + seconds;
+        let payload = format!(r#"{{"sub":"worker-1","exp":{exp}}}"#);
+        let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
+        format!("header.{b64}.signature")
+    }
+
+    fn connection(refreshed_seconds_ago: Option<i64>, token_life_seconds: i64) -> StoredWorkerConnection {
+        StoredWorkerConnection {
+            server_url: "https://smartaihub.app".into(),
+            worker: WorkerConnectWorker {
+                id: "wrk_1".into(),
+                display_name: "Render worker".into(),
+                runtime_type: "desktop_zeroclaw_managed".into(),
+                machine_name: None,
+            },
+            tokens: WorkerConnectTokens {
+                execution_token: token_expiring_in(token_life_seconds),
+                upload_token: token_expiring_in(token_life_seconds),
+                refresh_token: Some(token_expiring_in(7 * 24 * 3600)),
+            },
+            connected_at: "2026-06-23T00:00:00Z".into(),
+            last_refreshed_at: refreshed_seconds_ago.map(|ago| {
+                (OffsetDateTime::now_utc() - time::Duration::seconds(ago))
+                    .format(&Rfc3339)
+                    .unwrap()
+            }),
+        }
+    }
+
+    #[test]
+    fn a_caller_queued_behind_a_fresh_rotation_reuses_its_result() {
+        assert!(refresh_can_be_coalesced(&connection(Some(2), 8 * 3600)));
+    }
+
+    #[test]
+    fn a_rotation_older_than_the_window_is_not_reused() {
+        let stale = connection(Some(REFRESH_COALESCE_WINDOW_SECONDS + 5), 8 * 3600);
+        assert!(!refresh_can_be_coalesced(&stale));
+    }
+
+    /// A recent rotation is not enough on its own — tokens about to expire
+    /// must still rotate, or the coalescing would hand back credentials that
+    /// die mid-job.
+    #[test]
+    fn recent_rotation_does_not_excuse_nearly_expired_tokens() {
+        assert!(!refresh_can_be_coalesced(&connection(Some(2), 60)));
+    }
+
+    #[test]
+    fn a_connection_that_never_refreshed_always_rotates() {
+        assert!(!refresh_can_be_coalesced(&connection(None, 8 * 3600)));
+    }
+
+    #[test]
+    fn remaining_seconds_follows_the_shorter_of_the_two_tokens() {
+        let mut stored = connection(None, 8 * 3600);
+        stored.tokens.upload_token = token_expiring_in(600);
+        let remaining = remaining_token_seconds(&stored);
+        assert!((595..=605).contains(&remaining), "got {remaining}");
+    }
+
+    /// "The server did not answer" must never be reported as "the server said
+    /// no" — that is what turns a Wi-Fi hiccup at login into a spurious
+    /// "reconnect required" dialog on a healthy machine.
+    #[test]
+    fn transport_failures_are_not_auth_rejections() {
+        assert!(!is_worker_auth_rejection(
+            "worker control plane request timed out after 15000ms"
+        ));
+        assert!(!is_worker_auth_rejection(
+            "server rejected worker connection (503): upstream unavailable"
+        ));
+        assert!(!is_worker_auth_rejection(
+            "server rejected worker connection (429): too many requests"
+        ));
+    }
+
+    #[test]
+    fn server_auth_verdicts_are_rejections() {
+        assert!(is_worker_auth_rejection(
+            "server rejected worker connection (401): Worker token has been revoked"
+        ));
+        assert!(is_worker_auth_rejection(
+            "server rejected worker connection (403): worker scope mismatch"
+        ));
+        assert!(is_worker_auth_rejection(
+            "server rejected worker connection (401): Worker device proof is required"
+        ));
+    }
 }
 
 #[cfg(test)]

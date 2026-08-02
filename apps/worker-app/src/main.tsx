@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { getVersion } from "@tauri-apps/api/app";
+import { message as nativeMessage } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import "./styles.css";
 
@@ -66,10 +67,74 @@ type HermesExecutorSummary = {
   activeAuth?: HermesActiveAuth | null;
 };
 
+type ActiveJobSummary = {
+  jobId: string;
+  jobLabel: string;
+  jobType: string;
+  projectId?: string | null;
+  projectName?: string | null;
+  progressPercent: number;
+  message: string;
+};
+
+const WORKER_TABS = [
+  { id: "connection", label: "Connection", hint: "Link this machine" },
+  { id: "render", label: "Video render", hint: "Jobs & runtime" },
+  { id: "hermes", label: "Hermes agents", hint: "Grok / xAI" },
+  { id: "settings", label: "Settings", hint: "Preferences" },
+] as const;
+
+type WorkerTabId = (typeof WORKER_TABS)[number]["id"];
+
+type HermesTuiLaunch = {
+  launched: boolean;
+  command: string;
+  message: string;
+};
+
+type HermesSignInStart = {
+  started: boolean;
+  userCode?: string | null;
+  verificationUrl?: string | null;
+  expiresAt?: string | null;
+  message: string;
+};
+
+type HermesAuthSummary = {
+  available: boolean;
+  raw: string;
+  providers: string[];
+  xaiLoggedIn: boolean;
+};
+
+type DiagnosticsLogLocation = {
+  logPath: string;
+  appDataDir: string;
+  files: string[];
+};
+
+type StartupModeStatus = {
+  startWithWindows: boolean;
+  serviceAvailable: boolean;
+  message: string;
+};
+
+type ConnectionHealth = {
+  healthy: boolean;
+  connected: boolean;
+  reason?: string | null;
+  workerName?: string | null;
+  expiresAt?: string | null;
+  hoursUntilExpiry?: number | null;
+  expiringSoon: boolean;
+  checkedAt: string;
+};
+
 type ExecutorState = {
   acceptingJobs: boolean;
   currentJobId?: string | null;
   currentJobLabel?: string | null;
+  activeJobs?: ActiveJobSummary[];
   currentJobType?: string | null;
   currentProjectId?: string | null;
   currentProjectName?: string | null;
@@ -163,6 +228,7 @@ const fallbackExecutor: ExecutorState = {
   acceptingJobs: false,
   currentJobId: null,
   currentJobLabel: null,
+  activeJobs: [],
   currentJobType: null,
   currentProjectId: null,
   currentProjectName: null,
@@ -247,12 +313,21 @@ function shouldRefreshBeforeStartingLoop(session: SavedConnectionSession): boole
   return minExpiresAt - Date.now() <= 2 * 60 * 1000;
 }
 
+/// Deleting the saved connection is irreversible from the app's side — the
+/// user must redo browser approval. So it is reserved for verdicts that a
+/// retry genuinely cannot recover.
+///
+/// "revoked" / "reuse" / "replay" were removed on 2026-08-02: they used to be
+/// the ROUTINE outcome of two of this app's own refresh drivers racing each
+/// other on a single-use token, so a lost race silently disconnected a working
+/// machine — which then looked like "autostart stopped working" the next
+/// morning. Rotation is now serialised locally and the server honours a reuse
+/// grace window, so a rotation failure is worth retrying, not self-destructing
+/// over. A genuine server-side revocation still surfaces as a clear error and
+/// a "Reconnect Worker App" button the user drives.
 function shouldClearSavedConnectionAfterRefreshError(message: string): boolean {
   const normalized = message.toLowerCase();
   return [
-    "revoked",
-    "reuse",
-    "replay",
     "expired refresh",
     "refresh token is invalid",
     "refresh token is missing worker binding",
@@ -345,6 +420,164 @@ function App() {
     void refresh();
   }, []);
 
+  // Verify the RESTORED connection for real, on every launch.
+  //
+  // Before this (2026-07-31) the app happily reported "Restored saved Worker
+  // App connection" without ever asking the server whether those credentials
+  // still worked — a revoked or expired worker looked connected and silently
+  // claimed nothing. `worker_app_check_connection_health` does a real token
+  // refresh round-trip.
+  //
+  // Both warnings use a NATIVE OS dialog rather than in-app text on purpose:
+  // this app spends its life minimised behind other windows running the
+  // background loop, so an in-app banner would never be seen.
+  // REAL autostart state as reported by the OS, not the settings file. These
+  // diverge whenever the Run key / LaunchAgent is removed outside this app
+  // (reinstall, cleanup tool, antivirus) — the checkbox used to keep claiming
+  // autostart was on while nothing would actually start.
+  const [activeTab, setActiveTab] = useState<WorkerTabId>("connection");
+  const [hermesAuth, setHermesAuth] = useState<HermesAuthSummary | null>(null);
+  const [hermesTui, setHermesTui] = useState<HermesTuiLaunch | null>(null);
+  const [hermesError, setHermesError] = useState<string>("");
+  const [hermesSignIn, setHermesSignIn] = useState<HermesSignInStart | null>(
+    null
+  );
+  const [hermesSigningIn, setHermesSigningIn] = useState(false);
+  const startHermesSignIn = async () => {
+    setHermesError("");
+    setHermesSigningIn(true);
+    try {
+      const result = await invoke<HermesSignInStart>(
+        "worker_app_hermes_signin_xai"
+      );
+      setHermesSignIn(result);
+    } catch (error) {
+      setHermesSignIn(null);
+      setHermesError(formatInvokeError(error));
+    } finally {
+      setHermesSigningIn(false);
+    }
+  };
+  const refreshHermesAuth = async () => {
+    // NOT `safeInvoke`: that swallows the error and returns the fallback, which
+    // is exactly how these buttons came to look dead (2026-07-31 — the Hermes
+    // runtime was not installed, the command returned Err, and nothing at all
+    // happened on screen).
+    try {
+      const summary = await invoke<HermesAuthSummary>(
+        "worker_app_hermes_auth_summary"
+      );
+      setHermesAuth(summary);
+      setHermesError("");
+    } catch (error) {
+      setHermesAuth(null);
+      setHermesError(formatInvokeError(error));
+    }
+  };
+  const openHermesTui = async (extraArgs?: string[]) => {
+    setHermesError("");
+    try {
+      const result = await invoke<HermesTuiLaunch>("worker_app_open_hermes_tui", {
+        extraArgs,
+      });
+      setHermesTui(result);
+    } catch (error) {
+      setHermesTui(null);
+      setHermesError(formatInvokeError(error));
+      return;
+    }
+    // Signing in inside the TUI changes provider state, so re-read it after.
+    await refreshHermesAuth();
+  };
+  useEffect(() => {
+    if (activeTab === "hermes") void refreshHermesAuth();
+  }, [activeTab]);
+  const [diagnosticsLogPath, setDiagnosticsLogPath] = useState<string>("");
+  useEffect(() => {
+    void safeInvoke<DiagnosticsLogLocation | null>("worker_app_get_diagnostics_log", null).then(
+      (location) => setDiagnosticsLogPath(location?.logPath ?? "")
+    );
+  }, []);
+  const openDiagnosticsLog = async () => {
+    const location = await safeInvoke<DiagnosticsLogLocation | null>(
+      "worker_app_get_diagnostics_log",
+      null
+    );
+    if (!location) return;
+    setDiagnosticsLogPath(location.logPath);
+    // Open the folder, not the file: the rotated generations next to it are
+    // usually where the run BEFORE the failure was recorded.
+    await safeInvoke<void>("worker_app_open_file", undefined, { path: location.appDataDir });
+  };
+
+  const [startupActual, setStartupActual] = useState<boolean | null>(null);
+  const [startupMessage, setStartupMessage] = useState<string>("");
+  const refreshStartupStatus = async () => {
+    const status = await safeInvoke<StartupModeStatus | null>(
+      "worker_app_get_startup_status",
+      null
+    );
+    if (status) {
+      setStartupActual(status.startWithWindows);
+      setStartupMessage(status.message ?? "");
+    }
+  };
+  useEffect(() => {
+    void refreshStartupStatus();
+  }, []);
+
+  const [connectionHealth, setConnectionHealth] =
+    useState<ConnectionHealth | null>(null);
+  const connectionHealthAlertedRef = useRef<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      const health = await safeInvoke<ConnectionHealth | null>(
+        "worker_app_check_connection_health",
+        null
+      );
+      if (cancelled || !health) return;
+      setConnectionHealth(health);
+      if (!health.connected) return;
+      if (!health.healthy) {
+        // De-duplicate on the reason so a persistent outage does not reopen a
+        // modal every poll — only a CHANGED problem interrupts again.
+        const key = `unhealthy:${health.reason ?? ""}`;
+        if (connectionHealthAlertedRef.current === key) return;
+        connectionHealthAlertedRef.current = key;
+        setConnectionState("error");
+        setConnectMessage(
+          `Saved connection is no longer valid: ${health.reason ?? "unknown error"}`
+        );
+        await nativeMessage(
+          `The saved connection for "${health.workerName ?? "this worker"}" is no longer accepted by Smart AI Hub.\n\n${health.reason ?? ""}\n\nOpen Smart AI Hub Worker App and press "Reconnect Worker App" — no jobs will run until you do.`,
+          { title: "Smart AI Hub Worker — reconnect required", kind: "error" }
+        ).catch(() => undefined);
+        return;
+      }
+      if (health.expiringSoon) {
+        const key = `expiring:${health.expiresAt ?? ""}`;
+        if (connectionHealthAlertedRef.current === key) return;
+        connectionHealthAlertedRef.current = key;
+        const hours = health.hoursUntilExpiry ?? 0;
+        await nativeMessage(
+          `The Worker App connection for "${health.workerName ?? "this worker"}" expires in about ${hours} hour(s)${health.expiresAt ? ` (${new Date(health.expiresAt).toLocaleString()})` : ""}.\n\nReconnect before then so rendering keeps running uninterrupted.`,
+          { title: "Smart AI Hub Worker — connection expiring soon", kind: "warning" }
+        ).catch(() => undefined);
+        return;
+      }
+      connectionHealthAlertedRef.current = null;
+    };
+    void check();
+    // Re-check hourly: an expiry warning must still fire on a machine that is
+    // left running for days, not only at launch.
+    const handle = window.setInterval(() => void check(), 60 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(handle);
+    };
+  }, []);
+
   useEffect(() => {
     const intervalMs = loopStatus.running ? 2_000 : 10_000;
     const handle = window.setInterval(() => {
@@ -358,6 +591,22 @@ function App() {
     if (!logEl) return;
     logEl.scrollTop = logEl.scrollHeight;
   }, [executor.logTail]);
+
+  const activeJobs = useMemo(
+    () => (Array.isArray(executor.activeJobs) ? executor.activeJobs : []),
+    [executor.activeJobs]
+  );
+  // The render lane is the one users ask about ("is it rendering?"), so call it
+  // out separately from the short Hermes media jobs sharing the same worker.
+  const renderJob = useMemo(
+    () =>
+      activeJobs.find(
+        (job) =>
+          job.jobType === "remotion_render_video" ||
+          job.jobType.startsWith("hyperframes")
+      ) ?? null,
+    [activeJobs]
+  );
 
   const readinessLabel = useMemo(() => {
     if (doctor.status === "ready") return "Ready for render jobs";
@@ -512,7 +761,9 @@ function App() {
     try {
       if (shouldRefreshBeforeStartingLoop(activeSession)) {
         setConnectMessage("Refreshing Worker App access before starting the loop...");
-        activeSession = await invoke<SavedConnectionSession>("worker_app_refresh_saved_connection");
+        activeSession = await invoke<SavedConnectionSession>("worker_app_refresh_saved_connection", {
+          caller: "start_loop",
+        });
         setSavedConnection(activeSession);
         setConnectedWorker(activeSession.worker);
       }
@@ -619,7 +870,9 @@ function App() {
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
-        const nextSession = await invoke<SavedConnectionSession>("worker_app_refresh_saved_connection");
+        const nextSession = await invoke<SavedConnectionSession>("worker_app_refresh_saved_connection", {
+          caller: "renewal_timer",
+        });
         if (cancelled) return;
         setSavedConnection(nextSession);
         setConnectedWorker(nextSession.worker);
@@ -629,7 +882,9 @@ function App() {
         if (cancelled) return;
         const message = formatInvokeError(error);
         if (shouldClearSavedConnectionAfterRefreshError(message)) {
-          await safeInvoke<void>("worker_app_clear_saved_connection", undefined);
+          await safeInvoke<void>("worker_app_clear_saved_connection", undefined, {
+            reason: `renewal_timer_refresh_error: ${message}`,
+          });
           setSavedConnection(null);
           setConnectedWorker(null);
         }
@@ -659,7 +914,28 @@ function App() {
         <div className={`readiness-pill ${doctor.status}`}>{readinessLabel}</div>
       </section>
 
-      <section className="dashboard-grid">
+      {/* Tabbed layout (2026-07-31). One long scrolling grid mixed connection,
+          render, Hermes and settings together, so nothing read as a coherent
+          area of responsibility. Each tab is now one job the user came to do. */}
+      <nav className="tab-bar" role="tablist" aria-label="Worker sections">
+        {WORKER_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`tab-button${activeTab === tab.id ? " active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+            data-testid={`worker-tab-${tab.id}`}
+          >
+            <span className="tab-label">{tab.label}</span>
+            <span className="tab-hint">{tab.hint}</span>
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === "connection" ? (
+        <section className="dashboard-grid" role="tabpanel">
         <article className="panel connect-panel">
           <div className="panel-heading">
             <p className="eyebrow">Connection</p>
@@ -676,6 +952,29 @@ function App() {
           ) : null}
           {savedConnection?.lastRefreshedAt ? (
             <p className="subtle">Last token refresh: {new Date(savedConnection.lastRefreshedAt).toLocaleString()}</p>
+          ) : null}
+          {/* Expiry was computed for the warning dialogs but never SHOWN, so
+              "last refresh" left the obvious question — when does it run out?
+              — unanswered (2026-07-31). */}
+          {connectionHealth?.expiresAt ? (
+            <p
+              className={`subtle${connectionHealth.expiringSoon ? " warning" : ""}`}
+              data-testid="connection-expiry"
+            >
+              Connection expires:{" "}
+              {new Date(connectionHealth.expiresAt).toLocaleString()}
+              {typeof connectionHealth.hoursUntilExpiry === "number"
+                ? ` (in about ${connectionHealth.hoursUntilExpiry} hour${
+                    connectionHealth.hoursUntilExpiry === 1 ? "" : "s"
+                  })`
+                : ""}
+              {connectionHealth.expiringSoon ? " — reconnect soon" : ""}
+            </p>
+          ) : connectionHealth && connectionHealth.connected ? (
+            <p className="subtle">
+              Connection expiry: not reported by the server (the token carries no
+              readable expiry claim).
+            </p>
           ) : null}
           {connectSession && connectionState === "pending" ? (
             <div className="connect-code-box">
@@ -712,10 +1011,21 @@ function App() {
           </div>
         </article>
 
+        </section>
+      ) : null}
+
+      {activeTab === "render" ? (
+        <section className="dashboard-grid" role="tabpanel">
         <article className="panel">
           <div className="panel-heading">
             <p className="eyebrow">Current job</p>
-            <h2>{executor.currentJobLabel || "No active job"}</h2>
+            <h2>
+              {renderJob
+                ? `Rendering · ${renderJob.jobLabel || renderJob.jobType}`
+                : activeJobs.length > 0
+                  ? `${activeJobs.length} job${activeJobs.length > 1 ? "s" : ""} running`
+                  : executor.currentJobLabel || "No active job"}
+            </h2>
           </div>
           <div className="queue-summary" aria-label="Worker queue summary">
             <div>
@@ -723,10 +1033,38 @@ function App() {
               <strong>{executor.queueDepth}</strong>
             </div>
             <div>
+              <span>Jobs in flight</span>
+              <strong>{activeJobs.length}</strong>
+            </div>
+            <div>
               <span>Active render</span>
-              <strong>{executor.currentJobId ? "Running" : "None"}</strong>
+              <strong>{renderJob ? `${renderJob.progressPercent}%` : "None"}</strong>
             </div>
           </div>
+          {/* Every lane, not just the primary. The worker runs the render lane
+              and the Hermes media lane concurrently, and before this list
+              existed a short Hermes job finishing mid-render blanked the whole
+              panel to "No active job" while the render was still going. */}
+          {activeJobs.length > 0 ? (
+            <ul className="active-job-list" aria-label="Jobs in flight">
+              {activeJobs.map((activeJob) => (
+                <li key={activeJob.jobId} className="active-job-row">
+                  <div className="active-job-head">
+                    <strong>{activeJob.jobLabel || activeJob.jobType}</strong>
+                    <span>{activeJob.progressPercent}%</span>
+                  </div>
+                  <div className="progress-track">
+                    <span style={{ width: `${activeJob.progressPercent}%` }} />
+                  </div>
+                  <p className="subtle">
+                    {activeJob.jobType}
+                    {activeJob.projectName ? ` · ${activeJob.projectName}` : ""}
+                    {activeJob.message ? ` · ${activeJob.message}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {executor.currentJobId ? (
             <dl className="job-details">
               <div>
@@ -936,6 +1274,155 @@ function App() {
           )}
         </article>
 
+        </section>
+      ) : null}
+
+      {activeTab === "hermes" ? (
+        <section className="dashboard-grid" role="tabpanel">
+        <article className="panel wide">
+          <div className="panel-heading inline">
+            <div>
+              <p className="eyebrow">Hermes agent</p>
+              <h2>Interactive terminal &amp; sign-in</h2>
+            </div>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void refreshHermesAuth()}
+            >
+              Refresh sign-in status
+            </button>
+          </div>
+          <div className="queue-summary" aria-label="Hermes sign-in">
+            <div>
+              <span>xAI / Grok sign-in</span>
+              <strong>
+                {hermesAuth === null
+                  ? "Unknown"
+                  : hermesAuth.xaiLoggedIn
+                    ? "Signed in"
+                    : "Not signed in"}
+              </strong>
+            </div>
+            <div>
+              <span>Providers with credentials</span>
+              <strong>{hermesAuth?.providers.length ?? 0}</strong>
+            </div>
+          </div>
+          {hermesAuth?.providers.length ? (
+            <p className="subtle">{hermesAuth.providers.join(", ")}</p>
+          ) : null}
+          <div className="button-row">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void openHermesTui()}
+              data-testid="hermes-open-tui"
+            >
+              Open Hermes TUI
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void openHermesTui(["chat"])}
+              data-testid="hermes-open-chat"
+            >
+              Open Grok chat
+            </button>
+            {/* One-click sign-in: opens a terminal already running the device-code
+                flow, so the user never has to remember the command. */}
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void startHermesSignIn()}
+              disabled={hermesSigningIn}
+              data-testid="hermes-signin-xai"
+            >
+              {hermesSigningIn
+                ? "Starting sign-in…"
+                : hermesAuth?.xaiLoggedIn
+                  ? "Re-authorise xAI / Grok"
+                  : "Sign in to xAI / Grok"}
+            </button>
+          </div>
+          {hermesTui ? (
+            <div className="live-log-tail">
+              <div className="live-log-header">
+                <span className="eyebrow">Command</span>
+              </div>
+              <pre>{hermesTui.command}</pre>
+              <p className="subtle">{hermesTui.message}</p>
+            </div>
+          ) : null}
+          {hermesSignIn ? (
+            <div className="connect-code-box" data-testid="hermes-device-code">
+              {hermesSignIn.userCode ? (
+                <>
+                  <span>Enter this code in the browser</span>
+                  <strong>{hermesSignIn.userCode}</strong>
+                  {hermesSignIn.verificationUrl ? (
+                    <p className="subtle">{hermesSignIn.verificationUrl}</p>
+                  ) : null}
+                </>
+              ) : (
+                <span>Sign-in did not produce a code</span>
+              )}
+              {/* `pre` because the fallback message carries Hermes' RAW output —
+                  losing its line breaks would destroy the one useful
+                  diagnostic. */}
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  marginTop: 8,
+                  fontSize: "0.78rem",
+                }}
+              >
+                {hermesSignIn.message}
+              </pre>
+              {!hermesSignIn.userCode ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    void openHermesTui([
+                      "auth",
+                      "add",
+                      "xai-oauth",
+                      "--no-browser",
+                    ])
+                  }
+                  data-testid="hermes-signin-fallback-tui"
+                >
+                  Run sign-in in a terminal instead
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {hermesError ? (
+            <div className="connect-message error" role="alert">
+              <strong>Could not run Hermes:</strong> {hermesError}
+              <p style={{ marginTop: 6 }}>
+                Most often the Hermes runtime is not installed on this machine
+                yet. Scroll down to <em>Hermes (Grok media) runtime</em> and press{" "}
+                <em>Install / update Hermes runtime</em>, then try again.
+              </p>
+            </div>
+          ) : null}
+          {hermesAuth && !hermesAuth.available && !hermesError ? (
+            <p className="connect-message">
+              Hermes runtime is not installed on this machine yet — install it
+              below before opening the TUI or signing in.
+            </p>
+          ) : null}
+          <p className="field-help">
+            The TUI runs in its own terminal window because it needs a real tty.
+            Sign-in is per provider: use <code>hermes auth add xai-oauth</code>{" "}
+            (device code) or <code>hermes login</code> inside that terminal.
+            LLM traffic goes straight from this machine to the provider — it does
+            NOT route through the Smart AI Hub gateway.
+          </p>
+        </article>
+
         <article className="panel wide">
           <div className="panel-heading inline">
             <div>
@@ -993,6 +1480,11 @@ function App() {
           {hermesMessage ? <p className="connect-message">{hermesMessage}</p> : null}
         </article>
 
+        </section>
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <section className="dashboard-grid" role="tabpanel">
         <article className="panel wide settings-panel">
           <div className="panel-heading">
             <p className="eyebrow">Settings</p>
@@ -1064,11 +1556,30 @@ function App() {
             <label className="toggle-row">
               <input
                 type="checkbox"
-                checked={settings.startWithWindows}
-                onChange={(event) => void saveSettings({ startWithWindows: event.target.checked })}
+                checked={startupActual ?? settings.startWithWindows}
+                onChange={(event) => {
+                  void (async () => {
+                    await saveSettings({ startWithWindows: event.target.checked });
+                    // Re-read the OS afterwards: `saveSettings` reports what it
+                    // was ASKED to do, this reports what actually happened.
+                    await refreshStartupStatus();
+                  })();
+                }}
               />
               Start with Windows sign-in
             </label>
+            {startupActual !== null ? (
+              <p
+                className={`field-help${
+                  startupActual !== settings.startWithWindows ? " warning" : ""
+                }`}
+                data-testid="startup-actual-state"
+              >
+                {startupActual !== settings.startWithWindows
+                  ? `Saved preference and the operating system disagree — the OS currently reports autostart ${startupActual ? "ON" : "OFF"}. Toggle it once to re-apply.`
+                  : startupMessage}
+              </p>
+            ) : null}
             <label>
               Managed WSL runtime root
               <input
@@ -1112,9 +1623,27 @@ function App() {
               This is Windows user-login autostart, not a Windows service. Service mode is not
               installed in this build and will not be shown as ready.
             </p>
+            <div style={{ marginTop: "8px" }}>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void openDiagnosticsLog()}
+              >
+                Open diagnostics log
+              </button>
+            </div>
+            <p className="field-help">
+              Every run appends to <code>worker-diagnostics.jsonl</code>: app start, sign-in
+              autostart state, each token refresh and its verdict, and every error. Attach this
+              file when reporting a connection problem — it records what happened before the
+              failure, which the on-screen message cannot.
+              {diagnosticsLogPath ? <><br />{diagnosticsLogPath}</> : null}
+            </p>
           </div>
         </article>
-      </section>
+        </section>
+      ) : null}
+
     </main>
   );
 }

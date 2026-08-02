@@ -345,6 +345,58 @@ where
     .await
 }
 
+/// Device-proof-signed GET.
+///
+/// Exists so the app can PROVE the server still accepts this worker without
+/// spending anything. The refresh endpoint is single-use — using it as a
+/// liveness probe (which the launch/hourly health check used to do) rotates
+/// credentials the caller did not need rotated, and every rotation is a chance
+/// to lose the replacement in transit.
+///
+/// The server derives the signed method from `req.method` and the path from
+/// `req.originalUrl`, and hashes an empty body for a GET — so the canonical
+/// payload here must use "GET", the same path string, and `{}`.
+pub async fn get_worker_json<T>(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    device_proof: &WorkerDeviceProofMaterial,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+{
+    let url = join_url(server_url, path)?;
+    let proof_headers = build_device_proof_headers(
+        "GET",
+        path,
+        bearer_token,
+        &serde_json::json!({}),
+        device_proof,
+    )?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(CONTROL_PLANE_TIMEOUT_MS))
+        .build()
+        .map_err(|error| format!("failed to build worker HTTP client: {error}"))?;
+    let mut request = client
+        .get(url)
+        .header("Accept", "application/json")
+        .header("User-Agent", "SmartAIHub-Worker-App/0.1")
+        .bearer_auth(bearer_token.trim());
+    for (name, value) in proof_headers {
+        request = request.header(name, value);
+    }
+    let response = request.send().await.map_err(|error| {
+        if error.is_timeout() {
+            format!(
+                "worker control plane request timed out after {CONTROL_PLANE_TIMEOUT_MS}ms: {error}"
+            )
+        } else {
+            format!("worker control plane request failed: {error}")
+        }
+    })?;
+    read_json_response(response).await
+}
+
 async fn post_worker_json_url_with_timeout<T, P>(
     url: reqwest::Url,
     path: &str,

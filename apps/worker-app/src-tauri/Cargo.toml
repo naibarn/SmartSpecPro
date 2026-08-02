@@ -1,6 +1,6 @@
 [package]
 name = "smart-ai-hub-worker-app"
-version = "0.1.144"
+version = "0.1.162"
 description = "Smart AI Hub Worker App"
 authors = ["SmartAIHub"]
 edition = "2021"
@@ -27,6 +27,10 @@ base64 = "0.22"
 rand = "0.8"
 rsa = { version = "0.9", features = ["pem"] }
 zip = { version = "2.4", default-features = false, features = ["deflate"] }
+tauri-plugin-dialog = "2"
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+tokio = { version = "1.53.1", default-features = false, features = ["sync"] }
+tauri-plugin-single-instance = "2.4.3"
 
 [dev-dependencies]
 tempfile = "3"

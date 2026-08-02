@@ -1,10 +1,14 @@
 use serde_json::json;
 use smart_ai_hub_worker_app_lib::runtime_manifest::DoctorSummary;
 use smart_ai_hub_worker_app_lib::worker_executor::{
-    build_failure_event, build_progress_event_plan, build_required_artifact_uploads,
-    build_sidecar_command, build_sidecar_manifest, compact_json_artifact_metadata,
-    prepare_hyperframes_execution_plan, validate_final_video_artifact, validate_workspace_path,
-    ClaimedWorkerJob, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES,
+    build_failure_event, build_progress_event_plan, build_remotion_render_video_failure_event,
+    build_remotion_render_video_progress_event, build_remotion_render_video_sidecar_command,
+    build_required_artifact_uploads, build_sidecar_command, build_sidecar_manifest,
+    classify_job_type, compact_json_artifact_metadata, parse_remotion_sidecar_event,
+    prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
+    validate_final_video_artifact, validate_workspace_path, ClaimedWorkerJob,
+    RemotionSidecarEvent, WorkerJobKind, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES,
+    REMOTION_RENDER_VIDEO_JOB_TYPE,
 };
 
 fn ready_doctor() -> DoctorSummary {
@@ -425,4 +429,191 @@ fn failure_event_uses_server_accepted_hyperframes_failure_code_shape() {
     assert_eq!(event.assignment_attempt, "attempt_1");
     assert_eq!(event.payload_json["failureCode"], "runtime_not_ready");
     assert_eq!(event.payload_json["recoverable"], true);
+}
+
+fn remotion_claimed_job() -> ClaimedWorkerJob {
+    ClaimedWorkerJob {
+        id: "remotion-job-1".into(),
+        job_type: REMOTION_RENDER_VIDEO_JOB_TYPE.into(),
+        lease_owner_token: "lease-remotion-1".into(),
+        assignment_attempt: "attempt_remotion_1".into(),
+        input_json: json!({
+            "kind": "remotion_render_video",
+            "videoProjectId": "project-1",
+            "projectRevision": 3,
+            "traceId": "trace-1",
+        }),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn classify_job_type_routes_remotion_render_video() {
+    assert_eq!(
+        classify_job_type(REMOTION_RENDER_VIDEO_JOB_TYPE),
+        WorkerJobKind::RemotionRenderVideo
+    );
+    assert_eq!(
+        classify_job_type("hyperframes_final_composite"),
+        WorkerJobKind::Hyperframes
+    );
+    assert_eq!(classify_job_type("some_other_job_type"), WorkerJobKind::Unknown);
+}
+
+#[test]
+fn remotion_execution_plan_requires_matching_job_type_and_assignment_attempt() {
+    let dir = tempfile::tempdir().unwrap();
+    let job = remotion_claimed_job();
+    let plan = prepare_remotion_render_video_execution_plan(&job, dir.path()).unwrap();
+    assert_eq!(plan.job_id, "remotion-job-1");
+    assert!(plan.payload_path.ends_with("remotion-render-video-input.json"));
+    assert!(plan.output_dir.ends_with("out"));
+
+    let mut wrong_type = job.clone();
+    wrong_type.job_type = "hyperframes_final_composite".into();
+    assert!(prepare_remotion_render_video_execution_plan(&wrong_type, dir.path()).is_err());
+
+    let mut missing_attempt = job;
+    missing_attempt.assignment_attempt = "".into();
+    assert!(prepare_remotion_render_video_execution_plan(&missing_attempt, dir.path()).is_err());
+}
+
+#[test]
+fn remotion_sidecar_command_matches_frozen_native_argv_contract() {
+    let dir = tempfile::tempdir().unwrap();
+    let job = remotion_claimed_job();
+    let plan = prepare_remotion_render_video_execution_plan(&job, dir.path()).unwrap();
+    let sidecar = dir.path().join("sidecars").join("hyperframes-render.exe");
+    let command =
+        build_remotion_render_video_sidecar_command(&sidecar, &plan, false, None, None).unwrap();
+
+    // FROZEN contract: node <runtime-root>/runtime-pack/remotion-sidecar/render.mjs
+    //   render-video --payload <path> --workspace <dir> --output-dir <dir>
+    assert_eq!(command.current_dir, plan.workspace_dir);
+    assert_eq!(command.args[1], "render-video");
+    assert_eq!(command.args[2], "--payload");
+    assert_eq!(command.args[3], plan.payload_path.to_string_lossy());
+    assert!(command.args.contains(&"--workspace".to_string()));
+    assert!(command.args.contains(&"--output-dir".to_string()));
+    // Remotion's render-video mode takes no --format flag (unlike HyperFrames).
+    assert!(!command.args.contains(&"--format".to_string()));
+    assert!(!command.args.contains(&"mp4".to_string()));
+    assert!(!command
+        .args
+        .iter()
+        .any(|arg| arg.contains("&&") || arg.contains(';') || arg.contains('|')));
+}
+
+#[test]
+fn remotion_sidecar_command_managed_wsl_uses_remotion_sidecar_directory() {
+    let dir = tempfile::tempdir().unwrap();
+    let job = remotion_claimed_job();
+    let plan = prepare_remotion_render_video_execution_plan(&job, dir.path()).unwrap();
+    let sidecar = dir.path().join("sidecars").join("hyperframes-render.exe");
+    let command = build_remotion_render_video_sidecar_command(
+        &sidecar,
+        &plan,
+        true,
+        Some("~/.smartaihub-worker/runtime"),
+        Some("~/smartaihub-worker/workspace"),
+    )
+    .unwrap();
+
+    let script = command
+        .stdin_data
+        .as_ref()
+        .expect("managed WSL command should run the render script via stdin");
+    assert!(script.contains("runtime-pack/remotion-sidecar/render.mjs"));
+    assert!(script.contains("render-video"));
+    assert!(script.contains("--payload"));
+    assert!(script.contains("remotion-render-video-input.json"));
+    // Remotion mode never appends --format mp4.
+    assert!(!script.contains("--format mp4"));
+    // Preview mode is HyperFrames-only.
+    assert!(command.preview_stdin_data.is_none());
+
+    let cleanup_script = command
+        .cleanup
+        .as_ref()
+        .and_then(|cleanup| cleanup.stdin_data.as_ref())
+        .expect("managed WSL cleanup should run via stdin");
+    assert!(cleanup_script.contains("remotion-sidecar/render.mjs.*--workspace"));
+}
+
+#[test]
+fn parse_remotion_sidecar_event_recognizes_progress_completed_and_failed() {
+    let progress = parse_remotion_sidecar_event(
+        r#"SMARTAIHUB_EVENT {"eventType":"progress","stage":"render_frames","message":"Rendering..."}"#,
+    )
+    .expect("progress line should parse");
+    assert_eq!(
+        progress,
+        RemotionSidecarEvent::Progress {
+            stage: "render_frames".into(),
+            message: Some("Rendering...".into()),
+        }
+    );
+
+    let completed = parse_remotion_sidecar_event(
+        r#"SMARTAIHUB_EVENT {"eventType":"completed","outputPath":"/out/render.mp4","durationSec":12.5,"sha256":"abc123","widthPx":1080,"heightPx":1920}"#,
+    )
+    .expect("completed line should parse");
+    assert_eq!(
+        completed,
+        RemotionSidecarEvent::Completed {
+            output_path: "/out/render.mp4".into(),
+            duration_sec: 12.5,
+            sha256: "abc123".into(),
+            width_px: 1080,
+            height_px: 1920,
+        }
+    );
+
+    let failed = parse_remotion_sidecar_event(
+        r#"SMARTAIHUB_EVENT {"eventType":"failed","failureCode":"bundle_failed","message":"webpack error"}"#,
+    )
+    .expect("failed line should parse");
+    assert_eq!(
+        failed,
+        RemotionSidecarEvent::Failed {
+            failure_code: "bundle_failed".into(),
+            message: "webpack error".into(),
+        }
+    );
+
+    // Ordinary log output and unrecognized eventType values must be ignored,
+    // never panic.
+    assert!(parse_remotion_sidecar_event("[Render] Starting render...").is_none());
+    assert!(parse_remotion_sidecar_event(
+        r#"SMARTAIHUB_EVENT {"eventType":"sidecar.started","stage":"startup"}"#
+    )
+    .is_none());
+    assert!(parse_remotion_sidecar_event("SMARTAIHUB_EVENT not-json").is_none());
+}
+
+#[test]
+fn remotion_progress_event_builder_ignores_unknown_stage() {
+    let job = remotion_claimed_job();
+
+    let known = build_remotion_render_video_progress_event(&job, 5, "render_frames", 60, None);
+    assert!(known.is_some());
+    assert_eq!(known.unwrap().payload_json["stage"], "render_frames");
+
+    // An unrecognized stage must never be forwarded — the server rejects
+    // any job.progress event whose stage isn't in the declared list.
+    let unknown = build_remotion_render_video_progress_event(&job, 5, "totally_made_up_stage", 60, None);
+    assert!(unknown.is_none());
+}
+
+#[test]
+fn remotion_failure_event_coerces_unknown_failure_code_to_render_failed() {
+    let job = remotion_claimed_job();
+
+    let known = build_remotion_render_video_failure_event(&job, 9, "bundle_failed", "webpack blew up");
+    assert_eq!(known.payload_json["failureCode"], "bundle_failed");
+
+    let unknown =
+        build_remotion_render_video_failure_event(&job, 9, "not_a_real_code", "sidecar exited 1");
+    assert_eq!(unknown.payload_json["failureCode"], "render_failed");
+    assert_eq!(unknown.event_type, "job.failed");
 }

@@ -490,4 +490,140 @@ describe("workerAuthService", () => {
       statusCode: 401,
     });
   });
+
+  // Rotation is single-use AND non-atomic across the network: the server
+  // revokes the presented jti before the client can persist the replacement.
+  // Without a grace window, a client that never receives or never stores that
+  // response is locked out for the token's full 7-day life, and two of the
+  // Worker App's own refresh drivers racing produces the same 401 on a
+  // perfectly valid connection.
+  describe("refresh reuse grace window", () => {
+    /**
+     * Marks every TOKEN jti as revoked while leaving the
+     * `worker_connection:<id>` denylist key alone. Blanket-revoking would also
+     * trip `assertConnectionNotBlocked`, which reuses the same denylist and
+     * would fail these cases for the wrong reason.
+     */
+    function revokeEveryTokenJti(): void {
+      mockIsJtiRevoked.mockImplementation(async (jti: string) =>
+        !String(jti).startsWith("worker_connection:"),
+      );
+    }
+
+    it("returns the SAME token set when a rotated refresh token is replayed", async () => {
+      const {
+        __clearWorkerRefreshGraceForTests,
+        issueWorkerAccessTokens,
+        refreshWorkerAccessTokens,
+      } = await import("../workerAuthService");
+      __clearWorkerRefreshGraceForTests();
+
+      const tokens = issueWorkerAccessTokens({
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      });
+
+      const first = await refreshWorkerAccessTokens(tokens.refreshToken);
+      // The real server now reports this jti as revoked — the replay must
+      // survive that, which is the whole point of the window.
+      revokeEveryTokenJti();
+      const second = await refreshWorkerAccessTokens(tokens.refreshToken);
+
+      expect(second).toEqual(first);
+    });
+
+    it("does not rotate again on a replay", async () => {
+      const {
+        __clearWorkerRefreshGraceForTests,
+        issueWorkerAccessTokens,
+        refreshWorkerAccessTokens,
+      } = await import("../workerAuthService");
+      __clearWorkerRefreshGraceForTests();
+
+      const tokens = issueWorkerAccessTokens({
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      });
+
+      await refreshWorkerAccessTokens(tokens.refreshToken);
+      const revokeCallsAfterFirst = mockRevokeJti.mock.calls.length;
+      revokeEveryTokenJti();
+      await refreshWorkerAccessTokens(tokens.refreshToken);
+
+      expect(mockRevokeJti.mock.calls.length).toBe(revokeCallsAfterFirst);
+    });
+
+    it("still rejects a revoked token that was never rotated through this process", async () => {
+      const { __clearWorkerRefreshGraceForTests, issueWorkerAccessTokens, refreshWorkerAccessTokens } =
+        await import("../workerAuthService");
+      __clearWorkerRefreshGraceForTests();
+
+      const tokens = issueWorkerAccessTokens({
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      });
+      // No prior rotation → nothing in the grace map → the denylist is absolute.
+      revokeEveryTokenJti();
+
+      await expect(refreshWorkerAccessTokens(tokens.refreshToken)).rejects.toMatchObject({
+        code: "worker_auth_invalid",
+        statusCode: 401,
+      });
+    });
+
+    it("does not extend the grace window to execution tokens", async () => {
+      const {
+        __clearWorkerRefreshGraceForTests,
+        issueWorkerAccessTokens,
+        refreshWorkerAccessTokens,
+        verifyWorkerAccessToken,
+      } = await import("../workerAuthService");
+      __clearWorkerRefreshGraceForTests();
+
+      const tokens = issueWorkerAccessTokens({
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      });
+      await refreshWorkerAccessTokens(tokens.refreshToken);
+      revokeEveryTokenJti();
+
+      // The grace window is a refresh-path concession only. A revoked
+      // execution token must stay dead on every other route.
+      await expect(
+        verifyWorkerAccessToken(tokens.executionToken, { workerId: "worker-1" }),
+      ).rejects.toMatchObject({
+        code: "worker_auth_invalid",
+        statusCode: 401,
+      });
+    });
+
+    it("issues a fresh set for a DIFFERENT refresh token while one is in grace", async () => {
+      const {
+        __clearWorkerRefreshGraceForTests,
+        issueWorkerAccessTokens,
+        refreshWorkerAccessTokens,
+      } = await import("../workerAuthService");
+      __clearWorkerRefreshGraceForTests();
+
+      const first = issueWorkerAccessTokens({
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      });
+      const second = issueWorkerAccessTokens({
+        tenantId: "tenant-1",
+        workerId: "worker-2",
+        runtimeType: "openclaw_gateway",
+      });
+
+      const firstRotation = await refreshWorkerAccessTokens(first.refreshToken);
+      const secondRotation = await refreshWorkerAccessTokens(second.refreshToken);
+
+      expect(secondRotation.executionToken).not.toBe(firstRotation.executionToken);
+    });
+  });
 });

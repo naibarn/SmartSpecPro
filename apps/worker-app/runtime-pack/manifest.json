@@ -21,8 +21,11 @@
   "supportedContractVersions": [
     "2026-06-22"
   ],
-  "runtimeProfileHash": "bb1fd424ee76bce0a015f7cade849e239545e07301d475128858b5826c9d8ee4",
+  "runtimeProfileHash": "aa06737af38c10d23aa2993021fc1ccbbc543b1ed03418c2ce18310a98f1a04c",
   "allowed": true,
   "denyReason": null,
-  "rollbackToVersion": null
+  "rollbackToVersion": null,
+  "remotionSidecarScriptPath": "remotion-sidecar/render.mjs",
+  "remotionRenderPackageVersion": "0.1.2",
+  "remotionVersion": "4.0.496"
 }

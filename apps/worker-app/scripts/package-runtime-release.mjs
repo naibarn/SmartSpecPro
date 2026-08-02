@@ -230,6 +230,17 @@ function createZipArchive(archivePath, sourceRoot) {
     console.warn(`[worker-app] zip command unavailable, falling back to python zipfile: ${message}`);
   }
 
+  // Field incident 2026-07-30 (Lane B smoke render, job failed
+  // `bundle_failed: spawn .../@esbuild/linux-x64/bin/esbuild EACCES`):
+  // `ZipFile.write()` stores a default mode and DROPS the Unix permission
+  // bits, so every executable in the pack (esbuild, node, ffmpeg, ffprobe,
+  // chrome, .so loaders…) arrives on the worker without its +x bit. The
+  // real `zip` binary preserves them, which is why this only ever breaks on
+  // build hosts where `zip` is missing — a silent, build-clean,
+  // run-time-fatal difference between two supposedly equivalent code paths.
+  // Carry st_mode through `external_attr` (high 16 bits) so both paths
+  // produce an identical archive. Symlinks are materialised as regular
+  // files by `zf.write`, matching `zip` without `-y`.
   execFileSync("python3", [
     "-c",
     [
@@ -242,7 +253,12 @@ function createZipArchive(archivePath, sourceRoot) {
       "        for file in files:",
       "            full_path = Path(root) / file",
       "            arcname = full_path.relative_to(source_root).as_posix()",
-      "            zf.write(full_path, arcname)",
+      "            st = full_path.lstat()",
+      "            info = zipfile.ZipInfo.from_file(full_path, arcname)",
+      "            info.external_attr = (st.st_mode & 0xFFFF) << 16",
+      "            info.compress_type = zipfile.ZIP_DEFLATED",
+      "            with open(full_path, 'rb') as src:",
+      "                zf.writestr(info, src.read())",
     ].join("\n"),
     archivePath,
     sourceRoot,
@@ -277,6 +293,30 @@ const bundledHyperframesVersion = requirePackageVersion(hyperframesPackagePath, 
 const producerPackagePath = join(hyperframesDir, "node_modules/@hyperframes/producer/package.json");
 const bundledProducerVersion = requirePackageVersion(producerPackagePath, "@hyperframes/producer");
 const hyperframesSidecarScript = requiredPath("--hyperframes-sidecar-script");
+// Remotion sidecar (planning/worker-app-remotion-render-video/plan.md P1).
+// Optional so existing release invocations that predate the Remotion lane
+// keep working unchanged — when omitted the pack simply ships without
+// `runtime-pack/remotion-sidecar/`, and the Rust executor's own
+// missing-sidecar guard reports a clean failure instead of a crash.
+// Tracked source of truth: apps/worker-app/runtime-sidecar-remotion/render.mjs
+// (runtime-pack/ itself is gitignored — .gitignore:273).
+const remotionSidecarScript = argValue("--remotion-sidecar-script")
+  ? requiredPath("--remotion-sidecar-script")
+  : "";
+// The Remotion sidecar's INSTALLED dependency tree (`node_modules` holding
+// @smartspec/remotion-render + @remotion/bundler + @remotion/renderer).
+// Shipping render.mjs without this produces a pack that fails at first
+// import on a real worker — exactly the class of break
+// `assertReleaseRuntimePack` guards against. Mirrors how the HyperFrames
+// sidecar's deps ride along via `--hyperframes-dir`.
+const remotionSidecarDir = argValue("--remotion-sidecar-dir")
+  ? requiredPath("--remotion-sidecar-dir")
+  : "";
+if (remotionSidecarScript && !remotionSidecarDir) {
+  throw new Error(
+    "--remotion-sidecar-script requires --remotion-sidecar-dir (the installed node_modules tree); shipping the script alone yields a pack that cannot run Remotion jobs",
+  );
+}
 const browserDir = requiredPath("--browser-dir");
 const browserExe = findFile(browserDir, (name) => {
   const lower = name.toLowerCase();
@@ -350,6 +390,27 @@ if (isWsl2Runtime) {
   assertWsl2SharpRuntime(join(stagingRoot, "runtime-pack/hyperframes"));
 }
 copyFileInto(hyperframesSidecarScript, join(stagingRoot, "runtime-pack/hyperframes-sidecar"), "render.mjs");
+if (remotionSidecarScript) {
+  const remotionStaging = join(stagingRoot, "runtime-pack/remotion-sidecar");
+  mkdirSync(remotionStaging, { recursive: true });
+  // Dependency tree first, then the tracked script on top — so the shipped
+  // render.mjs is always the repo's source of truth even if the install
+  // directory happens to hold an older working copy.
+  cpSync(join(remotionSidecarDir, "node_modules"), join(remotionStaging, "node_modules"), {
+    recursive: true,
+  });
+  copyFileInto(join(remotionSidecarDir, "package.json"), remotionStaging, "package.json");
+  copyFileInto(remotionSidecarScript, remotionStaging, "render.mjs");
+  const remotionEntry = join(
+    remotionStaging,
+    "node_modules/@smartspec/remotion-render/dist/index.js",
+  );
+  if (!existsSync(remotionEntry)) {
+    throw new Error(
+      `Remotion sidecar dependency tree is incomplete — missing ${remotionEntry}. Run \`npm install\` in ${remotionSidecarDir} before packaging.`,
+    );
+  }
+}
 cpSync(browserDir, join(stagingRoot, "runtime-pack/browser"), { recursive: true });
 if (isWsl2Runtime) {
   bundleBrowserSharedLibraries(browserExe, join(stagingRoot, "runtime-pack/browser-libs"));
@@ -388,6 +449,12 @@ const manifest = {
   rendererKind: "hyperframes_cli_official",
   sidecarLauncher: "smart-ai-hub-hyperframes-node-launcher",
   sidecarScriptPath: "hyperframes-sidecar/render.mjs",
+  // Remotion lane — declared only when the pack actually ships the sidecar,
+  // so `assertReleaseRuntimePack` (package-windows-release.mjs) can hard-fail
+  // a build whose manifest claims Remotion support the files don't back up.
+  ...(remotionSidecarScript
+    ? { remotionSidecarScriptPath: "remotion-sidecar/render.mjs" }
+    : {}),
   supportedContractVersions: ["2026-06-22"],
   runtimeProfileHash,
   allowed: true,

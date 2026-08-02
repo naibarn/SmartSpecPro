@@ -1590,6 +1590,15 @@ fn extract_expires_at(text: &str, now: time::OffsetDateTime) -> Option<String> {
     extract_iso_expiry(text).or_else(|| extract_relative_expiry(text, now))
 }
 
+/// Thin wrapper so the Tauri command layer can reuse this parser without
+/// needing a clock or the private result type.
+pub fn parse_hermes_device_code_output_for_app(
+    raw_text: &str,
+) -> (Option<String>, Option<String>, Option<String>) {
+    let parsed = parse_hermes_device_code_output(raw_text, time::OffsetDateTime::now_utc());
+    (parsed.user_code, parsed.verification_url, parsed.expires_at)
+}
+
 fn parse_hermes_device_code_output(
     raw_text: &str,
     now: time::OffsetDateTime,

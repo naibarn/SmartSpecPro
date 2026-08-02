@@ -103,6 +103,30 @@ function assertReleaseRuntimePack() {
   if (manifest.rendererKind !== "hyperframes_cli_official") blockedReasons.push("official HyperFrames renderer kind is missing");
   if (manifest.sidecarLauncher !== "smart-ai-hub-hyperframes-node-launcher") blockedReasons.push("official sidecar launcher marker is missing");
   if (manifest.sidecarScriptPath !== "hyperframes-sidecar/render.mjs") blockedReasons.push("official sidecar render script path is missing");
+  // Remotion lane (planning/worker-app-remotion-render-video/plan.md).
+  // The Rust executor spawns `runtime-pack/remotion-sidecar/render.mjs` for
+  // `remotion_render_video` jobs, and that script imports
+  // `@smartspec/remotion-render` + `@remotion/{bundler,renderer}` — so the
+  // installed node_modules tree MUST ship with the pack. Shipping the script
+  // without its dependencies produces an installer that fails at first
+  // import on a real worker machine (silent at build time, fatal at run
+  // time), which is exactly what these guards exist to prevent.
+  if (manifest.remotionSidecarScriptPath !== "remotion-sidecar/render.mjs") {
+    blockedReasons.push("Remotion sidecar render script path is missing from the runtime manifest");
+  }
+  if (!existsSync(join(appDir, "runtime-pack/remotion-sidecar/render.mjs"))) {
+    blockedReasons.push("Remotion sidecar render script is missing");
+  }
+  for (const requiredRemotionModule of [
+    "@smartspec/remotion-render/dist/index.js",
+    "@smartspec/remotion-render/dist/renderVideoJobEntry.js",
+    "@remotion/bundler/package.json",
+    "@remotion/renderer/package.json",
+  ]) {
+    if (!existsSync(join(appDir, "runtime-pack/remotion-sidecar/node_modules", requiredRemotionModule))) {
+      blockedReasons.push(`Remotion sidecar dependency is missing: ${requiredRemotionModule}`);
+    }
+  }
   if (isWsl2Runtime) {
     if (!existsSync(join(appDir, "runtime-pack/node/bin/node"))) blockedReasons.push("bundled WSL2 Linux node binary is missing");
     if (!existsSync(join(appDir, "runtime-pack/bin/ffmpeg"))) blockedReasons.push("bundled WSL2 Linux ffmpeg is missing");

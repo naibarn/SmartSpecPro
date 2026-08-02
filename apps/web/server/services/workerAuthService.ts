@@ -140,6 +140,44 @@ const workerProofNonces = new Map<string, number>();
 const WORKER_PROOF_MAX_SKEW_MS = 5 * 60 * 1000;
 const WORKER_CONNECTION_BLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * Refresh-token reuse grace window.
+ *
+ * Rotation is single-use: presenting a refresh token revokes it and returns a
+ * replacement. That makes the rotation NON-ATOMIC across the network — if the
+ * client never receives or never persists the replacement (process killed,
+ * connection dropped, two of its own drivers racing), the token is spent with
+ * nothing to show for it and the machine is locked out for the token's full
+ * remaining lifetime, up to 7 days, with no self-recovery.
+ *
+ * So for a short window after a successful rotation, replaying the SAME jti
+ * returns the SAME token set instead of 401. This is the standard grace-window
+ * behaviour used by mainstream OAuth implementations. It does widen the reuse
+ * surface for a stolen refresh token, but only to this window, and the request
+ * must still satisfy the device proof bound to the token.
+ */
+const WORKER_REFRESH_GRACE_MS = 60 * 1000;
+
+interface WorkerRefreshGraceEntry {
+  expiresAtMs: number;
+  tokens: { executionToken: string; refreshToken: string; uploadToken: string };
+}
+
+const workerRefreshGrace = new Map<string, WorkerRefreshGraceEntry>();
+
+function pruneWorkerRefreshGrace(now: number): void {
+  for (const [jti, entry] of workerRefreshGrace.entries()) {
+    if (entry.expiresAtMs <= now) {
+      workerRefreshGrace.delete(jti);
+    }
+  }
+}
+
+/** Test seam — resets the in-memory grace window between cases. */
+export function __clearWorkerRefreshGraceForTests(): void {
+  workerRefreshGrace.clear();
+}
+
 export class WorkerAuthError extends Error {
   code: string;
   statusCode: number;
@@ -465,7 +503,17 @@ async function assertTenantFeatureEnabled(
   }
 }
 
-async function verifyBaseWorkerToken(token: string): Promise<TokenClaims> {
+async function verifyBaseWorkerToken(
+  token: string,
+  opts: {
+    /**
+     * Lets the refresh path accept a jti it deliberately revoked moments ago
+     * (see WORKER_REFRESH_GRACE_MS). Every OTHER caller leaves this unset, so
+     * the denylist stays absolute for execution and upload tokens.
+     */
+    allowRevokedJti?: (jti: string) => boolean;
+  } = {},
+): Promise<TokenClaims> {
   let claims: TokenClaims;
   try {
     claims = await verifyBearerToken(token);
@@ -477,7 +525,7 @@ async function verifyBaseWorkerToken(token: string): Promise<TokenClaims> {
   const jti = String(claims.jti || "");
   if (jti) {
     const revoked = await isJtiRevoked(jti);
-    if (revoked) {
+    if (revoked && !opts.allowRevokedJti?.(jti)) {
       throw new WorkerAuthError("worker_auth_invalid", 401, "Worker token has been revoked");
     }
   }
@@ -622,7 +670,16 @@ export async function refreshWorkerAccessTokens(
   refreshToken: string,
   opts: RefreshWorkerAccessTokensOptions = {},
 ): Promise<{ executionToken: string; uploadToken: string; refreshToken: string }> {
-  const claims = await verifyBaseWorkerToken(refreshToken);
+  const now = Date.now();
+  pruneWorkerRefreshGrace(now);
+  // Signature/expiry are verified here, but a jti sitting in the grace window
+  // is NOT yet treated as revoked — the replay still has to pass every other
+  // check below (audience, connection block, token use, device proof) before
+  // the previously-issued set is handed back.
+  const graceCandidate = await verifyBaseWorkerToken(refreshToken, {
+    allowRevokedJti: (jti) => workerRefreshGrace.has(jti),
+  });
+  const claims = graceCandidate;
   assertAudience(claims, WORKER_CONTROL_PLANE_AUDIENCE);
   await assertConnectionNotBlocked(claims);
   if (String(claims.tokenUse || "") !== "worker_refresh" || claims.type !== "refresh") {
@@ -635,9 +692,20 @@ export async function refreshWorkerAccessTokens(
   if (!tenantId || !workerId || !runtimeType) {
     throw new WorkerAuthError("worker_auth_invalid", 401, "Worker refresh token is missing worker binding");
   }
-  await revokeJti(String(claims.jti || ""), tokenExpiryMs(claims));
+
+  const presentedJti = String(claims.jti || "");
+  const graced = presentedJti ? workerRefreshGrace.get(presentedJti) : undefined;
+  if (graced && graced.expiresAtMs > now) {
+    // Replay inside the window: return exactly what the first call returned.
+    // Issuing a NEW set here would rotate again and leave the client holding
+    // whichever of the two responses arrived last — the same lockout this
+    // window exists to prevent.
+    return graced.tokens;
+  }
+
+  await revokeJti(presentedJti, tokenExpiryMs(claims));
   const scopes = (Array.isArray(claims.scopes) ? claims.scopes : []) as WorkerScope[];
-  return issueWorkerAccessTokens({
+  const issued = issueWorkerAccessTokens({
     connectionId: String(claims.workerConnectionId || randomJti("worker_conn")),
     deviceBinding: claims.deviceId && claims.machineFingerprintHash && claims.devicePublicKey
       ? {
@@ -653,6 +721,13 @@ export async function refreshWorkerAccessTokens(
     tenantId,
     workerId,
   });
+  if (presentedJti) {
+    workerRefreshGrace.set(presentedJti, {
+      expiresAtMs: now + WORKER_REFRESH_GRACE_MS,
+      tokens: issued,
+    });
+  }
+  return issued;
 }
 
 export async function verifyWorkerRegistrationToken(
