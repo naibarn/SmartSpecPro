@@ -8,6 +8,19 @@ cycle. The retained journal shows RAM and swap exhaustion, repeated
 database connection timeouts before the unclean reboot. No disk-full, NVMe, or
 kernel-panic evidence was found.
 
+On 2026-07-22 the host hung again with a different mechanism ("reclaim
+purgatory", full RCA in `planning/memory-purgatory-permanent-fix/plan.md`):
+dev/agent workloads pushed `user-1000.slice` to its `MemoryHigh=18G` cap with
+the slice swap allowance pinned at `MemorySwapMax=4G`. With no swappable pages
+left, `memory.high` reclaim could only evict file pages (running code), so the
+kernel throttled the slice indefinitely — 1.16M memory.high events/min, memory
+PSI 88–94% sustained for 20 minutes, while **host RAM still had >5 GB
+available** and the kernel OOM killer never fired. New SSH logins land in the
+same slice via pam_systemd, so the operator was locked out and had to power
+cycle. Production services in `system.slice` stayed healthy throughout.
+Lesson: a `MemoryHigh` band with an exhausted swap ceiling and no killer does
+not degrade — it stalls forever. Every cap needs a matching kill mechanism.
+
 The host runs production services and development/agent workloads together.
 Container memory limits were individually present but their aggregate budget
 exceeded host RAM, and the default Docker swap allowance let pressure spread to
@@ -28,6 +41,28 @@ Celery parents, which increased I/O and worker churn during pressure.
   `MemoryHigh=18G`, `MemoryMax=20G`, and `MemorySwapMax=4G`, leaving headroom
   for production services on this 30 GiB host.
 - `ops/sysctl/99-smartspec-memory.conf` persists `vm.swappiness=10`.
+- **systemd-oomd** (since 2026-07-22): `ManagedOOMMemoryPressure=kill` with a
+  50% pressure limit on `user-1000.slice` (`systemd/user-1000.slice.d/`) and a
+  20s reaction window (`systemd/oomd.conf.d/50-smartspec.conf`). Sustained
+  slice pressure now kills the heaviest descendant cgroup within ~30s instead
+  of stalling the slice. Verify with `sudo oomctl` (the slice must appear
+  under "Memory Pressure Monitored CGroups").
+- **Crash-monitor autokill** (since 2026-07-22): `system-crash-monitor.sh`
+  runs from cron (`cron.service`, i.e. `system.slice`) so it keeps working
+  while the user slice is stalled. If memory PSI ≥60 for 3 consecutive minutes
+  AND `user-1000.slice` throttle events grew ≥50k/min, it SIGKILLs the
+  largest-RSS process in the slice (never `sshd*`/`systemd*`), with a 3-minute
+  cooldown. Tune or disable via `CRASH_MONITOR_AUTOKILL*` env vars; alerts as
+  `autokill_slice_hog` in `logs/system-watch/alerts.log`.
+- **Attribution logging** (since 2026-07-22): the per-minute watch log records
+  `user_slice_mem_mb` / `user_slice_swap_mb`, and snapshots the top-RSS
+  processes (host-wide and slice-only) whenever RAM ≥ warn or PSI ≥ crit —
+  earlier incidents left no record of which process held the memory.
+- **Gap — alert delivery**: webhook is still unconfigured, so alerts only
+  reach `alerts.log` (`[ALERT-SKIP] Webhook not configured`). On 2026-07-22
+  there were 4 hours of warnings nobody saw. Set `ALERT_WEBHOOK_URL` (or
+  `SLACK_WEBHOOK_URL`/`DISCORD_WEBHOOK_URL`) in the cron environment to get
+  paged before a stall.
 
 ## First response
 

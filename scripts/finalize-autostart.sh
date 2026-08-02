@@ -80,6 +80,22 @@ if [ -f "$USER_SLICE_SOURCE" ]; then
     log_info "✓ User workload memory boundary installed"
 fi
 
+# systemd-oomd converts sustained memory pressure in user-1000.slice into a
+# targeted kill instead of an unrecoverable whole-slice stall (2026-07-22
+# incident: PSI 93% purgatory, SSH lockout, power cycle required).
+OOMD_CONF_SOURCE="$SCRIPT_DIR/../systemd/oomd.conf.d/50-smartspec.conf"
+if [ -f "$OOMD_CONF_SOURCE" ]; then
+    log_step "Applying systemd-oomd pressure-kill policy..."
+    install -d -m 0755 /etc/systemd/oomd.conf.d
+    install -m 0644 "$OOMD_CONF_SOURCE" /etc/systemd/oomd.conf.d/50-smartspec.conf
+    if [ ! -x /usr/lib/systemd/systemd-oomd ] && ! command -v systemd-oomd >/dev/null 2>&1; then
+        apt-get install -y systemd-oomd || log_warn "systemd-oomd install failed (offline?); pressure-kill policy inactive until installed"
+    fi
+    systemctl daemon-reload
+    systemctl enable --now systemd-oomd || log_warn "systemd-oomd could not be enabled; pressure-kill policy inactive"
+    log_info "✓ systemd-oomd pressure-kill policy installed"
+fi
+
 AGENT_SLICE_SOURCE="$SCRIPT_DIR/../systemd/system-smartspec-agent.slice"
 if [ -f "$AGENT_SLICE_SOURCE" ]; then
     log_step "Applying bounded agent workload slice..."
