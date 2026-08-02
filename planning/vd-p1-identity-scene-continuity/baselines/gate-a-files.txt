@@ -1,0 +1,7 @@
+server/services/__tests__/verticalDramaVideoMotionPromptGeneration.test.ts
+server/services/__tests__/verticalDramaShotVideoPromptGeneration.test.ts
+server/services/__tests__/verticalDramaJudgedShotVideoPromptGeneration.test.ts
+server/services/__tests__/verticalDramaVideoPromptFormatter.test.ts
+server/services/__tests__/verticalDramaVideoPromptModelFamilyRealSkillFile.test.ts
+server/routers/__tests__/verticalDramaEpisodes.generateShotVideoPrompt.test.ts
+server/routers/__tests__/verticalDramaEpisodes.generateAndPersistSplitShotVideoPrompt.test.ts

@@ -4,6 +4,63 @@ Measurement checkout: `/home/dev/projects/SmartSpecPro`
 
 Measurement SHA at this run: `6086aeabc`
 
+## Feature 139 audit observability and documentation closeout (2026-08-01)
+
+The remaining code-side Feature 139 observability gap is closed. The mutation,
+series creation path, and provider-bound image paths now emit the named
+`vd_series_look_lock_changed` / `vd_series_look_lock_applied` events. Metadata is
+tenant/series/path scoped and never stores prompt fragments. Focused regression
+coverage asserts update/conflict event semantics and the applied-event payload.
+
+Feature 137/138/139 spec headers and the Section 14 boundary now distinguish
+implemented code from pending internal rollout evidence. Feature 137 P3 is now
+implemented behind a default-on flag with explicit tenant opt-out; only
+external rollout/calibration evidence remains.
+
+## Feature 137/138 P2 implementation update (2026-08-01)
+
+The first P2 wave is now in the code path behind default-on flags (explicit
+tenant opt-out remains supported):
+
+- Feature 138 `runFrameContinuityQc` sends the current frame, same-scene
+  neighbor, approved location plate, and Scene Visual State through one shared
+  advisory vision skill; findings persist on `frames[].sceneContinuity` and in
+  the existing `start_frame_image` QC report stage. Missing images/provider
+  errors are fail-open and never block paid generation.
+- Feature 137 adds the shared `runStartFrameVideoSafetyQc` path,
+  `generateVideoSafeStartFrame`, `setVideoStartFrameAsset`, dual-role
+  `videoStartMediaAssetId` resolution at video-render time, and plan/asset-map
+  carry-over. The video-safe directive is user-triggered and does not replace
+  the emotional `approvedMediaAssetId`.
+- Feature 138 location coverage roles (`reverse_angle`, `side_angle`,
+  `detail_corner`) and `gapDescription` now flow through preview/generation,
+  attach the approved primary plate as the reference, and are preserved in
+  task metadata for the picker.
+
+Focused P2/P1 rerun: **12 files, 302 passed / 1 failed**. The sole failure is
+the pre-existing location MCP model-picker assertion (`verticalDramaLocations.test.ts`);
+the new coverage test passes. `git diff --check` is clean for the touched VD
+surface. Full repository typecheck remains unsuitable as a gate in this dirty
+checkout; the earlier baseline error set is unrelated.
+
+## Feature 137 P3 implementation update (2026-08-01)
+
+- Python `media`-queue task `extract_clip_qc_frames` samples four bounded
+  positions sequentially (`ffmpeg`, 30-second per-frame timeout) and rehosts
+  JPEGs to R2. The internal endpoint is token-protected and supports a bounded
+  wait/poll contract.
+- Node `runClipIdentityQc` resolves the approved/video-safe start frame plus
+  facing-aware angle-pack references, runs one multimodal call through the new
+  `vertical-drama-clip-identity-qa` skill, persists `clips[].identityQc`, and
+  writes a `video_clip` QC report. Generated and manually imported clips use
+  the same advisory path; no automatic regeneration is present.
+- Sampling/provider/vision failures persist `samples_unavailable` and never
+  block the clip. The storyboard card exposes a status badge, issue note, and
+  manual re-check action. The default-on `verticalDramaClipIdentityQc` flag
+  enables the completed path immediately unless a tenant explicitly opts out.
+- New focused evidence: shared contract tests **2 passed**; Python endpoint
+  tests **2 passed** (coverage threshold is a repository-wide baseline gate).
+
 ## Feature 138 P1b implementation update (2026-08-01)
 
 Neighbor anchoring is now implemented behind the child canary
@@ -73,14 +130,14 @@ tree rather than a clean merge artifact.
 
 ## Remaining work by specification
 
-- Feature 137: run the internal labeled P1 rollout rubric (at least 30
-  start-frame/motion fixtures and manual-regen observation across at least 3
-  episodes), then decide P1 GA. P2 video-safe frames/angle packs and P3 clip
-  identity QC remain explicitly deferred.
-- Feature 138: run the P1a internal same-scene rubric (at least 30 consecutive
-  frame pairs from at least 3 episodes). P1b neighbor anchoring is a separate
-  canary requiring latency, anchor coverage, and prompt/render asset-id
-  evidence; P2 coverage packs and continuity QC remain deferred.
+- Feature 137: run the internal labeled P1/P2/P3 rollout rubric (at least 30
+  start-frame/motion/clip-QC fixtures and manual-regen observation across at
+  least 3 episodes), then decide GA. Live provider/browser evidence and
+  calibration remain operational gates; code-side P3 sampling/QC is complete.
+- Feature 138: run the P1a/P2 internal same-scene rubric (at least 30
+  consecutive frame pairs from at least 3 episodes). P1b neighbor anchoring
+  and P2 QC/coverage are separate canaries requiring latency, anchor coverage,
+  and prompt/render asset-id evidence.
 - Feature 139: run internal genre-quality labeling (at least 45 shot pairs,
   one 9-shot episode per genre) and verify no duplicate look fragments,
   identity regressions, stale writes, or cross-tenant access before GA.
@@ -146,13 +203,33 @@ this report as `typecheck-before.txt` and `typecheck-after.txt`.
 The browser smoke checklist and a paid real-LLM run are documented in the
 runbook but were not executed in this local pass because this checkout has no
 internal tenant credentials, provider authorization, or safe production restart
-authority. The implementation therefore remains default-off and fail-closed;
-the first internal rollout must attach those screenshots, request IDs, and
-real-LLM evaluator report before GA.
+authority. The implementation is now default-on with explicit tenant opt-out;
+the first internal rollout must still attach those screenshots, request IDs,
+and real-LLM evaluator report before GA.
 
 ## Explicit scope boundary
 
-Feature 138 P1a (scene state, lock, mutation, and UI) and Feature 139 P1 are in
-the code path. Feature 138 P1b neighbor anchoring, location coverage packs, and
-continuity QC remain deferred as specified; enabling them requires a separate
-canary and a new verification pass.
+Feature 138 P1a/P1b and the first P2 continuity-QC/coverage wave, plus Feature
+139 P1 and Feature 137 P1/P2/P3 identity/QC wiring, are in the code path. The
+completed 137/138/139 flags are default-on; explicit tenant opt-out remains
+available. Internal paid-provider/browser and labeled-calibration evidence is
+still required before GA. No production/provider evidence was fabricated.
+
+## P2 UI/API completion update (2026-08-01)
+
+- Feature 137 shot cards now expose advisory continuity/video-safety badges,
+  user-triggered QC actions, a separate video-start-frame thumbnail, and a
+  clear action that restores approved-frame fallback. `setVideoStartFrameAsset`
+  now accepts `null` for that clear operation.
+- Feature 138 location coverage now has the named
+  `generateLocationCoverageImage` API (parent + child flag gated), role/gap
+  controls on the Location Visual Bible card, and a missing-angle CTA sourced
+  from `coverageGaps`. Existing location asset listing now preserves role and
+  metadata so the gallery can label coverage assets without a schema change.
+- Focused UI forwarding/panel suites plus the character angle-pack surface:
+  444/444 passed (the original shared/router/coverage set was 313/313, with
+  131 character-stock/router tests added). During closeout, the MCP
+  model-picker missing-connection path was made fail-closed (BAD_REQUEST)
+  instead of silently falling back to gateway routing. No new changed-surface
+  TypeScript errors were reported; repository-wide typecheck remains blocked
+  by the existing unrelated baseline errors listed above.

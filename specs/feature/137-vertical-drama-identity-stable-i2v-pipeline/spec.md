@@ -1,8 +1,8 @@
 # Feature 137: Vertical Drama Identity-Stable Image-to-Video Pipeline — Video-Safe Start Frames, Face-Observability QC, and Motion Contracts
 
-Version: 1.3.0
+Version: 1.9.0
 Date: 2026-08-01
-Status: P1 implementation complete; current-worktree Gate A/B revalidated with no new failure identity; internal real-LLM/browser smoke pending
+Status: P1/P2/P3 code complete; 137/138/139 consistency flags are default-on with explicit tenant opt-out preserved; live provider/browser evidence and labeled rollout calibration pending
 Author: Conductor session with CMD-1/2/3/4 exploration agents (facts verified in code 2026-07-23)
 Priority: P1 (quality-critical for the drama-series product)
 Depends-on:
@@ -27,6 +27,10 @@ Source reference: user brief + follow-up 2026-07-23 — see `request.md` in this
 | 1.2.0 | 2026-07-23 | Prompt-philosophy + provider-scoping revision (user direction): new core principle §5.9 "Lock, don't describe" — prompt = story synopsis + only the locked controls, emotional imagination delegated to the render model; §9.3 video-safe directive rides the sub-episode's ACTIVE prompt engine (synopsis engine on GPT-family incl. gpt-image-2) as a compact lock, §14 both-engines row; §9.5.4 capacity values scoped to the kie.ai `gpt-image-2` row ONLY — Magnific (REST) / Higgsfield (MCP) keep existing defaults. |
 | 1.3.0 | 2026-08-01 | Current-worktree reconciliation: P1 is the approved implementation scope; P2/P3 remain deferred. Uses long-form tenant flag `verticalDramaMotionContracts`; limits structured `motionProfile` persistence to per-shot/subshot paths; keeps bulk-pack changes prose-only; moves runner-side `camera_motion` prose matching to P2; treats model budgets/reference caps as selected-model capabilities rather than a permanent primary-model assumption. |
 | 1.4.0 | 2026-08-01 | Implementation and Section 14 evidence landed: flag-off parity fixtures, joint flag suite, mutation/workspace coverage, and an opt-in real-LLM evaluator. The feature remains default-off until the final baseline gates and internal smoke are attached. |
+| 1.6.0 | 2026-08-01 | P2 UI completion: storyboard cards now surface continuity/video-safety badges, QC actions, and the separate video-start-frame thumbnail with clear/fallback. Angle-pack generation and P3 clip sampling remain deferred. |
+| 1.7.0 | 2026-08-01 | P2 angle-pack wave: added flag-gated three-slot character angle generation, durable angle roles, explicit review-queue linking, and stock-level facing-aware lookup with primary fallback. P3 clip sampling and live provider/browser evidence remain pending. |
+| 1.8.0 | 2026-08-01 | P3 closeout wave: added media-queue sequential ffmpeg sampling + R2 rehost, one-call clip identity skill/QC persistence, generated/imported auto-trigger, clip badge/manual re-check, and facing-aware angle selection with primary fallback. Live provider/browser evidence remains a rollout gate. |
+| 1.9.0 | 2026-08-01 | Enabled the completed 137/138/139 consistency flags by default while preserving explicit tenant opt-out; added admin controls for P2/P3 flags. |
 
 ### Approved implementation scope (2026-08-01)
 
@@ -37,8 +41,16 @@ Source reference: user brief + follow-up 2026-07-23 — see `request.md` in this
 - The bulk motion-prompt pack receives conditional motion-safety prose only. It
   does not emit or persist `motionProfile`, because it has no attached start frame
   from which to infer a grounded start-facing value.
-- Defer video-safe start frames, character angle packs, post-render observability,
-  and post-video identity QC to measured P2/P3 follow-ups.
+- P2 shared start-frame QA, dual-role video-safe anchors, and the first
+  character angle-pack generation/review flow are implemented behind
+  `verticalDramaVideoSafeStartFrames` (default on; explicit tenant opt-out remains supported); the vision result is
+  fail-open and user-triggered. Facing-aware downstream selection is additive
+  and falls back to the primary portrait when no matching approved angle exists.
+  P3 post-video identity QC is implemented behind `verticalDramaClipIdentityQc`
+  (default on; explicit tenant opt-out remains supported): Python media-queue sampling is sequential/rehosted, Node runs
+  one vision call per clip, and both generated/imported clips persist advisory
+  verdicts with manual-only repair. Sampling/vision failures remain visible as
+  `samples_unavailable` and never block or auto-spend.
 - Resolve prompt/reference capacity from the selected model's current registry/DB
   capabilities. The kie.ai `gpt-image-2` values below remain a verified provider
   example, not a permanent routing assumption; Seedream and later models keep
@@ -848,7 +860,7 @@ skill calls and disabled with their flag.
 
 ## 19. Feature flags and rollout
 
-| Flag (tenant, default OFF) | Gates |
+| Flag (tenant, default ON) | Gates |
 |---|---|
 | `verticalDramaMotionContracts` | P1: per-shot/subshot contract request lines, judge facts, frame_analysis field requests + gate widening (§8.1), bulk prose guidance, and draft-time guidance injection |
 | `verticalDramaVideoSafeStartFrames` | P2: post-render QC, video-safe regen + dual-asset resolution, angle packs, advisory chip |

@@ -1,8 +1,8 @@
 # Feature 138: Vertical Drama Scene Continuity Engine — Scene Visual State Locks, Sequential Frame Anchoring, Location Coverage Packs, and Continuity QC
 
-Version: 1.3.0
+Version: 1.7.0
 Date: 2026-08-01
-Status: P1a implementation complete; P1b neighbor-anchor canary deferred; current-worktree Gate A/B revalidated with no new failure identity; internal smoke pending
+Status: P1a/P1b/P2 code complete; shared continuity QC, default-visible shot badges, and location-coverage role/gap flow are default-on with explicit tenant opt-out; internal smoke and rollout evidence pending
 Author: Conductor session with CMD-2/4 exploration agent (facts verified in code 2026-07-23)
 Priority: P1 (quality-critical for the drama-series product; sibling of Feature 137)
 Depends-on:
@@ -24,7 +24,9 @@ Source reference: user report + 3-consecutive-shot evidence 2026-07-23 — see `
 | 1.1.0 | 2026-07-23 | Adopts the per-model prompt budget of 137 §9.5 (primary model kie.ai `gpt-image-2`: ≤20,000-char prompts, ≤16 input images): §7.4 budget wording, §8.3 capacity note — the scene lock block no longer competes with the flat 3800 cap on the primary model. |
 | 1.2.0 | 2026-07-23 | Lock-lean revision (user direction, 137 §5.9): the SCENE CONTINUITY LOCK injects as a compact constraint lock — locked facts only, emotional interpretation delegated to the render model (§7.4); provider scoping inherited from 137 §9.5.4 (kie.ai `gpt-image-2` row only; Magnific/Higgsfield keep existing defaults). |
 | 1.3.0 | 2026-08-01 | Current-worktree reconciliation: P1 is staged into C1 Scene Visual State Lock first and C2 Neighbor Anchor canary second; uses long-form flags; records selected-model capacity and serial-per-scene latency; corrects the actual location-data source; and requires Feature 140's object ledger to own prop persistence instead of duplicating it in `active_props`. |
-| 1.4.0 | 2026-08-01 | P1a scene-state planning, lock injection, optimistic-concurrency mutations, and minimal UI are implemented and covered by focused tests. P1b neighbor anchoring remains an explicit later canary; rollout evidence is recorded in the Section 14 verification report. |
+| 1.4.0 | 2026-08-01 | P1a scene-state planning, lock injection, optimistic-concurrency mutations, minimal UI, and P1b neighbor anchoring are implemented behind the staged flags. P1b remains a separate internal canary for latency and anchor-coverage evidence; rollout evidence is recorded in the Section 14 verification report. |
+| 1.6.0 | 2026-08-01 | P2 UI/API completion: continuity badges and user-triggered checks are visible on shot cards; location coverage role selector, missing-angle CTA, and named `generateLocationCoverageImage` route are wired to the existing renderer. Vision/browser evidence remains pending. |
+| 1.7.0 | 2026-08-01 | Enabled the completed 137/138/139 consistency flags by default while preserving explicit tenant opt-out; admin controls now include continuity QC. |
 
 ### Approved staged implementation scope (2026-08-01)
 
@@ -33,6 +35,12 @@ Source reference: user report + 3-consecutive-shot evidence 2026-07-23 — see `
   persistence/carry-over, manual edit API, and minimal provenance UI.
 - Stage P1b: Neighbor anchoring behind dedicated flag
   `verticalDramaSceneNeighborAnchors`, rolled out as a separate internal canary.
+- Stage P2: Advisory frame continuity QC behind
+  `verticalDramaSceneContinuityQc` (AND-gated by Scene Continuity; default-on with explicit tenant opt-out), plus
+  `reverse_angle`/`side_angle`/`detail_corner` location coverage roles and
+  planner gap directives. Findings never block paid generation; provider smoke
+  and UI evidence are still required before GA; the completed flags are
+  default-on with explicit tenant opt-out.
   Batch generation may run scenes in parallel, but
   shots within one scene must run sequentially so a generated predecessor can be
   used before any frame is approved. Measure latency and anchor-drop events before
@@ -564,7 +572,7 @@ multi-shot precondition; membership-hash idempotency prevents duplicate charge.
 
 ## 17. Feature flags and rollout
 
-| Flag (tenant, default OFF) | Gates |
+| Flag (tenant, default ON) | Gates |
 |---|---|
 | `verticalDramaSceneContinuity` | P1a: state planner + injection (image + video prompts) and §7.5 clause |
 | `verticalDramaSceneNeighborAnchors` | P1b only: anchor resolution, persisted provenance, prompt/render attachment, and serial-per-scene batch scheduling |

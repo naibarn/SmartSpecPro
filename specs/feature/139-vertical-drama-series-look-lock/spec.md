@@ -1,6 +1,6 @@
 # Feature 139: Vertical Drama Series Look Lock — One Visual Direction for Every Shot
 
-Version: 1.1.0
+Version: 1.4.0
 Date: 2026-08-01
 Status: P1 implementation complete; automated interaction gates revalidated; internal genre-quality rollout evidence pending
 Priority: P1 (quality-critical; user-reported, and the fix is mostly wiring)
@@ -15,6 +15,8 @@ Source: user report 2026-07-23 — "ตอนเดียวกัน แต่�
 | 1.0.0 | 2026-07-23 | Initial look-lock proposal and current-state audit. |
 | 1.1.0 | 2026-08-01 | Approved P1 reconciliation: retain the existing `VerticalDramaPresetVisualIdentity` slot, add one editable series look with provenance, wire every image-authoring path, use a dedicated default-off flag, and land in the shared 137/138 P1 builder bundle. No preset backfill or video color-grade work. |
 | 1.2.0 | 2026-08-01 | Code integration is complete behind `verticalDramaSeriesLookLock` (default off). Joint flag tests cover coexistence with Features 137/138; internal genre-quality labeling and GA rollout remain operational gates. |
+| 1.3.0 | 2026-08-01 | Added the named `vd_series_look_lock_changed` and `vd_series_look_lock_applied` audit events with prompt-fragment-free metadata and path coverage across create and image-producing routes. |
+| 1.4.0 | 2026-08-01 | Enabled the completed 137/138/139 consistency flags by default while preserving explicit tenant opt-out; admin flag surfaces now expose the full set of consistency controls. |
 
 ### Approved implementation scope (2026-08-01)
 
@@ -25,7 +27,8 @@ Source: user report 2026-07-23 — "ตอนเดียวกัน แต่�
 - Add the five-entry editable catalog, create/settings UI, provenance, batch and
   per-shot injection, and conditional same-register skill clauses.
 - Keep `canonical_style_bible` one-way in P1: the series lock constrains
-  storyboard authoring; the episode value remains a display artifact.
+  storyboard authoring; the episode value remains a display artifact. The
+  completed look-lock flag is default-on with explicit tenant opt-out.
 - Keep video prompt shaping and ffmpeg color grading out of scope.
 
 ---
@@ -336,7 +339,8 @@ now. Full bidirectional wiring is P2.
 ## 5. Flag and rollout
 
 Reuse **`verticalDramaSeriesPresetMixV2`**? No — that flag gates preset *mixing*
-and defaults off. Add `verticalDramaSeriesLookLock` (tenant, default OFF), gating:
+and remains independently controlled. `verticalDramaSeriesLookLock` (tenant,
+default ON with explicit opt-out) gates:
 catalog exposure in the UI, persistence of a genre-sourced lock, and the new batch
 injection. The pre-existing preset-derived path keeps its own flag and behavior via
 the source-aware resolver in §3.1a; turning the new flag off makes genre/manual data
