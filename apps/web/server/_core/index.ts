@@ -174,6 +174,10 @@ import {
   initVideoIntelligenceJobsQueue,
   closeVideoIntelligenceJobsQueue,
 } from "../services/videoIntelligenceJobs";
+import {
+  initVerticalDramaEpisodeStageJobsQueue,
+  closeVerticalDramaEpisodeStageJobsQueue,
+} from "../services/verticalDramaEpisodeStageJobs";
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
@@ -285,6 +289,25 @@ app.use(
 // Generated full-slide presentation imports can carry provider-returned data URLs
 // before the media asset is persisted behind a storage URL.
 app.use("/trpc/presentation.addSlide", express.json({ limit: "50mb" }));
+
+// The series watermark upload posts the file as a base64 data URL, which
+// inflates by ~4/3 — a 10MB logo (the cap the UI advertises and the procedure
+// enforces on the decoded bytes) is ~13.4MB of JSON and would otherwise be
+// rejected by the 10MB default below before reaching the procedure.
+app.use(
+  "/trpc/verticalDramaSeries.uploadSeriesWatermarkImage",
+  express.json({ limit: "16mb" }),
+);
+
+// Same base64 inflation for the staged auto-review final-render image overlay
+// (the marketplace twin of the watermark upload above): the drop zone caps the
+// file at 10MB client-side, which is ~13.4MB once base64-encoded, so the 10MB
+// default below would reject it as an opaque 413 before the procedure's own
+// size/extension/magic-byte validation ever ran.
+app.use(
+  "/trpc/marketplaceCapture.uploadStagedAutoReviewOverlayImage",
+  express.json({ limit: "16mb" }),
+);
 
 // Default JSON body limit — 10MB covers all normal API requests.
 // Upload routes use raw body or multipart, not JSON, so they're unaffected.
@@ -531,20 +554,46 @@ app.use('/uploads', express.static(uploadsDir, {
 // Supports HTTP Range requests for video seeking.
 app.get("/api/storage/files/*", async (req, res) => {
   try {
-    const key = normalizeManagedMediaKey((req.params as any)[0] || "");
-    if (!key) {
+    const rawKey = normalizeManagedMediaKey((req.params as any)[0] || "");
+    if (!rawKey) {
       res.status(400).json({ error: "Invalid storage key" });
       return;
     }
-    if (isProtectedAutoTeamMediaKey(key)) {
+    if (isProtectedAutoTeamMediaKey(rawKey)) {
       res.status(404).json({ error: "File not found" });
       return;
     }
 
     const range = req.headers.range;
-    const result = await storageStreamFile(key, range);
+    let key = rawKey;
+    let isJpgConversion = false;
+    let result = await storageStreamFile(key, range);
+    if (!result && (key.endsWith(".jpg") || key.endsWith(".jpeg"))) {
+      const webpKey = key.replace(/\.jpe?g$/i, ".webp");
+      const webpResult = await storageStreamFile(webpKey, range);
+      if (webpResult) {
+        result = webpResult;
+        isJpgConversion = true;
+      }
+    }
     if (!result) {
       res.status(404).json({ error: "File not found or storage not configured" });
+      return;
+    }
+
+    if (isJpgConversion || (key.endsWith(".jpg") && result.contentType.includes("webp"))) {
+      const sharp = (await import("sharp")).default;
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      const nodeStream = result.stream as NodeJS.ReadableStream;
+      const transformStream = sharp().jpeg({ quality: 90 });
+      if (typeof (nodeStream as any).pipe === "function") {
+        (nodeStream as any).pipe(transformStream).pipe(res);
+      } else {
+        res.status(500).json({ error: "Cannot convert stream" });
+      }
       return;
     }
 
@@ -1711,6 +1760,16 @@ async function main() {
     console.error("[Startup] Failed to initialize video intelligence jobs queue:", error);
   }
 
+  // Initialize Vertical Drama Episode Stage Jobs queue (BullMQ — async
+  // `storyboard_shotgrid` runStage generation, bug #127). Without this init
+  // the router's submit path still inserts the `queued` run row but the
+  // enqueue is a silent no-op, leaving the run stuck at `queued` forever.
+  try {
+    await initVerticalDramaEpisodeStageJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama episode stage jobs queue:", error);
+  }
+
   // Initialize Webhook API Delivery queue (BullMQ — outbound delivery to external webhook endpoints)
   try {
     await initWebhookApiDeliveryQueue();
@@ -2072,6 +2131,7 @@ process.on("SIGTERM", async () => {
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
+  await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
@@ -2140,6 +2200,7 @@ process.on("SIGINT", async () => {
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
+  await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
