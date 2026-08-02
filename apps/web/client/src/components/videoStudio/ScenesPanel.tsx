@@ -1,10 +1,17 @@
 /**
- * Scenes stage panel (Feature 133, section-08) — consolidates the plan's
+ * Scenes stage panel (Feature 133, section-08; reworked in Feature 142,
+ * section-07 now that `runScenePlanStage` is real) — consolidates the plan's
  * "Content" and "Scenes" stages into one scene-list editor (both operate on
  * the same `document.scenes` array; there is no separate underlying data
  * structure to justify two panels — documented UI simplification).
  * Add/remove scenes, edit timing + narration text. Visual/motion template
  * assignment lives in `MotionPanel` (a separate concern).
+ *
+ * The AI scene-plan launch goes through `StageEstimateDialog` (D4) with a
+ * `fill_empty` (default, additive) / `replace` (destructive) re-run mode
+ * selector; `replace` requires an explicit destructive acknowledgement
+ * before Confirm (spec §6.7) — the previous document survives as a
+ * revertable revision either way.
  *
  * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
  * components directly, which `AppPage.tsx`'s docstring says should never
@@ -14,18 +21,22 @@
  * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
  * violation of that rule.
  */
+import { useEffect, useRef, useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 
+import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { IconButton } from "@astryxdesign/core/IconButton";
 import { HStack, VStack } from "@astryxdesign/core/Layout";
 import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { Selector } from "@astryxdesign/core/Selector";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { trpc } from "@/lib/trpc";
 import type { Scene, VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
-import { NotWiredJobCard } from "./NotWiredJobCard";
+import { StageEstimateDialog, type StageEstimate } from "./StageEstimateDialog";
+import { StageLaunchCard } from "./StageLaunchCard";
 import { useGenerationJobPoll } from "./useGenerationJobPoll";
 import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
 
@@ -36,21 +47,74 @@ function nextSceneId(scenes: Scene[]): string {
   return `scene-${n}`;
 }
 
+type ScenePlanMode = "fill_empty" | "replace";
+
+/** Maps section-05's fail-closed planner errors to specific, reassuring copy
+ *  (the document was left unchanged in every case). Anything else falls
+ *  through to `StageLaunchCard`'s own `renderableJobError` (FE03). */
+function describeScenePlanError(lang: VideoStudioLang, error: string | null | undefined): string | null {
+  if (!error) return null;
+  if (error.startsWith("VI_PLAN_LAYER_BUDGET_EXCEEDED")) return pickCopy(lang, videoStudioCopy.planLayerBudget);
+  if (error.startsWith("VI_PLAN_TIMELINE_INVALID")) return pickCopy(lang, videoStudioCopy.planTimelineInvalid);
+  if (error.startsWith("VI_PLAN_TEMPLATE_UNKNOWN")) return pickCopy(lang, videoStudioCopy.planTemplateUnknown);
+  if (error.startsWith("VI_PLAN_PARAMS_INVALID")) return pickCopy(lang, videoStudioCopy.planParamsInvalid);
+  return null;
+}
+
 export function ScenesPanel({
   lang,
   projectId,
   document,
   onChange,
+  projectRevision,
+  hasUnsavedChanges,
+  onDocumentSaved,
 }: {
   lang: VideoStudioLang;
   projectId: number;
   document: VideoProjectDocument;
   onChange: (next: VideoProjectDocument) => void;
+  projectRevision: number;
+  hasUnsavedChanges: boolean;
+  /** Fired once per terminal `scene_plan` job so the draft is refreshed from
+   *  the server — otherwise the next Save silently overwrites the AI's plan
+   *  (spec §6.4). */
+  onDocumentSaved: () => void;
 }) {
   const scenePlanPoll = useGenerationJobPoll(projectId, "scene_plan");
+  const [estimateOpen, setEstimateOpen] = useState(false);
+  const [mode, setMode] = useState<ScenePlanMode>("fill_empty");
+  const handledJobId = useRef<string | null>(null);
+
+  const estimateQuery = trpc.videoProjects.getStageEstimate.useQuery(
+    { projectId, stage: "scene_plan" },
+    { enabled: estimateOpen, staleTime: 0 },
+  );
+
   const runScenePlan = trpc.videoProjects.runScenePlanStage.useMutation({
-    onSuccess: (result) => scenePlanPoll.setJobId(result.jobId),
+    onSuccess: (result) => {
+      scenePlanPoll.setJobId(result.jobId);
+      setEstimateOpen(false);
+    },
   });
+
+  useEffect(() => {
+    if (
+      scenePlanPoll.jobStatus?.status === "succeeded" &&
+      scenePlanPoll.jobId &&
+      handledJobId.current !== scenePlanPoll.jobId
+    ) {
+      handledJobId.current = scenePlanPoll.jobId;
+      onDocumentSaved();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenePlanPoll.jobStatus?.status, scenePlanPoll.jobId]);
+
+  const mappedError = describeScenePlanError(lang, scenePlanPoll.jobStatus?.error);
+  const jobStatusForCard =
+    scenePlanPoll.jobStatus && mappedError
+      ? { ...scenePlanPoll.jobStatus, error: null }
+      : scenePlanPoll.jobStatus;
 
   function updateScene(index: number, patch: Partial<Scene>) {
     const scenes = document.scenes.map((scene, i) => (i === index ? { ...scene, ...patch } : scene));
@@ -84,18 +148,62 @@ export function ScenesPanel({
     onChange({ ...document, scenes: document.scenes.filter((_, i) => i !== index) });
   }
 
+  const blockedReason = hasUnsavedChanges
+    ? { title: pickCopy(lang, videoStudioCopy.unsavedChanges), body: pickCopy(lang, videoStudioCopy.saveBeforeRunning) }
+    : null;
+
+  const destructive =
+    mode === "replace"
+      ? {
+          title: pickCopy(lang, videoStudioCopy.scenePlanModeReplace),
+          body: pickCopy(lang, videoStudioCopy.scenePlanReplaceWarning),
+        }
+      : null;
+
   return (
     <div className="flex flex-col gap-4" data-testid="video-studio-scenes-panel">
-      <NotWiredJobCard
+      <StageLaunchCard
         lang={lang}
         title={pickCopy(lang, { th: "วางแผนฉากด้วย AI", en: "AI scene planning" })}
         buttonLabel={pickCopy(lang, videoStudioCopy.runScenePlan)}
         icon={<Sparkles className="h-4 w-4" />}
         testId="video-studio-run-scene-plan"
-        jobStatus={scenePlanPoll.jobStatus}
-        disabled={runScenePlan.isPending}
-        onRun={() => runScenePlan.mutate({ projectId })}
-      />
+        jobStatus={jobStatusForCard}
+        blockedReason={blockedReason}
+        isPending={runScenePlan.isPending}
+        onRun={() => setEstimateOpen(true)}
+      >
+        <Selector
+          label={pickCopy(lang, videoStudioCopy.scenePlanMode)}
+          data-testid="video-studio-scene-plan-mode"
+          options={[
+            { value: "fill_empty", label: pickCopy(lang, videoStudioCopy.scenePlanModeFillEmpty) },
+            { value: "replace", label: pickCopy(lang, videoStudioCopy.scenePlanModeReplace) },
+          ]}
+          value={mode}
+          onChange={(value) => setMode(value as ScenePlanMode)}
+        />
+      </StageLaunchCard>
+
+      {mappedError ? (
+        <Banner status="error" data-testid="video-studio-scene-plan-error" title={mappedError} />
+      ) : null}
+
+      {estimateOpen ? (
+        <StageEstimateDialog
+          lang={lang}
+          open={estimateOpen}
+          onOpenChange={setEstimateOpen}
+          stage="scene_plan"
+          estimate={estimateQuery.data as StageEstimate | undefined}
+          isLoading={estimateQuery.isLoading}
+          error={estimateQuery.error?.message}
+          destructive={destructive}
+          isConfirming={runScenePlan.isPending}
+          onConfirm={() => runScenePlan.mutate({ projectId, baseRevision: projectRevision, mode })}
+        />
+      ) : null}
+
       {document.scenes.map((scene, index) => (
         <Card key={scene.sceneId} data-testid={`video-studio-scene-${scene.sceneId}`}>
           <VStack gap={3}>

@@ -62,13 +62,6 @@ export const videoStudioCopy = {
   stageQa: { th: "ตรวจสอบคุณภาพ", en: "QA" },
   stageRender: { th: "เรนเดอร์", en: "Render" },
 
-  /* Not-wired stage notice (VI_*_NOT_WIRED — never hidden, always explained) */
-  notWiredTitle: { th: "ขั้นตอนนี้ยังไม่พร้อมใช้งาน", en: "This stage is not yet available" },
-  notWiredBody: {
-    th: "ขั้นตอนนี้เชื่อมต่อระบบคิวงานแล้ว แต่ยังไม่เชื่อมกับโมเดล AI ในเฟสนี้ คุณสามารถข้ามไปตรวจสอบ/แก้ไขเองได้",
-    en: "This stage is fully wired to the job queue, but not yet connected to an AI model in this phase. You can review/edit manually and continue.",
-  },
-
   runScenePlan: { th: "สร้างแผนฉากด้วย AI", en: "Generate scene plan (AI)" },
   runNarration: { th: "สร้างเสียงบรรยาย (TTS)", en: "Generate narration (TTS)" },
   runQualityReview: { th: "ตรวจสอบคุณภาพด้วย AI", en: "Run AI quality review" },
@@ -101,4 +94,107 @@ export const videoStudioCopy = {
     th: "งานล้มเหลว กรุณาลองใหม่อีกครั้งหรือติดต่อผู้ดูแลระบบ",
     en: "The job failed. Please try again or contact support.",
   },
+
+  /* Section-07 — estimate -> confirm gate (D4) */
+  stageFailedTitle: { th: "ขั้นตอนล้มเหลว", en: "Stage failed" },
+  estimateTitle: { th: "ประมาณการเครดิตก่อนเริ่ม", en: "Credit estimate before running" },
+  estimateCeiling: { th: "ใช้เครดิตอย่างมาก", en: "At most" },
+  estimateTypical: { th: "โดยทั่วไปประมาณ", en: "Typically about" },
+  estimateCeilingNote: {
+    th: "เป็นเพดานสูงสุด (ตรวจ + ซ่อม + ตรวจซ้ำ ต่อรอบ) การเรียกเก็บจริงคิดตามจำนวนโทเค็นที่ใช้จริง",
+    en: "This is a ceiling (review + repairs + re-review per round). Actual billing follows real token usage.",
+  },
+  estimateModel: { th: "โมเดลที่ใช้", en: "Model" },
+  estimateMaxLoops: { th: "จำนวนรอบสูงสุด", en: "Max rounds" },
+  estimateBasis: { th: "ที่มาของตัวเลข", en: "Why this number" },
+  estimateConfirm: { th: "ยืนยันและเริ่ม", en: "Confirm and run" },
+  noRecommendedModel: {
+    th: "ยังไม่มีโมเดลที่แนะนำและรองรับผลลัพธ์แบบมีโครงสร้าง กรุณาติดต่อผู้ดูแลระบบ",
+    en: "No recommended structured-output model is available. Please contact an administrator.",
+  },
+  insufficientCredits: { th: "เครดิตไม่พอสำหรับขั้นตอนนี้", en: "Not enough credits for this stage" },
+  saveBeforeRunning: {
+    th: "บันทึกการเปลี่ยนแปลงก่อนเริ่มขั้นตอนนี้",
+    en: "Save your changes before running this stage",
+  },
+  qaEmpty: { th: "ยังไม่เคยตรวจสอบคุณภาพโปรเจกต์นี้", en: "This project has not been reviewed yet" },
+  qaScore: { th: "คะแนนรวม", en: "Overall score" },
+  qaStale: {
+    th: "ผลตรวจนี้ล้าสมัย (เอกสารเปลี่ยนไปหลังการตรวจ)",
+    en: "This review is out of date — the document changed after it was produced",
+  },
+  qaStaleUnsaved: {
+    th: "ผลตรวจนี้ยังไม่รวมการแก้ไขที่ยังไม่ได้บันทึก",
+    en: "This review does not include your unsaved changes",
+  },
+  qaRerun: { th: "ตรวจสอบใหม่", en: "Re-run review" },
+  qaIssuesHigh: { th: "รุนแรง", en: "High" },
+  qaIssuesMedium: { th: "ปานกลาง", en: "Medium" },
+  qaIssuesLow: { th: "เล็กน้อย", en: "Low" },
+  qaIssuesUnknown: { th: "ไม่ระบุความรุนแรง", en: "Unspecified severity" },
+  qaClaimBlockTitle: {
+    th: "ติดล็อกการอ้างสิทธิ์ — ยังเรนเดอร์ไฟล์จริงไม่ได้",
+    en: "Claim compliance blocks the final render",
+  },
+  qaClaimBlockFromDocument: {
+    th: "ตรวจจากเอกสารปัจจุบัน (ผลจากเซิร์ฟเวอร์จะมาพร้อมการตรวจครั้งถัดไป)",
+    en: "Derived from the current document — the server verdict arrives with the next review",
+  },
+  repairFree: { th: "ฟรี (ไม่เรียกใช้ AI)", en: "Free (no AI call)" },
+  repairBillable: { th: "ใช้เครดิต", en: "Uses credits" },
+  repairApplyAll: { th: "ซ่อมทั้งหมด", en: "Repair all" },
+  qaRound: { th: "รอบที่", en: "Round" },
+  qaRevert: { th: "ย้อนกลับรอบนี้", en: "Revert this round" },
+  qaRevertConfirm: {
+    th: "ย้อนเอกสารกลับไปสถานะก่อนการซ่อมรอบนี้?",
+    en: "Revert the document to its state before this repair round?",
+  },
+  creditsActual: { th: "ใช้จริง", en: "Actual" },
+  creditsFailedNotFree: {
+    th: "ขั้นตอนล้มเหลว แต่เครดิตอาจถูกใช้ไปแล้วบางส่วน",
+    en: "The stage failed, but credits may already have been spent",
+  },
+  scenePlanMode: { th: "โหมดการวางแผนซ้ำ", en: "Re-run mode" },
+  scenePlanModeFillEmpty: { th: "วางแผนเฉพาะฉากที่ยังว่าง", en: "Plan only empty scenes" },
+  scenePlanModeReplace: {
+    th: "วางแผนใหม่ทั้งหมด (แทนที่ของเดิม)",
+    en: "Re-plan everything (replaces existing)",
+  },
+  scenePlanReplaceWarning: {
+    th: "จะเขียนทับฉากที่คุณแก้ไขเอง เอกสารเดิมถูกเก็บเป็นเวอร์ชันย้อนกลับได้",
+    en: "This overwrites scenes you edited manually. The previous document is kept as a revertable revision.",
+  },
+  destructiveAcknowledge: {
+    th: "ฉันเข้าใจและต้องการดำเนินการต่อ",
+    en: "I understand and want to proceed",
+  },
+  planLayerBudget: {
+    th: "แผนฉากใช้เลเยอร์เกิน 40 จึงเรนเดอร์ไฟล์จริงไม่ได้ ระบบไม่ได้แก้ไขเอกสารเดิม",
+    en: "The plan exceeds the 40-layer budget, so it could never be final-rendered. Your document was left unchanged.",
+  },
+  planTimelineInvalid: {
+    th: "ช่วงเวลาของฉากซ้อนทับหรือเกินความยาววิดีโอ ระบบไม่ได้แก้ไขเอกสารเดิม",
+    en: "Scene timings overlap or exceed the video duration. Your document was left unchanged.",
+  },
+  planTemplateUnknown: {
+    th: "แม่แบบฉากที่เลือกไม่รู้จัก ระบบไม่ได้แก้ไขเอกสารเดิม",
+    en: "The selected scene template is unknown. Your document was left unchanged.",
+  },
+  planParamsInvalid: {
+    th: "พารามิเตอร์ของแผนฉากไม่ถูกต้อง ระบบไม่ได้แก้ไขเอกสารเดิม",
+    en: "The scene plan's parameters are invalid. Your document was left unchanged.",
+  },
+  goToQa: { th: "ไปที่ขั้นตอนตรวจสอบคุณภาพ", en: "Go to QA" },
 } as const;
+
+/**
+ * FE03 (pre-merge security gate, carried over from the deleted
+ * `NotWiredJobCard`): only render an error verbatim when it is one of our
+ * own greppable `VI_*` codes; any other value (arbitrary worker/job text, or
+ * an HTML-looking payload) falls back to the generic message instead of
+ * being echoed into the DOM. Never returns `null` for a non-empty input.
+ */
+export function renderableJobError(lang: VideoStudioLang, error: string | null | undefined): string | null {
+  if (!error) return null;
+  return error.startsWith("VI_") ? error : pickCopy(lang, videoStudioCopy.jobErrorGeneric);
+}

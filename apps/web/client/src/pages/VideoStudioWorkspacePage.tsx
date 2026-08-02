@@ -205,6 +205,12 @@ export default function VideoStudioWorkspacePage() {
               projectId={projectId}
               document={draftDocument}
               onChange={setDraftDocument}
+              projectRevision={project.revision}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onDocumentSaved={() => {
+                setBaseRevision(null);
+                projectQuery.refetch();
+              }}
             />
           ) : null}
 
@@ -234,11 +240,28 @@ export default function VideoStudioWorkspacePage() {
           ) : null}
 
           {stage === "qa" && draftDocument ? (
-            <QaPanel lang={lang} projectId={projectId} document={draftDocument} onChange={setDraftDocument} />
+            <QaPanel
+              lang={lang}
+              projectId={projectId}
+              document={draftDocument}
+              onChange={setDraftDocument}
+              qaLedger={project.qaLedger}
+              projectRevision={project.revision}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onDocumentSaved={() => {
+                setBaseRevision(null);
+                projectQuery.refetch();
+              }}
+            />
           ) : null}
 
           {stage === "render" ? (
-            <RenderPanel lang={lang} projectId={projectId} hasUnsavedChanges={hasUnsavedChanges} />
+            <RenderPanel
+              lang={lang}
+              projectId={projectId}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onGoToQa={() => setStage("qa")}
+            />
           ) : null}
         </VStack>
       ) : null}

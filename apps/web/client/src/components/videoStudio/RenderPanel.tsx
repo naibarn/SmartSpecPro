@@ -34,16 +34,20 @@ import { Spinner } from "@astryxdesign/core/Spinner";
 import { Text } from "@astryxdesign/core/Text";
 import { trpc } from "@/lib/trpc";
 import { RemotionProjectPreview } from "./RemotionProjectPreview";
-import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
+import { pickCopy, renderableJobError, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
 
 export function RenderPanel({
   lang,
   projectId,
   hasUnsavedChanges,
+  onGoToQa,
 }: {
   lang: VideoStudioLang;
   projectId: number;
   hasUnsavedChanges: boolean;
+  /** `VI_CLAIM_VIOLATION` is actionable, not a dump: routes the user back to
+   *  the QA stage (Feature 142, section-07 §6.7). */
+  onGoToQa: () => void;
 }) {
   const compileQuery = trpc.videoProjects.compileProject.useQuery(
     { projectId },
@@ -160,7 +164,18 @@ export function RenderPanel({
                   ? pickCopy(lang, videoStudioCopy.documentInvalid)
                   : pickCopy(lang, { th: "ส่งงานเรนเดอร์ไม่สำเร็จ", en: "Failed to submit render" })
           }
-          description={queueRender.error.message}
+          // FE03: never echo a raw, possibly-non-`VI_` error verbatim.
+          description={renderableJobError(lang, queueRender.error.message)}
+          endContent={
+            queueRender.error.message.includes("VI_CLAIM_VIOLATION") ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                label={pickCopy(lang, videoStudioCopy.goToQa)}
+                onClick={onGoToQa}
+              />
+            ) : undefined
+          }
         />
       ) : null}
 
