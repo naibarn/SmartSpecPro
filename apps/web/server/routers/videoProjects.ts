@@ -107,6 +107,8 @@ import {
 } from "../services/videoIntelligenceModelResolver";
 import { makeRunReview, buildDocumentSummary } from "../services/videoProjectReviewAdapter";
 import { runVideoProjectQualityLoop } from "../services/videoProjectQualityLoop";
+import { planScenes, type ScenePlanMode } from "../services/videoProjectScenePlanner";
+import { makeRunPlanSkill } from "../services/videoProjectScenePlanAdapter";
 import {
   estimateStageTokens,
   STAGE_CEILING_CALLS_PER_ROUND,
@@ -715,14 +717,135 @@ async function dispatchStageJob(args: {
  * fabricating judgment. `quality_review` (section-04) is the first of the
  * three to be fully wired — sections 05/06 close the other two.
  */
+/**
+ * Feature 142, section-05: the Scene Plan stage's real executor. Reads the
+ * dispatch-resolved `modelId`/`modelSource`/`baseRevision`/`mode` from the
+ * job payload (never re-resolves the model — traps #4/#5), fails rather than
+ * substitutes when that model has since been revoked/disabled, then runs the
+ * fail-closed `planScenes` planner wired to this section's `runPlanSkill`
+ * effect. Persists to `video_projects.document` (via `saveVideoProjectDocument`,
+ * which also snapshots `video_project_revisions` with `reason: "scene_plan"`).
+ */
 async function executeScenePlanStage(
   payload: VideoIntelligenceJobPayload,
+  auth: ProjectAuthScope,
   onProgress: (progress: VideoIntelligenceJobProgress) => void,
 ): Promise<unknown> {
   onProgress({ stage: "scene_plan_start" });
-  throw new Error(
-    "VI_SCENE_PLAN_NOT_WIRED: the scene-plan LLM stage is not yet wired to a skill in Phase 1",
-  );
+
+  const traceId = typeof payload.input.traceId === "string" ? payload.input.traceId : mintTraceId();
+  const modelId =
+    typeof payload.input.modelId === "string" && payload.input.modelId.trim().length > 0
+      ? payload.input.modelId
+      : null;
+  const modelSource: StructuredStageModelSource =
+    payload.input.modelSource === "explicit_pin" ? "explicit_pin" : "recommended";
+  const mode: ScenePlanMode = payload.input.mode === "replace" ? "replace" : "fill_empty";
+
+  // A missing/blank modelId is a programming error at dispatch time — the
+  // model must be resolved ONCE at dispatch (spec §6.6/§7.6 step 1), never here.
+  if (!modelId) {
+    throw new Error(
+      "VI_NO_RECOMMENDED_MODEL: scene_plan job payload is missing a dispatch-resolved modelId " +
+        "(programming error — the model must be resolved once at dispatch, never at execution time)",
+    );
+  }
+
+  // Fail rather than substitute when the dispatch-pinned model has since
+  // been revoked/disabled — never silently swap in a different model the
+  // user never confirmed a price for.
+  await assertStructuredStageModelAvailable(modelId, undefined, { source: modelSource });
+
+  const { projectRow, document } = await loadDocumentOrThrow(auth, payload.projectId);
+  const baseRevision =
+    typeof payload.input.baseRevision === "number" ? payload.input.baseRevision : projectRow.revision;
+
+  const sourceRefs = (projectRow.sourceRefs as { productIds?: string[] } | null) ?? null;
+  const productIds = sourceRefs?.productIds ?? [];
+  const studioType = projectRow.studioType;
+
+  // Read-only brand context for the skill (§7.7) — the planner itself never
+  // writes brand values into the document; brand-lock enforcement stays with
+  // the real compile at render time.
+  const resolvedBrandKit = await resolveBrandKitForDocument(auth, document);
+  const brandKit =
+    resolvedBrandKit && document.brandKitId
+      ? {
+          id: document.brandKitId,
+          lockedTokens: Object.entries(resolvedBrandKit.locks)
+            .filter(([, locked]) => locked === true)
+            .map(([token]) => token),
+        }
+      : null;
+
+  onProgress({ stage: "scene_plan_planning" });
+
+  let totalCreditsUsed = 0;
+  let lastModelIdUsed: string | null = modelId;
+
+  const runPlanSkill = makeRunPlanSkill({
+    tenantId: auth.tenantId,
+    userId: auth.userId,
+    traceId,
+    modelId,
+    projectId: payload.projectId,
+    // 🔴 Reports spend that ALREADY happened inside callLLMStructured — this
+    // callback NEVER calls deductCredits (AD-7 / traps #1).
+    onUsage: usage => {
+      totalCreditsUsed += usage.creditsUsed;
+      lastModelIdUsed = usage.modelId ?? lastModelIdUsed;
+    },
+  });
+
+  const result = await planScenes({
+    document,
+    mode,
+    studioType,
+    productIds,
+    brandKit,
+    effects: {
+      runPlanSkill,
+      resolveFacts: ids => resolveCatalogFactsForProject(ids, auth),
+      persistDocument: (doc, reason) =>
+        saveVideoProjectDocument(auth, {
+          id: payload.projectId,
+          baseRevision,
+          document: doc,
+          reason,
+        }),
+    },
+  });
+
+  onProgress({ stage: "scene_plan_persisted" });
+
+  // Secret-safety: `extra` carries numbers and model names only — never
+  // prompt text, never catalog credentials (spec §7.6 step 7).
+  logStage("scene_plan", payload.projectId, traceId, "finish", {
+    mode,
+    plannedCount: result.plannedSceneIds.length,
+    appendedCount: result.appendedSceneIds.length,
+    skippedCount: result.skippedSceneIds.length,
+    layersUsed: result.layerBudget.used,
+    hasLongGap: result.hasLongGap,
+    modelUsed: lastModelIdUsed,
+    creditsUsed: totalCreditsUsed,
+  });
+
+  return {
+    kind: "scene_plan" as const,
+    traceId,
+    mode,
+    revision: result.revision,
+    plannedSceneIds: result.plannedSceneIds,
+    appendedSceneIds: result.appendedSceneIds,
+    skippedSceneIds: result.skippedSceneIds,
+    gaps: result.gaps,
+    hasLongGap: result.hasLongGap,
+    layerBudget: result.layerBudget,
+    summary: result.summary,
+    creditsUsed: totalCreditsUsed,
+    modelId: lastModelIdUsed,
+  };
 }
 
 /**
@@ -915,7 +1038,9 @@ export const runVideoIntelligenceJobExecutor: VideoIntelligenceJobExecutor = asy
   const auth: ProjectAuthScope = { tenantId: payload.tenantId, userId: payload.userId };
   switch (payload.kind) {
     case "scene_plan":
-      return executeScenePlanStage(payload, onProgress);
+      return withStageStatusRestore(payload, auth, () =>
+        executeScenePlanStage(payload, auth, onProgress),
+      );
     case "narration":
       // `runNarrationStage` (below) runs narration synchronously in the
       // mutation itself (documented deviation from the general "stage
@@ -1199,6 +1324,11 @@ export const videoProjectsRouter = router({
       z.object({
         projectId: z.number().int().positive(),
         baseRevision: z.number().int().min(1).optional(),
+        // §2 — the only field section-05 adds to the dispatch input.
+        // `fill_empty` (default) never overwrites existing work; `replace`
+        // is destructive and must be reachable only behind an explicit UI
+        // confirmation (section-07).
+        mode: z.enum(["replace", "fill_empty"]).default("fill_empty"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1211,6 +1341,7 @@ export const videoProjectsRouter = router({
         kind: "scene_plan",
         nextStatus: "scenes",
         requestedBaseRevision: input.baseRevision,
+        extraInput: { mode: input.mode },
       });
     }),
 

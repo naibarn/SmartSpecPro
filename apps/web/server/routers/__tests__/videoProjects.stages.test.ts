@@ -105,7 +105,15 @@ vi.mock("../../services/videoProjectCompiler", () => ({
   BrandLockViolationError: class BrandLockViolationError extends Error {},
 }));
 
-vi.mock("../../remotion/templates", () => ({ MOTION_TEMPLATE_REGISTRY: {} }));
+// section-05 note: the REAL registry (pure, no I/O) is used here rather than
+// a `{}` stub — the real `videoProjectScenePlanner` (also unmocked below) now
+// reads it directly for template-existence/param validation, and the stub
+// would crash `buildAvailableTemplates()`'s `MOTION_TEMPLATE_REGISTRY[id].meta`
+// lookup for every one of the 10 known template ids.
+vi.mock("../../remotion/templates", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../remotion/templates")>();
+  return { ...actual };
+});
 
 const { mockResolveProjectAssets, mockBuildAssetManifest, mockFallbackAssetSourceHash } = vi.hoisted(() => ({
   mockResolveProjectAssets: vi.fn(),
@@ -217,6 +225,18 @@ vi.mock("../../services/videoProjectReviewAdapter", () => ({
   buildDocumentSummary: mockBuildDocumentSummary,
 }));
 
+// section-05 — the scene-plan adapter is mocked the same way as
+// videoProjectReviewAdapter above; `videoProjectScenePlanner` itself is
+// deliberately left UNMOCKED (real, pure, effect-injected) so these wiring
+// tests exercise the genuine merge/validation pipeline against the mocked
+// LLM seam only.
+const { mockMakeRunPlanSkill } = vi.hoisted(() => ({
+  mockMakeRunPlanSkill: vi.fn(),
+}));
+vi.mock("../../services/videoProjectScenePlanAdapter", () => ({
+  makeRunPlanSkill: mockMakeRunPlanSkill,
+}));
+
 const { mockRunVideoProjectQualityLoop } = vi.hoisted(() => ({
   mockRunVideoProjectQualityLoop: vi.fn(),
 }));
@@ -271,6 +291,7 @@ function projectRow(overrides: Record<string, unknown> = {}) {
     status: "content",
     document: baseDocument(),
     sourceRefs: null,
+    studioType: "motion",
     ...overrides,
   };
 }
@@ -315,6 +336,7 @@ beforeEach(() => {
     sha256: vi.fn(() => undefined),
     sha256ByUrl: vi.fn(() => undefined),
   });
+  mockSaveVideoProjectDocument.mockResolvedValue({ revision: 8 });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -861,5 +883,171 @@ describe("runVideoIntelligenceJobExecutor (quality_review)", () => {
     expect(typeof capturedEffects.recomputeMetrics).toBe("function");
     await expect(capturedEffects.repairStage("content", "instr")).resolves.toBeUndefined();
     await expect(capturedEffects.recomputeMetrics("1")).resolves.toBeDefined();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Execution — scene_plan via runVideoIntelligenceJobExecutor (section-05)   */
+/* -------------------------------------------------------------------------- */
+
+describe("runVideoIntelligenceJobExecutor (scene_plan)", () => {
+  function jobPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      kind: "scene_plan" as const,
+      tenantId: "tenant-1",
+      userId: 42,
+      projectId: 1,
+      input: {
+        traceId: "trace-exec-1",
+        modelId: "model-a",
+        modelSource: "recommended",
+        previousStatus: "content",
+        baseRevision: 3,
+        ...overrides,
+      },
+    };
+  }
+
+  function planOutputFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      scenes: [
+        {
+          sceneId: "scene-1",
+          templateId: "kinetic_typography",
+          templateParams: { words: ["Hi"] },
+          startMs: 0,
+          endMs: 5000,
+          rationale: "hook",
+          onScreenStatements: [],
+        },
+      ],
+      summary: "planned scene-1",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7 }));
+    mockMakeRunPlanSkill.mockReturnValue(vi.fn(async () => planOutputFixture()));
+  });
+
+  it("uses the modelId carried in the payload and does NOT re-resolve", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload({ modelId: "carried-model" }) as any, vi.fn());
+
+    expect(mockResolveStructuredStageModelSelection).not.toHaveBeenCalled();
+    expect(mockAssertStructuredStageModelAvailable).toHaveBeenCalledWith(
+      "carried-model",
+      undefined,
+      { source: "recommended" },
+    );
+    expect(mockMakeRunPlanSkill).toHaveBeenCalledWith(expect.objectContaining({ modelId: "carried-model" }));
+  });
+
+  it("fails with VI_NO_RECOMMENDED_MODEL when the carried model is no longer available", async () => {
+    mockAssertStructuredStageModelAvailable.mockRejectedValueOnce(
+      new MockVideoIntelligenceModelError("VI_NO_RECOMMENDED_MODEL: revoked"),
+    );
+
+    await expect(runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())).rejects.toThrow(
+      /VI_NO_RECOMMENDED_MODEL/,
+    );
+  });
+
+  it("defaults mode to fill_empty when the input omits it", async () => {
+    const result = (await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())) as Record<
+      string,
+      unknown
+    >;
+
+    expect(result.mode).toBe("fill_empty");
+  });
+
+  it("passes mode 'replace' through from the payload input", async () => {
+    const result = (await runVideoIntelligenceJobExecutor(
+      jobPayload({ mode: "replace" }) as any,
+      vi.fn(),
+    )) as Record<string, unknown>;
+
+    expect(result.mode).toBe("replace");
+  });
+
+  it("resolves catalog facts for a catalog project and passes null for a motion project", async () => {
+    let capturedInput: any;
+    mockMakeRunPlanSkill.mockReturnValue(
+      vi.fn(async (input: unknown) => {
+        capturedInput = input;
+        return planOutputFixture();
+      }),
+    );
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ revision: 7, studioType: "catalog", sourceRefs: { productIds: ["p1"] } }),
+    );
+
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(capturedInput.catalogFacts).not.toBeNull();
+    expect(capturedInput.catalogFacts.productIds).toEqual(["p1"]);
+
+    capturedInput = undefined;
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7, studioType: "motion" }));
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(capturedInput.catalogFacts).toBeNull();
+  });
+
+  it("saves with baseRevision from the payload and reason 'scene_plan'", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload({ baseRevision: 5 }) as any, vi.fn());
+
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledTimes(1);
+    const [, args] = mockSaveVideoProjectDocument.mock.calls[0]!;
+    expect(args).toMatchObject({ id: 1, baseRevision: 5, reason: "scene_plan" });
+  });
+
+  it("restores previousStatus when the planner throws", async () => {
+    mockMakeRunPlanSkill.mockReturnValue(
+      vi.fn(async () => {
+        throw new Error("planner exploded");
+      }),
+    );
+
+    await expect(
+      runVideoIntelligenceJobExecutor(jobPayload({ previousStatus: "content" }) as any, vi.fn()),
+    ).rejects.toThrow(/planner exploded/);
+
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(expect.anything(), 1, { status: "content" });
+  });
+
+  it("returns a serialisable result carrying revision, plannedSceneIds, gaps, creditsUsed and modelId", async () => {
+    mockSaveVideoProjectDocument.mockResolvedValue({ revision: 9 });
+
+    const result = (await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())) as Record<
+      string,
+      unknown
+    >;
+
+    expect(() => JSON.stringify(result)).not.toThrow();
+    expect(result).toMatchObject({
+      kind: "scene_plan",
+      revision: 9,
+      plannedSceneIds: ["scene-1"],
+      modelId: "model-a",
+    });
+    expect(Array.isArray(result.gaps)).toBe(true);
+    expect(typeof result.creditsUsed).toBe("number");
+  });
+
+  it("emits onProgress at scene_plan_start / scene_plan_planning / scene_plan_persisted", async () => {
+    const onProgress = vi.fn();
+
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, onProgress);
+
+    const stages = onProgress.mock.calls.map(call => call[0].stage);
+    expect(stages).toEqual(["scene_plan_start", "scene_plan_planning", "scene_plan_persisted"]);
+  });
+
+  it("makes ZERO deductCredits calls on the scene-plan path", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });

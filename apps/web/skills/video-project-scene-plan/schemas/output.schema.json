@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "video-project-scene-plan/output",
+  "title": "Video Project Scene Plan Output",
+  "description": "Matches the ScenePlanSkillOutput type in server/services/videoProjectScenePlanner.ts — the section-05 adapter parses the skill output against this shape. Template SELECTION + parameter BINDING only: NO property name in this file may match /prompt|imagePrompt|videoPrompt|negativePrompt/i.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenes", "summary"],
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sceneId", "templateId", "templateParams", "startMs", "endMs", "rationale", "onScreenStatements"],
+        "properties": {
+          "sceneId": {
+            "description": "An existing plannable scene id from the input's plannableScenes, or a genuinely new id to append.",
+            "type": "string",
+            "minLength": 1
+          },
+          "templateId": {
+            "description": "Must key into the input's availableTemplates list exactly.",
+            "type": "string",
+            "minLength": 1
+          },
+          "templateParams": {
+            "description": "Must satisfy the chosen template's own paramsJsonSchema exactly. Bind real data only — never invent a value.",
+            "type": "object"
+          },
+          "startMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "motion": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["intensity", "camera"],
+            "properties": {
+              "intensity": { "type": "string", "enum": ["low", "medium", "high"] },
+              "camera": { "type": "string", "minLength": 1 }
+            }
+          },
+          "rationale": {
+            "description": "Why this template fits this beat. Free-form prose is allowed here only.",
+            "type": "string"
+          },
+          "onScreenStatements": {
+            "description": "Concrete claim/price/metric strings this scene's templateParams put on screen, for the claim-compliance join. Empty array when nothing claim-like applies.",
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "summary": {
+      "description": "Short free-form summary of the plan.",
+      "type": "string"
+    }
+  }
+}

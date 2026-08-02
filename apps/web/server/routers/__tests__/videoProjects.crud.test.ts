@@ -279,6 +279,12 @@ vi.mock("../../services/videoProjectReviewAdapter", () => ({
 vi.mock("../../services/videoProjectQualityLoop", () => ({
   runVideoProjectQualityLoop: vi.fn(),
 }));
+// Feature 142, section-05 (additive) — newly imported by the router; this
+// file doesn't exercise the scene-plan stage, so a simple default double
+// (mirrors the videoProjectReviewAdapter mock above).
+vi.mock("../../services/videoProjectScenePlanAdapter", () => ({
+  makeRunPlanSkill: vi.fn(),
+}));
 
 import { videoProjectsRouter, deriveCaptionCues, buildCaptionLinesForRender } from "../videoProjects";
 import type { VideoProjectDocument } from "../../../shared/videoIntelligence/projectSchemas";
