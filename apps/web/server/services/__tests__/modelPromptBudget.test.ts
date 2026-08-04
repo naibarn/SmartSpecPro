@@ -72,4 +72,20 @@ describe("model prompt budget", () => {
     mockGetStaticModelById.mockReturnValue(undefined);
     expect(resolveVdImagePromptBudgetForModel({ modelId: "missing" })).toBe(3800);
   });
+
+  it("keeps legacy budget resolution independent from target contract validation", () => {
+    mockGetStaticModelById.mockReturnValue(undefined);
+    expect(
+      resolveVdImagePromptBudgetForModel({
+        modelId: "seedream/5-pro-text-to-image",
+        configJson: { maxPromptLength: 5_000 },
+      }),
+    ).toBe(5_000);
+    expect(
+      resolveVdImagePromptBudgetForModel({
+        modelId: "legacy-image-model",
+        configJson: { maxPromptLength: 500 },
+      }),
+    ).toBe(3_800);
+  });
 });

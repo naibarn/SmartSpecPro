@@ -1574,6 +1574,10 @@ const IMAGE_MODELS = [
       generateType: "text-to-image",
       supportsReferenceImages: true,
       maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "gpt_image_2",
+        negativePromptMode: "inline_only",
+      },
       maxReferenceImages: 16,
       apiConfig: {
         kie_model_id_with_references: "gpt-image-2-image-to-image",
@@ -1679,6 +1683,34 @@ const IMAGE_MODELS = [
 
   // === Nano Banana (Google) ===
   {
+    modelId: "google-nano-banana-pro",
+    name: "Google Nano Banana Pro",
+    description: "Google Nano Banana Pro image generation and editing.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: ["nano banana pro", "nano_banana_pro", "nanobananapro", "google nano banana"],
+    creditCost: 10,
+    priority: 1,
+    sortOrder: 1,
+    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "nano-banana-pro",
+      generateType: "image-to-image",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
+      inputFields: [
+        { key: "image_input", label: "Reference Images", type: "image_urls" },
+      ],
+      pricingTiers: { "default": 10 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
     modelId: "google/nano-banana",
     name: "Nano Banana",
     description: "Google Nano Banana - Fast and precise AI image generation with realistic physics.",
@@ -1694,6 +1726,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana",
       generateType: "text-to-image",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "resolution", label: "Resolution", type: "select",
           options: [{ value: "1K", label: "1K" }, { value: "2K", label: "2K" }],
@@ -1723,6 +1760,10 @@ const IMAGE_MODELS = [
       kieModelId: "nano-banana-2",
       generateType: "text-to-image",
       maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       // Multi-view (planning/marketplace-multi-product-reference-images):
       // kie.ai nano-banana-2 accepts up to 14 input images. Keeps the
       // marketplace-auto-review reference cap in sync on every re-seed.
@@ -1768,6 +1809,10 @@ const IMAGE_MODELS = [
       kieModelId: "nano-banana-2-lite",
       generateType: "text-to-image",
       maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       maxReferenceImages: 10,
       reference_image_input_key: "image_urls",
       reference_image_input_type: "array",
@@ -1803,6 +1848,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana-pro",
       generateType: "image-to-image",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "resolution", label: "Resolution", type: "select",
           options: [{ value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" }],
@@ -1840,6 +1890,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana-edit",
       generateType: "edit",
+      maxPromptLength: 20000,
+      verticalDramaCharacterPromptContract: {
+        family: "nano_banana",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "image_input", label: "Source Image", type: "image_urls", required: true },
         { key: "resolution", label: "Resolution", type: "select",
@@ -2022,6 +2077,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "seedream",
       generateType: "text-to-image",
+      maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "1:1", label: "1:1" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }],
@@ -2047,6 +2107,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "seedream/seedream-v4-text-to-image",
       generateType: "text-to-image",
+      maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [{ value: "1:1", label: "1:1" }, { value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }],
@@ -2072,6 +2137,11 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "seedream/4.5-text-to-image",
       generateType: "text-to-image",
+      maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
       inputFields: [
         { key: "quality", label: "Quality", type: "select",
           options: [{ value: "basic", label: "Basic" }, { value: "high", label: "High" }],
@@ -2112,6 +2182,10 @@ const IMAGE_MODELS = [
       generateType: "text-to-image",
       supportsReferenceImages: true,
       maxPromptLength: 5000,
+      verticalDramaCharacterPromptContract: {
+        family: "seedream",
+        negativePromptMode: "inline_only",
+      },
       maxReferenceImages: 10,
       apiConfig: {
         kie_model_id_with_references: "seedream/5-pro-image-to-image",
