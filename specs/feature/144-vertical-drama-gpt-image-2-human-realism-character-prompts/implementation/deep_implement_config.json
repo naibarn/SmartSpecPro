@@ -17,6 +17,22 @@
     "section-01-capability-and-catalog": {
       "status": "complete",
       "commit_hash": "bf864ba77"
+    },
+    "section-02-skill-and-generation-contract": {
+      "status": "complete",
+      "commit_hash": "bd247fa2d"
+    },
+    "section-03-character-render-normalizer": {
+      "status": "complete",
+      "commit_hash": "bd247fa2d"
+    },
+    "section-04-transport-persistence-and-compatibility": {
+      "status": "complete",
+      "commit_hash": "bd247fa2d"
+    },
+    "section-05-verification-and-ab-evaluation": {
+      "status": "complete",
+      "commit_hash": "bd247fa2d"
     }
   },
   "pre_commit": {
