@@ -1463,6 +1463,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
    * Never affects the (orthogonal) schema-retry budget.
    */
   maxTransientRetries?: number;
+  /** Optional schema-retry cap for callers with a stricter interactive contract. */
+  maxSchemaRetries?: number;
 }): Promise<{
   data: T;
   response: Awaited<ReturnType<typeof executeWithFallback>> extends infer R
@@ -1517,6 +1519,10 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   let currentUserPrompt = params.userPrompt;
   let currentMaxTokens = params.maxTokens;
   let schemaRetriesUsed = 0;
+  const effectiveMaxSchemaRetries = Math.max(
+    0,
+    Math.min(VD_SCHEMA_MAX_RETRIES, params.maxSchemaRetries ?? VD_SCHEMA_MAX_RETRIES),
+  );
   let transientRetriesUsed = 0;
   let attemptNumber = 0;
 
@@ -1548,13 +1554,13 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       // stochastic structural-JSON glitches (see `VD_SCHEMA_MAX_RETRIES`).
       if (
         classification === "schema" &&
-        schemaRetriesUsed < VD_SCHEMA_MAX_RETRIES &&
+        schemaRetriesUsed < effectiveMaxSchemaRetries &&
         attemptNumber < VD_PLANNING_CALL_MAX_ATTEMPTS
       ) {
         schemaRetriesUsed++;
         debugError(
           "vd_planning_retry",
-          `${params.label}: attempt ${attemptNumber} failed schema validation for model ${params.model}, retrying with stricter instruction + higher token ceiling (schema retry ${schemaRetriesUsed}/${VD_SCHEMA_MAX_RETRIES})`,
+          `${params.label}: attempt ${attemptNumber} failed schema validation for model ${params.model}, retrying with stricter instruction + higher token ceiling (schema retry ${schemaRetriesUsed}/${effectiveMaxSchemaRetries})`,
           { message: errorMessage }
         );
         currentMaxTokens =

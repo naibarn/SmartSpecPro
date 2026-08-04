@@ -45,6 +45,47 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Human Realism image-prompt contract — CONDITIONAL TARGET PROFILE
+
+When the input contains image_prompt_capability, keep identity, child/teen safety,
+approved Character DNA, continuity, reference locks, and role truth ahead of this section.
+The capability is factual routing metadata, not creative text. Author the image-generation
+prompt as one coherent description; never depend on a separate negative prompt for the target
+contract.
+
+### Natural human realism
+
+- Start with identity and age-appropriate anatomy: recognizable facial geometry, believable
+  body proportions, natural asymmetry, and a candid expression rather than a posed sales image.
+- Describe macro, meso, and micro skin variation with restrained matte-to-satin reflectance:
+  real pores, fine lines, small tonal variation, and believable sclera, catchlights, lips,
+  brows, baby hair, and coherent hair clumps. Never use uniform pores, global gloss, or
+  “perfect face” as a shortcut.
+- For three-quarter or full-body framing, author hands, joints, feet, weight distribution,
+  wardrobe tension, grounded contact, and contact shadows so the body is physically present.
+- Make adult leads attractive, dramatic, recognizable, and memorable without fashion-model,
+  influencer, pageant, catalog, or corporate-headshot grammar. Supporting characters and
+  villains receive role-specific differentiation, not universal glamour; danger belongs in
+  story truth and controlled expression, not cartoon beauty.
+- Use shot-aware camera and depth-of-field language. A close portrait may use a portrait-lens
+  look and shallow focus; a three-quarter or full-body shot must choose an optic and focus depth
+  that keep the required anatomy and environment readable. Do not force one 85mm recipe on every
+  shot.
+- Put avoidance in contextual inline prose: the person reads as human rather than plastic,
+  waxy, CGI, beauty-filtered, globally smoothed, fake-HDR, or oversharpened, and the casting
+  reads as a dramatic character rather than a generic model or pose. Do not emit a detached
+  comma-list as the target's only quality control.
+
+### Rich and compact profiles
+
+When prompt_profile is rich (GPT Image 2 or Nano Banana), use the full identity,
+skin/eye/hair, anatomy, role, lighting, shot-aware optics, and contextual avoidance vocabulary
+without repeating boilerplate. When it is compact (Seedream), author an independent concise
+prompt that preserves, in order: identity, age/safety, role, framing, anatomy, essential
+skin/eye/hair realism, lighting, and the most relevant inline avoidance prose. Never create the
+compact form by slicing or hard-truncating the rich form. If no capability is supplied, retain
+the legacy output contract and its separate negative_prompt readability.
+
 ## Series Character DNA and deliberate face design — MANDATORY
 
 Never design a character by randomly combining attractive facial features. Before writing
@@ -193,8 +234,9 @@ angle, or background. Apply the comparison gate pairwise inside the batch: every
 differ in at least **3 of 5 facial dimensions** (facial geometry, eyes/gaze, brows, nose,
 lips/smile), use materially different hair identity, and differ in at least one signature
 marker or silhouette. Give each candidate a unique `candidate_id`, a full independent
-`character_design_dna`, a concise `visual_identity_summary`, `primary_portrait_prompt`,
-and `negative_prompt`.
+`character_design_dna`, a concise `visual_identity_summary`, and `primary_portrait_prompt`.
+Include `negative_prompt` only for legacy separate-negative capability; it is optional and must
+not be required for an `inline_only` target capability.
 
 All candidates must share the **same premium visual language**: the same story world,
 role truth, lens family, lighting quality, cinematic color-grade family, elevated
@@ -227,7 +269,7 @@ This mode is deliberately lean. Return only:
   "contract_version": 1,
   "portrait_candidate_batch": {
     "character_id": "char_aria",
-    "shared_visual_language": "premium cinematic vertical-drama still, warm emotional lighting, natural skin, 85mm portrait language",
+    "shared_visual_language": "premium cinematic vertical-drama still, warm emotional lighting, natural skin, shot-aware optics matched to each framing",
     "candidates": [
       {
         "candidate_id": "candidate_1",
@@ -293,7 +335,6 @@ This mode is deliberately lean. Return only:
           }
         },
         "primary_portrait_prompt": "solo cinematic vertical portrait ...",
-        "negative_prompt": "advertising model, catalog pose, influencer portrait, extra people ..."
       }
     ]
   },

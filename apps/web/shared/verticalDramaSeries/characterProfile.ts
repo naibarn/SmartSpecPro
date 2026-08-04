@@ -229,6 +229,8 @@ export const verticalDramaApprovedCharacterVisualBibleSchema = z
     ageRange: z.string().trim().min(1).max(255),
     eraStyling: z.string().trim().min(1).max(1_000).optional(),
     audienceAppealNotes: z.string().trim().min(1).max(2_000).optional(),
+    promptContractVersion: z.string().trim().max(80).optional(),
+    promptProfile: z.enum(["rich", "compact", "legacy"]).optional(),
     designDna: verticalDramaCharacterDesignDnaSchema,
   })
   .strict();
@@ -242,8 +244,10 @@ export const verticalDramaApprovedCharacterVisualBibleSchema = z
 export const verticalDramaApprovedCharacterDesignSnapshotSchema = z
   .object({
     characterKey: z.string().trim().min(1).max(64),
-    portraitPrompt: z.string().trim().min(1).max(3_500),
+    portraitPrompt: z.string().trim().min(1).max(20_000),
     negativePrompt: z.string().trim().max(3_500).optional(),
+    promptContractVersion: z.string().trim().max(80).optional(),
+    promptProfile: z.enum(["rich", "compact", "legacy"]).optional(),
     visualBible: verticalDramaApprovedCharacterVisualBibleSchema,
   })
   .strict();

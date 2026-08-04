@@ -33,7 +33,14 @@ export function resolveModelMaxPromptLength(
     return dbLimit;
   }
 
-  return resolveConfiguredMaxPromptLength(getStaticModelById(modelId)?.configJson);
+  // Keep isolated callers and Vitest suites with a deliberately minimal
+  // model-registry mock fail-closed as an unknown model instead of throwing
+  // while resolving the optional static fallback.
+  try {
+    return resolveConfiguredMaxPromptLength(getStaticModelById(modelId)?.configJson);
+  } catch {
+    return null;
+  }
 }
 
 /** Literal model allowance normalized to the bounded Vertical Drama range. */

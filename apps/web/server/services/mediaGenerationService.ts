@@ -1110,6 +1110,12 @@ export interface ImageGenerationRequest {
   auditContext?: MediaAuditContext;
   /** Optional MCP/Gateway transport metadata for direct service callers */
   transportMetadata?: Partial<MediaTaskTransportMetadata>;
+  /** Trusted server-only context set by Vertical Drama character renderers. */
+  characterPromptContext?: {
+    marker: "vertical_drama_character_v1";
+    contractVersion: string;
+    target: boolean;
+  };
 }
 
 export interface VideoGenerationRequest {
@@ -1614,9 +1620,9 @@ function inferReferenceImageInputConfig(modelId: string): { key: string; label?:
 
 function buildApiConfigWithReferenceImageConfig(
   modelId: string,
-  apiConfig: Record<string, string> | undefined,
+  apiConfig: MediaApiConfig | undefined,
   referenceImageUrls?: string[],
-): Record<string, string> | undefined {
+): MediaApiConfig | undefined {
   const baseConfig = apiConfig ? { ...apiConfig } : undefined;
   if (!referenceImageUrls || referenceImageUrls.length === 0) {
     return baseConfig;
@@ -1813,6 +1819,12 @@ function buildMcpServiceParameters(
     fps: videoRequest.fps,
     referenceVideoCount: videoRequest.referenceVideoUrls?.length ?? (videoRequest.referenceVideoUrl ? 1 : 0),
   };
+}
+
+function shouldOmitCharacterNegativePrompt(request: ImageGenerationRequest): boolean {
+  return request.characterPromptContext?.marker === "vertical_drama_character_v1" &&
+    request.characterPromptContext.contractVersion === "vd_character_natural_human_v1" &&
+    request.characterPromptContext.target === true;
 }
 
 export class MediaGenerationService {
@@ -2194,13 +2206,14 @@ export class MediaGenerationService {
         fallbackModel: DEFAULT_MODELS.image,
       });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
+    const omitCharacterNegativePrompt = shouldOmitCharacterNegativePrompt(request);
     const payload: Record<string, unknown> = {
       prompt: normalizedPrompt,
       model: modelId,
       size: request.size,
       aspect_ratio: request.aspectRatio,
-      negative_prompt: request.negativePrompt,
       n: request.numImages || 1,
+      ...(omitCharacterNegativePrompt ? {} : { negative_prompt: request.negativePrompt }),
     };
 
     // Add resolution if provided (e.g., "1K", "2K", "4K")
@@ -2552,6 +2565,7 @@ export class MediaGenerationService {
             fallbackModel: DEFAULT_MODELS.image,
           });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
+    const omitCharacterNegativePrompt = shouldOmitCharacterNegativePrompt(request);
     const mcpTask = await this.submitMcpMediaTaskIfRequested(
       "image",
       request,

@@ -11,7 +11,9 @@ vi.mock("../modelRegistry", () => ({
 import {
   assertVerticalDramaCharacterPromptLength,
   isTargetVerticalDramaCharacterCapability,
+  normalizeVerticalDramaCharacterPromptRequest,
   resolveVerticalDramaCharacterPromptCapability,
+  VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
 } from "../verticalDramaCharacterPromptContract";
 
 const contract = {
@@ -267,5 +269,64 @@ describe("vertical drama character prompt contract", () => {
       });
       expect((error as Error).message).not.toContain(sensitivePrompt);
     }
+  });
+
+  it("normalizes target requests without a separate negative field and is idempotent", () => {
+    const capability = {
+      family: "gpt_image_2" as const,
+      maxPromptChars: 20_000,
+      negativePromptMode: "inline_only" as const,
+      promptProfile: "rich" as const,
+      source: "db" as const,
+      canonicalModelId: "gpt-image-2-text-to-image",
+      configured: true,
+    };
+    const normalized = normalizeVerticalDramaCharacterPromptRequest(
+      {
+        prompt: "natural human portrait",
+        negativePrompt: "plastic skin",
+        model: capability.canonicalModelId,
+      },
+      {
+        capability,
+        marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+        contractVersion: "vd_character_natural_human_v1",
+      },
+    );
+
+    expect(normalized).toEqual({ prompt: "natural human portrait", model: capability.canonicalModelId });
+    expect(
+      normalizeVerticalDramaCharacterPromptRequest(normalized, {
+        capability,
+        marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+        contractVersion: "vd_character_natural_human_v1",
+      }),
+    ).toEqual(normalized);
+  });
+
+  it("preserves legacy negative text and rejects a missing trusted marker", () => {
+    const capability = {
+      family: "other" as const,
+      maxPromptChars: 3_800,
+      negativePromptMode: "separate_legacy" as const,
+      promptProfile: "legacy" as const,
+      source: "explicit_legacy" as const,
+      canonicalModelId: "legacy-model",
+      configured: false,
+    };
+    expect(
+      normalizeVerticalDramaCharacterPromptRequest(
+        { prompt: "portrait", negativePrompt: "old guard", model: "legacy-model" },
+        { capability, marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER, contractVersion: null },
+      ),
+    ).toEqual({ prompt: "portrait", negativePrompt: "old guard", model: "legacy-model" });
+    expect(() =>
+      normalizeVerticalDramaCharacterPromptRequest(
+        { prompt: "portrait", model: "legacy-model" },
+        { capability, marker: null, contractVersion: null },
+      ),
+    ).toThrowError(expect.objectContaining({
+      code: "VERTICAL_DRAMA_CHARACTER_PROMPT_CAPABILITY_INVALID",
+    }));
   });
 });

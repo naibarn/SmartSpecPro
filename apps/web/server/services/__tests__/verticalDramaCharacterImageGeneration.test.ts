@@ -88,6 +88,7 @@ import {
   buildCharacterVisualPromptsUserPrompt,
   buildCharacterPortraitCandidatesUserPrompt,
   buildCharacterVisualBibleSnapshot,
+  decideCharacterPromptSnapshotReuse,
   normalizeCharacterVisualBibleDnaKeys,
   normalizeCharacterVisualBibleAuthoritativeEvidence,
   resolveFaceSourceReferenceForCharacter,
@@ -97,6 +98,7 @@ import {
   LEAD_ROLE_DRIFT_MARKER_PHRASES as leadRoleDriftMarkerPhrases,
   LEAD_NEGATIVE_PROMPT_ROLE_DRIFT_GUARD_PHRASES as leadNegativePromptRoleDriftGuardPhrases,
 } from "../verticalDramaCharacterImageGeneration";
+import type { VerticalDramaCharacterPromptCapability } from "../verticalDramaCharacterPromptContract";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import { resolveCharacterTargetAudienceRegion } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { executeWithFallback } from "../llmRouter";
@@ -437,6 +439,28 @@ function successResponse(payload: unknown) {
   } as any;
 }
 
+const targetNanoBananaCapability: VerticalDramaCharacterPromptCapability = {
+  family: "nano_banana",
+  maxPromptChars: 20_000,
+  negativePromptMode: "inline_only",
+  promptProfile: "rich",
+  source: "db",
+  canonicalModelId: "google-banana-2",
+  configured: true,
+};
+
+const targetSeedreamCapability: VerticalDramaCharacterPromptCapability = {
+  ...targetNanoBananaCapability,
+  family: "seedream",
+  maxPromptChars: 5_000,
+  promptProfile: "compact",
+  canonicalModelId: "seedream/5-pro-text-to-image",
+};
+
+function addHumanRealismAnchors(prompt: string): string {
+  return `${prompt}, candid expression, natural skin with visible pores and matte-to-satin reflectance, natural asymmetry, believable sclera and catchlights, natural lips and brows, baby hair and coherent hair clumps, balanced body language with hands, joints, feet, weight distribution and contact shadows, not plastic or waxy, without a beauty filter, no global smoothing, not a fashion model or catalog pose`;
+}
+
 // FIX B (2026-07-18, character-portrait lead-beauty-gate incident) —
 // `resolveCharacterVisualBibleModel` must resolve through
 // `resolvePremiumLargeContextModelId` (STRONGEST eligible model), NOT the
@@ -667,6 +691,74 @@ describe("detectChildGenderHint", () => {
 });
 
 describe("findLeadPromptQualityIssues", () => {
+  it("checks target natural-human semantic anchors without requiring negative_prompt", () => {
+    const character = validCharacter("char-1", "support");
+    const prompt =
+      "a candid dramatic character with natural skin, visible pores and matte-to-satin reflectance, " +
+      "natural asymmetry, believable sclera and catchlights, natural lips and brows, baby hair " +
+      "and coherent hair clumps, balanced body language with hands, joints, feet, weight distribution " +
+      "and contact shadows, not plastic or waxy, without a beauty filter, no global smoothing, " +
+      "not a fashion model or catalog pose";
+
+    expect(
+      findLeadPromptQualityIssues(character, "support", {
+        mode: "target",
+        selectedPrompt: prompt,
+      }),
+    ).toEqual([]);
+    expect(
+      findLeadPromptQualityIssues(character, "support", {
+        mode: "target",
+        selectedPrompt: "beautiful portrait",
+      }),
+    ).toHaveLength(3);
+  });
+
+  it("does not require full-body anatomy anchors for a close-up target prompt", () => {
+    const closeUp =
+      "close-up candid expression, natural skin with visible pores and matte-to-satin reflectance, " +
+      "natural asymmetry, believable sclera and catchlights, natural lips and brows, baby hair " +
+      "and coherent hair clumps, not plastic or waxy, without a beauty filter, no global smoothing, " +
+      "not a fashion model or catalog pose";
+    expect(
+      findLeadPromptQualityIssues(validCharacter("char-1", "support"), "support", {
+        mode: "target",
+        selectedPrompt: closeUp,
+        framing: "close_up",
+      }),
+    ).toEqual([]);
+  });
+
+  it("returns reuse, regenerate, or actionable reject for target prompt snapshots", () => {
+    expect(
+      decideCharacterPromptSnapshotReuse({
+        imagePromptCapability: targetNanoBananaCapability,
+        snapshotContractVersion: "vd_character_natural_human_v1",
+        snapshotPromptProfile: "rich",
+        hasCharacterFacts: false,
+      }),
+    ).toEqual({ action: "reuse", reason: "current_contract" });
+    expect(
+      decideCharacterPromptSnapshotReuse({
+        imagePromptCapability: targetSeedreamCapability,
+        snapshotContractVersion: "legacy",
+        snapshotPromptProfile: "legacy",
+        hasCharacterFacts: true,
+      }),
+    ).toEqual({ action: "regenerate", reason: "stale_contract_with_character_facts" });
+    expect(
+      decideCharacterPromptSnapshotReuse({
+        imagePromptCapability: targetSeedreamCapability,
+        snapshotContractVersion: "legacy",
+        snapshotPromptProfile: "legacy",
+        hasCharacterFacts: false,
+      }),
+    ).toMatchObject({
+      action: "reject",
+      code: "VERTICAL_DRAMA_CHARACTER_PROMPT_REGENERATE_REQUIRED",
+    });
+  });
+
   it("flags an under-cast male lead even when the prompt says merely ruggedly handsome", () => {
     const character = validCharacter("char-1", "lead_male");
     character.primary_portrait_prompt =
@@ -931,6 +1023,38 @@ describe("portrait candidate batch contract", () => {
     );
     expect(mockExecute).toHaveBeenCalledTimes(1);
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies target inline-only QC to candidate prompts without requiring a negative field", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const batch = structuredClone(validPortraitCandidateBatch(2));
+    for (const candidate of batch.portrait_candidate_batch.candidates) {
+      candidate.primary_portrait_prompt = addHumanRealismAnchors(
+        candidate.primary_portrait_prompt,
+      );
+      delete candidate.negative_prompt;
+    }
+    mockExecute.mockResolvedValue(successResponse(batch));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({
+        role: "นางเอก",
+        roleTier: "lead_female",
+        imagePromptCapability: targetSeedreamCapability,
+        imagePromptContractMode: "target",
+      }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(result.candidates).toHaveLength(2);
+    expect(result.candidates[0]?.negativePrompt).toBeUndefined();
+    expect(result.candidates[0]?.promptContractVersion).toBe("vd_character_natural_human_v1");
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(callArgs.messages.find((message) => message.role === "user")!.content).toContain(
+      '"prompt_profile": "compact"',
+    );
   });
 
   it("coerces a batch where every candidate mis-reports candidate_direction_count as the batch size (5) back to 3", async () => {
@@ -1293,6 +1417,116 @@ describe("generateCharacterVisualPrompts", () => {
       validCharacter().character_design_dna.face_identity.hair,
     );
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes facts-only target capability input and omits preset negative fragments from target output", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const targetCharacter = validCharacter("char-1", "support");
+    targetCharacter.primary_portrait_prompt = addHumanRealismAnchors(
+      targetCharacter.primary_portrait_prompt,
+    );
+    mockExecute.mockResolvedValue(successResponse(validOutput([targetCharacter])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({
+        role: "support",
+        roleTier: "support_memorable",
+        imagePromptCapability: targetNanoBananaCapability,
+        imagePromptContractMode: "target",
+        presetVisualIdentity: fullIdentity(),
+      }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const userMessage = callArgs.messages.find((message) => message.role === "user")!.content;
+    expect(userMessage).toContain('"image_prompt_capability"');
+    expect(userMessage).toContain('"max_prompt_chars": 20000');
+    expect(userMessage).toContain('"separate_negative_prompt": false');
+    expect(userMessage).toContain('"prompt_profile": "rich"');
+    expect(userMessage).not.toContain("urban skyline");
+    expect(result.promptContractVersion).toBe("vd_character_natural_human_v1");
+    expect(result.negativePrompt).toContain("no other people");
+    expect(result.negativePrompt).not.toContain("urban skyline");
+  });
+
+  it("fails a target caller before credits or the LLM when capability facts are missing", async () => {
+    await expect(
+      generateCharacterVisualPrompts(
+        baseParams({ imagePromptContractMode: "target" }),
+      ),
+    ).rejects.toMatchObject({
+      code: "VERTICAL_DRAMA_CHARACTER_PROMPT_CAPABILITY_MISSING",
+    });
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it("fails an invalid target capability before credits or the LLM", async () => {
+    await expect(
+      generateCharacterVisualPrompts(
+        baseParams({
+          imagePromptContractMode: "target",
+          imagePromptCapability: {
+            ...targetNanoBananaCapability,
+            maxPromptChars: 5_000,
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({
+      code: "VERTICAL_DRAMA_CHARACTER_PROMPT_CAPABILITY_INVALID",
+    });
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it("selects the compact profile for Seedream and accepts a target response without negative guards", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const targetCharacter = validCharacter("char-1", "support");
+    targetCharacter.primary_portrait_prompt = addHumanRealismAnchors(
+      targetCharacter.primary_portrait_prompt,
+    );
+    mockExecute.mockResolvedValue(successResponse(validOutput([targetCharacter])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({
+        role: "support",
+        roleTier: "support_memorable",
+        imagePromptCapability: targetSeedreamCapability,
+        imagePromptContractMode: "target",
+      }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const userMessage = callArgs.messages.find((message) => message.role === "user")!.content;
+    expect(userMessage).toContain('"max_prompt_chars": 5000');
+    expect(userMessage).toContain('"prompt_profile": "compact"');
+    expect(result.promptContractVersion).toBe("vd_character_natural_human_v1");
+  });
+
+  it("retries target semantic QC once and fails typed when the skill never writes the anchors", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const invalid = validCharacter("char-1", "support");
+    mockExecute
+      .mockReset()
+      .mockResolvedValueOnce(successResponse(validOutput([invalid])))
+      .mockResolvedValueOnce(successResponse(validOutput([invalid])));
+
+    await expect(
+      generateCharacterVisualPrompts(
+        baseParams({
+          role: "support",
+          roleTier: "support_memorable",
+          imagePromptCapability: targetNanoBananaCapability,
+          imagePromptContractMode: "target",
+        }),
+      ),
+    ).rejects.toThrow(VdSchemaValidationError);
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it("happy path: valid LLM response projects portrait/negative prompt, deducts credits once", async () => {

@@ -167,6 +167,30 @@
         }
       }
     },
+    "image_prompt_capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "family",
+        "max_prompt_chars",
+        "single_prompt",
+        "separate_negative_prompt",
+        "prompt_profile"
+      ],
+      "properties": {
+        "family": {
+          "type": "string",
+          "enum": ["gpt_image_2", "nano_banana", "seedream", "other"]
+        },
+        "max_prompt_chars": { "type": "integer", "minimum": 1 },
+        "single_prompt": { "const": true },
+        "separate_negative_prompt": { "type": "boolean" },
+        "prompt_profile": {
+          "type": "string",
+          "enum": ["rich", "compact", "legacy"]
+        }
+      }
+    },
     "deliverables": {
       "type": "array",
       "items": {

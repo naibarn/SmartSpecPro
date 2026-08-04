@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/144-vertical-drama-gpt-image-2-human-realism-character-prompts/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace @smartspec/web run test",
+  "sections": [
+    "section-01-capability-and-catalog",
+    "section-02-skill-and-generation-contract",
+    "section-03-character-render-normalizer",
+    "section-04-transport-persistence-and-compatibility",
+    "section-05-verification-and-ab-evaluation"
+  ],
+  "sections_state": {
+    "section-01-capability-and-catalog": {
+      "status": "complete",
+      "commit_hash": "bf864ba77"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-04T16:10:14.893661+00:00"
+}

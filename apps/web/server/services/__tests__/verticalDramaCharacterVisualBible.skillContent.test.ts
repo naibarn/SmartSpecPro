@@ -40,6 +40,42 @@ function readSkillMdBody(): string {
   return raw.replace(/^---\n[\s\S]*?\n---\n/, "");
 }
 
+describe("vertical-drama-character-visual-bible/skill.md — Feature 144 Human Realism contract", () => {
+  it("keeps SKILL.md and skill.md byte-for-byte synchronized", () => {
+    const realFs = fs;
+    const rootPath = [
+      path.resolve(process.cwd(), "skills/vertical-drama-character-visual-bible"),
+      path.resolve(process.cwd(), "apps/web/skills/vertical-drama-character-visual-bible"),
+    ].find((candidate) => fs.existsSync(candidate));
+    if (!rootPath) throw new Error("skill directory not found");
+    expect(realFs.readFileSync(path.join(rootPath, "SKILL.md"), "utf8")).toBe(
+      realFs.readFileSync(path.join(rootPath, "skill.md"), "utf8"),
+    );
+  });
+
+  it("contains natural-human, role, anatomy, shot-aware, and inline avoidance guidance", () => {
+    const body = readSkillMdBody();
+    for (const phrase of [
+      "Natural human realism",
+      "macro, meso, and micro skin variation",
+      "sclera, catchlights, lips",
+      "candid expression",
+      "hands, joints, feet, weight distribution",
+      "fashion-model",
+      "Supporting characters and",
+      "shot-aware camera",
+      "plastic",
+      "beauty-filtered",
+      "Rich and compact profiles",
+      "hard-truncating",
+    ]) {
+      expect(body).toContain(phrase);
+    }
+    expect(body).toMatch(/Do not force one 85mm recipe on every\s+shot/i);
+    expect(body).toMatch(/contextual inline prose/i);
+  });
+});
+
 function extractOutputSkeletonCharacter(body: string): Record<string, unknown> {
   // Anchored specifically to the "Output skeleton:" heading's own ```json
   // block — NOT just the first ```json block in the file. The "Face

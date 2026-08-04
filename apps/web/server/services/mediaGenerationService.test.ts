@@ -284,6 +284,61 @@ describe("MediaGenerationService retry behavior", () => {
     vi.mocked(getModelById).mockReturnValue(undefined);
   });
 
+  it("omits negative_prompt from sync target character requests", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImage(
+      {
+        prompt: "natural human character portrait",
+        negativePrompt: "plastic skin, catalog pose",
+        model: "google-banana-2",
+        characterPromptContext: {
+          marker: "vertical_drama_character_v1",
+          contractVersion: "vd_character_natural_human_v1",
+          target: true,
+        },
+      },
+      "test-token",
+    );
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload).toHaveProperty("prompt");
+    expect(payload).not.toHaveProperty("negative_prompt");
+  });
+
+  it("omits negative_prompt from async target character requests but preserves legacy mapping", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImageAsync(
+      {
+        prompt: "natural human character portrait",
+        negativePrompt: "plastic skin, catalog pose",
+        model: "google-banana-2",
+        characterPromptContext: {
+          marker: "vertical_drama_character_v1",
+          contractVersion: "vd_character_natural_human_v1",
+          target: true,
+        },
+      },
+      "test-token",
+    );
+    const targetPayload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(targetPayload).not.toHaveProperty("negative_prompt");
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+    await service.generateImageAsync(
+      { prompt: "legacy portrait", negativePrompt: "legacy guard", model: "google-banana-2" },
+      "test-token",
+    );
+    const legacyPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(legacyPayload).toHaveProperty("negative_prompt", "legacy guard");
+  });
+
   it("retries async audio submission once for SETTINGS_KEY_NOT_FOUND and succeeds", async () => {
     fetchMock
       .mockRejectedValueOnce(new Error("ERR SETTINGS_KEY_NOT_FOUND"))

@@ -9,6 +9,8 @@ export const VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_KEY =
 
 export const VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION =
   "vd_character_natural_human_v1" as const;
+export const VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER =
+  "vertical_drama_character_v1" as const;
 
 export type VerticalDramaCharacterPromptFamily =
   | "gpt_image_2"
@@ -30,6 +32,19 @@ export type VerticalDramaCharacterPromptModelContext = {
   modelId: string;
   configJson?: Record<string, unknown> | null;
   referenceImageRoute?: string;
+};
+
+export type VerticalDramaCharacterPromptRequest = {
+  prompt: string;
+  negativePrompt?: string;
+  model: string;
+};
+
+export type NormalizedVerticalDramaCharacterPromptRequest = Omit<
+  VerticalDramaCharacterPromptRequest,
+  "negativePrompt"
+> & {
+  negativePrompt?: string;
 };
 
 export type VerticalDramaCharacterPromptContractErrorCode =
@@ -194,10 +209,19 @@ export function resolveVerticalDramaCharacterPromptCapability(
 export function isTargetVerticalDramaCharacterCapability(
   capability: VerticalDramaCharacterPromptCapability,
 ): boolean {
+  const expectedLimit = capability.family === "gpt_image_2" || capability.family === "nano_banana"
+    ? 20_000
+    : capability.family === "seedream"
+      ? 5_000
+      : null;
+  const expectedProfile = capability.family === "seedream" ? "compact" : "rich";
   return (
     capability.configured &&
     capability.negativePromptMode === "inline_only" &&
-    capability.family !== "other"
+    capability.family !== "other" &&
+    expectedLimit !== null &&
+    capability.maxPromptChars === expectedLimit &&
+    capability.promptProfile === expectedProfile
   );
 }
 
@@ -218,4 +242,47 @@ export function assertVerticalDramaCharacterPromptLength(
       promptLength: length,
     },
   );
+}
+
+/**
+ * Final, transport-neutral character request normalizer. This is deliberately
+ * boring: it selects/removes the legacy negative field and validates the
+ * already-authored prompt; it never adds creative prose.
+ */
+export function normalizeVerticalDramaCharacterPromptRequest(
+  request: VerticalDramaCharacterPromptRequest,
+  params: {
+    capability?: VerticalDramaCharacterPromptCapability;
+    contractVersion?: string | null;
+    marker?: string | null;
+  },
+): NormalizedVerticalDramaCharacterPromptRequest {
+  if (params.marker !== VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER) {
+    throw capabilityError(
+      "VERTICAL_DRAMA_CHARACTER_PROMPT_CAPABILITY_INVALID",
+      request.model,
+      "is missing the trusted character request marker",
+    );
+  }
+  if (!params.capability) {
+    throw capabilityError(
+      "VERTICAL_DRAMA_CHARACTER_PROMPT_CAPABILITY_MISSING",
+      request.model,
+      "requires a resolved character prompt capability",
+    );
+  }
+  const isTarget = isTargetVerticalDramaCharacterCapability(params.capability);
+  if (params.contractVersion === VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION && !isTarget) {
+    throw capabilityError(
+      "VERTICAL_DRAMA_CHARACTER_PROMPT_CAPABILITY_INVALID",
+      request.model,
+      "has a target contract version without a valid target capability",
+    );
+  }
+  assertVerticalDramaCharacterPromptLength(request.prompt, params.capability);
+  const normalized: NormalizedVerticalDramaCharacterPromptRequest = { ...request };
+  if (isTarget) {
+    delete normalized.negativePrompt;
+  }
+  return normalized;
 }

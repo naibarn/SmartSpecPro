@@ -136,6 +136,8 @@ export interface ClaimedPortraitCandidate {
   count: number;
   portraitPrompt: string;
   negativePrompt?: string;
+  promptContractVersion?: string;
+  promptProfile?: "rich" | "compact" | "legacy";
 }
 
 type PortraitCandidatePrivateMetadata = VerticalDramaPortraitCandidateProjection & {
@@ -756,6 +758,8 @@ export class VerticalDramaCharacterStockService {
           count: candidate!.count,
           portraitPrompt: candidate!.portraitPrompt,
           negativePrompt: candidate!.negativePrompt,
+          promptContractVersion: candidate!.visualBibleSnapshot.promptContractVersion,
+          promptProfile: candidate!.visualBibleSnapshot.promptProfile,
         }))
         .sort((left, right) => left.index - right.index);
     });
@@ -797,6 +801,53 @@ export class VerticalDramaCharacterStockService {
       );
     }
     return expectedCount;
+  }
+
+  /** Read the immutable prompt fields for server-side preflight without claiming the batch. */
+  async getPortraitCandidateBatchForPreflight(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+    batchId: string,
+  ): Promise<ClaimedPortraitCandidate[]> {
+    const rows: Array<{ metadata: unknown }> = await db
+      .select({ metadata: verticalDramaCharacterAssets.metadata })
+      .from(verticalDramaCharacterAssets)
+      .where(
+        and(
+          eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAssets.userId, owner.userId),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+          eq(verticalDramaCharacterAssets.characterId, characterId),
+          eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
+          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
+        ),
+      );
+    const candidates = rows.map(row => readPortraitCandidatePrivateMetadata(row.metadata));
+    const expectedCount = candidates[0]?.count;
+    if (
+      !expectedCount ||
+      candidates.length !== expectedCount ||
+      candidates.some(candidate => !candidate || candidate.status !== "previewed")
+    ) {
+      throw new VerticalDramaCharacterStockError(
+        "candidate_batch_not_found",
+        "Portrait candidate batch is unavailable for preflight.",
+      );
+    }
+    return candidates
+      .filter((candidate): candidate is PortraitCandidatePrivateMetadata => Boolean(candidate))
+      .map(candidate => ({
+        assetLinkId: 0,
+        batchId: candidate.batchId,
+        candidateId: candidate.candidateId,
+        index: candidate.index,
+        count: candidate.count,
+        portraitPrompt: candidate.portraitPrompt,
+        negativePrompt: candidate.negativePrompt,
+        promptContractVersion: candidate.visualBibleSnapshot.promptContractVersion,
+        promptProfile: candidate.visualBibleSnapshot.promptProfile,
+      }))
+      .sort((left, right) => left.index - right.index);
   }
 
   async getPortraitCandidateTaskInfo(

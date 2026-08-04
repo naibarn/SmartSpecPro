@@ -63,10 +63,20 @@ import { signBearerToken } from "../_core/tokens";
 import {
   generateCharacterVisualPrompts,
   generateCharacterPortraitCandidates,
+  decideCharacterPromptSnapshotReuse,
   InsufficientCreditsError,
   VdSchemaValidationError,
   resolveFaceSourceReferenceForCharacter,
 } from "../services/verticalDramaCharacterImageGeneration";
+import {
+  VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION,
+  VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+  isTargetVerticalDramaCharacterCapability,
+  normalizeVerticalDramaCharacterPromptRequest,
+  resolveVerticalDramaCharacterPromptCapability,
+  VerticalDramaCharacterPromptContractError,
+  type VerticalDramaCharacterPromptCapability,
+} from "../services/verticalDramaCharacterPromptContract";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
@@ -859,6 +869,60 @@ export async function resolveCharacterImageModelId(selectedImageModelId?: string
   return requested;
 }
 
+async function resolveCharacterPromptCapabilityForModel(
+  modelId: string,
+  configJson?: Record<string, unknown> | null,
+): Promise<VerticalDramaCharacterPromptCapability> {
+  let resolvedConfigJson = configJson;
+  if (resolvedConfigJson === undefined) {
+    const [modelRow] = await db
+      .select({ configJson: mediaModels.configJson })
+      .from(mediaModels)
+      .where(eq(mediaModels.modelId, modelId))
+      .limit(1);
+    resolvedConfigJson = (modelRow?.configJson as Record<string, unknown> | null | undefined) ?? undefined;
+  }
+  return resolveVerticalDramaCharacterPromptCapability({
+    modelId,
+    configJson: resolvedConfigJson,
+  });
+}
+
+function mapCharacterPromptContractError(error: unknown): never {
+  if (error instanceof VerticalDramaCharacterPromptContractError) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
+  throw error;
+}
+
+function normalizeCharacterRenderPrompt(params: {
+  prompt: string;
+  negativePrompt?: string;
+  model: string;
+  capability: VerticalDramaCharacterPromptCapability;
+}) {
+  try {
+    return normalizeVerticalDramaCharacterPromptRequest(
+      {
+        prompt: params.prompt,
+        ...(params.negativePrompt !== undefined
+          ? { negativePrompt: params.negativePrompt }
+          : {}),
+        model: params.model,
+      },
+      {
+        capability: params.capability,
+        marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+        contractVersion: isTargetVerticalDramaCharacterCapability(params.capability)
+          ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+          : null,
+      },
+    );
+  } catch (error) {
+    return mapCharacterPromptContractError(error);
+  }
+}
+
 /**
  * Character Design Bible sheet formats (vertical-drama-character-sheet-
  * consolidation plan) — the merged `generateCharacterSheet` mutation's
@@ -1479,6 +1543,54 @@ export const verticalDramaCharactersRouter = router({
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      let characterPromptCapability: VerticalDramaCharacterPromptCapability;
+      try {
+        characterPromptCapability = await resolveCharacterPromptCapabilityForModel(
+          resolvedImageModelId,
+          (pricingModel.configJson as Record<string, unknown> | null | undefined) ?? null,
+        );
+      } catch (error) {
+        return mapCharacterPromptContractError(error);
+      }
+      const previewCandidates = await verticalDramaCharacterStockService.getPortraitCandidateBatchForPreflight(
+        owner,
+        characterId,
+        input.batchId,
+      );
+      if (isTargetVerticalDramaCharacterCapability(characterPromptCapability)) {
+        for (const candidate of previewCandidates) {
+          const reuseDecision = decideCharacterPromptSnapshotReuse({
+            imagePromptCapability: characterPromptCapability,
+            snapshotContractVersion: candidate.promptContractVersion,
+            snapshotPromptProfile: candidate.promptProfile,
+            hasCharacterFacts: true,
+          });
+          if (reuseDecision.action !== "reuse") {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "One or more portrait candidates are stale. Generate a fresh candidate batch.",
+            });
+          }
+        }
+      }
+      const normalizedCandidatePrompts = new Map(
+        previewCandidates.map(candidate => {
+          const assembled = applySeriesLookToImagePrompt({
+            prompt: candidate.portraitPrompt,
+            negativePrompt: candidate.negativePrompt,
+            identity: presetVisualIdentity,
+          });
+          return [
+            candidate.candidateId,
+            normalizeCharacterRenderPrompt({
+              prompt: assembled.prompt,
+              negativePrompt: assembled.negativePrompt,
+              model: resolvedImageModelId,
+              capability: characterPromptCapability,
+            }),
+          ] as const;
+        }),
+      );
       const creditCostPerImage = calculateCreditCost(pricingModel, { numImages: 1 });
       const totalReservedCredits = creditCostPerImage * candidateCount;
 
@@ -1571,6 +1683,13 @@ export const verticalDramaCharactersRouter = router({
             negativePrompt: candidate.negativePrompt,
             identity: presetVisualIdentity,
           });
+          const normalizedCandidatePrompt = normalizedCandidatePrompts.get(candidate.candidateId);
+          if (!normalizedCandidatePrompt) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Portrait candidate preflight data is incomplete; generate a fresh batch.",
+            });
+          }
           if (lookLockEnabled && presetVisualIdentity) {
             await recordSeriesLookLockAuditEvent({
               eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
@@ -1592,7 +1711,7 @@ export const verticalDramaCharactersRouter = router({
               contractVersion: 1,
               operation: "image.generate",
               connectionId: transportDecision.connectionId,
-              prompt: assembledCandidatePrompt.prompt,
+              prompt: normalizedCandidatePrompt.prompt,
               settings: {
                 model: hermesProviderModelId ?? resolvedImageModelId,
                 aspectRatio: "9:16",
@@ -1622,14 +1741,28 @@ export const verticalDramaCharactersRouter = router({
             });
             const task = await mediaGenerationService.generateImageAsync(
               {
-                prompt: assembledCandidatePrompt.prompt,
-                negativePrompt: assembledCandidatePrompt.negativePrompt,
+                prompt: normalizedCandidatePrompt.prompt,
+                characterPromptContext: {
+                  marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+                  contractVersion: isTargetVerticalDramaCharacterCapability(characterPromptCapability)
+                    ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+                    : "legacy",
+                  target: isTargetVerticalDramaCharacterCapability(characterPromptCapability),
+                },
+                ...(normalizedCandidatePrompt.negativePrompt !== undefined
+                  ? { negativePrompt: normalizedCandidatePrompt.negativePrompt }
+                  : {}),
                 model: resolvedImageModelId,
                 numImages: 1,
                 aspectRatio: "9:16",
                 extraParams: {
                   __origin_surface: "vertical_drama_character_portrait_candidates",
                   __reserved_credits: creditCostPerImage,
+                  __vd_character_prompt_marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+                  __vd_character_prompt_contract_version:
+                    isTargetVerticalDramaCharacterCapability(characterPromptCapability)
+                      ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+                      : "legacy",
                   __vd_series_id: String(seriesId),
                   __vd_character_id: String(characterId),
                   __vd_portrait_candidate_batch_id: input.batchId,
@@ -3122,6 +3255,7 @@ export const verticalDramaCharactersRouter = router({
     .input(
       seriesScope.extend({
         characterId: z.string().min(1),
+        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
         portraitCandidateCount: z.number().int().min(1).max(5).optional(),
         // Free-text visual brief (framing/pose/crop/mood/outfit/setting/etc.)
         // for THIS generation only. It is passed through to
@@ -3148,6 +3282,15 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      let previewPromptCapability: VerticalDramaCharacterPromptCapability | undefined;
+      if (input.selectedImageModelId) {
+        try {
+          const previewModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
+          previewPromptCapability = await resolveCharacterPromptCapabilityForModel(previewModelId);
+        } catch (error) {
+          return mapCharacterPromptContractError(error);
+        }
+      }
 
       const [seriesRow] = await db
         .select({
@@ -3256,6 +3399,16 @@ export const verticalDramaCharactersRouter = router({
             allowLegacyApprovedDesignDnaReplacement: Boolean(
               characterDesignContext?.approvedDesignDna,
             ),
+            ...(previewPromptCapability
+              ? {
+                  imagePromptCapability: previewPromptCapability,
+                  imagePromptContractMode: isTargetVerticalDramaCharacterCapability(
+                    previewPromptCapability,
+                  )
+                    ? ("target" as const)
+                    : ("legacy" as const),
+                }
+              : {}),
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -3352,6 +3505,16 @@ export const verticalDramaCharactersRouter = router({
           faceSourceReference,
           customInstruction: input.customInstruction,
           characterDesignContext,
+          ...(previewPromptCapability
+            ? {
+                imagePromptCapability: previewPromptCapability,
+                imagePromptContractMode: isTargetVerticalDramaCharacterCapability(
+                  previewPromptCapability,
+                )
+                  ? ("target" as const)
+                  : ("legacy" as const),
+              }
+            : {}),
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -3382,6 +3545,10 @@ export const verticalDramaCharactersRouter = router({
         approvedDesignSnapshot: {
           characterKey: character.characterKey,
           portraitPrompt: renderPrompt,
+          ...(promptResult.promptContractVersion
+            ? { promptContractVersion: promptResult.promptContractVersion }
+            : {}),
+          ...(promptResult.promptProfile ? { promptProfile: promptResult.promptProfile } : {}),
           ...(promptResult.negativePrompt
             ? { negativePrompt: promptResult.negativePrompt }
             : {}),
@@ -3561,7 +3728,29 @@ export const verticalDramaCharactersRouter = router({
           input.referenceAssetLinkId,
           character.parentCharacterId ?? character.sharesFaceWithCharacterId,
         );
-
+      const resolvedImageModelId = await resolveCharacterImageModelId(
+        pickCharacterRenderModelId({
+          hasReferenceImage: Boolean(referencePortraitUrl),
+          selectedImageModelId: input.selectedImageModelId,
+          selectedEditImageModelId: input.selectedEditImageModelId,
+        }),
+      );
+      const [pricingRow] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      let characterPromptCapability: VerticalDramaCharacterPromptCapability;
+      try {
+        characterPromptCapability = await resolveCharacterPromptCapabilityForModel(
+          resolvedImageModelId,
+          (pricingModel.configJson as Record<string, unknown> | null | undefined) ?? null,
+        );
+      } catch (error) {
+        return mapCharacterPromptContractError(error);
+      }
+      const targetCharacterPrompt = isTargetVerticalDramaCharacterCapability(characterPromptCapability);
       // 1. Prompt generation — credit-gated + deducted internally. Skipped
       //    entirely when the caller already ran `previewCharacterPrompt` and
       //    supplies the user-approved text via `approvedPrompt` (that credit
@@ -3571,15 +3760,37 @@ export const verticalDramaCharactersRouter = router({
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
+      let useApprovedPortraitPrompt = Boolean(input.approvedPrompt);
+      if (input.approvedPrompt && targetCharacterPrompt && !input.approvedDesignSnapshot) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "A target character prompt requires a current contract snapshot. Generate a fresh prompt before rendering.",
+        });
+      }
+      if (input.approvedPrompt && input.approvedDesignSnapshot && targetCharacterPrompt) {
+        const reuseDecision = decideCharacterPromptSnapshotReuse({
+          imagePromptCapability: characterPromptCapability,
+          snapshotContractVersion: input.approvedDesignSnapshot.promptContractVersion,
+          snapshotPromptProfile: input.approvedDesignSnapshot.promptProfile,
+          hasCharacterFacts: true,
+        });
+        if (reuseDecision.action === "reject") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "This approved character prompt is stale. Generate a fresh prompt before rendering.",
+          });
+        }
+        useApprovedPortraitPrompt = reuseDecision.action === "reuse";
+      }
       let visualBibleToPersist =
-        input.approvedPrompt &&
+        useApprovedPortraitPrompt &&
         input.approvedDesignSnapshot &&
-        input.approvedDesignSnapshot.portraitPrompt.trim() === input.approvedPrompt.trim()
+        input.approvedDesignSnapshot.portraitPrompt.trim() === input.approvedPrompt!.trim()
           ? input.approvedDesignSnapshot.visualBible
           : undefined;
 
-      if (input.approvedPrompt) {
-        portraitPrompt = input.approvedPrompt;
+      if (useApprovedPortraitPrompt) {
+        portraitPrompt = input.approvedPrompt!;
         negativePrompt = input.approvedNegativePrompt;
       } else {
         const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
@@ -3623,6 +3834,8 @@ export const verticalDramaCharactersRouter = router({
             hasOwnReferenceImage: referenceSourceIsOwnLikeness(referencePortraitSource),
             customInstruction: input.customInstruction,
             characterDesignContext,
+            imagePromptCapability: characterPromptCapability,
+            imagePromptContractMode: targetCharacterPrompt ? "target" : "legacy",
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -3657,6 +3870,14 @@ export const verticalDramaCharactersRouter = router({
           path: "characters.generateImage",
         });
       }
+      const normalizedPortraitRequest = normalizeCharacterRenderPrompt({
+        prompt: portraitPrompt,
+        negativePrompt,
+        model: resolvedImageModelId,
+        capability: characterPromptCapability,
+      });
+      portraitPrompt = normalizedPortraitRequest.prompt;
+      negativePrompt = normalizedPortraitRequest.negativePrompt;
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
       //    from the prompt-generation LLM call above. Prices + generates
       //    against the CALLER-SELECTED model (character tab's own picker),
@@ -3668,19 +3889,6 @@ export const verticalDramaCharactersRouter = router({
       //    `pickCharacterRenderModelId`). Pricing, credits, and transport all
       //    follow the RESOLVED model from here on, so nothing downstream
       //    needs to know which picker it came from.
-      const resolvedImageModelId = await resolveCharacterImageModelId(
-        pickCharacterRenderModelId({
-          hasReferenceImage: Boolean(referencePortraitUrl),
-          selectedImageModelId: input.selectedImageModelId,
-          selectedEditImageModelId: input.selectedEditImageModelId,
-        }),
-      );
-      const [pricingRow] = await db
-        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
-        .from(mediaModels)
-        .where(eq(mediaModels.modelId, resolvedImageModelId))
-        .limit(1);
-      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
 
       // Zero-cost models (e.g. Higgsfield/Magnific MCP — billed via MCP
@@ -3762,7 +3970,14 @@ export const verticalDramaCharactersRouter = router({
           mediaType: "image",
           model: hermesProviderModelId,
           prompt: portraitPrompt,
-          extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_character_id: String(characterId),
+            __vd_character_prompt_marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+            __vd_character_prompt_contract_version: targetCharacterPrompt
+              ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+              : "legacy",
+          },
           droppedReferenceCount,
         });
 
@@ -3844,7 +4059,14 @@ export const verticalDramaCharactersRouter = router({
         task = await mediaGenerationService.generateImageAsync(
           {
             prompt: portraitPrompt,
-            negativePrompt,
+            characterPromptContext: {
+              marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+              contractVersion: targetCharacterPrompt
+                ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+                : "legacy",
+              target: targetCharacterPrompt,
+            },
+            ...(negativePrompt !== undefined ? { negativePrompt } : {}),
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
@@ -3853,7 +4075,14 @@ export const verticalDramaCharactersRouter = router({
             // persisted verbatim into the media task's `parameters.extra_params`
             // (see PERSISTED_INTERNAL_EXTRA_PARAM_KEYS in mediaGenerationService.ts);
             // read back by `media.listTasks`'s optional `seriesId` filter.
-            extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
+            extraParams: {
+              __vd_series_id: String(seriesId),
+              __vd_character_id: String(characterId),
+              __vd_character_prompt_marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+              __vd_character_prompt_contract_version: targetCharacterPrompt
+                ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+                : "legacy",
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
@@ -4186,6 +4415,29 @@ export const verticalDramaCharactersRouter = router({
           input.referenceAssetLinkId,
           character.parentCharacterId ?? character.sharesFaceWithCharacterId,
         );
+      const resolvedImageModelId = await resolveCharacterImageModelId(
+        pickCharacterRenderModelId({
+          hasReferenceImage: Boolean(referencePortraitUrl),
+          selectedImageModelId: input.selectedImageModelId,
+          selectedEditImageModelId: input.selectedEditImageModelId,
+        }),
+      );
+      const [pricingRow] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      let characterPromptCapability: VerticalDramaCharacterPromptCapability;
+      try {
+        characterPromptCapability = await resolveCharacterPromptCapabilityForModel(
+          resolvedImageModelId,
+          (pricingModel.configJson as Record<string, unknown> | null | undefined) ?? null,
+        );
+      } catch (error) {
+        return mapCharacterPromptContractError(error);
+      }
+      const targetCharacterPrompt = isTargetVerticalDramaCharacterCapability(characterPromptCapability);
 
       // Prompt generation — credit-gated + deducted internally. Skipped
       // entirely when the caller already ran `previewCharacterPrompt` and
@@ -4197,15 +4449,37 @@ export const verticalDramaCharactersRouter = router({
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
+      let useApprovedSheetPrompt = Boolean(input.approvedPrompt);
+      if (input.approvedPrompt && targetCharacterPrompt && !input.approvedDesignSnapshot) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "A target character prompt requires a current contract snapshot. Generate a fresh prompt before rendering.",
+        });
+      }
+      if (input.approvedPrompt && input.approvedDesignSnapshot && targetCharacterPrompt) {
+        const reuseDecision = decideCharacterPromptSnapshotReuse({
+          imagePromptCapability: characterPromptCapability,
+          snapshotContractVersion: input.approvedDesignSnapshot.promptContractVersion,
+          snapshotPromptProfile: input.approvedDesignSnapshot.promptProfile,
+          hasCharacterFacts: true,
+        });
+        if (reuseDecision.action === "reject") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "This approved character prompt is stale. Generate a fresh prompt before rendering.",
+          });
+        }
+        useApprovedSheetPrompt = reuseDecision.action === "reuse";
+      }
       let visualBibleToPersist =
-        input.approvedPrompt &&
+        useApprovedSheetPrompt &&
         input.approvedDesignSnapshot &&
-        input.approvedDesignSnapshot.portraitPrompt.trim() === input.approvedPrompt.trim()
+        input.approvedDesignSnapshot.portraitPrompt.trim() === input.approvedPrompt!.trim()
           ? input.approvedDesignSnapshot.visualBible
           : undefined;
 
-      if (input.approvedPrompt) {
-        sheetPromptText = input.approvedPrompt;
+      if (useApprovedSheetPrompt) {
+        sheetPromptText = input.approvedPrompt!;
         negativePrompt = input.approvedNegativePrompt;
       } else {
         const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
@@ -4260,6 +4534,8 @@ export const verticalDramaCharactersRouter = router({
             // for it (see skill.md's "Character Design Bible sheet types").
             requestedSheetType: resolvedSheetType === "turnaround" ? undefined : resolvedSheetType,
             characterDesignContext,
+            imagePromptCapability: characterPromptCapability,
+            imagePromptContractMode: targetCharacterPrompt ? "target" : "legacy",
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -4312,6 +4588,14 @@ export const verticalDramaCharactersRouter = router({
           path: "characters.generateSheet",
         });
       }
+      const normalizedSheetRequest = normalizeCharacterRenderPrompt({
+        prompt: sheetPromptText,
+        negativePrompt,
+        model: resolvedImageModelId,
+        capability: characterPromptCapability,
+      });
+      sheetPromptText = normalizedSheetRequest.prompt;
+      negativePrompt = normalizedSheetRequest.negativePrompt;
 
       // Pricing: the plain turnaround stays priced like a single image (same
       // as the old, now-merged `generateCharacterTurnaround`); every other
@@ -4322,19 +4606,6 @@ export const verticalDramaCharactersRouter = router({
       // comment for rationale — including the text-to-image vs image-to-image
       // split, which applies here identically (a sheet render attaches the
       // same identity-lock reference).
-      const resolvedImageModelId = await resolveCharacterImageModelId(
-        pickCharacterRenderModelId({
-          hasReferenceImage: Boolean(referencePortraitUrl),
-          selectedImageModelId: input.selectedImageModelId,
-          selectedEditImageModelId: input.selectedEditImageModelId,
-        }),
-      );
-      const [pricingRow] = await db
-        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
-        .from(mediaModels)
-        .where(eq(mediaModels.modelId, resolvedImageModelId))
-        .limit(1);
-      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const sheetCreditCost = calculateCreditCost(pricingModel, {
         numImages: resolvedSheetType === "turnaround" ? 1 : 2,
       });
@@ -4407,7 +4678,14 @@ export const verticalDramaCharactersRouter = router({
           mediaType: "image",
           model: hermesProviderModelId,
           prompt: sheetPromptText,
-          extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_character_id: String(characterId),
+            __vd_character_prompt_marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+            __vd_character_prompt_contract_version: targetCharacterPrompt
+              ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+              : "legacy",
+          },
           droppedReferenceCount,
         });
         const hermesAssetTag = resolveCharacterSheetAssetTag(resolvedSheetType);
@@ -4481,13 +4759,27 @@ export const verticalDramaCharactersRouter = router({
         task = await mediaGenerationService.generateImageAsync(
           {
             prompt: sheetPromptText,
-            negativePrompt,
+            characterPromptContext: {
+              marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+              contractVersion: targetCharacterPrompt
+                ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+                : "legacy",
+              target: targetCharacterPrompt,
+            },
+            ...(negativePrompt !== undefined ? { negativePrompt } : {}),
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
             ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
             // Series provenance tag — see generateCharacterImage's comment.
-            extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
+            extraParams: {
+              __vd_series_id: String(seriesId),
+              __vd_character_id: String(characterId),
+              __vd_character_prompt_marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+              __vd_character_prompt_contract_version: targetCharacterPrompt
+                ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+                : "legacy",
+            },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {

@@ -76,6 +76,7 @@ import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalD
 import { VD_COPY } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
 import { VerticalDramaCharacterVoiceCastingCard } from "@/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard";
+import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
 import { VerticalDramaCharacterMergeReviewDialog } from "@/components/verticalDramaSeries/VerticalDramaCharacterMergeReviewDialog";
 import type {
   VerticalDramaCharacterVoiceConfig,
@@ -125,6 +126,7 @@ import {
   isCharacterLockPolicyFailureMessage,
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
 } from "@shared/verticalDramaSeries/characterLock";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 
 function getCanonicalRoleLabel(
   roleTier: string | null | undefined,
@@ -214,23 +216,7 @@ const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
  *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
  *  the whole click handler BEFORE the real (state/mutation) action fired.
  *  Swallow the error and let the real action proceed. */
-function safeStorageGet(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
 
-function safeStorageSet(key: string, value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    /* quota exceeded / storage blocked — cache is best-effort, ignore */
-  }
-}
 
 function safeStorageRemove(key: string): void {
   if (typeof window === "undefined") return;
@@ -935,6 +921,7 @@ export function resolveDirectCharacterImageInstruction(params: {
 export interface VdPreviewCharacterPromptInput {
   seriesId: string;
   characterId: string;
+  selectedImageModelId?: string;
   customInstruction?: string;
   portraitCandidateCount?: number;
 }
@@ -948,6 +935,7 @@ export interface VdPreviewCharacterPromptInput {
 export function buildPreviewCharacterPromptInput(params: {
   seriesId: string;
   characterId: string;
+  selectedImageModelId?: string;
   customInstruction: string;
   portraitCandidateCount?: number;
 }): VdPreviewCharacterPromptInput {
@@ -955,6 +943,9 @@ export function buildPreviewCharacterPromptInput(params: {
   return {
     seriesId: params.seriesId,
     characterId: params.characterId,
+    ...(params.selectedImageModelId?.trim()
+      ? { selectedImageModelId: params.selectedImageModelId.trim() }
+      : {}),
     ...(customInstruction ? { customInstruction } : {}),
     ...(params.portraitCandidateCount
       ? { portraitCandidateCount: params.portraitCandidateCount }
@@ -1878,6 +1869,24 @@ export function VerticalDramaCharacterStockPanel({
 }: VerticalDramaCharacterStockPanelProps) {
   const lang = useVerticalDramaLang();
   const utils = trpc.useUtils();
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
+  const confirmCharacterCreditAction = (
+    characterId: string,
+    title: string,
+    description: string,
+    confirmLabel: string,
+    action: () => void,
+  ) => {
+    requestConfirmation({
+      title,
+      description,
+      confirmLabel,
+      cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-character-${characterId}`,
+      onConfirm: action,
+    });
+  };
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
     null
@@ -3495,60 +3504,74 @@ export function VerticalDramaCharacterStockPanel({
       character && isFirstPortraitCandidateEligible(character, assets)
     );
     if (useCandidateBatch) setSelectedCharacterId(characterId);
-    setPendingPreviewTarget({ characterId });
-    previewCharacterPromptMutation.mutate(
-      buildPreviewCharacterPromptInput({
-        seriesId,
-        characterId,
-        customInstruction: customInstructionByCharacter[characterId] ?? "",
-        ...(useCandidateBatch
-          ? {
-              portraitCandidateCount:
-                portraitCandidateCountByCharacter[characterId] ?? 3,
-            }
-          : {}),
-      }),
-      {
-        onSuccess: res => {
-          setPendingPreviewTarget(null);
-          if (res.mode === "candidate_batch") {
-            setPendingCharacterPromptPreview(null);
-            setPortraitCandidateBatches(prev => ({
-              ...prev,
-              [characterId]: {
-                batchId: res.batchId,
-                characterId,
-                sharedVisualLanguage: res.sharedVisualLanguage,
-                model: res.model,
-                warnings: "warnings" in res ? res.warnings : undefined,
-                candidates: res.candidates.map(candidate => ({
-                  assetLinkId: candidate.assetLinkId,
-                  candidateId: candidate.candidateId,
-                  index: candidate.index,
-                  portraitPrompt: candidate.portraitPrompt,
-                  negativePrompt: candidate.negativePrompt,
-                  visualIdentitySummary: candidate.visualIdentitySummary,
-                  status: "previewed",
-                })),
-              },
-            }));
-            return;
-          }
-          setPendingCharacterPromptPreview({
+    requestConfirmation({
+      title: t(lang, "ยืนยันสร้าง prompt ตัวละคร", "Confirm character prompt generation"),
+      description: t(
+        lang,
+        "การทำงานนี้ใช้ AI เพื่อสร้าง prompt และอาจหักเครดิต ก่อนเข้าสู่ขั้นตรวจสอบภาพ",
+        "This uses AI to generate a character prompt and may spend credits before the image review step.",
+      ),
+      confirmLabel: t(lang, "สร้าง prompt", "Generate prompt"),
+      cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-character-prompt-${characterId}`,
+      onConfirm: () => {
+        setPendingPreviewTarget({ characterId });
+        previewCharacterPromptMutation.mutate(
+          buildPreviewCharacterPromptInput({
+            seriesId,
             characterId,
-            portraitPrompt: res.portraitPrompt,
-            turnaroundPrompt: res.turnaroundPrompt,
-            negativePrompt: res.negativePrompt,
-            model: res.model,
-            approvedDesignSnapshot: res.approvedDesignSnapshot,
-            warnings: "warnings" in res ? res.warnings : undefined,
-          });
-        },
-        onError: () => {
-          setPendingPreviewTarget(null);
-        },
-      }
-    );
+            selectedImageModelId,
+            customInstruction: customInstructionByCharacter[characterId] ?? "",
+            ...(useCandidateBatch
+              ? {
+                  portraitCandidateCount:
+                    portraitCandidateCountByCharacter[characterId] ?? 3,
+                }
+              : {}),
+          }),
+          {
+            onSuccess: res => {
+              setPendingPreviewTarget(null);
+              if (res.mode === "candidate_batch") {
+                setPendingCharacterPromptPreview(null);
+                setPortraitCandidateBatches(prev => ({
+                  ...prev,
+                  [characterId]: {
+                    batchId: res.batchId,
+                    characterId,
+                    sharedVisualLanguage: res.sharedVisualLanguage,
+                    model: res.model,
+                    warnings: "warnings" in res ? res.warnings : undefined,
+                    candidates: res.candidates.map(candidate => ({
+                      assetLinkId: candidate.assetLinkId,
+                      candidateId: candidate.candidateId,
+                      index: candidate.index,
+                      portraitPrompt: candidate.portraitPrompt,
+                      negativePrompt: candidate.negativePrompt,
+                      visualIdentitySummary: candidate.visualIdentitySummary,
+                      status: "previewed",
+                    })),
+                  },
+                }));
+                return;
+              }
+              setPendingCharacterPromptPreview({
+                characterId,
+                portraitPrompt: res.portraitPrompt,
+                turnaroundPrompt: res.turnaroundPrompt,
+                negativePrompt: res.negativePrompt,
+                model: res.model,
+                approvedDesignSnapshot: res.approvedDesignSnapshot,
+                warnings: "warnings" in res ? res.warnings : undefined,
+              });
+            },
+            onError: () => {
+              setPendingPreviewTarget(null);
+            },
+          },
+        );
+      },
+    });
   };
 
   /** User confirmed (optionally edited) the previewed prompt — now, and only
@@ -3585,17 +3608,25 @@ export function VerticalDramaCharacterStockPanel({
       hermesConnectionId,
       referenceAssetLinkId: referenceOverrideByCharacter[characterId] ?? null,
     });
-    setPendingCharacterPromptPreview(null);
-    if (confirmation.wasPromptEdited) {
-      toast.info(
-        t(
-          lang,
-          "ระบบจะสร้างภาพจาก Prompt ที่แก้ไข แต่จะยังไม่ล็อก Character DNA หากต้องการล็อกหน้าตาใหม่นี้ ให้สร้าง Preview ใหม่ก่อนยืนยัน",
-          "The edited prompt will render, but Character DNA was not locked. Generate a fresh preview to lock the edited identity."
-        )
-      );
-    }
-    generateImageMutation.mutate(confirmation.payload);
+    confirmCharacterCreditAction(
+      characterId,
+      t(lang, "ยืนยันสร้างภาพตัวละคร", "Confirm character image generation"),
+      t(lang, "การสร้างภาพตัวละครใช้ AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?", "Generating the character image uses AI and spends credits. Continue?"),
+      t(lang, "สร้างภาพตัวละคร", "Generate character image"),
+      () => {
+        setPendingCharacterPromptPreview(null);
+        if (confirmation.wasPromptEdited) {
+          toast.info(
+            t(
+              lang,
+              "ระบบจะสร้างภาพจาก Prompt ที่แก้ไข แต่จะยังไม่ล็อก Character DNA หากต้องการล็อกหน้าตาใหม่นี้ ให้สร้าง Preview ใหม่ก่อนยืนยัน",
+              "The edited prompt will render, but Character DNA was not locked. Generate a fresh preview to lock the edited identity."
+            )
+          );
+        }
+        generateImageMutation.mutate(confirmation.payload);
+      },
+    );
   };
 
   /** User cancelled the preview — clear state only, no mutation call, no
@@ -3614,32 +3645,40 @@ export function VerticalDramaCharacterStockPanel({
       !requireHermesConnectionOrToast()
     )
       return;
-    setPortraitCandidateBatches(prev => ({
-      ...prev,
-      [characterId]: {
-        ...batch,
-        candidates: batch.candidates.map(candidate => ({
-          ...candidate,
-          status: "submitting",
-        })),
-      },
-    }));
-    generatePortraitCandidateBatchMutation.mutate({
-      seriesId,
+    confirmCharacterCreditAction(
       characterId,
-      batchId: batch.batchId,
-      // Always sent (never conditionally spread) — the server now REJECTS
-      // image generation without an explicit `selectedImageModelId` (fail-
-      // closed, no more silent `DEFAULT_MODELS.image` fallback). Safe to
-      // assert non-empty here: `requireModelSelected()` above already
-      // returned early when it was blank.
-      selectedImageModelId,
-      ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
-      ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
-        ? { sharedGroupId: mcpSharedGroupId }
-        : {}),
-      ...(imageModelUsesHermes && hermesConnectionId ? { hermesConnectionId } : {}),
-    });
+      t(lang, "ยืนยันสร้างภาพตัวเลือก", "Confirm candidate image generation"),
+      t(lang, "การสร้างภาพตัวเลือกใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "Generating candidate images uses AI and may spend credits. Continue?"),
+      t(lang, "สร้างภาพตัวเลือก", "Generate candidates"),
+      () => {
+        setPortraitCandidateBatches(prev => ({
+          ...prev,
+          [characterId]: {
+            ...batch,
+            candidates: batch.candidates.map(candidate => ({
+              ...candidate,
+              status: "submitting",
+            })),
+          },
+        }));
+        generatePortraitCandidateBatchMutation.mutate({
+          seriesId,
+          characterId,
+          batchId: batch.batchId,
+          // Always sent (never conditionally spread) — the server now REJECTS
+          // image generation without an explicit `selectedImageModelId` (fail-
+          // closed, no more silent `DEFAULT_MODELS.image` fallback). Safe to
+          // assert non-empty here: `requireModelSelected()` above already
+          // returned early when it was blank.
+          selectedImageModelId,
+          ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+          ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
+            ? { sharedGroupId: mcpSharedGroupId }
+            : {}),
+          ...(imageModelUsesHermes && hermesConnectionId ? { hermesConnectionId } : {}),
+        });
+      },
+    );
   };
 
   const handlePortraitCandidateBatchCancel = (characterId: string) =>
@@ -3701,22 +3740,28 @@ export function VerticalDramaCharacterStockPanel({
     if (!requireModelSelected()) return;
     if (!requireMcpConnectionOrToast()) return;
     if (!requireHermesConnectionOrToast()) return;
-    setRetryingPortraitCandidateAssetIds(prev => new Set(prev).add(assetLinkId));
-    const clearRetrying = () =>
-      setRetryingPortraitCandidateAssetIds(prev => {
-        if (!prev.has(assetLinkId)) return prev;
-        const next = new Set(prev);
-        next.delete(assetLinkId);
-        return next;
-      });
-    previewCharacterPromptMutation.mutate(
-      buildPreviewCharacterPromptInput({
-        seriesId,
-        characterId,
-        customInstruction: customInstructionByCharacter[characterId] ?? "",
-        portraitCandidateCount: 1,
-      }),
-      {
+    confirmCharacterCreditAction(
+      characterId,
+      t(lang, "ยืนยันลองสร้างภาพตัวเลือกใหม่", "Confirm candidate retry"),
+      t(lang, "การลองสร้างภาพตัวเลือกใหม่ใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "Retrying this candidate uses AI and may spend credits. Continue?"),
+      t(lang, "ลองสร้างใหม่", "Retry generation"),
+      () => {
+        setRetryingPortraitCandidateAssetIds(prev => new Set(prev).add(assetLinkId));
+        const clearRetrying = () =>
+          setRetryingPortraitCandidateAssetIds(prev => {
+            if (!prev.has(assetLinkId)) return prev;
+            const next = new Set(prev);
+            next.delete(assetLinkId);
+            return next;
+          });
+        previewCharacterPromptMutation.mutate(
+          buildPreviewCharacterPromptInput({
+            seriesId,
+            characterId,
+            customInstruction: customInstructionByCharacter[characterId] ?? "",
+            portraitCandidateCount: 1,
+          }),
+          {
         onSuccess: res => {
           if (res.mode !== "candidate_batch" || res.candidates.length === 0) {
             clearRetrying();
@@ -3754,7 +3799,9 @@ export function VerticalDramaCharacterStockPanel({
           clearRetrying();
         },
         onError: clearRetrying,
-      }
+          },
+        );
+      },
     );
   };
 
@@ -4252,7 +4299,10 @@ export function VerticalDramaCharacterStockPanel({
   }
 
   /* ---- Error ---- */
-  if (listQuery.isError) {
+  // Fatal only on a FIRST-load failure. A failed background refetch keeps
+  // reporting `isError` while the cached roster is still in `data`; taking the
+  // panel over there wipes every in-progress selection/dialog below it.
+  if (listQuery.isError && !listQuery.data) {
     return (
       <Card className={cn("border-destructive/40", className)}>
         <CardContent
@@ -4281,6 +4331,7 @@ export function VerticalDramaCharacterStockPanel({
       aria-label={t(lang, "สต็อกตัวละคร", "Character stock")}
       className={cn("flex flex-col gap-4", className)}
     >
+      {creditConfirmDialog}
       {/* Target-audience-region chip (2026-07-06 quality upgrade) — always
           visible so users know which region/ethnicity default is currently
           applied to every generated character image. Changed from the
@@ -4318,7 +4369,20 @@ export function VerticalDramaCharacterStockPanel({
                 "สแกนเนื้อเรื่องปัจจุบันหา variant/แฝดใหม่ (ใช้ LLM จริง อาจใช้เวลาสักครู่)",
                 "Scans the current story for new variants/twins (real LLM call, may take a moment)"
               )}
-              onClick={() => detectVariantsMutation.mutate({ seriesId })}
+              onClick={() =>
+                requestConfirmation({
+                  title: t(lang, "ยืนยันตรวจจับ variant/แฝด", "Confirm variant/twin detection"),
+                  description: t(
+                    lang,
+                    "การทำงานนี้ใช้ LLM วิเคราะห์เรื่องและอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                    "This uses an LLM to analyze the story and may spend credits. Continue?",
+                  ),
+                  confirmLabel: t(lang, "เริ่มตรวจจับ", "Start detection"),
+                  cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+                  testId: "vd-credit-confirm-detect-variants",
+                  onConfirm: () => detectVariantsMutation.mutate({ seriesId }),
+                })
+              }
             >
               {detectVariantsMutation.isPending ? (
                 <Loader2
@@ -5435,31 +5499,38 @@ export function VerticalDramaCharacterStockPanel({
                                   if (!requireModelSelected()) return;
                                   if (!requireMcpConnectionOrToast()) return;
                                   if (!requireHermesConnectionOrToast()) return;
-                                  generateSheetMutation.mutate({
-                                    seriesId,
-                                    characterId: c.characterId,
-                                    sheetType: "auto",
-                                    sheetLanguage,
-                                    ...(selectedEditImageModelId
-                                      ? { selectedEditImageModelId }
-                                      : {}),
-                                    // Always sent — see the matching comment
-                                    // on `generatePortraitCandidateBatchMutation.mutate`
-                                    // above for why the conditional spread was
-                                    // removed.
-                                    selectedImageModelId,
-                                    ...(imageModelUsesMcp && mcpConnectionId
-                                      ? { mcpConnectionId }
-                                      : {}),
-                                    ...(imageModelUsesMcp &&
-                                    mcpConnectionId &&
-                                    mcpSharedGroupId != null
-                                      ? { sharedGroupId: mcpSharedGroupId }
-                                      : {}),
-                                    ...(imageModelUsesHermes && hermesConnectionId
-                                      ? { hermesConnectionId }
-                                      : {}),
-                                  });
+                                  confirmCharacterCreditAction(
+                                    c.characterId,
+                                    t(lang, "ยืนยันสร้างชีทตัวละคร", "Confirm character sheet generation"),
+                                    t(lang, "การสร้างชีทตัวละครใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "Generating a character sheet uses AI and may spend credits. Continue?"),
+                                    t(lang, "สร้างชีท", "Generate sheet"),
+                                    () =>
+                                      generateSheetMutation.mutate({
+                                        seriesId,
+                                        characterId: c.characterId,
+                                        sheetType: "auto",
+                                        sheetLanguage,
+                                        ...(selectedEditImageModelId
+                                          ? { selectedEditImageModelId }
+                                          : {}),
+                                        // Always sent — see the matching comment
+                                        // on `generatePortraitCandidateBatchMutation.mutate`
+                                        // above for why the conditional spread was
+                                        // removed.
+                                        selectedImageModelId,
+                                        ...(imageModelUsesMcp && mcpConnectionId
+                                          ? { mcpConnectionId }
+                                          : {}),
+                                        ...(imageModelUsesMcp &&
+                                        mcpConnectionId &&
+                                        mcpSharedGroupId != null
+                                          ? { sharedGroupId: mcpSharedGroupId }
+                                          : {}),
+                                        ...(imageModelUsesHermes && hermesConnectionId
+                                          ? { hermesConnectionId }
+                                          : {}),
+                                      }),
+                                  );
                                 }}
                               >
                                 {generatingSheetThis ? (
@@ -6523,11 +6594,17 @@ export function VerticalDramaCharacterStockPanel({
                             if (!requireModelSelected()) return;
                             if (!requireMcpConnectionOrToast()) return;
                             if (!requireHermesConnectionOrToast()) return;
-                            generateSheetMutation.mutate({
-                              seriesId,
-                              characterId: selectedCharacter.characterId,
-                              sheetType: selectedSheetType,
-                              sheetLanguage,
+                            confirmCharacterCreditAction(
+                              selectedCharacter.characterId,
+                              t(lang, "ยืนยันสร้างชีทตัวละคร", "Confirm character sheet generation"),
+                              t(lang, "การสร้างชีทตัวละครใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "Generating a character sheet uses AI and may spend credits. Continue?"),
+                              t(lang, "สร้างชีท", "Generate sheet"),
+                              () =>
+                                generateSheetMutation.mutate({
+                                  seriesId,
+                                  characterId: selectedCharacter.characterId,
+                                  sheetType: selectedSheetType,
+                                  sheetLanguage,
                               ...(selectedEditImageModelId
                                 ? { selectedEditImageModelId }
                                 : {}),
@@ -6570,7 +6647,8 @@ export function VerticalDramaCharacterStockPanel({
                                       ],
                                   }
                                 : {}),
-                            });
+                                }),
+                            );
                           }}
                           data-testid="vd-generate-character-sheet"
                         >
@@ -6602,10 +6680,16 @@ export function VerticalDramaCharacterStockPanel({
                               if (!requireModelSelected()) return;
                               if (!requireMcpConnectionOrToast()) return;
                               if (!requireHermesConnectionOrToast()) return;
-                              generateAnglePackMutation.mutate({
-                                seriesId,
-                                characterId: selectedCharacter.characterId,
-                                selectedImageModelId,
+                              confirmCharacterCreditAction(
+                                selectedCharacter.characterId,
+                                t(lang, "ยืนยันสร้างชุดมุมตัวละคร", "Confirm character angle-pack generation"),
+                                t(lang, "การสร้างชุดมุมตัวละครใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "Generating character reference angles uses AI and may spend credits. Continue?"),
+                                t(lang, "สร้างชุดมุม", "Generate angle pack"),
+                                () =>
+                                  generateAnglePackMutation.mutate({
+                                    seriesId,
+                                    characterId: selectedCharacter.characterId,
+                                    selectedImageModelId,
                                 ...(selectedEditImageModelId
                                   ? { selectedEditImageModelId }
                                   : {}),
@@ -6630,7 +6714,8 @@ export function VerticalDramaCharacterStockPanel({
                                         ],
                                     }
                                   : {}),
-                              });
+                                  }),
+                              );
                             }}
                             data-testid="vd-generate-character-angle-pack"
                           >
@@ -7686,6 +7771,8 @@ export function VerticalDramaCharacterStockPanel({
                   onSelect={handleSelectImageModel}
                   mediaType="image"
                   isLoading={imageModelsQuery.isLoading}
+                  loadError={imageModelsQuery.isError}
+                  onRetry={() => void imageModelsQuery.refetch()}
                 />
 
                 {/* MCP-connection picker — shown only when the selected image
@@ -8486,15 +8573,36 @@ export function VerticalDramaCharacterStockPanel({
               }
               onClick={() => {
                 if (!variantDialogCharacter) return;
-                createVariantMutation.mutate(
-                  buildCreateCharacterVariantInput({
-                    seriesId,
-                    parentCharacterId: variantDialogCharacter.characterId,
-                    variantLabel: variantLabelInput,
-                    variantType: variantTypeInput,
-                    customDescription: variantDescriptionInput,
-                    referenceMediaAssetId: variantReferenceMediaAssetId,
-                  })
+                const parent = (characters as VdCharacterListItem[]).find(
+                  candidate =>
+                    candidate.characterId === variantDialogCharacter.characterId,
+                );
+                const decision = decideVariantAutoGenerateImage({
+                  hasReferenceMediaAssetId: Boolean(variantReferenceMediaAssetId),
+                  parentNeedsSetupReasons: parent?.needsSetupReasons,
+                  selectedImageModelId,
+                });
+                const createVariant = () =>
+                  createVariantMutation.mutate(
+                    buildCreateCharacterVariantInput({
+                      seriesId,
+                      parentCharacterId: variantDialogCharacter.characterId,
+                      variantLabel: variantLabelInput,
+                      variantType: variantTypeInput,
+                      customDescription: variantDescriptionInput,
+                      referenceMediaAssetId: variantReferenceMediaAssetId,
+                    }),
+                  );
+                if (!decision.fire) {
+                  createVariant();
+                  return;
+                }
+                confirmCharacterCreditAction(
+                  variantDialogCharacter.characterId,
+                  t(lang, "ยืนยันเพิ่มลุคและสร้างภาพ", "Confirm look creation and image generation"),
+                  t(lang, "การเพิ่มลุคนี้จะสร้างภาพด้วย AI ต่อทันทีและอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "Adding this look will immediately generate an AI image and may spend credits. Continue?"),
+                  t(lang, "เพิ่มลุคและสร้างภาพ", "Add look and generate image"),
+                  createVariant,
                 );
               }}
             >
@@ -8676,18 +8784,26 @@ export function VerticalDramaCharacterStockPanel({
                   primaryAssetLinkId: lookRenderDialog.primaryAssetLinkId,
                   lookAssetLinkId: lookRenderDialog.lookAssetLinkId,
                 });
-                // Persist the brief for this look so later regenerations keep
-                // it, same as the "เพิ่มลุค" dialog's own seeding.
-                setCustomInstructionByCharacter(prev => ({
-                  ...prev,
-                  [lookRenderDialog.lookCharacterId]:
-                    lookRenderInstruction.trim(),
-                }));
-                closeLookRenderDialog();
-                fireDirectCharacterImageGeneration(
+                confirmCharacterCreditAction(
                   request.characterId,
-                  request.customInstruction ?? "",
-                  request.referenceAssetLinkId
+                  t(lang, "ยืนยันสร้างภาพลุค", "Confirm look image generation"),
+                  t(lang, "การสร้างภาพลุคใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "Generating the look image uses AI and may spend credits. Continue?"),
+                  t(lang, "สร้างภาพลุค", "Generate look image"),
+                  () => {
+                    // Persist the brief for this look so later regenerations keep
+                    // it, same as the "เพิ่มลุค" dialog's own seeding.
+                    setCustomInstructionByCharacter(prev => ({
+                      ...prev,
+                      [lookRenderDialog.lookCharacterId]:
+                        lookRenderInstruction.trim(),
+                    }));
+                    closeLookRenderDialog();
+                    fireDirectCharacterImageGeneration(
+                      request.characterId,
+                      request.customInstruction ?? "",
+                      request.referenceAssetLinkId,
+                    );
+                  },
                 );
               }}
             >
