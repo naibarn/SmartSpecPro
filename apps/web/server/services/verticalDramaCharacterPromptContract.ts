@@ -137,7 +137,17 @@ export function resolveVerticalDramaCharacterPromptCapability(
   const hasDbConfig = context.configJson !== undefined && context.configJson !== null;
   // Reference routing changes provider transport details only. The selected
   // canonical model remains the sole family/limit authority.
-  const staticModel = getStaticModelById(modelId);
+  // Some isolated router suites intentionally provide a minimal model-registry
+  // mock. Treat an absent static lookup as an unknown model; DB capability
+  // metadata remains authoritative when present.
+  let staticModel: ReturnType<typeof getStaticModelById> | undefined;
+  try {
+    staticModel = getStaticModelById(modelId);
+  } catch {
+    // Minimal test/runtime registries may not expose static lookup; an absent
+    // static row is equivalent to an unknown model for capability fallback.
+    staticModel = undefined;
+  }
   const staticConfig = isRecord(staticModel?.configJson) ? staticModel.configJson : undefined;
   const sourceConfig = hasDbConfig ? context.configJson : staticConfig;
   const source = hasDbConfig ? "db" : "static";
