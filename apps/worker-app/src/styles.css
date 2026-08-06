@@ -35,6 +35,13 @@ select {
   padding: 28px;
 }
 
+.hero-status-stack {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  min-width: 240px;
+}
+
 .eyebrow {
   color: #0f766e;
   font-size: 0.78rem;
@@ -247,6 +254,45 @@ h2 {
   padding: 10px 12px;
 }
 
+.connection-status-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+}
+
+.connection-status-card strong {
+  color: #0f172a;
+}
+
+.connection-status-card span {
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.connection-status-card.ready {
+  background: #ecfdf5;
+  border-color: #86efac;
+}
+
+.connection-status-card.warning,
+.connection-status-card.pending {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.connection-status-card.error {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.subtle.warning {
+  color: #b45309;
+  font-weight: 700;
+}
+
 .connect-code-box {
   background: #f8fafc;
   border: 1px solid #cbd5e1;
@@ -445,6 +491,11 @@ h2 {
   .readiness-pill {
     justify-self: start;
     white-space: normal;
+  }
+
+  .hero-status-stack {
+    justify-items: stretch;
+    min-width: 0;
   }
 
   .queue-summary {

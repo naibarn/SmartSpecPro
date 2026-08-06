@@ -142,6 +142,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::worker_app_get_settings,
             commands::worker_app_save_settings,
+            commands::worker_app_set_render_update_blocked,
             commands::worker_app_get_saved_connection,
             commands::worker_app_check_connection_health,
             commands::worker_app_get_startup_status,
@@ -152,8 +153,10 @@ pub fn run() {
             commands::worker_app_get_executor_state,
             commands::worker_app_run_doctor,
             commands::worker_app_run_full_doctor,
+            commands::worker_app_check_runtime_update,
             commands::worker_app_open_wsl_dependency_repair,
             commands::worker_app_open_managed_wsl_runtime_setup,
+            commands::worker_app_get_managed_wsl_runtime_setup_status,
             commands::worker_app_install_runtime_pack,
             commands::worker_app_clear_runtime_pack,
             commands::worker_app_install_hermes_runtime,
@@ -169,6 +172,7 @@ pub fn run() {
             commands::worker_app_configure_startup,
             commands::worker_app_get_diagnostics_log,
             commands::worker_app_open_file,
+            commands::worker_app_open_url,
             commands::worker_app_run_manual_command,
         ])
         .run(tauri::generate_context!())

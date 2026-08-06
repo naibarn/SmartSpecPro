@@ -1,9 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { getVersion } from "@tauri-apps/api/app";
-import { message as nativeMessage } from "@tauri-apps/plugin-dialog";
+import { confirm as nativeConfirm, message as nativeMessage } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import "./styles.css";
+import {
+  fetchJsonWithTimeout,
+  isNewerVersion,
+  resolveSameOriginUrl,
+  type RuntimeInstallResult,
+  type RuntimeSetupStatus,
+  type RuntimeUpdateCheck,
+  type WorkerAppRelease,
+} from "./versionUpdate";
 
 const SMART_AI_HUB_CLOUD_URL = "https://smartaihub.app";
 
@@ -18,6 +27,7 @@ type Settings = {
   workspaceDir: string;
   runtimeChannel: "stable" | "preview";
   runtimeVersion: string;
+  renderUpdateBlocked: boolean;
   diagnosticsLevel: "errors" | "standard" | "verbose";
   useWsl2: boolean;
   runtimeDir: string;
@@ -201,6 +211,7 @@ const fallbackSettings: Settings = {
   workspaceDir: "",
   runtimeChannel: "stable",
   runtimeVersion: "not-installed",
+  renderUpdateBlocked: false,
   diagnosticsLevel: "standard",
   useWsl2: true,
   runtimeDir: "",
@@ -313,6 +324,19 @@ function shouldRefreshBeforeStartingLoop(session: SavedConnectionSession): boole
   return minExpiresAt - Date.now() <= 2 * 60 * 1000;
 }
 
+function formatConnectionExpiry(health: ConnectionHealth): string {
+  if (!health.expiresAt) {
+    return "Server did not report an expiry time";
+  }
+  if (typeof health.hoursUntilExpiry === "number" && health.hoursUntilExpiry < 0) {
+    return `Expired at ${new Date(health.expiresAt).toLocaleString()}`;
+  }
+  const remaining = typeof health.hoursUntilExpiry === "number"
+    ? ` (about ${health.hoursUntilExpiry} hour${health.hoursUntilExpiry === 1 ? "" : "s"} remaining)`
+    : "";
+  return `Expires ${new Date(health.expiresAt).toLocaleString()}${remaining}`;
+}
+
 /// Deleting the saved connection is irreversible from the app's side — the
 /// user must redo browser approval. So it is reserved for verdicts that a
 /// retry genuinely cannot recover.
@@ -358,6 +382,14 @@ function App() {
   const [savedConnection, setSavedConnection] = useState<SavedConnectionSession | null>(null);
   const [loopStatus, setLoopStatus] = useState<WorkerLoopStatus>(fallbackLoopStatus);
   const [appVersion, setAppVersion] = useState("");
+  const [workerAppUpdate, setWorkerAppUpdate] = useState<WorkerAppRelease | null>(null);
+  const [runtimeUpdate, setRuntimeUpdate] = useState<RuntimeUpdateCheck | null>(null);
+  const [runtimeSetupStatus, setRuntimeSetupStatus] = useState<RuntimeSetupStatus | null>(null);
+  const [renderUpdateBlocked, setRenderUpdateBlocked] = useState(false);
+  const [runtimeInstallRequested, setRuntimeInstallRequested] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
+  const [appVersionReady, setAppVersionReady] = useState(false);
+  const [startupUpdateCheckDone, setStartupUpdateCheckDone] = useState(false);
   const [localRunning, setLocalRunning] = useState(false);
   const [localResult, setLocalResult] = useState<string | null>(null);
   const [hermesInstalling, setHermesInstalling] = useState(false);
@@ -365,6 +397,9 @@ function App() {
   const connectionStateRef = useRef(connectionState);
   const loopStartingRef = useRef(false);
   const liveLogRef = useRef<HTMLPreElement | null>(null);
+  const updateCheckRunningRef = useRef(false);
+  const updatePromptedRef = useRef<string | null>(null);
+  const runtimeInstallStartedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     connectionStateRef.current = connectionState;
@@ -373,7 +408,8 @@ function App() {
   useEffect(() => {
     void getVersion()
       .then(setAppVersion)
-      .catch(() => setAppVersion(""));
+      .catch(() => setAppVersion(""))
+      .finally(() => setAppVersionReady(true));
   }, []);
 
   async function refresh(options: { updateConnectionMessage?: boolean; fullDoctor?: boolean } = {}) {
@@ -390,6 +426,8 @@ function App() {
       restoredConnectionResult,
     ]);
     setSettings(nextSettings);
+    setRenderUpdateBlocked(nextSettings.renderUpdateBlocked);
+    setSettingsReady(true);
     setDoctor(nextDoctor);
     setExecutor(nextExecutor);
     setLoopStatus(nextLoopStatus);
@@ -419,6 +457,151 @@ function App() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  const openManagedWslSetup = async () => {
+    runtimeInstallStartedAtRef.current = Date.now();
+    setRuntimeSetupStatus(null);
+    const message = await invoke<string>("worker_app_open_managed_wsl_runtime_setup");
+    setRuntimeInstallMessage(message);
+    setRuntimeInstallRequested(true);
+    return message;
+  };
+
+  useEffect(() => {
+    if (!settingsReady || !appVersionReady || startupUpdateCheckDone || updateCheckRunningRef.current) return;
+    if (!appVersion || !settings.serverUrl.trim()) {
+      setStartupUpdateCheckDone(true);
+      return;
+    }
+
+    let cancelled = false;
+    updateCheckRunningRef.current = true;
+
+    const checkForUpdates = async () => {
+      try {
+        let release: WorkerAppRelease | null = null;
+        let appCheckSucceeded = false;
+        try {
+          const payload = await fetchJsonWithTimeout<{ release: WorkerAppRelease | null }>(
+            `${settings.serverUrl.trim().replace(/\/$/, "")}/api/desktop-releases/worker-app/latest`,
+          );
+          release = payload.release ?? null;
+          appCheckSucceeded = true;
+        } catch {
+          // Version checks are advisory. A server/network failure must not stop
+          // a worker from starting or make a healthy connection look broken.
+          // Runtime checking below still gets a chance to run independently.
+        }
+        if (cancelled) return;
+
+        if (release && isNewerVersion(appVersion, release.version)) {
+          setWorkerAppUpdate(release);
+          const downloadUrl = resolveSameOriginUrl(settings.serverUrl, release.downloadUrl);
+          if (downloadUrl) {
+            const promptKey = `worker:${settings.serverUrl}:${release.version}`;
+            if (updatePromptedRef.current !== promptKey) {
+              updatePromptedRef.current = promptKey;
+              const confirmed = await nativeConfirm(
+                `A newer Smart AI Hub Worker App is available.\n\nInstalled: ${appVersion}\nLatest: ${release.version}\n\nDownload the update now? Compatible render jobs can continue on this version.`,
+                { title: "Smart AI Hub Worker — update available", kind: "info" },
+              );
+              if (!cancelled && confirmed) {
+                try {
+                  await invoke("worker_app_open_url", { url: downloadUrl });
+                } catch (error) {
+                  await nativeMessage(
+                    `The Worker App update download could not be opened.\n\n${formatInvokeError(error)}`,
+                    { title: "Smart AI Hub Worker — update failed", kind: "error" },
+                  ).catch(() => undefined);
+                }
+              }
+            }
+          }
+        } else if (appCheckSucceeded) {
+          setWorkerAppUpdate(null);
+        }
+
+        let runtimeUpdate: RuntimeUpdateCheck;
+        try {
+          runtimeUpdate = await invoke<RuntimeUpdateCheck>("worker_app_check_runtime_update");
+        } catch {
+          // Runtime availability is also advisory. The existing manual doctor
+          // and install controls remain available when the check is offline.
+          return;
+        }
+        if (cancelled) return;
+        const runtimeUpdateRequired = runtimeUpdate.updateAvailable;
+        setRuntimeUpdate(runtimeUpdateRequired ? runtimeUpdate : null);
+        const shouldBlockRender = runtimeUpdateRequired
+          || (!appCheckSucceeded && renderUpdateBlocked);
+        setRenderUpdateBlocked(shouldBlockRender);
+        void invoke<Settings>("worker_app_set_render_update_blocked", {
+          blocked: shouldBlockRender,
+        })
+          .then((updatedSettings) => {
+            if (!cancelled) setSettings(updatedSettings);
+          })
+          .catch(() => undefined);
+
+        if (!runtimeUpdateRequired || !runtimeUpdate.latestVersion) return;
+
+        const runtimePromptKey = [
+          "runtime",
+          settings.serverUrl,
+          runtimeUpdate.runtimeId,
+          runtimeUpdate.channel,
+          runtimeUpdate.latestVersion,
+        ].join(":");
+        if (updatePromptedRef.current === runtimePromptKey) return;
+        updatePromptedRef.current = runtimePromptKey;
+
+        const confirmed = await nativeConfirm(
+          `A newer render runtime is available.\n\nRuntime: ${runtimeUpdate.runtimeId}\nInstalled: ${runtimeUpdate.currentVersion ?? "not installed"}\nLatest: ${runtimeUpdate.latestVersion}\n\nDownload and install it now? Render jobs stay paused until the full readiness check passes.`,
+          { title: "Smart AI Hub Worker — runtime update required", kind: "warning" },
+        );
+        if (cancelled || !confirmed) return;
+
+        try {
+          if (settings.runtimeEnvironment === "managed_wsl") {
+            await openManagedWslSetup();
+            setRuntimeInstallMessage(
+              "Runtime installation is running in the visible WSL terminal. Keep it open; this app will verify the result and continue automatically.",
+            );
+          } else {
+            const result = await invoke<RuntimeInstallResult>("worker_app_install_runtime_pack");
+            setRuntimeInstallMessage(result.message);
+            await nativeMessage(result.message, {
+              title: result.status === "installed"
+                ? "Smart AI Hub Worker — runtime updated"
+                : "Smart AI Hub Worker — runtime update incomplete",
+              kind: result.status === "installed" ? "info" : "warning",
+            }).catch(() => undefined);
+            if (result.status === "installed") {
+              setRuntimeUpdate(null);
+              setRenderUpdateBlocked(false);
+              void invoke("worker_app_set_render_update_blocked", { blocked: false }).catch(() => undefined);
+              await refresh({ updateConnectionMessage: false, fullDoctor: true });
+            }
+          }
+        } catch (error) {
+          const message = formatInvokeError(error);
+          setRuntimeInstallMessage(message);
+          await nativeMessage(message, {
+            title: "Smart AI Hub Worker — runtime update failed",
+            kind: "error",
+          }).catch(() => undefined);
+        }
+      } finally {
+        updateCheckRunningRef.current = false;
+        if (!cancelled) setStartupUpdateCheckDone(true);
+      }
+    };
+
+    void checkForUpdates();
+    return () => {
+      cancelled = true;
+    };
+  }, [appVersion, appVersionReady, renderUpdateBlocked, settings.runtimeEnvironment, settings.serverUrl, settingsReady, startupUpdateCheckDone]);
 
   // Verify the RESTORED connection for real, on every launch.
   //
@@ -609,10 +792,82 @@ function App() {
   );
 
   const readinessLabel = useMemo(() => {
+    if (renderUpdateBlocked) return "Update required for render jobs";
     if (doctor.status === "ready") return "Ready for render jobs";
     if (doctor.status === "degraded") return "Needs attention";
     return "Runtime blocked";
-  }, [doctor.status]);
+  }, [doctor.status, renderUpdateBlocked]);
+
+  const connectionStatus = useMemo(() => {
+    if (connectionState === "pending") {
+      return {
+        label: "Approval pending",
+        detail: "Approve this Worker App in the browser.",
+        tone: "pending",
+      };
+    }
+    if (!savedConnection) {
+      return {
+        label: "Not connected",
+        detail: "Connect this machine to receive worker jobs.",
+        tone: "error",
+      };
+    }
+    if (!connectionHealth) {
+      return {
+        label: "Connected · checking access",
+        detail: "Verifying the saved connection with Smart AI Hub...",
+        tone: "pending",
+      };
+    }
+    if (!connectionHealth.connected) {
+      return {
+        label: "Not connected",
+        detail: "Connect this machine to receive worker jobs.",
+        tone: "error",
+      };
+    }
+    if (!connectionHealth.healthy || connectionState === "error") {
+      return {
+        label: "Reconnect required",
+        detail: connectionHealth.reason ?? connectMessage ?? "The server did not accept the saved connection.",
+        tone: "error",
+      };
+    }
+    if (renderUpdateBlocked) {
+      return {
+        label: "Connected · render paused",
+        detail: "Access is valid. Complete the runtime update/readiness check to receive render jobs.",
+        tone: "warning",
+      };
+    }
+    if (loopStatus.running && executor.status === "error") {
+      return {
+        label: "Connected · worker loop error",
+        detail: executor.lastMessage || "The server rejected the worker heartbeat or queue request.",
+        tone: "error",
+      };
+    }
+    if (doctor.status === "ready" && loopStatus.running) {
+      return {
+        label: "Ready to receive jobs",
+        detail: "Connection, runtime, and worker loop are active.",
+        tone: "ready",
+      };
+    }
+    if (doctor.status === "ready") {
+      return {
+        label: "Connected · loop stopped",
+        detail: "Access and runtime are valid. Start the worker loop to receive jobs.",
+        tone: "warning",
+      };
+    }
+    return {
+      label: "Connected · runtime needs attention",
+      detail: "Access is valid, but render readiness checks are not complete.",
+      tone: "warning",
+    };
+  }, [connectMessage, connectionHealth, connectionState, doctor.status, executor.lastMessage, executor.status, loopStatus.running, renderUpdateBlocked, savedConnection]);
 
   const doctorCheckById = useMemo(() => {
     return new Map(doctor.checks.map((check) => [check.id, check]));
@@ -655,10 +910,13 @@ function App() {
     [doctorCheckById],
   );
 
-  const startLoopDisabled = !savedConnection || loopStatus.running || connectionState === "pending";
+  const startLoopDisabled =
+    !startupUpdateCheckDone || !savedConnection || loopStatus.running || connectionState === "pending";
   const stopLoopDisabled = !loopStatus.running;
   const terminalText = renderTerminalText(executor);
-  const startLoopLabel = loopStatus.running
+  const startLoopLabel = !startupUpdateCheckDone
+    ? "Checking for updates..."
+    : loopStatus.running
     ? "Loop already running"
     : savedConnection
       ? "Start worker loop"
@@ -725,7 +983,11 @@ function App() {
           }
           setConnectionState("connected");
           setConnectedWorker(result.worker ?? null);
-          setConnectMessage("Connected. This app can now receive worker jobs.");
+          setConnectMessage(
+            renderUpdateBlocked
+              ? "Connected. Render jobs remain paused until the runtime update and readiness checks pass."
+              : "Connected. This app can now receive worker jobs.",
+          );
           return;
         }
         if (result.status === "expired" || result.status === "denied" || result.status === "error") {
@@ -777,7 +1039,11 @@ function App() {
         },
       });
       setLoopStatus(status);
-      setConnectMessage(status.message);
+      setConnectMessage(
+        renderUpdateBlocked
+          ? `${status.message} Render jobs remain paused until the runtime update and readiness checks pass.`
+          : status.message,
+      );
       void refresh({ fullDoctor: status.running });
     } catch (error) {
       setLoopStatus({ running: false, mode: "manual", message: String(error) });
@@ -828,10 +1094,144 @@ function App() {
     try {
       const nextDoctor = await safeInvoke<DoctorSummary>("worker_app_run_full_doctor", fallbackDoctor);
       setDoctor(nextDoctor);
+
+      let appCheckSucceeded = false;
+      let appUpdateRequired = Boolean(
+        workerAppUpdate && isNewerVersion(appVersion, workerAppUpdate.version),
+      );
+      try {
+        const payload = await fetchJsonWithTimeout<{ release: WorkerAppRelease | null }>(
+          `${settings.serverUrl.trim().replace(/\/$/, "")}/api/desktop-releases/worker-app/latest`,
+        );
+        const release = payload.release ?? null;
+        appCheckSucceeded = true;
+        appUpdateRequired = Boolean(release && isNewerVersion(appVersion, release.version));
+        setWorkerAppUpdate(appUpdateRequired ? release : null);
+        } catch {
+          // Keep the existing advisory when the release check is offline.
+      }
+
+      let nextRuntimeUpdate: RuntimeUpdateCheck;
+      try {
+        nextRuntimeUpdate = await invoke<RuntimeUpdateCheck>("worker_app_check_runtime_update");
+      } catch (error) {
+        setRuntimeInstallMessage(`Runtime update check failed: ${formatInvokeError(error)}`);
+        return;
+      }
+      const runtimeUpdateRequired = nextRuntimeUpdate.updateAvailable;
+      setRuntimeUpdate(runtimeUpdateRequired ? nextRuntimeUpdate : null);
+      const shouldBlockRender = runtimeUpdateRequired
+        || (!appCheckSucceeded && renderUpdateBlocked);
+      setRenderUpdateBlocked(shouldBlockRender);
+      const updatedSettings = await invoke<Settings>("worker_app_set_render_update_blocked", {
+        blocked: shouldBlockRender,
+      });
+      setSettings(updatedSettings);
+      if (!shouldBlockRender) {
+        setRuntimeInstallRequested(false);
+        setRuntimeInstallMessage(
+          nextDoctor.status === "ready"
+            ? "Runtime is current and render readiness checks passed."
+            : "Runtime version is current. Resolve the remaining readiness checks before rendering.",
+        );
+      }
     } finally {
       setDoctorRunning(false);
     }
   };
+
+  useEffect(() => {
+    if (!runtimeInstallRequested) return;
+    let cancelled = false;
+    let checking = false;
+    const startedAt = Date.now();
+
+    const pollInstalledRuntime = async () => {
+      if (cancelled || checking) return;
+      if (Date.now() - startedAt > 30 * 60 * 1000) {
+        setRuntimeInstallRequested(false);
+        return;
+      }
+      checking = true;
+      try {
+        let observedSetupStatus: RuntimeSetupStatus | null = null;
+        if (settings.runtimeEnvironment === "managed_wsl") {
+          const setupStatus = await invoke<RuntimeSetupStatus>(
+            "worker_app_get_managed_wsl_runtime_setup_status",
+          ).catch(() => null);
+          if (cancelled) return;
+          if (setupStatus) {
+            observedSetupStatus = setupStatus;
+            setRuntimeSetupStatus(setupStatus);
+            const statusUpdatedAt = setupStatus.updatedAt ? Date.parse(setupStatus.updatedAt) : NaN;
+            const staleStatus = runtimeInstallStartedAtRef.current !== null
+              && Number.isFinite(statusUpdatedAt)
+              && statusUpdatedAt < runtimeInstallStartedAtRef.current;
+            if (staleStatus) {
+              setRuntimeInstallMessage("Starting the runtime installer and waiting for its status file...");
+              return;
+            }
+            if (setupStatus.status === "running" || setupStatus.status === "not_started") {
+              setRuntimeInstallMessage(setupStatus.message || "Waiting for managed WSL runtime installation to start...");
+              return;
+            }
+            if (setupStatus.status === "failed") {
+              setRuntimeInstallRequested(false);
+              setRenderUpdateBlocked(true);
+              setRuntimeInstallMessage(
+                `Runtime installation failed. ${setupStatus.message || "Read the setup terminal and try again."}`,
+              );
+              return;
+            }
+            if (setupStatus.status === "succeeded") {
+              setRuntimeInstallMessage("Runtime download and extraction completed. Verifying the installed manifest and render readiness...");
+            }
+          }
+        }
+        const nextRuntimeUpdate = await invoke<RuntimeUpdateCheck>("worker_app_check_runtime_update");
+        if (cancelled) return;
+        setRuntimeUpdate(nextRuntimeUpdate.updateAvailable ? nextRuntimeUpdate : null);
+        if (nextRuntimeUpdate.updateAvailable) {
+          setRuntimeInstallMessage(
+            observedSetupStatus?.status === "succeeded"
+              ? `The installer finished, but the installed runtime is still ${nextRuntimeUpdate.currentVersion ?? "not detected"}; latest is ${nextRuntimeUpdate.latestVersion ?? "unknown"}. Run the setup again after reviewing the terminal.`
+              : `Downloading runtime update... installed ${nextRuntimeUpdate.currentVersion ?? "not installed"}; latest ${nextRuntimeUpdate.latestVersion ?? "unknown"}.`,
+          );
+          if (observedSetupStatus?.status === "succeeded") setRuntimeInstallRequested(false);
+          return;
+        }
+
+        const shouldBlockRender = false;
+        setRenderUpdateBlocked(shouldBlockRender);
+        const updatedSettings = await invoke<Settings>("worker_app_set_render_update_blocked", {
+          blocked: shouldBlockRender,
+        });
+        if (cancelled) return;
+        setSettings(updatedSettings);
+        setRuntimeInstallRequested(false);
+        runtimeInstallStartedAtRef.current = null;
+        const nextDoctor = await invoke<DoctorSummary>("worker_app_run_full_doctor");
+        if (cancelled) return;
+        setDoctor(nextDoctor);
+        setRuntimeInstallMessage(
+          nextDoctor.status === "ready"
+            ? "Runtime installation completed and render readiness passed. The existing connection can continue without reconnecting."
+            : "Runtime installation completed. Resolve the remaining readiness checks before rendering.",
+        );
+      } catch {
+        setRuntimeInstallMessage("Runtime installation is still in progress. Keep the setup terminal open; the app will verify it again automatically.");
+      } finally {
+        checking = false;
+      }
+    };
+
+    void pollInstalledRuntime();
+    const handle = window.setInterval(() => void pollInstalledRuntime(), 5_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(handle);
+    };
+  }, [appVersion, runtimeInstallRequested, settings.runtimeEnvironment, settings.serverUrl, workerAppUpdate]);
 
   const runHermesDoctor = async () => {
     try {
@@ -859,9 +1259,9 @@ function App() {
   };
 
   useEffect(() => {
-    if (connectionState !== "connected" || !savedConnection) return;
+    if (!startupUpdateCheckDone || connectionState !== "connected" || !savedConnection) return;
     void startLoop(savedConnection);
-  }, [connectionState, savedConnection?.tokens.executionToken, savedConnection?.tokens.uploadToken]);
+  }, [connectionState, renderUpdateBlocked, savedConnection?.tokens.executionToken, savedConnection?.tokens.uploadToken, startupUpdateCheckDone]);
 
   useEffect(() => {
     if (connectionState !== "connected" || !savedConnection?.tokens.refreshToken) {
@@ -911,8 +1311,34 @@ function App() {
             the background.
           </p>
         </div>
-        <div className={`readiness-pill ${doctor.status}`}>{readinessLabel}</div>
+        <div className="hero-status-stack">
+          <div className={`readiness-pill ${doctor.status}`}>{readinessLabel}</div>
+          <div className={`connection-status-card ${connectionStatus.tone}`} data-testid="connection-status">
+            <strong>{connectionStatus.label}</strong>
+            <span>{connectionStatus.detail}</span>
+          </div>
+        </div>
       </section>
+      {renderUpdateBlocked ? (
+        <div className="connect-message error" role="alert">
+          <strong>Render update required.</strong>{" "}
+          {runtimeUpdate
+            ? `Runtime ${runtimeUpdate.latestVersion ?? "latest"} is available; installed version is ${runtimeUpdate.currentVersion ?? "not installed"}. Confirm the update and keep the setup terminal open until verification completes.`
+            : "The app cannot prove that the installed render components are current. Complete the update check before using render jobs."}
+        </div>
+      ) : null}
+      {workerAppUpdate ? (
+        <div className="connect-message pending" role="status">
+          <strong>Worker App update available.</strong>{" "}
+          {`Installed ${appVersion || "unknown"}; latest ${workerAppUpdate.version}. This is an app update notice only; compatible render jobs remain available.`}
+        </div>
+      ) : null}
+      {runtimeInstallRequested && runtimeSetupStatus ? (
+        <div className="connect-message pending" role="status" data-testid="runtime-install-status">
+          <strong>Runtime update: {runtimeSetupStatus.status}</strong>{" "}
+          {runtimeSetupStatus.message || runtimeInstallMessage}
+        </div>
+      ) : null}
 
       {/* Tabbed layout (2026-07-31). One long scrolling grid mixed connection,
           render, Hermes and settings together, so nothing read as a coherent
@@ -950,32 +1376,28 @@ function App() {
               Connected worker: <strong>{connectedWorker.displayName}</strong>
             </p>
           ) : null}
+          <div className={`connection-status-card ${connectionStatus.tone}`} data-testid="connection-status-panel">
+            <strong>{connectionStatus.label}</strong>
+            <span>{connectionStatus.detail}</span>
+          </div>
           {savedConnection?.lastRefreshedAt ? (
             <p className="subtle">Last token refresh: {new Date(savedConnection.lastRefreshedAt).toLocaleString()}</p>
           ) : null}
           {/* Expiry was computed for the warning dialogs but never SHOWN, so
               "last refresh" left the obvious question — when does it run out?
               — unanswered (2026-07-31). */}
-          {connectionHealth?.expiresAt ? (
+          {connectionHealth ? (
             <p
-              className={`subtle${connectionHealth.expiringSoon ? " warning" : ""}`}
+              className={`subtle${connectionHealth.expiringSoon || (connectionHealth.hoursUntilExpiry ?? 0) < 0 ? " warning" : ""}`}
               data-testid="connection-expiry"
             >
-              Connection expires:{" "}
-              {new Date(connectionHealth.expiresAt).toLocaleString()}
-              {typeof connectionHealth.hoursUntilExpiry === "number"
-                ? ` (in about ${connectionHealth.hoursUntilExpiry} hour${
-                    connectionHealth.hoursUntilExpiry === 1 ? "" : "s"
-                  })`
-                : ""}
+              {formatConnectionExpiry(connectionHealth)}
               {connectionHealth.expiringSoon ? " — reconnect soon" : ""}
+              {` · Last checked ${new Date(connectionHealth.checkedAt).toLocaleString()}`}
             </p>
-          ) : connectionHealth && connectionHealth.connected ? (
-            <p className="subtle">
-              Connection expiry: not reported by the server (the token carries no
-              readable expiry claim).
-            </p>
-          ) : null}
+          ) : (
+            <p className="subtle" data-testid="connection-expiry">Connection status and expiry: checking...</p>
+          )}
           {connectSession && connectionState === "pending" ? (
             <div className="connect-code-box">
               <span>Browser code</span>
@@ -987,7 +1409,7 @@ function App() {
           <button type="button" className="primary-button" onClick={connect}>
             {connectionState === "pending"
               ? "Waiting for browser approval"
-              : connectionState === "connected"
+              : connectionState === "connected" || (savedConnection && connectionState === "error")
                 ? "Reconnect Worker App"
                 : "Connect to Smart AI Hub"}
           </button>
@@ -1249,8 +1671,7 @@ function App() {
                 className="secondary-button"
                 onClick={async () => {
                   try {
-                    const message = await invoke<string>("worker_app_open_managed_wsl_runtime_setup");
-                    setRuntimeInstallMessage(message);
+                    await openManagedWslSetup();
                   } catch (err) {
                     setRuntimeInstallMessage("Failed to open managed WSL setup: " + err);
                   }
@@ -1609,8 +2030,7 @@ function App() {
                 className="secondary-button"
                 onClick={async () => {
                   try {
-                    const message = await invoke<string>("worker_app_open_managed_wsl_runtime_setup");
-                    setRuntimeInstallMessage(message);
+                    await openManagedWslSetup();
                   } catch (err) {
                     setRuntimeInstallMessage("Failed to open managed WSL setup: " + err);
                   }

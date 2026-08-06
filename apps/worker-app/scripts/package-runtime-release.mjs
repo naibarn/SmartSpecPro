@@ -84,6 +84,52 @@ function requirePackageVersion(packageJsonPath, expectedName) {
   return packageJson.version;
 }
 
+function assertRemotionSidecarContract(remotionSidecarDir) {
+  const sourcePackagePath = resolve(repoRoot, "packages/remotion-render/package.json");
+  const sourceSchemaPath = resolve(
+    repoRoot,
+    "packages/remotion-render/src/remotionRenderVideoSchema.ts",
+  );
+  const installedPackagePath = join(
+    remotionSidecarDir,
+    "node_modules/@smartspec/remotion-render/package.json",
+  );
+  const installedSchemaPath = join(
+    remotionSidecarDir,
+    "node_modules/@smartspec/remotion-render/dist/remotionRenderVideoSchema.js",
+  );
+  const sourcePackage = readJsonFile(sourcePackagePath);
+  const installedPackage = readJsonFile(installedPackagePath);
+  if (sourcePackage.version !== installedPackage.version) {
+    throw new Error(
+      `Remotion sidecar package drift: source is @smartspec/remotion-render@${sourcePackage.version}, installed sidecar is @smartspec/remotion-render@${installedPackage.version}. Rebuild and install the sidecar package before release.`,
+    );
+  }
+
+  const extractContractVersion = (filePath, label) => {
+    const text = readFileSync(filePath, "utf8");
+    const match = text.match(
+      /REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION\s*=\s*["']([^"']+)["']/,
+    );
+    if (!match) throw new Error(`Unable to read Remotion contract version from ${label}: ${filePath}`);
+    return match[1];
+  };
+  const sourceContractVersion = extractContractVersion(sourceSchemaPath, "source");
+  const installedContractVersion = extractContractVersion(installedSchemaPath, "installed sidecar");
+  if (sourceContractVersion !== installedContractVersion) {
+    throw new Error(
+      `Remotion sidecar contract drift: source is ${sourceContractVersion}, installed sidecar is ${installedContractVersion}. Rebuild and install the sidecar package before release.`,
+    );
+  }
+  console.log(
+    `[worker-app] Remotion sidecar contract verified: @smartspec/remotion-render@${installedPackage.version} / ${installedContractVersion}`,
+  );
+  return {
+    packageVersion: installedPackage.version,
+    platformContractVersion: installedContractVersion,
+  };
+}
+
 function findFile(root, predicate) {
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     const absolute = join(root, entry.name);
@@ -317,6 +363,9 @@ if (remotionSidecarScript && !remotionSidecarDir) {
     "--remotion-sidecar-script requires --remotion-sidecar-dir (the installed node_modules tree); shipping the script alone yields a pack that cannot run Remotion jobs",
   );
 }
+const remotionSidecarContract = remotionSidecarDir
+  ? assertRemotionSidecarContract(remotionSidecarDir)
+  : null;
 const browserDir = requiredPath("--browser-dir");
 const browserExe = findFile(browserDir, (name) => {
   const lower = name.toLowerCase();
@@ -454,6 +503,12 @@ const manifest = {
   // a build whose manifest claims Remotion support the files don't back up.
   ...(remotionSidecarScript
     ? { remotionSidecarScriptPath: "remotion-sidecar/render.mjs" }
+    : {}),
+  ...(remotionSidecarContract
+    ? {
+        remotionRenderPackageVersion: remotionSidecarContract.packageVersion,
+        remotionPlatformContractVersion: remotionSidecarContract.platformContractVersion,
+      }
     : {}),
   supportedContractVersions: ["2026-06-22"],
   runtimeProfileHash,

@@ -1,8 +1,8 @@
 {
   "runtimeId": "hyperframes-wsl2",
-  "version": "2026.06.25.1",
+  "version": "2026.08.04.5",
   "hyperframesVersion": "hyperframes@0.7.5; @hyperframes/producer@0.7.5",
-  "browserVersion": "Chrome for Testing 148.0.7778.97 linux64",
+  "browserVersion": "Chrome for Testing 150.0.7871.24 linux64",
   "ffmpegVersion": "johnvansickle ffmpeg 7.0.2 linux static",
   "ffprobeVersion": "johnvansickle ffmpeg 7.0.2 linux static",
   "thaiFontFamily": "Noto Sans Thai",
@@ -18,14 +18,14 @@
   "rendererKind": "hyperframes_cli_official",
   "sidecarLauncher": "smart-ai-hub-hyperframes-node-launcher",
   "sidecarScriptPath": "hyperframes-sidecar/render.mjs",
+  "remotionSidecarScriptPath": "remotion-sidecar/render.mjs",
+  "remotionRenderPackageVersion": "0.1.5",
+  "remotionPlatformContractVersion": "2026-08-04.2",
   "supportedContractVersions": [
     "2026-06-22"
   ],
-  "runtimeProfileHash": "aa06737af38c10d23aa2993021fc1ccbbc543b1ed03418c2ce18310a98f1a04c",
+  "runtimeProfileHash": "83b7393d1a736680594edabb9c82847a36c36026213c59a85ed488bc98720142",
   "allowed": true,
   "denyReason": null,
-  "rollbackToVersion": null,
-  "remotionSidecarScriptPath": "remotion-sidecar/render.mjs",
-  "remotionRenderPackageVersion": "0.1.2",
-  "remotionVersion": "4.0.496"
+  "rollbackToVersion": null
 }

@@ -6,14 +6,15 @@ use crate::credentials::{
 use crate::diagnostics::{append_diagnostic_event, diagnostic_log_path, token_reference};
 use crate::executor_state::ExecutorState;
 use crate::runtime_manifest::{
-    doctor_from_installed_or_default_paths, read_runtime_pack_manifest, DoctorCheck, DoctorSummary,
-    RuntimePackManifest,
+    doctor_from_installed_or_default_paths, read_runtime_pack_manifest, runtime_pack_paths,
+    DoctorCheck, DoctorSummary, RuntimePackManifest,
 };
 use crate::settings::{save_settings, WorkerAppSettings};
 use crate::WorkerAppState;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use std::cmp::Ordering;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -27,6 +28,8 @@ use crate::control_plane::{
 };
 use crate::executor_state::ExecutorStatus;
 use crate::worker_control_plane::{post_worker_json, WorkerApiTokens, WorkerLoopConnection};
+#[cfg(target_os = "windows")]
+use crate::worker_executor::REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
 use crate::worker_loop::{start_worker_loop, WorkerLoopStatus};
 
 /// Serialises EVERY refresh-token rotation in this process.
@@ -149,6 +152,16 @@ pub struct RuntimeInstallResult {
     pub doctor: DoctorSummary,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeUpdateCheck {
+    pub runtime_id: String,
+    pub channel: String,
+    pub current_version: Option<String>,
+    pub latest_version: Option<String>,
+    pub update_available: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct WorkerConnectRefreshEnvelope {
@@ -209,6 +222,31 @@ pub async fn worker_app_save_settings(
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
     save_settings(&app_data_dir, &settings)?;
+    Ok(settings)
+}
+
+#[tauri::command]
+pub async fn worker_app_set_render_update_blocked(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    blocked: bool,
+) -> Result<WorkerAppSettings, String> {
+    let mut settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    settings.render_update_blocked = blocked;
+    settings.validate()?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    save_settings(&app_data_dir, &settings)?;
+    *state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())? = settings.clone();
     Ok(settings)
 }
 
@@ -306,6 +344,58 @@ pub async fn worker_app_run_full_doctor(app: tauri::AppHandle) -> Result<DoctorS
     build_runtime_doctor(app, true)
 }
 
+#[tauri::command]
+pub async fn worker_app_check_runtime_update(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<RuntimeUpdateCheck, String> {
+    let settings = state
+        .settings
+        .lock()
+        .map(|settings| settings.clone())
+        .map_err(|_| "settings lock poisoned".to_string())?;
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|error| format!("resource directory unavailable: {error}"))?;
+    let effective_runtime_dir = get_effective_runtime_dir(&app)?;
+    let runtime_id = if settings.uses_wsl2_runtime() {
+        "hyperframes-wsl2"
+    } else {
+        "hyperframes-windows-x64"
+    };
+    let channel = settings.runtime_channel.as_query_value();
+    let current_version = if settings.runtime_environment.is_managed_wsl() {
+        read_managed_wsl_runtime_version(&settings.managed_wsl_root)?
+    } else {
+        let (current_manifest_path, _) = runtime_pack_paths(&resource_dir, &effective_runtime_dir);
+        read_runtime_pack_manifest(&current_manifest_path)
+            .ok()
+            .map(|manifest| manifest.version)
+    };
+    let latest_manifest =
+        fetch_runtime_manifest(&settings.normalized_server_url(), runtime_id, channel).await?;
+    if latest_manifest.runtime_id != runtime_id {
+        return Err(format!(
+            "Runtime manifest returned {} but {} was requested.",
+            latest_manifest.runtime_id, runtime_id
+        ));
+    }
+    let latest_version = Some(latest_manifest.version.clone());
+
+    Ok(RuntimeUpdateCheck {
+        runtime_id: runtime_id.into(),
+        channel: channel.into(),
+        update_available: runtime_update_available(
+            current_version.as_deref(),
+            latest_version.as_deref(),
+            latest_manifest.allowed,
+        ),
+        current_version,
+        latest_version,
+    })
+}
+
 #[cfg(target_os = "windows")]
 const WSL_BROWSER_DEPENDENCY_REPAIR_SCRIPT: &str = r#"set -Eeuo pipefail
 sudo dpkg --configure -a || true
@@ -338,14 +428,24 @@ SERVER_URL=__SMARTAIHUB_SERVER_URL_EXPR__
 RUNTIME_CHANNEL=__SMARTAIHUB_RUNTIME_CHANNEL_EXPR__
 mkdir -p "$ROOT" "$ROOT/cache" "$ROOT/logs" "$ROOT/tools"
 LOG_PATH="$ROOT/logs/setup-$(date +%Y%m%d-%H%M%S).log"
+STATUS_PATH="$ROOT/setup-status.json"
 exec > >(tee -a "$LOG_PATH") 2>&1
+printf '{"status":"running","message":"Managed WSL runtime setup is running.","version":null,"logPath":"%s","updatedAt":"%s"}\n' "$LOG_PATH" "$(date -Is)" > "$STATUS_PATH"
 finish() {
   status=$?
+  if [ "$status" -eq 0 ]; then
+    status_value="succeeded"
+    status_message="Managed WSL runtime setup completed successfully."
+  else
+    status_value="failed"
+    status_message="Managed WSL runtime setup failed with exit code $status."
+  fi
+  printf '{"status":"%s","message":"%s","version":"%s","logPath":"%s","updatedAt":"%s"}\n' "$status_value" "$status_message" "${RUNTIME_VERSION:-}" "$LOG_PATH" "$(date -Is)" > "$STATUS_PATH"
   echo
   echo "Managed WSL setup log: $LOG_PATH"
   if [ "$status" -eq 0 ]; then
     echo "Managed WSL runtime setup completed successfully."
-    echo "Return to the Worker App and click Run checks."
+    echo "Return to the Worker App. It will verify the runtime automatically."
   else
     echo "Managed WSL runtime setup failed with exit code $status."
     echo "Read the error above, then fix it and click Prepare managed WSL runtime again."
@@ -649,6 +749,28 @@ pub async fn worker_app_open_managed_wsl_runtime_setup(
     )
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedWslRuntimeSetupStatus {
+    pub status: String,
+    pub message: String,
+    pub version: Option<String>,
+    pub log_path: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[tauri::command]
+pub async fn worker_app_get_managed_wsl_runtime_setup_status(
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<ManagedWslRuntimeSetupStatus, String> {
+    let settings = state
+        .settings
+        .lock()
+        .map(|settings| settings.clone())
+        .map_err(|_| "settings lock poisoned".to_string())?;
+    read_managed_wsl_runtime_setup_status(&settings.managed_wsl_root)
+}
+
 #[cfg(target_os = "windows")]
 fn open_wsl_dependency_repair_terminal() -> Result<String, String> {
     let script = WSL_BROWSER_DEPENDENCY_REPAIR_SCRIPT;
@@ -735,6 +857,55 @@ fn open_managed_wsl_runtime_setup_terminal(
         "Opened a visible WSL terminal to install the managed runtime. Keep that terminal open, enter your WSL sudo password if prompted, watch the download/extract progress, then run checks again after it finishes."
             .into(),
     )
+}
+
+#[cfg(target_os = "windows")]
+fn read_managed_wsl_runtime_setup_status(
+    managed_wsl_root: &str,
+) -> Result<ManagedWslRuntimeSetupStatus, String> {
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let root_expr = wsl_shell_assignment_expr(if managed_wsl_root.trim().is_empty() {
+        "~/.smartaihub-worker/runtime"
+    } else {
+        managed_wsl_root.trim()
+    });
+    let script = format!(
+        r#"ROOT={root_expr}
+STATUS_PATH="$ROOT/setup-status.json"
+if [ ! -f "$STATUS_PATH" ]; then
+  printf '{{"status":"not_started","message":"Managed WSL runtime setup has not started yet.","version":null,"logPath":null,"updatedAt":null}}'
+else
+  cat "$STATUS_PATH"
+fi"#
+    );
+    let output = std::process::Command::new("wsl.exe")
+        .args(["-e", "bash", "-lc", &script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|error| format!("unable to inspect Managed WSL setup status: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "unable to inspect Managed WSL setup status: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    serde_json::from_slice::<ManagedWslRuntimeSetupStatus>(&output.stdout)
+        .map_err(|error| format!("invalid Managed WSL setup status: {error}"))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn read_managed_wsl_runtime_setup_status(
+    _managed_wsl_root: &str,
+) -> Result<ManagedWslRuntimeSetupStatus, String> {
+    Ok(ManagedWslRuntimeSetupStatus {
+        status: "not_started".into(),
+        message: "Managed WSL runtime setup can only run from Windows.".into(),
+        version: None,
+        log_path: None,
+        updated_at: None,
+    })
 }
 
 #[cfg(target_os = "windows")]
@@ -1084,6 +1255,16 @@ else
   echo "missing command: fc-match"
   missing=1
 fi
+if [ -f "$ROOT/runtime-pack/manifest.json" ]; then
+  python3 - "$ROOT/runtime-pack/manifest.json" <<'PY'
+import json
+import sys
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    manifest = json.load(handle)
+print("runtime_manifest_version=" + str(manifest.get("version") or ""))
+print("runtime_manifest_remotion_contract=" + str(manifest.get("remotionPlatformContractVersion") or ""))
+PY
+fi
 if [ -d /dev/shm ]; then
   SHM_MB="$(df -Pm /dev/shm | awk 'NR==2 {{ print $2 }}')"
   echo "dev shm: ${{SHM_MB:-unknown}} MB"
@@ -1099,14 +1280,32 @@ exit $missing"#
         .creation_flags(CREATE_NO_WINDOW)
         .output()
     {
-        Ok(output) if output.status.success() => DoctorCheck {
-            id: "managed_wsl_runtime".into(),
-            status: "ok".into(),
-            message: "Managed WSL runtime root contains the latest prepared runtime marker, Node 22+, HyperFrames sidecar, FFmpeg, ffprobe, Chrome, fonts, and required Chrome shared libraries.".into(),
-            details_json: json!({
-                "managedWslRoot": root,
-                "stdout": String::from_utf8_lossy(&output.stdout).trim(),
-            }),
+        Ok(output) if output.status.success() => {
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            let runtime_version = stdout
+                .lines()
+                .find_map(|line| line.strip_prefix("runtime_manifest_version="))
+                .unwrap_or_default()
+                .to_string();
+            let remotion_contract = stdout
+                .lines()
+                .find_map(|line| line.strip_prefix("runtime_manifest_remotion_contract="))
+                .unwrap_or_default()
+                .to_string();
+            let remotion_contract_ready = remotion_contract
+                == REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
+            DoctorCheck {
+                id: "managed_wsl_runtime".into(),
+                status: "ok".into(),
+                message: "Managed WSL runtime root contains the latest prepared runtime marker, Node 22+, HyperFrames sidecar, FFmpeg, ffprobe, Chrome, fonts, and required Chrome shared libraries.".into(),
+                details_json: json!({
+                    "managedWslRoot": root,
+                    "stdout": stdout,
+                    "runtimeVersion": runtime_version,
+                    "remotionPlatformContractVersion": remotion_contract,
+                    "remotionContractReady": remotion_contract_ready,
+                }),
+            }
         },
         Ok(output) => DoctorCheck {
             id: "managed_wsl_runtime".into(),
@@ -2066,6 +2265,24 @@ fn jwt_exp_epoch_seconds(token: &str) -> Option<i64> {
     claims.get("exp").and_then(serde_json::Value::as_i64)
 }
 
+fn refresh_token_expiry_summary(
+    connection: &StoredWorkerConnection,
+) -> (Option<String>, Option<i64>) {
+    let Some(epoch) = connection
+        .tokens
+        .refresh_token
+        .as_deref()
+        .and_then(jwt_exp_epoch_seconds)
+    else {
+        return (None, None);
+    };
+    let now = chrono::Utc::now().timestamp();
+    (
+        chrono::DateTime::from_timestamp(epoch, 0).map(|dt| dt.to_rfc3339()),
+        Some((epoch - now) / 3600),
+    )
+}
+
 #[tauri::command]
 pub async fn worker_app_check_connection_health(
     app: tauri::AppHandle,
@@ -2114,23 +2331,7 @@ pub async fn worker_app_check_connection_health(
     };
     match probed {
         Ok(connection) => {
-            let exp = connection
-                .tokens
-                .refresh_token
-                .as_deref()
-                .and_then(jwt_exp_epoch_seconds);
-            let (expires_at, hours_until_expiry) = match exp {
-                Some(epoch) => {
-                    let now = chrono::Utc::now().timestamp();
-                    let hours = (epoch - now) / 3600;
-                    (
-                        chrono::DateTime::from_timestamp(epoch, 0)
-                            .map(|dt| dt.to_rfc3339()),
-                        Some(hours),
-                    )
-                }
-                None => (None, None),
-            };
+            let (expires_at, hours_until_expiry) = refresh_token_expiry_summary(&connection);
             append_diagnostic_event(
                 &app_data_dir,
                 "connection.health.ok",
@@ -2165,14 +2366,15 @@ pub async fn worker_app_check_connection_health(
                     "reason": error,
                 }),
             );
+            let (expires_at, hours_until_expiry) = refresh_token_expiry_summary(&stored);
             Ok(ConnectionHealth {
                 healthy: false,
                 connected: true,
                 reason: Some(error),
                 worker_name,
-                expires_at: None,
-                hours_until_expiry: None,
-                expiring_soon: false,
+                expires_at,
+                expiring_soon: hours_until_expiry.is_some_and(|hours| hours <= 24),
+                hours_until_expiry,
                 checked_at,
             })
         }
@@ -3216,7 +3418,11 @@ async fn fetch_runtime_manifest(
         runtime_id.trim(),
         channel.trim()
     );
-    let response = reqwest::Client::new()
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|error| format!("unable to create runtime manifest client: {error}"))?;
+    let response = client
         .get(url)
         .send()
         .await
@@ -3224,6 +3430,128 @@ async fn fetch_runtime_manifest(
     parse_json_response::<RuntimePackManifest>(response)
         .await
         .map_err(|error| format!("runtime manifest unavailable: {error}"))
+}
+
+fn runtime_update_available(
+    current_version: Option<&str>,
+    latest_version: Option<&str>,
+    latest_allowed: bool,
+) -> bool {
+    if !latest_allowed {
+        return false;
+    }
+    let Some(latest_version) = latest_version
+        .map(str::trim)
+        .filter(|version| !version.is_empty())
+    else {
+        return false;
+    };
+    let Some(current_version) = current_version
+        .map(str::trim)
+        .filter(|version| !version.is_empty())
+    else {
+        return true;
+    };
+    compare_version_strings(latest_version, current_version) == Ordering::Greater
+}
+
+fn compare_version_strings(left: &str, right: &str) -> Ordering {
+    let left_segments: Vec<&str> = left
+        .trim()
+        .split(['.', '+', '-'])
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    let right_segments: Vec<&str> = right
+        .trim()
+        .split(['.', '+', '-'])
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    let length = left_segments.len().max(right_segments.len());
+
+    for index in 0..length {
+        let left_segment = left_segments.get(index).copied().unwrap_or("0");
+        let right_segment = right_segments.get(index).copied().unwrap_or("0");
+        let ordering = match (
+            left_segment
+                .chars()
+                .all(|character| character.is_ascii_digit()),
+            right_segment
+                .chars()
+                .all(|character| character.is_ascii_digit()),
+        ) {
+            (true, true) => compare_numeric_segments(left_segment, right_segment),
+            _ => left_segment
+                .to_ascii_lowercase()
+                .cmp(&right_segment.to_ascii_lowercase()),
+        };
+        if ordering != Ordering::Equal {
+            return ordering;
+        }
+    }
+
+    Ordering::Equal
+}
+
+fn compare_numeric_segments(left: &str, right: &str) -> Ordering {
+    let left = left.trim_start_matches('0');
+    let right = right.trim_start_matches('0');
+    let left = if left.is_empty() { "0" } else { left };
+    let right = if right.is_empty() { "0" } else { right };
+    left.len().cmp(&right.len()).then_with(|| left.cmp(right))
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn parse_managed_wsl_runtime_version(stdout: &str) -> Option<String> {
+    stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("runtime_manifest_version="))
+        .map(str::trim)
+        .filter(|version| !version.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+#[cfg(target_os = "windows")]
+fn read_managed_wsl_runtime_version(managed_wsl_root: &str) -> Result<Option<String>, String> {
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let root_expr = wsl_shell_assignment_expr(if managed_wsl_root.trim().is_empty() {
+        "~/.smartaihub-worker/runtime"
+    } else {
+        managed_wsl_root.trim()
+    });
+    let script = format!(
+        r#"ROOT={root_expr}
+MANIFEST="$ROOT/runtime-pack/manifest.json"
+if [ ! -f "$MANIFEST" ]; then
+  exit 0
+fi
+python3 - "$MANIFEST" <<'PY'
+import json
+import sys
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    manifest = json.load(handle)
+print("runtime_manifest_version=" + str(manifest.get("version") or ""))
+PY"#
+    );
+
+    let output = std::process::Command::new("wsl.exe")
+        .args(["-e", "bash", "-lc", &script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|error| format!("unable to inspect Managed WSL runtime manifest: {error}"))?;
+    if output.status.success() {
+        return Ok(parse_managed_wsl_runtime_version(
+            &String::from_utf8_lossy(&output.stdout),
+        ));
+    }
+
+    Ok(None)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn read_managed_wsl_runtime_version(_managed_wsl_root: &str) -> Result<Option<String>, String> {
+    Ok(None)
 }
 
 fn absolute_url(server_url: &str, value: &str) -> Result<String, String> {
@@ -3804,6 +4132,40 @@ pub async fn worker_app_open_file(app: tauri::AppHandle, path: String) -> Result
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn worker_app_open_url(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    url: String,
+) -> Result<(), String> {
+    let url = url.trim();
+    if !(url.starts_with("https://") || url.starts_with("http://localhost")) {
+        return Err("Only HTTPS or localhost URLs can be opened by Worker App.".into());
+    }
+    let server_url = state
+        .settings
+        .lock()
+        .map(|settings| settings.normalized_server_url())
+        .map_err(|_| "settings lock poisoned".to_string())?;
+    if !same_url_origin(&server_url, url) {
+        return Err("Update URL must use the configured Smart AI Hub server origin.".into());
+    }
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|error| error.to_string())
+}
+
+fn same_url_origin(base_url: &str, candidate_url: &str) -> bool {
+    let Ok(base) = reqwest::Url::parse(base_url) else {
+        return false;
+    };
+    let Ok(candidate) = reqwest::Url::parse(candidate_url) else {
+        return false;
+    };
+    base.scheme() == candidate.scheme()
+        && base.host_str() == candidate.host_str()
+        && base.port_or_known_default() == candidate.port_or_known_default()
+}
 
 #[cfg(test)]
 mod connection_health_tests {
@@ -3953,8 +4315,9 @@ mod refresh_coalescing_tests {
 mod tests {
     use super::{
         build_start_connect_registration_payload, normalize_machine_fingerprint_hash,
-        summarize_local_device_proof, token_device_binding_mismatches, worker_connect_url,
-        WorkerTokenBindingSummary,
+        parse_managed_wsl_runtime_version, runtime_update_available, same_url_origin,
+        summarize_local_device_proof,
+        token_device_binding_mismatches, worker_connect_url, WorkerTokenBindingSummary,
     };
     use crate::credentials::{WorkerDeviceBinding, WorkerDeviceProofMaterial};
     use crate::runtime_manifest::DoctorSummary;
@@ -3967,6 +4330,67 @@ mod tests {
             worker_connect_url("https://smartaihub.app/"),
             "https://smartaihub.app/workers/connect",
         );
+    }
+
+    #[test]
+    fn runtime_update_check_uses_numeric_version_ordering() {
+        assert!(runtime_update_available(
+            Some("2026.08.04.1"),
+            Some("2026.08.04.2"),
+            true
+        ));
+        assert!(!runtime_update_available(
+            Some("2026.08.04.2"),
+            Some("2026.08.04.2"),
+            true
+        ));
+        assert!(!runtime_update_available(
+            Some("2026.08.04.3"),
+            Some("2026.08.04.2"),
+            true
+        ));
+    }
+
+    #[test]
+    fn runtime_update_check_requires_an_allowed_latest_manifest() {
+        assert!(!runtime_update_available(
+            Some("2026.08.04.1"),
+            Some("2026.08.04.2"),
+            false
+        ));
+        assert!(runtime_update_available(None, Some("2026.08.04.2"), true));
+        assert!(!runtime_update_available(Some("2026.08.04.1"), None, true));
+    }
+
+    #[test]
+    fn managed_wsl_runtime_version_parser_reads_the_actual_manifest_marker() {
+        assert_eq!(
+            parse_managed_wsl_runtime_version(
+                "runtime_manifest_version=2026.08.04.5\nruntime_manifest_remotion_contract=2026-08-04.2"
+            ),
+            Some("2026.08.04.5".into())
+        );
+        assert_eq!(parse_managed_wsl_runtime_version("runtime is not installed"), None);
+    }
+
+    #[test]
+    fn update_opener_rejects_cross_origin_urls() {
+        assert!(same_url_origin(
+            "https://smartaihub.app",
+            "https://smartaihub.app/api/desktop-releases/worker-app/download"
+        ));
+        assert!(same_url_origin(
+            "http://localhost:5000",
+            "http://localhost:5000/api/desktop-releases/worker-app/download"
+        ));
+        assert!(!same_url_origin(
+            "https://smartaihub.app",
+            "https://evil.example/download.exe"
+        ));
+        assert!(!same_url_origin(
+            "https://smartaihub.app",
+            "http://smartaihub.app/api/desktop-releases/worker-app/download"
+        ));
     }
 
     #[test]

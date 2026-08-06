@@ -20,6 +20,14 @@ pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
 /// `kind` literal exactly.
 pub const REMOTION_RENDER_VIDEO_JOB_TYPE: &str = "remotion_render_video";
 
+/// Must stay in lockstep with
+/// `REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION` in
+/// `packages/remotion-render/src/remotionRenderVideoSchema.ts`. The claim
+/// token is separate from the descriptive capability families so the control
+/// plane can stop an older Worker App before it consumes the job.
+pub const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION: &str = "2026-08-04.2";
+pub const REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY: &str = "remotion-render-contract-2026-08-04.2";
+
 /// Frozen 1:1 with `REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES` in
 /// `packages/remotion-render/src/remotionRenderVideoSchema.ts` — the server's
 /// anti-mis-claim gate (`workerSchedulerService.ts#workerJobMatchesSelection`

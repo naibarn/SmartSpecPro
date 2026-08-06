@@ -89,6 +89,8 @@ pub struct WorkerAppSettings {
     pub workspace_dir: String,
     pub runtime_channel: RuntimeChannel,
     pub runtime_version: String,
+    #[serde(default)]
+    pub render_update_blocked: bool,
     pub diagnostics_level: DiagnosticsLevel,
     pub use_wsl2: bool,
     pub runtime_dir: String,
@@ -113,6 +115,7 @@ impl Default for WorkerAppSettings {
             workspace_dir: String::new(),
             runtime_channel: RuntimeChannel::Stable,
             runtime_version: "not-installed".into(),
+            render_update_blocked: false,
             diagnostics_level: DiagnosticsLevel::Standard,
             use_wsl2: true,
             runtime_dir: String::new(),

@@ -45,7 +45,8 @@ use crate::worker_executor::{
     prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
     remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
     validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
-    SidecarCommandPlan,
+    SidecarCommandPlan, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+    REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
     WorkerEventPlan, WorkerJobKind, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
     REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_JOB_TYPE,
 };
@@ -63,6 +64,18 @@ const HERMES_MEDIA_MAX_CONCURRENT_JOBS: u32 = 1;
 /// `worker_loop_tick` bailed out entirely whenever the render doctor wasn't
 /// ready, before ever reaching this call).
 pub fn build_worker_claim_capability_hints(render_ready: bool, hermes_media_advertised: bool) -> Vec<String> {
+    build_worker_claim_capability_hints_with_remotion(render_ready, true, hermes_media_advertised)
+}
+
+/// Builds claim hints with an explicit Remotion contract gate. HyperFrames
+/// readiness remains independent: an old pack may still run HyperFrames, but
+/// it must not advertise the Remotion lane until its sidecar contract matches
+/// the server payload contract.
+pub fn build_worker_claim_capability_hints_with_remotion(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+) -> Vec<String> {
     let mut hints = Vec::new();
     if render_ready {
         hints.push("hyperframes-final-composite".to_string());
@@ -70,23 +83,51 @@ pub fn build_worker_claim_capability_hints(render_ready: bool, hermes_media_adve
         // `planning/worker-app-remotion-render-video/plan.md` P2 — the
         // Remotion `render-video` sidecar reuses the SAME bundled
         // Chromium/ffmpeg/node runtime-pack binaries the HyperFrames render
-        // doctor already gates on, so "render_ready" is the correct
-        // readiness signal for these families too. Both the primary
+        // doctor already gates on. `remotion_contract_ready` adds the
+        // sidecar-schema gate on top of those shared binaries. The primary
         // capability-family superset check
         // (`workerSchedulerService.ts#workerJobMatchesSelection`) AND the
         // defense-in-depth `REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY`
         // check (`workerRegistryService.ts`) require `"remotion-render"` to
         // be present before this worker may claim a `remotion_render_video`
         // job at all.
-        for family in REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES {
-            hints.push(family.to_string());
+        if remotion_contract_ready {
+            for family in REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES {
+                hints.push(family.to_string());
+            }
+            hints.push(REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY.to_string());
+            hints.push(REMOTION_RENDER_VIDEO_JOB_TYPE.to_string());
         }
-        hints.push(REMOTION_RENDER_VIDEO_JOB_TYPE.to_string());
     }
     if hermes_media_advertised {
         hints.push(HERMES_MEDIA_CLAIM_CAPABILITY.to_string());
     }
     hints
+}
+
+pub fn remotion_render_video_contract_ready(doctor: &DoctorSummary) -> bool {
+    doctor.checks.iter().any(|check| {
+        if check.id != "runtime_manifest" && check.id != "managed_wsl_runtime" {
+            return false;
+        }
+        if check
+            .details_json
+            .get("remotionPlatformContractVersion")
+            .and_then(Value::as_str)
+            == Some(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION)
+        {
+            return true;
+        }
+        check
+            .details_json
+            .get("contracts")
+            .and_then(Value::as_array)
+            .is_some_and(|contracts| {
+                contracts.iter().any(|contract| {
+                    contract.as_str() == Some(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION)
+                })
+            })
+    })
 }
 
 /// Slot accounting: a second hermes job is never claimed concurrently while
@@ -608,6 +649,7 @@ async fn worker_loop_tick(
     // pure functions the unit tests exercise directly.
     let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
     let can_claim_render = render_ready
+        && !settings_snapshot.render_update_blocked
         && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_hermes = hermes_ready
         && can_claim_hermes_media_job(if hermes_active_now { 1 } else { 0 });
@@ -629,7 +671,11 @@ async fn worker_loop_tick(
         connection_snapshot,
         WorkerClaimRequest {
             max_jobs,
-            capability_hints: build_worker_claim_capability_hints(can_claim_render, can_claim_hermes),
+            capability_hints: build_worker_claim_capability_hints_with_remotion(
+                can_claim_render,
+                remotion_render_video_contract_ready(&doctor),
+                can_claim_hermes,
+            ),
         },
         CLAIM_WATCHDOG_TIMEOUT,
     )
@@ -830,19 +876,51 @@ async fn claim_worker_job_with_watchdog(
 /// it when this field is present).
 fn build_heartbeat_runtime_metadata(
     settings: &WorkerAppSettings,
+    doctor: &DoctorSummary,
     accepts_jobs: bool,
     doctor_status: &str,
     hermes_info: Option<(&DoctorSummary, Option<&str>)>,
 ) -> Value {
+    let runtime_version = doctor
+        .checks
+        .iter()
+        .find(|check| check.id == "managed_wsl_runtime" || check.id == "runtime_manifest")
+        .and_then(|check| {
+            check
+                .details_json
+                .get("runtimeVersion")
+                .or_else(|| check.details_json.get("version"))
+                .and_then(Value::as_str)
+        })
+        .unwrap_or(settings.runtime_version.as_str());
+    let remotion_contract = doctor.checks.iter().find_map(|check| {
+        check
+            .details_json
+            .get("remotionPlatformContractVersion")
+            .and_then(Value::as_str)
+    });
+    let remotion_supported_contracts = doctor.checks.iter().find_map(|check| {
+        check
+            .details_json
+            .get("contracts")
+            .filter(|value| value.is_array())
+    });
     let mut runtime_metadata = json!({
         "doctorStatus": doctor_status,
         "acceptJobs": settings.accept_jobs,
         "claimEnabled": accepts_jobs,
+        "renderUpdateBlocked": settings.render_update_blocked,
         "sharingMode": settings.sharing_mode,
         "runtimeChannel": settings.runtime_channel,
-        "runtimeVersion": settings.runtime_version,
+        "runtimeVersion": runtime_version,
         "serviceMode": if settings.start_with_windows { "auto_start_requested" } else { "foreground" },
     });
+    if let Some(remotion_contract) = remotion_contract {
+        runtime_metadata["remotionPlatformContractVersion"] = json!(remotion_contract);
+    }
+    if let Some(remotion_supported_contracts) = remotion_supported_contracts {
+        runtime_metadata["remotionSupportedContractVersions"] = remotion_supported_contracts.clone();
+    }
     if let Some((hermes_doctor, hermes_version)) = hermes_info {
         let hermes_ready = hermes_doctor.status == "ready";
         runtime_metadata["hermesMedia"] = json!({
@@ -886,7 +964,7 @@ async fn heartbeat(
         current_job_count,
         current_queue_depth(executor)?,
         warnings,
-        build_heartbeat_runtime_metadata(settings, accepts_jobs, &doctor.status, hermes_info),
+        build_heartbeat_runtime_metadata(settings, doctor, accepts_jobs, &doctor.status, hermes_info),
     );
     let response = send_worker_heartbeat(connection, &payload).await?;
     apply_hermes_heartbeat_warning(executor, &response.warning_flags_json);
@@ -3266,6 +3344,85 @@ mod tests {
     }
 
     #[test]
+    fn remotion_claim_hints_require_the_current_runtime_pack_contract() {
+        let current = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "runtime_manifest".into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({
+                    "remotionPlatformContractVersion": REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+                }),
+            }],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+        let stale = DoctorSummary {
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "runtime_manifest".into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({
+                    "remotionPlatformContractVersion": "2026-07-12",
+                }),
+            }],
+            ..current.clone()
+        };
+
+        let current_hints = build_worker_claim_capability_hints_with_remotion(
+            true,
+            remotion_render_video_contract_ready(&current),
+            false,
+        );
+        let stale_hints = build_worker_claim_capability_hints_with_remotion(
+            true,
+            remotion_render_video_contract_ready(&stale),
+            false,
+        );
+
+        assert!(current_hints.contains(&REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY.to_string()));
+        assert!(!stale_hints.contains(&REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY.to_string()));
+        assert!(stale_hints.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+
+        let managed_wsl = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "managed_wsl_runtime".into(),
+                status: "ok".into(),
+                message: "managed runtime ready".into(),
+                details_json: serde_json::json!({
+                    "remotionPlatformContractVersion": REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+                }),
+            }],
+            ..current.clone()
+        };
+        assert!(remotion_render_video_contract_ready(&managed_wsl));
+    }
+
+    #[test]
+    fn remotion_claim_accepts_a_runtime_that_explicitly_supports_the_current_contract() {
+        let compatible_legacy_primary = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "runtime_manifest".into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({
+                    "remotionPlatformContractVersion": "2026-07-12",
+                    "contracts": ["2026-07-12", REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION],
+                }),
+            }],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+
+        assert!(remotion_render_video_contract_ready(&compatible_legacy_primary));
+    }
+
+    #[test]
     fn remotion_sidecar_exit_prefers_captured_terminal_event_over_exit_status() {
         let captured = RemotionRenderOutcome::Completed {
             output_path: "/workspace/out/render.mp4".into(),
@@ -3334,6 +3491,7 @@ mod tests {
 
         let ready_metadata = build_heartbeat_runtime_metadata(
             &settings,
+            &hermes_ready,
             true,
             "ready",
             Some((&hermes_ready, Some("0.18.2"))),
@@ -3342,14 +3500,20 @@ mod tests {
         assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
         assert_eq!(ready_metadata["hermesMedia"]["capability"], "hermes-media-generation");
 
-        let blocked_metadata = build_heartbeat_runtime_metadata(&settings, true, "ready", Some((&hermes_blocked, None)));
+        let blocked_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_blocked,
+            true,
+            "ready",
+            Some((&hermes_blocked, None)),
+        );
         assert_eq!(blocked_metadata["hermesMedia"]["advertised"], false);
 
         // The 3 "active heartbeat" call sites (fired during an in-flight
         // HyperFrames render) pass `None` — no hermesMedia key at all, so
         // the server preserves the last-known value instead of clobbering
         // it with a stale/absent probe.
-        let no_hermes_info = build_heartbeat_runtime_metadata(&settings, true, "ready", None);
+        let no_hermes_info = build_heartbeat_runtime_metadata(&settings, &hermes_ready, true, "ready", None);
         assert!(no_hermes_info.get("hermesMedia").is_none());
     }
 

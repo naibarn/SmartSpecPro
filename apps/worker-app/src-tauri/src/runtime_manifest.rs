@@ -34,6 +34,8 @@ pub struct RuntimePackManifest {
     pub runtime_platform: Option<String>,
     #[serde(default)]
     pub sidecar_script_path: Option<String>,
+    #[serde(default)]
+    pub remotion_platform_contract_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -185,6 +187,7 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
             "version": manifest.version,
             "runtimeProfileHash": manifest.runtime_profile_hash,
             "rollbackToVersion": manifest.rollback_to_version,
+            "remotionPlatformContractVersion": manifest.remotion_platform_contract_version,
         }),
     });
     if !manifest.allowed {
