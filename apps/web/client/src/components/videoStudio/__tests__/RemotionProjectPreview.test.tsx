@@ -7,7 +7,7 @@
  * codebase's established convention for third-party player/canvas libs) the
  * `<Player>` is mocked to capture the props it was invoked with.
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const playerMock = vi.fn(() => <div data-testid="mock-remotion-player" />);
@@ -20,7 +20,7 @@ vi.mock("@remotion/player", () => ({
 }));
 
 import { GenericTemplateComposition } from "../../../../../server/remotion/GenericTemplateComposition";
-import { RemotionProjectPreview } from "../RemotionProjectPreview";
+import { RemotionProjectPreview, SegmentedTemplateComposition } from "../RemotionProjectPreview";
 import type { RemotionTemplateConfig } from "@shared/remotion/layerTemplateSchemas";
 
 const CONFIG: RemotionTemplateConfig = {
@@ -77,5 +77,28 @@ describe("RemotionProjectPreview", () => {
     render(<RemotionProjectPreview config={{ ...CONFIG, durationInFrames: 0 }} />);
     const props = playerMock.mock.calls[0][0];
     expect(props.durationInFrames).toBe(1);
+  });
+
+  it("concatenates segmented compile parts into one continuous preview", () => {
+    const secondConfig = { ...CONFIG, id: "compiled-2", durationInFrames: 60 };
+    render(<RemotionProjectPreview config={[CONFIG, secondConfig]} />);
+
+    const props = playerMock.mock.calls[0][0];
+    expect(props.component).toBe(SegmentedTemplateComposition);
+    expect(props.durationInFrames).toBe(210);
+    expect((props.inputProps as { parts: unknown[] }).parts).toHaveLength(2);
+  });
+
+  it("offers an explicit fullscreen control for the live preview", () => {
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(HTMLElement.prototype, "requestFullscreen", {
+      configurable: true,
+      value: requestFullscreen,
+    });
+
+    render(<RemotionProjectPreview config={CONFIG} />);
+    fireEvent.click(screen.getByTestId("video-studio-preview-fullscreen"));
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1);
   });
 });

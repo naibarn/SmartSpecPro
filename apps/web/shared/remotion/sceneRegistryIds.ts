@@ -19,6 +19,6 @@
  * — `server/remotion/scenes/index.ts` throws at module-load time if the two
  * ever drift out of sync (see that file's `assertRegistryMatchesIds`).
  */
-export const REMOTION_SCENE_IDS = ["orbiting-product"] as const;
+export const REMOTION_SCENE_IDS = ["orbiting-product", "glowing-sphere"] as const;
 
 export type RemotionSceneId = (typeof REMOTION_SCENE_IDS)[number];

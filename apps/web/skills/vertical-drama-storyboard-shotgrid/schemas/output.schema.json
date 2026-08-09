@@ -138,6 +138,13 @@
               "type": "string"
             }
           },
+          "screen_caller_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Character reference ids whose portraits must be attached as references but may appear only inside an explicitly visible phone/video-call screen; they are never physical people in the shot."
+          },
           "location": {
             "type": "string"
           },

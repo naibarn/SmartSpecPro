@@ -21,9 +21,9 @@ describe("MOTION_TEMPLATE_REGISTRY", () => {
     }
   });
 
-  it("every template's meta.kind is 'layer_pack'", () => {
+  it("every template declares a supported registry kind", () => {
     for (const id of MOTION_TEMPLATE_IDS) {
-      expect(MOTION_TEMPLATE_REGISTRY[id].meta.kind).toBe("layer_pack");
+      expect(["layer_pack", "procedural"]).toContain(MOTION_TEMPLATE_REGISTRY[id].meta.kind);
     }
   });
 });

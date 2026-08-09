@@ -479,12 +479,19 @@ becomes the judge RUBRIC prose in `references/observability-rubric.md` —
 calibration guidance for the vision judge, never asserted back as
 measurements.
 
-### 8.3 Enforcement posture — fail-open, always
+### 8.3 Enforcement posture — storyboard fail-open, I2V anchor fail-closed
 
-`risky`/`conditional` verdicts: badge + CTA only. Never blocks approval,
-render acceptance, or video generation. Rationale: stuck-generation history
-(memory `project_vd_stuck_gen_and_lost_characters`) and the QC being
-LLM-judged (occasionally wrong). A future strict mode is out of scope (§27).
+`risky`/`conditional` verdicts remain badge + CTA only for storyboard approval
+and emotional-frame rendering. For a paid I2V render, a multi-character shot
+must use a current start-frame asset whose video-safety analysis is stamped to
+that exact asset and passes the categorical face-observability contract:
+every required face is readable, frontal/natural three-quarter, both eyes are
+visible, face size is medium/large, faces are separated, and no required face
+is materially occluded or edge-cropped. Missing, stale, incomplete,
+`conditional`, or `risky` evidence blocks the provider submission and asks the
+user to run the check or create/select a Video-Safe frame. The system never
+auto-spends on regeneration or QC; the user-triggered QC and paid generation
+remain separate actions.
 
 ### 8.4 Relationship to the unwired `production-shot-image-quality-qa` folder
 
@@ -911,13 +918,18 @@ Hard failures (throw, before credits — all pre-existing, re-asserted):
 Image-N mapping contradiction after 1 corrective retry; no image/video model
 selected for a paid generation; tenant/ownership guard failures.
 
-Warnings (fail-open, persisted): `video_safe_verdict != safe`;
+Warnings (persisted): `video_safe_verdict != safe`;
 `action_matches_intent=false`; `identityQc.status != pass`;
 `samples_unavailable`; missing/invalid P1 motion profile (status is not coerced to
 `low`). P1 does not attempt deterministic prose matching between
 the generated Thai/English prompt and `camera_motion`; the judge scores contract
 compliance. A language-aware runner check, if evidence shows it is needed, is a
 separate P2 item with its own tests.
+
+For multi-character I2V generation while `verticalDramaVideoSafeStartFrames`
+is enabled, missing/stale/incomplete video-safety evidence is a hard precondition
+failure before the provider call. This gate protects only the video anchor; it
+does not reject or replace the storyboard's emotional frame.
 
 Never: mechanical truncation of prompts (budget flows unchanged in shape —
 the image budget is per-model per §9.5, `VD_VIDEO_PROMPT_MAX` untouched);
@@ -1001,9 +1013,12 @@ reference-image payloads; they record only bounded enums, ids, timing, and outco
   rather than low-risk; flags off ⇒ snapshots identical.
 - P2: a `risky` frame shows the badge + CTA; generating a video-safe frame
   never alters `approvedMediaAssetId`; video request uses the video-safe
-  asset as `referenceImageUrls[0]` when set and falls back cleanly when
-  cleared; angle-pack selection degrades to portrait; advisory chip never
-  changes the selected model.
+  asset as `referenceImageUrls[0]` when set; a multi-character video request
+  with missing, stale, incomplete, conditional, or risky evidence is rejected
+  before provider submission instead of silently falling back to an unverified
+  emotional frame; clearing the video-safe asset requires checking the
+  approved frame again; angle-pack selection degrades to portrait; advisory
+  chips never change the selected model.
 - P3: a completed or imported clip gets sampled frames + per-character
   verdicts; sampler failure degrades to `samples_unavailable` without
   blocking; no automatic credit spend exists on any QC path (asserted by

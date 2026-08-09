@@ -143,6 +143,17 @@ export function buildHermesGrokMediaModelConfigJson(
     generateType: seed.modelType === "video" ? "image-to-video" : "text-to-image",
     supportsReferenceImages: true,
     referenceImageLimit: seed.referenceImageLimit,
+    // BOTH names, deliberately: `referenceImageLimit` is the DB-import/UI
+    // convention, but `modelRegistry.ts`'s deriveVerticalDramaCapabilities
+    // VIDEO branch reads ONLY `maxReferenceImages` (the image branch
+    // normalizes both). Without this, the VD video path resolved
+    // `maxReferenceImages ?? 0` → 0 and effectiveHermesCapability trimmed
+    // the reference list to ZERO — dropping even the start frame, so every
+    // Grok-via-Hermes clip render died with HERMES_REFERENCE_LIMIT_EXCEEDED
+    // ("requires between 1 and 1 references (received 0)", observed
+    // 2026-08-02). For video this MUST stay 1: Grok i2v takes exactly the
+    // shot's start frame, never additional reference images.
+    maxReferenceImages: seed.referenceImageLimit,
     aspectRatios: seed.aspectRatios,
     inputFields: [
       {

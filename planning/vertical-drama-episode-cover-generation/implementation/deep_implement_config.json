@@ -1,0 +1,26 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/planning/vertical-drama-episode-cover-generation/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/planning/vertical-drama-episode-cover-generation/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-migration",
+    "section-02-server-cover-lifecycle",
+    "section-03-episode-list-projection",
+    "section-04-episodes-tab-cover-ui",
+    "section-05-focused-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-07T00:56:31.458693+00:00"
+}

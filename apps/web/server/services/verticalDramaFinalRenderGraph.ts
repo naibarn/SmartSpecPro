@@ -789,7 +789,7 @@ export interface VdTextOverlayAssEvent {
    *  `"center_card"`, the style's own baked-in middle-center alignment).
    *  `episode_indicator`/`watermark_text`: the corner to render in (episode
    *  indicator only ever sends a TOP corner; watermark sends all 4). */
-  variant?: "center_card" | "lower_band" | VdTextOverlayCornerPosition;
+  variant?: "center_card" | "lower_band" | VdWatermarkPosition;
   /** `watermark_text` only — 0.2-0.8; overrides the style's baked-in primary
    *  fill alpha via an inline `\1a` tag so ONE style can serve any
    *  series-configured opacity. */
@@ -1033,40 +1033,6 @@ const VD_TEXT_OVERLAY_ASS_STYLES: Record<VdTextOverlayAssKind, VdAssStyleSpec> =
   },
 };
 
-/** ASS numpad alignment for a frame corner (7=top-left, 9=top-right,
- *  1=bottom-left, 3=bottom-right) — shared by the `\an` override tag AND
- *  `cornerPositionPx`'s matching `\pos()` anchor point. */
-function overlayAnchorForCorner(corner: VdTextOverlayCornerPosition): number {
-  switch (corner) {
-    case "top_left":
-      return 7;
-    case "top_right":
-      return 9;
-    case "bottom_left":
-      return 1;
-    case "bottom_right":
-      return 3;
-  }
-}
-
-/** Absolute `\pos(x,y)` coordinates for `corner` at `marginPx` from BOTH
- *  edges it touches, on the fixed 1080x1920 canvas (matches
- *  `overlayAnchorForCorner`'s anchor point exactly, so the margin is
- *  measured from the correct edge regardless of corner). */
-function cornerPositionPx(
-  corner: VdTextOverlayCornerPosition,
-  marginPx: number
-): { x: number; y: number } {
-  const frameW = 1080;
-  const frameH = 1920;
-  const isLeft = corner === "top_left" || corner === "bottom_left";
-  const isTop = corner === "top_left" || corner === "top_right";
-  return {
-    x: isLeft ? marginPx : frameW - marginPx,
-    y: isTop ? marginPx : frameH - marginPx,
-  };
-}
-
 /** `\1a&HXX&` primary-fill-alpha override tag for `opacity` (0-1 visible
  *  opacity -> `XX` = the ASS transparency byte, `00`=opaque/`FF`=invisible —
  *  same AA-byte convention as every `PrimaryColour` value in this file). */
@@ -1104,6 +1070,40 @@ function assAlignmentForOverlayAnchor(position: VdWatermarkPosition): number {
   return rowBase + column;
 }
 
+function isWatermarkPosition(value: unknown): value is VdWatermarkPosition {
+  return (
+    value === "top_left" ||
+    value === "top_center" ||
+    value === "top_right" ||
+    value === "middle_left" ||
+    value === "middle_center" ||
+    value === "middle_right" ||
+    value === "bottom_left" ||
+    value === "bottom_center" ||
+    value === "bottom_right"
+  );
+}
+
+function watermarkPositionPx(
+  position: VdWatermarkPosition,
+  marginPx: number
+): { x: number; y: number } {
+  const column = position.endsWith("_left")
+    ? "left"
+    : position.endsWith("_right")
+      ? "right"
+      : "center";
+  const row = position.startsWith("top_")
+    ? "top"
+    : position.startsWith("bottom_")
+      ? "bottom"
+      : "middle";
+  return {
+    x: column === "left" ? marginPx : column === "right" ? 1080 - marginPx : 540,
+    y: row === "top" ? marginPx : row === "bottom" ? 1920 - marginPx : 960,
+  };
+}
+
 function buildOverlayAssEvent(
   event: VdTextOverlayAssEvent,
   style: VdAssStyleSpec
@@ -1130,10 +1130,15 @@ function buildOverlayAssEvent(
     overrides.push("\\an7");
   }
   if (event.kind === "watermark_text") {
-    const corner = isCornerPosition(event.variant) ? event.variant : "top_right";
+    const position = isWatermarkPosition(event.variant)
+      ? event.variant
+      : "top_right";
     const marginPx = event.marginPx ?? 32;
-    const { x, y } = cornerPositionPx(corner, marginPx);
-    overrides.push(`\\an${overlayAnchorForCorner(corner)}`, `\\pos(${x},${y})`);
+    const { x, y } = watermarkPositionPx(position, marginPx);
+    overrides.push(
+      `\\an${assAlignmentForOverlayAnchor(position)}`,
+      `\\pos(${x},${y})`
+    );
     if (event.opacity != null) overrides.push(overlayAlphaOverrideTag(event.opacity));
   }
 

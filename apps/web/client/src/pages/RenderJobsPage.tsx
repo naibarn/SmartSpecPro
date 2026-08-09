@@ -71,6 +71,17 @@ function formatJobType(jobType: string): string {
   return JOB_TYPE_LABELS[jobType] ?? jobType;
 }
 
+// Spec 143 §5 R1: job-type filter options, sourced from the same Thai label
+// map used to render job type text elsewhere on this page, so the filter
+// dropdown always matches what the user sees in the table/detail panel.
+// "all" is the default and maps to no jobType filter being sent to the API.
+const JOB_TYPE_FILTER_OPTIONS = ["all", ...Object.keys(JOB_TYPE_LABELS)] as const;
+
+function formatJobTypeFilterLabel(jobType: (typeof JOB_TYPE_FILTER_OPTIONS)[number]): string {
+  if (jobType === "all") return "ทั้งหมด";
+  return formatJobType(jobType);
+}
+
 const STATUS_LABELS: Record<string, string> = {
   all: "ทั้งหมด",
   queued: "รอ worker",
@@ -233,13 +244,18 @@ function getOutputVideoEditorRoute(ref: RenderJobOutputRef): string | null {
 
 export default function RenderJobsPage() {
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
+  const [jobTypeFilter, setJobTypeFilter] = useState<(typeof JOB_TYPE_FILTER_OPTIONS)[number]>("all");
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
   const listQuery = trpc.workerJobs.list.useQuery(
     {
       status: statusFilter === "all" ? undefined : statusFilter,
+      jobType: jobTypeFilter === "all" ? undefined : jobTypeFilter,
       limit: 50,
+      // Offset is always 0 here (this page has no pager yet), so changing
+      // either filter already "resets" paging for free — no extra offset
+      // state to reset.
       offset: 0,
     },
     { refetchInterval: 10_000 },
@@ -320,6 +336,24 @@ export default function RenderJobsPage() {
                   {STATUS_OPTIONS.map((status) => (
                     <SelectItem key={status} value={status}>
                       {STATUS_LABELS[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={jobTypeFilter}
+                onValueChange={(value) => setJobTypeFilter(value as typeof jobTypeFilter)}
+              >
+                <SelectTrigger
+                  data-testid="render-jobs-type-filter"
+                  className="w-52 border-white/15 bg-white/10 text-slate-100"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {JOB_TYPE_FILTER_OPTIONS.map((jobType) => (
+                    <SelectItem key={jobType} value={jobType}>
+                      {formatJobTypeFilterLabel(jobType)}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -29,11 +29,11 @@ import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
 import { HStack, Layout, LayoutContent, LayoutFooter, VStack } from "@astryxdesign/core/Layout";
 import { Spinner } from "@astryxdesign/core/Spinner";
 import { Text } from "@astryxdesign/core/Text";
-import { pickCopy, renderableJobError, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
+import { describeViError, pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
 
 /** `videoProjects.getStageEstimate` output shape (section-04 spec §4.4). */
 export type StageEstimate = {
-  stage: "scene_plan" | "quality_review" | "quality_repair";
+  stage: "scene_plan" | "quality_review" | "quality_repair" | "auto_draft" | "motion" | "narration";
   modelId: string;
   maxLoops: number;
   perRoundCredits: number;
@@ -59,7 +59,7 @@ function describeEstimateError(lang: VideoStudioLang, error: string | null | und
   if (!error) return null;
   if (error.includes("VI_NO_RECOMMENDED_MODEL")) return pickCopy(lang, videoStudioCopy.noRecommendedModel);
   if (error.includes("VI_INSUFFICIENT_CREDITS")) return pickCopy(lang, videoStudioCopy.insufficientCredits);
-  return renderableJobError(lang, error);
+  return describeViError(lang, error);
 }
 
 export function StageEstimateDialog({
@@ -76,7 +76,7 @@ export function StageEstimateDialog({
   lang: VideoStudioLang;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  stage: "scene_plan" | "quality_review" | "quality_repair";
+  stage: "scene_plan" | "quality_review" | "quality_repair" | "auto_draft" | "motion" | "narration";
   /** section-04 §4.4 payload; undefined while loading or on error. */
   estimate: StageEstimate | undefined;
   isLoading: boolean;

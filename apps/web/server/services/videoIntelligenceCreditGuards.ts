@@ -1,13 +1,20 @@
 /**
  * Feature 142 — section-08: credit-integrity builders for Video Intelligence.
  *
- * The feature charges nothing today (AD-7) — every LLM call this feature
- * makes is charged exactly once by `callLLMStructured` itself, and this
- * router/executor pair never calls `deductCredits` (locked by an fs source
- * guard in `videoIntelligenceNonDuplicationGuards.test.ts`). These two
- * builders exist so that the FIRST charge anyone ever adds to this feature is
- * correct by construction instead of repeating a mistake this repo has
- * already made once.
+ * implementation-progress.md gap #2 (CLOSED): the header note below used to
+ * claim "the feature charges nothing today" — that stopped being true the
+ * moment `routers/videoProjects.ts`'s narration-TTS charge
+ * (`synthesizeProjectNarration`'s `deductCredits` call) started building its
+ * idempotency key/context through this module instead of calling
+ * `deductCredits` with no key at all. Every OTHER LLM call this feature makes
+ * is still charged exactly once by `callLLMStructured` itself, and
+ * `videoIntelligenceNonDuplicationGuards.test.ts`'s "no Video Intelligence
+ * SERVICE imports deductCredits" guard still holds — it explicitly excludes
+ * `routers/videoProjects.ts` (see that test's own "is EXCLUDED from this
+ * guard" case), which is the only file that ever calls `deductCredits` for
+ * this feature. These two builders exist so that every charge this feature
+ * adds is correct by construction instead of repeating a mistake this repo
+ * has already made once.
  *
  * Deviation note: `server/services/creditService.ts` has no
  * `clampCreditTraceId` export today (the spec's platform-code table lists it
@@ -30,10 +37,16 @@ export const CREDIT_TRACE_ID_MAX_LENGTH = 32;
  * idempotency key instead of charging twice (spec §9.4 rule 5). Throws on a
  * blank `jobId`/`stage`: a silently-empty key would make every charge for
  * every job collide on the same key.
+ *
+ * `stage` additionally accepts `"narration"` (gap #2 fix) — the narration TTS
+ * charge in `routers/videoProjects.ts` is a synchronous mutation, not a
+ * BullMQ job, so it has no real `jobId`; its caller passes a deterministic
+ * stand-in built from request-invariant data instead (see that call site's
+ * own comment for exactly what it does and does not dedupe).
  */
 export function buildVideoIntelligenceIdempotencyKey(
   jobId: string,
-  stage: VideoIntelligenceStage,
+  stage: VideoIntelligenceStage | "narration",
 ): string {
   const trimmedJobId = typeof jobId === "string" ? jobId.trim() : "";
   const trimmedStage = typeof stage === "string" ? stage.trim() : "";
@@ -57,7 +70,7 @@ export function buildVideoIntelligenceIdempotencyKey(
  */
 export function buildVideoIntelligenceCreditContext(args: {
   jobId: string;
-  stage: VideoIntelligenceStage;
+  stage: VideoIntelligenceStage | "narration";
   traceId: string;
   projectId: number;
   modelId: string | null;

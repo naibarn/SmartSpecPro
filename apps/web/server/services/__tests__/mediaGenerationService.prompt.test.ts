@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPythonBackendExtraParamsForTest,
+  buildMediaRequestAuditPayload,
   normalizeMediaPrompt,
   resolveReferenceImageUrlsForModelForTest,
 } from "../mediaGenerationService";
@@ -85,6 +86,59 @@ describe("buildPythonBackendExtraParams", () => {
       __marketplace_product_id: "mp_123",
       __auto_review_run_id: "auto_run_82",
     });
+  });
+});
+
+describe("buildMediaRequestAuditPayload", () => {
+  it("emits bounded target telemetry without prompt, negative, or reference content", () => {
+    const payload = buildMediaRequestAuditPayload({
+      request: {
+        prompt: "natural human portrait with visible pores",
+        model: "gpt-image-2",
+        negativePrompt: "plastic skin",
+        referenceImageUrls: ["https://example.com/face.png"],
+        characterPromptContext: {
+          marker: "vertical_drama_character_v1",
+          contractVersion: "vd_character_natural_human_v1",
+          target: true,
+          family: "gpt_image_2",
+          maxPromptChars: 20_000,
+          promptProfile: "rich",
+          semanticRetryCount: 1,
+        },
+      },
+      requestType: "generateImageAsync",
+      mediaType: "image",
+      provider: "kie.ai",
+      model: "gpt-image-2",
+      endpoint: "/api/v1/media/async/image",
+      payload: {
+        prompt: "natural human portrait with visible pores",
+        negative_prompt: "plastic skin",
+        reference_image_urls: ["https://example.com/face.png"],
+      },
+    });
+
+    expect(payload).toEqual({
+      source: "media_generation_service",
+      stage: null,
+      endpoint: "/api/v1/media/async/image",
+      provider: "kie.ai",
+      model: "gpt-image-2",
+      model_id: "gpt-image-2",
+      request_type: "generateImageAsync",
+      family: "gpt_image_2",
+      prompt_profile: "rich",
+      max_prompt_chars: 20_000,
+      prompt_length: 41,
+      semantic_retry_count: 1,
+      negative_prompt_submitted: false,
+      contract_version: "vd_character_natural_human_v1",
+      reference_image_count: 1,
+    });
+    expect(payload).not.toHaveProperty("prompt");
+    expect(payload).not.toHaveProperty("negative_prompt");
+    expect(payload).not.toHaveProperty("reference_image_urls");
   });
 });
 

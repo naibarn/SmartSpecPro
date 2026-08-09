@@ -27,6 +27,7 @@ function fakeRepo(overrides: Partial<HermesMediaReferenceRepo> = {}): HermesMedi
   return {
     findAssetById: vi.fn(async () => null),
     persistChecksum: vi.fn(async () => {}),
+    persistStorageKey: vi.fn(async () => {}),
     ...overrides,
   };
 }
@@ -140,6 +141,74 @@ describe("buildHermesMediaReferences", () => {
       { repo, hashObject },
     );
     expect(refs[0].sha256).toBe("c".repeat(64));
+  });
+
+  it("regression (2026-08-02): re-homes a foreign-host storageKey (provider temp CDN) into managed storage instead of hashing the local 404 path", async () => {
+    // Real production shape: VD start-frame rows persisted Kie.ai's GPT
+    // Image 2 temp CDN URL directly as storageKey; hashing it resolved a
+    // local /api/storage/files/<foreign-path> that 404'd every submit.
+    const externalUrl = "https://tempfile.aiquickdraw.com/images/chatgpt/file_abc.png";
+    const persistStorageKey = vi.fn(async () => {});
+    const repo = fakeRepo({
+      findAssetById: vi.fn(async ({ assetId }) => ({
+        id: assetId,
+        storageKey: externalUrl,
+        checksumSha256: null,
+      })),
+      persistStorageKey,
+    });
+    const ingestExternalAsset = vi.fn(async ({ assetId }: { assetId: string }) => ({
+      objectKey: `hermes-references/tenant-1/${assetId}/deadbeef.png`,
+      sha256: "b".repeat(64),
+    }));
+    const hashObject = vi.fn(async () => "never-called");
+
+    const refs = await buildHermesMediaReferences(
+      {
+        tenantId: "tenant-1",
+        userId: 1,
+        orderedRefs: [{ assetId: "1290", role: "start_frame", label: "Image-1" }],
+      },
+      { repo, hashObject, ingestExternalAsset },
+    );
+
+    expect(ingestExternalAsset).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      assetId: "1290",
+      externalUrl,
+    });
+    expect(persistStorageKey).toHaveBeenCalledWith({
+      assetId: "1290",
+      storageKey: "hermes-references/tenant-1/1290/deadbeef.png",
+    });
+    expect(hashObject).not.toHaveBeenCalled();
+    expect(refs).toEqual([
+      { assetId: "1290", index: 1, role: "start_frame", label: "Image-1", sha256: "b".repeat(64) },
+    ]);
+  });
+
+  it("managed https storage-proxy URLs (own host) do NOT trigger external ingestion", async () => {
+    const repo = fakeRepo({
+      findAssetById: vi.fn(async ({ assetId }) => ({
+        id: assetId,
+        storageKey: "https://smartaihub.app/api/storage/files/vd/frame.png",
+        checksumSha256: null,
+      })),
+    });
+    const ingestExternalAsset = vi.fn(async () => ({ objectKey: "x", sha256: "c".repeat(64) }));
+    const hashObject = vi.fn(async () => "d".repeat(64));
+
+    await buildHermesMediaReferences(
+      {
+        tenantId: "tenant-1",
+        userId: 1,
+        orderedRefs: [{ assetId: "7", role: "start_frame", label: "Image-1" }],
+      },
+      { repo, hashObject, ingestExternalAsset },
+    );
+
+    expect(ingestExternalAsset).not.toHaveBeenCalled();
+    expect(hashObject).toHaveBeenCalledTimes(1);
   });
 
   it("throws HermesMediaReferenceAssetNotFoundError for an asset id that does not resolve for this owner", async () => {

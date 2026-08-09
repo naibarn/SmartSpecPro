@@ -51,6 +51,16 @@ function pickBestUrl(urls: string[]): string | undefined {
   return urls.find((url) => XAI_HOST_PATTERN.test(url)) ?? urls[0];
 }
 
+/** Hermes >= 0.18.x prints a SINGLE combined line — `Open:
+ *  https://accounts.x.ai/oauth2/device?user_code=XXXX-XXXX` — with the user
+ *  code embedded as a query parameter and no separate code line. The
+ *  URL-stripping pass above (correctly) removes the whole URL before the
+ *  code scan, so the embedded code must be recovered from the URL itself. */
+function extractUserCodeFromUrl(url: string): string | undefined {
+  const match = url.match(/[?&](?:user_code|code)=([A-Za-z0-9-]{4,32})(?:[&#]|$)/);
+  return match ? match[1] : undefined;
+}
+
 function extractExpiresAt(text: string, now: () => Date): string | undefined {
   const isoMatch = text.match(/expires?(?:\s+at)?[:\s]+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.Z+-]+)/i);
   if (isoMatch) {
@@ -98,7 +108,9 @@ export function parseHermesDeviceCodeOutput(
     codeSearchText = codeSearchText.split(url).join(" ");
   }
   const codeMatches = codeSearchText.match(CODE_PATTERN) ?? [];
-  const userCode = codeMatches.find((candidate) => candidate.includes("-")) ?? codeMatches[0];
+  const userCode = codeMatches.find((candidate) => candidate.includes("-"))
+    ?? codeMatches[0]
+    ?? (verificationUrl ? extractUserCodeFromUrl(verificationUrl) : undefined);
 
   if (verificationUrl && userCode) {
     const expiresAt = extractExpiresAt(joined, now);
@@ -123,12 +135,25 @@ export function parseHermesAuthStatusOutput(text: string): HermesAuthStatusParse
 
 /** Substring presence check against the fixed operation taxonomy — the
  *  fake CLI (and section 07's real `hermes tools` output) list operation
- *  identifiers verbatim (e.g. `image.generate`, `image.edit`). */
+ *  identifiers verbatim (e.g. `image.generate`, `image.edit`).
+ *
+ *  Also accepts the real `hermes tools list` toolset identifiers
+ *  (`image_gen` / `video_gen`, Hermes 0.18.x). The listing's per-line
+ *  ✓ enabled / ✗ disabled state is deliberately IGNORED: media jobs always
+ *  pass an explicit `--toolsets image_gen|video_gen` at invocation time
+ *  (`hermesInvocation.ts`), and the managed profile's `config.yaml` pins
+ *  `provider: xai` for both — so the toolset merely EXISTING in this CLI
+ *  build means the operation is runnable for an authorized connection
+ *  (auth is gated separately by the probe's `auth status` step). A fresh
+ *  managed profile has `video_gen` ✗ disabled by Hermes default, which
+ *  must not read as "video unsupported". */
 export function parseHermesToolsOutput(text: string): HermesMediaOperation[] {
   const found: HermesMediaOperation[] = [];
   const normalized = text.toLowerCase();
-  const imageGenerationAvailable = normalized.includes("image generation");
-  const videoGenerationAvailable = normalized.includes("video generation");
+  const imageGenerationAvailable =
+    normalized.includes("image generation") || /\bimage_gen\b/.test(normalized);
+  const videoGenerationAvailable =
+    normalized.includes("video generation") || /\bvideo_gen\b/.test(normalized);
   for (const operation of HERMES_MEDIA_OPERATIONS) {
     if (
       text.includes(operation)

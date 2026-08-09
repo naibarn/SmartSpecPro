@@ -574,12 +574,35 @@ export type VerticalDramaStartFramePlan = {
       analyzedAt?: string;
       skillVersion?: string;
     };
+    /** Advisory device-orientation QC for phone-mediated shots. */
+    deviceOrientationQc?: {
+      physical_handset_view?: "rear" | "front" | "unclear" | "not_applicable";
+      rear_camera_visible?: boolean;
+      physical_display_visible?: boolean;
+      floating_call_screen_present?: boolean;
+      remote_body_outside_device?: boolean;
+      notes?: string[];
+      analyzedAssetId?: string;
+      analyzedAt?: string;
+      skillVersion?: string;
+    };
     /** Feature 137 P2 — optional I2V-only anchor selected by the user. */
     videoStartMediaAssetId?: string;
     videoStartSource?: "video_safe_regen" | "angle_grid" | "manual_upload";
-    /** Feature 137 P2 — optional advisory video-safety analysis. */
+    /** Feature 137 P2 — video-safety analysis for the currently selected I2V anchor. */
     videoSafety?: {
-      characters?: Array<Record<string, unknown>>;
+      characters?: Array<{
+        character?: string;
+        name?: string;
+        face_readable?: boolean;
+        facing?: string;
+        eyes_visible?: string;
+        occlusion?: string;
+        face_size?: string;
+        overlapped_by_other_face?: boolean;
+        notes?: string;
+        [key: string]: unknown;
+      }>;
       faces_separated?: boolean;
       face_touching_frame_edge?: boolean;
       action_matches_intent?: boolean;
@@ -957,7 +980,7 @@ export type VerticalDramaMotionPromptPack = {
      * `generateVideoClip`'s reference-merge step in
      * `verticalDramaEpisodes.ts`). Generic field, usable by any future
      * multi-reference clip need — not exclusive to speaker-switch clips.
-     */
+    */
     extraReferenceAssetIds?: string[];
     durationSeconds: number;
     /**
@@ -1067,7 +1090,9 @@ export type VerticalDramaMotionPromptPack = {
     /**
      * Feature 137 P3 post-video identity QA.  Sampling/vision is advisory and
      * fail-open: a missing sample must never make an otherwise renderable clip
-     * unavailable.  Kept optional so pre-P3 motion packs round-trip unchanged.
+     * unavailable.  While the sampler is still running, `samplingTaskId`
+     * keeps the durable poll handle.  Kept optional so pre-P3 motion packs
+     * round-trip unchanged.
      */
     identityQc?: {
       status: "pending" | "sampling" | "pass" | "warn" | "fail" | "samples_unavailable";
@@ -1082,6 +1107,9 @@ export type VerticalDramaMotionPromptPack = {
       }>;
       sampleUrls?: string[];
       analyzedAssetId?: string;
+      /** Celery sampling task still running; the client polls this task instead
+       * of reporting a false "samples unavailable" result. */
+      samplingTaskId?: string;
       analyzedAt?: string;
       skillVersion?: string;
       warning?: string;
@@ -1121,6 +1149,8 @@ export type VerticalDramaMotionPromptPack = {
       pendingTaskId?: string;
       videoUrl?: string;
       mediaTaskId?: string;
+      /** Durable owner-scoped media asset identity for generated clips. */
+      mediaAssetId?: string;
       /**
        * Additive (2026-07-07 upload-video-per-shot upgrade) — marks a
        * `videoUrl` that was placed by the user uploading an externally
@@ -1456,12 +1486,10 @@ export type VerticalDramaEpisodeRun = {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Hard character cap for any IMAGE prompt persisted/displayed/sent to a
- * provider in the Vertical Drama flow. Enforced server-side by
- * `server/services/verticalDramaPromptQc.ts`'s `ensurePromptWithinLimit`
- * before the prompt is used for real generation or persisted/displayed —
- * shared here so client-side inline prompt editors can render the same
- * `n / VD_IMAGE_PROMPT_MAX` counter without duplicating the number.
+ * Legacy/default character cap for an IMAGE prompt in the Vertical Drama flow.
+ * Provider-aware callers may widen it up to the absolute 20,000-character
+ * ceiling when the selected image model supports that budget. Enforced
+ * server-side by `verticalDramaPromptQc.ts`'s `ensurePromptWithinLimit`.
  */
 export const VD_IMAGE_PROMPT_MAX = 3800;
 

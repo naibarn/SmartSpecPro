@@ -100,6 +100,30 @@ describe("remotionRenderVideoWorkerInputSchema (Feature 133 section-03 golden fi
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
   });
 
+  it("accepts the additive segmented render payload", () => {
+    const validFixture = readFixture<{
+      remotionTemplate: Record<string, unknown>;
+      [key: string]: unknown;
+    }>(
+      "remotionRenderVideoWorkerInput-valid.json",
+    );
+    const first = { ...validFixture.remotionTemplate, durationInFrames: 150 };
+    const segmented = {
+      ...validFixture,
+      remotionTemplate: first,
+      segmentTemplates: [first, { ...first, id: "segment-2" }],
+      segmentPlan: {
+        parts: [
+          { index: 0, durationInFrames: 150 },
+          { index: 1, durationInFrames: 150 },
+        ],
+      },
+      postPasses: ["segment_concat", "loudnorm"],
+      durationInFrames: 300,
+    };
+    expect(remotionRenderVideoWorkerInputSchema.safeParse(segmented).success).toBe(true);
+  });
+
   describe("captionLines (implementation-progress.md gap #3 — additive, optional)", () => {
     it("still accepts the golden fixture with no captionLines field at all", () => {
       const validFixture = readFixture("remotionRenderVideoWorkerInput-valid.json");

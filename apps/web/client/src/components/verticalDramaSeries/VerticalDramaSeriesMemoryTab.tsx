@@ -148,7 +148,11 @@ export function VerticalDramaSeriesMemoryTab({
     );
   }
 
-  if (memoryQuery.isError) {
+  // Fatal only on a FIRST-load failure. TanStack v5 also flags `isError` when
+  // a background refetch fails while cached `data` is still available, and
+  // taking the whole tab over there hides working content and destroys the
+  // local state of everything below it. Keep rendering from cache.
+  if (memoryQuery.isError && !memoryQuery.data) {
     return (
       <Card className="border-dashed">
         <CardContent className="py-6 text-center text-sm text-muted-foreground">

@@ -157,6 +157,8 @@ export interface GenerateLocationVisualPromptsParams {
   coverageRole?: VerticalDramaLocationCoverageRole;
   /** Feature 138 P2 — a concrete planner-reported coverage gap to ground. */
   gapDescription?: string;
+  /** Effective prompt budget for the selected output image model. */
+  imagePromptMaxChars?: number;
   idempotencyKey?: string;
 }
 
@@ -202,6 +204,9 @@ export function buildLocationVisualPromptsUserPrompt(params: GenerateLocationVis
     ...(params.hasOwnReferenceImage ? { has_own_reference_image: true } : {}),
     ...(params.coverageRole ? { coverage_role: params.coverageRole } : {}),
     ...(params.gapDescription ? { coverage_gap: params.gapDescription } : {}),
+    ...(params.imagePromptMaxChars
+      ? { prompt_max_chars: Math.min(20_000, Math.max(3_800, Math.floor(params.imagePromptMaxChars))) }
+      : {}),
   };
 
   return [

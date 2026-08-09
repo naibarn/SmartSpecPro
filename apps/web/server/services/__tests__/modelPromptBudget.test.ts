@@ -73,6 +73,35 @@ describe("model prompt budget", () => {
     expect(resolveVdImagePromptBudgetForModel({ modelId: "missing" })).toBe(3800);
   });
 
+  it("uses Kie.ai's current 20,000-character image allowance even when catalog metadata is stale", () => {
+    mockGetStaticModelById.mockReturnValue(undefined);
+    expect(
+      resolveVdImagePromptBudgetForModel({
+        modelId: "kie-image-model",
+        provider: "kie.ai",
+        configJson: { maxPromptLength: 3800 },
+      }),
+    ).toBe(20_000);
+    expect(
+      resolveVdImagePromptBudgetForModel({
+        modelId: "kie-image-model-legacy",
+        provider: "kie_ai",
+        configJson: {},
+      }),
+    ).toBe(20_000);
+  });
+
+  it("keeps a configured non-Kie provider at its catalog budget", () => {
+    mockGetStaticModelById.mockReturnValue(undefined);
+    expect(
+      resolveVdImagePromptBudgetForModel({
+        modelId: "other-image-model",
+        provider: "openai",
+        configJson: { maxPromptLength: 5000 },
+      }),
+    ).toBe(5000);
+  });
+
   it("keeps legacy budget resolution independent from target contract validation", () => {
     mockGetStaticModelById.mockReturnValue(undefined);
     expect(

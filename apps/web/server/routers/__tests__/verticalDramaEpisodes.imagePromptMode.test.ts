@@ -460,7 +460,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
       .mockReturnValueOnce(selectChain([{ bible: null }])); // loadSeriesTargetAudienceRegion
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
@@ -486,7 +486,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
       .mockReturnValueOnce(selectChain([{ bible: null }]));
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
@@ -510,7 +510,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await expect(
-      router.generateShotStartFramePrompt({
+      router.executeShotStartFramePromptJob({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
       }),
@@ -548,7 +548,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
       .mockReturnValueOnce(selectChain([{ bible: null }]));
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
@@ -588,7 +588,7 @@ describe("generateShotStartFramePrompt — mode default resolution from image mo
       .mockReturnValueOnce(selectChain([{ bible: null }]));
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
@@ -634,7 +634,7 @@ describe("generateShotStartFramePrompt — promptMode stamp persisted + returned
       }),
     });
 
-    const result = await router.generateShotStartFramePrompt({
+    const result = await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, canonicalShotSummary: "A hero stands in the rain" },
     });
@@ -700,7 +700,7 @@ describe("generateShotStartFramePrompt — promptMode stamp persisted + returned
       }),
     });
 
-    const result = await router.generateShotStartFramePrompt({
+    const result = await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
     });

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "video-project-narration-script/output",
+  "title": "Video Project Narration Script Output",
+  "description": "Matches NarrationScriptSkillOutput in server/services/videoProjectNarrationScriptAdapter.ts. Narration TEXT only — no property name in this file may match /prompt|imagePrompt|videoPrompt|negativePrompt/i.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenes"],
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "narration"],
+        "properties": {
+          "index": {
+            "description": "Must echo one of the input scenes' index values exactly.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "narration": {
+            "description": "Plain spoken Thai narration text — no markdown, no emoji, no stage directions.",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        }
+      }
+    }
+  }
+}

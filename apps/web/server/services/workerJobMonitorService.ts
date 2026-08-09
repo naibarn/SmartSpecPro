@@ -94,6 +94,7 @@ export type WorkerJobMonitorRepository = {
   listUserJobs(input: {
     auth: WorkerJobMonitorAuth;
     statuses?: UserWorkerJobStatus[];
+    jobType?: string;
     limit: number;
     offset: number;
   }): Promise<Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>>;
@@ -171,6 +172,9 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
 
     if (input.statuses?.length) {
       conditions.push(inArray(workerJobs.status, input.statuses) as any);
+    }
+    if (input.jobType) {
+      conditions.push(eq(workerJobs.jobType, input.jobType));
     }
 
     return await db
@@ -500,6 +504,7 @@ export async function listUserWorkerJobs(
   input: {
     auth: WorkerJobMonitorAuth;
     status?: UserWorkerJobStatus;
+    jobType?: string;
     limit?: number;
     offset?: number;
   },
@@ -509,6 +514,7 @@ export async function listUserWorkerJobs(
   const jobs = await repo.listUserJobs({
     auth: input.auth,
     statuses: input.status ? [input.status] : undefined,
+    ...(input.jobType ? { jobType: input.jobType } : {}),
     limit: input.limit ?? 50,
     offset: input.offset ?? 0,
   });

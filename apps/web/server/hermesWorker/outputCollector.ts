@@ -324,9 +324,21 @@ export async function collectOutputs(params: CollectOutputsParams): Promise<Coll
     if (files.length === 0) {
       throw new HermesOutputError("HERMES_RESULT_INVALID", "SMARTSPECPRO_RESULT block reported no output files");
     }
-    const resolved = files.map((file) => (path.isAbsolute(file) ? file : path.join(params.workspace.outputDir, file)));
     const collected: CollectedOutput[] = [];
-    for (const filePath of resolved) {
+    let downloadIndex = 0;
+    for (const file of files) {
+      // The xAI media tools return HOSTED result URLs and the agent has no
+      // file/terminal toolset to save them locally (spec §4.2) — an https
+      // entry in the marker's files array is therefore the NORMAL success
+      // shape for this runtime, not an error. Download it into tmp/ (same
+      // path the MEDIA-tag signal uses) before validation.
+      if (/^https?:\/\//i.test(file.trim())) {
+        const localPath = await downloadMediaUrl(file.trim(), params.workspace.tmpDir, fetchImpl, downloadIndex);
+        downloadIndex += 1;
+        collected.push(await buildCollected(localPath, "result_marker"));
+        continue;
+      }
+      const filePath = path.isAbsolute(file) ? file : path.join(params.workspace.outputDir, file);
       collected.push(await buildCollected(filePath, "result_marker"));
     }
     return collected;

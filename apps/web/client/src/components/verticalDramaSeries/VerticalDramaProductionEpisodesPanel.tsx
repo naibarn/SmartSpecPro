@@ -472,7 +472,11 @@ export function VerticalDramaProductionEpisodesPanel({
     );
   }
 
-  if (detailQuery.isError || !detailQuery.data?.series) {
+  // A failed background refetch can leave the last successful response in
+  // `data`. Keep the panel mounted from that cached series so polling or a
+  // window-focus hiccup cannot erase the production-episode controls and
+  // their local state. Only a response with no usable series is fatal.
+  if (!detailQuery.data?.series) {
     return (
       <Card className="border-dashed">
         <CardContent className="py-8 text-center text-sm text-muted-foreground">

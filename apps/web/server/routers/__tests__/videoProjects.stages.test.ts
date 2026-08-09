@@ -128,6 +128,7 @@ vi.mock("../../services/videoProjectAssetResolver", () => ({
     sources: manifests.flatMap(m => m.sources),
   })),
   assertSceneLayerAssetUrlsAllowed: vi.fn(),
+  assertDocumentLayerIdsUnique: vi.fn(),
 }));
 
 const { mockQueueRemotionRenderVideoJob } = vi.hoisted(() => ({
@@ -159,14 +160,26 @@ const { mockComputeQualityMetrics, mockEstimateVideoProjectQualityLoopCredits } 
     Math.max(0, perRound) * Math.max(1, Math.trunc(maxRounds)),
   ),
 }));
-vi.mock("../../services/videoProjectQualityMetrics", () => ({
-  computeQualityMetrics: mockComputeQualityMetrics,
-  estimateVideoProjectQualityLoopCredits: mockEstimateVideoProjectQualityLoopCredits,
-}));
+// `computeLayerBudgetBreakdown` is deliberately left REAL (imported via
+// `importOriginal`, same convention as `remotion/templates` above) — it is
+// pure (no I/O), and the getLayerBudget tests below need the genuine
+// breakdown-by-source computation, not a stub. Only the two QA-loop metric
+// helpers this file's OTHER describe blocks already stub stay mocked.
+vi.mock("../../services/videoProjectQualityMetrics", async importOriginal => {
+  const actual = await importOriginal<typeof import("../../services/videoProjectQualityMetrics")>();
+  return {
+    ...actual,
+    computeQualityMetrics: mockComputeQualityMetrics,
+    estimateVideoProjectQualityLoopCredits: mockEstimateVideoProjectQualityLoopCredits,
+  };
+});
 
+const { mockStagesCalculateTTSCredits } = vi.hoisted(() => ({
+  mockStagesCalculateTTSCredits: vi.fn(() => 0),
+}));
 vi.mock("../../services/ttsService", () => ({
   synthesize: vi.fn(),
-  calculateTTSCredits: vi.fn(() => 0),
+  calculateTTSCredits: mockStagesCalculateTTSCredits,
 }));
 
 const { mockHasEnoughCredits, mockDeductCredits, mockCalculateCreditsForLLMDynamic } = vi.hoisted(() => ({
@@ -191,8 +204,11 @@ vi.mock("../../services/hyperframesTranscriptionService", () => ({
   renderTranscriptCuesAsVtt: vi.fn(() => "VTT-OUTPUT"),
 }));
 
+const { mockListMarketplaceInsightsByProduct } = vi.hoisted(() => ({
+  mockListMarketplaceInsightsByProduct: vi.fn(() => Promise.resolve([])),
+}));
 vi.mock("../../services/marketplaceInsightService", () => ({
-  listMarketplaceInsightsByProduct: vi.fn(() => Promise.resolve([])),
+  listMarketplaceInsightsByProduct: mockListMarketplaceInsightsByProduct,
 }));
 
 const { mockResolveStructuredStageModelSelection, mockAssertStructuredStageModelAvailable, MockVideoIntelligenceModelError } =
@@ -237,6 +253,31 @@ vi.mock("../../services/videoProjectScenePlanAdapter", () => ({
   makeRunPlanSkill: mockMakeRunPlanSkill,
 }));
 
+// motion stage's adapter — mocked the same way as `videoProjectScenePlanAdapter`
+// above, for the same "real callLLMStructured pulls in a long chain" reason;
+// `videoProjectMotionDirector` itself is deliberately left UNMOCKED (real,
+// pure, effect-injected).
+const { mockMakeRunMotionDirectorSkill } = vi.hoisted(() => ({
+  mockMakeRunMotionDirectorSkill: vi.fn(),
+}));
+vi.mock("../../services/videoProjectMotionDirectorAdapter", () => ({
+  makeRunMotionDirectorSkill: mockMakeRunMotionDirectorSkill,
+}));
+
+// auto_draft's narration-script adapter — mocked the same way as the
+// scene-plan adapter above, for the same reason: its REAL module imports
+// the REAL `callLLMStructured`, which pulls in a long real-module chain
+// (`llmRouter` -> ... -> `routers/llmProviders.ts`'s `adminList`) that
+// needs an `adminProcedure` this file's `_core/trpc` mock never provides.
+const { mockMakeRunNarrationScriptSkill, mockBuildNarrationScriptSkillInput } = vi.hoisted(() => ({
+  mockMakeRunNarrationScriptSkill: vi.fn(),
+  mockBuildNarrationScriptSkillInput: vi.fn(),
+}));
+vi.mock("../../services/videoProjectNarrationScriptAdapter", () => ({
+  makeRunNarrationScriptSkill: mockMakeRunNarrationScriptSkill,
+  buildNarrationScriptSkillInput: mockBuildNarrationScriptSkillInput,
+}));
+
 const { mockRunVideoProjectQualityLoop, mockClampQualityLoopRounds } = vi.hoisted(() => ({
   mockRunVideoProjectQualityLoop: vi.fn(),
   mockClampQualityLoopRounds: vi.fn((maxLoops: number) => Math.min(Math.max(1, Math.trunc(maxLoops)), 5)),
@@ -276,17 +317,23 @@ function ctx(overrides: Partial<{ tenantId: string | null; user: { id: number; r
   return { tenantId: "tenant-1", user: { id: 42, role: "user" }, ...overrides };
 }
 
+// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is
+// "empty" for `fill_empty` scene-plan purposes when it has no narration and
+// no template — NOT merely when `layers.length === 0`. Keeping the shared
+// fixture genuinely empty means it stays plannable by default; tests that
+// need a scene which already "has content" pass an explicit `narration`
+// override instead of relying on the (now-wrong) old default.
 function scene(id: string, overrides: Partial<VideoProjectDocument["scenes"][number]> = {}) {
   return {
     sceneId: id,
     startMs: 0,
     endMs: 5000,
-    narration: "Try this product today.",
+    narration: null,
     narrationAudioAssetId: null,
     visual: { kind: "layers" as const },
     layers: [],
     motion: { intensity: "medium" as const, camera: "static" },
-    captionCues: [{ startMs: 0, endMs: 1000, text: "Try this product today." }],
+    captionCues: [],
     ...overrides,
   };
 }
@@ -978,6 +1025,203 @@ describe("getStageEstimate", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* getStageEstimate — layerBudgetForecast (Feature 143 §4.9.4, P0 wiring)    */
+/* -------------------------------------------------------------------------- */
+
+describe("getStageEstimate — layerBudgetForecast", () => {
+  it("includes a sane { currentTotal, projectedTotal, max } for every dispatchable stage", async () => {
+    for (const stage of ["scene_plan", "quality_review", "quality_repair", "auto_draft", "narration", "motion"] as const) {
+      mockGetVideoProject.mockResolvedValueOnce(projectRow({ document: baseDocument() }));
+
+      const result = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage } });
+
+      expect(result.layerBudgetForecast).toEqual(
+        expect.objectContaining({
+          currentTotal: expect.any(Number),
+          projectedTotal: expect.any(Number),
+          max: 40,
+        }),
+      );
+      expect(result.layerBudgetForecast.projectedTotal).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("scene_plan and auto_draft project MORE layers than currentTotal for a document with plannable (empty) scenes", async () => {
+    const document = baseDocument({ scenes: [scene("scene-1"), scene("scene-2")] });
+
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ document }));
+    const scenePlan = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage: "scene_plan" } });
+    expect(scenePlan.layerBudgetForecast.projectedTotal).toBeGreaterThan(
+      scenePlan.layerBudgetForecast.currentTotal,
+    );
+
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ document }));
+    const autoDraft = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage: "auto_draft" } });
+    expect(autoDraft.layerBudgetForecast.projectedTotal).toBeGreaterThan(
+      autoDraft.layerBudgetForecast.currentTotal,
+    );
+  });
+
+  it("review/repair stages never move the forecast (currentTotal === projectedTotal)", async () => {
+    const document = baseDocument({ scenes: [scene("scene-1"), scene("scene-2")] });
+
+    for (const stage of ["quality_review", "quality_repair", "narration", "motion"] as const) {
+      mockGetVideoProject.mockResolvedValueOnce(projectRow({ document }));
+      const result = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage } });
+      expect(result.layerBudgetForecast.projectedTotal).toBe(result.layerBudgetForecast.currentTotal);
+    }
+  });
+
+  it("does not change getStageEstimate's other existing fields (additive-only)", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ document: baseDocument() }));
+
+    const result = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage: "quality_review" } });
+
+    expect(result).toMatchObject({
+      stage: "quality_review",
+      modelId: "model-a",
+      isCeiling: true,
+    });
+    expect(typeof result.perRoundCredits).toBe("number");
+    expect(typeof result.typicalCredits).toBe("number");
+    expect(typeof result.ceilingCredits).toBe("number");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* getLayerBudget (Feature 143 §4.6, P0 wiring)                              */
+/* -------------------------------------------------------------------------- */
+
+function budgetLayer(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "layer_1",
+    type: "image",
+    startFrame: 0,
+    durationFrames: 60,
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    rotationDeg: 0,
+    opacity: 1,
+    zIndex: 0,
+    src: "https://cdn.example.com/img.png",
+    fit: "cover",
+    ...overrides,
+  } as never;
+}
+
+describe("getLayerBudget", () => {
+  it("returns a breakdown by source that sums to compiledTotal, and never calls the real compiler", async () => {
+    const document = baseDocument({
+      scenes: [
+        scene("scene-1", {
+          layers: [budgetLayer({ id: "l1", hidden: false }), budgetLayer({ id: "l2", hidden: true })],
+          captionCues: [{ startMs: 0, endMs: 1000, text: "hi" } as never],
+        }),
+      ],
+      captions: { presetId: "no_subtitle_style", burnIn: false, language: "en" },
+    });
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ document }));
+
+    const result = await router.getLayerBudget({ ctx: ctx(), input: { projectId: 1 } });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        handAuthoredLayers: expect.any(Number),
+        templateLayers: expect.any(Number),
+        captionLayers: expect.any(Number),
+        audioLayers: expect.any(Number),
+        hiddenLayers: expect.any(Number),
+        compiledTotal: expect.any(Number),
+        max: 40,
+      }),
+    );
+    expect(result.compiledTotal).toBe(
+      result.handAuthoredLayers + result.templateLayers + result.captionLayers + result.audioLayers,
+    );
+    expect(result.handAuthoredLayers).toBe(1);
+    expect(result.hiddenLayers).toBe(1);
+    expect(result.captionLayers).toBe(1);
+    expect(mockCompileVideoProject).not.toHaveBeenCalled();
+  });
+
+  it("still returns a number when brand locks would make a real compile throw BrandLockViolationError", async () => {
+    // The whole point of §4.6: the meter must not depend on a throwing call.
+    // Prove it by making the (mocked) real compiler throw, and asserting
+    // getLayerBudget's return value is unaffected because it never calls it.
+    mockCompileVideoProject.mockImplementation(() => {
+      throw new (class BrandLockViolationError extends Error {})("brand lock violated");
+    });
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ document: baseDocument() }));
+
+    const result = await router.getLayerBudget({ ctx: ctx(), input: { projectId: 1 } });
+
+    expect(typeof result.compiledTotal).toBe("number");
+    expect(Number.isNaN(result.compiledTotal)).toBe(false);
+    expect(mockCompileVideoProject).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* getStageEstimate — narration (implementation-progress.md gap #4, CLOSED)  */
+/* -------------------------------------------------------------------------- */
+
+describe("getStageEstimate (narration)", () => {
+  it("prices via calculateTTSCredits over scenes lacking narrationAudioAssetId only", async () => {
+    mockStagesCalculateTTSCredits.mockImplementationOnce((chars: number) => Math.max(1, Math.ceil((chars / 1000) * 5)));
+    mockGetVideoProject.mockResolvedValueOnce(
+      projectRow({
+        document: baseDocument({
+          scenes: [
+            scene("scene-1", { narration: "A".repeat(1000), narrationAudioAssetId: null }),
+            scene("scene-2", { narration: "B".repeat(1000), narrationAudioAssetId: 42 }),
+          ],
+        }),
+      }),
+    );
+
+    const result = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage: "narration" } });
+
+    expect(mockStagesCalculateTTSCredits).toHaveBeenCalledWith(1000);
+    expect(result.stage).toBe("narration");
+    expect(result.typicalCredits).toBe(5);
+    expect(result.ceilingCredits).toBe(result.typicalCredits);
+    expect(result.maxLoops).toBe(1);
+    expect(result.callsPerRoundCeiling).toBe(1);
+    expect(result.isCeiling).toBe(true);
+  });
+
+  it("returns a DIFFERENT number for a bigger un-narrated document", async () => {
+    mockStagesCalculateTTSCredits.mockImplementation((chars: number) => Math.max(1, Math.ceil((chars / 1000) * 5)));
+
+    mockGetVideoProject.mockResolvedValueOnce(
+      projectRow({ document: baseDocument({ scenes: [scene("scene-1", { narration: "A".repeat(200) })] }) }),
+    );
+    const small = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage: "narration" } });
+
+    mockGetVideoProject.mockResolvedValueOnce(
+      projectRow({ document: baseDocument({ scenes: [scene("scene-1", { narration: "A".repeat(4000) })] }) }),
+    );
+    const large = await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage: "narration" } });
+
+    expect(large.typicalCredits).toBeGreaterThan(small.typicalCredits);
+
+    mockStagesCalculateTTSCredits.mockReset();
+    mockStagesCalculateTTSCredits.mockImplementation(() => 0);
+  });
+
+  it("makes no LLM model resolve call and no credit charge", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ document: baseDocument() }));
+
+    await router.getStageEstimate({ ctx: ctx(), input: { projectId: 1, stage: "narration" } });
+
+    expect(mockResolveStructuredStageModelSelection).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Execution — quality_review via runVideoIntelligenceJobExecutor            */
 /* -------------------------------------------------------------------------- */
 
@@ -1028,6 +1272,46 @@ describe("runVideoIntelligenceJobExecutor (quality_review)", () => {
 
     expect(mockRunVideoProjectQualityLoop).toHaveBeenCalledWith(
       expect.objectContaining({ metrics: metricsFixture, effects: expect.objectContaining({ runReview: runReviewEffect }) }),
+    );
+  });
+
+  it("keeps the initial quality review to one round; repairs run in the separate repair job", async () => {
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ document: baseDocument({ qa: { targetScore: 7, maxLoops: 5 } }) }),
+    );
+
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(mockRunVideoProjectQualityLoop).toHaveBeenCalledWith(
+      expect.objectContaining({ policy: { targetScore: 7, maxLoops: 1 } }),
+    );
+  });
+
+  it("passes resolved catalog facts into the quality-review claim gate", async () => {
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({ studioType: "catalog", sourceRefs: { productIds: ["product-1"] } }),
+    );
+    mockListMarketplaceInsightsByProduct.mockResolvedValue([
+      {
+        claimResolutionsJson: [
+          { editedText: "ประหยัดไฟกว่าเดิม", decision: "approve" },
+        ],
+      },
+    ]);
+
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    expect(mockValidateProjectClaims).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        productIds: ["product-1"],
+        claimResolutions: [
+          expect.objectContaining({
+            claim: "ประหยัดไฟกว่าเดิม",
+            status: "approved",
+          }),
+        ],
+      }),
     );
   });
 
@@ -1335,6 +1619,53 @@ describe("runVideoIntelligenceJobExecutor (scene_plan)", () => {
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
+
+  // Spec 143 §4.9.3 / decision D2: "empty" for `fill_empty` means NO
+  // NARRATION and NO TEMPLATE, NOT "no layers". A scene that already has one
+  // or more hand-authored layers but no narration must still be offered to
+  // (and plannable by) the scene-plan skill through the full router →
+  // executor → planner wire — not just at the planner unit level.
+  it("plans a scene that has hand-authored layers but no narration (§4.9.3/D2) end-to-end", async () => {
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({
+        revision: 7,
+        document: baseDocument({
+          scenes: [
+            scene("scene-1", {
+              layers: [
+                {
+                  id: "manual",
+                  type: "text",
+                  startFrame: 0,
+                  durationFrames: 30,
+                  x: 0,
+                  y: 0,
+                  width: 10,
+                  height: 10,
+                  rotationDeg: 0,
+                  opacity: 1,
+                  zIndex: 0,
+                  content: "manual",
+                  fontFamily: "Inter",
+                  fontSizePx: 20,
+                  color: "#fff",
+                  textAlign: "center",
+                  fontWeight: "normal",
+                },
+              ],
+            }),
+          ],
+        }),
+      }),
+    );
+
+    const result = (await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())) as Record<
+      string,
+      unknown
+    >;
+
+    expect(result.plannedSceneIds).toEqual(["scene-1"]);
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -1597,5 +1928,214 @@ describe("runVideoIntelligenceJobExecutor (quality_repair)", () => {
     await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Execution — motion via runVideoIntelligenceJobExecutor                     */
+/* -------------------------------------------------------------------------- */
+
+describe("runVideoIntelligenceJobExecutor (motion)", () => {
+  function jobPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      kind: "motion" as const,
+      tenantId: "tenant-1",
+      userId: 42,
+      projectId: 1,
+      input: {
+        traceId: "trace-motion-1",
+        modelId: "model-a",
+        modelSource: "recommended",
+        previousStatus: "scenes",
+        baseRevision: 3,
+        mode: "fill_empty",
+        variantsPerScene: { min: 2, max: 3 },
+        ...overrides,
+      },
+    };
+  }
+
+  function motionOutputFixture(overrides: Record<string, unknown> = {}) {
+    return {
+      scenes: [
+        {
+          sceneId: "scene-1",
+          candidates: [
+            {
+              templateId: "kinetic_typography",
+              templateParams: { words: ["Hi"] },
+              motion: { intensity: "low", camera: "static" },
+              label: "Calm",
+              rationale: "steady take",
+            },
+            {
+              templateId: "kinetic_typography",
+              templateParams: { words: ["Hi", "There"] },
+              motion: { intensity: "high", camera: "pan-left" },
+              label: "Punchy",
+              rationale: "energetic take",
+            },
+          ],
+        },
+      ],
+      summary: "proposed 2 takes for scene-1",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7 }));
+    mockMakeRunMotionDirectorSkill.mockReturnValue(vi.fn(async () => motionOutputFixture()));
+  });
+
+  it("uses the modelId carried in the payload and does NOT re-resolve", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload({ modelId: "carried-model" }) as any, vi.fn());
+
+    expect(mockResolveStructuredStageModelSelection).not.toHaveBeenCalled();
+    expect(mockAssertStructuredStageModelAvailable).toHaveBeenCalledWith(
+      "carried-model",
+      undefined,
+      { source: "recommended" },
+    );
+    expect(mockMakeRunMotionDirectorSkill).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: "carried-model" }),
+    );
+  });
+
+  it("fails with VI_NO_RECOMMENDED_MODEL when the carried model is no longer available", async () => {
+    mockAssertStructuredStageModelAvailable.mockRejectedValueOnce(
+      new MockVideoIntelligenceModelError("VI_NO_RECOMMENDED_MODEL: revoked"),
+    );
+
+    await expect(runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())).rejects.toThrow(
+      /VI_NO_RECOMMENDED_MODEL/,
+    );
+  });
+
+  it("saves with baseRevision from the payload and reason 'motion_variants'", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload({ baseRevision: 5 }) as any, vi.fn());
+
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledTimes(1);
+    const [, args] = mockSaveVideoProjectDocument.mock.calls[0]!;
+    expect(args).toMatchObject({ id: 1, baseRevision: 5, reason: "motion_variants" });
+  });
+
+  it("never writes scene.visual/scene.motion — only scene.motionCandidates", async () => {
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    const [, args] = mockSaveVideoProjectDocument.mock.calls[0]!;
+    const savedScene = (args as { document: VideoProjectDocument }).document.scenes[0];
+    expect(savedScene.visual).toEqual({ kind: "layers" });
+    expect(savedScene.motion).toEqual({ intensity: "medium", camera: "static" });
+    expect(savedScene.motionCandidates).toHaveLength(2);
+    expect(savedScene.selectedMotionCandidateId ?? null).toBeNull();
+  });
+
+  it("restores previousStatus when the motion director throws", async () => {
+    mockMakeRunMotionDirectorSkill.mockReturnValue(
+      vi.fn(async () => {
+        throw new Error("motion director exploded");
+      }),
+    );
+
+    await expect(
+      runVideoIntelligenceJobExecutor(jobPayload({ previousStatus: "scenes" }) as any, vi.fn()),
+    ).rejects.toThrow(/motion director exploded/);
+
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(expect.anything(), 1, { status: "scenes" });
+  });
+
+  it("does not call the skill or persist when every scene already has a selected candidate (fill_empty, non-destructive)", async () => {
+    const innerSkillFn = vi.fn(async () => motionOutputFixture());
+    mockMakeRunMotionDirectorSkill.mockReturnValue(innerSkillFn);
+    mockGetVideoProject.mockResolvedValue(
+      projectRow({
+        revision: 7,
+        document: baseDocument({
+          scenes: [scene("scene-1", { selectedMotionCandidateId: "scene-1-v1" } as any)],
+        }),
+      }),
+    );
+
+    await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn());
+
+    // The factory is always built (cheap — no LLM call by itself), but the
+    // actual skill invocation it returns must never fire when there is
+    // nothing to plan, and the document must never be re-persisted.
+    expect(innerSkillFn).not.toHaveBeenCalled();
+    expect(mockSaveVideoProjectDocument).not.toHaveBeenCalled();
+  });
+
+  it("returns a serialisable result carrying revision, proposedSceneIds, creditsUsed and modelId", async () => {
+    mockSaveVideoProjectDocument.mockResolvedValue({ revision: 9 });
+
+    const result = (await runVideoIntelligenceJobExecutor(jobPayload() as any, vi.fn())) as Record<
+      string,
+      unknown
+    >;
+
+    expect(() => JSON.stringify(result)).not.toThrow();
+    expect(result).toMatchObject({
+      kind: "motion",
+      revision: 9,
+      proposedSceneIds: ["scene-1"],
+      modelId: "model-a",
+    });
+    expect(typeof result.creditsUsed).toBe("number");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* rejectStage — persists the reason onto qaLedger (CMD-2 closure)            */
+/* -------------------------------------------------------------------------- */
+
+describe("rejectStage", () => {
+  it("appends a qaLedger entry carrying the reason when one is given", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 4, status: "qa" }));
+
+    const result = await router.rejectStage({
+      ctx: ctx(),
+      input: { projectId: 1, reason: "Narration reads awkwardly in scene 2" },
+    });
+
+    expect(result).toEqual({ projectId: 1, status: "qa", reason: "Narration reads awkwardly in scene 2" });
+    expect(mockAppendQaLedgerEntry).toHaveBeenCalledTimes(1);
+    const [, projectIdArg, entryArg] = mockAppendQaLedgerEntry.mock.calls[0]!;
+    expect(projectIdArg).toBe(1);
+    expect(entryArg.revision).toBe(4);
+    expect(entryArg.review.issues[0]).toMatchObject({
+      dimension: "stage_reject",
+      severity: "low",
+      message: expect.stringContaining("Narration reads awkwardly in scene 2"),
+    });
+  });
+
+  it("does not touch qaLedger when no reason is given (bare hold)", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 4, status: "qa" }));
+
+    const result = await router.rejectStage({ ctx: ctx(), input: { projectId: 1 } });
+
+    expect(result).toEqual({ projectId: 1, status: "qa", reason: null });
+    expect(mockAppendQaLedgerEntry).not.toHaveBeenCalled();
+  });
+
+  it("never advances or restores project status — a hold is a no-op on status", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 4, status: "qa" }));
+
+    await router.rejectStage({ ctx: ctx(), input: { projectId: 1, reason: "hold please" } });
+
+    expect(mockUpdateVideoProjectFields).not.toHaveBeenCalled();
+  });
+
+  it("a qaLedger append failure never blocks the hold response", async () => {
+    mockGetVideoProject.mockResolvedValueOnce(projectRow({ revision: 4, status: "qa" }));
+    mockAppendQaLedgerEntry.mockRejectedValueOnce(new Error("db down"));
+
+    const result = await router.rejectStage({
+      ctx: ctx(),
+      input: { projectId: 1, reason: "hold please" },
+    });
+
+    expect(result).toEqual({ projectId: 1, status: "qa", reason: "hold please" });
   });
 });

@@ -131,7 +131,7 @@ function metrics(): VideoProjectQualityMetrics {
   return {
     sceneDurations: [],
     captionCps: [],
-    layerCounts: { perScene: [], total: 0, maxLayersPerScene: 0 },
+    layerCounts: { perScene: [], total: 0, maxLayersPerScene: 0, compiledTotal: 0 },
     safeAreaViolations: [],
     claimCoverage: { coverage: 1, mappedCount: 0, unmappedCount: 0, prohibitedCount: 0 },
     renderCost: { score: 0, cls: "low", recommendPreRender: false },
@@ -494,6 +494,30 @@ describe("makeRunReview", () => {
 
     const call = mockedCallLLMStructured.mock.calls[0][0];
     expect(call.maxRetries).toBe(2);
+  });
+
+  it("sizes maxTokens from the document's scene count instead of using the provider default", async () => {
+    const { deps } = makeDeps({
+      documentSummary: {
+        ...buildDocumentSummary(buildDocument()),
+        sceneCount: 1,
+      },
+    });
+    mockedCallLLMStructured.mockResolvedValue(successResult());
+
+    await makeRunReview(deps)({ projectId: "proj-1", metrics: metrics() });
+    const oneSceneCall = mockedCallLLMStructured.mock.calls[0][0];
+
+    mockedCallLLMStructured.mockClear();
+    mockedCallLLMStructured.mockResolvedValue(successResult());
+    await makeRunReview({
+      ...deps,
+      documentSummary: { ...deps.documentSummary, sceneCount: 10 },
+    })({ projectId: "proj-1", metrics: metrics() });
+    const tenSceneCall = mockedCallLLMStructured.mock.calls[0][0];
+
+    expect(oneSceneCall.maxTokens).toBeGreaterThan(0);
+    expect(tenSceneCall.maxTokens).toBeGreaterThan(oneSceneCall.maxTokens);
   });
 
   it("uses zodSchema (not schema) and systemPrompt + userMessage (not a generic input object)", async () => {

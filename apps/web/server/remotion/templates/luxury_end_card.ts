@@ -2,11 +2,13 @@
  * `luxury_end_card` motion template — brand end-card / CTA (Feature 133,
  * Phase 1 MVP). Background panel + optional logo image + CTA text.
  *
- * Deviation from the section-02 table's "logo image (brandKit.logo asset)"
- * note: the frozen `BrandKit` type (`shared/videoIntelligence/brandKit.ts`,
- * section-01) has no `logo` field (`{ colors, fonts, captionPresetId,
- * locks }` only) — a logo asset is therefore an optional **param**
- * (`logoAssetId`), not read off `ctx.brandKit`. See
+ * Logo resolution (CMD-2 brand-kit reachability closure): `BrandKit` now
+ * carries `logoAssetId` (`shared/videoIntelligence/brandKit.ts`), populated
+ * from `brand_kits.logoAssetId` by `resolveBrandKitForDocument`
+ * (`routers/videoProjects.ts`). An explicit `params.logoAssetId` always wins
+ * (a per-scene override); when the caller/planner doesn't supply one, this
+ * template falls back to `ctx.brandKit?.logoAssetId` so attaching a brand
+ * kit with a logo is enough to render it — no per-scene wiring required. See
  * `specs/feature/133-content-video-intelligence-platform/sections/section-02-motion-template-registry.md`
  * §4.3.
  */
@@ -69,8 +71,9 @@ export function buildLuxuryEndCard(
     },
   ];
 
-  if (p.logoAssetId !== undefined) {
-    const logoSrc = ctx.assetResolver.url(p.logoAssetId);
+  const logoAssetId = p.logoAssetId ?? ctx.brandKit?.logoAssetId ?? undefined;
+  if (logoAssetId !== undefined && logoAssetId !== null) {
+    const logoSrc = ctx.assetResolver.url(logoAssetId);
     layers.push({
       id: "luxury_end_card_logo",
       type: "image",

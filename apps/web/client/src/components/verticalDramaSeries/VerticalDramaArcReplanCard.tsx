@@ -215,7 +215,11 @@ export function VerticalDramaArcReplanCard({ lang, seriesId, readOnly }: Vertica
     return <Skeleton className="h-32 w-full" aria-busy="true" />;
   }
 
-  if (memoryQuery.isError) {
+  // Fatal only on a FIRST-load failure — see the same guard in
+  // `VerticalDramaSeriesMemoryTab`: a failed background refetch still reports
+  // `isError` while cached `data` is present, and replacing the card there
+  // hides proposals that are perfectly renderable.
+  if (memoryQuery.isError && !memoryQuery.data) {
     return (
       <Card className="border-dashed">
         <CardContent className="py-6 text-center text-sm text-muted-foreground">

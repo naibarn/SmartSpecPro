@@ -44,7 +44,7 @@
           "repairStage": {
             "description": "Optional QualityRepairStage this issue maps to.",
             "type": "string",
-            "enum": ["content", "narration", "scenes", "motion", "captions", "claims"]
+            "enum": ["content", "narration", "scenes", "motion", "captions", "claims", "layout"]
           }
         }
       }
@@ -58,7 +58,7 @@
         "properties": {
           "stage": {
             "type": "string",
-            "enum": ["content", "narration", "scenes", "motion", "captions", "claims"]
+            "enum": ["content", "narration", "scenes", "motion", "captions", "claims", "layout"]
           },
           "instruction": {
             "type": "string"

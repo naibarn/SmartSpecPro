@@ -143,12 +143,15 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
 // the service directly (rather than letting its real DB-backed
 // implementation run against `mockDb`) avoids that gap entirely, same
 // reasoning as the character-stock mock above.
-const { mockGetPrimaryReferenceUrl, mockGetPrimaryReferenceAssetId, mockListLocationRows } =
-  vi.hoisted(() => ({
-    mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
-    mockGetPrimaryReferenceAssetId: vi.fn(() => Promise.resolve(undefined)),
-    mockListLocationRows: vi.fn(() => Promise.resolve([])),
-  }));
+const {
+  mockGetPrimaryReferenceUrl,
+  mockGetPrimaryReferenceAssetId,
+  mockListLocationRows,
+} = vi.hoisted(() => ({
+  mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
+  mockGetPrimaryReferenceAssetId: vi.fn(() => Promise.resolve(undefined)),
+  mockListLocationRows: vi.fn(() => Promise.resolve([])),
+}));
 vi.mock("../../services/verticalDramaLocationStock", () => ({
   verticalDramaLocationStockService: {
     getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
@@ -181,10 +184,12 @@ vi.mock("../../services/hermesMediaScheduler", () => ({
   queueHermesMediaJob: mockQueueHermesMediaJob,
 }));
 
-const { mockBuildHermesMediaReferences, mockGetHermesConnection } = vi.hoisted(() => ({
-  mockBuildHermesMediaReferences: vi.fn(async () => []),
-  mockGetHermesConnection: vi.fn(async () => ({ capabilities: null })),
-}));
+const { mockBuildHermesMediaReferences, mockGetHermesConnection } = vi.hoisted(
+  () => ({
+    mockBuildHermesMediaReferences: vi.fn(async () => []),
+    mockGetHermesConnection: vi.fn(async () => ({ capabilities: null })),
+  })
+);
 vi.mock("../../services/hermesMediaReferences", () => ({
   buildHermesMediaReferences: mockBuildHermesMediaReferences,
   buildHermesMediaTaskEnvelope: (params: {
@@ -708,7 +713,11 @@ describe("linkShotReference", () => {
   });
 
   it("accepts source 'reference_frame' (Phase 6a — user-controlled supplementary reference frames, planning/vd-start-frame-reference-mapping/plan.md Phase 6)", async () => {
-    const reference = { referenceId: "9", shotNumber: 3, source: "reference_frame" };
+    const reference = {
+      referenceId: "9",
+      shotNumber: 3,
+      source: "reference_frame",
+    };
     mockShotReferencesService.linkReference.mockResolvedValue(reference);
 
     const result = await router.linkShotReference({
@@ -927,6 +936,50 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     ).not.toHaveBeenCalled();
   });
 
+  it("invalidates stale motion prompts for the shot when its approved frame changes", async () => {
+    const row = {
+      ...episodeRowWithFrame("900"),
+      motionPromptPack: {
+        selectedVideoModelId: "video-model",
+        durationProfileId: "profile",
+        motionMode: "first_frame_to_video",
+        clips: [
+          { clipNumber: 1, sourceShotNumbers: [1], prompt: "stale single" },
+          {
+            clipNumber: 1,
+            parentShotNumber: 1,
+            subShotNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "stale split",
+          },
+          { clipNumber: 2, sourceShotNumbers: [2], prompt: "keep" },
+        ],
+        warnings: [],
+      },
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([row])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership
+      .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
+    const update = updateChain([{}]);
+    mockDb.update.mockReturnValueOnce(update);
+
+    await router.setApprovedStartFrameAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "901",
+      },
+    });
+
+    const patch = update.set.mock.calls[0][0];
+    expect(patch.motionPromptPack.clips).toEqual([
+      { clipNumber: 2, sourceShotNumbers: [2], prompt: "keep" },
+    ]);
+  });
+
   it("still completes the swap even if demoting the previous asset throws a shot-reference error (best-effort)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
@@ -978,7 +1031,9 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
 
   it("appends a new asset id onto an empty/absent angleGridAssetIds list", async () => {
     mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRowWithAngleGridFrame(undefined)])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithAngleGridFrame(undefined)])
+      ) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
       .mockReturnValueOnce(
         selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])
@@ -1201,6 +1256,7 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
     expect(result.startFramePlan.frames[0]).toMatchObject({
       shotNumber: 1,
       requiredCharacterRefs: ["hero-formal"],
+      characterRefsCustomized: true,
     });
     // Shot 2 is byte-identical to before — this mutation never touches any
     // shot other than the one targeted by `shotNumber`.
@@ -1209,6 +1265,30 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
       requiredCharacterRefs: ["villain"],
     });
     expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists a screen-caller choice without changing the physical scene refs", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()]))
+      .mockReturnValueOnce(selectChain([{ characterKey: "hero-formal" }]));
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterRefs: ["hero-formal"],
+        referenceRole: "screen_caller",
+      },
+    });
+
+    expect(result.startFramePlan.frames[0]).toMatchObject({
+      requiredCharacterRefs: ["hero"],
+      screenCallerCharacterRefs: ["hero-formal"],
+      characterRefsCustomized: true,
+    });
   });
 
   it("allows clearing a shot's character refs to an empty array", async () => {
@@ -1287,21 +1367,27 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
     });
 
     expect(
-      result.startFramePlan.frames.find((f: { shotNumber: number }) => f.shotNumber === 99)
+      result.startFramePlan.frames.find(
+        (f: { shotNumber: number }) => f.shotNumber === 99
+      )
     ).toMatchObject({
       shotNumber: 99,
       imagePrompt: "",
       requiredCharacterRefs: ["hero-formal"],
     });
     expect(
-      result.startFramePlan.frames.map((f: { shotNumber: number }) => f.shotNumber)
+      result.startFramePlan.frames.map(
+        (f: { shotNumber: number }) => f.shotNumber
+      )
     ).toEqual([1, 2, 99]); // existing shots untouched, frames sorted ascending
     expect(mockDb.update).toHaveBeenCalledTimes(1);
   });
 
   it("creates a minimal plan + frame when the episode has NO start-frame plan yet (the reported bug)", async () => {
     mockDb.select
-      .mockReturnValueOnce(selectChain([{ ...episodeRowWithTwoShots(), startFramePlan: null }])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ ...episodeRowWithTwoShots(), startFramePlan: null }])
+      ) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ characterKey: "mintra" }])); // roster validation
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -4233,7 +4319,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         .mockReturnValueOnce(
           selectChain([{ id: 770, originalUrl: "https://cdn/770.png" }])
         )
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }]));
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4350,7 +4438,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     ]);
     mockDb.select
       .mockReturnValueOnce(
-        selectChain([episodeRowWithPack({ extraReferenceAssetIds: ["3", "4"] })])
+        selectChain([
+          episodeRowWithPack({ extraReferenceAssetIds: ["3", "4"] }),
+        ])
       ) // loadOwnedEpisode — 2 additional speaker portraits
       .mockReturnValueOnce(
         selectChain([
@@ -4507,7 +4597,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
             { id: 1, originalUrl: "https://cdn/1.png" },
           ])
         ) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4553,14 +4645,18 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-        .mockReturnValueOnce(selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])) // resolveLocationRosterRowByKey (override key)
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        ) // resolveLocationRosterRowByKey (override key)
         .mockReturnValueOnce(
           selectChain([
             { id: 900, originalUrl: "https://cdn/900.png" },
             { id: 950, originalUrl: "https://cdn/950-location-plate.png" },
           ])
         ) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4574,7 +4670,10 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       expect(result.trimmedReferenceCount).toBe(0);
       expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          referenceImageUrls: ["https://cdn/900.png", "https://cdn/950-location-plate.png"],
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/950-location-plate.png",
+          ],
         }),
         expect.any(String)
       );
@@ -4594,8 +4693,7 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
           distinct_locations: [
             {
               location_key: "location-2-visit1",
-              location_name:
-                "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+              location_name: "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
               shot_numbers: [1],
             },
           ],
@@ -4696,14 +4794,18 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-        .mockReturnValueOnce(selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])) // resolveLocationRosterRowByKey
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        ) // resolveLocationRosterRowByKey
         .mockReturnValueOnce(
           selectChain([
             { id: 900, originalUrl: "https://cdn/900.png" },
             { id: 1, originalUrl: "https://cdn/1.png" },
           ])
         ) // resolveMediaAssetUrlsByIds — only start frame + the ONE kept shot reference (location trimmed away)
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4749,8 +4851,12 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
         .mockReturnValueOnce(selectChain([])) // resolveLocationRosterRowByKey — no row for loc_ghost
-        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4759,7 +4865,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
 
       expect(result.trimmedReferenceCount).toBe(0);
       expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ referenceImageUrls: ["https://cdn/900.png"] }),
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png"],
+        }),
         expect.any(String)
       );
     });
@@ -4788,7 +4896,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
             { id: 2, originalUrl: "https://cdn/2.png" },
           ])
         ) // resolveMediaAssetUrlsByIds — start frame + the 2 references that fit the extras budget (3 - 1 for the start frame)
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4824,7 +4934,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         .mockReturnValueOnce(
           selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
         ) // resolveMediaAssetUrlsByIds — extras budget is 0, only the start frame is ever resolved
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4861,7 +4973,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
             { id: 2, originalUrl: "https://cdn/2.png" },
           ])
         ) // resolveMediaAssetUrlsByIds — no `- 1` term, both references fit
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -4908,7 +5022,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         .mockResolvedValueOnce(102); // char_b
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-        .mockReturnValueOnce(selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])) // resolveLocationRosterRowByKey
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        ) // resolveLocationRosterRowByKey
         .mockReturnValueOnce(
           selectChain([
             { id: 11, characterKey: "char_a" },
@@ -4922,7 +5038,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
             { id: 101, originalUrl: "https://cdn/101-char-a.png" },
           ])
         ) // resolveMediaAssetUrlsByIds — extras budget (3 - 1) fits the manual ref + only ONE portrait; location trimmed
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -5004,7 +5122,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
             { id: 102, originalUrl: "https://cdn/102-char-b.png" },
           ])
         ) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -5050,7 +5170,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         .mockReturnValueOnce(
           selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
         ) // resolveMediaAssetUrlsByIds — NO character roster select in between
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -5061,7 +5183,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       expect(mockDb.select).toHaveBeenCalledTimes(3);
       expect(result.trimmedReferenceCount).toBe(0);
       expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ referenceImageUrls: ["https://cdn/900.png"] }),
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png"],
+        }),
         expect.any(String)
       );
     });
@@ -5096,7 +5220,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         .mockReturnValueOnce(
           selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
         ) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
@@ -5105,7 +5231,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
 
       expect(result.trimmedReferenceCount).toBe(0);
       expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ referenceImageUrls: ["https://cdn/900.png"] }),
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png"],
+        }),
         expect.any(String)
       );
     });
@@ -5141,8 +5269,21 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       // leak into this suite's own `mockReturnValueOnce` sequence.
       mockDb.select.mockReset();
       mockQueueHermesMediaJob.mockReset();
-      mockBuildHermesMediaReferences.mockReset().mockImplementation(async ({ orderedRefs }: { orderedRefs: Array<{ assetId: string; role: string; label: string }> }) =>
-        orderedRefs.map((ref, idx) => ({ ...ref, index: idx + 1, sha256: "a".repeat(64) })),
+      mockBuildHermesMediaReferences.mockReset().mockImplementation(
+        async ({
+          orderedRefs,
+        }: {
+          orderedRefs: Array<{
+            assetId: string;
+            role: string;
+            label: string;
+          }>;
+        }) =>
+          orderedRefs.map((ref, idx) => ({
+            ...ref,
+            index: idx + 1,
+            sha256: "a".repeat(64),
+          }))
       );
       mockGetHermesConnection.mockReset();
       mockGetModelsByTypeAsync.mockReset();
@@ -5153,14 +5294,19 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
           isEnabled: true,
           creditCost: 0,
           aliases: [],
-          configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-video" } },
+          configJson: {
+            transport: "hermes_worker",
+            hermes: { providerModelId: "grok-imagine-video" },
+          },
         },
       ]);
       mockHasEnoughCredits.mockResolvedValue(true);
       mockDeductCredits.mockResolvedValue(undefined as any);
     });
 
-    function hermesEpisodeRowWithPack(clipOverrides: Record<string, unknown> = {}) {
+    function hermesEpisodeRowWithPack(
+      clipOverrides: Record<string, unknown> = {}
+    ) {
       return {
         id: 100,
         tenantId: "tenant-1",
@@ -5193,22 +5339,43 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         verticalDramaReady: true,
       });
       mockGetHermesConnection.mockResolvedValue({
-        capabilities: { operations: { "video.image_to_video": { enabled: true, maxReferences: 1 } } },
+        capabilities: {
+          operations: {
+            "video.image_to_video": { enabled: true, maxReferences: 1 },
+          },
+        },
       });
       mockShotReferencesService.listForShot.mockResolvedValue([]);
-      mockQueueHermesMediaJob.mockResolvedValue({ created: true, taskId: "hermes_job-9", job: {} });
+      mockQueueHermesMediaJob.mockResolvedValue({
+        created: true,
+        taskId: "hermes_job-9",
+        job: {},
+      });
       mockDb.select
         .mockReturnValueOnce(selectChain([hermesEpisodeRowWithPack()])) // loadOwnedEpisode
         .mockReturnValueOnce(
           selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
         ) // resolveMediaAssetUrlsByIds
         .mockReturnValueOnce(
-          selectChain([{ creditCost: 0, configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-video" } } }])
+          selectChain([
+            {
+              creditCost: 0,
+              configJson: {
+                transport: "hermes_worker",
+                hermes: { providerModelId: "grok-imagine-video" },
+              },
+            },
+          ])
         ); // pricing lookup
 
       const result = await router.generateVideoClip({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", clipNumber: 1, hermesConnectionId: "hermes-conn-1" },
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          clipNumber: 1,
+          hermesConnectionId: "hermes-conn-1",
+        },
       });
 
       expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
@@ -5219,14 +5386,17 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
           connectionId: "hermes-conn-1",
           tenantId: "tenant-1",
           requestedByUserId: 42,
-        }),
+        })
       );
       // Effective capability (manifest maxReferences: 1) trims the ordered
       // ref set down to ONLY the start frame — grok i2v identity-before-
       // environment: the start frame alone carries 100% of identity.
       const call = mockQueueHermesMediaJob.mock.calls[0][0];
       expect(call.references).toHaveLength(1);
-      expect(call.references[0]).toMatchObject({ assetId: "900", role: "start_frame" });
+      expect(call.references[0]).toMatchObject({
+        assetId: "900",
+        role: "start_frame",
+      });
       expect(result.taskId).toBe("hermes_job-9");
       expect(result.creditCost).toBe(0);
       // No platform-credit reserve on the hermes path (the scheduler's
@@ -5243,12 +5413,20 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         verticalDramaReady: true,
       });
       mockGetHermesConnection.mockResolvedValue({
-        capabilities: { operations: { "video.image_to_video": { enabled: true, maxReferences: 3 } } },
+        capabilities: {
+          operations: {
+            "video.image_to_video": { enabled: true, maxReferences: 3 },
+          },
+        },
       });
       mockShotReferencesService.listForShot.mockResolvedValue([
         shotReference({ mediaAssetId: "1", sortOrder: 0 }),
       ]);
-      mockQueueHermesMediaJob.mockResolvedValue({ created: true, taskId: "hermes_job-10", job: {} });
+      mockQueueHermesMediaJob.mockResolvedValue({
+        created: true,
+        taskId: "hermes_job-10",
+        job: {},
+      });
       mockDb.select
         .mockReturnValueOnce(selectChain([hermesEpisodeRowWithPack()]))
         .mockReturnValueOnce(
@@ -5258,17 +5436,32 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
           ])
         )
         .mockReturnValueOnce(
-          selectChain([{ creditCost: 0, configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-video" } } }])
+          selectChain([
+            {
+              creditCost: 0,
+              configJson: {
+                transport: "hermes_worker",
+                hermes: { providerModelId: "grok-imagine-video" },
+              },
+            },
+          ])
         );
 
       await router.generateVideoClip({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", clipNumber: 1, hermesConnectionId: "hermes-conn-1" },
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          clipNumber: 1,
+          hermesConnectionId: "hermes-conn-1",
+        },
       });
 
       const call = mockQueueHermesMediaJob.mock.calls[0][0];
       expect(call.references).toHaveLength(2);
-      expect(call.references.map((r: { assetId: string }) => r.assetId)).toEqual(["900", "1"]);
+      expect(
+        call.references.map((r: { assetId: string }) => r.assetId)
+      ).toEqual(["900", "1"]);
     });
   });
 });
@@ -5858,6 +6051,7 @@ describe("repairShotImage (Phase 6.5)", () => {
   }
 
   beforeEach(() => {
+    mockDb.select.mockReset();
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockDeriveModelResolutionOptions.mockReturnValue(undefined);
@@ -6066,6 +6260,74 @@ describe("repairShotImage (Phase 6.5)", () => {
         }),
         repairInstruction: "change the jacket to red",
         gridLayout: null,
+      })
+    );
+  });
+
+  it("repairs the Dual View reference image with View 2's asset and independent prompt", async () => {
+    const dualViewEpisode = episodeRowWithApprovedAsset({
+      barrierMultiView: {
+        enabled: true,
+        barrierType: "closed_door",
+        relation: "same_establishment_adjacent_spaces",
+        startView: {
+          side: "inside",
+          characterRefs: [],
+          locationKey: "inside",
+        },
+        referenceView: {
+          side: "outside",
+          characterRefs: [],
+          locationKey: "outside",
+          imagePrompt: "outside independent prompt",
+          negativePrompt: "inside room",
+          referenceFrameAssetId: "901",
+        },
+        dialogueSideMap: {},
+        status: "ready",
+      },
+    });
+    dualViewEpisode.startFramePlan.selectedImageModelId =
+      "google-nano-banana-pro";
+    mockDb.select
+      .mockReturnValueOnce(selectChain([dualViewEpisode]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }]))
+      .mockReturnValueOnce(selectChain([]));
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "repair-view-2-task" });
+
+    await router.repairShotImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        targetRole: "barrier_reference",
+        instruction: "make the cafe lighting warmer",
+      },
+    });
+
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: ["https://cdn/901.png"],
+        extraParams: expect.objectContaining({
+          __vd_purpose: "repair_barrier_reference",
+        }),
+      }),
+      expect.any(String)
+    );
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "repair",
+        shot: expect.objectContaining({
+          currentPrompt: "outside independent prompt",
+          currentNegativePrompt: "inside room",
+        }),
+        repairInstruction: "make the cafe lighting warmer",
       })
     );
   });
@@ -6670,7 +6932,7 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
           clip: expect.objectContaining({
             audioDirection: "Rain taps the window; a door creaks shut.",
           }),
-        }),
+        })
       );
     });
 
@@ -6681,7 +6943,9 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
         .mockReturnValueOnce(
           selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
         )
-        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }]));
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
 
       await router.generateVideoClip({
         ctx: ctx(),
@@ -6691,7 +6955,7 @@ describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameIma
       expect(mockFormatVideoClipRequest).toHaveBeenCalledWith(
         expect.objectContaining({
           clip: expect.objectContaining({ audioDirection: undefined }),
-        }),
+        })
       );
     });
   });

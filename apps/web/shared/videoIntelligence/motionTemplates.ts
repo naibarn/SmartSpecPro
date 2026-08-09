@@ -24,6 +24,9 @@ export const MOTION_TEMPLATE_IDS = [
   "luxury_end_card",
   "data_flow",
   "animated_chart_basic",
+  "particle_field",
+  "network_graph",
+  "glowing_sphere",
 ] as const;
 export type MotionTemplateId = (typeof MOTION_TEMPLATE_IDS)[number];
 
@@ -37,8 +40,8 @@ export type BrandToken =
 
 export interface MotionTemplateMeta {
   id: MotionTemplateId;
-  /** `"layer_pack"` is the only kind Phase 1 supports — no `scene3d`. */
-  kind: "layer_pack";
+  /** Procedural entries remain registry-resolved and emit bounded layers. */
+  kind: "layer_pack" | "procedural";
   categories: string[];
   minDurationMs: number;
   maxDurationMs: number;
@@ -161,6 +164,39 @@ export const MOTION_TEMPLATE_META: Record<MotionTemplateId, MotionTemplateMeta> 
     renderCost: "medium",
     supportedAspectRatios: WIDE_OR_SQUARE_ASPECT_RATIOS,
     brandTokens: ["primaryColor", "accentColor"],
+  },
+  particle_field: {
+    id: "particle_field",
+    kind: "procedural",
+    categories: ["science", "energy", "explainer", "cinematic"],
+    minDurationMs: 2000,
+    maxDurationMs: 60000,
+    maxItems: 1,
+    renderCost: "medium",
+    supportedAspectRatios: ALL_ASPECT_RATIOS,
+    brandTokens: ["primaryColor", "accentColor", "font"],
+  },
+  network_graph: {
+    id: "network_graph",
+    kind: "procedural",
+    categories: ["relationship", "network", "explainer", "data"],
+    minDurationMs: 3000,
+    maxDurationMs: 60000,
+    maxItems: 12,
+    renderCost: "medium",
+    supportedAspectRatios: ALL_ASPECT_RATIOS,
+    brandTokens: ["primaryColor", "accentColor", "font"],
+  },
+  glowing_sphere: {
+    id: "glowing_sphere",
+    kind: "procedural",
+    categories: ["science", "technology", "cinematic", "energy"],
+    minDurationMs: 3000,
+    maxDurationMs: 60000,
+    maxItems: 1,
+    renderCost: "high",
+    supportedAspectRatios: ALL_ASPECT_RATIOS,
+    brandTokens: ["primaryColor", "accentColor", "font"],
   },
 };
 

@@ -40,11 +40,13 @@ import {
   runVideoIntelligenceJob,
   dispatchLaneARemotionRenderJob,
   sweepOrphanedVideoIntelligenceJobs,
+  sweepOrphanedLaneARenderJobs,
   initVideoIntelligenceJobsQueue,
   closeVideoIntelligenceJobsQueue,
   VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS,
   VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS,
   VIDEO_INTELLIGENCE_JOB_MAX_ORPHAN_RECOVERIES,
+  LANE_A_RENDER_ORPHAN_GRACE_MS,
   type VideoIntelligenceJobPayload,
   type VideoIntelligenceJobRecord,
   type VideoIntelligenceJobRedisAdapter,
@@ -294,7 +296,7 @@ describe("dispatchLaneARemotionRenderJob (closes implementation-progress.md gap 
       }),
     });
 
-    await dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", workerJobId: "job-1" }, { execute });
+    await dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", userId: 42, workerJobId: "job-1" }, { execute });
 
     expect(execute).toHaveBeenCalledTimes(1);
     expect(execute).toHaveBeenCalledWith(
@@ -314,7 +316,7 @@ describe("dispatchLaneARemotionRenderJob (closes implementation-progress.md gap 
     });
     const execute = vi.fn();
 
-    await dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", workerJobId: "job-2" }, { execute });
+    await dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", userId: 42, workerJobId: "job-2" }, { execute });
 
     expect(execute).not.toHaveBeenCalled();
     expect(mockDb.update).not.toHaveBeenCalled();
@@ -360,7 +362,7 @@ describe("dispatchLaneARemotionRenderJob (closes implementation-progress.md gap 
     const execute = vi.fn().mockRejectedValue(new Error("render failed"));
 
     await expect(
-      dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", workerJobId: "job-3" }, { execute }),
+      dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", userId: 42, workerJobId: "job-3" }, { execute }),
     ).resolves.toBeUndefined();
 
     expect(updateSet2).toHaveBeenCalledWith(
@@ -375,9 +377,202 @@ describe("dispatchLaneARemotionRenderJob (closes implementation-progress.md gap 
     const execute = vi.fn();
 
     await expect(
-      dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", workerJobId: "missing" }, { execute }),
+      dispatchLaneARemotionRenderJob({ tenantId: "tenant-1", userId: 42, workerJobId: "missing" }, { execute }),
     ).resolves.toBeUndefined();
     expect(execute).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Post-render `video_projects` lifecycle mirroring (CMD-2 gap closure)      */
+/* -------------------------------------------------------------------------- */
+
+describe("dispatchLaneARemotionRenderJob — post-render video_projects lifecycle", () => {
+  async function finalPayload() {
+    const { remotionRenderVideoWorkerInputSchema } = await import("../../../shared/workerRuntime");
+    return remotionRenderVideoWorkerInputSchema.parse({
+      videoProjectId: "77",
+      projectRevision: 3,
+      traceId: "trace-final-1",
+      platformContractVersion: "2026-07-12",
+      rendererPolicyVersion: "remotion-1",
+      renderProfile: {
+        profile: "final",
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        codec: "h264",
+        loudnessNormalize: true,
+        burnInAssCaptions: false,
+      },
+      remotionTemplate: { id: "x", name: "x", width: 1080, height: 1920, fps: 30, durationInFrames: 10, layers: [] },
+      compositionId: "GenericTemplate",
+      assetManifest: { sources: [] },
+      postPasses: [],
+      segmentPlan: null,
+      remotionTemplateHash: "a".repeat(16),
+      durationInFrames: 10,
+    });
+  }
+
+  it("final render success: patches status to rendering then completed+resultLibraryItemId, and creates a library item", async () => {
+    const payload = await finalPayload();
+    mockDb.select.mockReturnValueOnce({
+      from: () => ({
+        where: () => ({ limit: () => Promise.resolve([{ id: "job-final-1", status: "queued", inputJson: payload }]) }),
+      }),
+    });
+    const updateSet1 = vi.fn(() => ({ where: () => ({ returning: () => Promise.resolve([{ id: "job-final-1" }]) }) }));
+    const updateSet2 = vi.fn(() => ({ where: () => Promise.resolve([]) }));
+    mockDb.update.mockReturnValueOnce({ set: updateSet1 }).mockReturnValueOnce({ set: updateSet2 });
+
+    const execute = vi.fn().mockResolvedValue({ outputUrl: "https://cdn.example.com/final.mp4" });
+    const updateProjectFields = vi.fn().mockResolvedValue({ id: 77 });
+    const createLibraryItem = vi.fn().mockResolvedValue({ item: { id: 555 }, idempotent: false });
+
+    await dispatchLaneARemotionRenderJob(
+      { tenantId: "tenant-1", userId: 42, workerJobId: "job-final-1" },
+      { execute, updateProjectFields, createLibraryItem },
+    );
+
+    expect(updateProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      77,
+      { status: "rendering" },
+    );
+    expect(createLibraryItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        itemType: "video",
+        source: "video_intelligence_render",
+        sourceUrl: "https://cdn.example.com/final.mp4",
+        sourceLink: expect.objectContaining({ linkId: "job-final-1" }),
+      }),
+      { userId: 42, tenantId: "tenant-1" },
+    );
+    expect(updateProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      77,
+      { status: "completed", resultLibraryItemId: 555 },
+    );
+  });
+
+  it("final render failure: patches status to failed (never throws)", async () => {
+    const payload = await finalPayload();
+    mockDb.select.mockReturnValueOnce({
+      from: () => ({
+        where: () => ({ limit: () => Promise.resolve([{ id: "job-final-2", status: "queued", inputJson: payload }]) }),
+      }),
+    });
+    const updateSet1 = vi.fn(() => ({ where: () => ({ returning: () => Promise.resolve([{ id: "job-final-2" }]) }) }));
+    const updateSet2 = vi.fn(() => ({ where: () => Promise.resolve([]) }));
+    mockDb.update.mockReturnValueOnce({ set: updateSet1 }).mockReturnValueOnce({ set: updateSet2 });
+
+    const execute = vi.fn().mockRejectedValue(new Error("render blew up"));
+    const updateProjectFields = vi.fn().mockResolvedValue({ id: 77 });
+    const createLibraryItem = vi.fn();
+
+    await expect(
+      dispatchLaneARemotionRenderJob(
+        { tenantId: "tenant-1", userId: 42, workerJobId: "job-final-2" },
+        { execute, updateProjectFields, createLibraryItem },
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(createLibraryItem).not.toHaveBeenCalled();
+    expect(updateProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      77,
+      { status: "rendering" },
+    );
+    expect(updateProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      77,
+      { status: "failed" },
+    );
+  });
+
+  it("a library-item creation failure still marks the project completed (without resultLibraryItemId) — never blocks the terminal worker_jobs write", async () => {
+    const payload = await finalPayload();
+    mockDb.select.mockReturnValueOnce({
+      from: () => ({
+        where: () => ({ limit: () => Promise.resolve([{ id: "job-final-3", status: "queued", inputJson: payload }]) }),
+      }),
+    });
+    const updateSet1 = vi.fn(() => ({ where: () => ({ returning: () => Promise.resolve([{ id: "job-final-3" }]) }) }));
+    const updateSet2 = vi.fn(() => ({ where: () => Promise.resolve([]) }));
+    mockDb.update.mockReturnValueOnce({ set: updateSet1 }).mockReturnValueOnce({ set: updateSet2 });
+
+    const execute = vi.fn().mockResolvedValue({ outputUrl: "https://cdn.example.com/final.mp4" });
+    const updateProjectFields = vi.fn().mockResolvedValue({ id: 77 });
+    const createLibraryItem = vi.fn().mockRejectedValue(new Error("library insert failed"));
+
+    await dispatchLaneARemotionRenderJob(
+      { tenantId: "tenant-1", userId: 42, workerJobId: "job-final-3" },
+      { execute, updateProjectFields, createLibraryItem },
+    );
+
+    expect(updateSet2).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+    expect(updateProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      77,
+      { status: "completed" },
+    );
+  });
+
+  it("preview profile never touches video_projects status or the library — closes preview-must-not-overwrite-final-result", async () => {
+    mockDb.select.mockReturnValueOnce({
+      from: () => ({
+        where: () => ({
+          limit: () =>
+            Promise.resolve([
+              {
+                id: "job-preview-1",
+                status: "queued",
+                inputJson: {
+                  kind: "remotion_render_video",
+                  schemaVersion: 1,
+                  platformContractVersion: "2026-07-12",
+                  rendererPolicyVersion: "remotion-1",
+                  videoProjectId: "77",
+                  projectRevision: 1,
+                  traceId: "trace-preview-1",
+                  renderProfile: {
+                    profile: "preview",
+                    width: 540,
+                    height: 960,
+                    fps: 15,
+                    codec: "h264",
+                    loudnessNormalize: true,
+                    burnInAssCaptions: false,
+                  },
+                  remotionTemplate: { id: "x", name: "x", width: 540, height: 960, fps: 15, durationInFrames: 10, layers: [] },
+                  compositionId: "GenericTemplate",
+                  assetManifest: { sources: [] },
+                  postPasses: [],
+                  segmentPlan: null,
+                  remotionTemplateHash: "a".repeat(16),
+                  durationInFrames: 10,
+                },
+              },
+            ]),
+        }),
+      }),
+    });
+    const updateSet1 = vi.fn(() => ({ where: () => ({ returning: () => Promise.resolve([{ id: "job-preview-1" }]) }) }));
+    const updateSet2 = vi.fn(() => ({ where: () => Promise.resolve([]) }));
+    mockDb.update.mockReturnValueOnce({ set: updateSet1 }).mockReturnValueOnce({ set: updateSet2 });
+
+    const execute = vi.fn().mockResolvedValue({ outputUrl: "https://cdn.example.com/preview.mp4" });
+    const updateProjectFields = vi.fn();
+    const createLibraryItem = vi.fn();
+
+    await dispatchLaneARemotionRenderJob(
+      { tenantId: "tenant-1", userId: 42, workerJobId: "job-preview-1" },
+      { execute, updateProjectFields, createLibraryItem },
+    );
+
+    expect(updateProjectFields).not.toHaveBeenCalled();
+    expect(createLibraryItem).not.toHaveBeenCalled();
   });
 });
 
@@ -580,6 +775,158 @@ describe("sweepOrphanedVideoIntelligenceJobs", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Lane-A render orphan sweep (stranded worker_jobs rows)                    */
+/* -------------------------------------------------------------------------- */
+
+describe("sweepOrphanedLaneARenderJobs", () => {
+  const NOW = Date.parse("2026-01-01T01:00:00.000Z");
+  const now = () => NOW;
+
+  async function finalPayload(overrides: { videoProjectId?: string } = {}) {
+    const { remotionRenderVideoWorkerInputSchema } = await import("../../../shared/workerRuntime");
+    return remotionRenderVideoWorkerInputSchema.parse({
+      videoProjectId: overrides.videoProjectId ?? "77",
+      projectRevision: 3,
+      traceId: "trace-final-1",
+      platformContractVersion: "2026-07-12",
+      rendererPolicyVersion: "remotion-1",
+      renderProfile: {
+        profile: "final",
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        codec: "h264",
+        loudnessNormalize: true,
+        burnInAssCaptions: false,
+      },
+      remotionTemplate: { id: "x", name: "x", width: 1080, height: 1920, fps: 30, durationInFrames: 10, layers: [] },
+      compositionId: "GenericTemplate",
+      assetManifest: { sources: [] },
+      postPasses: [],
+      segmentPlan: null,
+      remotionTemplateHash: "a".repeat(16),
+      durationInFrames: 10,
+    });
+  }
+
+  function row(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "job-stranded-1",
+      tenantId: "tenant-1",
+      requestedByUserId: 42,
+      status: "running",
+      jobType: "remotion_render_video",
+      timeoutSeconds: 900,
+      startedAt: new Date(NOW - 900 * 1000 - LANE_A_RENDER_ORPHAN_GRACE_MS - 1000),
+      createdAt: new Date(NOW - 900 * 1000 - LANE_A_RENDER_ORPHAN_GRACE_MS - 2000),
+      inputJson: {},
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    mockDb.select.mockReset();
+    mockDb.update.mockReset();
+  });
+
+  it("fails a stranded row past its timeout + grace, and mirrors a final-profile project to failed", async () => {
+    const payload = await finalPayload();
+    const strandedRow = row({ inputJson: payload });
+    mockDb.select.mockReturnValueOnce({ from: () => ({ where: () => Promise.resolve([strandedRow]) }) });
+    const updateWhere = vi.fn(() => ({ returning: () => Promise.resolve([{ id: strandedRow.id }]) }));
+    mockDb.update.mockReturnValueOnce({ set: () => ({ where: updateWhere }) });
+    const updateProjectFields = vi.fn().mockResolvedValue({ id: 77 });
+
+    const result = await sweepOrphanedLaneARenderJobs({ now, updateProjectFields });
+
+    expect(result.failed).toEqual(["job-stranded-1"]);
+    expect(updateProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      77,
+      { status: "failed" },
+    );
+  });
+
+  it("leaves a row inside its timeout + grace window untouched", async () => {
+    const payload = await finalPayload();
+    const freshRow = row({
+      id: "job-fresh-1",
+      inputJson: payload,
+      startedAt: new Date(NOW - 1000),
+      createdAt: new Date(NOW - 2000),
+    });
+    mockDb.select.mockReturnValueOnce({ from: () => ({ where: () => Promise.resolve([freshRow]) }) });
+    const updateProjectFields = vi.fn();
+
+    const result = await sweepOrphanedLaneARenderJobs({ now, updateProjectFields });
+
+    expect(result.failed).toEqual([]);
+    expect(mockDb.update).not.toHaveBeenCalled();
+    expect(updateProjectFields).not.toHaveBeenCalled();
+  });
+
+  it("never touches a preview-profile row's project status, even when stranded", async () => {
+    const { remotionRenderVideoWorkerInputSchema } = await import("../../../shared/workerRuntime");
+    const previewPayload = remotionRenderVideoWorkerInputSchema.parse({
+      videoProjectId: "77",
+      projectRevision: 1,
+      traceId: "trace-preview-1",
+      platformContractVersion: "2026-07-12",
+      rendererPolicyVersion: "remotion-1",
+      renderProfile: {
+        profile: "preview",
+        width: 540,
+        height: 960,
+        fps: 15,
+        codec: "h264",
+        loudnessNormalize: true,
+        burnInAssCaptions: false,
+      },
+      remotionTemplate: { id: "x", name: "x", width: 540, height: 960, fps: 15, durationInFrames: 10, layers: [] },
+      compositionId: "GenericTemplate",
+      assetManifest: { sources: [] },
+      postPasses: [],
+      segmentPlan: null,
+      remotionTemplateHash: "a".repeat(16),
+      durationInFrames: 10,
+    });
+    const strandedPreviewRow = row({ id: "job-preview-stranded-1", inputJson: previewPayload });
+    mockDb.select.mockReturnValueOnce({ from: () => ({ where: () => Promise.resolve([strandedPreviewRow]) }) });
+    const updateWhere = vi.fn(() => ({ returning: () => Promise.resolve([{ id: strandedPreviewRow.id }]) }));
+    mockDb.update.mockReturnValueOnce({ set: () => ({ where: updateWhere }) });
+    const updateProjectFields = vi.fn();
+
+    const result = await sweepOrphanedLaneARenderJobs({ now, updateProjectFields });
+
+    expect(result.failed).toEqual(["job-preview-stranded-1"]);
+    expect(updateProjectFields).not.toHaveBeenCalled();
+  });
+
+  it("never overwrites a row that reached a terminal state between the read and the write", async () => {
+    const payload = await finalPayload();
+    const strandedRow = row({ inputJson: payload });
+    mockDb.select.mockReturnValueOnce({ from: () => ({ where: () => Promise.resolve([strandedRow]) }) });
+    // Guarded WHERE finds no matching row anymore — it already went terminal.
+    const updateWhere = vi.fn(() => ({ returning: () => Promise.resolve([]) }));
+    mockDb.update.mockReturnValueOnce({ set: () => ({ where: updateWhere }) });
+    const updateProjectFields = vi.fn();
+
+    const result = await sweepOrphanedLaneARenderJobs({ now, updateProjectFields });
+
+    expect(result.failed).toEqual([]);
+    expect(updateProjectFields).not.toHaveBeenCalled();
+  });
+
+  it("never throws when the select query itself fails", async () => {
+    mockDb.select.mockReturnValueOnce({
+      from: () => ({ where: () => Promise.reject(new Error("db unavailable")) }),
+    });
+
+    await expect(sweepOrphanedLaneARenderJobs({ now })).resolves.toEqual({ failed: [] });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* initVideoIntelligenceJobsQueue lifecycle (section-01 §5.4)                */
 /* -------------------------------------------------------------------------- */
 
@@ -592,33 +939,40 @@ describe("initVideoIntelligenceJobsQueue", () => {
   it("arms the sweep even when BullMQ init throws", async () => {
     vi.useFakeTimers();
     const sweep = vi.fn().mockResolvedValue(undefined);
+    const laneARenderSweep = vi.fn().mockResolvedValue(undefined);
 
-    await initVideoIntelligenceJobsQueue({ sweep });
+    await initVideoIntelligenceJobsQueue({ sweep, laneARenderSweep });
 
     // getRedisClient() is mocked (module-level) to throw, so BullMQ init
     // fails and lands in its own try/catch — the sweep must already be
     // armed regardless, proven by the immediate fire below.
     expect(sweep).toHaveBeenCalledTimes(1);
+    expect(laneARenderSweep).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS);
     expect(sweep).toHaveBeenCalledTimes(2);
+    expect(laneARenderSweep).toHaveBeenCalledTimes(2);
   });
 
   it("fires one sweep immediately at init so pre-restart orphans heal now", async () => {
     const sweep = vi.fn().mockResolvedValue(undefined);
-    await initVideoIntelligenceJobsQueue({ sweep });
+    const laneARenderSweep = vi.fn().mockResolvedValue(undefined);
+    await initVideoIntelligenceJobsQueue({ sweep, laneARenderSweep });
     // Let the fire-and-forget immediate call's microtask flush.
     await Promise.resolve();
     expect(sweep).toHaveBeenCalledTimes(1);
+    expect(laneARenderSweep).toHaveBeenCalledTimes(1);
   });
 
-  it("clears the timer on close", async () => {
+  it("clears both timers on close", async () => {
     vi.useFakeTimers();
     const sweep = vi.fn().mockResolvedValue(undefined);
-    await initVideoIntelligenceJobsQueue({ sweep });
+    const laneARenderSweep = vi.fn().mockResolvedValue(undefined);
+    await initVideoIntelligenceJobsQueue({ sweep, laneARenderSweep });
     await closeVideoIntelligenceJobsQueue();
 
     await vi.advanceTimersByTimeAsync(VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS * 2);
     expect(sweep).toHaveBeenCalledTimes(1);
+    expect(laneARenderSweep).toHaveBeenCalledTimes(1);
   });
 });

@@ -16,7 +16,9 @@
  * without the same explicit sign-off.
  */
 import { useState } from "react";
-import { Clapperboard, Plus, Search, ShoppingBag } from "lucide-react";
+import { useLocation } from "wouter";
+import { Clapperboard, Copy, Plus, Search, ShoppingBag, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
@@ -25,34 +27,26 @@ import { CatalogCreateDialog } from "@/components/videoStudio/CatalogCreateDialo
 import { MotionCreateDialog } from "@/components/videoStudio/MotionCreateDialog";
 import { pickCopy, useVideoStudioLang, videoStudioCopy } from "@/components/videoStudio/videoStudioCopy";
 
+import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { Grid } from "@astryxdesign/core/Grid";
 import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import { Skeleton } from "@astryxdesign/core/Skeleton";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { ToggleButton, ToggleButtonGroup } from "@astryxdesign/core/ToggleButton";
 
-type StudioTypeFilter = "all" | "catalog" | "motion" | "content" | "review_remix" | "imported";
+type StudioTypeFilter = "all" | "catalog" | "motion";
 
-const STUDIO_TYPE_FILTERS: StudioTypeFilter[] = [
-  "all",
-  "catalog",
-  "motion",
-  "content",
-  "review_remix",
-  "imported",
-];
+const STUDIO_TYPE_FILTERS: StudioTypeFilter[] = ["all", "catalog", "motion"];
 
 const STUDIO_TYPE_LABEL_KEY: Record<Exclude<StudioTypeFilter, "all">, keyof typeof videoStudioCopy> = {
   catalog: "studioTypeCatalog",
   motion: "studioTypeMotion",
-  content: "studioTypeContent",
-  review_remix: "studioTypeReviewRemix",
-  imported: "studioTypeImported",
 };
 
 interface VideoProjectListItem {
@@ -75,18 +69,39 @@ function formatRelative(value: Date | string | null | undefined, lang: "th" | "e
 
 export default function VideoStudioListPage() {
   const lang = useVideoStudioLang();
+  const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [studioTypeFilter, setStudioTypeFilter] = useState<StudioTypeFilter>("all");
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
   const [motionDialogOpen, setMotionDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<VideoProjectListItem | null>(null);
 
   const catalogStudioEnabled = useTenantFeatureFlag("videoIntelligenceCatalogStudioEnabled");
   const motionStudioEnabled = useTenantFeatureFlag("videoIntelligenceMotionStudioEnabled");
 
+  const utils = trpc.useUtils();
   const listQuery = trpc.videoProjects.list.useQuery(
     { studioType: studioTypeFilter === "all" ? undefined : studioTypeFilter },
     { staleTime: 15_000 },
   );
+
+  const deleteProject = trpc.videoProjects.delete.useMutation({
+    onSuccess: () => {
+      setDeleteTarget(null);
+      toast.success(pickCopy(lang, videoStudioCopy.projectDeleteSuccess));
+      utils.videoProjects.list.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const duplicateProject = trpc.videoProjects.duplicate.useMutation({
+    onSuccess: (project) => {
+      toast.success(pickCopy(lang, { th: "ทำสำเนาโปรเจกต์แล้ว", en: "Project duplicated" }));
+      utils.videoProjects.list.invalidate();
+      navigate(`/video-studio/${project.id}`);
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
   const projects = (listQuery.data ?? []) as VideoProjectListItem[];
   const filtered = search.trim()
@@ -191,18 +206,54 @@ export default function VideoStudioListPage() {
       >
         <Grid columns={{ minWidth: 280, max: 3 }} gap={4}>
           {filtered.map((project) => (
-            <ProjectCard key={project.id} lang={lang} project={project} />
+            <ProjectCard
+              key={project.id}
+              lang={lang}
+              project={project}
+              onDelete={() => setDeleteTarget(project)}
+              onDuplicate={() => duplicateProject.mutate({ projectId: project.id })}
+            />
           ))}
         </Grid>
       </AppPage>
 
       <CatalogCreateDialog lang={lang} open={catalogDialogOpen} onOpenChange={setCatalogDialogOpen} />
       <MotionCreateDialog lang={lang} open={motionDialogOpen} onOpenChange={setMotionDialogOpen} />
+
+      <AlertDialog
+        isOpen={deleteTarget != null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={pickCopy(lang, videoStudioCopy.projectDeleteConfirmTitle)}
+        description={
+          deleteTarget
+            ? `${pickCopy(lang, videoStudioCopy.projectDeleteConfirmBody)} (${deleteTarget.name})`
+            : pickCopy(lang, videoStudioCopy.projectDeleteConfirmBody)
+        }
+        actionLabel={pickCopy(lang, videoStudioCopy.projectDelete)}
+        actionVariant="destructive"
+        isActionLoading={deleteProject.isPending}
+        data-testid="project-delete-confirm"
+        onAction={() => {
+          if (deleteTarget) {
+            deleteProject.mutate({ projectId: deleteTarget.id });
+          }
+        }}
+      />
     </>
   );
 }
 
-function ProjectCard({ lang, project }: { lang: "th" | "en"; project: VideoProjectListItem }) {
+function ProjectCard({
+  lang,
+  project,
+  onDelete,
+  onDuplicate,
+}: {
+  lang: "th" | "en";
+  project: VideoProjectListItem;
+  onDelete: () => void;
+  onDuplicate: () => void;
+}) {
   const StudioIcon = project.studioType === "catalog" ? ShoppingBag : Clapperboard;
   return (
     <ClickableCard label={project.name} href={`/video-studio/${project.id}`} height="100%">
@@ -211,7 +262,33 @@ function ProjectCard({ lang, project }: { lang: "th" | "en"; project: VideoProje
           <Text type="body" weight="bold" maxLines={1}>
             {project.name}
           </Text>
-          <Badge variant="neutral" label={project.status} />
+          <HStack gap={1} align="center" className="shrink-0">
+            <Badge variant="neutral" label={project.status} />
+            <IconButton
+              data-testid="project-duplicate"
+              icon={<Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+              label={pickCopy(lang, { th: "ทำสำเนาโปรเจกต์", en: "Duplicate project" })}
+              variant="ghost"
+              size="sm"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onDuplicate();
+              }}
+            />
+            <IconButton
+              data-testid="project-delete"
+              icon={<Trash2 className="h-3.5 w-3.5" aria-hidden="true" />}
+              label={pickCopy(lang, videoStudioCopy.projectDelete)}
+              variant="ghost"
+              size="sm"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onDelete();
+              }}
+            />
+          </HStack>
         </HStack>
         <HStack gap={1.5} align="center">
           <StudioIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

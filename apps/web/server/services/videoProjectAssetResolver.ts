@@ -21,6 +21,11 @@ import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import type { RemotionTemplateConfig } from "../../shared/remotion/layerTemplateSchemas";
 import type { VideoProjectDocument } from "../../shared/videoIntelligence/projectSchemas";
 import {
+  isAllowlistedFontFamily,
+  googleFontsCss2Url,
+  type VideoStudioFontFamily,
+} from "../../shared/remotion/fontAllowlist";
+import {
   VideoProjectCompileError,
   type AssetResolver,
 } from "./videoProjectCompiler";
@@ -122,6 +127,58 @@ function collectDocumentAssetIds(document: VideoProjectDocument): Set<number> {
 }
 
 /**
+ * Every `scene.layers[]` entry whose `type` carries a `src` field (`image`,
+ * `video`, `audio`), deduped by url. Feature 143 §4.7(c) / RK7: this is the
+ * walk `collectDocumentAssetIds` explicitly (and, until now, permanently)
+ * skipped — a hand-authored layer's `src` is a URL, never a numeric asset
+ * id, so it never entered `sha256ByUrl` and every such render crashed the
+ * worker's checksum verification. See `resolveProjectAssets` below for how
+ * these urls get a REAL content hash.
+ */
+function collectHandAuthoredAssetLayerUrls(document: VideoProjectDocument): Set<string> {
+  const urls = new Set<string>();
+  for (const scene of document.scenes) {
+    for (const layer of scene.layers) {
+      if (layer.type === "image" || layer.type === "video" || layer.type === "audio") {
+        urls.add(layer.src);
+      }
+    }
+  }
+  return urls;
+}
+
+/**
+ * Reverses `storageResolveUrl`'s output back into the raw storage key, so a
+ * hand-authored layer `src` (which is a URL, never an asset id) can still be
+ * matched against `mediaAssets.storageKey` to find a STORED checksum before
+ * ever falling back to a content fetch. Only understands the two path
+ * prefixes this server itself ever emits (`ASSET_URL_ALLOWED_PATH_PREFIXES`)
+ * — returns `null` for anything else (the caller only calls this after
+ * `isAllowedInternalAssetUrl` has already passed, so in practice this always
+ * matches one of the two prefixes for a layer `src` that reached this
+ * point).
+ */
+function extractStorageKeyFromInternalAssetUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  for (const prefix of ASSET_URL_ALLOWED_PATH_PREFIXES) {
+    if (parsed.pathname.startsWith(prefix)) {
+      const rest = parsed.pathname.slice(prefix.length);
+      try {
+        return decodeURIComponent(rest);
+      } catch {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Prefixes a storage-proxy relative path (`/api/storage/files/…` or
  * `/uploads/…`) with this server's own base URL.
  *
@@ -148,9 +205,33 @@ function collectDocumentAssetIds(document: VideoProjectDocument): Set<number> {
  * never an arbitrary external host — so it is the storage-proxy endpoint,
  * merely made `.url()`-valid and network-fetchable.
  */
-function toAbsoluteUrl(relativePath: string): string {
+// Exported (Feature 143 §4.7 item 2, the asset picker procedure) so
+// `videoProjects.ts`'s `listPickerAssets` can build the exact same
+// allowlisted, same-origin storage-proxy URL a picked asset's `storageUrl`
+// must be — single source of truth, do not duplicate this string-building
+// logic at the call site.
+export function toAbsoluteUrl(relativePath: string): string {
   if (/^https?:\/\//i.test(relativePath)) return relativePath;
   return `${getCachedInternalNodeUrl()}${relativePath}`;
+}
+
+/**
+ * Convert a server/worker storage URL into a browser-safe URL for the public
+ * app. The worker must receive an absolute internal URL, while the browser
+ * must stay on the public origin (an internal host may be localhost or a
+ * private container address). External URLs are preserved for providers that
+ * intentionally return them.
+ */
+export function toBrowserAssetUrl(url: string): string {
+  if (!/^https?:\/\//i.test(url)) return url;
+  try {
+    const parsed = new URL(url);
+    const internal = new URL(getCachedInternalNodeUrl());
+    if (parsed.origin !== internal.origin) return url;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -245,6 +326,60 @@ export function assertSceneLayerAssetUrlsAllowed(
       code,
       `§17.3 SSRF host allowlist rejected ${offending.length} scene layer src URL(s) not ` +
         `resolving to this server's internal storage-proxy origin: ${offending.join(", ")}`,
+    );
+  }
+}
+
+/** Every `scene.layers[].id` that appears more than once across the WHOLE
+ *  document (not just within one scene) — deduped to the offending id
+ *  values themselves, not every occurrence. */
+function findDuplicateSceneLayerIds(document: VideoProjectDocument): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const scene of document.scenes) {
+    for (const layer of scene.layers) {
+      if (seen.has(layer.id)) {
+        duplicates.add(layer.id);
+      } else {
+        seen.add(layer.id);
+      }
+    }
+  }
+  return [...duplicates];
+}
+
+/**
+ * Feature 143 §4.12 (Video Studio layer/timeline editor) — server half of
+ * the layer-id policy. Three real consumers assume document-wide
+ * `scene.layers[].id` uniqueness and none enforce it today:
+ *  - the `<Player>`/render composition does `key={layer.id}` over the
+ *    FLATTENED (cross-scene) compiled config
+ *    (`GenericTemplateComposition.tsx`) — a duplicate id across two scenes
+ *    breaks both the live preview and the render, not just one scene's
+ *    layout;
+ *  - `videoProjectCompiler.ts`'s brand `cta` lock reads meaning out of ids
+ *    ending in `_cta` — a duplicate id can silently make two unrelated
+ *    layers agree/disagree on canonical CTA text depending on encounter
+ *    order;
+ *  - `duplicateScene` (client, `ScenesPanel.tsx`) copies layer ids verbatim
+ *    today — this assertion is what makes that a `saveDocument`-time hard
+ *    failure instead of a silent `key` collision reaching the renderer.
+ *
+ * Called from `saveDocument` (`routers/videoProjects.ts`) alongside the
+ * existing §17.3 SSRF allowlist and scene-timeline checks, so a document
+ * with colliding layer ids is rejected BEFORE it is ever persisted — never
+ * discovered later at compile or render time.
+ */
+export function assertDocumentLayerIdsUnique(
+  document: VideoProjectDocument,
+  code: VideoProjectCompileError["code"],
+): void {
+  const duplicates = findDuplicateSceneLayerIds(document);
+  if (duplicates.length > 0) {
+    throw new VideoProjectCompileError(
+      code,
+      `§4.12 layer id policy rejected ${duplicates.length} duplicate scene layer id(s) ` +
+        `(document-wide uniqueness required): ${duplicates.join(", ")}`,
     );
   }
 }
@@ -369,6 +504,73 @@ export async function resolveProjectAssets(
     }
   }
 
+  // §4.7(c) / RK7: give every hand-authored `scene.layers[]` image/video/
+  // audio `src` a REAL content hash in `sha256ByUrl`, not just the
+  // asset-id-based sources resolved above. A `src` here is only ever
+  // reachable already having passed `assertSceneLayerAssetUrlsAllowed`
+  // (called at the top of this function), so it is guaranteed to be an
+  // allowlisted same-origin storage-proxy URL — safe to content-fetch when
+  // no stored checksum is found.
+  const layerUrls = [...collectHandAuthoredAssetLayerUrls(document)].filter(
+    url => !sha256ByUrl.has(url),
+  );
+  if (layerUrls.length > 0) {
+    const storageKeyByUrl = new Map<string, string>();
+    for (const url of layerUrls) {
+      const key = extractStorageKeyFromInternalAssetUrl(url);
+      if (key) storageKeyByUrl.set(url, key);
+    }
+
+    const storageKeys = [...new Set(storageKeyByUrl.values())];
+    const storedShaByStorageKey = new Map<string, string>();
+    if (storageKeys.length > 0) {
+      const rows = await db
+        .select({
+          storageKey: mediaAssets.storageKey,
+          checksumSha256: mediaAssets.checksumSha256,
+        })
+        .from(mediaAssets)
+        .where(
+          and(
+            inArray(mediaAssets.storageKey, storageKeys),
+            eq(mediaAssets.tenantId, auth.tenantId),
+            eq(mediaAssets.userId, auth.userId),
+          ),
+        );
+      for (const row of rows as Array<{ storageKey: string; checksumSha256: string | null }>) {
+        if (row.checksumSha256) storedShaByStorageKey.set(row.storageKey, row.checksumSha256);
+      }
+    }
+
+    const unresolvedLayerUrls: string[] = [];
+    await Promise.all(
+      layerUrls.map(async url => {
+        const storageKey = storageKeyByUrl.get(url);
+        const storedSha = storageKey ? storedShaByStorageKey.get(storageKey) : undefined;
+        const sha = storedSha ?? (await computeContentSha256(url));
+        if (!sha) {
+          unresolvedLayerUrls.push(url);
+          return;
+        }
+        sha256ByUrl.set(url, sha);
+      }),
+    );
+
+    // Fail closed (spec §4.7 required work item 1 / RK7): a hand-authored
+    // layer whose content hash cannot be determined here is GUARANTEED to
+    // fail the worker's checksum verification later
+    // (`fallbackAssetSourceHash` hashes the URL STRING, never the real
+    // bytes) — surface a clear, actionable error now instead of shipping a
+    // render that is certain to crash mid-job.
+    if (unresolvedLayerUrls.length > 0) {
+      throw new VideoProjectCompileError(
+        "VI_ASSET_UNRESOLVED",
+        `Could not verify content hash for ${unresolvedLayerUrls.length} hand-authored layer ` +
+          `asset source(s) (fetch failed or object missing): ${unresolvedLayerUrls.join(", ")}`,
+      );
+    }
+  }
+
   return {
     url(assetId: number | string): string {
       const numId = typeof assetId === "string" ? Number(assetId) : assetId;
@@ -422,10 +624,12 @@ export function fallbackAssetSourceHash(url: string): string {
  * `AssetManifest` entry per distinct `src` (deduped by url), tagging each
  * with the worker contract's `role` enum. Only `video`/`image`/`audio`
  * layers carry a `src` field in the frozen `RemotionLayerSchema`
- * (`svg`/`motionGraphic`/`text`/`scene3d` do not) — Phase 1 therefore never
- * emits a `role: "font"` entry (no font-asset reference exists anywhere in
- * the frozen layer schema yet); `"font"` stays a valid enum member for a
- * future section to populate.
+ * (`svg`/`motionGraphic`/`text`/`scene3d` do not), so this function alone
+ * never emits a `role: "font"` entry — see the separate, async
+ * `buildFontManifestSources` below (merged in by the caller via
+ * `mergeAssetManifests`) for §4.10's font manifest entries, which have no
+ * per-layer `src`/asset-id to walk (a text layer's `fontFamily` is a family
+ * NAME, not a URL) and therefore need their own resolution path.
  */
 export function buildAssetManifest(
   config: RemotionTemplateConfig,
@@ -446,6 +650,90 @@ export function buildAssetManifest(
   }
 
   return { sources: [...bySrc.values()] };
+}
+
+/**
+ * Extracts, from an already-fetched Google Fonts CSS2 stylesheet's text
+ * body, the `fonts.gstatic.com` file URL for the "thai" `unicode-range`
+ * `@font-face` block specifically (falling back to the first `@font-face`
+ * block found if no explicit `/* thai *\/` comment is present — Google's
+ * CSS2 API has emitted that exact comment marker for every checked family
+ * as of writing, but this stays defensive rather than assuming it forever).
+ */
+function extractThaiFontFileUrlFromCss2(css: string): string | null {
+  const thaiBlockMatch = css.match(
+    /\/\*\s*thai\s*\*\/[\s\S]*?src:\s*url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/i,
+  );
+  if (thaiBlockMatch?.[1]) return thaiBlockMatch[1];
+  const anyBlockMatch = css.match(/src:\s*url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/i);
+  return anyBlockMatch?.[1] ?? null;
+}
+
+/**
+ * Feature 143 §4.10 (RK12) — resolves an allowlisted font family
+ * (`shared/remotion/fontAllowlist.ts`) to its real, currently-hosted Google
+ * Fonts file URL by fetching the public CSS2 stylesheet (same mechanism a
+ * browser `<link>` tag uses) and parsing out the Thai-subset `@font-face`
+ * `src: url(...)`. Best-effort: returns `null` on any fetch/parse failure
+ * (never throws) — a font manifest entry is a nice-to-have integrity
+ * pre-check, not something that should fail an otherwise-valid render.
+ */
+async function resolveGoogleFontThaiFileUrl(
+  family: VideoStudioFontFamily,
+): Promise<string | null> {
+  try {
+    const response = await fetch(googleFontsCss2Url(family));
+    if (!response.ok) return null;
+    return extractThaiFontFileUrlFromCss2(await response.text());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Feature 143 §4.10 (RK12 — "Thai text renders as tofu") / RK7-style
+ * defense-in-depth: emits one `role: "font"` `AssetManifest` source per
+ * DISTINCT allowlisted font family a document's `text` layers actually use
+ * (never one per layer — a family used by 10 text layers still yields one
+ * manifest entry), each carrying a REAL content hash of the currently-hosted
+ * Google Fonts file — so the worker's `stage_assets` pre-flight step
+ * (`defaultStageRemotionRenderVideoAssets`) fails fast with a clear
+ * "asset_stage_failed" BEFORE spending render minutes if the font ever
+ * becomes unreachable, exactly the same protection `buildAssetManifest`
+ * already gives video/image/audio sources.
+ *
+ * Separate from (and async, unlike) `buildAssetManifest` because font
+ * resolution has no per-layer `src`/asset-id to walk — a text layer's
+ * `fontFamily` is a family NAME, resolved here via a network fetch, not a
+ * URL already sitting on the compiled layer. The caller merges this
+ * function's output into the main manifest via `mergeAssetManifests`
+ * (`videoProjects.ts`'s `queueRender`).
+ *
+ * A `fontFamily` not on the allowlist (`isAllowlistedFontFamily`) is
+ * silently skipped here — the render still proceeds, `GenericTemplateComposition`
+ * simply has no matching `<link>` to load for it and the browser default
+ * font applies, exactly the pre-existing soft-degrade behavior for any
+ * unrecognized font, not a new failure mode.
+ */
+export async function buildFontManifestSources(
+  config: RemotionTemplateConfig,
+): Promise<AssetManifestSource[]> {
+  const families = new Set<VideoStudioFontFamily>();
+  for (const layer of config.layers) {
+    if (layer.type === "text" && isAllowlistedFontFamily(layer.fontFamily)) {
+      families.add(layer.fontFamily);
+    }
+  }
+
+  const sources: AssetManifestSource[] = [];
+  for (const family of families) {
+    const url = await resolveGoogleFontThaiFileUrl(family);
+    if (!url) continue;
+    const sha256 = await computeContentSha256(url);
+    if (!sha256) continue;
+    sources.push({ role: "font", url, sha256 });
+  }
+  return sources;
 }
 
 /**

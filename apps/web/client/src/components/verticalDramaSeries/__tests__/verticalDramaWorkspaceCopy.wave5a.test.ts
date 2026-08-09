@@ -35,6 +35,13 @@ describe("vdCopyWithParams", () => {
   });
 });
 
+describe("shot generation-history copy", () => {
+  it("labels prior generated images as history, not references", () => {
+    expect(vdCopy("th").references).toBe("ประวัติการสร้างภาพ");
+    expect(vdCopy("en").references).toBe("Generation history");
+  });
+});
+
 describe("vdWizardReasonLabel", () => {
   it("has a TH and EN label for every one of the 13 fixed VD_WIZARD_* codes", () => {
     for (const code of VERTICAL_DRAMA_WIZARD_BLOCKING_REASON_CODES) {

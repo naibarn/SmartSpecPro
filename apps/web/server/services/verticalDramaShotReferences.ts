@@ -38,7 +38,10 @@ export interface VerticalDramaShotReferenceOwner {
 }
 
 /** Machine-readable role tag — mirrors the DB column's allowed values. */
-export type VerticalDramaShotReferenceRole = "start_frame" | "reference";
+export type VerticalDramaShotReferenceRole =
+  | "start_frame"
+  | "reference"
+  | "barrier_reference";
 
 /** Where the reference image originated from (client-reported, informational).
  *  `"previous_main"` (storyboard-complete plan, main-image-swap-history
@@ -423,8 +426,8 @@ export class VerticalDramaShotReferencesService {
   async deleteReference(
     owner: VerticalDramaShotReferenceOwner,
     referenceId: number,
-  ): Promise<void> {
-    await this.loadOwnedRow(owner, referenceId);
+  ): Promise<Pick<VerticalDramaShotReferenceRow, "episodeId" | "shotNumber" | "mediaAssetId" | "role">> {
+    const row = await this.loadOwnedRow(owner, referenceId);
     await db
       .delete(verticalDramaShotReferences)
       .where(
@@ -435,6 +438,12 @@ export class VerticalDramaShotReferencesService {
           eq(verticalDramaShotReferences.seriesId, owner.seriesId),
         ),
       );
+    return {
+      episodeId: row.episodeId,
+      shotNumber: row.shotNumber,
+      mediaAssetId: row.mediaAssetId,
+      role: row.role,
+    };
   }
 
   /**

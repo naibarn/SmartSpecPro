@@ -666,6 +666,128 @@ describe("generateShotVideoPrompt", () => {
     expect(mockGenerateVerticalDramaShotVideoPrompt).not.toHaveBeenCalled();
   });
 
+  it("generates a Dual View video prompt when canonical dialogue uses display names instead of roster keys", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesDeepStoryDrafts: true,
+    });
+    mockGetActiveBreakdown.mockReturnValue([
+      {
+        episodeNumber: 1,
+        workingTitle: "ตอนทดสอบ",
+        logline: "สนทนาผ่านประตู",
+        keyBeats: ["ทั้งสองตะโกนคุยกัน"],
+      },
+    ]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 1,
+        summary: "ไอริณอยู่ในห้อง กฤตอยู่ด้านนอก",
+        dialogue_lines: [
+          { speaker: "ไอริณ", line: "เปิดไม่ได้" },
+          { speaker: "กฤต", line: "เปิดประตู" },
+        ],
+      },
+    ]);
+
+    const episodeRow = baseEpisodeRow({
+      episodeNumber: 1,
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "ไอริณอยู่ในห้องเก็บของ",
+            negativePrompt: "",
+            requiredCharacterRefs: ["character"],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+            barrierMultiView: {
+              enabled: true,
+              scenario: "physical_barrier",
+              barrierType: "closed_door",
+              relation: "same_establishment_adjacent_spaces",
+              startView: {
+                side: "inside",
+                characterRefs: ["character"],
+                locationKey: "storage-room",
+              },
+              referenceView: {
+                side: "outside",
+                characterRefs: ["character-3"],
+                locationKey: "cafe",
+                referenceFrameAssetId: "901",
+              },
+              dialogueSideMap: {
+                character: "inside",
+                "character-3": "outside",
+              },
+              status: "ready",
+            },
+          },
+        ],
+      },
+    });
+    const rosterRows = [
+      { id: 501, name: "ไอริณ", characterKey: "character" },
+      { id: 502, name: "คุณกฤต", characterKey: "character-3" },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/inside.png" }])
+      )
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, originalUrl: "https://cdn/outside.png" }])
+      )
+      .mockReturnValueOnce(selectChain([{ locale: "th", bible: {} }]))
+      .mockReturnValueOnce(selectChain(rosterRows))
+      .mockReturnValueOnce(selectChain(rosterRows))
+      .mockReturnValueOnce(selectChain(rosterRows));
+    mockGetPrimaryPortraitUrl.mockImplementation(
+      async (_owner: unknown, characterId: number) =>
+        characterId === 501
+          ? "https://cdn/irin.png"
+          : "https://cdn/krit.png"
+    );
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn(() => updateChain([episodeRow])),
+    });
+
+    await expect(
+      router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      })
+    ).resolves.toBeDefined();
+
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageUrl: "https://cdn/inside.png",
+        barrierReferenceImage: {
+          url: "https://cdn/outside.png",
+          name: "cafe",
+        },
+        characterReferenceImages: expect.arrayContaining([
+          expect.objectContaining({ characterKey: "character" }),
+          expect.objectContaining({ characterKey: "character-3" }),
+        ]),
+        shotContext: expect.objectContaining({
+          dialogueLines: [
+            expect.objectContaining({
+              characterKey: "character",
+              speakerName: "ไอริณ",
+            }),
+            expect.objectContaining({
+              characterKey: "character-3",
+              speakerName: "คุณกฤต",
+            }),
+          ],
+        }),
+      })
+    );
+  });
+
   it("creates a minimal clip entry when the pack exists but has no matching clip", async () => {
     const pack = {
       selectedVideoModelId: "veo-3-1",
@@ -2401,7 +2523,7 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
       );
     });
 
-    it("solo-shot regression: never resolves character reference images (or queries characterRows) when the shot has fewer than 2 required characters", async () => {
+    it("solo-shot identity grounding: resolves the character portrait so the skill can compare it with the start frame", async () => {
       const episodeRow = baseEpisodeRow({
         startFramePlan: {
           mode: "single_frame_per_shot",
@@ -2423,7 +2545,10 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
         .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
         .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-        .mockReturnValueOnce(selectChain([])); // resolveShotCharacterIdentitySources (1 required ref -> still queried)
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
+        .mockReturnValueOnce(selectChain([{ id: 501, name: "Hero", characterKey: "hero" }])); // portrait resolver
+
+      mockGetPrimaryPortraitUrl.mockResolvedValue("/uploads/hero-portrait.png");
 
       mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
@@ -2432,10 +2557,17 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
         input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
       });
 
-      expect(mockDb.select).toHaveBeenCalledTimes(5);
-      expect(mockGetPrimaryPortraitUrl).not.toHaveBeenCalled();
+      expect(mockDb.select).toHaveBeenCalledTimes(6);
+      expect(mockGetPrimaryPortraitUrl).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "tenant-1", userId: 42, seriesId: 10 }),
+        501,
+      );
       expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
-        expect.objectContaining({ characterReferenceImages: undefined }),
+        expect.objectContaining({
+          characterReferenceImages: [
+            { characterKey: "hero", name: "Hero", url: "/uploads/hero-portrait.png" },
+          ],
+        }),
       );
     });
   });

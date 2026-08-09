@@ -1,5 +1,42 @@
 # Orchestra Plan
 
+## Dual View frame-scoped video-prompt anchors — 2026-08-09
+
+### Classification
+- scope: medium bug fix
+- risk: medium
+- affected_domains: Vertical Drama prompt service, shared persisted contract, generation skills, focused tests
+- estimated_file_count: 7
+- chosen_route: data-first direct-inline TDD repair
+- task_summary: bind every character position and prompt speech cue to the correct Dual View image instead of one global start-frame coordinate map
+- bug_route: true
+- parallel_default: false
+- planned_agents: []
+- dispatch_preference: direct-standard-light
+- socraticode: unavailable in this session; targeted shell discovery used
+
+### Evidence ledger
+- source: persisted episode row plus audit log plus source trace
+- identifier: episode 135, shot/clip 4; audit trace `mV92jX6OonlncZuuMihvN`
+- observed failure: persisted `frameAnalysis` records Krit as `not_visible`, `tiny`, `viewer-right` without any view identity, while the prompt later treats that global coordinate as the outside-view anchor
+- data state: both Dual View images are attached, but `frame_analysis.people[]` currently contains only `name + position`; its validator builds one global position map and the skill says to analyze only the start frame
+- confidence: high
+- next evidence needed: failing regression proving an unscoped View 2 character is rejected, then focused tests after repair
+
+### Approved design applied
+- Image 1 and Image 2 are independent coordinate spaces.
+- Add `view_role` to each `frame_analysis.people[]` item and persist it as `viewRole`.
+- In Dual View mode, analyze only configured View 1 characters in the start frame and only configured View 2 characters in the reference frame.
+- Require each spoken cue to carry its explicit view label near the character and viewer-relative position.
+- Never reuse an unscoped/invalid analysis as an authoritative retry lock.
+- Preserve the legacy single-view contract when Dual View is absent.
+
+### Success criteria
+1. The attached image manifest explicitly labels Image 1 as start frame and Image 2 as reference frame.
+2. Irin is analyzed with `view_role=start_frame`; Krit is analyzed with `view_role=barrier_reference`.
+3. A Dual View response that puts Krit in global/unscoped frame analysis is corrected once and rejected if still wrong.
+4. A valid two-view response passes, persists both scoped positions, and keeps single-view behavior unchanged.
+
 ## Feature 138 P1b neighbor anchoring — 2026-08-01
 
 ### Classification
@@ -98,6 +135,28 @@ text-to-image or image-to-image based on attached reference images.
   public/request model from the upstream model through `api_config.kie_model_id`.
 - Current Kie documentation confirms both modes use the same createTask endpoint,
   while image-to-image requires the distinct upstream model ID and `input_urls`.
+
+## Task: Vertical Drama bulk prompt + image submission — 2026-08-08
+
+### Classification
+- bug_route: true
+- scope: medium
+- risk: medium
+- chosen_route: direct inline repair with focused regression coverage
+- socraticode: unavailable in this session; targeted shell discovery used
+
+### Evidence ledger
+- The bulk callback launched all selected shots concurrently.
+- Each shot awaited prompt authoring, then refetched the shared episode detail snapshot.
+- A stale concurrent snapshot could omit the just-committed target prompt, causing the client to skip image submission.
+- The prompt mutation already returned the newly authored prompt, but the client ignored it.
+- Image submission used fire-and-forget `mutate`, so submission failures were not awaited by the bulk operation.
+
+### Planned repair
+- Use the prompt mutation response as the prompt-ready signal.
+- Await image task admission/submission and keep the async task poll in the existing hook callback.
+- Bound non-scene bulk chains to three workers to avoid an uncontrolled burst.
+- Run the focused Vertical Drama prompt/image flow test and diff checks.
 
 ## Recommended Direction
 - Keep `gpt-image-2-text-to-image` as the backward-compatible canonical database
@@ -233,3 +292,35 @@ text-to-image or image-to-image based on attached reference images.
 2. Old motion packs remain valid because all P3 fields are optional.
 3. Focused shared/Python tests pass; changed-surface type errors are absent; diff check is clean.
 4. Remaining work is limited to internal provider/browser smoke and labeled rollout calibration.
+
+## Vertical Drama shot-summary edit + exact-cast image guard - 2026-08-08
+
+- scope: focused UI wiring and start-frame prompt correctness
+- risk: medium; canonical draft write crosses Overview/Episode surfaces, prompt change affects future image generations
+- chosen_route: direct conductor implementation; SocratiCode unavailable, shell fallback
+- success: inline edit/save uses `updateEpisodeDraftShot`, invalidates both query surfaces, and scene continuity cannot inject other-shot cast into image prompts
+
+## Vertical Drama unselected-character positive-prompt guard - 2026-08-08
+
+- scope: focused backend prompt-contract correction for future start-frame generations
+- risk: medium; roster-name sanitation applies across policy-safe, cinematic, legacy, retry, and reference-frame prompt outputs
+- chosen_route: approved design plus direct TDD conductor implementation; SocratiCode unavailable, shell fallback
+- success: the series roster minus physical/screen-caller selections is passed as the exclusion set; excluded names cannot survive in the final positive prompt; selected overlapping names remain intact
+
+## Dual View video-prompt readiness fix - 2026-08-09
+
+- scope: medium bug fix across shared Dual View identity resolution, router generation, and client error handling
+- risk: medium; affects the paid per-shot video-prompt entry path without changing auth, schema, or pricing
+- affected_domains: shared contract, tRPC router, client workflow, focused tests
+- chosen_route: direct TDD in standard light mode; SocratiCode unavailable, targeted shell fallback
+- bug_route: data-first general debugging
+- dispatch_preference: direct-standard-light
+- evidence: episode 135 shot 4 has valid assets 1488/1489 and status ready, but canonical dialogue stores display names while dialogueSideMap stores character keys
+- success: display names resolve to configured view keys, both view characters and both frame images reach vision generation, and the client surfaces the real backend precondition
+
+## Dual View prompt-facing image labels - 2026-08-09
+
+- scope: small contract correction across the existing generator, validator, judge, paired skills, and focused tests
+- risk: low; no schema, auth, pricing, or provider mutation
+- chosen_route: approved direct TDD conductor edit in standard light mode; SocratiCode unavailable, targeted shell fallback
+- success: prompt-facing anchors use `Image 1` and `Image 2` only, while `view_role` remains backward-compatible internal metadata

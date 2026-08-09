@@ -15,6 +15,8 @@
  * "no matching clip yet" convention — rather than silently dropping the
  * upload.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildUpdatedClipsForVideoTask,
@@ -128,5 +130,29 @@ describe("buildUpdatedClipsForVideoTask", () => {
         videoTask: { pendingTaskId: "task-abc" },
       },
     ]);
+  });
+});
+
+describe("uploaded video persistence flow", () => {
+  it("does not report success from a stale page when persistence is rejected", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const persistHelper = source.slice(
+      source.indexOf("async function persistVideoTask("),
+      source.indexOf(
+        "/** Shared completion handler",
+        source.indexOf("async function persistVideoTask(")
+      )
+    );
+
+    expect(persistHelper).toContain(
+      "const result = await persistVideoClipTaskMutation.mutateAsync"
+    );
+    expect(persistHelper).toContain("if (!result.persisted)");
+    expect(persistHelper).toContain(
+      "await utils.verticalDramaEpisodes.getEpisodeDetail.invalidate()"
+    );
   });
 });

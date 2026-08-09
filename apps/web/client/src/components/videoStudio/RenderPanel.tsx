@@ -3,9 +3,17 @@
  * document (`trpc.videoProjects.compileProject`), previews it with
  * `RemotionProjectPreview` (`@remotion/player`), shows the render-cost
  * estimate, and submits Preview/Final renders via `queueRender`. Every
- * `VI_*` failure from the server is surfaced verbatim and specifically
- * (`VI_CLAIM_VIOLATION`, `VI_SEGMENTED_RENDER_NOT_SUPPORTED`,
- * `VI_DOCUMENT_INVALID`) — never swallowed into a generic message.
+ * `VI_*` failure from the server is mapped to a specific Thai/English
+ * message via `describeViError`'s `VI_ERROR_COPY` table (this task) —
+ * never swallowed into the generic fallback when the code is known, and
+ * never echoed verbatim (that was the pre-existing `VI_DOCUMENT_INVALID`
+ * raw-Zod-dump bug this task fixes).
+ *
+ * "เรนเดอร์ไฟล์จริง" (final render) is the single most credit-expensive
+ * action in this app, so — like every other paid stage (scene plan, QA
+ * review/repair, auto-draft) — it goes through an estimate/confirm gate
+ * (decision D4) before `queueRender` is ever called. Preview render stays
+ * one-click (it's the cheap/fast option) but states its cost inline.
  *
  * IMPORTANT: this panel operates on the project's currently SAVED document
  * (server-compiled), not the unsaved in-memory draft — the workspace page
@@ -20,10 +28,12 @@
  * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
  * violation of that rule.
  */
+import { useState } from "react";
 import { Link } from "wouter";
 import { PlayCircle } from "lucide-react";
 import { toast } from "sonner";
 
+import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
@@ -34,7 +44,7 @@ import { Spinner } from "@astryxdesign/core/Spinner";
 import { Text } from "@astryxdesign/core/Text";
 import { trpc } from "@/lib/trpc";
 import { RemotionProjectPreview } from "./RemotionProjectPreview";
-import { pickCopy, renderableJobError, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
+import { describeViError, pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
 
 export function RenderPanel({
   lang,
@@ -49,6 +59,8 @@ export function RenderPanel({
    *  the QA stage (Feature 142, section-07 §6.7). */
   onGoToQa: () => void;
 }) {
+  const [finalConfirmOpen, setFinalConfirmOpen] = useState(false);
+
   const compileQuery = trpc.videoProjects.compileProject.useQuery(
     { projectId },
     { enabled: !hasUnsavedChanges, retry: false },
@@ -60,6 +72,7 @@ export function RenderPanel({
 
   const queueRender = trpc.videoProjects.queueRender.useMutation({
     onSuccess: (result) => {
+      setFinalConfirmOpen(false);
       toast.success(
         result.created
           ? pickCopy(lang, { th: "ส่งงานเรนเดอร์แล้ว", en: "Render job submitted" })
@@ -95,14 +108,22 @@ export function RenderPanel({
     );
   }
 
-  if (compileQuery.isError) {
+  // Fatal only on a FIRST-load failure — TanStack v5 keeps reporting
+  // `isError` after a failed background refetch even though the last
+  // successful compile is still in `data`, and swapping the whole panel for
+  // the banner there hides a usable render surface.
+  if (compileQuery.isError && !compileQuery.data) {
     return (
       <div data-testid="video-studio-render-panel">
         <Banner
           status="error"
           data-testid="video-studio-compile-error"
           title={pickCopy(lang, videoStudioCopy.compileError)}
-          description={compileQuery.error.message}
+          // FE03 (documented rule this banner previously bypassed): never
+          // echo `compileQuery.error.message` verbatim — route it through
+          // the same `VI_*` allowlist/mapping the queueRender banner below
+          // uses, so an arbitrary server error is never rendered raw.
+          description={describeViError(lang, compileQuery.error.message)}
         />
       </div>
     );
@@ -115,7 +136,11 @@ export function RenderPanel({
       {compiled?.kind === "single" ? (
         <RemotionProjectPreview config={compiled.config} className="overflow-hidden rounded-xl border border-border/60" />
       ) : compiled?.kind === "segmented" ? (
-        <Banner status="warning" title={pickCopy(lang, videoStudioCopy.segmentedNotSupported)} />
+        <RemotionProjectPreview config={compiled.parts} className="overflow-hidden rounded-xl border border-border/60" />
+      ) : null}
+
+      {compiled?.kind === "segmented" ? (
+        <Banner status="success" title={pickCopy(lang, videoStudioCopy.segmentedNotSupported)} />
       ) : null}
 
       <Card>
@@ -155,17 +180,11 @@ export function RenderPanel({
         <Banner
           status="error"
           data-testid="video-studio-render-error"
-          title={
-            queueRender.error.message.includes("VI_CLAIM_VIOLATION")
-              ? pickCopy(lang, videoStudioCopy.claimViolation)
-              : queueRender.error.message.includes("VI_SEGMENTED_RENDER_NOT_SUPPORTED")
-                ? pickCopy(lang, videoStudioCopy.segmentedNotSupported)
-                : queueRender.error.message.includes("VI_DOCUMENT_INVALID")
-                  ? pickCopy(lang, videoStudioCopy.documentInvalid)
-                  : pickCopy(lang, { th: "ส่งงานเรนเดอร์ไม่สำเร็จ", en: "Failed to submit render" })
-          }
-          // FE03: never echo a raw, possibly-non-`VI_` error verbatim.
-          description={renderableJobError(lang, queueRender.error.message)}
+          title={pickCopy(lang, { th: "ส่งงานเรนเดอร์ไม่สำเร็จ", en: "Failed to submit render" })}
+          // Full `VI_*` -> Thai/English map (this task); unknown/non-`VI_`
+          // errors fall back to the generic message. Never echoes a raw
+          // error (e.g. a Zod dump) verbatim.
+          description={describeViError(lang, queueRender.error.message)}
           endContent={
             queueRender.error.message.includes("VI_CLAIM_VIOLATION") ? (
               <Button
@@ -193,22 +212,44 @@ export function RenderPanel({
         />
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          isDisabled={queueRender.isPending || compiled?.kind !== "single"}
-          isLoading={queueRender.isPending}
-          label={pickCopy(lang, videoStudioCopy.renderPreview)}
-          onClick={() => queueRender.mutate({ projectId, profile: "preview" })}
-        />
-        <Button
-          variant="primary"
-          isDisabled={queueRender.isPending || compiled?.kind !== "single"}
-          isLoading={queueRender.isPending}
-          label={pickCopy(lang, videoStudioCopy.renderFinal)}
-          onClick={() => queueRender.mutate({ projectId, profile: "final" })}
-        />
+      <div className="flex flex-wrap gap-4">
+        <VStack gap={1}>
+          <Button
+            variant="secondary"
+            isDisabled={queueRender.isPending || compiled?.kind !== "single"}
+            isLoading={queueRender.isPending}
+            label={pickCopy(lang, videoStudioCopy.renderPreview)}
+            onClick={() => queueRender.mutate({ projectId, profile: "preview" })}
+          />
+          <Text type="supporting" color="secondary">
+            {pickCopy(lang, videoStudioCopy.renderPreviewHelper)}
+          </Text>
+        </VStack>
+        <VStack gap={1}>
+          <Button
+            variant="primary"
+            isDisabled={queueRender.isPending || compiled?.kind !== "single"}
+            isLoading={queueRender.isPending}
+            label={pickCopy(lang, videoStudioCopy.renderFinal)}
+            onClick={() => setFinalConfirmOpen(true)}
+          />
+          <Text type="supporting" color="secondary">
+            {pickCopy(lang, videoStudioCopy.renderFinalHelper)}
+          </Text>
+        </VStack>
       </div>
+
+      <AlertDialog
+        isOpen={finalConfirmOpen}
+        onOpenChange={setFinalConfirmOpen}
+        data-testid="render-final-confirm"
+        title={pickCopy(lang, videoStudioCopy.renderFinalConfirmTitle)}
+        description={pickCopy(lang, videoStudioCopy.renderFinalConfirmBody)}
+        actionLabel={pickCopy(lang, videoStudioCopy.renderFinalConfirmAction)}
+        actionVariant="primary"
+        isActionLoading={queueRender.isPending}
+        onAction={() => queueRender.mutate({ projectId, profile: "final" })}
+      />
     </div>
   );
 }

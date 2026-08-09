@@ -111,6 +111,9 @@ export interface PlanPostPassesPaths {
   segmentInputPaths?: string[];
   /** Absolute path to the concat-demuxer list file — required when `postPasses` includes `"segment_concat"`. */
   concatListPath?: string;
+  fps?: number;
+  width?: number;
+  height?: number;
 }
 
 /**
@@ -171,6 +174,9 @@ export function planPostPasses(
       inputPaths: paths.segmentInputPaths,
       concatListPath: paths.concatListPath,
       outputPath,
+      fps: paths.fps,
+      width: paths.width,
+      height: paths.height,
     };
     steps.push({
       code,

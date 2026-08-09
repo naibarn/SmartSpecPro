@@ -2,11 +2,19 @@
  * Feature 142 — section-06: the repair applier + round session.
  *
  * Pure, injected-effects application of stage-scoped repairs to a
- * `VideoProjectDocument`. Three of the six repair stages (`captions`,
- * `scenes`, `motion`) are deterministic arithmetic and make ZERO LLM calls;
- * the other three (`content`, `narration`, `claims`) make exactly ONE
- * `RepairEffects.rewriteForStage` call each — never one call per scene (the
- * economic claim this section locks with a test, section-06 §1.1).
+ * `VideoProjectDocument`. Four of the seven repair stages (`captions`,
+ * `scenes`, `motion`, `layout`) are deterministic arithmetic and make ZERO
+ * LLM calls; the other three (`content`, `narration`, `claims`) make exactly
+ * ONE `RepairEffects.rewriteForStage` call each — never one call per scene
+ * (the economic claim this section locks with a test, section-06 §1.1).
+ * `layout` (gap-1) and `motion`'s layer-budget step (gap-2) close a hole
+ * where two review dimensions (`safe_area_compliance`, `motion_clutter` /
+ * layer-budget) had no repair handler at all — the QA loop could flag them
+ * every round forever without ever converging. As of spec 143 §4.9.1, gap-2
+ * no longer DELETES anything to close the layer budget — it only reports,
+ * since every layer it could ever reach (`scene.layers[]`) is hand-authored
+ * by this document model's own construction (§4.1; see
+ * `reportLayerBudgetOverage`'s doc comment).
  *
  * Skill-first boundary (`memory/feedback_skill_first_authoring.md`): the
  * skill decides WHETHER a stage needs repair (`review.repairInstructions`);
@@ -36,12 +44,14 @@ import {
   computeCaptionCps,
   computeDurationVsNarration,
   computeLayerCounts,
+  computeSafeAreaRect,
   computeSafeAreaViolations,
   CAPTION_MAX_COMFORTABLE_CPS,
 } from "./videoProjectQualityMetrics";
 import type { VideoProjectQualityMetrics } from "./videoProjectQualityMetrics";
 import { validateProjectClaims, type ResolvedCatalogFacts, type ClaimValidationResult } from "./validateProjectClaims";
 import type { QualityRepairStage, VideoProjectQualityLoopEffects, VideoProjectReview } from "./videoProjectQualityLoop";
+import { rehomeLayersForSceneTimingChange } from "./videoProjectScenePlanner";
 
 /* -------------------------------------------------------------------------- */
 /* 4.1 — RepairEffects, the only LLM seam                                     */
@@ -152,17 +162,38 @@ const NARRATION_MAX_CHARS = 4000;
 const CUE_TEXT_MAX_CHARS = 500;
 /** `RemotionTextLayerSchema.content` cap (`layerTemplateSchemas.ts`). */
 const LAYER_CONTENT_MAX_CHARS = 2000;
+/** Mirrors `layerTemplateSchemas.ts`'s frozen `RemotionTemplateConfigSchema`
+ *  `MAX_LAYERS` / `videoProjectCompiler.ts`'s private `MAX_LAYERS_PER_CONFIG`
+ *  — the SAME 40-layer ceiling that makes a compiled document split into
+ *  multiple Remotion configs. Segmented configs are now rendered part-by-part
+ *  and concatenated by the shared Remotion worker; the `motion` handler's
+ *  budget-overage report
+ *  (`reportLayerBudgetOverage`) targets this exact number, compared against
+ *  the AUTHORITATIVE `computeLayerCounts(...).compiledTotal` (§4.6) — never
+ *  the render-time compiler's own ceiling in isolation, so the QA loop and
+ *  the render-time ceiling never disagree. */
+const MAX_TOTAL_LAYERS = 40;
 
 /* -------------------------------------------------------------------------- */
 /* Stage order + outcome vocabulary                                          */
 /* -------------------------------------------------------------------------- */
 
 /** Cheap stages first: a free arithmetic fix may resolve an issue that would
- *  otherwise be paid for by a text rewrite in the same round. */
+ *  otherwise be paid for by a text rewrite in the same round.
+ *
+ *  `layout` (gap-1, safe-area clamp) runs AFTER `motion` deliberately:
+ *  `motion`'s gap-2 layer-drop step may delete an out-of-bounds decorative
+ *  layer outright (when the document is over the 40-layer budget), which
+ *  makes it a no-op for `layout` to have clamped that same layer a moment
+ *  earlier — running `layout` second means it only ever clamps layers that
+ *  SURVIVED the budget trim, never wasted work on one about to be removed.
+ *  It still runs before the three paid stages since it, like `motion`, is
+ *  zero-cost arithmetic. */
 export const REPAIR_STAGE_ORDER: readonly QualityRepairStage[] = [
   "captions",
   "scenes",
   "motion",
+  "layout",
   "content",
   "narration",
   "claims",
@@ -172,6 +203,12 @@ type HandlerOutcome = {
   document: VideoProjectDocument;
   targetCount: number;
   changed: boolean;
+  /** Optional context surfaced verbatim in `ApplyRepairsResult.notes`
+   *  instead of the generic reason strings `applyRepairs` would otherwise
+   *  synthesize — used by §4.9.1's "skip locked layers" and "report instead
+   *  of deleting a user-authored layer" paths so the QA panel can show WHY
+   *  a stage did (or did not) fully resolve its findings. */
+  reason?: string;
 };
 
 function updateScenes(
@@ -357,7 +394,18 @@ function applySceneBoundaryHandler(document: VideoProjectDocument): HandlerOutco
     }
   }
 
-  return { document: { ...document, scenes }, targetCount, changed };
+  if (!changed) {
+    return { document, targetCount, changed: false };
+  }
+
+  // Feature 143 §4.9.2 (P0, silent-data-loss fix): this handler moves
+  // `startMs`/`endMs` on both the flagged scene AND its neighbour (the
+  // boundary it borrowed from) — every layer riding on either scene must be
+  // re-homed so its ABSOLUTE start survives the borrow, exactly like the
+  // scene planner's own re-plan step.
+  const rehomedScenes = rehomeLayersForSceneTimingChange(document.scenes, scenes, document.format.fps);
+
+  return { document: { ...document, scenes: rehomedScenes }, targetCount, changed };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -370,6 +418,43 @@ const MOTION_INTENSITY_STEP_DOWN: Record<Scene["motion"]["intensity"], Scene["mo
   low: "low",
 };
 
+/**
+ * Gap-2 (layer-count/segmentation is unrepairable) — REDEFINED by spec 143
+ * §4.9.1. The document model (§4.1) has exactly ONE place a layer can be
+ * hand-authored: `scene.layers[]`. Template-emitted layers, caption text
+ * layers and audio layers are never stored as document entries at all — the
+ * compiler generates them fresh from `scene.visual.params` /
+ * `document.captions` / `document.audioTracks` on every compile
+ * (`videoProjectCompiler.ts`'s `expandSceneVisual`/`buildCaptionLayers`/
+ * `buildAudioTrackLayers`) and they never touch `scene.layers`. That means
+ * EVERY layer this handler could ever reach through `scene.layers` is, by
+ * construction, hand-authored — there is no "decorative, compiler-emitted"
+ * layer category left to safely delete once the budget check is fixed to
+ * count template/caption/audio contributions correctly (§4.6). Deleting
+ * from `scene.layers` to fix a budget overage that a growing caption or
+ * template count caused would therefore always risk deleting a user's
+ * work — the exact defect §4.9.1 exists to close.
+ *
+ * **"User-authored" rule chosen: any entry in `scene.layers[]`, full stop.**
+ * No layer TYPE is exempted (the old `DECORATIVE_LAYER_TYPES` /
+ * `motionGraphic`-only carve-out is removed) because `motionGraphic` layers
+ * are just as reachable only via hand-authoring as every other type — the
+ * old rule's premise ("compiler never emits this type") was true of ALL
+ * seven layer types, not a distinguishing feature of `motionGraphic`
+ * specifically.
+ *
+ * This function therefore never deletes anything; it only reports the
+ * overage (`overBudgetCount`) so the caller can surface it — e.g. §4.6's own
+ * remedy copy ("turn burn-in on to reclaim every caption layer; delete
+ * decorative layers [yourself, deliberately, in the editor]"). A future
+ * LLM-backed stage or a human decision remains the only safe way to reduce
+ * template/caption/audio layer count.
+ */
+function reportLayerBudgetOverage(document: VideoProjectDocument): { overBudgetCount: number } {
+  const layerCounts = computeLayerCounts(document);
+  return { overBudgetCount: Math.max(0, layerCounts.compiledTotal - MAX_TOTAL_LAYERS) };
+}
+
 function applyMotionHandler(document: VideoProjectDocument): HandlerOutcome {
   const durationMetrics = computeDurationVsNarration(document);
   const timingFlagged = new Set(durationMetrics.filter(m => m.flagged).map(m => m.sceneId));
@@ -379,10 +464,19 @@ function applyMotionHandler(document: VideoProjectDocument): HandlerOutcome {
   );
 
   const targetIds = new Set<string>([...timingFlagged, ...clutterFlagged]);
-  const targetCount = targetIds.size;
+  // Gap-2 target count: how many layers are over the render-time budget —
+  // tallied separately from targetIds (scene-scoped intensity targets)
+  // because a document can be over-budget with zero clutter-flagged scenes
+  // (the clutter threshold is per-scene; the render ceiling is document-wide).
+  // Uses `compiledTotal` (§4.6), NOT `total` — `total` counts only
+  // `scene.layers[]` and silently ignores template/caption/audio layers,
+  // which is exactly the miscount that made the old drop step dangerous.
+  const { overBudgetCount } = reportLayerBudgetOverage(document);
+  const targetCount = targetIds.size + overBudgetCount;
   if (targetCount === 0) return { document, targetCount: 0, changed: false };
 
   let changed = false;
+
   const nextScenes = document.scenes.map(scene => {
     if (!targetIds.has(scene.sceneId)) return scene;
     const nextIntensity = MOTION_INTENSITY_STEP_DOWN[scene.motion.intensity];
@@ -392,7 +486,105 @@ function applyMotionHandler(document: VideoProjectDocument): HandlerOutcome {
     return { ...scene, motion: { intensity: nextIntensity, camera: nextCamera } };
   });
 
-  return { document: { ...document, scenes: nextScenes }, targetCount, changed };
+  return {
+    document: { ...document, scenes: nextScenes },
+    targetCount,
+    changed,
+    reason:
+      overBudgetCount > 0
+        ? `over layer budget by ${overBudgetCount}; no layer was deleted — every scene.layers[] ` +
+          "entry is hand-authored (§4.9.1) and this handler never deletes hand-authored content"
+        : undefined,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* 6.3b — layout handler (zero cost) — gap-1: safe-area clamp                */
+/* -------------------------------------------------------------------------- */
+
+/** Clamps a layer's box (`x/y/width/height`, all 0..100 percent-of-canvas)
+ *  back inside `rect` — the EXACT rectangle `computeSafeAreaRect` computes,
+ *  which is what `computeSafeAreaViolations` checks against (see that
+ *  function's doc comment). Shrinks width/height only when the box itself is
+ *  larger than the safe rectangle on that axis; otherwise only repositions.
+ *  The result always satisfies `x >= rect.left && y >= rect.top &&
+ *  x + width <= rect.right && y + height <= rect.bottom` — i.e. the box can
+ *  never re-trigger the violation this handler was targeting. */
+function clampLayerToSafeArea(
+  layer: { x: number; y: number; width: number; height: number },
+  rect: { left: number; top: number; right: number; bottom: number },
+): { x: number; y: number; width: number; height: number } {
+  const safeWidth = Math.max(0, rect.right - rect.left);
+  const safeHeight = Math.max(0, rect.bottom - rect.top);
+  const width = Math.max(0, Math.min(layer.width, safeWidth));
+  const height = Math.max(0, Math.min(layer.height, safeHeight));
+  const x = Math.min(Math.max(layer.x, rect.left), rect.right - width);
+  const y = Math.min(Math.max(layer.y, rect.top), rect.bottom - height);
+  return { x, y, width, height };
+}
+
+/** Gap-1 (safe-area violations are unrepairable): moves/shrinks exactly the
+ *  layers `computeSafeAreaViolations` flagged, and no others, back inside the
+ *  platform preset's safe rectangle. Deterministic, no LLM call. Audio
+ *  layers, background-role layers and full-bleed layers are never flagged in
+ *  the first place (the metric itself exempts them — spec 143 §4.9.1) so
+ *  they are never touched here either.
+ *
+ *  Feature 143 §4.9.1 (P0): a layer with `locked === true` is the ONE
+ *  mechanism an author has to protect a layer from every automated repair
+ *  stage — it is skipped here even if flagged, left byte-identical. It
+ *  stays in the reported `targetCount` (it IS still a real violation the QA
+ *  panel should show), but never contributes to `changed`. */
+function applyLayoutHandler(document: VideoProjectDocument): HandlerOutcome {
+  const violations = computeSafeAreaViolations(document);
+  const targetCount = violations.length;
+  if (targetCount === 0) return { document, targetCount: 0, changed: false };
+
+  const rect = computeSafeAreaRect(document.content.platformPreset);
+  const violatedLayerIdsByScene = new Map<string, Set<string>>();
+  for (const violation of violations) {
+    const set = violatedLayerIdsByScene.get(violation.sceneId) ?? new Set<string>();
+    set.add(violation.layerId);
+    violatedLayerIdsByScene.set(violation.sceneId, set);
+  }
+
+  let changed = false;
+  let skippedLocked = 0;
+  const nextScenes = document.scenes.map(scene => {
+    const layerIds = violatedLayerIdsByScene.get(scene.sceneId);
+    if (!layerIds) return scene;
+
+    const nextLayers = scene.layers.map(layer => {
+      if (layer.type === "audio" || !layerIds.has(layer.id)) return layer;
+      if (layer.locked === true) {
+        skippedLocked += 1;
+        return layer;
+      }
+      const clamped = clampLayerToSafeArea(layer, rect);
+      if (
+        clamped.x === layer.x &&
+        clamped.y === layer.y &&
+        clamped.width === layer.width &&
+        clamped.height === layer.height
+      ) {
+        return layer;
+      }
+      changed = true;
+      return { ...layer, ...clamped };
+    });
+
+    return { ...scene, layers: nextLayers };
+  });
+
+  return {
+    document: { ...document, scenes: nextScenes },
+    targetCount,
+    changed,
+    reason:
+      skippedLocked > 0
+        ? `${skippedLocked} flagged layer(s) left untouched: locked (§4.9.1)`
+        : undefined,
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -586,6 +778,8 @@ async function runHandlerForStage(
       return applySceneBoundaryHandler(document);
     case "motion":
       return applyMotionHandler(document);
+    case "layout":
+      return applyLayoutHandler(document);
     case "content":
     case "narration":
     case "claims":
@@ -665,12 +859,12 @@ export async function applyRepairs(args: {
 
     if (outcome.targetCount === 0) {
       skipped.push(stage);
-      notes.push({ stage, targetCount: 0, reason: "no deterministic target found" });
+      notes.push({ stage, targetCount: 0, reason: outcome.reason ?? "no deterministic target found" });
       continue;
     }
     if (!outcome.changed) {
       skipped.push(stage);
-      notes.push({ stage, targetCount: outcome.targetCount, reason: "no edit produced" });
+      notes.push({ stage, targetCount: outcome.targetCount, reason: outcome.reason ?? "no edit produced" });
       continue;
     }
 
@@ -698,7 +892,7 @@ export async function applyRepairs(args: {
 
     workingDocument = candidateDocument;
     applied.push(stage);
-    notes.push({ stage, targetCount: outcome.targetCount });
+    notes.push({ stage, targetCount: outcome.targetCount, ...(outcome.reason ? { reason: outcome.reason } : {}) });
     // Recompute after each successfully-applied handler so a subsequent
     // handler (and ultimately the caller's re-review) sees fresh facts.
     args.recomputeMetrics(workingDocument);

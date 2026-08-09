@@ -393,8 +393,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.135";
-const EXTENSION_BUILD_LABEL = "2026-07-29 14:45 +07";
+const EXTENSION_VERSION = "0.1.136";
+const EXTENSION_BUILD_LABEL = "2026-08-06 14:45 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -4450,7 +4450,7 @@ export default function App() {
             Copy
           </button>
         </div>
-        <div>{prompt || empty}</div>
+        <div className="production-prompt-content">{prompt || empty}</div>
       </div>
     );
   };

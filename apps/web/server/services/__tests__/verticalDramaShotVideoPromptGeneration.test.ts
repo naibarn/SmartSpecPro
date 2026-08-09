@@ -85,6 +85,7 @@ import { parseSkillFile } from "@smartspec/skills";
 import {
   generateVerticalDramaShotVideoPrompt,
   RateLimitExceededError,
+  VdVisionRequiredError,
 } from "../verticalDramaVideoMotionPromptGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -257,6 +258,24 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     expect(userMessage.content).toContain(
       "A young man kneels in a cold corridor, morning light.",
     );
+  });
+
+  it("fails closed for character-grounded prompts when no vision-capable model is available", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockSelectBestLlmModel.mockReturnValue(null);
+
+    await expect(
+      generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          characterReferenceImages: [
+            { characterKey: "phakin", name: "ภาคิน", url: "https://example.com/phakin.png" },
+          ],
+        }),
+      ),
+    ).rejects.toBeInstanceOf(VdVisionRequiredError);
+    expect(mockExecute).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it("embeds Thai dialogue verbatim instruction when the selected model has native audio and the shot has dialogue", async () => {
@@ -562,7 +581,9 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
       VdSchemaValidationError,
     );
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // Vision-aware retry also exercises the configured fallback model and
+    // final text-only recovery attempt before surfacing the schema error.
+    expect(mockExecute).toHaveBeenCalledTimes(4);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
@@ -1140,7 +1161,7 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
       expect(result.family).toBe("veo");
     });
 
-    it("requests frame_analysis (REQUIRED line) only when 2+ characters are established, and omits it for a solo shot", async () => {
+    it("requests frame_analysis (REQUIRED line) whenever an established character portrait is attached", async () => {
       mockExecute.mockResolvedValue(
         successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
       );
@@ -1163,12 +1184,29 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
       mockExecute.mockResolvedValue(
         successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
       );
-      await generateVerticalDramaShotVideoPrompt(baseParams());
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          characterReferenceImages: [
+            { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+          ],
+        }),
+      );
       const soloCall = mockExecute.mock.calls[0][0];
       const soloText = (soloCall.messages[1].content as any[]).find(
         (p: any) => p.type === "text",
       ).text;
-      expect(soloText).not.toContain("frame_analysis: REQUIRED");
+      expect(soloText).toContain("frame_analysis: REQUIRED");
+
+      mockExecute.mockClear();
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+      await generateVerticalDramaShotVideoPrompt(baseParams());
+      const noPortraitCall = mockExecute.mock.calls[0][0];
+      const noPortraitText = (noPortraitCall.messages[1].content as any[]).find(
+        (p: any) => p.type === "text",
+      ).text;
+      expect(noPortraitText).not.toContain("frame_analysis: REQUIRED");
     });
   });
 
@@ -1180,7 +1218,7 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
           dialogue: [],
           frame_analysis: {
             people: [
-              { name: "  ฝ้าย  ", position: " left ", note: "foreground" },
+              { name: "  ฝ้าย  ", position: " left ", note: "foreground", action: "holding a phone" },
               { name: "character-2", position: "right" },
               { name: "", position: "center" },
             ],
@@ -1201,7 +1239,7 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
       // Trimmed, and the empty-name entry is dropped by normalization.
       expect(result.frameAnalysis).toEqual({
         people: [
-          { name: "ฝ้าย", position: "left" },
+          { name: "ฝ้าย", position: "left", action: "holding a phone" },
           { name: "character-2", position: "right" },
         ],
         positionSource: "image",
@@ -1220,6 +1258,38 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
   });
 
   describe("position-anchor compliance retry (item C)", () => {
+    it("rejects anatomical right-hand wording instead of treating it as screen-right", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: 'phakin on the right hand says "อย่าไป".',
+          dialogue: [{ lineTh: "อย่าไป", characterKey: "phakin" }],
+          frame_analysis: {
+            people: [{ name: "phakin", position: "left" }],
+            position_source: "image",
+          },
+        }),
+      );
+
+      await expect(
+        generateVerticalDramaShotVideoPrompt(
+          baseParams({
+            characterReferenceImages: [
+              { characterKey: "phakin", name: "ภาคิน", url: "https://example.com/phakin.png" },
+            ],
+            shotContext: {
+              description: "desc",
+              camera: "cam",
+              emotion: "urgent",
+              dialogueLines: [{ lineTh: "อย่าไป", characterKey: "phakin" }],
+            },
+          }),
+        ),
+      ).rejects.toThrow(VdSchemaValidationError);
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+
     it("triggers exactly one corrective retry (never a second) when a quoted dialogue line lacks a nearby name/position anchor, then ACCEPTS the result regardless (fail-open) and surfaces a warning", async () => {
       mockResolveVerticalDramaCapabilities.mockReturnValue({
         supportsStartFrame: true,
@@ -1270,7 +1340,7 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
       expect(result.warnings?.[0]).toContain("position-anchor");
     });
 
-    it("does NOT trigger the position-anchor retry when fewer than 2 characters are established, even with native audio + dialogue", async () => {
+    it("does NOT trigger the position-anchor retry when no character portrait is attached, even with native audio + dialogue", async () => {
       mockResolveVerticalDramaCapabilities.mockReturnValue({
         supportsStartFrame: true,
         maxReferenceImages: 3,

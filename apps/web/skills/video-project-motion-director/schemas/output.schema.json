@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "video-project-motion-director/output",
+  "title": "Video Project Motion Director Output",
+  "description": "Matches the MotionDirectorSkillOutput type in server/services/videoProjectMotionDirector.ts — the motion-director adapter parses the skill output against this shape. Template SELECTION + parameter BINDING only: NO property name in this file may match /prompt|imagePrompt|videoPrompt|negativePrompt/i.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scenes", "summary"],
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sceneId", "candidates"],
+        "properties": {
+          "sceneId": {
+            "description": "An existing scene id from the input's scenes list.",
+            "type": "string",
+            "minLength": 1
+          },
+          "candidates": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "The adapter canonicalizes missing or malformed optional-shaped fields and then validates templateParams against the real template registry. Keep emitting the complete shape whenever possible.",
+              "required": ["templateId"],
+              "properties": {
+                "templateId": {
+                  "description": "Must key into the input's availableTemplates list exactly.",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "templateParams": {
+                  "description": "Must satisfy the chosen template's own paramsJsonSchema exactly. Bind real data only — never invent a value.",
+                  "type": ["object", "null"]
+                },
+                "motion": {
+                  "type": ["object", "null"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "intensity": { "type": "string", "enum": ["low", "medium", "high"] },
+                    "camera": { "type": "string", "minLength": 1 }
+                  }
+                },
+                "label": {
+                  "description": "Short human-facing name distinguishing this candidate from the scene's others.",
+                  "type": ["string", "null"],
+                  "minLength": 1
+                },
+                "rationale": {
+                  "description": "What makes this candidate different from the scene's OTHER candidates. Free-form prose is allowed here only.",
+                  "type": ["string", "null"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "description": "Short free-form summary of the proposed variants.",
+      "type": "string"
+    }
+  }
+}

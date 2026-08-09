@@ -304,6 +304,7 @@ const CHARACTER_ROWS = [
 ];
 const PORTRAIT_A = "https://cdn.example.com/portrait-a.png";
 const PORTRAIT_B = "https://cdn.example.com/portrait-b.png";
+const PORTRAIT_CALLER = "https://cdn.example.com/portrait-caller.png";
 const SHEET_A = "https://cdn.example.com/sheet-a.png";
 const SHEET_B = "https://cdn.example.com/sheet-b.png";
 
@@ -472,6 +473,82 @@ describe("generateStartFrameImage — F131Z character reference set", () => {
     expect(request.referenceImageUrls).toEqual([PORTRAIT_A, PORTRAIT_B]);
   });
 
+  it("does not attach a screen caller portrait to the physical-scene render references", async () => {
+    const phoneCallEpisode = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            requiredCharacterRefs: ["char-a", "char-b"],
+            screenCallerCharacterRefs: ["char-caller"],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([phoneCallEpisode]))
+      .mockReturnValueOnce(
+        selectChain([
+          ...CHARACTER_ROWS,
+          { id: 503, name: "คุณกฤต", characterKey: "char-caller" },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryPortraitUrl).toHaveBeenCalledTimes(2);
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual([PORTRAIT_A, PORTRAIT_B]);
+    expect(request.referenceImageUrls).not.toContain(PORTRAIT_CALLER);
+  });
+
+  it("blocks a legacy prompt that maps the screen caller to an attached image index", async () => {
+    const stalePhoneCallEpisode = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            imagePrompt:
+              "REFERENCE MAPPING: Image 1 = ฝ้าย; Image 2 = ใบข้าว; Image 3 = คุณกฤต (screen caller only).",
+            requiredCharacterRefs: ["char-a", "char-b"],
+            screenCallerCharacterRefs: ["char-caller"],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([stalePhoneCallEpisode]))
+      .mockReturnValueOnce(
+        selectChain([
+          ...CHARACTER_ROWS,
+          { id: 503, name: "คุณกฤต", characterKey: "char-caller" },
+        ])
+      );
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      })
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("กรุณาสร้างพรอมต์ช็อตนี้ใหม่"),
+    });
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
   it("flag on: returns ALL portraits first, THEN all sheets (never interleaved per-character)", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({
       verticalDramaSeriesCharacterRefV2: true,
@@ -592,8 +669,19 @@ describe("generateStartFrameImage — skill-first render prompt, no code-authore
       { id: 501, name: "ใบข้าว", characterKey: "char-a" },
       { id: 502, name: "ฝ้าย", characterKey: "char-b" },
     ];
+    const episodeWithoutStoredNegative = baseEpisodeRow({
+      startFramePlan: {
+        ...baseEpisodeRow().startFramePlan,
+        frames: [
+          {
+            ...baseEpisodeRow().startFramePlan.frames[0],
+            negativePrompt: "",
+          },
+        ],
+      },
+    });
     mockDb.select
-      .mockReturnValueOnce(selectChain([baseEpisodeRow()]))
+      .mockReturnValueOnce(selectChain([episodeWithoutStoredNegative]))
       .mockReturnValueOnce(selectChain(namedCharacterRows))
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
     mockGetPrimaryPortraitUrl

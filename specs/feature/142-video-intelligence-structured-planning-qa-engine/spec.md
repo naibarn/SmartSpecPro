@@ -194,7 +194,7 @@ reading `journalctl` — not inferred from spec text.
 | Compiler | `server/services/videoProjectCompiler.ts` | ✅ |
 | Motion templates | `server/remotion/templates/*.ts` | ✅ 10 templates |
 | Render lane | `queueRender` → `dispatchLaneARemotionRenderJob` | ✅ working, independent of the dead queue |
-| Narration | `runNarrationStage` | ✅ real TTS + credit charge, synchronous |
+| Narration | `runNarrationStageAsync` (Video Studio); `runNarrationStage` remains a legacy compatibility path | ✅ real TTS + credit charge, queue-backed async execution with job polling and persisted audio asset |
 | Rate limiting | `video-projects-gen` 20/min; render ≤6/min | ✅ |
 
 ### 3.2 The gaps this spec closes
@@ -500,6 +500,7 @@ chain). Input/output shapes are unchanged; today they throw `*_NOT_WIRED`.
 | `videoProjects.runScenePlanStage` | `{ projectId }` | `{ jobId }` — job now actually runs |
 | `videoProjects.runQualityReview` | `{ projectId }` | `{ jobId }` — job now actually runs |
 | `videoProjects.applyQualityRepairs` | `{ projectId, stages?: QualityRepairStage[] }` | `{ revision, appliedStages, skipped }` |
+| `videoProjects.runNarrationStageAsync` | `{ projectId, sceneIds?, narrationSettings? }` | `{ jobId, traceId, estimate }` — provider generation runs in the existing `video_intelligence_jobs` worker |
 | `videoProjects.getGenerationJobStatus` | `{ jobId }` | unchanged; now reaches `succeeded` |
 
 ### 7.2 Internal / Service-to-Service API Specifications
@@ -563,7 +564,7 @@ never auto-triggered from chat (skill-first rule; see §12.2).
 | `VI_CLAIM_VIOLATION` | BAD_REQUEST | prohibited/unbacked claim on `final` | Retained — the compliance gate |
 | `VI_INSUFFICIENT_CREDITS` | BAD_REQUEST | not enough credits | Extended to cover plan/review LLM cost |
 | `VI_BRAND_LOCK_VIOLATION` | BAD_REQUEST | brand-kit lock breached | Retained |
-| `VI_SEGMENTED_RENDER_NOT_SUPPORTED` | BAD_REQUEST | >40 layers | Retained (Phase-1 limit) |
+| `VI_SEGMENTED_RENDER_NOT_SUPPORTED` | BAD_REQUEST | legacy segmented payload without a valid segment plan | Retained only as a compatibility error; normal compiler output uses segmented worker rendering |
 | `VI_SCENE_PLAN_NOT_WIRED` | — | stub | **REMOVED** — replaced by real execution |
 | `VI_QUALITY_REVIEW_NOT_WIRED` | — | stub | **REMOVED** |
 | `VI_QUALITY_REPAIR_NOT_WIRED` | — | stub | **REMOVED** |
@@ -597,7 +598,9 @@ fail-fast so the user gets an actionable error instead of an infinite spinner
 
 `videoProjectCompiler.ts:142` sets `MAX_LAYERS_PER_CONFIG = 40`; above that the
 compiler splits into segments, and `queueRender` then **rejects** segmented
-compiles with `VI_SEGMENTED_RENDER_NOT_SUPPORTED` (a documented Phase-1 limit).
+compiles into ordered segments. The render worker renders each segment and
+concatenates them into one output before global audio/subtitle post-passes, so
+the normal compiler path remains final-renderable.
 
 **The risk:** an unconstrained planner that emits, say, 15 scenes × 4 layers
 produces a document that compiles but **can never be final-rendered**. The user

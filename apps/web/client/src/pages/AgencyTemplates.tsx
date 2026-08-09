@@ -72,7 +72,9 @@ export default function AgencyTemplates() {
     );
   }
 
-  if (templatesQuery.isError) {
+  // Fatal only on a FIRST-load failure — a failed background refetch keeps the
+  // cached template list usable, so don't replace the page with an error card.
+  if (templatesQuery.isError && !templatesQuery.data) {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-6">Agency Templates</h1>

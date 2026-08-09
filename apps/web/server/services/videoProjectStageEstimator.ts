@@ -20,7 +20,7 @@ export type StageEstimateBasis = {
   estimatedOutputTokens: number;
 };
 
-export type VideoIntelligenceStage = "scene_plan" | "quality_review" | "quality_repair";
+export type VideoIntelligenceStage = "scene_plan" | "quality_review" | "quality_repair" | "motion";
 
 /** Ceiling call count for ONE loop round when repairs auto-apply (D1):
  *  1 review + up to 3 LLM-backed repair stages (content, narration, claims)
@@ -63,6 +63,17 @@ const SCENE_PLAN_OUTPUT_TOKENS_PER_SCENE = 120;
  *  same length as the source, rounded up for safety). */
 const QUALITY_REPAIR_OUTPUT_BASE_TOKENS = 150;
 const QUALITY_REPAIR_OUTPUT_CHAR_MULTIPLIER = 1.2;
+
+/** `motion` output: UP TO `MOTION_VARIANTS_PER_SCENE_CEILING` candidates per
+ *  scene (each carrying its own templateParams + motion + label + rationale
+ *  — roughly the same per-item weight as one `scene_plan` scene entry), so
+ *  this scales with scene count TIMES the variant ceiling, never a flat
+ *  value. The router's own dispatched request may ask for fewer variants
+ *  (`variantsPerScene.max`), which only makes the real call cheaper than
+ *  this ceiling — never more expensive (never under-quotes). */
+export const MOTION_VARIANTS_PER_SCENE_CEILING = 3;
+const MOTION_OUTPUT_BASE_TOKENS = 150;
+const MOTION_OUTPUT_TOKENS_PER_CANDIDATE = 130;
 
 function charsToTokens(chars: number): number {
   return Math.ceil(chars / STAGE_TOKEN_CHARS_PER_TOKEN);
@@ -110,6 +121,11 @@ export function estimateStageTokens(
       estimatedOutputTokens =
         QUALITY_REPAIR_OUTPUT_BASE_TOKENS +
         charsToTokens(Math.ceil((narrationChars + captionChars) * QUALITY_REPAIR_OUTPUT_CHAR_MULTIPLIER));
+      break;
+    case "motion":
+      estimatedOutputTokens =
+        MOTION_OUTPUT_BASE_TOKENS +
+        sceneCount * MOTION_VARIANTS_PER_SCENE_CEILING * MOTION_OUTPUT_TOKENS_PER_CANDIDATE;
       break;
     case "quality_review":
     default:

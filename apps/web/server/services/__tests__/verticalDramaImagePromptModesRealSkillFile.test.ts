@@ -125,7 +125,8 @@ describe("real-skill-file gate: vd-start-frame-prompt-modes (taught-not-wired fa
         if (skill.mode === "policy_safe_rewrite") {
           expect(content).toContain("prompt assembly.");
         } else {
-          expect(content).toContain("3800 characters or fewer");
+          expect(content).toContain("prompt_max_chars");
+          expect(content).toContain("20,000 characters");
         }
       });
 

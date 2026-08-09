@@ -47,6 +47,23 @@ describe("vertical drama character request normalizer", () => {
     ).toEqual({ prompt: "legacy portrait", negativePrompt: "old negative guard", model: legacyCapability.canonicalModelId });
   });
 
+  it("is idempotent for an already-normalized target request", () => {
+    const params = {
+      capability: targetCapability,
+      marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+      contractVersion: "vd_character_natural_human_v1",
+    } as const;
+    const once = normalizeVerticalDramaCharacterPromptRequest(
+      {
+        prompt: "natural human skin with varied texture",
+        negativePrompt: "plastic skin",
+        model: targetCapability.canonicalModelId,
+      },
+      params,
+    );
+    expect(normalizeVerticalDramaCharacterPromptRequest(once, params)).toEqual(once);
+  });
+
   it("uses JavaScript length semantics and omits prompt contents from errors", () => {
     const prompt = `ตัวละคร🙂${"x".repeat(20_000)}`;
     expect(() =>

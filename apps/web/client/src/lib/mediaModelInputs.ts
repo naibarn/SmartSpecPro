@@ -543,6 +543,180 @@ export function getModelGenerationModeLabel(model: ModelGenerationModeSource): s
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Declarative mode routing preview (`configJson.apiConfig.modes`)
+//
+// A model whose provider exposes several endpoints behind one catalog row picks
+// its endpoint from the shape of the attachments. The provider
+// (kie_ai_provider.py::resolve_mode_api_config) is authoritative; this mirror
+// exists so the Studio can TELL the user which mode a generate will hit, and
+// warn when that mode ignores a control they just set (minimax-h3's
+// image-to-video endpoint has no aspect_ratio parameter at all).
+//
+// Both sides read the SAME catalog JSON, so the predicate semantics are the
+// only thing that can drift — keep them in step: `min*`/`max*` prefixes over
+// images/videos/audios, all bounds AND-ed and inclusive, first match wins, an
+// unparseable predicate fails closed.
+// ---------------------------------------------------------------------------
+
+const MODE_PREDICATE_SUBJECTS: Record<string, "images" | "videos" | "audios"> = {
+  image: "images",
+  images: "images",
+  referenceimage: "images",
+  referenceimages: "images",
+  video: "videos",
+  videos: "videos",
+  referencevideo: "videos",
+  referencevideos: "videos",
+  audio: "audios",
+  audios: "audios",
+  referenceaudio: "audios",
+  referenceaudios: "audios",
+};
+
+export interface ModelReferenceCounts {
+  images?: number;
+  videos?: number;
+  audios?: number;
+}
+
+export interface ResolvedModelGenerationMode {
+  /** Mode id from the catalog, or `__base__` when nothing matched. */
+  id: string;
+  /** Human label for the chip. */
+  label: string;
+  /** Optional caveat to surface next to the chip. */
+  notice: string | null;
+}
+
+function readApiConfigModes(model: MediaModelOption | undefined): Record<string, unknown>[] | null {
+  const configJson = model?.configJson;
+  if (!configJson || typeof configJson !== "object") {
+    return null;
+  }
+  const apiConfig = (configJson as Record<string, unknown>).apiConfig;
+  if (!apiConfig || typeof apiConfig !== "object") {
+    return null;
+  }
+  const record = apiConfig as Record<string, unknown>;
+  const raw = record.modes ?? record.apiModes;
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return null;
+  }
+  return raw.filter(
+    (entry): entry is Record<string, unknown> =>
+      Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
+  );
+}
+
+function modePredicateMatches(when: unknown, counts: Required<ModelReferenceCounts>): boolean {
+  if (when === undefined || when === null) {
+    return true;
+  }
+  if (typeof when !== "object" || Array.isArray(when)) {
+    return false;
+  }
+
+  for (const [rawKey, rawValue] of Object.entries(when as Record<string, unknown>)) {
+    const key = rawKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+    let bound: "min" | "max";
+    let rawSubject: string;
+    if (key.startsWith("min")) {
+      bound = "min";
+      rawSubject = key.slice(3);
+    } else if (key.startsWith("max")) {
+      bound = "max";
+      rawSubject = key.slice(3);
+    } else {
+      return false;
+    }
+
+    const subject = MODE_PREDICATE_SUBJECTS[rawSubject];
+    if (!subject) {
+      return false;
+    }
+
+    const threshold = Number(rawValue);
+    if (!Number.isFinite(threshold)) {
+      return false;
+    }
+
+    const actual = counts[subject];
+    if (bound === "min" && actual < threshold) return false;
+    if (bound === "max" && actual > threshold) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Count reference URLs a model collects through its own `inputFields` rather
+ * than through a studio attachment channel.
+ *
+ * There is no studio-level "attach reference audio" affordance yet, so audio
+ * arrives as an `audio_urls` field in extraParams. The provider counts it the
+ * same way (kie_ai_provider.py seeds ref_audio_urls from extra_params), and the
+ * chip has to agree or it will name the wrong endpoint.
+ */
+export function countModelInputFieldReferences(
+  model: MediaModelOption | undefined,
+  extraParams: Record<string, unknown> | undefined,
+  type: "image_urls" | "video_urls" | "audio_urls",
+): number {
+  if (!extraParams) {
+    return 0;
+  }
+  let total = 0;
+  for (const field of parseModelInputFields(model)) {
+    if (field.type !== type) continue;
+    const value = extraParams[field.key];
+    if (Array.isArray(value)) {
+      total += value.filter((entry) => typeof entry === "string" && entry.trim().length > 0).length;
+    } else if (typeof value === "string" && value.trim().length > 0) {
+      total += 1;
+    }
+  }
+  return total;
+}
+
+/**
+ * Which provider endpoint the next generate will hit, given what is attached.
+ *
+ * Returns null for single-endpoint models (no `apiConfig.modes`) so callers can
+ * skip the chip entirely rather than render a meaningless one.
+ */
+export function resolveModelGenerationMode(
+  model: MediaModelOption | undefined,
+  counts: ModelReferenceCounts = {},
+): ResolvedModelGenerationMode | null {
+  const modes = readApiConfigModes(model);
+  if (!modes) {
+    return null;
+  }
+
+  const normalizedCounts = {
+    images: Math.max(0, Math.trunc(counts.images ?? 0)),
+    videos: Math.max(0, Math.trunc(counts.videos ?? 0)),
+    audios: Math.max(0, Math.trunc(counts.audios ?? 0)),
+  };
+
+  for (const [index, mode] of modes.entries()) {
+    if (!modePredicateMatches(mode.when, normalizedCounts)) {
+      continue;
+    }
+    const id = typeof mode.id === "string" && mode.id.trim() ? mode.id.trim() : `mode_${index}`;
+    const label = typeof mode.label === "string" && mode.label.trim() ? mode.label.trim() : id;
+    const notice = typeof mode.notice === "string" && mode.notice.trim() ? mode.notice.trim() : null;
+    return { id, label, notice };
+  }
+
+  return {
+    id: "__base__",
+    label: getModelGenerationModeLabel(model) ?? "Default",
+    notice: null,
+  };
+}
+
 export function parseModelInputFields(model: MediaModelOption | undefined): ModelInputField[] {
   if (!model?.configJson || typeof model.configJson !== "object") {
     return [];

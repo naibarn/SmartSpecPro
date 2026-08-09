@@ -3,6 +3,7 @@
  * TRPC-style mocked `db` — asserts storage-proxy URL resolution, owner
  * isolation, and the compiled-config `buildAssetManifest` walk.
  */
+import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockDb } = vi.hoisted(() => ({ mockDb: { select: vi.fn() } }));
@@ -18,9 +19,13 @@ vi.mock("../appRuntimeConfig", () => ({
 import {
   resolveProjectAssets,
   buildAssetManifest,
+  buildFontManifestSources,
   mergeAssetManifests,
   isAllowedInternalAssetUrl,
   assertSceneLayerAssetUrlsAllowed,
+  assertDocumentLayerIdsUnique,
+  fallbackAssetSourceHash,
+  toBrowserAssetUrl,
 } from "../videoProjectAssetResolver";
 import { VideoProjectCompileError } from "../videoProjectCompiler";
 import type { VideoProjectDocument } from "../../../shared/videoIntelligence/projectSchemas";
@@ -223,6 +228,13 @@ describe("resolveProjectAssets", () => {
   });
 
   it("accepts a scene.layers[] video src that resolves to the internal storage-proxy origin", async () => {
+    // §4.7(c)/RK7: the hand-authored layer's `src` has no asset id, so this
+    // exercises the NEW storageKey-reverse-lookup path, not the id-based one
+    // above — one `db.select` for the reverse storageKey lookup.
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ storageKey: "media/5.mp4", checksumSha256: "stored-real-hash-99" }]),
+    );
+
     const document = baseDocument({
       scenes: [
         {
@@ -242,6 +254,115 @@ describe("resolveProjectAssets", () => {
 
     const resolver = await resolveProjectAssets(document, AUTH);
     expect(resolver).toBeDefined();
+    expect(resolver.sha256ByUrl("http://localhost:3000/api/storage/files/media%2F5.mp4")).toBe(
+      "stored-real-hash-99",
+    );
+  });
+
+  it("§4.7(c)/RK7: a hand-authored layer src carries a REAL content hash in sha256ByUrl, not the URL-string fallback", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ storageKey: "media/7.mp4", checksumSha256: "content-hash-abc" }]),
+    );
+
+    const document = baseDocument({
+      scenes: [
+        {
+          sceneId: "scene-1",
+          startMs: 0,
+          endMs: 5000,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [videoLayer("http://localhost:3000/api/storage/files/media%2F7.mp4")],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+      ],
+      audioTracks: [],
+    });
+
+    const resolver = await resolveProjectAssets(document, AUTH);
+    const url = "http://localhost:3000/api/storage/files/media%2F7.mp4";
+    const actualHash = resolver.sha256ByUrl(url);
+
+    expect(actualHash).toBe("content-hash-abc");
+    expect(actualHash).not.toBe(fallbackAssetSourceHash(url));
+  });
+
+  it("falls back to a content fetch when no stored checksum row matches the layer src, and content-hashes the real bytes", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([])); // no matching mediaAssets row
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => {
+        const bytes = Buffer.from("real bytes");
+        const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(arrayBuffer),
+        } as unknown as Response);
+      }),
+    );
+
+    const document = baseDocument({
+      scenes: [
+        {
+          sceneId: "scene-1",
+          startMs: 0,
+          endMs: 5000,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [videoLayer("http://localhost:3000/uploads/unknown.mp4")],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+      ],
+      audioTracks: [],
+    });
+
+    const resolver = await resolveProjectAssets(document, AUTH);
+    const url = "http://localhost:3000/uploads/unknown.mp4";
+    expect(resolver.sha256ByUrl(url)).toBe(createHash("sha256").update("real bytes").digest("hex"));
+    expect(resolver.sha256ByUrl(url)).not.toBe(fallbackAssetSourceHash(url));
+  });
+
+  it("fails closed with VI_ASSET_UNRESOLVED when a hand-authored layer's content hash cannot be determined (no stored row, fetch fails)", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([])); // no matching mediaAssets row
+    // Global `fetch` stub from `beforeEach` already resolves `{ ok: false }`.
+
+    const document = baseDocument({
+      scenes: [
+        {
+          sceneId: "scene-1",
+          startMs: 0,
+          endMs: 5000,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [videoLayer("http://localhost:3000/uploads/unreachable.mp4")],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+      ],
+      audioTracks: [],
+    });
+
+    await expect(resolveProjectAssets(document, AUTH)).rejects.toMatchObject({
+      code: "VI_ASSET_UNRESOLVED",
+      message: expect.stringContaining("unreachable.mp4"),
+    });
+  });
+});
+
+describe("toBrowserAssetUrl", () => {
+  it("removes the internal origin while preserving the storage path", () => {
+    expect(toBrowserAssetUrl("http://localhost:3000/api/storage/files/media/5.mp4"))
+      .toBe("/api/storage/files/media/5.mp4");
+  });
+
+  it("preserves an intentionally external provider URL", () => {
+    expect(toBrowserAssetUrl("https://cdn.example.com/media/5.mp4"))
+      .toBe("https://cdn.example.com/media/5.mp4");
   });
 });
 
@@ -320,6 +441,69 @@ describe("assertSceneLayerAssetUrlsAllowed (F133-01 checkpoint helper)", () => {
         "VI_DOCUMENT_INVALID",
       ),
     ).not.toThrow();
+  });
+});
+
+describe("assertDocumentLayerIdsUnique (Feature 143 §4.12 server-half id policy)", () => {
+  function baseLayer(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "layer-1",
+      type: "image" as const,
+      startFrame: 0,
+      durationFrames: 60,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 0,
+      src: "http://localhost:3000/uploads/ok.png",
+      fit: "cover" as const,
+      ...overrides,
+    };
+  }
+
+  function baseScene(sceneId: string, layers: unknown[]) {
+    return {
+      sceneId,
+      startMs: 0,
+      endMs: 5000,
+      narration: null,
+      narrationAudioAssetId: null,
+      visual: { kind: "layers" as const },
+      layers,
+      motion: { intensity: "medium" as const, camera: "static" },
+      captionCues: [],
+    };
+  }
+
+  it("does not throw when every layer id is unique within one scene", () => {
+    const doc = baseDocument({
+      scenes: [baseScene("scene-1", [baseLayer({ id: "a" }), baseLayer({ id: "b" })])],
+    });
+    expect(() => assertDocumentLayerIdsUnique(doc, "VI_DUPLICATE_LAYER_ID")).not.toThrow();
+  });
+
+  it("throws with the given code when two layers share an id within one scene", () => {
+    const doc = baseDocument({
+      scenes: [baseScene("scene-1", [baseLayer({ id: "dup" }), baseLayer({ id: "dup" })])],
+    });
+    expect(() => assertDocumentLayerIdsUnique(doc, "VI_DUPLICATE_LAYER_ID")).toThrowError(
+      expect.objectContaining({ code: "VI_DUPLICATE_LAYER_ID" }),
+    );
+  });
+
+  it("throws when the same layer id is reused ACROSS two different scenes (the documented failure mode)", () => {
+    const doc = baseDocument({
+      scenes: [
+        baseScene("scene-1", [baseLayer({ id: "logo" })]),
+        baseScene("scene-2", [baseLayer({ id: "logo" })]),
+      ],
+    });
+    expect(() => assertDocumentLayerIdsUnique(doc, "VI_DUPLICATE_LAYER_ID")).toThrowError(
+      expect.objectContaining({ code: "VI_DUPLICATE_LAYER_ID" }),
+    );
   });
 });
 
@@ -436,5 +620,113 @@ describe("buildAssetManifest", () => {
       { sources: [{ role: "video", url: "https://a", sha256: "h1" }, { role: "audio", url: "https://b", sha256: undefined }] },
     ]);
     expect(merged.sources).toHaveLength(2);
+  });
+});
+
+describe("buildFontManifestSources (Feature 143 §4.10 / RK12)", () => {
+  function textLayer(fontFamily: string) {
+    return {
+      id: "text-1",
+      type: "text" as const,
+      startFrame: 0,
+      durationFrames: 60,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 20,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 900,
+      content: "สวัสดี",
+      fontFamily,
+      fontSizePx: 48,
+      color: "#ffffff",
+      textAlign: "center" as const,
+      fontWeight: "normal" as const,
+    };
+  }
+
+  function configWithLayers(layers: unknown[]): RemotionTemplateConfig {
+    return {
+      id: "cfg",
+      name: "cfg",
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      durationInFrames: 100,
+      layers,
+    } as RemotionTemplateConfig;
+  }
+
+  const FAKE_CSS2 = [
+    "/* thai */",
+    "@font-face {",
+    "  font-family: 'Sarabun';",
+    "  font-style: normal;",
+    "  font-weight: 400;",
+    "  src: url(https://fonts.gstatic.com/s/sarabun/v17/fake-thai.woff2) format('woff2');",
+    "}",
+  ].join("\n");
+
+  it("emits one role:font source per DISTINCT allowlisted family used by text layers, with a real content hash", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.includes("fonts.googleapis.com")) {
+          return Promise.resolve({ ok: true, text: () => Promise.resolve(FAKE_CSS2) } as unknown as Response);
+        }
+        if (url.includes("fonts.gstatic.com")) {
+          const bytes = Buffer.from("fake font bytes");
+          const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+          return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(arrayBuffer) } as unknown as Response);
+        }
+        return Promise.resolve({ ok: false } as Response);
+      }),
+    );
+
+    const config = configWithLayers([textLayer("Sarabun"), textLayer("Sarabun"), textLayer("Prompt")]);
+    // "Prompt" resolves through the same fake CSS2/gstatic stub — real
+    // per-family fetch calls aren't asserted here (network shape), just
+    // that a role:"font" source with a REAL content hash is produced.
+
+    const sources = await buildFontManifestSources(config);
+
+    expect(sources).toHaveLength(2); // one per DISTINCT family, not per layer
+    for (const source of sources) {
+      expect(source.role).toBe("font");
+      expect(source.sha256).toBe(createHash("sha256").update("fake font bytes").digest("hex"));
+      expect(source.sha256).not.toBe(fallbackAssetSourceHash(source.url));
+    }
+  });
+
+  it("skips a fontFamily that is not on the allowlist (no manifest entry, no fetch)", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const config = configWithLayers([textLayer("Comic Sans MS")]);
+    const sources = await buildFontManifestSources(config);
+
+    expect(sources).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("soft-degrades to no manifest entry (never throws) when the Google Fonts fetch fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: false } as Response)));
+
+    const config = configWithLayers([textLayer("Sarabun")]);
+    const sources = await buildFontManifestSources(config);
+
+    expect(sources).toEqual([]);
+  });
+
+  it("returns no sources when no text layer is present", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const config = configWithLayers([]);
+    const sources = await buildFontManifestSources(config);
+
+    expect(sources).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

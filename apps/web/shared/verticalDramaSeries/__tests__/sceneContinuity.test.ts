@@ -12,6 +12,7 @@ import {
   selectSceneContinuityAnchor,
   type VdSceneVisualState,
 } from "../sceneContinuity";
+import { evaluateSceneContinuityAnalysis } from "../frameContinuity";
 
 function state(overrides: Partial<VdSceneVisualState> = {}): VdSceneVisualState {
   return {
@@ -84,6 +85,40 @@ describe("scene grouping and identity", () => {
       ...input,
       canonicalSummariesByShotNumber: new Map([[1, "changed"], [2, "B"], [3, "C"]]),
     })).not.toBe(hash);
+  });
+});
+
+describe("device orientation QC", () => {
+  it("warns when a phone-screen shot exposes the physical display", () => {
+    const evaluation = evaluateSceneContinuityAnalysis(
+      undefined,
+      {
+        physical_handset_view: "front",
+        rear_camera_visible: false,
+        physical_display_visible: true,
+        floating_call_screen_present: true,
+        remote_body_outside_device: false,
+        notes: ["The real phone display faces the camera."],
+      },
+      true,
+    );
+    expect(evaluation.issues.some(issue => issue.issueId === "device_orientation_mismatch")).toBe(true);
+  });
+
+  it("accepts a rear handset with a separate call overlay", () => {
+    const evaluation = evaluateSceneContinuityAnalysis(
+      undefined,
+      {
+        physical_handset_view: "rear",
+        rear_camera_visible: true,
+        physical_display_visible: false,
+        floating_call_screen_present: true,
+        remote_body_outside_device: false,
+        notes: [],
+      },
+      true,
+    );
+    expect(evaluation.issues.some(issue => issue.issueId.startsWith("device_orientation"))).toBe(false);
   });
 });
 

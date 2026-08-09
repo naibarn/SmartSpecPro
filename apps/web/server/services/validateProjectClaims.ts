@@ -23,6 +23,15 @@ import type { ClaimRecord, VideoProjectDocument } from "@shared/videoIntelligenc
  */
 export type ResolvedCatalogFacts = {
   productIds: string[];
+  /** Non-judgmental product identity facts used by compiler-time fidelity
+   * checks and labelled before any LLM boundary. */
+  products?: Array<{
+    productId: string;
+    name: string | null;
+    brand: string | null;
+    referenceImageUrls: string[];
+    referenceImageAssetIds: string[];
+  }>;
   /** Approved/known claim strings + their source + status, from claimResolutionsJson. */
   claimResolutions: Array<{ claim: string; source: string; status: ClaimRecord["status"] }>;
   /** Latest price/promotion facts stamped at generation time (spec §11). */

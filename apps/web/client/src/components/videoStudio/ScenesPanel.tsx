@@ -22,8 +22,9 @@
  * violation of that rule.
  */
 import { useEffect, useRef, useState } from "react";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, Plus, Sparkles, Trash2 } from "lucide-react";
 
+import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
@@ -32,6 +33,7 @@ import { IconButton } from "@astryxdesign/core/IconButton";
 import { HStack, VStack } from "@astryxdesign/core/Layout";
 import { NumberInput } from "@astryxdesign/core/NumberInput";
 import { Selector } from "@astryxdesign/core/Selector";
+import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { trpc } from "@/lib/trpc";
 import type { Scene, VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
@@ -45,6 +47,37 @@ function nextSceneId(scenes: Scene[]): string {
   const existing = new Set(scenes.map((s) => s.sceneId));
   while (existing.has(`scene-${n}`)) n += 1;
   return `scene-${n}`;
+}
+
+/** Recomputes `startMs`/`endMs` sequentially from each scene's own duration
+ *  (`endMs - startMs`) so reordering/duplicating/deleting never leaves gaps
+ *  or overlaps behind for the user to hand-fix. Each scene's duration is
+ *  preserved exactly; only its position on the timeline shifts. */
+function resequenceScenes(scenes: Scene[]): Scene[] {
+  let cursor = 0;
+  return scenes.map((scene) => {
+    const duration = Math.max(0, scene.endMs - scene.startMs);
+    const resequenced = { ...scene, startMs: cursor, endMs: cursor + duration };
+    cursor += duration;
+    return resequenced;
+  });
+}
+
+/** A scene is "empty" (safe to delete without confirmation) only if it has
+ *  no narration text, no caption cues, and no non-default visual/layers
+ *  configured yet. Anything else is real authored content and must be
+ *  confirmed before deletion (spec: safe delete). */
+function hasSceneContent(scene: Scene): boolean {
+  const hasNarration = Boolean(scene.narration && scene.narration.trim().length > 0);
+  const hasCaptions = scene.captionCues.length > 0;
+  const hasVisual = scene.visual.kind !== "layers" || scene.layers.length > 0;
+  return hasNarration || hasCaptions || hasVisual;
+}
+
+function narrationExcerpt(lang: VideoStudioLang, narration: string | null): string {
+  const trimmed = narration?.trim() ?? "";
+  if (!trimmed) return pickCopy(lang, videoStudioCopy.sceneNarrationEmpty);
+  return trimmed.length > 80 ? `${trimmed.slice(0, 80)}…` : trimmed;
 }
 
 type ScenePlanMode = "fill_empty" | "replace";
@@ -85,6 +118,7 @@ export function ScenesPanel({
   const [estimateOpen, setEstimateOpen] = useState(false);
   const [mode, setMode] = useState<ScenePlanMode>("fill_empty");
   const handledJobId = useRef<string | null>(null);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
   const estimateQuery = trpc.videoProjects.getStageEstimate.useQuery(
     { projectId, stage: "scene_plan" },
@@ -143,14 +177,68 @@ export function ScenesPanel({
     });
   }
 
-  function removeScene(index: number) {
+  function performRemoveScene(index: number) {
+    const scenes = resequenceScenes(document.scenes.filter((_, i) => i !== index));
+    onChange({ ...document, scenes });
+  }
+
+  /** One-click delete for empty scenes; scenes with authored content require
+   *  the `AlertDialog` confirmation below (spec: safe delete). */
+  function requestRemoveScene(index: number) {
     if (document.scenes.length <= 1) return;
-    onChange({ ...document, scenes: document.scenes.filter((_, i) => i !== index) });
+    if (hasSceneContent(document.scenes[index])) {
+      setDeleteIndex(index);
+      return;
+    }
+    performRemoveScene(index);
+  }
+
+  function moveScene(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= document.scenes.length) return;
+    const scenes = [...document.scenes];
+    const tmp = scenes[index];
+    scenes[index] = scenes[target];
+    scenes[target] = tmp;
+    onChange({ ...document, scenes: resequenceScenes(scenes) });
+  }
+
+  /** Copies narration, visual/template params, layers, motion, and caption
+   *  cues, but deliberately drops `narrationAudioAssetId` — the duplicate
+   *  has no voice-over of its own until TTS runs for it. Inserted right
+   *  after the source scene, then the whole timeline is re-sequenced. */
+  function duplicateScene(index: number) {
+    const source = document.scenes[index];
+    const duplicate: Scene = {
+      ...source,
+      sceneId: nextSceneId(document.scenes),
+      narrationAudioAssetId: null,
+    };
+    const scenes = [...document.scenes];
+    scenes.splice(index + 1, 0, duplicate);
+    const resequenced = resequenceScenes(scenes);
+    const newDurationMs = resequenced[resequenced.length - 1]?.endMs ?? document.format.durationMs;
+    onChange({
+      ...document,
+      scenes: resequenced,
+      format: { ...document.format, durationMs: Math.max(document.format.durationMs, newDurationMs) },
+    });
   }
 
   const blockedReason = hasUnsavedChanges
     ? { title: pickCopy(lang, videoStudioCopy.unsavedChanges), body: pickCopy(lang, videoStudioCopy.saveBeforeRunning) }
-    : null;
+    : mode === "fill_empty" &&
+        document.scenes.length > 0 &&
+        !document.scenes.some(
+          scene =>
+            scene.visual.kind === "layers" &&
+            (scene.narration === null || scene.narration.trim().length === 0),
+        )
+      ? {
+          title: pickCopy(lang, videoStudioCopy.scenePlanAlreadyReady),
+          body: pickCopy(lang, videoStudioCopy.scenePlanAlreadyReadyBody),
+        }
+      : null;
 
   const destructive =
     mode === "replace"
@@ -207,16 +295,54 @@ export function ScenesPanel({
       {document.scenes.map((scene, index) => (
         <Card key={scene.sceneId} data-testid={`video-studio-scene-${scene.sceneId}`}>
           <VStack gap={3}>
-            <HStack justify="between" align="center" gap={2}>
-              <Heading level={4}>{scene.sceneId}</Heading>
-              <IconButton
-                variant="ghost"
-                size="sm"
-                icon={<Trash2 className="h-4 w-4" />}
-                label={pickCopy(lang, videoStudioCopy.removeScene)}
-                isDisabled={document.scenes.length <= 1}
-                onClick={() => removeScene(index)}
-              />
+            <HStack justify="between" align="start" gap={2}>
+              <VStack gap={0}>
+                <Heading level={4}>
+                  {pickCopy(lang, videoStudioCopy.sceneCardTitle)} {index + 1}
+                </Heading>
+                <Text type="supporting" color="secondary">
+                  {scene.sceneId}
+                </Text>
+                <Text type="supporting" color="secondary">
+                  {narrationExcerpt(lang, scene.narration)}
+                </Text>
+              </VStack>
+              <HStack gap={1} align="center">
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  icon={<ArrowUp className="h-4 w-4" />}
+                  label={pickCopy(lang, videoStudioCopy.sceneMoveUp)}
+                  isDisabled={index === 0}
+                  onClick={() => moveScene(index, -1)}
+                  data-testid={`video-studio-scene-move-up-${scene.sceneId}`}
+                />
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  icon={<ArrowDown className="h-4 w-4" />}
+                  label={pickCopy(lang, videoStudioCopy.sceneMoveDown)}
+                  isDisabled={index === document.scenes.length - 1}
+                  onClick={() => moveScene(index, 1)}
+                  data-testid={`video-studio-scene-move-down-${scene.sceneId}`}
+                />
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  icon={<Copy className="h-4 w-4" />}
+                  label={pickCopy(lang, videoStudioCopy.sceneDuplicate)}
+                  onClick={() => duplicateScene(index)}
+                  data-testid={`video-studio-scene-duplicate-${scene.sceneId}`}
+                />
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  icon={<Trash2 className="h-4 w-4" />}
+                  label={pickCopy(lang, videoStudioCopy.removeScene)}
+                  isDisabled={document.scenes.length <= 1}
+                  onClick={() => requestRemoveScene(index)}
+                />
+              </HStack>
             </HStack>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <NumberInput
@@ -242,12 +368,33 @@ export function ScenesPanel({
           </VStack>
         </Card>
       ))}
-      <Button
-        variant="secondary"
-        icon={<Plus className="h-4 w-4" />}
-        label={pickCopy(lang, videoStudioCopy.addScene)}
-        onClick={addScene}
-        className="self-start"
+      <VStack gap={1} align="start">
+        <Button
+          variant="secondary"
+          icon={<Plus className="h-4 w-4" />}
+          label={pickCopy(lang, videoStudioCopy.addScene)}
+          onClick={addScene}
+          className="self-start"
+        />
+        <Text type="supporting" color="secondary">
+          {pickCopy(lang, videoStudioCopy.addSceneHelper)}
+        </Text>
+      </VStack>
+
+      <AlertDialog
+        isOpen={deleteIndex != null}
+        onOpenChange={(open) => !open && setDeleteIndex(null)}
+        title={pickCopy(lang, videoStudioCopy.sceneDeleteTitle)}
+        description={pickCopy(lang, videoStudioCopy.sceneDeleteConfirm)}
+        actionLabel={pickCopy(lang, videoStudioCopy.sceneDeleteAction)}
+        actionVariant="destructive"
+        data-testid="scene-delete-confirm"
+        onAction={() => {
+          if (deleteIndex != null) {
+            performRemoveScene(deleteIndex);
+            setDeleteIndex(null);
+          }
+        }}
       />
     </div>
   );

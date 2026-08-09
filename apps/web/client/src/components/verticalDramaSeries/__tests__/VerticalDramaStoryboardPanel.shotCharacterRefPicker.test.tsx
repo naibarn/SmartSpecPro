@@ -125,6 +125,38 @@ describe("VerticalDramaStoryboardPanel — per-shot character reference picker (
     expect(onSet).toHaveBeenCalledWith(1, ["hero", "hero-twin"]);
   });
 
+  it("edits phone callers separately from the physical scene cast", () => {
+    const onSetCaller = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onSetShotScreenCallerReferences: onSetCaller,
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a prompt",
+                requiredCharacterRefs: ["hero"],
+                screenCallerCharacterRefs: ["hero-twin"],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+    fireEvent.click(screen.getByTestId("vd-storyboard-screen-caller-edit-1"));
+    expect(screen.getByText("กำหนด Caller ทางโทรศัพท์")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("vd-storyboard-character-ref-option-1-hero-twin")
+    );
+    fireEvent.click(
+      screen.getByTestId(
+        "vd-storyboard-character-ref-picker-save-1-screen_caller"
+      )
+    );
+    expect(onSetCaller).toHaveBeenCalledWith(1, []);
+  });
+
   it("an unchecked-then-saved selection sends an empty array (explicit clear)", () => {
     const onSet = vi.fn();
     render(

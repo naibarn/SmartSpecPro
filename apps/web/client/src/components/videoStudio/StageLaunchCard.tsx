@@ -22,7 +22,7 @@ import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { VStack } from "@astryxdesign/core/Layout";
 import { Text } from "@astryxdesign/core/Text";
-import { pickCopy, renderableJobError, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
+import { describeViError, pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
 
 interface StageJobStatusLike {
   status: "queued" | "running" | "succeeded" | "failed";
@@ -92,7 +92,7 @@ export function StageLaunchCard({
             status="error"
             data-testid={`${testId}-error`}
             title={pickCopy(lang, videoStudioCopy.stageFailedTitle)}
-            description={renderableJobError(lang, jobStatus.error)}
+            description={describeViError(lang, jobStatus.error)}
           />
         ) : null}
 

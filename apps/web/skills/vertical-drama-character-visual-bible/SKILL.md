@@ -1452,8 +1452,10 @@ Good example (support — no forced glamour):
 > "portrait of a friendly middle-aged shopkeeper, natural weathered features, warm
 > approachable expression, simple apron"
 
-Keep every prompt within the shared image-prompt length budget (≤3800 characters) — add
-the archetype language concisely; do not pad with repeated adjectives.
+Keep every prompt within the caller-supplied image-prompt length budget — Kie.ai image
+models may use up to 20,000 characters; when no larger budget is supplied, use the
+legacy 3,800-character fallback. Add archetype language concisely; do not pad with
+repeated adjectives.
 
 ## Face reference locking — MANDATORY when `face_source_reference` is provided
 

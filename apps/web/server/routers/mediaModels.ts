@@ -13,6 +13,8 @@ import { clearModelCache } from "../services/modelRegistry";
 import { getStaticFallbackModels, getStaticModelById } from "../services/modelRegistry";
 import { resolveVerticalDramaCapabilities, deriveModelResolutionOptions } from "../services/modelRegistry";
 import { clearSkillRegistryCache } from "../services/skillRegistry";
+import { suggestModel } from "./modelSuggestTool";
+import { getModelsByTypeAsync } from "../services/modelRegistry";
 import { decrypt } from "../services/crypto";
 import {
   normalizeMediaProviderName,
@@ -542,8 +544,16 @@ export const mediaModelsRouter = router({
           };
         });
       } catch (error: any) {
-        console.warn("[MediaModels] List query failed:", error.message);
-        return [];
+        // Same rule as the public `list` below: a failure must NOT be
+        // reported as an empty catalog. An admin looking at a silently-empty
+        // model list is one click away from re-seeding or pruning a catalog
+        // that was never actually missing.
+        console.error("[MediaModels] List query failed:", error?.message);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to load media models",
+          cause: error,
+        });
       }
     }),
 
@@ -613,8 +623,13 @@ export const mediaModelsRouter = router({
             || a.name.localeCompare(b.name)
           ));
       } catch (error: any) {
-        console.warn("[MediaModels] Template query failed:", error.message);
-        return [];
+        // See `list`'s catch — never render a failure as "no templates".
+        console.error("[MediaModels] Template query failed:", error?.message);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to load media model templates",
+          cause: error,
+        });
       }
     }),
 
@@ -1011,14 +1026,15 @@ export const mediaModelsRouter = router({
         providers: [...new Set(models.map((m: (typeof models)[number]) => m.provider))],
       };
     } catch (error: any) {
-      console.warn("[MediaModels] Stats query failed:", error.message);
-      return {
-        total: 0,
-        enabled: 0,
-        unavailable: 0,
-        byType: { image: 0, video: 0, audio: 0 },
-        providers: [],
-      };
+      // Never report a failure as all-zero counters — a dashboard reading
+      // "0 models, 0 enabled" is indistinguishable from a wiped catalog and
+      // has previously prompted destructive "fix-up" actions.
+      console.error("[MediaModels] Stats query failed:", error?.message);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to load media model stats",
+        cause: error,
+      });
     }
   }),
 
@@ -1179,10 +1195,154 @@ export const mediaModelsRouter = router({
           providers,
         };
       } catch (error: any) {
-        console.warn("[MediaModels] Public list query failed:", error.message);
-        return { models: [], providers: [] };
+        // Never report a FAILURE as an empty catalog. Returning
+        // `{ models: [] }` with a 200 here made a DB timeout / pool
+        // exhaustion indistinguishable from "this tenant has no models":
+        // TanStack sees `isError: false, isLoading: false`, caches the empty
+        // result and never retries, and every one of the 17 client call sites
+        // renders a model picker with nothing to choose and no error state.
+        // Surfacing the error lets the query retry and lets each UI show its
+        // own loading/error affordance instead.
+        console.error("[MediaModels] Public list query failed:", error?.message);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to load media models",
+          cause: error,
+        });
       }
     }),
+
+  /**
+   * Small, task-scoped model set for authoring surfaces.  The media model
+   * catalog is intentionally not exposed here: the editor should offer the
+   * admin-recommended shortlist only, with its default chosen by cost within
+   * that shortlist.
+   */
+  listRecommendedImageModels: protectedProcedure.query(async () => {
+    const suggestion = await suggestModel("image", "balanced");
+    const recommendedIds = [
+      suggestion.recommended?.model_id,
+      ...suggestion.alternatives.map((model) => model.model_id),
+    ].filter((modelId): modelId is string => Boolean(modelId));
+    const rows = await getModelsByTypeAsync("image");
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const models = recommendedIds
+      .map((modelId) => {
+        const row = byId.get(modelId);
+        if (!row) return null;
+        return {
+          modelId: row.id,
+          name: row.name,
+          provider: row.provider,
+          description: row.description,
+          creditCost: row.creditCost,
+        };
+      })
+      .filter((model): model is NonNullable<typeof model> => model !== null)
+      .sort((a, b) => a.creditCost - b.creditCost || a.modelId.localeCompare(b.modelId));
+
+    return {
+      models: models.map((model, index) => ({ ...model, isDefault: index === 0 })),
+    };
+  }),
+
+  /**
+   * Video Studio image-to-video picker. Keep this deliberately parallel to
+   * the image picker: only the model-suggest shortlist is exposed, and the
+   * cheapest model inside that shortlist is the automatic default.
+   */
+  listRecommendedVideoModels: protectedProcedure.query(async () => {
+    const suggestion = await suggestModel("video", "balanced");
+    const recommendedIds = [
+      suggestion.recommended?.model_id,
+      ...suggestion.alternatives.map((model) => model.model_id),
+    ].filter((modelId): modelId is string => Boolean(modelId));
+    const rows = await getModelsByTypeAsync("video");
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const models = recommendedIds
+      .map((modelId) => {
+        const row = byId.get(modelId);
+        if (!row) return null;
+        return {
+          modelId: row.id,
+          name: row.name,
+          provider: row.provider,
+          description: row.description,
+          creditCost: row.creditCost,
+          durations: row.durations ?? [],
+          aspectRatios: row.aspectRatios ?? [],
+          configJson: row.configJson ?? null,
+        };
+      })
+      .filter((model): model is NonNullable<typeof model> => model !== null)
+      .sort((a, b) => a.creditCost - b.creditCost || a.modelId.localeCompare(b.modelId));
+
+    return {
+      models: models.map((model, index) => ({ ...model, isDefault: index === 0 })),
+    };
+  }),
+
+  /**
+   * Video Studio TTS catalog. The recommended set is kept at the top, but
+   * every enabled text-to-speech/dialogue model remains selectable so a
+   * provider tier such as UVoice Standard/Natural/Premium is not hidden just
+   * because its catalog priority is lower than the first four suggestions.
+   * Music, SFX, transcription, voice-changing, and voice-isolation models
+   * are excluded because they cannot narrate a scene script.
+   */
+  listRecommendedAudioModels: protectedProcedure.query(async () => {
+    const suggestion = await suggestModel("audio", "balanced");
+    const recommendedIds = [
+      suggestion.recommended?.model_id,
+      ...suggestion.alternatives.map((model) => model.model_id),
+    ].filter((modelId): modelId is string => Boolean(modelId));
+    const rows = await getModelsByTypeAsync("audio");
+    const recommendedIdSet = new Set(recommendedIds);
+    const ttsModels = rows.filter((model) => {
+      const id = model.id.toLowerCase();
+      const name = model.name.toLowerCase();
+      const config = model.configJson as Record<string, unknown> | null | undefined;
+      const generateType = String(config?.generateType ?? "").toLowerCase();
+      const fields = Array.isArray(config?.inputFields)
+        ? config.inputFields as Array<Record<string, unknown>>
+        : [];
+      const hasVoiceField = fields.some((field) => String(field.key ?? "").toLowerCase().includes("voice"));
+      const speechSignal = /(tts|text[-_ ]to[-_ ]speech|text[-_ ]to[-_ ]dialogue|dialogue)/i.test(
+        `${id} ${name} ${generateType}`,
+      );
+      const excludedAudioTool = /(sound|sfx|music|effect|speech[-_ ]to[-_ ]text|voice[-_ ]?(changer|isolat))/i.test(
+        `${id} ${name} ${generateType}`,
+      );
+      return !excludedAudioTool && (speechSignal || hasVoiceField || (model.voices?.length ?? 0) > 0);
+    });
+    const compareCost = (a: (typeof ttsModels)[number], b: (typeof ttsModels)[number]) =>
+      a.creditCost - b.creditCost || (a.priority ?? 99) - (b.priority ?? 99) || a.id.localeCompare(b.id);
+    const models = [...ttsModels].sort((a, b) => {
+      const aRecommended = recommendedIdSet.has(a.id);
+      const bRecommended = recommendedIdSet.has(b.id);
+      if (aRecommended !== bRecommended) return aRecommended ? -1 : 1;
+      return aRecommended
+        ? compareCost(a, b)
+        : (a.priority ?? 99) - (b.priority ?? 99) || a.creditCost - b.creditCost || a.id.localeCompare(b.id);
+    });
+    const defaultModel = ttsModels
+      .filter((model) => recommendedIdSet.has(model.id))
+      .sort(compareCost)[0] ?? ttsModels.slice().sort(compareCost)[0];
+
+    return {
+      models: models.map((model) => ({
+        modelId: model.id,
+        name: model.name,
+        provider: model.provider,
+        description: model.description,
+        creditCost: model.creditCost,
+        voices: model.voices ?? [],
+        configJson: model.configJson ?? null,
+        isRecommended: recommendedIdSet.has(model.id),
+        isDefault: model.id === defaultModel?.id,
+      })),
+    };
+  }),
 
   /**
    * Get available providers
@@ -1195,7 +1355,13 @@ export const mediaModelsRouter = router({
 
       return result.map((r: (typeof result)[number]) => r.provider);
     } catch (error: any) {
-      return [];
+      // Was a completely silent swallow (no log, no signal) — see `list`.
+      console.error("[MediaModels] Providers query failed:", error?.message);
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to load media providers",
+        cause: error,
+      });
     }
   }),
 });

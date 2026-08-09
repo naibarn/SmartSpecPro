@@ -454,7 +454,7 @@ describe("generateShotStartFramePrompt", () => {
       }),
     });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
     });
@@ -543,7 +543,7 @@ describe("generateShotStartFramePrompt", () => {
       set: vi.fn(() => updateChain([episodeRow])),
     });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
     });
@@ -576,7 +576,7 @@ describe("generateShotStartFramePrompt", () => {
       set: vi.fn(() => updateChain([episodeRow])),
     });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -618,7 +618,7 @@ describe("generateShotStartFramePrompt", () => {
       }),
     });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -664,7 +664,7 @@ describe("generateShotStartFramePrompt", () => {
       }),
     });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -725,7 +725,7 @@ describe("generateShotStartFramePrompt", () => {
       }
     );
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
@@ -762,7 +762,7 @@ describe("generateShotStartFramePrompt", () => {
       }),
     });
 
-    const result = await router.generateShotStartFramePrompt({
+    const result = await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -837,8 +837,9 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(
         selectChain([
           { characterKey: "hero", name: "Hero Name", role: "protagonist", data: { description: "a sharp lawyer" } },
+          { characterKey: "prang", name: "ปราง", role: "supporting", data: {} },
         ]),
-      ) // resolveShotCharacterIdentitySources
+      ) // resolveShotCharacterPromptRoster (selected hero + excluded ปราง)
       .mockReturnValueOnce(
         selectChain([{ id: 5, name: "Hero Name", characterKey: "hero" }]),
       ) // resolveShotCharacterReferenceEntries's characterRows query
@@ -848,7 +849,7 @@ describe("generateShotStartFramePrompt", () => {
 
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -869,6 +870,7 @@ describe("generateShotStartFramePrompt", () => {
         currentPrompt: "a hero standing in the rain",
         currentNegativePrompt: "no blur",
         requiredCharacterRefs: ["hero"],
+        excludedVisualCharacterNames: ["ปราง"],
         characters: [
           expect.objectContaining({
             characterKey: "hero",
@@ -878,7 +880,7 @@ describe("generateShotStartFramePrompt", () => {
           }),
         ],
         characterReferenceManifest: [
-          { index: 1, characterId: null, name: "Hero Name" },
+          { index: 1, characterId: null, name: "Hero Name", presence: "scene" },
         ],
         targetAudienceRegion: "thai",
         productLock: {
@@ -934,7 +936,7 @@ describe("generateShotStartFramePrompt", () => {
 
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
     });
@@ -945,8 +947,8 @@ describe("generateShotStartFramePrompt", () => {
     expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
       expect.objectContaining({
         characterReferenceManifest: [
-          { index: 1, characterId: null, name: "Hero Name" },
-          { index: 2, characterId: null, name: "Villain Name" },
+          { index: 1, characterId: null, name: "Hero Name", presence: "scene" },
+          { index: 2, characterId: null, name: "Villain Name", presence: "scene" },
         ],
       }),
     );
@@ -965,7 +967,7 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
-      router.generateShotStartFramePrompt({
+      router.executeShotStartFramePromptJob({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
       }),
@@ -983,7 +985,7 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
-      router.generateShotStartFramePrompt({
+      router.executeShotStartFramePromptJob({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
       }),
@@ -1001,7 +1003,7 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
-      router.generateShotStartFramePrompt({
+      router.executeShotStartFramePromptJob({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
       }),
@@ -1019,7 +1021,7 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
-      router.generateShotStartFramePrompt({
+      router.executeShotStartFramePromptJob({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
       }),
@@ -1035,7 +1037,7 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
-      router.generateShotStartFramePrompt({
+      router.executeShotStartFramePromptJob({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
       }),
@@ -1050,7 +1052,7 @@ describe("generateShotStartFramePrompt", () => {
       .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -1087,7 +1089,7 @@ describe("generateShotStartFramePrompt", () => {
       }),
     });
 
-    const result = await router.generateShotStartFramePrompt({
+    const result = await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
     });
@@ -1131,7 +1133,7 @@ describe("generateShotStartFramePrompt", () => {
       return fn(tx);
     });
 
-    await router.generateShotStartFramePrompt({
+    await router.executeShotStartFramePromptJob({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
     });
@@ -1180,6 +1182,7 @@ describe("generateShotReferenceFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // selected image-model prompt budget
       .mockReturnValueOnce(selectChain([{ characterKey: "hero" }])); // roster query — only "hero" exists
 
     await expect(
@@ -1220,6 +1223,7 @@ describe("generateShotReferenceFramePrompt", () => {
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // selected image-model prompt budget
       .mockReturnValueOnce(
         selectChain([{ characterKey: "hero" }, { characterKey: "villain" }]),
       ) // roster validation query
@@ -1288,6 +1292,98 @@ describe("generateShotReferenceFramePrompt", () => {
     expect(mockDb.transaction).not.toHaveBeenCalled();
   });
 
+  it("uses and persists an independent View 2 prompt for Dual View", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "VIEW 1 ONLY: ไอริณอยู่ในห้องเก็บของ",
+            negativePrompt: "view 1 negative",
+            requiredCharacterRefs: ["hero"],
+            productReferenceAssetIds: [],
+            barrierMultiView: {
+              enabled: true,
+              scenario: "physical_barrier",
+              barrierType: "closed_door",
+              relation: "same_establishment_adjacent_spaces",
+              startView: {
+                side: "inside",
+                characterRefs: ["hero"],
+                locationKey: "",
+              },
+              referenceView: {
+                side: "outside",
+                characterRefs: ["villain"],
+                locationKey: "",
+                imagePrompt: "VIEW 2 OLD: กฤตอยู่หน้าประตู",
+                negativePrompt: "view 2 negative",
+              },
+              dialogueSideMap: { hero: "inside", villain: "outside" },
+            },
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ characterKey: "villain" }]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 2, name: "Villain", characterKey: "villain" }]),
+      )
+      .mockReturnValueOnce(
+        selectChain([
+          { characterKey: "villain", name: "Villain", role: "antagonist", data: {} },
+        ]),
+      );
+    mockGetPrimaryPortraitUrl.mockResolvedValueOnce("https://cdn/villain.png");
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([episodeRow]);
+      }),
+    });
+    mockDb.transaction.mockImplementationOnce(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        select: () => selectChain([{ startFramePlan: episodeRow.startFramePlan }]),
+        update: (...args: unknown[]) => (mockDb.update as any)(...args),
+      };
+      return fn(tx);
+    });
+
+    await router.generateShotReferenceFramePrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterKeys: ["villain"],
+        instruction: "กฤตตะโกนผ่านประตู",
+      },
+    });
+
+    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentPrompt: "VIEW 2 OLD: กฤตอยู่หน้าประตู",
+        currentNegativePrompt: "view 2 negative",
+      }),
+    );
+    expect(capturedSet.startFramePlan.frames[0].imagePrompt).toBe(
+      "VIEW 1 ONLY: ไอริณอยู่ในห้องเก็บของ",
+    );
+    expect(
+      capturedSet.startFramePlan.frames[0].barrierMultiView.referenceView,
+    ).toMatchObject({
+      imagePrompt: "regenerated start-frame prompt",
+      negativePrompt: "regenerated negative prompt",
+    });
+  });
+
   it("maps a VdReferenceMappingError (still-contradictory prompt after one corrective retry) to a PRECONDITION_FAILED TRPCError, and never persists", async () => {
     mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
       new MockVdReferenceMappingError("reference mapping still contradicts the manifest", [
@@ -1297,6 +1393,7 @@ describe("generateShotReferenceFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // selected image-model prompt budget
       .mockReturnValueOnce(selectChain([{ characterKey: "hero" }])) // roster validation
       .mockReturnValueOnce(
         selectChain([{ id: 1, name: "Hero Name", characterKey: "hero" }]),

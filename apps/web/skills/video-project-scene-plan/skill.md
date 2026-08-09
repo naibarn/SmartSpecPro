@@ -31,7 +31,7 @@ prose is allowed only inside `rationale` and `summary`.
 
 ## Inputs you receive
 
-- `brief` — topic, audience, language, platform preset, and studio type
+- `brief` — topic, audience, optional user notes, optional `motionStyle`, language, platform preset, and studio type
   (`catalog` for a product-driven project, `motion` for a general one).
 - `format` — width, height, fps, and total `durationMs` for the whole project.
 - `aspectRatio` — derived from `format`; use it to filter which templates are
@@ -65,6 +65,27 @@ prose is allowed only inside `rationale` and `summary`.
   colors/fonts are resolved by the compiler at render time from the
   project's own brand kit, never by you — do not write brand values into
   `templateParams`.
+
+When the input contains several blank scene slots for a content draft, plan
+across all of them. Use the topic and `brief.notes` to make the beats
+progressive: hook, context/product introduction, demonstrations or benefits,
+proof/decision support, and a clear closing takeaway or CTA. Do not collapse a
+multi-beat brief into one scene merely because one template could technically
+fit the whole video.
+
+Use `brief.motionStyle` as a high-level direction while keeping the actual
+template choice grounded in the content:
+
+- `text_graphics` — prefer kinetic typography, feature cards, data flow, or animated charts when they fit the beat.
+- `data_story` — prefer charts, comparisons, steps, and diagrams for measurable or explanatory content.
+- `image_story` — prefer product hero, galleries, reviews, and visual-led templates when real media facts are available.
+- `minimal` — prefer lower-cost templates with restrained motion and let the narration carry the story.
+- `auto` or missing — choose the best combination from the beat's information shape.
+
+The renderer is Remotion-based: template layers can be timed with sequences,
+staggered, faded, scaled, or animated as text, SVG, symbols, and charts. Plan
+those primitives to reinforce the spoken point; do not add decorative motion
+that does not serve the narration.
 
 ## Matching the information shape of a beat to a template
 

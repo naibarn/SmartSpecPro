@@ -136,6 +136,17 @@ def _iter_provider_extra_params(extra_params: Any):
         yield key, value
 
 
+def _first_extra_param(extra_params: Any, *keys: str) -> Any:
+    """Read the first present key from a catalog-driven extra_params payload."""
+    if not isinstance(extra_params, dict):
+        return None
+    for key in keys:
+        value = extra_params.get(key)
+        if value is not None:
+            return value
+    return None
+
+
 def _get_api_config_value(api_config: dict[str, Any] | None, *keys: str) -> str | None:
     """Read a string value from api_config supporting snake_case and camelCase keys."""
     if not isinstance(api_config, dict):
@@ -146,6 +157,27 @@ def _get_api_config_value(api_config: dict[str, Any] | None, *keys: str) -> str 
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _get_api_config_str_list(api_config: dict[str, Any] | None, *keys: str) -> list[str]:
+    """Read a list-of-strings value from api_config (snake_case or camelCase).
+
+    `_get_api_config_value` deliberately returns only strings, so list-valued
+    settings such as `drop_params` need their own reader. A bare string is
+    accepted as a one-element list.
+    """
+    if not isinstance(api_config, dict):
+        return []
+
+    for key in keys:
+        value = api_config.get(key)
+        if value is None:
+            continue
+        items = value if isinstance(value, list) else [value]
+        normalized = [str(item).strip() for item in items if isinstance(item, str) and str(item).strip()]
+        if normalized:
+            return normalized
+    return []
 
 
 def _get_api_config_bool(api_config: dict[str, Any] | None, *keys: str) -> bool:
@@ -354,6 +386,305 @@ def _resolve_reference_video_input_config(
         )
     ) or "array"
     return key, input_type
+
+
+def _resolve_reference_audio_input_config(
+    api_config: dict[str, Any] | None,
+    *,
+    default_key: str,
+) -> tuple[str, str]:
+    key = _get_api_config_value(
+        api_config,
+        "reference_audio_input_key",
+        "referenceAudioInputKey",
+        "reference_audio_key",
+        "referenceAudioKey",
+    ) or default_key
+    input_type = _normalize_reference_image_input_type(
+        _get_api_config_value(
+            api_config,
+            "reference_audio_input_type",
+            "referenceAudioInputType",
+            "reference_audio_type",
+            "referenceAudioType",
+        )
+    ) or "array"
+    return key, input_type
+
+
+def _resolve_reference_overflow_keys(
+    api_config: dict[str, Any] | None,
+    *,
+    subject: str,
+) -> list[str]:
+    """Extra payload keys that receive reference URLs 2..N in `url` mode.
+
+    Providers that take an ordered pair of single-URL fields (minimax-h3's
+    ``first_frame_url`` / ``last_frame_url``) can consume the Studio's ordered
+    reference list without a bespoke code path: index 0 lands on the primary key
+    and each subsequent index lands on the next overflow key. Indices beyond the
+    configured keys are dropped, which is the pre-existing behavior for `url`.
+    """
+    return _get_api_config_str_list(
+        api_config,
+        f"reference_{subject}_overflow_keys",
+        f"reference{subject.capitalize()}OverflowKeys",
+    )
+
+
+def _apply_reference_urls_to_input(
+    input_params: dict[str, Any],
+    urls: list[Any],
+    *,
+    key: str,
+    input_type: str,
+    overflow_keys: list[str] | None = None,
+) -> None:
+    """Write a reference URL list onto ``input_params`` in the configured shape."""
+    if not urls:
+        return
+
+    if input_type == "url":
+        input_params[key] = urls[0]
+        for offset, overflow_key in enumerate(overflow_keys or []):
+            index = offset + 1
+            if index < len(urls):
+                input_params[overflow_key] = urls[index]
+        return
+
+    if input_type == "object_array":
+        input_params[key] = _normalize_reference_video_object_list(urls)
+        return
+
+    input_params[key] = urls
+
+
+# ---------------------------------------------------------------------------
+# Declarative mode routing (`apiConfig.modes`)
+#
+# Some providers expose one logical model as several endpoints with genuinely
+# different input contracts — minimax-h3 is `text-to-video`, `image-to-video`
+# (single-URL first/last frame, no `aspect_ratio` at all) and
+# `reference-to-video` (arrays of image/video/audio references). Serving those
+# from one catalog row needs more than the two-way, image-only
+# `kie_model_id_with_references` switch.
+#
+# `apiConfig.modes` is an ordered list of PARTIAL api_config overrides. The
+# first entry whose `when` predicate matches the shape of the attached
+# references wins, and its keys are layered over the base api_config. The rest
+# of the request builder then runs unchanged against the merged config, because
+# every downstream helper already reads its settings from api_config.
+#
+# A row without `modes` resolves to its api_config unchanged, so every existing
+# catalog row keeps byte-identical behavior.
+# ---------------------------------------------------------------------------
+
+_MODE_PREDICATE_SUBJECTS = {
+    "image": "images",
+    "images": "images",
+    "referenceimage": "images",
+    "referenceimages": "images",
+    "video": "videos",
+    "videos": "videos",
+    "referencevideo": "videos",
+    "referencevideos": "videos",
+    "audio": "audios",
+    "audios": "audios",
+    "referenceaudio": "audios",
+    "referenceaudios": "audios",
+}
+
+# Mode metadata that describes the mode rather than overriding api_config.
+_MODE_METADATA_KEYS = {"id", "when", "label", "notice", "description"}
+
+
+def normalize_reference_url_list(value: Any) -> list[str]:
+    """Flatten any reference input shape into a list of non-empty URL strings."""
+    if value is None:
+        return []
+
+    raw_items = value if isinstance(value, list) else [value]
+    urls: list[str] = []
+    for item in raw_items:
+        if isinstance(item, str):
+            cleaned = item.strip()
+            if cleaned:
+                urls.append(cleaned)
+            continue
+        if isinstance(item, dict):
+            candidate = (
+                item.get("url")
+                or item.get("video_url")
+                or item.get("videoUrl")
+                or item.get("image_url")
+                or item.get("audio_url")
+            )
+            if isinstance(candidate, str) and candidate.strip():
+                urls.append(candidate.strip())
+    return urls
+
+
+def count_reference_inputs(
+    *,
+    reference_image_urls: Any = None,
+    reference_video_urls: Any = None,
+    reference_audio_urls: Any = None,
+) -> dict[str, int]:
+    """Count the attached references that mode predicates are evaluated against."""
+    return {
+        "images": len(normalize_reference_url_list(reference_image_urls)),
+        "videos": len(normalize_reference_url_list(reference_video_urls)),
+        "audios": len(normalize_reference_url_list(reference_audio_urls)),
+    }
+
+
+def _mode_predicate_matches(when: Any, counts: dict[str, int]) -> bool:
+    """Evaluate a mode's `when` predicate. All declared bounds are AND-ed.
+
+    An absent/empty predicate is an unconditional match (catch-all). An
+    unparseable predicate fails closed — the mode is skipped and a warning is
+    logged, so a typo in catalog JSON degrades to the base config instead of
+    silently sending the wrong payload shape.
+    """
+    if when is None:
+        return True
+    if not isinstance(when, dict):
+        logger.warning("kie_ai_mode_predicate_invalid", predicate_type=type(when).__name__)
+        return False
+
+    for raw_key, raw_value in when.items():
+        key = re.sub(r"[^a-z0-9]", "", str(raw_key).lower())
+        if key.startswith("min"):
+            bound, raw_subject = "min", key[3:]
+        elif key.startswith("max"):
+            bound, raw_subject = "max", key[3:]
+        else:
+            logger.warning("kie_ai_mode_predicate_unknown_key", key=str(raw_key))
+            return False
+
+        subject = _MODE_PREDICATE_SUBJECTS.get(raw_subject)
+        if subject is None:
+            logger.warning("kie_ai_mode_predicate_unknown_subject", key=str(raw_key))
+            return False
+
+        try:
+            threshold = int(raw_value)
+        except (TypeError, ValueError):
+            logger.warning("kie_ai_mode_predicate_invalid_value", key=str(raw_key), value=str(raw_value))
+            return False
+
+        actual = counts.get(subject, 0)
+        if bound == "min" and actual < threshold:
+            return False
+        if bound == "max" and actual > threshold:
+            return False
+
+    return True
+
+
+def resolve_mode_api_config(
+    api_config: dict[str, Any] | None,
+    counts: dict[str, int],
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Layer the first matching `apiConfig.modes` entry over the base config.
+
+    Returns ``(merged_api_config, matched_mode_id)``. ``matched_mode_id`` is
+    None when the row declares no modes or none matched, in which case the
+    caller must fall back to its legacy resolution path.
+    """
+    if not isinstance(api_config, dict):
+        return api_config, None
+
+    raw_modes = api_config.get("modes")
+    if raw_modes is None:
+        raw_modes = api_config.get("apiModes")
+    if not isinstance(raw_modes, list) or not raw_modes:
+        return api_config, None
+
+    base = {key: value for key, value in api_config.items() if key not in {"modes", "apiModes"}}
+
+    for index, mode in enumerate(raw_modes):
+        if not isinstance(mode, dict):
+            logger.warning("kie_ai_mode_entry_invalid", index=index, entry_type=type(mode).__name__)
+            continue
+        if not _mode_predicate_matches(mode.get("when"), counts):
+            continue
+
+        merged = dict(base)
+        for key, value in mode.items():
+            if key in _MODE_METADATA_KEYS:
+                continue
+            merged[key] = value
+
+        mode_id = str(mode.get("id") or f"mode_{index}")
+        logger.info(
+            "kie_ai_mode_selected",
+            mode=mode_id,
+            reference_images=counts.get("images", 0),
+            reference_videos=counts.get("videos", 0),
+            reference_audios=counts.get("audios", 0),
+        )
+        return merged, mode_id
+
+    logger.info(
+        "kie_ai_mode_fell_through_to_base",
+        reference_images=counts.get("images", 0),
+        reference_videos=counts.get("videos", 0),
+        reference_audios=counts.get("audios", 0),
+    )
+    return base, None
+
+
+def resolve_generation_api_config(
+    model: str,
+    api_config: dict[str, Any] | None,
+    *,
+    media_type: str,
+    reference_image_urls: Any = None,
+    reference_video_urls: Any = None,
+    reference_audio_urls: Any = None,
+) -> tuple[dict[str, Any] | None, str, str | None]:
+    """Single entry point for "which endpoint and which payload shape".
+
+    Mode routing takes precedence; when no mode matches, image requests fall
+    back to the legacy two-way `kie_model_id_with_references` switch and video
+    requests to plain `resolve_api_model`, which is exactly today's behavior.
+
+    Returns ``(effective_api_config, api_model, matched_mode_id)``.
+    """
+    counts = count_reference_inputs(
+        reference_image_urls=reference_image_urls,
+        reference_video_urls=reference_video_urls,
+        reference_audio_urls=reference_audio_urls,
+    )
+    merged, mode_id = resolve_mode_api_config(api_config, counts)
+
+    if mode_id is not None:
+        return merged, resolve_api_model(model, merged), mode_id
+
+    if media_type == "image":
+        return merged, resolve_image_api_model(model, merged, reference_image_urls), None
+
+    return merged, resolve_api_model(model, merged), None
+
+
+def _apply_mode_drop_params(input_params: dict[str, Any], api_config: dict[str, Any] | None) -> None:
+    """Strip payload keys the selected mode's endpoint does not accept.
+
+    `omit_aspect_ratio` / `omit_duration` only suppress the builder's own
+    defaults and run BEFORE `extra_params` is merged, so a catalog `inputFields`
+    entry can put the key back. `drop_params` runs last and is the only way to
+    guarantee a key never reaches a mode-specific endpoint — minimax-h3's
+    image-to-video rejects `aspect_ratio` outright.
+    """
+    dropped: list[str] = []
+    for key in _get_api_config_str_list(api_config, "drop_params", "dropParams"):
+        if key in input_params:
+            input_params.pop(key, None)
+            dropped.append(key)
+
+    if dropped:
+        logger.info("kie_ai_mode_dropped_params", fields=dropped)
 
 
 def _is_4k_resolution(value: Any) -> bool:
@@ -1511,13 +1842,15 @@ class KieAIProvider:
         api_config = kwargs.pop("api_config", None)
         extra_params = kwargs.pop("extra_params", None)
 
-        # Determine API model name. Reference-driven variants are opt-in through
-        # catalog metadata, so unrelated Kie models keep their current behavior.
+        # Determine API model name and payload shape. Reference-driven variants
+        # are opt-in through catalog metadata, so unrelated Kie models keep their
+        # current behavior.
         reference_image_urls = kwargs.get("reference_image_urls")
-        api_model = resolve_image_api_model(
+        api_config, api_model, active_mode_id = resolve_generation_api_config(
             model,
             api_config,
-            reference_image_urls,
+            media_type="image",
+            reference_image_urls=reference_image_urls,
         )
 
         # Build input parameters for image generation
@@ -1554,10 +1887,13 @@ class KieAIProvider:
                     api_config,
                     default_key=_default_reference_image_key_for_model(api_model),
                 )
-                if reference_image_input_type == "url":
-                    input_params[reference_image_input_key] = ref_urls[0]
-                else:
-                    input_params[reference_image_input_key] = ref_urls
+                _apply_reference_urls_to_input(
+                    input_params,
+                    ref_urls,
+                    key=reference_image_input_key,
+                    input_type=reference_image_input_type,
+                    overflow_keys=_resolve_reference_overflow_keys(api_config, subject="image"),
+                )
                 logger.info(
                     "kie_ai_reference_images",
                     count=len(ref_urls),
@@ -1570,6 +1906,9 @@ class KieAIProvider:
         if kwargs.get("reference_style_url"):
             input_params["style_reference"] = kwargs["reference_style_url"]
             logger.info("kie_ai_style_reference", url=kwargs["reference_style_url"][:50])
+
+        # Last write wins: strip anything the selected mode's endpoint rejects.
+        _apply_mode_drop_params(input_params, api_config)
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
@@ -1584,6 +1923,7 @@ class KieAIProvider:
 
         logger.info("kie_ai_generate_image",
                     model=api_model,
+                    mode=active_mode_id,
                     has_callback=bool(callback_url),
                     has_api_config=bool(api_config),
                     callback_url=callback_url[:50] if callback_url else None)
@@ -1643,8 +1983,30 @@ class KieAIProvider:
         extra_params = kwargs.pop("extra_params", None)
         wait_for_completion = kwargs.pop("wait_for_completion", True)
 
-        # Determine API model name and endpoint
-        api_model = resolve_api_model(model, api_config)
+        # Reference URLs are collected up front because `apiConfig.modes` selects
+        # the endpoint AND the payload shape from how many of each are attached.
+        ref_video_urls = normalize_reference_url_list(kwargs.get("reference_video_urls")) + \
+            normalize_reference_url_list(kwargs.get("reference_video_url"))
+        ref_audio_urls = normalize_reference_url_list(kwargs.get("reference_audio_urls")) + \
+            normalize_reference_url_list(kwargs.get("reference_audio_url"))
+        if not ref_audio_urls:
+            # There is no studio-level "attach reference audio" channel yet, so
+            # audio arrives as a catalog `audio_urls` inputField in extra_params.
+            # Mode selection has to see it or an audio-only request would route
+            # to text-to-video and then have the audio key merged in anyway.
+            ref_audio_urls = normalize_reference_url_list(
+                _first_extra_param(extra_params, "reference_audio_urls", "audio_urls")
+            )
+
+        # Determine API model name, payload shape and endpoint
+        api_config, api_model, active_mode_id = resolve_generation_api_config(
+            model,
+            api_config,
+            media_type="video",
+            reference_image_urls=kwargs.get("reference_image_urls"),
+            reference_video_urls=ref_video_urls,
+            reference_audio_urls=ref_audio_urls,
+        )
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
         requested_resolution = kwargs.get("resolution")
         requires_veo_4k_postprocess = _is_4k_resolution(requested_resolution) and _is_veo_endpoint(api_endpoint)
@@ -1686,37 +2048,42 @@ class KieAIProvider:
                     api_config,
                     default_key="imageUrls" if is_veo_generation_request else "image_urls",
                 )
-                if reference_image_input_type == "url":
-                    input_params[reference_image_input_key] = ref_urls[0]
-                else:
-                    input_params[reference_image_input_key] = ref_urls
+                _apply_reference_urls_to_input(
+                    input_params,
+                    ref_urls,
+                    key=reference_image_input_key,
+                    input_type=reference_image_input_type,
+                    overflow_keys=_resolve_reference_overflow_keys(api_config, subject="image"),
+                )
 
         if is_veo_generation_request:
             _normalize_veo_generation_payload(input_params)
 
-        ref_video_urls: list[Any] = []
-        raw_ref_video_urls = kwargs.get("reference_video_urls")
-        raw_ref_video_url = kwargs.get("reference_video_url")
-        if isinstance(raw_ref_video_urls, list):
-            ref_video_urls.extend(raw_ref_video_urls)
-        if raw_ref_video_url:
-            ref_video_urls.append(raw_ref_video_url)
-        ref_video_urls = [
-            str(url).strip()
-            for url in ref_video_urls
-            if isinstance(url, str) and str(url).strip()
-        ]
         if ref_video_urls:
             reference_video_input_key, reference_video_input_type = _resolve_reference_video_input_config(
                 api_config,
                 default_key="video_urls",
             )
-            if reference_video_input_type == "url":
-                input_params[reference_video_input_key] = ref_video_urls[0]
-            elif reference_video_input_type == "object_array":
-                input_params[reference_video_input_key] = _normalize_reference_video_object_list(ref_video_urls)
-            else:
-                input_params[reference_video_input_key] = ref_video_urls
+            _apply_reference_urls_to_input(
+                input_params,
+                ref_video_urls,
+                key=reference_video_input_key,
+                input_type=reference_video_input_type,
+                overflow_keys=_resolve_reference_overflow_keys(api_config, subject="video"),
+            )
+
+        if ref_audio_urls:
+            reference_audio_input_key, reference_audio_input_type = _resolve_reference_audio_input_config(
+                api_config,
+                default_key="audio_urls",
+            )
+            _apply_reference_urls_to_input(
+                input_params,
+                ref_audio_urls,
+                key=reference_audio_input_key,
+                input_type=reference_audio_input_type,
+                overflow_keys=_resolve_reference_overflow_keys(api_config, subject="audio"),
+            )
 
         reference_video_input_key, reference_video_input_type = _resolve_reference_video_input_config(
             api_config,
@@ -1738,6 +2105,10 @@ class KieAIProvider:
                 input_params[reference_video_input_key] = first_video
             else:
                 input_params.pop(reference_video_input_key, None)
+
+        # Last write wins: strip anything the selected mode's endpoint rejects
+        # (minimax-h3/image-to-video has no `aspect_ratio` parameter at all).
+        _apply_mode_drop_params(input_params, api_config)
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
@@ -1783,7 +2154,7 @@ class KieAIProvider:
             include_record_id=True,
         )
 
-        logger.info("kie_ai_video_task_id_extracted", task_id=task_id, has_callback=bool(callback_url), will_poll=bool(wait_for_completion and not callback_url and task_id), wait_for_completion=bool(wait_for_completion), result_structure={
+        logger.info("kie_ai_video_task_id_extracted", task_id=task_id, model=api_model, mode=active_mode_id, has_callback=bool(callback_url), will_poll=bool(wait_for_completion and not callback_url and task_id), wait_for_completion=bool(wait_for_completion), result_structure={
             "has_taskId": "taskId" in result,
             "has_task_id": "task_id" in result,
             "has_recordId": "recordId" in result,

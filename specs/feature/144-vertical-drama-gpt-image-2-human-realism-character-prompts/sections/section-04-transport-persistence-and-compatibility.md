@@ -164,9 +164,19 @@ types change:
   The common sync and async Python payload builders use it as defense in depth:
   a trusted target request omits `negative_prompt` as a property, while direct
   legacy requests keep the existing mapping.
+- Target omission additionally validates the complete family/cap/profile tuple,
+  not only a marker/version string, before removing the provider field.
+- Added bounded target media audit telemetry and defense-in-depth redaction for
+  prompt, negative, and reference fields. The telemetry includes model/family,
+  profile, cap, prompt length, bounded retry count, omission flag, and contract
+  version without persisting prompt content.
+- Added Hermes/MCP property-absence tests, approved snapshot legacy/current
+  round-trip tests, and client candidate-retry model propagation coverage.
 - Vertical Drama portrait, candidate, and sheet gateway/MCP-facing requests
   now carry the marker/context only after the shared normalizer has completed;
   Hermes receives the already-normalized prompt and no negative field.
 - Approved snapshots and candidate visual-bible JSON retain optional legacy
   negative data and now accept optional prompt contract/profile metadata without
   requiring a migration or deleting historical records.
+- Bounded `semanticRetryCount` is carried with current snapshots and candidate
+  drafts so delayed submissions retain truthful diagnostics.

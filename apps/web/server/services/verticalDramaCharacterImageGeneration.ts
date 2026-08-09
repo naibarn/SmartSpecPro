@@ -1516,6 +1516,8 @@ export interface GenerateCharacterVisualPromptsResult {
   raw: CharacterVisualBibleOutput;
   creditsUsed: number;
   model: string;
+  /** Number of bounded planning retries used before this prompt was accepted. */
+  semanticRetryCount: number;
   /** Persistable snapshot derived only from validated skill output. */
   visualBibleSnapshot: VerticalDramaApprovedCharacterVisualBible;
   /** Present only when the target single-prompt contract was selected. */
@@ -1614,6 +1616,8 @@ export interface GenerateCharacterPortraitCandidatesResult {
   raw: CharacterPortraitCandidateOutput;
   creditsUsed: number;
   model: string;
+  /** Number of bounded planning retries used before this batch was accepted. */
+  semanticRetryCount: number;
   /**
    * Flattened batch-level view of every candidate's `warnings` (2026-07-18,
    * FIX A) — `"<candidate_id>: <field>: <message>"` per entry, `undefined`
@@ -2622,6 +2626,7 @@ export function buildCharacterVisualBibleSnapshot(input: {
   createdAt?: string;
   promptContractVersion?: typeof VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION;
   promptProfile?: "rich" | "compact" | "legacy";
+  semanticRetryCount?: number;
 }): VerticalDramaApprovedCharacterVisualBible {
   const dna = mapCharacterDesignDna(input.character.character_design_dna);
   return verticalDramaApprovedCharacterVisualBibleSchema.parse({
@@ -2664,6 +2669,9 @@ export function buildCharacterVisualBibleSnapshot(input: {
       ? { promptContractVersion: input.promptContractVersion }
       : {}),
     ...(input.promptProfile ? { promptProfile: input.promptProfile } : {}),
+    ...(input.semanticRetryCount !== undefined
+      ? { semanticRetryCount: Math.max(0, Math.min(8, Math.floor(input.semanticRetryCount))) }
+      : {}),
   });
 }
 
@@ -2867,6 +2875,18 @@ export async function generateCharacterVisualPrompts(
             });
           }
         }
+        if (
+          character.sheet_prompt !== undefined &&
+          character.sheet_prompt.length > targetPromptCapability.maxPromptChars
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["characters", characterIndex, "sheet_prompt"],
+            message:
+              `sheet_prompt exceeds the ${targetPromptCapability.family} target prompt budget ` +
+              `of ${targetPromptCapability.maxPromptChars} characters.`,
+          });
+        }
       }
 
       let reportedDna: VerticalDramaCharacterDesignDna;
@@ -2925,6 +2945,8 @@ export async function generateCharacterVisualPrompts(
   const {
     data: validatedData,
     response,
+    retried,
+    retryCount,
     warnings: leadBeautyWarnings,
   } = await executeJsonPlanningCallWithRetry({
     model,
@@ -3079,6 +3101,7 @@ export async function generateCharacterVisualPrompts(
       ? {
           promptContractVersion: VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION,
           promptProfile: targetPromptCapability.promptProfile,
+          semanticRetryCount: retryCount ?? (retried ? 1 : 0),
         }
       : {}),
   });
@@ -3190,6 +3213,7 @@ export async function generateCharacterVisualPrompts(
     raw: validatedData,
     creditsUsed,
     model,
+    semanticRetryCount: retryCount ?? (retried ? 1 : 0),
     visualBibleSnapshot,
     ...(targetPromptCapability
       ? {
@@ -3478,6 +3502,8 @@ export async function generateCharacterPortraitCandidates(
   const {
     data: validatedData,
     response,
+    retried,
+    retryCount,
     warnings: leadBeautyWarnings,
   } = await executeJsonPlanningCallWithRetry({
     model,
@@ -3612,6 +3638,7 @@ export async function generateCharacterPortraitCandidates(
           ? {
               promptContractVersion: VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION,
               promptProfile: targetPromptCapability.promptProfile,
+              semanticRetryCount: retryCount ?? (retried ? 1 : 0),
             }
           : {}),
       }),
@@ -3631,6 +3658,7 @@ export async function generateCharacterPortraitCandidates(
     raw: validatedData,
     creditsUsed,
     model,
+    semanticRetryCount: retryCount ?? (retried ? 1 : 0),
     warnings: leadBeautyWarnings,
   };
 }

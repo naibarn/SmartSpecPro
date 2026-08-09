@@ -70,7 +70,7 @@ by a fast implementation".
 
 | # | Risk | Gate |
 |---|---|---|
-| **R1** | Plan exceeds the 40-layer single-config budget; `compileVideoProject` splits into segments and `queueRender` then rejects segmented compiles with `VI_SEGMENTED_RENDER_NOT_SUPPORTED` | `VI_PLAN_LAYER_BUDGET_EXCEEDED`, checked over the **merged** document, before any write |
+| **R1** | Plan exceeds the 40-layer per-config budget; `compileVideoProject` splits into segments and the render worker must preserve their order in one final output | `VI_PLAN_LAYER_BUDGET_EXCEEDED`, checked over the **merged** document, plus the segmented worker render/concat contract |
 | **R2** | `SceneSchema` constrains `startMs`/`endMs` only as non-negative integers — there is **no** ordering, overlap or total-duration check anywhere in `projectSchemas.ts` | `VI_PLAN_TIMELINE_INVALID`, checked over the **merged** document, before any write |
 
 ---

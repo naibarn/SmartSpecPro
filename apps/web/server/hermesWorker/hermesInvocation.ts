@@ -56,12 +56,31 @@ export interface HermesEnvelopeReference {
   role: string;
   label: string;
   assetId: string;
+  /** Claim-time-minted, publicly fetchable download URL for this reference.
+   *  MUST be included whenever available: the xAI media tools take an
+   *  `image_url` the xAI SERVER fetches — without a real URL in the
+   *  envelope the agent invents `file://` paths or literal placeholder
+   *  URLs (both observed verbatim in session transcripts 2026-08-02:
+   *  `file:///...jobs/<id>/references/Image-1.jpg`,
+   *  `https://example.com/placeholder.jpg`) and the provider 404s. */
+  url?: string;
+}
+
+export interface HermesEnvelopeSettings {
+  model?: string | null;
+  aspectRatio?: string | null;
+  durationSeconds?: number | null;
+  resolution?: string | null;
 }
 
 export interface HermesEnvelopeContract {
   operation: HermesMediaOperation;
   prompt: string;
   references: HermesEnvelopeReference[];
+  /** Generation settings the agent must pass VERBATIM to the tool call —
+   *  absent from the envelope, the agent guesses (observed: duration=15,
+   *  aspect_ratio=16:9 on a 9:16 vertical-drama job). */
+  settings?: HermesEnvelopeSettings;
 }
 
 export interface HermesEnvelopeWorkspace {
@@ -93,9 +112,21 @@ export function buildPromptEnvelope(
   const referencesBlock =
     contract.references.length > 0
       ? contract.references
-          .map((ref) => `  ${ref.index}. [${ref.role}] ${ref.label} (asset ${ref.assetId})`)
+          .map((ref) => {
+            const base = `  ${ref.index}. [${ref.role}] ${ref.label} (asset ${ref.assetId})`;
+            return ref.url ? `${base}\n     Download URL: ${ref.url}` : base;
+          })
           .join("\n")
       : "  (none)";
+
+  const settings = contract.settings;
+  const settingsLines: string[] = [];
+  if (settings?.model) settingsLines.push(`  model: ${settings.model}`);
+  if (settings?.aspectRatio) settingsLines.push(`  aspect_ratio: ${settings.aspectRatio}`);
+  if (typeof settings?.durationSeconds === "number") {
+    settingsLines.push(`  duration: ${settings.durationSeconds} (seconds)`);
+  }
+  if (settings?.resolution) settingsLines.push(`  resolution: ${settings.resolution}`);
 
   return [
     "SmartSpecPro Hermes media job",
@@ -104,6 +135,15 @@ export function buildPromptEnvelope(
     `Output directory: ${workspace.outputDir}`,
     "References (in this exact order — do not reorder, substitute, or drop any reference):",
     referencesBlock,
+    ...(settingsLines.length > 0
+      ? ["", "Generation settings (pass these EXACTLY as the tool call's parameters — never substitute your own values):", ...settingsLines]
+      : []),
+    "",
+    "Tool-call rules (follow ALL of them):",
+    "- Call the media generation tool EXACTLY ONCE. Do not retry, do not experiment with alternative parameters, and never generate more than one result.",
+    "- When a reference lists a \"Download URL\", pass that URL VERBATIM as the tool's image_url/reference parameter. NEVER invent file:// paths, local filesystem paths, or placeholder URLs — the provider fetches the URL itself and anything else fails with HTTP 404.",
+    "- If the tool call fails, do NOT retry — immediately print the final result line with status \"error\" and the tool's error text as the message.",
+    "- The tool returns hosted result URL(s). For EACH result URL, print it on its own line as MEDIA:<url> (no spaces around the colon) BEFORE the final result line. In the final result line's files array, list those same https URLs (or file names you actually wrote inside the output directory, if any).",
     "",
     "Prompt:",
     sanitizePromptText(contract.prompt),

@@ -49,6 +49,11 @@ function checkboxFor(testId: string): HTMLElement {
   return box as HTMLElement;
 }
 
+async function confirmPaidAction(testId: string): Promise<void> {
+  const confirm = await screen.findByTestId(`${testId}-confirm`);
+  fireEvent.click(confirm);
+}
+
 describe("VerticalDramaReferenceFrameDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -127,6 +132,7 @@ describe("VerticalDramaReferenceFrameDialog", () => {
       target: { value: "  ไอริณโอบกอดภาคิน  " },
     });
     fireEvent.click(screen.getByTestId("vd-reference-frame-generate-prompt-3"));
+    await confirmPaidAction("vd-credit-confirm-reference-frame-prompt-3");
 
     expect(onGeneratePrompt).toHaveBeenCalledWith({
       shotNumber: 3,
@@ -159,6 +165,7 @@ describe("VerticalDramaReferenceFrameDialog", () => {
       target: { value: "directive" },
     });
     fireEvent.click(screen.getByTestId("vd-reference-frame-generate-prompt-3"));
+    await confirmPaidAction("vd-credit-confirm-reference-frame-prompt-3");
 
     await waitFor(() => expect(onGeneratePrompt).toHaveBeenCalled());
     expect(
@@ -187,6 +194,7 @@ describe("VerticalDramaReferenceFrameDialog", () => {
       target: { value: "directive" },
     });
     fireEvent.click(screen.getByTestId("vd-reference-frame-generate-prompt-3"));
+    await confirmPaidAction("vd-credit-confirm-reference-frame-prompt-3");
     await waitFor(() =>
       expect(
         screen.getByTestId("vd-reference-frame-confirm-render-3")
@@ -219,6 +227,7 @@ describe("VerticalDramaReferenceFrameDialog", () => {
       target: { value: "directive" },
     });
     fireEvent.click(screen.getByTestId("vd-reference-frame-generate-prompt-3"));
+    await confirmPaidAction("vd-credit-confirm-reference-frame-prompt-3");
     await waitFor(() =>
       expect(
         screen.getByTestId("vd-reference-frame-prompt-3")
@@ -232,6 +241,7 @@ describe("VerticalDramaReferenceFrameDialog", () => {
     fireEvent.click(
       screen.getByTestId("vd-reference-frame-confirm-render-3")
     );
+    await confirmPaidAction("vd-credit-confirm-reference-frame-image-3");
 
     await waitFor(() =>
       expect(onConfirmRender).toHaveBeenCalledWith({
@@ -264,6 +274,7 @@ describe("VerticalDramaReferenceFrameDialog", () => {
       target: { value: "directive" },
     });
     fireEvent.click(screen.getByTestId("vd-reference-frame-generate-prompt-3"));
+    await confirmPaidAction("vd-credit-confirm-reference-frame-prompt-3");
     await waitFor(() =>
       expect(
         screen.getByTestId("vd-reference-frame-prompt-3")
@@ -273,6 +284,7 @@ describe("VerticalDramaReferenceFrameDialog", () => {
     fireEvent.click(
       screen.getByTestId("vd-reference-frame-confirm-render-3")
     );
+    await confirmPaidAction("vd-credit-confirm-reference-frame-image-3");
     await waitFor(() => expect(onConfirmRender).toHaveBeenCalled());
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
     expect(

@@ -1,8 +1,12 @@
 /**
- * The generic, template-driven multi-layer Remotion composition (Phase 7,
- * see planning/remotion-migration/plan.md section 8). Separate from, and
- * additive to, `MarketplaceAutoReviewComposition.tsx` (which stays locked
- * to `HyperframesFinalCompositeConfigSchema`).
+ * The generic, template-driven multi-layer Remotion composition. Separate
+ * from, and additive to, `MarketplaceAutoReviewComposition.tsx` (which stays
+ * locked to `HyperframesFinalCompositeConfigSchema` in `apps/web`).
+ *
+ * MOVED (unchanged) from
+ * `apps/web/server/remotion/GenericTemplateComposition.tsx` as part of the
+ * `packages/remotion-render` extraction (see
+ * planning/remotion-migration/plan.md Phase 10, "Sidecar contract").
  *
  * Iterates `layers[]` (sorted by `zIndex`), wraps each in a
  * `<Sequence from durationInFrames>` so every layer is independently timed,
@@ -18,13 +22,15 @@
  * independently timed — this is the actual capability this composition
  * exists to demonstrate.
  */
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   AbsoluteFill,
   Audio,
   Img,
   OffthreadVideo,
   Sequence,
+  continueRender,
+  delayRender,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
@@ -34,15 +40,104 @@ import { ThreeCanvas } from "@remotion/three";
 import type {
   RemotionAudioLayer,
   RemotionLayer,
+  RemotionMotionCompositionLayer,
   RemotionMotionGraphicLayer,
   RemotionScene3dLayer,
   RemotionSvgLayer,
   RemotionTextLayer,
 } from "../../shared/remotion/layerTemplateSchemas";
+import {
+  isAllowlistedFontFamily,
+  googleFontsCss2Url,
+  type VideoStudioFontFamily,
+} from "../../shared/remotion/fontAllowlist";
 import { REMOTION_SCENE_REGISTRY } from "./scenes";
+import { MotionCompositionLayerContent } from "./MotionCompositionContent";
 import type { GenericTemplateInputProps } from "../services/remotionTemplateService";
 
 const ENTER_FADE_FRAMES = 15;
+
+/**
+ * Feature 143 §4.10 (RK12 — "Thai text renders as tofu"). Ports
+ * `MarketplaceAutoReviewComposition.tsx`'s `ThaiFontLoader` pattern
+ * (`delayRender`/`continueRender`, Remotion's documented custom-font
+ * mechanism) into this generic composition, which previously had ZERO font
+ * registration for its `text` layers — whatever font Chromium happened to
+ * have installed silently won, so Thai text (`Sarabun`/`Prompt`/etc.)
+ * rendered as tofu or the wrong face with no error.
+ *
+ * Unlike `ThaiFontLoader` (which loads one KNOWN local file staged by
+ * `resolveAndStageRenderFont`'s `fc-match` host lookup), this loader has no
+ * single physical font file to point `FontFace` at — `fontFamily` here is a
+ * user-chosen family name from `VIDEO_STUDIO_FONT_ALLOWLIST`
+ * (`shared/remotion/fontAllowlist.ts`), not a resolved path. It instead
+ * injects the family's real Google Fonts CSS2 `<link>` (the same mechanism
+ * an ordinary web page uses to load a Google Font) and blocks frame capture
+ * until `document.fonts` reports the family as loaded (or the load fails —
+ * soft-degrade, never blocks the render). A `fontFamily` NOT on the
+ * allowlist is a no-op here (unblocks immediately) — the layer's inline
+ * `fontFamily` CSS value is still applied, falling back to whatever
+ * Chromium's default font is, exactly the pre-existing (undocumented)
+ * behavior for any font this loader doesn't recognize.
+ */
+const AllowlistedFontLoader: React.FC<{ family: VideoStudioFontFamily }> = ({
+  family,
+}) => {
+  const [handle] = useState(() =>
+    delayRender(`Loading allowlisted font "${family}"`)
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = googleFontsCss2Url(family);
+    document.head.appendChild(link);
+
+    Promise.resolve(document.fonts.load(`16px "${family}"`))
+      .then(() => document.fonts.ready)
+      .then(() => {
+        if (!cancelled) continueRender(handle);
+      })
+      .catch(() => {
+        // Soft-degrade: network hiccup, or Chromium couldn't parse the
+        // response — proceed with the browser default font rather than
+        // failing the render (matches `ThaiFontLoader`'s soft-degrade).
+        if (!cancelled) continueRender(handle);
+      });
+
+    return () => {
+      cancelled = true;
+      link.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+};
+
+/**
+ * One `AllowlistedFontLoader` per DISTINCT allowlisted family actually used
+ * by this config's `text` layers — never one per layer, and never for a
+ * family that isn't on the allowlist (nothing to load for those).
+ */
+const DocumentFontLoaders: React.FC<{ layers: RemotionLayer[] }> = ({
+  layers,
+}) => {
+  const families = new Set<VideoStudioFontFamily>();
+  for (const layer of layers) {
+    if (layer.type === "text" && isAllowlistedFontFamily(layer.fontFamily)) {
+      families.add(layer.fontFamily);
+    }
+  }
+  return (
+    <>
+      {[...families].map(family => (
+        <AllowlistedFontLoader key={family} family={family} />
+      ))}
+    </>
+  );
+};
 
 /**
  * Computes the shared, per-layer absolute-position wrapper style from the
@@ -125,7 +220,11 @@ const TextLayerContent: React.FC<{ layer: RemotionTextLayer }> = ({
           fontWeight: layer.fontWeight === "bold" ? 700 : 400,
           color: layer.color,
           textAlign: layer.textAlign,
+          lineHeight: 1.15,
+          letterSpacing: "0.01em",
+          textShadow: "0 2px 10px rgba(2, 6, 23, 0.42)",
           whiteSpace: "pre-wrap",
+          overflowWrap: "anywhere",
         }}
       >
         {layer.content}
@@ -180,6 +279,10 @@ const MOTION_GRAPHIC_SHAPE_PATHS: Record<
   ),
 };
 
+function svgIdForLayer(layerId: string): string {
+  return `motion-${layerId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
 const MotionGraphicLayerContent: React.FC<{
   layer: RemotionMotionGraphicLayer;
 }> = ({ layer }) => {
@@ -194,6 +297,7 @@ const MotionGraphicLayerContent: React.FC<{
     const translateY = 6 * Math.sin(frame / 6);
     transform = `translateY(${translateY}px)`;
   }
+  const svgId = svgIdForLayer(layer.id);
   return (
     <svg
       viewBox="0 0 100 100"
@@ -204,7 +308,41 @@ const MotionGraphicLayerContent: React.FC<{
         transformOrigin: "center center",
       }}
     >
-      <g fill={layer.color}>{MOTION_GRAPHIC_SHAPE_PATHS[layer.shape]}</g>
+      <defs>
+        <linearGradient id={`${svgId}-fill`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={layer.color} stopOpacity="0.98" />
+          <stop offset="0.52" stopColor={layer.color} stopOpacity="0.78" />
+          <stop offset="1" stopColor="#020617" stopOpacity="0.92" />
+        </linearGradient>
+        <linearGradient id={`${svgId}-shine`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.34" />
+          <stop offset="0.42" stopColor="#ffffff" stopOpacity="0.06" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        <filter id={`${svgId}-shadow`} x="-20%" y="-20%" width="140%" height="150%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#020617" floodOpacity="0.34" />
+        </filter>
+      </defs>
+      <g
+        fill={`url(#${svgId}-fill)`}
+        stroke="#ffffff"
+        strokeOpacity="0.18"
+        strokeWidth="0.8"
+        filter={`url(#${svgId}-shadow)`}
+      >
+        {MOTION_GRAPHIC_SHAPE_PATHS[layer.shape]}
+      </g>
+      {layer.shape === "rect" ? (
+        <rect
+          x="8"
+          y="8"
+          width="84"
+          height="34"
+          rx="10"
+          fill={`url(#${svgId}-shine)`}
+          pointerEvents="none"
+        />
+      ) : null}
     </svg>
   );
 };
@@ -238,6 +376,10 @@ const Scene3dLayerContent: React.FC<{
     </ThreeCanvas>
   );
 };
+
+const MotionCompositionLayer: React.FC<{
+  layer: RemotionMotionCompositionLayer;
+}> = ({ layer }) => <MotionCompositionLayerContent layer={layer} />;
 
 /**
  * `<Audio>` has no visual box, so this layer type ignores `x`/`y`/`width`/
@@ -302,6 +444,8 @@ function layerContent(
       return <SvgLayerContent layer={layer} />;
     case "motionGraphic":
       return <MotionGraphicLayerContent layer={layer} />;
+    case "motionComposition":
+      return <MotionCompositionLayer layer={layer} />;
     case "scene3d":
       return (
         <Scene3dLayerContent
@@ -326,7 +470,14 @@ export const GenericTemplateComposition: React.FC<
   const sortedLayers = [...props.layers].sort((a, b) => a.zIndex - b.zIndex);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: "#000000" }}>
+    <AbsoluteFill
+      style={{
+        backgroundColor: "#070b14",
+        backgroundImage:
+          "radial-gradient(circle at 16% 12%, rgba(59, 130, 246, 0.16), transparent 34%), radial-gradient(circle at 88% 82%, rgba(168, 85, 247, 0.12), transparent 38%), linear-gradient(135deg, #0b1220 0%, #05070d 58%, #111827 100%)",
+      }}
+    >
+      <DocumentFontLoaders layers={props.layers} />
       {sortedLayers.map(layer => (
         <Sequence
           key={layer.id}

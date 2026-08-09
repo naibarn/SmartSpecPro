@@ -58,7 +58,6 @@ CREATE TABLE IF NOT EXISTS video_projects (
   "renderJobId" varchar(36),
   "previewJobId" varchar(36),
   "resultLibraryItemId" integer REFERENCES library_items(id) ON DELETE SET NULL,
-  "videoEditorProjectId" integer,
   "createdAt" timestamptz NOT NULL DEFAULT now(),
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );

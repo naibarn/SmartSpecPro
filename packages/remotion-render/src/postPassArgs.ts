@@ -83,11 +83,15 @@ export interface ConcatCommandSpec {
   concatListPath: string;
   outputPath: string;
   fps?: number;
+  width?: number;
+  height?: number;
 }
 
 /** Re-encode concat (never stream-copy — sources may differ in codec/fps/resolution). */
 export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
   const fps = spec.fps ?? 30;
+  const width = spec.width ?? 1080;
+  const height = spec.height ?? 1920;
   return [
     "-y",
     "-f",
@@ -99,7 +103,7 @@ export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
     "-r",
     String(fps),
     "-vf",
-    "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1",
+    `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
     "-c:v",
     "libx264",
     "-pix_fmt",
@@ -128,6 +132,9 @@ export interface PlanPostPassesPaths {
   assFilePath?: string | null;
   segmentInputPaths?: string[];
   concatListPath?: string;
+  fps?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface PlanPostPassesPayload {
@@ -184,6 +191,9 @@ export function planPostPasses(
         inputPaths: paths.segmentInputPaths,
         concatListPath: paths.concatListPath,
         outputPath,
+        fps: paths.fps,
+        width: paths.width,
+        height: paths.height,
       }),
       outputPath,
     });

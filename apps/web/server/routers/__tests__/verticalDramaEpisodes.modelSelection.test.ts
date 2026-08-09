@@ -192,6 +192,7 @@ import {
   assertModelSelectable,
   resolveEpisodeImageModelId,
   resolveEpisodeVideoModel,
+  verticalDramaEpisodesRouter,
 } from "../verticalDramaEpisodes";
 
 function model(overrides: Partial<{ id: string; isEnabled: boolean }> = {}) {
@@ -230,6 +231,14 @@ describe("assertModelSelectable", () => {
     await expect(assertModelSelectable("google-nano-banana-pro", "video")).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
+  });
+});
+
+describe("episode cover route registration", () => {
+  it("exposes the async generation, status, and upload procedures", () => {
+    expect(typeof (verticalDramaEpisodesRouter as any).generateEpisodeCover).toBe("function");
+    expect(typeof (verticalDramaEpisodesRouter as any).getEpisodeCoverStatus).toBe("function");
+    expect(typeof (verticalDramaEpisodesRouter as any).setEpisodeCoverAsset).toBe("function");
   });
 });
 

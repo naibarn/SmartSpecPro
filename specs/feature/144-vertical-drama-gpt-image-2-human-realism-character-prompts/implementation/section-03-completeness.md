@@ -20,10 +20,12 @@ PASS.
   so one invalid candidate prevents the whole batch from being paid/submitted.
 - GPT Image 2/Nano Banana prompts allow 20,000 characters and Seedream prompts
   allow 5,000 characters through the shared contract and browser snapshot.
+- Approved-snapshot and candidate-batch reuse carries the bounded semantic retry
+  count into the final trusted media request context for observability.
 
 ## Verification
 
-- Feature 144 focused suite: 325 tests passed.
+- Feature 144 focused suite: 344 tests passed.
 - Reference-framing and region/ethnicity router regressions: 32 tests passed.
 - Character Visual Bible skill verifier: passed with no provider calls.
 - Full web typecheck: no diagnostics in the new Feature 144 symbols; the

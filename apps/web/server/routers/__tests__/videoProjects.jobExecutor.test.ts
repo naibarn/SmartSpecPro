@@ -32,6 +32,10 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    // The render lifecycle pulls `libraryService` into this module graph, which
+    // transitively loads `routers/llmProviders.ts` — that file builds an
+    // `adminProcedure` at import time, so the double must expose it too.
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -130,6 +134,7 @@ vi.mock("../../services/videoProjectAssetResolver", () => ({
     sources: manifests.flatMap(m => m.sources),
   })),
   assertSceneLayerAssetUrlsAllowed: vi.fn(),
+  assertDocumentLayerIdsUnique: vi.fn(),
 }));
 
 vi.mock("../../services/workerSchedulerService", () => ({
@@ -164,9 +169,13 @@ vi.mock("../../services/videoProjectQualityMetrics", () => ({
   estimateVideoProjectQualityLoopCredits: mockEstimateVideoProjectQualityLoopCredits,
 }));
 
+const { mockSynthesize, mockCalculateTTSCredits } = vi.hoisted(() => ({
+  mockSynthesize: vi.fn(),
+  mockCalculateTTSCredits: vi.fn(() => 0),
+}));
 vi.mock("../../services/ttsService", () => ({
-  synthesize: vi.fn(),
-  calculateTTSCredits: vi.fn(() => 0),
+  synthesize: mockSynthesize,
+  calculateTTSCredits: mockCalculateTTSCredits,
 }));
 
 const { mockHasEnoughCredits, mockDeductCredits, mockCalculateCreditsForLLMDynamic } = vi.hoisted(() => ({
@@ -182,7 +191,8 @@ vi.mock("../../services/creditService", () => ({
   calculateCreditsForLLMDynamic: mockCalculateCreditsForLLMDynamic,
 }));
 
-vi.mock("../../storage", () => ({ storagePut: vi.fn() }));
+const { mockStoragePut } = vi.hoisted(() => ({ mockStoragePut: vi.fn() }));
+vi.mock("../../storage", () => ({ storagePut: mockStoragePut }));
 
 vi.mock("../../services/hyperframesTranscriptionService", () => ({
   renderTranscriptCuesAsSrt: vi.fn(() => "SRT-OUTPUT"),
@@ -230,6 +240,19 @@ vi.mock("../../services/videoProjectScenePlanAdapter", () => ({
   makeRunPlanSkill: mockMakeRunPlanSkill,
 }));
 
+// auto_draft's narration-script adapter — mocked the same way as the
+// scene-plan adapter above (its REAL module pulls in the REAL
+// `callLLMStructured` chain, which this file's `_core/trpc` double cannot
+// satisfy).
+const { mockMakeRunNarrationScriptSkill, mockBuildNarrationScriptSkillInput } = vi.hoisted(() => ({
+  mockMakeRunNarrationScriptSkill: vi.fn(),
+  mockBuildNarrationScriptSkillInput: vi.fn(),
+}));
+vi.mock("../../services/videoProjectNarrationScriptAdapter", () => ({
+  makeRunNarrationScriptSkill: mockMakeRunNarrationScriptSkill,
+  buildNarrationScriptSkillInput: mockBuildNarrationScriptSkillInput,
+}));
+
 const { mockRunVideoProjectQualityLoop, mockClampQualityLoopRounds } = vi.hoisted(() => ({
   mockRunVideoProjectQualityLoop: vi.fn(),
   mockClampQualityLoopRounds: vi.fn((maxLoops: number) => Math.min(Math.max(1, Math.trunc(maxLoops)), 5)),
@@ -256,17 +279,23 @@ vi.mock("../../services/videoProjectRepairRewriter", () => ({
 import { runVideoIntelligenceJobExecutor } from "../videoProjects";
 import type { VideoProjectDocument } from "../../../shared/videoIntelligence/projectSchemas";
 
+// Default narration is `null` (spec 143 §4.9.3 / decision D2): a scene is
+// "empty" for `fill_empty` scene-plan purposes when it has no narration and
+// no template — NOT merely when `layers.length === 0`. Keeping the shared
+// fixture genuinely empty means it stays plannable by default; tests that
+// need a scene which already "has content" pass an explicit `narration`
+// override instead of relying on the (now-wrong) old default.
 function scene(id: string, overrides: Partial<VideoProjectDocument["scenes"][number]> = {}) {
   return {
     sceneId: id,
     startMs: 0,
     endMs: 5000,
-    narration: "Try this product today.",
+    narration: null,
     narrationAudioAssetId: null,
     visual: { kind: "layers" as const },
     layers: [],
     motion: { intensity: "medium" as const, camera: "static" },
-    captionCues: [{ startMs: 0, endMs: 1000, text: "Try this product today." }],
+    captionCues: [],
     ...overrides,
   };
 }
@@ -359,6 +388,49 @@ function narrationPayload(overrides: Record<string, unknown> = {}) {
     projectId: 1,
     input: { ...overrides },
   };
+}
+
+function autoDraftPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    kind: "auto_draft" as const,
+    tenantId: "tenant-1",
+    userId: 42,
+    projectId: 1,
+    input: {
+      traceId: "trace-1",
+      modelId: "model-a",
+      modelSource: "recommended",
+      previousStatus: "content",
+      baseRevision: 7,
+      ...overrides,
+    },
+  };
+}
+
+/** A document with one scene still needing everything (empty visual, no
+ *  narration) and one scene already fully drafted (narration + audio +
+ *  caption cues) — the idempotency fixture: a re-run must skip the
+ *  already-drafted scene's narration-script AND TTS entirely. */
+function autoDraftDocument(): VideoProjectDocument {
+  return baseDocument({
+    scenes: [
+      scene("scene-1", {
+        narration: null,
+        narrationAudioAssetId: null,
+        visual: { kind: "layers" as const },
+        layers: [],
+        captionCues: [],
+      }),
+      scene("scene-2", {
+        startMs: 5000,
+        endMs: 10000,
+        narration: "Already drafted.",
+        narrationAudioAssetId: 555,
+        captionCues: [{ startMs: 0, endMs: 1000, text: "Already drafted." }],
+      }),
+    ],
+    format: { width: 1080, height: 1920, fps: 30, durationMs: 10000 },
+  });
 }
 
 function scenePlanOutputFixture(overrides: Record<string, unknown> = {}) {
@@ -516,16 +588,17 @@ describe("runVideoIntelligenceJobExecutor — routing", () => {
     expect(mockMakeRunPlanSkill).not.toHaveBeenCalled();
   });
 
-  it("treats kind 'narration' as a documented no-op and emits narration_noop", async () => {
+  it("runs kind 'narration' through the async narration executor", async () => {
     const onProgress = vi.fn();
     const result = (await runVideoIntelligenceJobExecutor(narrationPayload() as any, onProgress)) as Record<
       string,
       unknown
     >;
 
-    expect(result).toMatchObject({ skipped: true });
-    expect(onProgress).toHaveBeenCalledWith({ stage: "narration_noop" });
-    expect(mockGetVideoProject).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ kind: "narration", scenesNarrated: 0, creditsCharged: 0 });
+    expect(onProgress).toHaveBeenCalledWith({ stage: "narration_start" });
+    expect(onProgress).toHaveBeenCalledWith({ stage: "narration_persisted" });
+    expect(mockGetVideoProject).toHaveBeenCalledTimes(1);
   });
 
   it("throws a greppable error for an unknown kind", async () => {
@@ -583,6 +656,123 @@ describe("runVideoIntelligenceJobExecutor — routing", () => {
     expect(mockGetVideoProject).toHaveBeenCalledWith(
       { tenantId: "tenant-DIFFERENT", userId: 9999 },
       1,
+    );
+  });
+});
+
+describe("runVideoIntelligenceJobExecutor — auto_draft", () => {
+  beforeEach(() => {
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7, document: autoDraftDocument() }));
+    mockMakeRunNarrationScriptSkill.mockReturnValue(
+      vi.fn(async () => ({ scenes: [{ index: 0, narration: "บทพากย์ทดสอบสำหรับฉากที่ยังไม่มี" }] })),
+    );
+    mockBuildNarrationScriptSkillInput.mockImplementation(
+      ({ sceneIds }: { sceneIds: string[] }) => ({
+        brief: { topic: null, audience: null, language: "en", platformPreset: "tiktok_9_16", studioType: "motion" },
+        format: { width: 1080, height: 1920, fps: 30, durationMs: 10000 },
+        product: null,
+        scenes: sceneIds.map((sceneId, index) => ({
+          index,
+          sceneId,
+          durationMs: 5000,
+          templateId: null,
+          existingNarration: null,
+        })),
+      }),
+    );
+    mockSynthesize.mockResolvedValue({
+      audioBuffer: Buffer.from("audio-bytes"),
+      contentType: "audio/mpeg",
+      duration: 1.2,
+    });
+    mockStoragePut.mockResolvedValue({ key: "video-intelligence/x.mp3", url: "/uploads/x.mp3" });
+    mockDb.insert.mockReturnValue({
+      values: vi.fn(() => ({ returning: vi.fn(() => Promise.resolve([{ id: 321 }])) })),
+    });
+  });
+
+  it("routes kind 'auto_draft' to the composite stage — scene planning, narration script, and TTS", async () => {
+    await runVideoIntelligenceJobExecutor(autoDraftPayload() as any, vi.fn());
+
+    expect(mockMakeRunPlanSkill).toHaveBeenCalledTimes(1);
+    expect(mockMakeRunNarrationScriptSkill).toHaveBeenCalledTimes(1);
+    expect(mockSynthesize).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the three sub-stages in order: scene_plan -> narration-script -> TTS", async () => {
+    const onProgress = vi.fn();
+    await runVideoIntelligenceJobExecutor(autoDraftPayload() as any, onProgress);
+
+    const stages = onProgress.mock.calls.map(call => call[0].stage);
+    expect(stages).toEqual([
+      "auto_draft_start",
+      "auto_draft_scene_plan",
+      "scene_plan_planning",
+      "scene_plan_persisted",
+      "auto_draft_narration_script",
+      "auto_draft_narration_script_persisted",
+      "auto_draft_tts",
+      "auto_draft_persisted",
+    ]);
+  });
+
+  it("only sends the empty-narration scene to the narration-script skill (fill_empty, never the already-drafted one)", async () => {
+    await runVideoIntelligenceJobExecutor(autoDraftPayload() as any, vi.fn());
+
+    expect(mockBuildNarrationScriptSkillInput).toHaveBeenCalledWith(
+      expect.objectContaining({ sceneIds: ["scene-1"] }),
+    );
+  });
+
+  it("only synthesizes TTS for the scene missing narrationAudioAssetId (idempotent — never re-synthesizes scene-2)", async () => {
+    await runVideoIntelligenceJobExecutor(autoDraftPayload() as any, vi.fn());
+
+    expect(mockSynthesize).toHaveBeenCalledTimes(1);
+    expect(mockSynthesize).toHaveBeenCalledWith("บทพากย์ทดสอบสำหรับฉากที่ยังไม่มี", { format: "mp3", provider: "openai" });
+  });
+
+  it("is a no-op re-run when every scene is already fully drafted — skips narration-script and TTS entirely", async () => {
+    const fullyDraftedDocument = baseDocument({
+      scenes: [
+        scene("scene-1", {
+          narration: "Already drafted 1.",
+          narrationAudioAssetId: 111,
+          visual: { kind: "template" as const, templateId: "kinetic_typography", params: {} },
+          captionCues: [{ startMs: 0, endMs: 1000, text: "Already drafted 1." }],
+        }),
+      ],
+    });
+    mockGetVideoProject.mockResolvedValue(projectRow({ revision: 7, document: fullyDraftedDocument }));
+    mockMakeRunPlanSkill.mockReturnValue(vi.fn(async () => ({ scenes: [], summary: "nothing to plan" })));
+
+    await runVideoIntelligenceJobExecutor(autoDraftPayload() as any, vi.fn());
+
+    expect(mockMakeRunNarrationScriptSkill).not.toHaveBeenCalled();
+    expect(mockSynthesize).not.toHaveBeenCalled();
+  });
+
+  it("returns a JSON-serialisable result carrying scenesNarrated/narrationScriptWritten/creditsUsed", async () => {
+    const result = (await runVideoIntelligenceJobExecutor(autoDraftPayload() as any, vi.fn())) as Record<
+      string,
+      unknown
+    >;
+
+    expect(() => JSON.parse(JSON.stringify(result))).not.toThrow();
+    expect(result.kind).toBe("auto_draft");
+    expect(result.narrationScriptWritten).toBe(1);
+    expect(result.scenesNarrated).toBe(1);
+    expect(typeof result.creditsUsed).toBe("number");
+  });
+
+  it("lets a thrown narration-script error reject rather than resolving to a success-shaped result", async () => {
+    mockMakeRunNarrationScriptSkill.mockReturnValue(
+      vi.fn(async () => {
+        throw new Error("narration script exploded");
+      }),
+    );
+
+    await expect(runVideoIntelligenceJobExecutor(autoDraftPayload() as any, vi.fn())).rejects.toThrow(
+      /narration script exploded/,
     );
   });
 });

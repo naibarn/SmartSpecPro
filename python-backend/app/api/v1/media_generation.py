@@ -22,7 +22,11 @@ from app.llm_proxy.models import (
     VideoGenerationRequest,
     VideoGenerationResponse,
 )
-from app.llm_proxy.providers.kie_ai_provider import resolve_image_api_model
+from app.llm_proxy.providers.kie_ai_provider import (
+    count_reference_inputs,
+    resolve_image_api_model,
+    resolve_mode_api_config,
+)
 from app.models.media_task import MediaTask, MediaType, TaskStatus
 from app.models.user import User
 from app.services.media_callback_service import (
@@ -54,17 +58,69 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
+def _explicit_kie_model_id(api_config: dict) -> str | None:
+    for key in ("kie_model_id", "kieModelId", "model_id", "modelId"):
+        value = api_config.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _resolve_async_media_model(request, *, media_type: str) -> str:
+    """Persist the Kie variant that async generation will actually invoke.
+
+    Async requests are handed to a worker that re-derives the endpoint from
+    `api_config`, so without this the task row records the catalog model id and
+    Media History shows a model that never ran. Mode routing
+    (`apiConfig.modes`) takes precedence; images additionally keep the legacy
+    two-way `kie_model_id_with_references` switch.
+
+    Returns `request.model` unchanged whenever no variant applies, so alias
+    normalization stays a provider-side concern.
+    """
+    api_config = request.api_config if isinstance(request.api_config, dict) else {}
+    reference_image_urls = getattr(request, "reference_image_urls", None)
+    reference_video_urls = (
+        getattr(request, "reference_video_urls", None)
+        or getattr(request, "reference_video_url", None)
+    )
+    reference_audio_urls = (
+        getattr(request, "reference_audio_urls", None)
+        or getattr(request, "reference_audio_url", None)
+    )
+
+    counts = count_reference_inputs(
+        reference_image_urls=reference_image_urls,
+        reference_video_urls=reference_video_urls,
+        reference_audio_urls=reference_audio_urls,
+    )
+    merged, mode_id = resolve_mode_api_config(api_config, counts)
+    if mode_id is not None:
+        mode_model = _explicit_kie_model_id(merged if isinstance(merged, dict) else {})
+        base_model = _explicit_kie_model_id(api_config)
+        if mode_model and mode_model != base_model:
+            return mode_model
+        return request.model
+
+    if media_type == "image":
+        variant_model = (
+            api_config.get("kie_model_id_with_references")
+            or api_config.get("kieModelIdWithReferences")
+        )
+        if reference_image_urls and isinstance(variant_model, str) and variant_model.strip():
+            return resolve_image_api_model(request.model, api_config, reference_image_urls)
+
+    return request.model
+
+
 def _resolve_async_image_model(request: ImageGenerationRequest) -> str:
     """Persist the actual opt-in Kie image variant used by async generation."""
-    api_config = request.api_config if isinstance(request.api_config, dict) else {}
-    reference_urls = request.reference_image_urls
-    variant_model = (
-        api_config.get("kie_model_id_with_references")
-        or api_config.get("kieModelIdWithReferences")
-    )
-    if not reference_urls or not isinstance(variant_model, str) or not variant_model.strip():
-        return request.model
-    return resolve_image_api_model(request.model, api_config, reference_urls)
+    return _resolve_async_media_model(request, media_type="image")
+
+
+def _resolve_async_video_model(request: VideoGenerationRequest) -> str:
+    """Persist the actual Kie video variant (t2v / i2v / reference) used async."""
+    return _resolve_async_media_model(request, media_type="video")
 
 
 def _is_persistent_callback_pipeline_enabled() -> bool:
@@ -1849,16 +1905,29 @@ async def generate_video_async(
             detail="Async processing not available. Use /video endpoint instead."
         )
 
+    effective_model = _resolve_async_video_model(request)
+
     task = await MediaTaskService.create_task(
         db,
         current_user,
         MediaType.VIDEO,
-        request.model,
+        effective_model,
         request.prompt,
         request.dict(exclude={'model', 'prompt'})
     )
 
     request_payload = request.dict()
+
+    if effective_model != request.model:
+        logger.info(
+            "async_video_model_variant_selected",
+            request_model=request.model,
+            effective_model=effective_model,
+            reference_image_count=len(request.reference_image_urls or []),
+            reference_video_count=len(getattr(request, "reference_video_urls", None) or []),
+            reference_audio_count=len(getattr(request, "reference_audio_urls", None) or []),
+        )
+
     should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
 
     try:

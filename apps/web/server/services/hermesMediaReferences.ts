@@ -35,7 +35,7 @@ import { createHash } from "node:crypto";
 import { eq, and, inArray, or } from "drizzle-orm";
 import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
-import { storageResolveUrl } from "../storage";
+import { storagePut, storageResolveUrl } from "../storage";
 import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import { debugLog } from "../_core/logger";
 import type { HermesMediaJobContract } from "../../shared/hermesMedia";
@@ -62,6 +62,7 @@ export interface HermesMediaReferenceRepo {
     assetId: string;
   }): Promise<HermesMediaReferenceAssetRow | null>;
   persistChecksum(params: { assetId: string; checksumSha256: string }): Promise<void>;
+  persistStorageKey(params: { assetId: string; storageKey: string }): Promise<void>;
 }
 
 export const defaultHermesMediaReferenceRepo: HermesMediaReferenceRepo = {
@@ -94,6 +95,12 @@ export const defaultHermesMediaReferenceRepo: HermesMediaReferenceRepo = {
     const db = getDb();
     await db.update(mediaAssets).set({ checksumSha256 }).where(eq(mediaAssets.id, numericId));
   },
+  async persistStorageKey({ assetId, storageKey }) {
+    const numericId = Number(assetId);
+    if (!Number.isFinite(numericId)) return;
+    const db = getDb();
+    await db.update(mediaAssets).set({ storageKey }).where(eq(mediaAssets.id, numericId));
+  },
 };
 
 function toAbsoluteStorageUrl(relativePath: string): string {
@@ -121,6 +128,76 @@ export function normalizeHermesReferenceStorageObjectKey(storageKey: string): st
     }
   }
   return value;
+}
+
+const MANAGED_STORAGE_PATH_PREFIXES = ["/api/storage/files/", "/uploads/"] as const;
+
+/**
+ * True when `storageKey` points at a FOREIGN host's object (e.g. a provider
+ * temp CDN like `tempfile.aiquickdraw.com` — Kie.ai's GPT Image 2 output
+ * host) rather than anything our storage layer can serve. Some VD start-frame
+ * producer paths persist the provider's temporary result URL directly as
+ * `media_assets.storageKey`; hashing OR claim-time minting against such a key
+ * resolves to a local `/api/storage/files/<foreign-path>` that 404s
+ * (observed 2026-08-02: "Failed to fetch reference asset bytes for checksum
+ * (status 404)"), and the temp URL itself expires eventually anyway.
+ */
+export function isExternalHermesReferenceStorageKey(storageKey: string): boolean {
+  const value = storageKey.trim();
+  if (!/^https?:\/\//i.test(value)) return false;
+  try {
+    const pathname = new URL(value).pathname;
+    return !MANAGED_STORAGE_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Downloads a foreign-host reference object (while its temp URL still
+ * serves) and re-homes the bytes into managed storage under a stable key, so
+ * both this submit's checksum AND the Worker's claim-time minted download URL
+ * address bytes we control. Returns the new object key plus the sha256 of
+ * the exact bytes stored (hashed from the buffer in hand — no second fetch).
+ * A failed download throws: the source object is already gone, so no contract
+ * the Worker could honor can be built from this asset anymore.
+ */
+export async function defaultIngestExternalHermesReferenceAsset(params: {
+  tenantId: string;
+  assetId: string;
+  externalUrl: string;
+}): Promise<{ objectKey: string; sha256: string }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
+  let response: Response;
+  try {
+    response = await fetch(params.externalUrl, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!response.ok) {
+    throw new Error(
+      `Reference asset's external source URL is no longer available (status ${response.status}) — regenerate the image (asset ${params.assetId})`,
+    );
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length === 0) {
+    throw new Error(
+      `Reference asset's external source URL returned an empty body — regenerate the image (asset ${params.assetId})`,
+    );
+  }
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const headerContentType = response.headers.get("content-type")?.split(";")[0]?.trim();
+  const urlExt = /\.(png|jpe?g|webp|gif|mp4|webm)$/i.exec(new URL(params.externalUrl).pathname)?.[1]?.toLowerCase();
+  const contentType = headerContentType && headerContentType.includes("/")
+    ? headerContentType
+    : urlExt
+      ? (urlExt === "mp4" || urlExt === "webm" ? `video/${urlExt}` : `image/${urlExt === "jpg" ? "jpeg" : urlExt}`)
+      : "application/octet-stream";
+  const ext = urlExt ?? contentType.split("/")[1] ?? "bin";
+  const objectKey = `hermes-references/${params.tenantId}/${params.assetId}/${sha256.slice(0, 16)}.${ext}`;
+  await storagePut(objectKey, bytes, contentType);
+  return { objectKey, sha256 };
 }
 
 /**
@@ -155,6 +232,7 @@ export interface BuildHermesMediaReferencesDeps {
     assetId: string;
     storageKey: string;
   }) => Promise<string>;
+  ingestExternalAsset?: typeof defaultIngestExternalHermesReferenceAsset;
 }
 
 export class HermesMediaReferenceAssetNotFoundError extends Error {
@@ -198,12 +276,35 @@ export async function buildHermesMediaReferences(
     if (!asset) {
       throw new HermesMediaReferenceAssetNotFoundError(ref.assetId);
     }
-    const sha256 = await hashObject({
-      tenantId: params.tenantId,
-      userId: params.userId,
-      assetId: ref.assetId,
-      storageKey: asset.storageKey,
-    });
+    let sha256: string;
+    if (isExternalHermesReferenceStorageKey(asset.storageKey)) {
+      // Foreign-host storageKey (provider temp CDN): re-home the bytes into
+      // managed storage NOW — hashing/minting against the foreign path 404s
+      // locally, and the temp URL expires. The row's storageKey is updated
+      // so claim-time minting (and every later submit) serves the managed
+      // copy; persistence failure is deliberately NOT swallowed — a job
+      // queued while the row still points at the foreign host would fail at
+      // claim time anyway.
+      const ingest = deps.ingestExternalAsset ?? defaultIngestExternalHermesReferenceAsset;
+      const ingested = await ingest({
+        tenantId: params.tenantId,
+        assetId: ref.assetId,
+        externalUrl: asset.storageKey,
+      });
+      await repo.persistStorageKey({ assetId: ref.assetId, storageKey: ingested.objectKey });
+      debugLog(
+        "hermesMediaReferences",
+        `re-homed external reference asset ${ref.assetId} into managed storage (${ingested.objectKey})`,
+      );
+      sha256 = ingested.sha256;
+    } else {
+      sha256 = await hashObject({
+        tenantId: params.tenantId,
+        userId: params.userId,
+        assetId: ref.assetId,
+        storageKey: asset.storageKey,
+      });
+    }
     if (asset.checksumSha256 !== sha256) {
       try {
         await repo.persistChecksum({ assetId: ref.assetId, checksumSha256: sha256 });

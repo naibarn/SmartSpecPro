@@ -246,6 +246,14 @@ describe("buildShotImageActionUserPrompt", () => {
     );
   });
 
+  it("threads the selected image model prompt budget as a factual input", () => {
+    expect(
+      buildShotImageActionUserPrompt(
+        gridParams({ promptMaxChars: 20_000 }),
+      ),
+    ).toContain("prompt_max_chars: 20000");
+  });
+
   it("assembles only data facts for soften — no grid_layout, no repair_instruction line", () => {
     const prompt = buildShotImageActionUserPrompt(softenParams());
 

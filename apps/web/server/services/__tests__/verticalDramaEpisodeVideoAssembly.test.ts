@@ -66,6 +66,10 @@ import {
   buildConcatListFileContent,
   compiledVideoFilename,
   extractClipSourcesFromMotionPromptPack,
+  extractVerticalDramaManagedStorageKey,
+  buildVerticalDramaStorageProxyUrl,
+  repairVerticalDramaVideoAssetUrls,
+  normalizeVerticalDramaStoredAssetUrl,
   findMissingClips,
   mergeVideoTaskIntoMotionPromptPack,
   getJobStatus,
@@ -283,6 +287,17 @@ describe("mergeVideoTaskIntoMotionPromptPack", () => {
     ).toEqual(["/301.mp4", "/302.mp4"]);
   });
 
+  it("persists worker-artifact clips through the durable storage proxy", () => {
+    const pack: any = { clips: [{ clipNumber: 3 }], warnings: [] };
+    const merged = mergeVideoTaskIntoMotionPromptPack(pack, 3, {
+      videoUrl:
+        "https://r2.example.test/smartspec/worker-artifacts/tenant/job/clip.mp4?X-Amz-Signature=secret",
+    });
+    expect(merged?.clips[0].videoTask?.videoUrl).toBe(
+      "/api/storage/files/worker-artifacts/tenant/job/clip.mp4"
+    );
+  });
+
   it("does not create a phantom clip when a late failed poll clears an unknown id", () => {
     const pack: any = { clips: [{ clipNumber: 1 }], warnings: [] };
     expect(mergeVideoTaskIntoMotionPromptPack(pack, 301, null)).toBe(pack);
@@ -392,6 +407,60 @@ describe("extractClipSourcesFromMotionPromptPack", () => {
       .sort((a: any, b: any) => a.clipNumber - b.clipNumber)
       .map((c: any) => c.clipNumber);
     expect(ordered.map(c => c.clipNumber)).toEqual(rawSorted);
+  });
+});
+
+describe("normalizeVerticalDramaStoredAssetUrl", () => {
+  it("replaces expiring worker-artifact signatures with the durable storage proxy", () => {
+    expect(
+      normalizeVerticalDramaStoredAssetUrl(
+        "https://r2.example.test/smartspec/worker-artifacts/tenant/job/clip.mp4?X-Amz-Expires=3600&X-Amz-Signature=secret"
+      )
+    ).toBe("/api/storage/files/worker-artifacts/tenant/job/clip.mp4");
+  });
+
+  it("leaves provider URLs unchanged", () => {
+    expect(normalizeVerticalDramaStoredAssetUrl("https://provider.example/clip.mp4")).toBe(
+      "https://provider.example/clip.mp4"
+    );
+  });
+
+  it("extracts only the durable managed key and ignores signed query parameters", () => {
+    const url =
+      "https://r2.example.test/smartspec/worker-artifacts/tenant/job/clip.mp4?X-Amz-Signature=secret";
+    expect(extractVerticalDramaManagedStorageKey(url)).toBe(
+      "worker-artifacts/tenant/job/clip.mp4"
+    );
+    expect(extractVerticalDramaManagedStorageKey(
+      "/api/storage/files/worker-artifacts/tenant/job/clip.mp4"
+    )).toBe("worker-artifacts/tenant/job/clip.mp4");
+    expect(extractVerticalDramaManagedStorageKey("https://provider.example/clip.mp4")).toBeNull();
+    expect(buildVerticalDramaStorageProxyUrl("worker-artifacts/tenant/job/clip.mp4")).toBe(
+      "/api/storage/files/worker-artifacts/tenant/job/clip.mp4"
+    );
+  });
+
+  it("repairs legacy clips idempotently without changing unrelated clips", () => {
+    const pack = {
+      selectedVideoModelId: "grok",
+      durationProfileId: "profile",
+      motionMode: "image_to_video" as const,
+      clips: [
+        { clipNumber: 3, sourceShotNumbers: [3], prompt: "a", videoTask: { videoUrl: "https://expired.example/3.mp4" } },
+        { clipNumber: 4, sourceShotNumbers: [4], prompt: "b", videoTask: { videoUrl: "/api/storage/files/existing.mp4", mediaAssetId: "22" } },
+      ],
+      warnings: [],
+    };
+    const resolutions = {
+      3: { mediaAssetId: 1296, url: "/api/storage/files/worker-artifacts/3.mp4" },
+    };
+    const repaired = repairVerticalDramaVideoAssetUrls(pack, resolutions);
+    expect(repaired?.clips[0]?.videoTask).toEqual({
+      videoUrl: "/api/storage/files/worker-artifacts/3.mp4",
+      mediaAssetId: "1296",
+    });
+    expect(repaired?.clips[1]).toEqual(pack.clips[1]);
+    expect(repairVerticalDramaVideoAssetUrls(repaired, resolutions)).toBe(repaired);
   });
 });
 
@@ -945,8 +1014,8 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
     });
     const bumper = result.overlays.find(o => o.kind === "title_bumper");
     const recap = result.overlays.find(o => o.kind === "opener_recap");
-    expect(bumper).toMatchObject({ startSec: 0, endSec: 1.2 });
-    expect(recap).toMatchObject({ startSec: 1.2, endSec: 5.2, secondaryText: "ความเดิม" });
+    expect(bumper).toMatchObject({ startSec: 0, endSec: 3 });
+    expect(recap).toMatchObject({ startSec: 3, endSec: 7, secondaryText: "ความเดิม" });
   });
 
   it("starts opener_recap at 0 when titleBumper is absent", () => {

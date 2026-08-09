@@ -211,6 +211,7 @@ describe("getHermesMediaTask — resultUrl", () => {
     const task = await getHermesMediaTask("hermes_job-1", USER_ID, { repo, presign });
     expect(task?.status).toBe("completed");
     expect(task?.resultUrl).toBe("https://signed.example/output.png");
+    expect(task?.resultData?.mediaAssetId).toBe("77");
     expect(presign).toHaveBeenCalledWith("hermes-media/tenant-1/42/output.png", expect.any(Number));
   });
 

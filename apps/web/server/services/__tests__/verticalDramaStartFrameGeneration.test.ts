@@ -172,7 +172,8 @@ describe("generateStartFrameRenderPlan", () => {
     expect(result.plan.selectedImageModelId).toBe("google-banana-2-lite");
     expect(result.plan.frames[0]).toMatchObject({
       shotNumber: 1,
-      imagePrompt: "Start frame prompt for shot 1",
+      imagePrompt: expect.stringContaining("IMAGE NEGATIVE CONSTRAINTS (MANDATORY"),
+      negativePrompt: "",
       requiredCharacterRefs: ["char-1"],
     });
     expect(result.creditsUsed).toBe(6);
@@ -339,6 +340,33 @@ describe("generateStartFrameRenderPlan", () => {
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).not.toContain("CHARACTER IDENTITY MAP");
   });
+
+  it("declares caller references as screen-only without increasing the physical cast", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(
+      baseParams({
+        storyboardShots: [
+          {
+            ...baseParams().storyboardShots[0],
+            characterIds: ["char-1", "char-2"],
+            screenCallerCharacterIds: ["char-krit"],
+          },
+          ...baseParams().storyboardShots.slice(1),
+        ],
+      })
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const userMessage = callArgs.messages.find(m => m.role === "user")!.content;
+    expect(userMessage).toContain("screen_callers: char-krit");
+    expect(userMessage).toContain("do not attach the caller portrait as a physical-scene reference");
+    expect(userMessage).toContain("show only inside a clearly visible phone/video call screen");
+    expect(userMessage).toContain("required_characters: 2");
+  });
 });
 
 describe("projectStartFramePlan — plan-level image prompt language", () => {
@@ -434,6 +462,7 @@ describe("projectStartFramePlan", () => {
             imagePrompt: "STALE prompt that must be replaced",
             negativePrompt: "stale negative",
             requiredCharacterRefs: ["char-1"],
+            characterRefsCustomized: true,
             productReferenceAssetIds: ["asset-101"],
             productRefsCustomized: true,
             approvedMediaAssetId: "media-42",
@@ -454,8 +483,9 @@ describe("projectStartFramePlan", () => {
 
       const frame = plan.frames[0];
       // Replaced — the whole point of regenerating.
-      expect(frame?.imagePrompt).toBe("Start frame prompt for shot 3");
-      expect(frame?.negativePrompt).toBe("blurry");
+      expect(frame?.imagePrompt).toContain("Start frame prompt for shot 3");
+      expect(frame?.imagePrompt).toContain("blurry");
+      expect(frame?.negativePrompt).toBe("");
       // Carried over.
       expect(frame?.approvedMediaAssetId).toBe("media-42");
       expect(frame?.locationKey).toBe("loc-kitchen");
@@ -466,6 +496,7 @@ describe("projectStartFramePlan", () => {
       expect(frame?.angleGridAssetIds).toEqual([501, 502]);
       expect(frame?.productReferenceAssetIds).toEqual(["asset-101"]);
       expect(frame?.productRefsCustomized).toBe(true);
+      expect(frame?.characterRefsCustomized).toBe(true);
     });
 
     it("(b) never carries over promptMode — a regen from the legacy batch skill must clear any prior mode stamp so the engine badge clears and the render-time preset append resumes", () => {
@@ -504,6 +535,46 @@ describe("projectStartFramePlan", () => {
       );
 
       expect(plan.frames[0]).not.toHaveProperty("promptMode");
+    });
+
+    it("treats an explicit user-selected empty scene/caller assignment as authoritative over fresh LLM references", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(3)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          3,
+          {
+            shotNumber: 3,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: ["user-scene"],
+            screenCallerCharacterRefs: ["user-caller"],
+            characterRefsCustomized: true,
+            productReferenceAssetIds: [],
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        new Map([[3, []]]),
+        undefined,
+        previousFramesByShotNumber,
+        undefined,
+        undefined,
+        new Map([[3, []]]),
+      );
+
+      expect(plan.frames[0]).toMatchObject({
+        requiredCharacterRefs: [],
+        characterRefsCustomized: true,
+      });
+      expect(plan.frames[0]).not.toHaveProperty("screenCallerCharacterRefs");
     });
 
     it("(c) byte-identical output when no previous frames are supplied — omits every new carry-over field entirely, same as every pre-existing caller", () => {
@@ -573,7 +644,9 @@ describe("projectStartFramePlan", () => {
       // no-previous-frames-at-all case, for THIS shot only.
       expect(shot9).not.toHaveProperty("approvedMediaAssetId");
       expect(shot9?.productReferenceAssetIds).toEqual([]);
-      expect(shot9?.imagePrompt).toBe("Start frame prompt for shot 9");
+      expect(shot9?.imagePrompt).toContain("Start frame prompt for shot 9");
+      expect(shot9?.imagePrompt).toContain("blurry");
+      expect(shot9?.negativePrompt).toBe("");
     });
 
     it("canonicalShotSummary: the projection's own freshly-resolved value wins over a carried-over prior one when both are present", () => {

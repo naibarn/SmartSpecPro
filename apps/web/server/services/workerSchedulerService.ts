@@ -20,6 +20,8 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES,
   VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE,
@@ -45,6 +47,7 @@ import {
 } from "./workerBillingService";
 import { refundReservation } from "./creditService";
 import { createRateLimiter } from "./rateLimiter";
+import { isPlainObject } from "./workerPayloadSanitizer";
 
 const OPENCLAW_RUNTIME_TYPE: WorkerRuntimeType = "openclaw_gateway";
 const DESKTOP_RUNTIME_TYPE: WorkerRuntimeType = "desktop_zeroclaw_managed";
@@ -304,6 +307,23 @@ export function workerJobMatchesSelection(
   const requiredClaimCapability = typeof requirements.requiredClaimCapability === "string"
     ? requirements.requiredClaimCapability.trim()
     : "";
+  // Existing queued jobs may predate `requiredClaimCapability`. Remotion
+  // payloads are still versioned, so protect those rows too: an older worker
+  // must not claim a job that its sidecar will reject, and a current worker
+  // must not claim a payload from the retired contract either.
+  if (job.jobType === "remotion_render_video") {
+    const payloadContractVersion = isPlainObject(job.inputJson)
+      && typeof job.inputJson.platformContractVersion === "string"
+      ? job.inputJson.platformContractVersion
+      : "";
+    if (payloadContractVersion !== REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION) {
+      return false;
+    }
+    return capabilityHints.includes(
+      requiredClaimCapability || REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+    );
+  }
+
   if (requiredClaimCapability) {
     return capabilityHints.includes(requiredClaimCapability);
   }
@@ -1938,11 +1958,12 @@ export async function queueRemotionRenderVideoJob(
       resourceProfile: "cpu_heavy",
       capabilityRequirementsJson: {
         capabilityFamilies,
+        requiredClaimCapability: REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
         preferredWorkerId: null,
-        // Not part of the anti-mis-claim match (workerJobMatchesSelection
-        // only reads capabilityFamilies/preferredWorkerId) — carried here
-        // purely so `findActiveRemotionPreviewJobForUser` can filter by
-        // profile without deserializing inputJson.
+        // `requiredClaimCapability` is the authoritative admission gate. The
+        // descriptive families remain for observability and legacy routing.
+        // `renderProfile` is carried so `findActiveRemotionPreviewJobForUser`
+        // can filter without deserializing inputJson.
         renderProfile: input.renderProfile.profile,
       },
       inputJson: input,

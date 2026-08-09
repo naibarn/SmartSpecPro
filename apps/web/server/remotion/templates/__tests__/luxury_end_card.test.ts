@@ -63,6 +63,29 @@ describe("luxury_end_card", () => {
     expect(layers.length).toBeLessThanOrEqual(40);
   });
 
+  it("falls back to ctx.brandKit.logoAssetId when params.logoAssetId is omitted", () => {
+    const layers = buildLuxuryEndCard(
+      { ctaText: "Shop now" },
+      buildCtx({ brandKit: { ...BRAND_KIT, logoAssetId: 77 } })
+    );
+    const logo = layers.find(layer => layer.id === "luxury_end_card_logo");
+    expect(logo).toMatchObject({ src: "https://cdn.example.com/proxy/asset/77" });
+  });
+
+  it("prefers an explicit params.logoAssetId over ctx.brandKit.logoAssetId", () => {
+    const layers = buildLuxuryEndCard(
+      VALID_PARAMS,
+      buildCtx({ brandKit: { ...BRAND_KIT, logoAssetId: 77 } })
+    );
+    const logo = layers.find(layer => layer.id === "luxury_end_card_logo");
+    expect(logo).toMatchObject({ src: `https://cdn.example.com/proxy/asset/${VALID_PARAMS.logoAssetId}` });
+  });
+
+  it("omits the logo layer when neither params nor brandKit provide a logoAssetId", () => {
+    const layers = buildLuxuryEndCard({ ctaText: "Shop now" }, buildCtx({ brandKit: { ...BRAND_KIT, logoAssetId: null } }));
+    expect(layers.find(layer => layer.id === "luxury_end_card_logo")).toBeUndefined();
+  });
+
   it("every emitted layer parses under RemotionLayerSchema", () => {
     const layers = buildLuxuryEndCard(VALID_PARAMS, buildCtx());
     for (const layer of layers) {

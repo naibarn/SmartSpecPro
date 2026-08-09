@@ -45,6 +45,19 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Physical scene characters vs. screen callers — MANDATORY
+
+For every shot, keep physical scene presence and remote callers in separate fields:
+
+- `characters` and `required_character_refs` contain only people physically visible in the room/scene.
+- `screen_caller_refs` contains remote phone/video callers whose portrait reference must still be attached.
+- A `screen_caller_refs` portrait is a reference for the caller's face only: show it solely inside a clearly visible phone, tablet, monitor, or video-call screen. Never render that caller as a physical person in the room, and do not count the caller toward the physical person count.
+- If a shot arrives with an explicit scene/caller assignment from the user, preserve that assignment exactly. Do not reclassify, move, add, or remove a character based on a synopsis mention.
+
+When the synopsis or dialogue says someone is calling, on a phone, on video, remote,
+or not present in the location, put that character id in `screen_caller_refs` and keep
+it out of `characters`/`required_character_refs`.
+
 ## Emotional & acting direction — MANDATORY
 
 The input script (from `vertical-drama-script-builder`) carries `power_shift` and

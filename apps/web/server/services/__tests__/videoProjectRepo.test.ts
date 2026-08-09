@@ -31,8 +31,10 @@ vi.mock("../../db", () => ({ db: mockDb }));
 
 import {
   insertVideoProject,
+  duplicateVideoProject,
   getVideoProject,
   listVideoProjects,
+  listVideoProjectsByProduct,
   saveVideoProjectDocument,
   listVideoProjectRevisions,
   restoreVideoProjectRevision,
@@ -61,6 +63,18 @@ function selectChain(rows: unknown[]) {
     orderBy: vi.fn(() => Promise.resolve(rows)),
     limit: vi.fn(() => Promise.resolve(rows)),
     then: (resolve: any, reject: any) => Promise.resolve(rows).then(resolve, reject),
+  };
+  return chain;
+}
+
+/** Thenable select-chain stub with `.leftJoin()`/`.orderBy()`/`.limit()` — used by `listVideoProjectsByProduct`. */
+function selectJoinLimitChain(rows: unknown[]) {
+  const chain: any = {
+    from: vi.fn(() => chain),
+    leftJoin: vi.fn(() => chain),
+    where: vi.fn(() => chain),
+    orderBy: vi.fn(() => chain),
+    limit: vi.fn(() => Promise.resolve(rows)),
   };
   return chain;
 }
@@ -121,7 +135,6 @@ function project(over: Partial<VideoProjectRow> = {}): VideoProjectRow {
     renderJobId: null,
     previewJobId: null,
     resultLibraryItemId: null,
-    videoEditorProjectId: null,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
     ...over,
@@ -185,6 +198,41 @@ describe("insertVideoProject", () => {
   });
 });
 
+describe("duplicateVideoProject", () => {
+  it("clones only an owned project and resets lifecycle pointers", async () => {
+    const source = project({ id: 7, status: "completed", revision: 9, renderJobId: "job-1" });
+    mockDb.select.mockReturnValueOnce(selectChain([source]));
+    const chain = insertChain([project({ id: 8, name: "Reusable copy", status: "brief", revision: 1 })]);
+    mockDb.insert.mockReturnValueOnce(chain);
+
+    const result = await duplicateVideoProject(SCOPE, { projectId: 7, name: "Reusable copy" });
+
+    expect(result.id).toBe(8);
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
+    expect(whereContains(mockDb.select.mock.results[0].value.where.mock.calls[0][0], "tenant-1")).toBe(true);
+    expect(whereContains(mockDb.select.mock.results[0].value.where.mock.calls[0][0], 42)).toBe(true);
+    expect(chain.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        userId: 42,
+        studioType: source.studioType,
+        status: "brief",
+        document: source.document,
+        revision: 1,
+        renderJobId: null,
+        previewJobId: null,
+        resultLibraryItemId: null,
+      }),
+    );
+  });
+
+  it("fails closed for a foreign or missing project", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+    await expect(duplicateVideoProject(SCOPE, { projectId: 999 })).rejects.toThrow(VideoProjectNotFoundError);
+    expect(mockDb.insert).not.toHaveBeenCalled();
+  });
+});
+
 describe("getVideoProject", () => {
   it("filters on both tenantId and userId", async () => {
     const chain = selectChain([project({ id: 7 })]);
@@ -222,6 +270,44 @@ describe("listVideoProjects", () => {
     const whereArg = chain.where.mock.calls[0][0];
     expect(whereContains(whereArg, "tenant-1")).toBe(true);
     expect(whereContains(whereArg, 42)).toBe(true);
+  });
+});
+
+describe("listVideoProjectsByProduct", () => {
+  it("scopes to tenantId+userId+productId and joins the result library item", async () => {
+    const chain = selectJoinLimitChain([
+      {
+        id: 3,
+        name: "From Product",
+        studioType: "catalog",
+        status: "ready",
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        resultLibraryItemId: 9,
+        resultThumbnailUrl: "https://cdn.example.com/thumb.jpg",
+        resultVideoUrl: "https://cdn.example.com/video.mp4",
+      },
+    ]);
+    mockDb.select.mockReturnValueOnce(chain);
+
+    const result = await listVideoProjectsByProduct(SCOPE, { productId: "prod-1" });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].resultThumbnailUrl).toBe("https://cdn.example.com/thumb.jpg");
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
+    expect(chain.leftJoin).toHaveBeenCalledTimes(1);
+    const whereArg = chain.where.mock.calls[0][0];
+    expect(whereContains(whereArg, "tenant-1")).toBe(true);
+    expect(whereContains(whereArg, 42)).toBe(true);
+    expect(whereContains(whereArg, "prod-1")).toBe(true);
+    expect(chain.limit).toHaveBeenCalledWith(20);
+  });
+
+  it("clamps limit to the 1..50 range", async () => {
+    mockDb.select.mockReturnValueOnce(selectJoinLimitChain([]));
+    await listVideoProjectsByProduct(SCOPE, { productId: "prod-1", limit: 999 });
+    const chain1 = mockDb.select.mock.results[0].value;
+    expect(chain1.limit).toHaveBeenCalledWith(50);
   });
 });
 

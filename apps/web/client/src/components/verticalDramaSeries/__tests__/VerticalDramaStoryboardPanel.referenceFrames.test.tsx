@@ -8,7 +8,7 @@
  * "reference_frame"` (design decision (a) in the plan — a separate row from
  * the general `ShotReferenceStrip`, most-recent-first).
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { VerticalDramaStoryboardPanel } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
@@ -29,7 +29,11 @@ function baseProps(overrides: Record<string, unknown> = {}) {
       ],
     },
     characterPortraits: {
-      hero: { characterId: "1", name: "พระเอก", portraitUrl: "https://cdn/hero.jpg" },
+      hero: {
+        characterId: "1",
+        name: "พระเอก",
+        portraitUrl: "https://cdn/hero.jpg",
+      },
     },
     loading: false,
     onGenerateReferenceFramePrompt: vi.fn(),
@@ -65,9 +69,10 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
     // Default selection seeds from requiredCharacterRefs — the roster
     // checkbox for "hero" starts checked.
     const heroRow = screen.getByTestId("vd-reference-frame-character-1-hero");
-    expect(
-      heroRow.querySelector('button[role="checkbox"]')
-    ).toHaveAttribute("data-state", "checked");
+    expect(heroRow.querySelector('button[role="checkbox"]')).toHaveAttribute(
+      "data-state",
+      "checked"
+    );
   });
 
   it("disables the generate button once the shot has 10 linked reference_frame rows", () => {
@@ -86,9 +91,7 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
         }) as any)}
       />
     );
-    expect(
-      screen.getByTestId("vd-generate-reference-frame-1")
-    ).toBeDisabled();
+    expect(screen.getByTestId("vd-generate-reference-frame-1")).toBeDisabled();
   });
 
   it("does not render the generated-frames row when there are no reference_frame entries yet", () => {
@@ -171,5 +174,492 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
     fireEvent.click(screen.getByTestId("vd-reference-frame-thumb-1-rf-1"));
     // ImageLightbox renders the full-size image once opened.
     expect(screen.getByAltText("เฟรมอ้างอิงที่สร้างไว้")).toBeInTheDocument();
+  });
+
+  it("renders a clear two-view workflow for a closed-door scene and hides the generic reference flow", () => {
+    const onSetShotViewMode = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onGeneratePromptAndImage: vi.fn(),
+          onGenerateStartFrameImage: vi.fn(),
+          onSetShotViewMode,
+          onSetShotBarrierReferenceLocation: vi.fn(),
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "inside prompt",
+                requiredCharacterRefs: ["irin"],
+                screenCallerCharacterRefs: ["krit"],
+                barrierMultiView: {
+                  enabled: true,
+                  barrierType: "closed_door",
+                  relation: "same_establishment_adjacent_spaces",
+                  startView: {
+                    side: "inside",
+                    characterRefs: ["irin"],
+                    locationKey: "storage-room",
+                  },
+                  referenceView: {
+                    side: "outside",
+                    characterRefs: ["krit"],
+                    locationKey: "cafe-ground-floor",
+                  },
+                  dialogueSideMap: { irin: "inside", krit: "outside" },
+                  status: "configured",
+                },
+              },
+            ],
+          },
+          characterPortraits: {
+            irin: {
+              characterId: "1",
+              name: "ไอริณ",
+              portraitUrl: "https://cdn/irin.jpg",
+            },
+            krit: {
+              characterId: "2",
+              name: "กฤต",
+              portraitUrl: "https://cdn/krit.jpg",
+            },
+          },
+          episodeLocations: [
+            { locationKey: "storage-room", name: "ห้องเก็บของหลังคาเฟ่" },
+            {
+              locationKey: "cafe-ground-floor",
+              name: "คาเฟ่ไอริณชั้นล่างตึกแถว",
+            },
+          ],
+        }) as any)}
+      />
+    );
+
+    expect(screen.getByTestId("vd-barrier-multi-view-1")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-dual-view-assignment-primary-1")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-dual-view-assignment-secondary-1")
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-storyboard-character-ref-edit-1")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-storyboard-location-edit-1")
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("ฉากสนทนาคนละฝั่งประตู")).toBeInTheDocument();
+    expect(screen.getByText("เริ่มจากภาพฝั่งในห้อง")).toBeInTheDocument();
+    expect(screen.getByTestId("vd-generate-image-1")).toHaveTextContent(
+      "สร้างภาพ (AI)"
+    );
+    expect(screen.getByTestId("vd-barrier-generate-start-1")).toBeEnabled();
+    expect(screen.getByTestId("vd-generate-reference-frame-1")).toBeDisabled();
+    expect(
+      screen.queryByTestId("vd-reference-frame-row-1")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-storyboard-screen-caller-section-1")
+    ).not.toBeInTheDocument();
+  });
+
+  it("edits each Dual View character and location assignment through the persisted contract", () => {
+    const onSetShotViewMode = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onSetShotViewMode,
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "two locations",
+                requiredCharacterRefs: ["irin"],
+                barrierMultiView: {
+                  enabled: true,
+                  scenario: "separate_locations",
+                  activationSource: "manual",
+                  barrierType: "none",
+                  relation: "separate_locations",
+                  startView: {
+                    side: "inside",
+                    characterRefs: ["irin"],
+                    locationKey: "storage-room",
+                  },
+                  referenceView: {
+                    side: "outside",
+                    characterRefs: ["krit"],
+                    locationKey: "cafe-ground-floor",
+                  },
+                  dialogueSideMap: { irin: "inside", krit: "outside" },
+                  status: "configured",
+                },
+              },
+            ],
+          },
+          characterPortraits: {
+            irin: {
+              characterId: "1",
+              name: "ไอริณ",
+              portraitUrl: "https://cdn/irin.jpg",
+            },
+            krit: {
+              characterId: "2",
+              name: "กฤต",
+              portraitUrl: "https://cdn/krit.jpg",
+            },
+          },
+          episodeLocations: [
+            { locationKey: "storage-room", name: "ห้องเก็บของ" },
+            { locationKey: "cafe-ground-floor", name: "คาเฟ่ชั้นล่าง" },
+            { locationKey: "office", name: "สำนักงาน" },
+          ],
+        }) as any)}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByTestId("vd-dual-view-edit-characters-primary-1")
+    );
+    expect(screen.getByText("กำหนดตัวละครมุมที่ 1")).toBeInTheDocument();
+    expect(
+      screen
+        .getByTestId("vd-storyboard-character-ref-option-1-krit")
+        .querySelector('button[role="checkbox"]')
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByTestId(
+        "vd-storyboard-character-ref-picker-save-1-dual_primary"
+      )
+    );
+    expect(onSetShotViewMode).toHaveBeenLastCalledWith(1, {
+      mode: "dual",
+      scenario: "separate_locations",
+      primaryCharacterRefs: ["irin"],
+      secondaryCharacterRefs: ["krit"],
+      primaryLocationKey: "storage-room",
+      secondaryLocationKey: "cafe-ground-floor",
+    });
+
+    fireEvent.click(
+      screen.getByTestId("vd-dual-view-edit-location-secondary-1")
+    );
+    expect(
+      screen.queryByTestId("vd-storyboard-location-picker-default-1")
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("vd-storyboard-location-picker-option-1-office")
+    );
+    expect(onSetShotViewMode).toHaveBeenLastCalledWith(1, {
+      mode: "dual",
+      scenario: "separate_locations",
+      primaryCharacterRefs: ["irin"],
+      secondaryCharacterRefs: ["krit"],
+      primaryLocationKey: "storage-room",
+      secondaryLocationKey: "office",
+    });
+  });
+
+  it("marks the closed-door workflow ready only when both view images are current", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          assetUrls: {
+            start: { url: "https://cdn/start.jpg" },
+            outside: { url: "https://cdn/outside.jpg" },
+          },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "inside prompt",
+                requiredCharacterRefs: ["hero"],
+                approvedMediaAssetId: "start",
+                barrierMultiView: {
+                  enabled: true,
+                  barrierType: "closed_door",
+                  relation: "same_establishment_adjacent_spaces",
+                  startView: {
+                    side: "inside",
+                    characterRefs: ["hero"],
+                    locationKey: "inside",
+                  },
+                  referenceView: {
+                    side: "outside",
+                    characterRefs: ["outside"],
+                    locationKey: "outside",
+                    referenceFrameAssetId: "outside",
+                  },
+                  dialogueSideMap: { hero: "inside", outside: "outside" },
+                  status: "ready",
+                },
+              },
+            ],
+          },
+          shotReferencesByShot: {
+            1: [
+              {
+                referenceId: "outside-ref",
+                mediaAssetId: "outside",
+                role: "barrier_reference",
+                source: "reference_frame",
+                sortOrder: 0,
+                thumbnailUrl: "https://cdn/outside.jpg",
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    expect(screen.getByText("พร้อมสร้างวิดีโอ")).toBeInTheDocument();
+    expect(screen.getByAltText("ภาพมุมในห้อง")).toBeInTheDocument();
+    expect(screen.getByAltText("ภาพมุมหน้าประตู")).toBeInTheDocument();
+  });
+
+  it("shows View 2's saved prompt after View 1 and supports free edit, new prompt, or direct render", async () => {
+    const onSaveReferenceFramePrompt = vi.fn();
+    const onGenerateReferenceFrameImage = vi.fn().mockResolvedValue(true);
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          assetUrls: { start: { url: "https://cdn/start.jpg" } },
+          onSaveReferenceFramePrompt,
+          onGenerateReferenceFrameImage,
+          onGeneratePromptAndImage: vi.fn(),
+          onSetShotBarrierReferenceLocation: vi.fn(),
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "inside prompt",
+                approvedMediaAssetId: "start",
+                requiredCharacterRefs: ["hero"],
+                barrierMultiView: {
+                  enabled: true,
+                  scenario: "physical_barrier",
+                  activationSource: "manual",
+                  barrierType: "closed_door",
+                  relation: "same_establishment_adjacent_spaces",
+                  startView: {
+                    side: "inside",
+                    characterRefs: ["hero"],
+                    locationKey: "inside",
+                  },
+                  referenceView: {
+                    side: "outside",
+                    characterRefs: ["outside"],
+                    locationKey: "outside",
+                    imagePrompt: "outside saved prompt",
+                    negativePrompt: "merged locations",
+                  },
+                  dialogueSideMap: { hero: "inside", outside: "outside" },
+                  status: "start_ready",
+                },
+              },
+            ],
+          },
+          characterPortraits: {
+            hero: {
+              characterId: "1",
+              name: "ไอริณ",
+              portraitUrl: "https://cdn/hero.jpg",
+            },
+            outside: {
+              characterId: "2",
+              name: "กฤต",
+              portraitUrl: "https://cdn/outside.jpg",
+            },
+          },
+          episodeLocations: [
+            { locationKey: "inside", name: "ห้องเก็บของ" },
+            { locationKey: "outside", name: "หน้าประตู" },
+          ],
+        }) as any)}
+      />
+    );
+
+    const view1Prompt = screen.getByTestId(
+      "vd-storyboard-image-prompt-1-char-counter"
+    );
+    const view2Section = screen.getByTestId(
+      "vd-reference-image-prompt-section-1"
+    );
+    expect(
+      view1Prompt.compareDocumentPosition(view2Section) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByText("outside saved prompt")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId("vd-reference-image-prompt-1-edit-inline")
+    );
+    fireEvent.change(
+      screen.getByTestId("vd-reference-image-prompt-1-textarea"),
+      { target: { value: "edited outside prompt" } }
+    );
+    fireEvent.click(screen.getByTestId("vd-reference-image-prompt-1-save"));
+    await waitFor(() =>
+      expect(onSaveReferenceFramePrompt).toHaveBeenCalledWith(
+        1,
+        "edited outside prompt"
+      )
+    );
+
+    fireEvent.click(
+      screen.getByTestId("vd-reference-image-prompt-1-generate-new")
+    );
+    expect(
+      screen.getByTestId("vd-reference-frame-dialog-1")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("vd-reference-frame-cancel-1"));
+
+    fireEvent.click(screen.getByTestId("vd-reference-image-prompt-1-render"));
+    fireEvent.click(
+      screen.getByTestId(
+        "vd-credit-confirm-reference-image-existing-prompt-1-confirm"
+      )
+    );
+    expect(onGenerateReferenceFrameImage).toHaveBeenCalledWith({
+      shotNumber: 1,
+      prompt: "outside saved prompt",
+      negativePrompt: "merged locations",
+      characterKeys: ["outside"],
+    });
+  });
+
+  it("opens image-to-image repair for View 2 with the View 2 image", () => {
+    const onOpenRepairImageDialog = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          selectedImageModelId: "google-nano-banana-pro",
+          onOpenRepairImageDialog,
+          onSubmitRepairImage: vi.fn(),
+          repairImageDialogForShot: 1,
+          repairImageTargetRole: "barrier_reference",
+          assetUrls: {
+            start: { url: "https://cdn/start.jpg" },
+            outside: { url: "https://cdn/outside.jpg" },
+          },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "inside prompt",
+                approvedMediaAssetId: "start",
+                requiredCharacterRefs: ["hero"],
+                barrierMultiView: {
+                  enabled: true,
+                  barrierType: "closed_door",
+                  relation: "same_establishment_adjacent_spaces",
+                  startView: {
+                    side: "inside",
+                    characterRefs: ["hero"],
+                    locationKey: "inside",
+                  },
+                  referenceView: {
+                    side: "outside",
+                    characterRefs: ["outside"],
+                    locationKey: "outside",
+                    imagePrompt: "outside prompt",
+                    referenceFrameAssetId: "outside",
+                  },
+                  dialogueSideMap: { hero: "inside", outside: "outside" },
+                  status: "ready",
+                },
+              },
+            ],
+          },
+          shotReferencesByShot: {
+            1: [
+              {
+                referenceId: "outside-ref",
+                mediaAssetId: "outside",
+                role: "barrier_reference",
+                source: "reference_frame",
+                sortOrder: 0,
+                thumbnailUrl: "https://cdn/outside.jpg",
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-repair-image-dialog-1")
+    ).toBeInTheDocument();
+    expect(screen.getByAltText("ก่อน")).toHaveAttribute(
+      "src",
+      "https://cdn/outside.jpg"
+    );
+    fireEvent.click(screen.getByTestId("vd-barrier-repair-reference-image-1"));
+    expect(onOpenRepairImageDialog).toHaveBeenCalledWith(
+      1,
+      "barrier_reference"
+    );
+  });
+
+  it("lets the user override a normal shot into Dual View", () => {
+    const onSetShotViewMode = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({ onSetShotViewMode }) as any)}
+      />
+    );
+
+    expect(screen.getByTestId("vd-shot-view-mode-single-1")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    fireEvent.click(screen.getByTestId("vd-shot-view-mode-dual-1"));
+    expect(onSetShotViewMode).toHaveBeenCalledWith(1, { mode: "dual" });
+  });
+
+  it("shows auto-detection evidence and lets the user return to single view", () => {
+    const onSetShotViewMode = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onSetShotViewMode,
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "remote call",
+                requiredCharacterRefs: ["hero"],
+                barrierMultiView: {
+                  enabled: true,
+                  scenario: "remote_call",
+                  activationSource: "auto",
+                  detection: { confidence: 0.92, reasonCodes: ["remote_call"] },
+                  barrierType: "none",
+                  relation: "separate_locations",
+                  startView: {
+                    side: "inside",
+                    characterRefs: ["hero"],
+                    locationKey: "office",
+                  },
+                  referenceView: {
+                    side: "outside",
+                    characterRefs: ["caller"],
+                    locationKey: "home",
+                  },
+                  dialogueSideMap: { hero: "inside", caller: "outside" },
+                  status: "configured",
+                },
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    expect(screen.getByText("AI ตรวจพบ")).toBeInTheDocument();
+    expect(screen.getByText("92%")).toBeInTheDocument();
+    expect(screen.getByText("คุยโทรศัพท์คนละสถานที่")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("vd-shot-view-mode-single-1"));
+    expect(onSetShotViewMode).toHaveBeenCalledWith(1, { mode: "single" });
   });
 });

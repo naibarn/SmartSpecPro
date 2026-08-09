@@ -6,13 +6,45 @@
  * `shotIndex`/`shotTotal` event fields) still renders unchanged for this
  * job type (no structural change needed — same hand-rolled `@/lib/trpc`
  * mock convention used throughout this codebase's page tests).
+ *
+ * Also covers spec 143 §5 R1 — the job-type filter added next to the
+ * existing status filter.
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listQueryMock = vi.fn();
 const detailQueryMock = vi.fn();
 const cancelMutationMock = vi.fn();
+
+// Same native-<select> mock convention as
+// AdminMediaModels.hermesTransport.test.tsx — lets tests drive the filter
+// with a real DOM `change` event instead of simulating Radix's portal-based
+// popover.
+vi.mock("@/components/ui/select", () => {
+  const React = require("react");
+  return {
+    Select: ({ value, onValueChange, children }: any) => {
+      let testId = "mock-select";
+      React.Children.forEach(children, (child: any) => {
+        if (child?.props?.["data-testid"]) testId = child.props["data-testid"];
+      });
+      return (
+        <select
+          data-testid={testId}
+          value={value}
+          onChange={(e: any) => onValueChange?.(e.target.value)}
+        >
+          {children}
+        </select>
+      );
+    },
+    SelectTrigger: ({ children }: any) => <>{children}</>,
+    SelectValue: () => null,
+    SelectContent: ({ children }: any) => <>{children}</>,
+    SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+  };
+});
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -142,5 +174,48 @@ describe("RenderJobsPage — Feature 135 (Hermes Grok media worker) section 12 j
     });
     render(<RenderJobsPage />);
     expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+});
+
+describe("RenderJobsPage — job-type filter (spec 143 §5 R1)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    listQueryMock.mockReturnValue({
+      data: { items: [REMOTION_JOB] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    detailQueryMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+    cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  });
+
+  it("defaults the type filter to ทั้งหมด and sends no jobType to the query", () => {
+    render(<RenderJobsPage />);
+    const select = screen.getByTestId("render-jobs-type-filter") as HTMLSelectElement;
+    expect(within(select).getByRole("option", { name: "ทั้งหมด" })).toBeInTheDocument();
+    const lastCallArgs = listQueryMock.mock.calls.at(-1)?.[0];
+    expect(lastCallArgs.jobType).toBeUndefined();
+  });
+
+  it("lists the Thai labels from JOB_TYPE_LABELS as filter options", () => {
+    render(<RenderJobsPage />);
+    const select = screen.getByTestId("render-jobs-type-filter") as HTMLSelectElement;
+    expect(
+      within(select).getByRole("option", { name: "เรนเดอร์วิดีโอ Remotion" }),
+    ).toBeInTheDocument();
+    expect(
+      within(select).getByRole("option", { name: "สร้างภาพ (Grok ผ่าน Hermes)" }),
+    ).toBeInTheDocument();
+  });
+
+  it("passes the selected jobType through to workerJobs.list and resets offset to 0", () => {
+    render(<RenderJobsPage />);
+    const select = screen.getByTestId("render-jobs-type-filter") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "remotion_render_video" } });
+    const lastCallArgs = listQueryMock.mock.calls.at(-1)?.[0];
+    expect(lastCallArgs.jobType).toBe("remotion_render_video");
+    expect(lastCallArgs.offset).toBe(0);
   });
 });

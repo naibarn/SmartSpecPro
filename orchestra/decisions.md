@@ -1,67 +1,34 @@
-# Orchestra Decisions
+[2026-08-07T12:56:30Z] DECISION: Treat this turn as a read-only diagnosis until the governing mismatch is proven.
+  Context: The user reports a prompt-placement defect and asks where the system slips, but has not explicitly requested code changes.
+  Alternatives considered: patch prompt wording immediately; rejected because the error may originate in upstream frame analysis or persisted scene metadata.
 
-[2026-07-20T01:35:00Z] DECISION: Recommend one enabled backward-compatible
-GPT Image 2 catalog row with declarative reference-driven Kie model routing.
-  Context: The current stack already separates the selected/public model ID from
-  `api_config.kie_model_id`, and all Kie image requests expose normalized reference
-  URLs at the provider boundary.
-  Alternatives considered: new canonical row, frontend-only switching, and a
-  hardcoded provider-wide GPT-specific branch.
+[2026-08-07T12:56:30Z] DECISION: Use bounded shell discovery because SocratiCode tools are unavailable.
+  Context: Project instructions require SocratiCode first when active; no matching MCP tools were exposed.
+  Alternatives considered: broad repository scan; rejected to preserve context and avoid unrelated dirty work.
 
-[2026-07-20T08:50:00+07:00] DECISION: Implement the approved route as an
-opt-in provider capability keyed by `kie_model_id_with_references`.
-  Context: Reference URLs and flattened model API config meet at the Python Kie
-  provider, making it the narrowest authoritative switching boundary.
-  Proof: catalog migration/seed tests, enabled-model alias test, TypeScript
-  metadata-forwarding test, and 28 focused Python provider tests pass.
+[2026-08-07T13:00:00Z] DECISION: Diagnose the defect as a missing consistency gate, not as a missing portrait attachment.
+  Context: The router and service attach the approved start frame plus ordered character portraits, and the skill explicitly requires image-derived positions. The code does not enforce equality between `frame_analysis` positions and generated prose.
+  Alternatives considered: blame `requiredCharacterRefs` ordering; rejected because the observed failure is a prompt-text/frame-analysis contradiction after attachment, not evidence of a swapped portrait input.
 
-[2026-07-20T08:48:32+07:00] DECISION: Back up the affected database tables
-before applying migration 0212.
-  Backup: /home/dev/projects/SmartSpecPro/orchestra/backups/backup-20260720-014832Z-kie-gpt-image-2-pre-migration.dump
-  Scope: public.media_models and drizzle.__drizzle_migrations from database smartspec
-  Format: PostgreSQL custom archive; SHA-256 cd4a731a919fde4adf1c6c0551727ee46b9498ff988cbc24e8c8ab089af1e6bf
-  Restore: inspect with pg_restore --list, then restore into a recovery database
-  with pg_restore --data-only --dbname=<recovery_database> <backup>.
+[2026-08-07T13:15:00Z] DECISION: Hard-block explicit prompt/frame-analysis position contradictions after one corrective retry.
+  Context: A warning-only path still allowed a known-wrong speaker anchor to be persisted and rendered. Missing generic anchors remain warning-only for weak-model compatibility.
+  Alternatives considered: deterministic natural-language rewrite; rejected because replacing arbitrary position words can alter legitimate action text such as "turns right".
 
-[2026-07-20T08:49:21+07:00] DECISION: Raise migration 0212 journal timestamp
-above the latest live migration timestamp before retrying Drizzle migrate.
-  Context: the first migrate command exited successfully but skipped 0212 because
-  its original journal timestamp was older than an out-of-band live ledger entry.
-  Proof: the retried migration inserted hash
-  96aba02e01fa08d411a251e8c8f05b687974b031bf4b5777379e7f4d52f1dc67
-  once and produced the expected one-enabled-row database state.
+[2026-08-09T02:46:00.689Z] DECISION: Resolve canonical dialogue display names to the explicit Dual View roster keys before validation and prompt generation.
+  Context: Episode 135 shot 4 had two valid frame assets and a ready Dual View contract, but canonical speakers used display names while dialogueSideMap used stable character keys.
+  Alternatives considered: weaken or remove speaker-side validation; rejected because that would permit incorrect cuts and speaker-to-face assignments.
 
-[2026-07-20T09:08:11+07:00] DECISION: Gracefully drain and restart only the
-production media Celery worker after explicit user approval.
-  Context: the bind-mounted source was current but the worker process had loaded
-  the old provider module two days earlier; an active generation was allowed to
-  finish before the media consumer restarted.
-  Proof: media queue consumer is restored, worker ping is OK, and the fresh
-  process resolves reference-bearing GPT Image 2 requests to image-to-image.
+[2026-08-09T02:46:00.689Z] DECISION: Surface the backend PRECONDITION_FAILED message verbatim in the per-shot video-prompt action.
+  Context: The client replaced every distinct Dual View precondition with a misleading missing-main-image toast.
+  Alternatives considered: add another generic Dual View toast; rejected because it would continue hiding actionable validation failures.
+[2026-08-09T03:46:59Z] DECISION: Treat each Dual View image as an independent coordinate space and require per-person view roles.
+  Context: Runtime evidence showed a View 2 character analyzed as not visible in Image 1 but still assigned a global viewer-right anchor.
+  Alternatives considered: prose-only clarification, removing positions entirely, and view-scoped structured analysis plus deterministic validation. The structured option preserves useful positions while preventing cross-view identity leakage.
 
-[2026-07-20T09:11:47+07:00] DECISION: Persist the effective opt-in image model
-at async task creation and restart only the Python backend.
-  Context: provider routing alone fixed Kie execution but Media History reads
-  media_tasks.model, which previously retained the canonical text-to-image ID.
-  Proof: three new endpoint tests plus 28 provider tests pass; backend health is
-  HTTP 200 after restart.
+[2026-08-09T03:46:59Z] DECISION: Do not reuse unscoped Dual View frame analysis as an authoritative correction lock.
+  Context: Locking a position read from the wrong image would make the corrective retry repeat the defect.
+  Alternatives considered: accept as warning, infer the view from prose, or require a valid explicit view role before a Dual View lock. The explicit-role gate is deterministic and backward compatible with single-view shots.
 
-[2026-07-20T09:25:37+07:00] DECISION: Stop the only abandoned MCP media task
-after creating a table-data backup.
-  Context: task mcp_815c37bf01582291e6bb200d7b9960a1 caused 354 wrong-backend
-  fetch-result calls in about 100 seconds and exhausted a shared limiter bucket.
-  Backup: /home/dev/projects/SmartSpecPro/orchestra/backups/backup-20260720-mcp-media-tasks-pre-polling-stop.sql
-  Scope: public.mcp_media_tasks data
-  Format: PostgreSQL plain SQL data dump
-  Restore: load into a recovery database with psql; do not restore the stale row
-  to production because it would re-enable the incident condition.
-
-[2026-07-20T09:41:00+07:00] DECISION: Deploy the approved complete fix by
-gracefully restarting only the backend and web services.
-  Context: focused routing, polling, reconciliation, and JWT identity tests
-  passed; no schema or infrastructure change was required.
-  Proof: both services are active, local/public health passed, and two polling
-  windows recorded zero fetch-result bursts, 404s, limiter events, or 429s.
-[2026-07-20T22:55:37Z] DECISION: Route per-shot prompt plus image generation through the bounded per-shot prompt mutation
-  Context: Production evidence showed eight duplicate full start-frame plan runs for episode 114; synchronous whole-episode planning behind each per-shot click caused overlapping retries and HTTP 524 responses.
-  Alternatives considered: Client-only single-flight would still leave the first long request exposed to the proxy timeout; increasing the proxy timeout would preserve duplicate expensive work.
+[2026-08-09T04:06:00Z] DECISION: Use Image 1 and Image 2 as the only prompt-facing frame identifiers.
+  Context: Image numbering is a provider-neutral convention and avoids mixing attachment order with product-specific View terminology.
+  Alternatives considered: keep compound labels such as VIEW 1 / START FRAME, or accept both forms. Rejected because multiple accepted labels weaken deterministic scope validation. Internal `view_role` values remain unchanged for persisted-data compatibility.

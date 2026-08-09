@@ -209,6 +209,8 @@ Before editing skill/service files, add or update tests to prove:
 - The service exports the pure stale-snapshot decision contract; router wiring
   and approved/candidate reuse enforcement are owned by Section 03, so this
   section never silently upgrades a record itself.
+- Optional `sheet_prompt` is included in the same pre-credit cap validation, and
+  bounded semantic retry count is persisted in the visual-bible snapshot.
 
 ## Verification
 

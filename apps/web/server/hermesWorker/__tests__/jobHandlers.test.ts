@@ -165,6 +165,20 @@ describe("createJobHandlers", () => {
     ]);
   });
 
+  it("regression (lease renewal): activeJobIds() reports a job's id while handle() is in flight and clears it after", async () => {
+    const { deps } = buildDeps({ spawnImpl: createSuccessSpawn({}, {}, 50) });
+    const handlers = createJobHandlers(deps);
+
+    expect(handlers.activeJobIds()).toEqual([]);
+    const inFlight = handlers.handle(baseMediaJob({ id: "job-active-ids" }));
+    expect(handlers.activeJobIds()).toEqual(["job-active-ids"]);
+    await inFlight;
+    expect(handlers.activeJobIds()).toEqual([]);
+    // main.ts heartbeats these ids — currentJobCount 0 during a running job
+    // means the control plane never renews the lease and the job gets
+    // re-claimed mid-flow (observed: duplicate device codes 2026-08-02).
+  });
+
   it("regression (FIX 1 — security): never leaks process.env secrets into the spawned Hermes child env", async () => {
     const originalEnv = { ...process.env };
     process.env.DATABASE_URL = "postgresql://user:pass@host/db";

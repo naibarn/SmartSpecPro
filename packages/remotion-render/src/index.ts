@@ -37,6 +37,7 @@ export {
 export {
   RemotionLayerSchema,
   RemotionTemplateConfigSchema,
+  REMOTION_MOTION_COMPOSITION_IDS,
   isSafeInlineSvgMarkup,
 } from "./layerTemplateSchemas";
 export type {
@@ -46,6 +47,7 @@ export type {
   RemotionTextLayer,
   RemotionSvgLayer,
   RemotionMotionGraphicLayer,
+  RemotionMotionCompositionLayer,
   RemotionScene3dLayer,
   RemotionTemplateConfig,
 } from "./layerTemplateSchemas";

@@ -16,6 +16,7 @@
  */
 import { useState } from "react";
 
+import { AlertDialog } from "@astryxdesign/core/AlertDialog";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Grid, GridSpan } from "@astryxdesign/core/Grid";
@@ -25,12 +26,23 @@ import { NumberInput } from "@astryxdesign/core/NumberInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
+import { ToggleButton, ToggleButtonGroup } from "@astryxdesign/core/ToggleButton";
 
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
 import { createDefaultDocument } from "./createDefaultDocument";
-import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
+import { ContentDraftReviewCard } from "./ContentDraftReviewCard";
+import { migrateForFormatChange } from "./timelineEdits";
+import {
+  BRIEF_AUDIENCE_PRESETS,
+  BRIEF_TOPIC_PRESETS,
+  pickCopy,
+  videoStudioCopy,
+  type VideoStudioLang,
+} from "./videoStudioCopy";
+
+const AUDIENCE_CUSTOM_ID = "__custom__";
 
 interface VideoProjectRowLike {
   id: number;
@@ -52,20 +64,49 @@ export function BriefPanel({
   document,
   onDocumentInitialized,
   onDocumentChange,
+  projectRevision,
+  hasUnsavedChanges,
+  onDocumentSaved,
+  onSaveDocument,
 }: {
   lang: VideoStudioLang;
   project: VideoProjectRowLike;
   document: VideoProjectDocument | null;
   onDocumentInitialized: (doc: VideoProjectDocument) => void;
   onDocumentChange: (doc: VideoProjectDocument) => void;
+  /** Current server-side document revision — only meaningful once `document`
+   *  exists; required to dispatch the auto-draft launcher below. */
+  projectRevision?: number;
+  /** Same "block launch while there are unsaved edits" gate every other
+   *  stage launcher uses (spec §6.4 rule 2). */
+  hasUnsavedChanges?: boolean;
+  /** Fired once per terminal `auto_draft` job so the draft is refreshed from
+   *  the server — otherwise the next Save silently overwrites the AI's
+   *  draft (same contract as `ScenesPanel`'s `onDocumentSaved`). */
+  onDocumentSaved?: (document?: VideoProjectDocument, revision?: number) => void;
+  /** Persist the canonical document before a paid/content generation step. */
+  onSaveDocument?: () => Promise<number | undefined>;
 }) {
-  const brief = (project.brief ?? {}) as { topic?: string; audience?: string; notes?: string };
+  const brief = (project.brief ?? {}) as {
+    topic?: string;
+    audience?: string;
+    notes?: string;
+    productName?: string;
+  };
   const [topic, setTopic] = useState(brief.topic ?? "");
   const [audience, setAudience] = useState(brief.audience ?? "");
   const [notes, setNotes] = useState(brief.notes ?? "");
   const [platformPreset, setPlatformPreset] = useState<
     "tiktok_9_16" | "reels_9_16" | "youtube_16_9" | "square_1_1"
   >("tiktok_9_16");
+
+  // Presets only *fill* the input (still freely editable). Track which chip
+  // is selected purely for visual highlight; typing a custom value clears
+  // the selection instead of fighting the user's edit.
+  const [selectedTopicPreset, setSelectedTopicPreset] = useState<string | null>(null);
+  const [selectedAudiencePreset, setSelectedAudiencePreset] = useState<string | null>(null);
+  const productName =
+    brief.productName?.trim() || pickCopy(lang, { th: "สินค้านี้", en: "this product" });
 
   const utils = trpc.useUtils();
   const updateBrief = trpc.videoProjects.updateBrief.useMutation({
@@ -76,24 +117,148 @@ export function BriefPanel({
     onError: (error) => toast.error(error.message),
   });
 
+  const persistedBrief = brief;
+  const briefHasUnsavedChanges =
+    topic !== (persistedBrief.topic ?? "") ||
+    audience !== (persistedBrief.audience ?? "") ||
+    notes !== (persistedBrief.notes ?? "");
+
+  async function prepareDraft() {
+    if (briefHasUnsavedChanges) {
+      await updateBrief.mutateAsync({
+        projectId: project.id,
+        brief: { ...(project.brief as Record<string, unknown> | null), topic, audience, notes },
+      });
+    }
+    return onSaveDocument?.();
+  }
+
+  // Feature 143 §4.11/AC17 — a format edit (fps/width/height) silently
+  // retimes every hand-authored layer and un-scales text size unless
+  // migrated. This file isn't owned by the Video Studio timeline agent this
+  // round, so this is the smallest possible addition: intercept ONLY the
+  // three format fields with an existing hand-authored layer, route them
+  // through `timelineEdits.ts`'s already-exported `migrateForFormatChange`
+  // behind a confirm, and leave every other field/handler in this file
+  // untouched (still calling `onDocumentChange` directly).
+  const hasHandAuthoredLayers = Boolean(document?.scenes.some((scene) => scene.layers.length > 0));
+  const [pendingFormatChange, setPendingFormatChange] = useState<{
+    field: "width" | "height" | "fps";
+    value: number;
+  } | null>(null);
+
+  function handleFormatFieldChange(field: "width" | "height" | "fps", value: number) {
+    if (!document || value === document.format[field]) return;
+    if (hasHandAuthoredLayers) {
+      setPendingFormatChange({ field, value });
+      return;
+    }
+    onDocumentChange({ ...document, format: { ...document.format, [field]: value } });
+  }
+
+  function confirmFormatChange() {
+    if (!document || !pendingFormatChange) return;
+    const { field, value } = pendingFormatChange;
+    const fromFps = document.format.fps;
+    const fromWidth = document.format.width;
+    const fromHeight = document.format.height;
+    const migrated = migrateForFormatChange(document, {
+      fromFps,
+      toFps: field === "fps" ? value : fromFps,
+      fromWidth,
+      toWidth: field === "width" ? value : fromWidth,
+      fromHeight,
+      toHeight: field === "height" ? value : fromHeight,
+    });
+    onDocumentChange(migrated);
+    setPendingFormatChange(null);
+  }
+
   return (
     <VStack gap={4} data-testid="video-studio-brief-panel">
       <Card>
         <VStack gap={3}>
           <Heading level={4}>{pickCopy(lang, { th: "โจทย์โปรเจกต์", en: "Project brief" })}</Heading>
 
+          <VStack gap={2}>
+            <Text type="supporting" color="secondary">
+              {pickCopy(lang, videoStudioCopy.briefTopicPresetsLabel)}
+            </Text>
+            <ToggleButtonGroup
+              type="single"
+              label={pickCopy(lang, videoStudioCopy.briefTopicPresetsLabel)}
+              value={selectedTopicPreset}
+              onChange={(presetId) => {
+                setSelectedTopicPreset(presetId);
+                if (presetId) {
+                  const preset = BRIEF_TOPIC_PRESETS.find((item) => item.id === presetId);
+                  if (preset) {
+                    setTopic(pickCopy(lang, { th: preset.th(productName), en: preset.en(productName) }));
+                  }
+                }
+              }}
+              data-testid="brief-topic-preset"
+            >
+              {BRIEF_TOPIC_PRESETS.map((preset) => (
+                <ToggleButton
+                  key={preset.id}
+                  value={preset.id}
+                  size="sm"
+                  label={pickCopy(lang, { th: preset.th(productName), en: preset.en(productName) })}
+                />
+              ))}
+            </ToggleButtonGroup>
+            <TextInput
+              label={pickCopy(lang, videoStudioCopy.briefTopicLabel)}
+              description={pickCopy(lang, videoStudioCopy.briefTopicHelper)}
+              value={topic}
+              onChange={(value) => {
+                setTopic(value);
+                setSelectedTopicPreset(null);
+              }}
+            />
+          </VStack>
+
+          <VStack gap={2}>
+            <Text type="supporting" color="secondary">
+              {pickCopy(lang, videoStudioCopy.briefAudiencePresetsLabel)}
+            </Text>
+            <ToggleButtonGroup
+              type="single"
+              label={pickCopy(lang, videoStudioCopy.briefAudiencePresetsLabel)}
+              value={selectedAudiencePreset}
+              onChange={(presetId) => {
+                setSelectedAudiencePreset(presetId);
+                if (presetId && presetId !== AUDIENCE_CUSTOM_ID) {
+                  const preset = BRIEF_AUDIENCE_PRESETS.find((item) => item.id === presetId);
+                  if (preset) setAudience(pickCopy(lang, preset));
+                }
+              }}
+              data-testid="brief-audience-preset"
+            >
+              {BRIEF_AUDIENCE_PRESETS.map((preset) => (
+                <ToggleButton key={preset.id} value={preset.id} size="sm" label={pickCopy(lang, preset)} />
+              ))}
+              <ToggleButton
+                value={AUDIENCE_CUSTOM_ID}
+                size="sm"
+                label={pickCopy(lang, videoStudioCopy.briefAudienceCustom)}
+              />
+            </ToggleButtonGroup>
+            <TextInput
+              label={pickCopy(lang, videoStudioCopy.briefAudienceLabel)}
+              description={pickCopy(lang, videoStudioCopy.briefAudienceHelper)}
+              value={audience}
+              onChange={(value) => {
+                setAudience(value);
+                setSelectedAudiencePreset(null);
+              }}
+            />
+          </VStack>
+
           <TextInput
-            label={pickCopy(lang, { th: "หัวข้อ", en: "Topic" })}
-            value={topic}
-            onChange={(value) => setTopic(value)}
-          />
-          <TextInput
-            label={pickCopy(lang, { th: "กลุ่มเป้าหมาย", en: "Audience" })}
-            value={audience}
-            onChange={(value) => setAudience(value)}
-          />
-          <TextInput
-            label={pickCopy(lang, { th: "หมายเหตุ", en: "Notes" })}
+            label={pickCopy(lang, videoStudioCopy.briefNotesLabel)}
+            description={pickCopy(lang, videoStudioCopy.briefNotesHelper)}
             value={notes}
             onChange={(value) => setNotes(value)}
           />
@@ -115,6 +280,18 @@ export function BriefPanel({
         </VStack>
       </Card>
 
+      {document && projectRevision != null ? (
+        <ContentDraftReviewCard
+          lang={lang}
+          projectId={project.id}
+          document={document}
+          projectRevision={projectRevision}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onDocumentSaved={onDocumentSaved}
+          onPrepareForDraft={prepareDraft}
+        />
+      ) : null}
+
       {document ? (
         <Card>
           <VStack gap={3}>
@@ -129,32 +306,17 @@ export function BriefPanel({
               <NumberInput
                 label={pickCopy(lang, { th: "ความกว้าง", en: "Width" })}
                 value={document.format.width}
-                onChange={(value) =>
-                  onDocumentChange({
-                    ...document,
-                    format: { ...document.format, width: value },
-                  })
-                }
+                onChange={(value) => handleFormatFieldChange("width", value)}
               />
               <NumberInput
                 label={pickCopy(lang, { th: "ความสูง", en: "Height" })}
                 value={document.format.height}
-                onChange={(value) =>
-                  onDocumentChange({
-                    ...document,
-                    format: { ...document.format, height: value },
-                  })
-                }
+                onChange={(value) => handleFormatFieldChange("height", value)}
               />
               <NumberInput
                 label="FPS"
                 value={document.format.fps}
-                onChange={(value) =>
-                  onDocumentChange({
-                    ...document,
-                    format: { ...document.format, fps: value },
-                  })
-                }
+                onChange={(value) => handleFormatFieldChange("fps", value)}
               />
               <NumberInput
                 label={pickCopy(lang, { th: "ความยาว (มิลลิวินาที)", en: "Duration (ms)" })}
@@ -184,7 +346,7 @@ export function BriefPanel({
       ) : (
         <Card>
           <VStack gap={3}>
-            <Heading level={4}>{pickCopy(lang, { th: "เริ่มต้นโปรเจกต์", en: "Initialize project" })}</Heading>
+            <Heading level={4}>{pickCopy(lang, videoStudioCopy.briefInitTitle)}</Heading>
 
             <Text type="body" color="secondary">
               {pickCopy(lang, {
@@ -205,7 +367,7 @@ export function BriefPanel({
               type="button"
               variant="primary"
               data-testid="video-studio-init-document-button"
-              label={pickCopy(lang, { th: "สร้างเอกสารวิดีโอ", en: "Create video document" })}
+              label={pickCopy(lang, videoStudioCopy.briefInitButton)}
               onClick={() =>
                 onDocumentInitialized(
                   createDefaultDocument({
@@ -217,9 +379,23 @@ export function BriefPanel({
               }
               className="self-start"
             />
+            <Text type="supporting" color="secondary">
+              {pickCopy(lang, videoStudioCopy.briefInitCaption)}
+            </Text>
           </VStack>
         </Card>
       )}
+
+      <AlertDialog
+        isOpen={pendingFormatChange != null}
+        onOpenChange={(open) => !open && setPendingFormatChange(null)}
+        data-testid="vs-format-migrate-confirm"
+        title={pickCopy(lang, videoStudioCopy.formatMigrateConfirmTitle)}
+        description={pickCopy(lang, videoStudioCopy.formatMigrateConfirmBody)}
+        actionLabel={pickCopy(lang, videoStudioCopy.formatMigrateConfirmAction)}
+        actionVariant="primary"
+        onAction={confirmFormatChange}
+      />
     </VStack>
   );
 }

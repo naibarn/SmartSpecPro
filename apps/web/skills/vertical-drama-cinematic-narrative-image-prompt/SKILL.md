@@ -199,6 +199,11 @@ Face rules, non-negotiable:
 - No head, hair, hand, prop, or shadow covers a face.
 - Three-quarter or near-frontal angles; never extreme profile for anyone
   who speaks in the following clip.
+- For every multi-character/dialogue shot, every required face must be
+  approximately 75% or more visible and readable: both eyes, nose, mouth,
+  jawline, and hairline unobstructed and large enough for later face matching
+  and lip-sync. This readability requirement outranks a dramatic hidden
+  profile, edge crop, deep shadow, or overlapping foreground head.
 - Depth of field stays shallow enough to be cinematic, never so shallow that
   a second character's face turns unreadable.
 - When the shot has dialogue, the speaker's face must read emotionally, and
@@ -320,7 +325,8 @@ Under 700 characters, artifacts only, never story content:
 no obscured faces, no malformed hands, no fused limbs, no extra people,
 no plastic skin, no generic advertising pose, no exaggerated melodrama,
 no text, no watermark, no characters staring into the camera instead of
-each other
+each other, no full profile, no back of head, no turned-away face, no cropped
+or tiny unreadable face, no occluded face, no eyes or mouth hidden
 ```
 
 A long negative list lowers image quality. Anything that would break the
@@ -329,7 +335,10 @@ ignore negative prompts entirely.
 
 ## 16. LENGTH — MANDATORY
 
-`prompt` MUST be **3800 characters or fewer**; aim for **1800–3200**.
+Keep `prompt` at or below the caller-supplied `prompt_max_chars` budget. Kie.ai
+image models may use up to **20,000 characters**; when no larger budget is
+supplied, use the legacy 3,800-character fallback. Aim for **1800–3200** when
+the scene does not need more room.
 `negative_prompt` under 700.
 
 Trim in this order: repeated words → advertising adjectives → unnecessary

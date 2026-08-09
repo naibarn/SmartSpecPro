@@ -37,7 +37,7 @@
  * in the background of the same request-handling process.
  */
 import { randomUUID } from "crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getRedisClient } from "./redis";
@@ -55,6 +55,11 @@ import {
   type RemotionRenderVideoWorkerInput,
 } from "../../shared/workerRuntime";
 import { executeRemotionRenderVideoJob as defaultExecuteRemotionRenderVideoJob } from "../workers/hyperframesRenderWorker";
+import {
+  updateVideoProjectFields as defaultUpdateVideoProjectFields,
+  type ProjectAuthScope,
+} from "./videoProjectRepo";
+import { createLibraryItem as defaultCreateLibraryItem } from "./libraryService";
 
 export const VIDEO_INTELLIGENCE_JOBS_QUEUE = "video_intelligence_jobs";
 
@@ -74,6 +79,28 @@ export const VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
  *  (spec §12.5: 15 min here, 30 min for the VD equivalent). */
 export const VIDEO_INTELLIGENCE_JOB_ORPHAN_TTL_MS = 15 * 60 * 1000;
 
+/**
+ * Extra grace period ADDED ON TOP of a `remotion_render_video` `worker_jobs`
+ * row's own `timeoutSeconds` (set at enqueue time by
+ * `computeRemotionRenderVideoTimeoutSeconds` in `workerSchedulerService.ts` —
+ * a per-render budget of ~4x realtime + 120s, floored at 15 minutes) before
+ * the Lane-A render orphan sweep (`sweepOrphanedLaneARenderJobs` below) will
+ * touch a still-`queued`/`running` row.
+ *
+ * `timeoutSeconds` alone is NOT a safe signal on its own: unlike the VI-job
+ * Redis sweep above, `executeRemotionRenderVideoJob`
+ * (`hyperframesRenderWorker.ts`) does not internally enforce that budget —
+ * ffmpeg/Remotion post-passes can legitimately run longer under load. This
+ * grace period exists purely to keep the sweep from ever racing a slow-but-
+ * alive render; there is no per-row heartbeat/lease column on `worker_jobs`
+ * to distinguish "still executing in a live process" from "the process that
+ * claimed it is gone" (unlike the Redis VI-job sweep's `updatedAt`), so a
+ * deliberately generous fixed buffer is the only available signal. Per the
+ * task's explicit guidance: falsely failing a still-running render is much
+ * worse than a late recovery, so this errs long.
+ */
+export const LANE_A_RENDER_ORPHAN_GRACE_MS = 30 * 60 * 1000; // 30 min
+
 /** Poison-pill cap: how many times one job may be recovered before it is
  *  marked `failed`. MANDATORY — without it a job that reliably kills its
  *  worker is re-enqueued forever. */
@@ -87,7 +114,23 @@ export type VideoIntelligenceJobKind =
   | "scene_plan"
   | "narration"
   | "quality_review"
-  | "quality_repair";
+  | "quality_repair"
+  // Chains scene_plan (fill_empty) -> narration-script skill -> TTS +
+  // caption cues into ONE job (see `routers/videoProjects.ts`'s
+  // `executeAutoDraftStage`) — a second `enqueueVideoIntelligenceJob` call
+  // for the same project dedupes onto whatever job is already active
+  // regardless of kind, so this chain MUST happen inside one job rather
+  // than as several separately-dispatched kinds.
+  | "auto_draft"
+  // Review-first content draft. Stores a candidate separately from the
+  // canonical project document; it never runs TTS or advances production.
+  | "content_draft"
+  // Proposes 2-3 motion-template variants per scene into
+  // `scene.motionCandidates` (see `routers/videoProjects.ts`'s
+  // `executeMotionStage` / `services/videoProjectMotionDirector.ts`).
+  // Never writes `scene.visual`/`scene.motion` itself — applying a
+  // candidate is the separate, non-LLM `selectMotionCandidate` mutation.
+  | "motion";
 
 export type VideoIntelligenceJobStatus = "queued" | "running" | "succeeded" | "failed";
 
@@ -589,10 +632,35 @@ function startOrphanSweep(sweep: () => Promise<unknown>): void {
   void runOrphanSweepTick(sweep);
 }
 
+let laneARenderSweepTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Never throws — mirrors `runOrphanSweepTick` above. */
+async function runLaneARenderSweepTick(sweep: () => Promise<unknown>): Promise<void> {
+  try {
+    await sweep();
+  } catch (error) {
+    debugError("videoIntelligenceJobs", "Lane-A render orphan sweep tick failed", error);
+  }
+}
+
+/** Arms the Lane-A render orphan sweep on the SAME cadence and the SAME
+ *  "fire once immediately, then on an interval" shape as `startOrphanSweep`
+ *  above — a fresh web-process boot heals any renders stranded by the
+ *  previous process's death right away instead of waiting a full interval. */
+function startLaneARenderOrphanSweep(sweep: () => Promise<unknown>): void {
+  if (laneARenderSweepTimer) return;
+  laneARenderSweepTimer = setInterval(() => {
+    void runLaneARenderSweepTick(sweep);
+  }, VIDEO_INTELLIGENCE_JOB_SWEEP_INTERVAL_MS);
+  void runLaneARenderSweepTick(sweep);
+}
+
 export interface VideoIntelligenceJobsQueueInitDependencies {
   /** Test-only override. Production calls init() with no arguments — the
    *  wiring guard counts `name()` literally. */
   sweep?: () => Promise<unknown>;
+  /** Test-only override for the Lane-A render orphan sweep. */
+  laneARenderSweep?: () => Promise<unknown>;
 }
 
 /**
@@ -615,6 +683,14 @@ export async function initVideoIntelligenceJobsQueue(
 ): Promise<void> {
   const sweep = dependencies?.sweep ?? (() => sweepOrphanedVideoIntelligenceJobs());
   startOrphanSweep(sweep);
+
+  // Lane-A render orphan sweep — armed alongside (never gated by) the
+  // BullMQ/Redis init below, same reasoning as the VI-job sweep: a web
+  // process restart mid-render is exactly the failure this heals, and it
+  // must never depend on BullMQ/Redis having initialized successfully.
+  const laneARenderSweep = dependencies?.laneARenderSweep ?? (() => sweepOrphanedLaneARenderJobs());
+  startLaneARenderOrphanSweep(laneARenderSweep);
+
   // Armed BEFORE (and regardless of) BullMQ init succeeding, same reasoning
   // as the sweep above — the boot self-check matters most when BullMQ is
   // broken, since that is exactly when registration never happens
@@ -651,6 +727,10 @@ export async function closeVideoIntelligenceJobsQueue(): Promise<void> {
     clearInterval(sweepTimer);
     sweepTimer = null;
   }
+  if (laneARenderSweepTimer) {
+    clearInterval(laneARenderSweepTimer);
+    laneARenderSweepTimer = null;
+  }
   clearVideoIntelligenceRegistrationCheck();
   try {
     await worker?.close();
@@ -669,6 +749,40 @@ export async function closeVideoIntelligenceJobsQueue(): Promise<void> {
 
 export interface DispatchLaneARemotionRenderJobDeps {
   execute?: typeof defaultExecuteRemotionRenderVideoJob;
+  /** Injectable for tests — production default is the real owner-scoped
+   *  `video_projects` patch primitive (`videoProjectRepo.ts`). */
+  updateProjectFields?: typeof defaultUpdateVideoProjectFields;
+  /** Injectable for tests — production default is the real
+   *  `library_items` insert primitive (`libraryService.ts`). */
+  createLibraryItem?: typeof defaultCreateLibraryItem;
+}
+
+/** Best-effort, owner-scoped `video_projects` status patch — NEVER throws.
+ *  Every caller below already runs inside `dispatchLaneARemotionRenderJob`'s
+ *  own top-level try/catch, but this project-lifecycle write is explicitly
+ *  best-effort on its OWN: a failure here must never prevent the
+ *  `worker_jobs` row's own terminal write (the render itself already
+ *  happened — losing the project-status mirror is a lesser, observable
+ *  failure, not a reason to leave the worker job stuck). */
+async function patchProjectStatusBestEffort(
+  updateProjectFields: typeof defaultUpdateVideoProjectFields,
+  scope: ProjectAuthScope,
+  projectId: number,
+  patch: Parameters<typeof defaultUpdateVideoProjectFields>[2],
+  context: string,
+): Promise<void> {
+  try {
+    const row = await updateProjectFields(scope, projectId, patch);
+    if (!row) {
+      debugError(
+        "videoIntelligenceJobs",
+        `${context}: video_project ${projectId} not found for tenant ${scope.tenantId}/user ${scope.userId} — status patch skipped`,
+        null,
+      );
+    }
+  } catch (error) {
+    debugError("videoIntelligenceJobs", `${context}: failed to patch video_project ${projectId}`, error);
+  }
 }
 
 /**
@@ -682,15 +796,41 @@ export interface DispatchLaneARemotionRenderJobDeps {
  * for a deduped (`created: false`) hit, since that job is either already
  * dispatched or already terminal.
  *
+ * ── Post-render `video_projects` lifecycle (CMD-2 backend gap closure) ────
+ * The `worker_jobs` row's own status was always written back here — but
+ * NOTHING ever mirrored that onto the owning `video_projects` row, so the
+ * project's `status` column stayed frozen at whatever pre-render stage it
+ * was on, and a finished FINAL render never became a discoverable library
+ * item. This closes that gap, scoped ONLY to `renderProfile.profile ===
+ * "final"` (a preview render is a throwaway QA artifact, not a project
+ * deliverable, so it must never move `video_projects.status` or touch
+ * `resultLibraryItemId` — the spec's explicit "preview must not overwrite
+ * the final result" constraint):
+ *   - right after the `queued -> running` claim: `status: "rendering"`
+ *   - on a successful `execute()`: insert a `library_items` row for the
+ *     produced video (mirrors `hyperframesLibraryFinalizeService.ts`'s
+ *     `finalizeHyperframesRenderToLibrary` precedent, `createLibraryItem`
+ *     with an idempotent `sourceLink` keyed on this `workerJobId` so a
+ *     hypothetical re-dispatch of the SAME job never double-inserts), then
+ *     `status: "completed"` + `resultLibraryItemId` on the project
+ *   - on a failed `execute()`: `status: "failed"`
+ * All three project-status writes are best-effort (`patchProjectStatusBestEffort`)
+ * — a failure to mirror status onto the project must never block or fail
+ * the `worker_jobs` row's own terminal write, which is this function's
+ * primary contract.
+ *
  * Never throws — every failure path is captured onto the `worker_jobs` row's
  * `status: "failed"` / `failureReason` instead of rejecting the caller's
  * fire-and-forget promise.
  */
 export async function dispatchLaneARemotionRenderJob(
-  input: { tenantId: string; workerJobId: string; runId?: string },
+  input: { tenantId: string; userId: number; workerJobId: string; runId?: string },
   deps: DispatchLaneARemotionRenderJobDeps = {},
 ): Promise<void> {
   const execute = deps.execute ?? defaultExecuteRemotionRenderVideoJob;
+  const updateProjectFields = deps.updateProjectFields ?? defaultUpdateVideoProjectFields;
+  const createLibraryItemFn = deps.createLibraryItem ?? defaultCreateLibraryItem;
+  const scope: ProjectAuthScope = { tenantId: input.tenantId, userId: input.userId };
 
   try {
     const [row] = await db.select().from(workerJobs).where(eq(workerJobs.id, input.workerJobId)).limit(1);
@@ -720,6 +860,9 @@ export async function dispatchLaneARemotionRenderJob(
       return;
     }
     const payload: RemotionRenderVideoWorkerInput = parsed.data;
+    const isFinal = payload.renderProfile.profile === "final";
+    const projectId = Number(payload.videoProjectId);
+    const hasValidProjectId = Number.isFinite(projectId);
 
     const claimed = await db
       .update(workerJobs)
@@ -730,6 +873,16 @@ export async function dispatchLaneARemotionRenderJob(
       // Lost the race to another dispatcher — defensive, should not happen
       // for a single in-process Lane A dispatch.
       return;
+    }
+
+    if (isFinal && hasValidProjectId) {
+      await patchProjectStatusBestEffort(
+        updateProjectFields,
+        scope,
+        projectId,
+        { status: "rendering" },
+        `dispatchLaneARemotionRenderJob(${input.workerJobId}): rendering`,
+      );
     }
 
     try {
@@ -747,12 +900,73 @@ export async function dispatchLaneARemotionRenderJob(
           finishedAt: new Date(),
         })
         .where(eq(workerJobs.id, input.workerJobId));
+
+      if (isFinal && hasValidProjectId) {
+        let resultLibraryItemId: number | null = null;
+        try {
+          const outputUrl =
+            typeof (result as Record<string, unknown> | null)?.outputUrl === "string"
+              ? ((result as Record<string, unknown>).outputUrl as string)
+              : null;
+          const libraryResult = await createLibraryItemFn(
+            {
+              itemType: "video",
+              source: "video_intelligence_render",
+              title: `Video Intelligence render — project ${projectId}`,
+              description: "Video Intelligence Platform final render",
+              status: "ready",
+              visibility: "private",
+              sourceUrl: outputUrl,
+              metadata: {
+                projectId,
+                workerJobId: input.workerJobId,
+                traceId: payload.traceId,
+                projectRevision: payload.projectRevision,
+              },
+              sourceLink: {
+                linkType: "video_intelligence_render",
+                linkId: input.workerJobId,
+                providerTaskId: input.workerJobId,
+              },
+            },
+            { userId: input.userId, tenantId: input.tenantId },
+          );
+          const libraryItemId = (libraryResult.item as { id?: unknown } | undefined)?.id;
+          resultLibraryItemId = typeof libraryItemId === "number" ? libraryItemId : null;
+        } catch (error) {
+          debugError(
+            "videoIntelligenceJobs",
+            `dispatchLaneARemotionRenderJob(${input.workerJobId}): failed to create library item for project ${projectId}`,
+            error,
+          );
+        }
+
+        await patchProjectStatusBestEffort(
+          updateProjectFields,
+          scope,
+          projectId,
+          resultLibraryItemId != null
+            ? { status: "completed", resultLibraryItemId }
+            : { status: "completed" },
+          `dispatchLaneARemotionRenderJob(${input.workerJobId}): completed`,
+        );
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await db
         .update(workerJobs)
         .set({ status: "failed", failureReason: message, finishedAt: new Date() })
         .where(eq(workerJobs.id, input.workerJobId));
+
+      if (isFinal && hasValidProjectId) {
+        await patchProjectStatusBestEffort(
+          updateProjectFields,
+          scope,
+          projectId,
+          { status: "failed" },
+          `dispatchLaneARemotionRenderJob(${input.workerJobId}): failed`,
+        );
+      }
     }
   } catch (error) {
     debugError(
@@ -761,6 +975,137 @@ export async function dispatchLaneARemotionRenderJob(
       error,
     );
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Lane-A render orphan sweep (heals a `worker_jobs` row stranded by a web    */
+/* process restart mid-render, see `LANE_A_RENDER_ORPHAN_GRACE_MS` above)     */
+/* -------------------------------------------------------------------------- */
+
+export interface SweepOrphanedLaneARenderJobsDependencies {
+  now?: () => number;
+  /** Injectable for tests — production default is the real owner-scoped
+   *  `video_projects` patch primitive, same as `dispatchLaneARemotionRenderJob`. */
+  updateProjectFields?: typeof defaultUpdateVideoProjectFields;
+}
+
+/**
+ * Heals `remotion_render_video` `worker_jobs` rows stranded by a web-process
+ * restart mid-render (`dispatchLaneARemotionRenderJob` runs the render
+ * in-process, fire-and-forget — if the process dies between the
+ * `queued -> running` claim and the terminal write, the row is stuck
+ * `running` — or, more rarely, `queued` if the process died before even
+ * claiming it — forever, and the owning `video_projects.status` stays
+ * `rendering` with no way out).
+ *
+ * A row is swept once it is past `(startedAt ?? createdAt) + timeoutSeconds
+ * + LANE_A_RENDER_ORPHAN_GRACE_MS` — the row's own per-render `timeoutSeconds`
+ * budget (`computeRemotionRenderVideoTimeoutSeconds`,
+ * `workerSchedulerService.ts`) plus a large fixed grace period, since this
+ * lane has no heartbeat/lease column to positively distinguish "still
+ * executing in a live process" from "the process that claimed it is gone"
+ * (see `LANE_A_RENDER_ORPHAN_GRACE_MS`'s doc comment). The terminal write is
+ * itself guarded by a `WHERE status IN ('queued','running')` so a row that
+ * completes/fails between the read and the write is never overwritten —
+ * mirrors the `queued -> running` claim guard in `dispatchLaneARemotionRenderJob`.
+ *
+ * Only `renderProfile.profile === "final"` rows mirror `video_projects.status
+ * -> "failed"` (a stranded preview render is a throwaway QA artifact, same
+ * "preview must never touch project status" rule `dispatchLaneARemotionRenderJob`
+ * already follows) — best-effort via `patchProjectStatusBestEffort`, never
+ * blocking the row's own terminal write.
+ *
+ * Never throws — every per-row failure is caught, logged, and the sweep
+ * continues; a query-level failure (e.g. transient DB error) is caught and
+ * simply skips this tick. Exported so the unit suite can drive it directly,
+ * not the timer.
+ */
+export async function sweepOrphanedLaneARenderJobs(
+  dependencies?: SweepOrphanedLaneARenderJobsDependencies,
+): Promise<{ failed: string[] }> {
+  const now = dependencies?.now ?? Date.now;
+  const updateProjectFields = dependencies?.updateProjectFields ?? defaultUpdateVideoProjectFields;
+  const result = { failed: [] as string[] };
+
+  let rows: WorkerJob[];
+  try {
+    rows = await db
+      .select()
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.jobType, "remotion_render_video"),
+          or(eq(workerJobs.status, "queued"), eq(workerJobs.status, "running")),
+        ),
+      );
+  } catch (error) {
+    debugError(
+      "videoIntelligenceJobs",
+      "sweepOrphanedLaneARenderJobs: failed to load worker_jobs rows — skipping this tick",
+      error,
+    );
+    return result;
+  }
+
+  const nowMs = now();
+
+  for (const row of rows) {
+    try {
+      const baseline = row.startedAt ?? row.createdAt;
+      const baselineMs = baseline instanceof Date ? baseline.getTime() : Date.parse(String(baseline));
+      if (!Number.isFinite(baselineMs)) continue;
+
+      const timeoutSeconds = typeof row.timeoutSeconds === "number" ? row.timeoutSeconds : 0;
+      const strandedAtMs = baselineMs + timeoutSeconds * 1000 + LANE_A_RENDER_ORPHAN_GRACE_MS;
+      if (nowMs < strandedAtMs) continue;
+
+      const claimed = await db
+        .update(workerJobs)
+        .set({
+          status: "failed",
+          failureReason:
+            "LANE_A_RENDER_ORPHANED: worker_jobs row exceeded its render timeout with no terminal write — likely a web-process restart mid-render",
+          finishedAt: new Date(nowMs),
+        })
+        .where(
+          and(
+            eq(workerJobs.id, row.id),
+            or(eq(workerJobs.status, "queued"), eq(workerJobs.status, "running")),
+          ),
+        )
+        .returning({ id: workerJobs.id });
+      if (claimed.length === 0) {
+        // Completed/failed/re-claimed between the read and this write —
+        // never overwrite a terminal write that already happened.
+        continue;
+      }
+      result.failed.push(row.id);
+
+      if (row.requestedByUserId == null) continue;
+      const parsed = remotionRenderVideoWorkerInputSchema.safeParse(row.inputJson);
+      if (!parsed.success) continue;
+      const payload = parsed.data;
+      if (payload.renderProfile.profile !== "final") continue;
+      const projectId = Number(payload.videoProjectId);
+      if (!Number.isFinite(projectId)) continue;
+
+      await patchProjectStatusBestEffort(
+        updateProjectFields,
+        { tenantId: row.tenantId, userId: row.requestedByUserId },
+        projectId,
+        { status: "failed" },
+        `sweepOrphanedLaneARenderJobs(${row.id}): failed`,
+      );
+    } catch (error) {
+      debugError(
+        "videoIntelligenceJobs",
+        `sweepOrphanedLaneARenderJobs: failed to process worker_jobs row ${row.id} — continuing with the rest of the sweep`,
+        error,
+      );
+    }
+  }
+
+  return result;
 }
 
 export type { WorkerJob };

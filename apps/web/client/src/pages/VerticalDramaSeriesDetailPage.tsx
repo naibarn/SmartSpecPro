@@ -11,7 +11,7 @@
  * Consumes the base series router `trpc.verticalDramaSeries.get`.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
 import {
@@ -19,11 +19,14 @@ import {
   Copy,
   Download,
   Expand,
+  ImagePlus,
   Loader2,
   Plus,
+  RefreshCw,
   Save,
   Sparkles,
   Trash2,
+  Upload,
 } from "lucide-react";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
@@ -52,6 +55,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
+import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
+import { WebAssetResolver } from "@/services/webAssetResolver";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { VerticalDramaCharacterStockPanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
@@ -70,6 +76,8 @@ import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/Vertica
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
 import { VerticalDramaSeriesMemoryStateTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
 import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries/VerticalDramaSeriesShareDialog";
+import { VerticalDramaEpisodeCoverSurface } from "@/components/verticalDramaSeries/VerticalDramaEpisodeCoverSurface";
+import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
 import { getActiveBreakdownItemsForDisplay } from "@/components/verticalDramaSeries/VerticalDramaArcReplanCard";
 import {
   buildStoryScriptText,
@@ -126,6 +134,7 @@ import {
 // Text Overlay Suite (F131AB, task #34) — same "import from BOTH copy
 // modules" precedent this file's own doc comment above already establishes.
 import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
+import { parseSeriesWatermarkConfig } from "@shared/verticalDramaSeries/textOverlay";
 
 type TabId =
   | "overview"
@@ -491,6 +500,7 @@ export default function VerticalDramaSeriesDetailPage() {
                   lang={lang}
                   seriesId={seriesId}
                   episodes={episodes}
+                  watermark={series.watermark}
                   readOnly={isArchived}
                   targetEpisodeCount={series.targetEpisodeCount ?? undefined}
                 />
@@ -600,10 +610,230 @@ export default function VerticalDramaSeriesDetailPage() {
  *  + dialog can be covered by direct, isolated render tests — same "export
  *  the sub-component for direct testing" convention as `StoryBibleOverviewCard`
  *  below. */
+const episodeCoverModelStorageKey = (seriesId: string) =>
+  `smartspec_vd_series_${seriesId}_cover_model`;
+
+type EpisodeCoverModelOption = {
+  modelId: string;
+  name: string;
+  isEnabled?: boolean;
+};
+
+function EpisodeCoverSurface({
+  lang,
+  episodeNumber,
+  title,
+  imageUrl,
+  fallbackUrl,
+  status,
+  error,
+  readOnly,
+  isGenerating,
+  isUploading,
+  canGenerate,
+  onGenerate,
+  onRetry,
+  onOpen,
+  onUpload,
+}: {
+  lang: "th" | "en";
+  episodeNumber: number;
+  title?: string | null;
+  imageUrl: string | null;
+  fallbackUrl: string | null;
+  status?: "generating" | "ready" | "failed";
+  error?: string | null;
+  readOnly: boolean;
+  isGenerating: boolean;
+  isUploading: boolean;
+  canGenerate: boolean;
+  onGenerate: () => void;
+  onRetry: () => void;
+  onOpen: (url: string) => void;
+  onUpload: (file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const visibleUrl = imageUrl ?? fallbackUrl;
+  const alt =
+    lang === "th"
+      ? `หน้าปกตอนย่อยที่ ${episodeNumber}${title ? ` · ${title}` : ""}`
+      : `Cover for Sub-episode ${episodeNumber}${title ? ` · ${title}` : ""}`;
+  const chooseFile = (file: File | undefined) => {
+    if (file && file.type.startsWith("image/")) onUpload(file);
+  };
+
+  return (
+    <div className="w-36 shrink-0">
+      <div
+        className={`group relative aspect-[9/16] w-full overflow-hidden rounded-md border bg-muted/30 ${
+          dragging ? "border-primary ring-2 ring-primary/40" : "border-border"
+        }`}
+        onDragOver={event => {
+          if (readOnly) return;
+          event.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={event => {
+          if (readOnly) return;
+          event.preventDefault();
+          setDragging(false);
+          chooseFile(event.dataTransfer.files?.[0]);
+        }}
+        data-testid={`vd-episode-cover-surface-${episodeNumber}`}
+      >
+        {visibleUrl ? (
+          <img
+            src={visibleUrl}
+            alt={alt}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Clapperboard
+              className="h-5 w-5 text-muted-foreground/60"
+              aria-hidden="true"
+            />
+          </div>
+        )}
+        {status === "generating" || isGenerating ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background/75 p-2 text-center text-[10px] text-foreground">
+            <Loader2
+              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span role="status">
+              {lang === "th" ? "กำลังสร้างหน้าปก…" : "Generating cover…"}
+            </span>
+          </div>
+        ) : null}
+        {status === "failed" ? (
+          <div className="absolute inset-x-0 bottom-0 bg-destructive/90 p-1.5 text-center text-[10px] text-destructive-foreground">
+            <span>
+              {error ||
+                (lang === "th" ? "สร้างไม่สำเร็จ" : "Generation failed")}
+            </span>
+          </div>
+        ) : null}
+        {!readOnly && dragging ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-primary/15 p-2 text-center text-xs font-medium">
+            {lang === "th"
+              ? "วางภาพเพื่อแทนที่หน้าปก"
+              : "Drop image to replace cover"}
+          </div>
+        ) : null}
+        {visibleUrl && !isGenerating && !dragging ? (
+          <button
+            type="button"
+            className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/70 via-transparent to-transparent p-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            onClick={() => onOpen(visibleUrl)}
+            aria-label={
+              lang === "th" ? "ดูหน้าปกเต็มจอ" : "View cover fullscreen"
+            }
+          >
+            <span className="inline-flex items-center gap-1 rounded bg-black/55 px-1.5 py-1 text-[10px] text-white">
+              <Expand className="h-3 w-3" aria-hidden="true" />
+              {lang === "th" ? "ดูเต็มจอ" : "Fullscreen"}
+            </span>
+          </button>
+        ) : null}
+      </div>
+      {!readOnly ? (
+        <div
+          className="mt-2 flex flex-wrap justify-center gap-1.5"
+          data-testid={`vd-episode-cover-actions-${episodeNumber}`}
+        >
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="h-7 w-7 shadow-sm"
+            disabled={isGenerating || isUploading || !canGenerate}
+            onClick={status === "failed" ? onRetry : onGenerate}
+            title={
+              !canGenerate
+                ? lang === "th"
+                  ? "เลือกโมเดลภาพก่อน"
+                  : "Choose an image model first"
+                : status === "failed"
+                  ? lang === "th"
+                    ? "ลองอีกครั้ง"
+                    : "Retry"
+                  : lang === "th"
+                    ? "สร้างหน้าปก"
+                    : "Generate cover"
+            }
+            aria-label={
+              status === "failed"
+                ? "Retry cover generation"
+                : "Generate episode cover"
+            }
+          >
+            {isGenerating ? (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                aria-hidden="true"
+              />
+            ) : status === "failed" ? (
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="h-7 w-7 shadow-sm"
+            disabled={isUploading}
+            onClick={() => inputRef.current?.click()}
+            title={lang === "th" ? "อัปโหลดหน้าปก" : "Upload cover"}
+            aria-label={lang === "th" ? "อัปโหลดหน้าปก" : "Upload cover"}
+          >
+            {isUploading ? (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin"
+                aria-hidden="true"
+              />
+            ) : (
+              <Upload className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </Button>
+          {visibleUrl ? (
+            <a
+              href={visibleUrl}
+              download={`episode-${episodeNumber}-cover`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              title={lang === "th" ? "ดาวน์โหลดหน้าปก" : "Download cover"}
+              aria-label={lang === "th" ? "ดาวน์โหลดหน้าปก" : "Download cover"}
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            </a>
+          ) : null}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            onChange={event => {
+              chooseFile(event.target.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function EpisodesTab({
   lang,
   seriesId,
   episodes,
+  watermark,
   readOnly,
   targetEpisodeCount,
 }: {
@@ -616,6 +846,14 @@ export function EpisodesTab({
     status: string;
     thumbnailUrl?: string | null;
     updatedAt?: Date | string | null;
+    coverImage?: {
+      status: "generating" | "ready" | "failed";
+      url?: string | null;
+      modelId?: string | null;
+      sourceShotNumbers?: number[];
+      error?: string | null;
+      pendingTaskId?: string | null;
+    } | null;
     /** Compact compiled-video player on the Episodes tab card — present +
      *  non-null ONLY when a completed full-episode render exists. */
     compiledVideo?: {
@@ -624,6 +862,7 @@ export function EpisodesTab({
       durationSeconds?: number;
     } | null;
   }>;
+  watermark?: unknown;
   readOnly: boolean;
   /** Series' configured planned Sub-episode count (Settings tab), used to
    *  compute how many slots remain and offer an "All remaining (N)" bulk
@@ -633,6 +872,198 @@ export function EpisodesTab({
 }) {
   const utils = trpc.useUtils();
   const t = vdCopy(lang);
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
+  const coverAssetResolverRef = useRef(new WebAssetResolver());
+  const [coverModelId, setCoverModelId] = useState("");
+  const [includeTitleLogo, setIncludeTitleLogo] = useState(true);
+  const [includeChannelLogo, setIncludeChannelLogo] = useState(true);
+  const [uploadingCoverEpisodeId, setUploadingCoverEpisodeId] = useState<
+    string | null
+  >(null);
+  const [lightboxImage, setLightboxImage] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+  const imageModelsQuery = trpc.mediaModels.list.useQuery({
+    type: "image",
+    verticalDramaReady: true,
+  });
+  const imageModels = (imageModelsQuery.data?.models ??
+    []) as EpisodeCoverModelOption[];
+  const watermarkConfig = useMemo(
+    () => parseSeriesWatermarkConfig(watermark),
+    [watermark]
+  );
+  const hasTitleLogo = Boolean(
+    watermarkConfig?.type === "image" && watermarkConfig.imageUrl
+  );
+  const hasChannelLogo = Boolean(
+    watermarkConfig?.secondary?.type === "image" &&
+    watermarkConfig.secondary.imageUrl
+  );
+  useEffect(() => {
+    if (imageModelsQuery.isLoading) return;
+    const stored = safeStorageGet(episodeCoverModelStorageKey(seriesId)) || "";
+    const valid = imageModels.some(
+      model => model.modelId === stored && model.isEnabled !== false
+    );
+    if (valid) {
+      setCoverModelId(stored);
+    } else if (stored) {
+      safeStorageSet(episodeCoverModelStorageKey(seriesId), "");
+      setCoverModelId("");
+    }
+  }, [imageModels, imageModelsQuery.isLoading, seriesId]);
+  const handleCoverModelChange = (modelId: string) => {
+    setCoverModelId(modelId);
+    safeStorageSet(episodeCoverModelStorageKey(seriesId), modelId);
+  };
+  const generateCoverMutation =
+    trpc.verticalDramaEpisodes.generateEpisodeCover.useMutation({
+      onSuccess: () => {
+        void utils.verticalDramaSeries.get.invalidate();
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err.message ||
+            (lang === "th"
+              ? "สร้างหน้าปกไม่สำเร็จ"
+              : "Failed to generate cover")
+        );
+        void utils.verticalDramaSeries.get.invalidate();
+      },
+    });
+  const setCoverAssetMutation =
+    trpc.verticalDramaEpisodes.setEpisodeCoverAsset.useMutation({
+      onSuccess: () => {
+        setUploadingCoverEpisodeId(null);
+        void utils.verticalDramaSeries.get.invalidate();
+        toast.success(lang === "th" ? "เปลี่ยนหน้าปกแล้ว" : "Cover replaced");
+      },
+      onError: (err: { message?: string }) => {
+        setUploadingCoverEpisodeId(null);
+        toast.error(
+          err.message ||
+            (lang === "th"
+              ? "เปลี่ยนหน้าปกไม่สำเร็จ"
+              : "Failed to replace cover")
+        );
+      },
+    });
+  const pendingCoverSignature = episodes
+    .filter(ep => Boolean(ep.coverImage?.pendingTaskId))
+    .map(ep => `${ep.id}:${ep.coverImage?.pendingTaskId}`)
+    .join("|");
+  useEffect(() => {
+    const pendingEpisodes = episodes.filter(ep => ep.coverImage?.pendingTaskId);
+    if (pendingEpisodes.length === 0) return;
+    let disposed = false;
+    const poll = async () => {
+      for (const episode of pendingEpisodes) {
+        if (disposed || !episode.coverImage?.pendingTaskId) continue;
+        try {
+          const result =
+            await utils.verticalDramaEpisodes.getEpisodeCoverStatus.fetch({
+              seriesId,
+              episodeId: episode.id,
+            });
+          if (
+            !disposed &&
+            ["ready", "failed"].includes(result.coverImage?.status ?? "")
+          ) {
+            await utils.verticalDramaSeries.get.invalidate();
+          }
+        } catch {
+          // The next poll retries; the current cover remains visible.
+        }
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 2500);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [pendingCoverSignature, seriesId, utils, episodes]);
+  const handleGenerateCover = (episodeId: string) => {
+    if (!coverModelId || generateCoverMutation.isPending) return;
+    const episode = episodes.find(candidate => candidate.id === episodeId);
+    const episodeLabel = episode
+      ? `SUB-EP ${episode.episodeNumber}${episode.title ? ` · ${episode.title}` : ""}`
+      : `episode ${episodeId}`;
+    const modelName =
+      imageModels.find(model => model.modelId === coverModelId)?.name ??
+      coverModelId;
+    const logoLabels = [
+      includeTitleLogo
+        ? lang === "th"
+          ? "โลโก้ชื่อเรื่อง"
+          : "title logo"
+        : null,
+      includeChannelLogo
+        ? lang === "th"
+          ? "โลโก้ชื่อช่อง"
+          : "channel logo"
+        : null,
+    ].filter((label): label is string => Boolean(label));
+    const logoSummary =
+      logoLabels.length > 0
+        ? logoLabels.join(lang === "th" ? " และ " : " and ")
+        : lang === "th"
+          ? "ไม่ส่งโลโก้"
+          : "no logos";
+
+    requestConfirmation({
+      title:
+        lang === "th"
+          ? "ยืนยันสร้างหน้าปกตอนย่อย"
+          : "Confirm Sub-episode cover generation",
+      description:
+        lang === "th"
+          ? `ต้องการสร้างหน้าปกสำหรับ ${episodeLabel} ด้วย ${modelName} หรือไม่? โลโก้ที่จะส่ง: ${logoSummary} การสร้างภาพด้วย AI จะหักเครดิตจากบัญชีของคุณ`
+          : `Generate a cover for ${episodeLabel} with ${modelName}? Logos: ${logoSummary}. AI image generation will spend credits from your account.`,
+      confirmLabel: lang === "th" ? "สร้างหน้าปก" : "Generate cover",
+      cancelLabel: lang === "th" ? "ยกเลิก" : "Cancel",
+      testId: `vd-credit-confirm-episode-cover-${episodeId}`,
+      onConfirm: () => {
+        if (!coverModelId || generateCoverMutation.isPending) return;
+        generateCoverMutation.mutate({
+          seriesId,
+          episodeId,
+          modelId: coverModelId,
+          includeTitleLogo,
+          includeChannelLogo,
+          idempotencyKey:
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random()}`,
+        });
+      },
+    });
+  };
+  const handleUploadCover = async (episodeId: string, file: File) => {
+    if (readOnly || !file.type.startsWith("image/")) return;
+    setUploadingCoverEpisodeId(episodeId);
+    try {
+      const upload = coverAssetResolverRef.current.uploadAsset(file);
+      const result = await upload.promise;
+      setCoverAssetMutation.mutate({
+        seriesId,
+        episodeId,
+        mediaAssetId: result.assetId,
+      });
+    } catch (error) {
+      setUploadingCoverEpisodeId(null);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : lang === "th"
+            ? "อัปโหลดหน้าปกไม่สำเร็จ"
+            : "Failed to upload cover"
+      );
+    }
+  };
   /* ---- Task #21 / W12.5 "Final Render Suite" phase B — season batch
    *  render (added 2026-07-09). Same direct `useTenantFeatureFlag` gate as
    *  this page's own `voiceChainEnabled` (used a few lines up the tree for
@@ -828,9 +1259,7 @@ export function EpisodesTab({
         lang === "th"
           ? `ทั้งหมดที่เหลือ (${remainingPlanned})`
           : `All remaining (${remainingPlanned})`;
-      const existingIndex = options.findIndex(
-        option => option.value === value
-      );
+      const existingIndex = options.findIndex(option => option.value === value);
       if (existingIndex >= 0) {
         options[existingIndex] = { value, label };
       } else {
@@ -875,99 +1304,259 @@ export function EpisodesTab({
 
   return (
     <div className="space-y-3">
-      <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {episodes.map(ep => (
-          <li key={ep.id}>
-            <Card className="transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
-              <CardContent className="flex flex-col gap-3 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Link
-                    href={verticalDramaRoutes.episode(seriesId, ep.id)}
-                    className="min-w-0 flex-1"
+      <div
+        className="grid gap-3 md:grid-cols-2"
+        data-testid="vd-episode-cover-settings-row"
+      >
+        <Card className="h-full border-dashed">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                {lang === "th"
+                  ? "โมเดลสร้างหน้าปกซีรีย์"
+                  : "Series cover image model"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {imageModelsQuery.isError
+                  ? lang === "th"
+                    ? "โหลดรายการโมเดลไม่สำเร็จ กรุณาลองใหม่"
+                    : "Could not load image models. Try again."
+                  : lang === "th"
+                    ? "เลือกครั้งเดียว ใช้ได้กับทุกตอนย่อยของซีรีย์นี้"
+                    : "Choose once and reuse for every Sub-episode in this series."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {imageModelsQuery.isError ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void imageModelsQuery.refetch()}
+                >
+                  {lang === "th" ? "ลองใหม่" : "Retry"}
+                </Button>
+              ) : imageModelsQuery.isLoading ? (
+                <span className="text-xs text-muted-foreground">
+                  {lang === "th" ? "กำลังโหลดโมเดล…" : "Loading models…"}
+                </span>
+              ) : imageModels.length === 0 ? (
+                <span className="text-xs text-muted-foreground">
+                  {lang === "th"
+                    ? "ยังไม่มีโมเดลที่ใช้สร้างภาพได้"
+                    : "No image model is available."}
+                </span>
+              ) : (
+                <Select
+                  value={coverModelId || undefined}
+                  onValueChange={handleCoverModelChange}
+                >
+                  <SelectTrigger
+                    className="w-[220px]"
+                    aria-label={
+                      lang === "th" ? "เลือกโมเดลหน้าปก" : "Choose cover model"
+                    }
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      {ep.thumbnailUrl ? (
-                        <img
-                          src={ep.thumbnailUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="aspect-[9/16] w-12 shrink-0 rounded-md border border-border object-cover"
+                    <SelectValue
+                      placeholder={
+                        lang === "th" ? "เลือกโมเดลภาพ" : "Choose image model"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[min(70vh,28rem)] overflow-y-auto">
+                    {imageModels.map(model => (
+                      <SelectItem key={model.modelId} value={model.modelId}>
+                        {model.name || model.modelId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="h-full border-dashed">
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3">
+            <div className="min-w-52">
+              <p className="text-sm font-medium">
+                {lang === "th"
+                  ? "โลโก้สำหรับภาพปก"
+                  : "Logos for generated covers"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "เลือกว่าจะส่งโลโก้จากการตั้งค่าซีรีส์ไปเป็นภาพอ้างอิงหรือไม่"
+                  : "Choose which series logos to send as image references."}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-5">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="vd-episode-cover-title-logo"
+                  checked={includeTitleLogo}
+                  onCheckedChange={checked =>
+                    setIncludeTitleLogo(checked === true)
+                  }
+                  data-testid="vd-episode-cover-title-logo"
+                />
+                <Label
+                  htmlFor="vd-episode-cover-title-logo"
+                  className="text-sm"
+                >
+                  {lang === "th" ? "ส่งโลโก้ชื่อเรื่อง" : "Send title logo"}
+                  {!hasTitleLogo ? (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({lang === "th" ? "ยังไม่มีภาพ" : "no image configured"})
+                    </span>
+                  ) : null}
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="vd-episode-cover-channel-logo"
+                  checked={includeChannelLogo}
+                  onCheckedChange={checked =>
+                    setIncludeChannelLogo(checked === true)
+                  }
+                  data-testid="vd-episode-cover-channel-logo"
+                />
+                <Label
+                  htmlFor="vd-episode-cover-channel-logo"
+                  className="text-sm"
+                >
+                  {lang === "th" ? "ส่งโลโก้ชื่อช่อง" : "Send channel logo"}
+                  {!hasChannelLogo ? (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({lang === "th" ? "ยังไม่มีภาพ" : "no image configured"})
+                    </span>
+                  ) : null}
+                </Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {episodes.map(ep => {
+          const hasCompiledVideo = Boolean(
+            ep.compiledVideo &&
+            ep.compiledVideo.status === "completed" &&
+            ep.compiledVideo.videoUrl
+          );
+
+          return (
+            <li key={ep.id}>
+              <Card className="transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
+                <CardContent className="p-4">
+                  <div
+                    className={`grid gap-4 md:items-start ${
+                      hasCompiledVideo
+                        ? "md:grid-cols-[minmax(0,1fr)_11rem]"
+                        : "md:grid-cols-1"
+                    }`}
+                    data-testid={`vd-episode-media-row-${ep.episodeNumber}`}
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <VerticalDramaEpisodeCoverSurface
+                          lang={lang}
+                          episodeNumber={ep.episodeNumber}
+                          title={ep.title}
+                          imageUrl={ep.coverImage?.url ?? null}
+                          fallbackUrl={ep.thumbnailUrl ?? null}
+                          status={ep.coverImage?.status}
+                          error={ep.coverImage?.error}
+                          readOnly={readOnly}
+                          isGenerating={
+                            generateCoverMutation.isPending &&
+                            generateCoverMutation.variables?.episodeId === ep.id
+                          }
+                          isUploading={uploadingCoverEpisodeId === ep.id}
+                          canGenerate={
+                            Boolean(coverModelId) && !imageModelsQuery.isError
+                          }
+                          onGenerate={() => handleGenerateCover(ep.id)}
+                          onRetry={() => handleGenerateCover(ep.id)}
+                          onOpen={url =>
+                            setLightboxImage({
+                              src: url,
+                              alt: `SUB-EP ${ep.episodeNumber}${ep.title ? ` · ${ep.title}` : ""}`,
+                            })
+                          }
+                          onUpload={file => void handleUploadCover(ep.id, file)}
                         />
-                      ) : (
-                        <div
-                          aria-hidden="true"
-                          className="flex aspect-[9/16] w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40"
+                        <Link
+                          href={verticalDramaRoutes.episode(seriesId, ep.id)}
+                          className="min-w-0 flex-1"
                         >
-                          <Clapperboard
-                            className="h-4 w-4 text-muted-foreground/60"
-                            aria-hidden="true"
-                          />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-medium">
-                          SUB-EP {ep.episodeNumber}
-                          {ep.title ? ` · ${ep.title}` : ""}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {ep.status}
-                        </p>
+                          <p className="font-medium">
+                            SUB-EP {ep.episodeNumber}
+                            {ep.title ? ` · ${ep.title}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {ep.status}
+                          </p>
+                        </Link>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge variant="outline">
+                          {pickCopy(lang, verticalDramaCopy.open)}
+                        </Badge>
+                        {!readOnly && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            disabled={isDeleting}
+                            onClick={() =>
+                              setEpisodeToDelete({
+                                id: ep.id,
+                                episodeNumber: ep.episodeNumber,
+                                title: ep.title,
+                              })
+                            }
+                            title={
+                              lang === "th"
+                                ? "ลบตอนย่อยนี้"
+                                : "Delete Sub-episode"
+                            }
+                            aria-label={
+                              lang === "th"
+                                ? `ลบตอนย่อยที่ ${ep.episodeNumber}`
+                                : `Delete Sub-episode ${ep.episodeNumber}`
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                  </Link>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="outline">
-                      {pickCopy(lang, verticalDramaCopy.open)}
-                    </Badge>
-                    {!readOnly && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        disabled={isDeleting}
-                        onClick={() =>
-                          setEpisodeToDelete({
-                            id: ep.id,
-                            episodeNumber: ep.episodeNumber,
-                            title: ep.title,
-                          })
-                        }
-                        title={
-                          lang === "th" ? "ลบตอนย่อยนี้" : "Delete Sub-episode"
-                        }
-                        aria-label={
-                          lang === "th"
-                            ? `ลบตอนย่อยที่ ${ep.episodeNumber}`
-                            : `Delete Sub-episode ${ep.episodeNumber}`
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    )}
+                    {/* Keep the compiled-video player beside the cover on
+                        desktop. It stacks below the cover on narrow screens
+                        so the 9:16 media remains usable. */}
+                    {hasCompiledVideo ? (
+                      <EpisodeCompiledVideoPlayer
+                        lang={lang}
+                        episodeNumber={ep.episodeNumber}
+                        title={ep.title}
+                        videoUrl={ep.compiledVideo!.videoUrl}
+                        posterUrl={ep.thumbnailUrl}
+                      />
+                    ) : null}
                   </div>
-                </div>
-                {/* Compact compiled-video player (2026-07-13) — OUTSIDE the
-                    episode-navigation <Link> above so play/seek/download/
-                    fullscreen never triggers navigation. Only rendered once
-                    a completed full-episode render exists; episodes without
-                    one keep the thumbnail-only row above unchanged. */}
-                {ep.compiledVideo &&
-                ep.compiledVideo.status === "completed" &&
-                ep.compiledVideo.videoUrl ? (
-                  <EpisodeCompiledVideoPlayer
-                    lang={lang}
-                    episodeNumber={ep.episodeNumber}
-                    title={ep.title}
-                    videoUrl={ep.compiledVideo.videoUrl}
-                    posterUrl={ep.thumbnailUrl}
-                  />
-                ) : null}
-              </CardContent>
-            </Card>
-          </li>
-        ))}
+                </CardContent>
+              </Card>
+            </li>
+          );
+        })}
       </ul>
+      {creditConfirmDialog}
+      <ImageLightbox
+        images={lightboxImage ? [lightboxImage] : []}
+        open={Boolean(lightboxImage)}
+        onClose={() => setLightboxImage(null)}
+      />
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && (
           <div className="flex flex-wrap items-center gap-2">
@@ -1331,7 +1920,7 @@ function EpisodeCompiledVideoPlayer({
   };
 
   return (
-    <div className="border-t border-border pt-3">
+    <div className="border-t border-border pt-3 md:border-l md:border-t-0 md:pl-4 md:pt-0">
       <div className="mx-auto w-36 max-w-full overflow-hidden rounded-md border border-border bg-black sm:mx-0">
         <video
           ref={videoRef}
@@ -1340,7 +1929,7 @@ function EpisodeCompiledVideoPlayer({
           controls
           playsInline
           preload="none"
-          className="aspect-[9/16] max-h-[40vh] w-full bg-black"
+          className="aspect-[9/16] w-full bg-black"
           aria-label={
             lang === "th"
               ? `วิดีโอรวม Sub-episode ${episodeLabel}`
@@ -1805,7 +2394,8 @@ export function StoryBibleOverviewCard({
       },
       onError: (err: { message?: string }) => {
         toast.error(
-          err?.message || pickCopy(lang, verticalDramaCopy.editSynopsisSaveError)
+          err?.message ||
+            pickCopy(lang, verticalDramaCopy.editSynopsisSaveError)
         );
       },
     });
@@ -2192,7 +2782,8 @@ export function StoryBibleOverviewCard({
                           <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             {lang === "th" ? "เรื่องย่อ" : "Logline"}
                           </p>
-                          {!readOnly && editingEpisodeNumber !== ep.episodeNumber ? (
+                          {!readOnly &&
+                          editingEpisodeNumber !== ep.episodeNumber ? (
                             <Button
                               type="button"
                               variant="ghost"
@@ -2206,7 +2797,10 @@ export function StoryBibleOverviewCard({
                               }
                               data-testid={`vd-edit-synopsis-cta-${ep.episodeNumber}`}
                             >
-                              {pickCopy(lang, verticalDramaCopy.editSynopsisCta)}
+                              {pickCopy(
+                                lang,
+                                verticalDramaCopy.editSynopsisCta
+                              )}
                             </Button>
                           ) : null}
                         </div>

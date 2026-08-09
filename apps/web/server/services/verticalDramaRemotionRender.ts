@@ -59,7 +59,10 @@ import {
   queueRemotionRenderVideoJob,
   type QueueRemotionRenderVideoJobInput,
 } from "./workerSchedulerService";
-import { getAdBannerPlacementPreset, resolvePlacementBox } from "@shared/verticalDramaSeries/adBannerPresets";
+import {
+  getAdBannerPlacementPreset,
+  resolvePlacementBox,
+} from "@shared/verticalDramaSeries/adBannerPresets";
 import {
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
@@ -70,7 +73,11 @@ import {
   type RemotionLayer,
   type RemotionTemplateConfig,
 } from "../../shared/remotion/layerTemplateSchemas";
-import { workerArtifacts, workerJobs, type WorkerJob } from "../../drizzle/schema";
+import {
+  workerArtifacts,
+  workerJobs,
+  type WorkerJob,
+} from "../../drizzle/schema";
 import type { HyperframesFinalCompositeSubtitlePresetSchema } from "@shared/hyperframes/runtimeApiSchemas";
 import type { z } from "zod";
 
@@ -124,7 +131,7 @@ export interface VdRemotionCaptionLine {
  * (TTS voice selection, narration detection) — do not reintroduce it here.
  */
 export function buildVdCaptionLines(
-  subtitles: RunAssemblyJobSubtitlesInput | null | undefined,
+  subtitles: RunAssemblyJobSubtitlesInput | null | undefined
 ): VdRemotionCaptionLine[] {
   if (!subtitles || subtitles.lines.length === 0) return [];
   return subtitles.lines
@@ -154,7 +161,7 @@ export function buildVdCaptionLines(
  * entirely) — every other one of the 10 ids passes through unchanged.
  */
 export function mapVdSubtitlePresetToRemotion(
-  presetId: string | null | undefined,
+  presetId: string | null | undefined
 ): VdRemotionCaptionPresetId | undefined {
   if (!presetId || presetId === "none" || presetId === "no_subtitle_style") {
     return undefined;
@@ -186,7 +193,10 @@ export function retimeSubtitleLinesToProbedClips(
   lines: AssSubtitleLine[],
   clips: Array<{ clipNumber: number; durationSec: number }>
 ): AssSubtitleLine[] {
-  const realWindows = new Map<number, { offsetSec: number; durationSec: number }>();
+  const realWindows = new Map<
+    number,
+    { offsetSec: number; durationSec: number }
+  >();
   let cumulativeSec = 0;
   for (const clip of clips) {
     const durationSec = Math.max(0, clip.durationSec);
@@ -205,8 +215,10 @@ export function retimeSubtitleLinesToProbedClips(
     const window = realWindows.get(line.clipNumber);
     if (!window || window.durationSec <= 0) return line;
 
-    const startSec = window.offsetSec + line.clipLocalStartFrac * window.durationSec;
-    const endSec = window.offsetSec + line.clipLocalEndFrac * window.durationSec;
+    const startSec =
+      window.offsetSec + line.clipLocalStartFrac * window.durationSec;
+    const endSec =
+      window.offsetSec + line.clipLocalEndFrac * window.durationSec;
     // A degenerate window (both fractions equal) would produce a zero-length
     // caption that never paints — keep the original rather than emit one.
     if (!(endSec > startSec)) return line;
@@ -228,14 +240,19 @@ export function retimeSubtitleLinesToProbedClips(
  */
 export function resolveVdTextOverlayWindow(
   overlay: RunAssemblyJobTextOverlayEventInput,
-  videoDurationSeconds: number,
+  videoDurationSeconds: number
 ): { startSec: number; endSec: number } {
   if (overlay.entireClip) {
     return { startSec: 0, endSec: videoDurationSeconds };
   }
   if (overlay.endAnchored) {
-    const dur = overlay.durationSecForEndAnchor ?? Math.max(0.1, overlay.endSec - overlay.startSec);
-    return { startSec: Math.max(0, videoDurationSeconds - dur), endSec: videoDurationSeconds };
+    const dur =
+      overlay.durationSecForEndAnchor ??
+      Math.max(0.1, overlay.endSec - overlay.startSec);
+    return {
+      startSec: Math.max(0, videoDurationSeconds - dur),
+      endSec: videoDurationSeconds,
+    };
   }
   return { startSec: overlay.startSec, endSec: overlay.endSec };
 }
@@ -248,14 +265,33 @@ export function resolveVdTextOverlayWindow(
  *  when it names a corner; everything else centers as a card. */
 function layoutForOverlayKind(
   kind: RunAssemblyJobTextOverlayEventInput["kind"],
-  variant: RunAssemblyJobTextOverlayEventInput["variant"],
+  variant: RunAssemblyJobTextOverlayEventInput["variant"]
 ): { x: number; y: number; width: number; height: number; fontSizePx: number } {
-  const isCorner = variant === "top_left" || variant === "top_right" || variant === "bottom_left" || variant === "bottom_right";
-  if (isCorner || kind === "episode_indicator" || kind === "watermark_text" || kind === "age_badge") {
-    const corner = isCorner ? variant : kind === "age_badge" ? "top_right" : "top_left";
+  const isCorner =
+    variant === "top_left" ||
+    variant === "top_right" ||
+    variant === "bottom_left" ||
+    variant === "bottom_right";
+  if (
+    isCorner ||
+    kind === "episode_indicator" ||
+    kind === "watermark_text" ||
+    kind === "age_badge"
+  ) {
+    const corner = isCorner
+      ? variant
+      : kind === "age_badge"
+        ? "top_right"
+        : "top_left";
     const left = corner === "top_left" || corner === "bottom_left";
     const top = corner === "top_left" || corner === "top_right";
-    return { x: left ? 4 : 60, y: top ? 3 : 90, width: 36, height: 6, fontSizePx: 32 };
+    return {
+      x: left ? 4 : 60,
+      y: top ? 3 : 90,
+      width: 36,
+      height: 6,
+      fontSizePx: 32,
+    };
   }
   if (kind === "character_intro") {
     return { x: 10, y: 78, width: 80, height: 10, fontSizePx: 44 };
@@ -291,15 +327,27 @@ export interface BuildVdRemotionTemplateInput {
   videoDurationSeconds: number;
   banners?: VdRemotionResolvedBanner[];
   overlays?: RunAssemblyJobTextOverlayEventInput[];
-  dialogueAudio?: (RunAssemblyJobDialogueAudioInput & { resolvedSegmentUrls: string[] }) | null;
+  dialogueAudio?:
+    | (RunAssemblyJobDialogueAudioInput & { resolvedSegmentUrls: string[] })
+    | null;
   /** Dual watermark (`planning/vd-dual-watermark/plan.md`): up to 2 entries,
    *  one per `VdSeriesWatermarkSlotId`, each becoming its own full-timeline
    *  image layer with a distinct id. */
-  watermarkImages?: Array<RunAssemblyJobWatermarkImageInput & { resolvedImageUrl: string }>;
+  watermarkImages?: Array<
+    RunAssemblyJobWatermarkImageInput & { resolvedImageUrl: string }
+  >;
   width?: number;
   height?: number;
   fps?: number;
   templateId?: string;
+  /** Optional teaser treatment. The existing full-episode render path leaves
+   * this absent, so its layer/timing contract remains unchanged. */
+  previewCard?: {
+    label: string;
+    coverImageUrl: string;
+    introDurationSeconds?: number;
+    endCardDurationSeconds?: number;
+  };
 }
 
 export interface BuildVdRemotionTemplateResult {
@@ -322,7 +370,7 @@ export interface BuildVdRemotionTemplateResult {
  * total exceeds `RemotionTemplateConfigSchema`'s 40-layer cap.
  */
 export function buildVdRemotionTemplate(
-  input: BuildVdRemotionTemplateInput,
+  input: BuildVdRemotionTemplateInput
 ): BuildVdRemotionTemplateResult {
   const width = input.width ?? FRAME_WIDTH;
   const height = input.height ?? FRAME_HEIGHT;
@@ -353,8 +401,74 @@ export function buildVdRemotionTemplate(
     });
     cursorFrame += durationFrames;
   }
-  const durationInFrames = Math.max(1, cursorFrame);
-  const totalDurationSeconds = input.videoDurationSeconds;
+  const videoOnlyDurationInFrames = Math.max(1, cursorFrame);
+  const previewEndCardDurationFrames = input.previewCard
+    ? Math.max(
+        1,
+        Math.round((input.previewCard.endCardDurationSeconds ?? 2.5) * fps)
+      )
+    : 0;
+  const durationInFrames =
+    videoOnlyDurationInFrames + previewEndCardDurationFrames;
+  const totalDurationSeconds = input.previewCard
+    ? input.videoDurationSeconds + previewEndCardDurationFrames / fps
+    : input.videoDurationSeconds;
+
+  // Preview label overlay — keep the episode number/title visible without
+  // covering the actors or the shot composition. This is intentionally
+  // separate from the episode's configurable text-overlay plan.
+  if (input.previewCard) {
+    layers.push({
+      id: "preview-title-band",
+      type: "motionGraphic",
+      startFrame: 0,
+      durationFrames: durationInFrames,
+      x: 4,
+      y: 2,
+      width: 92,
+      height: 7,
+      rotationDeg: 0,
+      opacity: 0.52,
+      zIndex: 31,
+      shape: "rect",
+      color: "#020617",
+      loopAnimation: "none",
+    });
+    layers.push({
+      id: "preview-title",
+      type: "text",
+      startFrame: 0,
+      durationFrames: durationInFrames,
+      x: 6,
+      y: 2,
+      width: 88,
+      height: 7,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 32,
+      content: input.previewCard.label.slice(0, 160),
+      fontFamily: "Noto Sans Thai",
+      fontSizePx: 32,
+      color: "#ffffff",
+      textAlign: "left",
+      fontWeight: "normal",
+    });
+    layers.push({
+      id: "preview-end-card",
+      type: "image",
+      startFrame: videoOnlyDurationInFrames,
+      durationFrames: previewEndCardDurationFrames,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 30,
+      src: input.previewCard.coverImageUrl,
+      fit: "cover",
+    });
+  }
 
   // 2) Ad banner image layers.
   for (const [index, banner] of (input.banners ?? []).entries()) {
@@ -528,7 +642,7 @@ export function buildVdRemotionTemplate(
         `${input.overlays?.length ?? 0} overlay event(s) + ` +
         `${input.watermarkImages?.length ?? 0} watermark layer(s). Dialogue-audio segments ` +
         `(one layer per line) are the dominant risk factor — reduce dialogue lines, ` +
-        `disable per-line audio, or fall back to the ffmpeg render for this episode.`,
+        `disable per-line audio, or fall back to the ffmpeg render for this episode.`
     );
   }
 
@@ -552,19 +666,25 @@ export function buildVdRemotionTemplate(
 interface StagedAssetProbeResult {
   durationSec?: number;
   sha256: string;
+  error?: string;
 }
 
 async function defaultStageAsset(
   url: string,
   internalBaseUrl: string,
-  wantDuration: boolean,
+  wantDuration: boolean
 ): Promise<StagedAssetProbeResult> {
   const os = await import("os");
   const path = await import("path");
   const fsp = await import("fs/promises");
-  const workspace = await fsp.mkdtemp(path.join(os.tmpdir(), "smartspec-vd-remotion-"));
+  const workspace = await fsp.mkdtemp(
+    path.join(os.tmpdir(), "smartspec-vd-remotion-")
+  );
   try {
-    const dest = path.join(workspace, `asset${inferDownloadExtension(url, ".bin")}`);
+    const dest = path.join(
+      workspace,
+      `asset${inferDownloadExtension(url, ".bin")}`
+    );
     try {
       await downloadClipToFile(url, dest, internalBaseUrl);
       const bytes = await fsp.readFile(dest);
@@ -573,15 +693,26 @@ async function defaultStageAsset(
       const durationSec = await probeDurationSeconds(dest);
       return { durationSec: durationSec ?? undefined, sha256 };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.warn(
-        `[verticalDramaRemotionRender] failed to download/probe asset ${url}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `[verticalDramaRemotionRender] failed to download/probe asset ${safeAssetUrlForDiagnostics(url)}: ${errorMessage}`
       );
-      return { sha256: fallbackAssetSourceHash(url) };
+      return { sha256: fallbackAssetSourceHash(url), error: errorMessage };
     }
   } finally {
-    await fsp.rm(workspace, { recursive: true, force: true }).catch(() => undefined);
+    await fsp
+      .rm(workspace, { recursive: true, force: true })
+      .catch(() => undefined);
+  }
+}
+
+function safeAssetUrlForDiagnostics(value: string): string {
+  try {
+    const parsed = new URL(value);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return value.split(/[?#]/, 1)[0];
   }
 }
 
@@ -629,6 +760,11 @@ export interface SubmitVdRemotionAssemblyInput {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
+  /** Text Overlay Suite events are a first-class Remotion layer input.
+   *  Keep this separate from `subtitles` so the Remotion contract cannot
+   *  silently lose configured overlays when caption handling changes. The
+   *  nested `subtitles.overlays` form remains accepted for older callers. */
+  overlays?: RunAssemblyJobTextOverlayEventInput[];
   /** Dual watermark (`planning/vd-dual-watermark/plan.md`): up to 2 entries. */
   watermarkImages?: RunAssemblyJobWatermarkImageInput[];
   tenantId: string;
@@ -641,10 +777,10 @@ export interface VdRemotionRenderDeps {
   stageAsset?: (
     url: string,
     internalBaseUrl: string,
-    wantDuration: boolean,
+    wantDuration: boolean
   ) => Promise<StagedAssetProbeResult>;
   queueJob?: (
-    input: QueueRemotionRenderVideoJobInput,
+    input: QueueRemotionRenderVideoJobInput
   ) => ReturnType<typeof queueRemotionRenderVideoJob>;
 }
 
@@ -666,27 +802,39 @@ export interface SubmitVdRemotionAssemblyResult {
  */
 export async function submitVdRemotionAssembly(
   input: SubmitVdRemotionAssemblyInput,
-  deps: VdRemotionRenderDeps = {},
+  deps: VdRemotionRenderDeps = {}
 ): Promise<SubmitVdRemotionAssemblyResult> {
   const stageAsset = deps.stageAsset ?? defaultStageAsset;
   const queueJob = deps.queueJob ?? queueRemotionRenderVideoJob;
 
-  const orderedClips = input.clips.filter(clip => (clip.videoUrl ?? "").trim().length > 0);
+  const orderedClips = input.clips.filter(
+    clip => (clip.videoUrl ?? "").trim().length > 0
+  );
   if (orderedClips.length === 0) {
     throw new VdRemotionRenderError(
       "no_clips",
-      "No rendered video clips available for the Vertical Drama Remotion assembly",
+      "No rendered video clips available for the Vertical Drama Remotion assembly"
     );
   }
 
   const probedClips = await Promise.all(
-    orderedClips.map(clip => stageAsset(clip.videoUrl!, input.internalBaseUrl, true)),
+    orderedClips.map(clip =>
+      stageAsset(clip.videoUrl!, input.internalBaseUrl, true)
+    )
   );
-  const missingDurationIndex = probedClips.findIndex(c => !c.durationSec || c.durationSec <= 0);
+  const missingDurationIndex = probedClips.findIndex(
+    c => !c.durationSec || c.durationSec <= 0
+  );
   if (missingDurationIndex !== -1) {
+    const failedClip = orderedClips[missingDurationIndex];
+    const probeError = probedClips[missingDurationIndex].error;
     throw new VdRemotionRenderError(
       "duration_probe_failed",
-      `Could not determine duration of source clip ${missingDurationIndex + 1}/${orderedClips.length}`,
+      `Could not determine duration of source clip ${missingDurationIndex + 1}/${orderedClips.length} (clip ${failedClip.clipNumber})${
+        probeError
+          ? `: ${probeError}`
+          : "; source is missing or not a valid video"
+      }`
     );
   }
 
@@ -701,18 +849,27 @@ export async function submitVdRemotionAssembly(
   // real asset with "Asset checksum mismatch".
   const assetBaseUrl =
     String(input.publicBaseUrl ?? "").trim() || input.internalBaseUrl;
-  const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map((clip, index) => ({
-    clipNumber: clip.clipNumber,
-    url: absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl),
-    durationSec: probedClips[index].durationSec!,
-  }));
+  const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map(
+    (clip, index) => ({
+      clipNumber: clip.clipNumber,
+      url: absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl),
+      durationSec: probedClips[index].durationSec!,
+    })
+  );
   const clipHashes: string[] = probedClips.map(c => c.sha256);
-  const videoDurationSeconds = resolvedClips.reduce((sum, c) => sum + c.durationSec, 0);
+  const videoDurationSeconds = resolvedClips.reduce(
+    (sum, c) => sum + c.durationSec,
+    0
+  );
 
   const resolvedBanners: VdRemotionResolvedBanner[] = [];
   const bannerHashes: string[] = [];
   for (const banner of input.banners ?? []) {
-    const staged = await stageAsset(banner.imageUrl, input.internalBaseUrl, false);
+    const staged = await stageAsset(
+      banner.imageUrl,
+      input.internalBaseUrl,
+      false
+    );
     bannerHashes.push(staged.sha256);
     resolvedBanners.push({
       ...banner,
@@ -726,7 +883,11 @@ export async function submitVdRemotionAssembly(
   const dialogueAudioHashes: string[] = [];
   if (input.dialogueAudio?.segments.length) {
     for (const segment of input.dialogueAudio.segments) {
-      const staged = await stageAsset(segment.audioUrl, input.internalBaseUrl, false);
+      const staged = await stageAsset(
+        segment.audioUrl,
+        input.internalBaseUrl,
+        false
+      );
       dialogueAudioHashes.push(staged.sha256);
     }
     resolvedDialogueAudio = {
@@ -746,7 +907,11 @@ export async function submitVdRemotionAssembly(
   > = [];
   const watermarkImageHashes: string[] = [];
   for (const watermark of input.watermarkImages ?? []) {
-    const staged = await stageAsset(watermark.imageUrl, input.internalBaseUrl, false);
+    const staged = await stageAsset(
+      watermark.imageUrl,
+      input.internalBaseUrl,
+      false
+    );
     watermarkImageHashes.push(staged.sha256);
     resolvedWatermarkImages.push({
       ...watermark,
@@ -758,9 +923,10 @@ export async function submitVdRemotionAssembly(
     clips: resolvedClips,
     videoDurationSeconds,
     banners: resolvedBanners.length > 0 ? resolvedBanners : undefined,
-    overlays: input.subtitles?.overlays,
+    overlays: input.overlays ?? input.subtitles?.overlays,
     dialogueAudio: resolvedDialogueAudio,
-    watermarkImages: resolvedWatermarkImages.length > 0 ? resolvedWatermarkImages : undefined,
+    watermarkImages:
+      resolvedWatermarkImages.length > 0 ? resolvedWatermarkImages : undefined,
   });
 
   // Captions are re-timed against the REAL probed clip durations before they
@@ -770,12 +936,17 @@ export async function submitVdRemotionAssembly(
   const retimedSubtitles = input.subtitles
     ? {
         ...input.subtitles,
-        lines: retimeSubtitleLinesToProbedClips(input.subtitles.lines, resolvedClips),
+        lines: retimeSubtitleLinesToProbedClips(
+          input.subtitles.lines,
+          resolvedClips
+        ),
       }
     : input.subtitles;
 
   const captionLines = buildVdCaptionLines(retimedSubtitles);
-  const captionPresetId = mapVdSubtitlePresetToRemotion(input.subtitles?.preset);
+  const captionPresetId = mapVdSubtitlePresetToRemotion(
+    input.subtitles?.preset
+  );
   const captionsEnabled = captionLines.length > 0 && Boolean(captionPresetId);
   const loudnessNormalize = input.dialogueAudio?.loudnessNormalize === true;
 
@@ -788,7 +959,8 @@ export async function submitVdRemotionAssembly(
     ...resolvedBanners.map((banner, index) => ({
       role: "image" as const,
       url: banner.resolvedImageUrl,
-      sha256: bannerHashes[index] ?? fallbackAssetSourceHash(banner.resolvedImageUrl),
+      sha256:
+        bannerHashes[index] ?? fallbackAssetSourceHash(banner.resolvedImageUrl),
     })),
     ...(resolvedDialogueAudio?.resolvedSegmentUrls ?? []).map((url, index) => ({
       role: "audio" as const,
@@ -798,13 +970,17 @@ export async function submitVdRemotionAssembly(
     ...resolvedWatermarkImages.map((watermark, index) => ({
       role: "image" as const,
       url: watermark.resolvedImageUrl,
-      sha256: watermarkImageHashes[index] ?? fallbackAssetSourceHash(watermark.resolvedImageUrl),
+      sha256:
+        watermarkImageHashes[index] ??
+        fallbackAssetSourceHash(watermark.resolvedImageUrl),
     })),
   ];
 
   const traceId = `vd-sub-episode-remotion:${input.owner.seriesId}:${input.owner.episodeId}:${Date.now()}`;
   const videoProjectId = `vd-sub-episode:${input.owner.seriesId}:${input.owner.episodeId}`;
-  const remotionTemplateHash = createHash("sha256").update(JSON.stringify(template)).digest("hex");
+  const remotionTemplateHash = createHash("sha256")
+    .update(JSON.stringify(template))
+    .digest("hex");
 
   const workerInput: RemotionRenderVideoWorkerInput = {
     kind: "remotion_render_video",
@@ -861,6 +1037,161 @@ export async function submitVdRemotionAssembly(
     renderSubmittedAt: Date.now(),
   });
 
+  return { jobId: job.id, created, layerCount, videoDurationSeconds };
+}
+
+export interface SubmitVdEpisodePreviewInput {
+  owner: AssembleEpisodeVideoOwner;
+  slotId: number;
+  clips: EpisodeClipSource[];
+  coverImageUrl: string;
+  episodeLabel: string;
+  /** Same resolved caption feed used by final episode assembly. */
+  subtitles?: RunAssemblyJobSubtitlesInput | null;
+  internalBaseUrl: string;
+  publicBaseUrl?: string | null;
+  tenantId: string;
+  requestedByUserId?: number | null;
+  idempotencyKey?: string | null;
+}
+
+export interface SubmitVdEpisodePreviewResult {
+  jobId: string;
+  created: boolean;
+  layerCount: number;
+  videoDurationSeconds: number;
+}
+
+/**
+ * Queue a two-shot episode teaser through the same Remotion worker contract as
+ * the full assembly. The only preview-specific behavior lives in
+ * `previewCard`: the title overlay starts at frame 0 and the episode cover is
+ * appended as a short end card after the selected clips.
+ */
+export async function submitVdEpisodePreview(
+  input: SubmitVdEpisodePreviewInput,
+  deps: VdRemotionRenderDeps = {}
+): Promise<SubmitVdEpisodePreviewResult> {
+  const stageAsset = deps.stageAsset ?? defaultStageAsset;
+  const queueJob = deps.queueJob ?? queueRemotionRenderVideoJob;
+  const orderedClips = input.clips.filter(
+    clip => (clip.videoUrl ?? "").trim().length > 0
+  );
+  if (orderedClips.length === 0) {
+    throw new VdRemotionRenderError(
+      "no_clips",
+      "No rendered video clips available for the episode preview"
+    );
+  }
+
+  const probedClips = await Promise.all(
+    orderedClips.map(clip =>
+      stageAsset(clip.videoUrl!, input.internalBaseUrl, true)
+    )
+  );
+  const missingDurationIndex = probedClips.findIndex(
+    clip => !clip.durationSec || clip.durationSec <= 0
+  );
+  if (missingDurationIndex !== -1) {
+    const failedClip = orderedClips[missingDurationIndex];
+    throw new VdRemotionRenderError(
+      "duration_probe_failed",
+      `Could not determine duration of preview source clip ${failedClip.clipNumber}`
+    );
+  }
+
+  const stagedCover = await stageAsset(
+    input.coverImageUrl,
+    input.internalBaseUrl,
+    false
+  );
+  const assetBaseUrl =
+    String(input.publicBaseUrl ?? "").trim() || input.internalBaseUrl;
+  const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map(
+    (clip, index) => ({
+      clipNumber: clip.clipNumber,
+      url: absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl),
+      durationSec: probedClips[index].durationSec!,
+    })
+  );
+  const videoDurationSeconds = resolvedClips.reduce(
+    (sum, clip) => sum + clip.durationSec,
+    0
+  );
+  const retimedSubtitles = input.subtitles
+    ? {
+        ...input.subtitles,
+        lines: retimeSubtitleLinesToProbedClips(
+          input.subtitles.lines,
+          resolvedClips
+        ),
+      }
+    : input.subtitles;
+  const captionLines = buildVdCaptionLines(retimedSubtitles);
+  const captionPresetId = mapVdSubtitlePresetToRemotion(
+    input.subtitles?.preset
+  );
+  const captionsEnabled = captionLines.length > 0 && Boolean(captionPresetId);
+  const { template, durationInFrames, layerCount } = buildVdRemotionTemplate({
+    clips: resolvedClips,
+    videoDurationSeconds,
+    previewCard: {
+      label: input.episodeLabel,
+      coverImageUrl: absoluteVdAssetUrl(input.coverImageUrl, assetBaseUrl),
+    },
+    templateId: `vd-episode-preview-${input.owner.episodeId}-${input.slotId}`,
+  });
+  const remotionTemplateHash = createHash("sha256")
+    .update(JSON.stringify(template))
+    .digest("hex");
+  const traceId = `vd-episode-preview:${input.owner.seriesId}:${input.owner.episodeId}:${input.slotId}:${Date.now()}`;
+  const workerInput: RemotionRenderVideoWorkerInput = {
+    kind: "remotion_render_video",
+    schemaVersion: 1,
+    platformContractVersion: REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    rendererPolicyVersion: REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+    videoProjectId: `vd-episode-preview:${input.owner.seriesId}:${input.owner.episodeId}`,
+    projectRevision: input.slotId,
+    traceId,
+    renderProfile: {
+      profile: "preview",
+      width: template.width,
+      height: template.height,
+      fps: template.fps,
+      codec: "h264",
+      loudnessNormalize: false,
+      burnInAssCaptions: captionsEnabled,
+    },
+    remotionTemplate: template,
+    compositionId: "GenericTemplate",
+    assetManifest: {
+      sources: [
+        ...resolvedClips.map((clip, index) => ({
+          role: "video" as const,
+          url: clip.url,
+          sha256:
+            probedClips[index].sha256 ?? fallbackAssetSourceHash(clip.url),
+        })),
+        {
+          role: "image" as const,
+          url: absoluteVdAssetUrl(input.coverImageUrl, assetBaseUrl),
+          sha256:
+            stagedCover.sha256 ?? fallbackAssetSourceHash(input.coverImageUrl),
+        },
+      ],
+    },
+    postPasses: captionsEnabled ? (["ass_burn"] as const) : [],
+    segmentPlan: null,
+    remotionTemplateHash,
+    durationInFrames,
+    ...(captionsEnabled ? { captionLines, captionPresetId } : {}),
+  };
+  const { created, job } = await queueJob({
+    ...workerInput,
+    tenantId: input.tenantId,
+    requestedByUserId: input.requestedByUserId ?? undefined,
+    idempotencyKey: input.idempotencyKey ?? undefined,
+  });
   return { jobId: job.id, created, layerCount, videoDurationSeconds };
 }
 
@@ -932,7 +1263,9 @@ export const VD_REMOTION_QUEUED_TTL_MS = 10 * 60 * 1000;
  *   6. the `worker_artifacts` row for `remotion_render_mp4` (last resort — the
  *      artifact protocol always writes this even if the payload mirror is lost)
  */
-export async function resolveRemotionOutputRef(job: WorkerJob): Promise<string> {
+export async function resolveRemotionOutputRef(
+  job: WorkerJob
+): Promise<string> {
   const asRecord = (value: unknown): Record<string, unknown> | null =>
     value && typeof value === "object" && !Array.isArray(value)
       ? (value as Record<string, unknown>)
@@ -945,9 +1278,9 @@ export async function resolveRemotionOutputRef(job: WorkerJob): Promise<string> 
   const artifactRef = payload ? asRecord(payload.outputArtifactRef) : null;
 
   const publishedSourceUrl = Array.isArray(output?.publishedArtifacts)
-    ? (output.publishedArtifacts as unknown[])
+    ? ((output.publishedArtifacts as unknown[])
         .map(entry => asRef(asRecord(entry)?.sourceUrl))
-        .find(ref => ref.length > 0) ?? ""
+        .find(ref => ref.length > 0) ?? "")
     : "";
 
   const direct =
@@ -977,9 +1310,13 @@ export async function resolveRemotionOutputRef(job: WorkerJob): Promise<string> 
 export async function reconcileVdRemotionAssembly(
   owner: AssembleEpisodeVideoOwner,
   jobId: string,
-  submittedAt?: number,
+  submittedAt?: number
 ): Promise<ReconcileVdRemotionAssemblyResult> {
-  const [job] = await db.select().from(workerJobs).where(eq(workerJobs.id, jobId)).limit(1);
+  const [job] = await db
+    .select()
+    .from(workerJobs)
+    .where(eq(workerJobs.id, jobId))
+    .limit(1);
   if (!job) return { reconciled: false };
   if (job.status === "running") return { reconciled: false };
 

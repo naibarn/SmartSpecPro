@@ -61,6 +61,8 @@ const OWNED_PRODUCT = {
   id: "prod-own-1",
   productName: "โต๊ะไม้เนื้อแข็ง",
   imageUrl: null,
+  imageUrls: [],
+  descriptionText: null,
   priceCurrent: "1200",
   currency: "THB",
   platform: "shopee",
@@ -71,10 +73,28 @@ const GROUP_SHARED_PRODUCT = {
   id: "prod-group-1",
   productName: "เก้าอี้สำนักงาน",
   imageUrl: null,
+  imageUrls: [],
+  descriptionText: null,
   priceCurrent: "890",
   currency: "THB",
   platform: "tiktok_shop",
   accessType: "group",
+};
+
+const PRODUCT_WITH_IMAGES = {
+  id: "prod-images-1",
+  productName: "โคมไฟตั้งโต๊ะ",
+  imageUrl: "https://example.com/lamp-1.jpg",
+  imageUrls: [
+    "https://example.com/lamp-1.jpg",
+    "https://example.com/lamp-2.jpg",
+    "https://example.com/lamp-3.jpg",
+  ],
+  descriptionText: "โคมไฟตั้งโต๊ะดีไซน์มินิมอล ปรับความสว่างได้ 3 ระดับ เหมาะสำหรับโต๊ะทำงานหรือหัวเตียง",
+  priceCurrent: "590",
+  currency: "THB",
+  platform: "shopee",
+  accessType: "owner",
 };
 
 beforeEach(() => {
@@ -159,5 +179,100 @@ describe("CatalogCreateDialog — browse/search product picker", () => {
     fireEvent.click(screen.getByLabelText(/เปลี่ยนสินค้า/i));
     expect(screen.queryByTestId("video-studio-catalog-product-preview")).not.toBeInTheDocument();
     expect(screen.getByTestId("video-studio-catalog-product-results")).toBeInTheDocument();
+  });
+});
+
+describe("CatalogCreateDialog — product description + image selection", () => {
+  beforeEach(() => {
+    listProductsQueryMock.mockReturnValue({
+      data: [PRODUCT_WITH_IMAGES],
+      isFetching: false,
+      isError: false,
+      error: null,
+    });
+  });
+
+  it("shows the product description after selecting a product", () => {
+    render(<CatalogCreateDialog lang="th" open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("โคมไฟตั้งโต๊ะ"));
+
+    expect(screen.getByTestId("video-studio-catalog-product-description")).toHaveTextContent(
+      "โคมไฟตั้งโต๊ะดีไซน์มินิมอล",
+    );
+  });
+
+  it("defaults to all product images selected and shows the image grid", () => {
+    render(<CatalogCreateDialog lang="th" open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("โคมไฟตั้งโต๊ะ"));
+
+    const grid = screen.getByTestId("catalog-create-image-grid");
+    const toggles = screen.getAllByTestId("catalog-create-image-toggle");
+    expect(grid).toBeInTheDocument();
+    expect(toggles).toHaveLength(3);
+    expect(toggles.every((toggle) => toggle.getAttribute("data-selected") === "true")).toBe(true);
+    expect(screen.getByTestId("video-studio-catalog-image-count")).toHaveTextContent("3/3");
+  });
+
+  it("toggles an image off and requires at least one selected image to enable Create", () => {
+    render(<CatalogCreateDialog lang="th" open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("โคมไฟตั้งโต๊ะ"));
+
+    const toggles = screen.getAllByTestId("catalog-create-image-toggle");
+    fireEvent.click(toggles[0]);
+    fireEvent.click(toggles[1]);
+    fireEvent.click(toggles[2]);
+
+    const createButton = screen.getByTestId("video-studio-catalog-create-submit");
+    expect(createButton).toBeDisabled();
+
+    fireEvent.click(toggles[0]);
+    expect(createButton).not.toBeDisabled();
+  });
+
+  it("sends the selected description, price, and ticked image subset in the brief on create", () => {
+    render(<CatalogCreateDialog lang="th" open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("โคมไฟตั้งโต๊ะ"));
+
+    const toggles = screen.getAllByTestId("catalog-create-image-toggle");
+    // Deselect the middle image; keep the first and third.
+    fireEvent.click(toggles[1]);
+
+    fireEvent.click(screen.getByTestId("video-studio-catalog-create-submit"));
+
+    expect(createMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studioType: "catalog",
+        brief: expect.objectContaining({
+          productId: "prod-images-1",
+          productName: "โคมไฟตั้งโต๊ะ",
+          productDescription: PRODUCT_WITH_IMAGES.descriptionText,
+          productImageUrls: [
+            "https://example.com/lamp-1.jpg",
+            "https://example.com/lamp-3.jpg",
+          ],
+          productPrice: "590",
+          productCurrency: "THB",
+        }),
+        sourceRefs: { productIds: ["prod-images-1"] },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("resets the image selection when changing back to a different product", () => {
+    render(<CatalogCreateDialog lang="th" open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByText("โคมไฟตั้งโต๊ะ"));
+    fireEvent.click(screen.getAllByTestId("catalog-create-image-toggle")[0]);
+    expect(screen.getByTestId("video-studio-catalog-image-count")).toHaveTextContent("2/3");
+
+    fireEvent.click(screen.getByLabelText(/เปลี่ยนสินค้า/i));
+    fireEvent.click(screen.getByText("โคมไฟตั้งโต๊ะ"));
+
+    expect(screen.getByTestId("video-studio-catalog-image-count")).toHaveTextContent("3/3");
   });
 });

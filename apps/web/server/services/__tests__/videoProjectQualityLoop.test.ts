@@ -28,7 +28,7 @@ function metrics(overrides: Partial<VideoProjectQualityMetrics> = {}): VideoProj
   return {
     sceneDurations: [],
     captionCps: [],
-    layerCounts: { perScene: [], total: 0, maxLayersPerScene: 0 },
+    layerCounts: { perScene: [], total: 0, maxLayersPerScene: 0, compiledTotal: 0 },
     safeAreaViolations: [],
     claimCoverage: { coverage: 1, mappedCount: 0, unmappedCount: 0, prohibitedCount: 0 },
     renderCost: { score: 0, cls: "low", recommendPreRender: false },

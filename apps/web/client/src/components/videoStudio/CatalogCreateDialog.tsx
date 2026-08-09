@@ -21,7 +21,7 @@
  */
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Image as ImageIcon, Search, SearchX, X } from "lucide-react";
+import { Check, Image as ImageIcon, Search, SearchX, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@astryxdesign/core/Badge";
@@ -43,6 +43,8 @@ interface PickedProduct {
   id: string;
   productName: string;
   imageUrl?: string | null;
+  imageUrls?: string[] | null;
+  descriptionText?: string | null;
   priceCurrent?: string | number | null;
   currency?: string | null;
   platform?: string | null;
@@ -81,6 +83,36 @@ export function CatalogCreateDialog({
   const [search, setSearch] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<PickedProduct | null>(null);
   const [name, setName] = useState("");
+  const [selectedImageUrlSet, setSelectedImageUrlSet] = useState<Set<string>>(new Set());
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+
+  const productImageUrls = selectedProduct?.imageUrls?.filter(Boolean) ?? [];
+  // Order-preserved subset (matches productImageUrls order, not click order).
+  const selectedImageUrls = productImageUrls.filter((url) => selectedImageUrlSet.has(url));
+
+  function selectProduct(product: PickedProduct) {
+    setSelectedProduct(product);
+    setSelectedImageUrlSet(new Set(product.imageUrls?.filter(Boolean) ?? []));
+    setIsDescriptionExpanded(false);
+  }
+
+  function clearSelectedProduct() {
+    setSelectedProduct(null);
+    setSelectedImageUrlSet(new Set());
+    setIsDescriptionExpanded(false);
+  }
+
+  function toggleImage(url: string) {
+    setSelectedImageUrlSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) {
+        next.delete(url);
+      } else {
+        next.add(url);
+      }
+      return next;
+    });
+  }
 
   const productsQuery = trpc.marketplaceCapture.listProducts.useQuery(
     { query: search.trim() || undefined, limit: 24 },
@@ -99,7 +131,7 @@ export function CatalogCreateDialog({
   function resetAndClose(nextOpen: boolean) {
     if (!nextOpen) {
       setSearch("");
-      setSelectedProduct(null);
+      clearSelectedProduct();
       setName("");
     }
     onOpenChange(nextOpen);
@@ -129,6 +161,7 @@ export function CatalogCreateDialog({
           <LayoutContent>
             <VStack gap={4}>
               {selectedProduct ? (
+                <>
                 <div
                   className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3"
                   data-testid="video-studio-catalog-product-preview"
@@ -157,9 +190,114 @@ export function CatalogCreateDialog({
                     size="sm"
                     icon={<X className="h-4 w-4" />}
                     label={pickCopy(lang, { th: "เปลี่ยนสินค้า", en: "Change product" })}
-                    onClick={() => setSelectedProduct(null)}
+                    onClick={clearSelectedProduct}
                   />
                 </div>
+
+                {selectedProduct.descriptionText?.trim() ? (
+                  <VStack gap={1}>
+                    <Text type="label" color="secondary">
+                      {pickCopy(lang, videoStudioCopy.productDescriptionLabel)}
+                    </Text>
+                    <Text
+                      type="body"
+                      color="secondary"
+                      maxLines={isDescriptionExpanded ? 0 : 4}
+                      data-testid="video-studio-catalog-product-description"
+                    >
+                      {selectedProduct.descriptionText}
+                    </Text>
+                    {selectedProduct.descriptionText.length > 160 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        label={pickCopy(
+                          lang,
+                          isDescriptionExpanded
+                            ? videoStudioCopy.showLessDescription
+                            : videoStudioCopy.showMoreDescription,
+                        )}
+                        onClick={() => setIsDescriptionExpanded((prev) => !prev)}
+                      />
+                    ) : null}
+                  </VStack>
+                ) : null}
+
+                {productImageUrls.length > 0 ? (
+                  <VStack gap={2}>
+                    <HStack gap={2} align="center" justify="between" wrap="wrap">
+                      <Text type="label" color="secondary">
+                        {pickCopy(lang, videoStudioCopy.productImagesLabel)}
+                      </Text>
+                      <HStack gap={2} align="center">
+                        <Text type="supporting" color="secondary" data-testid="video-studio-catalog-image-count">
+                          {pickCopy(lang, {
+                            th: `เลือกแล้ว ${selectedImageUrls.length}/${productImageUrls.length} รูป`,
+                            en: `${selectedImageUrls.length}/${productImageUrls.length} images selected`,
+                          })}
+                        </Text>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          label={pickCopy(lang, videoStudioCopy.selectAllImages)}
+                          onClick={() => setSelectedImageUrlSet(new Set(productImageUrls))}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          label={pickCopy(lang, videoStudioCopy.clearImages)}
+                          onClick={() => setSelectedImageUrlSet(new Set())}
+                        />
+                      </HStack>
+                    </HStack>
+                    <Grid
+                      columns={{ minWidth: 84, max: 6 }}
+                      gap={2}
+                      data-testid="catalog-create-image-grid"
+                    >
+                      {productImageUrls.map((url, index) => {
+                        const isSelected = selectedImageUrlSet.has(url);
+                        return (
+                          <button
+                            key={`${url}-${index}`}
+                            type="button"
+                            className={`relative aspect-square overflow-hidden rounded-lg border-2 transition-colors ${
+                              isSelected
+                                ? "border-primary"
+                                : "border-border/60 opacity-60 hover:opacity-100"
+                            }`}
+                            data-testid="catalog-create-image-toggle"
+                            data-selected={isSelected}
+                            aria-pressed={isSelected}
+                            onClick={() => toggleImage(url)}
+                          >
+                            <img
+                              src={url}
+                              alt={pickCopy(lang, {
+                                th: `รูปสินค้า ${index + 1}`,
+                                en: `Product image ${index + 1}`,
+                              })}
+                              className="h-full w-full object-cover"
+                            />
+                            {isSelected ? (
+                              <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                <Check className="h-3 w-3" aria-hidden="true" />
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </Grid>
+                  </VStack>
+                ) : (
+                  <Text type="supporting" color="secondary">
+                    {pickCopy(lang, videoStudioCopy.noProductImages)}
+                  </Text>
+                )}
+                </>
               ) : (
                 <VStack gap={2}>
                   <TextInput
@@ -214,7 +352,7 @@ export function CatalogCreateDialog({
                               key={product.id}
                               label={product.productName}
                               padding={3}
-                              onClick={() => setSelectedProduct(product)}
+                              onClick={() => selectProduct(product)}
                             >
                               <HStack gap={3} align="center">
                                 <ProductThumb product={product} />
@@ -268,14 +406,23 @@ export function CatalogCreateDialog({
                 variant="primary"
                 data-testid="video-studio-catalog-create-submit"
                 label={pickCopy(lang, { th: "สร้างโปรเจกต์", en: "Create project" })}
-                isDisabled={!selectedProduct}
+                isDisabled={
+                  !selectedProduct || (productImageUrls.length > 0 && selectedImageUrls.length === 0)
+                }
                 isLoading={createProject.isPending}
                 onClick={() =>
                   selectedProduct &&
                   createProject.mutate({
                     studioType: "catalog",
                     name: (name || selectedProduct.productName || "Catalog video").slice(0, 200),
-                    brief: { productId: selectedProduct.id, productName: selectedProduct.productName },
+                    brief: {
+                      productId: selectedProduct.id,
+                      productName: selectedProduct.productName,
+                      productDescription: selectedProduct.descriptionText ?? null,
+                      productImageUrls: selectedImageUrls,
+                      productPrice: selectedProduct.priceCurrent ?? null,
+                      productCurrency: selectedProduct.currency ?? null,
+                    },
                     sourceRefs: { productIds: [selectedProduct.id] },
                   })
                 }

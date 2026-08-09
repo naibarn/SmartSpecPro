@@ -13,9 +13,11 @@ END_MANIFEST -->
 
 # Implementation Sections Index
 
-This feature has no new UI surface. Browser-visible failures use the existing
-authenticated Vertical Drama tRPC error boundary; no UI/UX contract section is
-required.
+This feature has no new visual UI surface, but it does have an existing-client
+integration contract: `VerticalDramaCharacterStockPanel` must preserve the
+selected image model when creating and retrying candidate previews. Browser-
+visible failures use the existing authenticated Vertical Drama tRPC error
+boundary; a separate visual redesign section is not required.
 
 ## Dependency graph
 
@@ -71,8 +73,9 @@ negative/version fields in approved snapshots and candidate records.
 ### section-05-verification-and-ab-evaluation
 
 Run focused Vitest suites, the skill verifier, TypeScript checks, changed-surface
-review, and the approved twelve matched-pair-per-family A/B evaluation. Record
-release evidence without performing paid generation in automated tests.
+review, client retry propagation, bounded privacy telemetry, and the approved
+twelve matched-pair-per-family A/B evaluation. Record release evidence without
+performing paid generation in automated tests.
 
 ## Shared contracts between sections
 

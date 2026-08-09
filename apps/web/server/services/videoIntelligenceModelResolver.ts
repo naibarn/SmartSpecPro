@@ -95,6 +95,11 @@ export type StructuredStageModelSelection = {
   isFree: boolean;
 };
 
+export type RecommendedStructuredStageModelOption = StructuredStageModelSelection & {
+  providerName: string;
+  isDefault: boolean;
+};
+
 /* -------------------------------------------------------------------------- */
 /* Dependency injection (test seam) — AD-8                                    */
 /* -------------------------------------------------------------------------- */
@@ -221,6 +226,44 @@ function pricingFromRow(row: EnabledLlmModelRow | undefined): Pick<
   };
 }
 
+function modelCost(row: EnabledLlmModelRow): number {
+  if (row.isFree) return 0;
+  const input = Number(row.pricingInput);
+  const output = Number(row.pricingOutput);
+  if (!Number.isFinite(input) || !Number.isFinite(output)) return Number.POSITIVE_INFINITY;
+  return input + output;
+}
+
+/** Returns only recommended structured-output models, cheapest first. */
+export async function listRecommendedStructuredStageModels(
+  dependencies?: Partial<VideoIntelligenceModelResolverDeps>,
+): Promise<RecommendedStructuredStageModelOption[]> {
+  const deps = await resolveDeps(dependencies);
+  const rows = await deps.loadRows();
+  const ids = deps.selectCandidates(VI_STRUCTURED_STAGE_REQUIREMENTS, rows, 50);
+  const options = ids
+    .map(modelId => {
+      const row = findRowForModelId(rows, modelId);
+      if (!row) return null;
+      return {
+        modelId,
+        source: "recommended" as const,
+        providerName: row.providerName,
+        ...pricingFromRow(row),
+        isDefault: false,
+        _cost: modelCost(row),
+        _priority: row.priority,
+      };
+    })
+    .filter((option): option is NonNullable<typeof option> => option !== null)
+    .sort((a, b) => a._cost - b._cost || a._priority - b._priority || a.modelId.localeCompare(b.modelId));
+  const defaultModelId = options[0]?.modelId;
+  return options.map(({ _cost: _ignoredCost, _priority: _ignoredPriority, ...option }) => ({
+    ...option,
+    isDefault: option.modelId === defaultModelId,
+  }));
+}
+
 /* -------------------------------------------------------------------------- */
 /* Resolution                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -259,13 +302,8 @@ export async function resolveStructuredStageModelSelection(
   // Automatic path — a row-load failure here is a database outage, not "no
   // recommended model", and must propagate rather than be laundered into an
   // admin-actionable error.
-  const rows = await deps.loadRows();
-  const candidates = deps.selectCandidates(
-    VI_STRUCTURED_STAGE_REQUIREMENTS,
-    rows,
-    1,
-  );
-  const winningId = candidates[0];
+  const options = await listRecommendedStructuredStageModels(dependencies);
+  const winningId = options[0]?.modelId;
 
   if (!winningId) {
     throw new VideoIntelligenceModelError(
@@ -278,6 +316,7 @@ export async function resolveStructuredStageModelSelection(
     );
   }
 
+  const rows = await deps.loadRows();
   const matchedRow = findRowForModelId(rows, winningId);
   return {
     modelId: winningId,

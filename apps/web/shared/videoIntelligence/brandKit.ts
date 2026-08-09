@@ -40,4 +40,12 @@ export interface BrandKit {
   fonts: BrandKitFonts;
   captionPresetId: CaptionPresetId | null;
   locks: BrandKitLocks;
+  /** `brand_kits.logoAssetId` (a `media_assets.id`), or `null`/`undefined`
+   *  when the brand kit has no logo. Optional (not just nullable) so the
+   *  many pre-existing `BrandKit` test fixtures that predate this field
+   *  don't all need updating — `luxury_end_card.ts` treats a missing value
+   *  the same as `null`. Resolved to a URL by `ctx.assetResolver.url()` at
+   *  template-build time — see `luxury_end_card.ts`'s CTA/end-card template,
+   *  the one template that renders a brand logo image layer. */
+  logoAssetId?: number | null;
 }

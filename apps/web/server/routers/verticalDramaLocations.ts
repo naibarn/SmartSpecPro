@@ -68,6 +68,7 @@ import {
 } from "@shared/verticalDramaSeries/locationAssets";
 import { mediaGenerationService } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
+import { resolveVdImagePromptBudgetForModel } from "../services/modelPromptBudget";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
 import { signBearerToken } from "../_core/tokens";
 import {
@@ -437,6 +438,7 @@ export const verticalDramaLocationsRouter = router({
     .input(
       seriesScope.extend({
         locationId: z.string().min(1),
+        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
         coverageRole: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
         gapDescription: z.string().trim().max(500).optional(),
       }),
@@ -456,6 +458,20 @@ export const verticalDramaLocationsRouter = router({
       const locationId = parseId(input.locationId, "location id");
       await loadOwnedSeries(tenantId, userId, seriesId);
       const location = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+
+      let imagePromptMaxChars: number | undefined;
+      if (input.selectedImageModelId) {
+        const [modelRow] = await db
+          .select({ configJson: mediaModels.configJson, provider: mediaModels.provider })
+          .from(mediaModels)
+          .where(eq(mediaModels.modelId, input.selectedImageModelId))
+          .limit(1);
+        imagePromptMaxChars = resolveVdImagePromptBudgetForModel({
+          modelId: input.selectedImageModelId,
+          configJson: modelRow?.configJson,
+          provider: modelRow?.provider,
+        });
+      }
 
       const [seriesRow] = await db
         .select({
@@ -493,6 +509,7 @@ export const verticalDramaLocationsRouter = router({
             ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
             : {}),
           ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+          ...(imagePromptMaxChars ? { imagePromptMaxChars } : {}),
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -590,6 +607,14 @@ export const verticalDramaLocationsRouter = router({
       const ownedSeriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
       const location = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
 
+      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
+      // Resolve the prompt-authoring budget from the selected model's static
+      // catalog entry before the optional LLM call. The persisted catalog row
+      // is re-read below for the final render pricing/transport path.
+      let imagePromptMaxChars = resolveVdImagePromptBudgetForModel({
+        modelId: resolvedImageModelId,
+      });
+
       // 1. Prompt generation — credit-gated + deducted internally. Skipped
       //    entirely when the caller already ran `previewLocationPrompt` and
       //    supplies the user-approved text via `approvedPrompt` (see this
@@ -642,6 +667,7 @@ export const verticalDramaLocationsRouter = router({
               ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
               : {}),
             ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+            imagePromptMaxChars,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -660,6 +686,22 @@ export const verticalDramaLocationsRouter = router({
         promptModel = promptResult.model;
         promptCreditsUsed = promptResult.creditsUsed;
       }
+
+      const [pricingRow] = await db
+        .select({
+          creditCost: mediaModels.creditCost,
+          configJson: mediaModels.configJson,
+          provider: mediaModels.provider,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null, provider: undefined };
+      imagePromptMaxChars = resolveVdImagePromptBudgetForModel({
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        provider: pricingModel.provider,
+      });
       if (lookLockEnabled && presetVisualIdentity) {
         ({ prompt: establishingPlatePrompt, negativePrompt } = applySeriesLookToImagePrompt({
           prompt: establishingPlatePrompt,
@@ -690,13 +732,6 @@ export const verticalDramaLocationsRouter = router({
       //    which is now REQUIRED — `resolveCharacterImageModelId` throws
       //    BAD_REQUEST when none was selected, same fail-closed behavior as
       //    `generateCharacterImage`.
-      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
-      const [pricingRow] = await db
-        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
-        .from(mediaModels)
-        .where(eq(mediaModels.modelId, resolvedImageModelId))
-        .limit(1);
-      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
 
       // Zero-cost models skip the reserve/refund cycle entirely — same

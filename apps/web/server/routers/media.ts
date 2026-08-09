@@ -1822,6 +1822,20 @@ function assertModelAwareVideoRequest(params: {
     });
   }
 
+  const allReferenceVideos = [
+    ...(params.referenceVideoUrls ?? []),
+    ...(params.referenceVideoUrl ? [params.referenceVideoUrl] : []),
+  ];
+  const videoLimit = params.configJson
+    ? getReferenceVideoLimitForModel(params.configJson)
+    : null;
+  if (videoLimit !== null && allReferenceVideos.length > videoLimit) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The selected model allows at most ${videoLimit} reference videos.`,
+    });
+  }
+
   const allowedAspectRatios = params.configJson
     ? getAllowedAspectRatiosForModel(params.modelId, params.configJson)
     : [];
@@ -2213,7 +2227,7 @@ export const mediaRouter = router({
         outputFormat: z.string().optional(),
         referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceStyleUrl: referenceMediaUrlSchema.optional(),
-        apiConfig: z.record(z.string()).optional(),
+        apiConfig: z.record(z.any()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
         transport: mediaTransportSchema,
@@ -2392,11 +2406,14 @@ export const mediaRouter = router({
         aspectRatio: flexibleAspectRatioSchema.optional(),
         fps: z.number().min(15).max(60).optional(),
         resolution: z.string().optional(),
-        apiConfig: z.record(z.string()).optional(),
+        apiConfig: z.record(z.any()).optional(),
         extraParams: extraParamsSchema,
-        referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        // 9 is the most permissive video model (minimax-h3 reference-to-video);
+        // per-model caps are enforced from configJson.maxReferenceImages.
+        referenceImageUrls: z.array(referenceMediaUrlSchema).max(9).optional(),
         referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
+        referenceAudioUrls: z.array(referenceMediaUrlSchema).max(3).optional(),
         originSurface: creditOriginSurfaceSchema,
         transport: mediaTransportSchema,
         mcpConnectionId: z.string().optional(),
@@ -2516,6 +2533,7 @@ export const mediaRouter = router({
             referenceImageUrls: input.referenceImageUrls,
             referenceVideoUrls: input.referenceVideoUrls,
             referenceVideoUrl: input.referenceVideoUrl,
+            referenceAudioUrls: input.referenceAudioUrls,
             apiConfig: apiConfigWithProvider,
             extraParams: normalizedExtraParams,
             publicUrl: ctx.publicUrl ?? undefined,
@@ -2563,7 +2581,7 @@ export const mediaRouter = router({
         model: audioModelSchema.optional(),
         voice: z.string().optional(),
         speed: z.number().min(0.5).max(2.0).optional(),
-        apiConfig: z.record(z.string()).optional(),
+        apiConfig: z.record(z.any()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
         transport: mediaTransportSchema,
@@ -2731,7 +2749,7 @@ export const mediaRouter = router({
         model: audioModelSchema.optional(),
         voice: z.string().optional(),
         speed: z.number().min(0.5).max(2.0).optional(),
-        apiConfig: z.record(z.string()).optional(),
+        apiConfig: z.record(z.any()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
         transport: mediaTransportSchema,
@@ -2913,7 +2931,7 @@ export const mediaRouter = router({
         outputFormat: z.string().optional(),
         referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceStyleUrl: referenceMediaUrlSchema.optional(),
-        apiConfig: z.record(z.string()).optional(),
+        apiConfig: z.record(z.any()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
         transport: mediaTransportSchema,
@@ -3252,10 +3270,13 @@ export const mediaRouter = router({
         aspectRatio: flexibleAspectRatioSchema.optional(),
         fps: z.number().min(15).max(60).optional(),
         resolution: z.string().optional(),
-        referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        // 9 is the most permissive video model (minimax-h3 reference-to-video);
+        // per-model caps are enforced from configJson.maxReferenceImages.
+        referenceImageUrls: z.array(referenceMediaUrlSchema).max(9).optional(),
         referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
-        apiConfig: z.record(z.string()).optional(),
+        referenceAudioUrls: z.array(referenceMediaUrlSchema).max(3).optional(),
+        apiConfig: z.record(z.any()).optional(),
         extraParams: extraParamsSchema,
         originSurface: creditOriginSurfaceSchema,
         transport: mediaTransportSchema,
@@ -3560,6 +3581,7 @@ export const mediaRouter = router({
             referenceImageUrls: input.referenceImageUrls,
             referenceVideoUrls: input.referenceVideoUrls,
             referenceVideoUrl: input.referenceVideoUrl,
+            referenceAudioUrls: input.referenceAudioUrls,
             apiConfig: apiConfigWithProvider,
             extraParams: {
               ...normalizedExtraParams,
@@ -3605,6 +3627,7 @@ export const mediaRouter = router({
               referenceImageUrls: input.referenceImageUrls,
               referenceVideoUrls: input.referenceVideoUrls,
               referenceVideoUrl: input.referenceVideoUrl,
+              referenceAudioUrls: input.referenceAudioUrls,
               apiConfig: apiConfigWithProvider,
               extraParams: {
                 ...normalizedExtraParams,
@@ -4291,6 +4314,7 @@ export const mediaRouter = router({
         text: z.string().optional(),
         referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
         referenceVideoUrl: referenceMediaUrlSchema.optional(),
+        referenceAudioUrls: z.array(referenceMediaUrlSchema).max(3).optional(),
         extraParams: z.record(z.any()).optional(),
       })
     )

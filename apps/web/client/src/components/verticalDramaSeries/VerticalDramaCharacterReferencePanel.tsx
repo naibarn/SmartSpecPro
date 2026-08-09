@@ -68,6 +68,7 @@ import {
   setUnifiedDragPayload,
 } from "@/components/verticalDramaSeries/ShotGridCutter";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
@@ -192,23 +193,7 @@ const HISTORY_SCOPE_STORAGE_KEY = "vd-reference-panel-history-scope";
  *  contexts. An unguarded throw here used to abort the whole handler/effect
  *  BEFORE the real (state) action fired. Swallow the error and let the real
  *  action proceed. */
-function safeStorageGet(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
 
-function safeStorageSet(key: string, value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    /* quota exceeded / storage blocked — cache is best-effort, ignore */
-  }
-}
 
 function readStoredHistoryScope(): HistoryScope | null {
   const raw = safeStorageGet(HISTORY_SCOPE_STORAGE_KEY);

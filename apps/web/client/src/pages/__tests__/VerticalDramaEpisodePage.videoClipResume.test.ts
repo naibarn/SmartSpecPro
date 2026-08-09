@@ -18,7 +18,10 @@
  * `shouldResumeAngleGridPoll`'s coverage.
  */
 import { describe, expect, it } from "vitest";
-import { shouldResumeVideoClipPoll } from "../VerticalDramaEpisodePage";
+import {
+  readVideoTaskMediaAssetId,
+  shouldResumeVideoClipPoll,
+} from "../VerticalDramaEpisodePage";
 
 describe("shouldResumeVideoClipPoll", () => {
   it("resumes a clip with a pendingTaskId and no videoUrl (orphaned task)", () => {
@@ -102,5 +105,19 @@ describe("shouldResumeVideoClipPoll", () => {
         new Set([5, 6, 7])
       )
     ).toBe(true);
+  });
+});
+
+describe("readVideoTaskMediaAssetId", () => {
+  it("reads the canonical asset id from a completed Hermes task", () => {
+    expect(readVideoTaskMediaAssetId({ resultData: { mediaAssetId: "1296" } })).toBe("1296");
+    expect(readVideoTaskMediaAssetId({ resultData: { mediaAssetId: 1297 } })).toBe("1297");
+  });
+
+  it("ignores missing, blank, malformed, and non-finite asset ids", () => {
+    expect(readVideoTaskMediaAssetId(undefined)).toBeUndefined();
+    expect(readVideoTaskMediaAssetId({ resultData: { mediaAssetId: " " } })).toBeUndefined();
+    expect(readVideoTaskMediaAssetId({ resultData: { mediaAssetId: null } })).toBeUndefined();
+    expect(readVideoTaskMediaAssetId({ resultData: { mediaAssetId: Infinity } })).toBeUndefined();
   });
 });

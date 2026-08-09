@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "skillId": "video-project-broll-prompt",
+  "title": "Video Project B-roll Prompt",
+  "titleTh": "สร้างพรอมต์ B-roll จากฉาก",
+  "description": "Drafts an image or image-to-video B-roll prompt for review before paid generation.",
+  "descriptionTh": "สร้างพรอมต์ภาพหรือ image-to-video จากเนื้อหาฉากเพื่อให้ตรวจสอบก่อนเรียกโมเดลแบบมีค่าใช้จ่าย",
+  "sections": []
+}

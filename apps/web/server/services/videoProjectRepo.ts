@@ -21,12 +21,13 @@
  * precedent, kept intentionally small since this section owns no tRPC
  * layer).
  */
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   videoProjects,
   videoProjectRevisions,
   brandKits,
+  libraryItems,
   type VideoProjectRow,
   type InsertVideoProjectRow,
   type VideoProjectRevisionRow,
@@ -90,6 +91,53 @@ export async function insertVideoProject(
   return rows[0] as VideoProjectRow;
 }
 
+/**
+ * Clones an owner-scoped project for the repeat-use catalog workflow. The
+ * authored document, brief, source refs and brand-kit attachment are kept;
+ * lifecycle state and render/review pointers are reset so the clone cannot
+ * appear to have a completed render or inherit an in-flight job.
+ */
+export async function duplicateVideoProject(
+  scope: ProjectAuthScope,
+  args: { projectId: number; name?: string },
+): Promise<VideoProjectRow> {
+  return db.transaction(async tx => {
+    const rows = await tx
+      .select()
+      .from(videoProjects)
+      .where(projectScopeWhere(scope, args.projectId))
+      .limit(1);
+    const source = rows[0] as VideoProjectRow | undefined;
+    if (!source) {
+      throw new VideoProjectNotFoundError(`video_project ${args.projectId} not found for this tenant+user scope`);
+    }
+
+    const requestedName = args.name?.trim();
+    const name = (requestedName || `${source.name} (copy)`).slice(0, 200);
+    const cloned = await tx
+      .insert(videoProjects)
+      .values({
+        tenantId: scope.tenantId,
+        userId: scope.userId,
+        studioType: source.studioType,
+        name,
+        status: "brief",
+        automationMode: source.automationMode,
+        brief: source.brief,
+        document: source.document,
+        revision: 1,
+        brandKitId: source.brandKitId,
+        sourceRefs: source.sourceRefs,
+        qaLedger: null,
+        renderJobId: null,
+        previewJobId: null,
+        resultLibraryItemId: null,
+      } as never)
+      .returning();
+    return cloned[0] as VideoProjectRow;
+  });
+}
+
 /** Owner-scoped single fetch; returns null when not found or foreign-tenant/foreign-user. */
 export async function getVideoProject(
   scope: ProjectAuthScope,
@@ -120,6 +168,58 @@ export async function listVideoProjects(
     .from(videoProjects)
     .where(and(...conditions))
     .orderBy(desc(videoProjects.updatedAt)) as unknown as Promise<VideoProjectRow[]>;
+}
+
+/** A `listVideoProjectsByProduct` row: project fields + the resolved library-item preview. */
+export type VideoProjectByProductRow = {
+  id: number;
+  name: string;
+  studioType: string;
+  status: string;
+  updatedAt: VideoProjectRow["updatedAt"];
+  createdAt: VideoProjectRow["createdAt"];
+  resultLibraryItemId: number | null;
+  resultThumbnailUrl: string | null;
+  resultVideoUrl: string | null;
+};
+
+/**
+ * Owner-scoped list of projects whose `sourceRefs.productIds` contains the
+ * given marketplace `productId`, newest-first. LEFT JOINs `library_items`
+ * (via `resultLibraryItemId`) to surface the rendered preview's thumbnail
+ * and source URL for the "prior projects from this product" UI.
+ */
+export async function listVideoProjectsByProduct(
+  scope: ProjectAuthScope,
+  args: { productId: string; limit?: number },
+): Promise<VideoProjectByProductRow[]> {
+  const limit = Math.max(1, Math.min(args.limit ?? 20, 50));
+
+  const rows = await db
+    .select({
+      id: videoProjects.id,
+      name: videoProjects.name,
+      studioType: videoProjects.studioType,
+      status: videoProjects.status,
+      updatedAt: videoProjects.updatedAt,
+      createdAt: videoProjects.createdAt,
+      resultLibraryItemId: videoProjects.resultLibraryItemId,
+      resultThumbnailUrl: libraryItems.thumbnailUrl,
+      resultVideoUrl: libraryItems.sourceUrl,
+    })
+    .from(videoProjects)
+    .leftJoin(libraryItems, eq(videoProjects.resultLibraryItemId, libraryItems.id))
+    .where(
+      and(
+        eq(videoProjects.tenantId, scope.tenantId),
+        eq(videoProjects.userId, scope.userId),
+        sql`${videoProjects.sourceRefs} -> 'productIds' @> ${JSON.stringify([args.productId])}::jsonb`,
+      ),
+    )
+    .orderBy(desc(videoProjects.updatedAt))
+    .limit(limit);
+
+  return rows as VideoProjectByProductRow[];
 }
 
 /**
@@ -320,6 +420,31 @@ export async function updateVideoProjectFields(
     renderJobId: string | null;
     previewJobId: string | null;
     automationMode: string;
+    // implementation-progress.md gap #1 (CLOSED, 2nd pass): `sourceRefs` was
+    // previously write-once at `create` — a Catalog Studio project created
+    // without a product could never satisfy `queueRender(profile: "final")`'s
+    // `VI_MISSING_SOURCE_REFS` gate (routers/videoProjects.ts), with no
+    // repair path short of delete+recreate. Additive field on an existing,
+    // already-owner-scoped patch primitive — no other patch key's behavior
+    // changes.
+    sourceRefs: { productIds?: string[] } | null;
+    // Post-render lifecycle (CMD-2 backend gap closure): written by
+    // `dispatchLaneARemotionRenderJob` (`videoIntelligenceJobs.ts`) once a
+    // FINAL render's produced video has been saved as a `library_items` row
+    // — links the finished video back onto its owning project. A preview
+    // render's terminal transition MUST NOT patch this field (it would
+    // silently overwrite a prior final result with `null`/nothing to show).
+    resultLibraryItemId: number | null;
+    // ADDITIVE — CMD-2 brand-kit reachability closure (`routers/videoProjects.ts`
+    // `setBrandKit`). Mirrors `document.brandKitId` (the field the compiler
+    // and scene planner actually read — `resolveBrandKitForDocument`) onto
+    // this denormalized column so `list`/`get` queries and any future
+    // brand-kit-scoped listing never need to parse `document` just to know
+    // which brand kit a project uses. `document.brandKitId` stays the
+    // authoritative field; this column is always written in the SAME
+    // mutation as the document update, so it can never observably diverge
+    // from a caller's point of view.
+    brandKitId: number | null;
   }>,
 ): Promise<VideoProjectRow | null> {
   const rows = await db

@@ -64,6 +64,9 @@ import {
   buildAnimatedChartBasic,
   animatedChartBasicParamsSchema,
 } from "./animated_chart_basic";
+import { buildParticleField, particleFieldParamsSchema } from "./particle_field";
+import { buildNetworkGraph, networkGraphParamsSchema } from "./network_graph";
+import { buildGlowingSphere, glowingSphereParamsSchema } from "./glowing_sphere";
 
 export interface MotionTemplate {
   meta: MotionTemplateMeta;
@@ -121,6 +124,21 @@ export const MOTION_TEMPLATE_REGISTRY: Record<MotionTemplateId, MotionTemplate> 
     meta: MOTION_TEMPLATE_META.animated_chart_basic,
     paramsSchema: animatedChartBasicParamsSchema,
     build: buildAnimatedChartBasic,
+  },
+  particle_field: {
+    meta: MOTION_TEMPLATE_META.particle_field,
+    paramsSchema: particleFieldParamsSchema,
+    build: buildParticleField,
+  },
+  network_graph: {
+    meta: MOTION_TEMPLATE_META.network_graph,
+    paramsSchema: networkGraphParamsSchema,
+    build: buildNetworkGraph,
+  },
+  glowing_sphere: {
+    meta: MOTION_TEMPLATE_META.glowing_sphere,
+    paramsSchema: glowingSphereParamsSchema,
+    build: buildGlowingSphere,
   },
 };
 

@@ -25,6 +25,66 @@ const VISUAL_BIBLE = {
   ageRange: "30s",
 };
 
+const DESIGN_DNA = {
+  version: 1,
+  designIntent: "A grounded support character with a memorable silhouette.",
+  seriesDnaAlignment: ["grounded legal thriller"],
+  roleTier: "support",
+  beautyArchetype: "approachable realism",
+  ageRange: "30s",
+  faceIdentity: {
+    facialGeometry: "soft-square face",
+    eyesAndGaze: "steady gaze",
+    brows: "straight brows",
+    nose: "rounded tip",
+    lipsAndSmile: "asymmetric smile",
+    skinAndTexture: "visible natural texture",
+    hair: "short black hair",
+    distinctiveAsymmetry: "slightly higher left brow",
+  },
+  bodyLanguage: {
+    posture: "upright but relaxed",
+    gesturePattern: "small precise gestures",
+    movementRhythm: "measured",
+    tensionTell: "thumb presses index finger",
+  },
+  recallStack: {
+    face: "higher left brow",
+    silhouette: "narrow jacket",
+    color: "ink navy",
+    behavior: "still hands",
+    emotionalHook: "quiet loyalty",
+  },
+  costumeGrammar: "precise professional layers",
+  publicMask: "calm competence",
+  hiddenTruth: "fears being overlooked",
+  narrativePromise: "will choose loyalty over comfort",
+  attractiveContradiction: "warm face, forensic gaze",
+  forbiddenDrift: ["generic luxury styling"],
+  antiCloneChecks: {
+    distinctFacialDimensions: ["face shape", "brow line", "mouth asymmetry"],
+    distinctHairDimensions: ["length", "part"],
+    distinctBodyLanguageDimensions: ["gesture pattern", "movement rhythm"],
+    signatureDifference: "oxidized-gold pin",
+  },
+  scores: {
+    storyFit: 8,
+    screenPresence: 8,
+    emotionalReadability: 8,
+    ensembleContrast: 8,
+    crossSeriesUniqueness: 12,
+    thresholdStatus: "provisional",
+    rationale: "The design is grounded and distinct within the ensemble.",
+  },
+  comparisonEvidence: {
+    candidateDirectionCount: 3,
+    currentCastCompared: 2,
+    recentSeriesCompared: 1,
+    priorLeadDnaCompared: 0,
+    historyCompleteness: "partial",
+  },
+};
+
 describe("verticalDramaCharacterProfile schemas", () => {
   it("validates a complete story-grounded character DNA record", () => {
     const parsed = verticalDramaCharacterDesignDnaSchema.parse({
@@ -187,13 +247,13 @@ describe("verticalDramaCharacterProfile schemas", () => {
   it("rejects oversized or unrecognized fields in an approved preview snapshot", () => {
     const oversized = verticalDramaApprovedCharacterDesignSnapshotSchema.safeParse({
       characterKey: "char-1",
-      portraitPrompt: "x".repeat(3_501),
-      visualBible: { ...VISUAL_BIBLE, designDna: {} },
+      portraitPrompt: "x".repeat(20_001),
+      visualBible: { ...VISUAL_BIBLE, version: 1, designDna: DESIGN_DNA },
     });
     const unknown = verticalDramaApprovedCharacterDesignSnapshotSchema.safeParse({
       characterKey: "char-1",
       portraitPrompt: "portrait",
-      visualBible: { ...VISUAL_BIBLE, designDna: {} },
+      visualBible: { ...VISUAL_BIBLE, version: 1, designDna: DESIGN_DNA },
       arbitraryPayload: "must not pass",
     });
 
@@ -216,6 +276,34 @@ describe("verticalDramaCharacterProfile schemas", () => {
         ])
       );
     }
+  });
+
+  it("round-trips legacy negative data and current prompt contract metadata", () => {
+    const legacy = verticalDramaApprovedCharacterDesignSnapshotSchema.parse({
+      characterKey: "char-1",
+      portraitPrompt: "natural human portrait with visible skin texture",
+      negativePrompt: "old legacy negative value",
+      visualBible: { ...VISUAL_BIBLE, version: 1, designDna: DESIGN_DNA },
+    });
+    expect(legacy.negativePrompt).toBe("old legacy negative value");
+    expect(legacy.promptContractVersion).toBeUndefined();
+
+    const current = verticalDramaApprovedCharacterDesignSnapshotSchema.parse({
+      ...legacy,
+      promptContractVersion: "vd_character_natural_human_v1",
+      promptProfile: "rich",
+      visualBible: {
+        ...legacy.visualBible,
+        promptContractVersion: "vd_character_natural_human_v1",
+        promptProfile: "rich",
+        semanticRetryCount: 1,
+      },
+    });
+    expect(current.promptContractVersion).toBe("vd_character_natural_human_v1");
+    expect(current.promptProfile).toBe("rich");
+    expect(current.visualBible.promptProfile).toBe("rich");
+    expect(current.visualBible.semanticRetryCount).toBe(1);
+    expect(current.negativePrompt).toBe("old legacy negative value");
   });
 
   it("parses a persisted visual bible with all base and F132 fields", () => {

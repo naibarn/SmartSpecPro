@@ -54,6 +54,7 @@ import {
   verticalDramaRoutes,
   type VerticalDramaSeriesStatus,
 } from "./verticalDramaCopy";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "verticalDrama:sidebarCollapsed";
 /** Lineage-aware sidebar filter chip (findable-fast fix, 2026-07-18) —
@@ -70,23 +71,7 @@ const DESKTOP_SIDEBAR_BREAKPOINT_PX = 1280; // Tailwind `xl:`
  *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
  *  the whole click handler BEFORE the real (state) action fired. Swallow the
  *  error and let the real action proceed. */
-function safeStorageGet(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
 
-function safeStorageSet(key: string, value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    /* quota exceeded / storage blocked — cache is best-effort, ignore */
-  }
-}
 
 interface VerticalDramaShellContextValue {
   openCreateWizard: () => void;

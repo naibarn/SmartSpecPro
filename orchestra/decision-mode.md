@@ -1,1 +1,1 @@
-auto_by_default
+mode: smart_auto

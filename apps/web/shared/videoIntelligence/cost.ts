@@ -30,6 +30,7 @@ const LAYER_TYPE_COST_WEIGHT: Record<RemotionLayer["type"], number> = {
   audio: 1,
   svg: 2,
   motionGraphic: 2,
+  motionComposition: 4,
   video: 3,
   scene3d: 6,
 };

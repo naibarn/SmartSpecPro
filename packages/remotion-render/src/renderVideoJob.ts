@@ -43,6 +43,7 @@ import {
 } from "./remotionRenderVideoSchema";
 import {
   buildAssBurnSubtitleFileContent as defaultBuildAssBurnSubtitleFileContent,
+  buildConcatListFileContent,
   planPostPasses as defaultPlanPostPasses,
   type AssSubtitleBuildOpts,
   type AssSubtitleLine,
@@ -390,6 +391,23 @@ export async function runRemotionRenderVideoJob(
         `Unexpected compositionId "${payload.compositionId}" (expected "${GENERIC_TEMPLATE_COMPOSITION_ID}")`,
       );
     }
+    if (payload.segmentTemplates) {
+      const plan = payload.segmentPlan;
+      const plannedFrames = plan?.parts.reduce(
+        (sum, part) => sum + part.durationInFrames,
+        0,
+      );
+      if (
+        !plan ||
+        payload.segmentTemplates.length !== plan.parts.length ||
+        plannedFrames !== payload.durationInFrames
+      ) {
+        throw new RemotionRenderVideoJobError(
+          "contract_version_unsupported",
+          "Invalid segmented render plan: segmentTemplates, segmentPlan.parts, and durationInFrames must agree",
+        );
+      }
+    }
 
     await emit("stage_assets");
     try {
@@ -403,16 +421,48 @@ export async function runRemotionRenderVideoJob(
 
     await emit("bundle_composition");
     await emit("select_composition");
-    await emit("render_frames");
-    const renderedOutputPath = join(workspace, "render.mp4");
+    const segmentTemplates = payload.segmentTemplates ?? [payload.remotionTemplate];
+    const isSegmented = payload.segmentTemplates != null;
+    const renderedOutputPath = join(workspace, isSegmented ? "segment-0.mp4" : "render.mp4");
+    const segmentInputPaths: string[] = [];
     let renderResult: RemotionRenderVideoRenderResult;
     try {
-      renderResult = await render({
-        workspace,
-        outputPath: renderedOutputPath,
-        payload: payload as unknown as Record<string, unknown>,
-        env: input.runtimeEnv,
-      });
+      const partResults: unknown[] = [];
+      let singleResult: RemotionRenderVideoRenderResult | null = null;
+      for (const [index, segmentTemplate] of segmentTemplates.entries()) {
+        const segmentOutputPath = join(
+          workspace,
+          isSegmented ? `segment-${index}.mp4` : "render.mp4",
+        );
+        // eslint-disable-next-line no-await-in-loop
+        await emit("render_frames", {
+          shotIndex: index + 1,
+          shotTotal: segmentTemplates.length,
+          message: isSegmented
+            ? `Rendering segment ${index + 1}/${segmentTemplates.length}`
+            : undefined,
+        });
+        // eslint-disable-next-line no-await-in-loop
+        const partResult = await render({
+          workspace,
+          outputPath: segmentOutputPath,
+          payload: {
+            ...(payload as unknown as Record<string, unknown>),
+            remotionTemplate: segmentTemplate,
+            durationInFrames: segmentTemplate.durationInFrames,
+          },
+          env: input.runtimeEnv,
+        });
+        segmentInputPaths.push(segmentOutputPath);
+        if (!isSegmented) singleResult = partResult;
+        partResults.push(partResult.result ?? null);
+      }
+      renderResult = isSegmented
+        ? {
+            outputPath: renderedOutputPath,
+            result: { segmented: true, parts: partResults },
+          }
+        : (singleResult as RemotionRenderVideoRenderResult);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new RemotionRenderVideoJobError(classifyRemotionRenderFailure(message), message);
@@ -438,10 +488,20 @@ export async function runRemotionRenderVideoJob(
           assFilePath = join(workspace, "captions.ass");
           writeFileSync(assFilePath, assContent, "utf-8");
         }
+        let concatListPath: string | undefined;
+        if (isSegmented) {
+          concatListPath = join(workspace, "segments.concat.txt");
+          writeFileSync(concatListPath, buildConcatListFileContent(segmentInputPaths), "utf-8");
+        }
         const steps = planPostPassesFn(payload, {
           renderedMp4Path: renderedOutputPath,
           workspaceDir: workspace,
           assFilePath,
+          segmentInputPaths: isSegmented ? segmentInputPaths : undefined,
+          concatListPath,
+          fps: payload.renderProfile.fps,
+          width: payload.renderProfile.width,
+          height: payload.renderProfile.height,
         });
         for (const step of steps) {
           // eslint-disable-next-line no-await-in-loop

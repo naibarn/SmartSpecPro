@@ -1422,6 +1422,27 @@
       "when": 1785000600000,
       "tag": "0216_seedream_5_pro_real_pricing",
       "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1785001200000,
+      "tag": "0217_minimax_h3_mode_routing",
+      "breakpoints": true
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1785715200000,
+      "tag": "0218_drop_video_project_editor_stub",
+      "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1786067510069,
+      "tag": "0219_vertical_drama_episode_cover_image",
+      "breakpoints": true
     }
   ]
 }

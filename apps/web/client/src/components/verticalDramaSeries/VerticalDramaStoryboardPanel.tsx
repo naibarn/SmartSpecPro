@@ -35,12 +35,14 @@ import {
   Copy,
   Download,
   Expand,
+  Image as ImageIcon,
   ImageOff,
   Loader2,
   Link2,
   MapPin,
   Mic,
   Package,
+  Phone,
   Pencil,
   RotateCcw,
   Shirt,
@@ -53,6 +55,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import {
   buildShotCharacterLookOptionsFromEntries,
   swapShotCharacterRefKey,
@@ -91,17 +94,18 @@ import ModelSelectorDialog, {
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
+import { useVerticalDramaCreditConfirmation } from "./VerticalDramaCreditConfirmDialog";
 import {
   formatHermesErrorForToast,
   presentHermesError,
 } from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { resolveVdImagePromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/imagePromptBudget";
 import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
   VERTICAL_DRAMA_THAI_ACCENTS,
   VERTICAL_DRAMA_THAI_ACCENT_LABELS,
-  VD_IMAGE_PROMPT_MAX,
   VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
 import {
@@ -123,6 +127,11 @@ import {
   type VerticalDramaQualityRepairGroup,
 } from "@shared/verticalDramaSeries/qualityPolicy";
 import { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
+import type { VerticalDramaBarrierDialogue } from "@shared/verticalDramaSeries/barrierDialogue";
+import type {
+  VerticalDramaBarrierMultiView,
+  VerticalDramaDualViewScenario,
+} from "@shared/verticalDramaSeries/barrierMultiView";
 export { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
 import {
   VIDEO_PROMPT_MODEL_FAMILY_LABELS,
@@ -385,7 +394,7 @@ export type VerticalDramaCapableModel = MediaModel & {
 export interface VerticalDramaShotReferenceView {
   referenceId: string;
   mediaAssetId: string;
-  role?: "start_frame" | "reference";
+  role?: "start_frame" | "reference" | "barrier_reference";
   source:
     | "generated"
     | "grid_cut"
@@ -509,6 +518,7 @@ interface StoryboardShotView {
   };
   characters?: string[];
   required_character_refs?: string[];
+  screen_caller_refs?: string[];
   duration_seconds?: number;
   /** Declared visual-only intent (spec §7.7.2 Layer 3, section-13) — persisted
    *  by the `vertical-drama-storyboard-shotgrid` skill superset when
@@ -581,6 +591,9 @@ export interface VerticalDramaStartFramePlanFrame {
   imagePrompt: string;
   negativePrompt?: string;
   requiredCharacterRefs?: string[];
+  screenCallerCharacterRefs?: string[];
+  barrierDialogue?: VerticalDramaBarrierDialogue;
+  barrierMultiView?: VerticalDramaBarrierMultiView;
   productReferenceAssetIds?: string[];
   approvedMediaAssetId?: string;
   /** Per-shot location override (Phase D, `planning/polished-toasting-
@@ -630,6 +643,17 @@ export interface VerticalDramaStartFramePlanFrame {
     analyzedAt?: string;
     skillVersion?: string;
   };
+  deviceOrientationQc?: {
+    physical_handset_view?: "rear" | "front" | "unclear" | "not_applicable";
+    rear_camera_visible?: boolean;
+    physical_display_visible?: boolean;
+    floating_call_screen_present?: boolean;
+    remote_body_outside_device?: boolean;
+    notes?: string[];
+    analyzedAssetId?: string;
+    analyzedAt?: string;
+    skillVersion?: string;
+  };
   /** Optional second anchor chosen for video generation (Feature 137 P2). */
   videoStartMediaAssetId?: string;
   videoStartSource?: "video_safe_regen" | "angle_grid" | "manual_upload";
@@ -637,7 +661,13 @@ export interface VerticalDramaStartFramePlanFrame {
   videoSafety?: {
     characters?: Array<{
       character?: string;
+      name?: string;
       face_readable?: boolean;
+      facing?: string;
+      eyes_visible?: string;
+      occlusion?: string;
+      face_size?: string;
+      overlapped_by_other_face?: boolean;
       identity_risk?: "low" | "medium" | "high";
       notes?: string;
     }>;
@@ -737,6 +767,7 @@ export interface VerticalDramaMotionPromptClipView {
       note?: string;
     }>;
     sampleUrls?: string[];
+    samplingTaskId?: string;
     analyzedAt?: string;
     skillVersion?: string;
     warning?: string;
@@ -749,6 +780,7 @@ export interface VerticalDramaMotionPromptClipView {
     pendingTaskId?: string;
     videoUrl?: string;
     mediaTaskId?: string;
+    mediaAssetId?: string;
     /** See `VerticalDramaMotionPromptPack["clips"][number]["videoTask"].source`
      *  in `@shared/verticalDramaSeries/contracts.ts` — additive. */
     source?: "generated" | "upload";
@@ -1048,6 +1080,11 @@ interface VerticalDramaStoryboardPanelProps {
     dialogueLines: Array<{ speaker: string; line: string }>;
     silenceIntent?: string;
   }>;
+  /** Persists the canonical Overview summary for one shot. The parent owns
+   *  the mutation so this panel remains presentational and both surfaces
+   *  continue to read the same breakdown-version source of truth. */
+  onSaveShotSummary?: (shotNumber: number, summary: string) => Promise<void>;
+  savingShotSummaryForShot?: number | null;
   assetUrls?: VerticalDramaAssetUrlMap;
   /** Every series character's current approved portrait, keyed by character
    *  key — joined per-shot against `shot.required_character_refs` so each
@@ -1123,6 +1160,28 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     characterRefs: string[]
   ) => void;
+  /** Same per-shot override, but for callers whose portraits appear only inside a phone/video-call screen. */
+  onSetShotScreenCallerReferences?: (
+    shotNumber: number,
+    characterRefs: string[]
+  ) => void;
+  /** Convert the current physical + Caller assignment into a closed-door shot. */
+  onSetShotBarrierDialogue?: (
+    shotNumber: number,
+    input: Omit<VerticalDramaBarrierDialogue, "type">
+  ) => void;
+  /** Lets the user override automatic Dual View detection. Manual selection is authoritative. */
+  onSetShotViewMode?: (
+    shotNumber: number,
+    input: {
+      mode: "single" | "dual";
+      scenario?: VerticalDramaDualViewScenario;
+      primaryCharacterRefs?: string[];
+      secondaryCharacterRefs?: string[];
+      primaryLocationKey?: string;
+      secondaryLocationKey?: string;
+    }
+  ) => void;
   /** Non-null while a `setShotCharacterReference` mutation is in flight for
    *  this shot — disables the picker's save button. */
   savingShotCharacterReferencesForShot?: number | null;
@@ -1135,6 +1194,10 @@ interface VerticalDramaStoryboardPanelProps {
    * The caller wires this straight to the `setShotLocation` mutation.
    */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
+  onSetShotBarrierReferenceLocation?: (
+    shotNumber: number,
+    locationKey: string
+  ) => void;
   sceneContinuityEnabled?: boolean;
   sceneContinuityQcEnabled?: boolean;
   onPlanSceneVisualState?: (
@@ -1253,6 +1316,10 @@ interface VerticalDramaStoryboardPanelProps {
   onSelectImageModel?: (modelId: string) => void;
   onSelectVideoModel?: (modelId: string) => void;
   modelsLoading?: boolean;
+  imageModelsError?: boolean;
+  videoModelsError?: boolean;
+  onRetryImageModels?: () => void;
+  onRetryVideoModels?: () => void;
   /** Currently-selected MCP connection id (Higgsfield/Magnific etc. — any
    *  model whose `configJson` transport resolves to `"mcp"`, creditCost 0).
    *  Persisted by the caller (localStorage), shared with Media Studio's own
@@ -1359,6 +1426,7 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number;
     characterKeys: string[];
     instruction: string;
+    locationKey?: string;
   }) => Promise<VerticalDramaReferenceFramePromptResult | null>;
   generatingReferenceFramePromptForShot?: ReadonlySet<number>;
   /** Step 2: paid render of the user-confirmed (possibly hand-edited) prompt
@@ -1434,6 +1502,11 @@ interface VerticalDramaStoryboardPanelProps {
   /** Saves an edited image prompt for free (no LLM call) — distinct from
    *  `onEditStartFramePrompt`, which opens the paid AI-repair dialog. */
   onSaveStartFramePrompt?: (shotNumber: number, prompt: string) => void;
+  /** Saves View 2's independently authored image prompt for free. */
+  onSaveReferenceFramePrompt?: (
+    shotNumber: number,
+    prompt: string
+  ) => Promise<void> | void;
   /** Saves an edited video prompt for free — distinct from
    *  `onEditVideoPrompt`. `clipNumber` (2026-07-10 speaker-aware sub-shots)
    *  identifies the EXACT clip being saved — for an unsplit shot it equals
@@ -1548,7 +1621,11 @@ interface VerticalDramaStoryboardPanelProps {
    *  shot number — cleared once the user picks "use new" or "keep old". */
   repairImageResultByShot?: Record<
     number,
-    { beforeUrl: string; afterUrl: string }
+    {
+      beforeUrl: string;
+      afterUrl: string;
+      targetRole?: "start_frame" | "barrier_reference";
+    }
   >;
   /** Readable error message for the most recent repair attempt on this shot
    *  (e.g. the PRECONDITION_FAILED "model doesn't support this" message). */
@@ -1561,7 +1638,11 @@ interface VerticalDramaStoryboardPanelProps {
   onDiscardRepairImage?: (shotNumber: number) => void;
   /** Opens/closes the repair dialog for a shot (caller owns which shot is open). */
   repairImageDialogForShot?: number | null;
-  onOpenRepairImageDialog?: (shotNumber: number) => void;
+  repairImageTargetRole?: "start_frame" | "barrier_reference";
+  onOpenRepairImageDialog?: (
+    shotNumber: number,
+    targetRole?: "start_frame" | "barrier_reference"
+  ) => void;
   onCloseRepairImageDialog?: () => void;
 
   /* ---- Phase 6.6 — per-shot video prompt generation ---- */
@@ -1587,6 +1668,8 @@ interface VerticalDramaStoryboardPanelProps {
   /** Render-options controls, rendered INSIDE the compiled-video card so the
    *  settings and the button they drive read as one section. */
   renderOptionsSlot?: ReactNode;
+  /** Slot-based episode teaser builder, kept separate from full assembly options. */
+  episodePreviewSlot?: ReactNode;
   /** True while the submit mutation itself is in flight (distinct from the
    *  server-side job, which is reflected by `compiledVideo.status`). */
   assemblingCompiledVideo?: boolean;
@@ -1685,6 +1768,8 @@ export function VerticalDramaStoryboardPanel({
   startFramePlan,
   motionPromptPack,
   canonicalShotDrafts = [],
+  onSaveShotSummary,
+  savingShotSummaryForShot = null,
   assetUrls = {},
   characterPortraits = {},
   episodeLocations = [],
@@ -1702,8 +1787,12 @@ export function VerticalDramaStoryboardPanel({
   onChangeCharacterReference,
   onDropCharacterReference,
   onSetShotCharacterReferences,
+  onSetShotScreenCallerReferences,
+  onSetShotBarrierDialogue,
+  onSetShotViewMode,
   savingShotCharacterReferencesForShot = null,
   onSetShotLocation,
+  onSetShotBarrierReferenceLocation,
   sceneContinuityEnabled = false,
   sceneContinuityQcEnabled = false,
   onPlanSceneVisualState,
@@ -1743,6 +1832,10 @@ export function VerticalDramaStoryboardPanel({
   onSelectImageModel,
   onSelectVideoModel,
   modelsLoading = false,
+  imageModelsError = false,
+  videoModelsError = false,
+  onRetryImageModels,
+  onRetryVideoModels,
   mcpConnectionId = null,
   onSelectMcpConnection,
   mcpSharedGroupId = null,
@@ -1788,6 +1881,7 @@ export function VerticalDramaStoryboardPanel({
   onUploadVideoClip,
   uploadingVideoClipForClip = EMPTY_SHOT_NUMBER_SET,
   onSaveStartFramePrompt,
+  onSaveReferenceFramePrompt,
   onSaveVideoPrompt,
   onGeneratePromptAndImage,
   generatingPromptAndImageForShot = EMPTY_SHOT_NUMBER_SET,
@@ -1824,6 +1918,7 @@ export function VerticalDramaStoryboardPanel({
   onAcceptRepairImage,
   onDiscardRepairImage,
   repairImageDialogForShot = null,
+  repairImageTargetRole = "start_frame",
   onOpenRepairImageDialog,
   onCloseRepairImageDialog,
   onGenerateShotVideoPrompt,
@@ -1832,6 +1927,7 @@ export function VerticalDramaStoryboardPanel({
   compiledVideo = null,
   onAssembleCompiledVideo,
   renderOptionsSlot,
+  episodePreviewSlot,
   assemblingCompiledVideo = false,
   productionWizardEnabled = false,
   advancedMetaOpen = false,
@@ -1967,6 +2063,17 @@ export function VerticalDramaStoryboardPanel({
   const selectedVideoModel = videoModels.find(
     m => m.modelId === selectedVideoModelId
   );
+  const selectedImagePromptMaxChars = resolveVdImagePromptBudgetForCatalogModel(
+    {
+      provider: selectedImageModel?.provider,
+      configJson:
+        selectedImageModel?.configJson &&
+        typeof selectedImageModel.configJson === "object" &&
+        !Array.isArray(selectedImageModel.configJson)
+          ? (selectedImageModel.configJson as Record<string, unknown>)
+          : undefined,
+    }
+  );
   const selectedImageModelTransport = resolveMediaModelTransportConfig({
     provider: selectedImageModel?.provider,
     modelId: selectedImageModel?.modelId ?? selectedImageModelId,
@@ -2082,6 +2189,8 @@ export function VerticalDramaStoryboardPanel({
   ] = useState<number | null>(null);
   const [confirmingGenerateAllImages, setConfirmingGenerateAllImages] =
     useState(false);
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
   const [lightboxShot, setLightboxShot] = useState<number | null>(null);
   const [lightboxCharacterId, setLightboxCharacterId] = useState<string | null>(
     null
@@ -2118,6 +2227,9 @@ export function VerticalDramaStoryboardPanel({
   const [characterRefPickerForShot, setCharacterRefPickerForShot] = useState<
     number | null
   >(null);
+  const [characterRefPickerMode, setCharacterRefPickerMode] = useState<
+    "scene" | "screen_caller" | "dual_primary" | "dual_reference"
+  >("scene");
   const [characterRefPickerDraft, setCharacterRefPickerDraft] = useState<
     string[]
   >([]);
@@ -2144,6 +2256,14 @@ export function VerticalDramaStoryboardPanel({
   const [locationPickerForShot, setLocationPickerForShot] = useState<
     number | null
   >(null);
+  const [
+    barrierReferenceLocationPickerForShot,
+    setBarrierReferenceLocationPickerForShot,
+  ] = useState<number | null>(null);
+  const [dualViewLocationPicker, setDualViewLocationPicker] = useState<{
+    shotNumber: number;
+    side: "primary" | "secondary";
+  } | null>(null);
   /** Each surviving tile's data URL AND its ORIGINAL 0..8 position in the
    *  3x3 grid (row-major, matching `splitImage`'s output order) — the
    *  original index is what gets persisted into `angleGrid.dismissedIndexes`
@@ -2209,6 +2329,14 @@ export function VerticalDramaStoryboardPanel({
     number | null
   >(null);
   const [editingImagePromptDraft, setEditingImagePromptDraft] = useState("");
+  const [
+    editingReferenceImagePromptForShot,
+    setEditingReferenceImagePromptForShot,
+  ] = useState<number | null>(null);
+  const [
+    editingReferenceImagePromptDraft,
+    setEditingReferenceImagePromptDraft,
+  ] = useState("");
   const [editingVideoPromptForShot, setEditingVideoPromptForShot] = useState<
     number | null
   >(null);
@@ -2219,6 +2347,10 @@ export function VerticalDramaStoryboardPanel({
   const [editingDialogueDraft, setEditingDialogueDraft] = useState<
     VerticalDramaClipDialogueLineView[]
   >([]);
+  const [editingShotSummaryNumber, setEditingShotSummaryNumber] = useState<
+    number | null
+  >(null);
+  const [editingShotSummaryDraft, setEditingShotSummaryDraft] = useState("");
   const [confirmingRemoveReference, setConfirmingRemoveReference] = useState<{
     shotNumber: number;
     referenceId: string;
@@ -2466,6 +2598,7 @@ export function VerticalDramaStoryboardPanel({
       .filter(draft => draft.summary.trim().length > 0)
       .map(draft => [draft.shotNumber, draft.summary.trim()] as const)
   );
+  const trimmedEditingShotSummary = editingShotSummaryDraft.trim();
   // Canonical per-shot dialogue (2026-07-14) — same source as the Overview
   // page, used as a read-only preview fallback until a motion-prompt-pack
   // clip with dialogue exists for the shot (see `ClipDialogueBox` below).
@@ -2571,6 +2704,7 @@ export function VerticalDramaStoryboardPanel({
         className
       )}
     >
+      {creditConfirmDialog}
       {/* Deliberately OUTSIDE `StoryboardMetaSection` below — that section
           collapses behind the same "ขั้นสูง" toggle as the workspace's deep
           Advanced disclosure whenever `productionWizardEnabled` is on
@@ -3060,6 +3194,8 @@ export function VerticalDramaStoryboardPanel({
             onSelect={onSelectImageModel}
             mediaType="image"
             isLoading={modelsLoading}
+            loadError={imageModelsError}
+            onRetry={onRetryImageModels}
           />
         ) : null}
         {onSelectVideoModel ? (
@@ -3071,6 +3207,8 @@ export function VerticalDramaStoryboardPanel({
             onSelect={onSelectVideoModel}
             mediaType="video"
             isLoading={modelsLoading}
+            loadError={videoModelsError}
+            onRetry={onRetryVideoModels}
           />
         ) : null}
 
@@ -3502,9 +3640,105 @@ export function VerticalDramaStoryboardPanel({
           > = clipsForShot.length > 0 ? clipsForShot : [undefined];
           const assetId = frame?.approvedMediaAssetId;
           const asset = assetId ? assetUrls[assetId] : undefined;
+          const barrierMultiView = frame?.barrierMultiView;
+          const barrierReferenceAssetId =
+            barrierMultiView?.referenceView.referenceFrameAssetId;
+          const barrierReference = barrierReferenceAssetId
+            ? (shotReferencesByShot[shotNumber] ?? []).find(
+                entry => entry.mediaAssetId === barrierReferenceAssetId
+              )
+            : undefined;
+          const barrierReferenceUrl = barrierReferenceAssetId
+            ? barrierReference?.thumbnailUrl ||
+              assetUrls[barrierReferenceAssetId]?.thumbnailUrl ||
+              assetUrls[barrierReferenceAssetId]?.url
+            : undefined;
+          const barrierStartReady = Boolean(asset?.thumbnailUrl || asset?.url);
+          const barrierReferenceReady = Boolean(
+            barrierReferenceUrl && barrierMultiView?.status !== "stale"
+          );
+          const barrierVideoCreated = clipsForShot.some(clip =>
+            Boolean(clip.videoTask?.videoUrl)
+          );
+          const barrierReferenceFrames = (
+            shotReferencesByShot[shotNumber] ?? []
+          ).filter(reference => reference.source === "reference_frame");
+          const barrierReferenceCharacterOptions: VerticalDramaReferenceFrameCharacterOption[] =
+            Object.entries(characterPortraits).map(([key, portrait]) => ({
+              key,
+              name: portrait.name,
+              portraitUrl: portrait.portraitUrl,
+            }));
+          const barrierLocationName = (locationKey?: string) =>
+            locationKey
+              ? (episodeLocations.find(
+                  location => location.locationKey === locationKey
+                )?.name ?? locationKey)
+              : t(locale, "ยังไม่ได้เลือกสถานที่", "Location not selected");
+          const barrierCharacterNames = (keys: string[]) =>
+            keys
+              .map(
+                key =>
+                  characterPortraits[key]?.variantLabel ??
+                  characterPortraits[key]?.name ??
+                  key
+              )
+              .join(", ");
+          const dualScenario = barrierMultiView?.scenario ?? "physical_barrier";
+          const dualViewLabels =
+            dualScenario === "remote_call"
+              ? {
+                  title: t(
+                    locale,
+                    "คุยโทรศัพท์คนละสถานที่",
+                    "Call across two locations"
+                  ),
+                  subtitle: t(
+                    locale,
+                    "เตรียมภาพของทั้งสองฝ่าย แล้วระบบจะตัดสลับตามบทพูด",
+                    "Prepare both environments, then alternate views by speaker"
+                  ),
+                  primary: t(locale, "สถานที่ฝ่ายที่ 1", "Caller location 1"),
+                  secondary: t(locale, "สถานที่ฝ่ายที่ 2", "Caller location 2"),
+                }
+              : dualScenario === "separate_locations"
+                ? {
+                    title: t(
+                      locale,
+                      "สนทนาคนละสถานที่",
+                      "Conversation across locations"
+                    ),
+                    subtitle: t(
+                      locale,
+                      "เตรียมภาพสองสถานที่ แล้วระบบจะตัดสลับตามผู้พูด",
+                      "Prepare both locations, then alternate views by speaker"
+                    ),
+                    primary: t(locale, "มุม/สถานที่ที่ 1", "View / location 1"),
+                    secondary: t(
+                      locale,
+                      "มุม/สถานที่ที่ 2",
+                      "View / location 2"
+                    ),
+                  }
+                : {
+                    title: t(
+                      locale,
+                      "ฉากสนทนาคนละฝั่งประตู",
+                      "Conversation across a barrier"
+                    ),
+                    subtitle: t(
+                      locale,
+                      "เตรียมภาพทั้งสองฝั่ง แล้วระบบจะตัดสลับตามผู้พูด",
+                      "Prepare both sides, then alternate views by speaker"
+                    ),
+                    primary: t(locale, "ฝั่งในห้อง", "Inside the room"),
+                    secondary: t(locale, "ฝั่งหน้าประตู", "Outside the door"),
+                  };
           const videoStartAsset = frame?.videoStartMediaAssetId
             ? assetUrls[frame.videoStartMediaAssetId]
             : undefined;
+          const selectedVideoAnchorAssetId =
+            frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
           const continuityIssues = frame?.sceneContinuity
             ? [
                 frame.sceneContinuity.location_match === "different_place"
@@ -3529,7 +3763,33 @@ export function VerticalDramaStoryboardPanel({
               ].filter((value): value is string => Boolean(value))
             : [];
           const continuityHasWarning = continuityIssues.length > 0;
-          const videoSafetyVerdict = frame?.videoSafety?.video_safe_verdict;
+          const deviceOrientationAssetId =
+            frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
+          const deviceOrientation =
+            frame?.deviceOrientationQc &&
+            deviceOrientationAssetId &&
+            frame.deviceOrientationQc.analyzedAssetId ===
+              deviceOrientationAssetId
+              ? frame.deviceOrientationQc
+              : undefined;
+          const deviceOrientationHasWarning = Boolean(
+            deviceOrientation &&
+            (deviceOrientation.physical_handset_view !== "rear" ||
+              deviceOrientation.rear_camera_visible === false ||
+              deviceOrientation.physical_display_visible === true ||
+              deviceOrientation.floating_call_screen_present === false ||
+              deviceOrientation.remote_body_outside_device === true)
+          );
+          const videoSafetyIsCurrent = Boolean(
+            selectedVideoAnchorAssetId &&
+            frame?.videoSafety?.analyzedAssetId === selectedVideoAnchorAssetId
+          );
+          const videoSafetyVerdict = videoSafetyIsCurrent
+            ? frame?.videoSafety?.video_safe_verdict
+            : undefined;
+          const videoSafetyNeedsReview =
+            (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
+            (!videoSafetyIsCurrent || videoSafetyVerdict !== "safe");
 
           return (
             <div
@@ -3685,7 +3945,9 @@ export function VerticalDramaStoryboardPanel({
                       data-testid={`vd-storyboard-video-start-frame-${shotNumber}`}
                     >
                       <img
-                        src={videoStartAsset.thumbnailUrl ?? videoStartAsset.url}
+                        src={
+                          videoStartAsset.thumbnailUrl ?? videoStartAsset.url
+                        }
                         alt={t(
                           locale,
                           `เฟรมสำหรับวิดีโอ ช็อต ${shotNumber}`,
@@ -3715,9 +3977,12 @@ export function VerticalDramaStoryboardPanel({
                       ) : null}
                     </div>
                   ) : null}
-                  {frame?.sceneContinuity || frame?.videoSafety ? (
+                  {frame?.sceneContinuity ||
+                  deviceOrientation ||
+                  frame?.videoSafety ||
+                  videoSafetyNeedsReview ? (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {frame.sceneContinuity ? (
+                      {frame?.sceneContinuity ? (
                         <Badge
                           variant="outline"
                           className={cn(
@@ -3738,7 +4003,11 @@ export function VerticalDramaStoryboardPanel({
                           data-testid={`vd-storyboard-continuity-badge-${shotNumber}`}
                         >
                           {continuityHasWarning
-                            ? t(locale, "เตือนความต่อเนื่อง", "Continuity warning")
+                            ? t(
+                                locale,
+                                "เตือนความต่อเนื่อง",
+                                "Continuity warning"
+                              )
                             : t(locale, "ต่อเนื่อง", "Continuity OK")}
                         </Badge>
                       ) : null}
@@ -3763,6 +4032,61 @@ export function VerticalDramaStoryboardPanel({
                               : t(locale, "เสี่ยงหน้าเพี้ยน", "Identity risk")}
                         </Badge>
                       ) : null}
+                      {deviceOrientation ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "gap-1 px-1.5 py-0 text-[9px]",
+                            deviceOrientationHasWarning
+                              ? "border-red-400/70 text-red-700 dark:text-red-300"
+                              : "border-emerald-400/70 text-emerald-700 dark:text-emerald-300"
+                          )}
+                          title={
+                            deviceOrientationHasWarning
+                              ? t(
+                                  locale,
+                                  "ภาพโทรศัพท์ผิดทิศทาง: ต้องเห็นด้านหลังและกล้องหลัง ส่วนหน้าจอจริงต้องหันเข้าหาผู้ถือ",
+                                  "Phone orientation mismatch: show the rear cameras and keep the physical display facing the holder"
+                                )
+                              : t(
+                                  locale,
+                                  "ยืนยันด้านหลังเครื่องและกล้องหลังแล้ว",
+                                  "Rear handset orientation verified"
+                                )
+                          }
+                          data-testid={`vd-storyboard-device-orientation-badge-${shotNumber}`}
+                        >
+                          {deviceOrientationHasWarning
+                            ? t(
+                                locale,
+                                "โทรศัพท์ผิดทิศทาง",
+                                "Phone orientation"
+                              )
+                            : t(
+                                locale,
+                                "ด้านหลังเครื่องถูกต้อง",
+                                "Phone rear OK"
+                              )}
+                        </Badge>
+                      ) : null}
+                      {videoSafetyNeedsReview ? (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 border-amber-400/70 px-1.5 py-0 text-[9px] text-amber-700 dark:text-amber-300"
+                          title={t(
+                            locale,
+                            "ต้องตรวจภาพปัจจุบันก่อนนำไปสร้างวิดีโอ",
+                            "The current video anchor must be checked before video generation"
+                          )}
+                          data-testid={`vd-storyboard-video-safety-review-${shotNumber}`}
+                        >
+                          {t(
+                            locale,
+                            "ต้องตรวจภาพก่อนทำวิดีโอ",
+                            "Review before video"
+                          )}
+                        </Badge>
+                      ) : null}
                     </div>
                   ) : null}
                   {onRunFrameContinuityQc && asset?.url ? (
@@ -3776,7 +4100,10 @@ export function VerticalDramaStoryboardPanel({
                       data-testid={`vd-storyboard-run-continuity-qc-${shotNumber}`}
                     >
                       {runningFrameContinuityQcForShot === shotNumber ? (
-                        <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
                       ) : (
                         <Sparkles aria-hidden="true" className="h-3 w-3" />
                       )}
@@ -3796,13 +4123,20 @@ export function VerticalDramaStoryboardPanel({
                       data-testid={`vd-storyboard-run-video-safety-qc-${shotNumber}`}
                     >
                       {runningVideoSafetyQcForShot === shotNumber ? (
-                        <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
                       ) : (
                         <Sparkles aria-hidden="true" className="h-3 w-3" />
                       )}
                       {runningVideoSafetyQcForShot === shotNumber
                         ? t(locale, "กำลังตรวจ…", "Checking…")
-                        : t(locale, "ตรวจความพร้อมวิดีโอ", "Check video safety")}
+                        : t(
+                            locale,
+                            "ตรวจความพร้อมวิดีโอ",
+                            "Check video safety"
+                          )}
                     </Button>
                   ) : null}
                   {onGenerateVideoSafeStartFrame && asset?.url ? (
@@ -3811,18 +4145,49 @@ export function VerticalDramaStoryboardPanel({
                       size="sm"
                       variant="outline"
                       className="w-full gap-1 text-[11px]"
-                      onClick={() => onGenerateVideoSafeStartFrame(shotNumber)}
-                      disabled={generatingVideoSafeStartFrameForShot === shotNumber}
+                      onClick={() =>
+                        requestConfirmation({
+                          title: t(
+                            locale,
+                            "ยืนยันสร้างภาพ Video-Safe",
+                            "Confirm video-safe frame generation"
+                          ),
+                          description: t(
+                            locale,
+                            "การทำงานนี้ใช้ AI เพื่อสร้างภาพสำรองสำหรับวิดีโอและอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                            "This uses AI to generate a video-safe anchor frame and may spend credits. Continue?"
+                          ),
+                          confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+                          cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                          testId: `vd-credit-confirm-video-safe-${shotNumber}`,
+                          onConfirm: () =>
+                            onGenerateVideoSafeStartFrame(shotNumber),
+                        })
+                      }
+                      disabled={
+                        generatingVideoSafeStartFrameForShot === shotNumber
+                      }
                       data-testid={`vd-storyboard-generate-video-safe-${shotNumber}`}
                     >
                       {generatingVideoSafeStartFrameForShot === shotNumber ? (
-                        <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3 w-3 animate-spin"
+                        />
                       ) : (
                         <Sparkles aria-hidden="true" className="h-3 w-3" />
                       )}
                       {generatingVideoSafeStartFrameForShot === shotNumber
-                        ? t(locale, "กำลังสร้างเฟรมวิดีโอ…", "Generating video-safe frame…")
-                        : t(locale, "สร้างภาพ Video-Safe", "Generate video-safe frame")}
+                        ? t(
+                            locale,
+                            "กำลังสร้างเฟรมวิดีโอ…",
+                            "Generating video-safe frame…"
+                          )
+                        : t(
+                            locale,
+                            "สร้างภาพ Video-Safe",
+                            "Generate video-safe frame"
+                          )}
                     </Button>
                   ) : null}
                   {/* Image-to-image repair (Phase 6.5) — only shown once this
@@ -3840,7 +4205,11 @@ export function VerticalDramaStoryboardPanel({
                           setIsImageModelDialogOpen(true);
                           return;
                         }
-                        onOpenRepairImageDialog(shotNumber);
+                        setRepairImageInstructionByShot(prev => ({
+                          ...prev,
+                          [shotNumber]: "",
+                        }));
+                        onOpenRepairImageDialog(shotNumber, "start_frame");
                       }}
                       title={
                         !selectedImageModelId
@@ -3853,7 +4222,7 @@ export function VerticalDramaStoryboardPanel({
                       {t2.repairImage}
                     </Button>
                   ) : null}
-                  {onGeneratePromptAndImage ? (
+                  {onGeneratePromptAndImage && !barrierMultiView ? (
                     choosingGenerateModeForShot === shotNumber ? (
                       <div className="flex flex-col gap-1.5 rounded-md border border-primary/40 bg-primary/5 p-2 text-[11px]">
                         <p className="font-medium">{t2.chooseGenerateMode}</p>
@@ -3864,7 +4233,27 @@ export function VerticalDramaStoryboardPanel({
                           className="h-auto w-full flex-col items-start gap-0 whitespace-normal px-2 py-1.5 text-left text-[11px]"
                           onClick={() => {
                             setChoosingGenerateModeForShot(null);
-                            onGeneratePromptAndImage(shotNumber, "single");
+                            requestConfirmation({
+                              title: t(
+                                locale,
+                                "ยืนยันสร้าง prompt + ภาพ",
+                                "Confirm prompt + image generation"
+                              ),
+                              description: t(
+                                locale,
+                                "การทำงานนี้จะสร้าง prompt และภาพด้วย AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                "This generates an AI prompt and image and may spend credits. Continue?"
+                              ),
+                              confirmLabel: t(
+                                locale,
+                                "สร้าง prompt + ภาพ",
+                                "Generate prompt + image"
+                              ),
+                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                              testId: `vd-credit-confirm-prompt-image-single-${shotNumber}`,
+                              onConfirm: () =>
+                                onGeneratePromptAndImage(shotNumber, "single"),
+                            });
                           }}
                           data-testid={`vd-storyboard-generate-mode-single-${shotNumber}`}
                         >
@@ -3882,7 +4271,27 @@ export function VerticalDramaStoryboardPanel({
                           className="h-auto w-full flex-col items-start gap-0 whitespace-normal px-2 py-1.5 text-left text-[11px]"
                           onClick={() => {
                             setChoosingGenerateModeForShot(null);
-                            onGeneratePromptAndImage(shotNumber, "angles");
+                            requestConfirmation({
+                              title: t(
+                                locale,
+                                "ยืนยันสร้าง prompt + ภาพหลายมุม",
+                                "Confirm multi-angle prompt + image generation"
+                              ),
+                              description: t(
+                                locale,
+                                "การทำงานนี้จะสร้าง prompt และภาพหลายมุมด้วย AI และอาจหักเครดิตมากกว่าปกติ ต้องการดำเนินการต่อหรือไม่?",
+                                "This generates multi-angle AI prompts and images and may spend more credits than usual. Continue?"
+                              ),
+                              confirmLabel: t(
+                                locale,
+                                "สร้างหลายมุม",
+                                "Generate multi-angle"
+                              ),
+                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                              testId: `vd-credit-confirm-prompt-image-angles-${shotNumber}`,
+                              onConfirm: () =>
+                                onGeneratePromptAndImage(shotNumber, "angles"),
+                            });
                           }}
                           data-testid={`vd-storyboard-generate-mode-angles-${shotNumber}`}
                         >
@@ -4169,14 +4578,20 @@ export function VerticalDramaStoryboardPanel({
                     main start frame, placed next to the reference drop-zone
                     (immediately below) per the feature's own design. */}
                   {onGenerateReferenceFramePrompt &&
-                  onGenerateReferenceFrameImage
+                  onGenerateReferenceFrameImage &&
+                  !barrierMultiView
                     ? (() => {
                         const referenceFrameShotCharacterKeys =
-                          frame?.requiredCharacterRefs !== undefined
+                          frame?.barrierMultiView?.referenceView
+                            .characterRefs ??
+                          (frame?.requiredCharacterRefs !== undefined
                             ? frame.requiredCharacterRefs
                             : shot.required_character_refs?.length
                               ? shot.required_character_refs
-                              : (shot.characters ?? []);
+                              : (shot.characters ?? []));
+                        const referenceFrameLocationKey =
+                          frame?.barrierMultiView?.referenceView.locationKey ||
+                          frame?.locationKey;
                         const referenceFrameCharacterOptions: VerticalDramaReferenceFrameCharacterOption[] =
                           Object.entries(characterPortraits).map(
                             ([key, portrait]) => ({
@@ -4221,7 +4636,13 @@ export function VerticalDramaStoryboardPanel({
                                 aria-hidden="true"
                                 className="h-3 w-3"
                               />
-                              {t2.referenceFrameGenerateButton}
+                              {frame?.barrierMultiView
+                                ? t(
+                                    locale,
+                                    "สร้าง Reference frame ฝั่งนอกประตู",
+                                    "Generate outside-door reference frame"
+                                  )
+                                : t2.referenceFrameGenerateButton}
                             </Button>
                             <GeneratedReferenceFrameRow
                               t={t2}
@@ -4251,7 +4672,15 @@ export function VerticalDramaStoryboardPanel({
                                   shotNumber
                                 )}
                                 onGeneratePrompt={args =>
-                                  onGenerateReferenceFramePrompt(args)
+                                  onGenerateReferenceFramePrompt({
+                                    ...args,
+                                    ...(referenceFrameLocationKey
+                                      ? {
+                                          locationKey:
+                                            referenceFrameLocationKey,
+                                        }
+                                      : {}),
+                                  })
                                 }
                                 onConfirmRender={args =>
                                   onGenerateReferenceFrameImage(args)
@@ -4266,7 +4695,8 @@ export function VerticalDramaStoryboardPanel({
                   {/* Reference strip (Phase 2.5) — additional images sent
                     alongside the approved start frame to video generation,
                     distinct from the single "start frame" slot above. */}
-                  {onAddShotReference || onRemoveShotReference ? (
+                  {!barrierMultiView &&
+                  (onAddShotReference || onRemoveShotReference) ? (
                     <ShotReferenceStrip
                       locale={locale}
                       t={t2}
@@ -4439,19 +4869,42 @@ export function VerticalDramaStoryboardPanel({
                                 variant="outline"
                                 className={cn(
                                   "px-1.5 py-0 text-[9px]",
-                                  clip.identityQc.status === "pass" && "border-emerald-500/50 text-emerald-700",
-                                  clip.identityQc.status === "warn" && "border-amber-500/50 text-amber-700",
-                                  clip.identityQc.status === "fail" && "border-red-500/50 text-red-700",
+                                  clip.identityQc.status === "pass" &&
+                                    "border-emerald-500/50 text-emerald-700",
+                                  clip.identityQc.status === "warn" &&
+                                    "border-amber-500/50 text-amber-700",
+                                  clip.identityQc.status === "fail" &&
+                                    "border-red-500/50 text-red-700",
+                                  clip.identityQc.status === "sampling" &&
+                                    "border-sky-500/50 text-sky-700"
                                 )}
                                 data-testid={`vd-storyboard-clip-identity-qc-badge-${clip.clipNumber}`}
                               >
                                 {clip.identityQc.status === "pass"
                                   ? t(locale, "ตัวตนคงที่", "Identity stable")
                                   : clip.identityQc.status === "warn"
-                                    ? t(locale, "มีการเปลี่ยนเล็กน้อย", "Minor drift")
+                                    ? t(
+                                        locale,
+                                        "มีการเปลี่ยนเล็กน้อย",
+                                        "Minor drift"
+                                      )
                                     : clip.identityQc.status === "fail"
-                                      ? t(locale, "หน้าอาจเพี้ยน", "Identity break")
-                                      : t(locale, "ยังตรวจไม่สำเร็จ", "QC unavailable")}
+                                      ? t(
+                                          locale,
+                                          "หน้าอาจเพี้ยน",
+                                          "Identity break"
+                                        )
+                                      : clip.identityQc.status === "sampling"
+                                        ? t(
+                                            locale,
+                                            "กำลังสร้างภาพตัวอย่าง",
+                                            "Sampling video"
+                                          )
+                                        : t(
+                                            locale,
+                                            "ยังตรวจไม่สำเร็จ",
+                                            "QC unavailable"
+                                          )}
                               </Badge>
                             ) : null}
                             {onRunClipIdentityQc ? (
@@ -4460,12 +4913,21 @@ export function VerticalDramaStoryboardPanel({
                                 size="sm"
                                 variant="ghost"
                                 className="h-6 gap-1 px-1.5 text-[10px]"
-                                onClick={() => onRunClipIdentityQc(clip.clipNumber)}
-                                disabled={runningClipIdentityQcForClip?.has(clip.clipNumber)}
+                                onClick={() =>
+                                  onRunClipIdentityQc(clip.clipNumber)
+                                }
+                                disabled={runningClipIdentityQcForClip?.has(
+                                  clip.clipNumber
+                                )}
                                 data-testid={`vd-storyboard-run-clip-identity-qc-${clip.clipNumber}`}
                               >
-                                {runningClipIdentityQcForClip?.has(clip.clipNumber) ? (
-                                  <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                                {runningClipIdentityQcForClip?.has(
+                                  clip.clipNumber
+                                ) ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
                                 ) : null}
                                 {t(locale, "ตรวจตัวตน", "Check identity")}
                               </Button>
@@ -4507,12 +4969,24 @@ export function VerticalDramaStoryboardPanel({
                               {t2.download}
                             </Button>
                           </div>
-                          {clip.identityQc?.characters?.some(character => character.verdict !== "consistent") || clip.identityQc?.warning ? (
+                          {clip.identityQc?.characters?.some(
+                            character => character.verdict !== "consistent"
+                          ) || clip.identityQc?.warning ? (
                             <p
                               className="text-[10px] text-amber-700 dark:text-amber-300"
                               data-testid={`vd-storyboard-clip-identity-qc-note-${clip.clipNumber}`}
                             >
-                              {clip.identityQc.warning ?? clip.identityQc.characters?.filter(character => character.verdict !== "consistent").map(character => character.note ?? character.verdict).join(" · ")}
+                              {clip.identityQc.warning ??
+                                clip.identityQc.characters
+                                  ?.filter(
+                                    character =>
+                                      character.verdict !== "consistent"
+                                  )
+                                  .map(
+                                    character =>
+                                      character.note ?? character.verdict
+                                  )
+                                  .join(" · ")}
                             </p>
                           ) : null}
                           {confirmingRegenerateVideoForClip ===
@@ -4633,22 +5107,131 @@ export function VerticalDramaStoryboardPanel({
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">
                       {t(locale, `ช็อต ${shotNumber}`, `Shot ${shotNumber}`)}
                     </span>
-                    {shot.duration_seconds ? (
-                      <span className="text-xs text-muted-foreground">
-                        {shot.duration_seconds}s
-                      </span>
-                    ) : null}
+                    <div className="flex items-center gap-1">
+                      {onSaveShotSummary &&
+                      canonicalShotSummaryByShot.has(shotNumber) &&
+                      editingShotSummaryNumber !== shotNumber ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                          onClick={() => {
+                            setEditingShotSummaryNumber(shotNumber);
+                            setEditingShotSummaryDraft(
+                              canonicalShotSummaryByShot.get(shotNumber) ?? ""
+                            );
+                          }}
+                          disabled={savingShotSummaryForShot !== null}
+                          data-testid={`vd-storyboard-shot-summary-edit-${shotNumber}`}
+                        >
+                          <Pencil aria-hidden="true" className="h-3 w-3" />
+                          {t(locale, "แก้ไข", "Edit")}
+                        </Button>
+                      ) : null}
+                      {shot.duration_seconds ? (
+                        <span className="text-xs text-muted-foreground">
+                          {shot.duration_seconds}s
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {canonicalShotSummaryByShot.get(shotNumber) ||
-                      shot.visual_description ||
-                      shot.action ||
-                      "—"}
-                  </p>
+                  {editingShotSummaryNumber === shotNumber ? (
+                    <div
+                      className="grid gap-2 rounded-md border border-border/60 bg-muted/30 p-2"
+                      data-testid={`vd-storyboard-shot-summary-editor-${shotNumber}`}
+                    >
+                      <Textarea
+                        aria-label={t(
+                          locale,
+                          `เรื่องย่อช็อต ${shotNumber}`,
+                          `Shot ${shotNumber} summary`
+                        )}
+                        value={editingShotSummaryDraft}
+                        maxLength={600}
+                        onChange={event =>
+                          setEditingShotSummaryDraft(event.target.value)
+                        }
+                        className="min-h-[4.5rem] text-xs"
+                        data-testid={`vd-storyboard-shot-summary-input-${shotNumber}`}
+                      />
+                      {!trimmedEditingShotSummary ? (
+                        <p className="text-[10px] text-destructive">
+                          {t(
+                            locale,
+                            "กรุณากรอกเรื่องย่อของช็อต",
+                            "Shot summary is required."
+                          )}
+                        </p>
+                      ) : null}
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingShotSummaryNumber(null);
+                            setEditingShotSummaryDraft("");
+                          }}
+                          disabled={savingShotSummaryForShot === shotNumber}
+                          data-testid={`vd-storyboard-shot-summary-cancel-${shotNumber}`}
+                        >
+                          {t(locale, "ยกเลิก", "Cancel")}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="gap-1"
+                          onClick={async () => {
+                            if (
+                              !onSaveShotSummary ||
+                              !trimmedEditingShotSummary
+                            )
+                              return;
+                            try {
+                              await onSaveShotSummary(
+                                shotNumber,
+                                trimmedEditingShotSummary
+                              );
+                              setEditingShotSummaryNumber(null);
+                              setEditingShotSummaryDraft("");
+                            } catch {
+                              // The parent owns error reporting. Keep the
+                              // editor open so the user's text is preserved.
+                            }
+                          }}
+                          disabled={
+                            !trimmedEditingShotSummary ||
+                            trimmedEditingShotSummary ===
+                              canonicalShotSummaryByShot.get(shotNumber) ||
+                            savingShotSummaryForShot === shotNumber
+                          }
+                          data-testid={`vd-storyboard-shot-summary-save-${shotNumber}`}
+                        >
+                          {savingShotSummaryForShot === shotNumber ? (
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-3 w-3 animate-spin"
+                            />
+                          ) : (
+                            <Check aria-hidden="true" className="h-3 w-3" />
+                          )}
+                          {t(locale, "บันทึก", "Save")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {canonicalShotSummaryByShot.get(shotNumber) ||
+                        shot.visual_description ||
+                        shot.action ||
+                        "—"}
+                    </p>
+                  )}
                   {shot.camera?.shot_type ? (
                     <p className="text-xs text-muted-foreground">
                       {[
@@ -4679,6 +5262,7 @@ export function VerticalDramaStoryboardPanel({
                         : shot.required_character_refs?.length
                           ? shot.required_character_refs
                           : (shot.characters ?? []);
+                    if (barrierMultiView) return null;
                     if (keys.length === 0 && !onSetShotCharacterReferences)
                       return null;
                     return (
@@ -4900,12 +5484,150 @@ export function VerticalDramaStoryboardPanel({
                             type="button"
                             className="flex aspect-[3/4] w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                             onClick={() => {
+                              setCharacterRefPickerMode("scene");
                               setCharacterRefPickerDraft(keys);
                               setCharacterRefPickerForShot(shotNumber);
                             }}
                             title={t2.shotCharacterRefEditLabel}
                             aria-label={t2.shotCharacterRefEditLabel}
                             data-testid={`vd-storyboard-character-ref-edit-${shotNumber}`}
+                          >
+                            <Pencil aria-hidden="true" className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
+
+                  {(() => {
+                    const physicalKeys =
+                      frame?.requiredCharacterRefs !== undefined
+                        ? frame.requiredCharacterRefs
+                        : shot.required_character_refs?.length
+                          ? shot.required_character_refs
+                          : (shot.characters ?? []);
+                    const callerKeys =
+                      frame?.screenCallerCharacterRefs !== undefined
+                        ? frame.screenCallerCharacterRefs
+                        : (shot.screen_caller_refs ?? []);
+                    const visibleBarrierKeys = physicalKeys.filter(
+                      key => !callerKeys.includes(key)
+                    );
+                    if (barrierMultiView) return null;
+                    if (
+                      callerKeys.length === 0 &&
+                      !onSetShotScreenCallerReferences &&
+                      !frame?.barrierDialogue
+                    )
+                      return null;
+                    return (
+                      <div
+                        className="flex flex-wrap items-start gap-2.5 rounded-md border border-dashed border-sky-300/70 bg-sky-50/50 p-2 dark:bg-sky-950/20"
+                        data-testid={`vd-storyboard-screen-caller-section-${shotNumber}`}
+                      >
+                        <div className="flex w-full items-center gap-1.5 text-[11px] font-medium text-sky-800 dark:text-sky-200">
+                          <Phone aria-hidden="true" className="h-3.5 w-3.5" />
+                          {t(
+                            locale,
+                            frame?.barrierDialogue
+                              ? "บทสนทนาผ่านประตู (อีกฝั่งอยู่นอกเฟรม)"
+                              : "Caller ทางโทรศัพท์ (แสดงบนหน้าจอเท่านั้น)",
+                            frame?.barrierDialogue
+                              ? "Closed-door dialogue (other actor stays offscreen)"
+                              : "Phone caller (show on screen only)"
+                          )}
+                          {frame?.barrierDialogue ? (
+                            <Badge
+                              variant="outline"
+                              className="border-amber-300 px-1 py-0 text-[9px] text-amber-700"
+                            >
+                              {t(locale, "อีกฝั่งประตู", "Behind closed door")}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        {onSetShotBarrierDialogue &&
+                        visibleBarrierKeys.length > 0 &&
+                        callerKeys.length > 0 &&
+                        !frame?.barrierDialogue ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 border-amber-300 px-2 text-[10px] text-amber-700 hover:bg-amber-50 dark:text-amber-200 dark:hover:bg-amber-950/30"
+                            onClick={() =>
+                              onSetShotBarrierDialogue(shotNumber, {
+                                state: "locked",
+                                cameraSide: "inside",
+                                visibleCharacterRefs: visibleBarrierKeys,
+                                offscreenCharacterRefs: callerKeys,
+                              })
+                            }
+                            title={t(
+                              locale,
+                              "เปลี่ยน Caller ให้เป็นตัวละครอยู่นอกประตูที่ปิดอยู่",
+                              "Convert the Caller into a physical character outside the closed door"
+                            )}
+                          >
+                            {t(
+                              locale,
+                              "ใช้เป็นบทสนทนาผ่านประตู",
+                              "Use closed-door dialogue"
+                            )}
+                          </Button>
+                        ) : null}
+                        {callerKeys.map(key => {
+                          const portrait = characterPortraits[key];
+                          return (
+                            <div
+                              key={key}
+                              className="flex w-16 flex-col items-center gap-1 text-center text-[10px]"
+                            >
+                              {portrait?.portraitUrl ? (
+                                <img
+                                  src={portrait.portraitUrl}
+                                  alt={portrait.name}
+                                  className="aspect-[3/4] w-16 rounded-md object-cover object-top ring-2 ring-sky-400/70"
+                                />
+                              ) : (
+                                <span className="flex aspect-[3/4] w-16 items-center justify-center rounded-md bg-muted text-muted-foreground ring-2 ring-sky-400/70">
+                                  ?
+                                </span>
+                              )}
+                              <span className="w-full truncate">
+                                {portrait?.variantLabel ??
+                                  portrait?.name ??
+                                  key}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className="border-sky-300 px-1 py-0 text-[9px] text-sky-700 dark:text-sky-200"
+                              >
+                                {t(locale, "Caller", "Caller")}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                        {onSetShotScreenCallerReferences &&
+                        !frame?.barrierDialogue ? (
+                          <button
+                            type="button"
+                            className="flex aspect-[3/4] w-16 items-center justify-center rounded-lg border border-dashed border-sky-300 text-sky-700 hover:bg-sky-100 dark:text-sky-200 dark:hover:bg-sky-950/40"
+                            onClick={() => {
+                              setCharacterRefPickerMode("screen_caller");
+                              setCharacterRefPickerDraft(callerKeys);
+                              setCharacterRefPickerForShot(shotNumber);
+                            }}
+                            title={t(
+                              locale,
+                              "กำหนดตัวละคร Caller ของช็อตนี้",
+                              "Set this shot's phone caller"
+                            )}
+                            aria-label={t(
+                              locale,
+                              "กำหนดตัวละคร Caller ของช็อตนี้",
+                              "Set this shot's phone caller"
+                            )}
+                            data-testid={`vd-storyboard-screen-caller-edit-${shotNumber}`}
                           >
                             <Pencil aria-hidden="true" className="h-4 w-4" />
                           </button>
@@ -4963,6 +5685,7 @@ export function VerticalDramaStoryboardPanel({
                       ? (rosterLocation?.name ?? overrideLocationKey)
                       : (rosterLocation?.name ??
                         matchingLocation?.location_name);
+                    if (barrierMultiView) return null;
                     if (!displayName) return null;
                     const thumbnailUrl = rosterLocation?.primaryReferenceUrl;
                     // Only show the storyboard group's own description
@@ -5060,10 +5783,7 @@ export function VerticalDramaStoryboardPanel({
                             }
                             data-testid={`vd-storyboard-scene-anchor-${shotNumber}`}
                           >
-                            <Link2
-                              aria-hidden="true"
-                              className="h-2.5 w-2.5"
-                            />
+                            <Link2 aria-hidden="true" className="h-2.5 w-2.5" />
                             {t(
                               locale,
                               `สร้างโดยอ้างอิงภาพช็อต ${frame.sceneAnchor.anchorShotNumber}`,
@@ -5258,8 +5978,175 @@ export function VerticalDramaStoryboardPanel({
                           : undefined
                       }
                       testIdPrefix={`vd-storyboard-image-prompt-${shotNumber}`}
-                      maxChars={VD_IMAGE_PROMPT_MAX}
+                      maxChars={selectedImagePromptMaxChars}
                     />
+                  ) : null}
+
+                  {barrierMultiView ? (
+                    <div
+                      className="mt-2 flex flex-col gap-2 rounded-lg border border-sky-200/80 bg-sky-50/40 p-2 dark:border-sky-900 dark:bg-sky-950/20"
+                      data-testid={`vd-reference-image-prompt-section-${shotNumber}`}
+                    >
+                      <InlineEditablePromptBox
+                        locale={locale}
+                        t={t2}
+                        title={t(
+                          locale,
+                          `พรอมต์ภาพมุมที่ 2 · ${dualViewLabels.secondary}`,
+                          `View 2 image prompt · ${dualViewLabels.secondary}`
+                        )}
+                        prompt={
+                          barrierMultiView.referenceView.imagePrompt ?? ""
+                        }
+                        emptyLabel={t(
+                          locale,
+                          "ยังไม่มีพรอมต์มุมที่ 2 — สร้างใหม่ หรือกดแก้ไขเพื่อวางพรอมต์เอง",
+                          "No View 2 prompt yet — generate one or edit to paste your own."
+                        )}
+                        isEditing={
+                          editingReferenceImagePromptForShot === shotNumber
+                        }
+                        draft={editingReferenceImagePromptDraft}
+                        onStartEdit={() => {
+                          setEditingReferenceImagePromptForShot(shotNumber);
+                          setEditingReferenceImagePromptDraft(
+                            barrierMultiView.referenceView.imagePrompt ?? ""
+                          );
+                        }}
+                        onDraftChange={setEditingReferenceImagePromptDraft}
+                        onSave={() => {
+                          void (async () => {
+                            try {
+                              await onSaveReferenceFramePrompt?.(
+                                shotNumber,
+                                editingReferenceImagePromptDraft
+                              );
+                              setEditingReferenceImagePromptForShot(null);
+                            } catch {
+                              // The page mutation already surfaces its error.
+                              // Keep the draft open so it can be retried.
+                            }
+                          })();
+                        }}
+                        onCancelEdit={() =>
+                          setEditingReferenceImagePromptForShot(null)
+                        }
+                        canSaveFree={Boolean(onSaveReferenceFramePrompt)}
+                        testIdPrefix={`vd-reference-image-prompt-${shotNumber}`}
+                        maxChars={selectedImagePromptMaxChars}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[11px] text-muted-foreground">
+                          {t(
+                            locale,
+                            "เลือกสร้างพรอมต์ใหม่ หรือใช้พรอมต์ที่บันทึกอยู่สร้างภาพได้ทันที",
+                            "Generate a new prompt, or render directly from the saved prompt."
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() =>
+                              setReferenceFrameDialogForShot(shotNumber)
+                            }
+                            disabled={
+                              !barrierStartReady ||
+                              barrierReferenceFrames.length >= 10 ||
+                              generatingReferenceFramePromptForShot.has(
+                                shotNumber
+                              ) ||
+                              generatingReferenceFrameImageForShot.has(
+                                shotNumber
+                              )
+                            }
+                            data-testid={`vd-reference-image-prompt-${shotNumber}-generate-new`}
+                          >
+                            <Sparkles
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {t(
+                              locale,
+                              "สร้าง Prompt ใหม่",
+                              "Generate new prompt"
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="gap-1.5"
+                            disabled={
+                              !barrierMultiView.referenceView.imagePrompt?.trim() ||
+                              editingReferenceImagePromptForShot ===
+                                shotNumber ||
+                              !barrierStartReady ||
+                              !barrierMultiView.referenceView.locationKey ||
+                              barrierReferenceFrames.length >= 10 ||
+                              generatingReferenceFrameImageForShot.has(
+                                shotNumber
+                              )
+                            }
+                            onClick={() =>
+                              requestConfirmation({
+                                title: t(
+                                  locale,
+                                  "สร้างภาพมุมที่ 2 จาก Prompt นี้",
+                                  "Render View 2 from this prompt"
+                                ),
+                                description: t(
+                                  locale,
+                                  "ระบบจะใช้พรอมต์ที่บันทึกอยู่และใช้เครดิตสร้างภาพ โดยไม่สร้างพรอมต์ใหม่",
+                                  "This uses the saved prompt and spends image-render credits without generating a new prompt."
+                                ),
+                                confirmLabel: t(
+                                  locale,
+                                  "สร้างภาพ",
+                                  "Render image"
+                                ),
+                                cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                testId: `vd-credit-confirm-reference-image-existing-prompt-${shotNumber}`,
+                                onConfirm: () => {
+                                  void onGenerateReferenceFrameImage?.({
+                                    shotNumber,
+                                    prompt:
+                                      barrierMultiView.referenceView.imagePrompt!.trim(),
+                                    negativePrompt:
+                                      barrierMultiView.referenceView
+                                        .negativePrompt,
+                                    characterKeys:
+                                      barrierMultiView.referenceView
+                                        .characterRefs,
+                                  });
+                                },
+                              })
+                            }
+                            data-testid={`vd-reference-image-prompt-${shotNumber}-render`}
+                          >
+                            {generatingReferenceFrameImageForShot.has(
+                              shotNumber
+                            ) ? (
+                              <Loader2
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5 animate-spin"
+                              />
+                            ) : (
+                              <ImageIcon
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
+                            )}
+                            {t(
+                              locale,
+                              "สร้างภาพจาก Prompt นี้",
+                              "Render from this prompt"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   ) : null}
 
                   {usedVisionByShot[shotNumber] && frame ? (
@@ -5441,7 +6328,27 @@ export function VerticalDramaStoryboardPanel({
                                   setIsVideoModelDialogOpen(true);
                                   return;
                                 }
-                                onGenerateShotVideoPrompt(shotNumber);
+                                requestConfirmation({
+                                  title: t(
+                                    locale,
+                                    "ยืนยันสร้าง prompt วิดีโอ",
+                                    "Confirm video prompt generation"
+                                  ),
+                                  description: t(
+                                    locale,
+                                    "การทำงานนี้ให้ AI วิเคราะห์ภาพจริงเพื่อสร้าง prompt วิดีโอ และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                    "This asks AI to analyze the approved image and generate a video prompt and may spend credits. Continue?"
+                                  ),
+                                  confirmLabel: t(
+                                    locale,
+                                    "สร้าง prompt",
+                                    "Generate prompt"
+                                  ),
+                                  cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                  testId: `vd-credit-confirm-shot-video-prompt-${shotNumber}`,
+                                  onConfirm: () =>
+                                    onGenerateShotVideoPrompt(shotNumber),
+                                });
                               }}
                               disabled={
                                 !asset?.url ||
@@ -5622,7 +6529,27 @@ export function VerticalDramaStoryboardPanel({
                                     setIsVideoModelDialogOpen(true);
                                     return;
                                   }
-                                  onGenerateVideoClip(clip.clipNumber);
+                                  requestConfirmation({
+                                    title: t(
+                                      locale,
+                                      "ยืนยันสร้างวิดีโอ",
+                                      "Confirm video generation"
+                                    ),
+                                    description: t(
+                                      locale,
+                                      "การทำงานนี้จะสร้างวิดีโอด้วย AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                      "This generates a video with AI and spends credits. Continue?"
+                                    ),
+                                    confirmLabel: t(
+                                      locale,
+                                      "สร้างวิดีโอ",
+                                      "Generate video"
+                                    ),
+                                    cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                    testId: `vd-credit-confirm-video-${clip.clipNumber}`,
+                                    onConfirm: () =>
+                                      onGenerateVideoClip(clip.clipNumber),
+                                  });
                                 }}
                                 disabled={
                                   !clip.prompt?.trim() ||
@@ -5680,6 +6607,874 @@ export function VerticalDramaStoryboardPanel({
                   })}
                 </div>
               </div>
+
+              {onSetShotViewMode ? (
+                <section
+                  className="rounded-xl border border-border bg-muted/20 p-3"
+                  aria-labelledby={`vd-shot-view-mode-title-${shotNumber}`}
+                  data-testid={`vd-shot-view-mode-${shotNumber}`}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3
+                        id={`vd-shot-view-mode-title-${shotNumber}`}
+                        className="text-sm font-semibold"
+                      >
+                        {t(
+                          locale,
+                          "รูปแบบการเล่าเรื่องของช็อต",
+                          "Shot view mode"
+                        )}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {t(
+                          locale,
+                          "AI ช่วยตรวจจับให้อัตโนมัติ แต่คุณเปลี่ยนโหมดได้เสมอ",
+                          "AI detects this automatically, and you can override it anytime"
+                        )}
+                      </p>
+                    </div>
+                    <div
+                      className="grid grid-cols-2 gap-1 rounded-lg border bg-background p-1"
+                      role="radiogroup"
+                      aria-label={t(
+                        locale,
+                        "เลือกรูปแบบช็อต",
+                        "Choose shot view mode"
+                      )}
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={!barrierMultiView ? "default" : "ghost"}
+                        role="radio"
+                        aria-checked={!barrierMultiView}
+                        onClick={() =>
+                          onSetShotViewMode(shotNumber, { mode: "single" })
+                        }
+                        data-testid={`vd-shot-view-mode-single-${shotNumber}`}
+                      >
+                        {t(locale, "ภาพเดียว", "Single view")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={barrierMultiView ? "default" : "ghost"}
+                        role="radio"
+                        aria-checked={Boolean(barrierMultiView)}
+                        onClick={() =>
+                          onSetShotViewMode(shotNumber, { mode: "dual" })
+                        }
+                        data-testid={`vd-shot-view-mode-dual-${shotNumber}`}
+                      >
+                        {t(locale, "สองมุม / สองสถานที่", "Dual view")}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {barrierMultiView ? (
+                    <>
+                      <div className="mt-3 flex flex-col gap-2 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Badge variant="secondary">
+                            {barrierMultiView.activationSource === "auto"
+                              ? t(locale, "AI ตรวจพบ", "AI detected")
+                              : t(locale, "ผู้ใช้เลือก", "User selected")}
+                          </Badge>
+                          {barrierMultiView.activationSource === "auto" &&
+                          barrierMultiView.detection ? (
+                            <span className="text-muted-foreground">
+                              {Math.round(
+                                barrierMultiView.detection.confidence * 100
+                              )}
+                              %
+                            </span>
+                          ) : null}
+                        </div>
+                        <div
+                          className="flex flex-wrap gap-1"
+                          aria-label={t(
+                            locale,
+                            "ประเภทสองมุม",
+                            "Dual-view scenario"
+                          )}
+                        >
+                          {(
+                            [
+                              [
+                                "physical_barrier",
+                                t(locale, "ประตู / สิ่งกั้น", "Door / barrier"),
+                              ],
+                              [
+                                "remote_call",
+                                t(locale, "โทรศัพท์คนละสถานที่", "Remote call"),
+                              ],
+                              [
+                                "separate_locations",
+                                t(locale, "คนละสถานที่", "Separate locations"),
+                              ],
+                            ] as const
+                          ).map(([scenario, label]) => (
+                            <Button
+                              key={scenario}
+                              type="button"
+                              size="sm"
+                              variant={
+                                dualScenario === scenario ? "outline" : "ghost"
+                              }
+                              className="h-7 px-2 text-[11px]"
+                              onClick={() =>
+                                onSetShotViewMode(shotNumber, {
+                                  mode: "dual",
+                                  scenario,
+                                  primaryCharacterRefs:
+                                    barrierMultiView.startView.characterRefs,
+                                  secondaryCharacterRefs:
+                                    barrierMultiView.referenceView
+                                      .characterRefs,
+                                  primaryLocationKey:
+                                    barrierMultiView.startView.locationKey,
+                                  secondaryLocationKey:
+                                    barrierMultiView.referenceView.locationKey,
+                                })
+                              }
+                            >
+                              {label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div
+                        className="mt-3 grid gap-3 lg:grid-cols-2"
+                        data-testid={`vd-dual-view-assignments-${shotNumber}`}
+                      >
+                        {(
+                          [
+                            {
+                              side: "primary",
+                              number: 1,
+                              role: t(locale, "ภาพเริ่มต้น", "Start frame"),
+                              label: dualViewLabels.primary,
+                              view: barrierMultiView.startView,
+                            },
+                            {
+                              side: "secondary",
+                              number: 2,
+                              role: t(locale, "ภาพอ้างอิง", "Reference frame"),
+                              label: dualViewLabels.secondary,
+                              view: barrierMultiView.referenceView,
+                            },
+                          ] as const
+                        ).map(assignment => {
+                          const location = episodeLocations.find(
+                            item =>
+                              item.locationKey === assignment.view.locationKey
+                          );
+                          return (
+                            <article
+                              key={assignment.side}
+                              className="rounded-xl border border-border/70 bg-background p-3 shadow-sm"
+                              aria-label={t(
+                                locale,
+                                `กำหนดมุมที่ ${assignment.number}`,
+                                `Configure view ${assignment.number}`
+                              )}
+                              data-testid={`vd-dual-view-assignment-${assignment.side}-${shotNumber}`}
+                            >
+                              <header className="flex items-start justify-between gap-2 border-b border-border/60 pb-2">
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    {t(
+                                      locale,
+                                      `มุมที่ ${assignment.number} · ${assignment.role}`,
+                                      `View ${assignment.number} · ${assignment.role}`
+                                    )}
+                                  </p>
+                                  <p className="text-sm font-semibold">
+                                    {assignment.label}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px]"
+                                >
+                                  {assignment.side === "primary"
+                                    ? t(locale, "Start", "Start")
+                                    : t(locale, "Reference", "Reference")}
+                                </Badge>
+                              </header>
+
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div className="min-w-0 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-medium">
+                                      {t(locale, "ตัวละคร", "Characters")}
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-[11px]"
+                                      onClick={() => {
+                                        setCharacterRefPickerForShot(
+                                          shotNumber
+                                        );
+                                        setCharacterRefPickerMode(
+                                          assignment.side === "primary"
+                                            ? "dual_primary"
+                                            : "dual_reference"
+                                        );
+                                        setCharacterRefPickerDraft(
+                                          assignment.view.characterRefs
+                                        );
+                                      }}
+                                      data-testid={`vd-dual-view-edit-characters-${assignment.side}-${shotNumber}`}
+                                    >
+                                      <Pencil
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                      />
+                                      {t(locale, "เปลี่ยน", "Change")}
+                                    </Button>
+                                  </div>
+                                  <div className="mt-2 flex min-h-16 flex-wrap gap-2">
+                                    {assignment.view.characterRefs.length >
+                                    0 ? (
+                                      assignment.view.characterRefs.map(key => {
+                                        const portrait =
+                                          characterPortraits[key];
+                                        return (
+                                          <div
+                                            key={key}
+                                            className="flex w-12 flex-col items-center gap-1 text-center text-[10px]"
+                                          >
+                                            {portrait?.portraitUrl ? (
+                                              <img
+                                                src={portrait.portraitUrl}
+                                                alt={portrait.name}
+                                                className="h-12 w-10 rounded-md object-cover object-top"
+                                              />
+                                            ) : (
+                                              <span className="flex h-12 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                                ?
+                                              </span>
+                                            )}
+                                            <span className="w-full truncate">
+                                              {portrait?.variantLabel ??
+                                                portrait?.name ??
+                                                key}
+                                            </span>
+                                          </div>
+                                        );
+                                      })
+                                    ) : (
+                                      <p className="self-center text-xs text-destructive">
+                                        {t(
+                                          locale,
+                                          "ยังไม่ได้เลือกตัวละคร",
+                                          "No characters selected"
+                                        )}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="min-w-0 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs font-medium">
+                                      {t(locale, "สถานที่", "Location")}
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-[11px]"
+                                      onClick={() =>
+                                        setDualViewLocationPicker({
+                                          shotNumber,
+                                          side: assignment.side,
+                                        })
+                                      }
+                                      data-testid={`vd-dual-view-edit-location-${assignment.side}-${shotNumber}`}
+                                    >
+                                      <MapPin
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                      />
+                                      {assignment.view.locationKey
+                                        ? t(locale, "เปลี่ยน", "Change")
+                                        : t(locale, "เลือก", "Choose")}
+                                    </Button>
+                                  </div>
+                                  <div className="mt-2 flex min-h-16 items-center gap-2">
+                                    {location?.primaryReferenceUrl ? (
+                                      <img
+                                        src={location.primaryReferenceUrl}
+                                        alt=""
+                                        className="h-14 w-20 shrink-0 rounded-md object-cover"
+                                      />
+                                    ) : (
+                                      <span className="flex h-14 w-20 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                        <MapPin
+                                          aria-hidden="true"
+                                          className="h-4 w-4"
+                                        />
+                                      </span>
+                                    )}
+                                    <p
+                                      className={cn(
+                                        "min-w-0 text-xs",
+                                        assignment.view.locationKey
+                                          ? "font-medium"
+                                          : "text-destructive"
+                                      )}
+                                    >
+                                      {assignment.view.locationKey
+                                        ? (location?.name ??
+                                          assignment.view.locationKey)
+                                        : t(
+                                            locale,
+                                            "ยังไม่ได้เลือกสถานที่",
+                                            "No location selected"
+                                          )}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {barrierMultiView ? (
+                <section
+                  className="rounded-xl border border-amber-300/70 bg-amber-50/50 p-3 shadow-sm dark:border-amber-800/70 dark:bg-amber-950/20 sm:p-4"
+                  aria-labelledby={`vd-barrier-workflow-title-${shotNumber}`}
+                  data-testid={`vd-barrier-multi-view-${shotNumber}`}
+                >
+                  <header className="flex flex-col gap-2 border-b border-amber-200/80 pb-3 dark:border-amber-900/80 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                          <Link2 aria-hidden="true" className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <h3
+                            id={`vd-barrier-workflow-title-${shotNumber}`}
+                            className="text-sm font-semibold text-foreground"
+                          >
+                            {dualViewLabels.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {dualViewLabels.subtitle}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "w-fit shrink-0 gap-1 px-2 py-1 text-[11px]",
+                        barrierVideoCreated ||
+                          (barrierStartReady && barrierReferenceReady)
+                          ? "border-emerald-400/70 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+                          : "border-amber-400/70 bg-background text-amber-800 dark:text-amber-200"
+                      )}
+                      aria-live="polite"
+                    >
+                      {barrierVideoCreated ||
+                      (barrierStartReady && barrierReferenceReady) ? (
+                        <Check aria-hidden="true" className="h-3 w-3" />
+                      ) : null}
+                      {barrierVideoCreated
+                        ? t(locale, "สร้างวิดีโอแล้ว", "Video created")
+                        : barrierStartReady && barrierReferenceReady
+                          ? t(locale, "พร้อมสร้างวิดีโอ", "Ready for video")
+                          : barrierStartReady
+                            ? t(
+                                locale,
+                                `เหลือภาพ ${dualViewLabels.secondary}`,
+                                `${dualViewLabels.secondary} remaining`
+                              )
+                            : t(
+                                locale,
+                                dualScenario === "physical_barrier"
+                                  ? "เริ่มจากภาพฝั่งในห้อง"
+                                  : `เริ่มจากภาพ ${dualViewLabels.primary}`,
+                                `Start with ${dualViewLabels.primary}`
+                              )}
+                    </Badge>
+                  </header>
+
+                  <ol
+                    className="my-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4"
+                    aria-label={t(
+                      locale,
+                      "ขั้นตอนสร้างช็อตสองมุม/สองสถานที่",
+                      "Dual-view shot workflow"
+                    )}
+                  >
+                    {[
+                      {
+                        label: t(locale, "กำหนดสองฝั่ง", "Assign both sides"),
+                        done: true,
+                      },
+                      {
+                        label: t(
+                          locale,
+                          `สร้างภาพ ${dualViewLabels.primary}`,
+                          `Create ${dualViewLabels.primary}`
+                        ),
+                        done: barrierStartReady,
+                      },
+                      {
+                        label: t(
+                          locale,
+                          `สร้างภาพ ${dualViewLabels.secondary}`,
+                          `Create ${dualViewLabels.secondary}`
+                        ),
+                        done: barrierReferenceReady,
+                      },
+                      {
+                        label: t(locale, "สร้างวิดีโอ", "Create video"),
+                        done: barrierVideoCreated,
+                      },
+                    ].map((step, index) => (
+                      <li
+                        key={step.label}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg border bg-background/80 px-2.5 py-2",
+                          step.done
+                            ? "border-emerald-300/70 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                            : "border-border text-muted-foreground"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+                            step.done
+                              ? "bg-emerald-100 dark:bg-emerald-900/50"
+                              : "bg-muted"
+                          )}
+                        >
+                          {step.done ? (
+                            <Check aria-hidden="true" className="h-3 w-3" />
+                          ) : (
+                            index + 1
+                          )}
+                        </span>
+                        <span>{step.label}</span>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <article
+                      className={cn(
+                        "grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-xl border bg-background p-3",
+                        barrierStartReady
+                          ? "border-emerald-300/70 dark:border-emerald-800"
+                          : "border-primary/50 ring-1 ring-primary/10"
+                      )}
+                      data-testid={`vd-barrier-start-slot-${shotNumber}`}
+                    >
+                      <div className="aspect-[9/16] overflow-hidden rounded-lg bg-muted">
+                        {asset?.thumbnailUrl || asset?.url ? (
+                          <img
+                            src={asset.thumbnailUrl || asset.url}
+                            alt={t(
+                              locale,
+                              dualScenario === "physical_barrier"
+                                ? "ภาพมุมในห้อง"
+                                : `ภาพ ${dualViewLabels.primary}`,
+                              `${dualViewLabels.primary} start frame`
+                            )}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full flex-col items-center justify-center gap-1 p-2 text-center text-[10px] text-muted-foreground">
+                            <ImageOff aria-hidden="true" className="h-4 w-4" />
+                            {t(locale, "ยังไม่มีภาพ", "No image yet")}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {t(
+                              locale,
+                              "มุมที่ 1 · ภาพเริ่มต้น",
+                              "View 1 · Start frame"
+                            )}
+                          </p>
+                          <p className="text-sm font-semibold">
+                            {dualViewLabels.primary}
+                          </p>
+                        </div>
+                        <dl className="grid gap-1 text-xs">
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "ตัวละคร:", "Character:")}
+                            </dt>
+                            <dd className="min-w-0 truncate font-medium">
+                              {barrierCharacterNames(
+                                barrierMultiView.startView.characterRefs
+                              ) || "—"}
+                            </dd>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "สถานที่:", "Location:")}
+                            </dt>
+                            <dd className="min-w-0 truncate">
+                              {barrierLocationName(
+                                barrierMultiView.startView.locationKey
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={barrierStartReady ? "outline" : "default"}
+                          className="mt-auto min-h-9 w-full gap-1.5 whitespace-normal"
+                          onClick={() => {
+                            if (!selectedImageModelId) {
+                              toast.error(t2.selectImageModelFirst);
+                              setIsImageModelDialogOpen(true);
+                              return;
+                            }
+                            requestConfirmation({
+                              title: t(
+                                locale,
+                                `ยืนยันสร้างภาพ ${dualViewLabels.primary}`,
+                                `Confirm ${dualViewLabels.primary} generation`
+                              ),
+                              description: t(
+                                locale,
+                                `ระบบจะใช้ตัวละครและ ${dualViewLabels.primary} เพื่อสร้างภาพเริ่มต้นด้วย AI และอาจหักเครดิต`,
+                                `AI will use the character and ${dualViewLabels.primary} to create the start frame and may spend credits.`
+                              ),
+                              confirmLabel: t(
+                                locale,
+                                `สร้างภาพ ${dualViewLabels.primary}`,
+                                `Create ${dualViewLabels.primary}`
+                              ),
+                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                              testId: `vd-credit-confirm-barrier-start-${shotNumber}`,
+                              onConfirm: () =>
+                                onGeneratePromptAndImage?.(
+                                  shotNumber,
+                                  "single"
+                                ),
+                            });
+                          }}
+                          disabled={generatingPromptAndImageForShot.has(
+                            shotNumber
+                          )}
+                          data-testid={`vd-barrier-generate-start-${shotNumber}`}
+                        >
+                          {generatingPromptAndImageForShot.has(shotNumber) ? (
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 animate-spin"
+                            />
+                          ) : barrierStartReady ? (
+                            <RotateCcw
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                          ) : (
+                            <Sparkles
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                          )}
+                          {generatingPromptAndImageForShot.has(shotNumber)
+                            ? t(locale, "กำลังสร้างภาพ…", "Creating image…")
+                            : barrierStartReady
+                              ? t(
+                                  locale,
+                                  `สร้างภาพ ${dualViewLabels.primary} ใหม่`,
+                                  `Recreate ${dualViewLabels.primary}`
+                                )
+                              : t(
+                                  locale,
+                                  `สร้างภาพ ${dualViewLabels.primary}`,
+                                  `Create ${dualViewLabels.primary}`
+                                )}
+                        </Button>
+                      </div>
+                    </article>
+
+                    <article
+                      className={cn(
+                        "grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] gap-3 rounded-xl border bg-background p-3",
+                        barrierReferenceReady
+                          ? "border-emerald-300/70 dark:border-emerald-800"
+                          : barrierStartReady
+                            ? "border-primary/50 ring-1 ring-primary/10"
+                            : "border-border opacity-80"
+                      )}
+                      data-testid={`vd-barrier-reference-slot-${shotNumber}`}
+                    >
+                      <div className="aspect-[9/16] overflow-hidden rounded-lg bg-muted">
+                        {barrierReferenceUrl ? (
+                          <img
+                            src={barrierReferenceUrl}
+                            alt={t(
+                              locale,
+                              dualScenario === "physical_barrier"
+                                ? "ภาพมุมหน้าประตู"
+                                : `ภาพ ${dualViewLabels.secondary}`,
+                              `${dualViewLabels.secondary} reference frame`
+                            )}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full flex-col items-center justify-center gap-1 p-2 text-center text-[10px] text-muted-foreground">
+                            <ImageOff aria-hidden="true" className="h-4 w-4" />
+                            {t(locale, "ยังไม่มีภาพ", "No image yet")}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {t(
+                              locale,
+                              "มุมที่ 2 · ภาพอ้างอิง",
+                              "View 2 · Reference frame"
+                            )}
+                          </p>
+                          <p className="text-sm font-semibold">
+                            {dualViewLabels.secondary}
+                          </p>
+                        </div>
+                        <dl className="grid gap-1 text-xs">
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "ตัวละคร:", "Character:")}
+                            </dt>
+                            <dd className="min-w-0 truncate font-medium">
+                              {barrierCharacterNames(
+                                barrierMultiView.referenceView.characterRefs
+                              ) || "—"}
+                            </dd>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <dt className="shrink-0 text-muted-foreground">
+                              {t(locale, "สถานที่:", "Location:")}
+                            </dt>
+                            <dd className="min-w-0 truncate">
+                              {barrierLocationName(
+                                barrierMultiView.referenceView.locationKey
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        {!barrierMultiView.referenceView.locationKey &&
+                        onSetShotBarrierReferenceLocation ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={barrierStartReady ? "default" : "outline"}
+                            className="mt-auto min-h-9 w-full whitespace-normal"
+                            onClick={() =>
+                              setBarrierReferenceLocationPickerForShot(
+                                shotNumber
+                              )
+                            }
+                            disabled={!barrierStartReady}
+                            data-testid={`vd-barrier-choose-reference-location-${shotNumber}`}
+                          >
+                            <MapPin
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {t(
+                              locale,
+                              `เลือกสถานที่ ${dualViewLabels.secondary}`,
+                              `Choose ${dualViewLabels.secondary} location`
+                            )}
+                          </Button>
+                        ) : (
+                          <div className="mt-auto flex flex-col gap-1.5">
+                            {onSetShotBarrierReferenceLocation ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-fit px-1.5 text-[11px] text-muted-foreground"
+                                onClick={() =>
+                                  setBarrierReferenceLocationPickerForShot(
+                                    shotNumber
+                                  )
+                                }
+                              >
+                                <Pencil
+                                  aria-hidden="true"
+                                  className="h-3 w-3"
+                                />
+                                {t(locale, "เปลี่ยนสถานที่", "Change location")}
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={
+                                barrierReferenceReady ? "outline" : "default"
+                              }
+                              className="min-h-9 w-full gap-1.5 whitespace-normal"
+                              onClick={() =>
+                                setReferenceFrameDialogForShot(shotNumber)
+                              }
+                              disabled={
+                                !barrierStartReady ||
+                                barrierReferenceFrames.length >= 10 ||
+                                generatingReferenceFramePromptForShot.has(
+                                  shotNumber
+                                ) ||
+                                generatingReferenceFrameImageForShot.has(
+                                  shotNumber
+                                )
+                              }
+                              data-testid={`vd-generate-reference-frame-${shotNumber}`}
+                            >
+                              {generatingReferenceFramePromptForShot.has(
+                                shotNumber
+                              ) ||
+                              generatingReferenceFrameImageForShot.has(
+                                shotNumber
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5 animate-spin"
+                                />
+                              ) : barrierReferenceReady ? (
+                                <RotateCcw
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              ) : (
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              )}
+                              {barrierReferenceReady
+                                ? t(
+                                    locale,
+                                    `สร้าง Prompt ${dualViewLabels.secondary} ใหม่`,
+                                    `Generate a new ${dualViewLabels.secondary} prompt`
+                                  )
+                                : t(
+                                    locale,
+                                    `สร้าง Prompt ${dualViewLabels.secondary}`,
+                                    `Generate ${dualViewLabels.secondary} prompt`
+                                  )}
+                            </Button>
+                            {onOpenRepairImageDialog && barrierReferenceUrl ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="min-h-9 w-full gap-1.5 text-xs"
+                                onClick={() => {
+                                  if (!selectedImageModelId) {
+                                    toast.error(t2.selectImageModelFirst);
+                                    setIsImageModelDialogOpen(true);
+                                    return;
+                                  }
+                                  setRepairImageInstructionByShot(prev => ({
+                                    ...prev,
+                                    [shotNumber]: "",
+                                  }));
+                                  onOpenRepairImageDialog(
+                                    shotNumber,
+                                    "barrier_reference"
+                                  );
+                                }}
+                                title={
+                                  !selectedImageModelId
+                                    ? t2.selectImageModelFirst
+                                    : undefined
+                                }
+                                data-testid={`vd-barrier-repair-reference-image-${shotNumber}`}
+                              >
+                                <Wand2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                                {t2.repairImage}
+                              </Button>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-1 rounded-lg border border-amber-200/80 bg-background/70 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      {t(
+                        locale,
+                        `บท ${barrierCharacterNames(barrierMultiView.startView.characterRefs) || dualViewLabels.primary} → ใช้ ${dualViewLabels.primary}`,
+                        `${barrierCharacterNames(barrierMultiView.startView.characterRefs) || dualViewLabels.primary} dialogue → ${dualViewLabels.primary}`
+                      )}
+                    </span>
+                    <span className="hidden text-muted-foreground sm:inline">
+                      •
+                    </span>
+                    <span>
+                      {t(
+                        locale,
+                        `บท ${barrierCharacterNames(barrierMultiView.referenceView.characterRefs) || dualViewLabels.secondary} → ใช้ ${dualViewLabels.secondary}`,
+                        `${barrierCharacterNames(barrierMultiView.referenceView.characterRefs) || dualViewLabels.secondary} dialogue → ${dualViewLabels.secondary}`
+                      )}
+                    </span>
+                  </div>
+
+                  {referenceFrameDialogForShot === shotNumber &&
+                  onGenerateReferenceFramePrompt &&
+                  onGenerateReferenceFrameImage ? (
+                    <VerticalDramaReferenceFrameDialog
+                      locale={locale}
+                      open
+                      onOpenChange={open => {
+                        if (!open) setReferenceFrameDialogForShot(null);
+                      }}
+                      shotNumber={shotNumber}
+                      characterOptions={barrierReferenceCharacterOptions}
+                      defaultSelectedKeys={
+                        barrierMultiView.referenceView.characterRefs
+                      }
+                      existingCount={barrierReferenceFrames.length}
+                      generatingPrompt={generatingReferenceFramePromptForShot.has(
+                        shotNumber
+                      )}
+                      generatingImage={generatingReferenceFrameImageForShot.has(
+                        shotNumber
+                      )}
+                      onGeneratePrompt={args =>
+                        onGenerateReferenceFramePrompt({
+                          ...args,
+                          locationKey:
+                            barrierMultiView.referenceView.locationKey,
+                        })
+                      }
+                      onConfirmRender={args =>
+                        onGenerateReferenceFrameImage(args)
+                      }
+                    />
+                  ) : null}
+                </section>
+              ) : null}
 
               {angleCandidatesByShot[shotNumber] ||
               angleGridHydrationErrorShots.has(shotNumber) ? (
@@ -6080,7 +7875,11 @@ export function VerticalDramaStoryboardPanel({
                   locale={locale}
                   t={t2}
                   shotNumber={shotNumber}
-                  beforeUrl={asset?.url}
+                  beforeUrl={
+                    repairImageTargetRole === "barrier_reference"
+                      ? barrierReferenceUrl
+                      : asset?.url
+                  }
                   instruction={repairImageInstructionByShot[shotNumber] ?? ""}
                   onInstructionChange={value =>
                     setRepairImageInstructionByShot(prev => ({
@@ -6130,285 +7929,378 @@ export function VerticalDramaStoryboardPanel({
           className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3"
           data-testid="vd-compiled-video-card"
         >
-          <p className="text-sm font-medium">{t2.compiledVideoTitle}</p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold">{t2.compiledVideoTitle}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {locale === "th"
+                  ? "เลือกการทำงานให้ชัดเจน: ประกอบวิดีโอรวม 9 ช็อต หรือสร้างตัวอย่างซีรีย์"
+                  : "Choose one clear workflow: assemble all 9 shots or create episode previews."}
+              </p>
+            </div>
+            <Badge variant="outline" className="shrink-0 gap-1.5">
+              <Clapperboard className="h-3 w-3" aria-hidden="true" />
+              {locale === "th" ? "งานวิดีโอของตอน" : "Episode video work"}
+            </Badge>
+          </div>
 
-          {/* The render OPTIONS used to sit in a separate card further down the
-              page, so users could not tell whether they applied to this
-              button or to something else (field feedback 2026-07-30). They are
-              rendered inside this same frame now, directly above the button
-              they configure. */}
-          {renderOptionsSlot}
-
-          {compiledVideo?.status === "completed" && compiledVideo.videoUrl ? (
-            <div className="flex flex-col gap-2">
-              <div className="w-56 max-w-full overflow-hidden rounded-md border border-border bg-black">
-                <video
-                  src={compiledVideo.videoUrl}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="aspect-[9/16] w-full bg-black"
-                  id="vd-compiled-video-player"
-                  data-testid="vd-compiled-video-player"
-                />
+          {/* Keep the paid full-episode controls in their own visual group so
+              they cannot be confused with the separate teaser workflow. */}
+          {renderOptionsSlot ? (
+            <section
+              className="rounded-xl border border-border/70 bg-background/60 p-3"
+              aria-labelledby="vd-full-assembly-controls-title"
+              data-testid="vd-full-assembly-controls"
+            >
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p
+                    id="vd-full-assembly-controls-title"
+                    className="text-sm font-semibold"
+                  >
+                    {locale === "th"
+                      ? "ประกอบวิดีโอรวม 9 ช็อต"
+                      : "Assemble full 9-shot video"}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {locale === "th"
+                      ? "ตัวเลือกด้านล่างมีผลกับวิดีโอรวมทั้งตอนเท่านั้น"
+                      : "The options below apply only to the complete episode video."}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="text-[10px]">
+                  {locale === "th" ? "วิดีโอเต็มตอน" : "Full episode"}
+                </Badge>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* Explicit fullscreen control (parity with the Marketplace
+              {renderOptionsSlot}
+            </section>
+          ) : null}
+
+          <section
+            className="border-t border-border/70 pt-3"
+            aria-labelledby="vd-full-assembly-result-title"
+            data-testid="vd-full-assembly-result"
+          >
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p
+                id="vd-full-assembly-result-title"
+                className="text-sm font-semibold"
+              >
+                {locale === "th"
+                  ? "ผลลัพธ์วิดีโอรวม 9 ช็อต"
+                  : "Full 9-shot video result"}
+              </p>
+              <Badge variant="outline" className="text-[10px]">
+                {locale === "th" ? "ประกอบวิดีโอ" : "Assembly"}
+              </Badge>
+            </div>
+            {compiledVideo?.status === "completed" && compiledVideo.videoUrl ? (
+              <div className="flex flex-col gap-2">
+                <div className="w-56 max-w-full overflow-hidden rounded-md border border-border bg-black">
+                  <video
+                    src={compiledVideo.videoUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="aspect-[9/16] w-full bg-black"
+                    id="vd-compiled-video-player"
+                    data-testid="vd-compiled-video-player"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Explicit fullscreen control (parity with the Marketplace
                     final-render card). The native <video> controls already
                     expose one, but it is easy to miss on a 9:16 preview this
                     small — and iOS Safari does not implement
                     `requestFullscreen` on elements at all, only the
                     non-standard `webkitEnterFullscreen` on the video itself. */}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-6 gap-1 px-1.5 text-[10px]"
-                  data-testid="vd-compiled-video-fullscreen"
-                  onClick={() => {
-                    const el = document.getElementById(
-                      "vd-compiled-video-player"
-                    ) as
-                      | (HTMLVideoElement & {
-                          webkitEnterFullscreen?: () => void;
-                        })
-                      | null;
-                    if (el?.requestFullscreen) {
-                      void el.requestFullscreen().catch(() => undefined);
-                    } else if (el?.webkitEnterFullscreen) {
-                      el.webkitEnterFullscreen();
-                    }
-                  }}
-                >
-                  {locale === "th" ? "เล่นเต็มจอ" : "Fullscreen"}
-                </Button>
-                {compiledVideo.renderEngine === "remotion_queue" ? (
-                  <Badge
+                  <Button
+                    type="button"
+                    size="sm"
                     variant="outline"
-                    className="px-1.5 py-0 text-[9px]"
-                    data-testid="vd-compiled-video-remotion-badge"
+                    className="h-6 gap-1 px-1.5 text-[10px]"
+                    data-testid="vd-compiled-video-fullscreen"
+                    onClick={() => {
+                      const el = document.getElementById(
+                        "vd-compiled-video-player"
+                      ) as
+                        | (HTMLVideoElement & {
+                            webkitEnterFullscreen?: () => void;
+                          })
+                        | null;
+                      if (el?.requestFullscreen) {
+                        void el.requestFullscreen().catch(() => undefined);
+                      } else if (el?.webkitEnterFullscreen) {
+                        el.webkitEnterFullscreen();
+                      }
+                    }}
                   >
-                    Remotion
-                  </Badge>
-                ) : null}
-                {compiledVideo.durationSeconds ? (
-                  <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
-                    {compiledVideo.durationSeconds}
-                    {t2.compiledVideoDurationLabel}
-                  </Badge>
-                ) : null}
-                {typeof compiledVideo.shotCount === "number" &&
-                totalShotCount > 0 &&
-                compiledVideo.shotCount < totalShotCount ? (
-                  <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
-                    {vdCopyWithCount(
-                      t2.compiledVideoPartialBadge,
-                      compiledVideo.shotCount
-                    )}
-                  </Badge>
-                ) : null}
+                    {locale === "th" ? "เล่นเต็มจอ" : "Fullscreen"}
+                  </Button>
+                  {compiledVideo.renderEngine === "remotion_queue" ? (
+                    <Badge
+                      variant="outline"
+                      className="px-1.5 py-0 text-[9px]"
+                      data-testid="vd-compiled-video-remotion-badge"
+                    >
+                      Remotion
+                    </Badge>
+                  ) : null}
+                  {compiledVideo.durationSeconds ? (
+                    <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                      {compiledVideo.durationSeconds}
+                      {t2.compiledVideoDurationLabel}
+                    </Badge>
+                  ) : null}
+                  {typeof compiledVideo.shotCount === "number" &&
+                  totalShotCount > 0 &&
+                  compiledVideo.shotCount < totalShotCount ? (
+                    <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                      {vdCopyWithCount(
+                        t2.compiledVideoPartialBadge,
+                        compiledVideo.shotCount
+                      )}
+                    </Badge>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-6 gap-1 px-1.5 text-[10px]"
+                    onClick={() => {
+                      const filename =
+                        seriesId != null
+                          ? `series-${seriesId}-ep-${episodeNumber ?? 0}-full.mp4`
+                          : "compiled-episode.mp4";
+                      void downloadStoryboardMediaUrl(
+                        compiledVideo.videoUrl!,
+                        filename
+                      );
+                    }}
+                    data-testid="vd-compiled-video-download"
+                  >
+                    <Download aria-hidden="true" className="h-3 w-3" />
+                    {t2.download}
+                  </Button>
+                </div>
+                {confirmingReassembleCompiledVideo ? (
+                  <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
+                    <p className="font-medium">
+                      {t2.compiledVideoReassembleConfirm}
+                    </p>
+                    <div className="mt-1.5 flex gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[11px]"
+                        onClick={() =>
+                          setConfirmingReassembleCompiledVideo(false)
+                        }
+                        disabled={assemblingCompiledVideo}
+                      >
+                        {t(locale, "ยกเลิก", "Cancel")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-6 px-2 text-[11px]"
+                        onClick={() => {
+                          setConfirmingReassembleCompiledVideo(false);
+                          onAssembleCompiledVideo();
+                        }}
+                        disabled={assemblingCompiledVideo}
+                        data-testid="vd-compiled-video-confirm-reassemble"
+                      >
+                        {t(locale, "ยืนยัน", "Confirm")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-fit gap-1 px-1.5 text-[10px] text-muted-foreground"
+                    onClick={() => setConfirmingReassembleCompiledVideo(true)}
+                    disabled={assemblingCompiledVideo}
+                    data-testid="vd-compiled-video-reassemble"
+                  >
+                    {t2.compiledVideoReassemble}
+                  </Button>
+                )}
+              </div>
+            ) : compiledVideo?.status === "failed" ? (
+              // Checked BEFORE the pending branch on purpose. A failed state
+              // still carries `pendingJobId`, and the pending branch's
+              // `|| compiledVideo?.pendingJobId` used to match first — so a
+              // render that had already failed rendered as "กำลังประกอบ…"
+              // forever and this branch was unreachable (field report
+              // 2026-07-31).
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-destructive">
+                  {t2.compiledVideoFailed}
+                  {compiledVideo.error ? `: ${compiledVideo.error}` : ""}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {locale === "th"
+                    ? "กดปุ่มด้านล่างเพื่อสั่งประกอบใหม่ — ระบบจะใช้ Remotion ผ่านคิว render-jobs หากยังล้มเหลวซ้ำ ให้ตรวจว่าเครื่อง Worker ออนไลน์และติดตั้ง Remotion runtime แล้วที่หน้า Render Jobs"
+                    : "Press the button below to run the assembly again — it uses Remotion through the render-jobs queue. If it keeps failing, check on the Render Jobs page that a worker is online with the Remotion runtime installed."}
+                </p>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-6 gap-1 px-1.5 text-[10px]"
-                  onClick={() => {
-                    const filename =
-                      seriesId != null
-                        ? `series-${seriesId}-ep-${episodeNumber ?? 0}-full.mp4`
-                        : "compiled-episode.mp4";
-                    void downloadStoryboardMediaUrl(
-                      compiledVideo.videoUrl!,
-                      filename
-                    );
-                  }}
-                  data-testid="vd-compiled-video-download"
-                >
-                  <Download aria-hidden="true" className="h-3 w-3" />
-                  {t2.download}
-                </Button>
-              </div>
-              {confirmingReassembleCompiledVideo ? (
-                <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
-                  <p className="font-medium">
-                    {t2.compiledVideoReassembleConfirm}
-                  </p>
-                  <div className="mt-1.5 flex gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() =>
-                        setConfirmingReassembleCompiledVideo(false)
-                      }
-                      disabled={assemblingCompiledVideo}
-                    >
-                      {t(locale, "ยกเลิก", "Cancel")}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => {
-                        setConfirmingReassembleCompiledVideo(false);
-                        onAssembleCompiledVideo();
-                      }}
-                      disabled={assemblingCompiledVideo}
-                      data-testid="vd-compiled-video-confirm-reassemble"
-                    >
-                      {t(locale, "ยืนยัน", "Confirm")}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-fit gap-1 px-1.5 text-[10px] text-muted-foreground"
-                  onClick={() => setConfirmingReassembleCompiledVideo(true)}
-                  disabled={assemblingCompiledVideo}
-                  data-testid="vd-compiled-video-reassemble"
-                >
-                  {t2.compiledVideoReassemble}
-                </Button>
-              )}
-            </div>
-          ) : compiledVideo?.status === "failed" ? (
-            // Checked BEFORE the pending branch on purpose. A failed state
-            // still carries `pendingJobId`, and the pending branch's
-            // `|| compiledVideo?.pendingJobId` used to match first — so a
-            // render that had already failed rendered as "กำลังประกอบ…"
-            // forever and this branch was unreachable (field report
-            // 2026-07-31).
-            <div className="flex flex-col gap-2">
-              <p className="text-sm text-destructive">
-                {t2.compiledVideoFailed}
-                {compiledVideo.error ? `: ${compiledVideo.error}` : ""}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {locale === "th"
-                  ? "กดปุ่มด้านล่างเพื่อสั่งประกอบใหม่ — ระบบจะใช้ Remotion ผ่านคิว render-jobs หากยังล้มเหลวซ้ำ ให้ตรวจว่าเครื่อง Worker ออนไลน์และติดตั้ง Remotion runtime แล้วที่หน้า Render Jobs"
-                  : "Press the button below to run the assembly again — it uses Remotion through the render-jobs queue. If it keeps failing, check on the Render Jobs page that a worker is online with the Remotion runtime installed."}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="w-fit gap-1.5"
-                onClick={() => onAssembleCompiledVideo()}
-                disabled={assemblingCompiledVideo}
-                data-testid="vd-compiled-video-retry"
-              >
-                {assemblingCompiledVideo ? (
-                  <Loader2
-                    aria-hidden="true"
-                    className="h-3.5 w-3.5 animate-spin"
-                  />
-                ) : null}
-                {t2.compiledVideoRetry}
-              </Button>
-            </div>
-          ) : compiledVideo?.status === "pending" ||
-            compiledVideo?.pendingJobId ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                {t2.compiledVideoProcessing}
-              </div>
-              <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
-                <span>{t2.compiledVideoQueuedHint}</span>
-                <Link
-                  href="/render-jobs"
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                  data-testid="vd-compiled-video-render-jobs-link"
-                >
-                  {t2.compiledVideoOpenRenderJobs}
-                </Link>
-              </div>
-              {/* Escape hatch: never leave the user with a spinner and no
-                  action. If a job dies in a way the reconciler cannot see,
-                  starting a fresh one must still be possible. */}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="ml-6 w-fit gap-1.5"
-                onClick={() => onAssembleCompiledVideo()}
-                disabled={assemblingCompiledVideo}
-                data-testid="vd-compiled-video-force-restart"
-              >
-                {assemblingCompiledVideo ? (
-                  <Loader2
-                    aria-hidden="true"
-                    className="h-3.5 w-3.5 animate-spin"
-                  />
-                ) : null}
-                {locale === "th"
-                  ? "เริ่มประกอบใหม่ (ถ้าค้างนานผิดปกติ)"
-                  : "Start a new assembly (if this is stuck)"}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-muted-foreground">
-                {t2.compiledVideoReadyHint
-                  .replace("{ready}", String(readyShotNumbers.length))
-                  .replace("{total}", String(totalShotCount))}
-              </p>
-              {missingShotNumbers.length > 0 ? (
-                <p className="text-xs text-amber-700 dark:text-amber-400">
-                  {t2.compiledVideoMissingWarning.replace(
-                    "{list}",
-                    missingShotNumbers.join(", ")
-                  )}
-                </p>
-              ) : null}
-              <div className="flex flex-wrap gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="gap-1.5"
+                  className="w-fit gap-1.5"
                   onClick={() => onAssembleCompiledVideo()}
-                  disabled={
-                    assemblingCompiledVideo ||
-                    readyShotNumbers.length === 0 ||
-                    readyShotNumbers.length < totalShotCount
-                  }
-                  data-testid="vd-compiled-video-assemble"
+                  disabled={assemblingCompiledVideo}
+                  data-testid="vd-compiled-video-retry"
                 >
                   {assemblingCompiledVideo ? (
                     <Loader2
                       aria-hidden="true"
                       className="h-3.5 w-3.5 animate-spin"
                     />
-                  ) : (
-                    <Clapperboard aria-hidden="true" className="h-3.5 w-3.5" />
-                  )}
-                  {t2.compiledVideoAssemble}
+                  ) : null}
+                  {t2.compiledVideoRetry}
                 </Button>
-                {totalShotCount > 0 &&
-                readyShotNumbers.length > 0 &&
-                readyShotNumbers.length < totalShotCount ? (
+              </div>
+            ) : compiledVideo?.status === "pending" ||
+              compiledVideo?.pendingJobId ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                  {t2.compiledVideoProcessing}
+                </div>
+                <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
+                  <span>{t2.compiledVideoQueuedHint}</span>
+                  <Link
+                    href="/render-jobs"
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                    data-testid="vd-compiled-video-render-jobs-link"
+                  >
+                    {t2.compiledVideoOpenRenderJobs}
+                  </Link>
+                </div>
+                {/* Escape hatch: never leave the user with a spinner and no
+                  action. If a job dies in a way the reconciler cannot see,
+                  starting a fresh one must still be possible. */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-6 w-fit gap-1.5"
+                  onClick={() => onAssembleCompiledVideo()}
+                  disabled={assemblingCompiledVideo}
+                  data-testid="vd-compiled-video-force-restart"
+                >
+                  {assemblingCompiledVideo ? (
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 animate-spin"
+                    />
+                  ) : null}
+                  {locale === "th"
+                    ? "เริ่มประกอบใหม่ (ถ้าค้างนานผิดปกติ)"
+                    : "Start a new assembly (if this is stuck)"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {t2.compiledVideoReadyHint
+                    .replace("{ready}", String(readyShotNumbers.length))
+                    .replace("{total}", String(totalShotCount))}
+                </p>
+                {missingShotNumbers.length > 0 ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t2.compiledVideoMissingWarning.replace(
+                      "{list}",
+                      missingShotNumbers.join(", ")
+                    )}
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-1.5">
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
                     className="gap-1.5"
-                    onClick={() =>
-                      onAssembleCompiledVideo({ allowPartial: true })
+                    onClick={() => onAssembleCompiledVideo()}
+                    disabled={
+                      assemblingCompiledVideo ||
+                      readyShotNumbers.length === 0 ||
+                      readyShotNumbers.length < totalShotCount
                     }
-                    disabled={assemblingCompiledVideo}
-                    data-testid="vd-compiled-video-assemble-partial"
+                    data-testid="vd-compiled-video-assemble"
                   >
-                    {t2.compiledVideoAssemblePartial}
+                    {assemblingCompiledVideo ? (
+                      <Loader2
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 animate-spin"
+                      />
+                    ) : (
+                      <Clapperboard
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5"
+                      />
+                    )}
+                    {t2.compiledVideoAssemble}
                   </Button>
-                ) : null}
+                  {totalShotCount > 0 &&
+                  readyShotNumbers.length > 0 &&
+                  readyShotNumbers.length < totalShotCount ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() =>
+                        onAssembleCompiledVideo({ allowPartial: true })
+                      }
+                      disabled={assemblingCompiledVideo}
+                      data-testid="vd-compiled-video-assemble-partial"
+                    >
+                      {t2.compiledVideoAssemblePartial}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </section>
         </div>
+      ) : null}
+
+      {episodePreviewSlot ? (
+        <section
+          className="mt-4 border-t border-border/70 pt-4"
+          aria-labelledby="vd-preview-workflow-title"
+          data-testid="vd-preview-workflow"
+        >
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p
+                id="vd-preview-workflow-title"
+                className="text-sm font-semibold"
+              >
+                {locale === "th"
+                  ? "สร้างตัวอย่างซีรีย์"
+                  : "Create episode previews"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {locale === "th"
+                  ? "เลือก 2 ช็อตต่อชุด และสร้างได้สูงสุด 4 ชุด"
+                  : "Choose two shots per set, up to four sets."}
+              </p>
+            </div>
+            <Badge variant="outline" className="text-[10px]">
+              Remotion preview
+            </Badge>
+          </div>
+          {episodePreviewSlot}
+        </section>
       ) : null}
 
       {lightboxShot != null ? (
@@ -6582,8 +8474,22 @@ export function VerticalDramaStoryboardPanel({
           locale={locale}
           t={t2}
           shotNumber={characterRefPickerForShot}
+          mode={characterRefPickerMode}
           groups={buildShotCharacterReferencePickerGroups(characterPortraits)}
           selectedKeys={characterRefPickerDraft}
+          disabledKeys={(() => {
+            const dualView = frameByShot.get(
+              characterRefPickerForShot
+            )?.barrierMultiView;
+            if (!dualView) return [];
+            if (characterRefPickerMode === "dual_primary") {
+              return dualView.referenceView.characterRefs;
+            }
+            if (characterRefPickerMode === "dual_reference") {
+              return dualView.startView.characterRefs;
+            }
+            return [];
+          })()}
           onToggle={key =>
             setCharacterRefPickerDraft(prev =>
               prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
@@ -6593,10 +8499,40 @@ export function VerticalDramaStoryboardPanel({
             savingShotCharacterReferencesForShot === characterRefPickerForShot
           }
           onSave={() => {
-            onSetShotCharacterReferences?.(
-              characterRefPickerForShot,
-              characterRefPickerDraft
-            );
+            if (characterRefPickerMode === "screen_caller") {
+              onSetShotScreenCallerReferences?.(
+                characterRefPickerForShot,
+                characterRefPickerDraft
+              );
+            } else if (
+              characterRefPickerMode === "dual_primary" ||
+              characterRefPickerMode === "dual_reference"
+            ) {
+              const dualView = frameByShot.get(
+                characterRefPickerForShot
+              )?.barrierMultiView;
+              if (dualView) {
+                onSetShotViewMode?.(characterRefPickerForShot, {
+                  mode: "dual",
+                  scenario: dualView.scenario ?? "physical_barrier",
+                  primaryCharacterRefs:
+                    characterRefPickerMode === "dual_primary"
+                      ? characterRefPickerDraft
+                      : dualView.startView.characterRefs,
+                  secondaryCharacterRefs:
+                    characterRefPickerMode === "dual_reference"
+                      ? characterRefPickerDraft
+                      : dualView.referenceView.characterRefs,
+                  primaryLocationKey: dualView.startView.locationKey,
+                  secondaryLocationKey: dualView.referenceView.locationKey,
+                });
+              }
+            } else {
+              onSetShotCharacterReferences?.(
+                characterRefPickerForShot,
+                characterRefPickerDraft
+              );
+            }
             setCharacterRefPickerForShot(null);
           }}
           onClose={() => setCharacterRefPickerForShot(null)}
@@ -6618,6 +8554,67 @@ export function VerticalDramaStoryboardPanel({
             setLocationPickerForShot(null);
           }}
           onClose={() => setLocationPickerForShot(null)}
+        />
+      ) : null}
+
+      {dualViewLocationPicker ? (
+        <ShotLocationPickerDialog
+          locale={locale}
+          shotNumber={dualViewLocationPicker.shotNumber}
+          locations={episodeLocations}
+          currentLocationKey={
+            dualViewLocationPicker.side === "primary"
+              ? frameByShot.get(dualViewLocationPicker.shotNumber)
+                  ?.barrierMultiView?.startView.locationKey
+              : frameByShot.get(dualViewLocationPicker.shotNumber)
+                  ?.barrierMultiView?.referenceView.locationKey
+          }
+          allowDefault={false}
+          onSelect={locationKey => {
+            const dualView = frameByShot.get(
+              dualViewLocationPicker.shotNumber
+            )?.barrierMultiView;
+            if (dualView && locationKey) {
+              onSetShotViewMode?.(dualViewLocationPicker.shotNumber, {
+                mode: "dual",
+                scenario: dualView.scenario ?? "physical_barrier",
+                primaryCharacterRefs: dualView.startView.characterRefs,
+                secondaryCharacterRefs: dualView.referenceView.characterRefs,
+                primaryLocationKey:
+                  dualViewLocationPicker.side === "primary"
+                    ? locationKey
+                    : dualView.startView.locationKey,
+                secondaryLocationKey:
+                  dualViewLocationPicker.side === "secondary"
+                    ? locationKey
+                    : dualView.referenceView.locationKey,
+              });
+            }
+            setDualViewLocationPicker(null);
+          }}
+          onClose={() => setDualViewLocationPicker(null)}
+        />
+      ) : null}
+
+      {barrierReferenceLocationPickerForShot != null ? (
+        <ShotLocationPickerDialog
+          locale={locale}
+          shotNumber={barrierReferenceLocationPickerForShot}
+          locations={episodeLocations}
+          currentLocationKey={
+            frameByShot.get(barrierReferenceLocationPickerForShot)
+              ?.barrierMultiView?.referenceView.locationKey
+          }
+          onSelect={locationKey => {
+            if (locationKey) {
+              onSetShotBarrierReferenceLocation?.(
+                barrierReferenceLocationPickerForShot,
+                locationKey
+              );
+            }
+            setBarrierReferenceLocationPickerForShot(null);
+          }}
+          onClose={() => setBarrierReferenceLocationPickerForShot(null)}
         />
       ) : null}
 
@@ -6840,6 +8837,8 @@ function VerticalDramaLocationsBibleCard({
   savingSceneVisualStateForKey?: string | null;
 }) {
   const utils = trpc.useUtils();
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
   const listQuery = trpc.verticalDramaLocations.list.useQuery({ seriesId });
 
   const locationRoster = listQuery.data?.locations ?? [];
@@ -6874,27 +8873,11 @@ function VerticalDramaLocationsBibleCard({
    *  chosen on either surface is remembered as one shared default. */
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [selectedImageModelId, setSelectedImageModelId] = useState(() => {
-    // Best-effort read — localStorage can throw (SecurityError in blocked
-    // storage) even during this initial render; never crash the panel over a
-    // convenience cache.
-    try {
-      return (
-        localStorage.getItem(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY) || ""
-      );
-    } catch {
-      return "";
-    }
+    return safeStorageGet(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY) || "";
   });
   const handleSelectImageModel = (modelId: string) => {
-    // State update FIRST so a localStorage failure (e.g. QuotaExceededError on
-    // a heavy user whose storage is full) can never block the selection — the
-    // cache write is best-effort.
     setSelectedImageModelId(modelId);
-    try {
-      localStorage.setItem(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY, modelId);
-    } catch {
-      /* storage full/blocked — cache is best-effort, ignore */
-    }
+    safeStorageSet(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY, modelId);
   };
   const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
   const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
@@ -6947,7 +8930,9 @@ function VerticalDramaLocationsBibleCard({
   const [coverageRoleByKey, setCoverageRoleByKey] = useState<
     Record<string, VerticalDramaLocationCoverageRole>
   >({});
-  const [coverageGapByKey, setCoverageGapByKey] = useState<Record<string, string>>({});
+  const [coverageGapByKey, setCoverageGapByKey] = useState<
+    Record<string, string>
+  >({});
 
   /** Poll a submitted location-image render task to completion — same
    *  `utils.media.getTask.fetch` loop shape (120 attempts, 2.5s interval)
@@ -7020,30 +9005,50 @@ function VerticalDramaLocationsBibleCard({
     locationId: string,
     locationKey: string,
     coverageRole?: VerticalDramaLocationCoverageRole,
-    gapDescription?: string,
+    gapDescription?: string
   ) => {
-    setPendingPreviewKey(locationKey);
-    previewMutation.mutate(
-      {
-        seriesId,
-        locationId,
-        ...(coverageRole ? { coverageRole } : {}),
-        ...(gapDescription?.trim() ? { gapDescription: gapDescription.trim() } : {}),
-      },
-      {
-        onSuccess: res => {
-          setPreviewByKey(prev => ({
-            ...prev,
-            [locationKey]: {
-              prompt: res.establishingPlatePrompt,
-              negativePrompt: res.negativePrompt,
+    requestConfirmation({
+      title: t(
+        locale,
+        "ยืนยันสร้าง prompt สถานที่",
+        "Confirm location prompt generation"
+      ),
+      description: t(
+        locale,
+        "การทำงานนี้ใช้ AI เพื่อสร้าง prompt และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+        "This uses AI to generate a location prompt and may spend credits. Continue?"
+      ),
+      confirmLabel: t(locale, "สร้าง prompt", "Generate prompt"),
+      cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-episode-location-prompt-${locationKey}`,
+      onConfirm: () => {
+        setPendingPreviewKey(locationKey);
+        previewMutation.mutate(
+          {
+            seriesId,
+            locationId,
+            ...(selectedImageModelId ? { selectedImageModelId } : {}),
+            ...(coverageRole ? { coverageRole } : {}),
+            ...(gapDescription?.trim()
+              ? { gapDescription: gapDescription.trim() }
+              : {}),
+          },
+          {
+            onSuccess: res => {
+              setPreviewByKey(prev => ({
+                ...prev,
+                [locationKey]: {
+                  prompt: res.establishingPlatePrompt,
+                  negativePrompt: res.negativePrompt,
+                },
+              }));
+              setPendingPreviewKey(null);
             },
-          }));
-          setPendingPreviewKey(null);
-        },
-        onError: () => setPendingPreviewKey(null),
-      }
-    );
+            onError: () => setPendingPreviewKey(null),
+          }
+        );
+      },
+    });
   };
 
   const handleGenerate = (locationId: string, locationKey: string) => {
@@ -7060,30 +9065,48 @@ function VerticalDramaLocationsBibleCard({
       setIsModelDialogOpen(true);
       return;
     }
-    setRenderingKey(locationKey);
     const coverageRole = coverageRoleByKey[locationKey];
     const gapDescription = coverageGapByKey[locationKey]?.trim() || undefined;
     const onSuccess = (res: unknown) => {
       const taskId = (res as { taskId?: string } | null)?.taskId;
       if (taskId) void pollLocationImageTask(taskId, locationKey);
-      else setRenderingKey(current => (current === locationKey ? null : current));
+      else
+        setRenderingKey(current => (current === locationKey ? null : current));
     };
     const onError = () =>
       setRenderingKey(current => (current === locationKey ? null : current));
-    generateMutation.mutate(
-      {
-        seriesId,
-        locationId,
-        approvedPrompt: preview.prompt,
-        ...(preview.negativePrompt
-          ? { approvedNegativePrompt: preview.negativePrompt }
-          : {}),
-        selectedImageModelId,
-        ...(coverageRole ? { coverageRole } : {}),
-        ...(gapDescription ? { gapDescription } : {}),
+    requestConfirmation({
+      title: t(
+        locale,
+        "ยืนยันสร้างภาพสถานที่",
+        "Confirm location image generation"
+      ),
+      description: t(
+        locale,
+        "การทำงานนี้จะสร้างภาพสถานที่ด้วย AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?",
+        "This generates a location image with AI and spends credits. Continue?"
+      ),
+      confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+      cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-episode-location-image-${locationKey}`,
+      onConfirm: () => {
+        setRenderingKey(locationKey);
+        generateMutation.mutate(
+          {
+            seriesId,
+            locationId,
+            approvedPrompt: preview.prompt,
+            ...(preview.negativePrompt
+              ? { approvedNegativePrompt: preview.negativePrompt }
+              : {}),
+            selectedImageModelId,
+            ...(coverageRole ? { coverageRole } : {}),
+            ...(gapDescription ? { gapDescription } : {}),
+          },
+          { onSuccess, onError }
+        );
       },
-      { onSuccess, onError },
-    );
+    });
   };
 
   const handleApprove = async (locationId: string, locationKey: string) => {
@@ -7143,6 +9166,7 @@ function VerticalDramaLocationsBibleCard({
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
+      {creditConfirmDialog}
       <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
         <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
         {t(locale, "สถานที่ในตอนย่อยนี้", "Locations in this Sub-episode")}
@@ -7230,7 +9254,9 @@ function VerticalDramaLocationsBibleCard({
                           className="ml-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px]"
                           value={coverageRoleByKey[locationKey] ?? ""}
                           onChange={event => {
-                            const value = event.target.value as VerticalDramaLocationCoverageRole | "";
+                            const value = event.target.value as
+                              | VerticalDramaLocationCoverageRole
+                              | "";
                             setCoverageRoleByKey(prev => {
                               const next = { ...prev };
                               if (value) next[locationKey] = value;
@@ -7240,7 +9266,9 @@ function VerticalDramaLocationsBibleCard({
                           }}
                           data-testid={`vd-location-coverage-role-${locationKey}`}
                         >
-                          <option value="">{t(locale, "ภาพหลัก", "Primary plate")}</option>
+                          <option value="">
+                            {t(locale, "ภาพหลัก", "Primary plate")}
+                          </option>
                           {VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES.map(role => (
                             <option key={role} value={role}>
                               {role === "reverse_angle"
@@ -7253,12 +9281,19 @@ function VerticalDramaLocationsBibleCard({
                         </select>
                       </label>
                     </div>
-                    {(sceneVisualStates?.[locationKey]?.coverageGaps ?? []).length > 0 ? (
+                    {(sceneVisualStates?.[locationKey]?.coverageGaps ?? [])
+                      .length > 0 ? (
                       <div className="flex flex-col gap-1">
                         <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">
-                          {t(locale, "มุมที่ขาดจาก state", "Coverage gaps from scene state")}
+                          {t(
+                            locale,
+                            "มุมที่ขาดจาก state",
+                            "Coverage gaps from scene state"
+                          )}
                         </p>
-                        {(sceneVisualStates?.[locationKey]?.coverageGaps ?? []).map((gap, gapIndex) => (
+                        {(
+                          sceneVisualStates?.[locationKey]?.coverageGaps ?? []
+                        ).map((gap, gapIndex) => (
                           <Button
                             key={`${locationKey}-gap-${gapIndex}`}
                             type="button"
@@ -7266,21 +9301,31 @@ function VerticalDramaLocationsBibleCard({
                             variant="ghost"
                             className="h-auto justify-start px-1.5 py-1 text-left text-[10px]"
                             onClick={() => {
-                              setCoverageGapByKey(prev => ({ ...prev, [locationKey]: gap }));
+                              setCoverageGapByKey(prev => ({
+                                ...prev,
+                                [locationKey]: gap,
+                              }));
                               setCoverageRoleByKey(prev => ({
                                 ...prev,
-                                [locationKey]: prev[locationKey] ?? "detail_corner",
+                                [locationKey]:
+                                  prev[locationKey] ?? "detail_corner",
                               }));
                               handlePreview(
                                 roster?.locationId ?? "",
                                 locationKey,
-                                coverageRoleByKey[locationKey] ?? "detail_corner",
-                                gap,
+                                coverageRoleByKey[locationKey] ??
+                                  "detail_corner",
+                                gap
                               );
                             }}
                             data-testid={`vd-location-coverage-gap-${locationKey}-${gapIndex}`}
                           >
-                            {t(locale, "สร้างมุมที่ขาด: ", "Generate missing angle: ")}{gap}
+                            {t(
+                              locale,
+                              "สร้างมุมที่ขาด: ",
+                              "Generate missing angle: "
+                            )}
+                            {gap}
                           </Button>
                         ))}
                       </div>
@@ -7414,7 +9459,7 @@ function VerticalDramaLocationsBibleCard({
                           roster.locationId,
                           locationKey,
                           coverageRoleByKey[locationKey],
-                          coverageGapByKey[locationKey],
+                          coverageGapByKey[locationKey]
                         )
                       }
                       disabled={isPreviewLoading}
@@ -7446,6 +9491,8 @@ function VerticalDramaLocationsBibleCard({
         onSelect={handleSelectImageModel}
         mediaType="image"
         isLoading={imageModelsQuery.isLoading}
+        loadError={imageModelsQuery.isError}
+        onRetry={() => void imageModelsQuery.refetch()}
       />
     </div>
   );
@@ -8575,11 +10622,10 @@ function InlineEditablePromptBox({
   onAiAdjust?: () => void;
   testIdPrefix: string;
   /**
-   * Hard QC cap for this prompt kind (`VD_IMAGE_PROMPT_MAX` /
-   * `VD_VIDEO_PROMPT_MAX`) — shown as an `n / max` counter, warn-colored when
-   * over. This is a WARN-ONLY hint: saving free edits over the cap is still
-   * allowed (the server refines the prompt at generation time via
-   * `verticalDramaPromptQc.ts`), never blocked here.
+   * Effective QC cap for this prompt kind — shown as an `n / max` counter,
+   * warn-colored when over. This is a WARN-ONLY hint: saving free edits over
+   * the cap is still allowed (the server refines the prompt at generation
+   * time via `verticalDramaPromptQc.ts`), never blocked here.
    */
   maxChars: number;
 }) {
@@ -9509,8 +11555,10 @@ function ShotCharacterReferencePickerDialog({
   locale,
   t: t2,
   shotNumber,
+  mode = "scene",
   groups,
   selectedKeys,
+  disabledKeys = [],
   onToggle,
   saving,
   onSave,
@@ -9519,8 +11567,10 @@ function ShotCharacterReferencePickerDialog({
   locale: Lang;
   t: ReturnType<typeof vdCopy>;
   shotNumber: number;
+  mode: "scene" | "screen_caller" | "dual_primary" | "dual_reference";
   groups: VdShotCharacterRefPickerGroup[];
   selectedKeys: string[];
+  disabledKeys?: string[];
   onToggle: (key: string) => void;
   saving: boolean;
   onSave: () => void;
@@ -9532,6 +11582,36 @@ function ShotCharacterReferencePickerDialog({
     group.variants.forEach(variant => knownKeys.add(variant.key));
   });
   const unknownSelectedKeys = selectedKeys.filter(key => !knownKeys.has(key));
+  const isScreenCallerMode = mode === "screen_caller";
+  const isDualPrimaryMode = mode === "dual_primary";
+  const isDualReferenceMode = mode === "dual_reference";
+  const isDualMode = isDualPrimaryMode || isDualReferenceMode;
+  const pickerTitle = isScreenCallerMode
+    ? t(locale, "กำหนด Caller ทางโทรศัพท์", "Set phone caller")
+    : isDualPrimaryMode || isDualReferenceMode
+      ? t(
+          locale,
+          isDualPrimaryMode ? "กำหนดตัวละครมุมที่ 1" : "กำหนดตัวละครมุมที่ 2",
+          isDualPrimaryMode ? "Set view 1 characters" : "Set view 2 characters"
+        )
+      : t2.shotCharacterRefPickerTitle;
+  const pickerHint = isScreenCallerMode
+    ? t(
+        locale,
+        "เลือกตัวละครที่ต้องแนบภาพอ้างอิง แต่ต้องแสดงเฉพาะอยู่บนหน้าจอมือถือหรือวิดีโอคอล ห้ามปรากฏเป็นคนในห้อง",
+        "Select callers whose portraits must be attached but may appear only inside a phone or video-call screen, never as people in the room."
+      )
+    : isDualPrimaryMode || isDualReferenceMode
+      ? t(
+          locale,
+          isDualPrimaryMode
+            ? "เลือกตัวละครที่จะอยู่ในภาพเริ่มต้นมุมที่ 1 ตัวละครต้องไม่ซ้ำกับมุมที่ 2"
+            : "เลือกตัวละครที่จะอยู่ในภาพอ้างอิงมุมที่ 2 ตัวละครต้องไม่ซ้ำกับมุมที่ 1",
+          isDualPrimaryMode
+            ? "Choose characters for the first start-frame view. They must not overlap view 2."
+            : "Choose characters for the second reference view. They must not overlap view 1."
+        )
+      : t2.shotCharacterRefPickerHint;
 
   function renderOptionRow(opts: {
     key: string;
@@ -9541,17 +11621,29 @@ function ShotCharacterReferencePickerDialog({
     indent?: boolean;
   }) {
     const checked = selectedKeys.includes(opts.key);
+    const disabled = disabledKeys.includes(opts.key) && !checked;
     return (
       <label
         key={opts.key}
         className={cn(
           "flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted",
-          opts.indent ? "ml-6" : ""
+          opts.indent ? "ml-6" : "",
+          disabled ? "cursor-not-allowed opacity-50" : ""
         )}
+        title={
+          disabled
+            ? t(
+                locale,
+                "ตัวละครนี้ถูกใช้อยู่ในอีกมุมแล้ว",
+                "This character is already assigned to the other view"
+              )
+            : undefined
+        }
         data-testid={`vd-storyboard-character-ref-option-${shotNumber}-${opts.key}`}
       >
         <Checkbox
           checked={checked}
+          disabled={disabled}
           onCheckedChange={() => onToggle(opts.key)}
         />
         {opts.portraitUrl ? (
@@ -9579,7 +11671,7 @@ function ShotCharacterReferencePickerDialog({
     <div
       role="alertdialog"
       aria-modal="true"
-      aria-label={t2.shotCharacterRefPickerTitle}
+      aria-label={pickerTitle}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={onClose}
     >
@@ -9591,7 +11683,7 @@ function ShotCharacterReferencePickerDialog({
         <div className="flex items-center justify-between gap-2">
           <p className="flex items-center gap-1.5 text-sm font-medium">
             <Users aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {t2.shotCharacterRefPickerTitle}
+            {pickerTitle}
           </p>
           <Button
             type="button"
@@ -9605,9 +11697,7 @@ function ShotCharacterReferencePickerDialog({
           </Button>
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          {t2.shotCharacterRefPickerHint}
-        </p>
+        <p className="text-xs text-muted-foreground">{pickerHint}</p>
 
         {groups.length === 0 && unknownSelectedKeys.length === 0 ? (
           <p className="py-4 text-center text-xs text-muted-foreground">
@@ -9667,18 +11757,31 @@ function ShotCharacterReferencePickerDialog({
         ) : null}
 
         <div className="flex items-center justify-between gap-2 pt-1">
-          <span className="text-xs text-muted-foreground">
-            {vdCopyWithCount(
-              t2.shotCharacterRefPickerSelectedCount,
-              selectedKeys.length
+          <span
+            className={cn(
+              "text-xs",
+              isDualMode && selectedKeys.length === 0
+                ? "text-destructive"
+                : "text-muted-foreground"
             )}
+          >
+            {isDualMode && selectedKeys.length === 0
+              ? t(
+                  locale,
+                  "ต้องเลือกอย่างน้อย 1 ตัวละคร",
+                  "Select at least one character"
+                )
+              : vdCopyWithCount(
+                  t2.shotCharacterRefPickerSelectedCount,
+                  selectedKeys.length
+                )}
           </span>
           <Button
             type="button"
             size="sm"
             onClick={onSave}
-            disabled={saving}
-            data-testid={`vd-storyboard-character-ref-picker-save-${shotNumber}`}
+            disabled={saving || (isDualMode && selectedKeys.length === 0)}
+            data-testid={`vd-storyboard-character-ref-picker-save-${shotNumber}${mode === "scene" ? "" : `-${mode}`}`}
           >
             {saving ? (
               <Loader2
@@ -9713,6 +11816,7 @@ function ShotLocationPickerDialog({
   shotNumber,
   locations,
   currentLocationKey,
+  allowDefault = true,
   onSelect,
   onClose,
 }: {
@@ -9720,6 +11824,7 @@ function ShotLocationPickerDialog({
   shotNumber: number;
   locations: VerticalDramaEpisodeLocationView[];
   currentLocationKey?: string;
+  allowDefault?: boolean;
   onSelect: (locationKey: string | null) => void;
   onClose: () => void;
 }) {
@@ -9759,23 +11864,25 @@ function ShotLocationPickerDialog({
         </div>
 
         <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted"
-            onClick={() => onSelect(null)}
-            data-testid={`vd-storyboard-location-picker-default-${shotNumber}`}
-          >
-            <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
-              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-            </span>
-            <span className="flex-1">
-              {t(
-                locale,
-                "ใช้ค่าเริ่มต้น (จากเนื้อเรื่อง)",
-                "Use default (from story)"
-              )}
-            </span>
-          </button>
+          {allowDefault ? (
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted"
+              onClick={() => onSelect(null)}
+              data-testid={`vd-storyboard-location-picker-default-${shotNumber}`}
+            >
+              <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+              </span>
+              <span className="flex-1">
+                {t(
+                  locale,
+                  "ใช้ค่าเริ่มต้น (จากเนื้อเรื่อง)",
+                  "Use default (from story)"
+                )}
+              </span>
+            </button>
+          ) : null}
 
           {locations.length === 0 ? (
             <p className="py-4 text-center text-xs text-muted-foreground">

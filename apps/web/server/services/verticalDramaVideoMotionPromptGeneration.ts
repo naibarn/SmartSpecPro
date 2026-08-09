@@ -1109,7 +1109,7 @@ export async function generateVideoMotionPromptPack(
   const { data: validatedData, response } = generationResult;
   const usedVision = hasVision && "usedVision" in generationResult
     ? generationResult.usedVision
-    : hasVision;
+    : false;
 
   const hasCharacterGrounding = (params.startFrameImages ?? []).some(
     frame => (frame.characterReferenceImages?.length ?? 0) > 0,
@@ -2807,7 +2807,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       seriesId: params.seriesId,
       episodeId: params.episodeId,
       shotNumber: params.shotNumber,
-      usedVision: hasVision,
+      usedVision: outcome.usedVision,
       // Multi-character reference images (multi-character disambiguation
       // fix, `polished-toasting-gadget.md`) — low-cost audit-log aid, per
       // this codebase's "always read audit logs first" convention.
@@ -2861,7 +2861,7 @@ export async function generateVerticalDramaShotVideoPrompt(
     dialogue: data.dialogue,
     creditsUsed,
     model,
-    usedVision: hasVision,
+    usedVision: outcome.usedVision,
     requiredDisclosure: data.requiredDisclosure || undefined,
     audioDirection: resolvedAudioDirection,
     family,
@@ -3428,7 +3428,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       seriesId: params.seriesId,
       episodeId: params.episodeId,
       shotNumber: params.shotNumber,
-      usedVision: hasVision,
+      usedVision: outcome.usedVision,
       segmentCount: params.subShotWindows.length,
       // Multi-character reference images (multi-character disambiguation
       // fix, `polished-toasting-gadget.md`) — low-cost audit-log aid, per
@@ -3489,7 +3489,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     distinctSpeakerCharacterKeys,
     creditsUsed,
     model,
-    usedVision: hasVision,
+    usedVision: outcome.usedVision,
     requiredDisclosure: data.requiredDisclosure || undefined,
     audioDirection: resolvedAudioDirection,
     family,
@@ -3892,7 +3892,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
         seriesId: args.seriesId,
         episodeId: args.episodeId,
         shotNumber: args.shotNumber,
-        usedVision: hasVision,
+        usedVision: outcome.usedVision,
         inputTokens: usage?.prompt_tokens ?? 0,
         outputTokens: usage?.completion_tokens ?? 0,
       },

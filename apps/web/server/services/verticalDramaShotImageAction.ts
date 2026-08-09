@@ -184,8 +184,10 @@ export interface GenerateShotImageActionParams {
    * router's Zod-validated `softenLevel` input, which TypeScript widens to
    * `number` — the actual `[0, VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL]` bound is
    * enforced by that Zod schema, not by this type.
-   */
+  */
   softenLevel?: number;
+  /** Effective image-prompt budget for the selected provider/model. */
+  promptMaxChars?: number;
   idempotencyKey?: string;
 }
 
@@ -218,6 +220,9 @@ export function buildShotImageActionUserPrompt(
     `soften_level: ${params.softenLevel ?? 0}`,
     `locale: ${params.locale ?? "th"}`,
     `shot_number: ${params.shot.shotNumber}`,
+    params.promptMaxChars
+      ? `prompt_max_chars: ${Math.min(20_000, Math.max(3_800, Math.floor(params.promptMaxChars)))}`
+      : null,
     `current_prompt: ${params.shot.currentPrompt}`,
     `current_negative_prompt: ${params.shot.currentNegativePrompt || "(none)"}`,
     params.action === "repair"

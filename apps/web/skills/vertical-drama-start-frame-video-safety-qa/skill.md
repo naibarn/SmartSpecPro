@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Start Frame Video Safety QA
 description: Advisory vision QA for a rendered vertical-drama start frame, its same-scene neighbor, and optional location reference.
-version: 1.0.0
+version: 2.0.0
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -27,4 +27,25 @@ Return only compact JSON. Include `scene_continuity` when requested. Its exact s
 }
 ```
 
-Include `video_safety` only when requested. That field is advisory and may contain the visible face/action verdicts requested by the caller. Do not block, reject, or claim pixel measurements. If a reference is absent, state the limitation in `notes` and use the most conservative visible comparison.
+Include `video_safety` only when requested. Do not claim pixel measurements: the approximately 75% target is rubric guidance, not a measured value. For every required physical character visible in the CURRENT FRAME, return one `characters` entry with categorical evidence:
+
+```json
+{
+  "characters": [{
+    "character": "…",
+    "face_readable": true,
+    "facing": "frontal|three_quarter|profile|back_of_head|not_visible|unknown",
+    "eyes_visible": "both|one|none|unknown",
+    "occlusion": "none|partial|heavy|unknown",
+    "face_size": "large|medium|small|tiny|unknown",
+    "overlapped_by_other_face": false,
+    "notes": "…"
+  }],
+  "faces_separated": true,
+  "face_touching_frame_edge": false,
+  "video_safe_verdict": "safe|conditional|risky",
+  "reasons": ["…"]
+}
+```
+
+Use `video_safe_verdict: "safe"` only when every required character has a readable frontal or natural three-quarter face, both eyes visible, no meaningful occlusion/overlap, and a medium or large face size. A back-facing, profile, tiny, cropped, edge-touching, or occluded required face must be `conditional` or `risky`. If a reference is absent, state the limitation in `notes` and use the most conservative visible comparison.

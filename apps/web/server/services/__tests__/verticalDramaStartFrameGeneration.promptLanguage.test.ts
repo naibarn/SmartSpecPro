@@ -76,6 +76,15 @@ function baseShotParams(
 /* -------------------------------------------------------------------------- */
 
 describe("buildStartFrameRenderPlanUserPrompt — prompt language (shared-field fix)", () => {
+  it("passes the selected image prompt budget to the batch skill", () => {
+    const prompt = buildStartFrameRenderPlanUserPrompt(
+      baseParams({ imagePromptMaxChars: 20_000 }),
+    );
+    expect(prompt).toContain(
+      "PROMPT LENGTH BUDGET (MANDATORY): every generated image prompt and negative prompt must be at or below 20000 characters.",
+    );
+  });
+
   it("defaults to English when promptLanguage is omitted", () => {
     const prompt = buildStartFrameRenderPlanUserPrompt(baseParams());
     expect(prompt).toContain(
@@ -110,6 +119,15 @@ describe("buildStartFrameRenderPlanUserPrompt — prompt language (shared-field 
 /* -------------------------------------------------------------------------- */
 
 describe("buildStartFrameShotPromptUserPrompt — prompt language (shared-field fix)", () => {
+  it("passes the selected image prompt budget to the single-shot skill", () => {
+    const prompt = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({ imagePromptMaxChars: 20_000 }),
+    );
+    expect(prompt).toContain(
+      "PROMPT LENGTH BUDGET (MANDATORY): the generated prompt and negative prompt must be at or below 20000 characters.",
+    );
+  });
+
   it("defaults to English when promptLanguage is omitted", () => {
     const prompt = buildStartFrameShotPromptUserPrompt(baseShotParams());
     expect(prompt).toContain(

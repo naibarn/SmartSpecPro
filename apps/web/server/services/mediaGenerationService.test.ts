@@ -21,7 +21,12 @@ import { scheduleMediaWithLimiter } from "./llmRateLimiter";
 import { auditLogger } from "./auditLogger";
 import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import { getModelById } from "./modelRegistry";
-import { MEDIA_MODELS, MediaGenerationService, resolveReferenceUrl } from "./mediaGenerationService";
+import {
+  buildApiConfigFromModelConfig,
+  MEDIA_MODELS,
+  MediaGenerationService,
+  resolveReferenceUrl,
+} from "./mediaGenerationService";
 import {
   GEMINI_3_1_FLASH_TTS_MAX_SPEAKERS,
   buildGemini31FlashTtsInputFields,
@@ -117,6 +122,29 @@ describe("MEDIA_MODELS — BytePlus ModelArk entries", () => {
     // If ImageModel and VideoModel unions do not include the BytePlus IDs,
     // `npm run check` will fail with type errors.
     expect(true).toBe(true);
+  });
+});
+
+describe("buildApiConfigFromModelConfig", () => {
+  it("preserves nested declarative mode routing and list-valued overrides", () => {
+    const modes = [
+      {
+        id: "image-to-video",
+        when: { minImages: 1, maxImages: 2 },
+        kie_model_id: "minimax-h3/image-to-video",
+        drop_params: ["aspect_ratio"],
+      },
+    ];
+
+    expect(buildApiConfigFromModelConfig({
+      apiConfig: {
+        kie_model_id: "minimax-h3/text-to-video",
+        modes,
+      },
+    })).toMatchObject({
+      kie_model_id: "minimax-h3/text-to-video",
+      modes,
+    });
   });
 });
 
@@ -635,6 +663,42 @@ describe("MediaGenerationService retry behavior", () => {
     const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(payload.extra_params.video_list).toEqual([
       { url: "https://tenant.example.com/api/storage/files/chat/uploads/source.mp4", start: 1, ends: 7 },
+    ]);
+  });
+
+  it("forwards reference audio and the full reference video list for minimax-h3", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateVideoAsync(
+      {
+        prompt: "Follow the referenced motion.",
+        model: "minimax-h3",
+        publicUrl: "https://tenant.example.com",
+        apiConfig: { provider: "kie.ai" },
+        referenceVideoUrls: [
+          "/api/storage/files/chat/uploads/a.mp4",
+          "/api/storage/files/chat/uploads/b.mp4",
+        ],
+        referenceAudioUrls: ["/api/storage/files/chat/uploads/a.mp3"],
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    // The full list must survive — mode routing counts clips, and
+    // reference-to-video takes up to 3.
+    expect(payload.reference_video_urls).toEqual([
+      "https://tenant.example.com/api/storage/files/chat/uploads/a.mp4",
+      "https://tenant.example.com/api/storage/files/chat/uploads/b.mp4",
+    ]);
+    expect(payload.reference_video_url).toBe(
+      "https://tenant.example.com/api/storage/files/chat/uploads/a.mp4",
+    );
+    expect(payload.reference_audio_urls).toEqual([
+      "https://tenant.example.com/api/storage/files/chat/uploads/a.mp3",
     ]);
   });
 

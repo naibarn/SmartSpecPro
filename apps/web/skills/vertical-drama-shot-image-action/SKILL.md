@@ -391,10 +391,11 @@ action):
 
 ## Prompt length limit — MANDATORY
 
-`prompt` MUST be **3800 characters or fewer** (the same hard cap used across every
-other Vertical Drama image-prompt skill in this pipeline). Write vivid, specific
-language within that budget — do not pad with repeated adjectives or restate the
-same detail in multiple phrasings. If a shot's scene content plus this action's
+Keep `prompt` at or below the caller-supplied `prompt_max_chars` budget. Kie.ai
+image models may use up to **20,000 characters**; when no larger budget is
+supplied, use the legacy 3,800-character fallback. Write vivid, specific
+language within the active budget — do not pad with repeated adjectives or
+restate the same detail in multiple phrasings. If a shot's scene content plus this action's
 required instructions would exceed the limit, prioritize (in order): the preserved
 scene content, the identity lock, this action's own mandatory instruction (grid
 layout + no-text, or the repair change) — and compress the least story-critical

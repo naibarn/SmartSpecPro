@@ -76,9 +76,17 @@ class VideoGenerationRequest(BaseModel):
     negative_prompt: Optional[str] = Field(default=None, alias="negativePrompt")
     seed: Optional[int] = None
     reference_video_url: Optional[str] = Field(default=None, alias="referenceVideoUrl")
+    # Node sends the full list (`reference_video_urls`) plus `reference_video_url`
+    # for backwards compatibility. Without the plural field declared here Pydantic
+    # drops it, and multi-clip models (minimax-h3 reference-to-video takes 3,
+    # gemini-omni takes a video_list) silently receive only the first clip.
+    reference_video_urls: Optional[List[str]] = Field(default=None, alias="referenceVideoUrls")
+    reference_audio_urls: Optional[List[str]] = Field(default=None, alias="referenceAudioUrls")
     reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
-    # Per-model API config (passed from Node.js based on configJson)
-    api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
+    # Per-model API config (passed from Node.js based on configJson).
+    # Must stay `Any`-valued: `apiConfig.modes` is a list of nested objects, and a
+    # scalar-only annotation rejects the whole request at validation time.
+    api_config: Optional[Dict[str, Any]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Any]] = Field(default=None, alias="extraParams")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name

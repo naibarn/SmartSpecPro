@@ -18,7 +18,11 @@ import {
 } from "../videoProjectRepairApplier";
 import { VideoProjectDocumentSchema, type VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
 import type { VideoProjectReview } from "../videoProjectQualityLoop";
-import type { VideoProjectQualityMetrics } from "../videoProjectQualityMetrics";
+import {
+  computeLayerCounts,
+  computeSafeAreaViolations,
+  type VideoProjectQualityMetrics,
+} from "../videoProjectQualityMetrics";
 import type { ResolvedCatalogFacts } from "../validateProjectClaims";
 
 /* -------------------------------------------------------------------------- */
@@ -44,6 +48,45 @@ function textLayer(overrides: Record<string, unknown> = {}) {
     color: "#ffffff",
     textAlign: "center",
     fontWeight: "normal",
+    ...overrides,
+  };
+}
+
+function imageLayer(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "layer_image",
+    type: "image",
+    startFrame: 0,
+    durationFrames: 60,
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    rotationDeg: 0,
+    opacity: 1,
+    zIndex: 0,
+    src: "https://cdn.example.com/bg.png",
+    fit: "cover",
+    ...overrides,
+  };
+}
+
+function motionGraphicLayer(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "layer_shape",
+    type: "motionGraphic",
+    startFrame: 0,
+    durationFrames: 60,
+    x: 10,
+    y: 10,
+    width: 20,
+    height: 20,
+    rotationDeg: 0,
+    opacity: 1,
+    zIndex: 0,
+    shape: "circle",
+    color: "#ffffff",
+    loopAnimation: "spin",
     ...overrides,
   };
 }
@@ -86,7 +129,7 @@ function metrics(): VideoProjectQualityMetrics {
   return {
     sceneDurations: [],
     captionCps: [],
-    layerCounts: { perScene: [], total: 0, maxLayersPerScene: 0 },
+    layerCounts: { perScene: [], total: 0, maxLayersPerScene: 0, compiledTotal: 0 },
     safeAreaViolations: [],
     claimCoverage: { coverage: 1, mappedCount: 0, unmappedCount: 0, prohibitedCount: 0 },
     renderCost: { score: 0, cls: "low", recommendPreRender: false },
@@ -281,6 +324,44 @@ describe("applyRepairs — scenes (zero cost)", () => {
     // slack, so nothing can be moved; the stage is a documented no-op.
     expect(result.skipped).toEqual(["scenes"]);
   });
+
+  it("spec 143 §4.9.2 (AC9) — retiming a scene boundary preserves every layer's ABSOLUTE start time", async () => {
+    // SC-1 needs to borrow 3000ms from SC-2 (identical setup to the first
+    // test in this block): SC-1.endMs 1000 -> 4000, SC-2.startMs 1000 -> 4000.
+    // A layer on SC-2 at scene-relative startFrame 240 (8000ms @ 30fps) sits
+    // at ABSOLUTE 1000 + 8000 = 9000ms before the retime.
+    const doc = document({
+      scenes: [
+        scene({ sceneId: "SC-1", startMs: 0, endMs: 1000, narration: "x".repeat(60) }),
+        scene({
+          sceneId: "SC-2",
+          startMs: 1000,
+          endMs: 10000,
+          narration: null,
+          layers: [textLayer({ id: "l1", startFrame: 240 })],
+        }),
+      ],
+    });
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "scenes", instruction: "retime" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    const [s1, s2] = result.document.scenes;
+    expect(s1.endMs).toBe(4000);
+    expect(s2.startMs).toBe(4000);
+    // The layer stayed on SC-2 (absolute 9000ms is still inside SC-2's new
+    // [4000, 10000) span) but its scene-RELATIVE startFrame was recomputed:
+    // (9000 - 4000)ms @ 30fps = frame 150 — NOT the stale 240, which would
+    // have silently placed it at absolute 4000 + 8000 = 12000ms instead.
+    expect(s1.layers).toHaveLength(0);
+    expect(s2.layers).toHaveLength(1);
+    expect(s2.layers[0].startFrame).toBe(150);
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -329,6 +410,356 @@ describe("applyRepairs — motion (zero cost)", () => {
 
     expect(result.skipped).toEqual(["motion"]);
     expect(result.document.scenes[0].motion).toEqual({ intensity: "low", camera: "static" });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* motion — layer-budget report (gap-2: spec 143 §4.9.1 — NEVER deletes a    */
+/* hand-authored layer; every scene.layers[] entry IS hand-authored)         */
+/* -------------------------------------------------------------------------- */
+
+describe("applyRepairs — motion layer-budget report over the 40-layer budget (zero cost)", () => {
+  it("never deletes ANY layer to fix an over-budget document — every scene.layers[] entry is hand-authored (§4.9.1)", async () => {
+    // 45 motionGraphic layers = 45 compiledTotal, 5 over the 40 budget.
+    // Pre-143 behavior would have dropped 5 of these (the exact type this
+    // fix removes the deletion carve-out for); the new rule deletes NOTHING.
+    const shapeLayers = Array.from({ length: 45 }, (_, i) => motionGraphicLayer({ id: `s${i}`, zIndex: i }));
+    const doc = document({
+      scenes: [scene({ sceneId: "SC-1", layers: shapeLayers })],
+    });
+    expect(computeLayerCounts(doc).compiledTotal).toBe(45);
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "motion", instruction: "thin it out" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    // The clutter threshold (>8 layers) still steps the scene's motion
+    // intensity down (medium -> low), so this stage IS "applied" — but not a
+    // single layer is removed, regardless of type.
+    expect(result.applied).toEqual(["motion"]);
+    expect(result.document.scenes[0].motion.intensity).toBe("low");
+    expect(result.document.scenes[0].layers).toHaveLength(45);
+    expect(computeLayerCounts(result.document).compiledTotal).toBe(45);
+    const motionNote = result.notes.find(n => n.stage === "motion");
+    expect(motionNote?.reason).toMatch(/hand-authored/);
+  });
+
+  it("still reports the overage via a note when there is no other motion change to make (no silent convergence)", async () => {
+    // Motion intensity already "low" (a no-op step-down) isolates the
+    // report path from the intensity-change path.
+    const textLayers = Array.from({ length: 45 }, (_, i) => textLayer({ id: `t${i}` }));
+    const doc = document({
+      scenes: [scene({ sceneId: "SC-1", layers: textLayers, motion: { intensity: "low", camera: "static" } })],
+    });
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "motion", instruction: "thin it out" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    // No layer dropped, no motion field changed -> the stage is SKIPPED, but
+    // the overage is still surfaced in `notes`, never silently swallowed.
+    expect(result.skipped).toEqual(["motion"]);
+    expect(result.document.scenes[0].layers).toHaveLength(45);
+    const motionNote = result.notes.find(n => n.stage === "motion");
+    expect(motionNote?.reason).toMatch(/over layer budget by 5/);
+  });
+
+  it("the budget check uses compiledTotal (scene + template + caption + audio), not the scene-layers-only `total`", async () => {
+    // Only 5 hand-authored layers (well under 40 on `total`), but 20
+    // caption cues with burn-in off push `compiledTotal` over budget. The
+    // pre-143 bug compared against `total` (5) and never flagged this at
+    // all.
+    const cues = Array.from({ length: 38 }, (_, i) => ({ startMs: i * 100, endMs: i * 100 + 90, text: "x" }));
+    const doc = document({
+      captions: { presetId: "classic_box", burnIn: false, language: "en" },
+      scenes: [
+        scene({
+          sceneId: "SC-1",
+          layers: [textLayer({ id: "t0" }), textLayer({ id: "t1" }), textLayer({ id: "t2" })],
+          captionCues: cues,
+        }),
+      ],
+    });
+    expect(computeLayerCounts(doc).total).toBe(3);
+    expect(computeLayerCounts(doc).compiledTotal).toBe(41);
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "motion", instruction: "thin it out" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    const motionNote = result.notes.find(n => n.stage === "motion");
+    expect(motionNote?.reason).toMatch(/over layer budget by 1/);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* layout (gap-1: safe-area violations unrepairable)                         */
+/* -------------------------------------------------------------------------- */
+
+describe("applyRepairs — layout (zero cost)", () => {
+  it("clamps an out-of-safe-area layer back inside the platform preset's safe rectangle", async () => {
+    // tiktok_9_16 safe rect: left 5, top 10, right 85, bottom 80 (100-15/-20).
+    const doc = document({
+      scenes: [scene({ sceneId: "SC-1", layers: [textLayer({ id: "l1", x: 0, y: 5, width: 20, height: 10 })] })],
+    });
+    expect(computeSafeAreaViolations(doc)).toHaveLength(1);
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "layout", instruction: "fix placement" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    expect(result.applied).toEqual(["layout"]);
+    const layer = result.document.scenes[0].layers[0] as { x: number; y: number; width: number; height: number };
+    expect(layer.x).toBeGreaterThanOrEqual(5);
+    expect(layer.y).toBeGreaterThanOrEqual(10);
+    expect(layer.x + layer.width).toBeLessThanOrEqual(85);
+    expect(layer.y + layer.height).toBeLessThanOrEqual(80);
+  });
+
+  it("spec 143 §4.9.1 — a full-bleed background survives a layout repair round completely unchanged", async () => {
+    // Full-bleed (x0 y0 w100 h100) is ALWAYS a safe-area violation for
+    // tiktok_9_16 (insets top10/bottom20/left5/right15) — this is the exact
+    // scenario the spec's changelog calls out as "one QA round would turn
+    // the user's background into an inset box".
+    const doc = document({
+      scenes: [
+        scene({
+          sceneId: "SC-1",
+          layers: [imageLayer({ id: "bg", x: 0, y: 0, width: 100, height: 100, role: "background" })],
+        }),
+      ],
+    });
+    // Confirm the exemption at the metric layer too — no violation is even
+    // reported for a background-role layer.
+    expect(computeSafeAreaViolations(doc)).toEqual([]);
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "layout", instruction: "fix placement" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    expect(result.skipped).toEqual(["layout"]);
+    expect(result.document.scenes[0].layers).toEqual(doc.scenes[0].layers);
+  });
+
+  it("spec 143 §4.9.1 — a full-bleed layer is exempt even WITHOUT `role: 'background'` set", async () => {
+    const doc = document({
+      scenes: [scene({ sceneId: "SC-1", layers: [imageLayer({ id: "bg", x: 0, y: 0, width: 100, height: 100 })] })],
+    });
+    expect(computeSafeAreaViolations(doc)).toEqual([]);
+  });
+
+  it("spec 143 §4.9.1 — a locked layer is skipped by the layout handler even though it stays flagged", async () => {
+    const lockedLayer = textLayer({ id: "l1", x: 0, y: 5, width: 20, height: 10, locked: true });
+    const doc = document({ scenes: [scene({ sceneId: "SC-1", layers: [lockedLayer] })] });
+    // The metric itself still reports it — `locked` protects it from being
+    // MUTATED, not from being reported to the QA panel.
+    expect(computeSafeAreaViolations(doc)).toHaveLength(1);
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "layout", instruction: "fix placement" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    expect(result.skipped).toEqual(["layout"]);
+    expect(result.document.scenes[0].layers[0]).toEqual(doc.scenes[0].layers[0]);
+    const layoutNote = result.notes.find(n => n.stage === "layout");
+    expect(layoutNote?.reason).toMatch(/locked/);
+  });
+
+  it("leaves a compliant layer byte-identical and skips the stage", async () => {
+    const doc = document({
+      scenes: [scene({ sceneId: "SC-1", layers: [textLayer({ id: "l1", x: 10, y: 15, width: 20, height: 10 })] })],
+    });
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "layout", instruction: "fix placement" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    expect(result.skipped).toEqual(["layout"]);
+    expect(result.document.scenes[0].layers).toEqual(doc.scenes[0].layers);
+  });
+
+  it("never touches an audio layer even if its box would technically violate the safe area", async () => {
+    const doc = document({
+      scenes: [
+        scene({
+          sceneId: "SC-1",
+          layers: [
+            {
+              id: "a1",
+              type: "audio",
+              startFrame: 0,
+              durationFrames: 60,
+              x: 0,
+              y: 0,
+              width: 10,
+              height: 10,
+              rotationDeg: 0,
+              opacity: 1,
+              zIndex: 0,
+              src: "https://example.com/a.mp3",
+              trimStartSec: 0,
+              volume: 1,
+              loop: false,
+              fadeInMs: 0,
+              fadeOutMs: 0,
+            },
+          ],
+        }),
+      ],
+    });
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "layout", instruction: "fix placement" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    // computeSafeAreaViolations skips audio layers entirely, so there is no
+    // target for the layout handler in the first place.
+    expect(result.skipped).toEqual(["layout"]);
+    expect(result.document.scenes[0].layers[0]).toEqual(doc.scenes[0].layers[0]);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Convergence round-trips: the whole point of this section — a metric that   */
+/* flags an issue must STOP flagging it once the matching repair has run.     */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Feature 143 §4.9.1 (P0 regression) — hand-authored layers survive a FULL   */
+/* multi-stage repair round, not just one handler in isolation.              */
+/* -------------------------------------------------------------------------- */
+
+describe("applyRepairs — a full repair round never destroys or deforms a hand-authored layer", () => {
+  it("a locked out-of-bounds layer + a full-bleed background layer both survive every deterministic stage untouched", async () => {
+    const lockedOutOfBounds = textLayer({ id: "locked_l1", x: 0, y: 5, width: 20, height: 10, locked: true });
+    const fullBleedBackground = imageLayer({ id: "bg1", x: 0, y: 0, width: 100, height: 100, role: "background" });
+    const cluttering = Array.from({ length: 10 }, (_, i) => motionGraphicLayer({ id: `deco_${i}`, zIndex: i }));
+
+    const doc = document({
+      scenes: [
+        scene({
+          sceneId: "SC-1",
+          narration: "x".repeat(300), // duration-flagged -> triggers `scenes` + `motion` too
+          layers: [lockedOutOfBounds, fullBleedBackground, ...cluttering],
+        }),
+      ],
+    });
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({
+        repairInstructions: [
+          { stage: "captions", instruction: "tighten" },
+          { stage: "scenes", instruction: "retime" },
+          { stage: "motion", instruction: "calm it down" },
+          { stage: "layout", instruction: "fix placement" },
+        ],
+      }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    const finalLayers = result.document.scenes[0].layers;
+    // Every ORIGINAL layer id is still present — nothing was ever deleted.
+    const finalIds = new Set(finalLayers.map(l => l.id));
+    expect(finalIds.has("locked_l1")).toBe(true);
+    expect(finalIds.has("bg1")).toBe(true);
+    for (const deco of cluttering) expect(finalIds.has(deco.id as string)).toBe(true);
+    expect(finalLayers).toHaveLength(2 + cluttering.length);
+
+    // The locked layer is byte-identical (never clamped despite being
+    // flagged) and the full-bleed background is byte-identical (never even
+    // flagged, being exempt by `role`).
+    const finalLocked = finalLayers.find(l => l.id === "locked_l1");
+    const finalBg = finalLayers.find(l => l.id === "bg1");
+    expect(finalLocked).toEqual(lockedOutOfBounds);
+    expect(finalBg).toEqual(fullBleedBackground);
+  });
+});
+
+describe("QA loop convergence — metric flags -> repair applies -> metric no longer flags", () => {
+  it("safe-area: computeSafeAreaViolations flags the layer, applyRepairs(layout) clamps it, computeSafeAreaViolations no longer flags it", async () => {
+    const doc = document({
+      scenes: [
+        scene({
+          sceneId: "SC-1",
+          layers: [
+            textLayer({ id: "l1", x: 0, y: 0, width: 30, height: 30 }),
+            textLayer({ id: "l2", x: 95, y: 95, width: 20, height: 20 }),
+          ],
+        }),
+      ],
+    });
+    expect(computeSafeAreaViolations(doc).map(v => v.layerId).sort()).toEqual(["l1", "l2"]);
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "layout", instruction: "fix placement" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    expect(result.applied).toEqual(["layout"]);
+    expect(computeSafeAreaViolations(result.document)).toEqual([]);
+  });
+
+  it("layer-count (spec 143 §4.9.1): computeLayerCounts flags the document over budget, and applyRepairs(motion) reports it WITHOUT deleting any layer or falsely converging the count", async () => {
+    const textLayers = Array.from({ length: 30 }, (_, i) => textLayer({ id: `t${i}` }));
+    const shapeLayers = Array.from({ length: 20 }, (_, i) => motionGraphicLayer({ id: `s${i}`, zIndex: i }));
+    const doc = document({
+      scenes: [scene({ sceneId: "SC-1", layers: [...textLayers, ...shapeLayers] })],
+    });
+    expect(computeLayerCounts(doc).compiledTotal).toBe(50);
+    expect(computeLayerCounts(doc).compiledTotal).toBeGreaterThan(40);
+
+    const result = await applyRepairs({
+      document: doc,
+      review: review({ repairInstructions: [{ stage: "motion", instruction: "thin it out" }] }),
+      resolvedCatalog: null,
+      effects: makeRepairEffects(),
+      recomputeMetrics: noopRecompute,
+    });
+
+    // Motion intensity still steps down (clutter-flagged), so the stage is
+    // "applied" — but the layer count is UNCHANGED and still over budget:
+    // there is no deterministic, non-destructive way to shrink it here.
+    expect(result.applied).toEqual(["motion"]);
+    expect(computeLayerCounts(result.document).compiledTotal).toBe(50);
+    expect(result.document.scenes[0].layers).toHaveLength(50);
   });
 });
 

@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -58,6 +59,9 @@ interface ModelSelectorDialogProps {
   onSelect: (modelId: string) => void;
   mediaType: "image" | "video" | "audio";
   isLoading?: boolean;
+  /** True when the catalog request failed after retries. Cached models still render. */
+  loadError?: boolean;
+  onRetry?: () => void;
 }
 
 const getProviderId = (model: MediaModel) => model.providerId ?? model.provider;
@@ -99,6 +103,8 @@ export default function ModelSelectorDialog({
   onSelect,
   mediaType,
   isLoading,
+  loadError = false,
+  onRetry,
 }: ModelSelectorDialogProps) {
   const { locale } = useScopedTranslation(["media", "common"]);
   const isThai = locale === "th";
@@ -232,6 +238,23 @@ export default function ModelSelectorDialog({
         )}
 
         {/* Content - scrollable model list */}
+        {loadError ? (
+          <div
+            className="flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm"
+            role="alert"
+          >
+            <span>
+              {isThai
+                ? "โหลดรายการโมเดลไม่สำเร็จ รายการเดิมที่มีอยู่ยังใช้ได้"
+                : "Could not load the model catalog. Previously loaded models remain available."}
+            </span>
+            {onRetry ? (
+              <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+                {isThai ? "ลองใหม่" : "Retry"}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
@@ -259,7 +282,7 @@ export default function ModelSelectorDialog({
               ))}
 
               {/* No results */}
-              {filteredModels.length === 0 && (
+              {filteredModels.length === 0 && !loadError && (
                 <div className="text-center py-12 text-muted-foreground">
                   <Bot className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>{isThai ? "ไม่พบโมเดล" : "No models found"}</p>

@@ -292,7 +292,7 @@ export const VD_COPY = {
     selectModelCta: "Select model",
 
     /* ---- Shot reference strip (Phase 2.5) ---- */
-    references: "References",
+    references: "Generation history",
     addReference: "Add reference",
     removeReference: "Remove reference",
     removeReferenceConfirm:
@@ -1023,7 +1023,7 @@ export const VD_COPY = {
     selectModelCta: "เลือกโมเดล",
 
     /* ---- Shot reference strip (Phase 2.5) ---- */
-    references: "ภาพอ้างอิง",
+    references: "ประวัติการสร้างภาพ",
     addReference: "เพิ่มภาพอ้างอิง",
     removeReference: "ลบภาพอ้างอิง",
     removeReferenceConfirm:

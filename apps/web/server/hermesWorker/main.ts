@@ -32,6 +32,7 @@ import { debugError, debugLog } from "../_core/logger";
 import { createControlPlaneClient } from "./controlPlaneClient";
 import { provisionHermes, type HermesProbeSpawnResult } from "./hermesInstallation";
 import { buildHermesChildEnv, runHermes, type HermesChildProcessLike, type HermesSpawnFn } from "./hermesInvocation";
+import { hermesFfprobe } from "./ffprobeRunner";
 import { createJobHandlers } from "./jobHandlers";
 import { persistHermesRefreshToken, readHermesRefreshToken } from "./refreshTokenStore";
 import { createWorkspaceManager } from "./workspace";
@@ -133,6 +134,10 @@ export async function runHermesSharedWorker(): Promise<void> {
     strategy: provisioned.strategy,
     workspaceManager,
     spawnImpl,
+    // MUST be wired: `outputCollector`'s default prober fails closed, so
+    // omitting this rejects EVERY video output as "failed ffprobe video
+    // validation" no matter how valid the file is (bug found 2026-08-02).
+    ffprobeImpl: (filePath) => hermesFfprobe(filePath),
     logger,
     config: {
       globalMaxConcurrent: maxConcurrent,
@@ -174,7 +179,13 @@ export async function runHermesSharedWorker(): Promise<void> {
   while (!draining) {
     try {
       const freeDiskBytes = await workspaceManager.freeDiskBytes();
-      await client.heartbeat({ freeDiskBytes, activeJobIds: [], runtimeMetadataJson }).catch((error) => {
+      // Real active job IDs, never a hardcoded [] — the control plane only
+      // renews this worker's job leases when the heartbeat reports
+      // `currentJobCount > 0`. An empty report during a long device-code
+      // authorize let the lease lapse at DEFAULT_LEASE_TTL_MS and the job
+      // get re-claimed mid-flow with a second, conflicting device code.
+      const activeJobIds = handlers.activeJobIds();
+      await client.heartbeat({ freeDiskBytes, activeJobIds, runtimeMetadataJson }).catch((error) => {
         debugError(LOG_CATEGORY, "heartbeat failed", error);
       });
 

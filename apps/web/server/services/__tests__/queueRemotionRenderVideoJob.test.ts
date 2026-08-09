@@ -13,7 +13,9 @@ import {
 } from "../workerSchedulerService";
 import {
   HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
+  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
   REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
 } from "../../../shared/workerRuntime";
 
 let fixtureCounter = 0;
@@ -26,7 +28,7 @@ function buildInput(
   return {
     kind: "remotion_render_video",
     schemaVersion: 1,
-    platformContractVersion: "2026-07-12",
+    platformContractVersion: REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
     rendererPolicyVersion: "remotion-1",
     videoProjectId: `vproj_${n}`,
     projectRevision: 1,
@@ -125,6 +127,7 @@ describe("queueRemotionRenderVideoJob", () => {
       expect.objectContaining({
         capabilityRequirementsJson: expect.objectContaining({
           capabilityFamilies: [...REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES],
+          requiredClaimCapability: REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
         }),
       }),
     );
@@ -150,8 +153,39 @@ describe("queueRemotionRenderVideoJob", () => {
     expect(
       workerJobMatchesSelection(insertedJob, "remotion-worker", [
         ...REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+        REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
       ]),
     ).toBe(true);
+  });
+
+  it("does not match an older Remotion worker even when it advertises the generic families", async () => {
+    const input = buildInput();
+    await queueRemotionRenderVideoJob(input, { repo: repo as any, reserveCredits, getFeatureFlags });
+    const insertedJob = repo.insertJob.mock.calls[0]![0] as Record<string, unknown>;
+
+    expect(
+      workerJobMatchesSelection(insertedJob, "old-remotion-worker", [
+        ...REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+      ]),
+    ).toBe(false);
+  });
+
+  it("does not claim a legacy queued payload even with a current worker token", () => {
+    expect(
+      workerJobMatchesSelection(
+        {
+          jobType: "remotion_render_video",
+          capabilityRequirementsJson: {
+            capabilityFamilies: [...REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES],
+          },
+          inputJson: {
+            platformContractVersion: "2026-07-12",
+          },
+        },
+        "current-remotion-worker",
+        [REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY],
+      ),
+    ).toBe(false);
   });
 
   it("reserves credits before insert", async () => {

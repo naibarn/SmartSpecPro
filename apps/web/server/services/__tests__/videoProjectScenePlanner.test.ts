@@ -13,6 +13,8 @@ import {
   planScenes,
   MAX_RENDERABLE_LAYERS,
   SCENE_PLAN_REPORTABLE_GAP_MS,
+  rehomeLayersForSceneTimingChange,
+  forecastPostStageLayerCount,
   type ScenePlanEffects,
   type ScenePlanSkillOutput,
 } from "../videoProjectScenePlanner";
@@ -22,6 +24,9 @@ import {
   type Scene,
 } from "@shared/videoIntelligence/projectSchemas";
 import type { ResolvedCatalogFacts } from "../validateProjectClaims";
+import type { BrandKit } from "@shared/videoIntelligence/brandKit";
+import { compileVideoProject } from "../videoProjectCompiler";
+import { MOTION_TEMPLATE_REGISTRY } from "../../remotion/templates";
 
 /* -------------------------------------------------------------------------- */
 /* Fixtures                                                                    */
@@ -110,6 +115,17 @@ function baseArgs(overrides: Record<string, unknown> = {}) {
 /* -------------------------------------------------------------------------- */
 
 describe("planScenes — happy path", () => {
+  it("passes the selected motion style to the skill as brief context", async () => {
+    const runPlanSkill = vi.fn(async () => twoSceneKineticOutput());
+    const effects = makeEffects({ runPlanSkill });
+
+    await planScenes(baseArgs({ effects, briefMotionStyle: "data_story" }));
+
+    expect(runPlanSkill).toHaveBeenCalledWith(expect.objectContaining({
+      brief: expect.objectContaining({ motionStyle: "data_story" }),
+    }));
+  });
+
   it("produces a document whose scenes carry real templateIds and bound params", async () => {
     const effects = makeEffects({ runPlanSkill: vi.fn(async () => twoSceneKineticOutput()) });
     let persisted: VideoProjectDocument | undefined;
@@ -838,39 +854,50 @@ describe("planScenes — re-run semantics", () => {
     });
   });
 
-  it("fill_empty does not overwrite a scene that already has author layers", async () => {
+  // Feature 143 §4.9.3 / D2 (P0, was silently destructive): "empty" for
+  // fill_empty means NO NARRATION and NO TEMPLATE, NOT "no layers". Before
+  // this fix, `scene.layers.length === 0` going false the moment a user
+  // placed one hand-authored layer would silently remove that scene from
+  // `fill_empty` planning FOREVER (auto-draft would never plan its visual).
+  const manualTextLayer = {
+    id: "manual",
+    type: "text",
+    startFrame: 0,
+    durationFrames: 30,
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
+    rotationDeg: 0,
+    opacity: 1,
+    zIndex: 0,
+    content: "manual",
+    fontFamily: "Inter",
+    fontSizePx: 20,
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "normal",
+  };
+
+  it("a scene with hand-authored layers but no narration/template IS plannable in fill_empty (§4.9.3/D2)", async () => {
     const document = buildDocument({
       scenes: [
-        scene("s1", {
-          endMs: 5000,
-          layers: [
-            {
-              id: "manual",
-              type: "text",
-              startFrame: 0,
-              durationFrames: 30,
-              x: 0,
-              y: 0,
-              width: 10,
-              height: 10,
-              rotationDeg: 0,
-              opacity: 1,
-              zIndex: 0,
-              content: "manual",
-              fontFamily: "Inter",
-              fontSizePx: 20,
-              color: "#fff",
-              textAlign: "center",
-              fontWeight: "normal",
-            },
-          ],
-        }),
+        scene("s1", { endMs: 5000, layers: [manualTextLayer] }),
         scene("s2", { startMs: 5000, endMs: 10000 }),
       ],
     });
     const effects = makeEffects({
       runPlanSkill: vi.fn(async () => ({
         scenes: [
+          {
+            sceneId: "s1",
+            templateId: "kinetic_typography",
+            templateParams: { words: ["New"] },
+            startMs: 0,
+            endMs: 5000,
+            rationale: "x",
+            onScreenStatements: [],
+          },
           {
             sceneId: "s2",
             templateId: "kinetic_typography",
@@ -887,8 +914,50 @@ describe("planScenes — re-run semantics", () => {
 
     const result = await planScenes(baseArgs({ document, mode: "fill_empty", effects }));
 
+    // Both scenes were plannable (s1 despite having a layer) and the skill's
+    // plan for BOTH was applied.
     expect(result.skippedSceneIds).toEqual([]);
+    expect(result.plannedSceneIds.sort()).toEqual(["s1", "s2"]);
+  });
+
+  it("if the skill leaves the layered-but-empty scene untouched, it is reported in skippedSceneIds — NOT silently excluded from planning forever, and its layer survives", async () => {
+    const document = buildDocument({
+      scenes: [
+        scene("s1", { endMs: 5000, layers: [manualTextLayer] }),
+        scene("s2", { startMs: 5000, endMs: 10000 }),
+      ],
+    });
+    let persisted: VideoProjectDocument | undefined;
+    const effects = makeEffects({
+      runPlanSkill: vi.fn(async () => ({
+        scenes: [
+          {
+            sceneId: "s2",
+            templateId: "kinetic_typography",
+            templateParams: { words: ["New"] },
+            startMs: 5000,
+            endMs: 10000,
+            rationale: "x",
+            onScreenStatements: [],
+          },
+        ],
+        summary: "x",
+      })),
+      persistDocument: vi.fn(async doc => {
+        persisted = doc;
+        return { revision: 1 };
+      }),
+    });
+
+    const result = await planScenes(baseArgs({ document, mode: "fill_empty", effects }));
+
+    // s1 WAS offered to the skill (it is plannable) — the skill simply chose
+    // not to plan it this round, which is a legitimate "skipped", never a
+    // silent permanent exclusion.
+    expect(result.skippedSceneIds).toEqual(["s1"]);
     expect(result.plannedSceneIds).toEqual(["s2"]);
+    // The hand-authored layer survives untouched either way.
+    expect(persisted!.scenes.find(s => s.sceneId === "s1")!.layers).toEqual([manualTextLayer]);
   });
 
   it("fill_empty reports untouched scenes in skippedSceneIds", async () => {
@@ -1120,7 +1189,390 @@ describe("planScenes — isolation", () => {
 
     expect((capturedInput as { catalogFacts: unknown }).catalogFacts).toEqual({
       productIds: ["p1"],
-      claims: [{ claim: "Waterproof", source: "catalog", status: "approved" }],
+      claims: [{
+        claim: expect.stringContaining("Waterproof"),
+        source: expect.stringContaining("catalog"),
+        status: "approved",
+      }],
     });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* R10 self-heal — deterministically re-apply locked brand tokens             */
+/* -------------------------------------------------------------------------- */
+
+describe("planScenes — R10 self-heal (locked brand tokens)", () => {
+  const brandKitLocks: BrandKit = {
+    colors: { primary: "#111111" },
+    fonts: { heading: "Inter", body: "Inter" },
+    captionPresetId: null,
+    locks: { motionIntensity: true, cta: true },
+  };
+
+  function fakeAssetResolver() {
+    return { url: (id: number | string) => `https://cdn.example.com/${id}`, sha256: () => undefined };
+  }
+
+  it("forces motion.intensity to agree across the scenes this round touched when motionIntensity is locked, and the healed document does not throw at compile", async () => {
+    const output: ScenePlanSkillOutput = {
+      scenes: [
+        {
+          sceneId: "s1",
+          templateId: "kinetic_typography",
+          templateParams: { words: ["Hello"] },
+          startMs: 0,
+          endMs: 5000,
+          motion: { intensity: "low", camera: "static" },
+          rationale: "hook",
+          onScreenStatements: [],
+        },
+        {
+          sceneId: "s2",
+          templateId: "kinetic_typography",
+          templateParams: { words: ["Buy"] },
+          startMs: 5000,
+          endMs: 10000,
+          motion: { intensity: "high", camera: "static" },
+          rationale: "cta",
+          onScreenStatements: [],
+        },
+      ],
+      summary: "two scenes",
+    };
+    const effects = makeEffects({ runPlanSkill: vi.fn(async () => output) });
+    let persisted: VideoProjectDocument | undefined;
+    effects.persistDocument = vi.fn(async doc => {
+      persisted = doc;
+      return { revision: 1 };
+    });
+
+    await planScenes(baseArgs({ effects, resolvedBrandKit: brandKitLocks }));
+
+    expect(persisted!.scenes[0].motion.intensity).toBe(persisted!.scenes[1].motion.intensity);
+
+    // The self-healed document must survive the REAL compiler's brand-lock
+    // enforcement with the real brand kit — proving R10's "self-healing
+    // instead of unrenderable", not just a passing test assertion.
+    expect(() =>
+      compileVideoProject(
+        persisted!,
+        { format: persisted!.format, brandKit: brandKitLocks, assetResolver: fakeAssetResolver() },
+        { resolveTemplate: id => MOTION_TEMPLATE_REGISTRY[id as keyof typeof MOTION_TEMPLATE_REGISTRY] },
+      ),
+    ).not.toThrow();
+  });
+
+  it("forces luxury_end_card ctaText to agree across the scenes this round touched when cta is locked, and the healed document does not throw at compile", async () => {
+    const output: ScenePlanSkillOutput = {
+      scenes: [
+        {
+          sceneId: "s1",
+          templateId: "luxury_end_card",
+          templateParams: { ctaText: "Shop Now" },
+          startMs: 0,
+          endMs: 4000,
+          rationale: "cta 1",
+          onScreenStatements: [],
+        },
+        {
+          sceneId: "s2",
+          templateId: "luxury_end_card",
+          templateParams: { ctaText: "Buy Today" },
+          startMs: 4000,
+          endMs: 8000,
+          rationale: "cta 2",
+          onScreenStatements: [],
+        },
+      ],
+      summary: "two cta scenes",
+    };
+    const effects = makeEffects({ runPlanSkill: vi.fn(async () => output) });
+    let persisted: VideoProjectDocument | undefined;
+    effects.persistDocument = vi.fn(async doc => {
+      persisted = doc;
+      return { revision: 1 };
+    });
+
+    await planScenes(
+      baseArgs({
+        effects,
+        resolvedBrandKit: brandKitLocks,
+        document: buildDocument({ format: { width: 1080, height: 1920, fps: 30, durationMs: 8000 } }),
+      }),
+    );
+
+    const params0 = (persisted!.scenes[0].visual as { params: Record<string, unknown> }).params;
+    const params1 = (persisted!.scenes[1].visual as { params: Record<string, unknown> }).params;
+    expect(params0.ctaText).toBe(params1.ctaText);
+
+    expect(() =>
+      compileVideoProject(
+        persisted!,
+        { format: persisted!.format, brandKit: brandKitLocks, assetResolver: fakeAssetResolver() },
+        { resolveTemplate: id => MOTION_TEMPLATE_REGISTRY[id as keyof typeof MOTION_TEMPLATE_REGISTRY] },
+      ),
+    ).not.toThrow();
+  });
+
+  it("never rewrites an untouched preserved scene, even if its value disagrees with the healed canonical", async () => {
+    const preservedScene = scene("s1", {
+      visual: { kind: "template", templateId: "kinetic_typography", params: { words: ["Existing"] } },
+      motion: { intensity: "high", camera: "static" },
+    });
+    const doc = buildDocument({
+      scenes: [preservedScene, scene("s2", { startMs: 5000, endMs: 10000 })],
+    });
+    const output: ScenePlanSkillOutput = {
+      scenes: [
+        {
+          sceneId: "s2",
+          templateId: "kinetic_typography",
+          templateParams: { words: ["New"] },
+          startMs: 5000,
+          endMs: 10000,
+          motion: { intensity: "low", camera: "static" },
+          rationale: "cta",
+          onScreenStatements: [],
+        },
+      ],
+      summary: "one scene",
+    };
+    const effects = makeEffects({ runPlanSkill: vi.fn(async () => output) });
+    let persisted: VideoProjectDocument | undefined;
+    effects.persistDocument = vi.fn(async d => {
+      persisted = d;
+      return { revision: 1 };
+    });
+
+    await planScenes(baseArgs({ document: doc, effects, resolvedBrandKit: brandKitLocks }));
+
+    expect(persisted!.scenes.find(s => s.sceneId === "s1")!.motion.intensity).toBe("high");
+  });
+
+  it("is a no-op when resolvedBrandKit is omitted or has no relevant lock set", async () => {
+    const effects = makeEffects({ runPlanSkill: vi.fn(async () => twoSceneKineticOutput()) });
+    let persisted: VideoProjectDocument | undefined;
+    effects.persistDocument = vi.fn(async doc => {
+      persisted = doc;
+      return { revision: 1 };
+    });
+
+    await planScenes(baseArgs({ effects, resolvedBrandKit: null }));
+
+    expect(persisted!.scenes[0].motion.intensity).toBe("medium");
+    expect(persisted!.scenes[1].motion.intensity).toBe("medium");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Feature 143 §4.9.2 (AC9) — rehomeLayersForSceneTimingChange                */
+/* -------------------------------------------------------------------------- */
+
+describe("rehomeLayersForSceneTimingChange", () => {
+  const fps = 30;
+
+  function layer(id: string, startFrame: number): Scene["layers"][number] {
+    return {
+      id,
+      type: "text",
+      startFrame,
+      durationFrames: 30,
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 0,
+      content: "x",
+      fontFamily: "Inter",
+      fontSizePx: 20,
+      color: "#fff",
+      textAlign: "center",
+      fontWeight: "normal",
+    };
+  }
+
+  it("recomputes startFrame so a layer's ABSOLUTE start survives a same-scene retime", () => {
+    const before = [{ sceneId: "s1", startMs: 1000 }];
+    // Layer at relative frame 60 (2000ms @ 30fps) -> absolute 1000+2000=3000ms.
+    const after: Scene[] = [
+      {
+        sceneId: "s1",
+        startMs: 4000,
+        endMs: 12000,
+        narration: null,
+        narrationAudioAssetId: null,
+        visual: { kind: "layers" },
+        layers: [layer("l1", 60)],
+        motion: { intensity: "medium", camera: "static" },
+        captionCues: [],
+      },
+    ];
+
+    const result = rehomeLayersForSceneTimingChange(before, after, fps);
+
+    // 3000ms is BEFORE the scene's new startMs (4000) -> clamped to 0, the
+    // "no scene contains it, fall back to original scene, clamp >= 0" path.
+    expect(result[0].layers[0].startFrame).toBe(0);
+  });
+
+  it("migrates a layer to a DIFFERENT scene when its absolute position now falls inside that scene's new span", () => {
+    const before = [
+      { sceneId: "s1", startMs: 0 },
+      { sceneId: "s2", startMs: 1000 },
+    ];
+    // Layer on s2 at relative frame 240 (8000ms) -> absolute 1000+8000=9000ms.
+    const after: Scene[] = [
+      {
+        sceneId: "s1",
+        startMs: 0,
+        endMs: 10000, // grew past the layer's absolute 9000ms position
+        narration: null,
+        narrationAudioAssetId: null,
+        visual: { kind: "layers" },
+        layers: [],
+        motion: { intensity: "medium", camera: "static" },
+        captionCues: [],
+      },
+      {
+        sceneId: "s2",
+        startMs: 10000,
+        endMs: 15000,
+        narration: null,
+        narrationAudioAssetId: null,
+        visual: { kind: "layers" },
+        layers: [layer("l1", 240)],
+        motion: { intensity: "medium", camera: "static" },
+        captionCues: [],
+      },
+    ];
+
+    const result = rehomeLayersForSceneTimingChange(before, after, fps);
+
+    const s1 = result.find(s => s.sceneId === "s1")!;
+    const s2 = result.find(s => s.sceneId === "s2")!;
+    expect(s2.layers).toHaveLength(0);
+    expect(s1.layers).toHaveLength(1);
+    // 9000ms absolute, now inside s1 [0, 10000) -> relative frame = 9000ms @ 30fps = 270.
+    expect(s1.layers[0].startFrame).toBe(270);
+  });
+
+  it("is a byte-identical no-op for a scene whose startMs did not change", () => {
+    const before = [{ sceneId: "s1", startMs: 1000 }];
+    const original = layer("l1", 15);
+    const after: Scene[] = [
+      {
+        sceneId: "s1",
+        startMs: 1000,
+        endMs: 6000,
+        narration: null,
+        narrationAudioAssetId: null,
+        visual: { kind: "layers" },
+        layers: [original],
+        motion: { intensity: "medium", camera: "static" },
+        captionCues: [],
+      },
+    ];
+
+    const result = rehomeLayersForSceneTimingChange(before, after, fps);
+
+    expect(result[0].layers[0]).toBe(original);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Feature 143 §4.9.2 (AC9) — planScenes preserves absolute layer time        */
+/* -------------------------------------------------------------------------- */
+
+describe("planScenes — §4.9.2 absolute-time layer preservation (AC9)", () => {
+  it("a re-plan that retimes an existing scene re-homes its hand-authored layer so its absolute time is unchanged", async () => {
+    const layer1 = {
+      id: "manual1",
+      type: "text" as const,
+      startFrame: 30, // 1000ms @ 30fps, relative to s1's OLD startMs (0) -> absolute 1000ms
+      durationFrames: 30,
+      x: 0,
+      y: 0,
+      width: 10,
+      height: 10,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 0,
+      content: "manual",
+      fontFamily: "Inter",
+      fontSizePx: 20,
+      color: "#fff",
+      textAlign: "center" as const,
+      fontWeight: "normal" as const,
+    };
+    const document = buildDocument({
+      scenes: [scene("s1", { endMs: 5000, layers: [layer1] })],
+    });
+    let persisted: VideoProjectDocument | undefined;
+    const effects = makeEffects({
+      runPlanSkill: vi.fn(async () => ({
+        scenes: [
+          {
+            sceneId: "s1",
+            templateId: "kinetic_typography",
+            templateParams: { words: ["New"] },
+            // The skill moves this scene's startMs from 0 -> 2000.
+            startMs: 2000,
+            endMs: 7000,
+            rationale: "x",
+            onScreenStatements: [],
+          },
+        ],
+        summary: "x",
+      })),
+      persistDocument: vi.fn(async doc => {
+        persisted = doc;
+        return { revision: 1 };
+      }),
+    });
+
+    await planScenes(baseArgs({ document, mode: "fill_empty", effects }));
+
+    const persistedScene = persisted!.scenes.find(s => s.sceneId === "s1")!;
+    expect(persistedScene.startMs).toBe(2000);
+    // OLD absolute = 0 (old startMs) + 1000ms (30 frames @ 30fps) = 1000ms.
+    // NEW relative startFrame must place it back at absolute 1000ms, i.e.
+    // (1000 - 2000)ms clamped to 0 -> frame 0 (the layer's absolute position
+    // is now BEFORE the retimed scene's new start, so it clamps to the
+    // scene's own beginning rather than sliding to 2000+1000=3000ms, which is
+    // what the pre-143 bug would have silently done via the stale
+    // `startFrame: 30`).
+    expect(persistedScene.layers[0].startFrame).toBe(0);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Feature 143 §4.9.4 — forecastPostStageLayerCount                          */
+/* -------------------------------------------------------------------------- */
+
+describe("forecastPostStageLayerCount", () => {
+  it("returns currentTotal === projectedTotal for every non-scene_plan stage", () => {
+    const document = buildDocument({ scenes: [scene("s1", { endMs: 5000 })] });
+    for (const stage of ["narration", "captions", "content", "claims", "motion"] as const) {
+      const forecast = forecastPostStageLayerCount({ document, stage });
+      expect(forecast.projectedTotal).toBe(forecast.currentTotal);
+      expect(forecast.max).toBe(MAX_RENDERABLE_LAYERS);
+    }
+  });
+
+  it("projects additional layers for scene_plan proportional to the number of still-plannable scenes", () => {
+    const document = buildDocument({
+      scenes: [
+        scene("s1", { endMs: 5000 }), // plannable (no narration, no template)
+        scene("s2", { startMs: 5000, endMs: 10000 }), // plannable
+      ],
+    });
+
+    const forecast = forecastPostStageLayerCount({ document, stage: "scene_plan", mode: "fill_empty" });
+
+    expect(forecast.currentTotal).toBe(0);
+    expect(forecast.projectedTotal).toBeGreaterThan(forecast.currentTotal);
   });
 });

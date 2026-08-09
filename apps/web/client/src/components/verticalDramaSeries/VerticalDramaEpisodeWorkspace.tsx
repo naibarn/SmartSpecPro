@@ -23,7 +23,7 @@ import {
  * `verticalDramaEpisodes` tRPC router at the call site.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ChevronDown, Loader2, RotateCcw } from "lucide-react";
 import {
@@ -151,6 +151,7 @@ import type {
   VerticalDramaPipelineStage,
 } from "@shared/verticalDramaSeries";
 import type { VerticalDramaProductionWizardState } from "@shared/verticalDramaSeries/productionWizard";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 
 /** Data needed to render the generic "view this stage's runs" fallback panel. */
 export interface VerticalDramaStageRunDetailData {
@@ -415,6 +416,8 @@ export interface VerticalDramaStoryboardPanelData {
     dialogueLines: Array<{ speaker: string; line: string }>;
     silenceIntent?: string;
   }>;
+  onSaveShotSummary?: (shotNumber: number, summary: string) => Promise<void>;
+  savingShotSummaryForShot?: number | null;
   assetUrls?: VerticalDramaAssetUrlMap;
   loading?: boolean;
   error?: string | null;
@@ -489,11 +492,41 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     characterRefs: string[]
   ) => void;
+  /** Same per-shot override for portraits that must appear only inside a phone/video-call screen. */
+  onSetShotScreenCallerReferences?: (
+    shotNumber: number,
+    characterRefs: string[]
+  ) => void;
+  /** Convert a physical scene + Caller assignment into closed-door dialogue. */
+  onSetShotBarrierDialogue?: (
+    shotNumber: number,
+    input: {
+      state: "closed" | "locked";
+      cameraSide: "inside" | "outside";
+      visibleCharacterRefs: string[];
+      offscreenCharacterRefs: string[];
+    }
+  ) => void;
+  onSetShotViewMode?: (
+    shotNumber: number,
+    input: {
+      mode: "single" | "dual";
+      scenario?: "physical_barrier" | "remote_call" | "separate_locations";
+      primaryCharacterRefs?: string[];
+      secondaryCharacterRefs?: string[];
+      primaryLocationKey?: string;
+      secondaryLocationKey?: string;
+    }
+  ) => void;
   savingShotCharacterReferencesForShot?: number | null;
   /** See `VerticalDramaStoryboardPanelProps.onSetShotLocation` (Phase D,
    *  location visual bible) — per-shot location override, distinct from the
    *  storyboard's own `distinct_locations[]` grouping. */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
+  onSetShotBarrierReferenceLocation?: (
+    shotNumber: number,
+    locationKey: string
+  ) => void;
   /** Scene continuity lock affordances (Feature 138 P1). */
   sceneContinuityEnabled?: boolean;
   sceneContinuityQcEnabled?: boolean;
@@ -543,6 +576,10 @@ export interface VerticalDramaStoryboardPanelData {
   onSelectImageModel?: (modelId: string) => void;
   onSelectVideoModel?: (modelId: string) => void;
   modelsLoading?: boolean;
+  imageModelsError?: boolean;
+  videoModelsError?: boolean;
+  onRetryImageModels?: () => void;
+  onRetryVideoModels?: () => void;
   /** Currently-selected MCP connection id (MCP-transport models — Higgsfield/
    *  Magnific etc., creditCost 0). Persisted by the caller (localStorage). */
   mcpConnectionId?: string | null;
@@ -599,6 +636,7 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number;
     characterKeys: string[];
     instruction: string;
+    locationKey?: string;
   }) => Promise<VerticalDramaReferenceFramePromptResult | null>;
   generatingReferenceFramePromptForShot?: ReadonlySet<number>;
   onGenerateReferenceFrameImage?: (args: {
@@ -669,13 +707,21 @@ export interface VerticalDramaStoryboardPanelData {
   repairImageSubmittingForShot?: number | null;
   repairImageResultByShot?: Record<
     number,
-    { beforeUrl: string; afterUrl: string }
+    {
+      beforeUrl: string;
+      afterUrl: string;
+      targetRole?: "start_frame" | "barrier_reference";
+    }
   >;
   repairImageErrorByShot?: Record<number, string>;
   onAcceptRepairImage?: (shotNumber: number) => void;
   onDiscardRepairImage?: (shotNumber: number) => void;
   repairImageDialogForShot?: number | null;
-  onOpenRepairImageDialog?: (shotNumber: number) => void;
+  repairImageTargetRole?: "start_frame" | "barrier_reference";
+  onOpenRepairImageDialog?: (
+    shotNumber: number,
+    targetRole?: "start_frame" | "barrier_reference"
+  ) => void;
   onCloseRepairImageDialog?: () => void;
 
   /* ---- Phase 6.6 — per-shot video prompt generation ---- */
@@ -798,6 +844,8 @@ export interface VerticalDramaEpisodeWorkspaceProps {
   dialogueAudioPanel?: VerticalDramaDialogueAudioPanelData;
   /** Dedicated review panel data for the `storyboard_shotgrid` stage. */
   storyboardPanel?: VerticalDramaStoryboardPanelData;
+  /** Slot-based teaser builder shown inside the whole-episode assembly card. */
+  episodePreviewPanel?: ReactNode;
   /** Durable proof that `plan_episode_script` produced real content — shown
    *  as a small always-visible card (not just a toast, which disappears) so
    *  the user has tangible confirmation independent of which stage is
@@ -896,23 +944,6 @@ export interface VerticalDramaEpisodeWorkspaceProps {
  *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
  *  the whole click handler BEFORE the real (state) action fired. Swallow the
  *  error and let the real action proceed. */
-function safeStorageGet(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function safeStorageSet(key: string, value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    /* quota exceeded / storage blocked — cache is best-effort, ignore */
-  }
-}
 
 function stageStatusFor(
   states: VerticalDramaEpisodeWorkspaceProps["stageStates"],
@@ -1038,6 +1069,7 @@ export function VerticalDramaEpisodeWorkspace({
   textOverlayShotNumbers,
   voiceChainEnabled = false,
   finalRenderOptionsPanel,
+  episodePreviewPanel,
   className,
 }: VerticalDramaEpisodeWorkspaceProps) {
   const t = useMemo(() => vdCopy(locale), [locale]);
@@ -1128,6 +1160,17 @@ export function VerticalDramaEpisodeWorkspace({
     ? `vd-advanced-stages-open:${seriesId}`
     : null;
   const [advancedStagesOpen, setAdvancedStagesOpen] = useState(false);
+  /**
+   * Restore EXACTLY ONCE per series key. `productionWizardEnabled` is derived
+   * from the async `getEpisodeDetail` fetch upstream, so it flips
+   * `false -> true` after first paint; without this guard that transition
+   * re-runs the restore and overwrites an open-state the user had already
+   * toggled by hand — and since `safeStorageSet` swallows QuotaExceededError,
+   * the value it restores can be a stale `false` that was never written. The
+   * ref (not the state) is the guard, so it also survives the flag flipping
+   * back and forth on a refetch.
+   */
+  const restoredAdvancedStagesKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (
       !productionWizardEnabled ||
@@ -1135,6 +1178,9 @@ export function VerticalDramaEpisodeWorkspace({
       typeof window === "undefined"
     )
       return;
+    if (restoredAdvancedStagesKeyRef.current === advancedStagesStorageKey)
+      return;
+    restoredAdvancedStagesKeyRef.current = advancedStagesStorageKey;
     setAdvancedStagesOpen(safeStorageGet(advancedStagesStorageKey) === "true");
   }, [productionWizardEnabled, advancedStagesStorageKey]);
 
@@ -1308,6 +1354,8 @@ export function VerticalDramaEpisodeWorkspace({
           startFramePlan={storyboardPanel?.startFramePlan}
           motionPromptPack={storyboardPanel?.motionPromptPack}
           canonicalShotDrafts={storyboardPanel?.canonicalShotDrafts}
+          onSaveShotSummary={storyboardPanel?.onSaveShotSummary}
+          savingShotSummaryForShot={storyboardPanel?.savingShotSummaryForShot}
           assetUrls={storyboardPanel?.assetUrls}
           loading={storyboardPanel?.loading}
           error={storyboardPanel?.error}
@@ -1366,10 +1414,18 @@ export function VerticalDramaEpisodeWorkspace({
           onSetShotCharacterReferences={
             storyboardPanel?.onSetShotCharacterReferences
           }
+          onSetShotScreenCallerReferences={
+            storyboardPanel?.onSetShotScreenCallerReferences
+          }
+          onSetShotBarrierDialogue={storyboardPanel?.onSetShotBarrierDialogue}
+          onSetShotViewMode={storyboardPanel?.onSetShotViewMode}
           savingShotCharacterReferencesForShot={
             storyboardPanel?.savingShotCharacterReferencesForShot
           }
           onSetShotLocation={storyboardPanel?.onSetShotLocation}
+          onSetShotBarrierReferenceLocation={
+            storyboardPanel?.onSetShotBarrierReferenceLocation
+          }
           sceneContinuityEnabled={storyboardPanel?.sceneContinuityEnabled}
           sceneContinuityQcEnabled={storyboardPanel?.sceneContinuityQcEnabled}
           onPlanSceneVisualState={storyboardPanel?.onPlanSceneVisualState}
@@ -1406,6 +1462,10 @@ export function VerticalDramaEpisodeWorkspace({
           onSelectImageModel={storyboardPanel?.onSelectImageModel}
           onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
           modelsLoading={storyboardPanel?.modelsLoading}
+          imageModelsError={storyboardPanel?.imageModelsError}
+          videoModelsError={storyboardPanel?.videoModelsError}
+          onRetryImageModels={storyboardPanel?.onRetryImageModels}
+          onRetryVideoModels={storyboardPanel?.onRetryVideoModels}
           mcpConnectionId={storyboardPanel?.mcpConnectionId}
           onSelectMcpConnection={storyboardPanel?.onSelectMcpConnection}
           mcpSharedGroupId={storyboardPanel?.mcpSharedGroupId}
@@ -1520,6 +1580,7 @@ export function VerticalDramaEpisodeWorkspace({
           onAcceptRepairImage={storyboardPanel?.onAcceptRepairImage}
           onDiscardRepairImage={storyboardPanel?.onDiscardRepairImage}
           repairImageDialogForShot={storyboardPanel?.repairImageDialogForShot}
+          repairImageTargetRole={storyboardPanel?.repairImageTargetRole}
           onOpenRepairImageDialog={storyboardPanel?.onOpenRepairImageDialog}
           onCloseRepairImageDialog={storyboardPanel?.onCloseRepairImageDialog}
           onGenerateShotVideoPrompt={storyboardPanel?.onGenerateShotVideoPrompt}
@@ -1529,6 +1590,7 @@ export function VerticalDramaEpisodeWorkspace({
           usedVisionByShot={storyboardPanel?.usedVisionByShot}
           compiledVideo={storyboardPanel?.compiledVideo}
           onAssembleCompiledVideo={storyboardPanel?.onAssembleCompiledVideo}
+          episodePreviewSlot={episodePreviewPanel}
           assemblingCompiledVideo={storyboardPanel?.assemblingCompiledVideo}
           speechBudgetEnabled={storyboardPanel?.speechBudgetEnabled}
           onRepairWholeEpisodeScript={
@@ -2072,6 +2134,10 @@ export function VerticalDramaEpisodeWorkspace({
                         canonicalShotDrafts={
                           storyboardPanel?.canonicalShotDrafts
                         }
+                        onSaveShotSummary={storyboardPanel?.onSaveShotSummary}
+                        savingShotSummaryForShot={
+                          storyboardPanel?.savingShotSummaryForShot
+                        }
                         assetUrls={storyboardPanel?.assetUrls}
                         loading={storyboardPanel?.loading}
                         error={storyboardPanel?.error}
@@ -2101,6 +2167,10 @@ export function VerticalDramaEpisodeWorkspace({
                         onSelectImageModel={storyboardPanel?.onSelectImageModel}
                         onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
                         modelsLoading={storyboardPanel?.modelsLoading}
+                        imageModelsError={storyboardPanel?.imageModelsError}
+                        videoModelsError={storyboardPanel?.videoModelsError}
+                        onRetryImageModels={storyboardPanel?.onRetryImageModels}
+                        onRetryVideoModels={storyboardPanel?.onRetryVideoModels}
                         mcpConnectionId={storyboardPanel?.mcpConnectionId}
                         onSelectMcpConnection={
                           storyboardPanel?.onSelectMcpConnection

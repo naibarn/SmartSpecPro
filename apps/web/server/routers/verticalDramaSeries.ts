@@ -535,6 +535,11 @@ import {
   resolveEpisodeThumbnailUrls,
 } from "../services/verticalDramaThumbnails";
 import {
+  projectEpisodeCover,
+  readEpisodeCoverStateFromRow,
+  resolveEpisodeCoverAssetUrls,
+} from "../services/verticalDramaEpisodeCover";
+import {
   submitTrailerJob,
   getTrailerJobStatus,
 } from "../services/verticalDramaSeriesTrailerAssembly";
@@ -680,6 +685,7 @@ type EpisodeListProjection = {
   status: string;
   targetDurationSeconds: number;
   updatedAt: Date;
+  coverImage: unknown;
   /**
    * Raw jsonb manifest — read ONLY so `get`'s DTO map (below) can derive the
    * compact `compiledVideo` summary via `extractEpisodeCompiledVideoSummary`;
@@ -5272,6 +5278,7 @@ export const verticalDramaSeriesRouter = router({
           status: verticalDramaEpisodes.status,
           targetDurationSeconds: verticalDramaEpisodes.targetDurationSeconds,
           updatedAt: verticalDramaEpisodes.updatedAt,
+          coverImage: verticalDramaEpisodes.coverImage,
           // Read ONLY to derive `compiledVideo` below via
           // `extractEpisodeCompiledVideoSummary` — never spread into the
           // returned episode DTO (see the `episodes.map` destructure below).
@@ -5294,6 +5301,14 @@ export const verticalDramaSeriesRouter = router({
         userId,
         episodeIds: episodes.map(e => e.id),
       });
+      const coverStates = episodes.map(episode =>
+        readEpisodeCoverStateFromRow(episode),
+      );
+      const coverAssetUrlById = await resolveEpisodeCoverAssetUrls(
+        db,
+        { tenantId, userId },
+        coverStates,
+      );
 
       return {
         series: {
@@ -5325,11 +5340,17 @@ export const verticalDramaSeriesRouter = router({
           // Destructure `assemblyManifest` OUT of the spread so the raw
           // jsonb manifest never reaches the client — only the compact
           // `compiledVideo` summary derived from it does.
-          const { assemblyManifest, ...rest } = e;
+          const { assemblyManifest, coverImage: _rawCoverImage, ...rest } = e;
           return {
             ...rest,
             id: String(e.id),
             thumbnailUrl: thumbnailByEpisode.get(e.id) ?? null,
+            coverImage: projectEpisodeCover(
+              e.coverImage,
+              coverAssetUrlById.get(
+                readEpisodeCoverStateFromRow(e)?.mediaAssetId ?? "",
+              ) ?? null,
+            ),
             compiledVideo: extractEpisodeCompiledVideoSummary(assemblyManifest),
           };
         }),

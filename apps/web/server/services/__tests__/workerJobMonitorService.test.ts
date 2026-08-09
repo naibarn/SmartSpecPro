@@ -153,6 +153,7 @@ describe("workerJobMonitorService", () => {
       {
         auth: { tenantId: "tenant-1", userId: 7 },
         status: "completed",
+        jobType: "remotion_render_video",
         limit: 25,
         offset: 5,
       },
@@ -162,6 +163,7 @@ describe("workerJobMonitorService", () => {
     expect(repo.listUserJobs).toHaveBeenCalledWith({
       auth: { tenantId: "tenant-1", userId: 7 },
       statuses: ["completed"],
+      jobType: "remotion_render_video",
       limit: 25,
       offset: 5,
     });

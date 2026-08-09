@@ -120,7 +120,7 @@ describe("resolveStructuredStageModel", () => {
     });
     expect(requirements).toEqual(VI_STRUCTURED_STAGE_REQUIREMENTS);
     expect(passedRows).toBe(rows);
-    expect(maxCandidates).toBe(1);
+    expect(maxCandidates).toBe(50);
   });
 
   it("throws VI_NO_RECOMMENDED_MODEL when no candidate exists — never degrades silently", async () => {

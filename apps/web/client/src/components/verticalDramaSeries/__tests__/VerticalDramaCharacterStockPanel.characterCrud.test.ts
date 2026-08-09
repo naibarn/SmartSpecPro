@@ -3,6 +3,7 @@ import {
   buildCreateCharacterVariantInput,
   buildCreateCharacterTwinInput,
   buildDetectCharacterVariantsSummaryMessage,
+  buildPortraitCandidateRetryPreviewInput,
   buildPreviewCharacterPromptInput,
   decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
@@ -207,6 +208,23 @@ describe("buildPreviewCharacterPromptInput", () => {
         portraitCandidateCount: 5,
       })
     ).toEqual({ seriesId: "10", characterId: "5", portraitCandidateCount: 5 });
+  });
+
+  it("preserves the selected image model for candidate previews and retries", () => {
+    expect(
+      buildPortraitCandidateRetryPreviewInput({
+        seriesId: "10",
+        characterId: "5",
+        selectedImageModelId: "gpt-image-2",
+        customInstruction: "  natural daylight  ",
+      }),
+    ).toEqual({
+      seriesId: "10",
+      characterId: "5",
+      selectedImageModelId: "gpt-image-2",
+      customInstruction: "natural daylight",
+      portraitCandidateCount: 1,
+    });
   });
 });
 

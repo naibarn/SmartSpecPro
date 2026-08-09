@@ -14,6 +14,6 @@
  * this file's `REMOTION_SCENE_IDS` for backward compatibility with existing
  * importers.
  */
-export const REMOTION_SCENE_IDS = ["orbiting-product"] as const;
+export const REMOTION_SCENE_IDS = ["orbiting-product", "glowing-sphere"] as const;
 
 export type RemotionSceneId = (typeof REMOTION_SCENE_IDS)[number];

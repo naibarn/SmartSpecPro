@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useVerticalDramaCreditConfirmation } from "./VerticalDramaCreditConfirmDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
@@ -107,6 +108,8 @@ export function VerticalDramaReferenceFrameDialog({
     useState<VerticalDramaReferenceFramePromptResult | null>(null);
   const [editedPrompt, setEditedPrompt] = useState("");
   const [editedNegativePrompt, setEditedNegativePrompt] = useState("");
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
 
   // Reset on (re)open so a previous shot's/session's draft never leaks in.
   useEffect(() => {
@@ -137,31 +140,61 @@ export function VerticalDramaReferenceFrameDialog({
   }
 
   async function handleGeneratePrompt() {
-    const result = await onGeneratePrompt({
-      shotNumber,
-      characterKeys: selectedKeys,
-      instruction: instruction.trim(),
+    requestConfirmation({
+      title: t.referenceFrameGeneratePromptButton,
+      description:
+        locale === "th"
+          ? "การทำงานนี้ใช้เครดิตเพื่อสร้าง prompt ด้วย AI ต้องการดำเนินการต่อหรือไม่?"
+          : "This uses credits to author an AI prompt. Continue?",
+      confirmLabel: t.referenceFrameGeneratePromptButton,
+      cancelLabel: t.cancel,
+      testId: `vd-credit-confirm-reference-frame-prompt-${shotNumber}`,
+      onConfirm: () => {
+        void (async () => {
+          const result = await onGeneratePrompt({
+            shotNumber,
+            characterKeys: selectedKeys,
+            instruction: instruction.trim(),
+          });
+          if (!result) return;
+          setPromptResult(result);
+          setEditedPrompt(result.prompt);
+          setEditedNegativePrompt(result.negativePrompt ?? "");
+          setStep("review");
+        })();
+      },
     });
-    if (!result) return;
-    setPromptResult(result);
-    setEditedPrompt(result.prompt);
-    setEditedNegativePrompt(result.negativePrompt ?? "");
-    setStep("review");
   }
 
   async function handleConfirmRender() {
     if (!promptResult) return;
-    const ok = await onConfirmRender({
-      shotNumber,
-      prompt: editedPrompt.trim(),
-      negativePrompt: editedNegativePrompt.trim() || undefined,
-      characterKeys: promptResult.characterKeys,
+    requestConfirmation({
+      title: t.referenceFrameConfirmRenderButton,
+      description:
+        locale === "th"
+          ? "การทำงานนี้ใช้เครดิตเพื่อสร้างภาพด้วย AI ต้องการดำเนินการต่อหรือไม่?"
+          : "This uses credits to render an AI image. Continue?",
+      confirmLabel: t.referenceFrameConfirmRenderButton,
+      cancelLabel: t.cancel,
+      testId: `vd-credit-confirm-reference-frame-image-${shotNumber}`,
+      onConfirm: () => {
+        void (async () => {
+          const ok = await onConfirmRender({
+            shotNumber,
+            prompt: editedPrompt.trim(),
+            negativePrompt: editedNegativePrompt.trim() || undefined,
+            characterKeys: promptResult.characterKeys,
+          });
+          if (ok) onOpenChange(false);
+        })();
+      },
     });
-    if (ok) onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      {creditConfirmDialog}
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         aria-describedby="vd-reference-frame-desc"
         data-testid={`vd-reference-frame-dialog-${shotNumber}`}
@@ -363,7 +396,8 @@ export function VerticalDramaReferenceFrameDialog({
           )}
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 }
 

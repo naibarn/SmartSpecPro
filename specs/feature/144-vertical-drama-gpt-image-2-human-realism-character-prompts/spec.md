@@ -1,13 +1,13 @@
 # Feature 144: Vertical Drama — Natural Human-Realism Character Prompt Contract for GPT Image 2, Nano Banana, and Seedream
 
-**Status:** PROPOSED  
-**Version:** 0.2.0  
-**Created:** 2026-08-04  
-**Last reviewed:** 2026-08-04  
-**Priority:** P1 — character-image quality and provider-contract correctness  
-**Owner:** Vertical Drama / Character Visual Bible / Image Generation  
-**Depends-on:** Feature 132 (Vertical Drama story-character quality engine), Feature 134 (character portrait candidate batch)  
-**Related:** Features 131, 137, 138, 139, 140  
+**Status:** PROPOSED
+**Version:** 0.2.0
+**Created:** 2026-08-04
+**Last reviewed:** 2026-08-05
+**Priority:** P1 — character-image quality and provider-contract correctness
+**Owner:** Vertical Drama / Character Visual Bible / Image Generation
+**Depends-on:** Feature 132 (Vertical Drama story-character quality engine), Feature 134 (character portrait candidate batch)
+**Related:** Features 131, 137, 138, 139, 140
 **Source:** Human Realism Prompt Blueprint v1.0 plus the current media-model catalog capabilities and product requirements
 
 ## 1. Executive decision

@@ -39,7 +39,7 @@ import {
   parseSeriesWatermarkConfig,
   resolveEndCardText,
   resolveOpenerRecapText,
-  resolveWatermarkCornerAutoAvoid,
+  resolveEpisodeIndicatorCornerAutoAvoid,
   type VdCharacterIntroSourceFrame,
   type VdDerivedCharacterIntroCard,
   type VdEndCardTextSource,
@@ -232,10 +232,9 @@ export async function loadVdSeriesTextOverlayContext(
  * `secondary` — every enabled slot here becomes either its own
  * `watermark_text` overlay event (TEXT slots) or its own entry in
  * `watermarkImages` (IMAGE slots), tagged with `slotId` so both render
- * engines can give each its own asset/layer. The corner auto-avoid vs.
- * `episodeIndicator` (plan.md "episodeIndicator กับ watermark มุมเดียวกัน →
- * auto-เลี่ยงคนละมุม") applies to the PRIMARY slot only — the secondary
- * (channel logo) slot always renders exactly where the user placed it.
+ * engines can give each its own asset/layer. Configured watermark positions
+ * are authoritative; when the episode indicator would collide with a top
+ * corner, the indicator moves to the other top corner when available.
  */
 export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
   owner: VdTextOverlayAutoTextOwner;
@@ -292,18 +291,10 @@ export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
   const watermarkImages: RunAssemblyJobWatermarkImageInput[] = [];
 
   for (const { slotId, slot } of enabledWatermarkSlots) {
-    // Corner auto-avoid (plan.md "episodeIndicator กับ watermark มุมเดียวกัน
-    // → auto-เลี่ยงคนละมุม") applies to the PRIMARY slot only — the
-    // secondary (channel logo) slot renders exactly where the user placed
-    // it, since the user is the one giving the two slots different corners.
-    let position = slot.position;
-    if (slotId === "primary" && plan?.episodeIndicator?.enabled) {
-      position = resolveWatermarkCornerAutoAvoid({
-        watermarkPosition: position,
-        episodeIndicatorEnabled: true,
-        episodeIndicatorPosition: plan.episodeIndicator.position,
-      }).position;
-    }
+    // Watermark positions are user-configured and authoritative. Do not move
+    // either slot to make room for the episode indicator; the indicator is
+    // adjusted below instead.
+    const position = slot.position;
 
     if (slot.type === "text" && slot.text?.trim()) {
       watermarkTexts.push({
@@ -340,6 +331,14 @@ export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
     ? characterIntroCards
     : [];
 
+  const episodeIndicatorPosition =
+    plan?.episodeIndicator?.enabled
+      ? resolveEpisodeIndicatorCornerAutoAvoid({
+          episodeIndicatorPosition: plan.episodeIndicator.position,
+          watermarkPositions: enabledWatermarkSlots.map(({ slot }) => slot.position),
+        }).position
+      : undefined;
+
   const { overlays, overlayCount } = resolveEpisodeTextOverlayRunInputs({
     endCard:
       plan?.endCard?.enabled && autoTexts
@@ -369,7 +368,7 @@ export async function resolveVdEpisodeTextOverlayEngineInputs(params: {
             params.episodeNumber,
             seriesContext.targetEpisodeCount
           ),
-          position: plan.episodeIndicator.position,
+          position: episodeIndicatorPosition ?? plan.episodeIndicator.position,
         }
       : null,
     characterIntroCards: characterIntroInput,

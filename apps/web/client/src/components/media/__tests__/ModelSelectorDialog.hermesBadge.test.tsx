@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
@@ -79,5 +79,45 @@ describe("ModelSelectorDialog — Hermes transport badge", () => {
     );
 
     expect(screen.getByText("API")).toBeDefined();
+  });
+
+  it("surfaces a failed catalog load with a retry action instead of 'no models'", () => {
+    const onRetry = vi.fn();
+    render(
+      <ModelSelectorDialog
+        open
+        onOpenChange={vi.fn()}
+        models={[]}
+        selectedModelId=""
+        onSelect={vi.fn()}
+        mediaType="image"
+        loadError
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not load the model catalog",
+    );
+    expect(screen.queryByText("No models found")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("keeps cached model rows visible while a background refetch is failing", () => {
+    render(
+      <ModelSelectorDialog
+        open
+        onOpenChange={vi.fn()}
+        models={[gatewayModel]}
+        selectedModelId=""
+        onSelect={vi.fn()}
+        mediaType="image"
+        loadError
+      />,
+    );
+
+    expect(screen.getByText("Kie Model")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 });

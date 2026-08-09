@@ -276,6 +276,15 @@ const SENSITIVE_KEYS = new Set([
   "referenceaudiobase64",
   "reference_audio_url",
   "referenceaudiourl",
+  "prompt",
+  "negative_prompt",
+  "negativeprompt",
+  "reference_image_urls",
+  "referenceimageurls",
+  "reference_image_manifest",
+  "referenceimagemanifest",
+  "reference_video_urls",
+  "referencevideourls",
 ]);
 
 const MAX_ENTRY_BYTES = 32_768; // 32 KB

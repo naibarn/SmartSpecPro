@@ -1473,6 +1473,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       : never
     : never;
   retried: boolean;
+  /** Number of bounded retries used before the validated response was accepted. */
+  retryCount: number;
   /** Only present when `onSchemaRetriesExhausted` accepted a degraded response instead of throwing. Absent (`undefined`) on every normal successful parse, and for every caller that never supplies the option. */
   warnings?: string[];
 }> {
@@ -1537,7 +1539,11 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
           { attemptNumber }
         );
       }
-      return { ...result, retried: attemptNumber > 1 } as never;
+      return {
+        ...result,
+        retried: attemptNumber > 1,
+        retryCount: Math.max(0, attemptNumber - 1),
+      } as never;
     } catch (error) {
       const classification = classifyVerticalDramaLlmError(error);
       const errorMessage =
@@ -1619,6 +1625,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
             data: degraded.data,
             response: error.rawResponse,
             retried: attemptNumber > 1,
+            retryCount: Math.max(0, attemptNumber - 1),
             warnings: degraded.warnings,
           } as never;
         }
@@ -1734,9 +1741,9 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
   firstAttemptMaxTokens: number;
   retryMaxTokens: number;
-}): Promise<{ data: T; response: VisionAwareCallResponse }> {
+}): Promise<{ data: T; response: VisionAwareCallResponse; usedVision: boolean }> {
   try {
-    return await runVisionAwareJsonAttempt<T>({
+    const result = await runVisionAwareJsonAttempt<T>({
       model: args.model,
       systemPrompt: args.systemPrompt,
       content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
@@ -1744,11 +1751,12 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       maxTokens: args.firstAttemptMaxTokens,
       schema: args.schema,
     });
+    return { ...result, usedVision: args.hasVision };
   } catch (firstError) {
     console.warn(`[executeVisionAwareJsonCallWithRetry] First attempt failed with model ${args.model}:`, firstError instanceof Error ? firstError.message : firstError);
     const retryText = `${args.userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
     try {
-      return await runVisionAwareJsonAttempt<T>({
+      const result = await runVisionAwareJsonAttempt<T>({
         model: args.model,
         systemPrompt: args.systemPrompt,
         content: buildVisionAwareContent(retryText, args.hasVision, args.images),
@@ -1756,12 +1764,13 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
         maxTokens: args.retryMaxTokens,
         schema: args.schema,
       });
+      return { ...result, usedVision: args.hasVision };
     } catch (retryError) {
       console.warn(`[executeVisionAwareJsonCallWithRetry] Retry attempt failed with model ${args.model}. Attempting fallback model gpt-4o-mini...`, retryError instanceof Error ? retryError.message : retryError);
       const fallbackModel = "gpt-4o-mini";
       if (args.model !== fallbackModel) {
         try {
-          return await runVisionAwareJsonAttempt<T>({
+          const result = await runVisionAwareJsonAttempt<T>({
             model: fallbackModel,
             systemPrompt: args.systemPrompt,
             content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
@@ -1769,12 +1778,13 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
             maxTokens: args.retryMaxTokens,
             schema: args.schema,
           });
+          return { ...result, usedVision: args.hasVision };
         } catch (fallbackErr) {
           console.warn(`[executeVisionAwareJsonCallWithRetry] Fallback model ${fallbackModel} failed. Attempting text-only mode...`, fallbackErr instanceof Error ? fallbackErr.message : fallbackErr);
         }
       }
       if (args.hasVision && args.images.length > 0) {
-        return await runVisionAwareJsonAttempt<T>({
+        const result = await runVisionAwareJsonAttempt<T>({
           model: args.model !== fallbackModel ? fallbackModel : args.model,
           systemPrompt: args.systemPrompt,
           content: args.userPromptText,
@@ -1782,6 +1792,10 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           maxTokens: args.retryMaxTokens,
           schema: args.schema,
         });
+        // The final recovery attempt deliberately omits all images. Report
+        // the actual mode so callers can fail closed for image-grounded
+        // contracts instead of persisting a text-only guess as vision work.
+        return { ...result, usedVision: false };
       }
       throw retryError;
     }

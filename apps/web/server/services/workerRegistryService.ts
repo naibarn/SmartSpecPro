@@ -698,6 +698,21 @@ function readWorkerSharingMode(worker: WorkerRecord): "private" | "group" | "ten
     workerApp.sharingMode,
   ].find((value) => typeof value === "string" && value.trim().length > 0);
   if (!rawMode) {
+    // Feature 135 — the shared server Hermes worker is FORCED to register
+    // with `workerMode: "per_user"` (workerRegistrationPayloadSchema's v1
+    // hermes_agent_gateway refinement) but is paired by
+    // `scripts/pair-hermes-worker.ts` with NO `registeredByUserId`. The
+    // generic per_user→"private" fallback below would therefore make
+    // `filterClaimableJobsForWorker` return [] forever (private mode with a
+    // null owner claims nothing) — every server-scoped connection-control
+    // and media job it is assigned sits `queued` until the timeout sweep
+    // expires it. Hermes gateway claim security does not rest on user
+    // sharing anyway: `claimWorkerJob` enforces per-connection affinity
+    // (`assignedWorkerId` must equal the claiming worker) on top of the
+    // pinned-workerId check, so tenant scope is the correct default here.
+    if (worker.runtimeType === "hermes_agent_gateway") {
+      return "tenant";
+    }
     return worker.workerMode === "per_user" ? "private" : "tenant";
   }
   switch (String(rawMode ?? "").trim().toLowerCase()) {

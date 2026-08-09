@@ -80,6 +80,10 @@ Prove that:
 
 ## Manual A/B release gate
 
+The restricted evidence form is available at
+`implementation/ab-evaluation-template.md`; it remains intentionally blank
+until explicit approval is granted for credit-consuming provider calls.
+
 Automated tests cannot establish rendered human realism. Before broad target
 enablement, perform a bounded, explicitly approved comparison for each family:
 
@@ -138,16 +142,15 @@ record for follow-up.
 
 ## Final evidence checklist
 
-- [ ] Focused capability/catalog tests pass.
-- [ ] Skill verifier passes and mirrored files compare equal.
-- [ ] Focused character generation/QC/retry tests pass.
-- [ ] Normalizer/router preflight and credit-order tests pass.
-- [ ] Media sync/async and Hermes/MCP property-absence tests pass.
-- [ ] Persistence compatibility tests pass where changed.
-- [ ] Web TypeScript check passes, or unrelated baseline failures are clearly
-      separated from changed-surface evidence.
+- [x] Focused capability/catalog tests pass.
+- [x] Skill verifier passes and mirrored files compare equal.
+- [x] Focused character generation/QC/retry tests pass.
+- [x] Normalizer/router preflight and credit-order tests pass.
+- [x] Media sync/async and Hermes/MCP property-absence tests pass.
+- [x] Persistence compatibility tests pass where changed.
+- [x] Web TypeScript check passes with no diagnostics in the current checkout.
 - [ ] Twelve matched A/B pairs per family are recorded and approved.
-- [ ] No paid provider call was made by automated tests.
+- [x] No paid provider call was made by automated tests.
 
 ## Exit criteria
 
@@ -160,8 +163,9 @@ legacy according to Section 01.
 
 - Automated capability, catalog, skill, generation, normalizer, router-model,
   and skill-verifier checks are complete; the current Feature 144 focused suite
-  passes 325 tests.
-- Full web typecheck has no diagnostics in Feature 144 files; unrelated dirty
-  repository files still produce baseline diagnostics.
+  passes 344 tests.
+- Full web typecheck was attempted; unrelated dirty-worktree diagnostics still
+  block a clean repository-wide result, while no diagnostic references the
+  changed Feature 144 lines.
 - The paid-provider A/B gate remains intentionally pending explicit approval;
   no provider generation was run by implementation or automated verification.

@@ -899,6 +899,94 @@ describe("settleHermesConnectionFromControlJob", () => {
     await expect(settleHermesConnectionFromControlJob({ connectionId: "missing", job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed" } }, deps)).resolves.toBeUndefined();
   });
 
+  describe("post-authorize auto-probe (regression 2026-08-03)", () => {
+    function buildAuthorizeSettlementDeps(repoOverrides: Partial<HermesConnectionRepo> = {}) {
+      const row = buildConnectionRow({ status: "pending", assignedWorkerId: "worker-1" });
+      let state = { ...row };
+      const updateConnection = vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      });
+      const insertWorkerJob = vi.fn().mockResolvedValue(buildWorkerJob());
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow({ status: "online", lastSeenAt: NOW })),
+          updateConnection,
+          insertWorkerJob,
+          ...repoOverrides,
+        },
+        // Pin the clock to the fixture's `lastSeenAt`, otherwise the
+        // worker-online staleness window rejects the fixed-date fake worker.
+        now: () => NOW,
+      };
+      return { row, deps, insertWorkerJob, getState: () => state };
+    }
+
+    it("enqueues a capability probe after a successful authorize (authorize itself returns NO manifest, so capabilitiesJson would stay NULL and the connection would render as unsupported/hidden)", async () => {
+      const { row, deps, insertWorkerJob, getState } = buildAuthorizeSettlementDeps();
+
+      await settleHermesConnectionFromControlJob(
+        {
+          connectionId: row.id,
+          job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed" },
+        },
+        deps,
+      );
+
+      expect(getState().status).toBe("authorized");
+      expect(insertWorkerJob).toHaveBeenCalledTimes(1);
+      expect(insertWorkerJob.mock.calls[0][0]).toMatchObject({
+        jobType: HERMES_CONNECTION_PROBE_JOB_TYPE,
+        tenantId: row.tenantId,
+        workerId: "worker-1",
+      });
+    });
+
+    it("skips the auto-probe when the assigned worker is offline — the connection still settles as authorized", async () => {
+      const { row, deps, insertWorkerJob, getState } = buildAuthorizeSettlementDeps({
+        findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow({ status: "offline" })),
+      });
+
+      await settleHermesConnectionFromControlJob(
+        { connectionId: row.id, job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed" } },
+        deps,
+      );
+
+      expect(getState().status).toBe("authorized");
+      expect(insertWorkerJob).not.toHaveBeenCalled();
+    });
+
+    it("a probe-enqueue failure never un-authorizes the connection", async () => {
+      const { row, deps, getState } = buildAuthorizeSettlementDeps({
+        insertWorkerJob: vi.fn().mockRejectedValue(new Error("db down")),
+      });
+
+      await expect(
+        settleHermesConnectionFromControlJob(
+          { connectionId: row.id, job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed" } },
+          deps,
+        ),
+      ).resolves.toBeUndefined();
+      expect(getState().status).toBe("authorized");
+    });
+
+    it("does NOT enqueue a probe for a FAILED authorize", async () => {
+      const { row, deps, insertWorkerJob } = buildAuthorizeSettlementDeps();
+
+      await settleHermesConnectionFromControlJob(
+        {
+          connectionId: row.id,
+          job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "failed", failureReason: "oauth_denied" },
+        },
+        deps,
+      );
+
+      expect(insertWorkerJob).not.toHaveBeenCalled();
+    });
+  });
+
   describe("probe failure classification", () => {
     it("auth-invalidation-classified failure -> status: reauth_required + HERMES_REAUTH_REQUIRED in metadataJson.lastError", async () => {
       const row = buildConnectionRow({ status: "authorized" });

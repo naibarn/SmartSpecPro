@@ -26,12 +26,38 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       verticalDramaSeries: { get: { invalidate: vi.fn() } },
+      verticalDramaEpisodes: {
+        getEpisodeCoverStatus: { fetch: vi.fn() },
+      },
     }),
     verticalDramaEpisodes: {
       generateNextEpisodes: {
         useMutation: (_opts: unknown) => ({
           mutate: mockGenerateNextEpisodesMutate,
           isPending: false,
+        }),
+      },
+      generateEpisodeCover: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+          variables: undefined,
+        }),
+      },
+      setEpisodeCoverAsset: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      deleteEpisode: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+    },
+    mediaModels: {
+      list: {
+        useQuery: () => ({
+          data: { models: [] },
+          isLoading: false,
+          isError: false,
+          refetch: vi.fn(),
         }),
       },
     },
@@ -100,49 +126,133 @@ describe("EpisodesTab — season batch render (task #21 phase B)", () => {
   });
 
   it("renders the season render button whenever the series has at least one episode", () => {
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     expect(screen.getByTestId("vd-season-render-button")).toHaveTextContent(
-      "เรนเดอร์ทั้งซีซั่น",
+      "เรนเดอร์ทั้งซีซั่น"
     );
   });
 
   it("renders the button even when the series is read-only/archived (export isn't a content edit)", () => {
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={true} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={true}
+      />
+    );
     expect(screen.getByTestId("vd-season-render-button")).toBeInTheDocument();
   });
 
+  it("keeps the episode cover and compiled video in one responsive media row", () => {
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={[
+          {
+            ...episodes[0],
+            compiledVideo: {
+              videoUrl: "https://cdn.example.test/episode-1.mp4",
+              status: "completed",
+            },
+          },
+        ]}
+        readOnly={false}
+      />
+    );
+
+    const settingsRow = screen.getByTestId("vd-episode-cover-settings-row");
+    expect(settingsRow).toHaveClass("md:grid-cols-2");
+    expect(settingsRow.children).toHaveLength(2);
+
+    const mediaRow = screen.getByTestId("vd-episode-media-row-1");
+    expect(mediaRow).toHaveClass("md:grid-cols-[minmax(0,1fr)_11rem]");
+    const coverSurface = screen.getByTestId("vd-episode-cover-surface-1");
+    const coverActions = screen.getByTestId("vd-episode-cover-actions-1");
+    expect(coverSurface).toHaveClass("w-full");
+    expect(coverActions).toHaveClass("mt-2");
+    expect(coverSurface).not.toContainElement(coverActions);
+    expect(
+      mediaRow.querySelector(
+        '[data-testid="vd-episode-card-compiled-video-player"]'
+      )
+    ).toBeInTheDocument();
+  });
+
   it("clicking the button opens the options dialog with the subtitle preset picker always visible", () => {
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
-    expect(screen.getByTestId("mock-select")).toHaveValue("classic_box");
+    expect(screen.getAllByTestId("mock-select")[1]).toHaveValue("classic_box");
   });
 
   it("the dialogue-audio checkbox is absent when the voice-chain flag is off", () => {
     mockUseTenantFeatureFlag.mockReturnValue(false);
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
     expect(
-      screen.queryByTestId("vd-season-render-include-audio"),
+      screen.queryByTestId("vd-season-render-include-audio")
     ).not.toBeInTheDocument();
   });
 
   it("the dialogue-audio checkbox (+ nested loudness sub-checkbox, disabled until checked) renders when the voice-chain flag is on", () => {
     mockUseTenantFeatureFlag.mockReturnValue(true);
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
-    expect(screen.getByTestId("vd-season-render-include-audio")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-season-render-loudness-normalize")).toBeDisabled();
+    expect(
+      screen.getByTestId("vd-season-render-include-audio")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-season-render-loudness-normalize")
+    ).toBeDisabled();
     fireEvent.click(screen.getByTestId("vd-season-render-include-audio"));
-    expect(screen.getByTestId("vd-season-render-loudness-normalize")).not.toBeDisabled();
+    expect(
+      screen.getByTestId("vd-season-render-loudness-normalize")
+    ).not.toBeDisabled();
   });
 
   it("confirming submits the assembleSeasonVideos payload with the selected options", () => {
     mockUseTenantFeatureFlag.mockReturnValue(true);
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
     fireEvent.click(screen.getByTestId("vd-season-render-include-audio"));
     fireEvent.click(screen.getByTestId("vd-season-render-loudness-normalize"));
-    fireEvent.change(screen.getByTestId("mock-select"), {
+    fireEvent.change(screen.getAllByTestId("mock-select")[1], {
       target: { value: "karaoke_word" },
     });
     fireEvent.click(screen.getByTestId("vd-season-render-confirm"));
@@ -150,6 +260,8 @@ describe("EpisodesTab — season batch render (task #21 phase B)", () => {
     expect(mockAssembleSeasonVideosMutate).toHaveBeenCalledWith({
       seriesId: "10",
       options: {
+        applyTextOverlays: true,
+        applyWatermark: true,
         includeDialogueAudio: true,
         loudnessNormalize: true,
         subtitlePreset: "karaoke_word",
@@ -159,11 +271,20 @@ describe("EpisodesTab — season batch render (task #21 phase B)", () => {
 
   it("never sends includeDialogueAudio: true when the voice-chain flag is off, even if local state were somehow set", () => {
     mockUseTenantFeatureFlag.mockReturnValue(false);
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
     fireEvent.click(screen.getByTestId("vd-season-render-confirm"));
     expect(mockAssembleSeasonVideosMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ options: expect.objectContaining({ includeDialogueAudio: false }) }),
+      expect.objectContaining({
+        options: expect.objectContaining({ includeDialogueAudio: false }),
+      })
     );
   });
 
@@ -175,17 +296,30 @@ describe("EpisodesTab — season batch render (task #21 phase B)", () => {
       ],
       skipped: [],
     };
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
     fireEvent.click(screen.getByTestId("vd-season-render-confirm"));
 
     await waitFor(() =>
-      expect(screen.getByTestId("vd-season-render-submitted-summary")).toHaveTextContent("2"),
+      expect(
+        screen.getByTestId("vd-season-render-submitted-summary")
+      ).toHaveTextContent("2")
     );
-    expect(screen.getByTestId("vd-season-render-submitted-summary")).toHaveTextContent("1, 2");
+    expect(
+      screen.getByTestId("vd-season-render-submitted-summary")
+    ).toHaveTextContent("1, 2");
     expect(toast.success).toHaveBeenCalled();
     // Dialog closes on success.
-    expect(screen.queryByTestId("vd-season-render-confirm")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-season-render-confirm")
+    ).not.toBeInTheDocument();
   });
 
   it("shows a skipped summary with per-episode reasons mapped to short Thai text", async () => {
@@ -199,41 +333,68 @@ describe("EpisodesTab — season batch render (task #21 phase B)", () => {
         },
       ],
     };
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
     fireEvent.click(screen.getByTestId("vd-season-render-confirm"));
 
     await waitFor(() =>
-      expect(screen.getByTestId("vd-season-render-skipped-summary")).toBeInTheDocument(),
+      expect(
+        screen.getByTestId("vd-season-render-skipped-summary")
+      ).toBeInTheDocument()
     );
     const skipped = screen.getByTestId("vd-season-render-skipped-summary");
     expect(skipped).toHaveTextContent("1");
     expect(skipped).toHaveTextContent(
-      "ยังไม่มีคลิปวิดีโอ — ต้องสร้างชุดพรอมป์วิดีโอและเรนเดอร์คลิปก่อน",
+      "ยังไม่มีคลิปวิดีโอ — ต้องสร้างชุดพรอมป์วิดีโอและเรนเดอร์คลิปก่อน"
     );
   });
 
   it("shows an unrecognized skip reason RAW (defensive fallback), not silently dropped", async () => {
     assembleSeasonVideosResult = {
       submitted: [],
-      skipped: [{ episodeId: "e1", reason: "a brand-new precondition message" }],
+      skipped: [
+        { episodeId: "e1", reason: "a brand-new precondition message" },
+      ],
     };
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
     fireEvent.click(screen.getByTestId("vd-season-render-confirm"));
 
     await waitFor(() =>
-      expect(screen.getByTestId("vd-season-render-skipped-summary")).toHaveTextContent(
-        "a brand-new precondition message",
-      ),
+      expect(
+        screen.getByTestId("vd-season-render-skipped-summary")
+      ).toHaveTextContent("a brand-new precondition message")
     );
   });
 
   it("shows an error toast when the mutation fails, and does not crash", async () => {
     assembleSeasonVideosShouldFail = true;
-    render(<EpisodesTab lang="th" seriesId="10" episodes={episodes} readOnly={false} />);
+    render(
+      <EpisodesTab
+        lang="th"
+        seriesId="10"
+        episodes={episodes}
+        readOnly={false}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-season-render-button"));
     fireEvent.click(screen.getByTestId("vd-season-render-confirm"));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("season render boom"));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("season render boom")
+    );
   });
 });

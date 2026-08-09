@@ -69,8 +69,10 @@ import ModelSelectorDialog, {
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
+import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
 import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 
 /* -------------------------------------------------------------------------- */
 /* Localized copy                                                             */
@@ -106,23 +108,7 @@ const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
  *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
  *  the whole click handler BEFORE the real (state/mutation) action fired.
  *  Swallow the error and let the real action proceed. */
-function safeStorageGet(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
 
-function safeStorageSet(key: string, value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    /* quota exceeded / storage blocked — cache is best-effort, ignore */
-  }
-}
 
 function safeStorageRemove(key: string): void {
   if (typeof window === "undefined") return;
@@ -382,6 +368,8 @@ export function VerticalDramaLocationStockPanel({
   className,
 }: VerticalDramaLocationStockPanelProps) {
   const lang = useVerticalDramaLang();
+  const { requestConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
   const utils = trpc.useUtils();
 
   const listQuery = trpc.verticalDramaLocations.list.useQuery(
@@ -663,20 +651,33 @@ export function VerticalDramaLocationStockPanel({
   }
 
   const handlePreview = (location: VdLocationListItem) => {
-    setPendingPreviewLocationId(location.locationId);
-    previewMutation.mutate(
-      { seriesId, locationId: location.locationId },
-      {
-        onSuccess: (res) => {
-          setPreviewByLocationId((prev) => ({
-            ...prev,
-            [location.locationId]: { prompt: res.establishingPlatePrompt, negativePrompt: res.negativePrompt },
-          }));
-          setPendingPreviewLocationId(null);
-        },
-        onError: () => setPendingPreviewLocationId(null),
+    requestConfirmation({
+      title: t(lang, "ยืนยันสร้าง prompt สถานที่", "Confirm location prompt generation"),
+      description: t(lang, "การทำงานนี้ใช้ AI เพื่อสร้าง prompt และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "This uses AI to generate a location prompt and may spend credits. Continue?"),
+      confirmLabel: t(lang, "สร้าง prompt", "Generate prompt"),
+      cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-location-prompt-${location.locationId}`,
+      onConfirm: () => {
+        setPendingPreviewLocationId(location.locationId);
+        previewMutation.mutate(
+          {
+            seriesId,
+            locationId: location.locationId,
+            ...(selectedImageModelId ? { selectedImageModelId } : {}),
+          },
+          {
+            onSuccess: (res) => {
+              setPreviewByLocationId((prev) => ({
+                ...prev,
+                [location.locationId]: { prompt: res.establishingPlatePrompt, negativePrompt: res.negativePrompt },
+              }));
+              setPendingPreviewLocationId(null);
+            },
+            onError: () => setPendingPreviewLocationId(null),
+          },
+        );
       },
-    );
+    });
   };
 
   const handleGenerate = (location: VdLocationListItem) => {
@@ -685,9 +686,16 @@ export function VerticalDramaLocationStockPanel({
     if (!requireModelSelected()) return;
     if (!requireMcpConnectionOrToast()) return;
     if (!requireHermesConnectionOrToast()) return;
-    setRenderingLocationId(location.locationId);
-    generateMutation.mutate(
-      {
+    requestConfirmation({
+      title: t(lang, "ยืนยันสร้างภาพสถานที่", "Confirm location image generation"),
+      description: t(lang, "การทำงานนี้จะสร้างภาพสถานที่ด้วย AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?", "This generates a location image with AI and spends credits. Continue?"),
+      confirmLabel: t(lang, "สร้างภาพ", "Generate image"),
+      cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-location-image-${location.locationId}`,
+      onConfirm: () => {
+        setRenderingLocationId(location.locationId);
+        generateMutation.mutate(
+          {
         seriesId,
         locationId: location.locationId,
         approvedPrompt: preview.prompt,
@@ -706,12 +714,14 @@ export function VerticalDramaLocationStockPanel({
           imageModelUsesHermes,
           hermesConnectionId,
         }),
-      },
-      {
+          },
+          {
         onSuccess: (res) => void pollLocationImageTask(res.taskId, location.locationId),
         onError: () => setRenderingLocationId((current) => (current === location.locationId ? null : current)),
+          },
+        );
       },
-    );
+    });
   };
 
   /** The persist chain: import the rendered URL into the media_assets
@@ -898,7 +908,10 @@ export function VerticalDramaLocationStockPanel({
     );
   }
 
-  if (listQuery.isError) {
+  // Fatal only on a FIRST-load failure — same guard as
+  // `VerticalDramaCharacterStockPanel`; cached locations stay renderable when
+  // a background refetch fails.
+  if (listQuery.isError && !listQuery.data) {
     return (
       <Card className={cn("border-destructive/40", className)}>
         <CardContent role="alert" className="flex flex-col items-center gap-3 py-10 text-center">
@@ -919,6 +932,7 @@ export function VerticalDramaLocationStockPanel({
       aria-label={t(lang, "สถานที่ในซีรีย์", "Series locations")}
       className={cn("flex flex-col gap-4", className)}
     >
+      {creditConfirmDialog}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-muted-foreground">
           {t(lang, "สถานที่ในซีรีย์", "Series locations")}
@@ -941,7 +955,16 @@ export function VerticalDramaLocationStockPanel({
                 "สแกนเนื้อเรื่องปัจจุบันหาฉากใหม่ (ใช้ LLM จริง อาจใช้เวลาสักครู่)",
                 "Scans the current story for new locations (real LLM call, may take a moment)",
               )}
-              onClick={() => detectLocationsMutation.mutate({ seriesId })}
+              onClick={() =>
+                requestConfirmation({
+                  title: t(lang, "ยืนยันตรวจจับสถานที่", "Confirm location detection"),
+                  description: t(lang, "การทำงานนี้ใช้ LLM วิเคราะห์เรื่องและอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "This uses an LLM to analyze the story and may spend credits. Continue?"),
+                  confirmLabel: t(lang, "เริ่มตรวจจับ", "Start detection"),
+                  cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+                  testId: "vd-credit-confirm-detect-locations",
+                  onConfirm: () => detectLocationsMutation.mutate({ seriesId }),
+                })
+              }
               data-testid="vd-location-detect-now"
             >
               {detectLocationsMutation.isPending ? (
@@ -1467,6 +1490,8 @@ export function VerticalDramaLocationStockPanel({
         onSelect={handleSelectImageModel}
         mediaType="image"
         isLoading={imageModelsQuery.isLoading}
+        loadError={imageModelsQuery.isError}
+        onRetry={() => void imageModelsQuery.refetch()}
       />
 
       <ImageLightbox

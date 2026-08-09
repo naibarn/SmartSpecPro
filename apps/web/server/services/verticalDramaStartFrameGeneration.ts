@@ -22,8 +22,15 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
-import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "./skillFiles";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  calculateCreditsForLLM,
+} from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import { debugError } from "../_core/logger";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
@@ -53,6 +60,16 @@ import {
   type CharacterImageIndexMappingMismatch,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
+import {
+  normalizeVerticalDramaBarrierDialogue,
+  renderVerticalDramaBarrierDialogueBlock,
+  type VerticalDramaBarrierDialogue,
+} from "@shared/verticalDramaSeries/barrierDialogue";
+import {
+  normalizeVerticalDramaBarrierMultiView,
+  renderVerticalDramaBarrierMultiViewFactBlock,
+  type VerticalDramaBarrierMultiView,
+} from "@shared/verticalDramaSeries/barrierMultiView";
 // Cinematic image-prompt language directive. The caller resolves the
 // independent `startFramePlan.imagePromptLanguage` setting (with the legacy
 // fallback documented in `contracts.ts`) before entering this service.
@@ -100,6 +117,17 @@ import {
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
 
+function mergeImageNegativePromptIntoPrompt(
+  prompt: string,
+  negativePrompt: string | undefined
+): string {
+  const positive = prompt.trim();
+  const negative = negativePrompt?.trim() ?? "";
+  return negative
+    ? `${positive}\n\nIMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): ${negative}`
+    : positive;
+}
+
 /**
  * Thrown when the per-user `mediaGenerationLimiter` rejects a start-frame
  * render-plan generation call. `verticalDramaEpisodePipeline.ts`'s
@@ -113,7 +141,7 @@ export class RateLimitExceededError extends Error {
   code = "VD_RATE_LIMIT_EXCEEDED" as const;
   constructor(retryAfterMs: number) {
     super(
-      `Rate limit exceeded for start-frame render plan generation. Try again in ${Math.ceil(retryAfterMs / 1000)} seconds.`,
+      `Rate limit exceeded for start-frame render plan generation. Try again in ${Math.ceil(retryAfterMs / 1000)} seconds.`
     );
     this.name = "RateLimitExceededError";
   }
@@ -136,7 +164,7 @@ export class VdReferenceMappingError extends Error {
   code = "VD_REFERENCE_MAPPING_MISMATCH" as const;
   constructor(
     message: string,
-    public mismatches: CharacterImageIndexMappingMismatch[],
+    public mismatches: CharacterImageIndexMappingMismatch[]
   ) {
     super(message);
     this.name = "VdReferenceMappingError";
@@ -145,23 +173,23 @@ export class VdReferenceMappingError extends Error {
 
 /** `Image N = name` formatting for one reference, sorted by index — used to state the REQUIRED mapping in a corrective retry instruction. */
 function formatReferenceMappingLine(
-  references: readonly { imageIndex: number; characterName: string }[],
+  references: readonly { imageIndex: number; characterName: string }[]
 ): string {
   return references
     .slice()
     .sort((a, b) => a.imageIndex - b.imageIndex)
-    .map((r) => `Image ${r.imageIndex} = ${r.characterName}`)
+    .map(r => `Image ${r.imageIndex} = ${r.characterName}`)
     .join("; ");
 }
 
 /** Human-readable summary of detected contradictions, for a corrective retry instruction. */
 function formatMappingMismatchSummary(
-  mismatches: readonly CharacterImageIndexMappingMismatch[],
+  mismatches: readonly CharacterImageIndexMappingMismatch[]
 ): string {
   return mismatches
     .map(
-      (m) =>
-        `"${m.characterName}" was claimed at Image ${m.claimedImageIndex} but must be Image ${m.expectedImageIndex}`,
+      m =>
+        `"${m.characterName}" was claimed at Image ${m.claimedImageIndex} but must be Image ${m.expectedImageIndex}`
     )
     .join("; ");
 }
@@ -174,7 +202,7 @@ function formatMappingMismatchSummary(
  */
 function buildReferenceMappingCorrectiveInstruction(
   references: readonly { imageIndex: number; characterName: string }[],
-  mismatches: readonly CharacterImageIndexMappingMismatch[],
+  mismatches: readonly CharacterImageIndexMappingMismatch[]
 ): string {
   return [
     `REFERENCE MAPPING CORRECTION (MANDATORY): the previous attempt stated a wrong character-to-image mapping (${formatMappingMismatchSummary(mismatches)}).`,
@@ -183,7 +211,10 @@ function buildReferenceMappingCorrectiveInstruction(
   ].join("\n");
 }
 
-const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-shot-start-frame-render");
+const SKILL_FOLDER_PATH = path.join(
+  "skills",
+  "vertical-drama-shot-start-frame-render"
+);
 
 let cachedSystemPrompt: string | null = null;
 
@@ -208,7 +239,7 @@ function loadSkillSystemPrompt(): string {
   }
 
   throw new Error(
-    `Could not locate skill.md for "vertical-drama-shot-start-frame-render" under any known skills directory`,
+    `Could not locate skill.md for "vertical-drama-shot-start-frame-render" under any known skills directory`
   );
 }
 
@@ -236,7 +267,7 @@ const startFrameRequestSchema = z
             character_id: z.string().optional(),
             asset_id: z.string().optional(),
           })
-          .passthrough(),
+          .passthrough()
       )
       .optional()
       .default([]),
@@ -254,7 +285,9 @@ export const startFrameRenderPlanOutputSchema = z
   })
   .passthrough();
 
-export type StartFrameRenderPlanOutput = z.infer<typeof startFrameRenderPlanOutputSchema>;
+export type StartFrameRenderPlanOutput = z.infer<
+  typeof startFrameRenderPlanOutputSchema
+>;
 
 /**
  * The canonical PERSISTED per-frame shape (`VerticalDramaStartFramePlan
@@ -263,7 +296,8 @@ export type StartFrameRenderPlanOutput = z.infer<typeof startFrameRenderPlanOutp
  * param (gap-5 fix, recorded 2026-07-22) has a name callers can import
  * without reaching into `contracts.ts`'s array-indexing directly.
  */
-export type VerticalDramaStartFramePlanFrame = VerticalDramaStartFramePlan["frames"][number];
+export type VerticalDramaStartFramePlanFrame =
+  VerticalDramaStartFramePlan["frames"][number];
 
 /**
  * Typed projection matching `VerticalDramaStartFramePlan` from
@@ -280,7 +314,11 @@ export interface StartFrameRenderPlanProjection {
     shotNumber: number;
     imagePrompt: string;
     negativePrompt: string;
+    screenCallerCharacterRefs?: string[];
+    barrierDialogue?: VerticalDramaBarrierDialogue;
+    barrierMultiView?: VerticalDramaBarrierMultiView;
     requiredCharacterRefs: string[];
+    characterRefsCustomized?: boolean;
     productReferenceAssetIds: string[];
     canonicalShotSummary?: string;
     /** See `VerticalDramaStartFramePlan.frames[].productRefsCustomized` in `@shared/verticalDramaSeries`. */
@@ -318,10 +356,13 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 /** The single sanitising read for persisted plan-level scene states. */
 export function readSceneVisualStatesFromPlan(
-  startFramePlan: unknown,
+  startFramePlan: unknown
 ): Record<string, VdSceneVisualState> {
   try {
-    if (!isPlainRecord(startFramePlan) || !isPlainRecord(startFramePlan.sceneVisualStates)) {
+    if (
+      !isPlainRecord(startFramePlan) ||
+      !isPlainRecord(startFramePlan.sceneVisualStates)
+    ) {
       return {};
     }
     const entries = Object.entries(startFramePlan.sceneVisualStates)
@@ -329,7 +370,9 @@ export function readSceneVisualStatesFromPlan(
       .flatMap(([locationKey, raw]) => {
         const key = locationKey.trim();
         const state = resolveSceneVisualState(raw);
-        return key && state ? [[key, { ...state, locationKey: key }] as const] : [];
+        return key && state
+          ? [[key, { ...state, locationKey: key }] as const]
+          : [];
       });
     return Object.fromEntries(entries);
   } catch {
@@ -342,17 +385,21 @@ export function carrySceneVisualStates(input: {
   previous?: unknown;
   sceneShotGroups?: readonly VdSceneShotGroup[];
 }): Record<string, VdSceneVisualState> | undefined {
-  const previous = readSceneVisualStatesFromPlan({ sceneVisualStates: input.previous });
+  const previous = readSceneVisualStatesFromPlan({
+    sceneVisualStates: input.previous,
+  });
   const previousEntries = Object.entries(previous);
   if (previousEntries.length === 0) return undefined;
   if (!input.sceneShotGroups?.length) return previous;
 
-  const groupByKey = new Map(input.sceneShotGroups.map(group => [group.locationKey, group]));
+  const groupByKey = new Map(
+    input.sceneShotGroups.map(group => [group.locationKey, group])
+  );
   const carried: Array<[string, VdSceneVisualState]> = [];
   for (const [locationKey, state] of previousEntries) {
     const membershipMatches = isSameSceneMembership(
       state.memberShotNumbers,
-      groupByKey.get(locationKey)?.shotNumbers,
+      groupByKey.get(locationKey)?.shotNumbers
     );
     if (membershipMatches) {
       carried.push([locationKey, state]);
@@ -361,7 +408,9 @@ export function carrySceneVisualStates(input: {
     }
   }
   if (carried.length === 0) return undefined;
-  return Object.fromEntries(carried.sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(
+    carried.sort(([left], [right]) => left.localeCompare(right))
+  );
 }
 
 /** Pure write rule shared by lazy, explicit-plan, and manual callers. */
@@ -378,13 +427,27 @@ export function upsertSceneVisualState(input: {
   const locationKey = input.next.locationKey.trim();
   const existing = input.current?.[locationKey];
   const snapshot = Object.fromEntries(
-    Object.entries(input.current ?? {}).sort(([left], [right]) => left.localeCompare(right)),
+    Object.entries(input.current ?? {}).sort(([left], [right]) =>
+      left.localeCompare(right)
+    )
   );
   if (input.origin === "lazy" && existing) {
-    return { states: snapshot, written: false, skippedReason: "already_present" };
+    return {
+      states: snapshot,
+      written: false,
+      skippedReason: "already_present",
+    };
   }
-  if (input.origin === "planned" && existing?.manualEdit === true && input.force !== true) {
-    return { states: snapshot, written: false, skippedReason: "manual_edit_protected" };
+  if (
+    input.origin === "planned" &&
+    existing?.manualEdit === true &&
+    input.force !== true
+  ) {
+    return {
+      states: snapshot,
+      written: false,
+      skippedReason: "manual_edit_protected",
+    };
   }
 
   const { manualEdit: _manualEdit, stale: _stale, ...fresh } = input.next;
@@ -398,7 +461,9 @@ export function upsertSceneVisualState(input: {
     [locationKey, written],
   ];
   return {
-    states: Object.fromEntries(entries.sort(([left], [right]) => left.localeCompare(right))),
+    states: Object.fromEntries(
+      entries.sort(([left], [right]) => left.localeCompare(right))
+    ),
     written: true,
   };
 }
@@ -489,12 +554,21 @@ export function projectStartFramePlan(
     previous?: unknown;
     sceneShotGroups?: readonly VdSceneShotGroup[];
   },
+  /** Ground-truth caller roles per shot; they persist as screen-only roles and are not physical-cast references. */
+  shotScreenCallerCharacterIdsByShotNumber?: Map<number, string[]>,
+  /** Ground-truth physical barrier role per shot. */
+  shotBarrierDialogueByShotNumber?: Map<number, VerticalDramaBarrierDialogue>,
+  shotBarrierMultiViewByShotNumber?: Map<number, VerticalDramaBarrierMultiView>
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
     callerImageModelId ||
-    (typeof summary?.image_model === "string" ? (summary.image_model as string) : callerImageModelId);
-  const sceneVisualStates = carrySceneVisualStates(sceneVisualStatesCarryOver ?? {});
+    (typeof summary?.image_model === "string"
+      ? (summary.image_model as string)
+      : callerImageModelId);
+  const sceneVisualStates = carrySceneVisualStates(
+    sceneVisualStatesCarryOver ?? {}
+  );
 
   return {
     mode: "single_frame_per_shot",
@@ -504,22 +578,32 @@ export function projectStartFramePlan(
     frames: raw.start_frame_requests
       .slice()
       .sort((a, b) => a.shot_number - b.shot_number)
-      .map((r) => {
+      .map(r => {
         const groundTruth = shotCharacterIdsByShotNumber?.get(r.shot_number);
         const requiredCharacterRefs =
-          groundTruth && groundTruth.length > 0
+          groundTruth !== undefined
             ? groundTruth
             : (r.reference_assets ?? [])
-                .map((ref) => ref.character_id)
-                .filter((id): id is string => typeof id === "string" && id.length > 0);
+                .map(ref => ref.character_id)
+                .filter(
+                  (id): id is string => typeof id === "string" && id.length > 0
+                );
         // Gap-5 fix — this shot's PRIOR persisted frame, when the caller
-        // supplied one; `undefined` for a shot the prior plan never had
-        // (e.g. the new plan has more shots than the old one), which
-        // correctly leaves every carry-over field below unset for that
-        // shot, same as the no-previous-frames-at-all case.
+        // supplied one; `undefined` for a shot the prior plan never had.
         const previous = previousFramesByShotNumber?.get(r.shot_number);
+        const screenCallerCharacterRefs =
+          shotScreenCallerCharacterIdsByShotNumber?.get(r.shot_number) ??
+          previous?.screenCallerCharacterRefs ??
+          [];
+        const barrierDialogue =
+          shotBarrierDialogueByShotNumber?.get(r.shot_number) ??
+          normalizeVerticalDramaBarrierDialogue(previous?.barrierDialogue);
+        const barrierMultiView =
+          shotBarrierMultiViewByShotNumber?.get(r.shot_number) ??
+          normalizeVerticalDramaBarrierMultiView(previous?.barrierMultiView);
         const canonicalShotSummary =
-          canonicalShotSummaryByShotNumber?.get(r.shot_number) ?? previous?.canonicalShotSummary;
+          canonicalShotSummaryByShotNumber?.get(r.shot_number) ??
+          previous?.canonicalShotSummary;
         // `r.prompt` is now the FINAL text as-authored by the
         // `vertical-drama-shot-start-frame-render` skill — no code-side
         // identity-lock append (vertical-drama-skill-first-architecture
@@ -531,9 +615,20 @@ export function projectStartFramePlan(
         // post-hoc bracket append is no longer needed here).
         return {
           shotNumber: r.shot_number,
-          imagePrompt: r.prompt,
-          negativePrompt: r.negative_prompt ?? "",
+          imagePrompt: mergeImageNegativePromptIntoPrompt(
+            r.prompt,
+            r.negative_prompt ?? ""
+          ),
+          negativePrompt: "",
+          ...(screenCallerCharacterRefs.length > 0
+            ? { screenCallerCharacterRefs }
+            : {}),
+          ...(barrierDialogue ? { barrierDialogue } : {}),
+          ...(barrierMultiView ? { barrierMultiView } : {}),
           requiredCharacterRefs,
+          ...(previous?.characterRefsCustomized !== undefined
+            ? { characterRefsCustomized: previous.characterRefsCustomized }
+            : {}),
           productReferenceAssetIds: previous?.productReferenceAssetIds ?? [],
           ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
           ...(previous?.productRefsCustomized !== undefined
@@ -542,8 +637,12 @@ export function projectStartFramePlan(
           ...(previous?.approvedMediaAssetId !== undefined
             ? { approvedMediaAssetId: previous.approvedMediaAssetId }
             : {}),
-          ...(previous?.locationKey !== undefined ? { locationKey: previous.locationKey } : {}),
-          ...(previous?.angleGrid !== undefined ? { angleGrid: previous.angleGrid } : {}),
+          ...(previous?.locationKey !== undefined
+            ? { locationKey: previous.locationKey }
+            : {}),
+          ...(previous?.angleGrid !== undefined
+            ? { angleGrid: previous.angleGrid }
+            : {}),
           ...(previous?.angleGridAssetIds !== undefined
             ? { angleGridAssetIds: previous.angleGridAssetIds }
             : {}),
@@ -560,7 +659,6 @@ export function projectStartFramePlan(
   };
 }
 
-
 /* -------------------------------------------------------------------------- */
 /* Prompt building                                                            */
 /* -------------------------------------------------------------------------- */
@@ -573,11 +671,20 @@ export interface GenerateStartFrameRenderPlanParams {
   episodeTitle: string;
   durationSeconds: number;
   selectedImageModelId?: string;
+  /** Effective image-prompt budget for the selected provider/model. */
+  imagePromptMaxChars?: number;
   storyboardShots: Array<{
     shotNumber: number;
     description: string;
     cameraSetup: string;
     characterIds: string[];
+    /** Reference ids shown only inside an on-screen phone/video call. */
+    screenCallerCharacterIds?: string[];
+    /** Explicit physical conversation through a closed barrier. */
+    barrierDialogue?: VerticalDramaBarrierDialogue;
+    barrierMultiView?: VerticalDramaBarrierMultiView;
+    /** True when both reference-role lists were explicitly chosen by the user and must not be re-derived. */
+    characterRefsCustomized?: boolean;
     durationSeconds: number;
     /** Active Overview shot summary; the skill must prefer it over stale storyboard prose. */
     canonicalShotSummary?: string;
@@ -593,7 +700,11 @@ export interface GenerateStartFrameRenderPlanParams {
      * `buildStartFrameRenderPlanUserPrompt` renders that shot's line exactly
      * as before this field existed (byte-identical regression guard).
      */
-    location?: { name: string; description: string; hasReferenceImage: boolean };
+    location?: {
+      name: string;
+      description: string;
+      hasReferenceImage: boolean;
+    };
     /** Pre-rendered scene continuity lock; this service never resolves scene identity. */
     sceneContinuityLockBlock?: string;
     /**
@@ -617,6 +728,8 @@ export interface GenerateStartFrameRenderPlanParams {
      * immediately above).
      */
     speakingOrder?: string[];
+    /** Require video-safe face readability for multi-character/dialogue shots. */
+    videoFaceVisibilityRequired?: boolean;
   }>;
   /**
    * Series-level default region/ethnicity look for every rendered person
@@ -699,7 +812,10 @@ const SINGLE_SUBJECT_SHOT_SIZE_TOKENS = new Set([
 ]);
 
 function normalizeShotSizeToken(token: string): string {
-  return token.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  return token
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
 }
 
 /**
@@ -713,7 +829,9 @@ function normalizeShotSizeToken(token: string): string {
  * the other. Callers must gate on `requiredCharacterCount >= 2` themselves —
  * this function does not validate that precondition.
  */
-function widenedMultiCharacterFramingToken(requiredCharacterCount: number): string {
+function widenedMultiCharacterFramingToken(
+  requiredCharacterCount: number
+): string {
   return requiredCharacterCount >= 3 ? "medium_group_shot" : "medium_two_shot";
 }
 
@@ -740,16 +858,18 @@ function widenedMultiCharacterFramingToken(requiredCharacterCount: number): stri
  */
 export function remapCameraSetupForRequiredCharacters(
   cameraSetup: string,
-  requiredCharacterCount: number,
+  requiredCharacterCount: number
 ): string {
   if (requiredCharacterCount < 2) return cameraSetup;
   const widened = widenedMultiCharacterFramingToken(requiredCharacterCount);
   let replaced = false;
   const remapped = cameraSetup
     .split(",")
-    .map((rawToken) => {
+    .map(rawToken => {
       if (replaced) return rawToken;
-      if (!SINGLE_SUBJECT_SHOT_SIZE_TOKENS.has(normalizeShotSizeToken(rawToken))) {
+      if (
+        !SINGLE_SUBJECT_SHOT_SIZE_TOKENS.has(normalizeShotSizeToken(rawToken))
+      ) {
         return rawToken;
       }
       replaced = true;
@@ -763,11 +883,14 @@ export function remapCameraSetupForRequiredCharacters(
   return replaced ? remapped : cameraSetup;
 }
 
-export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
+export function buildStartFrameRenderPlanUserPrompt(
+  params: GenerateStartFrameRenderPlanParams
+): string {
   const promptLanguage = params.promptLanguage ?? "en";
-  const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
+  const promptLanguageName =
+    VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const shotLines = params.storyboardShots
-    .map((s) => {
+    .map(s => {
       // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
       // bible) — additive; only appended when this shot carries a
       // `location` fact, so a shot with none produces the exact same line
@@ -793,6 +916,21 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
       const speakingOrderSuffix = s.speakingOrder?.length
         ? ` | speaking_order: ${s.speakingOrder.join(" > ")} (first speaker leftmost)`
         : "";
+      const videoFaceVisibilitySuffix = s.videoFaceVisibilityRequired
+        ? " | video_face_visibility_required: true"
+        : "";
+      const screenCallerSuffix = s.screenCallerCharacterIds?.length
+        ? ` | screen_callers: ${s.screenCallerCharacterIds.join(", ")} (screen-only role; do not attach the caller portrait as a physical-scene reference; if depicted, show only inside a clearly visible phone/video call screen, never physically in the room)`
+        : "";
+      const barrierDialogue = normalizeVerticalDramaBarrierDialogue(
+        s.barrierDialogue
+      );
+      const barrierMultiView = normalizeVerticalDramaBarrierMultiView(
+        s.barrierMultiView
+      );
+      const characterSelectionSuffix = s.characterRefsCustomized
+        ? " | character_reference_selection: USER_SELECTED_AUTHORITATIVE (preserve scene/caller roles exactly; do not reclassify from synopsis)"
+        : "";
       // Multi-character frame-inclusion fix — additive; only appended when
       // this shot requires 2+ characters, so a solo/no-character shot
       // produces the exact same line as before this field existed
@@ -803,7 +941,7 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
       // `vertical-drama-shot-start-frame-render/skill.md`'s new "All
       // required characters must be visible in frame" rule.
       const requiredCharactersSuffix =
-        s.characterIds.length >= 2
+        !barrierDialogue && !barrierMultiView && s.characterIds.length >= 2
           ? ` | required_characters: ${s.characterIds.length} (frame must include ALL)`
           : "";
       // Deterministic camera remap (multi-character close-up conflict fix) —
@@ -816,20 +954,25 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
       // root-cause writeup.
       const remappedCameraSetup = remapCameraSetupForRequiredCharacters(
         s.cameraSetup,
-        s.characterIds.length,
+        barrierDialogue || barrierMultiView ? 1 : s.characterIds.length
       );
-      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${remappedCameraSetup} | characters: ${
+      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${remappedCameraSetup} | physical_scene_refs: ${
         s.characterIds.length ? s.characterIds.join(", ") : "(none)"
-      }${locationSuffix}${canonicalSource}${speakingOrderSuffix}${requiredCharactersSuffix}`;
+      }${screenCallerSuffix}${characterSelectionSuffix}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
     })
     .join("\n");
 
-  const allRequiredCharacterKeys = params.storyboardShots.flatMap((s) => s.characterIds);
+  const allRequiredCharacterKeys = params.storyboardShots.flatMap(s => [
+    ...s.characterIds,
+    ...(s.screenCallerCharacterIds ?? []),
+  ]);
   const characterIdentityMapBlock = buildCharacterIdentityMapBlock(
     allRequiredCharacterKeys,
-    params.characters ?? [],
+    params.characters ?? []
   );
-  const sceneContinuityLockSection = buildRenderPlanSceneContinuityLockSection(params.storyboardShots);
+  const sceneContinuityLockSection = buildRenderPlanSceneContinuityLockSection(
+    params.storyboardShots
+  );
 
   // Part B2 — reference-only episode scene-setting context, near the top of
   // the prompt so the planning LLM reads it before the per-shot list.
@@ -846,6 +989,9 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
     episodePlanContextBlock,
     params.selectedImageModelId
       ? `Preferred image model: ${params.selectedImageModelId}`
+      : null,
+    params.imagePromptMaxChars
+      ? `PROMPT LENGTH BUDGET (MANDATORY): every generated image prompt and negative prompt must be at or below ${Math.min(20_000, Math.max(3_800, Math.floor(params.imagePromptMaxChars)))} characters.`
       : null,
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
     sceneContinuityLockSection,
@@ -874,11 +1020,16 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
 }
 
 export function buildRenderPlanSceneContinuityLockSection(
-  storyboardShots: readonly { shotNumber: number; sceneContinuityLockBlock?: string }[],
+  storyboardShots: readonly {
+    shotNumber: number;
+    sceneContinuityLockBlock?: string;
+  }[]
 ): string | null {
   const groups = new Map<string, number[]>();
   for (const shot of storyboardShots) {
-    const block = shot.sceneContinuityLockBlock?.trim();
+    const block = sanitizeSceneContinuityLockForShot(
+      shot.sceneContinuityLockBlock
+    );
     if (!block) continue;
     const shots = groups.get(block) ?? [];
     shots.push(shot.shotNumber);
@@ -895,6 +1046,28 @@ export function buildRenderPlanSceneContinuityLockSection(
       .sort((a, b) => (a.shotNumbers[0] ?? 0) - (b.shotNumbers[0] ?? 0))
       .map(group => `Shots ${group.shotNumbers.join(", ")}:\n${group.block}`),
   ].join("\n\n");
+}
+
+/**
+ * Scene visual state is shared by every shot at a location. Its lighting,
+ * fixed-set, prop, and palette facts are safe continuity context, but spatial
+ * layout, staging axis, and wardrobe can name characters who belong to a
+ * different shot. Passing those scene-wide cast facts into a two-person shot
+ * caused image models to render an unrequested third person. Per-shot cast is
+ * governed exclusively by `requiredCharacterRefs`/the reference manifest.
+ */
+export function sanitizeSceneContinuityLockForShot(
+  block?: string
+): string | undefined {
+  const sanitized = block
+    ?.split("\n")
+    .filter(
+      line =>
+        !/^\s*-?\s*(?:spatial layout|staging axis|wardrobe)\s*:/i.test(line)
+    )
+    .join("\n")
+    .trim();
+  return sanitized || undefined;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -938,7 +1111,7 @@ export interface VdReferenceMappingWarning {
  */
 function buildBatchReferenceMappingReferences(
   storyboardShots: GenerateStartFrameRenderPlanParams["storyboardShots"],
-  characters: readonly VerticalDramaCharacterDescriptorSource[],
+  characters: readonly VerticalDramaCharacterDescriptorSource[]
 ): Map<number, Array<{ imageIndex: number; characterName: string }>> {
   const nameByCharacterKey = new Map<string, string>();
   for (const character of characters) {
@@ -956,8 +1129,11 @@ function buildBatchReferenceMappingReferences(
         const characterName = nameByCharacterKey.get(characterKey);
         return characterName ? { imageIndex: index + 1, characterName } : null;
       })
-      .filter((r): r is { imageIndex: number; characterName: string } => Boolean(r));
-    if (references.length > 0) referencesByShotNumber.set(shot.shotNumber, references);
+      .filter((r): r is { imageIndex: number; characterName: string } =>
+        Boolean(r)
+      );
+    if (references.length > 0)
+      referencesByShotNumber.set(shot.shotNumber, references);
   }
   return referencesByShotNumber;
 }
@@ -965,13 +1141,19 @@ function buildBatchReferenceMappingReferences(
 /** Run the shared validator against every shot request that has resolvable ground-truth references. */
 function findBatchReferenceMappingIssues(
   requests: readonly { shot_number: number; prompt: string }[],
-  referencesByShotNumber: Map<number, Array<{ imageIndex: number; characterName: string }>>,
+  referencesByShotNumber: Map<
+    number,
+    Array<{ imageIndex: number; characterName: string }>
+  >
 ): VdReferenceMappingWarning[] {
   const issues: VdReferenceMappingWarning[] = [];
   for (const request of requests) {
     const references = referencesByShotNumber.get(request.shot_number);
     if (!references || references.length === 0) continue;
-    const mismatches = findCharacterImageIndexMappingMismatches(request.prompt, references);
+    const mismatches = findCharacterImageIndexMappingMismatches(
+      request.prompt,
+      references
+    );
     for (const mismatch of mismatches) {
       issues.push({ shotNumber: request.shot_number, ...mismatch });
     }
@@ -986,7 +1168,7 @@ function findBatchReferenceMappingIssues(
  * regeneration of all 9 shots.
  */
 function buildBatchReferenceMappingCorrectiveInstruction(
-  issues: readonly VdReferenceMappingWarning[],
+  issues: readonly VdReferenceMappingWarning[]
 ): string {
   const issuesByShot = new Map<number, VdReferenceMappingWarning[]>();
   for (const issue of issues) {
@@ -998,7 +1180,7 @@ function buildBatchReferenceMappingCorrectiveInstruction(
     .sort(([a], [b]) => a - b)
     .map(
       ([shotNumber, shotIssues]) =>
-        `- Shot ${shotNumber}: ${formatMappingMismatchSummary(shotIssues)}`,
+        `- Shot ${shotNumber}: ${formatMappingMismatchSummary(shotIssues)}`
     );
   return [
     `REFERENCE MAPPING CORRECTION (MANDATORY): the previous attempt stated a wrong ` +
@@ -1012,7 +1194,7 @@ function buildBatchReferenceMappingCorrectiveInstruction(
 }
 
 export async function generateStartFrameRenderPlan(
-  params: GenerateStartFrameRenderPlanParams,
+  params: GenerateStartFrameRenderPlanParams
 ): Promise<{
   plan: StartFrameRenderPlanProjection;
   raw: StartFrameRenderPlanOutput;
@@ -1026,7 +1208,9 @@ export async function generateStartFrameRenderPlan(
   // Checked first, before the credit check / LLM call.
   const rateLimitKey = `user:${params.userId}`;
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
-    throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
+    throw new RateLimitExceededError(
+      mediaGenerationLimiter.getResetTime(rateLimitKey)
+    );
   }
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);
@@ -1044,22 +1228,23 @@ export async function generateStartFrameRenderPlan(
   // to comfortably fit 9 enriched shots, with one automatic same-model retry
   // (stricter instruction + higher ceiling) on truncated/invalid JSON — see
   // `executeJsonPlanningCallWithRetry`'s doc comment.
-  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt,
-    userPrompt,
-    temperature: 0.7,
-    userId: params.userId,
-    maxTokens: 16000,
-    schema: startFrameRenderPlanOutputSchema,
-    label: "Start-frame render plan",
-  });
+  const { data: validatedData, response } =
+    await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt,
+      temperature: 0.7,
+      userId: params.userId,
+      maxTokens: 16000,
+      schema: startFrameRenderPlanOutputSchema,
+      label: "Start-frame render plan",
+    });
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model,
+    model
   );
 
   await deductCredits({
@@ -1092,11 +1277,11 @@ export async function generateStartFrameRenderPlan(
   let planData = validatedData;
   const referencesByShotNumber = buildBatchReferenceMappingReferences(
     params.storyboardShots,
-    params.characters ?? [],
+    params.characters ?? []
   );
   let referenceMappingIssues = findBatchReferenceMappingIssues(
     planData.start_frame_requests,
-    referencesByShotNumber,
+    referencesByShotNumber
   );
   if (referenceMappingIssues.length > 0) {
     debugError(
@@ -1104,10 +1289,10 @@ export async function generateStartFrameRenderPlan(
       `Start-frame render plan (episode #${params.episodeId}): ${referenceMappingIssues.length} ` +
         `shot(s) have a character-to-image mapping that contradicts their own attachment ` +
         `order — retrying the whole plan once with a corrective instruction.`,
-      { episodeId: params.episodeId, issues: referenceMappingIssues },
+      { episodeId: params.episodeId, issues: referenceMappingIssues }
     );
     const correctiveUserPrompt = `${userPrompt}\n\n${buildBatchReferenceMappingCorrectiveInstruction(
-      referenceMappingIssues,
+      referenceMappingIssues
     )}`;
     const retry = await executeJsonPlanningCallWithRetry({
       model,
@@ -1123,7 +1308,7 @@ export async function generateStartFrameRenderPlan(
     const retryCreditsUsed = calculateCreditsForLLM(
       retryUsage?.prompt_tokens ?? 0,
       retryUsage?.completion_tokens ?? 0,
-      model,
+      model
     );
     await deductCredits({
       userId: params.userId,
@@ -1144,17 +1329,17 @@ export async function generateStartFrameRenderPlan(
     planData = retry.data;
     referenceMappingIssues = findBatchReferenceMappingIssues(
       planData.start_frame_requests,
-      referencesByShotNumber,
+      referencesByShotNumber
     );
   }
 
   const shotCharacterIdsByShotNumber = new Map(
-    params.storyboardShots.map((s) => [s.shotNumber, s.characterIds]),
+    params.storyboardShots.map(s => [s.shotNumber, s.characterIds])
   );
   const canonicalShotSummaryByShotNumber = new Map(
     params.storyboardShots
-      .filter((s) => Boolean(s.canonicalShotSummary?.trim()))
-      .map((s) => [s.shotNumber, s.canonicalShotSummary!.trim()]),
+      .filter(s => Boolean(s.canonicalShotSummary?.trim()))
+      .map(s => [s.shotNumber, s.canonicalShotSummary!.trim()])
   );
   const plan = projectStartFramePlan(
     planData,
@@ -1164,6 +1349,41 @@ export async function generateStartFrameRenderPlan(
     params.previousFramesByShotNumber,
     params.promptLanguage,
     params.sceneVisualStatesCarryOver,
+    new Map(
+      params.storyboardShots
+        .filter(
+          s =>
+            s.characterRefsCustomized === true ||
+            s.screenCallerCharacterIds !== undefined
+        )
+        .map(s => [s.shotNumber, s.screenCallerCharacterIds ?? []])
+    ),
+    new Map(
+      params.storyboardShots
+        .map(s => {
+          const barrier = normalizeVerticalDramaBarrierDialogue(
+            s.barrierDialogue
+          );
+          return barrier ? ([s.shotNumber, barrier] as const) : null;
+        })
+        .filter((entry): entry is readonly [number, VerticalDramaBarrierDialogue] =>
+          entry !== null
+        )
+    ),
+    new Map(
+      params.storyboardShots
+        .map(s => {
+          const barrierMultiView = normalizeVerticalDramaBarrierMultiView(
+            s.barrierMultiView
+          );
+          return barrierMultiView
+            ? ([s.shotNumber, barrierMultiView] as const)
+            : null;
+        })
+        .filter((entry): entry is readonly [number, VerticalDramaBarrierMultiView] =>
+          entry !== null
+        )
+    )
   );
 
   return {
@@ -1187,7 +1407,9 @@ export async function generateStartFrameRenderPlan(
  */
 export function appendPresetVisualIdentityFragmentsToImagePrompt(
   imagePrompt: string,
-  identity: Pick<VerticalDramaPresetVisualIdentity, "imagePromptFragments"> | undefined,
+  identity:
+    | Pick<VerticalDramaPresetVisualIdentity, "imagePromptFragments">
+    | undefined
 ): string {
   const positive = identity?.imagePromptFragments?.positive ?? [];
   if (positive.length === 0) return imagePrompt;
@@ -1201,7 +1423,9 @@ export function appendPresetVisualIdentityFragmentsToImagePrompt(
  */
 export function mergePresetVisualIdentityNegativeFragments(
   negativePrompt: string | undefined,
-  identity: Pick<VerticalDramaPresetVisualIdentity, "imagePromptFragments"> | undefined,
+  identity:
+    | Pick<VerticalDramaPresetVisualIdentity, "imagePromptFragments">
+    | undefined
 ): string | undefined {
   const negative = identity?.imagePromptFragments?.negative ?? [];
   if (negative.length === 0) return negativePrompt;
@@ -1227,7 +1451,7 @@ export function mergePresetVisualIdentityNegativeFragments(
 
 const SHOT_START_FRAME_PROMPT_SKILL_FOLDER_PATH = path.join(
   "skills",
-  "vertical-drama-shot-start-frame-prompt",
+  "vertical-drama-shot-start-frame-prompt"
 );
 
 let cachedShotStartFramePromptSystemPrompt: string | null = null;
@@ -1241,9 +1465,12 @@ let cachedShotStartFramePromptSystemPrompt: string | null = null;
  * replicates).
  */
 function loadShotStartFramePromptSystemPrompt(): string {
-  if (cachedShotStartFramePromptSystemPrompt) return cachedShotStartFramePromptSystemPrompt;
+  if (cachedShotStartFramePromptSystemPrompt)
+    return cachedShotStartFramePromptSystemPrompt;
 
-  for (const dir of resolveSkillDirCandidates(SHOT_START_FRAME_PROMPT_SKILL_FOLDER_PATH)) {
+  for (const dir of resolveSkillDirCandidates(
+    SHOT_START_FRAME_PROMPT_SKILL_FOLDER_PATH
+  )) {
     const manifestPath = resolveSkillManifestPath(dir);
     if (manifestPath && fs.existsSync(manifestPath)) {
       const raw = fs.readFileSync(manifestPath, "utf-8");
@@ -1256,7 +1483,7 @@ function loadShotStartFramePromptSystemPrompt(): string {
   }
 
   throw new Error(
-    `Could not locate skill.md for "vertical-drama-shot-start-frame-prompt" under any known skills directory`,
+    `Could not locate skill.md for "vertical-drama-shot-start-frame-prompt" under any known skills directory`
   );
 }
 
@@ -1278,7 +1505,8 @@ let cachedPolicySafeRewriteSystemPrompt: string | null = null;
 
 /** Read the `vertical-drama-shot-synopsis-image-prompt` skill's markdown body verbatim (mode `policy_safe_rewrite`). */
 function loadPolicySafeRewriteSystemPrompt(): string {
-  if (cachedPolicySafeRewriteSystemPrompt) return cachedPolicySafeRewriteSystemPrompt;
+  if (cachedPolicySafeRewriteSystemPrompt)
+    return cachedPolicySafeRewriteSystemPrompt;
 
   const folder = VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS.policy_safe_rewrite;
   for (const dir of resolveSkillDirCandidates(path.join("skills", folder))) {
@@ -1293,14 +1521,17 @@ function loadPolicySafeRewriteSystemPrompt(): string {
     }
   }
 
-  throw new Error(`Could not locate skill.md for "${folder}" under any known skills directory`);
+  throw new Error(
+    `Could not locate skill.md for "${folder}" under any known skills directory`
+  );
 }
 
 let cachedCinematicNarrativeSystemPrompt: string | null = null;
 
 /** Read the `vertical-drama-cinematic-narrative-image-prompt` skill's markdown body verbatim (mode `cinematic_narrative`). */
 function loadCinematicNarrativeSystemPrompt(): string {
-  if (cachedCinematicNarrativeSystemPrompt) return cachedCinematicNarrativeSystemPrompt;
+  if (cachedCinematicNarrativeSystemPrompt)
+    return cachedCinematicNarrativeSystemPrompt;
 
   const folder = VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS.cinematic_narrative;
   for (const dir of resolveSkillDirCandidates(path.join("skills", folder))) {
@@ -1315,7 +1546,9 @@ function loadCinematicNarrativeSystemPrompt(): string {
     }
   }
 
-  throw new Error(`Could not locate skill.md for "${folder}" under any known skills directory`);
+  throw new Error(
+    `Could not locate skill.md for "${folder}" under any known skills directory`
+  );
 }
 
 /**
@@ -1382,7 +1615,9 @@ const startFrameShotPromptOutputSchema = z
     prompt: z.string().min(1),
     negative_prompt: z.string().optional().default(""),
     safety_adjustments: z.array(z.unknown()).optional().catch(undefined),
-    analysis_summary: startFrameShotPromptAnalysisSummarySchema.optional().catch(undefined),
+    analysis_summary: startFrameShotPromptAnalysisSummarySchema
+      .optional()
+      .catch(undefined),
     continuity_notes: z.array(z.unknown()).optional().catch(undefined),
     video_readiness_notes: z.array(z.unknown()).optional().catch(undefined),
     quality_score: z.number().optional().catch(undefined),
@@ -1390,7 +1625,9 @@ const startFrameShotPromptOutputSchema = z
   })
   .passthrough();
 
-export type StartFrameShotPromptOutput = z.infer<typeof startFrameShotPromptOutputSchema>;
+export type StartFrameShotPromptOutput = z.infer<
+  typeof startFrameShotPromptOutputSchema
+>;
 
 const policySafeSynopsisAdjustmentSchema = z.object({
   original: z.string().min(1),
@@ -1404,7 +1641,9 @@ export const policySafeSynopsisOutputSchema = z.object({
   safety_adjustments: z.array(policySafeSynopsisAdjustmentSchema).max(12),
 });
 
-export type PolicySafeSynopsisOutput = z.infer<typeof policySafeSynopsisOutputSchema>;
+export type PolicySafeSynopsisOutput = z.infer<
+  typeof policySafeSynopsisOutputSchema
+>;
 
 /**
  * Applies only the declared policy-safe replacements to the authoritative
@@ -1414,24 +1653,27 @@ export type PolicySafeSynopsisOutput = z.infer<typeof policySafeSynopsisOutputSc
  */
 export function reconstructPolicySafeSynopsis(
   sourceSynopsis: string,
-  output: PolicySafeSynopsisOutput,
+  output: PolicySafeSynopsisOutput
 ): string {
   let reconstructed = sourceSynopsis.trim();
   for (const adjustment of output.safety_adjustments) {
     if (adjustment.original === adjustment.rewritten) {
       throw new VdSchemaValidationError(
         "Policy-safe synopsis adjustment must change the declared text",
-        adjustment,
+        adjustment
       );
     }
     const occurrences = reconstructed.split(adjustment.original).length - 1;
     if (occurrences !== 1) {
       throw new VdSchemaValidationError(
         `Policy-safe synopsis adjustment target must occur exactly once (found ${occurrences})`,
-        adjustment,
+        adjustment
       );
     }
-    reconstructed = reconstructed.replace(adjustment.original, adjustment.rewritten);
+    reconstructed = reconstructed.replace(
+      adjustment.original,
+      adjustment.rewritten
+    );
   }
   return reconstructed;
 }
@@ -1443,20 +1685,22 @@ export function reconstructPolicySafeSynopsis(
  */
 export function validatePolicySafeSynopsisRewrite(
   sourceSynopsis: string,
-  output: PolicySafeSynopsisOutput,
+  output: PolicySafeSynopsisOutput
 ): string {
   const reconstructed = reconstructPolicySafeSynopsis(sourceSynopsis, output);
   const rewritten = output.rewritten_synopsis.trim();
   if (reconstructed !== rewritten) {
     throw new VdSchemaValidationError(
       "Policy-safe synopsis contains an undeclared addition, deletion, or rewrite",
-      { sourceSynopsis: sourceSynopsis.trim(), reconstructed, rewritten },
+      { sourceSynopsis: sourceSynopsis.trim(), reconstructed, rewritten }
     );
   }
   return rewritten;
 }
 
-export function buildPolicySafeSynopsisUserPrompt(canonicalShotSummary: string): string {
+export function buildPolicySafeSynopsisUserPrompt(
+  canonicalShotSummary: string
+): string {
   return [
     "Rewrite only policy-sensitive wording in the authoritative synopsis below.",
     "Preserve its original language and all non-policy wording exactly.",
@@ -1468,23 +1712,169 @@ export function buildPolicySafeSynopsisUserPrompt(canonicalShotSummary: string):
   ].join("\n");
 }
 
+function uniqueCharacterNames(names: readonly string[] | undefined): string[] {
+  return Array.from(
+    new Set(
+      (names ?? [])
+        .map(name => name.trim())
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length)
+    )
+  );
+}
+
+function protectAllowedCharacterNames(
+  prompt: string,
+  allowedCharacterNames: readonly string[] | undefined
+): string {
+  let protectedPrompt = prompt;
+  uniqueCharacterNames(allowedCharacterNames).forEach((name, index) => {
+    const token = `__VD_ALLOWED_CAST_${index}__`;
+    if (!protectedPrompt.includes(name)) return;
+    protectedPrompt = protectedPrompt.split(name).join(token);
+  });
+  return protectedPrompt;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Remove roster characters who are narrative context only from the positive
+ * image prompt. The selected manifest names are protected first, so an
+ * excluded short name cannot damage an overlapping allowed name. This helper
+ * never decides presence from prose: the caller computes exclusions from the
+ * authoritative physical/screen-caller selections.
+ */
+export function guardStartFramePromptVisibleCast(params: {
+  prompt: string;
+  excludedCharacterNames?: readonly string[];
+  allowedCharacterNames?: readonly string[];
+}): string {
+  const excludedNames = uniqueCharacterNames(params.excludedCharacterNames);
+  if (excludedNames.length === 0) return params.prompt.trim();
+
+  let protectedPrompt = protectAllowedCharacterNames(
+    params.prompt,
+    params.allowedCharacterNames
+  );
+  for (const name of excludedNames) {
+    const escapedName = escapeRegExp(name);
+    protectedPrompt = protectedPrompt
+      .replace(new RegExp(`\\([^()]*${escapedName}[^()]*\\)`, "gu"), " ")
+      .replace(new RegExp(`（[^（）]*${escapedName}[^（）]*）`, "gu"), " ")
+      .split(name)
+      .join("");
+  }
+  protectedPrompt = protectedPrompt
+    .replace(/\(\s*\)|（\s*）/gu, " ")
+    .replace(/[ \t]{2,}/gu, " ")
+    .replace(/\s+([,.;:!?])/gu, "$1")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
+
+  const placeholderNames = uniqueCharacterNames(params.allowedCharacterNames);
+  let sanitized = protectedPrompt;
+  placeholderNames.forEach((name, index) => {
+    sanitized = sanitized.split(`__VD_ALLOWED_CAST_${index}__`).join(name);
+  });
+  const reProtected = protectAllowedCharacterNames(
+    sanitized,
+    params.allowedCharacterNames
+  );
+  const remainingExcludedNames = excludedNames.filter(name =>
+    reProtected.includes(name)
+  );
+  if (remainingExcludedNames.length > 0) {
+    throw new VdSchemaValidationError(
+      `Start-frame prompt still contains unselected visual character names: ${remainingExcludedNames.join(", ")}`,
+      { remainingExcludedNames }
+    );
+  }
+  if (!sanitized) {
+    throw new VdSchemaValidationError(
+      "Start-frame prompt became empty after removing unselected visual characters",
+      { excludedNames }
+    );
+  }
+  return sanitized;
+}
+
 export function buildDeterministicPolicySafeImagePrompt(params: {
   rewrittenSynopsis: string;
   characterReferenceManifest: GenerateStartFrameShotPromptCharacterManifestEntry[];
+  screenCallerCharacterRefs?: string[];
   locationReferenceImage?: { url: string; label: string };
   sceneContinuityLockBlock?: string;
+  excludedVisualCharacterNames?: string[];
 }): string {
-  const mappings = params.characterReferenceManifest
+  const characterMappings = params.characterReferenceManifest
     .slice()
     .sort((a, b) => a.index - b.index)
-    .map(entry => `Image ${entry.index} = ${entry.name}`);
+    .map(
+      entry =>
+        `Image ${entry.index} = ${entry.name}${
+          entry.presence === "screen_caller"
+            ? " (screen caller only; show inside a visible phone/video-call screen)"
+            : entry.presence === "scene"
+              ? " (physical scene character)"
+              : ""
+        }`
+    );
+  const mappings = [...characterMappings];
   if (params.locationReferenceImage) {
-    const locationIndex = Math.max(0, ...params.characterReferenceManifest.map(e => e.index)) + 1;
-    mappings.push(`Image ${locationIndex} = location: ${params.locationReferenceImage.label}`);
+    const locationIndex =
+      Math.max(0, ...params.characterReferenceManifest.map(e => e.index)) + 1;
+    mappings.push(
+      `Image ${locationIndex} = location: ${params.locationReferenceImage.label}`
+    );
   }
   const synopsis = params.rewrittenSynopsis.trim();
-  const mapping = mappings.length > 0 ? `REFERENCE MAPPING: ${mappings.join("; ")}.` : undefined;
-  return [mapping, params.sceneContinuityLockBlock?.trim(), synopsis].filter(Boolean).join("\n");
+  const mapping =
+    mappings.length > 0
+      ? `REFERENCE MAPPING: ${mappings.join("; ")}.`
+      : undefined;
+  const physicalCharacters = Array.from(
+    new Set(
+      params.characterReferenceManifest
+        .filter(entry => entry.presence !== "screen_caller")
+        .map(entry => entry.name.trim())
+        .filter(Boolean)
+    )
+  );
+  const physicalCastLock = params.characterReferenceManifest.length
+    ? physicalCharacters.length
+      ? `PHYSICAL CAST LOCK (MANDATORY): exactly ${physicalCharacters.length} physical scene character${physicalCharacters.length === 1 ? "" : "s"} — ${physicalCharacters.join(", ")}. Do not add any other named or unnamed person, background extra, staff member, reflection, or duplicate body.`
+      : "PHYSICAL CAST LOCK (MANDATORY): exactly 0 physical scene characters. Do not add any person, background extra, staff member, reflection, or body."
+    : undefined;
+  return guardStartFramePromptVisibleCast({
+    prompt: [
+      mapping,
+      physicalCastLock,
+      sanitizeSceneContinuityLockForShot(params.sceneContinuityLockBlock),
+      synopsis,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    excludedCharacterNames: params.excludedVisualCharacterNames,
+    allowedCharacterNames: params.characterReferenceManifest.map(
+      entry => entry.name
+    ),
+  });
+}
+
+export const VD_VIDEO_FACE_VISIBILITY_LOCK =
+  "VIDEO-FACE VISIBILITY LOCK (MANDATORY): every required in-frame character face must be approximately 75% or more visible and readable, frontal or natural three-quarter view, with both eyes, nose, mouth, jawline, and hairline unobstructed; keep every dialogue speaker's face inside the frame and large enough for reliable face matching and lip-sync; do not sacrifice face readability for hidden-profile eye-lines, extreme angles, edge crops, hands, props, shadows, or another person's head blocking the face.";
+
+export const VD_VIDEO_FACE_VISIBILITY_NEGATIVE =
+  "full profile, back of head, turned-away face, hidden face, face in deep shadow, cropped face, face outside frame, tiny unreadable face, occluded face, hand covering face, prop covering face, eyes not visible, mouth not visible, extreme side angle, indistinct identity";
+
+export function buildVideoFaceVisibilityPromptBlock(
+  required: boolean
+): string | undefined {
+  if (!required) return undefined;
+  return `${VD_VIDEO_FACE_VISIBILITY_LOCK} Negative constraints: ${VD_VIDEO_FACE_VISIBILITY_NEGATIVE}.`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1498,7 +1888,9 @@ const VD_IMAGE_PROMPT_EXTRA_ARRAY_MAX = 12;
 const VD_IMAGE_PROMPT_EXTRA_STRING_MAX = 300;
 
 /** Trim + cap-length every string entry, drop non-strings/blanks, cap array length. Returns `undefined` for an empty/absent result (never `[]`). */
-function normalizeImagePromptStringArrayExtra(value: unknown): string[] | undefined {
+function normalizeImagePromptStringArrayExtra(
+  value: unknown
+): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const normalized = value
     .filter((v): v is string => typeof v === "string")
@@ -1520,24 +1912,39 @@ function normalizeImagePromptStringExtra(value: unknown): string | undefined {
  * — the two modes never populate both, so whichever is present wins.
  */
 function normalizeStartFrameShotPromptSafetyAdjustments(
-  data: StartFrameShotPromptOutput,
+  data: StartFrameShotPromptOutput
 ): string[] | undefined {
   return (
     normalizeImagePromptStringArrayExtra(data.safety_adjustments) ??
-    normalizeImagePromptStringArrayExtra(data.analysis_summary?.safety_adjustments)
+    normalizeImagePromptStringArrayExtra(
+      data.analysis_summary?.safety_adjustments
+    )
   );
 }
 
 /** `cinematic_narrative`-only director's-notes subset persisted onto a frame (see `VerticalDramaStartFramePlan.frames[].promptAnalysis`'s doc comment for exactly which fields and why). */
 function normalizeStartFrameShotPromptAnalysis(
-  data: StartFrameShotPromptOutput,
-): { storyMeaning?: string; primaryEmotion?: string; decisiveMoment?: string; qualityScore?: number; qualityFlags?: string[] } | undefined {
+  data: StartFrameShotPromptOutput
+):
+  | {
+      storyMeaning?: string;
+      primaryEmotion?: string;
+      decisiveMoment?: string;
+      qualityScore?: number;
+      qualityFlags?: string[];
+    }
+  | undefined {
   const summary = data.analysis_summary;
   const storyMeaning = normalizeImagePromptStringExtra(summary?.story_meaning);
-  const primaryEmotion = normalizeImagePromptStringExtra(summary?.primary_emotion);
-  const decisiveMoment = normalizeImagePromptStringExtra(summary?.decisive_moment);
+  const primaryEmotion = normalizeImagePromptStringExtra(
+    summary?.primary_emotion
+  );
+  const decisiveMoment = normalizeImagePromptStringExtra(
+    summary?.decisive_moment
+  );
   const qualityScore =
-    typeof data.quality_score === "number" && Number.isFinite(data.quality_score)
+    typeof data.quality_score === "number" &&
+    Number.isFinite(data.quality_score)
       ? data.quality_score
       : undefined;
   const qualityFlags = normalizeImagePromptStringArrayExtra(data.quality_flags);
@@ -1572,6 +1979,7 @@ export interface GenerateStartFrameShotPromptCharacterManifestEntry {
   index: number;
   characterId?: string | null;
   name: string;
+  presence?: "scene" | "screen_caller";
 }
 
 export interface GenerateStartFrameShotPromptParams {
@@ -1610,6 +2018,18 @@ export interface GenerateStartFrameShotPromptParams {
   characters?: VerticalDramaCharacterDescriptorSource[];
   /** This shot's required character keys, in order — the ORDER argument `buildCharacterIdentityMapBlock` iterates (independent of `characters`' own array order). */
   requiredCharacterRefs?: string[];
+  /** Explicit screen-caller keys; caller portraits are not attached to the flat physical-scene reference payload. */
+  screenCallerCharacterRefs?: string[];
+  /** Explicit physical conversation through a closed barrier; never a phone caller. */
+  barrierDialogue?: VerticalDramaBarrierDialogue;
+  /** Two explicit physical camera views for barrier dialogue. */
+  barrierMultiView?: VerticalDramaBarrierMultiView;
+  /** Series-roster names that are not selected for this shot in either
+   * physical or screen-caller roles. Narrative mention never grants visual
+   * presence; these names are removed from every final positive prompt. */
+  excludedVisualCharacterNames?: string[];
+  /** True when the user explicitly assigned both reference roles for this shot. */
+  characterRefsCustomized?: boolean;
   targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
   /**
    * The language this shot's image PROMPT TEXT ITSELF (`prompt` /
@@ -1647,6 +2067,8 @@ export interface GenerateStartFrameShotPromptParams {
    * producing a byte-identical prompt.
    */
   speakingOrder?: string[];
+  /** Require video-safe face readability for multi-character/dialogue shots. */
+  videoFaceVisibilityRequired?: boolean;
   /**
    * User-controlled supplementary reference frames
    * (`planning/vd-start-frame-reference-mapping/plan.md` Phase 6) — set
@@ -1740,27 +2162,35 @@ export interface GenerateStartFrameShotPromptParams {
    * `productName`/`productDescription` wording `productLock` already
    * carries — no new resolution needed.
    */
-  productTieIn?: { active: boolean; productName?: string | null; productDescription?: string | null } | null;
-  /** Effective prompt budget for the selected image model; omitted keeps 3800. */
+  productTieIn?: {
+    active: boolean;
+    productName?: string | null;
+    productDescription?: string | null;
+  } | null;
+  /** Effective prompt budget for the selected image model; omitted keeps the legacy 3800 fallback. */
   imagePromptMaxChars?: number;
 }
 
 export function buildStartFrameShotPromptUserPrompt(
-  params: GenerateStartFrameShotPromptParams,
+  params: GenerateStartFrameShotPromptParams
 ): string {
   const promptLanguage = params.promptLanguage ?? "en";
-  const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
+  const promptLanguageName =
+    VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const characterIdentityMapBlock = buildCharacterIdentityMapBlock(
     params.requiredCharacterRefs ?? [],
-    params.characters ?? [],
+    params.characters ?? []
   );
 
   const manifestLines = params.characterReferenceManifest
-    .map((entry) => {
+    .map(entry => {
       const parts = [
         `index=${entry.index}`,
         `name=${entry.name}`,
         entry.characterId ? `character_id=${entry.characterId}` : null,
+        entry.presence === "screen_caller"
+          ? "presence=screen_caller_only"
+          : "presence=physical_scene",
       ].filter(Boolean);
       return `- ${parts.join(" ")}`;
     })
@@ -1771,7 +2201,28 @@ export function buildStartFrameShotPromptUserPrompt(
   // back to the reference-image manifest's length otherwise. See the
   // `requiredCharacterCount` fact line below.
   const requiredCharacterCount =
-    params.requiredCharacterRefs?.length ?? params.characterReferenceManifest.length;
+    params.requiredCharacterRefs?.length ??
+    params.characterReferenceManifest.length;
+  const barrierDialogue = normalizeVerticalDramaBarrierDialogue(
+    params.barrierDialogue
+  );
+  const barrierMultiView = normalizeVerticalDramaBarrierMultiView(
+    params.barrierMultiView
+  );
+  const barrierVisibleRefs = new Set(
+    barrierDialogue?.visibleCharacterRefs ?? []
+  );
+  if (
+    barrierDialogue &&
+    params.characterReferenceManifest.some(
+      entry => entry.characterId && !barrierVisibleRefs.has(entry.characterId)
+    )
+  ) {
+    throw new VdSchemaValidationError(
+      "Closed-door barrier dialogue cannot attach an offscreen character as a physical reference.",
+      []
+    );
+  }
 
   // Two-mode start-frame image prompt switch
   // (`planning/vd-start-frame-prompt-modes/plan.md`) — `SERIES LOOK
@@ -1779,7 +2230,8 @@ export function buildStartFrameShotPromptUserPrompt(
   // facts (the legacy skill's contract never expects them, and
   // `referenceFrameMode` always forces the legacy skill regardless of
   // `imagePromptMode` — see `selectShotStartFramePromptSystemPrompt`).
-  const isNewImagePromptMode = Boolean(params.imagePromptMode) && !params.referenceFrameMode;
+  const isNewImagePromptMode =
+    Boolean(params.imagePromptMode) && !params.referenceFrameMode;
   const imageModelLabel = params.imageModelName
     ? `${params.imageModelName} (${params.imageModelId ?? ""})`
     : (params.imageModelId ?? "unknown");
@@ -1790,6 +2242,9 @@ export function buildStartFrameShotPromptUserPrompt(
     `shot_number: ${params.shotNumber}`,
     `current_prompt: ${params.currentPrompt}`,
     `current_negative_prompt: ${params.currentNegativePrompt || "(none)"}`,
+    params.imagePromptMaxChars
+      ? `PROMPT LENGTH BUDGET (MANDATORY): the generated prompt and negative prompt must be at or below ${Math.min(20_000, Math.max(3_800, Math.floor(params.imagePromptMaxChars)))} characters.`
+      : null,
     `repair_instruction: ${params.instruction?.trim() || "(none)"}`,
     // User-controlled supplementary reference frames (Phase 6) — additive;
     // `null` (filtered out entirely, same convention as `speakingOrder`
@@ -1801,6 +2256,19 @@ export function buildStartFrameShotPromptUserPrompt(
     params.referenceFrameMode ? `reference_frame_mode: true` : null,
     params.canonicalShotSummary?.trim()
       ? `canonical_shot_summary (authoritative Overview source): ${params.canonicalShotSummary.trim()}`
+      : null,
+    params.screenCallerCharacterRefs?.length
+      ? `physical_scene_character_refs: ${params.requiredCharacterRefs?.length ? params.requiredCharacterRefs.join(", ") : "(none)"} — these are the only characters physically present in the location.`
+      : null,
+    params.screenCallerCharacterRefs?.length
+      ? `screen_caller_character_refs: ${params.screenCallerCharacterRefs.join(", ")} — screen-only role; do not attach caller portraits as physical-scene references. If depicted, show the caller only inside a clearly visible phone/video-call screen; never place the caller physically in the room or scene.`
+      : null,
+    barrierDialogue ? renderVerticalDramaBarrierDialogueBlock(barrierDialogue) : null,
+    barrierMultiView
+      ? renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)
+      : null,
+    params.characterRefsCustomized
+      ? "character_reference_selection: USER_SELECTED_AUTHORITATIVE — preserve the scene/caller roles exactly; do not reclassify, add, remove, or move references from synopsis wording."
       : null,
     manifestLines
       ? `character_reference_manifest:\n${manifestLines}`
@@ -1857,13 +2325,16 @@ export function buildStartFrameShotPromptUserPrompt(
             : ""
         }`
       : null,
-    params.sceneContinuityLockBlock?.trim() ? params.sceneContinuityLockBlock.trim() : null,
+    sanitizeSceneContinuityLockForShot(params.sceneContinuityLockBlock) ?? null,
     // Speaker-order composition fix — additive; `null` (filtered out
     // entirely, same convention as `location` immediately above) when
     // `speakingOrder` is absent/empty, so a call without it produces the
     // exact same prompt as before this field existed.
     params.speakingOrder?.length
       ? `speaking_order: ${params.speakingOrder.join(" > ")} (first speaker leftmost)`
+      : null,
+    params.videoFaceVisibilityRequired
+      ? "video_face_visibility_required: true (every required face must remain clearly readable for downstream video face matching and lip-sync)"
       : null,
     // Multi-character frame-inclusion fix — same shape/rationale as the
     // batch builder's `requiredCharactersSuffix` above. `null` (filtered out
@@ -1877,7 +2348,7 @@ export function buildStartFrameShotPromptUserPrompt(
     // creative "must include ALL of them" rule lives in
     // `vertical-drama-shot-start-frame-prompt/skill.md`'s new "All required
     // characters must be visible in frame" rule.
-    requiredCharacterCount >= 2
+    !barrierDialogue && !barrierMultiView && requiredCharacterCount >= 2
       ? `required_character_count: ${requiredCharacterCount} (all must appear in frame)`
       : null,
     // Deterministic per-shot camera-framing fix — the per-shot sibling of
@@ -1898,7 +2369,7 @@ export function buildStartFrameShotPromptUserPrompt(
     // (filtered out entirely, same convention as `required_character_count`
     // immediately above) for any shot with < 2 required characters — byte-
     // identical regression guard.
-    requiredCharacterCount >= 2
+    !barrierDialogue && !barrierMultiView && requiredCharacterCount >= 2
       ? `framing_override: ${widenedMultiCharacterFramingToken(requiredCharacterCount)} (${requiredCharacterCount} required characters must ALL be visible — do not isolate one in a close-up)`
       : null,
     // Two-mode start-frame image prompt switch — `cinematic_narrative`-only:
@@ -1949,7 +2420,7 @@ export function buildStartFrameShotPromptUserPrompt(
 async function resolveStartFrameShotPromptModel(
   seriesId: number,
   attachShotImage?: boolean,
-  hasImage?: boolean,
+  hasImage?: boolean
 ): Promise<{ model: string; hasVision: boolean }> {
   const configuredModel = await resolveStartFramePlanModel(seriesId);
   if (attachShotImage === false || !hasImage) {
@@ -1958,13 +2429,19 @@ async function resolveStartFrameShotPromptModel(
   try {
     const rows = await loadEnabledLlmModelRows();
     if (rows.length > 0) {
-      const configuredRow = rows.find(r => r.modelId === configuredModel || r.providerModelId === configuredModel || (r.legacyModelAliases && r.legacyModelAliases.includes(configuredModel)));
+      const configuredRow = rows.find(
+        r =>
+          r.modelId === configuredModel ||
+          r.providerModelId === configuredModel ||
+          (r.legacyModelAliases &&
+            r.legacyModelAliases.includes(configuredModel))
+      );
       if (configuredRow?.supportsVision === true) {
         return { model: configuredModel, hasVision: true };
       }
       const visionModel = selectBestLlmModel(
         { supportsVision: true, supportsStructuredOutputs: true },
-        rows,
+        rows
       );
       if (visionModel) return { model: visionModel, hasVision: true };
     }
@@ -1989,7 +2466,9 @@ export const VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES_WITH_SCENE_ANCH
 /** Of that budget, at most this many are character portraits. */
 const VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS = 4;
 
-export function formatSceneContinuityVisionLabel(anchorShotNumber: number): string {
+export function formatSceneContinuityVisionLabel(
+  anchorShotNumber: number
+): string {
   return `Scene continuity reference (shot ${anchorShotNumber}): same scene, same lighting, same set`;
 }
 
@@ -2021,15 +2500,19 @@ export function buildStartFrameShotPromptVisionImages(
     locationReferenceImage?: { url: string; label: string };
     sceneAnchorImage?: { url: string; anchorShotNumber: number };
     sceneContinuityEnabled?: boolean;
-  },
+  }
 ): VisionAwareImageInput[] {
   const images: VisionAwareImageInput[] = [];
   if (imageUrl) {
     images.push({ url: imageUrl });
   }
   if (cinematicNarrativeVisionInputs) {
-    const portraits = cinematicNarrativeVisionInputs.characterReferenceImages ?? [];
-    const portraitsToAttach = portraits.slice(0, VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS);
+    const portraits =
+      cinematicNarrativeVisionInputs.characterReferenceImages ?? [];
+    const portraitsToAttach = portraits.slice(
+      0,
+      VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS
+    );
     if (portraits.length > portraitsToAttach.length) {
       console.warn(
         "[vd_shot_start_frame_prompt] cinematic_narrative mode: character portrait count exceeds the vision-attachment cap — attaching only the first portraits in manifest order",
@@ -2037,11 +2520,14 @@ export function buildStartFrameShotPromptVisionImages(
           totalPortraits: portraits.length,
           attached: portraitsToAttach.length,
           cap: VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS,
-        },
+        }
       );
     }
     portraitsToAttach.forEach((portrait, idx) => {
-      images.push({ url: portrait.url, label: `Image ${idx + 1} reference: ${portrait.label}` });
+      images.push({
+        url: portrait.url,
+        label: `Image ${idx + 1} reference: ${portrait.label}`,
+      });
     });
     if (cinematicNarrativeVisionInputs.locationReferenceImage) {
       images.push({
@@ -2053,7 +2539,7 @@ export function buildStartFrameShotPromptVisionImages(
       images.push({
         url: cinematicNarrativeVisionInputs.sceneAnchorImage.url,
         label: formatSceneContinuityVisionLabel(
-          cinematicNarrativeVisionInputs.sceneAnchorImage.anchorShotNumber,
+          cinematicNarrativeVisionInputs.sceneAnchorImage.anchorShotNumber
         ),
       });
     }
@@ -2069,7 +2555,7 @@ export function buildStartFrameShotPromptVisionImages(
   const cappedAutoImages = images.slice();
   while (cappedAutoImages.length > cap) {
     const anchorIndex = cappedAutoImages.findIndex(image =>
-      image.label?.startsWith("Scene continuity reference (shot "),
+      image.label?.startsWith("Scene continuity reference (shot ")
     );
     if (anchorIndex >= 0) {
       const [dropped] = cappedAutoImages.splice(anchorIndex, 1);
@@ -2080,23 +2566,23 @@ export function buildStartFrameShotPromptVisionImages(
           anchorShotNumber: match ? Number(match[1]) : undefined,
           cap,
           attached: cappedAutoImages.length,
-        },
+        }
       );
       continue;
     }
     const locationIndex = cappedAutoImages.findIndex(image =>
-      image.label?.startsWith("Location reference: "),
+      image.label?.startsWith("Location reference: ")
     );
     if (locationIndex >= 0) {
       cappedAutoImages.splice(locationIndex, 1);
       console.warn(
         "[vd_shot_start_frame_prompt] location reference dropped by the vision-attachment cap",
-        { cap, attached: cappedAutoImages.length },
+        { cap, attached: cappedAutoImages.length }
       );
       continue;
     }
     const portraitIndex = cappedAutoImages.findLastIndex(image =>
-      image.label?.startsWith("Image "),
+      image.label?.startsWith("Image ")
     );
     if (portraitIndex >= 0) {
       cappedAutoImages.splice(portraitIndex, 1);
@@ -2113,7 +2599,7 @@ export function buildStartFrameShotPromptVisionImages(
 }
 
 export async function generateStartFrameShotPrompt(
-  params: GenerateStartFrameShotPromptParams,
+  params: GenerateStartFrameShotPromptParams
 ): Promise<{
   prompt: string;
   negativePrompt: string;
@@ -2139,7 +2625,9 @@ export async function generateStartFrameShotPrompt(
 }> {
   const rateLimitKey = `user:${params.userId}`;
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
-    throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
+    throw new RateLimitExceededError(
+      mediaGenerationLimiter.getResetTime(rateLimitKey)
+    );
   }
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);
@@ -2148,12 +2636,13 @@ export async function generateStartFrameShotPrompt(
   }
 
   const isPolicySafeSynopsisMode =
-    params.imagePromptMode === "policy_safe_rewrite" && !params.referenceFrameMode;
+    params.imagePromptMode === "policy_safe_rewrite" &&
+    !params.referenceFrameMode;
   const canonicalSynopsis = params.canonicalShotSummary?.trim();
   if (isPolicySafeSynopsisMode && !canonicalSynopsis) {
     throw new VdSchemaValidationError(
       "Policy-safe synopsis mode requires an authoritative canonical shot synopsis",
-      { shotNumber: params.shotNumber },
+      { shotNumber: params.shotNumber }
     );
   }
 
@@ -2166,22 +2655,24 @@ export async function generateStartFrameShotPrompt(
   // `imagePromptMode`), but is excluded here too for logical correctness —
   // the legacy skill this mode forces never asks for these vision inputs.
   const isCinematicNarrativeMode =
-    params.imagePromptMode === "cinematic_narrative" && !params.referenceFrameMode;
+    params.imagePromptMode === "cinematic_narrative" &&
+    !params.referenceFrameMode;
   const hasModeTwoVisionInputs =
     isCinematicNarrativeMode &&
     Boolean(
       params.characterReferenceImages?.length ||
-        params.locationReferenceImage ||
-        params.sceneAnchorImage,
+      params.locationReferenceImage ||
+      params.sceneAnchorImage
     );
   const wantsVision =
     !isPolicySafeSynopsisMode &&
-    (Boolean(params.imageUrl) || (hasModeTwoVisionInputs && params.attachShotImage !== false));
+    (Boolean(params.imageUrl) ||
+      (hasModeTwoVisionInputs && params.attachShotImage !== false));
 
   const resolvedModel = await resolveStartFrameShotPromptModel(
     params.seriesId,
     params.attachShotImage,
-    wantsVision,
+    wantsVision
   );
   const model = resolvedModel.model;
   const hasVision = resolvedModel.hasVision;
@@ -2189,7 +2680,11 @@ export async function generateStartFrameShotPrompt(
   if (!hasVision && wantsVision && params.attachShotImage !== false) {
     console.warn(
       "[vd_shot_start_frame_prompt] generated WITHOUT vision (no vision-capable model enabled) — model relied on text prompt proxy only",
-      { seriesId: params.seriesId, episodeId: params.episodeId, shotNumber: params.shotNumber },
+      {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        shotNumber: params.shotNumber,
+      }
     );
   }
 
@@ -2210,7 +2705,7 @@ export async function generateStartFrameShotPrompt(
           sceneAnchorImage: params.sceneAnchorImage,
           sceneContinuityEnabled: params.sceneContinuityEnabled,
         }
-      : undefined,
+      : undefined
   );
 
   if (isPolicySafeSynopsisMode) {
@@ -2230,21 +2725,30 @@ export async function generateStartFrameShotPrompt(
     const policyCalls = [policyCall];
     let rewrittenSynopsis: string;
     try {
-      rewrittenSynopsis = validatePolicySafeSynopsisRewrite(canonicalSynopsis!, policyCall.data);
+      rewrittenSynopsis = validatePolicySafeSynopsisRewrite(
+        canonicalSynopsis!,
+        policyCall.data
+      );
     } catch {
       policyCall = await executePolicyRewrite(
-        `${userPrompt}\nCORRECTION: Your previous response changed text outside its declared exact replacements. Return a result reconstructable by applying each safety_adjustments item exactly once, in order, to the authoritative synopsis.`,
+        `${userPrompt}\nCORRECTION: Your previous response changed text outside its declared exact replacements. Return a result reconstructable by applying each safety_adjustments item exactly once, in order, to the authoritative synopsis.`
       );
       policyCalls.push(policyCall);
       try {
-        rewrittenSynopsis = validatePolicySafeSynopsisRewrite(canonicalSynopsis!, policyCall.data);
+        rewrittenSynopsis = validatePolicySafeSynopsisRewrite(
+          canonicalSynopsis!,
+          policyCall.data
+        );
       } catch (error) {
         // The model's `rewritten_synopsis` is a consistency witness, not an
         // authority. Once the declared replacements themselves are valid, use
         // their deterministic reconstruction so harmless Thai grammar glue
         // (for example, adding "การ") cannot turn a safe shot into a 500.
         // Any malformed/ambiguous replacement still throws from the helper.
-        rewrittenSynopsis = reconstructPolicySafeSynopsis(canonicalSynopsis!, policyCall.data);
+        rewrittenSynopsis = reconstructPolicySafeSynopsis(
+          canonicalSynopsis!,
+          policyCall.data
+        );
         console.warn(
           "[vd_shot_start_frame_prompt] normalized policy-safe synopsis from declared replacements after retry",
           {
@@ -2252,12 +2756,14 @@ export async function generateStartFrameShotPrompt(
             episodeId: params.episodeId,
             shotNumber: params.shotNumber,
             model,
-            validationIssue: error instanceof Error ? error.message : String(error),
+            validationIssue:
+              error instanceof Error ? error.message : String(error),
             declaredAdjustmentCount: policyCall.data.safety_adjustments.length,
             sourceLength: canonicalSynopsis!.length,
-            modelRewriteLength: policyCall.data.rewritten_synopsis.trim().length,
+            modelRewriteLength:
+              policyCall.data.rewritten_synopsis.trim().length,
             reconstructedLength: rewrittenSynopsis.length,
-          },
+          }
         );
       }
     }
@@ -2265,39 +2771,57 @@ export async function generateStartFrameShotPrompt(
     const outputPrompt = buildDeterministicPolicySafeImagePrompt({
       rewrittenSynopsis,
       characterReferenceManifest: params.characterReferenceManifest,
+      screenCallerCharacterRefs: params.screenCallerCharacterRefs,
       locationReferenceImage: params.locationReferenceImage,
       sceneContinuityLockBlock: params.sceneContinuityLockBlock,
+      excludedVisualCharacterNames: params.excludedVisualCharacterNames,
     });
+    const policySafePrompt = [
+      outputPrompt,
+      buildVideoFaceVisibilityPromptBlock(
+        params.videoFaceVisibilityRequired === true
+      ),
+    ]
+      .filter(Boolean)
+      .join("\n");
     const imagePromptMaxChars = Math.min(
       VD_IMAGE_PROMPT_ABSOLUTE_MAX,
-      Math.max(VD_IMAGE_PROMPT_MAX, Math.floor(params.imagePromptMaxChars ?? VD_IMAGE_PROMPT_MAX)),
+      Math.max(
+        VD_IMAGE_PROMPT_MAX,
+        Math.floor(params.imagePromptMaxChars ?? VD_IMAGE_PROMPT_MAX)
+      )
     );
-    if (outputPrompt.length > imagePromptMaxChars) {
+    if (policySafePrompt.length > imagePromptMaxChars) {
       throw new VdSchemaValidationError(
         `Policy-safe synopsis prompt exceeds ${imagePromptMaxChars} characters`,
         {
-          length: outputPrompt.length,
+          length: policySafePrompt.length,
           ...(params.sceneContinuityLockBlock?.trim()
-            ? { sceneContinuityLockChars: params.sceneContinuityLockBlock.trim().length }
+            ? {
+                sceneContinuityLockChars:
+                  params.sceneContinuityLockBlock.trim().length,
+              }
             : {}),
-        },
+        }
       );
     }
     const inputTokens = policyCalls.reduce(
       (total, call) => total + (call.response.usage?.prompt_tokens ?? 0),
-      0,
+      0
     );
     const outputTokens = policyCalls.reduce(
       (total, call) => total + (call.response.usage?.completion_tokens ?? 0),
-      0,
+      0
     );
     const creditsUsed = policyCalls.reduce(
-      (total, call) => total + calculateCreditsForLLM(
-        call.response.usage?.prompt_tokens ?? 0,
-        call.response.usage?.completion_tokens ?? 0,
-        model,
-      ),
-      0,
+      (total, call) =>
+        total +
+        calculateCreditsForLLM(
+          call.response.usage?.prompt_tokens ?? 0,
+          call.response.usage?.completion_tokens ?? 0,
+          model
+        ),
+      0
     );
     await deductCredits({
       userId: params.userId,
@@ -2319,7 +2843,7 @@ export async function generateStartFrameShotPrompt(
       },
     });
     const safetyAdjustments = policyCall.data.safety_adjustments.map(
-      adjustment => `${adjustment.original} → ${adjustment.rewritten}`,
+      adjustment => `${adjustment.original} → ${adjustment.rewritten}`
     );
     const frameStamp: VdImagePromptModeStamp = {
       mode: "policy_safe_rewrite",
@@ -2329,7 +2853,7 @@ export async function generateStartFrameShotPrompt(
       generatedAt: new Date().toISOString(),
     };
     return {
-      prompt: outputPrompt,
+      prompt: policySafePrompt,
       negativePrompt: "",
       creditsUsed,
       model,
@@ -2341,25 +2865,26 @@ export async function generateStartFrameShotPrompt(
     };
   }
 
-  const { data: validatedData, response } = await executeVisionAwareJsonCallWithRetry<
-    z.infer<typeof startFrameShotPromptOutputSchema>
-  >({
-    model,
-    systemPrompt,
-    userPromptText: userPrompt,
-    hasVision,
-    images,
-    userId: params.userId,
-    schema: startFrameShotPromptOutputSchema,
-    firstAttemptMaxTokens: 3000,
-    retryMaxTokens: 4000,
-  });
+  const { data: validatedData, response } =
+    await executeVisionAwareJsonCallWithRetry<
+      z.infer<typeof startFrameShotPromptOutputSchema>
+    >({
+      model,
+      systemPrompt,
+      userPromptText: userPrompt,
+      hasVision,
+      images,
+      userId: params.userId,
+      schema: startFrameShotPromptOutputSchema,
+      firstAttemptMaxTokens: 3000,
+      retryMaxTokens: 4000,
+    });
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model,
+    model
   );
 
   await deductCredits({
@@ -2386,6 +2911,15 @@ export async function generateStartFrameShotPrompt(
   // otherwise this is a no-op on every call.
   let outputPrompt = validatedData.prompt;
   let outputNegativePrompt = validatedData.negative_prompt ?? "";
+  const videoFaceVisibilityBlock = buildVideoFaceVisibilityPromptBlock(
+    params.videoFaceVisibilityRequired === true
+  );
+  if (
+    videoFaceVisibilityBlock &&
+    !outputPrompt.includes("VIDEO-FACE VISIBILITY LOCK")
+  ) {
+    outputPrompt = `${outputPrompt}\n${videoFaceVisibilityBlock}`;
+  }
   // Two-mode start-frame image prompt switch — tracks whichever raw LLM
   // response actually ended up authoring `outputPrompt`/`outputNegativePrompt`,
   // so the extras normalization below (`safetyAdjustments`/`promptAnalysis`)
@@ -2393,16 +2927,19 @@ export async function generateStartFrameShotPrompt(
   // net discarded in favor of `params.currentPrompt`.
   let finalData: StartFrameShotPromptOutput | undefined = validatedData;
   const inputHadChildSafetyDirective = CHILD_SAFETY_DIRECTIVE_MARKER.test(
-    params.currentPrompt,
+    params.currentPrompt
   );
-  if (inputHadChildSafetyDirective && !CHILD_SAFETY_DIRECTIVE_MARKER.test(outputPrompt)) {
+  if (
+    inputHadChildSafetyDirective &&
+    !CHILD_SAFETY_DIRECTIVE_MARKER.test(outputPrompt)
+  ) {
     debugError(
       "vd_shot_start_frame_prompt",
       `Start-frame shot prompt (shot ${params.shotNumber}): skill output dropped the ` +
         `child-safety directive present in the input prompt — falling back to the ` +
         `original unmodified prompt/negative prompt for this call rather than risk ` +
         `losing the age-appropriateness clause.`,
-      { shotNumber: params.shotNumber },
+      { shotNumber: params.shotNumber }
     );
     outputPrompt = params.currentPrompt;
     outputNegativePrompt = params.currentNegativePrompt;
@@ -2419,13 +2956,15 @@ export async function generateStartFrameShotPrompt(
   // separately" convention `verticalDramaStoryBible.ts`'s deep-draft-chunk
   // missing-episode retry already established) rather than silently
   // persisting a self-contradictory prompt.
-  const referenceMappingReferences = params.characterReferenceManifest.map((entry) => ({
-    imageIndex: entry.index,
-    characterName: entry.name,
-  }));
+  const referenceMappingReferences = params.characterReferenceManifest.map(
+    entry => ({
+      imageIndex: entry.index,
+      characterName: entry.name,
+    })
+  );
   let referenceMappingMismatches = findCharacterImageIndexMappingMismatches(
     outputPrompt,
-    referenceMappingReferences,
+    referenceMappingReferences
   );
   if (referenceMappingMismatches.length > 0) {
     debugError(
@@ -2433,11 +2972,11 @@ export async function generateStartFrameShotPrompt(
       `Start-frame shot prompt (shot ${params.shotNumber}): authored prompt's own ` +
         `"Image N" claims contradict the reference manifest — retrying once with a ` +
         `corrective instruction.`,
-      { shotNumber: params.shotNumber, mismatches: referenceMappingMismatches },
+      { shotNumber: params.shotNumber, mismatches: referenceMappingMismatches }
     );
     const correctiveUserPrompt = `${userPrompt}\n\n${buildReferenceMappingCorrectiveInstruction(
       referenceMappingReferences,
-      referenceMappingMismatches,
+      referenceMappingMismatches
     )}`;
     const retry = await executeVisionAwareJsonCallWithRetry<
       z.infer<typeof startFrameShotPromptOutputSchema>
@@ -2456,7 +2995,7 @@ export async function generateStartFrameShotPrompt(
     const retryCreditsUsed = calculateCreditsForLLM(
       retryUsage?.prompt_tokens ?? 0,
       retryUsage?.completion_tokens ?? 0,
-      model,
+      model
     );
     await deductCredits({
       userId: params.userId,
@@ -2480,6 +3019,12 @@ export async function generateStartFrameShotPrompt(
     outputNegativePrompt = retry.data.negative_prompt ?? "";
     finalData = retry.data;
     if (
+      videoFaceVisibilityBlock &&
+      !outputPrompt.includes("VIDEO-FACE VISIBILITY LOCK")
+    ) {
+      outputPrompt = `${outputPrompt}\n${videoFaceVisibilityBlock}`;
+    }
+    if (
       inputHadChildSafetyDirective &&
       !CHILD_SAFETY_DIRECTIVE_MARKER.test(outputPrompt)
     ) {
@@ -2490,17 +3035,25 @@ export async function generateStartFrameShotPrompt(
 
     referenceMappingMismatches = findCharacterImageIndexMappingMismatches(
       outputPrompt,
-      referenceMappingReferences,
+      referenceMappingReferences
     );
     if (referenceMappingMismatches.length > 0) {
       throw new VdReferenceMappingError(
         `Start-frame shot prompt (shot ${params.shotNumber}): authored prompt's own ` +
           `"Image N" claims still contradict the reference manifest after one ` +
           `corrective retry (${formatMappingMismatchSummary(referenceMappingMismatches)})`,
-        referenceMappingMismatches,
+        referenceMappingMismatches
       );
     }
   }
+
+  outputPrompt = guardStartFramePromptVisibleCast({
+    prompt: outputPrompt,
+    excludedCharacterNames: params.excludedVisualCharacterNames,
+    allowedCharacterNames: params.characterReferenceManifest.map(
+      entry => entry.name
+    ),
+  });
 
   // Two-mode start-frame image prompt switch — `usedMode` mirrors
   // `params.imagePromptMode` UNLESS `referenceFrameMode` forced the legacy
@@ -2538,8 +3091,8 @@ export async function generateStartFrameShotPrompt(
             hasVision &&
             images.some(image =>
               image.label?.startsWith(
-                `Scene continuity reference (shot ${params.sceneAnchorImage!.anchorShotNumber}):`,
-              ),
+                `Scene continuity reference (shot ${params.sceneAnchorImage!.anchorShotNumber}):`
+              )
             ),
         }
       : {}),

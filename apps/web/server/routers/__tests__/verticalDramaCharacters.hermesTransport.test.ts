@@ -260,7 +260,15 @@ describe("generateCharacterImage — Hermes transport (code-review FIX 1)", () =
         selectChain([
           {
             creditCost: 10,
-            configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+            configJson: {
+              transport: "hermes_worker",
+              hermes: { providerModelId: "grok-imagine-image" },
+              maxPromptLength: 20_000,
+              verticalDramaCharacterPromptContract: {
+                family: "gpt_image_2",
+                negativePromptMode: "inline_only",
+              },
+            },
           },
         ]),
       ); // mediaModels pricing row (hermes-transport, priced as if non-zero to prove the gate is bypassed structurally, not by accident)
@@ -285,6 +293,9 @@ describe("generateCharacterImage — Hermes transport (code-review FIX 1)", () =
     expect(mockQueueHermesMediaJob).toHaveBeenCalledWith(
       expect.objectContaining({ connectionId: "hermes-conn-1", tenantId: "tenant-1", requestedByUserId: 42 }),
     );
+    const hermesPayload = mockQueueHermesMediaJob.mock.calls[0][0] as Record<string, unknown>;
+    expect(hermesPayload).not.toHaveProperty("negative_prompt");
+    expect(hermesPayload.settings).not.toHaveProperty("negative_prompt");
     expect(result.taskId).toBe("hermes_job-1");
   });
 

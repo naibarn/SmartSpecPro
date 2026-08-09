@@ -252,10 +252,11 @@ async function projectHermesMediaJob(
   );
 
   let resultUrl: string | undefined;
+  let mediaAssetId: number | undefined;
   if (status === "completed") {
     const outputJson = (job.outputJson ?? {}) as Record<string, unknown>;
     const mediaAssetIdRaw = outputJson.mediaAssetId;
-    const mediaAssetId = typeof mediaAssetIdRaw === "string" || typeof mediaAssetIdRaw === "number"
+    mediaAssetId = typeof mediaAssetIdRaw === "string" || typeof mediaAssetIdRaw === "number"
       ? Number(mediaAssetIdRaw)
       : NaN;
     if (Number.isFinite(mediaAssetId) && job.requestedByUserId != null) {
@@ -299,6 +300,7 @@ async function projectHermesMediaJob(
       jobId: job.id,
       jobType: job.jobType,
       connectionId: typeof capabilityRequirements.connectionId === "string" ? capabilityRequirements.connectionId : undefined,
+      ...(Number.isFinite(mediaAssetId) ? { mediaAssetId: String(mediaAssetId) } : {}),
     },
     ...(errorMessage ? { errorMessage } : {}),
     ...(resolvedErrorCode ? { errorCode: resolvedErrorCode } : {}),

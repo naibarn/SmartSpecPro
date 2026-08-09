@@ -113,10 +113,14 @@ is a FAILED clip. Concretely:
    "handheld push-in"), never vague drama ("zoom dramatically"). A reversal
    beat's sharper language (rule 3 above) still picks ONE move — just a
    faster/harder one.
-2. **Anchor every speaking beat by NAME + SCREEN POSITION as the start frame
-   shows it** ("ภาคิน on the left says…", "ไอริณ on the right listens, mouth
-   closed") — screen position is the one identity signal a video model reads
-   reliably from the start frame and is how it decides whose mouth moves.
+2. **Anchor every speaking beat by NAME + VIEWER SCREEN POSITION as the start
+  frame shows it** ("ภาคิน on viewer-left says…", "ไอริณ on viewer-right
+  listens, mouth closed") — screen position is the one identity signal a video
+  model reads reliably from the start frame and is how it decides whose mouth
+  moves. Use only viewer-left/viewer-center-left/viewer-center/
+  viewer-center-right/viewer-right. Never use the character's anatomical
+  left/right, `left hand`, `right hand`, `left-hand side`, or `right-hand side`
+  as a screen-position label.
    **When the caller attaches this pack's start-frame images (each labeled
    with its shot number), READ each clip's own start frame and take the
    positions from the IMAGE, never from the image-prompt text** — image
@@ -128,6 +132,25 @@ is a FAILED clip. Concretely:
    **Introduce every embedded quoted line with an explicit speech cue** (the
    named speaker + a speaking verb + delivery tone immediately BEFORE the
    quote) — never a floating, unattributed quote.
+
+   **CHARACTER PORTRAIT COMPARISON — MANDATORY when a VISION BUNDLE is
+   attached:** each shot's bundle starts with that shot's approved start frame,
+   followed by labeled character portraits. Compare the visible faces in the
+   start frame against those portraits before assigning any name, position, or
+   action. Use the actual viewer-side position bucket (`left`, `center-left`,
+   `center`, `center-right`, or `right`) and one concise visible action cue
+   (for example, holding a phone or looking toward a listener). The start frame
+   overrides the requested layout, storyboard prose, gender, wardrobe, and
+   image-prompt text when they disagree. Never infer identity from gender or
+   clothing. If a face cannot be matched confidently, keep the assignment
+   qualified rather than guessing.
+
+   **ONLY THE ACTIVE SPEAKER MOVES THEIR MOUTH — MANDATORY:** for every spoken
+   line, only the exact named speaker may open or move their mouth for that
+   line. Every other established character remains silent with their mouth
+   fully closed and no lip-sync, mumbling, or background talking. During a
+   camera cut or transition, nobody's lips move; silent listeners may only
+   make restrained eye, head, breath, or posture reactions.
 3. **Never let `negative_motion_prompt` be the ONLY place a critical
    constraint lives** — some primary video models (e.g. Grok Imagine) have NO
    negative-prompt input and will never see that field. Every constraint that

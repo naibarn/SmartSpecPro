@@ -138,6 +138,7 @@ export interface ClaimedPortraitCandidate {
   negativePrompt?: string;
   promptContractVersion?: string;
   promptProfile?: "rich" | "compact" | "legacy";
+  semanticRetryCount?: number;
 }
 
 type PortraitCandidatePrivateMetadata = VerticalDramaPortraitCandidateProjection & {
@@ -760,6 +761,7 @@ export class VerticalDramaCharacterStockService {
           negativePrompt: candidate!.negativePrompt,
           promptContractVersion: candidate!.visualBibleSnapshot.promptContractVersion,
           promptProfile: candidate!.visualBibleSnapshot.promptProfile,
+          semanticRetryCount: candidate!.visualBibleSnapshot.semanticRetryCount,
         }))
         .sort((left, right) => left.index - right.index);
     });
@@ -846,6 +848,7 @@ export class VerticalDramaCharacterStockService {
         negativePrompt: candidate.negativePrompt,
         promptContractVersion: candidate.visualBibleSnapshot.promptContractVersion,
         promptProfile: candidate.visualBibleSnapshot.promptProfile,
+        semanticRetryCount: candidate.visualBibleSnapshot.semanticRetryCount,
       }))
       .sort((left, right) => left.index - right.index);
   }

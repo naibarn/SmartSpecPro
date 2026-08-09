@@ -171,6 +171,10 @@ import {
   closeVerticalDramaStoryJobsQueue,
 } from "../services/verticalDramaStoryJobs";
 import {
+  initVerticalDramaShotPromptJobsQueue,
+  closeVerticalDramaShotPromptJobsQueue,
+} from "../services/verticalDramaShotPromptJobs";
+import {
   initVideoIntelligenceJobsQueue,
   closeVideoIntelligenceJobsQueue,
 } from "../services/videoIntelligenceJobs";
@@ -1518,6 +1522,35 @@ app.all("/api/v1/*", async (req, res) => {
   proxyReq.end();
 });
 
+// DEBUG (2026-08-02, slow-page-load investigation): file-based slow-request
+// log per CLAUDE.md Debugging Protocol. Records every /trpc response slower
+// than 500ms to logs/debug/trpc-slow.jsonl so real latency can be read
+// instead of guessed. Fire-and-forget append — never affects the response.
+app.use("/trpc", (req, res, next) => {
+  const startedAtMs = Date.now();
+  res.on("finish", () => {
+    const durationMs = Date.now() - startedAtMs;
+    if (durationMs < 500) return;
+    void import("fs/promises")
+      .then(async fs => {
+        const dir = path.resolve(process.cwd(), "logs", "debug");
+        await fs.mkdir(dir, { recursive: true });
+        await fs.appendFile(
+          path.join(dir, "trpc-slow.jsonl"),
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            durationMs,
+            status: res.statusCode,
+            method: req.method,
+            url: req.originalUrl.slice(0, 500),
+          }) + "\n"
+        );
+      })
+      .catch(() => {});
+  });
+  next();
+});
+
 app.use(
   "/trpc",
   createExpressMiddleware({
@@ -1747,6 +1780,14 @@ async function main() {
     await initVerticalDramaStoryJobsQueue();
   } catch (error) {
     console.error("[Startup] Failed to initialize vertical drama story jobs queue:", error);
+  }
+
+  // Per-shot start-frame prompt jobs. These must be real background work so
+  // Cloudflare request timeouts cannot interrupt prompt -> image admission.
+  try {
+    await initVerticalDramaShotPromptJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama shot prompt jobs queue:", error);
   }
 
   // Initialize Video Intelligence Jobs queue (BullMQ — Video Studio's async
@@ -2130,6 +2171,7 @@ process.on("SIGTERM", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
@@ -2199,6 +2241,7 @@ process.on("SIGINT", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});

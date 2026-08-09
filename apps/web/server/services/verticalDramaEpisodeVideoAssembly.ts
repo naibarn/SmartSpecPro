@@ -220,8 +220,16 @@ export function mergeVideoTaskIntoMotionPromptPack(
   durationSeconds = 8,
   selectedVideoModelId = ""
 ): VerticalDramaMotionPromptPack | null {
+  const persistedVideoTask =
+    videoTask && typeof videoTask.videoUrl === "string"
+      ? {
+          ...videoTask,
+          videoUrl: normalizeVerticalDramaStoredAssetUrl(videoTask.videoUrl),
+        }
+      : videoTask;
+
   if (!pack) {
-    if (!videoTask || sourceShotNumber == null) return null;
+    if (!persistedVideoTask || sourceShotNumber == null) return null;
     return {
       selectedVideoModelId,
       durationProfileId: "vertical_drama_60s_9_frames_8_clips",
@@ -232,7 +240,7 @@ export function mergeVideoTaskIntoMotionPromptPack(
           sourceShotNumbers: [sourceShotNumber],
           prompt: "",
           durationSeconds,
-          videoTask,
+          videoTask: persistedVideoTask,
         },
       ],
       warnings: [],
@@ -244,8 +252,8 @@ export function mergeVideoTaskIntoMotionPromptPack(
   );
   if (existingIndex !== -1) {
     const clips = pack.clips.slice();
-    if (videoTask) {
-      clips[existingIndex] = { ...clips[existingIndex], videoTask };
+    if (persistedVideoTask) {
+      clips[existingIndex] = { ...clips[existingIndex], videoTask: persistedVideoTask };
     } else {
       const { videoTask: _dropped, ...withoutVideoTask } = clips[existingIndex];
       clips[existingIndex] = withoutVideoTask;
@@ -408,6 +416,8 @@ export interface ConcatCommandSpec {
   /** Absolute output path. */
   outputPath: string;
   fps?: number;
+  width?: number;
+  height?: number;
 }
 
 /** Build the concat-demuxer list-file CONTENT (ffmpeg `-f concat` format). */
@@ -425,6 +435,8 @@ export function buildConcatListFileContent(inputPaths: string[]): string {
  */
 export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
   const fps = spec.fps ?? 30;
+  const width = spec.width ?? 1080;
+  const height = spec.height ?? 1920;
   return [
     "-y",
     "-f",
@@ -436,7 +448,7 @@ export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
     "-r",
     String(fps),
     "-vf",
-    "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1",
+    `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
     "-c:v",
     "libx264",
     "-pix_fmt",
@@ -585,11 +597,115 @@ export async function downloadClipToFile(
   const res = await fetch(absoluteUrl);
   if (!res.ok || !res.body) {
     throw new Error(
-      `Failed to download clip source (${res.status}): ${absoluteUrl}`
+      `Failed to download clip source (${res.status}): ${safeAssetUrlForDiagnostics(absoluteUrl)}`
     );
   }
   const buf = Buffer.from(await res.arrayBuffer());
   await fsp.writeFile(destPath, buf);
+}
+
+/**
+ * Worker artifacts are sometimes persisted as short-lived signed R2 URLs.
+ * The object itself is durable, so use the app's storage proxy instead of
+ * retaining the expiring query string in the episode JSONB.
+ */
+export function normalizeVerticalDramaStoredAssetUrl(videoUrl: string | null | undefined): string | undefined {
+  const value = String(videoUrl ?? "").trim();
+  if (!value) return undefined;
+  if (value.startsWith("/api/storage/files/") || value.startsWith("/uploads/")) {
+    return value.split(/[?#]/, 1)[0];
+  }
+  try {
+    const parsed = new URL(value);
+    const marker = "/worker-artifacts/";
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex >= 0) {
+      const storageKey = parsed.pathname.slice(markerIndex + 1);
+      return `/api/storage/files/${storageKey}`;
+    }
+  } catch {
+    // Keep non-URL provider references unchanged; the normal downloader will
+    // report a precise error if they are not fetchable.
+  }
+  return value;
+}
+
+/**
+ * Extract the durable managed-storage key from a persisted clip URL without
+ * trusting any signed query parameters. Returns null for provider URLs,
+ * uploads, malformed URLs, and unrelated paths.
+ */
+export function extractVerticalDramaManagedStorageKey(
+  videoUrl: string | null | undefined,
+): string | null {
+  const value = String(videoUrl ?? "").trim();
+  if (!value) return null;
+  const proxyPrefix = "/api/storage/files/";
+  if (value.startsWith(proxyPrefix)) {
+    const key = value.slice(proxyPrefix.length).split(/[?#]/, 1)[0];
+    if (!key) return null;
+    try {
+      return decodeURIComponent(key);
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const parsed = new URL(value);
+    const marker = "/worker-artifacts/";
+    const markerIndex = parsed.pathname.indexOf(marker);
+    if (markerIndex < 0) return null;
+    const key = parsed.pathname.slice(markerIndex + 1);
+    return key ? decodeURIComponent(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Build the stable application URL for a managed storage object. */
+export function buildVerticalDramaStorageProxyUrl(storageKey: string): string {
+  return `/api/storage/files/${encodeURI(storageKey.replace(/^\/+/, ""))}`;
+}
+
+export type VerticalDramaVideoAssetResolution = Record<
+  number,
+  { mediaAssetId: number; url: string }
+>;
+
+/** Apply owner-verified canonical delivery data to a motion-prompt pack. */
+export function repairVerticalDramaVideoAssetUrls(
+  pack: VerticalDramaMotionPromptPack | null,
+  resolutions: VerticalDramaVideoAssetResolution,
+): VerticalDramaMotionPromptPack | null {
+  if (!pack?.clips?.length) return pack;
+  let changed = false;
+  const clips = pack.clips.map(clip => {
+    const resolved = resolutions[clip.clipNumber];
+    if (!resolved || !clip.videoTask) return clip;
+    const nextVideoTask = {
+      ...clip.videoTask,
+      mediaAssetId: String(resolved.mediaAssetId),
+      videoUrl: resolved.url,
+    };
+    if (
+      clip.videoTask.mediaAssetId === nextVideoTask.mediaAssetId &&
+      clip.videoTask.videoUrl === nextVideoTask.videoUrl
+    ) {
+      return clip;
+    }
+    changed = true;
+    return { ...clip, videoTask: nextVideoTask };
+  });
+  return changed ? { ...pack, clips } : pack;
+}
+
+function safeAssetUrlForDiagnostics(value: string): string {
+  try {
+    const parsed = new URL(value);
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return value.split(/[?#]/, 1)[0];
+  }
 }
 
 /** Best-effort file extension for a staged download, sniffed from the URL's
@@ -1970,7 +2086,7 @@ export function extractClipSourcesFromMotionPromptPack(
     .sort(compareClipSourceOrder)
     .map(c => ({
       clipNumber: c.clipNumber,
-      videoUrl: c.videoTask?.videoUrl,
+      videoUrl: normalizeVerticalDramaStoredAssetUrl(c.videoTask?.videoUrl),
       parentShotNumber: c.parentShotNumber,
       subShotNumber: c.subShotNumber,
       sourceShotNumbers: c.sourceShotNumbers,

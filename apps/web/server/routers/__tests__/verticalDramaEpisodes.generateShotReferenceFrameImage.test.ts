@@ -17,17 +17,16 @@ const {
   mockGetModelsByTypeAsync,
   mockGetStaticModelById,
   mockResolveVerticalDramaCapabilities,
-} =
-  vi.hoisted(() => ({
-    mockGetModelsByTypeAsync: vi.fn(),
-    mockGetStaticModelById: vi.fn(() => undefined),
-    mockResolveVerticalDramaCapabilities: vi.fn(() => ({
-      supportsStartFrame: true,
-      maxReferenceImages: 10,
-      nativeAudioDialogue: true,
-      verticalDramaReady: true,
-    })),
-  }));
+} = vi.hoisted(() => ({
+  mockGetModelsByTypeAsync: vi.fn(),
+  mockGetStaticModelById: vi.fn(() => undefined),
+  mockResolveVerticalDramaCapabilities: vi.fn(() => ({
+    supportsStartFrame: true,
+    maxReferenceImages: 10,
+    nativeAudioDialogue: true,
+    verticalDramaReady: true,
+  })),
+}));
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
@@ -109,11 +108,12 @@ vi.mock("../../services/rateLimiter", () => ({
   },
 }));
 
-const { mockGetPrimaryPortraitUrl, mockGetCharacterReferenceUrls } =
-  vi.hoisted(() => ({
+const { mockGetPrimaryPortraitUrl, mockGetCharacterReferenceUrls } = vi.hoisted(
+  () => ({
     mockGetPrimaryPortraitUrl: vi.fn(() => Promise.resolve(null)),
     mockGetCharacterReferenceUrls: vi.fn(() => Promise.resolve([])),
-  }));
+  })
+);
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
     getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl,
@@ -216,7 +216,9 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: vi.fn(),
   generateVerticalDramaShotVideoPromptSpeakerSwitch: vi.fn(),
   generateVerticalDramaClipDialogue: vi.fn(),
-  appendPresetVisualIdentityStyleTokensToMotionPrompt: vi.fn((prompt: string) => prompt),
+  appendPresetVisualIdentityStyleTokensToMotionPrompt: vi.fn(
+    (prompt: string) => prompt
+  ),
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
   RateLimitExceededError: class extends Error {},
@@ -253,9 +255,14 @@ vi.mock("../../services/verticalDramaShotImageAction", () => ({
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 
-const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
+const router = verticalDramaEpisodesRouter as unknown as Record<
+  string,
+  Function
+>;
 
-function ctx(overrides: Partial<{ tenantId: string; user: { id: number } }> = {}) {
+function ctx(
+  overrides: Partial<{ tenantId: string; user: { id: number } }> = {}
+) {
   return {
     tenantId: "tenant-1",
     user: { id: 42 },
@@ -348,7 +355,9 @@ beforeEach(() => {
 
 describe("generateShotReferenceFrameImage (Phase 6a)", () => {
   it("throws PRECONDITION_FAILED when there is no start-frame plan/frame yet, and never calls the LLM/provider", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([baseEpisodeRow({ startFramePlan: null })]));
+    mockDb.select.mockReturnValueOnce(
+      selectChain([baseEpisodeRow({ startFramePlan: null })])
+    );
 
     await expect(
       router.generateShotReferenceFrameImage({
@@ -360,7 +369,7 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
           prompt: "hero and villain embrace",
           characterKeys: ["char-a"],
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(mockGenerateImageAsync).not.toHaveBeenCalled();
@@ -381,7 +390,7 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
           prompt: "hero and villain embrace",
           characterKeys: ["char-a"],
         },
-      }),
+      })
     ).rejects.toMatchObject({
       code: "PRECONDITION_FAILED",
       message: expect.stringContaining("ครบ 10 ภาพแล้ว"),
@@ -407,7 +416,7 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
         source: "grid_cut" as const,
         sortOrder: i,
         createdAt: new Date().toISOString(),
-      })),
+      }))
     );
     mockGetPrimaryPortraitUrl.mockResolvedValueOnce(PORTRAIT_A);
 
@@ -443,7 +452,7 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
           prompt: "ฝ้าย (Image 2) smiles warmly",
           characterKeys: ["char-a"],
         },
-      }),
+      })
     ).rejects.toMatchObject({
       code: "PRECONDITION_FAILED",
       message: expect.stringContaining("ขัดแย้งกับลำดับภาพแนบจริง"),
@@ -469,7 +478,7 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
           prompt: "ฝ้าย (Image 1) smiles warmly",
           characterKeys: ["char-a"],
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
@@ -498,8 +507,12 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
     expect(mockGenerateImageAsync).toHaveBeenCalledTimes(1);
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.prompt).toBe("ฝ้าย (Image 1) smiles warmly");
-    expect(request.negativePrompt).toBe("no blur");
+    // Current image transports consume one prompt, so exclusions are folded
+    // into the positive prompt before submission (same as start-frame render).
+    expect(request.prompt).toBe(
+      "ฝ้าย (Image 1) smiles warmly\nNEGATIVE PROMPT: no blur"
+    );
+    expect(request.negativePrompt).toBeUndefined();
     expect(request.referenceImageUrls).toEqual([PORTRAIT_A]);
     expect(request.extraParams).toMatchObject({
       __vd_series_id: "10",
@@ -540,7 +553,7 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
               ],
             },
           }),
-        ]),
+        ])
       )
       .mockReturnValueOnce(selectChain(CHARACTER_ROWS))
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
@@ -579,7 +592,7 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
           prompt: "ฝ้าย (Image 1) smiles warmly",
           characterKeys: ["char-a"],
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
     expect(mockRefundCredits).toHaveBeenCalledTimes(1);

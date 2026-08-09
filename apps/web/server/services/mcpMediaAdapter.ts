@@ -10,7 +10,10 @@ import {
 import type { MediaTask } from "./mediaGenerationService";
 import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
 import { recordMcpUsageEvent } from "./mcpConnectionService";
-import { buildMcpObservabilityEvent, logMcpObservabilityEvent } from "./mcpObservability";
+import {
+  buildMcpObservabilityEvent,
+  logMcpObservabilityEvent,
+} from "./mcpObservability";
 import { decrypt } from "./crypto";
 import { storagePut } from "../storage";
 import { normalizeMcpProviderModelIdForProvider } from "./mcpProviderModelAliases";
@@ -33,7 +36,7 @@ const MCP_OUTPUT_FETCH_TIMEOUT_MS = 60_000;
  * sweep tasks that are genuinely stuck, not ones merely mid-flight. */
 const MCP_STALE_TASK_THRESHOLD_MS = Math.max(
   60_000,
-  Number(process.env.MCP_MEDIA_TASK_STALE_THRESHOLD_MS ?? 15 * 60_000),
+  Number(process.env.MCP_MEDIA_TASK_STALE_THRESHOLD_MS ?? 15 * 60_000)
 );
 /** Hard ceiling: once a task has been "processing"/"pending" for this long
  * with no resolution (provider unreachable, connection broken, or the
@@ -43,15 +46,15 @@ const MCP_STALE_TASK_THRESHOLD_MS = Math.max(
  * sat in "processing" for 6+ hours after a server restart). */
 const MCP_TASK_HARD_TIMEOUT_MS = Math.max(
   60 * 60_000,
-  Number(process.env.MCP_MEDIA_TASK_HARD_TIMEOUT_MS ?? 24 * 60 * 60_000),
+  Number(process.env.MCP_MEDIA_TASK_HARD_TIMEOUT_MS ?? 24 * 60 * 60_000)
 );
 const MCP_IMAGE_TASK_HARD_TIMEOUT_MS = Math.max(
   60 * 60_000,
-  Number(process.env.MCP_MEDIA_IMAGE_TASK_HARD_TIMEOUT_MS ?? 2 * 60 * 60_000),
+  Number(process.env.MCP_MEDIA_IMAGE_TASK_HARD_TIMEOUT_MS ?? 2 * 60 * 60_000)
 );
 const MCP_AUDIO_TASK_HARD_TIMEOUT_MS = Math.max(
   60 * 60_000,
-  Number(process.env.MCP_MEDIA_AUDIO_TASK_HARD_TIMEOUT_MS ?? 2 * 60 * 60_000),
+  Number(process.env.MCP_MEDIA_AUDIO_TASK_HARD_TIMEOUT_MS ?? 2 * 60 * 60_000)
 );
 function getMcpTaskHardTimeoutMs(mediaType: MediaTask["mediaType"]): number {
   if (mediaType === "image") return MCP_IMAGE_TASK_HARD_TIMEOUT_MS;
@@ -59,7 +62,7 @@ function getMcpTaskHardTimeoutMs(mediaType: MediaTask["mediaType"]): number {
   return MCP_TASK_HARD_TIMEOUT_MS;
 }
 export const getMcpTaskHardTimeoutMsForTest = (
-  mediaType: MediaTask["mediaType"],
+  mediaType: MediaTask["mediaType"]
 ): number => getMcpTaskHardTimeoutMs(mediaType);
 /**
  * Past the per-type hard timeout, `refreshMcpMediaTaskStatus` now confirms
@@ -85,14 +88,18 @@ export const getMcpTaskHardTimeoutMsForTest = (
  */
 const MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER = 2;
 export const getMcpTaskAbsoluteGiveUpMsForTest = (
-  mediaType: MediaTask["mediaType"],
-): number => getMcpTaskHardTimeoutMs(mediaType) * MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER;
+  mediaType: MediaTask["mediaType"]
+): number =>
+  getMcpTaskHardTimeoutMs(mediaType) * MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER;
 const MCP_OUTPUT_MAX_BYTES_BY_TYPE: Record<MediaTask["mediaType"], number> = {
   image: 75 * 1024 * 1024,
   video: 1024 * 1024 * 1024,
   audio: 150 * 1024 * 1024,
 };
-const MCP_OUTPUT_CONTENT_TYPES: Record<MediaTask["mediaType"], Record<string, string>> = {
+const MCP_OUTPUT_CONTENT_TYPES: Record<
+  MediaTask["mediaType"],
+  Record<string, string>
+> = {
   image: {
     "image/jpeg": "jpg",
     "image/jpg": "jpg",
@@ -128,7 +135,7 @@ function redactParameters(parameters: Record<string, unknown> = {}) {
 function normalizeMcpResolution(
   resolution: unknown,
   providerKey?: string | null,
-  assetType?: MediaTaskTransportMetadata["assetType"],
+  assetType?: MediaTaskTransportMetadata["assetType"]
 ): string | undefined {
   if (typeof resolution !== "string" || !resolution.trim()) return undefined;
   const value = resolution.trim();
@@ -151,7 +158,10 @@ function errorMessage(error: unknown): string {
 function sanitizeMcpConnectionErrorMessage(error: unknown): string {
   const message = errorMessage(error)
     .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [redacted]")
-    .replace(/access[_-]?token["'\s:=]+[A-Za-z0-9._~+/-]+=*/gi, "accessToken [redacted]")
+    .replace(
+      /access[_-]?token["'\s:=]+[A-Za-z0-9._~+/-]+=*/gi,
+      "accessToken [redacted]"
+    )
     .trim();
   return message.slice(0, 128);
 }
@@ -162,7 +172,9 @@ function isMcpProviderAuthError(error: unknown): boolean {
   // restrictions. Those failures do not invalidate the OAuth session and must
   // not demote a healthy connection to requires_reauth. Only definitive
   // credential signals are safe to persist as an authentication failure.
-  return /invalid or expired token|token (?:has )?expired|expired token|invalid token|requires re-?authentication|reauth(?:entication)? required|unauthori[sz]ed|\b401\b/i.test(message);
+  return /invalid or expired token|token (?:has )?expired|expired token|invalid token|requires re-?authentication|reauth(?:entication)? required|unauthori[sz]ed|\b401\b/i.test(
+    message
+  );
 }
 
 async function markMcpConnectionRequiresReauth(params: {
@@ -181,17 +193,22 @@ async function markMcpConnectionRequiresReauth(params: {
       lastHealthCheckAt: now,
       updatedAt: now,
     })
-    .where(and(
-      eq(userMcpConnections.id, params.connectionId),
-      eq(userMcpConnections.tenantId, params.tenantId),
-    ));
+    .where(
+      and(
+        eq(userMcpConnections.id, params.connectionId),
+        eq(userMcpConnections.tenantId, params.tenantId)
+      )
+    );
 }
 
-function readStringArrayParameter(parameters: Record<string, unknown>, keys: string[]): string[] {
+function readStringArrayParameter(
+  parameters: Record<string, unknown>,
+  keys: string[]
+): string[] {
   for (const key of keys) {
     const value = parameters[key];
     if (Array.isArray(value)) {
-      return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+      return value.map(item => String(item ?? "").trim()).filter(Boolean);
     }
     if (typeof value === "string" && value.trim()) {
       return [value.trim()];
@@ -200,24 +217,26 @@ function readStringArrayParameter(parameters: Record<string, unknown>, keys: str
   return [];
 }
 
-function buildMagnificReferencesFromIdentifiers(identifiers: string[]): Array<{ type: "image"; identifier: string }> {
+function buildMagnificReferencesFromIdentifiers(
+  identifiers: string[]
+): Array<{ type: "image"; identifier: string }> {
   return identifiers
-    .map((identifier) => identifier.trim())
+    .map(identifier => identifier.trim())
     .filter(Boolean)
-    .map((identifier) => ({ type: "image" as const, identifier }));
+    .map(identifier => ({ type: "image" as const, identifier }));
 }
 
 function buildHiggsfieldMediasFromIdentifiers(
   identifiers: string[],
-  roles?: string[],
+  roles?: string[]
 ): Array<{ value: string; role: string }> {
   return identifiers
     .map((identifier, index) => ({
       identifier: identifier.trim(),
       role: normalizeHiggsfieldMediaRole(roles?.[index]),
     }))
-    .filter((entry) => Boolean(entry.identifier))
-    .map((entry) => ({ value: entry.identifier, role: entry.role }));
+    .filter(entry => Boolean(entry.identifier))
+    .map(entry => ({ value: entry.identifier, role: entry.role }));
 }
 
 function normalizeHiggsfieldMediaRole(role: unknown): string {
@@ -227,13 +246,13 @@ function normalizeHiggsfieldMediaRole(role: unknown): string {
 }
 
 function referenceImageManifestFromParameters(
-  parameters: Record<string, unknown>,
+  parameters: Record<string, unknown>
 ): Array<{ url: string; role: string }> {
   const raw =
     parameters.referenceImageManifest ?? parameters.reference_image_manifest;
   if (!Array.isArray(raw)) return [];
   return raw
-    .map((entry) => {
+    .map(entry => {
       if (!entry || typeof entry !== "object") return null;
       const record = entry as Record<string, unknown>;
       const url = typeof record.url === "string" ? record.url.trim() : "";
@@ -246,13 +265,13 @@ function referenceImageManifestFromParameters(
 
 function rolesForReferenceImageUrls(
   urls: string[],
-  parameters: Record<string, unknown>,
+  parameters: Record<string, unknown>
 ): string[] {
   const manifest = referenceImageManifestFromParameters(parameters);
   if (manifest.length === 0) return urls.map(() => "image");
   return urls.map((url, index) => {
     const manifestEntry =
-      manifest.find((entry) => entry.url === url) ?? manifest[index];
+      manifest.find(entry => entry.url === url) ?? manifest[index];
     return normalizeHiggsfieldMediaRole(manifestEntry?.role);
   });
 }
@@ -262,7 +281,7 @@ export function buildMcpToolArguments(
   prompt: string,
   parameters: Record<string, unknown> = {},
   providerKey?: string | null,
-  argumentShape?: string | null,
+  argumentShape?: string | null
 ): Record<string, unknown> {
   const referenceImageUrls = readStringArrayParameter(parameters, [
     "referenceImageUrls",
@@ -278,93 +297,140 @@ export function buildMcpToolArguments(
     "referenceVideoUrl",
     "reference_video_url",
   ]);
-  const aspectRatio = typeof parameters.aspectRatio === "string"
-    ? parameters.aspectRatio
-    : typeof parameters.aspect_ratio === "string"
-      ? parameters.aspect_ratio
-      : undefined;
+  const aspectRatio =
+    typeof parameters.aspectRatio === "string"
+      ? parameters.aspectRatio
+      : typeof parameters.aspect_ratio === "string"
+        ? parameters.aspect_ratio
+        : undefined;
   const resolution = normalizeMcpResolution(
     parameters.resolution,
     providerKey,
-    assetType,
+    assetType
   );
-  if (providerKey === "higgsfield" || argumentShape === "higgsfield.generate_image") {
-    const rawModel = typeof parameters.providerModelId === "string"
-      ? parameters.providerModelId
-      : typeof parameters.model === "string"
-        ? parameters.model
-        : undefined;
+  if (
+    providerKey === "higgsfield" ||
+    argumentShape === "higgsfield.generate_image"
+  ) {
+    const rawModel =
+      typeof parameters.providerModelId === "string"
+        ? parameters.providerModelId
+        : typeof parameters.model === "string"
+          ? parameters.model
+          : undefined;
     const model = normalizeMcpProviderModelIdForProvider({
       providerKey,
       providerModelId: rawModel,
       assetType,
       argumentShape,
     });
-    const params = Object.fromEntries(Object.entries({
-      model,
-      prompt,
-      count: assetType === "image" ? (typeof parameters.numImages === "number" ? parameters.numImages : 1) : undefined,
-      duration: assetType === "video" ? parameters.duration : undefined,
-      aspect_ratio: aspectRatio,
-      resolution,
-      quality: parameters.quality,
-      generate_audio: parameters.generate_audio,
-      video_urls: referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
-      medias: Array.isArray(parameters.medias) && parameters.medias.length > 0
-        ? parameters.medias
-        : undefined,
-    }).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+    const params = Object.fromEntries(
+      Object.entries({
+        model,
+        prompt,
+        count:
+          assetType === "image"
+            ? typeof parameters.numImages === "number"
+              ? parameters.numImages
+              : 1
+            : undefined,
+        duration: assetType === "video" ? parameters.duration : undefined,
+        aspect_ratio: aspectRatio,
+        resolution,
+        quality: parameters.quality,
+        generate_audio: parameters.generate_audio,
+        video_urls:
+          referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
+        medias:
+          Array.isArray(parameters.medias) && parameters.medias.length > 0
+            ? parameters.medias
+            : undefined,
+      }).filter(
+        ([, value]) => value !== undefined && value !== null && value !== ""
+      )
+    );
     return { params };
   }
   if (assetType === "video") {
     return {
       video: {
-        model: typeof parameters.providerModelId === "string"
+        model:
+          typeof parameters.providerModelId === "string"
+            ? parameters.providerModelId
+            : typeof parameters.model === "string"
+              ? parameters.model
+              : undefined,
+        prompt,
+        aspectRatio,
+        imageUrls:
+          referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
+        reference_image_urls:
+          referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
+        videoUrls:
+          referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
+        reference_video_urls:
+          referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
+      },
+    };
+  }
+  if (
+    providerKey === "magnific" ||
+    argumentShape === "magnific.images_generate"
+  ) {
+    return Object.fromEntries(
+      Object.entries({
+        mode:
+          typeof parameters.providerModelId === "string"
+            ? parameters.providerModelId
+            : typeof parameters.model === "string"
+              ? parameters.model
+              : undefined,
+        prompt,
+        aspectRatio,
+        count:
+          typeof parameters.numImages === "number"
+            ? parameters.numImages
+            : undefined,
+        resolution,
+        references: Array.isArray(parameters.references)
+          ? parameters.references
+          : undefined,
+      }).filter(
+        ([, value]) =>
+          value !== undefined &&
+          value !== null &&
+          value !== "" &&
+          !(Array.isArray(value) && value.length === 0)
+      )
+    );
+  }
+  return Object.fromEntries(
+    Object.entries({
+      model:
+        typeof parameters.providerModelId === "string"
           ? parameters.providerModelId
           : typeof parameters.model === "string"
             ? parameters.model
             : undefined,
-        prompt,
-        aspectRatio,
-        imageUrls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
-        reference_image_urls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
-        videoUrls: referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
-        reference_video_urls: referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
-      },
-    };
-  }
-  if (providerKey === "magnific" || argumentShape === "magnific.images_generate") {
-    return Object.fromEntries(Object.entries({
-      mode: typeof parameters.providerModelId === "string"
-        ? parameters.providerModelId
-        : typeof parameters.model === "string"
-          ? parameters.model
-          : undefined,
       prompt,
       aspectRatio,
-      count: typeof parameters.numImages === "number" ? parameters.numImages : undefined,
+      count:
+        typeof parameters.numImages === "number"
+          ? parameters.numImages
+          : undefined,
       resolution,
-      references: Array.isArray(parameters.references) ? parameters.references : undefined,
-    }).filter(([, value]) => value !== undefined && value !== null && value !== "" && !(Array.isArray(value) && value.length === 0)));
-  }
-  return Object.fromEntries(Object.entries({
-    model: typeof parameters.providerModelId === "string"
-      ? parameters.providerModelId
-      : typeof parameters.model === "string"
-        ? parameters.model
-        : undefined,
-    prompt,
-    aspectRatio,
-    count: typeof parameters.numImages === "number" ? parameters.numImages : undefined,
-    resolution,
-  }).filter(([, value]) => value !== undefined && value !== null && value !== ""));
+    }).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
 }
 
 export function parseMcpJsonResponse(text: string): any {
   const trimmed = text.trim();
   if (trimmed.startsWith("{")) return JSON.parse(trimmed);
   const dataLine = trimmed.match(/(?:^|\r?\n)data:\s*(.+)(?:\r?\n|$)/)?.[1];
-  if (!dataLine) throw new Error("MCP provider returned an unsupported response format");
+  if (!dataLine)
+    throw new Error("MCP provider returned an unsupported response format");
   return JSON.parse(dataLine);
 }
 
@@ -378,7 +444,16 @@ function findProviderIdentifier(value: unknown): string | null {
     return null;
   }
   const record = value as Record<string, unknown>;
-  for (const key of ["creationIdentifier", "identifier", "creationId", "media_id", "mediaId", "jobId", "operationId", "id"]) {
+  for (const key of [
+    "creationIdentifier",
+    "identifier",
+    "creationId",
+    "media_id",
+    "mediaId",
+    "jobId",
+    "operationId",
+    "id",
+  ]) {
     if (typeof record[key] === "string" && record[key]) return record[key];
   }
   for (const nested of Object.values(record)) {
@@ -401,7 +476,8 @@ function safeProviderSummary(result: unknown): Record<string, unknown> {
 
 function parseJsonLikeText(value: string): unknown {
   const trimmed = value.trim();
-  if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("["))) return null;
+  if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("[")))
+    return null;
   try {
     return JSON.parse(trimmed);
   } catch {
@@ -409,7 +485,11 @@ function parseJsonLikeText(value: string): unknown {
   }
 }
 
-function collectProviderUrls(value: unknown, urls: string[] = [], visited = new Set<unknown>()): string[] {
+function collectProviderUrls(
+  value: unknown,
+  urls: string[] = [],
+  visited = new Set<unknown>()
+): string[] {
   if (typeof value === "string") {
     const trimmed = value.trim();
     const parsed = parseJsonLikeText(trimmed);
@@ -443,7 +523,10 @@ function normalizeContentType(value: string | null): string {
   return (value ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
 }
 
-function inferContentTypeFromUrl(url: string, mediaType: MediaTask["mediaType"]): string | null {
+function inferContentTypeFromUrl(
+  url: string,
+  mediaType: MediaTask["mediaType"]
+): string | null {
   const cleanPath = (() => {
     try {
       return new URL(url).pathname.toLowerCase();
@@ -453,10 +536,12 @@ function inferContentTypeFromUrl(url: string, mediaType: MediaTask["mediaType"])
   })();
   const mappings = MCP_OUTPUT_CONTENT_TYPES[mediaType];
   for (const [contentType, extension] of Object.entries(mappings)) {
-    if (cleanPath.endsWith(`.${extension}`)) return contentType === "image/jpg" ? "image/jpeg" : contentType;
+    if (cleanPath.endsWith(`.${extension}`))
+      return contentType === "image/jpg" ? "image/jpeg" : contentType;
   }
   if (mediaType === "image" && cleanPath.endsWith(".jpeg")) return "image/jpeg";
-  if (mediaType === "video" && cleanPath.endsWith(".mov")) return "video/quicktime";
+  if (mediaType === "video" && cleanPath.endsWith(".mov"))
+    return "video/quicktime";
   if (mediaType === "audio" && cleanPath.endsWith(".m4a")) return "audio/mp4";
   return null;
 }
@@ -464,21 +549,30 @@ function inferContentTypeFromUrl(url: string, mediaType: MediaTask["mediaType"])
 function resolveMcpOutputContentType(
   responseContentType: string | null,
   url: string,
-  mediaType: MediaTask["mediaType"],
+  mediaType: MediaTask["mediaType"]
 ): { contentType: string; extension: string } {
   const normalized = normalizeContentType(responseContentType);
   const allowed = MCP_OUTPUT_CONTENT_TYPES[mediaType];
   const fallback = inferContentTypeFromUrl(url, mediaType);
-  const contentType = normalized && allowed[normalized]
-    ? normalized
-    : fallback ?? (mediaType === "video" ? "video/mp4" : mediaType === "audio" ? "audio/mpeg" : "image/png");
+  const contentType =
+    normalized && allowed[normalized]
+      ? normalized
+      : (fallback ??
+        (mediaType === "video"
+          ? "video/mp4"
+          : mediaType === "audio"
+            ? "audio/mpeg"
+            : "image/png"));
   return {
     contentType: contentType === "image/jpg" ? "image/jpeg" : contentType,
     extension: allowed[contentType] ?? "bin",
   };
 }
 
-async function readResponseBytesWithLimit(response: Response, maxBytes: number): Promise<Buffer> {
+async function readResponseBytesWithLimit(
+  response: Response,
+  maxBytes: number
+): Promise<Buffer> {
   const contentLength = Number(response.headers.get("content-length") ?? 0);
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     throw new Error("MCP provider output is too large to save");
@@ -496,7 +590,7 @@ async function readResponseBytesWithLimit(response: Response, maxBytes: number):
 async function fetchMcpProviderOutput(
   url: string,
   mediaType: MediaTask["mediaType"],
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = fetch
 ): Promise<{ buffer: Buffer; contentType: string; extension: string }> {
   let parsed: URL;
   try {
@@ -509,7 +603,10 @@ async function fetchMcpProviderOutput(
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), MCP_OUTPUT_FETCH_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    MCP_OUTPUT_FETCH_TIMEOUT_MS
+  );
   try {
     const response = await fetchImpl(url, {
       signal: controller.signal,
@@ -518,14 +615,19 @@ async function fetchMcpProviderOutput(
       },
     });
     if (!response.ok) {
-      throw new Error(`MCP provider output download failed: ${response.status}`);
+      throw new Error(
+        `MCP provider output download failed: ${response.status}`
+      );
     }
     const { contentType, extension } = resolveMcpOutputContentType(
       response.headers.get("content-type"),
       response.url || url,
-      mediaType,
+      mediaType
     );
-    const buffer = await readResponseBytesWithLimit(response, MCP_OUTPUT_MAX_BYTES_BY_TYPE[mediaType]);
+    const buffer = await readResponseBytesWithLimit(
+      response,
+      MCP_OUTPUT_MAX_BYTES_BY_TYPE[mediaType]
+    );
     return { buffer, contentType, extension };
   } finally {
     clearTimeout(timeout);
@@ -553,7 +655,9 @@ export async function internalizeMcpProviderOutputUrls(params: {
     sha256?: string;
   }>;
 }> {
-  const uniqueUrls = params.urls.filter((url, index, urls) => urls.indexOf(url) === index);
+  const uniqueUrls = params.urls.filter(
+    (url, index, urls) => urls.indexOf(url) === index
+  );
   const putObject = params.deps?.putObject ?? storagePut;
   const storedUrls: string[] = [];
   const artifacts: Array<{
@@ -570,7 +674,9 @@ export async function internalizeMcpProviderOutputUrls(params: {
       storedUrls.push(url);
       artifacts.push({
         url,
-        storageKey: decodeURIComponent(url.replace(/^\/(?:api\/storage\/files|uploads)\//, "")),
+        storageKey: decodeURIComponent(
+          url.replace(/^\/(?:api\/storage\/files|uploads)\//, "")
+        ),
       });
       continue;
     }
@@ -578,11 +684,12 @@ export async function internalizeMcpProviderOutputUrls(params: {
     const { buffer, contentType, extension } = await fetchMcpProviderOutput(
       url,
       params.task.mediaType,
-      params.deps?.fetchImpl,
+      params.deps?.fetchImpl
     );
     const sha256 = crypto.createHash("sha256").update(buffer).digest("hex");
     const tenantId = params.metadata?.tenantId ?? "unknown-tenant";
-    const actorUserId = params.metadata?.actorUserId ?? params.task.userId ?? "unknown-user";
+    const actorUserId =
+      params.metadata?.actorUserId ?? params.task.userId ?? "unknown-user";
     const key = `mcp-media/${tenantId}/${actorUserId}/${params.task.id}/output-${index}-${sha256.slice(0, 12)}.${extension}`;
     const stored = await putObject(key, buffer, contentType);
     storedUrls.push(stored.url);
@@ -599,15 +706,20 @@ export async function internalizeMcpProviderOutputUrls(params: {
   return { urls: storedUrls, artifacts };
 }
 
-export const internalizeMcpProviderUrlsForTest = internalizeMcpProviderOutputUrls;
+export const internalizeMcpProviderUrlsForTest =
+  internalizeMcpProviderOutputUrls;
 export const isMcpProviderAuthErrorForTest = isMcpProviderAuthError;
-export const sanitizeMcpConnectionErrorMessageForTest = sanitizeMcpConnectionErrorMessage;
+export const sanitizeMcpConnectionErrorMessageForTest =
+  sanitizeMcpConnectionErrorMessage;
 export const higgsfieldMediaRolesForReferenceImagesForTest =
   rolesForReferenceImageUrls;
 export const withCompletedProviderResultForTest = withCompletedProviderResult;
 export const prepareMcpToolArgumentsForTest = prepareMcpToolArguments;
 
-function findProviderStatus(value: unknown, visited = new Set<unknown>()): string | null {
+function findProviderStatus(
+  value: unknown,
+  visited = new Set<unknown>()
+): string | null {
   if (!value || typeof value !== "object" || visited.has(value)) return null;
   visited.add(value);
   if (Array.isArray(value)) {
@@ -635,17 +747,29 @@ function normalizeProviderStatus(value: unknown): MediaTask["status"] | null {
     const urls = collectProviderUrls(value);
     return urls.length > 0 ? "completed" : null;
   }
-  if (/complete|completed|success|succeeded|finished|done/.test(raw)) return "completed";
-  if (/fail|failed|error|rejected|cancel|cancelled|canceled/.test(raw)) return "failed";
-  if (/queue|queued|pending|process|processing|progress|running|submitted|created|in_progress/.test(raw)) return "processing";
+  if (/complete|completed|success|succeeded|finished|done/.test(raw))
+    return "completed";
+  if (/fail|failed|error|rejected|cancel|cancelled|canceled/.test(raw))
+    return "failed";
+  if (
+    /queue|queued|pending|process|processing|progress|running|submitted|created|in_progress/.test(
+      raw
+    )
+  )
+    return "processing";
   return null;
 }
 
 function providerStatusToolName(metadata: MediaTaskTransportMetadata): string {
-  return metadata.providerKey === "higgsfield" ? "job_status" : "creation_status";
+  return metadata.providerKey === "higgsfield"
+    ? "job_status"
+    : "creation_status";
 }
 
-function providerStatusArgumentCandidates(metadata: MediaTaskTransportMetadata, providerJobId: string): Record<string, unknown>[] {
+function providerStatusArgumentCandidates(
+  metadata: MediaTaskTransportMetadata,
+  providerJobId: string
+): Record<string, unknown>[] {
   if (metadata.providerKey === "higgsfield") {
     return [
       { jobId: providerJobId },
@@ -662,16 +786,27 @@ function providerStatusArgumentCandidates(metadata: MediaTaskTransportMetadata, 
   ];
 }
 
-async function withCompletedProviderResult(task: MediaTask, providerStatusResult: unknown): Promise<MediaTask> {
+async function withCompletedProviderResult(
+  task: MediaTask,
+  providerStatusResult: unknown
+): Promise<MediaTask> {
   const providerUrls = collectProviderUrls(providerStatusResult);
-  const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
+  const metadata = (task.parameters?.transportMetadata ??
+    task.resultData?.transportMetadata) as
+    | MediaTaskTransportMetadata
+    | undefined;
   const { urls, artifacts } = await internalizeMcpProviderOutputUrls({
     urls: providerUrls,
     task,
     metadata,
   });
   const resultUrl = urls[0];
-  const mediaUrlKey = task.mediaType === "video" ? "videoUrl" : task.mediaType === "audio" ? "audioUrl" : "imageUrl";
+  const mediaUrlKey =
+    task.mediaType === "video"
+      ? "videoUrl"
+      : task.mediaType === "audio"
+        ? "audioUrl"
+        : "imageUrl";
   const resultData = {
     ...(task.resultData ?? {}),
     ...(resultUrl ? { resultUrl, [mediaUrlKey]: resultUrl } : {}),
@@ -683,7 +818,10 @@ async function withCompletedProviderResult(task: MediaTask, providerStatusResult
     },
     providerOutputArtifacts: artifacts,
     providerSummary: {
-      ...(typeof task.resultData?.providerSummary === "object" && task.resultData?.providerSummary ? task.resultData.providerSummary : {}),
+      ...(typeof task.resultData?.providerSummary === "object" &&
+      task.resultData?.providerSummary
+        ? task.resultData.providerSummary
+        : {}),
       status: "completed",
       providerKey: metadata?.providerKey,
       toolName: metadata?.toolName,
@@ -712,7 +850,10 @@ async function withCompletedProviderResult(task: MediaTask, providerStatusResult
   };
 }
 
-function withFailedProviderResult(task: MediaTask, providerStatusResult: unknown): MediaTask {
+function withFailedProviderResult(
+  task: MediaTask,
+  providerStatusResult: unknown
+): MediaTask {
   return {
     ...task,
     status: "failed",
@@ -720,16 +861,24 @@ function withFailedProviderResult(task: MediaTask, providerStatusResult: unknown
       ...(task.resultData ?? {}),
       providerStatus: providerStatusResult,
       providerSummary: {
-        ...(typeof task.resultData?.providerSummary === "object" && task.resultData?.providerSummary ? task.resultData.providerSummary : {}),
+        ...(typeof task.resultData?.providerSummary === "object" &&
+        task.resultData?.providerSummary
+          ? task.resultData.providerSummary
+          : {}),
         status: "failed",
       },
     },
-    errorMessage: task.errorMessage ?? "MCP provider reported generation failed",
+    errorMessage:
+      task.errorMessage ?? "MCP provider reported generation failed",
     completedAt: task.completedAt ?? new Date().toISOString(),
   };
 }
 
-function withOutputPersistenceFailure(task: MediaTask, providerStatusResult: unknown, error: unknown): MediaTask {
+function withOutputPersistenceFailure(
+  task: MediaTask,
+  providerStatusResult: unknown,
+  error: unknown
+): MediaTask {
   return {
     ...task,
     status: "failed",
@@ -740,35 +889,56 @@ function withOutputPersistenceFailure(task: MediaTask, providerStatusResult: unk
         ...safeProviderSummary(providerStatusResult),
       },
       providerSummary: {
-        ...(typeof task.resultData?.providerSummary === "object" && task.resultData?.providerSummary ? task.resultData.providerSummary : {}),
+        ...(typeof task.resultData?.providerSummary === "object" &&
+        task.resultData?.providerSummary
+          ? task.resultData.providerSummary
+          : {}),
         status: "failed",
         outputPersistenceFailed: true,
       },
     },
-    errorMessage: error instanceof Error
-      ? `MCP generated media could not be saved to managed storage: ${error.message}`
-      : "MCP generated media could not be saved to managed storage",
+    errorMessage:
+      error instanceof Error
+        ? `MCP generated media could not be saved to managed storage: ${error.message}`
+        : "MCP generated media could not be saved to managed storage",
     completedAt: task.completedAt ?? new Date().toISOString(),
   };
 }
 
-async function getMcpConnectionRuntime(params: { tenantId: string; connectionId?: string | null }) {
+async function getMcpConnectionRuntime(params: {
+  tenantId: string;
+  connectionId?: string | null;
+}) {
   if (!params.connectionId) throw new Error("MCP connection id is required");
   const db = getDb();
   const [row] = await db
     .select({ connection: userMcpConnections, template: mcpProviderTemplates })
     .from(userMcpConnections)
-    .innerJoin(mcpProviderTemplates, eq(userMcpConnections.providerTemplateId, mcpProviderTemplates.id))
-    .where(and(
-      eq(userMcpConnections.id, params.connectionId),
-      eq(userMcpConnections.tenantId, params.tenantId),
-    ))
+    .innerJoin(
+      mcpProviderTemplates,
+      eq(userMcpConnections.providerTemplateId, mcpProviderTemplates.id)
+    )
+    .where(
+      and(
+        eq(userMcpConnections.id, params.connectionId),
+        eq(userMcpConnections.tenantId, params.tenantId)
+      )
+    )
     .limit(1);
-  if (!row || row.connection.status !== "connected" || !row.connection.encryptedTokenRef) {
+  if (
+    !row ||
+    row.connection.status !== "connected" ||
+    !row.connection.encryptedTokenRef
+  ) {
     throw new Error("MCP connection is not connected");
   }
-  if (row.connection.tokenExpiresAt && row.connection.tokenExpiresAt.getTime() <= Date.now()) {
-    const error = new Error("MCP connection token has expired; reconnect the provider account");
+  if (
+    row.connection.tokenExpiresAt &&
+    row.connection.tokenExpiresAt.getTime() <= Date.now()
+  ) {
+    const error = new Error(
+      "MCP connection token has expired; reconnect the provider account"
+    );
     await markMcpConnectionRequiresReauth({
       tenantId: params.tenantId,
       connectionId: params.connectionId,
@@ -777,8 +947,11 @@ async function getMcpConnectionRuntime(params: { tenantId: string; connectionId?
     throw error;
   }
   const decrypted = decrypt(row.connection.encryptedTokenRef);
-  const session = decrypted ? JSON.parse(decrypted) as { accessToken?: string; tokenType?: string } : null;
-  if (!session?.accessToken) throw new Error("MCP connection token is unavailable");
+  const session = decrypted
+    ? (JSON.parse(decrypted) as { accessToken?: string; tokenType?: string })
+    : null;
+  if (!session?.accessToken)
+    throw new Error("MCP connection token is unavailable");
   return {
     mcpUrl: row.template.mcpUrl,
     accessToken: session.accessToken,
@@ -830,13 +1003,20 @@ async function callMcpTool(params: {
   }
   const json = parseMcpJsonResponse(text);
   if (json.error) {
-    throw new McpToolError(`MCP provider tool error: ${json.error.message ?? json.error.code ?? "unknown"}`);
+    throw new McpToolError(
+      `MCP provider tool error: ${json.error.message ?? json.error.code ?? "unknown"}`
+    );
   }
   if (json.result?.isError) {
     const message = Array.isArray(json.result.content)
-      ? json.result.content.map((item: any) => item?.text).filter(Boolean).join(" ")
+      ? json.result.content
+          .map((item: any) => item?.text)
+          .filter(Boolean)
+          .join(" ")
       : "";
-    throw new McpToolError(`MCP provider tool error: ${message || "provider returned isError"}`);
+    throw new McpToolError(
+      `MCP provider tool error: ${message || "provider returned isError"}`
+    );
   }
   return json.result;
 }
@@ -887,7 +1067,11 @@ async function callMcpToolWithTransientRetry(params: {
   arguments: Record<string, unknown>;
 }) {
   let lastError: unknown;
-  for (let attempt = 1; attempt <= MCP_REFERENCE_IMPORT_MAX_ATTEMPTS; attempt += 1) {
+  for (
+    let attempt = 1;
+    attempt <= MCP_REFERENCE_IMPORT_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
     try {
       return await callMcpTool(params);
     } catch (error) {
@@ -898,8 +1082,8 @@ async function callMcpToolWithTransientRetry(params: {
       ) {
         throw error;
       }
-      await new Promise((resolve) =>
-        setTimeout(resolve, MCP_REFERENCE_IMPORT_RETRY_BASE_MS * attempt),
+      await new Promise(resolve =>
+        setTimeout(resolve, MCP_REFERENCE_IMPORT_RETRY_BASE_MS * attempt)
       );
     }
   }
@@ -923,7 +1107,9 @@ async function uploadMagnificReferenceImages(params: {
     });
     const identifier = findProviderIdentifier(result);
     if (!identifier) {
-      throw new Error("Magnific reference upload did not return a creation identifier");
+      throw new Error(
+        "Magnific reference upload did not return a creation identifier"
+      );
     }
     identifiers.push(identifier);
   }
@@ -977,8 +1163,8 @@ async function prepareMcpToolArguments(params: {
 
   if (
     params.metadata.providerKey === "higgsfield" &&
-    (
-      (params.metadata.assetType === "image" && params.metadata.toolName === "generate_image") ||
+    ((params.metadata.assetType === "image" &&
+      params.metadata.toolName === "generate_image") ||
       // Video path (Vertical Drama fix — see `mcpMediaAdapter.test.ts`): this
       // branch used to be image-only, so `generate_video` requests silently
       // fell through to `return params.toolArguments` unchanged below,
@@ -989,8 +1175,8 @@ async function prepareMcpToolArguments(params: {
       // (`generateType: "image-to-video"`, `supportsReferenceImages: true`)
       // confirms Higgsfield's video tool DOES accept `medias`, same as its
       // image tool.
-      (params.metadata.assetType === "video" && params.metadata.toolName === "generate_video")
-    )
+      (params.metadata.assetType === "video" &&
+        params.metadata.toolName === "generate_video"))
   ) {
     const importUrls = referenceImageUrls.slice(0, 20);
     const importedMedias = await importHiggsfieldReferenceImages({
@@ -998,10 +1184,14 @@ async function prepareMcpToolArguments(params: {
       urls: importUrls,
       roles: rolesForReferenceImageUrls(importUrls, params.parameters),
     });
-    const currentParams = params.toolArguments.params && typeof params.toolArguments.params === "object"
-      ? params.toolArguments.params as Record<string, unknown>
-      : {};
-    const existingMedias = Array.isArray(currentParams.medias) ? currentParams.medias : [];
+    const currentParams =
+      params.toolArguments.params &&
+      typeof params.toolArguments.params === "object"
+        ? (params.toolArguments.params as Record<string, unknown>)
+        : {};
+    const existingMedias = Array.isArray(currentParams.medias)
+      ? currentParams.medias
+      : [];
     return {
       ...params.toolArguments,
       params: {
@@ -1029,7 +1219,9 @@ async function prepareMcpToolArguments(params: {
   };
 }
 
-export async function submitMcpMediaGeneration(request: McpMediaGenerationRequest): Promise<MediaTask> {
+export async function submitMcpMediaGeneration(
+  request: McpMediaGenerationRequest
+): Promise<MediaTask> {
   const idempotencyLockKey = buildMcpIdempotencyLockKey({
     tenantId: request.tenantId,
     userId: request.metadata.actorUserId ?? 0,
@@ -1049,7 +1241,9 @@ export async function submitMcpMediaGeneration(request: McpMediaGenerationReques
   return submitMcpMediaGenerationUnlocked(request);
 }
 
-async function submitMcpMediaGenerationUnlocked(request: McpMediaGenerationRequest): Promise<MediaTask> {
+async function submitMcpMediaGenerationUnlocked(
+  request: McpMediaGenerationRequest
+): Promise<MediaTask> {
   const existing = await findMcpMediaTaskByIdempotency({
     tenantId: request.tenantId,
     userId: request.metadata.actorUserId ?? 0,
@@ -1061,29 +1255,38 @@ async function submitMcpMediaGenerationUnlocked(request: McpMediaGenerationReque
   const taskId = request.metadata.idempotencyKey
     ? `mcp_${crypto.createHash("sha256").update(`${request.tenantId}:${request.metadata.actorUserId}:${request.metadata.idempotencyKey}`).digest("hex").slice(0, 32)}`
     : `mcp_${crypto.randomUUID()}`;
-  const toolName = request.metadata.providerKey === "higgsfield"
-    ? request.metadata.assetType === "image" ? "generate_image" : "generate_video"
-    : request.metadata.assetType === "image" ? "images_generate" : "video_generate";
+  const toolName =
+    request.metadata.providerKey === "higgsfield"
+      ? request.metadata.assetType === "image"
+        ? "generate_image"
+        : "generate_video"
+      : request.metadata.assetType === "image"
+        ? "images_generate"
+        : "video_generate";
   const resolvedToolName = request.metadata.toolName || toolName;
   const rawProviderModelId = request.metadata.providerModelId || request.model;
-  const providerModelId = normalizeMcpProviderModelIdForProvider({
-    providerKey: request.metadata.providerKey,
-    providerModelId: rawProviderModelId,
-    assetType: request.metadata.assetType,
-    argumentShape: request.metadata.argumentShape,
-  }) ?? rawProviderModelId;
+  const providerModelId =
+    normalizeMcpProviderModelIdForProvider({
+      providerKey: request.metadata.providerKey,
+      providerModelId: rawProviderModelId,
+      assetType: request.metadata.assetType,
+      argumentShape: request.metadata.argumentShape,
+    }) ?? rawProviderModelId;
   const toolArguments = buildMcpToolArguments(
     request.metadata.assetType,
     request.prompt,
     { ...(request.parameters ?? {}), model: providerModelId, providerModelId },
     request.metadata.providerKey,
-    request.metadata.argumentShape,
+    request.metadata.argumentShape
   );
   const metadata: MediaTaskTransportMetadata = {
     ...request.metadata,
     toolName: resolvedToolName,
     providerModelId,
-    schemaHash: crypto.createHash("sha256").update(`${resolvedToolName}:${providerModelId}`).digest("hex"),
+    schemaHash: crypto
+      .createHash("sha256")
+      .update(`${resolvedToolName}:${providerModelId}`)
+      .digest("hex"),
     attemptCount: 1,
   };
   await recordMcpUsageEvent({
@@ -1111,7 +1314,11 @@ async function submitMcpMediaGenerationUnlocked(request: McpMediaGenerationReque
       runtime,
       metadata,
       toolArguments,
-      parameters: { ...(request.parameters ?? {}), model: providerModelId, providerModelId },
+      parameters: {
+        ...(request.parameters ?? {}),
+        model: providerModelId,
+        providerModelId,
+      },
     });
     providerResult = await callMcpTool({
       ...runtime,
@@ -1158,14 +1365,16 @@ async function submitMcpMediaGenerationUnlocked(request: McpMediaGenerationReque
       },
       schemaHash: metadata.schemaHash,
     });
-    logMcpObservabilityEvent(buildMcpObservabilityEvent({
-      event: "provider_request_failed",
-      metadata,
-      jobId: taskId,
-      status: "failed",
-      error,
-      details: redactParameters(request.parameters),
-    }));
+    logMcpObservabilityEvent(
+      buildMcpObservabilityEvent({
+        event: "provider_request_failed",
+        metadata,
+        jobId: taskId,
+        status: "failed",
+        error,
+        details: redactParameters(request.parameters),
+      })
+    );
     throw error;
   }
   const task: MediaTask = {
@@ -1197,14 +1406,16 @@ async function submitMcpMediaGenerationUnlocked(request: McpMediaGenerationReque
   };
   memoryMcpMediaTasks.set(task.id, task);
   await persistMcpMediaTask(task);
-  logMcpObservabilityEvent(buildMcpObservabilityEvent({
-    event: "generation_start",
-    metadata,
-    jobId: task.id,
-    providerJobId,
-    status: "submitted",
-    details: redactParameters(request.parameters),
-  }));
+  logMcpObservabilityEvent(
+    buildMcpObservabilityEvent({
+      event: "generation_start",
+      metadata,
+      jobId: task.id,
+      providerJobId,
+      status: "submitted",
+      details: redactParameters(request.parameters),
+    })
+  );
   return task;
 }
 
@@ -1217,15 +1428,24 @@ function buildMcpIdempotencyLockKey(params: {
   return `${params.tenantId}:${params.userId}:${params.idempotencyKey}`;
 }
 
-export async function getMcpMediaTask(taskId: string, userId: number): Promise<MediaTask | null> {
+export async function getMcpMediaTask(
+  taskId: string,
+  userId: number
+): Promise<MediaTask | null> {
   const memoryTask = memoryMcpMediaTasks.get(taskId);
-  if (memoryTask?.userId === String(userId)) return refreshMcpMediaTaskStatus(memoryTask);
+  if (memoryTask?.userId === String(userId))
+    return refreshMcpMediaTaskStatus(memoryTask);
   try {
     const db = getDb();
     const [row] = await db
       .select()
       .from(mcpMediaTasksTable)
-      .where(and(eq(mcpMediaTasksTable.id, taskId), eq(mcpMediaTasksTable.userId, userId)))
+      .where(
+        and(
+          eq(mcpMediaTasksTable.id, taskId),
+          eq(mcpMediaTasksTable.userId, userId)
+        )
+      )
       .limit(1);
     return row ? refreshMcpMediaTaskStatus(rowToMediaTask(row)) : null;
   } catch {
@@ -1242,41 +1462,56 @@ export async function listMcpMediaTasks(params: {
   try {
     const db = getDb();
     const conditions = [eq(mcpMediaTasksTable.userId, params.userId)];
-    if (params.mediaType) conditions.push(eq(mcpMediaTasksTable.mediaType, params.mediaType));
-    if (params.status) conditions.push(eq(mcpMediaTasksTable.status, params.status));
+    if (params.mediaType)
+      conditions.push(eq(mcpMediaTasksTable.mediaType, params.mediaType));
+    if (params.status)
+      conditions.push(eq(mcpMediaTasksTable.status, params.status));
     const rows = await db
       .select()
       .from(mcpMediaTasksTable)
       .where(and(...conditions))
       .orderBy(desc(mcpMediaTasksTable.createdAt))
       .limit(params.limit ?? 50);
-    return Promise.all(rows.map((row) => refreshMcpMediaTaskStatus(rowToMediaTask(row))));
+    return Promise.all(
+      rows.map(row => refreshMcpMediaTaskStatus(rowToMediaTask(row)))
+    );
   } catch {
     const tasks = Array.from(memoryMcpMediaTasks.values())
-    .filter((task) => task.userId === String(params.userId))
-    .filter((task) => !params.mediaType || task.mediaType === params.mediaType)
-    .filter((task) => !params.status || task.status === params.status)
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-    .slice(0, params.limit ?? 50);
-    return Promise.all(tasks.map((task) => refreshMcpMediaTaskStatus(task)));
+      .filter(task => task.userId === String(params.userId))
+      .filter(task => !params.mediaType || task.mediaType === params.mediaType)
+      .filter(task => !params.status || task.status === params.status)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, params.limit ?? 50);
+    return Promise.all(tasks.map(task => refreshMcpMediaTaskStatus(task)));
   }
 }
 
-export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaTask> {
-  if (task.status !== "processing" && task.status !== "pending") return task;
-  const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
+export async function refreshMcpMediaTaskStatus(
+  task: MediaTask
+): Promise<MediaTask> {
+  // Completed tasks can come from the in-memory fast path and skip
+  // rowToMediaTask(), which normally derives resultUrl from resultData.
+  if (task.status !== "processing" && task.status !== "pending") {
+    return normalizeMcpTaskResultUrl(task);
+  }
+  const metadata = (task.parameters?.transportMetadata ??
+    task.resultData?.transportMetadata) as
+    | MediaTaskTransportMetadata
+    | undefined;
   const tenantId = metadata?.tenantId;
   const providerJobId = metadata?.providerJobId ?? task.taskId;
 
   const createdAtMs = Date.parse(task.createdAt);
   const hardTimeoutMs = getMcpTaskHardTimeoutMs(task.mediaType);
-  const isPastHardTimeout = Number.isFinite(createdAtMs) && Date.now() - createdAtMs > hardTimeoutMs;
+  const isPastHardTimeout =
+    Number.isFinite(createdAtMs) && Date.now() - createdAtMs > hardTimeoutMs;
   // Bounded escape hatch for a hard-timed-out task the provider genuinely
   // never answers about (see `MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER` doc) —
   // only consulted once `isPastHardTimeout` is already true.
   const isPastAbsoluteGiveUp =
     Number.isFinite(createdAtMs) &&
-    Date.now() - createdAtMs > hardTimeoutMs * MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER;
+    Date.now() - createdAtMs >
+      hardTimeoutMs * MCP_TASK_ABSOLUTE_GIVE_UP_MULTIPLIER;
 
   const writeHardTimeoutFailure = async (): Promise<MediaTask> => {
     const timedOutTask: MediaTask = {
@@ -1287,7 +1522,10 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
       resultData: {
         ...(task.resultData ?? {}),
         providerSummary: {
-          ...(typeof task.resultData?.providerSummary === "object" && task.resultData?.providerSummary ? task.resultData.providerSummary : {}),
+          ...(typeof task.resultData?.providerSummary === "object" &&
+          task.resultData?.providerSummary
+            ? task.resultData.providerSummary
+            : {}),
           status: "failed",
           hardTimeout: true,
         },
@@ -1318,11 +1556,16 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
   // metadata/connection/job id) has nothing left to confirm with — preserve
   // the previous immediate-failure behavior rather than leaving it stuck
   // "processing" forever.
-  if (isPastHardTimeout && (!metadata || !tenantId || !metadata.connectionId || !providerJobId)) {
+  if (
+    isPastHardTimeout &&
+    (!metadata || !tenantId || !metadata.connectionId || !providerJobId)
+  ) {
     return writeHardTimeoutFailure();
   }
 
-  if (!metadata || !tenantId || !metadata.connectionId || !providerJobId) return task;
+  if (!metadata || !tenantId || !metadata.connectionId || !providerJobId) {
+    return normalizeMcpTaskResultUrl(task);
+  }
 
   const toolName = providerStatusToolName(metadata);
   let providerStatusResult: unknown = null;
@@ -1335,27 +1578,40 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
   // NOT be treated as terminal.
   let allAttemptsWereToolLevelErrors = true;
   try {
-    const runtime = await getMcpConnectionRuntime({ tenantId, connectionId: metadata.connectionId });
-    for (const args of providerStatusArgumentCandidates(metadata, providerJobId)) {
+    const runtime = await getMcpConnectionRuntime({
+      tenantId,
+      connectionId: metadata.connectionId,
+    });
+    for (const args of providerStatusArgumentCandidates(
+      metadata,
+      providerJobId
+    )) {
       try {
-        providerStatusResult = await callMcpTool({ ...runtime, toolName, arguments: args });
+        providerStatusResult = await callMcpTool({
+          ...runtime,
+          toolName,
+          arguments: args,
+        });
         lastError = null;
         break;
       } catch (error) {
         lastError = error;
-        if (!(error instanceof McpToolError)) allAttemptsWereToolLevelErrors = false;
+        if (!(error instanceof McpToolError))
+          allAttemptsWereToolLevelErrors = false;
       }
     }
     if (lastError) throw lastError;
   } catch (error) {
-    logMcpObservabilityEvent(buildMcpObservabilityEvent({
-      event: "provider_request_failed",
-      metadata,
-      jobId: task.id,
-      providerJobId,
-      status: "processing",
-      error,
-    }));
+    logMcpObservabilityEvent(
+      buildMcpObservabilityEvent({
+        event: "provider_request_failed",
+        metadata,
+        jobId: task.id,
+        providerJobId,
+        status: "processing",
+        error,
+      })
+    );
     if (error instanceof McpToolError && allAttemptsWereToolLevelErrors) {
       // The provider positively rejected every well-formed status lookup
       // for this job (e.g. Higgsfield `job_status` returning `isError: true`
@@ -1366,7 +1622,8 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
         providerRejected: true,
         message: "ไม่พบงานนี้ฝั่งผู้ให้บริการ — กรุณาสั่งสร้างใหม่",
       });
-      nextTask.errorMessage = "ไม่พบงานนี้ฝั่งผู้ให้บริการ — กรุณาสั่งสร้างใหม่";
+      nextTask.errorMessage =
+        "ไม่พบงานนี้ฝั่งผู้ให้บริการ — กรุณาสั่งสร้างใหม่";
       memoryMcpMediaTasks.set(nextTask.id, nextTask);
       await persistMcpMediaTask(nextTask);
       await recordMcpUsageEvent({
@@ -1390,7 +1647,8 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
     // verdict — must NOT be treated as terminal. If this task is hard-timed
     // out, only force-fail once the bounded absolute give-up window has also
     // elapsed; otherwise leave it for the next sweeper pass to try again.
-    if (isPastHardTimeout && isPastAbsoluteGiveUp) return writeHardTimeoutFailure();
+    if (isPastHardTimeout && isPastAbsoluteGiveUp)
+      return writeHardTimeoutFailure();
     return task;
   }
 
@@ -1399,7 +1657,8 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
     // Reachable, but the provider has no definitive verdict yet (e.g. still
     // "processing" on its side) — same bounded give-up discipline as the
     // unreachable case above applies once hard-timed-out.
-    if (isPastHardTimeout && isPastAbsoluteGiveUp) return writeHardTimeoutFailure();
+    if (isPastHardTimeout && isPastAbsoluteGiveUp)
+      return writeHardTimeoutFailure();
     return task;
   }
   let nextTask: MediaTask;
@@ -1407,16 +1666,22 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
     try {
       nextTask = await withCompletedProviderResult(task, providerStatusResult);
     } catch (error) {
-      logMcpObservabilityEvent(buildMcpObservabilityEvent({
-        event: "provider_request_failed",
-        metadata,
-        jobId: task.id,
-        providerJobId,
-        status: "failed",
-        error,
-        details: { stage: "output_persistence" },
-      }));
-      nextTask = withOutputPersistenceFailure(task, providerStatusResult, error);
+      logMcpObservabilityEvent(
+        buildMcpObservabilityEvent({
+          event: "provider_request_failed",
+          metadata,
+          jobId: task.id,
+          providerJobId,
+          status: "failed",
+          error,
+          details: { stage: "output_persistence" },
+        })
+      );
+      nextTask = withOutputPersistenceFailure(
+        task,
+        providerStatusResult,
+        error
+      );
     }
   } else {
     nextTask = withFailedProviderResult(task, providerStatusResult);
@@ -1430,7 +1695,10 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
     actorUserId: metadata.actorUserId,
     groupId: metadata.sharedGroupId,
     mediaTaskId: task.id,
-    eventType: normalizedStatus === "completed" ? "generation_complete" : "generation_failed",
+    eventType:
+      normalizedStatus === "completed"
+        ? "generation_complete"
+        : "generation_failed",
     assetType: metadata.assetType,
     providerKey: metadata.providerKey,
     status: normalizedStatus === "completed" ? "success" : "failed",
@@ -1443,8 +1711,13 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
   return nextTask;
 }
 
-export async function cancelMcpMediaGeneration(task: MediaTask): Promise<MediaTask> {
-  const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
+export async function cancelMcpMediaGeneration(
+  task: MediaTask
+): Promise<MediaTask> {
+  const metadata = (task.parameters?.transportMetadata ??
+    task.resultData?.transportMetadata) as
+    | MediaTaskTransportMetadata
+    | undefined;
   if (metadata?.tenantId) {
     await recordMcpUsageEvent({
       tenantId: metadata.tenantId as unknown as string,
@@ -1459,16 +1732,22 @@ export async function cancelMcpMediaGeneration(task: MediaTask): Promise<MediaTa
       status: "provider_cancel_attempted",
     });
   }
-  const cancelled = { ...task, status: "cancelled" as const, completedAt: new Date().toISOString() };
+  const cancelled = {
+    ...task,
+    status: "cancelled" as const,
+    completedAt: new Date().toISOString(),
+  };
   memoryMcpMediaTasks.set(task.id, cancelled);
   await persistMcpMediaTask(cancelled);
-  logMcpObservabilityEvent(buildMcpObservabilityEvent({
-    event: "generation_cancel",
-    metadata,
-    jobId: task.id,
-    providerJobId: task.taskId,
-    status: "cancelled",
-  }));
+  logMcpObservabilityEvent(
+    buildMcpObservabilityEvent({
+      event: "generation_cancel",
+      metadata,
+      jobId: task.id,
+      providerJobId: task.taskId,
+      status: "cancelled",
+    })
+  );
   return cancelled;
 }
 
@@ -1478,8 +1757,11 @@ async function findMcpMediaTaskByIdempotency(params: {
   idempotencyKey?: string;
 }): Promise<MediaTask | null> {
   if (!params.idempotencyKey || !params.userId) return null;
-  const memoryTask = Array.from(memoryMcpMediaTasks.values()).find((task) => {
-    const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
+  const memoryTask = Array.from(memoryMcpMediaTasks.values()).find(task => {
+    const metadata = (task.parameters?.transportMetadata ??
+      task.resultData?.transportMetadata) as
+      | MediaTaskTransportMetadata
+      | undefined;
     return (
       task.userId === String(params.userId) &&
       metadata?.tenantId === params.tenantId &&
@@ -1492,11 +1774,13 @@ async function findMcpMediaTaskByIdempotency(params: {
     const [row] = await db
       .select()
       .from(mcpMediaTasksTable)
-      .where(and(
-        eq(mcpMediaTasksTable.tenantId, params.tenantId),
-        eq(mcpMediaTasksTable.userId, params.userId),
-        eq(mcpMediaTasksTable.idempotencyKey, params.idempotencyKey),
-      ))
+      .where(
+        and(
+          eq(mcpMediaTasksTable.tenantId, params.tenantId),
+          eq(mcpMediaTasksTable.userId, params.userId),
+          eq(mcpMediaTasksTable.idempotencyKey, params.idempotencyKey)
+        )
+      )
       .limit(1);
     return row ? rowToMediaTask(row) : null;
   } catch {
@@ -1505,56 +1789,75 @@ async function findMcpMediaTaskByIdempotency(params: {
 }
 
 async function persistMcpMediaTask(task: MediaTask): Promise<void> {
-  const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
+  const metadata = (task.parameters?.transportMetadata ??
+    task.resultData?.transportMetadata) as
+    | MediaTaskTransportMetadata
+    | undefined;
   const tenantId = metadata?.tenantId;
   const userId = Number(task.userId);
   if (!tenantId || !Number.isFinite(userId)) return;
   try {
     const db = getDb();
-    await db.insert(mcpMediaTasksTable).values({
-      id: task.id,
-      tenantId,
-      userId,
-      connectionId: metadata.connectionId ?? null,
-      shareId: metadata.shareId ?? null,
-      providerTaskId: task.taskId ?? metadata.providerJobId ?? null,
-      idempotencyKey: metadata.idempotencyKey ?? null,
-      mediaType: task.mediaType,
-      status: task.status,
-      model: task.model,
-      prompt: task.prompt,
-      parameters: task.parameters ?? {},
-      resultData: task.resultData ?? {},
-      errorMessage: task.errorMessage ?? null,
-      createdAt: new Date(task.createdAt),
-      startedAt: task.startedAt ? new Date(task.startedAt) : null,
-      completedAt: task.completedAt ? new Date(task.completedAt) : null,
-      updatedAt: new Date(),
-    }).onConflictDoUpdate({
-      target: mcpMediaTasksTable.id,
-      set: {
+    await db
+      .insert(mcpMediaTasksTable)
+      .values({
+        id: task.id,
+        tenantId,
+        userId,
+        connectionId: metadata.connectionId ?? null,
+        shareId: metadata.shareId ?? null,
+        providerTaskId: task.taskId ?? metadata.providerJobId ?? null,
+        idempotencyKey: metadata.idempotencyKey ?? null,
+        mediaType: task.mediaType,
         status: task.status,
+        model: task.model,
+        prompt: task.prompt,
         parameters: task.parameters ?? {},
         resultData: task.resultData ?? {},
         errorMessage: task.errorMessage ?? null,
+        createdAt: new Date(task.createdAt),
+        startedAt: task.startedAt ? new Date(task.startedAt) : null,
         completedAt: task.completedAt ? new Date(task.completedAt) : null,
         updatedAt: new Date(),
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: mcpMediaTasksTable.id,
+        set: {
+          status: task.status,
+          parameters: task.parameters ?? {},
+          resultData: task.resultData ?? {},
+          errorMessage: task.errorMessage ?? null,
+          completedAt: task.completedAt ? new Date(task.completedAt) : null,
+          updatedAt: new Date(),
+        },
+      });
   } catch {
     // Memory fallback keeps local dev/test flows usable when DATABASE_URL is not configured.
   }
 }
 
-function readFirstMcpMediaUrl(value: unknown, visited = new WeakSet<object>()): string | undefined {
+function readFirstMcpMediaUrl(
+  value: unknown,
+  visited = new WeakSet<object>()
+): string | undefined {
   if (!value) return undefined;
   if (typeof value === "string") {
     const trimmed = value.trim();
-    return /^https?:\/\//i.test(trimmed) ||
+    if (
+      /^https?:\/\//i.test(trimmed) ||
       trimmed.startsWith("/api/storage/") ||
       trimmed.startsWith("/uploads/")
-      ? trimmed
-      : undefined;
+    ) {
+      return trimmed;
+    }
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        return readFirstMcpMediaUrl(JSON.parse(trimmed), visited);
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
   }
   if (Array.isArray(value)) {
     for (const item of value) {
@@ -1580,13 +1883,30 @@ function readFirstMcpMediaUrl(value: unknown, visited = new WeakSet<object>()): 
     "audio_url",
     "outputUrls",
     "output_urls",
+    "result",
+    "output",
+    "response",
+    "data",
+    "taskResult",
+    "resultJson",
     "url",
   ]) {
     const found = readFirstMcpMediaUrl(record[key], visited);
     if (found) return found;
   }
 
+  for (const nested of Object.values(record)) {
+    const found = readFirstMcpMediaUrl(nested, visited);
+    if (found) return found;
+  }
+
   return undefined;
+}
+
+function normalizeMcpTaskResultUrl(task: MediaTask): MediaTask {
+  if (task.resultUrl?.trim()) return task;
+  const resultUrl = readFirstMcpMediaUrl(task.resultData);
+  return resultUrl ? { ...task, resultUrl } : task;
 }
 
 function rowToMediaTask(row: McpMediaTask): MediaTask {
@@ -1614,7 +1934,7 @@ const MCP_STALE_RECONCILER_BATCH_SIZE = 25;
 const MCP_STALE_RECONCILER_CONCURRENCY = 4;
 const MCP_STALE_RECONCILER_INTERVAL_MS = Math.max(
   60_000,
-  Number(process.env.MCP_MEDIA_TASK_RECONCILER_INTERVAL_MS ?? 60 * 60_000),
+  Number(process.env.MCP_MEDIA_TASK_RECONCILER_INTERVAL_MS ?? 60 * 60_000)
 );
 
 /**
@@ -1630,7 +1950,7 @@ const MCP_STALE_RECONCILER_INTERVAL_MS = Math.max(
  */
 function readVdPortraitCandidateTaskMarker(
   parameters: Record<string, unknown> | undefined,
-  key: string,
+  key: string
 ): string | undefined {
   if (!parameters) return undefined;
   const direct = parameters[key];
@@ -1668,15 +1988,21 @@ function readVdPortraitCandidateTaskMarker(
  * still awaiting its task ("submitting"/"queued") — an already
  * failed/completed/selected/superseded candidate is left untouched.
  */
-async function cascadeFailedVdPortraitCandidateTask(task: MediaTask): Promise<void> {
+async function cascadeFailedVdPortraitCandidateTask(
+  task: MediaTask
+): Promise<void> {
   const assetLinkIdRaw = readVdPortraitCandidateTaskMarker(
     task.parameters,
-    "__vd_portrait_candidate_asset_link_id",
+    "__vd_portrait_candidate_asset_link_id"
   );
   if (!assetLinkIdRaw) return; // Not a VD portrait-candidate task — no-op.
 
-  const seriesIdRaw = readVdPortraitCandidateTaskMarker(task.parameters, "__vd_series_id");
-  const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as
+  const seriesIdRaw = readVdPortraitCandidateTaskMarker(
+    task.parameters,
+    "__vd_series_id"
+  );
+  const metadata = (task.parameters?.transportMetadata ??
+    task.resultData?.transportMetadata) as
     | MediaTaskTransportMetadata
     | undefined;
   const tenantId = metadata?.tenantId;
@@ -1689,9 +2015,12 @@ async function cascadeFailedVdPortraitCandidateTask(task: MediaTask): Promise<vo
     !Number.isFinite(seriesId) ||
     !Number.isFinite(assetLinkId)
   ) {
-    console.warn("[mcp-media] VD portrait-candidate cascade skipped — incomplete task markers", {
-      taskId: task.id,
-    });
+    console.warn(
+      "[mcp-media] VD portrait-candidate cascade skipped — incomplete task markers",
+      {
+        taskId: task.id,
+      }
+    );
     return;
   }
 
@@ -1706,19 +2035,25 @@ async function cascadeFailedVdPortraitCandidateTask(task: MediaTask): Promise<vo
   }
 
   try {
-    const { verticalDramaCharacterStockService } = await import("./verticalDramaCharacterStock");
-    await verticalDramaCharacterStockService.markPortraitCandidateSubmissionFailed({
-      tenantId,
-      userId,
-      seriesId,
-      assetLinkId,
-      errorMessage: task.errorMessage ?? "หมดเวลารอผลจากผู้ให้บริการ",
-    });
+    const { verticalDramaCharacterStockService } =
+      await import("./verticalDramaCharacterStock");
+    await verticalDramaCharacterStockService.markPortraitCandidateSubmissionFailed(
+      {
+        tenantId,
+        userId,
+        seriesId,
+        assetLinkId,
+        errorMessage: task.errorMessage ?? "หมดเวลารอผลจากผู้ให้บริการ",
+      }
+    );
   } catch (error) {
-    console.warn("[mcp-media] VD portrait-candidate cascade failed to mark asset row failed", {
-      taskId: task.id,
-      error: error instanceof Error ? error.message : error,
-    });
+    console.warn(
+      "[mcp-media] VD portrait-candidate cascade failed to mark asset row failed",
+      {
+        taskId: task.id,
+        error: error instanceof Error ? error.message : error,
+      }
+    );
   }
 }
 
@@ -1740,7 +2075,10 @@ async function cascadeFailedVdPortraitCandidateTask(task: MediaTask): Promise<vo
  * Bounded concurrency + per-task error tolerance: a slow/broken provider
  * call for one task must not block or fail the sweep for the rest.
  */
-export async function reconcileStaleMcpMediaTasks(): Promise<{ scanned: number; changed: number }> {
+export async function reconcileStaleMcpMediaTasks(): Promise<{
+  scanned: number;
+  changed: number;
+}> {
   let scanned = 0;
   let changed = 0;
   try {
@@ -1749,21 +2087,27 @@ export async function reconcileStaleMcpMediaTasks(): Promise<{ scanned: number; 
     const rows = await db
       .select()
       .from(mcpMediaTasksTable)
-      .where(and(
-        inArray(mcpMediaTasksTable.status, ["processing", "pending"]),
-        lt(mcpMediaTasksTable.updatedAt, staleCutoff),
-      ))
+      .where(
+        and(
+          inArray(mcpMediaTasksTable.status, ["processing", "pending"]),
+          lt(mcpMediaTasksTable.updatedAt, staleCutoff)
+        )
+      )
       .orderBy(mcpMediaTasksTable.updatedAt)
       .limit(MCP_STALE_RECONCILER_BATCH_SIZE);
 
     for (let i = 0; i < rows.length; i += MCP_STALE_RECONCILER_CONCURRENCY) {
       const chunk = rows.slice(i, i + MCP_STALE_RECONCILER_CONCURRENCY);
       const results = await Promise.allSettled(
-        chunk.map((row) => refreshMcpMediaTaskStatus(rowToMediaTask(row))),
+        chunk.map(row => refreshMcpMediaTaskStatus(rowToMediaTask(row)))
       );
       for (const [index, result] of results.entries()) {
         scanned += 1;
-        if (result.status === "fulfilled" && result.value.status !== "processing" && result.value.status !== "pending") {
+        if (
+          result.status === "fulfilled" &&
+          result.value.status !== "processing" &&
+          result.value.status !== "pending"
+        ) {
           changed += 1;
           if (result.value.status === "failed") {
             await cascadeFailedVdPortraitCandidateTask(result.value);
@@ -1771,7 +2115,10 @@ export async function reconcileStaleMcpMediaTasks(): Promise<{ scanned: number; 
         } else if (result.status === "rejected") {
           console.warn("[mcp-media] stale task reconciler failed for task", {
             taskId: chunk[index]?.id,
-            error: result.reason instanceof Error ? result.reason.message : result.reason,
+            error:
+              result.reason instanceof Error
+                ? result.reason.message
+                : result.reason,
           });
         }
       }
@@ -1789,7 +2136,7 @@ let mcpStaleTaskReconcilerTimer: ReturnType<typeof setInterval> | null = null;
 export function startMcpStaleMediaTaskReconciler(): void {
   if (mcpStaleTaskReconcilerTimer) return;
   mcpStaleTaskReconcilerTimer = setInterval(() => {
-    void reconcileStaleMcpMediaTasks().catch((error) => {
+    void reconcileStaleMcpMediaTasks().catch(error => {
       console.warn("[mcp-media] stale task reconciler tick failed", {
         error: error instanceof Error ? error.message : error,
       });
@@ -1798,7 +2145,7 @@ export function startMcpStaleMediaTaskReconciler(): void {
   // Run one pass shortly after startup too, so tasks left stuck across a
   // restart (the exact 2026-07-07 scenario) don't wait a full interval.
   setTimeout(() => {
-    void reconcileStaleMcpMediaTasks().catch((error) => {
+    void reconcileStaleMcpMediaTasks().catch(error => {
       console.warn("[mcp-media] stale task reconciler startup pass failed", {
         error: error instanceof Error ? error.message : error,
       });

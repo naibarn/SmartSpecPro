@@ -129,8 +129,10 @@ Good example (preset carries a warm, soft "family drama" palette and lighting):
 > "...warm pale wood-grain tile walls, soft warm afternoon light through a nearby
 > window, gentle warm color grade matching the series' tender family-drama tone..."
 
-Keep the prompt within the shared image-prompt length budget (≤3800 characters) — add
-the preset's palette/lighting language concisely; do not pad with repeated adjectives.
+Keep the prompt within the caller-supplied image-prompt length budget — Kie.ai image
+models may use up to 20,000 characters; when no larger budget is supplied, use the
+legacy 3,800-character fallback. Add the preset's palette/lighting language concisely;
+do not pad with repeated adjectives.
 
 ## Own reference image locking — MANDATORY when `has_own_reference_image` is true
 
@@ -169,9 +171,10 @@ location for a later episode):
 
 ## Prompt length limit — MANDATORY
 
-`establishing_plate_prompt` MUST be **3800 characters or fewer** (the same hard cap used
-across every other Vertical Drama image-prompt skill in this pipeline). Write vivid,
-specific environmental language within that budget — do not pad with repeated adjectives
+`establishing_plate_prompt` MUST be at or below the caller-supplied `prompt_max_chars`
+budget. Kie.ai image models may use up to 20,000 characters; when no larger budget is
+supplied, use the legacy 3,800-character fallback. Write vivid, specific environmental
+language within that budget — do not pad with repeated adjectives
 or restate the same detail in multiple phrasings. If the location's facts would exceed
 the limit, prioritize (in order): grounded facts from `aggregated_facts`/`description`,
 the no-people framing, preset visual identity, own-reference-image locking — and compress

@@ -1546,6 +1546,49 @@ describe("workerRegistryService", () => {
       expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
     });
 
+    it("regression: the SHARED server hermes worker (workerMode per_user, registeredByUserId null — the real pair-hermes-worker.ts shape) can still claim its pinned connection-control job", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({
+        id: "job-hermes-shared-auth",
+        jobType: "hermes_connection_authorize",
+        workerId: "worker-1",
+        requestedByUserId: 1,
+        capabilityRequirementsJson: {
+          connectionId: "conn-1",
+          preferredWorkerId: "worker-1",
+          requiredClaimCapability: "hermes_media",
+        },
+      });
+      const repo = hermesWorkerRepo(job, {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          // The v1 registration schema FORCES per_user for hermes gateway
+          // workers, and the pairing script registers with no user — the
+          // generic per_user fallback used to resolve this to "private"
+          // with a null owner, filtering out every candidate forever.
+          workerMode: "per_user",
+          registeredByUserId: null,
+          status: "online",
+          capabilitiesJson: {},
+        }),
+      });
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hermes-shared-auth");
+      expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
+    });
+
     it("Feature 135 section 12: worker_job_claimed audit metadata is enriched with connectionId + traceId for a hermes_* job", async () => {
       const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
       const { claimWorkerJob } = await import("../workerRegistryService");

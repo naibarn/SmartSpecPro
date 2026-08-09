@@ -21,12 +21,14 @@ import type React from "react";
 
 import { REMOTION_SCENE_IDS, type RemotionSceneId } from "../sceneRegistryIds";
 import { OrbitingProductScene } from "./OrbitingProductScene";
+import { GlowingSphereScene } from "./GlowingSphereScene";
 
 export const REMOTION_SCENE_REGISTRY: Record<
   RemotionSceneId,
   React.FC<Record<string, unknown>>
 > = {
   "orbiting-product": OrbitingProductScene,
+  "glowing-sphere": GlowingSphereScene,
 };
 
 function assertRegistryMatchesIds(): void {

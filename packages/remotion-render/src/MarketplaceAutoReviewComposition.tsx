@@ -90,7 +90,10 @@ const ThaiFontLoader: React.FC<{
       .load()
       .then(loaded => {
         if (cancelled) return;
-        (document.fonts as FontFaceSet).add(loaded);
+        // Some TypeScript DOM lib versions omit FontFaceSet#add even though
+        // Chromium implements it. Keep the runtime call while describing the
+        // small browser surface this composition relies on.
+        (document.fonts as unknown as { add(font: FontFace): void }).add(loaded);
         continueRender(handle);
       })
       .catch(() => {

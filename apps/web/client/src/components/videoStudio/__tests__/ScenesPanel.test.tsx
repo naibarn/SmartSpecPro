@@ -179,6 +179,26 @@ describe("ScenesPanel — unsaved-changes guard", () => {
   });
 });
 
+describe("ScenesPanel — accepted draft handoff", () => {
+  it("does not offer a second fill-empty plan when scenes and narration are already complete", () => {
+    renderPanel({
+      document: {
+        ...BASE_DOCUMENT,
+        scenes: [{
+          ...BASE_DOCUMENT.scenes[0],
+          narration: "บทพูดจาก draft ที่ยืนยันแล้ว",
+          visual: { kind: "template", templateId: "product_hero", params: {} },
+        }],
+      },
+    });
+
+    expect(screen.getByTestId("video-studio-run-scene-plan-blocked")).toHaveTextContent(
+      "already ready",
+    );
+    expect(screen.getByTestId("video-studio-run-scene-plan")).toBeDisabled();
+  });
+});
+
 describe("ScenesPanel — planner error copy", () => {
   it("surfaces VI_PLAN_LAYER_BUDGET_EXCEEDED / VI_PLAN_TIMELINE_INVALID as specific copy", () => {
     runScenePlanResult = { jobId: "plan-job-1", traceId: "t1", estimate: ESTIMATE };
@@ -275,5 +295,97 @@ describe("ScenesPanel — scene editor regression", () => {
         scenes: [expect.objectContaining({ sceneId: "scene-2" })],
       }),
     );
+  });
+});
+
+describe("ScenesPanel — reorder / duplicate / safe delete (this task)", () => {
+  const THREE_SCENES: VideoProjectDocument = {
+    ...BASE_DOCUMENT,
+    scenes: [
+      { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-1", startMs: 0, endMs: 3000 },
+      { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-2", startMs: 3000, endMs: 8000 },
+      { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-3", startMs: 8000, endMs: 9000 },
+    ],
+  };
+
+  it("reorder preserves each scene's own duration and produces a contiguous, non-overlapping timeline", () => {
+    const { onChange } = renderPanel({ document: THREE_SCENES });
+    fireEvent.click(screen.getByTestId("video-studio-scene-move-down-scene-1"));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenes: [
+          expect.objectContaining({ sceneId: "scene-2", startMs: 0, endMs: 5000 }),
+          expect.objectContaining({ sceneId: "scene-1", startMs: 5000, endMs: 8000 }),
+          expect.objectContaining({ sceneId: "scene-3", startMs: 8000, endMs: 9000 }),
+        ],
+      }),
+    );
+  });
+
+  it("disables move-up on the first scene and move-down on the last scene", () => {
+    renderPanel({ document: THREE_SCENES });
+    expect(screen.getByTestId("video-studio-scene-move-up-scene-1")).toBeDisabled();
+    expect(screen.getByTestId("video-studio-scene-move-down-scene-3")).toBeDisabled();
+  });
+
+  it("duplicate creates a unique sceneId, drops narrationAudioAssetId, and inserts right after the source with re-sequenced timing", () => {
+    const document: VideoProjectDocument = {
+      ...BASE_DOCUMENT,
+      scenes: [
+        { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-1", startMs: 0, endMs: 3000, narration: "Hello", narrationAudioAssetId: 42 },
+        { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-2", startMs: 3000, endMs: 6000 },
+      ],
+    };
+    const { onChange } = renderPanel({ document });
+    fireEvent.click(screen.getByTestId("video-studio-scene-duplicate-scene-1"));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenes: [
+          expect.objectContaining({ sceneId: "scene-1", narration: "Hello", narrationAudioAssetId: 42, startMs: 0, endMs: 3000 }),
+          expect.objectContaining({ sceneId: "scene-3", narration: "Hello", narrationAudioAssetId: null, startMs: 3000, endMs: 6000 }),
+          expect.objectContaining({ sceneId: "scene-2", startMs: 6000, endMs: 9000 }),
+        ],
+      }),
+    );
+  });
+
+  it("requires confirmation before deleting a scene with narration/captions/visual content, and re-sequences timing after confirm", () => {
+    const document: VideoProjectDocument = {
+      ...BASE_DOCUMENT,
+      scenes: [
+        { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-1", startMs: 0, endMs: 3000, narration: "Has content" },
+        { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-2", startMs: 3000, endMs: 6000 },
+      ],
+    };
+    const { onChange } = renderPanel({ document });
+
+    fireEvent.click(screen.getAllByLabelText(/Remove scene/i)[0]);
+    expect(onChange).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /Delete scene/i }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenes: [expect.objectContaining({ sceneId: "scene-2", startMs: 0, endMs: 3000 })],
+      }),
+    );
+  });
+
+  it("does not require confirmation for an empty scene (no narration, captions, or configured visual)", () => {
+    const { onChange } = renderPanel({
+      document: {
+        ...BASE_DOCUMENT,
+        scenes: [
+          { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-1" },
+          { ...BASE_DOCUMENT.scenes[0], sceneId: "scene-2", startMs: 8000, endMs: 16000 },
+        ],
+      },
+    });
+    fireEvent.click(screen.getAllByLabelText(/Remove scene/i)[0]);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(onChange).toHaveBeenCalled();
   });
 });

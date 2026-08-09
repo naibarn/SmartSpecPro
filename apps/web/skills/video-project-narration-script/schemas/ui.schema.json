@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "skillId": "video-project-narration-script",
+  "title": "Video Project Narration Script",
+  "titleTh": "เขียนบทพากย์โปรเจกต์วิดีโอ",
+  "description": "Writes per-scene Thai narration script text sized to each scene's duration, for scenes that do not yet have narration. Never invents product facts and never emits markdown or emoji.",
+  "descriptionTh": "เขียนบทพากย์ภาษาไทยต่อฉากให้เหมาะกับความยาวของแต่ละฉาก สำหรับฉากที่ยังไม่มีบทพากย์ ไม่สร้างข้อมูลสินค้าที่ไม่มีอยู่จริงและไม่ใช้ markdown หรืออิโมจิ",
+  "sections": [
+    {
+      "id": "input",
+      "title": "Input",
+      "titleTh": "ข้อมูลนำเข้า",
+      "icon": "mic",
+      "fields": [
+        {
+          "id": "payload",
+          "type": "textarea",
+          "label": "Skill JSON Input",
+          "labelTh": "ข้อมูล JSON ของสกิล",
+          "placeholder": "Provided by the video project router (brief + format + product + scenes)",
+          "placeholderTh": "ระบบเราต์เตอร์โปรเจกต์วิดีโอเป็นผู้ส่งให้ (brief + format + product + scenes)",
+          "helpText": "This skill is invoked programmatically by the videoProjects router (auto-draft stage), not from chat.",
+          "helpTextTh": "สกิลนี้ถูกเรียกโดยเราต์เตอร์โปรเจกต์วิดีโอ (ขั้นตอนร่างอัตโนมัติ) ไม่ใช่จากแชท",
+          "required": true,
+          "rows": 6
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "payload": "payload"
+  }
+}

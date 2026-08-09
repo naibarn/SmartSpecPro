@@ -122,6 +122,17 @@ plan. Specifically, each `prompt` must include:
    height/size while both remain visible). When the shot has fewer than 2
    required characters (no `required_characters` fact given), this rule does
    not apply.
+   **VIDEO-FACE VISIBILITY LOCK (MANDATORY when `required_characters >= 2` or
+   `video_face_visibility_required: true`):** keep every required person's face
+   approximately 75% or more visible and readable in a frontal or natural
+   three-quarter view. Both eyes, nose, mouth, jawline, and hairline must be
+   visible and unobstructed, with faces large enough for later video face
+   matching and lip-sync. Face readability outranks hidden-profile eye-lines,
+   extreme angles, edge crops, deep shadow, hands/props over the face, and
+   another person's head blocking it. Put these exclusions in the same prompt
+   when no separate negative-prompt channel exists: full profile, back of head,
+   turned-away face, cropped/hidden/tiny face, occluded face, eyes or mouth not
+   visible, indistinct identity.
 4. **Mood lighting + color** derived from the shot's `emotion` and the storyboard's
    `canonical_style_bible` — e.g. a cold-triumph beat leans harder rim-lit
    contrast and cooler color; a panic beat may use a harsher, less flattering key
@@ -226,7 +237,10 @@ plan. Specifically, each `prompt` must include:
    the shot size cannot show (e.g. shoes in a waist-up medium two-shot),
    which pressures the model to widen the framing into an unintended full
    shot.
-8. **Story-driven wardrobe override (evaluate BEFORE locking wardrobe).**
+8. **Screen-caller reference lock (MANDATORY when a shot line contains `screen_callers:`).** A screen caller is a real approved character reference that MUST remain attached, but is NOT a person physically present in the room. Show that character only as a clearly visible image/video-call participant inside the phone, tablet, monitor, or other call-screen surface explicitly described by the shot. Never place the caller's body, face, or duplicate outside that device screen. Include the caller's attached image in the mapping and keep its identity exact. This rule does not increase the physical `required_characters` count: screen callers are device-mediated references, not people standing in the room.
+   If the shot carries a user-selected scene/caller role, preserve it exactly. Do not reclassify, move, add, or remove a reference from that role because the synopsis mentions the character elsewhere.
+
+9. **Story-driven wardrobe override (evaluate BEFORE locking wardrobe).**
    Read the shot's CANONICAL SHOT SOURCE / scene description / episode
    context FIRST and decide what this beat requires each character to WEAR.
    Default: the story implies no change → lock wardrobe to the reference
@@ -240,7 +254,7 @@ plan. Specifically, each `prompt` must include:
    now wears a charcoal tailored suit as this scene requires, REPLACING the
    outfit shown in the reference image." Never silently blend the two
    wardrobes, and never let a required wardrobe change loosen the face lock.
-9. **Exact person count.** Every multi-character prompt MUST state the exact
+10. **Exact person count.** Every multi-character prompt MUST state the exact
    number of people allowed in frame ("Exactly two people in the frame.")
    and the shot's `negative_prompt` MUST reinforce it (no additional people,
    no background strangers or staff, no reflections that read as extra
@@ -285,11 +299,28 @@ before this feature existed), write the setting from the shot's own scene
 content exactly as before — this section adds no new requirement for that
 shot.
 
+## Closed-Door Barrier Dialogue — MANDATORY WHEN DECLARED
+
+When the prompt contains a `BARRIER DIALOGUE (MANDATORY)` block, it overrides
+the ordinary multi-character mutual-gaze and all-required-characters rules.
+Show only the `visible_character_refs` on the declared camera side of the
+closed/locked door. The `offscreen_physical_character_refs` remain real
+physical participants on the opposite side: they may be heard through the
+door, but must not appear in frame or be attached as a physical-scene image
+reference. Keep the door visibly closed and intact. Never open it, show a gap,
+place a face/body/limb through it, use a reflection or duplicate, or place the
+two actors face-to-face in the same room unless a later shot explicitly asks
+for the door to open. Preserve the emotional intensity as shouted dialogue
+through the barrier, not as physical proximity.
+
 ## Prompt length limit — MANDATORY
 
-Every `start_frame_requests[].prompt` MUST be **3800 characters or fewer**.
-Write vivid, specific cinematic language within that budget — do not pad with
-repeated adjectives or restate the same detail in multiple phrasings. If a
+Keep every `start_frame_requests[].prompt` at or below the caller-supplied
+`prompt_max_chars` budget. Kie.ai image models may use up to **20,000
+characters**; when no larger budget is supplied, use the legacy 3,800-character
+fallback. Write vivid, specific cinematic language within the active budget —
+do not pad with repeated adjectives or restate the same detail in multiple
+phrasings. If a
 shot's full description would exceed the limit, prioritize (in order):
 the opening REFERENCE MAPPING declaration + per-character identity lock
 (never compress or drop — a prompt without a correct, uncontradicted mapping
@@ -703,3 +734,11 @@ Output skeleton:
   }
 }
 ```
+
+## Barrier Multi-View (conditional)
+
+When a shot carries `BARRIER MULTI-VIEW (MANDATORY)`, render the start frame
+as the inside view only. Keep the closed door visible and do not render any
+character assigned to `VIEW_REFERENCE_OUTSIDE` in the room; that actor is
+reserved for the separate barrier reference-frame slot. This is a physical
+closed-door conversation, not a phone/video-call scene.

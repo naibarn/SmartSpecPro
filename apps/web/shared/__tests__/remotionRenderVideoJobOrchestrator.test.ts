@@ -18,7 +18,7 @@
  * such dependency since `render-video-job` never imports `Root.tsx`/any
  * React composition module.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -215,6 +215,53 @@ describe("@smartspec/remotion-render/render-video-job — executeRemotionRenderV
     expect(ffmpeg).toHaveBeenCalledTimes(2);
     expect(ffmpegCalls[0]).toContain("loudnorm=I=-16:TP=-1.5:LRA=11");
     expect(ffmpegCalls[1]!.some(arg => arg.startsWith("subtitles=filename="))).toBe(true);
+    expect(result.outputArtifactRef).toBeTruthy();
+  });
+
+  it("renders every segment and concatenates before global audio post-processing", async () => {
+    const storagePut = vi.fn(async (key: string) => ({ key, url: `/uploads/${key}` }));
+    const render = makeRenderStub();
+    const ffmpegCalls: string[][] = [];
+    const concatLists: string[] = [];
+    const ffmpeg = vi.fn(async (argv: string[]) => {
+      ffmpegCalls.push(argv);
+      const inputIndex = argv.indexOf("-i");
+      if (argv.includes("concat")) {
+        concatLists.push(readFileSync(argv[inputIndex + 1]!, "utf8"));
+      }
+      writeFakeMp4(argv[argv.length - 1]!);
+      return { code: 0, stderr: "" };
+    });
+    const segmentA = { ...buildPayload().remotionTemplate, id: "segment-a", durationInFrames: 150 };
+    const segmentB = { ...segmentA, id: "segment-b" };
+
+    const result = await executeRemotionRenderVideoJob(
+      {
+        tenantId: "tenant-1",
+        runId: "run-1",
+        renderJobId: "job-segmented",
+        payload: buildPayload({
+          remotionTemplate: segmentA,
+          segmentTemplates: [segmentA, segmentB],
+          segmentPlan: {
+            parts: [
+              { index: 0, durationInFrames: 150 },
+              { index: 1, durationInFrames: 150 },
+            ],
+          },
+          durationInFrames: 300,
+          postPasses: ["segment_concat", "loudnorm"],
+        }),
+      },
+      { render, storagePut, ffmpeg },
+    );
+
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(ffmpeg).toHaveBeenCalledTimes(2);
+    expect(ffmpegCalls[0]).toContain("concat");
+    expect(ffmpegCalls[1]).toContain("loudnorm=I=-16:TP=-1.5:LRA=11");
+    expect(concatLists[0]).toContain("segment-0.mp4");
+    expect(concatLists[0]).toContain("segment-1.mp4");
     expect(result.outputArtifactRef).toBeTruthy();
   });
 

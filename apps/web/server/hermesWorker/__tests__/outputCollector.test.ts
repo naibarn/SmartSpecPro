@@ -53,6 +53,33 @@ describe("collectOutputs", () => {
     expect(path.basename(result[0].path)).toBe("marker-file.png");
   });
 
+  it("regression (2026-08-02): downloads an https entry in the marker's files array (the xAI tools return hosted URLs and the agent cannot save files locally)", async () => {
+    const fetchedUrls: string[] = [];
+    const fetchImpl = (async (url: string) => {
+      fetchedUrls.push(String(url));
+      return {
+        ok: true,
+        status: 200,
+        arrayBuffer: async () => PNG_MAGIC.buffer.slice(PNG_MAGIC.byteOffset, PNG_MAGIC.byteOffset + PNG_MAGIC.byteLength),
+      };
+    }) as unknown as typeof fetch;
+    const stdout = `SMARTSPECPRO_RESULT_BEGIN {"status":"ok","files":["https://files-cdn.x.ai/abc/file_123.png"]} SMARTSPECPRO_RESULT_END\n`;
+
+    const result = await collectOutputs({
+      invocation: { stdout },
+      workspace: { outputDir: ws.outputDir, tmpDir: ws.tmpDir },
+      cacheDirs: [ws.cacheDir],
+      jobWindow: window,
+      expected: { kind: "image", count: 1 },
+      fetchImpl,
+    });
+
+    expect(fetchedUrls).toEqual(["https://files-cdn.x.ai/abc/file_123.png"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].signal).toBe("result_marker");
+    expect(result[0].path.startsWith(ws.tmpDir)).toBe(true);
+  });
+
   it("falls back to a workspace scan when no marker block is present", async () => {
     await fs.writeFile(path.join(ws.outputDir, "generated.png"), PNG_MAGIC);
 

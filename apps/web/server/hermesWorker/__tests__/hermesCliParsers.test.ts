@@ -21,6 +21,31 @@ describe("parseHermesDeviceCodeOutput", () => {
     expect(result.userCode).toBe("ABCD-EFGH");
   });
 
+  it("regression (Hermes 0.18.x real output): extracts the userCode EMBEDDED in the URL's user_code query param when no separate code line exists", () => {
+    // Exact shape observed in production on 2026-08-02 (worker_job_events
+    // hermes_device_code raw payload) — the URL-stripping pass removed the
+    // whole URL before the code scan, so this parsed to { raw } and the UI
+    // surfaced HERMES_PROCESS_FAILED instead of the code.
+    const result = parseHermesDeviceCodeOutput(
+      ["To continue:", "1. Open: https://accounts.x.ai/oauth2/device?user_code=RSF3-GNZF"].join("\n"),
+      { now },
+    );
+    expect(result.verificationUrl).toBe("https://accounts.x.ai/oauth2/device?user_code=RSF3-GNZF");
+    expect(result.userCode).toBe("RSF3-GNZF");
+    expect(result.raw).toBeUndefined();
+  });
+
+  it("still prefers a separate explicit code line over a URL-embedded user_code param", () => {
+    const result = parseHermesDeviceCodeOutput(
+      [
+        "Open: https://accounts.x.ai/oauth2/device?user_code=AAAA-BBBB",
+        "Then enter code: CCCC-DDDD",
+      ].join("\n"),
+      { now },
+    );
+    expect(result.userCode).toBe("CCCC-DDDD");
+  });
+
   it("extracts verificationUrl + userCode when they are on separate lines", () => {
     const result = parseHermesDeviceCodeOutput(
       ["Please open: https://accounts.x.ai/device", "Then enter code: ABCD-EFGH"].join("\n"),
@@ -117,6 +142,33 @@ describe("parseHermesToolsOutput + buildCapabilityManifest", () => {
   it("enables only the operations whose tool identifier appears in the output", () => {
     const ops = parseHermesToolsOutput("Available tools:\n- image.generate\n- image.edit");
     expect(ops.sort()).toEqual(["image.edit", "image.generate"]);
+  });
+
+  it("regression (Hermes 0.18.x real `tools list` output): recognizes image_gen/video_gen toolset ids, IGNORING the ✗ disabled state", () => {
+    // Exact production shape observed 2026-08-02. `video_gen` is ✗ disabled
+    // by Hermes default in a fresh managed profile, but media jobs always
+    // force `--toolsets video_gen` at invocation and config.yaml pins
+    // provider: xai — the toolset existing means the operation is runnable.
+    const realOutput = [
+      "  ✓ enabled  vision  👁️  Vision / Image Analysis",
+      "  ✗ disabled  video  🎬 Video Analysis",
+      "  ✓ enabled  image_gen  🎨 Image Generation",
+      "  ✗ disabled  video_gen  🎬 Video Generation",
+    ].join("\n");
+    const ops = parseHermesToolsOutput(realOutput);
+    expect(ops).toContain("image.generate");
+    expect(ops).toContain("video.generate");
+    expect(ops).toContain("video.image_to_video");
+  });
+
+  it("regression: `status --all`-style output with NO media-tools section parses to zero operations (why the probe had to move to `tools list`)", () => {
+    const statusAllOutput = [
+      "◆ Environment",
+      "  Provider:     xAI Grok OAuth (SuperGrok / Premium+)",
+      "◆ Auth Providers",
+      "  xAI OAuth     ✓ logged in",
+    ].join("\n");
+    expect(parseHermesToolsOutput(statusAllOutput)).toEqual([]);
   });
 
   it("gates video.* enabled:false with a reason when only image tools appear (post-auth)", () => {

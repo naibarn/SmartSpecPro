@@ -7,17 +7,45 @@ import {
   isMcpProviderAuthErrorForTest,
   parseMcpJsonResponse,
   prepareMcpToolArgumentsForTest,
+  refreshMcpMediaTaskStatus,
   sanitizeMcpConnectionErrorMessageForTest,
   withCompletedProviderResultForTest,
 } from "../mcpMediaAdapter";
 
 describe("mcpMediaAdapter", () => {
+  it("normalizes an already-completed MCP task from resultData", async () => {
+    const result = await refreshMcpMediaTaskStatus({
+      id: "mcp_completed_task",
+      taskId: "provider_completed_task",
+      userId: "1",
+      mediaType: "image",
+      status: "completed",
+      model: "kie/gpt-image-2",
+      prompt: "prompt",
+      resultData: {
+        imageUrl: "https://cdn.example.com/generated/image.png",
+      },
+      createdAt: new Date().toISOString(),
+    });
+
+    expect(result.resultUrl).toBe(
+      "https://cdn.example.com/generated/image.png"
+    );
+  });
+
   it("normalizes Magnific image resolution values to provider-native lowercase", () => {
-    expect(buildMcpToolArguments("image", "A clean product photo", {
-      aspectRatio: "9:16",
-      numImages: 1,
-      resolution: "1K",
-    }, "magnific")).toEqual({
+    expect(
+      buildMcpToolArguments(
+        "image",
+        "A clean product photo",
+        {
+          aspectRatio: "9:16",
+          numImages: 1,
+          resolution: "1K",
+        },
+        "magnific"
+      )
+    ).toEqual({
       prompt: "A clean product photo",
       aspectRatio: "9:16",
       count: 1,
@@ -26,11 +54,18 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("builds Higgsfield image generation arguments with params wrapper", () => {
-    expect(buildMcpToolArguments("image", "A clean product photo", {
-      aspectRatio: "1:1",
-      numImages: 1,
-      providerModelId: "z_image",
-    }, "higgsfield")).toEqual({
+    expect(
+      buildMcpToolArguments(
+        "image",
+        "A clean product photo",
+        {
+          aspectRatio: "1:1",
+          numImages: 1,
+          providerModelId: "z_image",
+        },
+        "higgsfield"
+      )
+    ).toEqual({
       params: {
         model: "z_image",
         prompt: "A clean product photo",
@@ -41,12 +76,19 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("normalizes Higgsfield image resolution values to provider-native lowercase", () => {
-    expect(buildMcpToolArguments("image", "A clean product photo", {
-      aspectRatio: "9:16",
-      numImages: 1,
-      providerModelId: "nano_banana_2",
-      resolution: "2K",
-    }, "higgsfield")).toMatchObject({
+    expect(
+      buildMcpToolArguments(
+        "image",
+        "A clean product photo",
+        {
+          aspectRatio: "9:16",
+          numImages: 1,
+          providerModelId: "nano_banana_2",
+          resolution: "2K",
+        },
+        "higgsfield"
+      )
+    ).toMatchObject({
       params: {
         model: "nano_banana_2",
         prompt: "A clean product photo",
@@ -58,14 +100,21 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("does not pass raw reference image URLs through Higgsfield MCP params", () => {
-    expect(buildMcpToolArguments("image", "Use the reference character", {
-      aspectRatio: "9:16",
-      providerModelId: "nano_banana_2",
-      referenceImageUrls: [
-        "https://cdn.example.com/ref-1.png",
-        "https://cdn.example.com/ref-2.png",
-      ],
-    }, "higgsfield")).toEqual({
+    expect(
+      buildMcpToolArguments(
+        "image",
+        "Use the reference character",
+        {
+          aspectRatio: "9:16",
+          providerModelId: "nano_banana_2",
+          referenceImageUrls: [
+            "https://cdn.example.com/ref-1.png",
+            "https://cdn.example.com/ref-2.png",
+          ],
+        },
+        "higgsfield"
+      )
+    ).toEqual({
       params: {
         model: "nano_banana_2",
         prompt: "Use the reference character",
@@ -76,14 +125,21 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("passes imported Higgsfield media ids as medias", () => {
-    expect(buildMcpToolArguments("image", "Use the reference character", {
-      aspectRatio: "9:16",
-      providerModelId: "nano_banana_2",
-      medias: [
-        { value: "media_1", role: "image" },
-        { value: "media_2", role: "character" },
-      ],
-    }, "higgsfield")).toEqual({
+    expect(
+      buildMcpToolArguments(
+        "image",
+        "Use the reference character",
+        {
+          aspectRatio: "9:16",
+          providerModelId: "nano_banana_2",
+          medias: [
+            { value: "media_1", role: "image" },
+            { value: "media_2", role: "character" },
+          ],
+        },
+        "higgsfield"
+      )
+    ).toEqual({
       params: {
         model: "nano_banana_2",
         prompt: "Use the reference character",
@@ -99,25 +155,35 @@ describe("mcpMediaAdapter", () => {
 
   it("maps Higgsfield imported reference roles from the image manifest", () => {
     const productUrl = "https://smartaihub.app/api/storage/files/product.webp";
-    const characterUrl = "https://smartaihub.app/api/storage/files/character.png";
+    const characterUrl =
+      "https://smartaihub.app/api/storage/files/character.png";
 
-    expect(higgsfieldMediaRolesForReferenceImagesForTest(
-      [productUrl, characterUrl],
-      {
-        referenceImageManifest: [
-          { placeholder: "@Image1", role: "product", url: productUrl },
-          { placeholder: "@Image2", role: "character", url: characterUrl },
-        ],
-      },
-    )).toEqual(["image", "character"]);
+    expect(
+      higgsfieldMediaRolesForReferenceImagesForTest(
+        [productUrl, characterUrl],
+        {
+          referenceImageManifest: [
+            { placeholder: "@Image1", role: "product", url: productUrl },
+            { placeholder: "@Image2", role: "character", url: characterUrl },
+          ],
+        }
+      )
+    ).toEqual(["image", "character"]);
   });
 
   it("builds Magnific MCP image arguments using mode and references schema", () => {
-    expect(buildMcpToolArguments("image", "Use the reference product", {
-      aspectRatio: "1:1",
-      providerModelId: "gpt-2",
-      references: [{ type: "image", identifier: "creation_123" }],
-    }, "magnific")).toMatchObject({
+    expect(
+      buildMcpToolArguments(
+        "image",
+        "Use the reference product",
+        {
+          aspectRatio: "1:1",
+          providerModelId: "gpt-2",
+          references: [{ type: "image", identifier: "creation_123" }],
+        },
+        "magnific"
+      )
+    ).toMatchObject({
       mode: "gpt-2",
       prompt: "Use the reference product",
       references: [{ type: "image", identifier: "creation_123" }],
@@ -125,11 +191,19 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("builds Higgsfield video generation arguments without image count", () => {
-    expect(buildMcpToolArguments("video", "A cinematic product clip", {
-      aspectRatio: "9:16",
-      duration: 6,
-      providerModelId: "seedance_2_0",
-    }, "higgsfield", "higgsfield.generate_video")).toEqual({
+    expect(
+      buildMcpToolArguments(
+        "video",
+        "A cinematic product clip",
+        {
+          aspectRatio: "9:16",
+          duration: 6,
+          providerModelId: "seedance_2_0",
+        },
+        "higgsfield",
+        "higgsfield.generate_video"
+      )
+    ).toEqual({
       params: {
         model: "seedance_2_0",
         prompt: "A cinematic product clip",
@@ -147,9 +221,17 @@ describe("mcpMediaAdapter", () => {
       "happy-horse",
       "grok_video",
     ]) {
-      expect(buildMcpToolArguments("video", "A cinematic product clip", {
-        providerModelId,
-      }, "higgsfield", "higgsfield.generate_video")).toEqual({
+      expect(
+        buildMcpToolArguments(
+          "video",
+          "A cinematic product clip",
+          {
+            providerModelId,
+          },
+          "higgsfield",
+          "higgsfield.generate_video"
+        )
+      ).toEqual({
         params: {
           model: providerModelId,
           prompt: "A cinematic product clip",
@@ -164,9 +246,17 @@ describe("mcpMediaAdapter", () => {
       "enhanced-seedance-2-fast-unlimited",
       "higgsfield/seedance_unlimited",
     ]) {
-      expect(buildMcpToolArguments("video", "A cinematic product clip", {
-        providerModelId,
-      }, "higgsfield", "higgsfield.generate_video")).toEqual({
+      expect(
+        buildMcpToolArguments(
+          "video",
+          "A cinematic product clip",
+          {
+            providerModelId,
+          },
+          "higgsfield",
+          "higgsfield.generate_video"
+        )
+      ).toEqual({
         params: {
           model: providerModelId,
           prompt: "A cinematic product clip",
@@ -176,21 +266,35 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("imports the start-frame + reference images as Higgsfield `medias` for a video generation request (regression: previously image-only, dropping every image from video submissions)", async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({ jsonrpc: "2.0", result: { mediaId: "media_abc123" } }),
-        { status: 200 },
-      ),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            result: { mediaId: "media_abc123" },
+          }),
+          { status: 200 }
+        )
     );
     vi.stubGlobal("fetch", fetchMock);
 
     try {
-      const toolArguments = buildMcpToolArguments("video", "A cinematic clip", {
-        providerModelId: "grok_video",
-      }, "higgsfield", "higgsfield.generate_video");
+      const toolArguments = buildMcpToolArguments(
+        "video",
+        "A cinematic clip",
+        {
+          providerModelId: "grok_video",
+        },
+        "higgsfield",
+        "higgsfield.generate_video"
+      );
 
       const prepared = await prepareMcpToolArgumentsForTest({
-        runtime: { mcpUrl: "https://mcp.example/higgsfield", accessToken: "token", tokenType: "bearer" },
+        runtime: {
+          mcpUrl: "https://mcp.example/higgsfield",
+          accessToken: "token",
+          tokenType: "bearer",
+        },
         metadata: {
           transport: "mcp",
           originSurface: "media_studio",
@@ -202,7 +306,9 @@ describe("mcpMediaAdapter", () => {
         toolArguments,
         parameters: {
           providerModelId: "grok_video",
-          referenceImageUrls: ["https://smartaihub.app/api/storage/files/start-frame.png"],
+          referenceImageUrls: [
+            "https://smartaihub.app/api/storage/files/start-frame.png",
+          ],
         },
       });
 
@@ -224,12 +330,22 @@ describe("mcpMediaAdapter", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     try {
-      const toolArguments = buildMcpToolArguments("video", "A cinematic clip", {
-        providerModelId: "grok_video",
-      }, "higgsfield", "higgsfield.generate_video");
+      const toolArguments = buildMcpToolArguments(
+        "video",
+        "A cinematic clip",
+        {
+          providerModelId: "grok_video",
+        },
+        "higgsfield",
+        "higgsfield.generate_video"
+      );
 
       const prepared = await prepareMcpToolArgumentsForTest({
-        runtime: { mcpUrl: "https://mcp.example/higgsfield", accessToken: "token", tokenType: "bearer" },
+        runtime: {
+          mcpUrl: "https://mcp.example/higgsfield",
+          accessToken: "token",
+          tokenType: "bearer",
+        },
         metadata: {
           transport: "mcp",
           originSurface: "media_studio",
@@ -250,27 +366,55 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("classifies provider auth failures without hiding validation errors", () => {
-    expect(isMcpProviderAuthErrorForTest(new Error(
-      "MCP provider tool error: Error starting generation: Invalid or expired token Request ID: req_123",
-    ))).toBe(true);
-    expect(isMcpProviderAuthErrorForTest(new Error("MCP provider request failed: 401"))).toBe(true);
-    expect(isMcpProviderAuthErrorForTest(new Error("MCP provider request failed: 403"))).toBe(false);
-    expect(isMcpProviderAuthErrorForTest(new Error(
-      "MCP provider tool error: seedream_v5_pro backend request failed (403): grace_daily_limit_reached",
-    ))).toBe(false);
-    expect(isMcpProviderAuthErrorForTest(new Error(
-      "MCP provider request failed: 403 Invalid or expired token",
-    ))).toBe(true);
-    expect(isMcpProviderAuthErrorForTest(new Error(
-      'MCP provider tool error: Invalid request: resolution: value "2K" not in allowed options [1k, 2k, 4k]',
-    ))).toBe(false);
-    expect(isMcpProviderAuthErrorForTest(new Error("MCP error -32602: Tool images_generate not found"))).toBe(false);
+    expect(
+      isMcpProviderAuthErrorForTest(
+        new Error(
+          "MCP provider tool error: Error starting generation: Invalid or expired token Request ID: req_123"
+        )
+      )
+    ).toBe(true);
+    expect(
+      isMcpProviderAuthErrorForTest(
+        new Error("MCP provider request failed: 401")
+      )
+    ).toBe(true);
+    expect(
+      isMcpProviderAuthErrorForTest(
+        new Error("MCP provider request failed: 403")
+      )
+    ).toBe(false);
+    expect(
+      isMcpProviderAuthErrorForTest(
+        new Error(
+          "MCP provider tool error: seedream_v5_pro backend request failed (403): grace_daily_limit_reached"
+        )
+      )
+    ).toBe(false);
+    expect(
+      isMcpProviderAuthErrorForTest(
+        new Error("MCP provider request failed: 403 Invalid or expired token")
+      )
+    ).toBe(true);
+    expect(
+      isMcpProviderAuthErrorForTest(
+        new Error(
+          'MCP provider tool error: Invalid request: resolution: value "2K" not in allowed options [1k, 2k, 4k]'
+        )
+      )
+    ).toBe(false);
+    expect(
+      isMcpProviderAuthErrorForTest(
+        new Error("MCP error -32602: Tool images_generate not found")
+      )
+    ).toBe(false);
   });
 
   it("stores a short redacted MCP connection auth error", () => {
-    const sanitized = sanitizeMcpConnectionErrorMessageForTest(new Error(
-      "MCP provider request failed: 401 Bearer abc.def.ghi access_token=secret-value-that-should-not-leak",
-    ));
+    const sanitized = sanitizeMcpConnectionErrorMessageForTest(
+      new Error(
+        "MCP provider request failed: 401 Bearer abc.def.ghi access_token=secret-value-that-should-not-leak"
+      )
+    );
 
     expect(sanitized).toContain("401");
     expect(sanitized).toContain("Bearer [redacted]");
@@ -280,21 +424,27 @@ describe("mcpMediaAdapter", () => {
   });
 
   it("parses JSON and SSE JSON-RPC responses", () => {
-    expect(parseMcpJsonResponse('{"jsonrpc":"2.0","result":{"ok":true}}')).toEqual({
+    expect(
+      parseMcpJsonResponse('{"jsonrpc":"2.0","result":{"ok":true}}')
+    ).toEqual({
       jsonrpc: "2.0",
       result: { ok: true },
     });
-    expect(parseMcpJsonResponse(`event: message
+    expect(
+      parseMcpJsonResponse(`event: message
 data: {"jsonrpc":"2.0","result":{"ok":true}}
-`)).toEqual({
+`)
+    ).toEqual({
       jsonrpc: "2.0",
       result: { ok: true },
     });
   });
 
   it("downloads provider output URLs into managed storage", async () => {
-    const providerUrl = "https://provider.example/generated/output.png?token=temporary";
-    const uploaded: Array<{ key: string; bytes: Buffer; contentType: string }> = [];
+    const providerUrl =
+      "https://provider.example/generated/output.png?token=temporary";
+    const uploaded: Array<{ key: string; bytes: Buffer; contentType: string }> =
+      [];
     const task: MediaTask = {
       id: "mcp_task_1",
       taskId: "provider_task_1",
@@ -319,9 +469,10 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
         assetType: "image",
       },
       deps: {
-        fetchImpl: (async () => new Response(Buffer.from([1, 2, 3]), {
-          headers: { "content-type": "image/png" },
-        })) as typeof fetch,
+        fetchImpl: (async () =>
+          new Response(Buffer.from([1, 2, 3]), {
+            headers: { "content-type": "image/png" },
+          })) as typeof fetch,
         putObject: async (key, data, contentType) => {
           uploaded.push({ key, bytes: Buffer.from(data), contentType });
           return { key, url: `/api/storage/files/${encodeURIComponent(key)}` };
@@ -329,10 +480,16 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
       },
     });
 
-    expect(result.urls).toEqual([expect.stringContaining("/api/storage/files/mcp-media%2Ftenant_1%2F42%2Fmcp_task_1%2Foutput-0-")]);
+    expect(result.urls).toEqual([
+      expect.stringContaining(
+        "/api/storage/files/mcp-media%2Ftenant_1%2F42%2Fmcp_task_1%2Foutput-0-"
+      ),
+    ]);
     expect(result.urls[0]).not.toBe(providerUrl);
     expect(uploaded).toHaveLength(1);
-    expect(uploaded[0].key).toMatch(/^mcp-media\/tenant_1\/42\/mcp_task_1\/output-0-[a-f0-9]{12}\.png$/);
+    expect(uploaded[0].key).toMatch(
+      /^mcp-media\/tenant_1\/42\/mcp_task_1\/output-0-[a-f0-9]{12}\.png$/
+    );
     expect(uploaded[0].bytes).toEqual(Buffer.from([1, 2, 3]));
     expect(uploaded[0].contentType).toBe("image/png");
     expect(result.artifacts[0]).toMatchObject({
@@ -367,10 +524,14 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
     // in production), so this exercises the real `storagePut` local-storage
     // fallback (no DATABASE_URL/S3 configured in this test env) with a
     // throwaway taskId, then removes the file it writes.
-    const providerOutputUrl = "https://d8j0ntlcm91z4.cloudfront.net/generated/output-0.png";
-    const fetchMock = vi.fn(async () => new Response(Buffer.from([1, 2, 3]), {
-      headers: { "content-type": "image/png" },
-    }));
+    const providerOutputUrl =
+      "https://d8j0ntlcm91z4.cloudfront.net/generated/output-0.png";
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(Buffer.from([1, 2, 3]), {
+          headers: { "content-type": "image/png" },
+        })
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     const task: MediaTask = {
@@ -403,7 +564,10 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
     };
 
     try {
-      const result = await withCompletedProviderResultForTest(task, providerStatusResult);
+      const result = await withCompletedProviderResultForTest(
+        task,
+        providerStatusResult
+      );
 
       expect(result.status).toBe("completed");
       expect(typeof result.resultData?.resultUrl).toBe("string");
@@ -421,7 +585,13 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
       const { getUploadsDir } = await import("../../storage");
       const fs = await import("fs");
       const path = await import("path");
-      const dir = path.join(getUploadsDir(), "mcp-media", "tenant-ZCSKEM9s", "1", task.id);
+      const dir = path.join(
+        getUploadsDir(),
+        "mcp-media",
+        "tenant-ZCSKEM9s",
+        "1",
+        task.id
+      );
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });

@@ -24,6 +24,10 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    // The brand-kit/library render paths pull `libraryService` into this module
+    // graph, which transitively loads `routers/llmProviders.ts` — that file
+    // builds an `adminProcedure` at import time, so the double must expose it.
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -62,6 +66,7 @@ const {
   mockRestoreVideoProjectRevision,
   mockUpdateVideoProjectFields,
   mockDeleteVideoProject,
+  mockDuplicateVideoProject,
   mockInsertBrandKit,
   mockGetBrandKit,
   mockListBrandKits,
@@ -76,6 +81,7 @@ const {
   mockRestoreVideoProjectRevision: vi.fn(),
   mockUpdateVideoProjectFields: vi.fn(),
   mockDeleteVideoProject: vi.fn(),
+  mockDuplicateVideoProject: vi.fn(),
   mockInsertBrandKit: vi.fn(),
   mockGetBrandKit: vi.fn(),
   mockListBrandKits: vi.fn(),
@@ -119,6 +125,7 @@ vi.mock("../../services/videoProjectRepo", () => ({
   restoreVideoProjectRevision: mockRestoreVideoProjectRevision,
   updateVideoProjectFields: mockUpdateVideoProjectFields,
   deleteVideoProject: mockDeleteVideoProject,
+  duplicateVideoProject: mockDuplicateVideoProject,
   insertBrandKit: mockInsertBrandKit,
   getBrandKit: mockGetBrandKit,
   listBrandKits: mockListBrandKits,
@@ -157,7 +164,12 @@ vi.mock("../../services/videoProjectCompiler", () => ({
 
 vi.mock("../../remotion/templates", () => ({ MOTION_TEMPLATE_REGISTRY: {} }));
 
-const { mockResolveProjectAssets, mockBuildAssetManifest, mockAssertSceneLayerAssetUrlsAllowed } = vi.hoisted(() => ({
+const {
+  mockResolveProjectAssets,
+  mockBuildAssetManifest,
+  mockAssertSceneLayerAssetUrlsAllowed,
+  mockAssertDocumentLayerIdsUnique,
+} = vi.hoisted(() => ({
   mockResolveProjectAssets: vi.fn(),
   mockBuildAssetManifest: vi.fn(),
   // F133-01 checkpoint 1: no-op by default (real allowlist logic is unit
@@ -165,15 +177,27 @@ const { mockResolveProjectAssets, mockBuildAssetManifest, mockAssertSceneLayerAs
   // below that exercise the SSRF fix make this throw to prove the router
   // WIRES the checkpoint in and maps the error correctly.
   mockAssertSceneLayerAssetUrlsAllowed: vi.fn(),
+  // Feature 143 §4.12: no-op by default (real uniqueness logic is unit
+  // tested directly in `videoProjectAssetResolver.test.ts`) — the test
+  // below that exercises the duplicate-id fix makes this throw to prove the
+  // router WIRES the checkpoint in and maps the error correctly.
+  mockAssertDocumentLayerIdsUnique: vi.fn(),
 }));
 vi.mock("../../services/videoProjectAssetResolver", () => ({
   resolveProjectAssets: mockResolveProjectAssets,
   buildAssetManifest: mockBuildAssetManifest,
+  // Feature 143 §4.10/RK12 — stubbed since these CRUD tests don't exercise
+  // `queueRender`'s font-manifest merge.
+  buildFontManifestSources: vi.fn(() => Promise.resolve([])),
   fallbackAssetSourceHash: vi.fn((url: string) => `${url}-hash-fallback`),
   mergeAssetManifests: vi.fn((manifests: Array<{ sources: unknown[] }>) => ({
     sources: manifests.flatMap(m => m.sources),
   })),
   assertSceneLayerAssetUrlsAllowed: mockAssertSceneLayerAssetUrlsAllowed,
+  assertDocumentLayerIdsUnique: mockAssertDocumentLayerIdsUnique,
+  // Feature 143 §4.7 item 2 — the asset picker procedure imports this too.
+  toAbsoluteUrl: vi.fn((relativePath: string) => `http://localhost:3000${relativePath}`),
+  toBrowserAssetUrl: vi.fn((url: string) => url.replace("http://localhost:3000", "")),
 }));
 
 const { mockQueueRemotionRenderVideoJob } = vi.hoisted(() => ({
@@ -243,8 +267,12 @@ vi.mock("../../services/creditService", () => ({
   calculateCreditsForLLMDynamic: vi.fn(() => Promise.resolve(1)),
 }));
 
-const { mockStoragePut } = vi.hoisted(() => ({ mockStoragePut: vi.fn() }));
-vi.mock("../../storage", () => ({ storagePut: mockStoragePut }));
+const { mockStoragePut, mockStorageResolveUrl } = vi.hoisted(() => ({
+  mockStoragePut: vi.fn(),
+  // Feature 143 §4.7 item 2 — `listPickerAssets` imports this too.
+  mockStorageResolveUrl: vi.fn((key: string) => Promise.resolve(`/api/storage/files/${key}`)),
+}));
+vi.mock("../../storage", () => ({ storagePut: mockStoragePut, storageResolveUrl: mockStorageResolveUrl }));
 
 vi.mock("../../services/hyperframesTranscriptionService", () => ({
   renderTranscriptCuesAsSrt: vi.fn(() => "SRT"),
@@ -286,6 +314,14 @@ vi.mock("../../services/videoProjectQualityLoop", () => ({
 vi.mock("../../services/videoProjectScenePlanAdapter", () => ({
   makeRunPlanSkill: vi.fn(),
 }));
+// auto_draft (additive) — newly imported by the router; this file doesn't
+// exercise the auto_draft stage, so a simple default double (mirrors the
+// scene-plan adapter mock above) keeps the real `callLLMStructured` import
+// chain out of this file's import graph.
+vi.mock("../../services/videoProjectNarrationScriptAdapter", () => ({
+  makeRunNarrationScriptSkill: vi.fn(),
+  buildNarrationScriptSkillInput: vi.fn(),
+}));
 // Feature 142, section-06 (additive) — newly imported by the router; this
 // file doesn't exercise the quality_repair stage, so a simple default
 // double (mirrors the mocks above) keeps the real LLM/DB-touching modules
@@ -298,7 +334,7 @@ vi.mock("../../services/videoProjectRepairRewriter", () => ({
   makeRepairEffects: vi.fn(),
 }));
 
-import { videoProjectsRouter, deriveCaptionCues, buildCaptionLinesForRender } from "../videoProjects";
+import { videoProjectsRouter, deriveCaptionCues, normalizeTimestampedCaptionCues, buildCaptionLinesForRender } from "../videoProjects";
 import type { VideoProjectDocument } from "../../../shared/videoIntelligence/projectSchemas";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -372,6 +408,37 @@ describe("videoProjects CRUD", () => {
     expect(mockListVideoProjects).toHaveBeenCalledWith({ tenantId: "tenant-1", userId: 42 }, undefined);
   });
 
+  it("duplicate is owner-scoped and returns the cloned project", async () => {
+    mockDuplicateVideoProject.mockResolvedValueOnce({ id: 9, name: "Reusable copy", status: "brief" });
+
+    const result = await router.duplicate({
+      ctx: ctx(),
+      input: { projectId: 4, name: "Reusable copy" },
+    });
+
+    expect(result).toEqual({ id: 9, name: "Reusable copy", status: "brief" });
+    expect(mockDuplicateVideoProject).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      { projectId: 4, name: "Reusable copy" },
+    );
+  });
+
+  it("updates the Video Studio automation mode within the owner scope", async () => {
+    mockUpdateVideoProjectFields.mockResolvedValueOnce({ id: 4, automationMode: "manual" });
+
+    const result = await router.updateAutomationMode({
+      ctx: ctx(),
+      input: { projectId: 4, automationMode: "manual" },
+    });
+
+    expect(result).toEqual({ id: 4, automationMode: "manual" });
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      4,
+      { automationMode: "manual" },
+    );
+  });
+
   it("F133-03/FE02 fix: rejects creating a catalog-studio project when videoIntelligenceCatalogStudioEnabled is off, even though the master F133A flag is on", async () => {
     // Persistent (not `Once`) override — `create` reads the tenant flags
     // TWICE (`assertVideoIntelligenceEnabled` then `assertStudioTypeEnabled`),
@@ -423,6 +490,45 @@ describe("videoProjects CRUD", () => {
       { tenantId: "tenant-1", userId: 42 },
       expect.objectContaining({ sourceRefs: { productIds: ["prod-1"] } }),
     );
+  });
+
+  it("implementation-progress.md gap #1 fix: updateSourceRefs is owner-scoped and patches sourceRefs.productIds after create", async () => {
+    mockUpdateVideoProjectFields.mockResolvedValueOnce({ id: 5, sourceRefs: { productIds: ["prod-9"] } });
+
+    const row = await router.updateSourceRefs({
+      ctx: ctx(),
+      input: { projectId: 5, sourceRefs: { productIds: ["prod-9"] } },
+    });
+
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      5,
+      { sourceRefs: { productIds: ["prod-9"] } },
+    );
+    expect(row).toEqual({ id: 5, sourceRefs: { productIds: ["prod-9"] } });
+  });
+
+  it("updateSourceRefs accepts null to clear sourceRefs", async () => {
+    mockUpdateVideoProjectFields.mockResolvedValueOnce({ id: 5, sourceRefs: null });
+
+    await router.updateSourceRefs({ ctx: ctx(), input: { projectId: 5, sourceRefs: null } });
+
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      5,
+      { sourceRefs: null },
+    );
+  });
+
+  it("updateSourceRefs is NOT_FOUND for a foreign-owner project", async () => {
+    mockUpdateVideoProjectFields.mockResolvedValueOnce(null);
+
+    await expect(
+      router.updateSourceRefs({
+        ctx: ctx(),
+        input: { projectId: 999, sourceRefs: { productIds: ["prod-1"] } },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("saveDocument rejects a stale baseRevision with CONFLICT", async () => {
@@ -489,6 +595,137 @@ describe("videoProjects CRUD", () => {
     expect(mockSaveVideoProjectDocument).toHaveBeenCalledTimes(1);
   });
 
+  it("Feature 143 §4.12 fix: saveDocument rejects a document with duplicate scene layer ids (VI_DUPLICATE_LAYER_ID), before ever persisting it", async () => {
+    mockAssertDocumentLayerIdsUnique.mockImplementationOnce(() => {
+      throw new MockVideoProjectCompileError(
+        "VI_DUPLICATE_LAYER_ID",
+        "§4.12 layer id policy rejected 1 duplicate scene layer id(s)",
+      );
+    });
+
+    await expect(
+      router.saveDocument({
+        ctx: ctx(),
+        input: { projectId: 1, baseRevision: 1, document: baseDocument() },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("VI_DUPLICATE_LAYER_ID") });
+
+    expect(mockAssertDocumentLayerIdsUnique).toHaveBeenCalledWith(
+      expect.anything(),
+      "VI_DUPLICATE_LAYER_ID",
+    );
+    expect(mockSaveVideoProjectDocument).not.toHaveBeenCalled();
+  });
+
+  it("saveDocument calls the §4.12 duplicate-layer-id assertion on the happy path too (defense-in-depth is never skipped)", async () => {
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 2 });
+
+    await router.saveDocument({
+      ctx: ctx(),
+      input: { projectId: 1, baseRevision: 1, document: baseDocument() },
+    });
+
+    expect(mockAssertDocumentLayerIdsUnique).toHaveBeenCalledTimes(1);
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it("implementation-progress.md gap #3 fix: saveDocument rejects an inverted scene timeline (endMs <= startMs) with VI_PLAN_TIMELINE_INVALID", async () => {
+    const document = baseDocument({
+      scenes: [
+        {
+          sceneId: "scene-1",
+          startMs: 1000,
+          endMs: 500,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+      ],
+      format: { width: 1080, height: 1920, fps: 30, durationMs: 5000 },
+    });
+
+    await expect(
+      router.saveDocument({ ctx: ctx(), input: { projectId: 1, baseRevision: 1, document } }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("VI_PLAN_TIMELINE_INVALID") });
+    expect(mockSaveVideoProjectDocument).not.toHaveBeenCalled();
+  });
+
+  it("gap #3 fix: saveDocument rejects two overlapping scenes regardless of array order", async () => {
+    const document = baseDocument({
+      scenes: [
+        {
+          sceneId: "scene-b",
+          startMs: 1000,
+          endMs: 4000,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+        {
+          sceneId: "scene-a",
+          startMs: 0,
+          endMs: 2000,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+      ],
+      format: { width: 1080, height: 1920, fps: 30, durationMs: 5000 },
+    });
+
+    await expect(
+      router.saveDocument({ ctx: ctx(), input: { projectId: 1, baseRevision: 1, document } }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("VI_PLAN_TIMELINE_INVALID") });
+  });
+
+  it("gap #3 fix: saveDocument still accepts a timeline with a legal GAP between scenes (never tightened)", async () => {
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 2 });
+    const document = baseDocument({
+      scenes: [
+        {
+          sceneId: "scene-1",
+          startMs: 0,
+          endMs: 1000,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+        {
+          sceneId: "scene-2",
+          startMs: 3000,
+          endMs: 5000,
+          narration: null,
+          narrationAudioAssetId: null,
+          visual: { kind: "layers" },
+          layers: [],
+          motion: { intensity: "medium", camera: "static" },
+          captionCues: [],
+        },
+      ],
+      format: { width: 1080, height: 1920, fps: 30, durationMs: 5000 },
+    });
+
+    const result = await router.saveDocument({
+      ctx: ctx(),
+      input: { projectId: 1, baseRevision: 1, document },
+    });
+
+    expect(result).toEqual({ revision: 2 });
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledTimes(1);
+  });
+
   it("emits zero extra db.select when the F133A flag is off", async () => {
     mockGetTenantFeatureFlags.mockResolvedValueOnce({ videoIntelligencePlatformEnabled: false });
 
@@ -510,10 +747,200 @@ describe("videoProjects CRUD", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* CMD-2 brand-kit reachability closure                                       */
+/* -------------------------------------------------------------------------- */
+
+describe("videoProjects — brand kit reachability", () => {
+  // `vi.clearAllMocks()` (the file's top-level `beforeEach`) does NOT drain a
+  // mock's queued `mockResolvedValueOnce` entries — only `mockReset()` does.
+  // Explicitly reset (not just clear) the mocks this block depends on before
+  // every test, so an unconsumed queue entry from an earlier test anywhere
+  // in this file can never shift which resolved value one of THESE tests
+  // consumes (the vitest Once-queue leak class documented in
+  // `memory/project_vitest_once_queue_leak.md`).
+  beforeEach(() => {
+    mockGetVideoProject.mockReset();
+    mockGetBrandKit.mockReset();
+    mockUpdateVideoProjectFields.mockReset();
+    mockSaveVideoProjectDocument.mockReset();
+    mockInsertVideoProject.mockReset();
+  });
+
+  it("create stores brandKitId on the video_projects column", async () => {
+    mockInsertVideoProject.mockResolvedValueOnce({ id: 1, revision: 1 });
+
+    await router.create({
+      ctx: ctx(),
+      input: { studioType: "motion", name: "My project", brandKitId: 7 },
+    });
+
+    expect(mockInsertVideoProject).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      expect.objectContaining({ brandKitId: 7 }),
+    );
+  });
+
+  it("saveDocument backfills document.brandKitId from the video_projects column when the incoming document names no brand kit", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 1, brandKitId: 7, document: null });
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 2 });
+
+    const document = baseDocument(); // brandKitId: null
+
+    await router.saveDocument({ ctx: ctx(), input: { projectId: 1, baseRevision: 1, document } });
+
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      expect.objectContaining({ document: expect.objectContaining({ brandKitId: "7" }) }),
+    );
+  });
+
+  it("saveDocument never overrides an explicit document.brandKitId already chosen by the caller", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 1, brandKitId: 7, document: null });
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 2 });
+
+    const document = baseDocument({ brandKitId: "3" });
+
+    await router.saveDocument({ ctx: ctx(), input: { projectId: 1, baseRevision: 1, document } });
+
+    expect(mockGetVideoProject).not.toHaveBeenCalled();
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      expect.objectContaining({ document: expect.objectContaining({ brandKitId: "3" }) }),
+    );
+  });
+
+  it("saveDocument does nothing extra when the video_projects column also has no brand kit", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 1, brandKitId: null, document: null });
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 2 });
+
+    await router.saveDocument({
+      ctx: ctx(),
+      input: { projectId: 1, baseRevision: 1, document: baseDocument() },
+    });
+
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      expect.objectContaining({ document: expect.objectContaining({ brandKitId: null }) }),
+    );
+  });
+
+  it("setBrandKit rejects a foreign-tenant/foreign-owner brand kit with NOT_FOUND", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 1, document: null });
+    mockGetBrandKit.mockResolvedValueOnce(null);
+
+    await expect(
+      router.setBrandKit({ ctx: ctx(), input: { projectId: 1, baseRevision: 1, brandKitId: 999 } }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockUpdateVideoProjectFields).not.toHaveBeenCalled();
+  });
+
+  it("setBrandKit rejects a stale baseRevision with CONFLICT", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 5, document: null });
+
+    await expect(
+      router.setBrandKit({ ctx: ctx(), input: { projectId: 1, baseRevision: 1, brandKitId: null } }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(mockUpdateVideoProjectFields).not.toHaveBeenCalled();
+  });
+
+  it("setBrandKit writes BOTH the video_projects column and document.brandKitId in one call", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 1, document: baseDocument() });
+    mockGetBrandKit.mockResolvedValueOnce({ id: 7, name: "Acme" });
+    mockUpdateVideoProjectFields.mockResolvedValueOnce({ id: 1 });
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 2 });
+
+    const result = await router.setBrandKit({
+      ctx: ctx(),
+      input: { projectId: 1, baseRevision: 1, brandKitId: 7 },
+    });
+
+    expect(mockGetBrandKit).toHaveBeenCalledWith({ tenantId: "tenant-1", userId: 42 }, 7);
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      1,
+      { brandKitId: 7 },
+    );
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      expect.objectContaining({ document: expect.objectContaining({ brandKitId: "7" }), reason: "set_brand_kit" }),
+    );
+    expect(result).toEqual({ revision: 2, brandKitId: 7, documentUpdated: true });
+  });
+
+  it("setBrandKit(null) detaches the brand kit from both the column and the document", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 1, document: baseDocument({ brandKitId: "7" }) });
+    mockUpdateVideoProjectFields.mockResolvedValueOnce({ id: 1 });
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 2 });
+
+    const result = await router.setBrandKit({
+      ctx: ctx(),
+      input: { projectId: 1, baseRevision: 1, brandKitId: null },
+    });
+
+    expect(mockGetBrandKit).not.toHaveBeenCalled();
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      1,
+      { brandKitId: null },
+    );
+    expect(mockSaveVideoProjectDocument).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      expect.objectContaining({ document: expect.objectContaining({ brandKitId: null }) }),
+    );
+    expect(result).toEqual({ revision: 2, brandKitId: null, documentUpdated: true });
+  });
+
+  it("setBrandKit only updates the column when the project has no document yet", async () => {
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 1, document: null });
+    mockGetBrandKit.mockResolvedValueOnce({ id: 7, name: "Acme" });
+    mockUpdateVideoProjectFields.mockResolvedValueOnce({ id: 1 });
+
+    const result = await router.setBrandKit({
+      ctx: ctx(),
+      input: { projectId: 1, baseRevision: 1, brandKitId: 7 },
+    });
+
+    expect(mockUpdateVideoProjectFields).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      1,
+      { brandKitId: 7 },
+    );
+    expect(mockSaveVideoProjectDocument).not.toHaveBeenCalled();
+    expect(result).toEqual({ revision: 1, brandKitId: 7, documentUpdated: false });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* 2.4 Narration stage                                                        */
 /* -------------------------------------------------------------------------- */
 
 describe("runNarrationStage — TTS", () => {
+  it("acknowledges enqueueing without waiting for provider synthesis", async () => {
+    const document = baseDocument();
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 3, status: "content", document });
+    mockEnqueueVideoIntelligenceJob.mockResolvedValueOnce({ jobId: "narration-job-1", deduped: false });
+
+    const result = await router.runNarrationStageAsync({
+      ctx: ctx(),
+      input: {
+        projectId: 1,
+        narrationSettings: { modelId: "uvoice-tts", voice: "th-voice-1" },
+      },
+    });
+
+    expect(result.jobId).toBe("narration-job-1");
+    expect(mockSynthesize).not.toHaveBeenCalled();
+    expect(mockEnqueueVideoIntelligenceJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "narration",
+        input: expect.objectContaining({
+          narrationSettings: { modelId: "uvoice-tts", voice: "th-voice-1" },
+          baseRevision: 3,
+        }),
+      }),
+    );
+  });
+
   it("stores a mediaAssets row for the synthesized audio", async () => {
     const document = baseDocument();
     mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 3, document });
@@ -587,6 +1014,54 @@ describe("runNarrationStage — TTS", () => {
     expect(result.creditsCharged).toBe(9);
   });
 
+  it("implementation-progress.md gap #2 fix: charges with a non-blank idempotencyKey", async () => {
+    const document = baseDocument();
+    mockGetVideoProject.mockResolvedValueOnce({ id: 1, revision: 3, document });
+    mockSynthesize.mockResolvedValueOnce({
+      audioBuffer: Buffer.from("audio-bytes"),
+      contentType: "audio/mpeg",
+      duration: 1.2,
+    });
+    mockStoragePut.mockResolvedValueOnce({ key: "k", url: "/uploads/k.mp3" });
+    mockDb.insert.mockReturnValueOnce({
+      values: vi.fn(() => ({ returning: vi.fn(() => Promise.resolve([{ id: 999 }])) })),
+    });
+    mockSaveVideoProjectDocument.mockResolvedValueOnce({ revision: 4 });
+
+    await router.runNarrationStage({ ctx: ctx(), input: { projectId: 1 } });
+
+    const call = mockDeductCredits.mock.calls[0]![0];
+    expect(typeof call.idempotencyKey).toBe("string");
+    expect(call.idempotencyKey.length).toBeGreaterThan(0);
+    expect(call.idempotencyKey).toContain("narration");
+    expect(call.idempotencyKey).toContain("1"); // projectId
+    expect(call.idempotencyKey).toContain("3"); // starting revision
+  });
+
+  it("gap #2 fix: two concurrent calls reading the SAME starting revision produce the SAME idempotencyKey (dedupe-able)", async () => {
+    const document = baseDocument();
+    // Both calls read revision 3 — simulates two in-flight requests racing
+    // before either has saved (the scenario this key is meant to collapse).
+    mockGetVideoProject.mockResolvedValue({ id: 1, revision: 3, document });
+    mockSynthesize.mockResolvedValue({
+      audioBuffer: Buffer.from("audio-bytes"),
+      contentType: "audio/mpeg",
+      duration: 1.2,
+    });
+    mockStoragePut.mockResolvedValue({ key: "k", url: "/uploads/k.mp3" });
+    mockDb.insert.mockReturnValue({
+      values: vi.fn(() => ({ returning: vi.fn(() => Promise.resolve([{ id: 999 }])) })),
+    });
+    mockSaveVideoProjectDocument.mockResolvedValue({ revision: 4 });
+
+    await router.runNarrationStage({ ctx: ctx(), input: { projectId: 1 } });
+    await router.runNarrationStage({ ctx: ctx(), input: { projectId: 1 } });
+
+    const firstKey = mockDeductCredits.mock.calls[0]![0].idempotencyKey;
+    const secondKey = mockDeductCredits.mock.calls[1]![0].idempotencyKey;
+    expect(firstKey).toBe(secondKey);
+  });
+
   it("returns early with zero cost when no target scene has narration", async () => {
     const document = baseDocument({
       scenes: [
@@ -638,6 +1113,19 @@ describe("deriveCaptionCues (pure)", () => {
 
   it("returns [] for a zero-duration scene window", () => {
     expect(deriveCaptionCues("hello world", 1000, 1000)).toEqual([]);
+  });
+});
+
+describe("normalizeTimestampedCaptionCues (pure)", () => {
+  it("keeps real segment boundaries, converts seconds to scene-relative ms, and clamps to the scene", () => {
+    expect(normalizeTimestampedCaptionCues([
+      { start: 0.12, end: 1.48, text: " first line " },
+      { start: 1.5, end: 4.2, text: "second line" },
+      { start: 4.5, end: 5, text: "outside" },
+    ], 4000)).toEqual([
+      { startMs: 120, endMs: 1480, text: "first line" },
+      { startMs: 1500, endMs: 4000, text: "second line" },
+    ]);
   });
 });
 
@@ -721,5 +1209,130 @@ describe("buildCaptionLinesForRender (pure)", () => {
     });
 
     expect(buildCaptionLinesForRender(document)).toEqual([{ startSec: 1, endSec: 2, text: "real text" }]);
+  });
+});
+
+describe("listPickerAssets (Feature 143 §4.7 item 2 — the asset picker procedure)", () => {
+  function selectChain(rows: unknown[]) {
+    return {
+      from: () => ({
+        where: () => ({
+          orderBy: () => ({
+            limit: () => ({
+              offset: () => Promise.resolve(rows),
+            }),
+          }),
+        }),
+      }),
+    };
+  }
+
+  it("returns only rows with a stored checksum, mapped to {assetId, storageUrl, sha256, kind, ...}", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          id: 5,
+          storageKey: "media/5.mp4",
+          checksumSha256: "hash-5",
+          mimeType: "video/mp4",
+          width: 1080,
+          height: 1920,
+          thumbnailUrl: "/api/storage/files/media%2F5-thumb.jpg",
+        },
+      ]),
+    );
+
+    const result = await router.listPickerAssets({ ctx: ctx(), input: { kind: "video" } });
+
+    expect(result.items).toEqual([
+      {
+        assetId: 5,
+        storageUrl: "http://localhost:3000/api/storage/files/media/5.mp4",
+        sha256: "hash-5",
+        kind: "video",
+        width: 1080,
+        height: 1920,
+        thumbnailUrl: "/api/storage/files/media%2F5-thumb.jpg",
+      },
+    ]);
+    expect(result.nextOffset).toBeNull();
+  });
+
+  it("filters out a row whose mimeType is not image/video/audio (nothing scene.layers[] could place)", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          id: 9,
+          storageKey: "docs/9.pdf",
+          checksumSha256: "hash-9",
+          mimeType: "application/pdf",
+          width: null,
+          height: null,
+          thumbnailUrl: null,
+        },
+      ]),
+    );
+
+    const result = await router.listPickerAssets({ ctx: ctx(), input: {} });
+
+    expect(result.items).toEqual([]);
+  });
+
+  it("returns a non-null nextOffset when more rows exist beyond the page", async () => {
+    const rows = Array.from({ length: 3 }, (_, i) => ({
+      id: i + 1,
+      storageKey: `media/${i + 1}.png`,
+      checksumSha256: `hash-${i + 1}`,
+      mimeType: "image/png",
+      width: 100,
+      height: 100,
+      thumbnailUrl: null,
+    }));
+    mockDb.select.mockReturnValueOnce(selectChain(rows)); // limit(2)+1 = 3 rows returned
+
+    const result = await router.listPickerAssets({ ctx: ctx(), input: { kind: "image", limit: 2 } });
+
+    expect(result.items).toHaveLength(2);
+    expect(result.nextOffset).toBe(2);
+  });
+});
+
+describe("getNarrationAssets browser URL regression", () => {
+  it("keeps narration audio URLs relative instead of exposing the internal Node origin", async () => {
+    const document = baseDocument({
+      scenes: [
+        {
+          ...baseDocument().scenes[0]!,
+          narrationAudioAssetId: 77,
+          narrationAudioDurationMs: 3200,
+        },
+      ],
+    });
+    mockGetVideoProject.mockResolvedValueOnce({ id: 3, revision: 7, document });
+    mockDb.select.mockReturnValueOnce({
+      from: () => ({
+        where: () => Promise.resolve([
+          {
+            id: 77,
+            storageKey: "video-intelligence/tenant-1/3/narration/scene-1.mp3",
+            mimeType: "audio/mp3",
+          },
+        ]),
+      }),
+    });
+    mockStorageResolveUrl.mockResolvedValueOnce("/api/storage/files/video-intelligence/tenant-1/3/narration/scene-1.mp3");
+
+    const result = await router.getNarrationAssets({ ctx: ctx(), input: { projectId: 3 } });
+
+    expect(result.items).toEqual([
+      {
+        sceneId: "scene-1",
+        assetId: 77,
+        audioUrl: "/api/storage/files/video-intelligence/tenant-1/3/narration/scene-1.mp3",
+        mimeType: "audio/mp3",
+        durationMs: 3200,
+      },
+    ]);
+    expect(result.items[0].audioUrl).not.toContain("localhost:3000");
   });
 });

@@ -11,6 +11,14 @@ import {
 
 const statusSchema = z.enum(USER_WORKER_JOB_STATUSES);
 
+// `worker_jobs.jobType` is a free-text `varchar(100)` (drizzle/schema.ts
+// `workerJobs` table, ~:14055) — there is no fixed enum of job types (new
+// job types are added by feature work without a schema migration), so this
+// is an open string capped to the column length rather than a z.enum, same
+// pattern used elsewhere in this router for free-text ids (e.g. `detail`'s
+// `jobId: z.string().min(1)`).
+const jobTypeSchema = z.string().trim().min(1).max(100);
+
 function requireWorkerJobAuth(ctx: {
   tenantId?: string | null;
   user?: { id?: number | null } | null;
@@ -31,15 +39,20 @@ export const workerJobsRouter = router({
   list: protectedProcedure
     .input(z.object({
       status: statusSchema.optional(),
+      jobType: jobTypeSchema.optional(),
       limit: z.number().int().min(1).max(100).default(50),
       offset: z.number().int().min(0).default(0),
     }).optional())
     .query(async ({ ctx, input }) => {
+      const auth = requireWorkerJobAuth(ctx);
+      const limit = input?.limit ?? 50;
+      const offset = input?.offset ?? 0;
       return listUserWorkerJobs({
-        auth: requireWorkerJobAuth(ctx),
+        auth,
         status: input?.status,
-        limit: input?.limit,
-        offset: input?.offset,
+        ...(input?.jobType ? { jobType: input.jobType } : {}),
+        limit,
+        offset,
       });
     }),
 

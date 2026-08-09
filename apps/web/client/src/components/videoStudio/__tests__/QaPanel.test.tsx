@@ -396,6 +396,81 @@ describe("QaPanel — required states", () => {
   });
 });
 
+describe("QaPanel — Thai label mapping (no raw internal ids)", () => {
+  it("translates a known scorecard dimension key and falls back gracefully for an unknown one", () => {
+    renderPanel({
+      lang: "th",
+      qaLedger: {
+        entries: [
+          {
+            ...LEDGER_ENTRY_2,
+            review: {
+              ...REVIEW,
+              scorecard: { content_accuracy_flow: 7, totally_unknown_dimension: 3 },
+            },
+          },
+        ],
+        totalCount: 1,
+      },
+    });
+    // Known key -> Thai label, not the raw snake_case id.
+    expect(screen.queryByText("content_accuracy_flow")).not.toBeInTheDocument();
+    expect(screen.getByText("ความถูกต้อง/ลำดับของเนื้อหา")).toBeInTheDocument();
+    // Unknown key -> readable fallback (underscores replaced), never dropped.
+    expect(screen.getByTestId("video-studio-qa-dimension-totally_unknown_dimension")).toBeInTheDocument();
+    expect(screen.getByText("totally unknown dimension")).toBeInTheDocument();
+  });
+
+  it("translates claim status badges and Selector options instead of the raw enum", () => {
+    renderPanel({
+      lang: "th",
+      document: {
+        ...BASE_DOCUMENT,
+        claims: [{ claim: "อ้างสิทธิ์", source: "manual", status: "needs_review" }],
+      },
+    });
+    expect(screen.queryByText("needs_review")).not.toBeInTheDocument();
+    expect(screen.getAllByText("รอตรวจสอบ").length).toBeGreaterThan(0);
+  });
+
+  it("translates the remove-claim icon button label", () => {
+    renderPanel({
+      lang: "th",
+      document: {
+        ...BASE_DOCUMENT,
+        claims: [{ claim: "อ้างสิทธิ์", source: "manual", status: "approved" }],
+      },
+    });
+    expect(screen.getByLabelText("ลบข้อความอ้างสิทธิ์นี้")).toBeInTheDocument();
+  });
+
+  it("translates known repair-stage checkbox labels and falls back for an unknown stage id", () => {
+    renderPanel({
+      lang: "th",
+      qaLedger: {
+        entries: [
+          {
+            ...LEDGER_ENTRY_2,
+            review: {
+              ...REVIEW,
+              repairInstructions: [{ stage: "content", instruction: "x" }],
+              issues: [
+                { dimension: "d", severity: "low" as const, message: "m", repairStage: "some_future_stage" },
+              ],
+            },
+          },
+        ],
+        totalCount: 1,
+      },
+    });
+    expect(screen.getByTestId("video-studio-qa-repair-stage-content")).toBeInTheDocument();
+    expect(screen.getByText("เนื้อหา/บท")).toBeInTheDocument();
+    // Unrecognized repair-stage id still renders (fallback to the raw id).
+    expect(screen.getByTestId("video-studio-qa-repair-stage-some_future_stage")).toBeInTheDocument();
+    expect(screen.getByText("some_future_stage")).toBeInTheDocument();
+  });
+});
+
 describe("QaPanel — claims editor regression", () => {
   it("keeps the existing claims editor working (add / edit / remove)", () => {
     const { onChange, unmount } = renderPanel();

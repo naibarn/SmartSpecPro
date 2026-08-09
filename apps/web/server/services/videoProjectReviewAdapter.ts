@@ -40,6 +40,7 @@ import type {
   VideoProjectReview,
 } from "./videoProjectQualityLoop";
 import type { ClaimValidationResult } from "./validateProjectClaims";
+import { markUntrustedCatalogText } from "../../shared/videoIntelligence/untrustedCatalogData";
 
 /* -------------------------------------------------------------------------- */
 /* 3.1 — DocumentSummary and its builder                                      */
@@ -168,6 +169,7 @@ const QUALITY_REPAIR_STAGES = [
   "motion",
   "captions",
   "claims",
+  "layout",
 ] as const satisfies readonly QualityRepairStage[];
 
 const QualityRepairStageSchema = z.enum(QUALITY_REPAIR_STAGES);
@@ -252,11 +254,37 @@ const MAX_STRIKE_ISSUE_PATHS = 8;
  *  this string on the job record. */
 const MAX_ERROR_MESSAGE_LENGTH = 1000;
 
+/** Output-sizing heuristics only — NOT credit constants. A review contains a
+ *  variable scorecard and issue list, so its output budget must grow with the
+ *  number of scenes rather than relying on a provider default (§8.6). */
+const QUALITY_REVIEW_BASE_MAX_TOKENS = 600;
+const QUALITY_REVIEW_TOKENS_PER_SCENE = 140;
+const QUALITY_REVIEW_MAX_TOKENS_CEILING = 8000;
+
 function formatZodIssuePathForStrike(path: Array<string | number>): string {
   return path.reduce<string>((accumulator, segment) => {
     if (typeof segment === "number") return `${accumulator}[${segment}]`;
     return accumulator ? `${accumulator}.${segment}` : String(segment);
   }, "");
+}
+
+function markClaimValidationAsUntrustedData(validation: ClaimValidationResult): ClaimValidationResult {
+  return {
+    ...validation,
+    mappedClaims: validation.mappedClaims.map(item => ({
+      ...item,
+      statement: markUntrustedCatalogText(item.statement),
+      claim: markUntrustedCatalogText(item.claim),
+    })),
+    unmappedStatements: validation.unmappedStatements.map(item => ({
+      ...item,
+      statement: markUntrustedCatalogText(item.statement),
+    })),
+    prohibitedClaims: validation.prohibitedClaims.map(item => ({
+      ...item,
+      claim: markUntrustedCatalogText(item.claim),
+    })),
+  };
 }
 
 /**
@@ -295,16 +323,23 @@ export function makeRunReview(deps: {
   };
 
   return async ({ projectId, metrics }) => {
+    const maxTokens = Math.min(
+      QUALITY_REVIEW_MAX_TOKENS_CEILING,
+      QUALITY_REVIEW_BASE_MAX_TOKENS +
+        QUALITY_REVIEW_TOKENS_PER_SCENE * deps.documentSummary.sceneCount,
+    );
+
     try {
       const result = await callLLMStructured({
         systemPrompt: VIDEO_PROJECT_REVIEW_SYSTEM_FRAMING,
         userMessage: JSON.stringify({
           documentSummary: deps.documentSummary,
           metrics,
-          claimValidation: deps.claimValidation,
+          claimValidation: markClaimValidationAsUntrustedData(deps.claimValidation),
         }),
         zodSchema: videoProjectReviewSchema,
         maxRetries: 2,
+        maxTokens,
         model: deps.modelId,
         userId: deps.userId,
         tenantId: deps.tenantId,

@@ -78,8 +78,34 @@ export const REMOTION_RENDER_VIDEO_FAILURE_CODES = [
   ...remotionRenderVideoFailureCodeValues,
 ];
 
-export const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION = "2026-07-12";
+// Feature 144 procedural motion contract bump (2026-08-04.2): bounded
+// `motionComposition` layers and the registered procedural renderer set are
+// now part of the worker payload schema. This stays separate from the prior
+// segmented-render change on 2026-08-04 so an older worker cannot claim a
+// payload it cannot render.
+//
+// Feature 143 segmented render contract bump (2026-08-04): `segmentTemplates`
+// is now carried alongside the first `remotionTemplate` so a worker can
+// render compiler-generated parts and concatenate them safely. This also
+// includes the prior `RemotionLayerBaseSchema` compatibility fields.
+// gained four additive `.optional()` fields (`name`/`locked`/`hidden`/
+// `role`). Both `.strict()` layer schemas embedded in this worker contract
+// (`RemotionTemplateConfigSchema`) reject unrecognized keys, so a payload
+// that actually sets one of these new fields would be rejected by any
+// worker still running the pre-143 schema — this version string is the
+// contract's own drift signal for that mismatch (checked in
+// `renderVideoJob.ts` against `REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION`).
+// Payloads that omit the new fields entirely (every pre-143 caller) are
+// unaffected — the fields are optional, not required.
+export const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION = "2026-08-04.2";
 export const REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION = "remotion-1";
+/**
+ * Admission token for the Worker App claim path. This is deliberately tied to
+ * the platform contract version so a worker with an older Remotion sidecar
+ * cannot claim a payload that its renderer will reject.
+ */
+export const REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY =
+  `remotion-render-contract-${REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION}`;
 
 export type RemotionRenderVideoProgressStage =
   (typeof remotionRenderVideoProgressStageValues)[number];
@@ -186,6 +212,10 @@ export const remotionRenderVideoWorkerInputSchema = z
     renderProfile: remotionRenderVideoRenderProfileSchema,
     // Embedded verbatim — layer shapes are never re-declared.
     remotionTemplate: RemotionTemplateConfigSchema,
+    /** Compiler-generated multi-part plan. `remotionTemplate` remains the
+     * first part for backward compatibility; the worker renders every entry
+     * and concatenates them before global post-passes. */
+    segmentTemplates: z.array(RemotionTemplateConfigSchema).min(1).optional(),
     // Must equal GENERIC_TEMPLATE_COMPOSITION_ID (`./Root.ts`).
     // Re-declared as a literal here (not imported) so this schema never
     // depends on a React/`.tsx` composition module.

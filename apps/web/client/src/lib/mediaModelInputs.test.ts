@@ -4,12 +4,14 @@ import {
   buildDefaultModelInputArrayItem,
   buildDefaultExtraParamsForModel,
   clampReferenceImagesToModelLimit,
+  countModelInputFieldReferences,
   getModelGenerationModeLabel,
   getMissingRequiredModelFields,
   getModelReferenceInputSupport,
   getModelReferenceImageLimit,
   getModelInputField,
   parseModelInputFields,
+  resolveModelGenerationMode,
   selectHighestImageResolutionInput,
 } from "./mediaModelInputs";
 
@@ -713,5 +715,126 @@ describe("mediaModelInputs", () => {
       maxItems: 4,
       droppedCount: 1,
     });
+  });
+});
+
+describe("resolveModelGenerationMode", () => {
+  // Mirrors drizzle/0217_minimax_h3_mode_routing.sql — keep in step with the
+  // Python fixture in tests/unit/llm_proxy/test_kie_ai_mode_routing.py.
+  const minimaxH3 = {
+    id: "minimax-h3",
+    name: "MiniMax H3",
+    configJson: {
+      generateType: "text-to-video",
+      apiConfig: {
+        kie_model_id: "minimax-h3/text-to-video",
+        modes: [
+          {
+            id: "reference-to-video",
+            label: "Reference to Video",
+            notice: "Clips are cited by attachment order.",
+            when: { minVideos: 1 },
+          },
+          {
+            id: "reference-to-video-audio",
+            label: "Reference to Video",
+            when: { minAudios: 1 },
+          },
+          {
+            id: "reference-to-video-multi-image",
+            label: "Reference to Video",
+            when: { minImages: 3 },
+          },
+          {
+            id: "image-to-video",
+            label: "Image to Video",
+            notice: "Aspect ratio is ignored.",
+            when: { minImages: 1, maxImages: 2 },
+          },
+        ],
+      },
+    },
+  };
+
+  it("returns null for a single-endpoint model so no chip is rendered", () => {
+    expect(
+      resolveModelGenerationMode({
+        id: "veo3",
+        name: "Veo 3",
+        configJson: { apiConfig: { kie_model_id: "veo3" } },
+      }),
+    ).toBeNull();
+    expect(resolveModelGenerationMode(undefined)).toBeNull();
+  });
+
+  it("falls back to the base generateType label when nothing is attached", () => {
+    expect(resolveModelGenerationMode(minimaxH3, {})).toEqual({
+      id: "__base__",
+      label: "Text to Video",
+      notice: null,
+    });
+  });
+
+  it.each([
+    [{ images: 1 }, "image-to-video"],
+    [{ images: 2 }, "image-to-video"],
+    [{ images: 3 }, "reference-to-video-multi-image"],
+    [{ images: 9 }, "reference-to-video-multi-image"],
+    [{ videos: 1 }, "reference-to-video"],
+    [{ images: 5, videos: 2 }, "reference-to-video"],
+    [{ images: 1, audios: 1 }, "reference-to-video-audio"],
+  ])("resolves %o to the %s mode", (counts, expectedId) => {
+    expect(resolveModelGenerationMode(minimaxH3, counts)?.id).toBe(expectedId);
+  });
+
+  it("surfaces the mode notice so an ignored control is explained", () => {
+    expect(resolveModelGenerationMode(minimaxH3, { images: 1 })).toEqual({
+      id: "image-to-video",
+      label: "Image to Video",
+      notice: "Aspect ratio is ignored.",
+    });
+  });
+
+  it("fails closed to the base mode on an unparseable predicate", () => {
+    const broken = {
+      id: "broken",
+      name: "Broken",
+      configJson: {
+        generateType: "text-to-video",
+        apiConfig: { modes: [{ id: "typo", when: { minPictures: 1 } }] },
+      },
+    };
+    expect(resolveModelGenerationMode(broken, { images: 4 })?.id).toBe("__base__");
+  });
+});
+
+describe("countModelInputFieldReferences", () => {
+  const model = {
+    id: "minimax-h3",
+    name: "MiniMax H3",
+    configJson: {
+      inputFields: [
+        { key: "reference_audio_urls", label: "Reference Audio", type: "audio_urls", syncWith: "none" },
+        { key: "reference_video_urls", label: "Reference Videos", type: "video_urls", syncWith: "reference_videos" },
+      ],
+    },
+  };
+
+  it("counts non-empty URLs from the model's own input fields", () => {
+    expect(
+      countModelInputFieldReferences(
+        model,
+        { reference_audio_urls: ["https://e/a.mp3", "  ", "https://e/b.mp3"] },
+        "audio_urls",
+      ),
+    ).toBe(2);
+  });
+
+  it("returns 0 when the field is unset or the type does not match", () => {
+    expect(countModelInputFieldReferences(model, {}, "audio_urls")).toBe(0);
+    expect(countModelInputFieldReferences(model, undefined, "audio_urls")).toBe(0);
+    expect(
+      countModelInputFieldReferences(model, { reference_audio_urls: ["https://e/a.mp3"] }, "image_urls"),
+    ).toBe(0);
   });
 });

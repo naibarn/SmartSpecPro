@@ -17,6 +17,7 @@ import {
   resolveOpenerRecapText,
   resolveOpeningSequenceWindows,
   resolveWatermarkCornerAutoAvoid,
+  resolveEpisodeIndicatorCornerAutoAvoid,
   validateTextOverlayPlan,
   vdSeriesWatermarkConfigSchema,
   vdTextOverlayPlanSchema,
@@ -298,6 +299,26 @@ describe("resolveWatermarkCornerAutoAvoid", () => {
       resolveWatermarkCornerAutoAvoid({
         watermarkPosition: "top_right",
         episodeIndicatorEnabled: false,
+      })
+    ).toEqual({ position: "top_right", adjusted: false });
+  });
+});
+
+describe("resolveEpisodeIndicatorCornerAutoAvoid", () => {
+  it("moves the indicator instead of moving a configured watermark", () => {
+    expect(
+      resolveEpisodeIndicatorCornerAutoAvoid({
+        episodeIndicatorPosition: "top_right",
+        watermarkPositions: ["top_right", "bottom_right"],
+      })
+    ).toEqual({ position: "top_left", adjusted: true });
+  });
+
+  it("keeps the indicator when neither watermark occupies its corner", () => {
+    expect(
+      resolveEpisodeIndicatorCornerAutoAvoid({
+        episodeIndicatorPosition: "top_right",
+        watermarkPositions: ["bottom_right"],
       })
     ).toEqual({ position: "top_right", adjusted: false });
   });

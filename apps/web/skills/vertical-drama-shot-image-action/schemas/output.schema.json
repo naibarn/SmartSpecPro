@@ -11,7 +11,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 3500,
-      "description": "The final, fully-composed image-generation prompt — ready to send straight to the image render provider. 3500 characters or fewer (same hard cap as the sibling vertical-drama-shot-start-frame-render skill; a downstream QC pass may still refine/compress it, but a well-written prompt should not rely on that fallback)."
+      "description": "The final, fully-composed image-generation prompt — ready to send straight to the image render provider. Keep it at or below the caller-supplied prompt_max_chars budget; Kie.ai image models may use up to 20,000 characters, while the legacy fallback is 3,800. A downstream QC pass may still refine/compress it, but a well-written prompt should not rely on that fallback."
     },
     "negative_prompt": {
       "type": "string",

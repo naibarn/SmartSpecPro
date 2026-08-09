@@ -63,6 +63,15 @@ function svgLayer(id: string, durationFrames: number): RemotionLayer {
   };
 }
 
+function motionCompositionLayer(id: string, durationFrames: number): RemotionLayer {
+  return {
+    ...baseFields(id, durationFrames),
+    type: "motionComposition",
+    compositionId: "particle-field",
+    props: { density: "medium" },
+  };
+}
+
 function buildConfig(
   layers: RemotionLayer[],
   durationInFrames = 100
@@ -118,5 +127,10 @@ describe("estimateRenderCost", () => {
       cls: "low",
       recommendPreRender: false,
     });
+  });
+
+  it("assigns procedural motion a medium render-cost weight", () => {
+    const cfg = buildConfig([motionCompositionLayer("motion", 100)]);
+    expect(estimateRenderCost(cfg)).toMatchObject({ score: 400 });
   });
 });

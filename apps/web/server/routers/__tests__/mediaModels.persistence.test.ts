@@ -5,6 +5,8 @@ const {
   clearModelCacheMock,
   clearSkillRegistryCacheMock,
   getStaticFallbackModelsMock,
+  getModelsByTypeAsyncMock,
+  suggestModelMock,
 } = vi.hoisted(() => ({
   dbMock: {
     select: vi.fn(),
@@ -18,6 +20,8 @@ const {
   clearModelCacheMock: vi.fn(),
   clearSkillRegistryCacheMock: vi.fn(),
   getStaticFallbackModelsMock: vi.fn(),
+  getModelsByTypeAsyncMock: vi.fn(),
+  suggestModelMock: vi.fn(),
 }));
 
 vi.mock("../../db", () => ({
@@ -44,9 +48,14 @@ vi.mock("../../_core/trpc", () => {
 vi.mock("../../services/modelRegistry", () => ({
   clearModelCache: clearModelCacheMock,
   getStaticFallbackModels: getStaticFallbackModelsMock,
+  getModelsByTypeAsync: getModelsByTypeAsyncMock,
   getStaticModelById: vi.fn(),
   getModelRegistryCounters: vi.fn().mockReturnValue({}),
   resetModelRegistryCounters: vi.fn(),
+}));
+
+vi.mock("../modelSuggestTool", () => ({
+  suggestModel: suggestModelMock,
 }));
 
 vi.mock("../../services/skillRegistry", () => ({
@@ -122,6 +131,96 @@ describe("mediaModelsRouter persistence guards", () => {
     vi.clearAllMocks();
     dbMock.instance.selectDistinct.mockResolvedValue([]);
     getStaticFallbackModelsMock.mockReturnValue([]);
+  });
+
+  it("returns the full enabled TTS catalog while keeping recommended models first", async () => {
+    suggestModelMock.mockResolvedValue({
+      recommended: { model_id: "alibaba/qwen3-tts-flash" },
+      alternatives: [{ model_id: "elevenlabs/text-to-dialogue-v3" }],
+    });
+    getModelsByTypeAsyncMock.mockResolvedValue([
+      {
+        id: "alibaba/qwen3-tts-flash",
+        name: "Qwen3 TTS Flash",
+        provider: "wavespeed_ai",
+        creditCost: 20,
+        priority: 11,
+        configJson: { generateType: "text-to-speech" },
+      },
+      {
+        id: "elevenlabs/text-to-dialogue-v3",
+        name: "ElevenLabs Dialogue",
+        provider: "kie.ai",
+        creditCost: 70,
+        priority: 9,
+        configJson: { generateType: "dialogue", inputFields: [{ key: "voice" }] },
+      },
+      {
+        id: "uvoice/tts-standard",
+        name: "UVoice TTS Standard",
+        provider: "uvoice",
+        creditCost: 150,
+        priority: 210,
+        configJson: { generateType: "text-to-speech", inputFields: [{ key: "voiceID" }] },
+      },
+      {
+        id: "uvoice/tts-natural",
+        name: "UVoice TTS Natural",
+        provider: "uvoice",
+        creditCost: 150,
+        priority: 211,
+        configJson: { generateType: "text-to-speech", inputFields: [{ key: "voiceID" }] },
+      },
+      {
+        id: "uvoice/tts-premium",
+        name: "UVoice TTS Premium",
+        provider: "uvoice",
+        creditCost: 300,
+        priority: 212,
+        configJson: { generateType: "text-to-speech", inputFields: [{ key: "voiceID" }] },
+      },
+      {
+        id: "suno/generate-music",
+        name: "Suno Music",
+        provider: "kie.ai",
+        creditCost: 60,
+        priority: 14,
+        configJson: { generateType: "music", inputFields: [{ key: "style" }] },
+      },
+    ]);
+
+    const result = await (mediaModelsRouter.listRecommendedAudioModels as Function)();
+    const ids = result.models.map((model: { modelId: string }) => model.modelId);
+
+    expect(ids).toEqual([
+      "alibaba/qwen3-tts-flash",
+      "elevenlabs/text-to-dialogue-v3",
+      "uvoice/tts-standard",
+      "uvoice/tts-natural",
+      "uvoice/tts-premium",
+    ]);
+    expect(result.models[0]).toMatchObject({ isRecommended: true, isDefault: true });
+    expect(result.models.slice(2).every((model: { isRecommended?: boolean }) => model.isRecommended === false)).toBe(true);
+  });
+
+  it("surfaces a public catalog DB failure as a tRPC error instead of an empty 200 result", async () => {
+    dbMock.select.mockImplementation(() => {
+      throw new Error("database temporarily unavailable");
+    });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(
+      (mediaModelsRouter.list as Function)({ input: { type: "image" } }),
+    ).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Failed to load media models",
+    });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[MediaModels] Public list query failed:",
+      "database temporarily unavailable",
+    );
+    errorSpy.mockRestore();
   });
 
   it("rejects unsafe absolute apiEndpoint values before insert", async () => {

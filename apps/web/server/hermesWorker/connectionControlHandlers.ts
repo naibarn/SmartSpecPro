@@ -442,10 +442,16 @@ export async function runHermesConnectionProbe(
   const authStatus = parseHermesAuthStatusOutput(statusResult.stdout);
 
   const toolsResult = await deps.spawnHermes(
-    // `hermes tools` is interactive in current Hermes releases. The
-    // documented `status --all` command is safe for a headless worker and
-    // includes the available image/video generation categories.
-    ["status", "--all"],
+    // `hermes tools` with no subcommand is interactive, but `tools list` is
+    // a documented non-interactive listing. NOTE `status --all` is NOT a
+    // substitute: verified against Hermes 0.18.2 on 2026-08-02, its output
+    // has no media-tools section at all (only env/API-keys/auth-providers),
+    // so probing with it parsed ZERO operations and every capability came
+    // back disabled ("ไม่รองรับ") even on a fully authorized connection.
+    // `tools list` prints one line per toolset (e.g.
+    // "✓ enabled  image_gen  🎨 Image Generation") which
+    // `parseHermesToolsOutput` understands.
+    ["tools", "list"],
     { timeoutMs: input.timeoutSeconds * 1000, onStdoutLine: () => {} },
   );
   if (toolsResult.exitCode !== 0) {

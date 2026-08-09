@@ -26,8 +26,18 @@ import type {
   ForbiddenMediaGenerationEffectMembers,
 } from "@shared/videoIntelligence/effectGuards";
 
-/** Repair stages (spec §12): content | narration | scenes | motion | captions | claims. */
-export type QualityRepairStage = "content" | "narration" | "scenes" | "motion" | "captions" | "claims";
+/** Repair stages (spec §12): content | narration | scenes | motion | captions
+ *  | claims | layout. `layout` (Feature 142, section-06 gap-1) is a
+ *  deterministic safe-area-clamp stage — see `videoProjectRepairApplier.ts`'s
+ *  `applyLayoutHandler`. */
+export type QualityRepairStage =
+  | "content"
+  | "narration"
+  | "scenes"
+  | "motion"
+  | "captions"
+  | "claims"
+  | "layout";
 
 export type VideoProjectReview = {
   /** 0..10. */

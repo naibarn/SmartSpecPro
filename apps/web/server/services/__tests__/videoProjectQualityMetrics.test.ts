@@ -14,9 +14,12 @@ import {
   computeDurationVsNarration,
   computeLayerCounts,
   computeQualityMetrics,
+  computeSafeAreaRect,
   computeSafeAreaViolations,
   estimateVideoProjectQualityLoopCredits,
 } from "../videoProjectQualityMetrics";
+import { compileVideoProject } from "../videoProjectCompiler";
+import { MOTION_TEMPLATE_REGISTRY, type MotionTemplate } from "../../remotion/templates";
 
 function baseSceneLayer(overrides: Record<string, unknown> = {}) {
   return {
@@ -165,6 +168,64 @@ describe("computeLayerCounts", () => {
     expect(result.total).toBe(3);
     expect(result.maxLayersPerScene).toBe(2);
   });
+
+  it("spec 143 §4.8/§4.13 — excludes `hidden` layers from perScene/total (a hidden layer never reaches the compiler)", () => {
+    const document = buildDocument({
+      scenes: [
+        buildScene({
+          sceneId: "SC-001",
+          layers: [baseSceneLayer({ id: "visible" }), baseSceneLayer({ id: "invisible", hidden: true })],
+        }),
+      ],
+    });
+
+    const result = computeLayerCounts(document);
+    expect(result.perScene).toEqual([{ sceneId: "SC-001", layerCount: 1 }]);
+    expect(result.total).toBe(1);
+  });
+
+  it("spec 143 §4.6 — compiledTotal matches EXACTLY what compileVideoProject emits (scene + template + caption + audio, excluding hidden)", () => {
+    const document = buildDocument({
+      captions: { presetId: "classic_box", burnIn: false, language: "th" },
+      scenes: [
+        buildScene({
+          sceneId: "SC-001",
+          startMs: 0,
+          endMs: 5000,
+          layers: [baseSceneLayer({ id: "hand1" }), baseSceneLayer({ id: "hand2", hidden: true })],
+          captionCues: [
+            { startMs: 0, endMs: 1000, text: "one" },
+            { startMs: 1000, endMs: 2000, text: "two" },
+          ],
+          visual: {
+            kind: "template",
+            templateId: "product_hero",
+            params: { assetId: "asset1", mediaKind: "image", headline: "Hello" },
+          },
+        }),
+      ],
+      audioTracks: [{ kind: "music", assetRefs: [101], gainDb: -14, ducking: true }],
+    });
+
+    const compiled = compileVideoProject(
+      document,
+      {
+        format: document.format,
+        brandKit: null,
+        assetResolver: { url: () => "https://cdn.example.com/a.png", sha256: () => undefined },
+      },
+      { resolveTemplate: id => (MOTION_TEMPLATE_REGISTRY as Record<string, MotionTemplate>)[id] },
+    );
+    const compiledCount =
+      compiled.kind === "single"
+        ? compiled.config.layers.length
+        : compiled.parts.reduce((sum, part) => sum + part.layers.length, 0);
+
+    expect(computeLayerCounts(document).compiledTotal).toBe(compiledCount);
+    // 1 visible hand-authored layer (the hidden one excluded) + product_hero's
+    // template layers + 2 caption layers (burn-in off) + 1 music audio layer.
+    expect(compiledCount).toBeGreaterThan(1);
+  });
 });
 
 describe("computeSafeAreaViolations", () => {
@@ -173,11 +234,9 @@ describe("computeSafeAreaViolations", () => {
       content: { language: "th", platformPreset: "tiktok_9_16" },
       scenes: [
         buildScene({
-          layers: [
-            // Full-bleed layer (0,0,100,100) crosses every safe-area inset
-            // for tiktok_9_16.
-            baseSceneLayer({ id: "full_bleed", x: 0, y: 0, width: 100, height: 100 }),
-          ],
+          // NOT full-bleed (spec 143 §4.9.1 exempts x0/y0/w100/h100) — a
+          // corner box that still crosses the left/top insets.
+          layers: [baseSceneLayer({ id: "corner", x: 0, y: 0, width: 30, height: 30 })],
         }),
       ],
     });
@@ -185,8 +244,34 @@ describe("computeSafeAreaViolations", () => {
     const result = computeSafeAreaViolations(document);
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ sceneId: "SC-001", layerId: "full_bleed" });
+    expect(result[0]).toMatchObject({ sceneId: "SC-001", layerId: "corner" });
     expect(result[0].edges.length).toBeGreaterThan(0);
+  });
+
+  it("spec 143 §4.9.1 — a full-bleed layer (x0 y0 w100 h100) is EXEMPT, even without `role: 'background'`", () => {
+    const document = buildDocument({
+      content: { language: "th", platformPreset: "tiktok_9_16" },
+      scenes: [
+        buildScene({
+          layers: [baseSceneLayer({ id: "full_bleed", x: 0, y: 0, width: 100, height: 100 })],
+        }),
+      ],
+    });
+
+    expect(computeSafeAreaViolations(document)).toEqual([]);
+  });
+
+  it("spec 143 §4.9.1 — a `role: 'background'` layer is EXEMPT even when its geometry is NOT full-bleed", () => {
+    const document = buildDocument({
+      content: { language: "th", platformPreset: "tiktok_9_16" },
+      scenes: [
+        buildScene({
+          layers: [baseSceneLayer({ id: "bg", x: 0, y: 0, width: 30, height: 30, role: "background" })],
+        }),
+      ],
+    });
+
+    expect(computeSafeAreaViolations(document)).toEqual([]);
   });
 
   it("reports no violation for a layer that stays within the platform's safe area", () => {
@@ -232,6 +317,32 @@ describe("computeSafeAreaViolations", () => {
       ],
     });
 
+    expect(computeSafeAreaViolations(document)).toEqual([]);
+  });
+});
+
+describe("computeSafeAreaRect", () => {
+  it("agrees with the rectangle computeSafeAreaViolations checks layers against", () => {
+    const rect = computeSafeAreaRect("tiktok_9_16");
+    expect(rect).toEqual({ left: 5, top: 10, right: 85, bottom: 80 });
+
+    // A layer clamped exactly to this rect must never be flagged.
+    const document = buildDocument({
+      content: { language: "th", platformPreset: "tiktok_9_16" },
+      scenes: [
+        buildScene({
+          layers: [
+            baseSceneLayer({
+              id: "clamped",
+              x: rect.left,
+              y: rect.top,
+              width: rect.right - rect.left,
+              height: rect.bottom - rect.top,
+            }),
+          ],
+        }),
+      ],
+    });
     expect(computeSafeAreaViolations(document)).toEqual([]);
   });
 });
@@ -311,7 +422,12 @@ describe("computeQualityMetrics", () => {
     });
 
     const layers = computeLayerCounts(document);
-    expect(layers).toEqual({ perScene: [{ sceneId: "SC-ZERO", layerCount: 0 }], total: 0, maxLayersPerScene: 0 });
+    expect(layers).toEqual({
+      perScene: [{ sceneId: "SC-ZERO", layerCount: 0 }],
+      total: 0,
+      maxLayersPerScene: 0,
+      compiledTotal: 0,
+    });
 
     expect(computeSafeAreaViolations(document)).toEqual([]);
   });

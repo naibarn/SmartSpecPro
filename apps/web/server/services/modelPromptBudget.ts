@@ -1,8 +1,11 @@
-import { VD_IMAGE_PROMPT_MAX } from "@shared/verticalDramaSeries";
+import {
+  VD_IMAGE_PROMPT_MAX,
+  VD_IMAGE_PROMPT_ABSOLUTE_MAX,
+  isKieAiProvider,
+} from "@shared/verticalDramaSeries/imagePromptBudget";
 import { getStaticModelById } from "./modelRegistry";
 
-/** Absolute ceiling for any Vertical Drama image prompt. */
-export const VD_IMAGE_PROMPT_ABSOLUTE_MAX = 20_000;
+export { VD_IMAGE_PROMPT_ABSOLUTE_MAX };
 
 export function resolveConfiguredMaxPromptLength(
   configJson: Record<string, any> | null | undefined,
@@ -56,7 +59,24 @@ export function resolveVdImagePromptBudget(modelMax: number | null): number {
 export function resolveVdImagePromptBudgetForModel(params: {
   modelId: string;
   configJson?: Record<string, any> | null;
+  provider?: string | null;
 }): number {
+  let staticModel: ReturnType<typeof getStaticModelById> | undefined;
+  try {
+    staticModel = getStaticModelById(params.modelId);
+  } catch {
+    // Keep isolated callers fail-closed when the optional static registry is
+    // unavailable (the same convention as resolveModelMaxPromptLength).
+  }
+  const provider =
+    params.provider ??
+    params.configJson?.provider ??
+    params.configJson?.providerName ??
+    staticModel?.provider;
+  if (isKieAiProvider(provider)) {
+    return VD_IMAGE_PROMPT_ABSOLUTE_MAX;
+  }
+
   const modelMax = resolveModelMaxPromptLength(params.modelId, params.configJson);
   return Math.max(VD_IMAGE_PROMPT_MAX, resolveVdImagePromptBudget(modelMax));
 }

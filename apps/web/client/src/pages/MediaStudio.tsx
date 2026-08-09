@@ -292,6 +292,8 @@ import {
   getAllowedLibraryExtensionsForField,
   getMissingRequiredModelFields,
   getModelGenerationModeLabel,
+  countModelInputFieldReferences,
+  resolveModelGenerationMode,
   getModelInputField,
   getModelReferenceImageLimit,
   getModelReferenceInputSupport,
@@ -9647,7 +9649,7 @@ const API_CONFIG_KEYS_ALLOWING_WHITESPACE_VALUES = new Set([
 ]);
 
 function setApiConfigValue(
-  apiConfig: Record<string, string>,
+  apiConfig: Record<string, any>,
   key: string,
   value: unknown
 ): void {
@@ -9667,13 +9669,20 @@ function setApiConfigValue(
   }
   if (typeof value === "number" || typeof value === "boolean") {
     apiConfig[key] = String(value);
+    return;
+  }
+  if (Array.isArray(value) || (value && typeof value === "object")) {
+    // Preserve structured provider config such as apiConfig.modes. The
+    // backend needs the predicates and per-mode overrides to select the
+    // correct endpoint from the attachment shape.
+    apiConfig[key] = value;
   }
 }
 
 function buildApiConfigFromModelConfig(
   modelConfig: Record<string, unknown> | null | undefined
-): Record<string, string> {
-  const apiConfig: Record<string, string> = {};
+): Record<string, any> {
+  const apiConfig: Record<string, any> = {};
   if (!modelConfig || typeof modelConfig !== "object") {
     return apiConfig;
   }
@@ -13401,6 +13410,36 @@ export default function MediaStudio() {
   const selectedMediaModelGenerationModeLabel = useMemo(
     () => getModelGenerationModeLabel(selectedMediaModel as any),
     [selectedMediaModel]
+  );
+  // Multi-endpoint models (apiConfig.modes) pick their endpoint from what is
+  // attached. Show the user which one the next generate will hit — otherwise
+  // the switch is invisible, and so is the fact that a mode may ignore a
+  // control they just set (minimax-h3 image-to-video drops aspect ratio).
+  const selectedMediaModelActiveMode = useMemo(
+    () =>
+      resolveModelGenerationMode(selectedMediaModel as any, {
+        images: selectedMediaModelReferenceSupport.imageUrls
+          ? referenceImages.length
+          : 0,
+        videos: selectedMediaModelReferenceSupport.videoUrls
+          ? referenceVideos.length
+          : 0,
+        // Audio has no studio attachment channel yet — it comes in through the
+        // model's own audio_urls input field, and the provider counts it too.
+        audios: countModelInputFieldReferences(
+          selectedMediaModel as any,
+          modelInputValues,
+          "audio_urls"
+        ),
+      }),
+    [
+      selectedMediaModel,
+      selectedMediaModelReferenceSupport.imageUrls,
+      selectedMediaModelReferenceSupport.videoUrls,
+      referenceImages.length,
+      referenceVideos.length,
+      modelInputValues,
+    ]
   );
   const selectedMediaProviderName = useMemo(
     () =>
@@ -18782,7 +18821,7 @@ export default function MediaStudio() {
     ) as any;
     const extraParams: Record<string, any> = {};
     const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
-    const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+    const apiConfig: Record<string, any> = buildApiConfigFromModelConfig(
       (modelConfig as Record<string, unknown>) ?? null
     );
     let promptSyncedFields: any[] = [];
@@ -20933,7 +20972,7 @@ export default function MediaStudio() {
       );
       const extraParams: Record<string, any> = {};
       const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
-      const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+      const apiConfig: Record<string, any> = buildApiConfigFromModelConfig(
         (modelConfig as Record<string, unknown>) ?? null
       );
       const shouldUseVeoStoryboardAspectSync =
@@ -38686,21 +38725,25 @@ export default function MediaStudio() {
                             {selectedMediaProviderName}
                           </Badge>
                         )}
-                        {selectedMediaModelGenerationModeLabel && (
+                        {(selectedMediaModelActiveMode?.label ??
+                          selectedMediaModelGenerationModeLabel) && (
                           <Badge
                             variant="outline"
                             className={cn(
                               "ml-2 text-[10px] shrink-0",
-                              selectedMediaModelGenerationModeLabel ===
+                              (selectedMediaModelActiveMode?.label ??
+                                selectedMediaModelGenerationModeLabel) ===
                                 "Video to Video"
                                 ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                                : selectedMediaModelGenerationModeLabel ===
+                                : (selectedMediaModelActiveMode?.label ??
+                                      selectedMediaModelGenerationModeLabel) ===
                                     "Text to Video"
                                   ? "border-sky-300 bg-sky-50 text-sky-700"
                                   : "border-slate-300 bg-slate-50 text-slate-700"
                             )}
                           >
-                            {selectedMediaModelGenerationModeLabel}
+                            {selectedMediaModelActiveMode?.label ??
+                              selectedMediaModelGenerationModeLabel}
                           </Badge>
                         )}
                         {selectedModel &&
@@ -38715,6 +38758,14 @@ export default function MediaStudio() {
                             </Badge>
                           )}
                       </Button>
+                      {selectedMediaModelActiveMode?.notice && (
+                        <p
+                          className="text-[11px] leading-snug text-amber-700 dark:text-amber-400"
+                          data-testid="media-model-mode-notice"
+                        >
+                          {selectedMediaModelActiveMode.notice}
+                        </p>
+                      )}
 	                      <ModelSelectorDialog
 	                        open={showModelDialog}
 	                        onOpenChange={setShowModelDialog}

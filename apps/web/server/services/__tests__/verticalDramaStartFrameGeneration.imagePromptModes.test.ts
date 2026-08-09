@@ -78,13 +78,21 @@ import {
   buildStartFrameShotPromptVisionImages,
   buildDeterministicPolicySafeImagePrompt,
   buildRenderPlanSceneContinuityLockSection,
+  guardStartFramePromptVisibleCast,
   validatePolicySafeSynopsisRewrite,
   type GenerateStartFrameShotPromptParams,
 } from "../verticalDramaStartFrameGeneration";
 import { executeWithFallback } from "../llmRouter";
-import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  calculateCreditsForLLM,
+} from "../creditService";
 import { mediaGenerationLimiter } from "../rateLimiter";
-import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "../skillFiles";
 import { resolveStartFramePlanModel } from "../verticalDramaImproveScript";
 import { loadEnabledLlmModelRows } from "../enabledLlmModels";
 import { selectBestLlmModel } from "../intelligentModelSelector";
@@ -112,7 +120,7 @@ const SKILL_BODY_BY_FOLDER: Record<string, string> = {
 };
 
 function baseShotParams(
-  overrides: Partial<GenerateStartFrameShotPromptParams> = {},
+  overrides: Partial<GenerateStartFrameShotPromptParams> = {}
 ): GenerateStartFrameShotPromptParams {
   return {
     userId: 1,
@@ -132,7 +140,13 @@ function successResponse(payload: unknown) {
   return {
     type: "success" as const,
     response: {
-      choices: [{ message: { content: JSON.stringify(payload) }, index: 0, finish_reason: "stop" }],
+      choices: [
+        {
+          message: { content: JSON.stringify(payload) },
+          index: 0,
+          finish_reason: "stop",
+        },
+      ],
       usage: { prompt_tokens: 100, completion_tokens: 50 },
     },
     providerName: "openai",
@@ -153,8 +167,12 @@ beforeEach(() => {
   mockLoadEnabledLlmModelRows.mockResolvedValue([]);
   mockSelectBestLlmModel.mockReturnValue(null);
 
-  mockResolveSkillDirCandidates.mockImplementation((folderPath: string) => [`/fake/${folderPath}`]);
-  mockResolveSkillManifestPath.mockImplementation((dir: string) => `${dir}/skill.md`);
+  mockResolveSkillDirCandidates.mockImplementation((folderPath: string) => [
+    `/fake/${folderPath}`,
+  ]);
+  mockResolveSkillManifestPath.mockImplementation(
+    (dir: string) => `${dir}/skill.md`
+  );
   mockExistsSync.mockReturnValue(true);
   mockReadFileSync.mockImplementation((filePath: unknown) => {
     const p = String(filePath);
@@ -174,7 +192,9 @@ function systemMessageContent(callIndex = 0): string {
     messages: Array<{ role: string; content: unknown }>;
   };
   const systemMessage = args.messages.find(m => m.role === "system")!.content;
-  return typeof systemMessage === "string" ? systemMessage : JSON.stringify(systemMessage);
+  return typeof systemMessage === "string"
+    ? systemMessage
+    : JSON.stringify(systemMessage);
 }
 
 function userMessageContent(callIndex = 0): string {
@@ -182,7 +202,9 @@ function userMessageContent(callIndex = 0): string {
     messages: Array<{ role: string; content: unknown }>;
   };
   const userMessage = args.messages.find(m => m.role === "user")!.content;
-  return typeof userMessage === "string" ? userMessage : JSON.stringify(userMessage);
+  return typeof userMessage === "string"
+    ? userMessage
+    : JSON.stringify(userMessage);
 }
 
 describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
@@ -191,10 +213,10 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
       successResponse({
         rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
         safety_adjustments: [],
-      }),
+      })
     );
     const result = await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite" })
     );
     expect(systemMessageContent()).toBe("SYNOPSIS_SKILL_BODY");
     expect(result.prompt).toBe("อารียืนอยู่ในห้องประชุม");
@@ -204,17 +226,63 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
 
   it("mode `cinematic_narrative` loads the cinematic skill", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a cinematic prompt", negative_prompt: "no blur" }),
+      successResponse({
+        prompt: "a cinematic prompt",
+        negative_prompt: "no blur",
+      })
     );
     await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative" }),
+      baseShotParams({ imagePromptMode: "cinematic_narrative" })
     );
     expect(systemMessageContent()).toBe("CINEMATIC_SKILL_BODY");
   });
 
+  it("removes unselected roster names from a cinematic final prompt", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse({
+        prompt: "คุณกฤตอ่านข้อความว่า ปรางเข้าโทรแล้ว (ปรางไม่ได้อยู่ในห้อง)",
+        negative_prompt: "",
+      })
+    );
+    const result = await generateStartFrameShotPrompt(
+      baseShotParams({
+        imagePromptMode: "cinematic_narrative",
+        characterReferenceManifest: [
+          { index: 1, name: "คุณกฤต", presence: "scene" },
+        ],
+        excludedVisualCharacterNames: ["ปราง"],
+      })
+    );
+
+    expect(result.prompt).toContain("คุณกฤต");
+    expect(result.prompt).not.toContain("ปราง");
+    expect(result.prompt).not.toContain("ไม่ได้อยู่ในห้อง");
+  });
+
+  it("keeps screen callers out of the physical reference-image manifest", () => {
+    const prompt = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({
+        requiredCharacterRefs: ["char-prang", "char-phoom"],
+        screenCallerCharacterRefs: ["char-krit"],
+        characterReferenceManifest: [
+          { index: 1, name: "ปราง", presence: "scene" },
+          { index: 2, name: "ภูมิ", presence: "scene" },
+        ],
+      })
+    );
+
+    expect(prompt).toContain("screen_caller_character_refs: char-krit");
+    expect(prompt).toContain("do not attach caller portraits");
+    expect(prompt).toContain(
+      "physical_scene_character_refs: char-prang, char-phoom"
+    );
+    expect(prompt).not.toContain("Image 3 = char-krit");
+    expect(prompt).not.toContain("attach each approved portrait");
+  });
+
   it("absent mode loads the legacy skill (byte-identical to every pre-existing caller)", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a legacy prompt", negative_prompt: "no blur" }),
+      successResponse({ prompt: "a legacy prompt", negative_prompt: "no blur" })
     );
     await generateStartFrameShotPrompt(baseShotParams());
     expect(systemMessageContent()).toBe("LEGACY_SKILL_BODY");
@@ -222,17 +290,23 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
 
   it("`referenceFrameMode: true` forces the legacy skill even with a mode set", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a reference-frame prompt", negative_prompt: "no blur" }),
+      successResponse({
+        prompt: "a reference-frame prompt",
+        negative_prompt: "no blur",
+      })
     );
     await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative", referenceFrameMode: true }),
+      baseShotParams({
+        imagePromptMode: "cinematic_narrative",
+        referenceFrameMode: true,
+      })
     );
     expect(systemMessageContent()).toBe("LEGACY_SKILL_BODY");
   });
 
   it("returns no `usedMode`/`frameStamp` when the legacy skill was used (absent mode)", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a legacy prompt", negative_prompt: "no blur" }),
+      successResponse({ prompt: "a legacy prompt", negative_prompt: "no blur" })
     );
     const result = await generateStartFrameShotPrompt(baseShotParams());
     expect(result.usedMode).toBeUndefined();
@@ -241,10 +315,16 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
 
   it("returns no `usedMode`/`frameStamp` when `referenceFrameMode` forced legacy despite a mode being set", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a reference-frame prompt", negative_prompt: "no blur" }),
+      successResponse({
+        prompt: "a reference-frame prompt",
+        negative_prompt: "no blur",
+      })
     );
     const result = await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite", referenceFrameMode: true }),
+      baseShotParams({
+        imagePromptMode: "policy_safe_rewrite",
+        referenceFrameMode: true,
+      })
     );
     expect(result.usedMode).toBeUndefined();
     expect(result.frameStamp).toBeUndefined();
@@ -252,7 +332,10 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
 
   it("returns a `frameStamp` recording mode/resolvedFrom/family/modelId when a mode was actually used", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a cinematic prompt", negative_prompt: "no blur" }),
+      successResponse({
+        prompt: "a cinematic prompt",
+        negative_prompt: "no blur",
+      })
     );
     const result = await generateStartFrameShotPrompt(
       baseShotParams({
@@ -260,7 +343,7 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
         imagePromptModeResolvedFrom: "auto",
         imageModelFamily: "other",
         imageModelId: "google-nano-banana-pro",
-      }),
+      })
     );
     expect(result.usedMode).toBe("cinematic_narrative");
     expect(result.frameStamp).toMatchObject({
@@ -276,77 +359,107 @@ describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
 describe("policy-safe synopsis deterministic contract", () => {
   it("accepts a policy-safe prompt above 3800 within the selected model budget", async () => {
     const synopsis = "x".repeat(4001);
-    mockExecute.mockResolvedValue(successResponse({
-      rewritten_synopsis: synopsis,
-      safety_adjustments: [],
-    }));
+    mockExecute.mockResolvedValue(
+      successResponse({
+        rewritten_synopsis: synopsis,
+        safety_adjustments: [],
+      })
+    );
 
-    const result = await generateStartFrameShotPrompt(baseShotParams({
-      imagePromptMode: "policy_safe_rewrite",
-      canonicalShotSummary: synopsis,
-      imagePromptMaxChars: 20_000,
-    }));
+    const result = await generateStartFrameShotPrompt(
+      baseShotParams({
+        imagePromptMode: "policy_safe_rewrite",
+        canonicalShotSummary: synopsis,
+        imagePromptMaxChars: 20_000,
+      })
+    );
 
     expect(result.prompt).toBe(synopsis);
   });
 
   it("keeps the legacy 3800 policy-safe limit when no model budget is supplied", async () => {
     const synopsis = "x".repeat(4001);
-    mockExecute.mockResolvedValue(successResponse({
-      rewritten_synopsis: synopsis,
-      safety_adjustments: [],
-    }));
+    mockExecute.mockResolvedValue(
+      successResponse({
+        rewritten_synopsis: synopsis,
+        safety_adjustments: [],
+      })
+    );
 
-    await expect(generateStartFrameShotPrompt(baseShotParams({
-      imagePromptMode: "policy_safe_rewrite",
-      canonicalShotSummary: synopsis,
-    }))).rejects.toThrow("exceeds 3800 characters");
+    await expect(
+      generateStartFrameShotPrompt(
+        baseShotParams({
+          imagePromptMode: "policy_safe_rewrite",
+          canonicalShotSummary: synopsis,
+        })
+      )
+    ).rejects.toThrow("exceeds 3800 characters");
   });
 
   it("reports the effective policy-safe budget in an over-limit error", async () => {
     const synopsis = "x".repeat(20_001);
-    mockExecute.mockResolvedValue(successResponse({
-      rewritten_synopsis: synopsis,
-      safety_adjustments: [],
-    }));
+    mockExecute.mockResolvedValue(
+      successResponse({
+        rewritten_synopsis: synopsis,
+        safety_adjustments: [],
+      })
+    );
 
-    await expect(generateStartFrameShotPrompt(baseShotParams({
-      imagePromptMode: "policy_safe_rewrite",
-      canonicalShotSummary: synopsis,
-      imagePromptMaxChars: 20_000,
-    }))).rejects.toThrow("exceeds 20000 characters");
+    await expect(
+      generateStartFrameShotPrompt(
+        baseShotParams({
+          imagePromptMode: "policy_safe_rewrite",
+          canonicalShotSummary: synopsis,
+          imagePromptMaxChars: 20_000,
+        })
+      )
+    ).rejects.toThrow("exceeds 20000 characters");
   });
 
-  it("builds only REFERENCE MAPPING plus the rewritten synopsis", () => {
-    expect(buildDeterministicPolicySafeImagePrompt({
-      rewrittenSynopsis: "ภูมิยืนคุยกับปราง",
-      characterReferenceManifest: [{ index: 1, name: "ภูมิ" }, { index: 2, name: "ปราง" }],
-      locationReferenceImage: { url: "https://cdn/roof.png", label: "ดาดฟ้าตึกแถวเก่า" },
-    })).toBe(
-      "REFERENCE MAPPING: Image 1 = ภูมิ; Image 2 = ปราง; Image 3 = location: ดาดฟ้าตึกแถวเก่า.\nภูมิยืนคุยกับปราง",
+  it("builds reference mapping, an exact physical cast lock, and the rewritten synopsis", () => {
+    expect(
+      buildDeterministicPolicySafeImagePrompt({
+        rewrittenSynopsis: "ภูมิยืนคุยกับปราง",
+        characterReferenceManifest: [
+          { index: 1, name: "ภูมิ" },
+          { index: 2, name: "ปราง" },
+        ],
+        locationReferenceImage: {
+          url: "https://cdn/roof.png",
+          label: "ดาดฟ้าตึกแถวเก่า",
+        },
+      })
+    ).toBe(
+      "REFERENCE MAPPING: Image 1 = ภูมิ; Image 2 = ปราง; Image 3 = location: ดาดฟ้าตึกแถวเก่า.\nPHYSICAL CAST LOCK (MANDATORY): exactly 2 physical scene characters — ภูมิ, ปราง. Do not add any other named or unnamed person, background extra, staff member, reflection, or duplicate body.\nภูมิยืนคุยกับปราง"
     );
   });
 
   it("rejects an undeclared creative addition", () => {
-    expect(() => validatePolicySafeSynopsisRewrite("ภูมิยืนคุยกับปราง", {
-      rewritten_synopsis: "ภูมิยืนคุยกับปรางใต้แสงฝน",
-      safety_adjustments: [],
-    })).toThrow("undeclared addition");
+    expect(() =>
+      validatePolicySafeSynopsisRewrite("ภูมิยืนคุยกับปราง", {
+        rewritten_synopsis: "ภูมิยืนคุยกับปรางใต้แสงฝน",
+        safety_adjustments: [],
+      })
+    ).toThrow("undeclared addition");
   });
 
   it("retries once when the skill adds undeclared cinematic detail", async () => {
     mockExecute
-      .mockResolvedValueOnce(successResponse({
-        rewritten_synopsis: "อารียืนอยู่ในห้องประชุมใต้แสงนุ่ม",
-        safety_adjustments: [],
-      }))
-      .mockResolvedValueOnce(successResponse({
-        rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
-        safety_adjustments: [],
-      }));
+      .mockResolvedValueOnce(
+        successResponse({
+          rewritten_synopsis: "อารียืนอยู่ในห้องประชุมใต้แสงนุ่ม",
+          safety_adjustments: [],
+        })
+      )
+      .mockResolvedValueOnce(
+        successResponse({
+          rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
+          safety_adjustments: [],
+        })
+      );
 
     const result = await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite" })
     );
 
     expect(result.prompt).toBe("อารียืนอยู่ในห้องประชุม");
@@ -359,11 +472,13 @@ describe("policy-safe synopsis deterministic contract", () => {
     const invalidModelOutput = {
       rewritten_synopsis:
         "ถังเหล็กเก่ากระแทกขอบบ่อ พิมพ์ดาวเห็นห่อผ้าชุ่มน้ำด้านใน เธอรีบคว้าไว้ก่อนที่หลวงราชเดชาจะเอื้อมถึง เป็นการแย่งชิงหลักฐานกันในระยะประชิด",
-      safety_adjustments: [{
-        original: "ช่วงชิง",
-        rewritten: "แย่งชิง",
-        reason: "violence",
-      }],
+      safety_adjustments: [
+        {
+          original: "ช่วงชิง",
+          rewritten: "แย่งชิง",
+          reason: "violence",
+        },
+      ],
     };
     mockExecute
       .mockResolvedValueOnce(successResponse(invalidModelOutput))
@@ -373,11 +488,11 @@ describe("policy-safe synopsis deterministic contract", () => {
       baseShotParams({
         imagePromptMode: "policy_safe_rewrite",
         canonicalShotSummary: canonicalSynopsis,
-      }),
+      })
     );
 
     expect(result.prompt).toBe(
-      "ถังเหล็กเก่ากระแทกขอบบ่อ พิมพ์ดาวเห็นห่อผ้าชุ่มน้ำด้านใน เธอรีบคว้าไว้ก่อนที่หลวงราชเดชาจะเอื้อมถึง เป็นแย่งชิงหลักฐานกันในระยะประชิด",
+      "ถังเหล็กเก่ากระแทกขอบบ่อ พิมพ์ดาวเห็นห่อผ้าชุ่มน้ำด้านใน เธอรีบคว้าไว้ก่อนที่หลวงราชเดชาจะเอื้อมถึง เป็นแย่งชิงหลักฐานกันในระยะประชิด"
     );
     expect(result.safetyAdjustments).toEqual(["ช่วงชิง → แย่งชิง"]);
     expect(mockExecute).toHaveBeenCalledTimes(2);
@@ -386,11 +501,13 @@ describe("policy-safe synopsis deterministic contract", () => {
   it("still fails closed when the retry declares an invalid replacement target", async () => {
     const invalidModelOutput = {
       rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
-      safety_adjustments: [{
-        original: "คำที่ไม่มีอยู่ในต้นฉบับ",
-        rewritten: "คำใหม่",
-        reason: "violence",
-      }],
+      safety_adjustments: [
+        {
+          original: "คำที่ไม่มีอยู่ในต้นฉบับ",
+          rewritten: "คำใหม่",
+          reason: "violence",
+        },
+      ],
     };
     mockExecute
       .mockResolvedValueOnce(successResponse(invalidModelOutput))
@@ -398,8 +515,8 @@ describe("policy-safe synopsis deterministic contract", () => {
 
     await expect(
       generateStartFrameShotPrompt(
-        baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
-      ),
+        baseShotParams({ imagePromptMode: "policy_safe_rewrite" })
+      )
     ).rejects.toThrow("adjustment target must occur exactly once");
   });
 });
@@ -409,15 +526,17 @@ describe("generateStartFrameShotPrompt — lenient extras parsed and normalized 
     mockExecute.mockResolvedValue(
       successResponse({
         rewritten_synopsis: "อารียืนอยู่ในห้องประชุมอย่างสมัครใจ",
-        safety_adjustments: [{
-          original: "อารียืนอยู่ในห้องประชุม",
-          rewritten: "อารียืนอยู่ในห้องประชุมอย่างสมัครใจ",
-          reason: "adult_or_consent",
-        }],
-      }),
+        safety_adjustments: [
+          {
+            original: "อารียืนอยู่ในห้องประชุม",
+            rewritten: "อารียืนอยู่ในห้องประชุมอย่างสมัครใจ",
+            reason: "adult_or_consent",
+          },
+        ],
+      })
     );
     const result = await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite" })
     );
     expect(result.safetyAdjustments).toEqual([
       "อารียืนอยู่ในห้องประชุม → อารียืนอยู่ในห้องประชุมอย่างสมัครใจ",
@@ -438,10 +557,10 @@ describe("generateStartFrameShotPrompt — lenient extras parsed and normalized 
         },
         quality_score: 9,
         quality_flags: ["  too_many_emotions  ", ""],
-      }),
+      })
     );
     const result = await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative" }),
+      baseShotParams({ imagePromptMode: "cinematic_narrative" })
     );
     expect(result.promptAnalysis).toEqual({
       storyMeaning: "an accidental closeness",
@@ -462,19 +581,20 @@ describe("generateStartFrameShotPrompt — lenient extras parsed and normalized 
         // quality_score as a string instead of a number.
         analysis_summary: "not an object",
         quality_score: "9",
-      }),
+      })
     );
     const result = await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative" }),
+      baseShotParams({ imagePromptMode: "cinematic_narrative" })
     );
-    expect(result.prompt).toBe("a cinematic prompt");
+    expect(result.prompt).toContain("a cinematic prompt");
+    expect(result.prompt).not.toContain("no blur");
     expect(result.negativePrompt).toBe("no blur");
     expect(result.promptAnalysis).toBeUndefined();
   });
 
   it("returns no safetyAdjustments/promptAnalysis when the mode returned neither", async () => {
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a legacy prompt", negative_prompt: "no blur" }),
+      successResponse({ prompt: "a legacy prompt", negative_prompt: "no blur" })
     );
     const result = await generateStartFrameShotPrompt(baseShotParams());
     expect(result.safetyAdjustments).toBeUndefined();
@@ -486,18 +606,27 @@ describe("generateStartFrameShotPrompt — mode 2 vision resolution (D3: image-g
   it("resolves a vision-capable model when mode 2 has portraits/location but no existing shot imageUrl", async () => {
     mockLoadEnabledLlmModelRows.mockResolvedValue([
       { modelId: "configured-model", supportsVision: false } as any,
-      { modelId: "vision-model", supportsVision: true, supportsStructuredOutputs: true } as any,
+      {
+        modelId: "vision-model",
+        supportsVision: true,
+        supportsStructuredOutputs: true,
+      } as any,
     ]);
     mockSelectBestLlmModel.mockReturnValue("vision-model");
     mockExecute.mockResolvedValue(
-      successResponse({ prompt: "a cinematic prompt", negative_prompt: "no blur" }),
+      successResponse({
+        prompt: "a cinematic prompt",
+        negative_prompt: "no blur",
+      })
     );
 
     const result = await generateStartFrameShotPrompt(
       baseShotParams({
         imagePromptMode: "cinematic_narrative",
-        characterReferenceImages: [{ url: "https://cdn/hero.png", label: "Hero" }],
-      }),
+        characterReferenceImages: [
+          { url: "https://cdn/hero.png", label: "Hero" },
+        ],
+      })
     );
 
     expect(result.usedVision).toBe(true);
@@ -509,10 +638,10 @@ describe("generateStartFrameShotPrompt — mode 2 vision resolution (D3: image-g
       successResponse({
         rewritten_synopsis: "อารียืนอยู่ในห้องประชุม",
         safety_adjustments: [],
-      }),
+      })
     );
     const result = await generateStartFrameShotPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite" })
     );
     expect(result.usedVision).toBe(false);
     expect(mockLoadEnabledLlmModelRows).not.toHaveBeenCalled();
@@ -522,55 +651,168 @@ describe("generateStartFrameShotPrompt — mode 2 vision resolution (D3: image-g
 describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", () => {
   it("injects a non-blank scene lock after location facts and treats blank as absent", () => {
     const block = "SCENE CONTINUITY LOCK\nLIGHTING STATE: late afternoon";
-    const without = buildStartFrameShotPromptUserPrompt(baseShotParams({
-      location: { name: "Cafe", description: "small cafe", hasReferenceImage: false },
-      speakingOrder: ["Aria"],
-    }));
-    const withLock = buildStartFrameShotPromptUserPrompt(baseShotParams({
-      location: { name: "Cafe", description: "small cafe", hasReferenceImage: false },
-      speakingOrder: ["Aria"],
-      sceneContinuityLockBlock: block,
-    }));
+    const without = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({
+        location: {
+          name: "Cafe",
+          description: "small cafe",
+          hasReferenceImage: false,
+        },
+        speakingOrder: ["Aria"],
+      })
+    );
+    const withLock = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({
+        location: {
+          name: "Cafe",
+          description: "small cafe",
+          hasReferenceImage: false,
+        },
+        speakingOrder: ["Aria"],
+        sceneContinuityLockBlock: block,
+      })
+    );
     expect(withLock).toContain(block);
-    expect(withLock.indexOf(block)).toBeGreaterThan(withLock.indexOf("location:"));
-    expect(withLock.indexOf(block)).toBeLessThan(withLock.indexOf("speaking_order:"));
-    expect(buildStartFrameShotPromptUserPrompt(baseShotParams({
-      sceneContinuityLockBlock: "   ",
-    }))).toBe(buildStartFrameShotPromptUserPrompt(baseShotParams()));
+    expect(withLock.indexOf(block)).toBeGreaterThan(
+      withLock.indexOf("location:")
+    );
+    expect(withLock.indexOf(block)).toBeLessThan(
+      withLock.indexOf("speaking_order:")
+    );
+    expect(
+      buildStartFrameShotPromptUserPrompt(
+        baseShotParams({
+          sceneContinuityLockBlock: "   ",
+        })
+      )
+    ).toBe(buildStartFrameShotPromptUserPrompt(baseShotParams()));
     expect(withLock.replace(`${block}\n`, "")).toBe(without);
   });
 
   it("deduplicates render-plan lock blocks and groups shots deterministically", () => {
     const a = "SCENE CONTINUITY LOCK\nLIGHTING STATE: day";
     const b = "SCENE CONTINUITY LOCK\nLIGHTING STATE: night";
-    expect(buildRenderPlanSceneContinuityLockSection([
-      { shotNumber: 4, sceneContinuityLockBlock: b },
-      { shotNumber: 2, sceneContinuityLockBlock: a },
-      { shotNumber: 1, sceneContinuityLockBlock: a },
-      { shotNumber: 3, sceneContinuityLockBlock: a },
-      { shotNumber: 5, sceneContinuityLockBlock: b },
-    ])).toBe([
-      "SCENE CONTINUITY LOCKS (one block per scene; each applies to the shots listed with it):",
-      `Shots 1, 2, 3:\n${a}`,
-      `Shots 4, 5:\n${b}`,
-    ].join("\n\n"));
-    expect(buildRenderPlanSceneContinuityLockSection([{ shotNumber: 1, sceneContinuityLockBlock: " " }])).toBeNull();
+    expect(
+      buildRenderPlanSceneContinuityLockSection([
+        { shotNumber: 4, sceneContinuityLockBlock: b },
+        { shotNumber: 2, sceneContinuityLockBlock: a },
+        { shotNumber: 1, sceneContinuityLockBlock: a },
+        { shotNumber: 3, sceneContinuityLockBlock: a },
+        { shotNumber: 5, sceneContinuityLockBlock: b },
+      ])
+    ).toBe(
+      [
+        "SCENE CONTINUITY LOCKS (one block per scene; each applies to the shots listed with it):",
+        `Shots 1, 2, 3:\n${a}`,
+        `Shots 4, 5:\n${b}`,
+      ].join("\n\n")
+    );
+    expect(
+      buildRenderPlanSceneContinuityLockSection([
+        { shotNumber: 1, sceneContinuityLockBlock: " " },
+      ])
+    ).toBeNull();
   });
 
   it("places policy-safe lock text between mapping and synopsis", () => {
     const block = "SCENE CONTINUITY LOCK\nFIXED ELEMENTS: bar counter";
-    expect(buildDeterministicPolicySafeImagePrompt({
-      rewrittenSynopsis: "อารียืนในคาเฟ่",
-      characterReferenceManifest: [{ index: 1, name: "อาเรีย" }],
-      sceneContinuityLockBlock: block,
-    })).toBe(`REFERENCE MAPPING: Image 1 = อาเรีย.\n${block}\nอารียืนในคาเฟ่`);
+    expect(
+      buildDeterministicPolicySafeImagePrompt({
+        rewrittenSynopsis: "อารียืนในคาเฟ่",
+        characterReferenceManifest: [{ index: 1, name: "อาเรีย" }],
+        sceneContinuityLockBlock: block,
+      })
+    ).toBe(
+      `REFERENCE MAPPING: Image 1 = อาเรีย.\nPHYSICAL CAST LOCK (MANDATORY): exactly 1 physical scene character — อาเรีย. Do not add any other named or unnamed person, background extra, staff member, reflection, or duplicate body.\n${block}\nอารียืนในคาเฟ่`
+    );
+  });
+
+  it("removes scene-wide cast staging while preserving environment continuity", () => {
+    const contaminatedBlock = [
+      "SCENE CONTINUITY LOCK",
+      "- Lighting: daytime, soft ambient key",
+      "- Fixed elements: cafe counter, menu board",
+      "- Spatial layout: ไอริน at the counter; ปราง beside the entrance",
+      "- Staging axis: ภาคิน faces ไอริน while ภูมิ waits behind them",
+      "- Wardrobe: ปราง wears a black blazer; ภูมิ wears a green shirt",
+      "- Active props: phone and coffee cup",
+      "- Palette: warm wood and cream",
+    ].join("\n");
+
+    const prompt = buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis: "ไอรินคุยกับภาคินที่โต๊ะในคาเฟ่",
+      characterReferenceManifest: [
+        { index: 1, name: "ไอริน", presence: "scene" },
+        { index: 2, name: "ภาคิน", presence: "scene" },
+      ],
+      sceneContinuityLockBlock: contaminatedBlock,
+    });
+
+    expect(prompt).toContain(
+      "exactly 2 physical scene characters — ไอริน, ภาคิน"
+    );
+    expect(prompt).toContain("Lighting: daytime, soft ambient key");
+    expect(prompt).toContain("Fixed elements: cafe counter, menu board");
+    expect(prompt).toContain("Active props: phone and coffee cup");
+    expect(prompt).toContain("Palette: warm wood and cream");
+    expect(prompt).not.toContain("ปราง");
+    expect(prompt).not.toContain("ภูมิ");
+    expect(prompt).not.toContain("Spatial layout:");
+    expect(prompt).not.toContain("Staging axis:");
+    expect(prompt).not.toContain("Wardrobe:");
+
+    const normalModePrompt = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({ sceneContinuityLockBlock: contaminatedBlock })
+    );
+    expect(normalModePrompt).toContain("Lighting: daytime, soft ambient key");
+    expect(normalModePrompt).not.toContain("ปราง");
+    expect(normalModePrompt).not.toContain("ภูมิ");
+
+    const batchLockSection = buildRenderPlanSceneContinuityLockSection([
+      { shotNumber: 8, sceneContinuityLockBlock: contaminatedBlock },
+    ]);
+    expect(batchLockSection).toContain("Lighting: daytime, soft ambient key");
+    expect(batchLockSection).not.toContain("ปราง");
+    expect(batchLockSection).not.toContain("ภูมิ");
+  });
+
+  it("removes a roster character who is mentioned but not selected for the shot", () => {
+    const prompt = buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis:
+        "ที่สำนักงานชั่วคราว คุณกฤตกดอ่านข้อความว่า ปรางเข้าโทรแล้ว (ปรางไม่ได้อยู่ในห้องแต่พูดถึงเท่านั้น) เขาชะงักก่อนหยิบกุญแจรถ",
+      characterReferenceManifest: [
+        { index: 1, name: "คุณกฤต", presence: "scene" },
+      ],
+      excludedVisualCharacterNames: ["ปราง"],
+    } as Parameters<typeof buildDeterministicPolicySafeImagePrompt>[0]);
+
+    expect(prompt).toContain("คุณกฤต");
+    expect(prompt).toContain("exactly 1 physical scene character");
+    expect(prompt).not.toContain("ปราง");
+    expect(prompt).not.toContain("ไม่ได้อยู่ในห้องแต่พูดถึงเท่านั้น");
+  });
+
+  it("protects an allowed name that contains a shorter excluded name", () => {
+    expect(
+      guardStartFramePromptVisibleCast({
+        prompt: "ไอรินยืนอ่านรายงาน ส่วนรินถูกพูดถึงในข้อความ",
+        allowedCharacterNames: ["ไอริน"],
+        excludedCharacterNames: ["ริน"],
+      })
+    ).toBe("ไอรินยืนอ่านรายงาน ส่วนถูกพูดถึงในข้อความ");
   });
 
   it("emits TARGET IMAGE MODEL whenever the family is known, regardless of mode", () => {
     const prompt = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imageModelFamily: "gpt", imageModelName: "GPT Image", imageModelId: "gpt-image-1.5-all" }),
+      baseShotParams({
+        imageModelFamily: "gpt",
+        imageModelName: "GPT Image",
+        imageModelId: "gpt-image-1.5-all",
+      })
     );
-    expect(prompt).toContain('TARGET IMAGE MODEL: family=gpt model="GPT Image (gpt-image-1.5-all)"');
+    expect(prompt).toContain(
+      'TARGET IMAGE MODEL: family=gpt model="GPT Image (gpt-image-1.5-all)"'
+    );
   });
 
   it("omits TARGET IMAGE MODEL entirely when the family is unknown (byte-identical regression guard)", () => {
@@ -586,7 +828,10 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
       cameraGrammar: "restrained still composition",
     };
     const withMode = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative", seriesLookRegister: register }),
+      baseShotParams({
+        imagePromptMode: "cinematic_narrative",
+        seriesLookRegister: register,
+      })
     );
     expect(withMode).toContain("SERIES LOOK REGISTER");
     expect(withMode).toContain('style="Intimate drama"');
@@ -596,33 +841,49 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
     expect(withMode).not.toContain("negative=[");
 
     const legacyNoMode = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ seriesLookRegister: register }),
+      baseShotParams({ seriesLookRegister: register })
     );
     expect(legacyNoMode).not.toContain("SERIES LOOK REGISTER");
   });
 
   it("omits SERIES LOOK REGISTER for a new mode when the register is absent", () => {
     const prompt = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite" })
     );
     expect(prompt).not.toContain("SERIES LOOK REGISTER");
   });
 
   it("emits PRODUCT TIE-IN only for a new mode with an active product tie-in", () => {
-    const productTieIn = { active: true, productName: "Golden Fish Sauce", productDescription: "amber glass bottle" };
+    const productTieIn = {
+      active: true,
+      productName: "Golden Fish Sauce",
+      productDescription: "amber glass bottle",
+    };
     const withMode = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite", productTieIn }),
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite", productTieIn })
     );
-    expect(withMode).toContain('PRODUCT TIE-IN: product_name="Golden Fish Sauce" product_description="amber glass bottle"');
+    expect(withMode).toContain(
+      'PRODUCT TIE-IN: product_name="Golden Fish Sauce" product_description="amber glass bottle"'
+    );
 
-    const legacyNoMode = buildStartFrameShotPromptUserPrompt(baseShotParams({ productTieIn }));
+    const legacyNoMode = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({ productTieIn })
+    );
     expect(legacyNoMode).not.toContain("PRODUCT TIE-IN");
   });
 
   it("never emits PRODUCT TIE-IN when referenceFrameMode forces legacy, even with a mode + active tie-in set", () => {
-    const productTieIn = { active: true, productName: "X", productDescription: "Y" };
+    const productTieIn = {
+      active: true,
+      productName: "X",
+      productDescription: "Y",
+    };
     const prompt = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative", referenceFrameMode: true, productTieIn }),
+      baseShotParams({
+        imagePromptMode: "cinematic_narrative",
+        referenceFrameMode: true,
+        productTieIn,
+      })
     );
     expect(prompt).not.toContain("PRODUCT TIE-IN");
     expect(prompt).not.toContain("SERIES LOOK REGISTER");
@@ -630,12 +891,12 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
 
   it("emits frame_analysis_inputs ONLY for cinematic_narrative mode", () => {
     const cinematic = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imagePromptMode: "cinematic_narrative" }),
+      baseShotParams({ imagePromptMode: "cinematic_narrative" })
     );
     expect(cinematic).toContain("frame_analysis_inputs");
 
     const policySafe = buildStartFrameShotPromptUserPrompt(
-      baseShotParams({ imagePromptMode: "policy_safe_rewrite" }),
+      baseShotParams({ imagePromptMode: "policy_safe_rewrite" })
     );
     expect(policySafe).not.toContain("frame_analysis_inputs");
 
@@ -646,9 +907,10 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
 
 describe("buildStartFrameShotPromptVisionImages — mode-2 vision attachment (c)", () => {
   it("mode 1 / legacy: attaches only the shot's own image + additionalImageUrls, unchanged from today", () => {
-    const images = buildStartFrameShotPromptVisionImages("https://cdn/shot.png", [
-      { url: "https://cdn/extra.png", label: "extra" },
-    ]);
+    const images = buildStartFrameShotPromptVisionImages(
+      "https://cdn/shot.png",
+      [{ url: "https://cdn/extra.png", label: "extra" }]
+    );
     expect(images).toEqual([
       { url: "https://cdn/shot.png" },
       { url: "https://cdn/extra.png", label: "extra" },
@@ -665,7 +927,7 @@ describe("buildStartFrameShotPromptVisionImages — mode-2 vision attachment (c)
           { url: "https://cdn/villain.png", label: "Villain" },
         ],
         locationReferenceImage: { url: "https://cdn/cafe.png", label: "Café" },
-      },
+      }
     );
     expect(images).toEqual([
       { url: "https://cdn/shot.png" },
@@ -678,9 +940,13 @@ describe("buildStartFrameShotPromptVisionImages — mode-2 vision attachment (c)
 
   it("mode 2 labels 'Image 1' for the first portrait even when the shot has NO own current image (no images[0] shift)", () => {
     const images = buildStartFrameShotPromptVisionImages(undefined, undefined, {
-      characterReferenceImages: [{ url: "https://cdn/hero.png", label: "Hero" }],
+      characterReferenceImages: [
+        { url: "https://cdn/hero.png", label: "Hero" },
+      ],
     });
-    expect(images).toEqual([{ url: "https://cdn/hero.png", label: "Image 1 reference: Hero" }]);
+    expect(images).toEqual([
+      { url: "https://cdn/hero.png", label: "Image 1 reference: Hero" },
+    ]);
   });
 
   it("caps portraits at 4 (manifest order preserved) and logs a warning when the shot needs more", () => {

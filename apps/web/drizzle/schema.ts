@@ -20987,6 +20987,15 @@ export const verticalDramaEpisodes = pgTable(
      * (flag-gated on `verticalDramaSeriesTextOverlaySuite`, F131AB).
      */
     textOverlayPlan: jsonb("textOverlayPlan"),
+    /**
+     * Episode cover image state (Vertical Drama episode cover generation).
+     * Nullable/additive JSONB; persisted task, asset, and prompt provenance
+     * are kept separate from Start Frame and compiled-video state. The
+     * hand-authored migration is `manual_vertical_drama_episode_cover_image.sql`
+     * because this table lineage uses manual migrations around the existing
+     * drizzle meta-journal collision.
+     */
+    coverImage: jsonb("coverImage"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -21511,7 +21520,6 @@ export const videoProjects = pgTable(
       () => libraryItems.id,
       { onDelete: "set null" },
     ),
-    videoEditorProjectId: integer("videoEditorProjectId"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),

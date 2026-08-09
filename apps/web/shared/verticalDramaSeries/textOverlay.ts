@@ -107,7 +107,9 @@ export const VD_CARD_DURATION_BOUNDS = {
   max: 5,
   default: 2.5,
 } as const;
-export const VD_TITLE_BUMPER_DURATION_SECONDS = 1.2 as const;
+// Three seconds keeps the opening title readable on a vertical mobile-first
+// video. The opener recap is still queued after this window.
+export const VD_TITLE_BUMPER_DURATION_SECONDS = 3 as const;
 export const VD_CHARACTER_INTRO_DURATION_SECONDS = 2.5 as const;
 /** ">2 การ์ดพร้อมกัน = เตือน" — a THIRD concurrent card triggers the warning. */
 export const VD_CARD_MAX_CONCURRENT = 2 as const;
@@ -556,8 +558,8 @@ export interface VdOverlayWindow {
  * recap)" — both are START-anchored (unlike `endCard`, which is anchored to
  * the (not-yet-known-here) end of the video), so their windows are fully
  * resolvable without a real render duration: the bumper always occupies
- * `[0, 1.2)`; the recap starts right after it (or at `0` when the bumper is
- * disabled).
+ * `[0, VD_TITLE_BUMPER_DURATION_SECONDS)`; the recap starts right after it
+ * (or at `0` when the bumper is disabled).
  */
 export function resolveOpeningSequenceWindows(
   plan: Pick<VdTextOverlayPlan, "titleBumper" | "openerRecap">
@@ -612,6 +614,29 @@ export function resolveWatermarkCornerAutoAvoid(params: {
     ? (params.watermarkPosition.replace("top_", "bottom_") as VdWatermarkPosition)
     : params.watermarkPosition;
   return { position: moved, adjusted: moved !== params.watermarkPosition };
+}
+
+/**
+ * Keep configured watermark positions authoritative. When the episode
+ * indicator would occupy a watermark's top corner, move the indicator to the
+ * other top corner instead of moving the user's watermark. The fallback keeps
+ * the original indicator position when both top corners are occupied, because
+ * the indicator contract only supports the two top corners.
+ */
+export function resolveEpisodeIndicatorCornerAutoAvoid(params: {
+  episodeIndicatorPosition: VdEpisodeIndicatorPosition;
+  watermarkPositions: readonly VdWatermarkPosition[];
+}): { position: VdEpisodeIndicatorPosition; adjusted: boolean } {
+  const current = params.episodeIndicatorPosition;
+  if (!params.watermarkPositions.includes(current)) {
+    return { position: current, adjusted: false };
+  }
+  const alternate: VdEpisodeIndicatorPosition =
+    current === "top_right" ? "top_left" : "top_right";
+  if (params.watermarkPositions.includes(alternate)) {
+    return { position: current, adjusted: false };
+  }
+  return { position: alternate, adjusted: true };
 }
 
 /* -------------------------------------------------------------------------- */

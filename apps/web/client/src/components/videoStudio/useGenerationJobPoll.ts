@@ -9,7 +9,14 @@ import { useEffect, useState } from "react";
 
 import { trpc } from "@/lib/trpc";
 
-export type VideoStudioJobKind = "scene_plan" | "narration" | "quality_review" | "quality_repair";
+export type VideoStudioJobKind =
+  | "scene_plan"
+  | "narration"
+  | "quality_review"
+  | "quality_repair"
+  | "auto_draft"
+  | "content_draft"
+  | "motion";
 
 const POLL_INTERVAL_MS = 2500;
 

@@ -64,6 +64,18 @@ const CLAIM_STATUS_BADGE: Record<ClaimRecord["status"], BadgeVariant> = {
   prohibited: "error",
 };
 
+/** Parallel to `CLAIM_STATUS_BADGE` — Thai/English labels for the same
+ *  closed enum (`ClaimRecord["status"]`), used for both the status Badge
+ *  and the status Selector's options so neither leaks the raw enum value. */
+const CLAIM_STATUS_LABEL: Record<ClaimRecord["status"], { th: string; en: string }> = {
+  approved: { th: "อนุมัติแล้ว", en: "Approved" },
+  needs_review: { th: "รอตรวจสอบ", en: "Needs review" },
+  unsupported: { th: "ไม่มีหลักฐานสนับสนุน", en: "Unsupported" },
+  prohibited: { th: "ต้องห้าม", en: "Prohibited" },
+};
+
+const REMOVE_CLAIM_LABEL = { th: "ลบข้อความอ้างสิทธิ์นี้", en: "Remove claim" };
+
 const SEVERITY_BADGE: Record<"high" | "medium" | "low" | "unknown", BadgeVariant> = {
   high: "error",
   medium: "warning",
@@ -71,7 +83,49 @@ const SEVERITY_BADGE: Record<"high" | "medium" | "low" | "unknown", BadgeVariant
   unknown: "neutral",
 };
 
-function humanizeDimension(key: string): string {
+/** Closed set of repair-stage ids per `skills/video-project-quality-review/
+ *  skill.md` (`repairStage`: `content | narration | scenes | motion |
+ *  captions | claims`). `repairStageOptions` is DERIVED from server output
+ *  though, so an unrecognized id must still render (fallback to the raw
+ *  id) rather than disappear or throw. */
+const REPAIR_STAGE_LABEL: Record<string, { th: string; en: string }> = {
+  content: { th: "เนื้อหา/บท", en: "Content" },
+  narration: { th: "เสียงพากย์", en: "Narration" },
+  scenes: { th: "ฉาก", en: "Scenes" },
+  motion: { th: "โมชัน", en: "Motion" },
+  captions: { th: "ซับไทเทิล", en: "Captions" },
+  claims: { th: "การอ้างสิทธิ์สินค้า", en: "Claims" },
+};
+
+function repairStageLabel(lang: VideoStudioLang, stage: string): string {
+  const known = REPAIR_STAGE_LABEL[stage];
+  return known ? pickCopy(lang, known) : stage;
+}
+
+/** Known scorecard dimension keys per `skills/video-project-quality-review/
+ *  skill.md` §"Scoring, issues, and repair instructions". The scorecard is
+ *  explicitly OPEN-keyed (the skill may introduce new dimensions, and
+ *  `issue.dimension` reuses the same key names) — any key missing from this
+ *  map MUST still render via the English-ish fallback, never dropped. */
+const DIMENSION_LABEL: Record<string, { th: string; en: string }> = {
+  content_accuracy_flow: { th: "ความถูกต้อง/ลำดับของเนื้อหา", en: "Content accuracy & flow" },
+  hook_cta_clarity: { th: "ความชัดเจนของ Hook/CTA", en: "Hook / CTA clarity" },
+  length_fit: { th: "ความยาวเหมาะสม", en: "Length fit" },
+  natural_spoken_language: { th: "ภาษาพูดเป็นธรรมชาติ", en: "Natural spoken language" },
+  product_claim_compliance: { th: "การปฏิบัติตามข้อกำหนดการอ้างสิทธิ์สินค้า", en: "Product claim compliance" },
+  product_fidelity: { th: "ความตรงกับสินค้าจริง", en: "Product fidelity" },
+  visual_narration_match: { th: "ภาพตรงกับคำบรรยาย", en: "Visual-narration match" },
+  scene_variety: { th: "ความหลากหลายของฉาก", en: "Scene variety" },
+  motion_clutter: { th: "ความรกของโมชัน", en: "Motion clutter" },
+  text_overflow_readability: { th: "ข้อความล้น/อ่านง่าย", en: "Text overflow & readability" },
+  safe_area_compliance: { th: "การอยู่ในพื้นที่ปลอดภัย", en: "Safe-area compliance" },
+  technical: { th: "ด้านเทคนิค", en: "Technical" },
+};
+
+function humanizeDimension(lang: VideoStudioLang, key: string): string {
+  const known = DIMENSION_LABEL[key];
+  if (known) return pickCopy(lang, known);
+  // Open-keyed fallback for dimensions the skill introduces later.
   return key.replace(/_/g, " ");
 }
 
@@ -320,7 +374,7 @@ export function QaPanel({
                   key={dimension}
                   value={value}
                   max={10}
-                  label={humanizeDimension(dimension)}
+                  label={humanizeDimension(lang, dimension)}
                   hasValueLabel
                   formatValueLabel={(v) => `${v}/10`}
                   data-testid={`video-studio-qa-dimension-${dimension}`}
@@ -355,7 +409,10 @@ export function QaPanel({
                   </Text>
                   {group.issues.map((issue, index) => (
                     <HStack key={index} gap={2} align="start">
-                      <Badge variant={SEVERITY_BADGE[group.severity]} label={issue.dimension} />
+                      <Badge
+                        variant={SEVERITY_BADGE[group.severity]}
+                        label={humanizeDimension(lang, issue.dimension)}
+                      />
                       {/* Skill-authored, already in document.content.language —
                           rendered VERBATIM, never translated. */}
                       <Text type="body">{issue.message}</Text>
@@ -385,7 +442,7 @@ export function QaPanel({
             {repairStageOptions.map((stage) => (
               <HStack key={stage} gap={2} align="center">
                 <CheckboxInput
-                  label={stage}
+                  label={repairStageLabel(lang, stage)}
                   value={selectedRepairStages.includes(stage)}
                   onChange={(checked) => toggleRepairStage(stage, checked)}
                   data-testid={`video-studio-qa-repair-stage-${stage}`}
@@ -510,12 +567,15 @@ export function QaPanel({
             <Card key={index} variant="muted" padding={3}>
               <VStack gap={2}>
                 <HStack justify="between" align="center" gap={2}>
-                  <Badge variant={CLAIM_STATUS_BADGE[claim.status]} label={claim.status} />
+                  <Badge
+                    variant={CLAIM_STATUS_BADGE[claim.status]}
+                    label={pickCopy(lang, CLAIM_STATUS_LABEL[claim.status])}
+                  />
                   <IconButton
                     variant="ghost"
                     size="sm"
                     icon={<Trash2 className="h-4 w-4" />}
-                    label="remove claim"
+                    label={pickCopy(lang, REMOVE_CLAIM_LABEL)}
                     onClick={() => removeClaim(index)}
                   />
                 </HStack>
@@ -532,7 +592,10 @@ export function QaPanel({
                   />
                   <Selector
                     label={pickCopy(lang, { th: "สถานะ", en: "Status" })}
-                    options={CLAIM_STATUSES}
+                    options={CLAIM_STATUSES.map((status) => ({
+                      value: status,
+                      label: pickCopy(lang, CLAIM_STATUS_LABEL[status]),
+                    }))}
                     value={claim.status}
                     onChange={(value) => updateClaim(index, { status: value as ClaimRecord["status"] })}
                   />

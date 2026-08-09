@@ -16,12 +16,14 @@
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 
+import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack, VStack } from "@astryxdesign/core/Layout";
 import { Selector } from "@astryxdesign/core/Selector";
 import { Switch } from "@astryxdesign/core/Switch";
+import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 
 import { trpc } from "@/lib/trpc";
@@ -40,6 +42,36 @@ const CAPTION_PRESETS: CaptionPresetId[] = [
   "review_bubble",
   "no_subtitle_style",
 ];
+
+/** Thai/English labels for the caption preset Selector — matches how
+ *  MotionPanel/BriefPanel build `{value,label}` Selector options rather
+ *  than passing bare enum ids. Falls back to the raw id for any preset not
+ *  (yet) in this map, mirroring the fallback pattern used for the motion
+ *  template id map. */
+const CAPTION_PRESET_LABEL: Record<CaptionPresetId, { th: string; en: string }> = {
+  classic_box: { th: "กล่องคลาสสิก", en: "Classic box" },
+  minimal_shadow: { th: "เงาแบบมินิมอล", en: "Minimal shadow" },
+  creator_pop: { th: "ป๊อปสไตล์ครีเอเตอร์", en: "Creator pop" },
+  karaoke_word: { th: "คาราโอเกะทีละคำ", en: "Karaoke word" },
+  highlight_bar: { th: "แถบไฮไลต์", en: "Highlight bar" },
+  lower_third: { th: "แถบล่างจอ (Lower third)", en: "Lower third" },
+  cinematic_wide: { th: "ซีนีมาติกจอกว้าง", en: "Cinematic wide" },
+  neon_glow: { th: "เรืองแสงนีออน", en: "Neon glow" },
+  review_bubble: { th: "บับเบิลรีวิว", en: "Review bubble" },
+  no_subtitle_style: { th: "ไม่มีสไตล์ซับไทเทิล", en: "No subtitle style" },
+};
+
+export function captionPresetLabel(lang: VideoStudioLang, presetId: string): string {
+  const known = CAPTION_PRESET_LABEL[presetId as CaptionPresetId];
+  return known ? pickCopy(lang, known) : presetId;
+}
+
+function formatCueTime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
 
 function downloadTextFile(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -76,15 +108,56 @@ export function CaptionsPanel({
     }
   }
 
+  const scenesWithCues = document.scenes.filter((scene) => scene.captionCues.length > 0);
+
   return (
     <VStack gap={4} data-testid="video-studio-captions-panel">
       <Card>
         <VStack gap={3}>
-          <Heading level={4}>{pickCopy(lang, { th: "การตั้งค่าคำบรรยาย", en: "Caption settings" })}</Heading>
+          <Heading level={4}>{pickCopy(lang, videoStudioCopy.captionsCueListTitle)}</Heading>
+
+          {scenesWithCues.length === 0 ? (
+            <Text type="body" color="secondary">
+              {pickCopy(lang, videoStudioCopy.captionsCueListEmpty)}
+            </Text>
+          ) : (
+            <VStack gap={2} data-testid="captions-cue-list">
+              {scenesWithCues.map((scene) => (
+                <Card key={scene.sceneId} variant="muted" padding={2}>
+                  <VStack gap={1.5}>
+                    <HStack justify="between" align="center">
+                      <Text type="body" weight="medium">
+                        {scene.sceneId}
+                      </Text>
+                      <Badge variant="neutral" label={String(scene.captionCues.length)} />
+                    </HStack>
+                    {scene.captionCues.map((cue, index) => (
+                      <div
+                        key={`${scene.sceneId}-${index}`}
+                        data-testid="captions-cue-item"
+                        className="flex items-start justify-between gap-2 text-sm"
+                      >
+                        <Text type="body">{cue.text}</Text>
+                        <Text type="body" color="secondary" className="whitespace-nowrap font-mono text-xs">
+                          {formatCueTime(cue.startMs)}–{formatCueTime(cue.endMs)}
+                        </Text>
+                      </div>
+                    ))}
+                  </VStack>
+                </Card>
+              ))}
+            </VStack>
+          )}
+        </VStack>
+      </Card>
+
+      <Card>
+        <VStack gap={3}>
+          <Heading level={4}>{pickCopy(lang, videoStudioCopy.captionsStyleExportTitle)}</Heading>
 
           <Selector
             label={pickCopy(lang, { th: "รูปแบบคำบรรยาย", en: "Caption preset" })}
-            options={CAPTION_PRESETS}
+            options={CAPTION_PRESETS.map((id) => ({ value: id, label: captionPresetLabel(lang, id) }))}
             value={document.captions.presetId}
             onChange={(value) =>
               onChange({

@@ -55,7 +55,10 @@ import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
 } from "../skillFiles";
-import { InsufficientCreditsError, VdSchemaValidationError } from "../verticalDramaStoryBible";
+import {
+  InsufficientCreditsError,
+  VdSchemaValidationError,
+} from "../verticalDramaStoryBible";
 import { resolveStoryboardModel } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
@@ -158,7 +161,11 @@ function truncatedResponse() {
     type: "success" as const,
     response: {
       choices: [
-        { message: { content: full.slice(0, cutIndex) }, index: 0, finish_reason: "length" },
+        {
+          message: { content: full.slice(0, cutIndex) },
+          index: 0,
+          finish_reason: "length",
+        },
       ],
       usage: { prompt_tokens: 200, completion_tokens: 8000 },
     },
@@ -207,22 +214,42 @@ describe("generateStoryboardShotgrid", () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
 
-    await generateStoryboardShotgrid(baseParams({
-      seriesLookRegister: {
-        styleName: "Intimate drama",
-        palette: ["warm cream", "muted navy", "soft rose"],
-        lighting: "soft window light",
-        cameraGrammar: "restrained still composition",
-      },
-    }));
+    await generateStoryboardShotgrid(
+      baseParams({
+        seriesLookRegister: {
+          styleName: "Intimate drama",
+          palette: ["warm cream", "muted navy", "soft rose"],
+          lighting: "soft window light",
+          cameraGrammar: "restrained still composition",
+        },
+      })
+    );
 
     const userMessage = mockExecute.mock.calls[0][0].messages.find(
-      (message: any) => message.role === "user",
+      (message: any) => message.role === "user"
     );
     expect(userMessage?.content).toContain("SERIES LOOK LOCK ACTIVE");
     expect(userMessage?.content).toContain('style="Intimate drama"');
     expect(userMessage?.content).not.toContain("positiveFragments");
     expect(userMessage?.content).not.toContain("negativeFragments");
+  });
+
+  it("asks the planner to classify generalized Dual View without treating every phone caller as two locations", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStoryboardShotgrid(baseParams());
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user"
+    )?.content as string;
+
+    expect(userMessage).toContain("DUAL VIEW DETECTION");
+    expect(userMessage).toContain("physical_barrier");
+    expect(userMessage).toContain("remote_call");
+    expect(userMessage).toContain("separate_locations");
+    expect(userMessage).toContain(
+      "An ordinary caller shown only on a phone screen is NOT dual view"
+    );
   });
 
   it("adds identity-safe drafting guidance only when motion contracts are enabled", async () => {
@@ -231,17 +258,20 @@ describe("generateStoryboardShotgrid", () => {
 
     await generateStoryboardShotgrid(baseParams());
     const without = mockExecute.mock.calls[0][0].messages.find(
-      (message: any) => message.role === "user",
+      (message: any) => message.role === "user"
     )?.content as string;
 
     mockExecute.mockClear();
-    await generateStoryboardShotgrid(baseParams({
-      opts: { motionContractsEnabled: true },
-    }));
+    await generateStoryboardShotgrid(
+      baseParams({
+        opts: { motionContractsEnabled: true },
+      })
+    );
     const withFlag = mockExecute.mock.calls[0][0].messages.find(
-      (message: any) => message.role === "user",
+      (message: any) => message.role === "user"
     )?.content as string;
-    const line = '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.';
+    const line =
+      '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.';
 
     expect(without).not.toContain(line);
     expect(withFlag).toContain(line);
@@ -453,16 +483,18 @@ describe("generateStoryboardShotgrid", () => {
     expect(result.storyboard.shots).toHaveLength(9);
     expect(mockExecute).toHaveBeenCalledTimes(2);
     // Same model both times — never auto-switches models on retry.
-    expect(mockExecute.mock.calls[0][0].model).toBe(mockExecute.mock.calls[1][0].model);
+    expect(mockExecute.mock.calls[0][0].model).toBe(
+      mockExecute.mock.calls[1][0].model
+    );
     // Retry uses a higher/no-lower token ceiling than the first attempt.
     expect(mockExecute.mock.calls[1][0].maxTokens).toBeGreaterThanOrEqual(
-      mockExecute.mock.calls[0][0].maxTokens,
+      mockExecute.mock.calls[0][0].maxTokens
     );
     // First attempt already uses the raised 16000 base ceiling (not the old 8000).
     expect(mockExecute.mock.calls[0][0].maxTokens).toBe(16000);
     // Retry's user prompt carries the stricter no-truncation instruction.
     const retryUserMessage = mockExecute.mock.calls[1][0].messages.find(
-      (m: { role: string }) => m.role === "user",
+      (m: { role: string }) => m.role === "user"
     );
     expect(retryUserMessage.content).toMatch(/complete, valid, compact JSON/i);
     // Credits are only deducted once (for the successful retry), not twice.
@@ -477,7 +509,7 @@ describe("generateStoryboardShotgrid", () => {
       .mockResolvedValueOnce(truncatedResponse());
 
     await expect(generateStoryboardShotgrid(baseParams())).rejects.toThrow(
-      VdSchemaValidationError,
+      VdSchemaValidationError
     );
 
     // 1 initial + VD_SCHEMA_MAX_RETRIES (2) corrective retries
@@ -504,13 +536,19 @@ describe("generateStoryboardShotgrid", () => {
       await generateStoryboardShotgrid(
         baseParams({
           characters: [
-            { characterId: "char-1", name: "Alice", role: "lead", variants: undefined },
+            {
+              characterId: "char-1",
+              name: "Alice",
+              role: "lead",
+              variants: undefined,
+            },
           ],
         })
       );
-      const withUndefinedVariantsPrompt = mockExecute.mock.calls[0][0].messages.find(
-        (m: { role: string }) => m.role === "user"
-      ).content;
+      const withUndefinedVariantsPrompt =
+        mockExecute.mock.calls[0][0].messages.find(
+          (m: { role: string }) => m.role === "user"
+        ).content;
 
       expect(withUndefinedVariantsPrompt).toBe(withoutVariantsPrompt);
       expect(withoutVariantsPrompt).not.toMatch(/Variants available/);
@@ -651,6 +689,43 @@ describe("generateStoryboardShotgrid", () => {
       expect(result.storyboard.shots[0].characters).toEqual(["char-1"]);
     });
 
+    it("does not promote a phone-screen caller into the physical shot cast", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({
+          ...validOutput(),
+          shots: [
+            {
+              ...validShot(1),
+              visual_description:
+                "กฤตโทรเข้ามือถือภาคิน แต่กฤตไม่ได้อยู่ในห้องเดียวกับภาคินและไอริณ แสดงภาพกฤตบนหน้าจอโทรศัพท์มือถือ",
+              characters: ["char-1", "char-krit"],
+              required_character_refs: ["char-1", "char-krit"],
+              screen_caller_refs: ["char-krit"],
+            },
+            ...Array.from({ length: 8 }, (_, i) => validShot(i + 2)),
+          ],
+        })
+      );
+
+      const result = await generateStoryboardShotgrid(
+        baseParams({
+          characters: [
+            { characterId: "char-1", name: "ภาคิน", role: "lead" },
+            { characterId: "char-krit", name: "กฤต", role: "support" },
+          ],
+        })
+      );
+
+      expect(result.storyboard.shots[0].characters).toEqual(["char-1"]);
+      expect(result.storyboard.shots[0].required_character_refs).toEqual([
+        "char-1",
+      ]);
+      expect(result.storyboard.shots[0].screen_caller_refs).toEqual([
+        "char-krit",
+      ]);
+    });
+
     it("renders no twin-pair lines and produces a byte-identical prompt for a call with no twinPairs", async () => {
       mockHasEnoughCredits.mockResolvedValue(true);
       mockExecute.mockResolvedValue(successResponse(validOutput()));
@@ -663,9 +738,10 @@ describe("generateStoryboardShotgrid", () => {
       mockExecute.mockClear();
       mockExecute.mockResolvedValue(successResponse(validOutput()));
       await generateStoryboardShotgrid(baseParams({ twinPairs: undefined }));
-      const withUndefinedTwinPairsPrompt = mockExecute.mock.calls[0][0].messages.find(
-        (m: { role: string }) => m.role === "user"
-      ).content;
+      const withUndefinedTwinPairsPrompt =
+        mockExecute.mock.calls[0][0].messages.find(
+          (m: { role: string }) => m.role === "user"
+        ).content;
 
       expect(withUndefinedTwinPairsPrompt).toBe(withoutTwinPairsPrompt);
       expect(withoutTwinPairsPrompt).not.toMatch(/Twin pairs/);
@@ -678,14 +754,18 @@ describe("generateStoryboardShotgrid", () => {
 
       await generateStoryboardShotgrid(
         baseParams({
-          twinPairs: [{ characterKeyA: "char-fai", characterKeyB: "char-baitong" }],
+          twinPairs: [
+            { characterKeyA: "char-fai", characterKeyB: "char-baitong" },
+          ],
         })
       );
 
       const userMessage = mockExecute.mock.calls[0][0].messages.find(
         (m: { role: string }) => m.role === "user"
       ).content;
-      expect(userMessage).toMatch(/Twin pairs \(see "Twin-aware shot styling" below\):/);
+      expect(userMessage).toMatch(
+        /Twin pairs \(see "Twin-aware shot styling" below\):/
+      );
       expect(userMessage).toMatch(
         /char-fai and char-baitong are twins — they share an identical face but are different people\./
       );
@@ -748,7 +828,7 @@ describe("generateStoryboardShotgrid", () => {
     } as any);
 
     await expect(generateStoryboardShotgrid(baseParams())).rejects.toThrow(
-      "LLM request failed: Unauthorized: invalid api key",
+      "LLM request failed: Unauthorized: invalid api key"
     );
 
     expect(mockExecute).toHaveBeenCalledTimes(1);

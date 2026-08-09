@@ -163,6 +163,29 @@ produce a fully rule-compliant prompt.
    required characters (no `required_character_count` fact given), this rule
    does not apply.
 
+   **VIDEO-FACE VISIBILITY LOCK (MANDATORY when `required_character_count >= 2`
+   or `video_face_visibility_required: true`):** keep every required person's
+   face approximately 75% or more visible and readable in a frontal or natural
+   three-quarter view. Both eyes, nose, mouth, jawline, and hairline must be
+   visible and unobstructed, with faces large enough for later video face
+   matching and lip-sync. Face readability outranks hidden-profile eye-lines,
+   extreme angles, edge crops, deep shadow, hands/props over the face, and
+   another person's head blocking it. Add these exclusions in the same prompt
+   when the renderer has no separate negative-prompt channel: full profile,
+   back of head, turned-away face, cropped/hidden/tiny face, occluded face,
+   eyes or mouth not visible, indistinct identity.
+
+   **SHOT-SPECIFIC CAST FIREWALL (MANDATORY):** the
+   `SHOT-SPECIFIC CHARACTER PRESENCE LOCK` supplied by the application is the
+   authoritative cast contract for THIS shot. Its physical-character list
+   overrides any broader scene-continuity state, stale `current_prompt`,
+   storyboard cast list, wardrobe fact, or attached scene-anchor image. A
+   character mentioned by scene continuity but absent from that current-shot
+   list is NOT present now. Never copy that person's face, body, wardrobe, or
+   phone/CCTV overlay from a continuity or anchor image. Use a scene anchor for
+   set geometry, lighting, and props only. The final prompt and its merged
+   negative constraints must preserve this exact person count.
+
    When the input ALSO carries a `framing_override: medium_two_shot (...)` or
    `framing_override: medium_group_shot (...)` fact, treat that token as the
    AUTHORITATIVE shot size for this regeneration — deterministically
@@ -287,7 +310,10 @@ produce a fully rule-compliant prompt.
    never lock items the shot size cannot show (e.g. shoes in a waist-up
    medium two-shot), which pressures the model to widen the framing into an
    unintended full shot.
-8. **Story-driven wardrobe override (evaluate BEFORE locking wardrobe).**
+8. **Screen-caller reference lock (MANDATORY when `screen_caller_character_refs` or a manifest entry has `presence=screen_caller_only`).** A screen caller is a real approved character reference that MUST remain attached, but is NOT a person physically present in the room. Show that character only as a clearly visible image/video-call participant inside the phone, tablet, monitor, or other call-screen surface explicitly described by the shot. Never place the caller's body, face, or duplicate outside that device screen. State the caller's manifest image index and identity lock in the prompt, e.g. `the caller in Image 3 appears only inside the phone screen; Image 3's face, skin tone, hair, and distinguishing features remain exact`. This rule does not reduce the physical person count: `required_character_count` counts only scene characters, while screen callers are attached references with a device-mediated role.
+   If the manifest carries a user-selected scene/caller role, preserve it exactly. Do not reclassify, move, add, or remove a reference from that role because the synopsis mentions the character elsewhere.
+
+9. **Story-driven wardrobe override (evaluate BEFORE locking wardrobe).**
    Read `canonical_shot_summary` (the authoritative beat source) and
    `repair_instruction` FIRST and decide what this beat requires each
    character to WEAR. Default: the story implies no change → lock wardrobe to
@@ -302,7 +328,7 @@ produce a fully rule-compliant prompt.
    requires, REPLACING the outfit shown in the reference image." Never
    silently blend the two wardrobes, and never let a required wardrobe change
    loosen the face lock.
-9. **Exact person count.** Every multi-character prompt MUST state the exact
+10. **Exact person count.** Every multi-character prompt MUST state the exact
    number of people allowed in frame ("Exactly two people in the frame.")
    and `negative_prompt` MUST reinforce it (no additional people, no
    background strangers or staff, no reflections that read as extra people,
@@ -458,9 +484,10 @@ already correctly phrased as a fallback default, never an override.
 
 ## Prompt length limit — MANDATORY
 
-`prompt` MUST be **3800 characters or fewer** (the same hard cap used across
-every other Vertical Drama image-prompt skill in this pipeline). Write vivid,
-specific cinematic language within that budget — do not pad with repeated
+Keep `prompt` at or below the caller-supplied `prompt_max_chars` budget. Kie.ai
+image models may use up to **20,000 characters**; when no larger budget is
+supplied, use the legacy 3,800-character fallback. Write vivid, specific
+cinematic language within the active budget — do not pad with repeated
 adjectives or restate the same detail in multiple phrasings. If the shot's
 scene content plus `repair_instruction` would exceed the limit, prioritize
 (in order): the opening REFERENCE MAPPING declaration + per-character
@@ -509,3 +536,14 @@ Output:
 This skill does not auto-trigger. It is invoked once per shot by the Vertical
 Drama episode storyboard's "ให้ AI ปรับ" (AI-adjust) action next to a shot's
 start-frame prompt.
+
+## Barrier Multi-View (conditional)
+
+When the input contains a `BARRIER MULTI-VIEW (MANDATORY)` fact, this is a
+physical conversation across a closed door, never a phone/video call. Render
+ONLY the `VIEW_START_INSIDE` characters in the start frame and keep the door
+closed; do not place any `VIEW_REFERENCE_OUTSIDE` character in the room. Use
+the stated inside location exactly, preserve the start-view identity locks,
+and treat the outside view as a separate reference-frame slot that will be
+used for outside-speaker cuts. Never merge the two views into a single group
+shot, even when the dialogue mentions both characters.

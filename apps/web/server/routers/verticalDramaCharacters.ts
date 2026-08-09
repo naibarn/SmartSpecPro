@@ -895,6 +895,24 @@ function mapCharacterPromptContractError(error: unknown): never {
   throw error;
 }
 
+function buildCharacterPromptContext(
+  capability: VerticalDramaCharacterPromptCapability,
+  semanticRetryCount = 0,
+) {
+  const target = isTargetVerticalDramaCharacterCapability(capability);
+  return {
+    marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
+    contractVersion: target
+      ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
+      : "legacy",
+    target,
+    family: capability.family,
+    maxPromptChars: capability.maxPromptChars,
+    promptProfile: capability.promptProfile,
+    semanticRetryCount: Math.max(0, Math.floor(semanticRetryCount)),
+  } as const;
+}
+
 function normalizeCharacterRenderPrompt(params: {
   prompt: string;
   negativePrompt?: string;
@@ -1742,13 +1760,10 @@ export const verticalDramaCharactersRouter = router({
             const task = await mediaGenerationService.generateImageAsync(
               {
                 prompt: normalizedCandidatePrompt.prompt,
-                characterPromptContext: {
-                  marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
-                  contractVersion: isTargetVerticalDramaCharacterCapability(characterPromptCapability)
-                    ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
-                    : "legacy",
-                  target: isTargetVerticalDramaCharacterCapability(characterPromptCapability),
-                },
+                characterPromptContext: buildCharacterPromptContext(
+                  characterPromptCapability,
+                  candidate.semanticRetryCount,
+                ),
                 ...(normalizedCandidatePrompt.negativePrompt !== undefined
                   ? { negativePrompt: normalizedCandidatePrompt.negativePrompt }
                   : {}),
@@ -3760,6 +3775,7 @@ export const verticalDramaCharactersRouter = router({
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
+      let semanticRetryCount = 0;
       let useApprovedPortraitPrompt = Boolean(input.approvedPrompt);
       if (input.approvedPrompt && targetCharacterPrompt && !input.approvedDesignSnapshot) {
         throw new TRPCError({
@@ -3792,6 +3808,7 @@ export const verticalDramaCharactersRouter = router({
       if (useApprovedPortraitPrompt) {
         portraitPrompt = input.approvedPrompt!;
         negativePrompt = input.approvedNegativePrompt;
+        semanticRetryCount = input.approvedDesignSnapshot?.visualBible.semanticRetryCount ?? 0;
       } else {
         const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
           { tenantId, userId, seriesId },
@@ -3854,6 +3871,7 @@ export const verticalDramaCharactersRouter = router({
         promptModel = promptResult.model;
         visualBibleSummary = promptResult.raw.visual_bible_summary;
         promptCreditsUsed = promptResult.creditsUsed;
+        semanticRetryCount = promptResult.semanticRetryCount ?? 0;
         visualBibleToPersist = promptResult.visualBibleSnapshot;
       }
       ({ prompt: portraitPrompt, negativePrompt } = applySeriesLookToImagePrompt({
@@ -4059,13 +4077,10 @@ export const verticalDramaCharactersRouter = router({
         task = await mediaGenerationService.generateImageAsync(
           {
             prompt: portraitPrompt,
-            characterPromptContext: {
-              marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
-              contractVersion: targetCharacterPrompt
-                ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
-                : "legacy",
-              target: targetCharacterPrompt,
-            },
+            characterPromptContext: buildCharacterPromptContext(
+              characterPromptCapability,
+              semanticRetryCount,
+            ),
             ...(negativePrompt !== undefined ? { negativePrompt } : {}),
             model: resolvedImageModelId,
             numImages: 1,
@@ -4449,6 +4464,7 @@ export const verticalDramaCharactersRouter = router({
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
+      let semanticRetryCount = 0;
       let useApprovedSheetPrompt = Boolean(input.approvedPrompt);
       if (input.approvedPrompt && targetCharacterPrompt && !input.approvedDesignSnapshot) {
         throw new TRPCError({
@@ -4481,6 +4497,7 @@ export const verticalDramaCharactersRouter = router({
       if (useApprovedSheetPrompt) {
         sheetPromptText = input.approvedPrompt!;
         negativePrompt = input.approvedNegativePrompt;
+        semanticRetryCount = input.approvedDesignSnapshot?.visualBible.semanticRetryCount ?? 0;
       } else {
         const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
           { tenantId, userId, seriesId },
@@ -4571,6 +4588,7 @@ export const verticalDramaCharactersRouter = router({
         promptModel = promptResult.model;
         visualBibleSummary = promptResult.raw.visual_bible_summary;
         promptCreditsUsed = promptResult.creditsUsed;
+        semanticRetryCount = promptResult.semanticRetryCount ?? 0;
         visualBibleToPersist = promptResult.visualBibleSnapshot;
       }
 
@@ -4759,13 +4777,10 @@ export const verticalDramaCharactersRouter = router({
         task = await mediaGenerationService.generateImageAsync(
           {
             prompt: sheetPromptText,
-            characterPromptContext: {
-              marker: VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
-              contractVersion: targetCharacterPrompt
-                ? VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION
-                : "legacy",
-              target: targetCharacterPrompt,
-            },
+            characterPromptContext: buildCharacterPromptContext(
+              characterPromptCapability,
+              semanticRetryCount,
+            ),
             ...(negativePrompt !== undefined ? { negativePrompt } : {}),
             model: resolvedImageModelId,
             numImages: 1,

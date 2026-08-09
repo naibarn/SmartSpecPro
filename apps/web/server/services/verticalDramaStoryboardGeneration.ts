@@ -125,7 +125,10 @@ function slugifyForLocationKey(value: string): string {
  * this fallback is already a short slug of a shot's own `location` string,
  * never a raw pass-through of untrusted LLM-supplied text.
  */
-function generateUniqueLocationKey(baseKey: string, usedKeys: Set<string>): string {
+function generateUniqueLocationKey(
+  baseKey: string,
+  usedKeys: Set<string>
+): string {
   const base = baseKey.trim() || "location";
   let key = base;
   let suffix = 2;
@@ -219,7 +222,11 @@ const storyboardContractSchema = z
   })
   .passthrough();
 
-type AssertShapesMatch<A, B> = A extends B ? (B extends A ? true : never) : never;
+type AssertShapesMatch<A, B> = A extends B
+  ? B extends A
+    ? true
+    : never
+  : never;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _storyboardContractShapeMatchesShotContractSchema: AssertShapesMatch<
   z.infer<typeof storyboardContractSchema>,
@@ -234,6 +241,23 @@ const storyboardShotSchema = z
     narrative_purpose: z.string().min(1),
     characters: z.array(z.string()),
     required_character_refs: z.array(z.string()),
+    screen_caller_refs: z.array(z.string()).default([]),
+    view_mode: z.enum(["single", "dual"]).optional(),
+    dual_view: z
+      .object({
+        scenario: z.enum([
+          "physical_barrier",
+          "remote_call",
+          "separate_locations",
+        ]),
+        primary_character_refs: z.array(z.string()).min(1),
+        secondary_character_refs: z.array(z.string()).min(1),
+        primary_location_key: z.string(),
+        secondary_location_key: z.string(),
+        confidence: z.number().min(0).max(1),
+        reason_codes: z.array(z.string()).default([]),
+      })
+      .optional(),
     camera: storyboardCameraSchema,
     visual_description: z.string().min(1),
     image_prompt: z.string().min(1),
@@ -620,7 +644,8 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
           if (!c.variants?.length) return baseLine;
           const variantLines = c.variants
             .map(v => {
-              const typeLabel = v.variantType === "age_stage" ? "age-stage" : "outfit";
+              const typeLabel =
+                v.variantType === "age_stage" ? "age-stage" : "outfit";
               return `  - ${v.characterKey} (${v.variantLabel}, ${typeLabel} variant of ${c.characterId}): ${v.description} [has an approved reference image]`;
             })
             .join("\n");
@@ -655,7 +680,10 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   // the per-shot instruction these lines feed.
   const twinPairLines = params.twinPairs?.length
     ? params.twinPairs
-        .map(p => `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people.`)
+        .map(
+          p =>
+            `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people.`
+        )
         .join("\n")
     : null;
   const twinPairInstruction = twinPairLines
@@ -705,7 +733,8 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   // the instruction sentence travels with the actual `episode_draft` data in
   // the same message rather than living solely in the skill's system-prompt
   // brief, so it is directly verifiable by this function's own unit tests.
-  const episodeDraftEnabled = params.opts?.episodeDraftHydrationEnabled === true;
+  const episodeDraftEnabled =
+    params.opts?.episodeDraftHydrationEnabled === true;
   const episodeDraftSection =
     episodeDraftEnabled && params.episodeDraft
       ? [
@@ -754,7 +783,9 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     langInstruction,
     genreSection,
     seriesLookRegisterSection,
-    storySource.workingTitle ? `Working title: ${storySource.workingTitle}` : null,
+    storySource.workingTitle
+      ? `Working title: ${storySource.workingTitle}`
+      : null,
     storySource.logline ? `Logline: ${storySource.logline}` : null,
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,
     storySource.seasonArc ? `Season arc: ${storySource.seasonArc}` : null,
@@ -765,7 +796,15 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     storySource.cliffhanger ? `Cliffhanger: ${storySource.cliffhanger}` : null,
     sceneBeatInstruction,
     existingLocationsInstruction,
-    `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
+    `Characters (reference these ids in "characters" and "required_character_refs"). "required_character_refs" means characters physically visible in the primary room/scene only. For a caller who is heard or shown only through a phone/video-call screen, put the character id in "screen_caller_refs" instead; never put that caller in "required_character_refs". The caller's approved portrait will still be attached and the image prompt must show that portrait only inside the visible call screen:\n${characterLines}`,
+    [
+      "DUAL VIEW DETECTION (MANDATORY PER SHOT):",
+      "Set view_mode=dual only when this one logical shot must cut between TWO distinct physical views/environments; otherwise set view_mode=single and omit dual_view.",
+      "Dual scenarios: physical_barrier (opposite sides of a closed door/wall/glass), remote_call (phone/video call where the edit shows each participant physically in their own environment), separate_locations (cross-cut dialogue or parallel action in different places).",
+      "An ordinary caller shown only on a phone screen is NOT dual view; keep view_mode=single and use screen_caller_refs.",
+      "For view_mode=dual include dual_view={scenario,primary_character_refs,secondary_character_refs,primary_location_key,secondary_location_key,confidence,reason_codes}. Character sets must be non-empty and disjoint. Use exact character ids and exact location_key values when known.",
+      "If the text explicitly says to intercut, switch views, show both environments, or places speakers on opposite sides/in different locations, detect it even when the words 'dual view' are absent.",
+    ].join("\n"),
     twinPairInstruction,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
@@ -829,18 +868,19 @@ export async function generateStoryboardShotgrid(
   // same one-retry-on-truncated/invalid-JSON safety net as the sibling
   // start-frame/motion-prompt/script generators — see
   // `executeJsonPlanningCallWithRetry`'s doc comment.
-  const { data: storyboardData, response } = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt,
-    userPrompt,
-    temperature: 0.8,
-    userId: params.userId,
-    maxTokens: 16000,
-    schema: storyboardShotgridOutputSchema,
-    label: "Storyboard shotgrid",
-  });
+  const { data: storyboardData, response } =
+    await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt,
+      temperature: 0.8,
+      userId: params.userId,
+      maxTokens: 16000,
+      schema: storyboardShotgridOutputSchema,
+      label: "Storyboard shotgrid",
+    });
 
-  // Normalize `characters` / `required_character_refs` per shot — the LLM is
+  // Normalize `characters` / `required_character_refs` / `screen_caller_refs` per shot — the LLM is
   // told to reference the exact `characterId`s listed in the prompt (see
   // `buildUserPrompt`'s "reference these ids" instruction), but in practice
   // it sometimes invents its own slug instead (observed live: emitting
@@ -883,7 +923,10 @@ export async function generateStoryboardShotgrid(
   const speakerLookup = new Map<string, string>();
   const characterFamilyById = new Map<string, string[]>();
   for (const c of params.characters) {
-    const familyIds = [c.characterId, ...(c.variants?.map(v => v.characterKey) ?? [])];
+    const familyIds = [
+      c.characterId,
+      ...(c.variants?.map(v => v.characterKey) ?? []),
+    ];
     for (const id of familyIds) {
       characterFamilyById.set(id, familyIds);
     }
@@ -922,8 +965,21 @@ export async function generateStoryboardShotgrid(
     ]
       .filter((v): v is string => typeof v === "string" && v.length > 0)
       .join(" ");
-    const validLlmIds = [...shot.characters, ...shot.required_character_refs].filter(
-      id => validCharacterIds.has(id),
+    // The LLM skill is authoritative for presence role. Code only validates
+    // ids and honors the explicit `screen_caller_refs` field; it must never
+    // infer caller/scene membership from synopsis wording.
+    const explicitCallerIds = shot.screen_caller_refs.filter(id =>
+      validCharacterIds.has(id)
+    );
+    const candidateLlmIds = [
+      ...shot.characters,
+      ...shot.required_character_refs,
+    ].filter(id => validCharacterIds.has(id));
+    const physicallyPresentCharacterKeys = new Set(
+      [...validCharacterIds].filter(id => !explicitCallerIds.includes(id))
+    );
+    const validLlmIds = candidateLlmIds.filter(id =>
+      physicallyPresentCharacterKeys.has(id)
     );
     // Character variants (Phase D) — a base character and its variants share
     // the SAME `name` (same person, different look), so the name-match
@@ -938,13 +994,21 @@ export async function generateStoryboardShotgrid(
     // for a character with no variants, its "family" is just itself, so this
     // reduces to the exact original check and stays byte-identical.
     const nameMatches = params.characters
-      .filter(c => narrativeText.includes(c.name))
+      .filter(
+        c =>
+          narrativeText.includes(c.name) &&
+          physicallyPresentCharacterKeys.has(c.characterId)
+      )
       .filter(c => {
-        const familyIds = [c.characterId, ...(c.variants?.map(v => v.characterKey) ?? [])];
+        const familyIds = [
+          c.characterId,
+          ...(c.variants?.map(v => v.characterKey) ?? []),
+        ];
         return !familyIds.some(id => validLlmIds.includes(id));
       })
       .map(c => c.characterId);
     const resolvedIds = Array.from(new Set([...nameMatches, ...validLlmIds]));
+    const resolvedCallerIds = Array.from(new Set(explicitCallerIds));
     // Dialogue-speaker coverage — see `speakerLookup`/`characterFamilyById`
     // doc comment above. Additive only: a shot with no matching
     // `episodeDraft` entry (legacy/non-deep-draft path, or `episodeDraft`
@@ -953,7 +1017,7 @@ export async function generateStoryboardShotgrid(
     // `resolvedIds` is never re-added — so a shot whose speakers are already
     // covered stays byte-identical.
     const draftShot = params.episodeDraft?.shots.find(
-      d => d.shot_number === shot.shot_number,
+      d => d.shot_number === shot.shot_number
     );
     for (const dialogueLine of draftShot?.dialogue_lines ?? []) {
       const speakerCharacterId = speakerLookup.get(dialogueLine.speaker.trim());
@@ -961,12 +1025,16 @@ export async function generateStoryboardShotgrid(
       const familyIds = characterFamilyById.get(speakerCharacterId) ?? [
         speakerCharacterId,
       ];
+      if (!familyIds.some(id => physicallyPresentCharacterKeys.has(id))) {
+        continue;
+      }
       if (!familyIds.some(id => resolvedIds.includes(id))) {
         resolvedIds.push(speakerCharacterId);
       }
     }
     shot.characters = resolvedIds;
     shot.required_character_refs = resolvedIds;
+    shot.screen_caller_refs = resolvedCallerIds;
   }
 
   // `storyboard_handoff_json` deterministic reconstruction (root-cause fix,
@@ -1085,7 +1153,8 @@ export async function generateStoryboardShotgrid(
     for (const shot of storyboardData.shots) {
       const shotRecord = shot as unknown as Record<string, unknown>;
       const locationName =
-        typeof shotRecord.location === "string" && shotRecord.location.length > 0
+        typeof shotRecord.location === "string" &&
+        shotRecord.location.length > 0
           ? shotRecord.location
           : "ฉากหลัก";
       if (!groupsByName.has(locationName)) {
@@ -1097,7 +1166,7 @@ export async function generateStoryboardShotgrid(
       group.descriptions.push(shot.visual_description);
     }
     const usedFallbackKeys = new Set<string>();
-    storyboardData.distinct_locations = groupOrder.map((locationName) => {
+    storyboardData.distinct_locations = groupOrder.map(locationName => {
       const group = groupsByName.get(locationName)!;
       const key = generateUniqueLocationKey(
         slugifyForLocationKey(locationName),

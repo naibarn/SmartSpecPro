@@ -1246,6 +1246,39 @@ export async function getHermesConnectStatus(
 }
 
 /**
+ * Enqueues the capability probe that must follow a successful authorize
+ * (see the call site's comment for the bug this closes). Skipped silently
+ * when the row has no assigned worker or that worker is offline — the
+ * connection is still authorized, and the manual "ตรวจสอบ" button (or the
+ * next authorize) can fill the manifest in later.
+ */
+async function maybeEnqueueHermesPostAuthorizeProbe(params: {
+  repo: HermesConnectionRepo;
+  row: HermesProviderConnection;
+  nowDate: Date;
+}): Promise<void> {
+  const { repo, row, nowDate } = params;
+  if (!row.assignedWorkerId) return;
+  const worker = await repo.findWorkerById({
+    tenantId: row.tenantId,
+    workerId: row.assignedWorkerId,
+  });
+  if (!worker || !isWorkerOnline(worker, nowDate)) return;
+  await repo.insertWorkerJob(
+    buildProbeJobInsert({
+      tenantId: row.tenantId,
+      connectionId: row.id,
+      workerId: row.assignedWorkerId,
+      runtimeType: worker.runtimeType,
+      // System-initiated follow-up, not a user action — attribute it to the
+      // connection's owner so per-user job accounting stays coherent.
+      requestedByUserId: row.ownerUserId,
+      profileReference: row.profileReference,
+    }),
+  );
+}
+
+/**
  * Lazy settlement seam. Called from `getConnectStatus` above; section-04's
  * proactive completion hook and 60s terminal-state sweep will call this
  * SAME function directly once a control job reaches a terminal state — do
@@ -1317,6 +1350,18 @@ export async function settleHermesConnectionFromControlJob(
         connectionId: row.id,
         scope: row.scope,
       });
+      // Auto-probe (bug found 2026-08-03): `runHermesConnectionAuthorize`
+      // returns only `{ ok, accountHint }` — it never produces a capability
+      // manifest — so a freshly authorized connection sits with
+      // `capabilitiesJson = NULL`, which `effectiveHermesCapability` reads
+      // as "no operation enabled". The connection then renders as
+      // "ภาพ: ไม่รองรับ · วิดีโอ: ไม่รองรับ" and `HermesConnectionPicker`
+      // hides it entirely ("ยังไม่มีบัญชี Grok ที่เชื่อมต่อ…") until
+      // someone happens to click "ตรวจสอบ". Enqueue that probe here so a
+      // plain (non-admin) user's connection becomes usable on its own.
+      // Best-effort: a probe-enqueue failure must never un-authorize a
+      // genuinely authorized connection — the manual button still works.
+      await maybeEnqueueHermesPostAuthorizeProbe({ repo, row, nowDate }).catch(() => {});
     } else {
       const reason = mapAuthFailureReasonToErrorCode({ status: params.job.status, failureReason: params.job.failureReason });
       await repo.updateConnection({

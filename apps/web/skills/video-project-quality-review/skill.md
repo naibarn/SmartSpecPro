@@ -81,13 +81,26 @@ metric value that drove each score, and every `issues[]` entry.
    intensity/camera direction and visual treatment with no variation.
 9. **Motion clutter** — use `metrics.layerCounts` as evidence: a scene with a
    layer count far above the project's average is a motion-clutter risk worth
-   flagging, especially near the 40-layer compiler ceiling.
+   flagging, especially near the 40-layer compiler ceiling. When
+   `metrics.layerCounts.total` is near or over that 40-layer ceiling, raise
+   the issue with `repairStage: "motion"` — the motion handler both calms
+   intensity on cluttered scenes AND, when the document is over the total
+   layer budget, deterministically drops purely decorative (`motionGraphic`
+   shape) layers to bring it back under the render-time cap. Never expect it
+   to remove text, image, video, svg, scene3d, or audio layers — those can
+   carry narration-linked text, a product image, or a claim, so the handler
+   refuses to touch them; if a scene is over budget with no decorative layers
+   left to drop, say so in `message` rather than assuming it was fixed.
 10. **Text overflow / caption readability** — use `metrics.captionCps` (chars-
     per-second facts): a scene with flagged cues reads too fast for a viewer to
     comprehend; cite the scene and the metric value.
 11. **Safe-area compliance** — use `metrics.safeAreaViolations`: any layer
     reported there falls outside the platform preset's safe zone (e.g. under a
     TikTok/Reels caption bar or share-icon rail) — cite the scene and layer id.
+    Always raise this with `repairStage: "layout"` (never `"motion"` or
+    `"scenes"`) — the `layout` handler deterministically clamps that exact
+    layer's box back inside the safe area; it never repositions a layer that
+    `metrics.safeAreaViolations` did not flag.
 12. **Technical** — missing assets, oversized textures, render-cost budget (use
     `metrics.renderCost` — a `"high"` class or `recommendPreRender: true` is a
     technical-budget flag worth surfacing), and font availability concerns
@@ -159,7 +172,8 @@ Return:
   - `message` — one concrete sentence naming exactly what is wrong and why,
     citing the scene id / cue / metric value.
   - `repairStage` (optional) — one of `content | narration | scenes | motion |
-    captions | claims`, when the issue maps cleanly to one repair area.
+    captions | claims | layout`, when the issue maps cleanly to one repair
+    area.
 - `repairInstructions[]` (optional) — for each distinct `repairStage` you
   raised an issue against, one combined, actionable instruction: `{ stage,
   instruction }`.

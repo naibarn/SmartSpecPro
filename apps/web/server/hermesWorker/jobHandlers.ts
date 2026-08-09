@@ -112,8 +112,16 @@ async function withBoundedRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promi
 // Timeouts (spec §13.6)
 // ────────────────────────────────────────────────────────────────────────
 
-const IMAGE_TIMEOUTS = { softMs: 5 * 60_000, hardMs: 10 * 60_000, inactivityMs: 5 * 60_000 };
-const VIDEO_TIMEOUTS = { softMs: 15 * 60_000, hardMs: 30 * 60_000, inactivityMs: 5 * 60_000 };
+// inactivityMs deliberately equals hardMs for media jobs: the Hermes agent
+// prints NOTHING between plugin startup and the final result-marker line —
+// the xAI image/video tool call is silent for its entire duration — so
+// "no stdout for 5 minutes" is the NORMAL shape of a healthy long
+// generation, not a hang signal. The 5-minute inactivity kill made every
+// video generation longer than 300s fail with "hermes exited with code
+// null" while the provider was still working (observed 2026-07-20 and
+// 2026-08-02). The hard wall-clock budget is the real health bound here.
+const IMAGE_TIMEOUTS = { softMs: 5 * 60_000, hardMs: 10 * 60_000, inactivityMs: 10 * 60_000 };
+const VIDEO_TIMEOUTS = { softMs: 15 * 60_000, hardMs: 30 * 60_000, inactivityMs: 30 * 60_000 };
 
 function isVideoOperation(operation: HermesMediaOperation): boolean {
   return operation.startsWith("video");
@@ -208,6 +216,13 @@ export interface JobHandlersDeps {
 export interface JobHandlers {
   handle(job: HermesClaimedJob): Promise<void>;
   activeCount(): number;
+  /** IDs of every job currently inside `handle()` (queued-on-lock included).
+   *  `main.ts` reports these in each heartbeat — the control plane renews
+   *  job leases only when `currentJobCount > 0`, so a long-running
+   *  device-code authorize (user takes minutes to approve) with an empty
+   *  heartbeat would let its lease lapse and get re-claimed mid-flow,
+   *  issuing a second, conflicting device code. */
+  activeJobIds(): string[];
 }
 
 const NOOP_LOGGER = { info() {}, warn() {}, error() {} };
@@ -217,6 +232,7 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
   const logger = deps.logger ?? NOOP_LOGGER;
   const globalSemaphore = new AsyncSemaphore(deps.config.globalMaxConcurrent ?? 2);
   const connectionLocks = new Map<string, AsyncSemaphore>();
+  const activeJobIds = new Set<string>();
 
   function lockFor(connectionId: string): AsyncSemaphore {
     let lock = connectionLocks.get(connectionId);
@@ -228,19 +244,24 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
   }
 
   async function handle(job: HermesClaimedJob): Promise<void> {
-    if (job.jobType === HERMES_MEDIA_IMAGE_JOB_TYPE || job.jobType === HERMES_MEDIA_VIDEO_JOB_TYPE) {
-      await handleMediaJob(job);
-      return;
+    activeJobIds.add(job.id);
+    try {
+      if (job.jobType === HERMES_MEDIA_IMAGE_JOB_TYPE || job.jobType === HERMES_MEDIA_VIDEO_JOB_TYPE) {
+        await handleMediaJob(job);
+        return;
+      }
+      if (
+        job.jobType === HERMES_CONNECTION_AUTH_JOB_TYPE ||
+        job.jobType === HERMES_CONNECTION_PROBE_JOB_TYPE ||
+        job.jobType === HERMES_CONNECTION_DISCONNECT_JOB_TYPE
+      ) {
+        await handleControlJob(job);
+        return;
+      }
+      logger.warn(`hermesWorker jobHandlers: no dispatch for job type ${job.jobType}`);
+    } finally {
+      activeJobIds.delete(job.id);
     }
-    if (
-      job.jobType === HERMES_CONNECTION_AUTH_JOB_TYPE ||
-      job.jobType === HERMES_CONNECTION_PROBE_JOB_TYPE ||
-      job.jobType === HERMES_CONNECTION_DISCONNECT_JOB_TYPE
-    ) {
-      await handleControlJob(job);
-      return;
-    }
-    logger.warn(`hermesWorker jobHandlers: no dispatch for job type ${job.jobType}`);
   }
 
   async function handleMediaJob(job: HermesClaimedJob): Promise<void> {
@@ -317,6 +338,9 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
 
       let referenceUrls = job.referenceUrls ?? [];
       const downloadedRefs: Array<{ index: number; role: string; label: string; assetId: string; localPath: string }> = [];
+      // assetId -> minted public URL, captured during the download loop so the
+      // envelope can hand the agent a URL the xAI server can actually fetch.
+      const referenceUrlByAssetId = new Map<string, string>();
 
       for (const ref of contract.references) {
         let entry = referenceUrls.find((candidate) => candidate.assetId === ref.assetId);
@@ -385,6 +409,7 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
         }
 
         downloadedRefs.push({ index: ref.index, role: ref.role, label: ref.label, assetId: ref.assetId, localPath });
+        referenceUrlByAssetId.set(ref.assetId, entry.url);
       }
 
       await postStage("starting_hermes");
@@ -399,7 +424,14 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
             role: ref.role,
             label: ref.label,
             assetId: ref.assetId,
+            url: referenceUrlByAssetId.get(ref.assetId),
           })),
+          settings: {
+            model: contract.settings.model ?? null,
+            aspectRatio: contract.settings.aspectRatio ?? null,
+            durationSeconds: contract.settings.durationSeconds ?? null,
+            resolution: contract.settings.resolution ?? null,
+          },
         },
         { jobId: job.id, outputDir: workspace.outputDir },
       );
@@ -640,5 +672,6 @@ export function createJobHandlers(deps: JobHandlersDeps): JobHandlers {
   return {
     handle,
     activeCount: () => globalSemaphore.activeCount,
+    activeJobIds: () => Array.from(activeJobIds),
   };
 }

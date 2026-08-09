@@ -58,6 +58,39 @@ const RemotionLayerBaseSchema = z.object({
   rotationDeg: z.number().default(0),
   opacity: z.number().min(0).max(1).default(1),
   zIndex: z.number().int().default(0),
+  // Feature 143 §4.8 (Video Studio layer/timeline editor) — additive,
+  // cross-package fields on every layer type. ALL FOUR MUST STAY
+  // `.optional()`, never `.default()`: a `.default()` would make the field
+  // required in the inferred output type and break every existing
+  // construction site across the codebase (this exact mistake was already
+  // made and reverted once during the motion-variants work). A document
+  // authored before this change simply parses with these fields
+  // `undefined` — every reader must treat `undefined` the same as the
+  // field's "off" state (`hidden` -> visible, `locked` -> unlocked, `role`
+  // -> unbanded, `name` -> no label).
+  /** Human-readable label for the layers list / timeline UI. Never used by
+   *  the compiler or renderer — display-only. */
+  name: z.string().trim().min(1).max(200).optional(),
+  /** Author-set lock — when true, server-side AI repair stages (QA safe-area
+   *  clamp, decorative-layer budget deletion) must skip this layer entirely
+   *  (§4.9.1). This is the ONLY mechanism protecting a hand-authored layer
+   *  from automated mutation, so it must be honoured wherever those stages
+   *  read layers, not just decoratively rendered in the UI. */
+  locked: z.boolean().optional(),
+  /** Author-set visibility — when true, `compileVideoProject` must exclude
+   *  this layer from the compiled output entirely (never emit a
+   *  zero-opacity/zero-size layer instead), and the layer must not count
+   *  against the 40-layer budget. See
+   *  `server/services/videoProjectCompiler.ts`'s `rawLayers` construction. */
+  hidden: z.boolean().optional(),
+  /** Explicit band assignment (§4.1's zIndex-band projection) so the
+   *  timeline UI's track assignment survives a round-trip without having to
+   *  re-derive it from `zIndex` alone, and so server-side logic (e.g. the
+   *  §4.9.1 safe-area exemption for full-bleed backgrounds) can reason about
+   *  authorial intent directly instead of guessing from geometry. Purely a
+   *  UI/authoring convention — the compiler and renderer do not branch on
+   *  it today. */
+  role: z.enum(["background", "overlay", "brand"]).optional(),
 });
 
 const RemotionImageLayerSchema = RemotionLayerBaseSchema.extend({
@@ -108,15 +141,46 @@ const RemotionMotionGraphicLayerSchema = RemotionLayerBaseSchema.extend({
     .default("spin"),
 }).strict();
 
+/** One bounded, registry-resolved procedural visual system. */
+export const REMOTION_MOTION_COMPOSITION_IDS = [
+  "particle-field",
+  "network-graph",
+] as const;
+
+const RemotionMotionCompositionPropsSchema = z
+  .record(z.string(), z.unknown())
+  .refine(value => JSON.stringify(value).length <= 20_000, {
+    message: "Motion composition props exceed the 20KB limit",
+  });
+
+const RemotionMotionCompositionLayerSchema = RemotionLayerBaseSchema.extend({
+  type: z.literal("motionComposition"),
+  compositionId: z.enum(REMOTION_MOTION_COMPOSITION_IDS),
+  props: RemotionMotionCompositionPropsSchema,
+}).strict();
+
+const RemotionScene3dPropValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(
+    z
+      .object({
+        frame: z.number().int().min(0).max(180_000),
+        kind: z.enum(["enter", "emphasis", "reveal", "transition"]),
+        strength: z.number().min(0).max(1).optional(),
+      })
+      .strict(),
+  ),
+]);
+
 const RemotionScene3dLayerSchema = RemotionLayerBaseSchema.extend({
   type: z.literal("scene3d"),
   // Hard security constraint (not a style preference): only ids from the
   // fixed, vetted scene registry are accepted — no arbitrary/unregistered
   // 3D scene code can ever reach the render worker via this schema.
   sceneId: z.enum(REMOTION_SCENE_IDS),
-  props: z
-    .record(z.union([z.string(), z.number(), z.boolean()]))
-    .default({}),
+  props: z.record(RemotionScene3dPropValueSchema).default({}),
 }).strict();
 
 /**
@@ -144,6 +208,7 @@ export const RemotionLayerSchema = z.discriminatedUnion("type", [
   RemotionTextLayerSchema,
   RemotionSvgLayerSchema,
   RemotionMotionGraphicLayerSchema,
+  RemotionMotionCompositionLayerSchema,
   RemotionScene3dLayerSchema,
   RemotionAudioLayerSchema,
 ]);
@@ -155,6 +220,9 @@ export type RemotionTextLayer = z.infer<typeof RemotionTextLayerSchema>;
 export type RemotionSvgLayer = z.infer<typeof RemotionSvgLayerSchema>;
 export type RemotionMotionGraphicLayer = z.infer<
   typeof RemotionMotionGraphicLayerSchema
+>;
+export type RemotionMotionCompositionLayer = z.infer<
+  typeof RemotionMotionCompositionLayerSchema
 >;
 export type RemotionScene3dLayer = z.infer<typeof RemotionScene3dLayerSchema>;
 export type RemotionAudioLayer = z.infer<typeof RemotionAudioLayerSchema>;

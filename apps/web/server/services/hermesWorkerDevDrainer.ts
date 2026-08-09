@@ -38,6 +38,7 @@ import {
 import { getHermesWorkerSettings } from "./hermesWorkerSettings";
 import { mintHermesMediaReferenceUrls } from "./hermesMediaAdapter";
 import { createPerConnectionHomeStrategy } from "../hermesWorker/hermesInstallation";
+import { hermesFfprobe } from "../hermesWorker/ffprobeRunner";
 import { createJobHandlers, type JobHandlers } from "../hermesWorker/jobHandlers";
 import { createWorkspaceManager } from "../hermesWorker/workspace";
 import type { HermesClaimedJob, HermesControlPlaneClient } from "../hermesWorker/controlPlaneClient";
@@ -193,6 +194,9 @@ function getDefaultHandlers(): JobHandlers {
     strategy,
     workspaceManager,
     spawnImpl: (argv, opts) => spawn(hermesBinaryPath, argv, { cwd: opts.cwd, env: opts.env }) as any,
+    // Same wiring requirement as `hermesWorker/main.ts` — without a real
+    // prober every video output fails closed at validation.
+    ffprobeImpl: (filePath) => hermesFfprobe(filePath),
     logger: {
       info: (msg: string) => debugLog("hermesWorkerDevDrainer", msg),
       warn: (msg: string) => debugLog("hermesWorkerDevDrainer", `WARN: ${msg}`),

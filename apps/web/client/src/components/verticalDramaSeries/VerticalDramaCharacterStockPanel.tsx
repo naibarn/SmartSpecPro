@@ -953,6 +953,26 @@ export function buildPreviewCharacterPromptInput(params: {
   };
 }
 
+/**
+ * Builds the single-candidate preview payload used by both the initial
+ * candidate flow and candidate retry. Keeping this in one pure helper makes
+ * it impossible for retry to silently drop the selected model capability.
+ */
+export function buildPortraitCandidateRetryPreviewInput(params: {
+  seriesId: string;
+  characterId: string;
+  selectedImageModelId?: string;
+  customInstruction: string;
+}): VdPreviewCharacterPromptInput {
+  return buildPreviewCharacterPromptInput({
+    seriesId: params.seriesId,
+    characterId: params.characterId,
+    selectedImageModelId: params.selectedImageModelId,
+    customInstruction: params.customInstruction,
+    portraitCandidateCount: 1,
+  });
+}
+
 export function isFirstPortraitCandidateEligible(
   character: {
     characterId: string;
@@ -1101,7 +1121,7 @@ export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
       ...(params.negativePrompt
         ? { approvedNegativePrompt: params.negativePrompt }
         : {}),
-      ...(carriesApprovedDna
+      ...(params.approvedDesignSnapshot !== undefined
         ? { approvedDesignSnapshot: params.approvedDesignSnapshot }
         : {}),
       // Always sent (never conditionally spread) — see this function's
@@ -3755,11 +3775,11 @@ export function VerticalDramaCharacterStockPanel({
             return next;
           });
         previewCharacterPromptMutation.mutate(
-          buildPreviewCharacterPromptInput({
+          buildPortraitCandidateRetryPreviewInput({
             seriesId,
             characterId,
+            selectedImageModelId,
             customInstruction: customInstructionByCharacter[characterId] ?? "",
-            portraitCandidateCount: 1,
           }),
           {
         onSuccess: res => {

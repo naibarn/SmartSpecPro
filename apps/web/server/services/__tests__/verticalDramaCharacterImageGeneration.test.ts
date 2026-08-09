@@ -1507,6 +1507,29 @@ describe("generateCharacterVisualPrompts", () => {
     expect(result.promptContractVersion).toBe("vd_character_natural_human_v1");
   });
 
+  it("rejects an over-limit optional sheet_prompt before generation credits are deducted", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const targetCharacter = validCharacter("char-1", "support");
+    targetCharacter.primary_portrait_prompt = addHumanRealismAnchors(
+      targetCharacter.primary_portrait_prompt,
+    );
+    (targetCharacter as typeof targetCharacter & { sheet_prompt: string }).sheet_prompt =
+      "x".repeat(targetNanoBananaCapability.maxPromptChars + 1);
+    mockExecute.mockResolvedValue(successResponse(validOutput([targetCharacter])));
+
+    await expect(
+      generateCharacterVisualPrompts(
+        baseParams({
+          role: "support",
+          roleTier: "support_memorable",
+          imagePromptCapability: targetNanoBananaCapability,
+          imagePromptContractMode: "target",
+        }),
+      ),
+    ).rejects.toThrow(VdSchemaValidationError);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
   it("retries target semantic QC once and fails typed when the skill never writes the anchors", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     const invalid = validCharacter("char-1", "support");
@@ -2924,6 +2947,7 @@ describe("generateCharacterVisualPrompts — region/ethnicity anchor enforcement
     );
     expect(retryUserMessage.content).toContain("characters.0.primary_portrait_prompt");
     expect(result.portraitPrompt).toContain("unmistakably Thai features");
+    expect(result.semanticRetryCount).toBe(1);
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
