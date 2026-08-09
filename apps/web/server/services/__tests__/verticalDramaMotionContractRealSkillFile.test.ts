@@ -52,6 +52,13 @@ describe("real motion-contract skill files", () => {
       }
       expect(lower).toContain("solo");
       expect(lower).toContain("never lower it");
+      expect(lower).toContain('"view_role"');
+      expect(lower).toContain("Image 1");
+      expect(lower).toContain("Image 2");
+      expect(lower).not.toContain("VIEW 1 / START FRAME");
+      expect(lower).not.toContain("VIEW 2 / REFERENCE FRAME");
+      expect(lower).toContain("independent");
+      expect(lower).toContain("coordinate spaces");
       for (const header of requiredSectionHeaders) expect(lower).toContain(header);
 
       const sectionStart = lower.indexOf(`## ${VD_MOTION_PROFILE_SKILL_SECTION_NAME}`);
@@ -124,5 +131,8 @@ describe("real motion-contract skill files", () => {
     expect(dimension).toBeGreaterThan(craft);
     expect(lower.slice(dimension)).toContain("effectiveRisk");
     expect(lower.slice(dimension)).toContain("faceObservability");
+    expect(lower).toContain("each has an independent");
+    expect(lower).toContain("`view_role`");
+    expect(lower).toContain("Image 1/Image 2 scope");
   });
 });

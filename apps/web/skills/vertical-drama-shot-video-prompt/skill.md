@@ -70,7 +70,9 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
       {
         "name": "string (character name from the CHARACTER IDENTITY MAP)",
         "position": "left | center-left | center | center-right | right",
+        "view_role": "start_frame | barrier_reference (required in Dual View mode; omitted otherwise)",
         "note": "string (optional — short pose/orientation audit cue, never appearance prose)",
+        "action": "string (optional — concise visible action/pose cue observed in the start frame, never identity prose)",
         "facing": "frontal | three_quarter | profile | back_of_head | not_visible (optional — ONLY when frame_observability: REQUIRED)",
         "eyes_visible": "both | one | none (optional — ONLY when frame_observability: REQUIRED)",
         "occlusion": "none | partial | heavy (optional — ONLY when frame_observability: REQUIRED)",
@@ -158,28 +160,38 @@ The caller tells you two independent language settings for this shot:
    even though the surrounding acting direction is written in the prompt
    language.
 
-## FRAME ANALYSIS FIRST — MANDATORY whenever a start-frame image is attached and 2+ characters are established
+## FRAME ANALYSIS FIRST — MANDATORY whenever a start-frame image and at least one character portrait are attached
 
-Do this BEFORE writing a single word of `prompt`. Look at the attached
-start-frame image and work out, for every established character in the
-CHARACTER IDENTITY MAP:
+Do this BEFORE writing a single word of `prompt`. For a normal shot, look at
+the attached start-frame image. For DUAL VIEW, Image 1 is the start frame and
+Image 2 is the reference frame; treat them as independent
+coordinate spaces and inspect each configured character only in their assigned
+image. Never report an Image 2 character as `not_visible` or `tiny` in Image 1.
+Work out:
 
 1. **Who is where on screen.** Match each person visible in the image to
    their name by comparing against the labeled character reference portraits
    attached below the start frame. Never assume the image obeyed the
    image-prompt text — image models frequently place characters on the
    opposite side from what was requested. The IMAGE is the ground truth.
-2. **Their screen-position bucket**: `left`, `center-left`, `center`,
-   `center-right`, or `right` — always from the VIEWER's side of the screen.
+2. **Their screen-position bucket**: `viewer-left`, `viewer-center-left`,
+   `viewer-center`, `viewer-center-right`, or `viewer-right` — always from the
+   VIEWER's/camera's side of the screen. Never use the character's anatomical
+   left/right, `left hand`, `right hand`, `left-hand side`, or `right-hand side`
+   as a screen-position label.
 3. **Who they are facing** / where their attention sits in the frozen frame.
+4. **What each person is visibly doing** in the frozen frame, when useful (for
+   example, holding a phone, looking at the speaker, or standing still). Keep
+   this as a short observed action cue in `frame_analysis.people[].action`;
+   never use gender, wardrobe, or the requested layout as an identity shortcut.
 
 Report that reading in the `frame_analysis` output field (see the JSON
 contract above) with `"position_source": "image"`. Then USE it everywhere:
 
-- Every speech cue in `prompt` anchors the speaker by NAME + the SCREEN
-  POSITION you read from the image — "คุณกฤต on the left says with quiet
+- Every speech cue in `prompt` anchors the speaker by NAME + the VIEWER SCREEN
+  POSITION you read from the image — "คุณกฤต on viewer-left says with quiet
   menace: …" — and every silent listener is anchored the same way — "ภาคิน
-  on the right listens, mouth closed."
+  on viewer-right listens, mouth closed."
 - Position is how a video model decides whose mouth moves: a wrong position
   IS a wrong speaker. This field exists because unverified position guessing
   is the single most common cause of a line being spoken by the wrong
@@ -188,12 +200,32 @@ contract above) with `"position_source": "image"`. Then USE it everywhere:
   shoulder, back three-quarter to camera") — never wardrobe or facial
   description, and nothing from `note` may be copied into `prompt` as
   appearance prose (rule 1 below applies in full).
+- The `action` field is optional and describes only an observed action/pose;
+  it is not an identity claim. The matched portrait plus the actual start
+  frame remain authoritative for name and position.
+
+For DUAL VIEW, every person entry MUST include `view_role`: `start_frame` for
+characters assigned to Image 1 and `barrier_reference` for characters assigned
+to Image 2. Every speaking cue in `prompt` MUST begin with the literal owning
+label (`Image 1` or `Image 2`) before the name and
+that image's viewer-relative position. The same `viewer-right` value may occur
+once in each image; it never transfers a person between images.
+
+**CHARACTER FACE IDENTITY MANIFEST — MANDATORY:** when the caller supplies a
+`CHARACTER FACE IDENTITY MANIFEST`, treat each `characterKey`/name label as the
+only valid identity binding for the matching portrait. Match the visible faces
+in the actual start frame to those portraits before assigning speech. For every
+dialogue line, write the exact name and `characterKey` plus the observed screen
+position from `frame_analysis`; never use generic labels such as "the man" or
+infer identity from gender, wardrobe, or requested left-to-right order. If the
+face cannot be matched confidently, return a warning rather than guessing.
 
 When NO image is attached (vision unavailable), derive the best-known
 positions from the image-prompt text instead, set `"position_source":
 "image_prompt_text"`, and still anchor every speech cue by name + position.
-When fewer than 2 characters are established, `frame_analysis` is optional —
-include it when it helps, or omit it.
+When no character portrait is attached, `frame_analysis` is optional — include
+it when the image itself makes a useful person-position reading possible, or
+omit it.
 
 When the caller states `frame_observability: REQUIRED`, return the additional
 per-person observability fields and `faces_separated`. Read them only from the
@@ -251,7 +283,12 @@ none of these entries.
 
 ## Hard rules — MANDATORY
 
-1. **Never describe character appearance.** The attached image (or its
+   **SPEAKER-TO-FACE BINDING (MANDATORY):** only the exact character named
+   in each dialogue line may move their mouth. All listeners keep their mouths
+   closed. The actual attached start frame is authoritative for the observed
+   position; the image-prompt text and requested layout never override it.
+
+   1. **Never describe character appearance.** The attached image (or its
    generating prompt, when no image is attached) already carries identity,
    wardrobe, and physical likeness — re-describing face/body/clothing wastes
    prompt budget and risks contradicting the actual image. Do not mention hair
@@ -722,3 +759,17 @@ rule above already describes, unchanged.
 
 This skill does not auto-trigger. It is invoked once per shot by the Vertical
 Drama episode's shot-level "generate video prompt" action.
+
+## Barrier Multi-View (conditional)
+
+When `BARRIER MULTI-VIEW (MANDATORY)` is present, the start frame is the
+inside view and the attached barrier reference frame is the outside view.
+Keep the door/barrier physically consistent and never move an outside actor
+into the inside room. For each spoken line, follow the explicit
+`dialogue_side_map`: inside speakers use the start frame; outside speakers use
+the barrier reference frame. Keep non-speakers' mouths closed. If the model
+cannot execute timed view cuts, preserve the two-view contract and surface a
+clear capability failure rather than silently producing one mixed image.
+Analyze the two images separately, emit `view_role=start_frame` for inside
+characters and `view_role=barrier_reference` for outside characters, and
+prefix every speaker cue with its literal Image 1 or Image 2 label.

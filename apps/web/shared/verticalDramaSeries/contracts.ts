@@ -511,7 +511,15 @@ export type VerticalDramaStartFramePlan = {
     shotNumber: number;
     imagePrompt: string;
     negativePrompt: string;
+    /** Approved portrait references that must appear only inside a phone/video call screen. */
+    screenCallerCharacterRefs?: string[];
+    /** Explicit physical dialogue through a closed barrier; distinct from phone callers. */
+    barrierDialogue?: import("./barrierDialogue").VerticalDramaBarrierDialogue;
+    /** Two physical views for a conversation across a closed barrier. */
+    barrierMultiView?: import("./barrierMultiView").VerticalDramaBarrierMultiView;
     requiredCharacterRefs: string[];
+    /** True after the user explicitly assigns this shot's scene/caller references. */
+    characterRefsCustomized?: boolean;
     productReferenceAssetIds: string[];
     /**
      * Additive canonical story-bible snapshot used to author this frame's
@@ -1019,20 +1027,25 @@ export type VerticalDramaMotionPromptPack = {
      * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
      * compact, normalized "who is where on screen" reading the generation
      * LLM returned via the skill's `frame_analysis` output field (FRAME
-     * ANALYSIS FIRST section), when this shot had 2+ established characters.
+     * ANALYSIS FIRST section), when this shot had an attached character
+     * portrait/start-frame vision bundle.
      * `people` is trimmed to at most 6 entries (name/position each ≤80
      * chars); `positionSource` mirrors the skill's own
      * `"image" | "image_prompt_text"` value verbatim (lenient — never
      * enum-validated here, weak models may return other short strings).
      * Debugging/future-UI aid only; never required for rendering.
-     * `undefined` when fewer than 2 characters were established, no vision
-     * was attached and the model returned nothing usable, or for any clip
+     * `undefined` when no portrait/start-frame bundle was attached and the
+     * model returned nothing usable, or for any clip
      * generated before this task.
      */
     frameAnalysis?: {
       people: Array<{
         name: string;
         position: string;
+        /** Physical image whose independent viewer-relative coordinate space owns this person. */
+        viewRole?: "start_frame" | "barrier_reference";
+        /** Concise visible action/pose cue observed in the attached start frame. */
+        action?: string;
         facing?: string;
         eyesVisible?: string;
         occlusion?: string;

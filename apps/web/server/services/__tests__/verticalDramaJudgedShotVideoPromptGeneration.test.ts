@@ -240,6 +240,77 @@ describe("generateJudgedVerticalDramaShotVideoPrompt (Phase 2 — judged best-of
     });
   });
 
+  it("passes the start frame and labeled character portraits to the quality judge", async () => {
+    let judgeCall: any;
+    mockExecute.mockImplementation(async (args: any) => {
+      const text = extractUserText(args);
+      if (text.includes("--- CANDIDATES ---")) {
+        judgeCall = args;
+        return successResponse({ winner_index: 0, verdict: "accept", scores: [] });
+      }
+      if (text.includes("VARIATION DIRECTIVE")) {
+        return successResponse({ prompt: CANDIDATE_B_PROMPT, dialogue: [] });
+      }
+      return successResponse({ prompt: CANDIDATE_A_PROMPT, dialogue: [] });
+    });
+
+    await generateJudgedVerticalDramaShotVideoPrompt(
+      baseParams({
+        characterReferenceImages: [
+          { characterKey: "alice", name: "Alice", url: "https://cdn.example.com/alice.png" },
+          { characterKey: "bob", name: "Bob", url: "https://cdn.example.com/bob.png" },
+        ],
+      }),
+    );
+
+    const userMessage = judgeCall.messages.find((message: any) => message.role === "user");
+    expect(userMessage.content.filter((part: any) => part.type === "image_url")).toEqual([
+      { type: "image_url", image_url: { url: "https://cdn.example.com/uploads/vd/shot-3.png", detail: "high" } },
+      { type: "image_url", image_url: { url: "https://cdn.example.com/alice.png", detail: "high" } },
+      { type: "image_url", image_url: { url: "https://cdn.example.com/bob.png", detail: "high" } },
+    ]);
+    expect(userMessage.content.map((part: any) => part.text).filter(Boolean)).toContain(
+      "Reference image for character: Alice (alice)",
+    );
+  });
+
+  it("passes both Dual View frames to the quality judge before grounding images", async () => {
+    let judgeCall: any;
+    mockExecute.mockImplementation(async (args: any) => {
+      const text = extractUserText(args);
+      if (text.includes("--- CANDIDATES ---")) {
+        judgeCall = args;
+        return successResponse({ winner_index: 0, verdict: "accept", scores: [] });
+      }
+      if (text.includes("VARIATION DIRECTIVE")) {
+        return successResponse({ prompt: CANDIDATE_B_PROMPT, dialogue: [] });
+      }
+      return successResponse({ prompt: CANDIDATE_A_PROMPT, dialogue: [] });
+    });
+
+    await generateJudgedVerticalDramaShotVideoPrompt(
+      baseParams({
+        barrierReferenceImage: {
+          url: "https://cdn.example.com/view-2.png",
+          name: "คาเฟ่ชั้นล่าง",
+        },
+        characterReferenceImages: [
+          { characterKey: "irin", name: "ไอริณ", url: "https://cdn.example.com/irin.png" },
+        ],
+      }),
+    );
+
+    const userMessage = judgeCall.messages.find((message: any) => message.role === "user");
+    expect(userMessage.content.filter((part: any) => part.type === "image_url")).toEqual([
+      { type: "image_url", image_url: { url: "https://cdn.example.com/uploads/vd/shot-3.png", detail: "high" } },
+      { type: "image_url", image_url: { url: "https://cdn.example.com/view-2.png", detail: "high" } },
+      { type: "image_url", image_url: { url: "https://cdn.example.com/irin.png", detail: "high" } },
+    ]);
+    expect(userMessage.content.map((part: any) => part.text).filter(Boolean)).toContain(
+      "Image 2: คาเฟ่ชั้นล่าง",
+    );
+  });
+
   it("(b) repair path: exactly 4 calls, repaired prompt ships when hard facts are equal (tie -> repaired)", async () => {
     const REPAIRED_PROMPT = "Camera holds steady, then eases into a slow, deliberate push.";
     mockExecute.mockImplementation(async (args: any) => {
@@ -329,10 +400,9 @@ describe("generateJudgedVerticalDramaShotVideoPrompt (Phase 2 — judged best-of
 
     const result = await generateJudgedVerticalDramaShotVideoPrompt(baseParams());
 
-    // 2 gen (clean) + 2 judge attempts (both invalid) = 4, still within the
-    // <=4 hard bound (no repair is ever attempted when the judge itself
-    // never produced a usable verdict).
-    expect(mockExecute).toHaveBeenCalledTimes(4);
+    // 2 clean candidates + four judge attempts (primary, retry, fallback,
+    // text-only fallback). No repair is attempted without a usable verdict.
+    expect(mockExecute).toHaveBeenCalledTimes(6);
     expect(result.prompt).toBe(CANDIDATE_A_PROMPT);
     expect(result.promptQuality.mode).toBe("judged");
     expect(result.promptQuality.candidates).toBe(2);
@@ -355,9 +425,9 @@ describe("generateJudgedVerticalDramaShotVideoPrompt (Phase 2 — judged best-of
 
     const result = await generateJudgedVerticalDramaShotVideoPrompt(baseParams());
 
-    // Candidate A: 1 call. Candidate B: 2 calls (first attempt + its own
-    // JSON-retry, both invalid). Judge: 0 calls — never reached.
-    expect(mockExecute).toHaveBeenCalledTimes(3);
+    // Candidate A: 1 call. Candidate B exhausts four vision/fallback attempts.
+    // Judge: 0 calls — never reached.
+    expect(mockExecute).toHaveBeenCalledTimes(5);
     expect(mockExecute.mock.calls.every(call => !extractUserText(call[0]).includes("--- CANDIDATES ---"))).toBe(
       true,
     );
@@ -650,10 +720,9 @@ describe("generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch (Phase 2 — f
       baseSpeakerSwitchParams(),
     );
 
-    // 2 gen (clean) + 2 judge attempts (both invalid) = 4, still within the
-    // <=4 hard bound (no repair is ever attempted when the judge itself
-    // never produced a usable verdict).
-    expect(mockExecute).toHaveBeenCalledTimes(4);
+    // 2 clean candidates + four judge attempts (primary, retry, fallback,
+    // text-only fallback). No repair is attempted without a usable verdict.
+    expect(mockExecute).toHaveBeenCalledTimes(6);
     expect(result.prompt).toBe(SPEAKER_SWITCH_CANDIDATE_A_PROMPT);
     expect(result.promptQuality.mode).toBe("judged");
     expect(result.promptQuality.candidates).toBe(2);
@@ -678,9 +747,9 @@ describe("generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch (Phase 2 — f
       baseSpeakerSwitchParams(),
     );
 
-    // Candidate A: 1 call. Candidate B: 2 calls (first attempt + its own
-    // JSON-retry, both invalid). Judge: 0 calls — never reached.
-    expect(mockExecute).toHaveBeenCalledTimes(3);
+    // Candidate A: 1 call. Candidate B exhausts four vision/fallback attempts.
+    // Judge: 0 calls — never reached.
+    expect(mockExecute).toHaveBeenCalledTimes(5);
     expect(mockExecute.mock.calls.every(call => !extractUserText(call[0]).includes("--- CANDIDATES ---"))).toBe(
       true,
     );

@@ -76,6 +76,9 @@ import type {
   // never re-decides the split itself.
   SpeakerSwitchSubShotWindow,
 } from "@shared/verticalDramaSeries";
+import type { VerticalDramaBarrierMultiView } from "@shared/verticalDramaSeries/barrierMultiView";
+import { renderVerticalDramaBarrierMultiViewFactBlock } from "@shared/verticalDramaSeries/barrierMultiView";
+
 import {
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
@@ -130,6 +133,31 @@ import {
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
 export { buildNativeDialogueVerbatimBlock } from "@shared/verticalDramaSeries/nativeDialogue";
+
+/**
+ * Raised when a visually grounded video prompt cannot inspect its required
+ * start/reference frames. Persisting a text-only guess is worse than asking
+ * the user to retry with a vision-capable authoring model.
+ */
+export class VdVisionRequiredError extends Error {
+  code = "VD_VISION_REQUIRED" as const;
+
+  constructor(message = "A vision-capable model is required for character-grounded video prompts") {
+    super(message);
+    this.name = "VdVisionRequiredError";
+  }
+}
+
+function assertVisionForCharacterGroundedPrompt(
+  hasVision: boolean,
+  hasRequiredVisualGrounding: boolean,
+): void {
+  if (hasRequiredVisualGrounding && !hasVision) {
+    throw new VdVisionRequiredError(
+      "ต้องใช้โมเดลที่รองรับการอ่านภาพจริงเพื่อสร้าง video prompt จากภาพตัวละครหรือภาพคู่ Dual View",
+    );
+  }
+}
 
 /**
  * Thrown when the per-user `mediaGenerationLimiter` rejects a video
@@ -677,14 +705,31 @@ export interface GenerateVideoMotionPromptPackParams {
    * the shot(s) it grounds. Attached ONLY when a vision-capable LLM is
    * resolvable (see `generateVideoMotionPromptPack`'s own doc comment) —
    * never blocks or fails generation when unavailable, and capped at 12
-   * images regardless of how many are supplied. Omitted/empty (every caller
+   * selected shot bundles regardless of how many are supplied; every selected
+   * bundle includes its start frame followed by all resolved character
+   * portraits. Omitted/empty (every caller
    * before this task) preserves today's byte-identical text-only call.
    */
-  startFrameImages?: Array<{ shotNumber: number; url: string }>;
+  startFrameImages?: Array<{
+    shotNumber: number;
+    url: string;
+    /** Image 2 for Dual View shots. Always attached immediately after Image 1. */
+    dualViewReferenceImage?: { url: string; name?: string };
+    /** The labeled portraits visible/required in this shot, attached after its start frame. */
+    characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  }>;
   storyboardShots: Array<{
     shotNumber: number;
     description: string;
     durationSeconds: number;
+    /** Character keys established in this shot, in the start-frame contract order. */
+    characterKeys?: string[];
+    /** Speaker-attributed source lines, so the bulk skill cannot lose who owns a line. */
+    dialogueLines?: Array<{
+      line: string;
+      speakerName?: string;
+      characterKey?: string;
+    }>;
     /**
      * The shot's spoken line (from the storyboard's `dialogue_excerpt` /
      * `subtitle_text`), when the shot has one. Without this, the motion-
@@ -800,7 +845,16 @@ function buildUserPrompt(
       : undefined;
   const shotLines = params.storyboardShots
     .map((s) => {
-      const dialogue = s.dialogueExcerpt ? ` | dialogue: "${s.dialogueExcerpt}"` : "";
+      const dialogue = s.dialogueLines?.length
+        ? ` | dialogue: ${s.dialogueLines
+            .map(line => `${line.speakerName ?? line.characterKey ?? "speaker"}: "${line.line}"`)
+            .join("; ")}`
+        : s.dialogueExcerpt
+          ? ` | dialogue: "${s.dialogueExcerpt}"`
+          : "";
+      const characters = s.characterKeys?.length
+        ? ` | established characters: ${s.characterKeys.join(", ")}`
+        : "";
       const retentionMarkers = [
         s.shotNumber === openingShotNumber ? "is_opening_shot: true (episode's hook shot)" : null,
         s.shotNumber === endingShotNumber
@@ -810,9 +864,27 @@ function buildUserPrompt(
         .filter(Boolean)
         .join(", ");
       const retentionMarkersSuffix = retentionMarkers ? ` | ${retentionMarkers}` : "";
-      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${dialogue}${retentionMarkersSuffix}`;
+      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${characters}${dialogue}${retentionMarkersSuffix}`;
     })
     .join("\n");
+
+  const visionBundleFacts = (params.startFrameImages ?? [])
+    .filter(
+      frame =>
+        frame.characterReferenceImages?.length || frame.dualViewReferenceImage
+    )
+    .map(frame => {
+      const refs = (frame.characterReferenceImages ?? [])
+        .map(ref => `${ref.name ?? ref.characterKey} [${ref.characterKey}]`)
+        .join(", ");
+      const dualView = frame.dualViewReferenceImage
+        ? ` Inspect BOTH Image 1 (start frame) and Image 2 (reference frame: ${frame.dualViewReferenceImage.name ?? "secondary location"}); describe timed cuts using the character and environment visible in the corresponding image and never merge the two locations into one frame.`
+        : "";
+      const portraits = refs
+        ? ` Compare the views against these labeled character portraits before assigning any speaker position or action: ${refs}.`
+        : "";
+      return `VISION BUNDLE — Shot ${frame.shotNumber}:${dualView}${portraits} Each attached view is authoritative for its own character placement and environment.`;
+    });
 
   // Part B3 — reference-only episode scene-setting context, same
   // "do not copy verbatim" contract as `buildStartFrameRenderPlanUserPrompt`.
@@ -826,6 +898,9 @@ function buildUserPrompt(
     `Duration profile: ${params.durationProfileId}`,
     episodePlanContextBlock,
     `Storyboard shots (bridge shots into motion clips per the skill's usual pairing strategy):\n${shotLines}`,
+    visionBundleFacts.length
+      ? `${visionBundleFacts.join("\n")} For every spoken line, bind the exact named character to the observed screen position using viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right, always from the viewer/camera side; never use anatomical left/right or left/right hand. All other established characters remain silent with mouths fully closed. Never infer identity from gender, clothing, or requested layout when the attached images disagree.`
+      : null,
     `When a shot has a "dialogue" line, the resulting clip's "prompt" must explicitly mention the character speaking it and describe mouth/lip movement matching that line — do not produce a silent/mute description for a shot that has dialogue.`,
     `PROMPT LANGUAGE (MANDATORY): write every "video_clip_requests[].prompt" and "negative_motion_prompt" entirely in ${promptLanguageName} — all motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
     `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video — any literal quoted dialogue embedded in a clip's prompt (native-audio models) or returned as a dialogue line must be in ${dialogueLanguageName}, adapted/translated naturally into ${dialogueLanguageName} if the source line above is shown in a different language.`,
@@ -921,10 +996,22 @@ export async function generateVideoMotionPromptPack(
       // Vision fallback surface — same signal the per-shot generator logs
       // (see that function's own doc comment), so a pack call that WANTED
       // vision but couldn't get one is visible in server logs instead of
-      // silently degrading. Never blocks/fails the stage.
+      // silently degrading. Character-grounded packs fail closed below when
+      // no vision-capable model is available; text-only packs retain the
+      // legacy warning-only behavior.
       console.warn(
         "[vd_video_prompt] generated WITHOUT vision (no vision-capable model enabled) — pack relied on text-only clip descriptions",
         { seriesId: params.seriesId, episodeId: params.episodeId },
+      );
+    }
+    const hasRequiredVisualGrounding = (params.startFrameImages ?? []).some(
+      frame =>
+        (frame.characterReferenceImages?.length ?? 0) > 0 ||
+        Boolean(frame.dualViewReferenceImage),
+    );
+    if (hasRequiredVisualGrounding && !hasVision) {
+      throw new VdVisionRequiredError(
+        "ต้องใช้โมเดลที่รองรับการอ่านภาพจริงเพื่อสร้าง video prompt จากภาพตัวละครหรือภาพคู่ Dual View",
       );
     }
   } else {
@@ -978,7 +1065,7 @@ export async function generateVideoMotionPromptPack(
   // `executeJsonPlanningCallWithRetry`'s doc comment. The vision branch
   // mirrors this with `executeVisionAwareJsonCallWithRetry`'s own one-retry
   // (higher-token-ceiling) contract.
-  const { data: validatedData, response } = hasVision
+  const generationResult = hasVision
     ? await executeVisionAwareJsonCallWithRetry<VideoMotionPromptPackOutput>({
         model,
         systemPrompt,
@@ -986,7 +1073,24 @@ export async function generateVideoMotionPromptPack(
         hasVision: true,
         images: (params.startFrameImages ?? [])
           .slice(0, 12)
-          .map((frame) => ({ url: frame.url, label: `Shot ${frame.shotNumber} start frame` })),
+          .flatMap((frame) => [
+            {
+              url: frame.url,
+              label: `Shot ${frame.shotNumber} start frame`,
+            },
+            ...(frame.dualViewReferenceImage
+              ? [
+                  {
+                    url: frame.dualViewReferenceImage.url,
+                    label: `Shot ${frame.shotNumber} — Image 2: ${frame.dualViewReferenceImage.name ?? "secondary location"}`,
+                  },
+                ]
+              : []),
+            ...(frame.characterReferenceImages ?? []).map(ref => ({
+              url: ref.url,
+              label: `Shot ${frame.shotNumber} character reference: ${ref.name ?? ref.characterKey} (${ref.characterKey})`,
+            })),
+          ]),
         userId: params.userId,
         schema: videoMotionPromptPackOutputSchema,
         firstAttemptMaxTokens: 16000,
@@ -1002,6 +1106,19 @@ export async function generateVideoMotionPromptPack(
         schema: videoMotionPromptPackOutputSchema,
         label: "Video motion prompt pack",
       });
+  const { data: validatedData, response } = generationResult;
+  const usedVision = hasVision && "usedVision" in generationResult
+    ? generationResult.usedVision
+    : hasVision;
+
+  const hasCharacterGrounding = (params.startFrameImages ?? []).some(
+    frame => (frame.characterReferenceImages?.length ?? 0) > 0,
+  );
+  if (hasCharacterGrounding && !usedVision) {
+    throw new VdVisionRequiredError(
+      "ต้องใช้โมเดลที่รองรับการอ่านภาพจริงเพื่อสร้าง video prompt ที่มีตัวละครและตำแหน่งในภาพ",
+    );
+  }
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
@@ -1024,7 +1141,7 @@ export async function generateVideoMotionPromptPack(
       episodeId: params.episodeId,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
-      usedVision: hasVision,
+      usedVision,
     },
   });
 
@@ -1190,7 +1307,8 @@ export const shotVideoPromptOutputSchema = z
      * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
      * skill's "FRAME ANALYSIS FIRST" reading of who is where on screen in
      * the attached start frame, requested via the fact block's conditional
-     * `frame_analysis: REQUIRED` line whenever 2+ characters are established
+     * `frame_analysis: REQUIRED` line whenever an established character
+     * portrait is attached
      * (see `buildTargetVideoModelFactBlock`). LENIENT by design (VD
      * weak-model JSON failure class — cheaper models return sloppy
      * enums/shapes): `position`/`position_source` accept ANY string, never
@@ -1207,7 +1325,9 @@ export const shotVideoPromptOutputSchema = z
               .object({
                 name: z.string(),
                 position: z.string(),
+                view_role: z.string().optional(),
                 note: z.string().optional(),
+                action: z.string().optional(),
                 facing: z.string().optional(),
                 eyes_visible: z.string().optional(),
                 occlusion: z.string().optional(),
@@ -1276,10 +1396,24 @@ function buildShotVideoPromptVisionImages(
   imageUrl: string,
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[],
   locationReferenceImage?: { url: string; name?: string },
+  barrierReferenceImage?: { url: string; name?: string },
   additionalImageUrls?: string[],
 ): VisionAwareImageInput[] {
   return [
-    { url: imageUrl },
+    {
+      url: imageUrl,
+      ...(barrierReferenceImage
+        ? { label: `Image 1: primary shot location` }
+        : {}),
+    },
+    ...(barrierReferenceImage
+      ? [
+          {
+            url: barrierReferenceImage.url,
+            label: `Image 2: ${barrierReferenceImage.name ?? "secondary location"}`,
+          },
+        ]
+      : []),
     ...(characterReferenceImages ?? []).map(c => ({
       url: c.url,
       label: `Reference image for character: ${c.name ?? c.characterKey} (${c.characterKey})`,
@@ -1344,7 +1478,7 @@ export function resolveShotVideoPromptModelFamily(
  * here). Always present (every shot's prompt should be shaped for its
  * target model); the trailing `frame_analysis: REQUIRED` line is the ONE
  * conditional piece, gated on `hasEstablishedCharacters` (mirrors the
- * router's own `characterReferenceImages.length >= 2` gate for resolving
+ * router's own `characterReferenceImages.length >= 1` gate for resolving
  * reference portraits in the first place — see both generator functions'
  * own `hasEstablishedCharacters` local). Exported for the real-skill-file
  * gate test — see `resolveShotVideoPromptModelFamily`'s doc comment above.
@@ -1402,7 +1536,134 @@ function findQuotedLineStartIndex(prompt: string, lineTh: string): number {
 }
 
 /** Screen-position vocabulary the skill's FRAME ANALYSIS FIRST section teaches. */
-const POSITION_ANCHOR_WORDS = /\b(center-left|center-right|left|center|right)\b/i;
+const POSITION_ANCHOR_WORDS = /\b(center[-\s]left|center[-\s]right|left|center|right)\b/i;
+const POSITION_ANCHOR_MARKER = "position mismatch";
+const POSITION_AMBIGUITY_MARKER = "ambiguous screen position";
+const POSITION_VIEW_SCOPE_MARKER = "view scope mismatch";
+const POSITION_AMBIGUITY_WORDS = /\b(?:left|right)[ -]hand(?:[ -]side)?\b/i;
+
+type VdScreenPosition = "left" | "center-left" | "center" | "center-right" | "right";
+type VdFrameViewRole = "start_frame" | "barrier_reference";
+type VdFramePositionEntry = {
+  position: VdScreenPosition;
+  viewRole?: VdFrameViewRole;
+};
+
+function normalizeSpeakerLabel(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+/** Normalize the weak-model position prose into the contract's five buckets. */
+function normalizeScreenPosition(value: unknown): VdScreenPosition | undefined {
+  if (typeof value !== "string" || value.trim().length === 0) return undefined;
+  const normalized = value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ");
+  if (/\bcenter(?:-| )left\b|\bleft(?:-| )center\b/.test(normalized)) return "center-left";
+  if (/\bcenter(?:-| )right\b|\bright(?:-| )center\b/.test(normalized)) return "center-right";
+  if (/\b(leftmost|far left|viewer[ -]left|screen[ -]left)\b/.test(normalized)) return "left";
+  if (/\b(rightmost|far right|viewer[ -]right|screen[ -]right)\b/.test(normalized)) return "right";
+  if (/\b(left)\b/.test(normalized)) return "left";
+  if (/\b(right)\b/.test(normalized)) return "right";
+  if (/\b(center|middle|centred|centered)\b/.test(normalized)) return "center";
+  return undefined;
+}
+
+function extractPromptScreenPosition(value: string): VdScreenPosition | undefined {
+  const match = POSITION_ANCHOR_WORDS.exec(value);
+  POSITION_ANCHOR_WORDS.lastIndex = 0;
+  return match ? normalizeScreenPosition(match[0]) : undefined;
+}
+
+function normalizeFrameViewRole(value: unknown): VdFrameViewRole | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().toLocaleLowerCase().replace(/[ -]+/g, "_");
+  if (["start_frame", "view_1", "view1", "inside"].includes(normalized)) {
+    return "start_frame";
+  }
+  if (
+    ["barrier_reference", "reference_frame", "view_2", "view2", "outside"].includes(
+      normalized,
+    )
+  ) {
+    return "barrier_reference";
+  }
+  return undefined;
+}
+
+function resolveDialogueFrameViewRole(
+  line: { characterKey?: string },
+  barrierMultiView?: VerticalDramaBarrierMultiView,
+): VdFrameViewRole | undefined {
+  if (!barrierMultiView || !line.characterKey) return undefined;
+  const side = barrierMultiView.dialogueSideMap[line.characterKey];
+  if (side === "inside") return "start_frame";
+  if (side === "outside") return "barrier_reference";
+  if (barrierMultiView.startView.characterRefs.includes(line.characterKey)) return "start_frame";
+  if (barrierMultiView.referenceView.characterRefs.includes(line.characterKey)) {
+    return "barrier_reference";
+  }
+  return undefined;
+}
+
+function promptWindowHasFrameViewRole(value: string, role: VdFrameViewRole): boolean {
+  return role === "start_frame"
+    ? /\bimage\s*1\b/iu.test(value)
+    : /\bimage\s*2\b/iu.test(value);
+}
+
+function buildFrameAnalysisPositionMap(
+  raw: ShotVideoPromptOutput["frame_analysis"],
+): Map<string, VdFramePositionEntry[]> {
+  const positions = new Map<string, VdFramePositionEntry[]>();
+  for (const person of raw?.people ?? []) {
+    const name = typeof person?.name === "string" ? person.name.trim() : "";
+    const position = normalizeScreenPosition(person?.position);
+    if (!name || !position) continue;
+    const key = normalizeSpeakerLabel(name);
+    positions.set(key, [
+      ...(positions.get(key) ?? []),
+      { position, viewRole: normalizeFrameViewRole(person?.view_role) },
+    ]);
+  }
+  return positions;
+}
+
+function resolveFrameAnalysisSpeakerEntries(
+  line: { characterKey?: string; speakerName?: string },
+  positions: Map<string, VdFramePositionEntry[]>,
+): VdFramePositionEntry[] {
+  for (const label of [line.speakerName, line.characterKey]) {
+    if (!label) continue;
+    const entries = positions.get(normalizeSpeakerLabel(label));
+    if (entries?.length) return entries;
+  }
+  return [];
+}
+
+function buildFrameAnalysisPositionLock(
+  raw: ShotVideoPromptOutput["frame_analysis"],
+  barrierMultiView?: VerticalDramaBarrierMultiView,
+): string | undefined {
+  const entries = (raw?.people ?? [])
+    .map(person => {
+      const name = typeof person?.name === "string" ? person.name.trim() : "";
+      const position = normalizeScreenPosition(person?.position);
+      const viewRole = normalizeFrameViewRole(person?.view_role);
+      if (!name || !position || (barrierMultiView && !viewRole)) return null;
+      const viewLabel =
+        viewRole === "start_frame"
+          ? "Image 1"
+          : viewRole === "barrier_reference"
+            ? "Image 2"
+            : undefined;
+      return `${viewLabel ? `${viewLabel}: ` : ""}${name}=${position}`;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+  return entries.length > 0 ? entries.join(", ") : undefined;
+}
 
 /**
  * Position-anchor compliance check (`planning/vd-video-prompt-model-family-
@@ -1420,12 +1681,11 @@ const POSITION_ANCHOR_WORDS = /\b(center-left|center-right|left|center|right)\b/
  * already governs) rather than double-reported.
  *
  * `hasEstablishedCharacters` MUST be the caller's own already-computed
- * "2+ established characters" signal (the same one that gates the
- * `frame_analysis: REQUIRED` fact line in `buildTargetVideoModelFactBlock`)
+ * "established character portrait attached" signal (the same one that gates
+ * the `frame_analysis: REQUIRED` fact line in `buildTargetVideoModelFactBlock`)
  * — never re-derived here — so this check never flags the (1) issue for
  * shots where the skill was never asked for `frame_analysis` in the first
- * place (fewer than 2 established characters, where the skill deliberately
- * leaves `frame_analysis`/position anchoring optional). Per-line name/
+ * place (no established character portrait attached). Per-line name/
  * position checks (2)/(3) are unaffected by this flag and still run for
  * every dialogue line whose quote is found, established characters or not.
  */
@@ -1433,9 +1693,11 @@ function findPositionAnchorIssues(
   data: Pick<ShotVideoPromptOutput, "prompt" | "frame_analysis">,
   dialogueLines: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
   hasEstablishedCharacters: boolean,
+  barrierMultiView?: VerticalDramaBarrierMultiView,
 ): string[] {
   const issues: string[] = [];
   const people = data.frame_analysis?.people;
+  const framePositions = buildFrameAnalysisPositionMap(data.frame_analysis);
   if (hasEstablishedCharacters && (!Array.isArray(people) || people.length === 0)) {
     issues.push(`frame_analysis.people is missing or empty`);
   }
@@ -1446,13 +1708,64 @@ function findPositionAnchorIssues(
     const quoteIndex = findQuotedLineStartIndex(prompt, line.lineTh);
     if (quoteIndex < 0) continue;
     const window = prompt.slice(Math.max(0, quoteIndex - ANCHOR_WINDOW_CHARS), quoteIndex);
-    const hasName = speaker ? window.includes(speaker) : true;
-    const hasPosition = POSITION_ANCHOR_WORDS.test(window);
+    const normalizedWindow = normalizeSpeakerLabel(window);
+    const normalizedSpeaker = speaker ? normalizeSpeakerLabel(speaker) : "";
+    const hasName = speaker ? normalizedWindow.includes(normalizedSpeaker) : true;
+    const speakerIndex = speaker
+      ? window.toLocaleLowerCase().lastIndexOf(speaker.toLocaleLowerCase())
+      : -1;
+    const speakerAnchorWindow =
+      speakerIndex >= 0 ? window.slice(speakerIndex + (speaker?.length ?? 0)) : window;
+    if (POSITION_AMBIGUITY_WORDS.test(speakerAnchorWindow)) {
+      issues.push(
+        `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — ${POSITION_AMBIGUITY_MARKER}: use viewer-left/viewer-right, never anatomical left/right or left/right hand`,
+      );
+      continue;
+    }
+    const promptPosition = extractPromptScreenPosition(speakerAnchorWindow);
+    const expectedViewRole = resolveDialogueFrameViewRole(line, barrierMultiView);
+    const speakerEntries = resolveFrameAnalysisSpeakerEntries(line, framePositions);
+    const expectedEntry = expectedViewRole
+      ? speakerEntries.find(entry => entry.viewRole === expectedViewRole)
+      : speakerEntries[0];
+    const expectedPosition = expectedEntry?.position;
+    const hasPosition = Boolean(promptPosition);
     if (!hasName || !hasPosition) {
       const missing = [!hasName ? "speaker name" : null, !hasPosition ? "position anchor" : null]
         .filter(Boolean)
         .join(" and ");
       issues.push(`"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — missing ${missing} within ~200 chars before the quote`);
+      continue;
+    }
+    if (expectedViewRole) {
+      const viewLabel =
+        expectedViewRole === "start_frame"
+          ? "Image 1"
+          : "Image 2";
+      if (!expectedEntry) {
+        const observedRoles = speakerEntries
+          .map(entry => entry.viewRole ?? "unscoped")
+          .join(", ");
+        issues.push(
+          `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — ${POSITION_VIEW_SCOPE_MARKER}: expected ${viewLabel}, frame_analysis says ${observedRoles || "missing"}`,
+        );
+        continue;
+      }
+      if (!promptWindowHasFrameViewRole(window, expectedViewRole)) {
+        issues.push(
+          `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — ${POSITION_VIEW_SCOPE_MARKER}: prompt must anchor this cue to ${viewLabel}`,
+        );
+        continue;
+      }
+    }
+    if (hasEstablishedCharacters && !expectedPosition) {
+      issues.push(
+        `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — frame_analysis has no usable position for this speaker`,
+      );
+    } else if (expectedPosition && promptPosition !== expectedPosition) {
+      issues.push(
+        `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — ${POSITION_ANCHOR_MARKER}: frame_analysis says ${expectedPosition}, prompt says ${promptPosition}`,
+      );
     }
   }
   return issues;
@@ -1473,6 +1786,8 @@ export type VdFrameAnalysis = {
   people: Array<{
     name: string;
     position: string;
+    viewRole?: VdFrameViewRole;
+    action?: string;
     facing?: string;
     eyesVisible?: string;
     occlusion?: string;
@@ -1495,6 +1810,11 @@ export function normalizeFrameAnalysis(
     .map(p => ({
       name: typeof p?.name === "string" ? p.name.trim().slice(0, 80) : "",
       position: typeof p?.position === "string" ? p.position.trim().slice(0, 80) : "",
+      viewRole: normalizeFrameViewRole(p?.view_role),
+      action:
+        typeof p?.action === "string"
+          ? p.action.trim().slice(0, 120)
+          : undefined,
       facing: normalizedString(p?.facing),
       eyesVisible: normalizedString(p?.eyes_visible),
       occlusion: normalizedString(p?.occlusion),
@@ -1617,7 +1937,7 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * character's own approved reference portrait, labeled with its name and
    * `characterKey` and attached to the vision call ALONGSIDE `imageUrl`
    * (never replacing it), so the model can visually anchor "this face in
-   * the image = this name" when 2+ characters share the shot — the same
+   * the image = this name" when multiple characters share the shot — the same
    * identity-lock principle already used for start-frame IMAGE generation,
    * applied here to video-PROMPT generation for the first time. The CALLER
    * (router) resolves which characters/portraits to include (see
@@ -1652,6 +1972,7 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * most important regression bar for this change.
    */
   locationReferenceImage?: { url: string; name?: string };
+  barrierReferenceImage?: { url: string; name?: string };
   shotContext: {
     /**
      * Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
@@ -1719,6 +2040,8 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
      * row (falls back to the pre-existing behavior).
      */
     characterIdentityMap?: string;
+    /** Two-view physical barrier contract; never a phone/video-call role. */
+    barrierMultiView?: VerticalDramaBarrierMultiView;
     /**
      * Product tie-in context (spec §13) — present ONLY when this shot is a
      * tie-in shot per the script stage's `product_tie_in_plan.tie_ins[]`
@@ -1914,8 +2237,8 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
   /**
    * Model-family-aware, vision-grounded video prompt quality upgrade — the
    * normalized `frame_analysis` reading (see `normalizeFrameAnalysis`), when
-   * the skill returned one usable. `undefined` when fewer than 2 characters
-   * were established, no vision was attached, or the model returned nothing
+   * the skill returned one usable. `undefined` when no portrait/start-frame
+   * vision bundle was attached, or the model returned nothing
    * usable — never a hard requirement.
    */
   frameAnalysis?: VdFrameAnalysis;
@@ -1935,7 +2258,7 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
   warnings?: string[];
 }
 
-function buildShotVideoPromptUserPrompt(
+export function buildShotVideoPromptUserPrompt(
   params: GenerateVerticalDramaShotVideoPromptParams,
   nativeAudioDialogue: boolean,
   nativeAudioDirectionEnabled: boolean,
@@ -1957,7 +2280,9 @@ function buildShotVideoPromptUserPrompt(
           // `characterKey`. Falls back to `characterKey` when no name resolved
           // (byte-identical to before for any line without a speakerName).
           const speaker = l.speakerName ?? l.characterKey ?? "character";
-          const parts = [`${i + 1}. ${speaker}: "${l.lineTh}"`];
+          const parts = [
+            `${i + 1}. ${speaker}${l.characterKey ? ` [characterKey=${l.characterKey}]` : ""}: "${l.lineTh}"`,
+          ];
           if (l.emotion) parts.push(`emotion: ${l.emotion}`);
           if (l.delivery?.tone) parts.push(`tone: ${l.delivery.tone}`);
           if (l.delivery?.pace) parts.push(`pace: ${l.delivery.pace}`);
@@ -1993,6 +2318,12 @@ function buildShotVideoPromptUserPrompt(
   const characterReferenceImageNames = (params.characterReferenceImages ?? []).map(
     c => c.name ?? c.characterKey,
   );
+  const characterIdentityManifest = (params.characterReferenceImages ?? [])
+    .map(c => `Portrait label: name=${c.name ?? c.characterKey}, characterKey=${c.characterKey}`)
+    .join("; ");
+  const speakerFaceBindingInstruction = dialogueLines.length
+    ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named characterKey; state that speaker's observed screen position from frame_analysis using ONLY viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right next to the line. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
+    : null;
   // Location reference image (Phase E of `planning/polished-toasting-
   // gadget.md` — location visual bible) — same purely FACTUAL announcement
   // convention as `characterReferenceImageNames` above (the actual
@@ -2050,7 +2381,7 @@ function buildShotVideoPromptUserPrompt(
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
       : null,
     params.imagePrompt && params.attachShotImage !== false
-      ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (left / center / right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
+    ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (viewer-left / viewer-center-left / viewer-center / viewer-center-right / viewer-right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
       : params.imagePrompt && params.attachShotImage === false
         ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
         : null,
@@ -2058,8 +2389,18 @@ function buildShotVideoPromptUserPrompt(
     characterReferenceImageNames.length > 0 && params.attachShotImage !== false
       ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
       : null,
+    characterIdentityManifest && params.attachShotImage !== false
+      ? `CHARACTER FACE IDENTITY MANIFEST (label-to-face mapping; the attached start frame remains authoritative for actual position): ${characterIdentityManifest}`
+      : null,
+    speakerFaceBindingInstruction,
     params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
+    shotContext.barrierMultiView
+      ? renderVerticalDramaBarrierMultiViewFactBlock(shotContext.barrierMultiView)
+      : null,
+    params.barrierReferenceImage && params.attachShotImage !== false
+      ? "DUAL IMAGE INPUT (MANDATORY): Image 1 is the start frame; Image 2 is the reference frame. They have independent viewer-left/right coordinate spaces. In frame_analysis, assign view_role=start_frame only to characters configured for Image 1 and view_role=barrier_reference only to characters configured for Image 2. In prompt, prefix every speaking beat with the exact Image 1 or Image 2 label before the character name and that image's viewer-relative position. Never describe an Image 2 character as absent/not_visible/tiny in Image 1; inspect Image 2 directly instead."
       : null,
     shotContext.sceneContinuityLockBlock?.trim()
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${shotContext.sceneContinuityLockBlock.trim()}`
@@ -2204,6 +2545,7 @@ export async function generateVerticalDramaShotVideoPrompt(
   const resolvedModel = await resolveShotVideoPromptModel(params.seriesId);
   const model = resolvedModel.model;
   const hasVision = params.attachShotImage === false ? false : resolvedModel.hasVision;
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 1;
   // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
   // Phase 1b) — a visible server-log signal (instead of a silent guess) that
   // this generation ran without ever seeing the actual start-frame image, so
@@ -2216,6 +2558,10 @@ export async function generateVerticalDramaShotVideoPrompt(
       { seriesId: params.seriesId, episodeId: params.episodeId, shotNumber: params.shotNumber },
     );
   }
+  assertVisionForCharacterGroundedPrompt(
+    hasVision,
+    hasEstablishedCharacters || Boolean(params.barrierReferenceImage),
+  );
   const systemPrompt = loadShotVideoPromptSystemPrompt();
 
   const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
@@ -2255,14 +2601,13 @@ export async function generateVerticalDramaShotVideoPrompt(
 
   // Model-family-aware, vision-grounded video prompt quality upgrade
   // (`planning/vd-video-prompt-model-family-quality/plan.md`) — mirrors the
-  // router's OWN `characterReferenceImages.length >= 2` gate for resolving
+  // router's OWN `characterReferenceImages.length >= 1` gate for resolving
   // reference portraits in the first place (`resolveShotVideoPromptCharacterReferenceImages`
   // call site in `verticalDramaEpisodes.ts`), so this is the exact same
   // "established characters" signal, computed once here.
-  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
-    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+    (params.characterReferenceImages?.length ?? 0) >= 1;
   const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const family = resolveShotVideoPromptModelFamily(
     params.selectedVideoModelId,
@@ -2294,6 +2639,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       params.imageUrl,
       params.characterReferenceImages,
       params.locationReferenceImage,
+      params.barrierReferenceImage,
       params.additionalImageUrls,
     ),
     userId: params.userId,
@@ -2333,17 +2679,20 @@ export async function generateVerticalDramaShotVideoPrompt(
   // family-quality/plan.md`, item C) — extends the dialogue-verbatim retry
   // immediately below with a SECOND, independently-gated failure signal
   // that SHARES the same one-retry budget rather than spending an extra LLM
-  // call: only evaluated when this shot has 2+ established characters
+  // call: evaluated when this shot has an established character portrait
   // (`hasEstablishedCharacters` above), vision was actually attached, and
-  // native-audio verbatim dialogue applies. Fail-open by design
-  // (`findPositionAnchorIssues`'s own doc comment) — a still-imperfect
-  // anchor after the retry only produces a warning below, never a
-  // reversion/failure. When `hasEstablishedCharacters` is false (every
-  // caller before this task), this is always `[]` and the whole retry
-  // block below reduces to byte-identical dialogue-verbatim-only behavior.
+  // required dialogue applies. Missing generic anchors remain fail-open for
+  // weak models, but an explicit contradiction between the
+  // prompt and image-derived `frame_analysis` is hard-blocked after the one
+  // corrective retry so a known-wrong identity cue cannot be persisted.
   const initialPositionAnchorIssues =
-    hasEstablishedCharacters && hasVision && nativeAudioDialogue && requiredDialogue.length > 0
-      ? findPositionAnchorIssues(outcome.data, requiredDialogue, hasEstablishedCharacters)
+    hasEstablishedCharacters && hasVision && requiredDialogue.length > 0
+      ? findPositionAnchorIssues(
+          outcome.data,
+          requiredDialogue,
+          hasEstablishedCharacters,
+          params.shotContext.barrierMultiView,
+        )
       : [];
 
   const warnings: string[] = [];
@@ -2359,8 +2708,15 @@ export async function generateVerticalDramaShotVideoPrompt(
         );
       }
       if (initialPositionAnchorIssues.length > 0) {
+        const positionLock = buildFrameAnalysisPositionLock(
+          outcome.data.frame_analysis,
+          params.shotContext.barrierMultiView,
+        );
+        const dualViewCorrection = params.shotContext.barrierMultiView
+          ? ` This is a DUAL IMAGE shot: analyze Image 1 and Image 2 as separate coordinate spaces. Image 1 is the start frame and Image 2 is the reference frame. Return view_role=start_frame only for Image 1 characters and view_role=barrier_reference only for Image 2 characters. Prefix every spoken cue with its exact Image 1 or Image 2 label; never report an Image 2 person as not_visible/tiny inside Image 1.`
+          : "";
         correctionParts.push(
-          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, or these quoted line(s) were not anchored by the speaker's NAME and SCREEN POSITION (left/center-left/center/center-right/right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from the ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and screen position.`,
+          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
         );
       }
       const complianceRetryText = `${userPromptText}\n\n${correctionParts.join("\n\n")}`;
@@ -2374,6 +2730,7 @@ export async function generateVerticalDramaShotVideoPrompt(
             params.imageUrl,
             params.characterReferenceImages,
             params.locationReferenceImage,
+            params.barrierReferenceImage,
             params.additionalImageUrls,
           ),
         ),
@@ -2389,21 +2746,37 @@ export async function generateVerticalDramaShotVideoPrompt(
         !nativeAudioDialogue ||
         promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogueForRetry)
       ) {
-        outcome = correctedOutcome;
+        outcome = { ...correctedOutcome, usedVision: hasVision };
       }
-      // If the corrective retry still doesn't comply, keep the original
-      // (still schema-valid) outcome rather than throwing — a slightly
-      // non-compliant prompt is better than a hard failure on a paid call.
+      // If the corrective retry still misses a generic anchor, keep the
+      // original (still schema-valid) outcome. Explicit position
+      // contradictions are rejected by the post-retry gate below.
     } catch {
       // Corrective retry is best-effort only; never fail the whole call
       // over it — keep the original outcome.
     }
 
-    // Fail-open re-check (never reverts, never throws): whatever `outcome`
-    // ended up being (corrected or original), surface a warning when
-    // position anchors are still missing rather than blocking generation.
+    // Re-check after the corrective retry. Missing generic anchors remain a
+    // warning, while a known mismatch is rejected before credit deduction or
+    // persistence.
     if (initialPositionAnchorIssues.length > 0) {
-      const remainingIssues = findPositionAnchorIssues(outcome.data, requiredDialogue, hasEstablishedCharacters);
+      const remainingIssues = findPositionAnchorIssues(
+        outcome.data,
+        requiredDialogue,
+        hasEstablishedCharacters,
+        params.shotContext.barrierMultiView,
+      );
+      const positionMismatches = remainingIssues.filter(issue =>
+        issue.includes(POSITION_ANCHOR_MARKER) ||
+        issue.includes(POSITION_AMBIGUITY_MARKER) ||
+        issue.includes(POSITION_VIEW_SCOPE_MARKER),
+      );
+      if (positionMismatches.length > 0) {
+        throw new VdSchemaValidationError(
+          `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
+          positionMismatches,
+        );
+      }
       if (remainingIssues.length > 0) {
         warnings.push(
           `Shot ${params.shotNumber}: video-prompt position-anchor check still incomplete after 1 corrective retry — ${remainingIssues.join("; ")}`,
@@ -2634,6 +3007,9 @@ function buildSpeakerSwitchUserPrompt(
   const characterReferenceImageNames = (params.characterReferenceImages ?? []).map(
     c => c.name ?? c.characterKey,
   );
+  const characterIdentityManifest = (params.characterReferenceImages ?? [])
+    .map(c => `Portrait label: name=${c.name ?? c.characterKey}, characterKey=${c.characterKey}`)
+    .join("; ");
   // Location reference image (Phase E of `planning/polished-toasting-
   // gadget.md` — location visual bible) — see
   // `buildShotVideoPromptUserPrompt`'s identical `locationReferenceImageName`
@@ -2664,7 +3040,9 @@ function buildSpeakerSwitchUserPrompt(
             .map((l, li) => {
               const speaker =
                 l.speakerName ?? l.characterKey ?? w.characterKey;
-              const parts = [`${li + 1}. ${speaker}: "${l.lineTh}"`];
+              const parts = [
+                `${li + 1}. ${speaker}${l.characterKey ? ` [characterKey=${l.characterKey}]` : ""}: "${l.lineTh}"`,
+              ];
               if (l.emotion) parts.push(`emotion: ${l.emotion}`);
               if (l.delivery?.tone) parts.push(`tone: ${l.delivery.tone}`);
               if (l.delivery?.pace) parts.push(`pace: ${l.delivery.pace}`);
@@ -2676,7 +3054,7 @@ function buildSpeakerSwitchUserPrompt(
             .join("\n")
         : "(no dialogue lines assigned to this segment)";
       return [
-        `SEGMENT ${w.subShotNumber} of ${subShotWindows.length} — [${startSeconds}s, ${endSeconds}s) (${w.durationSeconds}s), anchor speaker: ${anchorSpeaker}`,
+        `SEGMENT ${w.subShotNumber} of ${subShotWindows.length} — [${startSeconds}s, ${endSeconds}s) (${w.durationSeconds}s), anchor speaker: ${anchorSpeaker}${shotContext.barrierMultiView?.dialogueSideMap[w.characterKey] ? `, speaker_side: ${shotContext.barrierMultiView.dialogueSideMap[w.characterKey]}` : ""}`,
         `Dialogue lines in this segment:\n${linesText}`,
       ].join("\n");
     })
@@ -2706,7 +3084,7 @@ function buildSpeakerSwitchUserPrompt(
       ? `SILENT BEAT (MANDATORY): this shot is intentionally silent — no character speaks aloud. Express the beat purely through action, expression, and camera. Return "dialogue" as [] and do NOT write any spoken line, lip-sync direction, or verbatim dialogue block.`
       : null,
     params.imagePrompt && params.attachShotImage !== false
-      ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (left / center / right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
+      ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (viewer-left / viewer-center-left / viewer-center / viewer-center-right / viewer-right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
       : params.imagePrompt && params.attachShotImage === false
         ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
         : null,
@@ -2717,11 +3095,23 @@ function buildSpeakerSwitchUserPrompt(
     characterReferenceImageNames.length > 0 && params.attachShotImage !== false
       ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
       : null,
+    characterIdentityManifest && params.attachShotImage !== false
+      ? `CHARACTER FACE IDENTITY MANIFEST (label-to-face mapping; the attached start frame remains authoritative for actual position): ${characterIdentityManifest}`
+      : null,
+    allDialogueLines.length
+      ? "SPEAKER-TO-FACE BINDING (MANDATORY): inspect the attached start frame first, match each visible face to the labeled portrait manifest by facial identity, and bind every timed segment to the exact characterKey/name plus observed screen position from frame_analysis. Use only viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right; these are always coordinates from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or requested layout; keep non-speakers' mouths closed and flag any unmatched face instead of guessing."
+      : null,
     // Location reference image (Phase E of `planning/polished-toasting-
     // gadget.md` — location visual bible) — factual announcement only; see
     // `locationReferenceImageName`'s doc comment above.
     params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
+    shotContext.barrierMultiView
+      ? renderVerticalDramaBarrierMultiViewFactBlock(shotContext.barrierMultiView)
+      : null,
+    params.barrierReferenceImage && params.attachShotImage !== false
+      ? "DUAL IMAGE INPUT (MANDATORY): Image 1 is the start frame; Image 2 is the reference frame. They have independent viewer-left/right coordinate spaces. In frame_analysis, assign view_role=start_frame only to characters configured for Image 1 and view_role=barrier_reference only to characters configured for Image 2. In prompt, prefix every speaking beat with the exact Image 1 or Image 2 label before the character name and that image's viewer-relative position. Never describe an Image 2 character as absent/not_visible/tiny in Image 1; inspect Image 2 directly instead."
       : null,
     shotContext.sceneContinuityLockBlock?.trim()
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${shotContext.sceneContinuityLockBlock.trim()}`
@@ -2805,6 +3195,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const resolvedModel = await resolveShotVideoPromptModel(params.seriesId);
   const model = resolvedModel.model;
   const hasVision = params.attachShotImage === false ? false : resolvedModel.hasVision;
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 1;
   // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
   // Phase 1b) — same signal as `generateVerticalDramaShotVideoPrompt`'s
   // identical block above.
@@ -2814,6 +3205,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       { seriesId: params.seriesId, episodeId: params.episodeId, shotNumber: params.shotNumber },
     );
   }
+  assertVisionForCharacterGroundedPrompt(
+    hasVision,
+    hasEstablishedCharacters || Boolean(params.barrierReferenceImage),
+  );
   const systemPrompt = loadShotVideoPromptSubShotsSystemPrompt();
 
   const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
@@ -2834,15 +3229,14 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   // Model-family-aware, vision-grounded video prompt quality upgrade
   // (`planning/vd-video-prompt-model-family-quality/plan.md`) — see
   // `generateVerticalDramaShotVideoPrompt`'s identical block above. This
-  // path's `characterReferenceImages` is always >= 2 in practice (the
+  // path's `characterReferenceImages` is normally >= 2 in practice (the
   // router only reaches this function when `computeSpeakerSwitchSubShotPlan`
   // decided the shot needs cutting between 2+ speakers), but the SAME
   // structural check is used here rather than assuming that invariant, so
-  // this stays correct even if a future caller supplies fewer.
-  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  // this also stays correct for a future solo caller.
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
-    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+    (params.characterReferenceImages?.length ?? 0) >= 1;
   const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const family = resolveShotVideoPromptModelFamily(
     params.selectedVideoModelId,
@@ -2901,6 +3295,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       params.imageUrl,
       params.characterReferenceImages,
       params.locationReferenceImage,
+      params.barrierReferenceImage,
       params.additionalImageUrls,
     ),
     userId: params.userId,
@@ -2919,8 +3314,13 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   // carries `speakerName`, needed to check the name-anchor half of the
   // check.
   const initialPositionAnchorIssues =
-    hasEstablishedCharacters && hasVision && nativeAudioDialogue && dialogue.length > 0
-      ? findPositionAnchorIssues(outcome.data, dialogueForBlock, hasEstablishedCharacters)
+    hasEstablishedCharacters && hasVision && dialogue.length > 0
+      ? findPositionAnchorIssues(
+          outcome.data,
+          dialogueForBlock,
+          hasEstablishedCharacters,
+          params.shotContext.barrierMultiView,
+        )
       : [];
 
   const warnings: string[] = [];
@@ -2935,8 +3335,15 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         );
       }
       if (initialPositionAnchorIssues.length > 0) {
+        const positionLock = buildFrameAnalysisPositionLock(
+          outcome.data.frame_analysis,
+          params.shotContext.barrierMultiView,
+        );
+        const dualViewCorrection = params.shotContext.barrierMultiView
+          ? ` This is a DUAL IMAGE shot: analyze Image 1 and Image 2 as separate coordinate spaces. Image 1 is the start frame and Image 2 is the reference frame. Return view_role=start_frame only for Image 1 characters and view_role=barrier_reference only for Image 2 characters. Prefix every spoken cue with its exact Image 1 or Image 2 label; never report an Image 2 person as not_visible/tiny inside Image 1.`
+          : "";
         correctionParts.push(
-          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, or these quoted line(s) were not anchored by the speaker's NAME and SCREEN POSITION (left/center-left/center/center-right/right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from the ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and screen position.`,
+          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
         );
       }
       const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
@@ -2949,6 +3356,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
             params.imageUrl,
             params.characterReferenceImages,
             params.locationReferenceImage,
+            params.barrierReferenceImage,
             params.additionalImageUrls,
           ),
         ),
@@ -2963,15 +3371,32 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         !nativeAudioDialogue ||
         promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogue)
       ) {
-        outcome = correctedOutcome;
+        outcome = { ...correctedOutcome, usedVision: hasVision };
       }
     } catch {
       // Deterministic append below still guarantees the dialogue-verbatim
-      // post-condition; position-anchor is fail-open by design (see below).
+      // post-condition; the post-retry position gate below handles any
+      // remaining explicit mismatch.
     }
 
     if (initialPositionAnchorIssues.length > 0) {
-      const remainingIssues = findPositionAnchorIssues(outcome.data, dialogueForBlock, hasEstablishedCharacters);
+      const remainingIssues = findPositionAnchorIssues(
+        outcome.data,
+        dialogueForBlock,
+        hasEstablishedCharacters,
+        params.shotContext.barrierMultiView,
+      );
+      const positionMismatches = remainingIssues.filter(issue =>
+        issue.includes(POSITION_ANCHOR_MARKER) ||
+        issue.includes(POSITION_AMBIGUITY_MARKER) ||
+        issue.includes(POSITION_VIEW_SCOPE_MARKER),
+      );
+      if (positionMismatches.length > 0) {
+        throw new VdSchemaValidationError(
+          `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
+          positionMismatches,
+        );
+      }
       if (remainingIssues.length > 0) {
         warnings.push(
           `Shot ${params.shotNumber}: video-prompt position-anchor check still incomplete after 1 corrective retry — ${remainingIssues.join("; ")}`,
@@ -3221,13 +3646,14 @@ function buildCandidateFactSheet(
   requiredDialogue: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
   family: VideoPromptModelFamily,
   /**
-   * Same "2+ established characters" signal the generator itself computes
+   * Same "established portrait attached" signal the generator itself computes
    * (`hasEstablishedCharacters`) — threaded through so the fact sheet's
    * `positionAnchorIssueCount` never flags a missing `frame_analysis` for a
-   * shot where the skill was never asked to return one (fewer than 2
-   * established characters). See `findPositionAnchorIssues`'s doc comment.
+   * shot where the skill was never asked to return one (no portrait/start-frame
+   * vision bundle). See `findPositionAnchorIssues`'s doc comment.
    */
   hasEstablishedCharacters: boolean,
+  barrierMultiView?: VerticalDramaBarrierMultiView,
 ): VdVideoPromptCandidateFactSheet {
   const chars = data.prompt.length;
   const musicHaystack = `${data.prompt} ${data.audioDirection ?? ""}`;
@@ -3238,6 +3664,7 @@ function buildCandidateFactSheet(
     { prompt: data.prompt, frame_analysis: data.frameAnalysis as ShotVideoPromptOutput["frame_analysis"] },
     requiredDialogue,
     hasEstablishedCharacters,
+    barrierMultiView,
   );
   const faceObservability = data.frameAnalysis?.people
     .filter(person =>
@@ -3316,12 +3743,16 @@ function buildJudgeUserPrompt(args: {
   characterIdentityMap?: string;
   requiredDialogue: Array<{ lineTh: string; characterKey?: string; speakerName?: string; emotion?: string }>;
   targetVideoModelFactBlock: string;
+  barrierMultiView?: VerticalDramaBarrierMultiView;
   extraFacts?: string;
   candidates: Array<{
     prompt: string;
     negativeMotionPrompt?: string;
     dialogue?: Array<{ characterKey?: string; lineTh: string; emotion?: string }>;
-    frameAnalysis?: { people?: Array<{ name: string; position: string }>; positionSource?: string };
+    frameAnalysis?: {
+      people?: Array<{ name: string; position: string; viewRole?: VdFrameViewRole }>;
+      positionSource?: string;
+    };
     motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
     factSheet: VdVideoPromptCandidateFactSheet;
   }>;
@@ -3357,6 +3788,9 @@ function buildJudgeUserPrompt(args: {
     `AUTHORITATIVE SHOT BEAT: ${args.beatText}`,
     args.cameraSetup ? `Camera setup: ${args.cameraSetup}` : null,
     args.characterIdentityMap ?? null,
+    args.barrierMultiView
+      ? renderVerticalDramaBarrierMultiViewFactBlock(args.barrierMultiView)
+      : null,
     `Required dialogue lines (source of truth — verbatim wording + speaker + emotion):\n${dialogueBlock}`,
     args.extraFacts ?? null,
     args.targetVideoModelFactBlock,
@@ -3384,9 +3818,11 @@ function buildJudgeTimedSegmentFacts(subShotWindows: SpeakerSwitchSubShotWindow[
  * Execute the judge LLM call end-to-end (credit check -> call -> deduct),
  * reusing `executeVisionAwareJsonCallWithRetry`'s existing
  * `VdSchemaValidationError`-triggered one-JSON-retry machinery (1200 first /
- * 2000 retry tokens). Vision is the START-FRAME IMAGE ONLY (no character/
- * location reference images — the judge only needs to verify on-screen
- * position, not re-confirm identity). Returns `null` on ANY failure
+ * 2000 retry tokens). Vision receives the same ordered bundle used by the
+ * candidate generators: Image 1, Image 2 for Dual View, then labeled grounding
+ * images. The judge can therefore verify both environments, identity and
+ * on-screen position instead of trusting candidate prose alone. Returns
+ * `null` on ANY failure
  * (insufficient credits, LLM error, both JSON attempts invalid) so the
  * caller can fail-open to candidate A — this function NEVER throws.
  */
@@ -3397,6 +3833,10 @@ async function callVerticalDramaVideoPromptJudge(args: {
   episodeId: number;
   shotNumber: number;
   imageUrl?: string;
+  characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  locationReferenceImage?: { url: string; name?: string };
+  barrierReferenceImage?: { url: string; name?: string };
+  additionalImageUrls?: string[];
   attachShotImage?: boolean;
   idempotencyKey?: string;
   userPromptText: string;
@@ -3415,7 +3855,16 @@ async function callVerticalDramaVideoPromptJudge(args: {
       systemPrompt,
       userPromptText: args.userPromptText,
       hasVision,
-      images: args.imageUrl ? [{ url: args.imageUrl }] : [],
+      images:
+        args.imageUrl && args.attachShotImage !== false
+          ? buildShotVideoPromptVisionImages(
+              args.imageUrl,
+              args.characterReferenceImages,
+              args.locationReferenceImage,
+              args.barrierReferenceImage,
+              args.additionalImageUrls,
+            )
+          : [],
       userId: args.userId,
       schema: judgeOutputSchema,
       firstAttemptMaxTokens: 1200,
@@ -3537,10 +3986,10 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     configJson: params.selectedVideoModel.configJson,
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
-  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 1;
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
-    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+    (params.characterReferenceImages?.length ?? 0) >= 1;
   const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
     family,
@@ -3557,12 +4006,14 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     requiredDialogue,
     family,
     hasEstablishedCharacters,
+    params.shotContext.barrierMultiView,
   );
   const factSheetB = buildCandidateFactSheet(
     { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,
+    params.shotContext.barrierMultiView,
   );
 
   const judgeUserPromptText = buildJudgeUserPrompt({
@@ -3574,6 +4025,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     characterIdentityMap: params.shotContext.characterIdentityMap,
     requiredDialogue,
     targetVideoModelFactBlock,
+    barrierMultiView: params.shotContext.barrierMultiView,
     candidates: [
       {
         prompt: candidateA.prompt,
@@ -3601,6 +4053,10 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     episodeId: params.episodeId,
     shotNumber: params.shotNumber,
     imageUrl: params.imageUrl,
+    characterReferenceImages: params.characterReferenceImages,
+    locationReferenceImage: params.locationReferenceImage,
+    barrierReferenceImage: params.barrierReferenceImage,
+    additionalImageUrls: params.additionalImageUrls,
     attachShotImage: params.attachShotImage,
     idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:judge` : undefined,
     userPromptText: judgeUserPromptText,
@@ -3675,6 +4131,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     requiredDialogue,
     family,
     hasEstablishedCharacters,
+    params.shotContext.barrierMultiView,
   );
 
   const repairedImprovesContract =
@@ -3779,10 +4236,10 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     configJson: params.selectedVideoModel.configJson,
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
-  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 1;
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
-    (params.characterReferenceImages?.length ?? 0) >= (motionContractsEnabled ? 1 : 2);
+    (params.characterReferenceImages?.length ?? 0) >= 1;
   const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
     family,
@@ -3799,12 +4256,14 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     requiredDialogue,
     family,
     hasEstablishedCharacters,
+    params.shotContext.barrierMultiView,
   );
   const factSheetB = buildCandidateFactSheet(
     { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
     requiredDialogue,
     family,
     hasEstablishedCharacters,
+    params.shotContext.barrierMultiView,
   );
 
   const judgeUserPromptText = buildJudgeUserPrompt({
@@ -3816,6 +4275,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     characterIdentityMap: params.shotContext.characterIdentityMap,
     requiredDialogue,
     targetVideoModelFactBlock,
+    barrierMultiView: params.shotContext.barrierMultiView,
     extraFacts: buildJudgeTimedSegmentFacts(params.subShotWindows),
     candidates: [
       {
@@ -3844,6 +4304,10 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     episodeId: params.episodeId,
     shotNumber: params.shotNumber,
     imageUrl: params.imageUrl,
+    characterReferenceImages: params.characterReferenceImages,
+    locationReferenceImage: params.locationReferenceImage,
+    barrierReferenceImage: params.barrierReferenceImage,
+    additionalImageUrls: params.additionalImageUrls,
     attachShotImage: params.attachShotImage,
     idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:judge` : undefined,
     userPromptText: judgeUserPromptText,
@@ -3916,6 +4380,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     requiredDialogue,
     family,
     hasEstablishedCharacters,
+    params.shotContext.barrierMultiView,
   );
 
   const repairedImprovesContract =

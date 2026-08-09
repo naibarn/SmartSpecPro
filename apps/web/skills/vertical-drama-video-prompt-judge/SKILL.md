@@ -76,7 +76,11 @@ the order given.
 
 Look at the attached start-frame image yourself and determine who actually
 stands where (left / center / right, from the viewer's side), using the
-character names and identity map the caller supplied. Then check EACH
+character names and identity map the caller supplied. In DUAL VIEW, inspect
+Image 1 and Image 2 separately: each has an independent
+coordinate space, and each `frame_analysis.people[]` entry must carry the
+configured `view_role` (`start_frame` or `barrier_reference`). Never treat a
+Image 2 character as `not_visible`/`tiny` in Image 1. Then check EACH
 candidate's `frame_analysis` and in-prompt position anchors against what YOU
 see. A candidate whose speech cues place a speaker on the wrong side of the
 frame — or whose positions contradict the image — carries the single worst
@@ -89,7 +93,8 @@ When no image is attached, verify internal consistency instead: positions in
 A candidate CANNOT ship as-is when any of these hold:
 
 1. A dialogue line is attributed to the wrong speaker, a speech cue's screen
-   position contradicts the image, or two characters speak/lip-move at once.
+   position contradicts its assigned image, a Dual View cue omits/contradicts
+   its Image 1/Image 2 scope, or two characters speak/lip-move at once.
 2. A required dialogue line is missing from the prompt (when the model has
    native audio), quoted more than once, or reworded instead of verbatim.
 3. The shot's beat is silent but the candidate makes a character speak — or

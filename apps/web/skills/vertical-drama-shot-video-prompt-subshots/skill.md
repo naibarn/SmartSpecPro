@@ -98,6 +98,7 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
       {
         "name": "string (character name from the CHARACTER IDENTITY MAP)",
         "position": "left | center-left | center | center-right | right",
+        "view_role": "start_frame | barrier_reference (required in Dual View mode; omitted otherwise)",
         "note": "string (optional — short pose/orientation audit cue, never appearance prose)",
         "facing": "frontal | three_quarter | profile | back_of_head | not_visible (optional — ONLY when frame_observability: REQUIRED)",
         "eyes_visible": "both | one | none (optional — ONLY when frame_observability: REQUIRED)",
@@ -167,28 +168,41 @@ Same two independent language settings as the single-shot skill
 ## FRAME ANALYSIS FIRST — MANDATORY (this skill always runs with 2+ established characters)
 
 Do this BEFORE writing a single word of `prompt`, and before narrating any
-segment. Look at the attached start-frame image and work out, for every
-established character in the CHARACTER IDENTITY MAP:
+segment. For a normal shot, look at the attached start-frame image. For DUAL
+VIEW, Image 1 is the start frame and Image 2 is the reference frame; treat them
+as independent coordinate spaces and inspect each configured character only in
+their assigned image. Never report an Image 2 character as `not_visible` or
+`tiny` in Image 1. Work out:
 
 1. **Who is where on screen.** Match each person visible in the image to
    their name by comparing against the labeled character reference portraits
    attached below the start frame. Never assume the image obeyed the
    image-prompt text — image models frequently place characters on the
    opposite side from what was requested. The IMAGE is the ground truth.
-2. **Their screen-position bucket**: `left`, `center-left`, `center`,
-   `center-right`, or `right` — always from the VIEWER's side of the screen.
+2. **Their screen-position bucket**: `viewer-left`, `viewer-center-left`,
+   `viewer-center`, `viewer-center-right`, or `viewer-right` — always from the
+   VIEWER's/camera's side of the screen. Never use the character's anatomical
+   left/right, `left hand`, `right hand`, `left-hand side`, or `right-hand side`
+   as a screen-position label.
 3. **Who they are facing** / where their attention sits in the frozen frame.
 
 Report that reading in the `frame_analysis` output field (see the JSON
 contract above) with `"position_source": "image"`. Then USE it in every
-segment: each segment's anchor-speaker cue names the speaker + the SCREEN
-POSITION you read from the image ("คุณกฤต on the left says…"), every silent
-listener in that segment is anchored the same way, and after every cut the
-identity is re-anchored by name + position before any lip movement resumes.
+segment: each segment's anchor-speaker cue names the speaker + the VIEWER
+SCREEN POSITION you read from the image ("คุณกฤต on viewer-left says…"), every
+silent listener in that segment is anchored the same way, and after every cut
+the identity is re-anchored by name + position before any lip movement resumes.
 Position is how a video model decides whose mouth moves — a wrong position IS
 a wrong speaker, and unverified position guessing is the single most common
 cause of a line being spoken by the wrong character. This strengthens rule
 4's position-reading requirement into a required, checkable output.
+
+For DUAL VIEW, every person entry MUST include `view_role`: `start_frame` for
+characters assigned to Image 1 and `barrier_reference` for characters assigned
+to Image 2. Every speaking cue in `prompt` MUST begin with the literal owning
+label (`Image 1` or `Image 2`) before the name and
+that image's viewer-relative position. The same `viewer-right` value may occur
+once in each image; it never transfers a person between images.
 
 The `note` field is a short pose/orientation audit cue only — never wardrobe
 or facial description, and nothing from `note` may be copied into `prompt`
@@ -647,3 +661,15 @@ sibling `vertical-drama-shot-video-prompt` skill — so the caller persists,
 resolves reference images for, and renders it exactly like any other shot's
 clip. Shots that don't need splitting keep using the sibling
 `vertical-drama-shot-video-prompt` skill instead.
+
+## Barrier Multi-View (conditional)
+
+When the timed segment facts include `speaker_side`, use the start frame for
+`inside` segments and the barrier reference frame for `outside` segments.
+Return one consolidated prompt with explicit chronological cuts, keep the
+closed door and adjacent locations consistent, and never place both sides in
+one room. A speaker may talk only in the view assigned by the explicit
+dialogue-side mapping; non-speakers remain silent with mouths closed. Analyze
+the two images separately, emit `view_role=start_frame` for inside characters
+and `view_role=barrier_reference` for outside characters, and prefix every
+speaker cue with its literal Image 1 or Image 2 label.
