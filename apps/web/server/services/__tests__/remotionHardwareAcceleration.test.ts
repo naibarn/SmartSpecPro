@@ -89,4 +89,26 @@ describe("renderMedia call sites", () => {
       }
     }
   });
+
+  it("gives Worker OffthreadVideo sources enough time to download before rendering", () => {
+    const source = readSource(
+      "apps/worker-app/runtime-sidecar-remotion/render.mjs",
+    );
+    const renderMediaCalls = source.split("renderMedia({").length - 1;
+    const timeoutCalls =
+      source.split(
+        "timeoutInMilliseconds: REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS",
+      ).length - 1;
+
+    expect(source).toContain(
+      "const REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS = 120_000;",
+    );
+    expect(timeoutCalls).toBe(renderMediaCalls);
+  });
+
+  it("keeps the editable and packaged Worker Remotion sidecars identical", () => {
+    expect(
+      readSource("apps/worker-app/runtime-pack/remotion-sidecar/render.mjs"),
+    ).toBe(readSource("apps/worker-app/runtime-sidecar-remotion/render.mjs"));
+  });
 });

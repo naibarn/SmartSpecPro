@@ -67,6 +67,12 @@ function loadCompositionApi() {
   return compositionApiPromise;
 }
 
+// OffthreadVideo downloads each remote MP4 in full before extracting a frame.
+// The default 28-second delayRender window is too short for production media
+// fetched through the Remotion proxy, while the surrounding Worker job already
+// has a much larger execution timeout.
+const REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS = 120_000;
+
 /**
  * Whether Remotion may hand H.264 encoding to the GPU.
  *
@@ -273,6 +279,7 @@ function makeRenderVideoRenderFn(browserExecutable) {
       outputLocation: outputPath,
       inputProps,
       browserExecutable,
+      timeoutInMilliseconds: REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS,
       hardwareAcceleration: resolveHardwareAcceleration(),
     });
     return {
