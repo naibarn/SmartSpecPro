@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, or, sql } from "drizzle-orm";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { getDb } from "../db";
@@ -22,6 +22,16 @@ import { authorizeRequest } from "../_core/authz";
 import { storagePut, storageResolveUrl, storageDelete } from "../storage";
 
 type TenantRequest = Request & { tenantId?: string };
+
+function adminTicketTenantCondition(tenantId: string | null) {
+  if (!tenantId) return null;
+  // Keep legacy unscoped system diagnostics visible to admins. Human tickets
+  // and tenant-scoped system tickets still require an exact tenant match.
+  return or(
+    eq(feedbackTickets.tenantId, tenantId),
+    and(eq(feedbackTickets.submittedByType, "system"), isNull(feedbackTickets.tenantId)),
+  );
+}
 
 // Rate-limited procedure for feedback submission: max 10 per hour per IP.
 // Keyed on IP (same as all other rate-limited procedures in the codebase) so a
@@ -172,7 +182,8 @@ export const feedbackRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const conditions = [];
-      if (ctx.tenantId) conditions.push(eq(feedbackTickets.tenantId, ctx.tenantId));
+      const tenantCondition = adminTicketTenantCondition(ctx.tenantId);
+      if (tenantCondition) conditions.push(tenantCondition);
       if (input.status) conditions.push(eq(feedbackTickets.status, input.status));
       if (input.ticketType) conditions.push(eq(feedbackTickets.ticketType, input.ticketType));
       if (input.submittedByType)
@@ -195,7 +206,8 @@ export const feedbackRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const conditions = [eq(feedbackTickets.id, input.id)];
-      if (ctx.tenantId) conditions.push(eq(feedbackTickets.tenantId, ctx.tenantId));
+      const tenantCondition = adminTicketTenantCondition(ctx.tenantId);
+      if (tenantCondition) conditions.push(tenantCondition);
 
       const tickets = await db
         .select()
@@ -432,7 +444,7 @@ export const feedbackRouter = router({
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
     const conditions = ctx.tenantId
-      ? sql`"tenantId" = ${ctx.tenantId}`
+      ? sql`("tenantId" = ${ctx.tenantId} OR ("submittedByType" = 'system' AND "tenantId" IS NULL))`
       : sql`1=1`;
 
     const result = await db.execute(sql`

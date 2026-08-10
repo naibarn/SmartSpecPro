@@ -122,6 +122,7 @@ export default function AdminFeedbackHub() {
   const stats = statsQuery.data;
   const tickets = ticketsQuery.data ?? [];
   const detail = ticketDetailQuery.data;
+  const detailError = ticketDetailQuery.error;
 
   const attachmentsList = ((detail as any)?.attachments ?? []) as any[];
   const imageAttachments = attachmentsList.filter((att: any) =>
@@ -542,7 +543,34 @@ export default function AdminFeedbackHub() {
 
         {/* Right: Ticket detail */}
         <div className="flex-1 flex flex-col">
-          {!selectedTicketId || !detail ? (
+          {selectedTicketId && ticketDetailQuery.isLoading ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin opacity-60" />
+                <p className="text-sm">Loading ticket #{selectedTicketId}...</p>
+              </div>
+            </div>
+          ) : selectedTicketId && detailError ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground p-6">
+              <div className="text-center max-w-md">
+                <AlertCircle className="h-10 w-10 mx-auto mb-3 text-destructive opacity-80" />
+                <p className="text-sm font-medium text-foreground">
+                  Unable to load ticket #{selectedTicketId}
+                </p>
+                <p className="text-xs mt-2 break-words">
+                  {detailError.message || "The ticket may no longer exist or you may not have access to it."}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  onClick={() => ticketDetailQuery.refetch()}
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : !selectedTicketId || !detail ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />

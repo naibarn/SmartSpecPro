@@ -369,6 +369,32 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(setLocationMock).not.toHaveBeenCalled();
   });
 
+  it("repairs a stale deduplicated feedback target from the latest ticket in the content", async () => {
+    urgentRemindersData = [
+      {
+        id: 101,
+        title: "New Feedback: [Auto] media generation failed (image)",
+        content: "[bug] Auto-classified as bug (high priority) Ticket #250",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/admin/feedback-hub?ticketId=249",
+        actionLabel: "View Feedback",
+        relatedResourceType: "feedback",
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /view feedback/i }));
+
+    expect(openWindowMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=250",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
+
   it("treats billing invoice due reminders as billing reminders instead of incident guidance", async () => {
     urgentRemindersData = [
       {

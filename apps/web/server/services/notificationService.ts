@@ -444,7 +444,17 @@ async function createNotification(
         set: {
           occurrenceCount: sql`${userNotifications.occurrenceCount} + 1`,
           lastOccurredAt: sql`now()`,
+          // A deduplicated notification represents the latest occurrence.
+          // Keep its visible title and structured action target in sync with
+          // the latest event; otherwise the content can mention ticket N
+          // while the button still opens the ticket from the first event.
+          title: sql`excluded."title"`,
+          priority: sql`excluded."priority"`,
           content: sql`excluded."content"`,
+          relatedResourceType: sql`excluded."relatedResourceType"`,
+          relatedResourceId: sql`excluded."relatedResourceId"`,
+          actionUrl: sql`excluded."actionUrl"`,
+          actionLabel: sql`excluded."actionLabel"`,
           metadata: sql`excluded."metadata"`,
           isRead: sql`false`,
         },

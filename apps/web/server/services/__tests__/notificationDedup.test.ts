@@ -97,6 +97,34 @@ describe("createNotification dedup logic", () => {
     expect(result.deduplicated).toBe(true);
   });
 
+  it("refreshes the actionable target when a grouped notification is deduplicated", async () => {
+    const { db, onConflictDoUpdate } = makeMockDb({ existingId: 10, occurrenceCount: 2 });
+
+    await createNotification({
+      db,
+      userId: 1,
+      type: "alert",
+      title: "New Feedback: [Auto] media generation failed",
+      content: "Ticket #250",
+      priority: "high",
+      relatedResourceType: "feedback",
+      relatedResourceId: "250",
+      actionUrl: "/admin/feedback-hub?ticketId=250",
+      actionLabel: "View Feedback",
+      groupKey: "feedback-auto:media generation failed",
+    });
+
+    const update = onConflictDoUpdate.mock.calls[0]?.[0];
+    expect(update?.set).toEqual(expect.objectContaining({
+      title: expect.anything(),
+      priority: expect.anything(),
+      relatedResourceType: expect.anything(),
+      relatedResourceId: expect.anything(),
+      actionUrl: expect.anything(),
+      actionLabel: expect.anything(),
+    }));
+  });
+
   it("inserts occurrence snapshot on dedup hit", async () => {
     const { db } = makeMockDb({ existingId: 10, occurrenceCount: 2 });
 

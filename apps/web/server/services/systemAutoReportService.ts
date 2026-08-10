@@ -32,7 +32,7 @@
  * without creating a cycle.
  */
 import crypto from "crypto";
-import { eq, and, like, sql } from "drizzle-orm";
+import { eq, and, isNull, like, sql } from "drizzle-orm";
 import { debugError, debugLog } from "../_core/logger";
 
 export interface ReportSystemFailureParams {
@@ -146,15 +146,28 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
     const nowIso = nowDate.toISOString();
 
     const { getDb } = await import("../db");
-    const { feedbackTickets } = await import("../../drizzle/schema");
+    const { feedbackTickets, users } = await import("../../drizzle/schema");
     const db = await getDb();
     if (!db) {
       debugLog("SystemAutoReport", "DB unavailable — dropping auto-report", { source: params.source, fp8 });
       return;
     }
 
+    let tenantId = params.tenantId ?? null;
+    if (!tenantId && numericUserId != null) {
+      const [owner] = await db
+        .select({ tenantId: users.currentTenantId })
+        .from(users)
+        .where(eq(users.id, numericUserId))
+        .limit(1);
+      tenantId = owner?.tenantId != null ? String(owner.tenantId) : null;
+    }
+
     // ── Dedup: is there already an open ticket for this fingerprint in the
     // last 24h? Its title always starts with the stable "[Auto][<fp8>] " tag. ──
+    const tenantCondition = tenantId
+      ? eq(feedbackTickets.tenantId, tenantId)
+      : isNull(feedbackTickets.tenantId);
     const existingRows = await db
       .select({ id: feedbackTickets.id, contextJson: feedbackTickets.contextJson })
       .from(feedbackTickets)
@@ -163,6 +176,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
           like(feedbackTickets.title, `[Auto][${fp8}]%`),
           sql`${feedbackTickets.createdAt} > now() - interval '24 hours'`,
           sql`${feedbackTickets.status} NOT IN ('resolved', 'closed', 'duplicate')`,
+          tenantCondition,
         ),
       )
       .limit(1);
@@ -258,7 +272,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
     const [ticket] = await db
       .insert(feedbackTickets)
       .values({
-        tenantId: params.tenantId ?? null,
+        tenantId,
         submittedBy: numericUserId,
         submittedByType: "system",
         ticketType: "bug",

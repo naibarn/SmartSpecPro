@@ -1,4 +1,4 @@
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { getDb } from "../../db";
 import { feedbackTickets, virtualAdminIncidents, users } from "../../../drizzle/schema";
 import { createNotification } from "../notificationService";
@@ -41,7 +41,7 @@ async function findDuplicate(title: string, tenantId?: string | null): Promise<n
     sql`LOWER(LEFT(${feedbackTickets.title}, 50)) = ${prefix}`,
     sql`${feedbackTickets.status} NOT IN ('resolved', 'closed', 'duplicate')`,
   ];
-  if (tenantId) conditions.push(eq(feedbackTickets.tenantId, tenantId));
+  conditions.push(tenantId ? eq(feedbackTickets.tenantId, tenantId) : isNull(feedbackTickets.tenantId));
 
   const existing = await db
     .select({ id: feedbackTickets.id })
@@ -61,7 +61,7 @@ async function findRelatedIncident(title: string, tenantId?: string | null): Pro
   if (keywords.length === 0) return null;
 
   const conditions = [eq(virtualAdminIncidents.status, "open")];
-  if (tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, tenantId));
+  conditions.push(tenantId ? eq(virtualAdminIncidents.tenantId, tenantId) : isNull(virtualAdminIncidents.tenantId));
 
   const incidents = await db
     .select({ id: virtualAdminIncidents.id, title: virtualAdminIncidents.title })
@@ -148,10 +148,14 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
 
   // Notify all admins about the new feedback ticket
   try {
+    const adminConditions = [sql`${users.role} IN ('admin', 'domain_admin')`];
+    if (ticket.tenantId) {
+      adminConditions.push(sql`${users.currentTenantId}::text = ${ticket.tenantId}`);
+    }
     const adminRows = await db
       .select({ id: users.id })
       .from(users)
-      .where(sql`${users.role} IN ('admin', 'domain_admin')`);
+      .where(and(...adminConditions));
 
     const priorityMap: Record<string, "low" | "normal" | "high" | "critical"> = {
       high: "high",

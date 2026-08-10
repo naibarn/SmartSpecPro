@@ -123,6 +123,28 @@ function safeOpenInNewTab(url: string) {
   }
 }
 
+/**
+ * Compatibility for feedback notifications created before dedup updates
+ * refreshed their structured action fields. New notifications already carry
+ * the latest target; only override a conflicting legacy feedback target.
+ */
+function resolveNotificationActionUrl(notification: {
+  actionUrl?: string | null;
+  relatedResourceType?: string | null;
+  content?: string | null;
+}): string | null {
+  const actionUrl = notification.actionUrl ?? null;
+  if (notification.relatedResourceType !== "feedback") return actionUrl;
+
+  const ticketMatch = notification.content?.match(/\bTicket #(\d+)\b/i);
+  if (!ticketMatch?.[1]) return actionUrl;
+
+  const actionTicketMatch = actionUrl?.match(/(?:[?&])ticketId=(\d+)\b/i);
+  if (actionTicketMatch?.[1] === ticketMatch[1]) return actionUrl;
+
+  return `/admin/feedback-hub?ticketId=${ticketMatch[1]}`;
+}
+
 function localizeActionLabel(
   label: string | null | undefined,
   locale: "en" | "th",
@@ -499,7 +521,7 @@ function GlobalUrgentReminders({
       priority: latest.priority,
       scheduledMessageId: latest.scheduledMessageId,
       conversationId: latest.conversationId,
-      actionUrl: latest.actionUrl ?? null,
+      actionUrl: resolveNotificationActionUrl(latest),
       actionLabel: latest.actionLabel ?? null,
       relatedResourceType: latest.relatedResourceType ?? null,
       relatedResourceId: latest.relatedResourceId ?? null,
@@ -517,8 +539,9 @@ function GlobalUrgentReminders({
           action: {
             label: r.actionLabel || "View",
             onClick: () => {
-              if (r.actionUrl) {
-                safeOpenInNewTab(r.actionUrl);
+              const actionUrl = resolveNotificationActionUrl(r);
+              if (actionUrl) {
+                safeOpenInNewTab(actionUrl);
                 return;
               }
               if (r.conversationId) {
@@ -886,7 +909,8 @@ function GlobalUrgentReminders({
 
 function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { notification: any; onBack: () => void; onOpenInNewTab: (url: string) => void }) {
   const meta = n.metadata as any;
-  const hasLegacyActions = !n.actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
+  const actionUrl = resolveNotificationActionUrl(n);
+  const hasLegacyActions = !actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert";
   return (
     <div style={{ padding: "12px 16px" }}>
       {/* Header */}
@@ -998,11 +1022,11 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
       )}
 
       {/* Actions */}
-      {(n.actionUrl || n.conversationId || n.scheduledMessageId || hasLegacyActions) && (
+      {(actionUrl || n.conversationId || n.scheduledMessageId || hasLegacyActions) && (
         <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
-          {n.actionUrl && (
+          {actionUrl && (
             <button
-              onClick={() => onOpenInNewTab(n.actionUrl)}
+              onClick={() => onOpenInNewTab(actionUrl)}
               style={{
                 padding: "8px 16px",
                 background: "#0078d4",
@@ -1017,7 +1041,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
               {n.actionLabel || "View Details"} &rarr;
             </button>
           )}
-          {n.conversationId && !n.actionUrl && (
+          {n.conversationId && !actionUrl && (
             <button
               onClick={() => onOpenInNewTab(`/chat?conversationId=${n.conversationId}`)}
               style={{
@@ -1034,7 +1058,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
               Open Chat &rarr;
             </button>
           )}
-          {n.scheduledMessageId && !n.actionUrl && (
+          {n.scheduledMessageId && !actionUrl && (
             <button
               onClick={() => onOpenInNewTab(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`)}
               style={{
@@ -1644,11 +1668,11 @@ function GlobalNotificationBell() {
                     {expandedId === n.id && (
                       <div style={{ marginTop: "6px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         {/* Structured action URL (preferred) */}
-                        {(n as any).actionUrl && (
+                        {resolveNotificationActionUrl(n) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenInNewTab((n as any).actionUrl);
+                              handleOpenInNewTab(resolveNotificationActionUrl(n)!);
                             }}
                             style={{
                               background: "none",
@@ -1663,7 +1687,7 @@ function GlobalNotificationBell() {
                           </button>
                         )}
                         {/* Conversation link */}
-                        {n.conversationId && !(n as any).actionUrl && (
+                        {n.conversationId && !resolveNotificationActionUrl(n) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1682,7 +1706,7 @@ function GlobalNotificationBell() {
                           </button>
                         )}
                         {/* Schedule link */}
-                        {n.scheduledMessageId && !(n as any).actionUrl && (
+                        {n.scheduledMessageId && !resolveNotificationActionUrl(n) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
