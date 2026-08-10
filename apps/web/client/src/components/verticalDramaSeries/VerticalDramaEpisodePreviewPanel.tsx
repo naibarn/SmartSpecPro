@@ -10,6 +10,7 @@ import {
   Play,
   RefreshCw,
   Sparkles,
+  VideoOff,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +88,9 @@ export function VerticalDramaEpisodePreviewPanel({
     )
   );
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [failedPreviewSlots, setFailedPreviewSlots] = useState<Set<number>>(
+    () => new Set(),
+  );
 
   const imageModelsQuery = trpc.mediaModels.list.useQuery({
     type: "image",
@@ -509,6 +513,22 @@ export function VerticalDramaEpisodePreviewPanel({
                       ) : null}
                     </div>
                     {preview?.status === "completed" && preview.videoUrl ? (
+                      failedPreviewSlots.has(slotId) ? (
+                        <div
+                          className="flex aspect-[9/16] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-400/70 bg-amber-50/50 px-2 text-center text-amber-800 dark:bg-amber-950/20 dark:text-amber-200"
+                          data-testid={`vd-episode-preview-expired-${slotId}`}
+                        >
+                          <VideoOff className="h-5 w-5" aria-hidden="true" />
+                          <span className="text-xs font-medium">
+                            {lang === "th" ? "ไฟล์หมดอายุ" : "File expired"}
+                          </span>
+                          <span className="text-[10px]">
+                            {lang === "th"
+                              ? "กดสร้างชุดนี้ใหม่ด้านล่าง"
+                              : "Render this set again below"}
+                          </span>
+                        </div>
+                      ) : (
                       <div className="space-y-2">
                         <div className="overflow-hidden rounded-lg border border-border bg-black">
                           <video
@@ -519,6 +539,11 @@ export function VerticalDramaEpisodePreviewPanel({
                             className="aspect-[9/16] w-full bg-black"
                             id={`vd-episode-preview-player-${slotId}`}
                             data-testid={`vd-episode-preview-player-${slotId}`}
+                            onError={() =>
+                              setFailedPreviewSlots(current =>
+                                new Set(current).add(slotId),
+                              )
+                            }
                           />
                         </div>
                         <div className="flex flex-wrap gap-1.5">
@@ -551,6 +576,7 @@ export function VerticalDramaEpisodePreviewPanel({
                           </a>
                         </div>
                       </div>
+                      )
                     ) : null}
                     <Button
                       type="button"

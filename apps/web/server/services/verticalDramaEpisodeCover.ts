@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import {
   mediaAssets,
   type VerticalDramaEpisodeRow,
@@ -90,6 +90,7 @@ export async function resolveEpisodeCoverAssetUrls(
       and(
         eq(mediaAssets.tenantId, owner.tenantId),
         eq(mediaAssets.userId, owner.userId),
+        ne(mediaAssets.status, "expired"),
         inArray(mediaAssets.id, ids.map(Number))
       )
     );

@@ -408,6 +408,7 @@ export interface VerticalDramaShotReferenceView {
     | "reference_frame";
   sortOrder: number;
   thumbnailUrl?: string | null;
+  thumbnailStatus?: "ready" | "pending" | "expired";
 }
 
 /** A single clip's dialogue line (Phase 3.1/3.4) — mirrors
@@ -781,6 +782,7 @@ export interface VerticalDramaMotionPromptClipView {
     videoUrl?: string;
     mediaTaskId?: string;
     mediaAssetId?: string;
+    durabilityStatus?: "ready" | "expired";
     /** See `VerticalDramaMotionPromptPack["clips"][number]["videoTask"].source`
      *  in `@shared/verticalDramaSeries/contracts.ts` — additive. */
     source?: "generated" | "upload";
@@ -818,7 +820,7 @@ export interface VerticalDramaMotionPromptPackView {
 
 export type VerticalDramaAssetUrlMap = Record<
   string,
-  { url: string; thumbnailUrl: string | null }
+  { url: string; thumbnailUrl: string | null; status?: "ready" | "expired" }
 >;
 
 export type VerticalDramaCharacterPortraitMap = Record<
@@ -3875,7 +3877,20 @@ export function VerticalDramaStoryboardPanel({
                         />
                       </div>
                     ) : null}
-                    {asset?.thumbnailUrl || asset?.url ? (
+                    {asset?.status === "expired" ? (
+                      <div
+                        className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-muted/60 px-2 text-center text-muted-foreground"
+                        data-testid={`vd-storyboard-expired-image-${shotNumber}`}
+                      >
+                        <ImageOff aria-hidden="true" className="h-5 w-5" />
+                        <span className="text-[11px] font-medium">
+                          {t(locale, "ไฟล์หมดอายุ", "File expired")}
+                        </span>
+                        <span className="text-[10px]">
+                          {t(locale, "กดสร้างภาพใหม่", "Generate a new image")}
+                        </span>
+                      </div>
+                    ) : asset?.thumbnailUrl || asset?.url ? (
                       <>
                         <img
                           src={asset.thumbnailUrl ?? asset.url}
@@ -4826,7 +4841,20 @@ export function VerticalDramaStoryboardPanel({
                         the "Generate video (paid)" button and the trimmed-
                         reference notice stay in the right column next to the
                         video prompt, since they belong with the prompt editor. */}
-                      {clip?.videoTask?.videoUrl ? (
+                      {clip?.videoTask?.durabilityStatus === "expired" ? (
+                        <div
+                          className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-amber-400/70 bg-amber-50/50 px-2 text-center text-amber-800 dark:bg-amber-950/20 dark:text-amber-200"
+                          data-testid={`vd-storyboard-expired-video-${clip.clipNumber}`}
+                        >
+                          <ImageOff aria-hidden="true" className="h-5 w-5" />
+                          <span className="text-[11px] font-medium">
+                            {t(locale, "ไฟล์หมดอายุ", "File expired")}
+                          </span>
+                          <span className="text-[10px]">
+                            {t(locale, "กดสร้างวิดีโอใหม่", "Generate a new video")}
+                          </span>
+                        </div>
+                      ) : clip?.videoTask?.videoUrl ? (
                         <div className="flex flex-col gap-1.5">
                           <div className="relative w-full overflow-hidden rounded-md border border-border bg-black">
                             <video
@@ -10810,8 +10838,14 @@ function ShotReferenceStrip({
   usingAsMain?: boolean;
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [failedReferenceIds, setFailedReferenceIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const atLimit =
     maxReferenceImages != null && references.length >= maxReferenceImages;
+  const visibleReferenceImages = references.filter(
+    ref => ref.thumbnailUrl && !failedReferenceIds.has(ref.referenceId),
+  );
 
   return (
     <div className="flex flex-col gap-1">
@@ -10861,7 +10895,7 @@ function ShotReferenceStrip({
             {t2.dropReferenceHint}
           </span>
         ) : null}
-        {references.map((ref, idx) => (
+        {references.map(ref => (
           <div
             key={ref.referenceId}
             className="group relative h-9 w-9 shrink-0 overflow-hidden rounded border border-border"
@@ -10869,15 +10903,36 @@ function ShotReferenceStrip({
             <button
               type="button"
               className="block h-full w-full"
-              onClick={() => setLightboxIndex(idx)}
+              onClick={() => {
+                const imageIndex = visibleReferenceImages.findIndex(
+                  image => image.referenceId === ref.referenceId,
+                );
+                if (imageIndex >= 0) setLightboxIndex(imageIndex);
+              }}
+              disabled={!ref.thumbnailUrl || failedReferenceIds.has(ref.referenceId)}
               data-testid={`vd-storyboard-reference-${shotNumber}-${ref.referenceId}`}
             >
-              {ref.thumbnailUrl ? (
+              {ref.thumbnailUrl && !failedReferenceIds.has(ref.referenceId) ? (
                 <img
                   src={ref.thumbnailUrl}
                   alt=""
                   className="h-full w-full object-cover"
+                  onError={() =>
+                    setFailedReferenceIds(previous => {
+                      const next = new Set(previous);
+                      next.add(ref.referenceId);
+                      return next;
+                    })
+                  }
                 />
+              ) : ref.thumbnailStatus === "expired" ? (
+                <div className="flex h-full w-full items-center justify-center bg-destructive/10 px-0.5 text-center text-[7px] leading-tight text-destructive">
+                  {locale === "th" ? "หมดอายุ" : "Expired"}
+                </div>
+              ) : ref.thumbnailStatus === "pending" ? (
+                <div className="flex h-full w-full items-center justify-center bg-muted px-0.5 text-center text-[7px] leading-tight text-muted-foreground">
+                  {locale === "th" ? "กำลังเตรียม" : "Preparing"}
+                </div>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-muted text-[8px] text-muted-foreground">
                   {t2.references}
@@ -10972,9 +11027,10 @@ function ShotReferenceStrip({
       ) : null}
       {lightboxIndex != null ? (
         <ImageLightbox
-          images={references
-            .filter(r => r.thumbnailUrl)
-            .map(r => ({ src: r.thumbnailUrl as string, alt: t2.references }))}
+          images={visibleReferenceImages.map(r => ({
+            src: r.thumbnailUrl as string,
+            alt: t2.references,
+          }))}
           initialIndex={lightboxIndex}
           open={lightboxIndex != null}
           onClose={() => setLightboxIndex(null)}

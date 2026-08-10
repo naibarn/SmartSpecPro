@@ -17,6 +17,8 @@ import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
+import { ingestVerticalDramaMediaAsset } from "../services/verticalDramaMediaAssetService";
+import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
 import {
   verticalDramaSeries,
   verticalDramaEpisodes,
@@ -9633,8 +9635,8 @@ export const verticalDramaSeriesRouter = router({
 
   /**
    * Ad Banner Overlay (F131W, #30-A) — poll a banner's in-flight image
-   * generation task, reusing `mediaGenerationService.getTask` exactly like
-   * `media.ts`'s own `getTask` query does. On a terminal state, persists the
+   * generation task, reusing the shared task-polling boundary behind
+   * `media.ts`'s own `getTask` query. On a terminal state, persists the
    * result: `"completed"` -> `imageAsset` populated + `status: "ready"`;
    * `"failed"` -> `status: "failed"`, both clearing `pendingTaskId`. A
    * non-terminal poll (`"pending"`/`"processing"`) is a pure read — no
@@ -9663,19 +9665,19 @@ export const verticalDramaSeriesRouter = router({
       }
 
       const userToken = await getAdBannerMediaUserToken(ctx);
-      const { mediaGenerationService } =
-        await import("../services/mediaGenerationService");
       let task;
       try {
-        task = await mediaGenerationService.getTask(
-          banner.pendingTaskId,
+        task = await getUnifiedMediaTask({
+          taskId: banner.pendingTaskId,
+          userId,
           userToken,
-          {
+          tenantId,
+          auditContext: {
             userId,
             source: "trpc.verticalDramaSeries.getAdBannerImageStatus",
             stage: "poll",
-          }
-        );
+          },
+        });
       } catch (err) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -9689,6 +9691,16 @@ export const verticalDramaSeriesRouter = router({
       if (task.status === "completed" && task.resultUrl) {
         const { pendingTaskId: completedTaskId, ...bannerWithoutPendingTask } =
           banner;
+        const durable = await ingestVerticalDramaMediaAsset({
+          tenantId,
+          userId,
+          seriesId,
+          mediaType: "image",
+          sourceUrl: task.resultUrl,
+          mimeType: "image/png",
+          identity: task.id,
+          purpose: "ad_banner",
+        });
         const resultData = task.resultData as
           | Record<string, unknown>
           | undefined;
@@ -9702,7 +9714,7 @@ export const verticalDramaSeriesRouter = router({
           ...bannerWithoutPendingTask,
           status: "ready",
           imageAsset: {
-            url: task.resultUrl,
+            url: durable.url,
             taskId: completedTaskId,
             generatedAt: new Date().toISOString(),
             ...(width !== undefined ? { width } : {}),

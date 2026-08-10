@@ -112,6 +112,7 @@ export interface VerticalDramaShotReferenceContract {
   sortOrder: number;
   createdAt: string;
   thumbnailUrl?: string;
+  thumbnailStatus?: "ready" | "pending" | "expired";
 }
 
 /** Shot references grouped by shot number, in `sortOrder` then `createdAt` order within each shot. */
@@ -124,7 +125,14 @@ export type VerticalDramaShotReferenceManifest = Record<number, VerticalDramaSho
 export function shotReferenceRowToContract(
   row: VerticalDramaShotReferenceRow,
   thumbnailUrl?: string | null,
+  thumbnailStatus?: string | null,
 ): VerticalDramaShotReferenceContract {
+  const normalizedStatus =
+    thumbnailStatus === "ready" ||
+    thumbnailStatus === "pending" ||
+    thumbnailStatus === "expired"
+      ? thumbnailStatus
+      : undefined;
   return {
     referenceId: String(row.id),
     seriesId: String(row.seriesId),
@@ -135,7 +143,11 @@ export function shotReferenceRowToContract(
     source: row.source as VerticalDramaShotReferenceSource,
     sortOrder: row.sortOrder,
     createdAt: toIso(row.createdAt),
-    thumbnailUrl: thumbnailUrl ?? undefined,
+    thumbnailUrl:
+      normalizedStatus === "expired"
+        ? undefined
+        : thumbnailUrl ?? undefined,
+    ...(normalizedStatus ? { thumbnailStatus: normalizedStatus } : {}),
   };
 }
 
@@ -288,6 +300,7 @@ export class VerticalDramaShotReferencesService {
         sortOrder: verticalDramaShotReferences.sortOrder,
         createdAt: verticalDramaShotReferences.createdAt,
         thumbnailUrl: mediaAssets.originalUrl,
+        thumbnailStatus: mediaAssets.status,
       })
       .from(verticalDramaShotReferences)
       .leftJoin(mediaAssets, eq(verticalDramaShotReferences.mediaAssetId, mediaAssets.id))
@@ -303,7 +316,11 @@ export class VerticalDramaShotReferencesService {
 
     return buildShotReferenceManifest(
       rows.map((row: typeof rows[number]) =>
-        shotReferenceRowToContract(row as VerticalDramaShotReferenceRow, row.thumbnailUrl),
+        shotReferenceRowToContract(
+          row as VerticalDramaShotReferenceRow,
+          row.thumbnailUrl,
+          row.thumbnailStatus,
+        ),
       ),
     );
   }

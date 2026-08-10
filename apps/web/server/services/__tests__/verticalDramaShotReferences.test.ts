@@ -94,6 +94,26 @@ describe("shotReferenceRowToContract", () => {
     const contract = shotReferenceRowToContract(row({ role: null as any }));
     expect(contract.role).toBe("reference");
   });
+
+  it("does not expose an expired thumbnail URL to the browser", () => {
+    const contract = shotReferenceRowToContract(
+      row(),
+      "https://tempfile.example/expired.png",
+      "expired",
+    );
+    expect(contract.thumbnailStatus).toBe("expired");
+    expect(contract.thumbnailUrl).toBeUndefined();
+  });
+
+  it("keeps a pending managed thumbnail available for the browser to verify", () => {
+    const contract = shotReferenceRowToContract(
+      row(),
+      "/api/storage/files/pending.png",
+      "pending",
+    );
+    expect(contract.thumbnailStatus).toBe("pending");
+    expect(contract.thumbnailUrl).toBe("/api/storage/files/pending.png");
+  });
 });
 
 describe("buildShotReferenceManifest", () => {

@@ -11,10 +11,16 @@ import { getRedisClient } from "./redis";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { computeRenderHash } from "./renderHash";
 import { routeVideoJob } from "./videoJobRouter";
+import { getUnifiedMediaTask } from "./mediaTaskPollingService";
+import {
+  ensureMarketplaceAutoReviewMediaUrlDurable,
+  ensureMarketplaceAutoReviewTaskResultDurable,
+} from "./marketplaceAutoReviewMediaAssetService";
 import {
   MEDIA_MODELS,
   mediaGenerationService,
   resolveReferenceUrl,
+  type MediaTask,
 } from "./mediaGenerationService";
 import {
   buildMarketplaceAutoReviewApiProjection,
@@ -21810,12 +21816,21 @@ export async function editMarketplaceAutoReviewSequentialShotImage(
       },
       cleanText(runtime.userToken)
     );
+    const durableTask =
+      task.status === "completed"
+        ? await ensureMarketplaceAutoReviewTaskResultDurable({
+            tenantId,
+            userId: auth.userId,
+            task,
+          })
+        : null;
+    const settledTask = durableTask?.task ?? task;
     const nextCandidates = {
       ...candidates,
       [String(input.shotId)]: {
         status: "submitted",
-        taskId: task.id,
-        providerTaskId: task.taskId,
+        taskId: settledTask.id,
+        providerTaskId: settledTask.taskId,
         attempt,
         shotId: input.shotId,
         beforeUrl,
@@ -21885,6 +21900,7 @@ export async function acceptMarketplaceAutoReviewSequentialShotImageEdit(
   }
   const run = await reloadRunWithHydratedConcept(db, input.runId, auth);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const tenantId = tenantIdForRun(run, auth);
   const candidates = sequentialImageEditCandidateMap(
     metadata.sequentialImageEditCandidates
   );
@@ -21896,10 +21912,16 @@ export async function acceptMarketplaceAutoReviewSequentialShotImageEdit(
   if (cleanText(candidate.status) === "accepted") {
     return getMarketplaceAutoReviewRun(run.id, auth);
   }
-  const task = await mediaGenerationService.getTask(taskId, cleanText(runtime.userToken), {
+  const task = await getUnifiedMediaTask({
+    taskId,
     userId: auth.userId,
-    source: "trpc.marketplaceCapture.acceptAutoReviewSequentialShotImageEdit",
-    stage: "poll",
+    userToken: cleanText(runtime.userToken),
+    tenantId,
+    auditContext: {
+      userId: auth.userId,
+      source: "trpc.marketplaceCapture.acceptAutoReviewSequentialShotImageEdit",
+      stage: "poll",
+    },
   });
   if (task.status === "failed") {
     const amount = toNumber(candidate.creditAmount);
@@ -24986,6 +25008,15 @@ async function scheduleImageAttempt(params: {
         },
         userToken
       );
+      const durableTask =
+        task.status === "completed"
+          ? await ensureMarketplaceAutoReviewTaskResultDurable({
+              tenantId: params.tenantId,
+              userId: params.auth.userId,
+              task,
+            })
+          : null;
+      const settledTask = durableTask?.task ?? task;
       const submittedRef: DirectMediaTaskRef = {
         ...(intentRef ?? {}),
         unitId: unit.unitId,
@@ -24995,10 +25026,11 @@ async function scheduleImageAttempt(params: {
         shotId: unit.shotId,
         shotOrder: unit.shotOrder,
         attempt,
-        taskId: task.id,
-        providerTaskId: task.taskId,
-        model: task.model || effectiveImageModel,
-        status: task.status,
+        taskId: settledTask.id,
+        providerTaskId: settledTask.taskId,
+        model: settledTask.model || effectiveImageModel,
+        status: settledTask.status,
+        resultUrl: settledTask.resultUrl || undefined,
         creditAmount: credit.amount,
         creditTransactionId: credit.transactionId,
         creditIdempotencyKey: credit.idempotencyKey,
@@ -25173,35 +25205,62 @@ async function pollDirectTask(params: {
   ref: DirectMediaTaskRef;
   auth: AuthContext;
   userToken: string;
+  runId: string;
+  tenantId?: string | null;
   stage: string;
 }): Promise<DirectMediaTaskRef> {
-  if (params.ref.status === "completed" && params.ref.resultUrl)
-    return params.ref;
+  if (params.ref.status === "completed" && params.ref.resultUrl) {
+    const durable = await ensureMarketplaceAutoReviewMediaUrlDurable({
+      tenantId: params.tenantId,
+      runId: params.runId,
+      sourceUrl: params.ref.resultUrl,
+      mediaType: params.ref.mediaType === "video" ? "video" : "image",
+      purpose: params.ref.unitId,
+      identity: params.ref.taskId,
+    });
+    return { ...params.ref, resultUrl: durable.durableUrl };
+  }
   if (params.ref.status === "failed") return params.ref;
   if (!directMediaRefReachedProvider(params.ref)) return params.ref;
-  const task = await mediaGenerationService.getTask(
-    params.ref.taskId,
-    params.userToken,
-    {
+  const task = await getUnifiedMediaTask({
+    taskId: params.ref.taskId,
+    userId: params.auth.userId,
+    userToken: params.userToken,
+    tenantId: params.tenantId,
+    auditContext: {
       userId: params.auth.userId,
       traceId: `marketplace-auto-review-${params.stage}:${params.ref.unitId}:${params.ref.attempt}`,
       source: "marketplace_auto_review",
       stage: params.stage,
-    }
-  );
+    },
+  });
+  const durableTask =
+    task.status === "completed" && mediaTaskResultUrl(task)
+      ? await ensureMarketplaceAutoReviewMediaUrlDurable({
+          tenantId: params.tenantId,
+          runId: params.runId,
+          sourceUrl: mediaTaskResultUrl(task),
+          mediaType: params.ref.mediaType === "video" ? "video" : "image",
+          purpose: params.ref.unitId,
+          identity: params.ref.taskId,
+        })
+      : null;
+  const settledTask = durableTask
+    ? { ...task, resultUrl: durableTask.durableUrl }
+    : task;
   const resultUrl =
-    task.status === "completed"
-      ? mediaTaskResultUrl(task)
+    settledTask.status === "completed"
+      ? mediaTaskResultUrl(settledTask)
       : cleanText(params.ref.resultUrl);
   return {
     ...params.ref,
-    providerTaskId: task.taskId ?? params.ref.providerTaskId,
-    model: task.model || params.ref.model,
-    status: task.status,
+    providerTaskId: settledTask.taskId ?? params.ref.providerTaskId,
+    model: settledTask.model || params.ref.model,
+    status: settledTask.status,
     resultUrl: resultUrl || undefined,
-    errorMessage: task.errorMessage ?? params.ref.errorMessage,
+    errorMessage: settledTask.errorMessage ?? params.ref.errorMessage,
     completedAt:
-      task.status === "completed" ? nowIso() : params.ref.completedAt,
+      settledTask.status === "completed" ? nowIso() : params.ref.completedAt,
   };
 }
 
@@ -26675,6 +26734,8 @@ async function reconcileDirectImageAttempt(params: {
       ref,
       auth: params.auth,
       userToken: params.userToken,
+      runId: params.run.id,
+      tenantId: params.tenantId,
       stage: "image_generation_status",
     });
     if (nextRef.status === "failed" && !nextRef.refundTransactionId) {
@@ -27766,6 +27827,8 @@ async function reconcileDirectVideoAttempt(params: {
       ref,
       auth: params.auth,
       userToken: params.userToken,
+      runId: params.run.id,
+      tenantId: params.tenantId,
       stage: "video_generation_status",
     });
     if (nextRef.status === "failed" && !nextRef.refundTransactionId) {
@@ -30008,6 +30071,15 @@ async function scheduleVideoAttempt(params: {
         },
         userToken
       );
+      const durableTask =
+        task.status === "completed"
+          ? await ensureMarketplaceAutoReviewTaskResultDurable({
+              tenantId: params.tenantId,
+              userId: params.auth.userId,
+              task,
+            })
+          : null;
+      const settledTask = durableTask?.task ?? task;
       const submittedRef: DirectMediaTaskRef = {
         ...(intentRef ?? {}),
         unitId: unit.unitId,
@@ -30017,10 +30089,11 @@ async function scheduleVideoAttempt(params: {
         shotId: unit.shotId,
         shotOrder: unit.shotOrder,
         attempt,
-        taskId: task.id,
-        providerTaskId: task.taskId,
-        model: task.model || videoModel,
-        status: task.status,
+        taskId: settledTask.id,
+        providerTaskId: settledTask.taskId,
+        model: settledTask.model || videoModel,
+        status: settledTask.status,
+        resultUrl: settledTask.resultUrl || undefined,
         creditAmount: credit.amount,
         creditTransactionId: credit.transactionId,
         creditIdempotencyKey: credit.idempotencyKey,

@@ -669,7 +669,7 @@ export function buildVerticalDramaStorageProxyUrl(storageKey: string): string {
 
 export type VerticalDramaVideoAssetResolution = Record<
   number,
-  { mediaAssetId: number; url: string }
+  { mediaAssetId: number; url: string; status?: "ready" | "expired" }
 >;
 
 /** Apply owner-verified canonical delivery data to a motion-prompt pack. */
@@ -684,12 +684,18 @@ export function repairVerticalDramaVideoAssetUrls(
     if (!resolved || !clip.videoTask) return clip;
     const nextVideoTask = {
       ...clip.videoTask,
-      mediaAssetId: String(resolved.mediaAssetId),
-      videoUrl: resolved.url,
+      ...(resolved.status === "expired"
+        ? { durabilityStatus: "expired" as const, videoUrl: undefined }
+        : {
+            mediaAssetId: String(resolved.mediaAssetId),
+            videoUrl: resolved.url,
+            durabilityStatus: "ready" as const,
+          }),
     };
     if (
       clip.videoTask.mediaAssetId === nextVideoTask.mediaAssetId &&
-      clip.videoTask.videoUrl === nextVideoTask.videoUrl
+      clip.videoTask.videoUrl === nextVideoTask.videoUrl &&
+      clip.videoTask.durabilityStatus === nextVideoTask.durabilityStatus
     ) {
       return clip;
     }

@@ -79,6 +79,8 @@ import {
 } from "../services/verticalDramaCharacterPromptContract";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
+import { ingestVerticalDramaMediaAsset } from "../services/verticalDramaMediaAssetService";
+import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
 import { resolveMediaTransport } from "../services/mediaTransportResolver";
 import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderModelAliases";
@@ -1918,15 +1920,17 @@ export const verticalDramaCharactersRouter = router({
           message: "Portrait candidate has no submitted media task.",
         });
       }
-      const task = await mediaGenerationService.getTask(
+      const task = await getUnifiedMediaTask({
         taskId,
-        getCharacterPortraitUserToken(ctx),
-        {
+        userId,
+        userToken: getCharacterPortraitUserToken(ctx),
+        tenantId,
+        auditContext: {
           userId,
           source: "trpc.verticalDramaCharacters.settlePortraitCandidate",
           stage: "poll",
         },
-      );
+      });
 
       if (!info.taskId && info.status === "submitting") {
         const provenanceMatches =
@@ -1998,14 +2002,17 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
-      const { assetId } = await createAssetFromAttachment(
-        {
-          type: "image",
-          url: task.resultUrl,
-          mimeType: "image/jpeg",
-        } as any,
-        { tenantId, userId } as any,
-      );
+      const durable = await ingestVerticalDramaMediaAsset({
+        tenantId,
+        userId,
+        seriesId,
+        mediaType: "image",
+        sourceUrl: task.resultUrl,
+        mimeType: "image/jpeg",
+        identity: task.id,
+        purpose: "character_portrait",
+      });
+      const assetId = durable.mediaAssetId;
       let asset;
       try {
         asset = await verticalDramaCharacterStockService.attachGeneratedPortraitCandidate({
@@ -2020,7 +2027,7 @@ export const verticalDramaCharactersRouter = router({
         assetLinkId: input.assetLinkId,
         taskId,
         status: "completed" as const,
-        imageUrl: task.resultUrl,
+        imageUrl: durable.url,
         asset,
       };
     }),

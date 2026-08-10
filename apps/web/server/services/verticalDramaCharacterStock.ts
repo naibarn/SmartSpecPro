@@ -536,7 +536,13 @@ export class VerticalDramaCharacterStockService {
         thumbnailUrl: mediaAssets.originalUrl,
       })
       .from(verticalDramaCharacterAssets)
-      .leftJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .leftJoin(
+        mediaAssets,
+        and(
+          eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id),
+          ne(mediaAssets.status, "expired"),
+        ),
+      )
       .where(
         and(
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
@@ -1327,7 +1333,13 @@ export class VerticalDramaCharacterStockService {
     const [row] = await db
       .select({ url: mediaAssets.originalUrl })
       .from(verticalDramaCharacterAssets)
-      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .innerJoin(
+        mediaAssets,
+        and(
+          eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id),
+          ne(mediaAssets.status, "expired"),
+        ),
+      )
       .where(
         and(
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),

@@ -25,7 +25,7 @@
  * not be in a `deleted` / `failed` / `purged` state.
  */
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaLocations,
@@ -482,7 +482,13 @@ export class VerticalDramaLocationStockService {
     const [row] = await db
       .select({ mediaAssetId: mediaAssets.id, url: mediaAssets.originalUrl })
       .from(verticalDramaLocationAssets)
-      .innerJoin(mediaAssets, eq(verticalDramaLocationAssets.mediaAssetId, mediaAssets.id))
+      .innerJoin(
+        mediaAssets,
+        and(
+          eq(verticalDramaLocationAssets.mediaAssetId, mediaAssets.id),
+          ne(mediaAssets.status, "expired"),
+        ),
+      )
       .where(
         and(
           eq(verticalDramaLocationAssets.id, marker),
@@ -558,7 +564,13 @@ export class VerticalDramaLocationStockService {
     const [row] = await db
       .select({ url: mediaAssets.originalUrl })
       .from(verticalDramaLocationAssets)
-      .innerJoin(mediaAssets, eq(verticalDramaLocationAssets.mediaAssetId, mediaAssets.id))
+      .innerJoin(
+        mediaAssets,
+        and(
+          eq(verticalDramaLocationAssets.mediaAssetId, mediaAssets.id),
+          ne(mediaAssets.status, "expired"),
+        ),
+      )
       .where(
         and(
           eq(verticalDramaLocationAssets.tenantId, owner.tenantId),

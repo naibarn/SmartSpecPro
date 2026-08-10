@@ -49,6 +49,7 @@ import { eq, asc, and, desc, inArray, sql } from "drizzle-orm";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
 import { decrypt } from "../services/crypto";
 import {
   assertPublicSafeHttpUrl,
@@ -3679,34 +3680,19 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .query(async ({ input, ctx }) => {
       try {
-        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id);
-        if (mcpTask) {
-          return mcpTask;
-        }
         const userToken = getUserToken(ctx);
-        const deferredTask = await getDeferredMediaTask(
-          input.taskId,
-          ctx.user.id,
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        const task = await getUnifiedMediaTask({
+          taskId: input.taskId,
+          userId: ctx.user.id,
           userToken,
-          {
-            userId: ctx.user.id,
-            source: "trpc.media.getTask",
-            stage: "deferred_poll",
-          },
-        );
-        if (deferredTask) {
-          return deferredTask;
-        }
-
-        const task = await mediaGenerationService.getTask(
-          input.taskId,
-          userToken,
-          {
+          tenantId,
+          auditContext: {
             userId: ctx.user.id,
             source: "trpc.media.getTask",
             stage: "poll",
           },
-        );
+        });
 
         // Credit reconciliation for completed or failed async tasks (non-blocking)
         if (task?.status === "completed" || task?.status === "failed") {

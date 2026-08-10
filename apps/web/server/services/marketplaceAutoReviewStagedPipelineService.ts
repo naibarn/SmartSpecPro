@@ -55,6 +55,8 @@ import {
   transitionStagedCheckpoint,
 } from "./marketplaceAutoReviewStagedCheckpointService";
 import { mediaGenerationService } from "./mediaGenerationService";
+import { getUnifiedMediaTask } from "./mediaTaskPollingService";
+import { ensureMarketplaceAutoReviewMediaUrlDurable } from "./marketplaceAutoReviewMediaAssetService";
 import { getModelById, deriveModelResolutionOptions } from "./modelRegistry";
 import {
   deductCredits,
@@ -1956,18 +1958,36 @@ async function reconcileImageProvider(params: {
     params.runtime.userToken,
     params.auth.userId
   );
-  const task = await mediaGenerationService.getTask(taskInfo.taskId, token, {
+  const task = await getUnifiedMediaTask({
+    taskId: taskInfo.taskId,
     userId: params.auth.userId,
-    traceId: `staged-image-poll:${params.run.id}:${params.shotId}`,
-    source: "marketplace_auto_review_staged",
-    stage: "image_generation",
+    userToken: token,
+    tenantId: params.run.tenantId,
+    auditContext: {
+      userId: params.auth.userId,
+      traceId: `staged-image-poll:${params.run.id}:${params.shotId}`,
+      source: "marketplace_auto_review_staged",
+      stage: "image_generation",
+    },
   });
+  const durableTask =
+    task.status === "completed" && text(task.resultUrl)
+      ? await ensureMarketplaceAutoReviewMediaUrlDurable({
+          tenantId: params.run.tenantId,
+          runId: params.run.id,
+          sourceUrl: text(task.resultUrl),
+          mediaType: "image",
+          purpose: `shot-${params.shotId}`,
+          identity: taskInfo.taskId,
+        })
+      : null;
+  const settledResultUrl = durableTask?.durableUrl || text(task.resultUrl);
   if (task.status === "pending" || task.status === "processing")
     return params.metadata;
   if (task.status === "failed" || task.status === "cancelled") {
     throw new Error(`staged_image_provider_failed:shot:${params.shotId}`);
   }
-  const url = text(task.resultUrl);
+  const url = settledResultUrl;
   if (!url)
     throw new Error(`staged_image_artifact_missing:shot:${params.shotId}`);
   const artifactHash = buildProductionStableHash({ taskId: task.id, url });
@@ -2253,17 +2273,35 @@ async function reconcileVideoProvider(params: {
     params.runtime.userToken,
     params.auth.userId
   );
-  const task = await mediaGenerationService.getTask(taskInfo.taskId, token, {
+  const task = await getUnifiedMediaTask({
+    taskId: taskInfo.taskId,
     userId: params.auth.userId,
-    traceId: `staged-video-poll:${params.run.id}:${params.shotId}`,
-    source: "marketplace_auto_review_staged",
-    stage: "video_generation",
+    userToken: token,
+    tenantId: params.run.tenantId,
+    auditContext: {
+      userId: params.auth.userId,
+      traceId: `staged-video-poll:${params.run.id}:${params.shotId}`,
+      source: "marketplace_auto_review_staged",
+      stage: "video_generation",
+    },
   });
+  const durableTask =
+    task.status === "completed" && text(task.resultUrl)
+      ? await ensureMarketplaceAutoReviewMediaUrlDurable({
+          tenantId: params.run.tenantId,
+          runId: params.run.id,
+          sourceUrl: text(task.resultUrl),
+          mediaType: "video",
+          purpose: `shot-${params.shotId}`,
+          identity: taskInfo.taskId,
+        })
+      : null;
+  const settledResultUrl = durableTask?.durableUrl || text(task.resultUrl);
   if (task.status === "pending" || task.status === "processing")
     return params.metadata;
   if (task.status === "failed" || task.status === "cancelled")
     throw new Error(`staged_video_provider_failed:shot:${params.shotId}`);
-  const url = text(task.resultUrl);
+  const url = settledResultUrl;
   if (!url)
     throw new Error(`staged_video_artifact_missing:shot:${params.shotId}`);
   const hash = buildProductionStableHash({ taskId: task.id, url });

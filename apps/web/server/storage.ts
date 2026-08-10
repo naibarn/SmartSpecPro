@@ -32,6 +32,7 @@ const UPLOADS_DIR = path.join(__dirname, "..", "uploads");
 type ForgeConfig = { provider: "forge"; baseUrl: string; apiKey: string };
 type S3Config = {
   provider: "s3";
+  storageKind: "r2" | "s3";
   client: S3Client;
   bucket: string;
   publicUrlPrefix: string | null;
@@ -105,6 +106,7 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
 
           const config: S3Config = {
             provider: "s3",
+            storageKind: setting.providerType === "r2" ? "r2" : "s3",
             client,
             bucket: setting.bucket || "",
             publicUrlPrefix: setting.publicUrlPrefix || null,
@@ -137,6 +139,7 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
 
     const config: S3Config = {
       provider: "s3",
+      storageKind: "r2",
       client,
       bucket: r2Bucket,
       publicUrlPrefix: null,
@@ -157,6 +160,19 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
  */
 export function invalidateStorageCache(): void {
   _configCache = null;
+}
+
+/**
+ * Vertical Drama generated media must be copied to R2 before it is exposed as
+ * a durable result. Keep this assertion here so the feature cannot silently
+ * fall back to local disk or a non-R2 S3 bucket when a deployment is
+ * misconfigured.
+ */
+export async function assertR2StorageActive(): Promise<void> {
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3" || config.storageKind !== "r2") {
+    throw new Error("Generated media requires an active Cloudflare R2 storage configuration");
+  }
 }
 
 // ─── Key normalization (security) ────────────────────────────────────────────

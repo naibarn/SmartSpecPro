@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
 import { storagePresignGet, storageResolveUrl } from "../storage";
+import { extractVerticalDramaManagedMediaKey } from "./verticalDramaMediaAssetService";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -145,7 +146,11 @@ export async function createAssetFromAttachment(
   if (!db) throw new Error("Database not available");
 
   // 2. Compute lightweight checksum from storageKey (for dedup)
-  const checksumInput = attachment.key ?? attachment.url;
+  const managedStorageKey = extractVerticalDramaManagedMediaKey(attachment.url);
+  const durableUrl = managedStorageKey
+    ? `/api/storage/files/${encodeURI(managedStorageKey)}`
+    : attachment.url;
+  const checksumInput = managedStorageKey ?? attachment.key ?? attachment.url;
   const checksumSha256 = crypto.createHash("sha256").update(checksumInput).digest("hex");
 
   // 3. Check for duplicate (same checksum + tenant + user)
@@ -189,8 +194,8 @@ export async function createAssetFromAttachment(
       projectId: context.projectId,
       sourceType: "chat_attachment",
       status: "pending",
-      storageKey: attachment.key ?? attachment.url,
-      originalUrl: attachment.url,
+      storageKey: managedStorageKey ?? attachment.key ?? attachment.url,
+      originalUrl: durableUrl,
       mimeType: attachment.mimeType!,
       fileSize: attachment.size,
       checksumSha256,

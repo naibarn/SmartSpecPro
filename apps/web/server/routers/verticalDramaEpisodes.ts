@@ -12,7 +12,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import type { TrpcContext } from "../_core/context";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
@@ -67,6 +67,8 @@ import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
 import { formatHermesErrorMessage } from "../../shared/hermesMedia";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
+import { ingestVerticalDramaMediaAsset } from "../services/verticalDramaMediaAssetService";
+import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
 import { verticalDramaCharacterStockService } from "../services/verticalDramaCharacterStock";
 import { verticalDramaLocationStockService } from "../services/verticalDramaLocationStock";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
@@ -1569,7 +1571,10 @@ function mapShotReferenceError(err: unknown): never {
  * shot/clip number against the raw plan data it already receives.
  */
 type ResolvedEpisodePlanAssetUrls = {
-  assetUrls: Record<string, { url: string; thumbnailUrl: string | null }>;
+  assetUrls: Record<
+    string,
+    { url: string; thumbnailUrl: string | null; status?: "ready" | "expired" }
+  >;
   videoAssetUrlsByClipNumber: VerticalDramaVideoAssetResolution;
 };
 
@@ -1651,6 +1656,7 @@ async function resolveEpisodePlanAssetUrls(
       originalUrl: mediaAssets.originalUrl,
       thumbnailUrl: mediaAssets.thumbnailUrl,
       storageKey: mediaAssets.storageKey,
+      status: mediaAssets.status,
     })
     .from(mediaAssets)
     .where(
@@ -1666,6 +1672,7 @@ async function resolveEpisodePlanAssetUrls(
     originalUrl: string | null;
     thumbnailUrl: string | null;
     storageKey: string;
+    status: string | null;
   }>;
 
   const result: Record<string, { url: string; thumbnailUrl: string | null }> =
@@ -1673,15 +1680,16 @@ async function resolveEpisodePlanAssetUrls(
   const rowsById = new Map(rows.map(row => [row.id, row]));
   const rowsByStorageKey = new Map(rows.map(row => [row.storageKey, row]));
   for (const row of rows) {
-    if (!row.originalUrl) continue;
+    if (!row.originalUrl && row.status !== "expired") continue;
     result[String(row.id)] = {
-      url: row.originalUrl,
+      url: row.status === "expired" ? "" : row.originalUrl ?? "",
       thumbnailUrl: row.thumbnailUrl ?? null,
+      ...(row.status === "expired" ? { status: "expired" as const } : {}),
     };
   }
   const videoAssetUrlsByClipNumber: Record<
     number,
-    { mediaAssetId: number; url: string }
+    { mediaAssetId: number; url: string; status?: "ready" | "expired" }
   > = {};
   for (const candidate of videoAssetCandidates) {
     const row =
@@ -1695,6 +1703,14 @@ async function resolveEpisodePlanAssetUrls(
     const url = row.storageKey
       ? buildVerticalDramaStorageProxyUrl(row.storageKey)
       : row.originalUrl;
+    if (row.status === "expired") {
+      videoAssetUrlsByClipNumber[candidate.clipNumber] = {
+        mediaAssetId: row.id,
+        url: "",
+        status: "expired",
+      };
+      continue;
+    }
     if (!url) continue;
     videoAssetUrlsByClipNumber[candidate.clipNumber] = {
       mediaAssetId: row.id,
@@ -1770,7 +1786,8 @@ async function resolveMediaAssetUrlsByIds(
       and(
         inArray(mediaAssets.id, uniqueIds),
         eq(mediaAssets.tenantId, tenantId),
-        eq(mediaAssets.userId, userId)
+        eq(mediaAssets.userId, userId),
+        ne(mediaAssets.status, "expired")
       )
     );
   const map = new Map<number, string>();
@@ -8768,6 +8785,7 @@ export const verticalDramaEpisodesRouter = router({
               videoUrl: z.string().min(1),
               mediaTaskId: z.string().min(1).optional(),
               mediaAssetId: z.string().min(1).optional(),
+              durabilityStatus: z.enum(["ready", "expired"]).optional(),
               source: z.enum(["generated", "upload"]).optional(),
             }),
           ])
@@ -14110,15 +14128,17 @@ export const verticalDramaEpisodesRouter = router({
 
       let task;
       try {
-        task = await mediaGenerationService.getTask(
+        task = await getUnifiedMediaTask({
           taskId,
-          getStartFrameMediaUserToken(ctx),
-          {
+          userId,
+          userToken: getStartFrameMediaUserToken(ctx),
+          tenantId,
+          auditContext: {
             userId,
             source: "trpc.verticalDramaEpisodes.getEpisodeCoverStatus",
             stage: "poll",
           }
-        );
+        });
       } catch (error) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -14185,12 +14205,17 @@ export const verticalDramaEpisodesRouter = router({
             taskStatus: task.status,
           };
         }
-        const { createAssetFromAttachment } =
-          await import("../services/mediaAssetService");
-        const { assetId } = await createAssetFromAttachment(
-          { type: "image", url: task.resultUrl, mimeType: "image/png" } as any,
-          { tenantId, userId } as any
-        );
+        const durable = await ingestVerticalDramaMediaAsset({
+          tenantId,
+          userId,
+          seriesId,
+          mediaType: "image",
+          sourceUrl: task.resultUrl,
+          mimeType: "image/png",
+          identity: task.id,
+          purpose: "episode_cover",
+        });
+        const assetId = durable.mediaAssetId;
         const nextState = {
           ...freshState,
           status: "ready" as const,
@@ -14211,7 +14236,7 @@ export const verticalDramaEpisodesRouter = router({
             )
           );
         return {
-          coverImage: projectEpisodeCover(nextState, task.resultUrl),
+            coverImage: projectEpisodeCover(nextState, durable.url),
           taskStatus: task.status,
         };
       }

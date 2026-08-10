@@ -689,6 +689,7 @@ export function StagedCheckpointReviewPanel(props: {
   }) => Promise<void>;
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [failedMediaUrls, setFailedMediaUrls] = useState<Record<string, boolean>>({});
   const [redraftNotes, setRedraftNotes] = useState("");
   const [selectedModel, setSelectedModel] = useState("__automatic__");
   const [finalOrderDraft, setFinalOrderDraft] = useState("");
@@ -2047,15 +2048,27 @@ export function StagedCheckpointReviewPanel(props: {
                       native fullscreen button; `controlsList` keeps the menu
                       but we ship our own download link too so the file name is
                       meaningful instead of a storage hash. */}
-                  <video
-                    id={`staged-final-video-${props.runId}`}
-                    key={finalVideoUrl}
-                    className="mt-2 w-full max-w-xs rounded border border-emerald-200 bg-black"
-                    src={finalVideoUrl}
-                    controls
-                    playsInline
-                    preload="metadata"
-                  />
+                  {failedMediaUrls[finalVideoUrl] ? (
+                    <div className="mt-2 flex min-h-32 w-full max-w-xs items-center justify-center rounded border border-dashed border-amber-300 bg-amber-50 p-3 text-center text-xs leading-5 text-amber-800">
+                      ไฟล์วิดีโอผลลัพธ์หมดอายุหรือเปิดไม่ได้แล้ว
+                    </div>
+                  ) : (
+                    <video
+                      id={`staged-final-video-${props.runId}`}
+                      key={finalVideoUrl}
+                      className="mt-2 w-full max-w-xs rounded border border-emerald-200 bg-black"
+                      src={finalVideoUrl}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      onError={() =>
+                        setFailedMediaUrls(current => ({
+                          ...current,
+                          [finalVideoUrl]: true,
+                        }))
+                      }
+                    />
+                  )}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <a
                       className="rounded bg-emerald-700 px-3 py-2 text-sm font-medium text-white"
@@ -3191,12 +3204,18 @@ export function StagedCheckpointReviewPanel(props: {
                         </span>
                       </div>
                       <div className="relative">
-                        {shot.imageArtifactUrl ? (
+                        {shot.imageArtifactUrl && !failedMediaUrls[shot.imageArtifactUrl] ? (
                           <div className="group relative">
                             <img
                               src={shot.imageArtifactUrl}
                               alt={`ผลภาพช็อตที่ ${shot.shotId}`}
                               className="aspect-[9/16] max-h-[22rem] w-full object-contain cursor-zoom-in"
+                              onError={() =>
+                                setFailedMediaUrls(current => ({
+                                  ...current,
+                                  [shot.imageArtifactUrl!]: true,
+                                }))
+                              }
                               onClick={() => { setLightboxUrl(shot.imageArtifactUrl!); setLightboxType("image"); }}
                             />
                             {!isTaskInFlight(shot.imageTaskStatus) && (
@@ -3247,7 +3266,11 @@ export function StagedCheckpointReviewPanel(props: {
                           </div>
                         ) : (
                           <div className="flex min-h-48 flex-col items-center justify-center p-5 text-center text-xs leading-5 text-slate-600 bg-violet-50/50 space-y-3">
-                            {isTaskInFlight(shot.imageTaskStatus) ? (
+                            {shot.imageArtifactUrl && failedMediaUrls[shot.imageArtifactUrl] ? (
+                              <p className="text-amber-700 font-medium">
+                                ไฟล์ภาพเดิมหมดอายุหรือเปิดไม่ได้แล้ว กรุณาสร้างใหม่หรืออัปโหลดภาพแทน
+                              </p>
+                            ) : isTaskInFlight(shot.imageTaskStatus) ? (
                               <div className="flex items-center gap-2 font-medium text-violet-700 animate-pulse">
                                 <span>⏳ กำลังประมวลผลสร้างภาพด้วย AI...</span>
                               </div>
@@ -3363,13 +3386,19 @@ export function StagedCheckpointReviewPanel(props: {
                         </span>
                       </div>
                       <div className="relative">
-                        {shot.videoArtifactUrl ? (
+                        {shot.videoArtifactUrl && !failedMediaUrls[shot.videoArtifactUrl] ? (
                           <div className="group relative">
                             <video
                               className="aspect-[9/16] max-h-[22rem] w-full object-contain"
                               controls
                               preload="metadata"
                               src={shot.videoArtifactUrl}
+                              onError={() =>
+                                setFailedMediaUrls(current => ({
+                                  ...current,
+                                  [shot.videoArtifactUrl!]: true,
+                                }))
+                              }
                               aria-label={`ผลวิดีโอช็อตที่ ${shot.shotId}`}
                             />
                             {!isTaskInFlight(shot.videoTaskStatus) && (
@@ -3418,7 +3447,11 @@ export function StagedCheckpointReviewPanel(props: {
                           </div>
                         ) : (
                           <div className="flex min-h-48 flex-col items-center justify-center p-5 text-center text-xs leading-5 text-slate-600 bg-sky-50/50 space-y-3">
-                            {isTaskInFlight(shot.videoTaskStatus) ? (
+                            {shot.videoArtifactUrl && failedMediaUrls[shot.videoArtifactUrl] ? (
+                              <p className="text-amber-700 font-medium">
+                                ไฟล์วิดีโอเดิมหมดอายุหรือเปิดไม่ได้แล้ว กรุณาสร้างใหม่หรืออัปโหลดวิดีโอแทน
+                              </p>
+                            ) : isTaskInFlight(shot.videoTaskStatus) ? (
                               <div className="flex items-center gap-2 font-medium text-sky-700 animate-pulse">
                                 <span>🎬 กำลังเรนเดอร์วิดีโอด้วย AI...</span>
                               </div>

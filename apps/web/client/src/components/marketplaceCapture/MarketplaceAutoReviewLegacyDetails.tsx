@@ -327,6 +327,7 @@ export function MarketplaceAutoReviewLegacyDetails({
   const StatusIcon = status.Icon;
   const errorMessage = text(run.errorMessage, statusDetail.safeMessage);
   const [showLegacyHistory, setShowLegacyHistory] = useState(false);
+  const [failedImageUrls, setFailedImageUrls] = useState<Record<string, boolean>>({});
 
   return (
     <section
@@ -768,23 +769,32 @@ export function MarketplaceAutoReviewLegacyDetails({
           <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {images.map((url, index) => (
               <li key={`${url}-${index}`}>
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group block overflow-hidden rounded-xl border border-slate-200 bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-                  aria-label={`เปิดภาพผลลัพธ์ที่ ${index + 1}`}
-                >
-                  <img
-                    src={url}
-                    alt={`ผลลัพธ์ภาพที่ ${index + 1}`}
-                    loading="lazy"
-                    className="aspect-[9/16] w-full object-cover transition duration-200 group-hover:scale-[1.02]"
-                  />
-                  <span className="block truncate px-2 py-1.5 text-[11px] text-slate-500">
-                    ภาพที่ {index + 1}
-                  </span>
-                </a>
+                {failedImageUrls[url] ? (
+                  <div className="flex aspect-[9/16] items-center justify-center rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3 text-center text-xs leading-5 text-amber-800">
+                    ภาพนี้หมดอายุหรือเปิดไม่ได้แล้ว
+                  </div>
+                ) : (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group block overflow-hidden rounded-xl border border-slate-200 bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                    aria-label={`เปิดภาพผลลัพธ์ที่ ${index + 1}`}
+                  >
+                    <img
+                      src={url}
+                      alt={`ผลลัพธ์ภาพที่ ${index + 1}`}
+                      loading="lazy"
+                      onError={() =>
+                        setFailedImageUrls(current => ({ ...current, [url]: true }))
+                      }
+                      className="aspect-[9/16] w-full object-cover transition duration-200 group-hover:scale-[1.02]"
+                    />
+                    <span className="block truncate px-2 py-1.5 text-[11px] text-slate-500">
+                      ภาพที่ {index + 1}
+                    </span>
+                  </a>
+                )}
               </li>
             ))}
           </ul>

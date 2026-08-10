@@ -166,6 +166,19 @@ vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
 vi.mock("../../services/mediaAssetService", () => ({
   createAssetFromAttachment: vi.fn(),
 }));
+
+// The router now durably ingests completed provider results into R2. Keep
+// this router-unit test focused on banner persistence and stub that storage
+// boundary; the real downloader/storage contract is covered separately.
+vi.mock("../../services/verticalDramaMediaAssetService", () => ({
+  ingestVerticalDramaMediaAsset: vi.fn(async (input: { sourceUrl: string; mediaType: string }) => ({
+    mediaAssetId: 9001,
+    storageKey: `test/${input.mediaType}/banner.png`,
+    url: input.sourceUrl,
+    mimeType: input.mediaType === "video" ? "video/mp4" : "image/png",
+  })),
+  ensureVerticalDramaTaskResultDurable: vi.fn(async () => null),
+}));
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: vi.fn(),
 }));
