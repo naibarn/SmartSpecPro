@@ -24,7 +24,11 @@ import {
 const readStates = vi.mocked(readSceneVisualStatesFromPlan);
 const authorState = vi.mocked(generateSceneVisualState);
 
-function state(locationKey: string, membershipHash: string): VdSceneVisualState {
+function state(
+  locationKey: string,
+  membershipHash: string,
+  activeProps: VdSceneVisualState["activeProps"] = [],
+): VdSceneVisualState {
   return {
     locationKey,
     membershipHash,
@@ -34,7 +38,7 @@ function state(locationKey: string, membershipHash: string): VdSceneVisualState 
     spatialLayout: "tables face the window",
     stagingAxis: "window to door",
     wardrobeInScene: [],
-    activeProps: [],
+    activeProps,
     paletteMood: "warm cream",
     timeJumpSuspected: false,
     coverageGaps: [],
@@ -130,5 +134,31 @@ describe("verticalDramaSceneContinuityLock", () => {
     const result = await resolveShotSceneContinuityLock({ ...wrapperParams, shotNumber: 3 });
     expect(result.locationKey).toBe("street");
     expect(result.block).toBeUndefined();
+  });
+
+  it("renders scene props only from their activation shot onward", async () => {
+    const first = await resolveSceneContinuityLocks(params({ shotNumbers: [1] }));
+    const membershipHash = computeSceneMembershipHash({
+      episodeId: 3,
+      locationKey: "cafe",
+      memberShotNumbers: [1, 2],
+      canonicalSummariesByShotNumber: new Map([[1, "enter"], [2, "sit"]]),
+    });
+    readStates.mockReturnValue({
+      cafe: state("cafe", membershipHash, [
+        { name: "handcuffs", placement: "on wrist", fromShot: 2 },
+      ]),
+    });
+
+    const beforeActivation = await resolveSceneContinuityLocks(
+      params({ shotNumbers: [1] })
+    );
+    expect(beforeActivation.blockByShotNumber.get(1)).not.toContain("handcuffs");
+
+    const afterActivation = await resolveSceneContinuityLocks(
+      params({ shotNumbers: [2] })
+    );
+    expect(afterActivation.blockByShotNumber.get(2)).toContain("handcuffs");
+    expect(first.blockByShotNumber.size).toBe(0);
   });
 });

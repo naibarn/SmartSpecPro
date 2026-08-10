@@ -776,6 +776,39 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
     expect(batchLockSection).not.toContain("ภูมิ");
   });
 
+  it("does not leak a future active prop into start-frame prompts or render-plan locks", () => {
+    const block = [
+      "SCENE CONTINUITY LOCK",
+      "- Active props: evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+    ].join("\n");
+
+    const shotFourPrompt = buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis: "คุณกฤตยืนอยู่หน้าคาเฟ่",
+      shotNumber: 4,
+      characterReferenceManifest: [{ index: 1, name: "คุณกฤต", presence: "scene" }],
+      sceneContinuityLockBlock: block,
+    });
+    expect(shotFourPrompt).toContain("evidence folder");
+    expect(shotFourPrompt).not.toContain("handcuffs");
+
+    const shotFourNormalPrompt = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({ shotNumber: 4, sceneContinuityLockBlock: block })
+    );
+    expect(shotFourNormalPrompt).toContain("evidence folder");
+    expect(shotFourNormalPrompt).not.toContain("handcuffs");
+
+    const shotFourLock = buildRenderPlanSceneContinuityLockSection([
+      { shotNumber: 4, sceneContinuityLockBlock: block },
+    ]);
+    expect(shotFourLock).toContain("evidence folder");
+    expect(shotFourLock).not.toContain("handcuffs");
+
+    const shotEightLock = buildRenderPlanSceneContinuityLockSection([
+      { shotNumber: 8, sceneContinuityLockBlock: block },
+    ]);
+    expect(shotEightLock).toContain("handcuffs");
+  });
+
   it("removes a roster character who is mentioned but not selected for the shot", () => {
     const prompt = buildDeterministicPolicySafeImagePrompt({
       rewrittenSynopsis:

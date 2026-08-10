@@ -97,6 +97,7 @@ import {
 // reading logic.
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import {
+  filterSceneContinuityLockBlockForShot,
   isSameSceneMembership,
   resolveSceneVisualState,
   type VdSceneShotGroup,
@@ -1028,7 +1029,8 @@ export function buildRenderPlanSceneContinuityLockSection(
   const groups = new Map<string, number[]>();
   for (const shot of storyboardShots) {
     const block = sanitizeSceneContinuityLockForShot(
-      shot.sceneContinuityLockBlock
+      shot.sceneContinuityLockBlock,
+      shot.shotNumber,
     );
     if (!block) continue;
     const shots = groups.get(block) ?? [];
@@ -1057,9 +1059,13 @@ export function buildRenderPlanSceneContinuityLockSection(
  * governed exclusively by `requiredCharacterRefs`/the reference manifest.
  */
 export function sanitizeSceneContinuityLockForShot(
-  block?: string
+  block?: string,
+  currentShotNumber?: number,
 ): string | undefined {
-  const sanitized = block
+  const sanitized = filterSceneContinuityLockBlockForShot(
+    block,
+    currentShotNumber,
+  )
     ?.split("\n")
     .filter(
       line =>
@@ -1803,6 +1809,7 @@ export function guardStartFramePromptVisibleCast(params: {
 
 export function buildDeterministicPolicySafeImagePrompt(params: {
   rewrittenSynopsis: string;
+  shotNumber?: number;
   characterReferenceManifest: GenerateStartFrameShotPromptCharacterManifestEntry[];
   screenCallerCharacterRefs?: string[];
   locationReferenceImage?: { url: string; label: string };
@@ -1852,7 +1859,10 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
     prompt: [
       mapping,
       physicalCastLock,
-      sanitizeSceneContinuityLockForShot(params.sceneContinuityLockBlock),
+      sanitizeSceneContinuityLockForShot(
+        params.sceneContinuityLockBlock,
+        params.shotNumber,
+      ),
       synopsis,
     ]
       .filter(Boolean)
@@ -2325,7 +2335,10 @@ export function buildStartFrameShotPromptUserPrompt(
             : ""
         }`
       : null,
-    sanitizeSceneContinuityLockForShot(params.sceneContinuityLockBlock) ?? null,
+    sanitizeSceneContinuityLockForShot(
+      params.sceneContinuityLockBlock,
+      params.shotNumber,
+    ) ?? null,
     // Speaker-order composition fix — additive; `null` (filtered out
     // entirely, same convention as `location` immediately above) when
     // `speakingOrder` is absent/empty, so a call without it produces the
@@ -2770,6 +2783,7 @@ export async function generateStartFrameShotPrompt(
 
     const outputPrompt = buildDeterministicPolicySafeImagePrompt({
       rewrittenSynopsis,
+      shotNumber: params.shotNumber,
       characterReferenceManifest: params.characterReferenceManifest,
       screenCallerCharacterRefs: params.screenCallerCharacterRefs,
       locationReferenceImage: params.locationReferenceImage,

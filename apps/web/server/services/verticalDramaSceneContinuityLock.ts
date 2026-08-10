@@ -253,7 +253,7 @@ export async function resolveSceneContinuityLocks(params: {
     resolution.statesByLocationKey[group.locationKey] = state;
     for (const n of group.shotNumbers) {
       if (!requested.has(n)) continue;
-      const block = renderSceneContinuityLockBlock(state, membershipHash);
+      const block = renderSceneContinuityLockBlock(state, membershipHash, n);
       if (!block) continue;
       resolution.blockByShotNumber.set(n, block);
     }

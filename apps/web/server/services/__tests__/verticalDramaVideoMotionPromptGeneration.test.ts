@@ -1316,6 +1316,27 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     expect(content.match(/SCENE CONTINUITY LOCK/g)).toHaveLength(1);
   });
 
+  it("omits future active props from the single-shot video prompt", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+    const lock = [
+      "SCENE CONTINUITY LOCK",
+      "- Active props: evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+    ].join("\n");
+    await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        shotNumber: 3,
+        shotContext: {
+          description: "A character stands in a kitchen",
+          camera: "medium shot",
+          sceneContinuityLockBlock: lock,
+        },
+      })
+    );
+    const content = extractUserPromptText();
+    expect(content).toContain("evidence folder");
+    expect(content).not.toContain("handcuffs");
+  });
+
   it("dialogue fact attributes each line to the resolved speaker DISPLAY NAME and preserves characterKey identity binding", async () => {
     mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
 
@@ -2024,6 +2045,29 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
       : userMessage.content.map((part: any) => part.text ?? "").join("\n");
     expect(content).toContain(`บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${lock}`);
     expect(content.match(/SCENE CONTINUITY LOCK/g)).toHaveLength(1);
+  });
+
+  it("omits future active props from the speaker-switch video prompt", async () => {
+    mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+    const lock = [
+      "SCENE CONTINUITY LOCK",
+      "- Active props: evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+    ].join("\n");
+    await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams({
+        shotNumber: 3,
+        shotContext: {
+          ...baseSpeakerSwitchParams().shotContext,
+          sceneContinuityLockBlock: lock,
+        },
+      })
+    );
+    const userMessage = mockExecute.mock.calls[0][0].messages.find((m: any) => m.role === "user");
+    const content = typeof userMessage.content === "string"
+      ? userMessage.content
+      : userMessage.content.map((part: any) => part.text ?? "").join("\n");
+    expect(content).toContain("evidence folder");
+    expect(content).not.toContain("handcuffs");
   });
 
   it("returns ONE combined prompt/dialogue/durationSeconds result (not subShots[]), validated against the reused single-shot output schema", async () => {

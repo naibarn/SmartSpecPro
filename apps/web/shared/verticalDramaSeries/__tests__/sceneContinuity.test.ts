@@ -5,6 +5,7 @@ import {
   VD_SCENE_CONTINUITY_LOCK_HEADER,
   buildSceneShotGroups,
   computeSceneMembershipHash,
+  filterSceneContinuityLockBlockForShot,
   findSceneShotGroupForShot,
   isSameSceneMembership,
   renderSceneContinuityLockBlock,
@@ -212,6 +213,53 @@ describe("scene state resolution and lock rendering", () => {
       "- Active props: envelope — on ledge (from shot 2)",
       "- Palette and mood: muted blue and concrete gray",
     ].join("\n"));
+  });
+
+  it("does not render future props before their declared shot while preserving global props", () => {
+    const continuityState = state({
+      activeProps: [
+        { name: "coffee cup", placement: "on the table" },
+        { name: "evidence folder", placement: "in hand", fromShot: 2 },
+        { name: "handcuffs", placement: "on the wrist", fromShot: 8 },
+      ],
+    });
+
+    const beforeShotTwo = renderSceneContinuityLockBlock(
+      continuityState,
+      continuityState.membershipHash,
+      1,
+    )!;
+    expect(beforeShotTwo).toContain("coffee cup");
+    expect(beforeShotTwo).not.toContain("evidence folder");
+    expect(beforeShotTwo).not.toContain("handcuffs");
+
+    const shotEight = renderSceneContinuityLockBlock(
+      continuityState,
+      continuityState.membershipHash,
+      8,
+    )!;
+    expect(shotEight).toContain("evidence folder");
+    expect(shotEight).toContain("handcuffs");
+  });
+
+  it("filters future props from already-persisted rendered lock text", () => {
+    const block = [
+      "SCENE CONTINUITY LOCK",
+      "- Active props: coffee cup — on table; handcuffs — on wrist (from shot 8); evidence folder — in hand (from shot 2)",
+    ].join("\n");
+
+    expect(filterSceneContinuityLockBlockForShot(block, 1)).toBe(
+      [
+        "SCENE CONTINUITY LOCK",
+        "- Active props: coffee cup — on table",
+      ].join("\n")
+    );
+    expect(filterSceneContinuityLockBlockForShot(block, 2)).toContain(
+      "evidence folder"
+    );
+    expect(filterSceneContinuityLockBlockForShot(block, 2)).not.toContain(
+      "handcuffs"
+    );
   });
 
   it("renders no lock for stale or mismatched membership", () => {

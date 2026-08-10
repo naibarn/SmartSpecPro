@@ -362,6 +362,7 @@ function renderPairs(
 export function renderSceneContinuityLockBlock(
   state: VdSceneVisualState | undefined,
   currentMembershipHash: string,
+  currentShotNumber?: number,
 ): string | undefined {
   if (
     !state ||
@@ -379,6 +380,7 @@ export function renderSceneContinuityLockBlock(
     "wardrobe",
     ": ",
   );
+  const shotNumber = positiveInteger(currentShotNumber);
   const props = Array.isArray(state.activeProps)
     ? state.activeProps.flatMap(entry => {
         if (!isRecord(entry)) return [];
@@ -386,6 +388,13 @@ export function renderSceneContinuityLockBlock(
         const placement = cleanString(entry.placement);
         if (!name || !placement) return [];
         const fromShot = positiveInteger(entry.fromShot);
+        if (
+          fromShot !== undefined &&
+          shotNumber !== undefined &&
+          fromShot > shotNumber
+        ) {
+          return [];
+        }
         return [`${name} — ${placement}${fromShot ? ` (from shot ${fromShot})` : ""}`];
       }).join("; ")
     : "";
@@ -399,4 +408,48 @@ export function renderSceneContinuityLockBlock(
     cleanString(state.paletteMood) ? `- Palette and mood: ${cleanString(state.paletteMood)}` : "",
   ].filter(Boolean);
   return lines.length > 0 ? [VD_SCENE_CONTINUITY_LOCK_HEADER, ...lines].join("\n") : undefined;
+}
+
+/**
+ * Removes future-dated active props from a previously rendered continuity
+ * block. This is intentionally text-based because persisted episode plans
+ * contain the rendered block rather than the original typed scene state.
+ * Props without a `(from shot N)` marker remain global for backward
+ * compatibility, while a prop only becomes eligible on its declared shot.
+ */
+export function filterSceneContinuityLockBlockForShot(
+  block: string | undefined,
+  currentShotNumber?: number,
+): string | undefined {
+  const normalized = block?.trim();
+  if (!normalized) return undefined;
+  const shotNumber = positiveInteger(currentShotNumber);
+  if (shotNumber === undefined) {
+    return normalized;
+  }
+
+  const filtered = normalized
+    .split("\n")
+    .flatMap(line => {
+      const match = line.match(/^(\s*-\s*Active props\s*:\s*)(.*)$/i);
+      if (!match) return [line];
+      const visibleProps = match[2]
+        .split(/\s*;\s*/)
+        .map(prop => prop.trim())
+        .filter(Boolean)
+        .filter(prop => {
+          const fromShotMatch = prop.match(/\(\s*from\s+shot\s+(\d+)\s*\)\s*$/i);
+          return (
+            !fromShotMatch ||
+            Number(fromShotMatch[1]) <= shotNumber
+          );
+        });
+      return visibleProps.length > 0
+        ? [`${match[1]}${visibleProps.join("; ")}`]
+        : [];
+    })
+    .join("\n")
+    .trim();
+
+  return filtered || undefined;
 }

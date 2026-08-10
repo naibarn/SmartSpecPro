@@ -78,6 +78,7 @@ import type {
 } from "@shared/verticalDramaSeries";
 import type { VerticalDramaBarrierMultiView } from "@shared/verticalDramaSeries/barrierMultiView";
 import { renderVerticalDramaBarrierMultiViewFactBlock } from "@shared/verticalDramaSeries/barrierMultiView";
+import { filterSceneContinuityLockBlockForShot } from "@shared/verticalDramaSeries/sceneContinuity";
 
 import {
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
@@ -2265,6 +2266,10 @@ export function buildShotVideoPromptUserPrompt(
   targetVideoModelFactBlock: string,
 ): string {
   const { shotContext } = params;
+  const sceneContinuityLockBlock = filterSceneContinuityLockBlockForShot(
+    shotContext.sceneContinuityLockBlock,
+    params.shotNumber,
+  );
   const promptLanguage = params.promptLanguage ?? "en";
   const dialogueLanguage = params.dialogueLanguage ?? "th";
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
@@ -2402,8 +2407,8 @@ export function buildShotVideoPromptUserPrompt(
     params.barrierReferenceImage && params.attachShotImage !== false
       ? "DUAL IMAGE INPUT (MANDATORY): Image 1 is the start frame; Image 2 is the reference frame. They have independent viewer-left/right coordinate spaces. In frame_analysis, assign view_role=start_frame only to characters configured for Image 1 and view_role=barrier_reference only to characters configured for Image 2. In prompt, prefix every speaking beat with the exact Image 1 or Image 2 label before the character name and that image's viewer-relative position. Never describe an Image 2 character as absent/not_visible/tiny in Image 1; inspect Image 2 directly instead."
       : null,
-    shotContext.sceneContinuityLockBlock?.trim()
-      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${shotContext.sceneContinuityLockBlock.trim()}`
+    sceneContinuityLockBlock?.trim()
+      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${sceneContinuityLockBlock.trim()}`
       : null,
     // reference images above; the actual creative use is in the
     // `repairInstruction` field or left to the model's own judgment).
@@ -2996,6 +3001,10 @@ function buildSpeakerSwitchUserPrompt(
   targetVideoModelFactBlock: string,
 ): string {
   const { shotContext, subShotWindows } = params;
+  const sceneContinuityLockBlock = filterSceneContinuityLockBlockForShot(
+    shotContext.sceneContinuityLockBlock,
+    params.shotNumber,
+  );
   const promptLanguage = params.promptLanguage ?? "en";
   const dialogueLanguage = params.dialogueLanguage ?? "th";
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
@@ -3113,8 +3122,8 @@ function buildSpeakerSwitchUserPrompt(
     params.barrierReferenceImage && params.attachShotImage !== false
       ? "DUAL IMAGE INPUT (MANDATORY): Image 1 is the start frame; Image 2 is the reference frame. They have independent viewer-left/right coordinate spaces. In frame_analysis, assign view_role=start_frame only to characters configured for Image 1 and view_role=barrier_reference only to characters configured for Image 2. In prompt, prefix every speaking beat with the exact Image 1 or Image 2 label before the character name and that image's viewer-relative position. Never describe an Image 2 character as absent/not_visible/tiny in Image 1; inspect Image 2 directly instead."
       : null,
-    shotContext.sceneContinuityLockBlock?.trim()
-      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${shotContext.sceneContinuityLockBlock.trim()}`
+    sceneContinuityLockBlock?.trim()
+      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${sceneContinuityLockBlock.trim()}`
       : null,
     // VideoPromptAiEditDialog — factual announcement of user-supplied
     // additional images (same purely-factual convention as character/location
