@@ -114,6 +114,10 @@ import {
   type VdImagePromptModeStamp,
   VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS,
 } from "@shared/verticalDramaSeries/imagePromptModelFamily";
+import {
+  renderSupportingPresencePromptBlock,
+  type VerticalDramaSupportingPresence,
+} from "@shared/verticalDramaSeries/supportingPresence";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -320,6 +324,8 @@ export interface StartFrameRenderPlanProjection {
     barrierMultiView?: VerticalDramaBarrierMultiView;
     requiredCharacterRefs: string[];
     characterRefsCustomized?: boolean;
+    supportingPresence?: VerticalDramaSupportingPresence[];
+    supportingPresenceCustomized?: boolean;
     productReferenceAssetIds: string[];
     canonicalShotSummary?: string;
     /** See `VerticalDramaStartFramePlan.frames[].productRefsCustomized` in `@shared/verticalDramaSeries`. */
@@ -559,7 +565,11 @@ export function projectStartFramePlan(
   shotScreenCallerCharacterIdsByShotNumber?: Map<number, string[]>,
   /** Ground-truth physical barrier role per shot. */
   shotBarrierDialogueByShotNumber?: Map<number, VerticalDramaBarrierDialogue>,
-  shotBarrierMultiViewByShotNumber?: Map<number, VerticalDramaBarrierMultiView>
+  shotBarrierMultiViewByShotNumber?: Map<number, VerticalDramaBarrierMultiView>,
+  shotSupportingPresenceByShotNumber?: Map<
+    number,
+    VerticalDramaSupportingPresence[]
+  >
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -602,6 +612,12 @@ export function projectStartFramePlan(
         const barrierMultiView =
           shotBarrierMultiViewByShotNumber?.get(r.shot_number) ??
           normalizeVerticalDramaBarrierMultiView(previous?.barrierMultiView);
+        const supportingPresence =
+          previous?.supportingPresenceCustomized === true
+            ? (previous.supportingPresence ?? [])
+            : (shotSupportingPresenceByShotNumber?.get(r.shot_number) ??
+              previous?.supportingPresence ??
+              []);
         const canonicalShotSummary =
           canonicalShotSummaryByShotNumber?.get(r.shot_number) ??
           previous?.canonicalShotSummary;
@@ -629,6 +645,10 @@ export function projectStartFramePlan(
           requiredCharacterRefs,
           ...(previous?.characterRefsCustomized !== undefined
             ? { characterRefsCustomized: previous.characterRefsCustomized }
+            : {}),
+          ...(supportingPresence.length > 0 ? { supportingPresence } : {}),
+          ...(previous?.supportingPresenceCustomized !== undefined
+            ? { supportingPresenceCustomized: previous.supportingPresenceCustomized }
             : {}),
           productReferenceAssetIds: previous?.productReferenceAssetIds ?? [],
           ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
@@ -686,6 +706,10 @@ export interface GenerateStartFrameRenderPlanParams {
     barrierMultiView?: VerticalDramaBarrierMultiView;
     /** True when both reference-role lists were explicitly chosen by the user and must not be re-derived. */
     characterRefsCustomized?: boolean;
+    /** Generic visible people/groups, scoped only to this shot and text-only. */
+    supportingPresence?: VerticalDramaSupportingPresence[];
+    /** True when the user explicitly accepted/edited/suppressed this shot's list. */
+    supportingPresenceCustomized?: boolean;
     durationSeconds: number;
     /** Active Overview shot summary; the skill must prefer it over stale storyboard prose. */
     canonicalShotSummary?: string;
@@ -932,6 +956,9 @@ export function buildStartFrameRenderPlanUserPrompt(
       const characterSelectionSuffix = s.characterRefsCustomized
         ? " | character_reference_selection: USER_SELECTED_AUTHORITATIVE (preserve scene/caller roles exactly; do not reclassify from synopsis)"
         : "";
+      const supportingPresenceBlock = renderSupportingPresencePromptBlock(
+        s.supportingPresence ?? []
+      );
       // Multi-character frame-inclusion fix — additive; only appended when
       // this shot requires 2+ characters, so a solo/no-character shot
       // produces the exact same line as before this field existed
@@ -959,7 +986,7 @@ export function buildStartFrameRenderPlanUserPrompt(
       );
       return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${remappedCameraSetup} | physical_scene_refs: ${
         s.characterIds.length ? s.characterIds.join(", ") : "(none)"
-      }${screenCallerSuffix}${characterSelectionSuffix}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
+      }${screenCallerSuffix}${characterSelectionSuffix}${supportingPresenceBlock ? `\n${supportingPresenceBlock}` : ""}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
     })
     .join("\n");
 
@@ -1388,6 +1415,18 @@ export async function generateStartFrameRenderPlan(
         })
         .filter((entry): entry is readonly [number, VerticalDramaBarrierMultiView] =>
           entry !== null
+        )
+    ),
+    new Map(
+      params.storyboardShots
+        .map(s =>
+          s.supportingPresence?.length || s.supportingPresenceCustomized === true
+            ? ([s.shotNumber, s.supportingPresence ?? []] as const)
+            : null
+        )
+        .filter(
+          (entry): entry is readonly [number, VerticalDramaSupportingPresence[]] =>
+            entry !== null
         )
     )
   );
@@ -2030,6 +2069,8 @@ export interface GenerateStartFrameShotPromptParams {
   requiredCharacterRefs?: string[];
   /** Explicit screen-caller keys; caller portraits are not attached to the flat physical-scene reference payload. */
   screenCallerCharacterRefs?: string[];
+  /** Generic visible people/groups; never treated as portrait references. */
+  supportingPresence?: VerticalDramaSupportingPresence[];
   /** Explicit physical conversation through a closed barrier; never a phone caller. */
   barrierDialogue?: VerticalDramaBarrierDialogue;
   /** Two explicit physical camera views for barrier dialogue. */
@@ -2219,6 +2260,9 @@ export function buildStartFrameShotPromptUserPrompt(
   const barrierMultiView = normalizeVerticalDramaBarrierMultiView(
     params.barrierMultiView
   );
+  const supportingPresenceBlock = renderSupportingPresencePromptBlock(
+    params.supportingPresence ?? []
+  );
   const barrierVisibleRefs = new Set(
     barrierDialogue?.visibleCharacterRefs ?? []
   );
@@ -2277,6 +2321,7 @@ export function buildStartFrameShotPromptUserPrompt(
     barrierMultiView
       ? renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)
       : null,
+    supportingPresenceBlock,
     params.characterRefsCustomized
       ? "character_reference_selection: USER_SELECTED_AUTHORITATIVE — preserve the scene/caller roles exactly; do not reclassify, add, remove, or move references from synopsis wording."
       : null,
@@ -2792,6 +2837,7 @@ export async function generateStartFrameShotPrompt(
     });
     const policySafePrompt = [
       outputPrompt,
+      renderSupportingPresencePromptBlock(params.supportingPresence ?? []),
       buildVideoFaceVisibilityPromptBlock(
         params.videoFaceVisibilityRequired === true
       ),

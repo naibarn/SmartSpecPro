@@ -145,6 +145,28 @@
             },
             "description": "Character reference ids whose portraits must be attached as references but may appear only inside an explicitly visible phone/video-call screen; they are never physical people in the shot."
           },
+          "supporting_presence": {
+            "type": "array",
+            "maxItems": 6,
+            "description": "Shot-local generic people/groups that are visibly present without portrait identity locking; never create roster characters or infer from another shot.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string" },
+                "role": { "type": "string", "minLength": 1 },
+                "count": { "type": "integer", "minimum": 1, "maximum": 20 },
+                "count_min": { "type": "integer", "minimum": 1, "maximum": 20 },
+                "count_max": { "type": "integer", "minimum": 1, "maximum": 20 },
+                "visibility": { "type": "string", "enum": ["visible", "background"] },
+                "action": { "type": "string" },
+                "evidence": { "type": "string" },
+                "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+                "status": { "type": "string", "enum": ["suggestion", "auto_confirmed", "accepted"] }
+              },
+              "required": ["role"]
+            }
+          },
           "location": {
             "type": "string"
           },

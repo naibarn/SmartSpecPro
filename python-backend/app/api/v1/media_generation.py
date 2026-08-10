@@ -29,6 +29,7 @@ from app.llm_proxy.providers.kie_ai_provider import (
 )
 from app.models.media_task import MediaTask, MediaType, TaskStatus
 from app.models.user import User
+from app.services.image_prompt_safety import validate_image_prompt_safety
 from app.services.media_callback_service import (
     get_latest_callback_event_by_provider_task_id,
     process_kie_callback_payload,
@@ -633,6 +634,10 @@ async def generate_image_endpoint(
     gateway = LLMGateway(db)
     task = None
     external_task_id = None
+    try:
+        validate_image_prompt_safety(request.extra_params)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     try:
         # Create task record before generation
         task = await MediaTaskService.create_task(
@@ -1498,6 +1503,7 @@ async def process_batch_task(
 
         # Generate based on media type
         if media_type == MediaType.IMAGE:
+            validate_image_prompt_safety(parameters)
             request = ImageGenerationRequest(
                 model=model,
                 prompt=prompt,
@@ -1554,6 +1560,11 @@ async def batch_generate(
     Tasks are processed asynchronously in the background.
     """
     media_type = MediaType(request.media_type)
+    if media_type == MediaType.IMAGE:
+        try:
+            validate_image_prompt_safety(request.parameters)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     task_ids = []
 
     for prompt in request.prompts:
@@ -1827,6 +1838,11 @@ async def generate_image_async(
     Submit image generation to Celery queue (async processing).
     Returns immediately with task_id for status polling.
     """
+    try:
+        validate_image_prompt_safety(request.extra_params)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
     if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

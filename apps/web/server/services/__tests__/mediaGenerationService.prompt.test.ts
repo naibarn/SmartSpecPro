@@ -75,6 +75,12 @@ describe("buildPythonBackendExtraParams", () => {
           __origin_surface: "marketplace_auto_review",
           __marketplace_product_id: "mp_123",
           __auto_review_run_id: "auto_run_82",
+          __prompt_safety: {
+            checked: true,
+            mode: "standard",
+            skillId: "image-prompt-safety-rewriter",
+            skillVersion: "1.0.0",
+          },
           __debug_prompt_dump: "do not persist",
           marketplaceContext: { productName: "internal only" },
         },
@@ -85,6 +91,12 @@ describe("buildPythonBackendExtraParams", () => {
       __origin_surface: "marketplace_auto_review",
       __marketplace_product_id: "mp_123",
       __auto_review_run_id: "auto_run_82",
+      __prompt_safety: {
+        checked: true,
+        mode: "standard",
+        skillId: "image-prompt-safety-rewriter",
+        skillVersion: "1.0.0",
+      },
     });
   });
 });

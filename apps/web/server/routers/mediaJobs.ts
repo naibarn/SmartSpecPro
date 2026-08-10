@@ -12,7 +12,9 @@ import type { TenantRequest } from "../_core/tenant";
 import { rateLimit } from "../_core/limits";
 import multer from "multer";
 import { storagePut, storagePutFromPath } from "../storage";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "../db";
+import { mediaAssets } from "../../drizzle/schema";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
@@ -20,6 +22,96 @@ import { assertTextClipRolloutEnabledForSpec } from "../services/textClipRollout
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/asyncJobHandle";
 import { shouldUseCloudTasksForMediaJobs } from "../services/mediaJobDispatchMode";
+
+type MediaJobAssetAuth = { userId: string; tenantId: string | null };
+
+/** Register media-jobs files in the canonical asset table so consumers can
+ * resolve a stable, owner-scoped storage URL after the upload response. */
+async function registerMediaJobAsset(input: {
+  auth: MediaJobAssetAuth;
+  storageKey: string;
+  originalUrl: string | null;
+  mimeType: string;
+  fileSize: number;
+  status: "pending" | "ready";
+  sourceType?: "media_job_upload" | "media_job_import";
+}): Promise<number | null> {
+  if (!input.auth.tenantId) return null;
+  const userId = Number(input.auth.userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("Invalid authenticated user id");
+  }
+
+  const database = getDb();
+  const [inserted] = await database
+    .insert(mediaAssets)
+    .values({
+      tenantId: input.auth.tenantId,
+      userId,
+      sourceType: input.sourceType ?? "media_job_upload",
+      status: input.status,
+      storageKey: input.storageKey,
+      originalUrl: input.originalUrl,
+      mimeType: input.mimeType || "application/octet-stream",
+      fileSize: input.fileSize > 0 ? input.fileSize : null,
+    })
+    .returning({ id: mediaAssets.id });
+  return inserted?.id ?? null;
+}
+
+/** Mark a presigned object ready, or repair a completion from an older client
+ * that did not create the pending row during upload init. */
+async function finalizeMediaJobAsset(input: {
+  auth: MediaJobAssetAuth;
+  storageKey: string;
+  originalUrl: string;
+  mimeType?: string;
+  fileSize?: number;
+}): Promise<number | null> {
+  if (!input.auth.tenantId) return null;
+  const userId = Number(input.auth.userId);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new Error("Invalid authenticated user id");
+  }
+
+  const database = getDb();
+  const [existing] = await database
+    .select({ id: mediaAssets.id })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.tenantId, input.auth.tenantId),
+        eq(mediaAssets.userId, userId),
+        eq(mediaAssets.storageKey, input.storageKey),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    await database
+      .update(mediaAssets)
+      .set({
+        status: "ready",
+        originalUrl: input.originalUrl,
+        ...(input.mimeType ? { mimeType: input.mimeType } : {}),
+        ...(input.fileSize && input.fileSize > 0
+          ? { fileSize: input.fileSize }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(mediaAssets.id, existing.id));
+    return existing.id;
+  }
+
+  return registerMediaJobAsset({
+    auth: input.auth,
+    storageKey: input.storageKey,
+    originalUrl: input.originalUrl,
+    mimeType: input.mimeType || "application/octet-stream",
+    fileSize: input.fileSize ?? 0,
+    status: "ready",
+  });
+}
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -1429,9 +1521,22 @@ export function registerMediaJobRoutes(app: Express) {
             await fs.unlink(file.path).catch(e => console.warn("[Upload] Cleanup failed:", e));
           }
 
+          const mediaAssetId = await registerMediaJobAsset({
+            auth: authResult,
+            storageKey,
+            originalUrl: url,
+            mimeType: file.mimetype || "application/octet-stream",
+            fileSize: file.size,
+            status: "ready",
+          });
+
           const uploadDuration = Date.now() - startTime;
           console.log("[MediaJobs Upload] Success:", url, `(${uploadDuration}ms)`);
-          res.json({ assetId, uri: url });
+          res.json({
+            assetId,
+            uri: url,
+            ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+          });
         } catch (e: any) {
           // Clean up temp file on error
           if (file?.path) {
@@ -1525,12 +1630,22 @@ export function registerMediaJobRoutes(app: Express) {
           return;
         }
 
+        const mediaAssetId = await registerMediaJobAsset({
+          auth: authResult,
+          storageKey: presigned.key,
+          originalUrl: null,
+          mimeType: ct,
+          fileSize,
+          status: "pending",
+        });
+
         console.log("[MediaJobs Upload/Init]", authResult.userId, assetId, filename, fileSize);
         res.json({
           method: "presigned" as const,
           assetId,
           key: presigned.key,
           uploadUrl: presigned.url,
+          ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
         });
       } catch (e: any) {
         console.error("[MediaJobs Upload/Init] Error:", e);
@@ -1549,6 +1664,8 @@ export function registerMediaJobRoutes(app: Express) {
         const { assetId, key } = req.body as {
           assetId?: string;
           key?: string;
+          contentType?: string;
+          fileSize?: number;
         };
 
         if (!assetId || !key) {
@@ -1570,8 +1687,20 @@ export function registerMediaJobRoutes(app: Express) {
           return;
         }
 
+        const mediaAssetId = await finalizeMediaJobAsset({
+          auth: authResult,
+          storageKey: key,
+          originalUrl: url,
+          mimeType: req.body?.contentType,
+          fileSize: req.body?.fileSize,
+        });
+
         console.log("[MediaJobs Upload/Complete]", authResult.userId, assetId, url);
-        res.json({ assetId, uri: url });
+        res.json({
+          assetId,
+          uri: url,
+          ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+        });
       } catch (e: any) {
         console.error("[MediaJobs Upload/Complete] Error:", e);
         res.status(500).json({ error: e.message || "Complete failed" });
@@ -1655,9 +1784,25 @@ export function registerMediaJobRoutes(app: Express) {
         await fs.unlink(tempPath).catch(() => {});
         tempPath = null;
 
+        const mediaAssetId = await registerMediaJobAsset({
+          auth: authResult,
+          storageKey,
+          originalUrl: storageUrl,
+          mimeType: contentType,
+          fileSize: bytes,
+          status: "ready",
+          sourceType: "media_job_import",
+        });
+
         const duration = Date.now() - startTime;
         console.log("[MediaJobs ImportUrl] Success:", authResult.userId, assetId, normalizedMediaType, bytes, `(${duration}ms)`);
-        res.json({ assetId, uri: storageUrl, bytes, contentType });
+        res.json({
+          assetId,
+          uri: storageUrl,
+          bytes,
+          contentType,
+          ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+        });
       } catch (e: any) {
         if (tempPath) {
           await fs.unlink(tempPath).catch(() => {});

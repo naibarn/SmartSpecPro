@@ -1,5 +1,44 @@
 # Progress
 
+## Active loop — Vertical Drama temporal scene props
+
+- [COMPLETE] evidence — persisted shot 2 prompt proved a future `fromShot: 8` handcuff prop was emitted into the prompt.
+- [COMPLETE] implementation — temporal filtering in shared scene locks and all prompt consumers, with focused regressions.
+- [COMPLETE] verification — 4 focused Vitest files / 175 tests passed; repository TypeScript remains nonzero only in unrelated dirty-worktree diagnostics; scoped diff check passed.
+
+## Active loop — Vertical Drama Production Episode Remotion render
+
+Loop policy:
+  orchestra_id: fable_style_coding_orchestra
+  purpose: coding webapp with an agent loop
+  iteration: 1/12
+  tool_call_batches: 1/30
+  estimated_cost_usd: negligible <= 0.50
+  dispatch_waves: 0/6
+  active_subagents: 0/4
+  parallel_writers: 0/2
+  required_subagent_wait: 0/10 minutes
+  background_subagent_wait: 0/15 minutes
+  repair_rounds: 0/5
+  stop_conditions: success_criteria_met, tests_passed, no_open_blockers
+  stop_reason: active
+
+- [COMPLETE] brainstorming — approved segmented `remotion_render_video` direction and product decisions.
+- [COMPLETE] design-plan — design and standard quick-plan artifacts written; SocratiCode unavailable, shell fallback recorded.
+- [COMPLETE] implementation — shared/Remotion contract, server orchestration, UI, tests.
+
+## Verification — Vertical Drama Production Episode Remotion render
+
+- Focused feature suites passed: 4 files / 95 tests.
+- `git diff --check` passed.
+- `npm run check --workspace apps/web` remains nonzero from pre-existing unrelated
+  diagnostics; the final output contained no diagnostics in the changed feature
+  files.
+- Full web Vitest was attempted and reached unrelated baseline failures before
+  Node ran out of heap; it is not a feature-scope pass/fail signal.
+- Browser evidence is recorded as skipped because no authenticated browser/dev
+  server session was available in this turn.
+
 ## Loop policy
 
 - iteration: 2
@@ -21,6 +60,19 @@
 - timed_out_subagents: none
 - repair_rounds_used: 1/5
 - stop_conditions_met: success_criteria_met, focused_tests_passed, no_open_in_scope_blockers
+- stop_reason: success
+
+## Loop policy final - Vertical Drama R2 media durability
+
+- iterations_used: 1/12
+- tool_call_batches_used: 25/30
+- dispatch_waves_used: 0/6
+- timed_out_subagents: none
+- repair_rounds_used: 2/5
+- evidence: R2 active in storage_settings; dry-run inventory covered 8 series and 146 episodes; apply migrated 493 existing external assets plus embedded URLs and marked 298 unrecoverable provider links expired across users 24 and 1
+- focused_tests: mediaAssetService 38/38; adBanner router 24/24; generateShotReferenceFrameImage 8/8
+- known_baseline: full apps/web typecheck remains nonzero in unrelated dashboard/chat/marketplace/production-BGM/worker files; no errors remained in the new R2 durability service or backfill service after the second typecheck
+- stop_conditions_met: success_criteria_met, focused_tests_passed, live_backfill_completed, baseline_failures_separated
 - stop_reason: success
 
 ## Evidence and verification - Dual View frame-scoped anchors
@@ -55,3 +107,38 @@
 - repair_rounds_used: 1/5
 - stop_conditions_met: success_criteria_met, tests_passed, no_open_blockers
 - stop_reason: success
+
+## Loop policy final - Unified Vertical Drama task polling
+
+- iterations_used: 1/12
+- dispatch_waves_used: 0/6
+- implementation: shared MCP/deferred/provider polling plus R2 durability now backs `media.getTask`, portrait settlement, episode-cover status, and ad-banner status
+- focused_tests: 87/87 existing R2/Vertical Drama tests plus 3/3 unified-polling service tests
+- known_baseline: full apps/web typecheck remains nonzero only in unrelated existing diagnostics
+- stop_conditions_met: success_criteria_met, focused_tests_passed, no_open_in_scope_blockers
+- stop_reason: success
+
+## Loop policy final - Marketplace Auto Review R2 media durability
+
+- iterations_used: 1/12
+- implementation: direct and staged Auto Review image/video completion paths now use unified MCP/deferred/provider polling plus R2 finalization; legacy UI slots show an unavailable-media placeholder
+- backfill: resumable dry-run/apply script added for run metadata, result JSON, stage output, and provider event URLs; live execution was not possible in this shell because DATABASE_URL and R2 environment/configuration are unavailable
+- focused_tests: 295/295 across Auto Review durability, unified polling, direct/staged service, and UI suites
+- known_baseline: full apps/web typecheck remains nonzero in existing dashboard/chat/Vertical Drama/overlay diagnostics; no server-side errors remain in the Auto Review durability/polling files
+- stop_conditions_met: implementation_complete, focused_tests_passed, external_backfill_prerequisites_missing
+- stop_reason: code complete; production backfill requires an environment with the application database and active R2 configuration
+
+## Loop policy final - Vertical Drama start-frame async task status
+
+- iterations_used: 2/12
+- tool_call_batches_used: exact host telemetry unavailable; local-command proxy used
+- dispatch_waves_used: 0/6
+- timed_out_subagents: none
+- repair_rounds_used: 1/5 (moved new hooks below the episode detail query after focused typecheck)
+- implementation: durable `imageTask` marker, atomic task persistence with stale-task protection, reload resume, and persistent submitted/waiting UI state
+- focused_tests: 35/35 across start-frame flow, resume guard, server wiring, and existing prompt-job router coverage
+- diff_check: passed
+- typecheck: repository-wide nonzero from pre-existing unrelated dashboard/chat/marketplace/overlay/Vertical Drama/production-BGM/worker diagnostics; no errors remain in the new async task contract, mutation, or resume flow
+- known_unrelated_dirty_work: existing application changes and generated/spec artifacts were preserved
+- stop_conditions_met: success_criteria_met, focused_tests_passed, no_open_in_scope_blockers
+- stop_reason: success with repository-wide baseline diagnostics separated

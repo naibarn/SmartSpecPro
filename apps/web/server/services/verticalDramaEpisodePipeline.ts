@@ -66,6 +66,11 @@ import {
   normalizeVerticalDramaBarrierMultiView,
   projectLegacyBarrierDialogueToMultiView,
 } from "@shared/verticalDramaSeries/barrierMultiView";
+import {
+  normalizeVerticalDramaSupportingPresence,
+  resolveVerticalDramaSupportingPresenceForShot,
+  type VerticalDramaSupportingPresence,
+} from "@shared/verticalDramaSeries/supportingPresence";
 // Part B2/B3 (planning/`polished-toasting-gadget.md`) — pure, shared
 // formatter for the compact episode plan-context block injected into the
 // start-frame + video motion prompt stages below. Safe as a static import
@@ -3505,6 +3510,18 @@ export class VerticalDramaEpisodePipeline {
         const screenCallerCharacterIds = characterRefsCustomized
           ? [...(previousFrame?.screenCallerCharacterRefs ?? [])]
           : storyboardScreenCallerCharacterIds;
+        const supportingPresenceCustomized =
+          previousFrame?.supportingPresenceCustomized === true;
+        const supportingPresence = supportingPresenceCustomized
+          ? normalizeVerticalDramaSupportingPresence(
+              previousFrame?.supportingPresence ?? [],
+              { source: "manual", idPrefix: `shot-${shotNumber}-supporting` }
+            )
+          : resolveVerticalDramaSupportingPresenceForShot(
+              s.supporting_presence,
+              s,
+              { idPrefix: `shot-${shotNumber}-supporting` }
+            );
         const barrierDialogue = normalizeVerticalDramaBarrierDialogue(
           characterRefsCustomized
             ? previousFrame?.barrierDialogue
@@ -3653,6 +3670,12 @@ export class VerticalDramaEpisodePipeline {
             : {}),
           ...(barrierDialogue ? { barrierDialogue } : {}),
           ...(barrierMultiView ? { barrierMultiView } : {}),
+          ...(supportingPresence.length > 0 || supportingPresenceCustomized
+            ? { supportingPresence }
+            : {}),
+          ...(supportingPresenceCustomized
+            ? { supportingPresenceCustomized: true }
+            : {}),
           durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
           ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
           ...(locationGroup

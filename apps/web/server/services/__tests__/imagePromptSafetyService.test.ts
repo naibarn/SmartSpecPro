@@ -1,0 +1,124 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { executeSkillLlmWithFallback } = vi.hoisted(() => ({
+  executeSkillLlmWithFallback: vi.fn(),
+}));
+
+vi.mock("../skillModelFallback", () => ({ executeSkillLlmWithFallback }));
+
+import {
+  ImagePromptSafetyError,
+  isVerticalDramaImageRequest,
+  prepareImagePromptSafety,
+} from "../imagePromptSafetyService";
+
+const safeResponse = (overrides: Record<string, unknown> = {}) => ({
+  success: true,
+  content: JSON.stringify({
+    safePrompt: "A clean editorial illustration of a family at home",
+    riskLevel: "low",
+    blocked: false,
+    changes: [],
+    preservedIntent: ["family", "editorial illustration"],
+    ...overrides,
+  }),
+  attempts: [],
+  totalDurationMs: 1,
+});
+
+describe("imagePromptSafetyService", () => {
+  beforeEach(() => {
+    executeSkillLlmWithFallback.mockReset();
+  });
+
+  it("uses the safety skill and preserves a low-risk prompt", async () => {
+    executeSkillLlmWithFallback.mockResolvedValueOnce(
+      safeResponse({
+        safePrompt: "A clean editorial illustration of a family at home",
+      })
+    );
+
+    const result = await prepareImagePromptSafety({
+      prompt: "A clean editorial illustration of a family at home",
+      userId: 24,
+    });
+
+    expect(executeSkillLlmWithFallback).toHaveBeenCalledOnce();
+    expect(result.prompt).toBe(
+      "A clean editorial illustration of a family at home"
+    );
+    expect(result.metadata.checked).toBe(true);
+    expect(result.metadata.mode).toBe("standard");
+    expect(result.metadata.originalPromptHash).toHaveLength(64);
+  });
+
+  it("accepts a minimal rewrite for a sensitive educational prompt", async () => {
+    executeSkillLlmWithFallback.mockResolvedValueOnce(
+      safeResponse({
+        safePrompt:
+          "A neutral educational parenting infographic about newborn umbilical cord care, clothed baby, medium framing",
+        riskLevel: "medium",
+        changes: ["neutral educational framing", "medium framing"],
+      })
+    );
+
+    const result = await prepareImagePromptSafety({
+      prompt: "A parenting infographic about newborn umbilical cord care",
+      aspectRatio: "3:4",
+    });
+
+    expect(result.metadata.riskLevel).toBe("medium");
+    expect(result.metadata.rewritten).toBe(true);
+    expect(result.prompt).toContain(
+      "neutral educational parenting infographic"
+    );
+  });
+
+  it("blocks an inherently disallowed result", async () => {
+    executeSkillLlmWithFallback.mockResolvedValueOnce(
+      safeResponse({
+        safePrompt: "",
+        riskLevel: "high",
+        blocked: true,
+      })
+    );
+
+    await expect(
+      prepareImagePromptSafety({ prompt: "explicit sexual content" })
+    ).rejects.toMatchObject({
+      code: "blocked",
+    } satisfies Partial<ImagePromptSafetyError>);
+  });
+
+  it("fails closed when a sensitive prompt cannot be reviewed", async () => {
+    executeSkillLlmWithFallback.mockResolvedValueOnce({
+      success: false,
+      error: "no model",
+      attempts: [],
+      totalDurationMs: 1,
+    });
+
+    await expect(
+      prepareImagePromptSafety({ prompt: "newborn umbilical care close-up" })
+    ).rejects.toMatchObject({ code: "unavailable" });
+  });
+
+  it("does not invoke the generic skill for Vertical Drama", async () => {
+    const result = await prepareImagePromptSafety({
+      prompt: "Vertical Drama character portrait",
+      mode: "vertical_drama_managed",
+    });
+
+    expect(executeSkillLlmWithFallback).not.toHaveBeenCalled();
+    expect(result.prompt).toBe("Vertical Drama character portrait");
+    expect(result.metadata.riskLevel).toBe("managed");
+  });
+
+  it("recognizes Vertical Drama provenance with underscore naming", () => {
+    expect(
+      isVerticalDramaImageRequest({
+        auditContext: { source: "vertical_drama_series" },
+      })
+    ).toBe(true);
+  });
+});

@@ -55,9 +55,10 @@ describe("WebAssetResolver", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
-          assetId: "asset-123",
-          uri: "/api/storage/files/media-jobs/assets/asset-123/test.mp4",
-        }),
+        assetId: "asset-123",
+        uri: "/api/storage/files/media-jobs/assets/asset-123/test.mp4",
+        mediaAssetId: "901",
+      }),
       });
     vi.stubGlobal("fetch", mockFetch);
 
@@ -66,7 +67,16 @@ describe("WebAssetResolver", () => {
 
     expect(result.assetId).toBe("asset-123");
     expect(result.uri).toBe("/api/storage/files/media-jobs/assets/asset-123/test.mp4");
+    expect(result.mediaAssetId).toBe("901");
     expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[1]?.[1]).toEqual(expect.objectContaining({
+      body: JSON.stringify({
+        assetId: "asset-123",
+        key: "media-jobs/assets/asset-123/test.mp4",
+        contentType: "video/mp4",
+        fileSize: 10,
+      }),
+    }));
     expect(MockXMLHttpRequest.instances[0]?.open).toHaveBeenCalledWith("PUT", "https://storage.example/upload");
   });
 

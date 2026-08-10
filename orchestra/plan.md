@@ -1,5 +1,110 @@
 # Orchestra Plan
 
+## Vertical Drama temporal scene props — 2026-08-10
+
+### Classification
+- scope: medium bug repair (shared continuity renderer, start-frame consumers, video consumers, focused regressions)
+- risk: medium (prompt-generation behavior only; no schema, auth, payment, or external state mutation)
+- affected_domains: Vertical Drama shared contract, start-frame prompt service, video prompt service
+- estimated_file_count: 6
+- chosen_route: data-first bug route -> direct-standard-light TDD repair
+- bug_route: true
+- socraticode: unavailable; targeted shell discovery used
+
+### Evidence ledger
+- source: persisted episode row plus source trace plus screenshot
+- identifier: episode 136 / shot 2; `startFramePlan.frames[].imagePrompt`
+- observed failure: shot 2 prompt contained `Active props: ... กุญแจมือ ... (from shot 8)`
+- data state: `renderSceneContinuityLockBlock` emitted every `activeProps` entry without applying `fromShot`; persisted blocks were reused by regeneration paths
+- confidence: high
+
+### Approved design applied
+- Filter future props at typed scene-lock rendering and again at persisted text-consumer boundaries.
+- Keep no-`fromShot` props global and allow props from the current shot onward.
+- Preserve character-reference and physical-cast contracts unchanged.
+- Do not mutate existing images or database rows automatically; corrected prompts take effect on regeneration.
+
+### Artifact
+- design: `docs/portable-skill-pack/specs/2026-08-10-vertical-drama-temporal-scene-props-design.md`
+
+## Vertical Drama start-frame async task status — 2026-08-10
+
+### Classification
+- scope: medium implementation (shared JSONB contract, tRPC atomic persistence, client resume/UI state, focused tests)
+- risk: medium (tenant-owned episode task metadata; no auth, payment, or migration change)
+- chosen_route: data-first bug route -> direct-standard-light implementation
+- task_summary: keep prompt + image submissions visibly pending while Kie.ai queues/processes them, and resume after reload
+- bug_route: true
+- socraticode: unavailable; targeted shell discovery used
+
+### Evidence ledger
+- source: UI flow plus source trace
+- identifier: `VerticalDramaEpisodePage.tsx` `handleGeneratePromptAndImage` / `pollStartFrameTask`
+- observed failure: local `pollingStartFrameShots` was cleared in the handler finally block after task admission, while the provider task still had no result URL
+- data state: `generateStartFrameImage` returns a task id and existing angle/video/audio paths already persist pending task ids; main start-frame images had no equivalent durable marker
+- confidence: high
+
+### Approved design
+- Add optional `imageTask` to each start-frame plan frame.
+- Persist task submission atomically before polling and guard terminal updates by task id.
+- Resume pending tasks from the loaded episode plan and use durable pending markers in the button busy state.
+- Keep completed assets linked through the existing `resolveMediaAssetForImport` + `setApprovedStartFrameAsset` path.
+- No schema migration; no provider-specific polling change.
+
+### Artifact
+- design: `docs/portable-skill-pack/specs/2026-08-10-vertical-drama-start-frame-async-status-design.md`
+
+## Vertical Drama shot-local supporting presence — 2026-08-10
+
+### Classification
+- scope: large implementation (shared JSONB contract, storyboard generation, start-frame prompt, router mutation, and storyboard UI)
+- risk: medium (shot-scoped persisted media-generation inputs; no auth, payment, or migration change)
+- chosen_route: brainstorming-prelude -> standard quick-plan -> direct-standard-light implementation
+- task_summary: auto-detect generic visible people/groups per shot while giving the user full add/edit/remove/suppress authority
+- bug_route: false
+- socraticode: unavailable; targeted shell discovery used
+
+### Approved product decisions
+- Use `supportingPresence` as a shot-local text-only role contract.
+- Keep `requiredCharacterRefs` and `screenCallerCharacterRefs` unchanged.
+- Auto-detect only from the shot's own structured content; never propagate by episode keyword.
+- Persist explicit user edits, including an empty array, with a customization marker.
+- Never create durable characters or attach portraits automatically.
+
+### Planning artifacts
+- design: `docs/portable-skill-pack/specs/2026-08-10-vertical-drama-supporting-presence-design.md`
+- plan: `specs/quick/105-vd-supporting-presence/implementation-plan.md`
+- TDD: `specs/quick/105-vd-supporting-presence/implementation-plan-tdd.md`
+- sections: `specs/quick/105-vd-supporting-presence/sections/`
+
+## Vertical Drama Production Episode Remotion render — 2026-08-10
+
+### Classification
+- scope: large implementation (Remotion job contract usage, server orchestration, durable manifest, UI workflow)
+- risk: high (tenant-owned media resolution, worker completion reconciliation, long-running render state)
+- affected_domains: Vertical Drama UI, tRPC/service, Remotion worker contract, series JSONB manifest
+- chosen_route: brainstorming-prelude -> standard quick-plan -> direct-standard-light implementation
+- task_summary: select a Sub-EP range, partition it into Production EPs of at least 3, render through the existing Remotion job, apply EP/title/watermark options, and expose durable play/fullscreen/download results
+- bug_route: false
+- planned_agents: []
+- dispatch_preference: direct-standard-light; no sub-agent fanout unless a disjoint boundary becomes necessary
+- socraticode: unavailable in this turn; targeted shell discovery used
+
+### Approved product decisions
+- source modes: auto, compiled-only, shot-assembly-only
+- auto uses compiled video first and falls back per Sub-EP to shot assembly
+- range and per-EP group size are user-selected; minimum group size is 3
+- EP numbers are automatic; series title is automatic with an on/off toggle
+- all enabled configured watermark slots apply with an on/off toggle
+- short remainder requires explicit create/skip choice
+- reuse `remotion_render_video` with segmented GenericTemplate; no new job type or migration
+
+### Planning artifacts
+- design: `docs/portable-skill-pack/specs/2026-08-10-vertical-drama-production-episode-remotion-design.md`
+- plan: `specs/quick/104-vd-production-episode-remotion/implementation-plan.md`
+- TDD: `specs/quick/104-vd-production-episode-remotion/implementation-plan-tdd.md`
+- sections: `specs/quick/104-vd-production-episode-remotion/sections/`
+
 ## Dual View frame-scoped video-prompt anchors — 2026-08-09
 
 ### Classification
@@ -324,3 +429,12 @@ text-to-image or image-to-image based on attached reference images.
 - risk: low; no schema, auth, pricing, or provider mutation
 - chosen_route: approved direct TDD conductor edit in standard light mode; SocratiCode unavailable, targeted shell fallback
 - success: prompt-facing anchors use `Image 1` and `Image 2` only, while `view_role` remains backward-compatible internal metadata
+
+## Vertical Drama R2 media durability - 2026-08-10
+
+- scope: generated Vertical Drama images/videos, completion polling, legacy asset backfill, and expired-slot UI fallback
+- risk: high; provider URLs are external and backfill mutates media storage/database references
+- chosen_route: server-owned idempotent R2 finalizer, preserve media_assets IDs, bounded concurrency backfill, explicit expired state without cross-slot substitution
+- evidence: provider task results were persisted directly; storage layer already exposes stable `/api/storage/files/...` proxy URLs; local R2 setting is active
+- success: new tagged Vertical Drama completed tasks upload to R2 before client finalization, direct character/cover/ad-banner paths use the same boundary, legacy linked assets migrate in place, unreachable links are marked expired, and UI shows a per-slot expired placeholder with regenerate action available
+- validation: local backfill applied for tenant-ZCSKEM9s users 24 and 1; user 109 had no referenced media; focused media asset and Vertical Drama router tests passed; repository typecheck remains nonzero on unrelated baseline errors

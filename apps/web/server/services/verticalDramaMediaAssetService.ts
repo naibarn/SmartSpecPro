@@ -6,7 +6,11 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
 import type { MediaTask } from "./mediaGenerationService";
-import { assertR2StorageActive, storagePutFromPath } from "../storage";
+import {
+  assertR2StorageActive,
+  storageExists,
+  storagePutFromPath,
+} from "../storage";
 import { validateReferenceUrls } from "./ssrfValidation";
 
 const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
@@ -21,6 +25,119 @@ export type DurableVerticalDramaAsset = {
   url: string;
   mimeType: string;
 };
+
+/**
+ * Re-register a legacy managed-storage URL that predates the media_assets
+ * registration flow. This is intentionally limited to a URL already present
+ * in an owner-scoped Vertical Drama row; it never downloads, moves, or
+ * replaces the object. The operation is idempotent and lets getEpisodeDetail
+ * repair old uploaded clips before the client tries to play or assemble them.
+ */
+export async function ensureVerticalDramaManagedMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  sourceUrl: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string;
+}): Promise<DurableVerticalDramaAsset | null> {
+  const storageKey = normalizeManagedStorageKey(input.sourceUrl.trim());
+  if (!storageKey) return null;
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [existing] = await db
+    .select({
+      id: mediaAssets.id,
+      storageKey: mediaAssets.storageKey,
+      mimeType: mediaAssets.mimeType,
+      status: mediaAssets.status,
+    })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.tenantId, input.tenantId),
+        eq(mediaAssets.userId, input.userId),
+        eq(mediaAssets.storageKey, storageKey),
+      ),
+    )
+    .limit(1);
+
+  const fallbackMimeType =
+    input.mimeType ||
+    (input.mediaType === "image" ? "image/png" : "video/mp4");
+  const durableUrl = `/api/storage/files/${encodeURI(storageKey)}`;
+  if (existing?.status === "ready") {
+    return {
+      mediaAssetId: existing.id,
+      storageKey,
+      url: durableUrl,
+      mimeType: existing.mimeType || fallbackMimeType,
+    };
+  }
+
+  // A missing object must not create a seemingly-ready asset row. This also
+  // keeps a stale legacy URL visible as a normal missing-file error instead
+  // of turning it into a new, misleading media asset.
+  if (!(await storageExists(storageKey))) return null;
+
+  if (existing) {
+    const [repaired] = await db
+      .update(mediaAssets)
+      .set({
+        status: "ready",
+        originalUrl: durableUrl,
+        mimeType: existing.mimeType || fallbackMimeType,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaAssets.id, existing.id),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      )
+      .returning({
+        id: mediaAssets.id,
+        storageKey: mediaAssets.storageKey,
+        mimeType: mediaAssets.mimeType,
+      });
+    return repaired
+      ? {
+          mediaAssetId: repaired.id,
+          storageKey: repaired.storageKey,
+          url: durableUrl,
+          mimeType: repaired.mimeType || fallbackMimeType,
+        }
+      : null;
+  }
+
+  const [inserted] = await db
+    .insert(mediaAssets)
+    .values({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      sourceType: storageKey.startsWith("media-jobs/")
+        ? "media_job_upload"
+        : "vertical_drama_generated",
+      status: "ready",
+      storageKey,
+      originalUrl: durableUrl,
+      mimeType: fallbackMimeType,
+    })
+    .returning({
+      id: mediaAssets.id,
+      storageKey: mediaAssets.storageKey,
+      mimeType: mediaAssets.mimeType,
+    });
+  return inserted
+    ? {
+        mediaAssetId: inserted.id,
+        storageKey: inserted.storageKey,
+        url: durableUrl,
+        mimeType: inserted.mimeType || fallbackMimeType,
+      }
+    : null;
+}
 
 export type VerticalDramaTaskDurability = {
   task: MediaTask;
@@ -246,18 +363,45 @@ export async function ingestVerticalDramaMediaAsset(input: {
   identity?: string;
   purpose?: string;
 }): Promise<DurableVerticalDramaAsset> {
-  await assertR2StorageActive();
   const sourceUrl = input.sourceUrl.trim();
   if (!sourceUrl) throw new Error("Vertical Drama media result URL is empty");
   const managedKey = normalizeManagedStorageKey(sourceUrl);
   if (managedKey) {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const [existing] = await db
+      .select({
+        id: mediaAssets.id,
+        storageKey: mediaAssets.storageKey,
+        mimeType: mediaAssets.mimeType,
+      })
+      .from(mediaAssets)
+      .where(
+        and(
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+          eq(mediaAssets.storageKey, managedKey),
+          eq(mediaAssets.status, "ready"),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw new Error(
+        "Vertical Drama managed media asset is not registered for this account",
+      );
+    }
     return {
-      mediaAssetId: 0,
+      mediaAssetId: existing.id,
       storageKey: managedKey,
       url: `/api/storage/files/${encodeURI(managedKey)}`,
-      mimeType: input.mimeType || (input.mediaType === "image" ? "image/png" : "video/mp4"),
+      mimeType:
+        existing.mimeType ||
+        input.mimeType ||
+        (input.mediaType === "image" ? "image/png" : "video/mp4"),
     };
   }
+
+  await assertR2StorageActive();
 
   const checksumSha256 = crypto
     .createHash("sha256")

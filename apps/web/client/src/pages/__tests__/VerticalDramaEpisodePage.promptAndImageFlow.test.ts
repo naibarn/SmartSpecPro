@@ -95,6 +95,22 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     );
   });
 
+  it("persists the image task before polling and resumes durable tasks after reload", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+
+    expect(source).toContain(
+      "trpc.verticalDramaEpisodes.persistStartFrameImageTask.useMutation()"
+    );
+    expect(source).toContain("await persistStartFrameTask(variables.shotNumber");
+    expect(source).toContain('status: "submitted"');
+    expect(source).toContain("shouldResumeStartFramePoll(");
+    expect(source).toContain("activeStartFrameShots");
+    expect(source).toContain("frame.imageTask?.pendingTaskId");
+  });
+
   it("refetches the episode detail after the whole-episode video prompt stage succeeds", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),

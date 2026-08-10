@@ -10,6 +10,10 @@ import {
   type MediaType as RateLimiterMediaType,
 } from "./llmRateLimiter";
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
+import {
+  isVerticalDramaImageRequest,
+  prepareImagePromptSafety,
+} from "./imagePromptSafetyService";
 import { auditLogger } from "./auditLogger";
 import { getModelById, mapToApiModelId } from "./modelRegistry";
 import {
@@ -435,7 +439,12 @@ function isMcpTransportRequest(request: {
 function resolveMcpRequestedMediaModel(input: {
   mediaType: "image" | "video";
   request: ImageGenerationRequest | VideoGenerationRequest;
-}): { modelId: string; provider: string; apiConfig?: MediaApiConfig } {
+}): {
+  modelId: string;
+  provider: string;
+  apiConfig?: MediaApiConfig;
+  defaultInputParams?: Record<string, string | number | boolean>;
+} {
   const modelId = input.request.model || DEFAULT_MODELS[input.mediaType];
   if (input.request.transportMetadata?.providerKey) {
     return {
@@ -1580,6 +1589,7 @@ const PROVIDER_INTERNAL_EXTRA_PARAM_KEYS = new Set([
 ]);
 
 const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
+  "__prompt_safety",
   "__origin_surface",
   "__execution_path",
   "__no_node_canvas_execution",
@@ -2189,6 +2199,35 @@ function isTrustedTargetCharacterPromptContext(
   );
 }
 
+async function prepareImageRequestForSafety(
+  request: ImageGenerationRequest,
+): Promise<ImageGenerationRequest> {
+  const mode = isVerticalDramaImageRequest(request)
+    ? "vertical_drama_managed"
+    : "standard";
+  const safety = await prepareImagePromptSafety({
+    prompt: request.prompt,
+    negativePrompt: request.negativePrompt,
+    model: request.model,
+    aspectRatio: request.aspectRatio,
+    referenceImageCount: request.referenceImageUrls?.length ?? 0,
+    userId:
+      typeof request.auditContext?.userId === "number"
+        ? request.auditContext.userId
+        : undefined,
+    mode,
+  });
+
+  return {
+    ...request,
+    prompt: safety.prompt,
+    extraParams: {
+      ...(request.extraParams ?? {}),
+      __prompt_safety: safety.metadata,
+    },
+  };
+}
+
 type MediaAuditRequest = {
   auditContext?: MediaAuditContext;
   prompt?: string;
@@ -2674,6 +2713,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
+    request = await prepareImageRequestForSafety(request);
     const {
       modelId,
       provider,
@@ -3137,6 +3177,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
+    request = await prepareImageRequestForSafety(request);
     const {
       modelId,
       provider,

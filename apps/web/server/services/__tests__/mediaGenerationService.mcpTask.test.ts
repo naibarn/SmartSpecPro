@@ -30,6 +30,27 @@ vi.mock("../auditLogger", () => ({
   },
 }));
 
+vi.mock("../imagePromptSafetyService", () => ({
+  isVerticalDramaImageRequest: vi.fn(() => false),
+  prepareImagePromptSafety: vi.fn(async (input: { prompt: string }) => ({
+    prompt: input.prompt.trim(),
+    metadata: {
+      checked: true,
+      mode: "standard",
+      skillId: "image-prompt-safety-rewriter",
+      skillVersion: "1.0.0",
+      riskLevel: "low",
+      rewritten: false,
+      fallback: false,
+      blocked: false,
+      originalPromptHash: "test-original",
+      safePromptHash: "test-safe",
+      changes: [],
+      preservedIntent: [],
+    },
+  })),
+}));
+
 import { MediaGenerationService } from "../mediaGenerationService";
 
 describe("MediaGenerationService MCP task polling", () => {

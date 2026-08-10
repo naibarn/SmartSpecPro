@@ -197,6 +197,18 @@ const TextLayerContent: React.FC<{ layer: RemotionTextLayer }> = ({
 }) => {
   const frame = useCurrentFrame();
   const opacity = enterFadeOpacity(frame, layer.durationFrames);
+  const scrollProgress =
+    layer.animation === "scrollUp"
+      ? interpolate(
+          frame,
+          [0, Math.max(1, layer.durationFrames - 1)],
+          [
+            layer.animationFromYPercent ?? 105,
+            layer.animationToYPercent ?? -115,
+          ],
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+        )
+      : 0;
   return (
     <div
       style={{
@@ -211,6 +223,8 @@ const TextLayerContent: React.FC<{ layer: RemotionTextLayer }> = ({
               ? "flex-end"
               : "center",
         opacity,
+        overflow: layer.animation === "scrollUp" ? "hidden" : undefined,
+        position: "relative",
       }}
     >
       <span
@@ -225,6 +239,15 @@ const TextLayerContent: React.FC<{ layer: RemotionTextLayer }> = ({
           textShadow: "0 2px 10px rgba(2, 6, 23, 0.42)",
           whiteSpace: "pre-wrap",
           overflowWrap: "anywhere",
+          ...(layer.animation === "scrollUp"
+            ? {
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                transform: `translateY(${scrollProgress}%)`,
+              }
+            : {}),
         }}
       >
         {layer.content}
@@ -233,9 +256,7 @@ const TextLayerContent: React.FC<{ layer: RemotionTextLayer }> = ({
   );
 };
 
-const SvgLayerContent: React.FC<{ layer: RemotionSvgLayer }> = ({
-  layer,
-}) => {
+const SvgLayerContent: React.FC<{ layer: RemotionSvgLayer }> = ({ layer }) => {
   const frame = useCurrentFrame();
   let transform = "none";
   let opacity = 1;
@@ -319,8 +340,20 @@ const MotionGraphicLayerContent: React.FC<{
           <stop offset="0.42" stopColor="#ffffff" stopOpacity="0.06" />
           <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
-        <filter id={`${svgId}-shadow`} x="-20%" y="-20%" width="140%" height="150%">
-          <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#020617" floodOpacity="0.34" />
+        <filter
+          id={`${svgId}-shadow`}
+          x="-20%"
+          y="-20%"
+          width="140%"
+          height="150%"
+        >
+          <feDropShadow
+            dx="0"
+            dy="3"
+            stdDeviation="3"
+            floodColor="#020617"
+            floodOpacity="0.34"
+          />
         </filter>
       </defs>
       <g

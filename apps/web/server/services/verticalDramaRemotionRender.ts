@@ -53,7 +53,12 @@ import {
   type RunAssemblyJobTextOverlayEventInput,
   type RunAssemblyJobWatermarkImageInput,
 } from "./verticalDramaEpisodeVideoAssembly";
-import type { AssSubtitleLine } from "./verticalDramaFinalRenderGraph";
+import {
+  VD_CREDITS_ROLL_WINDOW_SEC,
+  splitCreditsRollLines,
+  type AssSubtitleLine,
+  type ProductionEpisodeOverlayItem,
+} from "./verticalDramaFinalRenderGraph";
 import { fallbackAssetSourceHash } from "./videoProjectAssetResolver";
 import {
   queueRemotionRenderVideoJob,
@@ -303,6 +308,20 @@ function layoutForOverlayKind(
   return { x: 8, y: 38, width: 84, height: 24, fontSizePx: 56 };
 }
 
+function productionOverlayLayout(
+  style: ProductionEpisodeOverlayItem["style"]
+): { x: number; y: number; width: number; height: number; fontSizePx: number } {
+  switch (style) {
+    case "top_bar":
+      return { x: 8, y: 12, width: 84, height: 10, fontSizePx: 38 };
+    case "lower_third":
+      return { x: 8, y: 76, width: 84, height: 12, fontSizePx: 38 };
+    case "centered":
+    default:
+      return { x: 8, y: 42, width: 84, height: 14, fontSizePx: 44 };
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Template assembly                                                          */
 /* -------------------------------------------------------------------------- */
@@ -336,6 +355,25 @@ export interface BuildVdRemotionTemplateInput {
   watermarkImages?: Array<
     RunAssemblyJobWatermarkImageInput & { resolvedImageUrl: string }
   >;
+  /** Text watermarks use the same Settings slot placement contract as image
+   * watermarks. They are kept separate so a configured image slot never
+   * silently loses a sibling text slot during Remotion assembly. */
+  watermarkTexts?: VdRemotionWatermarkText[];
+  /** Production Episode BGM layers already sliced to this segment's local timeline. */
+  productionBgm?: VdRemotionBgmLayer[];
+  /** Production Episode credits roll. Rendered over the final seconds of this segment. */
+  productionCredits?: {
+    text: string;
+    rollDurationSeconds?: number;
+  };
+  /** Production Episode caller-authored timed overlays. */
+  productionOverlays?: ProductionEpisodeOverlayItem[];
+  /** Production Episode identity overlay. A single text layer is used so the
+   * overlay remains safe for large segmented renders. */
+  productionOverlay?: {
+    episodeLabel?: string;
+    seriesTitle?: string;
+  };
   width?: number;
   height?: number;
   fps?: number;
@@ -348,6 +386,24 @@ export interface BuildVdRemotionTemplateInput {
     introDurationSeconds?: number;
     endCardDurationSeconds?: number;
   };
+}
+
+export interface VdRemotionWatermarkText {
+  slotId: string;
+  text: string;
+  position: RunAssemblyJobWatermarkImageInput["position"];
+  opacity: number;
+  scalePct: number;
+  marginPx: number;
+}
+
+export interface VdRemotionBgmLayer {
+  id: string;
+  resolvedAudioUrl: string;
+  startSec: number;
+  durationSec: number;
+  volume: number;
+  loop: boolean;
 }
 
 export interface BuildVdRemotionTemplateResult {
@@ -413,6 +469,51 @@ export function buildVdRemotionTemplate(
   const totalDurationSeconds = input.previewCard
     ? input.videoDurationSeconds + previewEndCardDurationFrames / fps
     : input.videoDurationSeconds;
+
+  const productionLabel = [
+    input.productionOverlay?.episodeLabel?.trim(),
+    input.productionOverlay?.seriesTitle?.trim(),
+  ]
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 200);
+  if (productionLabel) {
+    layers.push({
+      id: "production-episode-label-band",
+      type: "motionGraphic",
+      startFrame: 0,
+      durationFrames: durationInFrames,
+      x: 4,
+      y: 2,
+      width: 92,
+      height: 7,
+      rotationDeg: 0,
+      opacity: 0.52,
+      zIndex: 31,
+      shape: "rect",
+      color: "#020617",
+      loopAnimation: "none",
+    });
+    layers.push({
+      id: "production-episode-label",
+      type: "text",
+      startFrame: 0,
+      durationFrames: durationInFrames,
+      x: 6,
+      y: 2,
+      width: 88,
+      height: 7,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 32,
+      content: productionLabel,
+      fontFamily: "Noto Sans Thai",
+      fontSizePx: 32,
+      color: "#ffffff",
+      textAlign: "left",
+      fontWeight: "bold",
+    });
+  }
 
   // Preview label overlay — keep the episode number/title visible without
   // covering the actors or the shot composition. This is intentionally
@@ -527,7 +628,107 @@ export function buildVdRemotionTemplate(
     });
   }
 
-  // 4) Text Overlay Suite events -> text layers (primary + optional
+  // 4) Production Episode BGM layers. The orchestration layer slices each
+  // track to this segment's local timeline, so a track can span segment
+  // boundaries while remaining a normal Remotion audio layer here.
+  for (const track of input.productionBgm ?? []) {
+    const startFrame = Math.max(0, Math.round(track.startSec * fps));
+    const durationFrames = Math.max(1, Math.round(track.durationSec * fps));
+    layers.push({
+      id: `production-bgm-${track.id}`,
+      type: "audio",
+      startFrame,
+      durationFrames,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 1,
+      src: track.resolvedAudioUrl,
+      trimStartSec: 0,
+      volume: Math.min(1, Math.max(0, track.volume)),
+      loop: track.loop,
+      fadeInMs: 0,
+      fadeOutMs: 0,
+    });
+  }
+
+  // 5) Production Episode timed overlays -> text layers. These use the same
+  // three fixed placement choices as the existing FFmpeg/ASS path.
+  for (const [index, overlay] of (input.productionOverlays ?? []).entries()) {
+    const startSec = Math.max(0, overlay.atSeconds);
+    const endSec = Math.min(
+      totalDurationSeconds,
+      startSec + Math.max(1, overlay.durationSeconds)
+    );
+    if (endSec <= startSec || !overlay.text.trim()) continue;
+    const layout = productionOverlayLayout(overlay.style);
+    layers.push({
+      id: `production-overlay-${index}`,
+      type: "text",
+      startFrame: Math.round(startSec * fps),
+      durationFrames: Math.max(1, Math.round((endSec - startSec) * fps)),
+      x: layout.x,
+      y: layout.y,
+      width: layout.width,
+      height: layout.height,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 20,
+      content: overlay.text.slice(0, 300),
+      fontFamily: "Noto Sans Thai",
+      fontSizePx: layout.fontSizePx,
+      color: "#ffffff",
+      textAlign: "center",
+      fontWeight: "bold",
+    });
+  }
+
+  // 6) Production Episode credits roll. It is deliberately layered over the
+  // tail of the final segment rather than appended as a separate segment, so
+  // the segmented concat remains frame-accurate and the existing Production
+  // Episode duration does not unexpectedly grow.
+  const creditsLines = splitCreditsRollLines(
+    input.productionCredits?.text ?? ""
+  );
+  if (creditsLines.length > 0) {
+    const rollDurationSeconds = Math.min(
+      VD_CREDITS_ROLL_WINDOW_SEC,
+      Math.max(
+        1,
+        input.productionCredits?.rollDurationSeconds ??
+          VD_CREDITS_ROLL_WINDOW_SEC
+      ),
+      totalDurationSeconds
+    );
+    const startSec = Math.max(0, totalDurationSeconds - rollDurationSeconds);
+    layers.push({
+      id: "production-credits-roll",
+      type: "text",
+      startFrame: Math.round(startSec * fps),
+      durationFrames: Math.max(1, Math.round(rollDurationSeconds * fps)),
+      x: 8,
+      y: 0,
+      width: 84,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 25,
+      content: creditsLines.join("\n").slice(0, 8000),
+      fontFamily: "Noto Sans Thai",
+      fontSizePx: 34,
+      color: "#ffffff",
+      textAlign: "center",
+      fontWeight: "bold",
+      animation: "scrollUp",
+      animationFromYPercent: 105,
+      animationToYPercent: -115,
+    });
+  }
+
+  // 7) Text Overlay Suite events -> text layers (primary + optional
   //    secondary line, verbatim text/timing — see `resolveVdTextOverlayWindow`).
   for (const [index, overlay] of (input.overlays ?? []).entries()) {
     const window = resolveVdTextOverlayWindow(overlay, totalDurationSeconds);
@@ -576,7 +777,7 @@ export function buildVdRemotionTemplate(
     }
   }
 
-  // 5) Series IMAGE watermark(s) — full-timeline corner image(s). Dual
+  // 8) Series IMAGE watermark(s) — full-timeline corner image(s). Dual
   //    watermark (`planning/vd-dual-watermark/plan.md`): one layer per
   //    slot, each with an id derived from `slotId` so two watermarks never
   //    collide/overwrite one another, and each positioned fully
@@ -632,6 +833,54 @@ export function buildVdRemotionTemplate(
     });
   }
 
+  // Series TEXT watermark slots — same 3x3 placement grid as image slots,
+  // with scalePct mapped to a readable frame-relative font size.
+  for (const wm of input.watermarkTexts ?? []) {
+    const column = wm.position.endsWith("_left")
+      ? "left"
+      : wm.position.endsWith("_right")
+        ? "right"
+        : "center";
+    const row = wm.position.startsWith("top_")
+      ? "top"
+      : wm.position.startsWith("bottom_")
+        ? "bottom"
+        : "middle";
+    const width = Math.min(76, Math.max(18, wm.scalePct * 3));
+    const height = 5;
+    const marginPct = (wm.marginPx / FRAME_WIDTH) * 100;
+    layers.push({
+      id: `series-watermark-text-${wm.slotId}`,
+      type: "text",
+      startFrame: 0,
+      durationFrames: durationInFrames,
+      x:
+        column === "left"
+          ? marginPct
+          : column === "right"
+            ? 100 - marginPct - width
+            : (100 - width) / 2,
+      y:
+        row === "top"
+          ? marginPct
+          : row === "bottom"
+            ? 100 - marginPct - height
+            : (100 - height) / 2,
+      width,
+      height,
+      rotationDeg: 0,
+      opacity: wm.opacity,
+      zIndex: 8,
+      content: wm.text.slice(0, 80),
+      fontFamily: "Noto Sans Thai",
+      fontSizePx: Math.round(18 + wm.scalePct * 2),
+      color: "#ffffff",
+      textAlign:
+        column === "left" ? "left" : column === "right" ? "right" : "center",
+      fontWeight: "bold",
+    });
+  }
+
   if (layers.length > MAX_VD_REMOTION_LAYERS) {
     throw new VdRemotionRenderError(
       "too_many_layers",
@@ -640,7 +889,7 @@ export function buildVdRemotionTemplate(
         `${input.clips.length} clip(s) + ${input.banners?.length ?? 0} banner(s) + ` +
         `${input.dialogueAudio?.segments.length ?? 0} dialogue-audio segment(s) + ` +
         `${input.overlays?.length ?? 0} overlay event(s) + ` +
-        `${input.watermarkImages?.length ?? 0} watermark layer(s). Dialogue-audio segments ` +
+        `${(input.watermarkImages?.length ?? 0) + (input.watermarkTexts?.length ?? 0)} watermark layer(s). Dialogue-audio segments ` +
         `(one layer per line) are the dominant risk factor — reduce dialogue lines, ` +
         `disable per-line audio, or fall back to the ffmpeg render for this episode.`
     );
@@ -1038,6 +1287,353 @@ export async function submitVdRemotionAssembly(
   });
 
   return { jobId: job.id, created, layerCount, videoDurationSeconds };
+}
+
+export interface SubmitVdProductionEpisodeAssemblyInput {
+  owner: {
+    tenantId: string;
+    userId: number;
+    seriesId: number;
+  };
+  productionEpisodeNumber: number;
+  segments: Array<{
+    subEpisodeNumber: number;
+    clips: EpisodeClipSource[];
+  }>;
+  internalBaseUrl: string;
+  publicBaseUrl?: string | null;
+  seriesTitle?: string | null;
+  showEpisodeIndicator: boolean;
+  showSeriesTitle: boolean;
+  watermarkImages?: RunAssemblyJobWatermarkImageInput[];
+  watermarkTexts?: VdRemotionWatermarkText[];
+  bgm?: ProductionEpisodeRemotionBgmOptions;
+  credits?: { text: string; rollDurationSeconds?: number };
+  overlays?: ProductionEpisodeOverlayItem[];
+  idempotencyKey?: string | null;
+}
+
+export interface ProductionEpisodeRemotionBgmTrack {
+  id: string;
+  url: string;
+  startSeconds: number;
+  endSeconds?: number | null;
+  volumePercent: number;
+  loopUntilEnd: boolean;
+  duckUnderVideoAudio: boolean;
+}
+
+export interface ProductionEpisodeRemotionBgmOptions {
+  tracks: ProductionEpisodeRemotionBgmTrack[];
+}
+
+export interface SubmitVdProductionEpisodeAssemblyResult {
+  jobId: string;
+  created: boolean;
+  segmentCount: number;
+  durationSeconds: number;
+}
+
+/**
+ * Queue one Production Episode as a segmented GenericTemplate render. Each
+ * Sub-Episode is an independent segment, which keeps the Remotion layer cap
+ * bounded even when a user chooses a large group size or shot-assembly mode.
+ */
+export async function submitVdProductionEpisodeAssembly(
+  input: SubmitVdProductionEpisodeAssemblyInput,
+  deps: VdRemotionRenderDeps = {}
+): Promise<SubmitVdProductionEpisodeAssemblyResult> {
+  const stageAsset = deps.stageAsset ?? defaultStageAsset;
+  const queueJob = deps.queueJob ?? queueRemotionRenderVideoJob;
+  if (input.segments.length === 0) {
+    throw new VdRemotionRenderError(
+      "no_segments",
+      "No Sub-Episodes were selected for Production Episode assembly"
+    );
+  }
+
+  const assetBaseUrl =
+    String(input.publicBaseUrl ?? "").trim() || input.internalBaseUrl;
+  const resolvedWatermarkImages: Array<
+    RunAssemblyJobWatermarkImageInput & { resolvedImageUrl: string }
+  > = [];
+  const watermarkImageHashes: string[] = [];
+  for (const watermark of input.watermarkImages ?? []) {
+    const staged = await stageAsset(
+      watermark.imageUrl,
+      input.internalBaseUrl,
+      false
+    );
+    watermarkImageHashes.push(staged.sha256);
+    resolvedWatermarkImages.push({
+      ...watermark,
+      resolvedImageUrl: absoluteVdAssetUrl(watermark.imageUrl, assetBaseUrl),
+    });
+  }
+
+  const bgmTracks = input.bgm?.tracks ?? [];
+  if (bgmTracks.length > 10) {
+    throw new VdRemotionRenderError(
+      "too_many_bgm_tracks",
+      "A Production Episode supports at most 10 BGM tracks"
+    );
+  }
+  const stagedBgmTracks: Array<
+    ProductionEpisodeRemotionBgmTrack & {
+      resolvedAudioUrl: string;
+      sourceDurationSeconds?: number;
+      sha256: string;
+    }
+  > = [];
+  for (const [index, track] of bgmTracks.entries()) {
+    if (!track.url.trim()) {
+      throw new VdRemotionRenderError(
+        "bgm_url_missing",
+        `BGM track ${index + 1} has no audio URL`
+      );
+    }
+    if (!Number.isFinite(track.startSeconds) || track.startSeconds < 0) {
+      throw new VdRemotionRenderError(
+        "bgm_start_invalid",
+        `BGM track ${index + 1} has an invalid start time`
+      );
+    }
+    if (
+      track.endSeconds != null &&
+      (!Number.isFinite(track.endSeconds) ||
+        track.endSeconds <= track.startSeconds)
+    ) {
+      throw new VdRemotionRenderError(
+        "bgm_end_invalid",
+        `BGM track ${index + 1} must end after it starts`
+      );
+    }
+    const staged = await stageAsset(track.url, input.internalBaseUrl, true);
+    stagedBgmTracks.push({
+      ...track,
+      id: track.id || `bgm-${index + 1}`,
+      resolvedAudioUrl: absoluteVdAssetUrl(track.url, assetBaseUrl),
+      sourceDurationSeconds: staged.durationSec,
+      sha256: staged.sha256 ?? fallbackAssetSourceHash(track.url),
+    });
+  }
+
+  const segmentTemplates: RemotionTemplateConfig[] = [];
+  const assetManifestSources: Array<{
+    role: "video" | "image" | "audio" | "font";
+    url: string;
+    sha256: string;
+  }> = [];
+  const resolvedSegments: Array<{
+    subEpisodeNumber: number;
+    clips: VdRemotionResolvedClip[];
+    durationSeconds: number;
+  }> = [];
+  let totalDurationInFrames = 0;
+
+  for (const segment of input.segments) {
+    const orderedClips = segment.clips.filter(
+      clip => (clip.videoUrl ?? "").trim().length > 0
+    );
+    if (orderedClips.length === 0) {
+      throw new VdRemotionRenderError(
+        "no_clips",
+        `Sub-Episode ${segment.subEpisodeNumber} has no rendered video clips`
+      );
+    }
+    const probedClips = await Promise.all(
+      orderedClips.map(clip =>
+        stageAsset(clip.videoUrl!, input.internalBaseUrl, true)
+      )
+    );
+    const missingDurationIndex = probedClips.findIndex(
+      clip => !clip.durationSec || clip.durationSec <= 0
+    );
+    if (missingDurationIndex !== -1) {
+      throw new VdRemotionRenderError(
+        "duration_probe_failed",
+        `Could not determine duration of a source clip in Sub-Episode ${segment.subEpisodeNumber}`
+      );
+    }
+
+    const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map(
+      (clip, index) => ({
+        clipNumber: clip.clipNumber,
+        url: absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl),
+        durationSec: probedClips[index].durationSec!,
+      })
+    );
+    const segmentDurationSeconds = resolvedClips.reduce(
+      (sum, clip) => sum + clip.durationSec,
+      0
+    );
+    resolvedSegments.push({
+      subEpisodeNumber: segment.subEpisodeNumber,
+      clips: resolvedClips,
+      durationSeconds: segmentDurationSeconds,
+    });
+    resolvedClips.forEach((clip, index) => {
+      assetManifestSources.push({
+        role: "video",
+        url: clip.url,
+        sha256: probedClips[index].sha256 ?? fallbackAssetSourceHash(clip.url),
+      });
+    });
+  }
+
+  const totalDurationSeconds = resolvedSegments.reduce(
+    (sum, segment) => sum + segment.durationSeconds,
+    0
+  );
+  let segmentOffsetSeconds = 0;
+  for (const [segmentIndex, segment] of resolvedSegments.entries()) {
+    const productionOverlay =
+      input.showEpisodeIndicator || input.showSeriesTitle
+        ? {
+            ...(input.showEpisodeIndicator
+              ? {
+                  episodeLabel: `EP.${String(input.productionEpisodeNumber).padStart(2, "0")}`,
+                }
+              : {}),
+            ...(input.showSeriesTitle && input.seriesTitle?.trim()
+              ? { seriesTitle: input.seriesTitle.trim() }
+              : {}),
+          }
+        : undefined;
+    const segmentBgm = stagedBgmTracks.flatMap(track => {
+      const requestedEnd =
+        track.endSeconds ??
+        (track.loopUntilEnd
+          ? totalDurationSeconds
+          : track.startSeconds +
+            (track.sourceDurationSeconds ?? totalDurationSeconds));
+      const overlapStart = Math.max(track.startSeconds, segmentOffsetSeconds);
+      const overlapEnd = Math.min(
+        requestedEnd,
+        segmentOffsetSeconds + segment.durationSeconds
+      );
+      if (overlapEnd <= overlapStart) return [];
+      return [
+        {
+          id: `${track.id}-${segmentIndex}`,
+          resolvedAudioUrl: track.resolvedAudioUrl,
+          startSec: overlapStart - segmentOffsetSeconds,
+          durationSec: overlapEnd - overlapStart,
+          // GenericTemplate mixes independent audio layers. When the user
+          // requests ducking, reserve deterministic headroom under native
+          // clip audio while keeping the behavior fully Remotion-native.
+          volume:
+            (track.volumePercent / 100) * (track.duckUnderVideoAudio ? 0.7 : 1),
+          loop: track.loopUntilEnd,
+        },
+      ];
+    });
+    const segmentOverlays = (input.overlays ?? []).flatMap(overlay => {
+      const overlayStart = overlay.atSeconds;
+      const overlayEnd = overlay.atSeconds + overlay.durationSeconds;
+      const overlapStart = Math.max(overlayStart, segmentOffsetSeconds);
+      const overlapEnd = Math.min(
+        overlayEnd,
+        segmentOffsetSeconds + segment.durationSeconds
+      );
+      if (overlapEnd <= overlapStart) return [];
+      return [
+        {
+          ...overlay,
+          atSeconds: overlapStart - segmentOffsetSeconds,
+          durationSeconds: overlapEnd - overlapStart,
+        },
+      ];
+    });
+    const built = buildVdRemotionTemplate({
+      clips: segment.clips,
+      videoDurationSeconds: segment.durationSeconds,
+      productionOverlay,
+      productionBgm: segmentBgm,
+      productionCredits:
+        segmentIndex === resolvedSegments.length - 1
+          ? input.credits
+          : undefined,
+      productionOverlays: segmentOverlays,
+      watermarkImages:
+        resolvedWatermarkImages.length > 0
+          ? resolvedWatermarkImages
+          : undefined,
+      watermarkTexts:
+        input.watermarkTexts && input.watermarkTexts.length > 0
+          ? input.watermarkTexts
+          : undefined,
+      templateId: `vd-production-episode-${input.owner.seriesId}-${input.productionEpisodeNumber}-sub-${segment.subEpisodeNumber}`,
+    });
+    segmentTemplates.push(built.template);
+    totalDurationInFrames += built.durationInFrames;
+    segmentOffsetSeconds += segment.durationSeconds;
+  }
+
+  resolvedWatermarkImages.forEach((watermark, index) => {
+    assetManifestSources.push({
+      role: "image",
+      url: watermark.resolvedImageUrl,
+      sha256:
+        watermarkImageHashes[index] ??
+        fallbackAssetSourceHash(watermark.resolvedImageUrl),
+    });
+  });
+  stagedBgmTracks.forEach(track => {
+    assetManifestSources.push({
+      role: "audio",
+      url: track.resolvedAudioUrl,
+      sha256: track.sha256,
+    });
+  });
+
+  const firstTemplate = segmentTemplates[0];
+  const remotionTemplateHash = createHash("sha256")
+    .update(JSON.stringify(firstTemplate))
+    .digest("hex");
+  const workerInput: RemotionRenderVideoWorkerInput = {
+    kind: "remotion_render_video",
+    schemaVersion: 1,
+    platformContractVersion: REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    rendererPolicyVersion: REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+    videoProjectId: `vd-production-episode:${input.owner.seriesId}:${input.productionEpisodeNumber}`,
+    projectRevision: 1,
+    traceId: `vd-production-episode:${input.owner.seriesId}:${input.productionEpisodeNumber}:${Date.now()}`,
+    renderProfile: {
+      profile: "final",
+      width: firstTemplate.width,
+      height: firstTemplate.height,
+      fps: firstTemplate.fps,
+      codec: "h264",
+      loudnessNormalize: false,
+      burnInAssCaptions: false,
+    },
+    remotionTemplate: firstTemplate,
+    segmentTemplates,
+    compositionId: "GenericTemplate",
+    assetManifest: { sources: assetManifestSources },
+    postPasses: ["segment_concat"],
+    segmentPlan: {
+      parts: segmentTemplates.map((template, index) => ({
+        index,
+        durationInFrames: template.durationInFrames,
+      })),
+    },
+    remotionTemplateHash,
+    durationInFrames: totalDurationInFrames,
+  };
+  const { created, job } = await queueJob({
+    ...workerInput,
+    tenantId: input.owner.tenantId,
+    requestedByUserId: input.owner.userId,
+    idempotencyKey: input.idempotencyKey ?? undefined,
+  });
+  return {
+    jobId: job.id,
+    created,
+    segmentCount: segmentTemplates.length,
+    durationSeconds: totalDurationSeconds,
+  };
 }
 
 export interface SubmitVdEpisodePreviewInput {

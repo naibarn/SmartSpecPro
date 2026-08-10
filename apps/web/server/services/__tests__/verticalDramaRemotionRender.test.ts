@@ -78,6 +78,7 @@ import {
   mapVdSubtitlePresetToRemotion,
   reconcileVdRemotionAssembly,
   submitVdEpisodePreview,
+  submitVdProductionEpisodeAssembly,
   resolveVdTextOverlayWindow,
   retimeSubtitleLinesToProbedClips,
   submitVdRemotionAssembly,
@@ -209,6 +210,94 @@ describe("buildVdRemotionTemplate", () => {
     expect(videoLayers[0].durationFrames).toBe(240);
     expect(videoLayers[1].startFrame).toBe(240);
     expect(durationInFrames).toBe(360);
+  });
+
+  it("adds the Production Episode identity overlay and Settings text watermark", () => {
+    const { template } = buildVdRemotionTemplate({
+      clips: [
+        { clipNumber: 1, url: "https://cdn.example.com/1.mp4", durationSec: 8 },
+      ],
+      videoDurationSeconds: 8,
+      productionOverlay: { episodeLabel: "EP.01", seriesTitle: "เรื่องทดสอบ" },
+      watermarkTexts: [
+        {
+          slotId: "primary",
+          text: "@channel",
+          position: "bottom_right",
+          opacity: 0.8,
+          scalePct: 12,
+          marginPx: 24,
+        },
+      ],
+    });
+    expect(
+      template.layers.find(layer => layer.id === "production-episode-label")
+    ).toMatchObject({
+      type: "text",
+      content: "EP.01 · เรื่องทดสอบ",
+    });
+    expect(
+      template.layers.find(
+        layer => layer.id === "series-watermark-text-primary"
+      )
+    ).toMatchObject({
+      type: "text",
+      content: "@channel",
+    });
+  });
+
+  it("renders Production Episode BGM windows, timed overlays, and a scrolling credits roll", () => {
+    const { template } = buildVdRemotionTemplate({
+      clips: [
+        {
+          clipNumber: 1,
+          url: "https://cdn.example.com/1.mp4",
+          durationSec: 20,
+        },
+      ],
+      videoDurationSeconds: 20,
+      productionBgm: [
+        {
+          id: "track-1",
+          resolvedAudioUrl: "https://cdn.example.com/music.mp3",
+          startSec: 2,
+          durationSec: 6,
+          volume: 0.35,
+          loop: true,
+        },
+      ],
+      productionOverlays: [
+        { atSeconds: 5, durationSeconds: 4, text: "ประกาศ", style: "top_bar" },
+      ],
+      productionCredits: { text: "นักแสดง\nทีมงาน" },
+    });
+
+    expect(template.layers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "production-bgm-track-1",
+          type: "audio",
+          startFrame: 60,
+          durationFrames: 180,
+          loop: true,
+          volume: 0.35,
+        }),
+        expect.objectContaining({
+          id: "production-overlay-0",
+          type: "text",
+          startFrame: 150,
+          durationFrames: 120,
+          content: "ประกาศ",
+        }),
+        expect.objectContaining({
+          id: "production-credits-roll",
+          type: "text",
+          animation: "scrollUp",
+          startFrame: 240,
+          durationFrames: 360,
+        }),
+      ])
+    );
   });
 
   it("maps every VdTextOverlayAssKind to a text layer within its resolved window", () => {
@@ -770,6 +859,147 @@ describe("submitVdRemotionAssembly", () => {
         }
       )
     ).rejects.toThrow(VdRemotionRenderError);
+  });
+});
+
+describe("submitVdProductionEpisodeAssembly", () => {
+  it("queues one segmented Remotion job with one template per Sub-Episode", async () => {
+    const queueJob = vi.fn().mockResolvedValue({
+      created: true,
+      job: { id: "production-job-1" },
+    });
+    const stageAsset = vi
+      .fn()
+      .mockResolvedValue({ durationSec: 8, sha256: "bytes-sha" });
+
+    const result = await submitVdProductionEpisodeAssembly(
+      {
+        owner: { tenantId: "tenant-1", userId: 1, seriesId: 10 },
+        productionEpisodeNumber: 1,
+        segments: [
+          {
+            subEpisodeNumber: 1,
+            clips: [
+              { clipNumber: 1, videoUrl: "https://cdn.example.com/1.mp4" },
+            ],
+          },
+          {
+            subEpisodeNumber: 2,
+            clips: [
+              { clipNumber: 1, videoUrl: "https://cdn.example.com/2.mp4" },
+            ],
+          },
+        ],
+        internalBaseUrl: "http://localhost:3000",
+        seriesTitle: "เรื่องทดสอบ",
+        showEpisodeIndicator: true,
+        showSeriesTitle: true,
+      },
+      { queueJob, stageAsset }
+    );
+
+    expect(result).toMatchObject({
+      jobId: "production-job-1",
+      segmentCount: 2,
+      durationSeconds: 16,
+    });
+    const queuedInput = queueJob.mock.calls[0][0] as Record<string, any>;
+    expect(queuedInput.segmentTemplates).toHaveLength(2);
+    expect(queuedInput.segmentPlan.parts).toHaveLength(2);
+    expect(queuedInput.postPasses).toEqual(["segment_concat"]);
+  });
+
+  it("slices multi-track BGM across segments and keeps credits on the final segment", async () => {
+    const queueJob = vi.fn().mockResolvedValue({
+      created: true,
+      job: { id: "production-job-audio" },
+    });
+    const stageAsset = vi
+      .fn()
+      .mockResolvedValue({ durationSec: 8, sha256: "bytes-sha" });
+
+    await submitVdProductionEpisodeAssembly(
+      {
+        owner: { tenantId: "tenant-1", userId: 1, seriesId: 10 },
+        productionEpisodeNumber: 2,
+        segments: [
+          {
+            subEpisodeNumber: 1,
+            clips: [
+              { clipNumber: 1, videoUrl: "https://cdn.example.com/1.mp4" },
+            ],
+          },
+          {
+            subEpisodeNumber: 2,
+            clips: [
+              { clipNumber: 1, videoUrl: "https://cdn.example.com/2.mp4" },
+            ],
+          },
+        ],
+        internalBaseUrl: "http://localhost:3000",
+        showEpisodeIndicator: true,
+        showSeriesTitle: false,
+        bgm: {
+          tracks: [
+            {
+              id: "music-a",
+              url: "https://cdn.example.com/music-a.mp3",
+              startSeconds: 4,
+              endSeconds: null,
+              volumePercent: 50,
+              loopUntilEnd: true,
+              duckUnderVideoAudio: false,
+            },
+            {
+              id: "music-b",
+              url: "https://cdn.example.com/music-b.mp3",
+              startSeconds: 0,
+              endSeconds: 6,
+              volumePercent: 25,
+              loopUntilEnd: false,
+              duckUnderVideoAudio: false,
+            },
+          ],
+        },
+        credits: { text: "เครดิต" },
+      },
+      { queueJob, stageAsset }
+    );
+
+    const queuedInput = queueJob.mock.calls[0][0] as Record<string, any>;
+    expect(queuedInput.segmentTemplates[0].layers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "production-bgm-music-a-0",
+          startFrame: 120,
+          durationFrames: 120,
+        }),
+      ])
+    );
+    expect(queuedInput.segmentTemplates[1].layers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "production-bgm-music-a-1",
+          startFrame: 0,
+          durationFrames: 240,
+        }),
+      ])
+    );
+    expect(
+      queuedInput.segmentTemplates[0].layers.find(
+        (layer: any) => layer.id === "production-credits-roll"
+      )
+    ).toBeUndefined();
+    expect(queuedInput.segmentTemplates[1].layers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "production-credits-roll" }),
+      ])
+    );
+    expect(
+      queuedInput.assetManifest.sources.filter(
+        (source: any) => source.role === "audio"
+      )
+    ).toHaveLength(2);
   });
 });
 

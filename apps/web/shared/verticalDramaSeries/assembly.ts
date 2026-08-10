@@ -83,18 +83,22 @@ export type DurationProfileValidationResult = {
  */
 export function validateDurationProfile(
   profile: VerticalDramaDurationProfile,
-  allowedVideoSeconds?: number[],
+  allowedVideoSeconds?: number[]
 ): DurationProfileValidationResult {
   const errors: string[] = [];
   const durations = durationsOf(profile);
   const sum = durations.reduce((acc, d) => acc + d, 0);
   if (sum !== profile.totalSeconds) {
-    errors.push(`duration_sum_mismatch: durations sum to ${sum}s, expected ${profile.totalSeconds}s`);
+    errors.push(
+      `duration_sum_mismatch: durations sum to ${sum}s, expected ${profile.totalSeconds}s`
+    );
   }
   if (allowedVideoSeconds) {
     for (const d of durations) {
       if (!allowedVideoSeconds.includes(d)) {
-        errors.push(`unsupported_clip_duration: ${d}s not in provider allowedVideoSeconds`);
+        errors.push(
+          `unsupported_clip_duration: ${d}s not in provider allowedVideoSeconds`
+        );
       }
     }
   }
@@ -269,6 +273,18 @@ export type VerticalDramaProductionEpisodeGroupState = {
    *  assembled with `allowPartial: true` and some member had no compiled
    *  video yet. */
   subEpisodeNumbers: number[];
+  /** Automatic 1-based public EP number. Older manifests omit this and use
+   * `index + 1` as their display number. */
+  productionEpisodeNumber?: number;
+  startSubEpisode?: number;
+  endSubEpisode?: number;
+  renderer?: "ffmpeg" | "remotion";
+  renderJobId?: string;
+  sourceMode?: "auto" | "compiled_only" | "shot_assembly";
+  showEpisodeIndicator?: boolean;
+  showSeriesTitle?: boolean;
+  useSeriesWatermarks?: boolean;
+  seriesTitle?: string;
   status: "pending" | "completed" | "failed";
   /** Same-origin `/api/storage/...` path or absolute storage URL. Present
    *  only when `status === "completed"`. */
@@ -307,6 +323,26 @@ export type VerticalDramaProductionEpisodeGroupState = {
     includeDialogueAudio?: boolean;
     loudnessNormalize?: boolean;
   };
+  /** Stable fingerprint of all Remotion Production Episode options. */
+  renderSettingsKey?: string;
+  bgm?: {
+    tracks: Array<{
+      id: string;
+      url: string;
+      startSeconds: number;
+      endSeconds?: number | null;
+      volumePercent: number;
+      loopUntilEnd: boolean;
+      duckUnderVideoAudio: boolean;
+    }>;
+  };
+  credits?: { text: string; rollDurationSeconds?: number };
+  overlays?: Array<{
+    atSeconds: number;
+    durationSeconds: number;
+    text: string;
+    style: "lower_third" | "top_bar" | "centered";
+  }>;
 };
 
 /**
@@ -323,6 +359,7 @@ export type VerticalDramaProductionEpisodeGroupState = {
  * recomputed.
  */
 export type VerticalDramaProductionEpisodesManifest = {
-  groupSize: 5 | 10;
+  /** Number of Sub-Episodes requested per Production Episode. */
+  groupSize: number;
   episodes: VerticalDramaProductionEpisodeGroupState[];
 };

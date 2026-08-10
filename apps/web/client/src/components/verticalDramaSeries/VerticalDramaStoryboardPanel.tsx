@@ -132,6 +132,11 @@ import type {
   VerticalDramaBarrierMultiView,
   VerticalDramaDualViewScenario,
 } from "@shared/verticalDramaSeries/barrierMultiView";
+import {
+  normalizeVerticalDramaSupportingPresence,
+  resolveVerticalDramaSupportingPresenceForShot,
+  type VerticalDramaSupportingPresence,
+} from "@shared/verticalDramaSeries/supportingPresence";
 export { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
 import {
   VIDEO_PROMPT_MODEL_FAMILY_LABELS,
@@ -171,6 +176,7 @@ import {
   type VerticalDramaSceneVisualStateView,
   type VerticalDramaShotSceneAnchorView,
 } from "./VerticalDramaSceneLockRow";
+import { VerticalDramaSupportingPresenceEditor } from "./VerticalDramaSupportingPresenceEditor";
 
 export type {
   VerticalDramaSceneVisualStatePatch,
@@ -520,6 +526,7 @@ interface StoryboardShotView {
   characters?: string[];
   required_character_refs?: string[];
   screen_caller_refs?: string[];
+  supporting_presence?: unknown[];
   duration_seconds?: number;
   /** Declared visual-only intent (spec §7.7.2 Layer 3, section-13) — persisted
    *  by the `vertical-drama-storyboard-shotgrid` skill superset when
@@ -587,12 +594,29 @@ export interface VerticalDramaAngleGridView {
   dismissedIndexes?: number[];
 }
 
+export interface VerticalDramaImageTaskView {
+  pendingTaskId?: string;
+  lastTaskId?: string;
+  status?:
+    | "submitted"
+    | "queued"
+    | "processing"
+    | "completed"
+    | "failed"
+    | "expired";
+  submittedAt?: string;
+  updatedAt?: string;
+  error?: string;
+}
+
 export interface VerticalDramaStartFramePlanFrame {
   shotNumber: number;
   imagePrompt: string;
   negativePrompt?: string;
   requiredCharacterRefs?: string[];
   screenCallerCharacterRefs?: string[];
+  supportingPresence?: VerticalDramaSupportingPresence[];
+  supportingPresenceCustomized?: boolean;
   barrierDialogue?: VerticalDramaBarrierDialogue;
   barrierMultiView?: VerticalDramaBarrierMultiView;
   productReferenceAssetIds?: string[];
@@ -607,6 +631,7 @@ export interface VerticalDramaStartFramePlanFrame {
   locationKey?: string;
   sceneAnchor?: VerticalDramaShotSceneAnchorView;
   angleGrid?: VerticalDramaAngleGridView;
+  imageTask?: VerticalDramaImageTaskView;
   /** Start-frame image-prompt engine stamp (`planning/vd-start-frame-prompt-
    *  modes/plan.md`) — recorded when this frame's image prompt was
    *  (re)generated, mirroring `VerticalDramaStartFramePlan["frames"][number]
@@ -1167,6 +1192,13 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     characterRefs: string[]
   ) => void;
+  /** Replace the text-only generic people/groups for one shot. Empty means suppress auto-detection. */
+  onSetShotSupportingPresence?: (
+    shotNumber: number,
+    entries: VerticalDramaSupportingPresence[]
+  ) => void;
+  /** Remove the shot-local override and let the storyboard auto-detection apply again. */
+  onResetShotSupportingPresence?: (shotNumber: number) => void;
   /** Convert the current physical + Caller assignment into a closed-door shot. */
   onSetShotBarrierDialogue?: (
     shotNumber: number,
@@ -1187,6 +1219,7 @@ interface VerticalDramaStoryboardPanelProps {
   /** Non-null while a `setShotCharacterReference` mutation is in flight for
    *  this shot — disables the picker's save button. */
   savingShotCharacterReferencesForShot?: number | null;
+  savingShotSupportingPresenceForShot?: number | null;
   /**
    * Manually override which LOCATION one shot uses (Phase D, `planning/
    * polished-toasting-gadget.md` — location visual bible), independent of
@@ -1790,9 +1823,12 @@ export function VerticalDramaStoryboardPanel({
   onDropCharacterReference,
   onSetShotCharacterReferences,
   onSetShotScreenCallerReferences,
+  onSetShotSupportingPresence,
+  onResetShotSupportingPresence,
   onSetShotBarrierDialogue,
   onSetShotViewMode,
   savingShotCharacterReferencesForShot = null,
+  savingShotSupportingPresenceForShot = null,
   onSetShotLocation,
   onSetShotBarrierReferenceLocation,
   sceneContinuityEnabled = false,
@@ -1949,6 +1985,12 @@ export function VerticalDramaStoryboardPanel({
   const totalShotCount = canonicalAssemblyReadiness.expectedShotNumbers.length;
   const readyShotNumbers = canonicalAssemblyReadiness.readyShotNumbers;
   const missingShotNumbers = canonicalAssemblyReadiness.missingShotNumbers;
+  // A missing shot should not make the whole workspace's only useful action
+  // unavailable. The server still keeps strict assembly available to direct
+  // callers, while this user-facing action explicitly assembles the completed
+  // shots and shows the missing-shot warning beside it.
+  const assemblyRequest =
+    missingShotNumbers.length > 0 ? { allowPartial: true } : undefined;
   const episodeDialogueQuality = useMemo(() => {
     const clips = motionPromptPack?.clips ?? [];
     if (clips.length === 0) return null;
@@ -4366,7 +4408,11 @@ export function VerticalDramaStoryboardPanel({
                           <Sparkles aria-hidden="true" className="h-3 w-3" />
                         )}
                         {generatingPromptAndImageForShot.has(shotNumber)
-                          ? t2.generatingPromptAndImage
+                          ? t(
+                              locale,
+                              "ส่งแล้ว — รอผลจาก AI…",
+                              "Submitted — waiting for AI…"
+                            )
                           : t2.generatePromptAndImage}
                       </Button>
                     )
@@ -4415,7 +4461,11 @@ export function VerticalDramaStoryboardPanel({
                                   aria-hidden="true"
                                   className="h-3 w-3 animate-spin"
                                 />
-                                {t(locale, "กำลังสร้าง…", "Generating…")}
+                                {t(
+                                  locale,
+                                  "ส่งแล้ว — รอผลจาก AI…",
+                                  "Submitted — waiting for AI…"
+                                )}
                               </>
                             ) : (
                               t(locale, "ยืนยัน", "Confirm")
@@ -4453,7 +4503,11 @@ export function VerticalDramaStoryboardPanel({
                               aria-hidden="true"
                               className="h-3 w-3 animate-spin"
                             />
-                            {t(locale, "กำลังสร้าง…", "Generating…")}
+                            {t(
+                              locale,
+                              "ส่งแล้ว — รอผลจาก AI…",
+                              "Submitted — waiting for AI…"
+                            )}
                           </>
                         ) : (
                           <>
@@ -5526,6 +5580,33 @@ export function VerticalDramaStoryboardPanel({
                       </div>
                     );
                   })()}
+
+                  {onSetShotSupportingPresence ? (
+                    (() => {
+                      const supportingPresence =
+                        frame?.supportingPresenceCustomized === true
+                          ? normalizeVerticalDramaSupportingPresence(
+                              frame.supportingPresence ?? [],
+                              { source: "manual" }
+                            )
+                          : resolveVerticalDramaSupportingPresenceForShot(
+                              shot.supporting_presence,
+                              shot,
+                              { idPrefix: `shot-${shotNumber}-supporting` }
+                            );
+                      return (
+                        <VerticalDramaSupportingPresenceEditor
+                          shotNumber={shotNumber}
+                          locale={locale}
+                          entries={supportingPresence}
+                          customized={frame?.supportingPresenceCustomized === true}
+                          saving={savingShotSupportingPresenceForShot === shotNumber}
+                          onSave={entries => onSetShotSupportingPresence(shotNumber, entries)}
+                          onReset={() => onResetShotSupportingPresence?.(shotNumber)}
+                        />
+                      );
+                    })()
+                  ) : null}
 
                   {(() => {
                     const physicalKeys =
@@ -7224,7 +7305,11 @@ export function VerticalDramaStoryboardPanel({
                             />
                           )}
                           {generatingPromptAndImageForShot.has(shotNumber)
-                            ? t(locale, "กำลังสร้างภาพ…", "Creating image…")
+                            ? t(
+                                locale,
+                                "ส่งแล้ว — รอผลจาก AI…",
+                                "Submitted — waiting for AI…"
+                              )
                             : barrierStartReady
                               ? t(
                                   locale,
@@ -8135,7 +8220,7 @@ export function VerticalDramaStoryboardPanel({
                         className="h-6 px-2 text-[11px]"
                         onClick={() => {
                           setConfirmingReassembleCompiledVideo(false);
-                          onAssembleCompiledVideo();
+                          onAssembleCompiledVideo(assemblyRequest);
                         }}
                         disabled={assemblingCompiledVideo}
                         data-testid="vd-compiled-video-confirm-reassemble"
@@ -8180,7 +8265,7 @@ export function VerticalDramaStoryboardPanel({
                   size="sm"
                   variant="outline"
                   className="w-fit gap-1.5"
-                  onClick={() => onAssembleCompiledVideo()}
+                  onClick={() => onAssembleCompiledVideo(assemblyRequest)}
                   disabled={assemblingCompiledVideo}
                   data-testid="vd-compiled-video-retry"
                 >
@@ -8221,7 +8306,7 @@ export function VerticalDramaStoryboardPanel({
                   size="sm"
                   variant="outline"
                   className="ml-6 w-fit gap-1.5"
-                  onClick={() => onAssembleCompiledVideo()}
+                  onClick={() => onAssembleCompiledVideo(assemblyRequest)}
                   disabled={assemblingCompiledVideo}
                   data-testid="vd-compiled-video-force-restart"
                 >
@@ -8256,11 +8341,10 @@ export function VerticalDramaStoryboardPanel({
                     type="button"
                     size="sm"
                     className="gap-1.5"
-                    onClick={() => onAssembleCompiledVideo()}
+                    onClick={() => onAssembleCompiledVideo(assemblyRequest)}
                     disabled={
                       assemblingCompiledVideo ||
-                      readyShotNumbers.length === 0 ||
-                      readyShotNumbers.length < totalShotCount
+                      readyShotNumbers.length === 0
                     }
                     data-testid="vd-compiled-video-assemble"
                   >
@@ -8275,25 +8359,10 @@ export function VerticalDramaStoryboardPanel({
                         className="h-3.5 w-3.5"
                       />
                     )}
-                    {t2.compiledVideoAssemble}
+                    {missingShotNumbers.length > 0
+                      ? t2.compiledVideoAssemblePartial
+                      : t2.compiledVideoAssemble}
                   </Button>
-                  {totalShotCount > 0 &&
-                  readyShotNumbers.length > 0 &&
-                  readyShotNumbers.length < totalShotCount ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
-                      onClick={() =>
-                        onAssembleCompiledVideo({ allowPartial: true })
-                      }
-                      disabled={assemblingCompiledVideo}
-                      data-testid="vd-compiled-video-assemble-partial"
-                    >
-                      {t2.compiledVideoAssemblePartial}
-                    </Button>
-                  ) : null}
                 </div>
               </div>
             )}

@@ -350,6 +350,11 @@ none of these entries.
      no named speaker attached; an explicit "X says:" cue immediately before
      the quoted text is what native-audio models lip-sync against, and an
      unattributed quote is how the wrong character's mouth ends up moving.
+     **SPOKEN-TEXT BOUNDARY (MANDATORY):** the text inside the quotation marks
+     is ONLY the exact source line. The speaker name and `characterKey` are
+     attribution metadata and must stay outside the quote; never copy a name
+     into the spoken text (write `ภาคิน says: "หยุด คุณไปไหนไม่ได้แล้ว"`, never
+     `"ภาคินหยุด คุณไปไหนไม่ได้แล้ว"`).
      **Lip-sync emphasis (MANDATORY for native audio) — this is the single
      biggest fix for "wrong person's mouth moves / wrong line":**
      - Place a GLOBAL directive up front in `prompt` (at or near the opening),

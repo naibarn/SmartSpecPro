@@ -354,6 +354,11 @@ return `negative_motion_prompt` for other consumers. Low-risk shots add none.
    quoted line with an explicit speech cue** — the named speaker + a
    speaking verb (and delivery tone) immediately BEFORE the quote — never a
    floating, unattributed quote.
+   **SPOKEN-TEXT BOUNDARY (MANDATORY):** the text inside the quotation marks is
+   ONLY the exact source line for that segment. The speaker name and
+   `characterKey` are attribution metadata and must stay outside the quote;
+   never copy a name into the spoken text (write `ภาคิน says: "หยุด คุณไปไหนไม่ได้แล้ว"`,
+   never `"ภาคินหยุด คุณไปไหนไม่ได้แล้ว"`).
 5. **Every prompt you write must be unique to this shot.** Never reuse
    boilerplate phrasing verbatim across different shots even when the
    underlying scene is similar — ground the motion description in this

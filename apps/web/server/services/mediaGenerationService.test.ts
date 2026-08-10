@@ -17,6 +17,33 @@ vi.mock("./modelRegistry", () => ({
   mapToApiModelId: vi.fn((modelId: string) => modelId),
 }));
 
+vi.mock("./imagePromptSafetyService", () => ({
+  isVerticalDramaImageRequest: vi.fn((request: {
+    auditContext?: { source?: string };
+    characterPromptContext?: { marker?: string };
+  }) =>
+    request.auditContext?.source?.includes("verticalDrama") === true ||
+    request.characterPromptContext?.marker === "vertical_drama_character_v1"
+  ),
+  prepareImagePromptSafety: vi.fn(async (input: { prompt: string; mode?: string }) => ({
+    prompt: input.prompt.trim(),
+    metadata: {
+      checked: true,
+      mode: input.mode === "vertical_drama_managed" ? "vertical_drama_managed" : "standard",
+      skillId: "image-prompt-safety-rewriter",
+      skillVersion: "1.0.0",
+      riskLevel: "low",
+      rewritten: false,
+      fallback: false,
+      blocked: false,
+      originalPromptHash: "test-original",
+      safePromptHash: "test-safe",
+      changes: [],
+      preservedIntent: [],
+    },
+  })),
+}));
+
 import { scheduleMediaWithLimiter } from "./llmRateLimiter";
 import { auditLogger } from "./auditLogger";
 import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
@@ -450,6 +477,28 @@ describe("MediaGenerationService retry behavior", () => {
     });
     expect(payload.extra_params).not.toHaveProperty("marketplaceContext");
     expect(payload.extra_params).not.toHaveProperty("marketplaceProduct");
+  });
+
+  it("attaches a safety decision marker to non-drama image requests", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImageAsync(
+      {
+        prompt: "A clean product illustration on a neutral background",
+        model: "google-banana-2",
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.extra_params.__prompt_safety).toMatchObject({
+      checked: true,
+      mode: "standard",
+      skillId: "image-prompt-safety-rewriter",
+    });
   });
 
   it("adds reference image config metadata from the model configJson", async () => {

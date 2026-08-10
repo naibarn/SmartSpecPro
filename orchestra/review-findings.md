@@ -1,5 +1,14 @@
 # Review findings
 
+## Round — Vertical Drama temporal scene props (2026-08-10)
+
+- status: clean targeted conductor review
+- root cause closed: `fromShot` was metadata-only in the rendered continuity lock, so future props were emitted into earlier shot prompts
+- fix reviewed: typed scene-state rendering receives the current shot; persisted rendered blocks are filtered again at start-frame and video prompt consumers
+- impact closure: global props remain global; props become active at their declared shot; character references, cast locks, and user-customized presence are unchanged
+- verification: focused Vitest 175/175; `git diff --check` passed; no TypeScript diagnostics referenced the changed continuity/prompt files
+- residual baseline: repository-wide TypeScript and Prettier checks remain nonzero/noisy in unrelated dirty-worktree files; no paid regeneration or deployment was run
+
 - Review round 1 (implementation + focused verification):
   - Confirmed the motion-prompt service compares every explicit speaker position
     anchor against `frame_analysis.people[].position`.

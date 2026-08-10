@@ -469,9 +469,14 @@ export function buildConcatFfmpegArgs(spec: ConcatCommandSpec): string[] {
 /* Process execution (thin wrapper — mocked in tests via injected `runFfmpeg`) */
 /* -------------------------------------------------------------------------- */
 
-export type FfmpegRunner = (
-  args: string[]
-) => Promise<{ code: number; stderr: string }>;
+export type FfmpegResult = {
+  code: number;
+  stderr: string;
+  /** When ffmpeg is terminated by the OS, Node reports a null exit code. */
+  signal?: NodeJS.Signals | null;
+};
+
+export type FfmpegRunner = (args: string[]) => Promise<FfmpegResult>;
 
 /**
  * Resolve the ffmpeg/ffprobe binary to an absolute path. The systemd service
@@ -529,7 +534,9 @@ export const defaultFfmpegRunner: FfmpegRunner = args =>
       if (stderr.length > 64_000) stderr = stderr.slice(-64_000); // cap memory
     });
     child.on("error", reject);
-    child.on("close", code => resolve({ code: code ?? -1, stderr }));
+    child.on("close", (code, signal) =>
+      resolve({ code: code ?? -1, signal, stderr }),
+    );
   });
 
 /** Probe duration (seconds) of a media file via ffprobe. Best-effort — returns undefined on failure. */
@@ -1276,8 +1283,12 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
 
     const result = await runner(ffArgs);
     if (result.code !== 0) {
+      const termination =
+        result.code === -1 && result.signal
+          ? `signal ${result.signal}`
+          : `code ${result.code}`;
       throw new Error(
-        `ffmpeg concat failed (exit ${result.code}): ${result.stderr.slice(-2000)}`
+        `ffmpeg concat failed (exit ${result.code}; ${termination}): ${result.stderr.slice(-2000)}`
       );
     }
 
@@ -1307,6 +1318,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       shotCount: clips.length,
       assembledAt: new Date().toISOString(),
       status: "completed",
+      error: undefined,
     });
 
     if (finalRenderSummary) {

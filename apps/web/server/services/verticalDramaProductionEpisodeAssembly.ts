@@ -171,7 +171,63 @@ import type {
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export type ProductionEpisodeGroupSize = 5 | 10;
+export const VD_PRODUCTION_EPISODE_MIN_GROUP_SIZE = 3 as const;
+export const VD_PRODUCTION_EPISODE_MAX_GROUP_SIZE = 50 as const;
+
+export type ProductionEpisodeGroupSize = number;
+export type ProductionEpisodeSourceMode =
+  | "auto"
+  | "compiled_only"
+  | "shot_assembly";
+
+export interface ProductionEpisodeRangeGroup {
+  index: number;
+  productionEpisodeNumber: number;
+  subEpisodeNumbers: number[];
+  isRemainder: boolean;
+}
+
+export function validateProductionEpisodeGroupingInput(input: {
+  startSubEpisode: number;
+  endSubEpisode: number;
+  subEpisodesPerProductionEpisode: number;
+}): void {
+  if (!Number.isInteger(input.startSubEpisode) || input.startSubEpisode < 1) {
+    throw new Error("vertical_drama_production_invalid_start_subepisode");
+  }
+  if (!Number.isInteger(input.endSubEpisode) || input.endSubEpisode < input.startSubEpisode) {
+    throw new Error("vertical_drama_production_invalid_subepisode_range");
+  }
+  if (
+    !Number.isInteger(input.subEpisodesPerProductionEpisode) ||
+    input.subEpisodesPerProductionEpisode < VD_PRODUCTION_EPISODE_MIN_GROUP_SIZE ||
+    input.subEpisodesPerProductionEpisode > VD_PRODUCTION_EPISODE_MAX_GROUP_SIZE
+  ) {
+    throw new Error(
+      `vertical_drama_production_group_size_must_be_${VD_PRODUCTION_EPISODE_MIN_GROUP_SIZE}_to_${VD_PRODUCTION_EPISODE_MAX_GROUP_SIZE}`
+    );
+  }
+}
+
+export function partitionProductionEpisodeRange(input: {
+  startSubEpisode: number;
+  endSubEpisode: number;
+  subEpisodesPerProductionEpisode: number;
+}): ProductionEpisodeRangeGroup[] {
+  validateProductionEpisodeGroupingInput(input);
+  const groups: ProductionEpisodeRangeGroup[] = [];
+  const total = input.endSubEpisode - input.startSubEpisode + 1;
+  for (let offset = 0, index = 0; offset < total; offset += input.subEpisodesPerProductionEpisode, index += 1) {
+    const count = Math.min(input.subEpisodesPerProductionEpisode, total - offset);
+    groups.push({
+      index,
+      productionEpisodeNumber: index + 1,
+      subEpisodeNumbers: Array.from({ length: count }, (_, i) => input.startSubEpisode + offset + i),
+      isRemainder: count < input.subEpisodesPerProductionEpisode,
+    });
+  }
+  return groups;
+}
 
 export interface ProductionEpisodeOwner {
   tenantId: string;
@@ -290,7 +346,7 @@ export interface VerticalDramaProductionEpisodeGroupStateWithBgm
  *  comment for why this is defined locally instead of editing the shared
  *  module in this wave. */
 export interface ProductionEpisodesManifestWithBgm {
-  groupSize: 5 | 10;
+  groupSize: number;
   episodes: VerticalDramaProductionEpisodeGroupStateWithBgm[];
 }
 

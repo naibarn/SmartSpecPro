@@ -83,6 +83,7 @@ import {
   generateVerticalDramaShotVideoPromptSpeakerSwitch,
   buildNativeDialogueVerbatimBlock,
   appendMissingDialogueVerbatim,
+  sanitizeEmbeddedDialogueSpeakerLabels,
   RateLimitExceededError,
   type VideoMotionPromptPackProjection,
   type GenerateVerticalDramaShotVideoPromptParams,
@@ -1365,6 +1366,48 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     expect(extractUserPromptText()).toContain('1. alice [characterKey=alice]: "Hello there"');
   });
 
+  it("keeps speaker labels outside native-audio quotes when a weak model prefixes the spoken line", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+    } as any);
+    mockExecute.mockResolvedValue(
+      successResponse(
+        shotVideoPromptOutput({
+          prompt:
+            'ภาคิน says with urgency: "ภาคินหยุด คุณไปไหนไม่ได้แล้ว". กฤต shouts: "กฤตปล่อย".',
+          dialogue: [
+            { characterKey: "phakin", lineTh: "หยุด คุณไปไหนไม่ได้แล้ว" },
+            { characterKey: "krit", lineTh: "ปล่อย" },
+          ],
+        }),
+      ),
+    );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        shotContext: {
+          description: "A confrontation at a cafe counter",
+          camera: "medium two-shot",
+          dialogueLines: [
+            {
+              characterKey: "phakin",
+              speakerName: "ภาคิน",
+              lineTh: "หยุด คุณไปไหนไม่ได้แล้ว",
+            },
+            { characterKey: "krit", speakerName: "กฤต", lineTh: "ปล่อย" },
+          ],
+        },
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(result.prompt).toContain('ภาคิน says with urgency: "หยุด คุณไปไหนไม่ได้แล้ว"');
+    expect(result.prompt).toContain('กฤต shouts: "ปล่อย"');
+    expect(result.prompt).not.toContain('"ภาคินหยุด คุณไปไหนไม่ได้แล้ว"');
+    expect(result.prompt).not.toContain('"กฤตปล่อย"');
+  });
+
   it("byte-identical-when-omitted: vision content array matches today's single-image shape, and the prompt text carries no character-reference fact line, when characterReferenceImages is absent", async () => {
     mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
 
@@ -1508,6 +1551,17 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     expect(result.prompt).toContain('alice: "First line"');
     expect(result.prompt).toContain('alice: "Second line"');
     expect(result.prompt).toContain('bob: "Third line"');
+  });
+
+  it("sanitizes only exact speaker-prefixed quoted source lines", () => {
+    const result = sanitizeEmbeddedDialogueSpeakerLabels(
+      'ภาคิน says: “ภาคินหยุด คุณไปไหนไม่ได้แล้ว”. The note says “ภาคินเป็นชื่อ”.',
+      [{ speakerName: "ภาคิน", lineTh: "หยุด คุณไปไหนไม่ได้แล้ว" }],
+    );
+
+    expect(result).toBe(
+      'ภาคิน says: “หยุด คุณไปไหนไม่ได้แล้ว”. The note says “ภาคินเป็นชื่อ”.',
+    );
   });
 
   it("builds the native dialogue block in source order without deduplicating repeats", () => {
@@ -2100,6 +2154,31 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     expect(result.prompt).toContain('"Why didn\'t you tell me?"');
     expect(result.prompt).toContain('"I was going to."');
     expect(result.prompt).toContain('"That\'s not good enough."');
+  });
+
+  it("removes speaker labels copied inside quoted lines for the consolidated speaker-switch path", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+    } as any);
+    mockExecute.mockResolvedValue(
+      successResponse(
+        speakerSwitchOutput({
+          prompt:
+            'alice says: "aliceWhy didn\'t you tell me?" Then bob says: "bobI was going to." Finally alice says: "aliceThat\'s not good enough."',
+        }),
+      ),
+    );
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams(),
+    );
+
+    expect(result.prompt).toContain('alice says: "Why didn\'t you tell me?"');
+    expect(result.prompt).toContain('bob says: "I was going to."');
+    expect(result.prompt).toContain('alice says: "That\'s not good enough."');
+    expect(result.prompt).not.toContain('"aliceWhy didn\'t you tell me?"');
+    expect(result.prompt).not.toContain('"bobI was going to."');
   });
 
   it("rejects a speaker-switch prompt when its position anchor contradicts frame_analysis after the corrective retry", async () => {

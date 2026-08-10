@@ -30,6 +30,7 @@ import type {
   VdMotionProfile,
 } from "./motionProfile";
 import type { VdSceneVisualState } from "./sceneContinuity";
+import type { VerticalDramaSupportingPresence } from "./supportingPresence";
 
 /* -------------------------------------------------------------------------- */
 /* Pipeline stages & warnings (spec §11.5)                                    */
@@ -511,6 +512,26 @@ export type VerticalDramaStartFramePlan = {
     shotNumber: number;
     imagePrompt: string;
     negativePrompt: string;
+    /**
+     * Durable state for the main start-frame image generation task. The
+     * provider task can remain queued/processing after the browser request
+     * returns, so this marker is written before client polling starts and is
+     * used to resume the task after navigation or reload.
+     */
+    imageTask?: {
+      pendingTaskId?: string;
+      lastTaskId?: string;
+      status:
+        | "submitted"
+        | "queued"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "expired";
+      submittedAt?: string;
+      updatedAt?: string;
+      error?: string;
+    };
     /** Approved portrait references that must appear only inside a phone/video call screen. */
     screenCallerCharacterRefs?: string[];
     /** Explicit physical dialogue through a closed barrier; distinct from phone callers. */
@@ -520,6 +541,10 @@ export type VerticalDramaStartFramePlan = {
     requiredCharacterRefs: string[];
     /** True after the user explicitly assigns this shot's scene/caller references. */
     characterRefsCustomized?: boolean;
+    /** Generic visible people/groups, scoped only to this shot. */
+    supportingPresence?: VerticalDramaSupportingPresence[];
+    /** True after the user explicitly replaces this shot's supporting presence. */
+    supportingPresenceCustomized?: boolean;
     productReferenceAssetIds: string[];
     /**
      * Additive canonical story-bible snapshot used to author this frame's
@@ -1151,6 +1176,8 @@ export type VerticalDramaMotionPromptPack = {
       mediaTaskId?: string;
       /** Durable owner-scoped media asset identity for generated clips. */
       mediaAssetId?: string;
+      /** Server-side durability state for legacy provider results. */
+      durabilityStatus?: "ready" | "expired";
       /**
        * Additive (2026-07-07 upload-video-per-shot upgrade) — marks a
        * `videoUrl` that was placed by the user uploading an externally

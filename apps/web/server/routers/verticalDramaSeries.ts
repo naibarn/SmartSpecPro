@@ -780,28 +780,30 @@ const verticalDramaSeriesLookLockProcedure = verticalDramaProcedure.use(
   requireFeatureFlag("verticalDramaSeriesLookLock")
 );
 
-export const setSeriesLookLockInput = z.object({
-  seriesId: z.string().min(1),
-  mode: z.enum(["inherit_source", "genre", "manual", "none"]),
-  genreKey: z.enum(VD_LOOK_LOCK_GENRES).optional(),
-  manualPatch: z.unknown().optional(),
-  expectedRevision: z.number().int().min(0),
-}).superRefine((value, context) => {
-  if (value.mode === "genre" && !value.genreKey) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["genreKey"],
-      message: "genreKey is required for genre mode",
-    });
-  }
-  if (value.mode === "manual" && value.manualPatch === undefined) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["manualPatch"],
-      message: "manualPatch is required for manual mode",
-    });
-  }
-});
+export const setSeriesLookLockInput = z
+  .object({
+    seriesId: z.string().min(1),
+    mode: z.enum(["inherit_source", "genre", "manual", "none"]),
+    genreKey: z.enum(VD_LOOK_LOCK_GENRES).optional(),
+    manualPatch: z.unknown().optional(),
+    expectedRevision: z.number().int().min(0),
+  })
+  .superRefine((value, context) => {
+    if (value.mode === "genre" && !value.genreKey) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["genreKey"],
+        message: "genreKey is required for genre mode",
+      });
+    }
+    if (value.mode === "manual" && value.manualPatch === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["manualPatch"],
+        message: "manualPatch is required for manual mode",
+      });
+    }
+  });
 
 /**
  * Base procedure for the read-only series share link OWNER mutations (task
@@ -1177,10 +1179,11 @@ export interface VdDeepDraftCreatedCharactersSummary {
   names: string[];
 }
 
-const EMPTY_DEEP_DRAFT_CREATED_CHARACTERS: VdDeepDraftCreatedCharactersSummary = {
-  count: 0,
-  names: [],
-};
+const EMPTY_DEEP_DRAFT_CREATED_CHARACTERS: VdDeepDraftCreatedCharactersSummary =
+  {
+    count: 0,
+    names: [],
+  };
 
 /** Projects `ensureRosterCharactersFromStory`'s `VdRosterAutoRegisterSummary` (previously discarded at both call sites) into the compact response shape above. */
 function toDeepDraftCreatedCharactersSummary(
@@ -1188,7 +1191,7 @@ function toDeepDraftCreatedCharactersSummary(
 ): VdDeepDraftCreatedCharactersSummary {
   return {
     count: summary.createdCharacters.length,
-    names: summary.createdCharacters.map((c) => c.name),
+    names: summary.createdCharacters.map(c => c.name),
   };
 }
 
@@ -1778,9 +1781,7 @@ async function loadSeriesLocationFacts(
   tenantId: string,
   userId: number,
   seriesId: number
-): Promise<
-  Array<{ locationKey: string; name: string; description?: string }>
-> {
+): Promise<Array<{ locationKey: string; name: string; description?: string }>> {
   let rows: VerticalDramaLocationRow[];
   try {
     rows = await db
@@ -1885,10 +1886,14 @@ async function resolveSeasonLineageContext(
         row.parentSeriesId
       );
       const flags = await getTenantFeatureFlags(tenantId);
-      live = await loadLineageContext(parentRow, { tenantId, userId }, {
-        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
-        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
-      });
+      live = await loadLineageContext(
+        parentRow,
+        { tenantId, userId },
+        {
+          presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+          lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+        }
+      );
     } catch (error) {
       // Parent deleted mid-request, cross-tenant race, or a transient DB
       // error — fall through to the `lineage` snapshot only, never throw.
@@ -1925,9 +1930,7 @@ async function resolveSeasonLineageContext(
     priorSeasonSummary:
       live?.compactSummary ?? snapshot?.priorSeasonSummary ?? "",
     carriedRelationships:
-      live?.currentState.relationships ??
-      carryOver?.carriedRelationships ??
-      [],
+      live?.currentState.relationships ?? carryOver?.carriedRelationships ?? [],
     carriedThreads:
       live?.currentState.openThreads ?? carryOver?.carriedThreads ?? [],
     carriedCharacters,
@@ -1954,8 +1957,10 @@ export async function runGenerateStoryBibleDeepJob(
    */
   resume?: VerticalDramaStoryJobResumeContext
 ) {
-  const resolvedResume: VerticalDramaStoryJobResumeContext =
-    resume ?? { checkpoint: null, persistCheckpoint: () => {} };
+  const resolvedResume: VerticalDramaStoryJobResumeContext = resume ?? {
+    checkpoint: null,
+    persistCheckpoint: () => {},
+  };
   const { tenantId, userId, seriesId } = params;
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
   const formatProfilesEnabled =
@@ -2314,7 +2319,8 @@ export async function runGenerateStoryBibleDeepJob(
   // here; now captured into the mutation's `createdCharacters` response
   // field (mirrors `createdLocationCount` just above), `EMPTY_...` on any
   // failure (this best-effort block must never fail the mutation).
-  let createdCharacters: VdDeepDraftCreatedCharactersSummary = EMPTY_DEEP_DRAFT_CREATED_CHARACTERS;
+  let createdCharacters: VdDeepDraftCreatedCharactersSummary =
+    EMPTY_DEEP_DRAFT_CREATED_CHARACTERS;
   try {
     const rosterAutoRegisterSummary = await ensureRosterCharactersFromStory(
       { tenantId, userId, seriesId },
@@ -2323,7 +2329,9 @@ export async function runGenerateStoryBibleDeepJob(
         deepDraftShots: result.draftedItems.flatMap(item => item.shotDrafts),
       }
     );
-    createdCharacters = toDeepDraftCreatedCharactersSummary(rosterAutoRegisterSummary);
+    createdCharacters = toDeepDraftCreatedCharactersSummary(
+      rosterAutoRegisterSummary
+    );
   } catch (error) {
     debugError(
       "verticalDramaSeries.deepStoryDraft",
@@ -2522,8 +2530,10 @@ export async function runExtendStoryDraftHorizonJob(
   /** Resilient resume (added 2026-07-14) — see `runGenerateStoryBibleDeepJob`'s identical param doc comment. */
   resume?: VerticalDramaStoryJobResumeContext
 ) {
-  const resolvedResume: VerticalDramaStoryJobResumeContext =
-    resume ?? { checkpoint: null, persistCheckpoint: () => {} };
+  const resolvedResume: VerticalDramaStoryJobResumeContext = resume ?? {
+    checkpoint: null,
+    persistCheckpoint: () => {},
+  };
   const { tenantId, userId, seriesId } = params;
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
   const formatProfilesEnabled =
@@ -2809,7 +2819,8 @@ export async function runExtendStoryDraftHorizonJob(
   // now threaded via `characterBibleProfiles` instead of being discarded).
   //
   // Set B — see `runGenerateStoryBibleDeepJob`'s identical capture above.
-  let createdCharacters: VdDeepDraftCreatedCharactersSummary = EMPTY_DEEP_DRAFT_CREATED_CHARACTERS;
+  let createdCharacters: VdDeepDraftCreatedCharactersSummary =
+    EMPTY_DEEP_DRAFT_CREATED_CHARACTERS;
   try {
     const rosterAutoRegisterSummary = await ensureRosterCharactersFromStory(
       { tenantId, userId, seriesId },
@@ -2818,7 +2829,9 @@ export async function runExtendStoryDraftHorizonJob(
         deepDraftShots: result.draftedItems.flatMap(item => item.shotDrafts),
       }
     );
-    createdCharacters = toDeepDraftCreatedCharactersSummary(rosterAutoRegisterSummary);
+    createdCharacters = toDeepDraftCreatedCharactersSummary(
+      rosterAutoRegisterSummary
+    );
   } catch (error) {
     debugError(
       "verticalDramaSeries.deepStoryDraft",
@@ -3297,7 +3310,8 @@ async function syncEpisodeDraftSummarySynopsis(params: {
       .limit(1);
     if (!episodeRow) return;
 
-    const script = (episodeRow.script as Record<string, unknown> | null) ?? null;
+    const script =
+      (episodeRow.script as Record<string, unknown> | null) ?? null;
     const draftSummary = script?._draftSummary;
     if (!script || !draftSummary || typeof draftSummary !== "object") return;
 
@@ -3391,9 +3405,7 @@ async function recordVerticalDramaSystemFailureAuditEvent(params: {
  * preset -> series -> re-saved-as-preset round-trips losslessly; any line
  * that doesn't match becomes `{ name: line, role: "", description: "" }`.
  */
-function parseCharactersDraft(
-  draft: string
-): Array<{
+function parseCharactersDraft(draft: string): Array<{
   name: string;
   role: string;
   description: string;
@@ -3564,9 +3576,16 @@ export async function seedCharactersFromDraft(
     }
 
     const legacy = normalizeLegacyRole(character.role);
-    const narrativeRole = matchedProfile?.narrativeRole ?? character.narrativeRole ?? legacy.narrativeRole;
-    const roleTier = matchedProfile?.roleTier ?? character.roleTier ?? legacy.roleTier;
-    const occupation = matchedProfile?.occupation ?? character.occupation ?? (character.role || null);
+    const narrativeRole =
+      matchedProfile?.narrativeRole ??
+      character.narrativeRole ??
+      legacy.narrativeRole;
+    const roleTier =
+      matchedProfile?.roleTier ?? character.roleTier ?? legacy.roleTier;
+    const occupation =
+      matchedProfile?.occupation ??
+      character.occupation ??
+      (character.role || null);
 
     return {
       tenantId,
@@ -3578,8 +3597,12 @@ export async function seedCharactersFromDraft(
       narrativeRole: narrativeRole ?? null,
       roleTier: roleTier ?? null,
       occupation,
-      roleProvenance: matchedProfile?.narrativeRole || matchedProfile?.roleTier ? "ai_assigned" : "migrated",
-      roleReviewStatus: narrativeRole && roleTier ? "ready" : "needs_role_review",
+      roleProvenance:
+        matchedProfile?.narrativeRole || matchedProfile?.roleTier
+          ? "ai_assigned"
+          : "migrated",
+      roleReviewStatus:
+        narrativeRole && roleTier ? "ready" : "needs_role_review",
       data: Object.keys(data).length > 0 ? data : null,
     } as typeof verticalDramaCharacters.$inferInsert;
   });
@@ -3638,7 +3661,7 @@ export async function reconcileCharactersFromStoryBible(
     occupation?: string;
     /** Phase 6.1 — see `VdRosterAutoRegisterRefinedCharacter.aliases`'s own doc comment. */
     aliases?: string[];
-  }>,
+  }>
 ): Promise<void> {
   if (refinedCharacters.length === 0) return;
   const roster = (await db
@@ -3648,14 +3671,14 @@ export async function reconcileCharactersFromStoryBible(
       and(
         eq(verticalDramaCharacters.tenantId, tenantId),
         eq(verticalDramaCharacters.userId, userId),
-        eq(verticalDramaCharacters.seriesId, seriesId),
-      ),
+        eq(verticalDramaCharacters.seriesId, seriesId)
+      )
     )) as VerticalDramaCharacterRow[];
   const byNormalizedName = new Map(
     roster.map(character => [
       normalizeStoryCharacterName(character.name),
       character,
-    ]),
+    ])
   );
   const byId = new Map(roster.map(character => [character.id, character]));
 
@@ -3669,11 +3692,11 @@ export async function reconcileCharactersFromStoryBible(
     .where(
       and(
         eq(verticalDramaCharacterAliases.tenantId, tenantId),
-        eq(verticalDramaCharacterAliases.seriesId, seriesId),
-      ),
+        eq(verticalDramaCharacterAliases.seriesId, seriesId)
+      )
     )) as VerticalDramaCharacterAliasRow[];
   const characterIdByPersistedAlias = new Map(
-    aliasRows.map(row => [row.normalizedAlias, row.characterId]),
+    aliasRows.map(row => [row.normalizedAlias, row.characterId])
   );
 
   // Whole batch atomic (Database Safety Protocol) — a partial reconcile
@@ -3703,8 +3726,9 @@ export async function reconcileCharactersFromStoryBible(
       // reconcile run, or seeded by `ensureRosterCharactersFromStory` during
       // a deep-draft run).
       if (!character) {
-        const aliasedCharacterId =
-          characterIdByPersistedAlias.get(normalizedProfileName);
+        const aliasedCharacterId = characterIdByPersistedAlias.get(
+          normalizedProfileName
+        );
         if (aliasedCharacterId !== undefined) {
           character = byId.get(aliasedCharacterId);
           matchedViaAlias = character !== undefined;
@@ -3753,9 +3777,14 @@ export async function reconcileCharactersFromStoryBible(
             narrativeRole,
             roleTier,
             occupation:
-              profile.occupation ?? profile.role ?? character.occupation ?? character.role,
-            roleProvenance: narrativeRole || roleTier ? "ai_assigned" : "migrated",
-            roleReviewStatus: narrativeRole && roleTier ? "ready" : "needs_role_review",
+              profile.occupation ??
+              profile.role ??
+              character.occupation ??
+              character.role,
+            roleProvenance:
+              narrativeRole || roleTier ? "ai_assigned" : "migrated",
+            roleReviewStatus:
+              narrativeRole && roleTier ? "ready" : "needs_role_review",
             updatedAt: new Date(),
           })
           .where(
@@ -3763,8 +3792,8 @@ export async function reconcileCharactersFromStoryBible(
               eq(verticalDramaCharacters.id, character.id),
               eq(verticalDramaCharacters.tenantId, tenantId),
               eq(verticalDramaCharacters.userId, userId),
-              eq(verticalDramaCharacters.seriesId, seriesId),
-            ),
+              eq(verticalDramaCharacters.seriesId, seriesId)
+            )
           );
       }
 
@@ -3967,102 +3996,105 @@ const SERIES_STATUSES = [
  * (the shared source of truth also used by preset synthesis clamping and the
  * Create Series wizard) — see createSeriesFieldLimits.agreement.test.ts.
  */
-export const createSeriesInput = z.object({
-  title: z.string().trim().min(1).max(CREATE_SERIES_FIELD_LIMITS.title),
-  locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
-  aspectRatio: z.literal("9:16").optional(),
-  /** Legacy API name; this is the planned Sub-episode count for story structure. */
-  targetEpisodeCount: z.number().int().positive().max(1000).optional(),
-  defaultEpisodeDurationSeconds: z
-    .number()
-    .int()
-    .positive()
-    .max(3600)
-    .optional(),
-  genre: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.genre).optional(),
-  tone: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.tone).optional(),
-  targetAudience: z
-    .string()
-    .trim()
-    .max(CREATE_SERIES_FIELD_LIMITS.targetAudience)
-    .optional(),
-  agePolicyId: z
-    .string()
-    .trim()
-    .max(CREATE_SERIES_FIELD_LIMITS.agePolicyId)
-    .optional(),
-  // Wizard shell payloads — stored losslessly, validated by their own contracts.
-  bible: z.record(z.string(), z.unknown()).optional(),
-  memory: z.record(z.string(), z.unknown()).optional(),
-  productTieIn: z.record(z.string(), z.unknown()).optional(),
-  policy: z.record(z.string(), z.unknown()).optional(),
-  /**
-   * Additive (spec §8.2.2, section-15 change C) — the genre preset id the
-   * wizard applied to produce this series' wizard-gathered `bible` fields.
-   * Optional; when present AND `verticalDramaSeriesPresetMixV2` is enabled
-   * AND the referenced preset carries `visualIdentityJson`, `create` stamps
-   * the identity into `bible.visualStyle`/`bible.cameraGrammar` (additive
-   * enrichment) plus `bible.presetVisualIdentity` (full object, for
-   * downstream flow-through — character refs, start frames, motion
-   * prompts). Best-effort: an invalid/inaccessible id never fails series
-   * creation (same convention as `charactersDraft` seeding below).
-   */
-  appliedPresetId: z.string().trim().min(1).max(20).optional(),
-  lookLock: z.object({
-    mode: z.enum(["inherit_source", "genre", "manual", "none"]),
-    genreKey: z.enum(VD_LOOK_LOCK_GENRES).optional(),
-    manualPatch: z.unknown().optional(),
-    candidateIdentity: z.unknown().optional(),
-  }).optional(),
-  /**
-   * Feature 132 §4.2 (F132A, user-premise-preset-mix) — free-form
-   * "โจทย์เรื่องที่อยากได้" premise, a TOP-LEVEL sibling of `bible` (not
-   * nested inside it) so the field-limits agreement test covers it
-   * automatically. `create` merges it into `bible.userPremise` below.
-   */
-  userPremise: z
-    .string()
-    .trim()
-    .max(CREATE_SERIES_FIELD_LIMITS.userPremise)
-    .optional(),
-  /**
-   * Series-level audience age rating (Phase 1) — see
-   * `@shared/verticalDramaSeries/audienceAgeRating`'s header doc comment.
-   * Optional; `create` below always resolves a concrete tier via
-   * `resolveAudienceAgeRating` (defaulting to the least-restrictive
-   * `"18plus"`), so omitting it is a valid, fully-supported input.
-   */
-  audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
-  /**
-   * Season/special-edition lineage (Part 2, Stage 2.1/2.3,
-   * `planning/vd-series-memory-and-lineage/plan.md`). All 4 fields are
-   * optional and, when the `verticalDramaSeriesLineage` tenant flag is off
-   * (or `parentSeriesId` is absent), `create` below writes every one of the
-   * matching `vertical_drama_series` columns as `NULL` — the exact
-   * "original mode is unchanged" structural guarantee the schema's own doc
-   * comment describes. `lineage` is a lossless `z.record(...)`, same
-   * "wizard shell payload, validated by its own contract" convention as
-   * `bible`/`memory`/`productTieIn`/`policy` above — the client's `as`-cast
-   * against this uniformly-untyped wizard is not this router's problem.
-   */
-  parentSeriesId: z.string().trim().min(1).optional(),
-  createMode: z.enum(VERTICAL_DRAMA_SERIES_CREATE_MODES).optional(),
-  seasonNumber: z.number().int().positive().optional(),
-  lineage: z.record(z.string(), z.unknown()).optional(),
-  /**
-   * Manual LLM model override (same contract as `setSeriesLlmModelPolicy`'s
-   * `defaultModelId`, added so the wizard can pin the series' model
-   * ATOMICALLY at creation time — the wizard fires its background
-   * story-generation mutation the instant `create` returns, so a follow-up
-   * `setSeriesLlmModelPolicy` call would race that generation). Omitted OR
-   * explicit `null` -> automatic (the stage's own quality/large-context
-   * model selector picks the model, `llmModelPolicy.defaultModelId` written
-   * as `null`); a non-null string is validated against the same eligible set
-   * `setSeriesLlmModelPolicy` uses and, if not eligible, `create` throws
-   * `BAD_REQUEST` before any row is inserted.
-   */
-  defaultModelId: z.string().min(1).nullable().optional(),
-})
+export const createSeriesInput = z
+  .object({
+    title: z.string().trim().min(1).max(CREATE_SERIES_FIELD_LIMITS.title),
+    locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
+    aspectRatio: z.literal("9:16").optional(),
+    /** Legacy API name; this is the planned Sub-episode count for story structure. */
+    targetEpisodeCount: z.number().int().positive().max(1000).optional(),
+    defaultEpisodeDurationSeconds: z
+      .number()
+      .int()
+      .positive()
+      .max(3600)
+      .optional(),
+    genre: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.genre).optional(),
+    tone: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.tone).optional(),
+    targetAudience: z
+      .string()
+      .trim()
+      .max(CREATE_SERIES_FIELD_LIMITS.targetAudience)
+      .optional(),
+    agePolicyId: z
+      .string()
+      .trim()
+      .max(CREATE_SERIES_FIELD_LIMITS.agePolicyId)
+      .optional(),
+    // Wizard shell payloads — stored losslessly, validated by their own contracts.
+    bible: z.record(z.string(), z.unknown()).optional(),
+    memory: z.record(z.string(), z.unknown()).optional(),
+    productTieIn: z.record(z.string(), z.unknown()).optional(),
+    policy: z.record(z.string(), z.unknown()).optional(),
+    /**
+     * Additive (spec §8.2.2, section-15 change C) — the genre preset id the
+     * wizard applied to produce this series' wizard-gathered `bible` fields.
+     * Optional; when present AND `verticalDramaSeriesPresetMixV2` is enabled
+     * AND the referenced preset carries `visualIdentityJson`, `create` stamps
+     * the identity into `bible.visualStyle`/`bible.cameraGrammar` (additive
+     * enrichment) plus `bible.presetVisualIdentity` (full object, for
+     * downstream flow-through — character refs, start frames, motion
+     * prompts). Best-effort: an invalid/inaccessible id never fails series
+     * creation (same convention as `charactersDraft` seeding below).
+     */
+    appliedPresetId: z.string().trim().min(1).max(20).optional(),
+    lookLock: z
+      .object({
+        mode: z.enum(["inherit_source", "genre", "manual", "none"]),
+        genreKey: z.enum(VD_LOOK_LOCK_GENRES).optional(),
+        manualPatch: z.unknown().optional(),
+        candidateIdentity: z.unknown().optional(),
+      })
+      .optional(),
+    /**
+     * Feature 132 §4.2 (F132A, user-premise-preset-mix) — free-form
+     * "โจทย์เรื่องที่อยากได้" premise, a TOP-LEVEL sibling of `bible` (not
+     * nested inside it) so the field-limits agreement test covers it
+     * automatically. `create` merges it into `bible.userPremise` below.
+     */
+    userPremise: z
+      .string()
+      .trim()
+      .max(CREATE_SERIES_FIELD_LIMITS.userPremise)
+      .optional(),
+    /**
+     * Series-level audience age rating (Phase 1) — see
+     * `@shared/verticalDramaSeries/audienceAgeRating`'s header doc comment.
+     * Optional; `create` below always resolves a concrete tier via
+     * `resolveAudienceAgeRating` (defaulting to the least-restrictive
+     * `"18plus"`), so omitting it is a valid, fully-supported input.
+     */
+    audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
+    /**
+     * Season/special-edition lineage (Part 2, Stage 2.1/2.3,
+     * `planning/vd-series-memory-and-lineage/plan.md`). All 4 fields are
+     * optional and, when the `verticalDramaSeriesLineage` tenant flag is off
+     * (or `parentSeriesId` is absent), `create` below writes every one of the
+     * matching `vertical_drama_series` columns as `NULL` — the exact
+     * "original mode is unchanged" structural guarantee the schema's own doc
+     * comment describes. `lineage` is a lossless `z.record(...)`, same
+     * "wizard shell payload, validated by its own contract" convention as
+     * `bible`/`memory`/`productTieIn`/`policy` above — the client's `as`-cast
+     * against this uniformly-untyped wizard is not this router's problem.
+     */
+    parentSeriesId: z.string().trim().min(1).optional(),
+    createMode: z.enum(VERTICAL_DRAMA_SERIES_CREATE_MODES).optional(),
+    seasonNumber: z.number().int().positive().optional(),
+    lineage: z.record(z.string(), z.unknown()).optional(),
+    /**
+     * Manual LLM model override (same contract as `setSeriesLlmModelPolicy`'s
+     * `defaultModelId`, added so the wizard can pin the series' model
+     * ATOMICALLY at creation time — the wizard fires its background
+     * story-generation mutation the instant `create` returns, so a follow-up
+     * `setSeriesLlmModelPolicy` call would race that generation). Omitted OR
+     * explicit `null` -> automatic (the stage's own quality/large-context
+     * model selector picks the model, `llmModelPolicy.defaultModelId` written
+     * as `null`); a non-null string is validated against the same eligible set
+     * `setSeriesLlmModelPolicy` uses and, if not eligible, `create` throws
+     * `BAD_REQUEST` before any row is inserted.
+     */
+    defaultModelId: z.string().min(1).nullable().optional(),
+  })
   /**
    * Stage 1.5 (`planning/vd-series-memory-and-lineage/plan.md`) — genre
    * pollution guard. Runs AFTER every per-field `.max()` check above (zod
@@ -4091,7 +4123,10 @@ export const createSeriesInput = z.object({
         message: "genreKey is required for genre mode",
       });
     }
-    if (data.lookLock?.mode === "manual" && data.lookLock.manualPatch === undefined) {
+    if (
+      data.lookLock?.mode === "manual" &&
+      data.lookLock.manualPatch === undefined
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["lookLock", "manualPatch"],
@@ -4140,11 +4175,7 @@ const synthesizeGenrePresetInput = z.object({
     .trim()
     .max(CREATE_SERIES_FIELD_LIMITS.title)
     .optional(),
-  genreHint: z
-    .string()
-    .trim()
-    .max(CREATE_SERIES_FIELD_LIMITS.genre)
-    .optional(),
+  genreHint: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.genre).optional(),
   /**
    * Preset Mix v2 (spec §8.2.2.C.1, section-15) — optional alongside legacy
    * `selectedPresetIds`; equal default weights apply when omitted (see
@@ -4189,7 +4220,11 @@ const synthesizeGenrePresetInput = z.object({
 export const proposeSeasonCarryOverInput = z.object({
   parentSeriesId: z.string().trim().min(1),
   /** Free-form "โจทย์ภาคใหม่ที่อยากได้" — same top-level convention as `createSeriesInput.userPremise`. */
-  premise: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.userPremise).optional(),
+  premise: z
+    .string()
+    .trim()
+    .max(CREATE_SERIES_FIELD_LIMITS.userPremise)
+    .optional(),
 });
 
 /**
@@ -4513,7 +4548,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       try {
@@ -4524,7 +4562,10 @@ export const verticalDramaSeriesRouter = router({
             .where(seriesOwnershipWhere(tenantId, userId, seriesId))
             .for("update");
           if (!row) {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Series not found",
+            });
           }
 
           const transition = applySeriesLookLockTransition({
@@ -4552,7 +4593,10 @@ export const verticalDramaSeriesRouter = router({
         });
         return { control: result.control };
       } catch (error) {
-        if (error instanceof SeriesLookLockTransitionError && error.reason === "conflict") {
+        if (
+          error instanceof SeriesLookLockTransitionError &&
+          error.reason === "conflict"
+        ) {
           await recordSeriesLookLockAuditEvent({
             eventType: VD_SERIES_LOOK_LOCK_CHANGED_EVENT,
             tenantId,
@@ -4569,7 +4613,11 @@ export const verticalDramaSeriesRouter = router({
           });
         }
         if (error instanceof SeriesLookLockTransitionError) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message, cause: error });
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: error.message,
+            cause: error,
+          });
         }
         throw error;
       }
@@ -4705,9 +4753,7 @@ export const verticalDramaSeriesRouter = router({
               const parentTitle = (
                 row.lineage as { parentTitle?: unknown } | null
               )?.parentTitle;
-              return typeof parentTitle === "string"
-                ? { parentTitle }
-                : null;
+              return typeof parentTitle === "string" ? { parentTitle } : null;
             })(),
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
@@ -4737,12 +4783,10 @@ export const verticalDramaSeriesRouter = router({
       // entirely (no DB round-trip) when omitted/`null` — the common,
       // "automatic" case.
       if (input.defaultModelId != null) {
-        const { loadEnabledLlmModelRows } = await import(
-          "../services/enabledLlmModels"
-        );
-        const { selectQualityLargeContextEligibleModels } = await import(
-          "../services/verticalDramaImproveScript"
-        );
+        const { loadEnabledLlmModelRows } =
+          await import("../services/enabledLlmModels");
+        const { selectQualityLargeContextEligibleModels } =
+          await import("../services/verticalDramaImproveScript");
         const eligibleRows = await loadEnabledLlmModelRows({
           autoSelectionOnly: true,
         });
@@ -4824,9 +4868,8 @@ export const verticalDramaSeriesRouter = router({
           ? (rawProductTieIn.uploadedReferences as unknown[])
           : [];
         if (uploadedReferences.length > 0) {
-          const { createAssetFromAttachment } = await import(
-            "../services/mediaAssetService"
-          );
+          const { createAssetFromAttachment } =
+            await import("../services/mediaAssetService");
           for (const entryRaw of uploadedReferences) {
             if (!entryRaw || typeof entryRaw !== "object") continue;
             const entry = entryRaw as {
@@ -4928,20 +4971,23 @@ export const verticalDramaSeriesRouter = router({
               input.lookLock.mode === "inherit_source" &&
               input.lookLock.candidateIdentity !== undefined
             ) {
-              const parsedCandidate = verticalDramaPresetVisualIdentitySchema.safeParse(
-                input.lookLock.candidateIdentity,
-              );
+              const parsedCandidate =
+                verticalDramaPresetVisualIdentitySchema.safeParse(
+                  input.lookLock.candidateIdentity
+                );
               if (!parsedCandidate.success) {
                 throw new TRPCError({
                   code: "BAD_REQUEST",
                   message: "Invalid AI-mix visual identity candidate",
                 });
               }
-              const { referenceAssetIds: _untrustedReferenceAssetIds, ...safeCandidate } =
-                parsedCandidate.data;
+              const {
+                referenceAssetIds: _untrustedReferenceAssetIds,
+                ...safeCandidate
+              } = parsedCandidate.data;
               initialBible = stampPresetVisualIdentityIntoBible(
                 initialBible,
-                safeCandidate as VerticalDramaPresetVisualIdentity,
+                safeCandidate as VerticalDramaPresetVisualIdentity
               );
             }
             if (
@@ -4953,7 +4999,10 @@ export const verticalDramaSeriesRouter = router({
               const appliedPresetNumericId = Number(input.appliedPresetId);
               if (Number.isFinite(appliedPresetNumericId)) {
                 const [presetRow] = await db
-                  .select({ visualIdentityJson: verticalDramaGenrePresets.visualIdentityJson })
+                  .select({
+                    visualIdentityJson:
+                      verticalDramaGenrePresets.visualIdentityJson,
+                  })
                   .from(verticalDramaGenrePresets)
                   .where(
                     and(
@@ -4969,8 +5018,13 @@ export const verticalDramaSeriesRouter = router({
                     )
                   )
                   .limit(1);
-                const identity = presetRow?.visualIdentityJson as VerticalDramaPresetVisualIdentity | null;
-                if (identity) initialBible = stampPresetVisualIdentityIntoBible(initialBible, identity);
+                const identity =
+                  presetRow?.visualIdentityJson as VerticalDramaPresetVisualIdentity | null;
+                if (identity)
+                  initialBible = stampPresetVisualIdentityIntoBible(
+                    initialBible,
+                    identity
+                  );
               }
             }
             if (
@@ -4985,7 +5039,10 @@ export const verticalDramaSeriesRouter = router({
                 lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
               });
               if (parentIdentity) {
-                initialBible = stampPresetVisualIdentityIntoBible(initialBible, parentIdentity);
+                initialBible = stampPresetVisualIdentityIntoBible(
+                  initialBible,
+                  parentIdentity
+                );
               }
             }
             initialBible = applySeriesLookLockTransition({
@@ -4993,14 +5050,21 @@ export const verticalDramaSeriesRouter = router({
               ...input.lookLock,
               expectedRevision: 0,
               now: new Date().toISOString(),
-              ...(input.lookLock.mode === "inherit_source" && input.lookLock.candidateIdentity !== undefined
-                ? { inheritedSource: "ai_mix" as const, inheritedGovernance: "look_lock" as const }
+              ...(input.lookLock.mode === "inherit_source" &&
+              input.lookLock.candidateIdentity !== undefined
+                ? {
+                    inheritedSource: "ai_mix" as const,
+                    inheritedGovernance: "look_lock" as const,
+                  }
                 : {}),
               ...(input.lookLock.mode === "inherit_source" &&
               input.lookLock.candidateIdentity === undefined &&
               !input.appliedPresetId &&
               parentSeriesRow
-                ? { inheritedSource: "lineage" as const, inheritedGovernance: "look_lock" as const }
+                ? {
+                    inheritedSource: "lineage" as const,
+                    inheritedGovernance: "look_lock" as const,
+                  }
                 : {}),
             }).bible;
             lookLockAppliedAtCreate = true;
@@ -5148,7 +5212,9 @@ export const verticalDramaSeriesRouter = router({
             userId,
             Number(row.id),
             charactersDraft,
-            characterProfilesResult.success ? characterProfilesResult.data : undefined,
+            characterProfilesResult.success
+              ? characterProfilesResult.data
+              : undefined
           );
         } catch (error) {
           debugError(
@@ -5270,6 +5336,32 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
+      const initialRow = await loadOwnedSeries(tenantId, userId, seriesId);
+      if (
+        (
+          initialRow.productionEpisodesManifest as VerticalDramaProductionEpisodesManifest | null
+        )?.episodes?.some(
+          group =>
+            group.renderer === "remotion" &&
+            group.status === "pending" &&
+            group.renderJobId
+        )
+      ) {
+        try {
+          const { reconcileProductionEpisodeRemotionJobs } =
+            await import("../services/verticalDramaProductionEpisodeRemotion");
+          await reconcileProductionEpisodeRemotionJobs({
+            tenantId,
+            userId,
+            seriesId,
+          });
+        } catch (error) {
+          console.warn(
+            `[verticalDramaSeries.get] production episode Remotion reconcile skipped for series ${seriesId}:`,
+            error instanceof Error ? error.message : error
+          );
+        }
+      }
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
 
       const episodes: EpisodeListProjection[] = await db
@@ -5304,12 +5396,12 @@ export const verticalDramaSeriesRouter = router({
         episodeIds: episodes.map(e => e.id),
       });
       const coverStates = episodes.map(episode =>
-        readEpisodeCoverStateFromRow(episode),
+        readEpisodeCoverStateFromRow(episode)
       );
       const coverAssetUrlById = await resolveEpisodeCoverAssetUrls(
         db,
         { tenantId, userId },
-        coverStates,
+        coverStates
       );
 
       return {
@@ -5350,8 +5442,8 @@ export const verticalDramaSeriesRouter = router({
             coverImage: projectEpisodeCover(
               e.coverImage,
               coverAssetUrlById.get(
-                readEpisodeCoverStateFromRow(e)?.mediaAssetId ?? "",
-              ) ?? null,
+                readEpisodeCoverStateFromRow(e)?.mediaAssetId ?? ""
+              ) ?? null
             ),
             compiledVideo: extractEpisodeCompiledVideoSummary(assemblyManifest),
           };
@@ -5817,9 +5909,10 @@ export const verticalDramaSeriesRouter = router({
         await db
           .select({
             episodeNumber: verticalDramaEpisodes.episodeNumber,
-            hasScript: sql<boolean>`${verticalDramaEpisodes.script} IS NOT NULL`.as(
-              "hasScript"
-            ),
+            hasScript:
+              sql<boolean>`${verticalDramaEpisodes.script} IS NOT NULL`.as(
+                "hasScript"
+              ),
           })
           .from(verticalDramaEpisodes)
           .where(
@@ -6031,72 +6124,76 @@ export const verticalDramaSeriesRouter = router({
     .input(
       z
         .object({ includeModelId: z.string().min(1).nullable().optional() })
-        .optional(),
+        .optional()
     )
     .query(async ({ input }) => {
-    const { loadEnabledLlmModelRows } =
-      await import("../services/enabledLlmModels");
-    const {
-      selectQualityLargeContextEligibleModels,
-      selectRecommendedQualityLargeContextEligibleModels,
-    } = await import("../services/verticalDramaImproveScript");
+      const { loadEnabledLlmModelRows } =
+        await import("../services/enabledLlmModels");
+      const {
+        selectQualityLargeContextEligibleModels,
+        selectRecommendedQualityLargeContextEligibleModels,
+      } = await import("../services/verticalDramaImproveScript");
 
-    const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-    const recommended = selectRecommendedQualityLargeContextEligibleModels(rows);
+      const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+      const recommended =
+        selectRecommendedQualityLargeContextEligibleModels(rows);
 
-    const includeModelId = input?.includeModelId ?? null;
-    let eligible = recommended;
-    if (
-      includeModelId &&
-      !recommended.some((row) => row.modelId === includeModelId)
-    ) {
-      const fullEligible = selectQualityLargeContextEligibleModels(rows);
-      const grandfathered = fullEligible.find(
-        (row) => row.modelId === includeModelId,
-      );
-      if (grandfathered) {
-        eligible = [...recommended, grandfathered];
+      const includeModelId = input?.includeModelId ?? null;
+      let eligible = recommended;
+      if (
+        includeModelId &&
+        !recommended.some(row => row.modelId === includeModelId)
+      ) {
+        const fullEligible = selectQualityLargeContextEligibleModels(rows);
+        const grandfathered = fullEligible.find(
+          row => row.modelId === includeModelId
+        );
+        if (grandfathered) {
+          eligible = [...recommended, grandfathered];
+        }
       }
-    }
 
-    if (eligible.length === 0) {
-      return [] as Array<{ modelId: string; label: string }>;
-    }
+      if (eligible.length === 0) {
+        return [] as Array<{ modelId: string; label: string }>;
+      }
 
-    type QualityPlanningModelLabelRow = {
-      modelId: string;
-      modelName: string;
-      providerName: string;
-      providerDisplayName: string;
-    };
-    const modelIds = eligible.map(row => row.modelId);
-    const labelRows: QualityPlanningModelLabelRow[] = await db
-      .select({
-        modelId: modelProviderMap.modelId,
-        modelName: modelProviderMap.modelName,
-        providerName: llmProviders.providerName,
-        providerDisplayName: llmProviders.displayName,
-      })
-      .from(modelProviderMap)
-      .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-      .where(inArray(modelProviderMap.modelId, modelIds));
-    const labelByModelId = new Map<string, QualityPlanningModelLabelRow>(
-      labelRows.map(row => [row.modelId, row])
-    );
-
-    return eligible.map(row => {
-      const labelRow = labelByModelId.get(row.modelId);
-      const providerLabel =
-        labelRow?.providerDisplayName ||
-        labelRow?.providerName ||
-        row.providerName;
-      const modelLabel = labelRow?.modelName || row.modelId;
-      return {
-        modelId: row.modelId,
-        label: `${providerLabel} — ${modelLabel}`,
+      type QualityPlanningModelLabelRow = {
+        modelId: string;
+        modelName: string;
+        providerName: string;
+        providerDisplayName: string;
       };
-    });
-  }),
+      const modelIds = eligible.map(row => row.modelId);
+      const labelRows: QualityPlanningModelLabelRow[] = await db
+        .select({
+          modelId: modelProviderMap.modelId,
+          modelName: modelProviderMap.modelName,
+          providerName: llmProviders.providerName,
+          providerDisplayName: llmProviders.displayName,
+        })
+        .from(modelProviderMap)
+        .innerJoin(
+          llmProviders,
+          eq(modelProviderMap.providerId, llmProviders.id)
+        )
+        .where(inArray(modelProviderMap.modelId, modelIds));
+      const labelByModelId = new Map<string, QualityPlanningModelLabelRow>(
+        labelRows.map(row => [row.modelId, row])
+      );
+
+      return eligible.map(row => {
+        const labelRow = labelByModelId.get(row.modelId);
+        const providerLabel =
+          labelRow?.providerDisplayName ||
+          labelRow?.providerName ||
+          row.providerName;
+        const modelLabel = labelRow?.modelName || row.modelId;
+        return {
+          modelId: row.modelId,
+          label: `${providerLabel} — ${modelLabel}`,
+        };
+      });
+    }),
 
   /**
    * Manual LLM model override (added 2026-07-11, widened the same day to a
@@ -6373,8 +6470,7 @@ export const verticalDramaSeriesRouter = router({
         : {};
       const lineageContext = input.lineageContext
         ? {
-            lineageContext:
-              input.lineageContext as VerticalDramaSeriesLineage,
+            lineageContext: input.lineageContext as VerticalDramaSeriesLineage,
           }
         : {};
 
@@ -6604,13 +6700,17 @@ export const verticalDramaSeriesRouter = router({
         parentSeriesIdNum
       );
 
-      const lineageContext = await loadLineageContext(parentRow, {
-        tenantId,
-        userId,
-      }, {
-        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
-        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
-      });
+      const lineageContext = await loadLineageContext(
+        parentRow,
+        {
+          tenantId,
+          userId,
+        },
+        {
+          presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+          lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+        }
+      );
 
       try {
         const result = await synthesizeSeasonCarryOver({
@@ -6697,13 +6797,17 @@ export const verticalDramaSeriesRouter = router({
         parentSeriesIdNum
       );
 
-      const lineageContext = await loadLineageContext(parentRow, {
-        tenantId,
-        userId,
-      }, {
-        presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
-        lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
-      });
+      const lineageContext = await loadLineageContext(
+        parentRow,
+        {
+          tenantId,
+          userId,
+        },
+        {
+          presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+          lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+        }
+      );
 
       try {
         const result = await synthesizeSpecialEditionBrief({
@@ -6807,7 +6911,7 @@ export const verticalDramaSeriesRouter = router({
         tenantId,
         userId,
         seriesId,
-        result.expanded.refinedCharacters,
+        result.expanded.refinedCharacters
       );
 
       const updatedBible = {
@@ -7443,7 +7547,10 @@ export const verticalDramaSeriesRouter = router({
         input.summary === undefined || currentShot?.summary === input.summary;
       const linesUnchanged =
         input.lines === undefined ||
-        linesMatchStoredDialogue(currentShot?.dialogue_lines ?? [], input.lines);
+        linesMatchStoredDialogue(
+          currentShot?.dialogue_lines ?? [],
+          input.lines
+        );
       if (summaryUnchanged && linesUnchanged) {
         return {
           ok: true as const,
@@ -8499,9 +8606,8 @@ export const verticalDramaSeriesRouter = router({
       // point for the `vertical_drama_ffmpeg_assembly` worker job type, lazy-
       // loaded for the SAME "narrow vi.mock sibling test" reason as the
       // import block above.
-      const { queueVerticalDramaFfmpegAssemblyJob } = await import(
-        "../services/workerSchedulerService"
-      );
+      const { queueVerticalDramaFfmpegAssemblyJob } =
+        await import("../services/workerSchedulerService");
 
       // Small, deliberate duplication of `verticalDramaEpisodes.ts`'s own
       // `resolveVerticalDramaVoiceChainFlag` (a 2-line tenant-flag read) —
@@ -8660,7 +8766,9 @@ export const verticalDramaSeriesRouter = router({
           dialogueAudio: dialogueRunInputs.dialogueAudio,
           subtitles: combinedSubtitles,
           watermarkImages:
-            episodeWatermarkImages.length > 0 ? episodeWatermarkImages : undefined,
+            episodeWatermarkImages.length > 0
+              ? episodeWatermarkImages
+              : undefined,
         });
       }
 
@@ -8691,9 +8799,13 @@ export const verticalDramaSeriesRouter = router({
             clips: spec.clips,
             internalBaseUrl,
             filename: spec.filename,
-            ...(spec.dialogueAudio ? { dialogueAudio: spec.dialogueAudio } : {}),
+            ...(spec.dialogueAudio
+              ? { dialogueAudio: spec.dialogueAudio }
+              : {}),
             ...(spec.subtitles ? { subtitles: spec.subtitles } : {}),
-            ...(spec.watermarkImages ? { watermarkImages: spec.watermarkImages } : {}),
+            ...(spec.watermarkImages
+              ? { watermarkImages: spec.watermarkImages }
+              : {}),
           };
           const { job } = await queueVerticalDramaFfmpegAssemblyJob({
             tenantId,
@@ -8795,7 +8907,25 @@ export const verticalDramaSeriesRouter = router({
     .input(
       z.object({
         seriesId: z.string().min(1),
-        groupSize: z.union([z.literal(5), z.literal(10)]),
+        // Legacy FFmpeg callers may still send 5/10. The Remotion path uses
+        // the explicit range fields below and accepts the same 3-50 bound.
+        groupSize: z.number().int().min(3).max(50).optional(),
+        renderEngine: z.enum(["ffmpeg", "remotion"]).optional(),
+        startSubEpisode: z.number().int().min(1).optional(),
+        endSubEpisode: z.number().int().min(1).optional(),
+        subEpisodesPerProductionEpisode: z
+          .number()
+          .int()
+          .min(3)
+          .max(50)
+          .optional(),
+        remainderPolicy: z.enum(["create", "skip"]).optional(),
+        sourceMode: z
+          .enum(["auto", "compiled_only", "shot_assembly"])
+          .optional(),
+        showEpisodeIndicator: z.boolean().optional(),
+        showSeriesTitle: z.boolean().optional(),
+        useSeriesWatermarks: z.boolean().optional(),
         allowPartial: z.boolean().optional(),
         renderOptions: z
           .object({
@@ -8820,11 +8950,33 @@ export const verticalDramaSeriesRouter = router({
         // behavior exactly (no second ffmpeg pass) — see
         // `assembleProductionEpisodesForSeries`'s own `bgm` doc comment.
         bgm: z
-          .object({
-            url: z.string().min(1).max(2048),
-            volumePercent: z.number().min(1).max(100).default(35),
-            duckUnderVideoAudio: z.boolean().default(true),
-          })
+          .union([
+            z.object({
+              url: z.string().min(1).max(2048),
+              volumePercent: z.number().min(1).max(100).default(35),
+              duckUnderVideoAudio: z.boolean().default(true),
+            }),
+            z.object({
+              tracks: z
+                .array(
+                  z.object({
+                    id: z.string().min(1).max(64).optional(),
+                    url: z.string().min(1).max(2048),
+                    startSeconds: z.number().min(0).max(3600).default(0),
+                    endSeconds: z
+                      .number()
+                      .min(0)
+                      .max(3600)
+                      .nullable()
+                      .optional(),
+                    volumePercent: z.number().min(1).max(100).default(35),
+                    loopUntilEnd: z.boolean().default(true),
+                    duckUnderVideoAudio: z.boolean().default(true),
+                  })
+                )
+                .max(10),
+            }),
+          ])
           .optional(),
         // Phase C-1 (`planning/vertical-drama-production-render/plan.md`
         // Phase C) — an OPTIONAL scrolling credits roll, attached at the
@@ -8878,11 +9030,64 @@ export const verticalDramaSeriesRouter = router({
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
       const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
 
+      const useRemotion =
+        input.renderEngine === "remotion" ||
+        input.startSubEpisode !== undefined ||
+        input.endSubEpisode !== undefined ||
+        input.subEpisodesPerProductionEpisode !== undefined ||
+        input.sourceMode !== undefined;
+
       const runtimeConfig = getCachedAppRuntimeConfig();
       const internalBaseUrl =
         runtimeConfig.internalNodeUrl ||
         ctx.publicUrl ||
         "http://localhost:3000";
+
+      if (useRemotion) {
+        if (
+          input.startSubEpisode === undefined ||
+          input.endSubEpisode === undefined ||
+          input.subEpisodesPerProductionEpisode === undefined
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "startSubEpisode, endSubEpisode, and subEpisodesPerProductionEpisode are required for Remotion Production Episode assembly",
+          });
+        }
+        const { assembleProductionEpisodesWithRemotion } =
+          await import("../services/verticalDramaProductionEpisodeRemotion");
+        try {
+          const result = await assembleProductionEpisodesWithRemotion({
+            tenantId,
+            userId,
+            seriesId,
+            startSubEpisode: input.startSubEpisode,
+            endSubEpisode: input.endSubEpisode,
+            subEpisodesPerProductionEpisode:
+              input.subEpisodesPerProductionEpisode,
+            remainderPolicy: input.remainderPolicy ?? "create",
+            sourceMode: input.sourceMode ?? "auto",
+            showEpisodeIndicator: input.showEpisodeIndicator ?? true,
+            showSeriesTitle: input.showSeriesTitle ?? true,
+            useSeriesWatermarks: input.useSeriesWatermarks ?? true,
+            bgm: input.bgm,
+            credits: input.credits,
+            overlays: input.overlays,
+            internalBaseUrl,
+            publicBaseUrl: ctx.publicUrl,
+          });
+          return result;
+        } catch (err) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              err instanceof Error
+                ? err.message
+                : "Production Episode Remotion assembly precondition failed",
+          });
+        }
+      }
 
       // Lazy-loaded — same "narrow vi.mock sibling test" convention this
       // file's Season Batch Render / Ad Banner Overlay import blocks
@@ -8899,12 +9104,12 @@ export const verticalDramaSeriesRouter = router({
           tenantId,
           userId,
           seriesId,
-          groupSize: input.groupSize,
+          groupSize: input.groupSize ?? 10,
           allowPartial: input.allowPartial,
           internalBaseUrl,
           seriesTitle: seriesRow.title ?? undefined,
           renderOptions: input.renderOptions,
-          bgm: input.bgm,
+          bgm: input.bgm && "tracks" in input.bgm ? undefined : input.bgm,
           credits: input.credits,
           overlays: input.overlays,
         });
@@ -9350,7 +9555,7 @@ export const verticalDramaSeriesRouter = router({
         mcpConnectionId: z.string().max(64).optional(),
         sharedGroupId: z.number().int().positive().optional(),
         hermesConnectionId: z.string().max(64).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       // Lazy-loaded (see this file's Ad Banner Overlay import-block doc
@@ -9436,7 +9641,8 @@ export const verticalDramaSeriesRouter = router({
       if (!modelId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "เลือกโมเดลภาพก่อนสร้างแบนเนอร์ / Select an image model before generating the banner.",
+          message:
+            "เลือกโมเดลภาพก่อนสร้างแบนเนอร์ / Select an image model before generating the banner.",
         });
       }
       const pricing = await resolveAdBannerImageModelPricing(modelId);
@@ -9460,7 +9666,8 @@ export const verticalDramaSeriesRouter = router({
       // `pricing.configJson` (the SAME `media_models` row
       // `resolveAdBannerImageModelPricing` already read above) — never a
       // second DB read for the same row.
-      const { resolveVdCharacterMediaTransportDecision } = await import("./verticalDramaCharacters");
+      const { resolveVdCharacterMediaTransportDecision } =
+        await import("./verticalDramaCharacters");
       const transportDecision = await resolveVdCharacterMediaTransportDecision({
         tenantId,
         actorUserId: userId,
@@ -9483,24 +9690,31 @@ export const verticalDramaSeriesRouter = router({
       }
 
       if (transportDecision.kind === "hermes") {
-        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const { queueHermesMediaJob } =
+          await import("../services/hermesMediaScheduler");
         const {
           buildHermesMediaReferences,
           buildHermesMediaTaskEnvelope,
           resolveHermesOrderedRefsFromUrls,
         } = await import("../services/hermesMediaReferences");
-        const { resolveMediaModelTransportConfig } = await import("../../shared/mediaModelTransport");
+        const { resolveMediaModelTransportConfig } =
+          await import("../../shared/mediaModelTransport");
         const hermesTraceId = crypto.randomUUID();
-        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+        const { orderedRefs, droppedReferenceCount } =
+          await resolveHermesOrderedRefsFromUrls({
+            tenantId,
+            userId,
+            urls: referenceImageUrls.slice(0, pricing.maxReferenceImages),
+            traceId: hermesTraceId,
+            connectionId: transportDecision.connectionId,
+            requireAll: referenceImageUrls.length > 0,
+            roleFor: () => "product",
+          });
+        const references = await buildHermesMediaReferences({
           tenantId,
           userId,
-          urls: referenceImageUrls.slice(0, pricing.maxReferenceImages),
-          traceId: hermesTraceId,
-          connectionId: transportDecision.connectionId,
-          requireAll: referenceImageUrls.length > 0,
-          roleFor: () => "product",
+          orderedRefs,
         });
-        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
         const hermesProviderModelId =
           resolveMediaModelTransportConfig({
             modelId,
@@ -9513,7 +9727,9 @@ export const verticalDramaSeriesRouter = router({
           prompt: promptText,
           settings: {
             model: hermesProviderModelId,
-            ...(banner.generation.aspectRatio ? { aspectRatio: banner.generation.aspectRatio } : {}),
+            ...(banner.generation.aspectRatio
+              ? { aspectRatio: banner.generation.aspectRatio }
+              : {}),
             outputCount: 1,
           },
           references,
@@ -9528,7 +9744,10 @@ export const verticalDramaSeriesRouter = router({
           mediaType: "image",
           model: hermesProviderModelId,
           prompt: promptText,
-          extraParams: { __vd_series_id: String(seriesId), __vd_ad_banner_id: banner.id },
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_ad_banner_id: banner.id,
+          },
           droppedReferenceCount,
         });
         const hermesNextBanner: VdAdBannerDesign = {
@@ -9538,7 +9757,13 @@ export const verticalDramaSeriesRouter = router({
         };
         const hermesNextBanners = banners.slice();
         hermesNextBanners[bannerIndex] = hermesNextBanner;
-        await persistAdBannerDesigns(tenantId, userId, seriesId, rawProductTieIn, hermesNextBanners);
+        await persistAdBannerDesigns(
+          tenantId,
+          userId,
+          seriesId,
+          rawProductTieIn,
+          hermesNextBanners
+        );
         return {
           taskId: hermesTask.id,
           creditCost: 0,
@@ -9548,7 +9773,9 @@ export const verticalDramaSeriesRouter = router({
       }
 
       const transportMetadata =
-        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
+        transportDecision.kind === "mcp"
+          ? transportDecision.transportMetadata
+          : undefined;
 
       // Credits are RESERVED now; `getAdBannerImageStatus` reconciles once
       // the task completes/fails, same convention as `generateCharacterImage`.

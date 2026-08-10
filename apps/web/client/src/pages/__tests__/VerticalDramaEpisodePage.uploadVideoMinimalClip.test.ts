@@ -155,4 +155,19 @@ describe("uploaded video persistence flow", () => {
       "await utils.verticalDramaEpisodes.getEpisodeDetail.invalidate()"
     );
   });
+
+  it("does not trigger post-upload identity QC", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const uploadHandler = source.slice(
+      source.indexOf("async function handleUploadVideoClip("),
+      source.indexOf("async function handleUploadVideoClip(") + 1800
+    );
+
+    expect(uploadHandler).not.toContain("runClipIdentityQcMutation");
+    expect(uploadHandler).toContain("mediaAssetId");
+    expect(uploadHandler).toContain('source: "upload"');
+  });
 });

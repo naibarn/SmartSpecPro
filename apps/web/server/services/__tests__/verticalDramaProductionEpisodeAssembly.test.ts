@@ -115,8 +115,10 @@ import {
   chunkSubEpisodesIntoGroups,
   extractSubEpisodeCompiledVideoUrl,
   findSubEpisodesMissingCompiledVideo,
+  partitionProductionEpisodeRange,
   productionEpisodeFilename,
   resolveSubEpisodesForProductionAssembly,
+  validateProductionEpisodeGroupingInput,
   // Vertical Drama Render Queue plan §4.2 Wave 3 — the ffmpeg-orchestration
   // behavior tests below (render-options/bgm/credits/overlays) now call this
   // directly (it is unchanged by that wave), since
@@ -250,6 +252,33 @@ describe("chunkSubEpisodesIntoGroups", () => {
   it("orders sub-episodes by episodeNumber before chunking, regardless of input order", () => {
     const groups = chunkSubEpisodesIntoGroups(bySubEp([3, 1, 5, 2, 4]), 5);
     expect(groups).toEqual([[1, 2, 3, 4, 5].map(episodeNumber => ({ episodeNumber }))]);
+  });
+});
+
+describe("Production Episode range grouping", () => {
+  it("requires at least three Sub-Episodes per Production Episode", () => {
+    expect(() =>
+      validateProductionEpisodeGroupingInput({
+        startSubEpisode: 1,
+        endSubEpisode: 3,
+        subEpisodesPerProductionEpisode: 2,
+      })
+    ).toThrow("vertical_drama_production_group_size_must_be_3_to_50");
+  });
+
+  it("partitions the selected range and marks a short remainder", () => {
+    expect(
+      partitionProductionEpisodeRange({
+        startSubEpisode: 1,
+        endSubEpisode: 10,
+        subEpisodesPerProductionEpisode: 3,
+      })
+    ).toEqual([
+      { index: 0, productionEpisodeNumber: 1, subEpisodeNumbers: [1, 2, 3], isRemainder: false },
+      { index: 1, productionEpisodeNumber: 2, subEpisodeNumbers: [4, 5, 6], isRemainder: false },
+      { index: 2, productionEpisodeNumber: 3, subEpisodeNumbers: [7, 8, 9], isRemainder: false },
+      { index: 3, productionEpisodeNumber: 4, subEpisodeNumbers: [10], isRemainder: true },
+    ]);
   });
 });
 

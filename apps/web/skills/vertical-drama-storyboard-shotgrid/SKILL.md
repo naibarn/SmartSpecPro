@@ -54,6 +54,26 @@ For every shot, keep physical scene presence and remote callers in separate fiel
 - A `screen_caller_refs` portrait is a reference for the caller's face only: show it solely inside a clearly visible phone, tablet, monitor, or video-call screen. Never render that caller as a physical person in the room, and do not count the caller toward the physical person count.
 - If a shot arrives with an explicit scene/caller assignment from the user, preserve that assignment exactly. Do not reclassify, move, add, or remove a character based on a synopsis mention.
 
+## Shot-local supporting presence — MANDATORY
+
+Use `supporting_presence` for generic visible people or groups who are present in
+THIS shot but are not identity-locked series characters: for example one police
+officer, local villagers, building members, staff, or customers.
+
+- Create an entry only when this shot's own action or visual description visibly
+  places that role/group in the scene (for example: a protagonist brings a
+  police officer into the room, villagers gather to listen, or building members
+  sit together).
+- Do not create a visible entry for a mere mention, historical reference, phone
+  call, television/news reference, off-screen audio, or someone who stays outside
+  the visible frame.
+- Use an exact small-role count (`count: 1`) or a bounded group count such as
+  `{ "min": 3, "max": 5 }`. Keep the smallest count that fulfills the shot.
+- `supporting_presence` is shot-local. Never copy it into another shot and never
+  put generic roles into `characters` or `required_character_refs`.
+- This is text-only and has no portrait identity. A named or recurring person is
+  still generic until the user explicitly promotes that role to a character.
+
 When the synopsis or dialogue says someone is calling, on a phone, on video, remote,
 or not present in the location, put that character id in `screen_caller_refs` and keep
 it out of `characters`/`required_character_refs`.

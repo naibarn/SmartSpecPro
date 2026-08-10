@@ -133,6 +133,59 @@ describe("remapCameraSetupForRequiredCharacters — deterministic multi-characte
 /* -------------------------------------------------------------------------- */
 
 describe("buildStartFrameRenderPlanUserPrompt — required-character frame inclusion", () => {
+  it("includes shot-local supporting groups as text-only constraints", () => {
+    const prompt = buildStartFrameRenderPlanUserPrompt(
+      baseParams({
+        storyboardShots: [
+          {
+            shotNumber: 6,
+            description: "Police arrive and listen to the dispute",
+            cameraSetup: "medium_group_shot, eye_level",
+            characterIds: ["char-1"],
+            durationSeconds: 6,
+            supportingPresence: [
+              {
+                id: "police",
+                role: "police officers",
+                countMin: 2,
+                countMax: 2,
+                visibility: "visible",
+                action: "arrive and listen",
+                source: "auto",
+                confidence: "high",
+                status: "auto_confirmed",
+              },
+            ],
+          },
+        ],
+      })
+    );
+
+    expect(prompt).toContain("SHOT-LOCAL SUPPORTING PRESENCE");
+    expect(prompt).toContain("police officers x2");
+    expect(prompt).toContain("no portrait identity");
+  });
+
+  it("does not render a supporting block for an explicit empty override", () => {
+    const prompt = buildStartFrameRenderPlanUserPrompt(
+      baseParams({
+        storyboardShots: [
+          {
+            shotNumber: 6,
+            description: "The lead stands alone",
+            cameraSetup: "medium, eye_level",
+            characterIds: ["char-1"],
+            durationSeconds: 6,
+            supportingPresence: [],
+            supportingPresenceCustomized: true,
+          },
+        ],
+      })
+    );
+
+    expect(prompt).not.toContain("SHOT-LOCAL SUPPORTING PRESENCE");
+  });
+
   it("byte-identical: a solo-character shot's line is exactly the pre-existing format (regression guard)", () => {
     const prompt = buildStartFrameRenderPlanUserPrompt(
       baseParams({

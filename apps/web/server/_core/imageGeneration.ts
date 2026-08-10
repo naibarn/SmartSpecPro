@@ -18,6 +18,7 @@
 import { storagePut } from "server/storage";
 import { ENV } from "./env";
 import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { prepareImagePromptSafety } from "../services/imagePromptSafetyService";
 
 export type GenerateImageOptions = {
   prompt: string;
@@ -35,6 +36,11 @@ export type GenerateImageResponse = {
 export async function generateImage(
   options: GenerateImageOptions
 ): Promise<GenerateImageResponse> {
+  const safety = await prepareImagePromptSafety({
+    prompt: options.prompt,
+    referenceImageCount: options.originalImages?.length ?? 0,
+    mode: "standard",
+  });
   const runtimeConfig = getCachedAppRuntimeConfig();
   const forgeApiUrl = runtimeConfig.forgeApiUrl || ENV.forgeApiUrl;
   const forgeApiKey = runtimeConfig.forgeApiKey || ENV.forgeApiKey;
@@ -63,7 +69,7 @@ export async function generateImage(
       authorization: `Bearer ${forgeApiKey}`,
     },
     body: JSON.stringify({
-      prompt: options.prompt,
+      prompt: safety.prompt,
       original_images: options.originalImages || [],
     }),
   });

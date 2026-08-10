@@ -30,3 +30,4 @@ export * from "./qualityCriteria";
 export * from "./imagePromptModelFamily";
 export * from "./barrierDialogue";
 export * from "./barrierMultiView";
+export * from "./supportingPresence";

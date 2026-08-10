@@ -1,5 +1,13 @@
 # Learning log
 
+## 2026-08-10 — Temporal scene-prop leakage
+
+- root_cause: rendered continuity text ignored `fromShot`
+- evidence: episode 136 shot 2 persisted prompt explicitly contained the shot 8 handcuff prop
+- fix_pattern: enforce temporal eligibility at typed rendering and again at persisted-text consumers
+- verification: focused Vitest 175/175; repo-wide TypeScript baseline failures separated; scoped diff check passed
+- residual_risk: already-generated images remain unchanged until their prompt/image is regenerated
+
 - Session started with SocratiCode unavailable; bounded shell discovery is the fallback.
 - For video-prompt grounding, the persisted `frame_analysis` position map must
   be treated as an admission contract: retry with an exact lock, then block

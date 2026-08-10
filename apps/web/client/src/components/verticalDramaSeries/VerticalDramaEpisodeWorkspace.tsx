@@ -146,6 +146,7 @@ import {
   type VerticalDramaEpisodePlanSummaryView,
 } from "./VerticalDramaEpisodePlanPanel";
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
+import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 import type {
   RunResult,
   VerticalDramaPipelineStage,
@@ -497,6 +498,11 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     characterRefs: string[]
   ) => void;
+  onSetShotSupportingPresence?: (
+    shotNumber: number,
+    entries: VerticalDramaSupportingPresence[]
+  ) => void;
+  onResetShotSupportingPresence?: (shotNumber: number) => void;
   /** Convert a physical scene + Caller assignment into closed-door dialogue. */
   onSetShotBarrierDialogue?: (
     shotNumber: number,
@@ -519,6 +525,7 @@ export interface VerticalDramaStoryboardPanelData {
     }
   ) => void;
   savingShotCharacterReferencesForShot?: number | null;
+  savingShotSupportingPresenceForShot?: number | null;
   /** See `VerticalDramaStoryboardPanelProps.onSetShotLocation` (Phase D,
    *  location visual bible) — per-shot location override, distinct from the
    *  storyboard's own `distinct_locations[]` grouping. */
@@ -1417,10 +1424,19 @@ export function VerticalDramaEpisodeWorkspace({
           onSetShotScreenCallerReferences={
             storyboardPanel?.onSetShotScreenCallerReferences
           }
+          onSetShotSupportingPresence={
+            storyboardPanel?.onSetShotSupportingPresence
+          }
+          onResetShotSupportingPresence={
+            storyboardPanel?.onResetShotSupportingPresence
+          }
           onSetShotBarrierDialogue={storyboardPanel?.onSetShotBarrierDialogue}
           onSetShotViewMode={storyboardPanel?.onSetShotViewMode}
           savingShotCharacterReferencesForShot={
             storyboardPanel?.savingShotCharacterReferencesForShot
+          }
+          savingShotSupportingPresenceForShot={
+            storyboardPanel?.savingShotSupportingPresenceForShot
           }
           onSetShotLocation={storyboardPanel?.onSetShotLocation}
           onSetShotBarrierReferenceLocation={

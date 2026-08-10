@@ -458,6 +458,7 @@ describe("normalizeVerticalDramaStoredAssetUrl", () => {
     expect(repaired?.clips[0]?.videoTask).toEqual({
       videoUrl: "/api/storage/files/worker-artifacts/3.mp4",
       mediaAssetId: "1296",
+      durabilityStatus: "ready",
     });
     expect(repaired?.clips[1]).toEqual(pack.clips[1]);
     expect(repairVerticalDramaVideoAssetUrls(repaired, resolutions)).toBe(repaired);
@@ -568,6 +569,7 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
     expect(compiled.videoUrl).toContain("/api/storage/files/");
     expect(compiled.shotCount).toBe(2);
     expect(compiled.pendingJobId).toBeUndefined();
+    expect(compiled.error).toBeUndefined();
   });
 
   it("persists a failed status when ffmpeg exits non-zero", async () => {

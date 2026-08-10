@@ -109,12 +109,16 @@ const RemotionVideoLayerSchema = RemotionLayerBaseSchema.extend({
 
 const RemotionTextLayerSchema = RemotionLayerBaseSchema.extend({
   type: z.literal("text"),
-  content: z.string().max(2000),
+  content: z.string().max(8000),
   fontFamily: z.string().trim().min(1).max(160).default("Inter"),
   fontSizePx: z.number().positive().max(1000).default(48),
   color: z.string().trim().min(1).max(64).default("#ffffff"),
   textAlign: z.enum(["left", "center", "right"]).default("center"),
   fontWeight: z.enum(["normal", "bold"]).default("normal"),
+  /** Optional vertical text animation for data-driven end-credit rolls. */
+  animation: z.enum(["none", "scrollUp"]).optional(),
+  animationFromYPercent: z.number().min(-300).max(300).optional(),
+  animationToYPercent: z.number().min(-300).max(300).optional(),
 }).strict();
 
 const RemotionSvgLayerSchema = RemotionLayerBaseSchema.extend({
@@ -127,18 +131,14 @@ const RemotionSvgLayerSchema = RemotionLayerBaseSchema.extend({
         'SVG markup rejected: contains "<script", an event-handler ' +
         'attribute (on*=), or a "javascript:" URI.',
     }),
-  animation: z
-    .enum(["none", "fadeIn", "drawPath", "pulse"])
-    .default("none"),
+  animation: z.enum(["none", "fadeIn", "drawPath", "pulse"]).default("none"),
 }).strict();
 
 const RemotionMotionGraphicLayerSchema = RemotionLayerBaseSchema.extend({
   type: z.literal("motionGraphic"),
   shape: z.enum(["circle", "rect", "triangle", "star"]).default("circle"),
   color: z.string().trim().min(1).max(64).default("#ffffff"),
-  loopAnimation: z
-    .enum(["spin", "pulse", "bounce", "none"])
-    .default("spin"),
+  loopAnimation: z.enum(["spin", "pulse", "bounce", "none"]).default("spin"),
 }).strict();
 
 /** One bounded, registry-resolved procedural visual system. */
@@ -170,7 +170,7 @@ const RemotionScene3dPropValueSchema = z.union([
         kind: z.enum(["enter", "emphasis", "reveal", "transition"]),
         strength: z.number().min(0).max(1).optional(),
       })
-      .strict(),
+      .strict()
   ),
 ]);
 

@@ -76,6 +76,7 @@ import type {
   VerticalDramaDialogueAudioPlan,
   VerticalDramaSeparateTtsPlanItem,
 } from "@shared/verticalDramaSeries/audio";
+import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 import type {
   VerticalDramaAudioLineStatus,
   VerticalDramaDialogueAudioBatchData,
@@ -169,6 +170,26 @@ export function shouldResumeAngleGridPoll(
 ): boolean {
   if (!angleGrid?.pendingTaskId) return false;
   if (angleGrid.imageUrl) return false;
+  if (alreadyResumedShots.has(shotNumber)) return false;
+  if (currentlyPollingShots.has(shotNumber)) return false;
+  return true;
+}
+
+/**
+ * Durable resume guard for a main start-frame image task. Unlike the local
+ * spinner state, this decision is based on the task marker persisted inside
+ * `startFramePlan.frames[]`, so a reload can continue a provider task that is
+ * still queued or processing.
+ */
+export function shouldResumeStartFramePoll(
+  imageTask:
+    | { pendingTaskId?: string; status?: string }
+    | undefined,
+  shotNumber: number,
+  alreadyResumedShots: ReadonlySet<number>,
+  currentlyPollingShots: ReadonlySet<number>
+): boolean {
+  if (!imageTask?.pendingTaskId) return false;
   if (alreadyResumedShots.has(shotNumber)) return false;
   if (currentlyPollingShots.has(shotNumber)) return false;
   return true;
@@ -1464,9 +1485,48 @@ function EpisodeWorkspaceShell({
   const [pollingStartFrameShots, setPollingStartFrameShots] = useState<
     Set<number>
   >(new Set());
+  const startFramePollInFlightRef = useRef<Set<number>>(new Set());
+  const resumedStartFrameShotsRef = useRef<Set<number>>(new Set());
   const awaitStartFramePollKeysRef = useRef<Set<string>>(new Set());
   const resolveMediaAssetForImportMutation =
     trpc.verticalDramaCharacters.resolveMediaAssetForImport.useMutation();
+
+  const persistedStartFrameTaskMutation =
+    trpc.verticalDramaEpisodes.persistStartFrameImageTask.useMutation();
+
+  async function persistStartFrameTask(
+    shotNumber: number,
+    imageTask: {
+      taskId: string;
+      status:
+        | "submitted"
+        | "queued"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "expired";
+      error?: string;
+    }
+  ) {
+    const result = await persistedStartFrameTaskMutation.mutateAsync({
+      seriesId,
+      episodeId,
+      shotNumber,
+      imageTask,
+    });
+    if (!result.persisted && imageTask.status === "submitted") {
+      throw new Error(
+        lang === "th"
+          ? "บันทึกสถานะงานสร้างภาพไม่สำเร็จ งานยังอยู่ใน Media History แต่จะไม่ถูกติดตามบนช็อตนี้"
+          : "The image task was submitted but could not be attached to this shot."
+      );
+    }
+    await utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+      seriesId,
+      episodeId,
+    });
+    return result.persisted;
+  }
 
   /**
    * Image providers, particularly MCP-backed ones, can take substantially
@@ -1532,6 +1592,8 @@ function EpisodeWorkspaceShell({
     shotNumber: number,
     softenLevel = 0
   ) {
+    if (startFramePollInFlightRef.current.has(shotNumber)) return;
+    startFramePollInFlightRef.current.add(shotNumber);
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
     try {
       // Bounded poll (30 min max at 2.5s intervals) — long-running image
@@ -1547,6 +1609,14 @@ function EpisodeWorkspaceShell({
         if (status === "completed") {
           const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
           if (!resultUrl) {
+            await persistStartFrameTask(shotNumber, {
+              taskId,
+              status: "failed",
+              error:
+                lang === "th"
+                  ? "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์"
+                  : "Generation completed without a result URL.",
+            });
             toast.error(
               lang === "th"
                 ? "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์"
@@ -1567,6 +1637,10 @@ function EpisodeWorkspaceShell({
               episodeId,
               shotNumber,
               mediaAssetId: resolved.mediaAssetId,
+            });
+            await persistStartFrameTask(shotNumber, {
+              taskId,
+              status: "completed",
             });
           } catch (err) {
             toast.error(
@@ -1614,6 +1688,11 @@ function EpisodeWorkspaceShell({
             });
             return;
           }
+          await persistStartFrameTask(shotNumber, {
+            taskId,
+            status: "failed",
+            error: errorMessage,
+          });
           toast.error(
             buildVdGenerateFailureToastMessage(failedTask, lang, {
               th: "สร้างภาพล้มเหลว",
@@ -1632,6 +1711,7 @@ function EpisodeWorkspaceShell({
           : "Generation is taking too long — check back later."
       );
     } finally {
+      startFramePollInFlightRef.current.delete(shotNumber);
       setPollingStartFrameShots(prev => {
         const next = new Set(prev);
         next.delete(shotNumber);
@@ -1711,18 +1791,37 @@ function EpisodeWorkspaceShell({
   const generateStartFrameImageMutation =
     trpc.verticalDramaEpisodes.generateStartFrameImage.useMutation({
       onSuccess: (data, variables) => {
-        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
-        if (
-          typeof variables.idempotencyKey === "string" &&
-          awaitStartFramePollKeysRef.current.delete(variables.idempotencyKey)
-        ) {
-          return;
-        }
-        void pollStartFrameTask(
-          data.taskId,
-          variables.shotNumber,
-          variables.softenLevel ?? 0
-        );
+        // The provider task id is the durable source of truth. Persist it
+        // before polling so a reload/navigation cannot orphan a task that is
+        // still queued at Kie.ai.
+        resumedStartFrameShotsRef.current.delete(variables.shotNumber);
+        void (async () => {
+          try {
+            await persistStartFrameTask(variables.shotNumber, {
+              taskId: data.taskId,
+              status: "submitted",
+            });
+            if (
+              typeof variables.idempotencyKey === "string" &&
+              awaitStartFramePollKeysRef.current.delete(variables.idempotencyKey)
+            ) {
+              return;
+            }
+            await pollStartFrameTask(
+              data.taskId,
+              variables.shotNumber,
+              variables.softenLevel ?? 0
+            );
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : lang === "th"
+                  ? "บันทึกสถานะงานสร้างภาพไม่สำเร็จ"
+                  : "Failed to persist the image task status."
+            );
+          }
+        })();
       },
       // Release the immediate click-lock (added synchronously by the button
       // handlers before `.mutate()`, so the button disables the instant it's
@@ -2281,6 +2380,52 @@ function EpisodeWorkspaceShell({
       { enabled }
     );
 
+  /**
+   * The visible busy state is the union of local polling and durable task
+   * markers. This prevents the button from becoming idle when the admission
+   * promise resolves while Kie.ai is still queued/processing, including after
+   * a page reload.
+   */
+  const activeStartFrameShots = useMemo(() => {
+    const active = new Set(pollingStartFrameShots);
+    for (const frame of episodeDetailQuery.data?.startFramePlan?.frames ?? []) {
+      if (frame.imageTask?.pendingTaskId || frame.angleGrid?.pendingTaskId) {
+        active.add(frame.shotNumber);
+      }
+    }
+    return active;
+  }, [
+    episodeDetailQuery.data?.startFramePlan?.frames,
+    pollingStartFrameShots,
+  ]);
+
+  /** Resume main start-frame image tasks after navigation/reload. The
+   * persisted marker remains until the result is linked to the shot, so a
+   * provider task that is still queued is never mistaken for a failed click.
+   */
+  useEffect(() => {
+    const frames = episodeDetailQuery.data?.startFramePlan?.frames ?? [];
+    for (const frame of frames) {
+      const imageTask = frame.imageTask;
+      const shotNumber = frame.shotNumber;
+      if (
+        !shouldResumeStartFramePoll(
+          imageTask,
+          shotNumber,
+          resumedStartFrameShotsRef.current,
+          startFramePollInFlightRef.current
+        )
+      ) {
+        continue;
+      }
+      const taskId = imageTask?.pendingTaskId;
+      if (!taskId) continue;
+      resumedStartFrameShotsRef.current.add(shotNumber);
+      void pollStartFrameTask(taskId, shotNumber);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [episodeDetailQuery.data?.startFramePlan?.frames]);
+
   const updateShotSummaryMutation =
     trpc.verticalDramaSeries.updateEpisodeDraftShot.useMutation({
       onSuccess: async (_data, variables) => {
@@ -2793,6 +2938,52 @@ function EpisodeWorkspaceShell({
       shotNumber,
       characterRefs,
       "screen_caller"
+    );
+  }
+
+  const [savingShotSupportingPresenceForShot, setSavingShotSupportingPresenceForShot] =
+    useState<number | null>(null);
+  const setShotSupportingPresenceMutation =
+    trpc.verticalDramaEpisodes.setShotSupportingPresence.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "อัปเดตคน/กลุ่มประกอบของช็อตนี้แล้ว"
+            : "This shot's supporting people/groups were updated."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotSupportingPresence(
+    shotNumber: number,
+    entries: VerticalDramaSupportingPresence[]
+  ) {
+    setSavingShotSupportingPresenceForShot(shotNumber);
+    setShotSupportingPresenceMutation.mutate(
+      {
+        seriesId,
+        episodeId,
+        shotNumber,
+        supportingPresence: entries as unknown as Array<Record<string, unknown>>,
+        customized: true,
+      },
+      { onSettled: () => setSavingShotSupportingPresenceForShot(null) }
+    );
+  }
+
+  function handleResetShotSupportingPresence(shotNumber: number) {
+    setSavingShotSupportingPresenceForShot(shotNumber);
+    setShotSupportingPresenceMutation.mutate(
+      {
+        seriesId,
+        episodeId,
+        shotNumber,
+        supportingPresence: [],
+        customized: false,
+      },
+      { onSettled: () => setSavingShotSupportingPresenceForShot(null) }
     );
   }
 
@@ -4165,12 +4356,20 @@ function EpisodeWorkspaceShell({
           resolution: selectedImageResolution || undefined,
         };
         if (awaitCompletion) {
-          awaitStartFramePollKeysRef.current.add(idempotencyKey);
-          try {
-            const data =
-              await generateStartFrameImageMutation.mutateAsync(request);
-            await pollStartFrameTask(data.taskId, shotNumber);
-          } finally {
+            awaitStartFramePollKeysRef.current.add(idempotencyKey);
+            try {
+              const data =
+                await generateStartFrameImageMutation.mutateAsync(request);
+              // Keep the scene-ordered path safe even if React Query returns
+              // before the asynchronous onSuccess persistence callback has
+              // finished. The write is idempotent and is guarded server-side
+              // by the task id.
+              await persistStartFrameTask(shotNumber, {
+                taskId: data.taskId,
+                status: "submitted",
+              });
+              await pollStartFrameTask(data.taskId, shotNumber);
+            } finally {
             awaitStartFramePollKeysRef.current.delete(idempotencyKey);
           }
         } else {
@@ -4798,7 +4997,7 @@ function EpisodeWorkspaceShell({
    *  image + prompt elsewhere) and want to place the resulting video file as
    *  this shot's clip video. Uploads via the existing large-file multipart
    *  route (`/api/media-jobs/upload`, same one Media Studio/Storyboard
-   *  Review use), then persists `{ videoUrl, source: "upload" }` onto the
+   *  Review use), then persists `{ videoUrl, mediaAssetId, source: "upload" }` onto the
    *  clip's `videoTask` via the dedicated atomic `persistVideoTask` flow (which
    *  creates a minimal clip/pack first when `clipNumber` has no existing
    *  match) — the player, download, and whole-episode assembly all pick it
@@ -4812,24 +5011,16 @@ function EpisodeWorkspaceShell({
     try {
       const resolver = videoUploadResolverRef.current!;
       const { promise } = resolver.uploadAsset(file);
-      const { uri } = await promise;
+      const { uri, mediaAssetId } = await promise;
       await persistVideoTask(
         clipNumber,
-        { videoUrl: uri, source: "upload" },
+        {
+          videoUrl: uri,
+          ...(mediaAssetId ? { mediaAssetId } : {}),
+          source: "upload",
+        },
         sourceShotNumber
       );
-      if (clipIdentityQcEnabled) {
-        void runClipIdentityQcMutation
-          .mutateAsync({
-            seriesId,
-            episodeId,
-            clipNumber,
-            idempotencyKey: crypto.randomUUID(),
-          })
-          .catch(() => {
-            // Imported clips receive the same advisory QA, fail-open behavior.
-          });
-      }
       toast.success(lang === "th" ? "อัปโหลดวิดีโอสำเร็จ" : "Video uploaded.");
     } catch (err) {
       toast.error(
@@ -6470,7 +6661,7 @@ function EpisodeWorkspaceShell({
               // edited) prompt as-is; do NOT re-author it from the synopsis.
               void handleGeneratePromptAndImage(shotNumber, "single", false);
             },
-            generatingStartFrameImageForShot: pollingStartFrameShots,
+            generatingStartFrameImageForShot: activeStartFrameShots,
             onRunFrameContinuityQc: episodeDetailQuery.data?.flags
               ?.sceneContinuityQc
               ? handleRunFrameContinuityQc
@@ -6570,9 +6761,12 @@ function EpisodeWorkspaceShell({
             onSetShotCharacterReferences: handleSetShotCharacterReferences,
             onSetShotScreenCallerReferences:
               handleSetShotScreenCallerReferences,
+            onSetShotSupportingPresence: handleSetShotSupportingPresence,
+            onResetShotSupportingPresence: handleResetShotSupportingPresence,
             onSetShotBarrierDialogue: handleSetShotBarrierDialogue,
             onSetShotViewMode: handleSetShotViewMode,
             savingShotCharacterReferencesForShot,
+            savingShotSupportingPresenceForShot,
             onSetShotLocation: handleSetShotLocation,
             onSetShotBarrierReferenceLocation:
               handleSetShotBarrierReferenceLocation,
@@ -6701,7 +6895,7 @@ function EpisodeWorkspaceShell({
             onSaveReferenceFramePrompt: handleSaveReferenceFramePrompt,
             onSaveVideoPrompt: handleSaveVideoPrompt,
             onGeneratePromptAndImage: handleGeneratePromptAndImage,
-            generatingPromptAndImageForShot: pollingStartFrameShots,
+            generatingPromptAndImageForShot: activeStartFrameShots,
             qualityReview: episodeDetailQuery.data?.qualityReview ?? null,
             onRunQualityReview: () =>
               runQualityReviewMutation.mutate({

@@ -28,6 +28,16 @@ def _mock_session_with_execute_sequence(*results):
     return session
 
 
+def _image_safety_marker():
+    return {
+        "checked": True,
+        "mode": "standard",
+        "skillId": "image-prompt-safety-rewriter",
+        "skillVersion": "1.0.0",
+        "blocked": False,
+    }
+
+
 def test_provider_prompt_refusals_are_non_retryable():
     error = RuntimeError("500: Image generation failed: Task failed: We're so sorry, but the prompt cannot be processed.")
 
@@ -92,7 +102,11 @@ async def test_generate_image_async_keeps_task_non_terminal_on_exception():
             await _generate_image_async(
                 "task-1",
                 "user-1",
-                {"model": "flux-2.0", "prompt": "hello world"},
+                {
+                    "model": "flux-2.0",
+                    "prompt": "hello world",
+                    "extra_params": {"__prompt_safety": _image_safety_marker()},
+                },
             )
 
     assert task.status == TaskStatus.PROCESSING
@@ -137,7 +151,11 @@ async def test_generate_image_async_persists_provider_task_id_without_final_url(
         result = await _generate_image_async(
             "task-image-submitted",
             "user-1",
-            {"model": "nano-banana-2", "prompt": "hello world"},
+            {
+                "model": "nano-banana-2",
+                "prompt": "hello world",
+                "extra_params": {"__prompt_safety": _image_safety_marker()},
+            },
         )
 
     assert result["status"] == "submitted"

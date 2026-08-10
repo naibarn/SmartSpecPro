@@ -7,8 +7,8 @@ from app.core.celery_app import celery_app
 from app.core.database import AsyncSessionLocal
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.models.user import User
-from app.services.media_task_service import MediaTaskService
 from app.services.media_callback_service import retry_due_callback_events
+from app.services.image_prompt_safety import validate_image_prompt_safety
 from app.services.library_indexing_service import (
     process_library_index_job,
     reindex_all_library_items,
@@ -17,6 +17,7 @@ from app.services.library_indexing_service import (
 from app.services.library_backfill_service import run_library_backfill_batch
 from app.services.media_thumbnail_backfill_service import run_missing_media_thumbnail_backfill_batch
 from app.services.media_debug_trace import write_media_debug_event
+from app.services.media_task_service import MediaTaskService
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
     ImageGenerationRequest,
@@ -1738,6 +1739,7 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
 
             # Create generation request
             request = ImageGenerationRequest(**request_data)
+            validate_image_prompt_safety(request.extra_params)
 
             # Call LLM Gateway
             gateway = LLMGateway(db)

@@ -63,6 +63,7 @@ import {
 } from "./verticalDramaStoryBible";
 import { resolveStoryboardModel } from "./verticalDramaImproveScript";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
+import { resolveVerticalDramaSupportingPresenceForShot } from "@shared/verticalDramaSeries/supportingPresence";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -242,6 +243,30 @@ const storyboardShotSchema = z
     characters: z.array(z.string()),
     required_character_refs: z.array(z.string()),
     screen_caller_refs: z.array(z.string()).default([]),
+    /** Generic visible people/groups; never identity-locked character refs. */
+    supporting_presence: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            role: z.string().min(1),
+            count: z.union([
+              z.number().int().positive(),
+              z.object({ min: z.number().int().positive(), max: z.number().int().positive() }),
+            ]).optional(),
+            countMin: z.number().int().positive().optional(),
+            countMax: z.number().int().positive().optional(),
+            count_min: z.number().int().positive().optional(),
+            count_max: z.number().int().positive().optional(),
+            visibility: z.enum(["visible", "background"]).optional(),
+            action: z.string().optional(),
+            evidence: z.string().optional(),
+            confidence: z.enum(["high", "medium", "low"]).optional(),
+            status: z.enum(["suggestion", "auto_confirmed", "accepted"]).optional(),
+          })
+          .passthrough()
+      )
+      .default([]),
     view_mode: z.enum(["single", "dual"]).optional(),
     dual_view: z
       .object({
@@ -798,6 +823,13 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     existingLocationsInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"). "required_character_refs" means characters physically visible in the primary room/scene only. For a caller who is heard or shown only through a phone/video-call screen, put the character id in "screen_caller_refs" instead; never put that caller in "required_character_refs". The caller's approved portrait will still be attached and the image prompt must show that portrait only inside the visible call screen:\n${characterLines}`,
     [
+      "SHOT-LOCAL SUPPORTING PRESENCE (MANDATORY PER SHOT):",
+      "Use supporting_presence for generic visible people or groups who are present in THIS shot but are not identity-locked series characters, such as one police officer, local villagers, building members, staff, or customers.",
+      "Only add a supporting_presence entry when THIS shot's own action or visual description visibly places that role/group in the scene (for example: brings a police officer into the room, villagers gather to listen, building members sit together). Do not add one for a mere mention, a historical reference, a phone call, television/news, off-screen audio, or a person who stays outside the visible frame.",
+      "Use an exact count for a small named role (count: 1). Use a bounded count object such as {min: 3, max: 5} for a group. Keep the count as small as the shot requires, no more than 6 entries, and mark visibility as visible or background.",
+      "supporting_presence is shot-local: never copy it to another shot and never put generic roles into characters or required_character_refs. If a supporting person has a specific name and becomes a speaking/recurring character, keep the role generic for now and let the user promote it explicitly later.",
+    ].join("\n"),
+    [
       "DUAL VIEW DETECTION (MANDATORY PER SHOT):",
       "Set view_mode=dual only when this one logical shot must cut between TWO distinct physical views/environments; otherwise set view_mode=single and omit dual_view.",
       "Dual scenarios: physical_barrier (opposite sides of a closed door/wall/glass), remote_call (phone/video call where the edit shows each participant physically in their own environment), separate_locations (cross-cut dialogue or parallel action in different places).",
@@ -1035,6 +1067,14 @@ export async function generateStoryboardShotgrid(
     shot.characters = resolvedIds;
     shot.required_character_refs = resolvedIds;
     shot.screen_caller_refs = resolvedCallerIds;
+    // Generic people/groups are a separate text-only contract. Normalize the
+    // LLM output here so invalid ids/fields cannot leak into the persisted
+    // storyboard, while preserving the shot-local boundary.
+    shot.supporting_presence = resolveVerticalDramaSupportingPresenceForShot(
+      shot.supporting_presence,
+      shot,
+      { idPrefix: `shot-${shot.shot_number}-supporting` }
+    ) as unknown as typeof shot.supporting_presence;
   }
 
   // `storyboard_handoff_json` deterministic reconstruction (root-cause fix,

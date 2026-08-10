@@ -221,10 +221,17 @@ export function VerticalDramaEpisodePreviewPanel({
     try {
       const upload = coverAssetResolverRef.current.uploadAsset(file);
       const result = await upload.promise;
+      if (!result.mediaAssetId) {
+        throw new Error(
+          lang === "th"
+            ? "อัปโหลดหน้าปกไม่สำเร็จ: ไม่พบ media asset ID"
+            : "Cover upload failed: the server did not return a media asset ID",
+        );
+      }
       setCoverAssetMutation.mutate({
         seriesId,
         episodeId,
-        mediaAssetId: result.assetId,
+        mediaAssetId: result.mediaAssetId,
       });
     } catch (error) {
       setUploadingCover(false);

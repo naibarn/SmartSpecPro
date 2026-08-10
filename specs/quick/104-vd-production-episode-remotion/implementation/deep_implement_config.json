@@ -1,0 +1,25 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/104-vd-production-episode-remotion/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/104-vd-production-episode-remotion/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-and-remotion-contract",
+    "section-02-server-orchestration-and-job-reconciliation",
+    "section-03-production-episode-ui",
+    "section-04-verification"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-10T00:09:11.131381+00:00"
+}

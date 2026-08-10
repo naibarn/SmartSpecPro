@@ -2436,6 +2436,9 @@ export function buildShotVideoPromptUserPrompt(
     nativeAudioDialogue
       ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — when dialogue is present, embed the ${dialogueLanguageName} line(s) VERBATIM in the prompt (written in ${promptLanguageName} elsewhere, but the quoted spoken line itself stays in ${dialogueLanguageName}) with matching mouth/lip movement and delivery direction, and return them again in the "dialogue" array.`
       : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — when dialogue is present, describe mouth movement + acting direction only (in ${promptLanguageName}, no literal transcript in the prompt), and return the resolved ${dialogueLanguageName} lines in the "dialogue" array so the caller can route them to text-to-speech.`,
+    nativeAudioDialogue
+      ? `SPOKEN-TEXT BOUNDARY (MANDATORY): every quoted spoken utterance in "prompt" must contain ONLY the exact source line text from the "Dialogue for this shot" facts. Keep the speaker's display name and characterKey outside the quotation as attribution immediately before it; NEVER copy either label into the quoted spoken text (for example, write ภาคิน says: "หยุด คุณไปไหนไม่ได้แล้ว", never "ภาคินหยุด คุณไปไหนไม่ได้แล้ว").`
+      : null,
     // Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt
     // option) — states `native_audio: true` verbatim so the skill's
     // conditional NATIVE AUDIO DIRECTION section activates (see
@@ -2487,6 +2490,56 @@ export function promptEmbedsDialogueVerbatim(
     const normalizedLine = normalize(line.lineTh);
     return normalizedLine.length > 0 && normalizedPrompt.includes(normalizedLine);
   });
+}
+
+/**
+ * Removes a speaker label that a weak model accidentally copied into the
+ * spoken-text quote, e.g. `"ภาคินหยุด คุณไปไหนไม่ได้แล้ว"` when the canonical
+ * line is `"หยุด คุณไปไหนไม่ได้แล้ว"`.
+ *
+ * Speaker names remain available outside the quote for face/lip-sync binding.
+ * This intentionally only changes a quote whose contents begin with a known
+ * speaker label immediately followed by the exact canonical line; it never
+ * rewrites free-form prose or guesses at paraphrased dialogue.
+ */
+export function sanitizeEmbeddedDialogueSpeakerLabels(
+  prompt: string,
+  dialogueLines: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
+): string {
+  let sanitized = prompt;
+  const candidates = dialogueLines
+    .flatMap(line => [line.speakerName, line.characterKey]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map(speaker => ({ speaker: speaker.trim(), lineTh: line.lineTh.trim() })))
+    .filter(candidate => candidate.lineTh.length > 0)
+    .sort((a, b) => b.speaker.length - a.speaker.length);
+
+  for (const { speaker, lineTh } of candidates) {
+    const speakerPattern = speaker
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(token => token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("\\s+");
+    const linePattern = lineTh
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(token => token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("\\s+");
+    if (!speakerPattern || !linePattern) continue;
+
+    // Match only quoted speech. The optional punctuation/whitespace supports
+    // the common weak-model variants: `NameLine`, `Name: Line`, and
+    // `Name — Line`, while preserving the quote style used by the model.
+    const contaminatedQuote = new RegExp(
+      `(["“])\\s*${speakerPattern}\\s*(?:(?:[:：]|[-—])\\s*)?${linePattern}\\s*(["”])`,
+      "gu",
+    );
+    sanitized = sanitized.replace(contaminatedQuote, (_match, opening, closing) =>
+      `${opening}${lineTh}${closing}`,
+    );
+  }
+
+  return sanitized;
 }
 
 /** Deterministic full-source block after the LLM compliance retry. */
@@ -2654,6 +2707,26 @@ export async function generateVerticalDramaShotVideoPrompt(
     retryMaxTokens: 4000,
   });
 
+  // Keep the source dialogue authoritative when a weak model copies the
+  // speaker label into the quoted speech. This is deliberately limited to
+  // source-backed native-audio lines; it never touches inferred dialogue or
+  // the separate speaker/character identity mapping.
+  const sourceDialogueForSanitization = params.shotContext.beatIsSilent
+    ? []
+    : (params.shotContext.dialogueLines ?? []);
+  if (nativeAudioDialogue && sourceDialogueForSanitization.length > 0) {
+    const sanitizedPrompt = sanitizeEmbeddedDialogueSpeakerLabels(
+      outcome.data.prompt,
+      sourceDialogueForSanitization,
+    );
+    if (sanitizedPrompt !== outcome.data.prompt) {
+      outcome = {
+        ...outcome,
+        data: { ...outcome.data, prompt: sanitizedPrompt },
+      };
+    }
+  }
+
   // Verbatim-embedding compliance check (2026-07-07 fix): the model was
   // correctly instructed that the selected video model has native lip-synced
   // audio and to quote the line(s) verbatim, but weaker models (e.g. "nano"
@@ -2743,15 +2816,25 @@ export async function generateVerticalDramaShotVideoPrompt(
         maxTokens: 2000,
         schema: shotVideoPromptOutputSchema,
       });
+      const sanitizedCorrectedPrompt = nativeAudioDialogue
+        ? sanitizeEmbeddedDialogueSpeakerLabels(
+            correctedOutcome.data.prompt,
+            sourceDialogueForSanitization,
+          )
+        : correctedOutcome.data.prompt;
+      const correctedData =
+        sanitizedCorrectedPrompt === correctedOutcome.data.prompt
+          ? correctedOutcome.data
+          : { ...correctedOutcome.data, prompt: sanitizedCorrectedPrompt };
       // Dialogue-verbatim adoption stays a hard gate, unchanged from before
       // this fix: never adopt a corrected response that regresses verbatim
       // dialogue embedding, even when the SAME retry was also asked to fix
       // position anchors.
       if (
         !nativeAudioDialogue ||
-        promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogueForRetry)
+        promptEmbedsDialogueVerbatim(correctedData.prompt, dialogueForRetry)
       ) {
-        outcome = { ...correctedOutcome, usedVision: hasVision };
+        outcome = { ...correctedOutcome, data: correctedData, usedVision: hasVision };
       }
       // If the corrective retry still misses a generic anchor, keep the
       // original (still schema-valid) outcome. Explicit position
@@ -3150,6 +3233,9 @@ function buildSpeakerSwitchUserPrompt(
     nativeAudioDialogue
       ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — at the point in "prompt" where each segment is narrated, embed that segment's dialogue line(s) VERBATIM (in the SPEECH LANGUAGE) with matching mouth/lip movement and delivery direction, and return every line again, in chronological order across all segments, in the "dialogue" array.`
       : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — describe mouth movement + acting direction only in "prompt" (in the PROMPT LANGUAGE, no literal transcript embedded), and return the resolved ${dialogueLanguageName} lines, in chronological order across all segments, in the "dialogue" array so the caller can route them to text-to-speech.`,
+    nativeAudioDialogue
+      ? `SPOKEN-TEXT BOUNDARY (MANDATORY): every quoted spoken utterance in "prompt" must contain ONLY the exact source line text from the timed segment facts. Keep each segment speaker's display name and characterKey outside the quotation as attribution immediately before it; NEVER copy a speaker label into the quoted spoken text (for example, write ภาคิน says: "หยุด คุณไปไหนไม่ได้แล้ว", never "ภาคินหยุด คุณไปไหนไม่ได้แล้ว").`
+      : null,
     nativeAudioDirectionEnabled
       ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot (ONCE for the whole shot, not per segment): SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
       : null,
@@ -3314,6 +3400,22 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     retryMaxTokens: 6000,
   });
 
+  // Source-backed native dialogue is authoritative. Repair only the narrow
+  // failure where a model prefixes a quoted line with its speaker label;
+  // speaker identity remains intact in the separate dialogue/segment facts.
+  if (nativeAudioDialogue && dialogueForBlock.length > 0) {
+    const sanitizedPrompt = sanitizeEmbeddedDialogueSpeakerLabels(
+      outcome.data.prompt,
+      dialogueForBlock,
+    );
+    if (sanitizedPrompt !== outcome.data.prompt) {
+      outcome = {
+        ...outcome,
+        data: { ...outcome.data, prompt: sanitizedPrompt },
+      };
+    }
+  }
+
   const dialogueVerbatimMissing =
     nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, dialogue);
 
@@ -3373,14 +3475,21 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         maxTokens: 3000,
         schema: shotVideoPromptOutputSchema,
       });
+      const sanitizedCorrectedPrompt = nativeAudioDialogue
+        ? sanitizeEmbeddedDialogueSpeakerLabels(correctedOutcome.data.prompt, dialogueForBlock)
+        : correctedOutcome.data.prompt;
+      const correctedData =
+        sanitizedCorrectedPrompt === correctedOutcome.data.prompt
+          ? correctedOutcome.data
+          : { ...correctedOutcome.data, prompt: sanitizedCorrectedPrompt };
       // Dialogue-verbatim adoption stays a hard gate, unchanged from before
       // this fix — see `generateVerticalDramaShotVideoPrompt`'s identical
       // block above.
       if (
         !nativeAudioDialogue ||
-        promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogue)
+        promptEmbedsDialogueVerbatim(correctedData.prompt, dialogue)
       ) {
-        outcome = { ...correctedOutcome, usedVision: hasVision };
+        outcome = { ...correctedOutcome, data: correctedData, usedVision: hasVision };
       }
     } catch {
       // Deterministic append below still guarantees the dialogue-verbatim
