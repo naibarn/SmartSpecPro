@@ -101,7 +101,7 @@ describe("renderMedia call sites", () => {
       ).length - 1;
 
     expect(source).toContain(
-      "const REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS = 120_000;",
+      "REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS;",
     );
     expect(timeoutCalls).toBe(renderMediaCalls);
   });

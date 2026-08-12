@@ -16,10 +16,10 @@ import { createHash } from "node:crypto";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// eslint-disable-next-line import/no-relative-packages -- the sidecar script
-// lives in a sibling app (`apps/worker-app`), not a workspace package; this
-// is the same file the Rust worker loop spawns via `node render.mjs`.
-import { runRenderVideoMode } from "../../../../worker-app/runtime-pack/remotion-sidecar/render.mjs";
+// eslint-disable-next-line import/no-relative-packages -- the tracked sidecar
+// source lives in a sibling app (`apps/worker-app`), not a workspace package;
+// the runtime-release packager copies this exact file to the Rust-spawned path.
+import { runRenderVideoMode } from "../../../../worker-app/runtime-sidecar-remotion/render.mjs";
 
 const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION = "2026-07-12";
 const REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION = "remotion-1";
@@ -222,6 +222,77 @@ describe("remotion-sidecar render.mjs — runRenderVideoMode", () => {
     // valid, documented member of `REMOTION_RENDER_VIDEO_FAILURE_CODES`.
     expect(failed!.failureCode).toBe("render_failed");
     expect(failed!.message).toContain("Asset checksum mismatch");
+  });
+
+  it("retries a transient render failure and completes without emitting an error", async () => {
+    const payloadPath = join(dir, "payload.json");
+    writeFileSync(payloadPath, JSON.stringify(buildPayload()));
+    const finalMp4Path = join(dir, "fake-render.mp4");
+    writeFakeMp4(finalMp4Path);
+
+    const events: Array<{ eventType: string; [key: string]: unknown }> = [];
+    const emitWorkerEvent = (eventType: string, payload: Record<string, unknown> = {}) => {
+      events.push({ eventType, ...payload });
+    };
+    const executeRemotionRenderVideoJob = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("A delayRender() fetch timed out from the storage proxy"))
+      .mockResolvedValueOnce({
+        outputArtifactRef: { url: finalMp4Path, key: "render.mp4" },
+        artifacts: [{ artifactType: "remotion_render_probe_report", inline: { durationSec: 2 } }],
+      });
+
+    const result = await runRenderVideoMode(
+      { payloadPath, workspace: join(dir, "ws"), outputDir: join(dir, "out") },
+      {
+        emitWorkerEvent,
+        executeRemotionRenderVideoJob,
+        sleep: vi.fn(async () => {}),
+        resolveRuntimePackPaths: () => ({
+          ffmpegPath: "ffmpeg",
+          ffprobePath: "ffprobe",
+          browserExecutable: undefined,
+        }),
+        probeDurationSeconds: async () => 2,
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(executeRemotionRenderVideoJob).toHaveBeenCalledTimes(2);
+    expect(events.some(event => event.eventType === "progress" && String(event.message).includes("retrying attempt 2/3"))).toBe(true);
+    expect(events.some(event => event.eventType === "failed")).toBe(false);
+  });
+
+  it("emits one terminal failure only after transient retries are exhausted", async () => {
+    const payloadPath = join(dir, "payload.json");
+    writeFileSync(payloadPath, JSON.stringify(buildPayload()));
+
+    const events: Array<{ eventType: string; [key: string]: unknown }> = [];
+    const emitWorkerEvent = (eventType: string, payload: Record<string, unknown> = {}) => {
+      events.push({ eventType, ...payload });
+    };
+    const executeRemotionRenderVideoJob = vi
+      .fn()
+      .mockRejectedValue(new Error("A delayRender() fetch timed out from the storage proxy"));
+
+    const result = await runRenderVideoMode(
+      { payloadPath, workspace: join(dir, "ws"), outputDir: join(dir, "out") },
+      {
+        emitWorkerEvent,
+        executeRemotionRenderVideoJob,
+        sleep: vi.fn(async () => {}),
+        resolveRuntimePackPaths: () => ({
+          ffmpegPath: "ffmpeg",
+          ffprobePath: "ffprobe",
+          browserExecutable: undefined,
+        }),
+      },
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(executeRemotionRenderVideoJob).toHaveBeenCalledTimes(3);
+    expect(events.filter(event => event.eventType === "failed")).toHaveLength(1);
+    expect(events.at(-1)).toMatchObject({ eventType: "failed", failureCode: "render_failed" });
   });
 
   it("fails closed with contract_version_unsupported on an invalid payload", async () => {

@@ -21,6 +21,9 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
   REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+  REMOTION_RENDER_VIDEO_MAX_ATTEMPTS,
+  REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS,
+  REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS,
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES,
@@ -1785,7 +1788,10 @@ export interface QueueRemotionRenderVideoJobInput extends RemotionRenderVideoWor
   isAdminRequester?: boolean;
 }
 
-const REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS = 900;
+// The sidecar owns bounded transient retries: 3 x 10 minutes per attempt plus 20s/60s
+// backoff. Keep the worker lease/orphan budget at one hour so a job can spend
+// the expected 30-35 minutes recovering without being marked abandoned.
+const REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS = 60 * 60;
 const REMOTION_RENDER_VIDEO_DEFAULT_CREDITS = 5;
 
 function buildRemotionRenderVideoIdempotencyKey(input: {
@@ -1817,10 +1823,14 @@ function estimateRemotionRenderVideoCredits(input: RemotionRenderVideoWorkerInpu
 
 function computeRemotionRenderVideoTimeoutSeconds(input: RemotionRenderVideoWorkerInput): number {
   const durationSec = input.durationInFrames / Math.max(1, input.renderProfile.fps);
+  const sidecarRetryBudgetSeconds =
+    (REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS / 1000) * REMOTION_RENDER_VIDEO_MAX_ATTEMPTS +
+    REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS.reduce((sum, delayMs) => sum + delayMs / 1000, 0) +
+    120;
   // Heuristic: real render + post-passes budget, ~4x realtime plus a fixed
-  // overhead, floored at REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS (15 min).
+  // overhead, floored at the bounded sidecar retry budget and one hour.
   const scaled = Math.ceil(durationSec * 4) + 120;
-  return Math.max(REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS, scaled);
+  return Math.max(REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS, sidecarRetryBudgetSeconds, scaled);
 }
 
 /**
@@ -1924,6 +1934,10 @@ export async function queueRemotionRenderVideoJob(
 
   const capabilityFamilies = [...REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES];
   const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
+  const timeoutSeconds = Math.max(
+    computeRemotionRenderVideoTimeoutSeconds(input),
+    rawInput.timeoutSeconds ?? 0,
+  );
   const billing = rawInput.requestedByUserId
     ? await reserveCredits({
         userId: rawInput.requestedByUserId,
@@ -1972,10 +1986,15 @@ export async function queueRemotionRenderVideoJob(
         requiredProgressStages: [...REMOTION_RENDER_VIDEO_PROGRESS_STAGES],
         workerBilling: buildWorkerBillingMetadata(billing),
       },
-      timeoutSeconds: rawInput.timeoutSeconds ?? computeRemotionRenderVideoTimeoutSeconds(input),
+      timeoutSeconds,
       retryPolicyJson: {
-        maxAttempts: 2,
-        backoffSeconds: 120,
+        // Do not re-create the worker job for a renderer hiccup. The sidecar
+        // performs the bounded three-attempt retry while retaining one job id
+        // and one credit reservation.
+        maxAttempts: 1,
+        backoffSeconds: 0,
+        sidecarMaxAttempts: REMOTION_RENDER_VIDEO_MAX_ATTEMPTS,
+        sidecarBackoffSeconds: REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS.map(ms => ms / 1000),
       },
       idempotencyKey,
     });

@@ -1299,6 +1299,7 @@ describe("reconcileVdRemotionAssembly", () => {
   /* ---------------------------------------------------------------------- */
 
   it("is a no-op while still queued and within the TTL", async () => {
+    expect(VD_REMOTION_QUEUED_TTL_MS).toBe(60 * 60 * 1000);
     episodeRow = {
       assemblyManifest: {
         compiledVideo: { status: "pending", pendingJobId: "job-3" },

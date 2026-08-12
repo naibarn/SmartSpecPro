@@ -78,6 +78,16 @@ export const REMOTION_RENDER_VIDEO_FAILURE_CODES = [
   ...remotionRenderVideoFailureCodeValues,
 ];
 
+/**
+ * Runtime policy for the Worker App sidecar. These values are part of the
+ * shared contract so the server's job timeout and the installed sidecar do
+ * not silently drift apart.
+ */
+export const REMOTION_RENDER_VIDEO_MAX_ATTEMPTS = 3;
+export const REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS = [20_000, 60_000] as const;
+export const REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS = 10 * 60 * 1000;
+export const REMOTION_RENDER_VIDEO_QUEUED_TTL_MS = 60 * 60 * 1000;
+
 // Feature 144 procedural motion contract bump (2026-08-04.2): bounded
 // `motionComposition` layers and the registered procedural renderer set are
 // now part of the worker payload schema. This stays separate from the prior

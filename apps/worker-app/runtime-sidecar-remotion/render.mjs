@@ -57,6 +57,9 @@ import {
   executeRemotionRenderVideoJob,
   RemotionRenderVideoJobError,
   REMOTION_RENDER_VIDEO_FAILURE_CODES,
+  REMOTION_RENDER_VIDEO_MAX_ATTEMPTS,
+  REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS,
+  REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS,
   defaultFfmpegRunner,
   probeDurationSeconds,
 } from "@smartspec/remotion-render/render-video-job";
@@ -71,7 +74,8 @@ function loadCompositionApi() {
 // The default 28-second delayRender window is too short for production media
 // fetched through the Remotion proxy, while the surrounding Worker job already
 // has a much larger execution timeout.
-const REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS = 120_000;
+const REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS =
+  REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS;
 
 /**
  * Whether Remotion may hand H.264 encoding to the GPU.
@@ -327,6 +331,56 @@ function resolveRenderVideoFailureCode(error) {
 }
 
 /**
+ * A failed sidecar attempt is not automatically a failed user job. Remote
+ * storage proxies and Chromium can fail transiently while the same render is
+ * still perfectly valid. Keep the retry decision here, at the sidecar
+ * boundary, so retrying never creates a second worker job or reserves credits
+ * again. Permanent input/contract/output errors must fail immediately.
+ */
+export function isRetryableRemotionRenderFailure(error, failureCode = resolveRenderVideoFailureCode(error)) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const lower = message.toLowerCase();
+
+  if (
+    /checksum mismatch|http\s+(400|401|403|404|410)\b|not found|invalid payload|unsupported|missing composition|missing required|outside the worker workspace|host allowlist|url rejected|unauthorized|forbidden|output too small|missing ftyp/.test(
+      lower,
+    )
+  ) {
+    return false;
+  }
+
+  if (failureCode === "contract_version_unsupported" || failureCode === "composition_select_failed") {
+    return false;
+  }
+
+  if (failureCode === "server_verification_failed") {
+    return /timeout|timed out|probe|temporar|econn|socket|network|i\/o|busy/.test(lower);
+  }
+
+  if (failureCode === "asset_stage_failed" || failureCode === "artifact_upload_failed") {
+    return true;
+  }
+
+  if (failureCode === "chromium_launch_failed" || failureCode === "render_failed") {
+    return true;
+  }
+
+  if (failureCode === "post_pass_failed") {
+    return /timeout|timed out|temporar|econn|socket|network|i\/o|busy|resource/.test(lower);
+  }
+
+  return /timeout|timed out|delayrender|fetch|network|econn|etimedout|socket|proxy|429|502|503|504|temporar/.test(
+    lower,
+  );
+}
+
+function sleepForRetry(delayMs, sleep) {
+  if (delayMs <= 0) return Promise.resolve();
+  if (sleep) return sleep(delayMs);
+  return new Promise(resolve => setTimeout(resolve, delayMs));
+}
+
+/**
  * `render-video` mode body — deliberately dependency-injected (`deps`
  * defaults to the real imports/`resolveRuntimePackPaths`/`emitWorkerEvent`)
  * so a test can exercise this exact function with a mocked
@@ -349,6 +403,7 @@ export async function runRenderVideoMode(
   const readFile = deps.readFileSync ?? readFileSync;
   const hashSha256 = deps.sha256 ?? (bytes => createHash("sha256").update(bytes).digest("hex"));
   const probeDuration = deps.probeDurationSeconds ?? probeDurationSeconds;
+  const sleep = deps.sleep;
 
   if (!payloadPath || !workspace || !outputDir) {
     throw new Error("render-video requires --payload, --workspace, and --output-dir");
@@ -380,21 +435,40 @@ export async function runRenderVideoMode(
   process.env.FFPROBE_PATH = ffprobePath;
 
   try {
-    const result = await execJob(
-      {
-        tenantId: null,
-        runId: payload.videoProjectId,
-        renderJobId: `sidecar-${Date.now()}`,
-        payload,
-        workspaceRoot: workspace,
-      },
-      {
-        render: deps.render ?? makeRenderVideoRenderFn(browserExecutable),
-        ffmpeg: deps.ffmpeg ?? defaultFfmpegRunner,
-        storagePut: deps.storagePut ?? makeLocalStoragePut(outputDir),
-        emitEvent: event => emit("progress", { stage: event.stage, message: event.message }),
-      },
-    );
+    let result;
+    for (let attempt = 1; attempt <= REMOTION_RENDER_VIDEO_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        result = await execJob(
+          {
+            tenantId: null,
+            runId: payload.videoProjectId,
+            renderJobId: `sidecar-${Date.now()}-attempt-${attempt}`,
+            payload,
+            workspaceRoot: workspace,
+          },
+          {
+            render: deps.render ?? makeRenderVideoRenderFn(browserExecutable),
+            ffmpeg: deps.ffmpeg ?? defaultFfmpegRunner,
+            storagePut: deps.storagePut ?? makeLocalStoragePut(outputDir),
+            emitEvent: event => emit("progress", { stage: event.stage, message: event.message }),
+          },
+        );
+        break;
+      } catch (error) {
+        const failureCode = resolveRenderVideoFailureCode(error);
+        const canRetry =
+          attempt < REMOTION_RENDER_VIDEO_MAX_ATTEMPTS &&
+          isRetryableRemotionRenderFailure(error, failureCode);
+        if (!canRetry) throw error;
+
+        const delayMs = REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS[attempt - 1] ?? 60_000;
+        emit("progress", {
+          stage: "render_frames",
+          message: `Transient Remotion failure (${failureCode}); retrying attempt ${attempt + 1}/${REMOTION_RENDER_VIDEO_MAX_ATTEMPTS} after ${Math.ceil(delayMs / 1000)}s.`,
+        });
+        await sleepForRetry(delayMs, sleep);
+      }
+    }
 
     const outputPath = result.outputArtifactRef.url;
     const bytes = readFile(outputPath);

@@ -30,7 +30,7 @@
  * `smartspec-web`'s cgroup — guaranteed OOM, see
  * `verticalDramaAssemblyCgroupThrottle` memory note). The queued job sits in
  * `workerJobs` awaiting a Lane B (worker-app) claim; `reconcileVdRemotionAssembly`
- * falls back on a queued-TTL timeout (no reconstructible `renderFeed` to
+ * falls back only after a 60-minute queued-TTL timeout (no reconstructible `renderFeed` to
  * re-queue against ffmpeg, so the fallback marks `compiledVideo` failed with
  * a Thai message asking the user to re-run assembly without the Remotion
  * toggle — see that function's doc comment).
@@ -71,6 +71,7 @@ import {
 import {
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+  REMOTION_RENDER_VIDEO_QUEUED_TTL_MS,
   type RemotionRenderVideoWorkerInput,
 } from "../../shared/workerRuntime";
 import {
@@ -1271,7 +1272,7 @@ export async function submitVdRemotionAssembly(
 
   // No Lane A in-process dispatch here (see this file's header doc comment)
   // — the job just sits `queued` in `workerJobs` for a Lane B worker-app to
-  // claim. `reconcileVdRemotionAssembly` falls back if it isn't claimed
+  // claim. `reconcileVdRemotionAssembly` falls back only if it isn't claimed
   // within the queued TTL (`VD_REMOTION_QUEUED_TTL_MS`).
 
   await persistCompiledVideoState(input.owner, {
@@ -1281,7 +1282,7 @@ export async function submitVdRemotionAssembly(
     // Additive on `CompiledVideoState` — the ONLY marker
     // `reconcileVdRemotionAssembly` needs to know which queue to poll.
     renderEngine: "remotion_queue",
-    // Stamped so the queued-TTL fallback in `reconcileVdRemotionAssembly`
+    // Stamped so the 60-minute queued-TTL fallback in `reconcileVdRemotionAssembly`
     // knows how long this job has been waiting for a Lane B claim.
     renderSubmittedAt: Date.now(),
   });
@@ -1808,14 +1809,14 @@ export interface ReconcileVdRemotionAssemblyResult {
  * tests. Distinct from any Lane-A/legacy render-timeout constant — this one
  * governs "was this ever picked up at all", not "did the render itself hang".
  */
-export const VD_REMOTION_QUEUED_TTL_MS = 10 * 60 * 1000;
+export const VD_REMOTION_QUEUED_TTL_MS = REMOTION_RENDER_VIDEO_QUEUED_TTL_MS;
 
 /**
  * Polls the `worker_jobs` row a `submitVdRemotionAssembly` call created and,
  * on terminal status, writes the SAME `assemblyManifest.compiledVideo` shape
  * the ffmpeg path writes (contract-identical downstream — every existing
  * reader of `compiledVideo` keeps working unmodified). No-op (and reports
- * `reconciled: false`) while the job is still queued (within the TTL) or
+ * `reconciled: false`) while the job is still queued (within the 60-minute TTL) or
  * running. Called from `getEpisodeDetail`'s read path (the workspace's
  * existing "poll while a compile job is pending" convention) whenever
  * `compiledVideo.status === "pending"` and

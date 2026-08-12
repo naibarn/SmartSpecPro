@@ -106,8 +106,17 @@ describe("queueRemotionRenderVideoJob", () => {
         runtimeType: "desktop_zeroclaw_managed",
         status: "queued",
         resourceProfile: "cpu_heavy",
+        timeoutSeconds: expect.any(Number),
+        retryPolicyJson: {
+          maxAttempts: 1,
+          backoffSeconds: 0,
+          sidecarMaxAttempts: 3,
+          sidecarBackoffSeconds: [20, 60],
+        },
       }),
     );
+    const inserted = repo.insertJob.mock.calls[0]![0] as Record<string, unknown>;
+    expect(inserted.timeoutSeconds).toBeGreaterThanOrEqual(60 * 60);
   });
 
   it("rejects invalid input with a specific schema-parse error, never a blanket message", async () => {
