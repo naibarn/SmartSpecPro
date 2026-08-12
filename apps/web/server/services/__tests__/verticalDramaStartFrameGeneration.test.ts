@@ -447,7 +447,7 @@ describe("projectStartFramePlan", () => {
   // plan's frames at all. `previousFramesByShotNumber` (the new 5th param)
   // fixes that with an explicit, testable merge contract.
   describe("previousFramesByShotNumber carry-over (gap-5 fix, 2026-07-22)", () => {
-    it("(a) carries over prior approved asset, location override, angle-grid state, and product refs on a regen, while imagePrompt/negativePrompt are replaced with the fresh skill output", () => {
+    it("(a) marks the prior approved asset stale when a regen replaces its prompt, while preserving durable reference state", () => {
       const raw = {
         render_plan_summary: {},
         start_frame_requests: [validRequest(3)],
@@ -486,8 +486,9 @@ describe("projectStartFramePlan", () => {
       expect(frame?.imagePrompt).toContain("Start frame prompt for shot 3");
       expect(frame?.imagePrompt).toContain("blurry");
       expect(frame?.negativePrompt).toBe("");
-      // Carried over.
-      expect(frame?.approvedMediaAssetId).toBe("media-42");
+      // Prompt changes must never leave an old image looking approved.
+      expect(frame).not.toHaveProperty("approvedMediaAssetId");
+      expect(frame?.imageStaleReason).toBe("prompt_changed");
       expect(frame?.locationKey).toBe("loc-kitchen");
       expect(frame?.angleGrid).toEqual({
         imageUrl: "https://cdn.example.com/grid.png",
@@ -638,7 +639,8 @@ describe("projectStartFramePlan", () => {
 
       const shot2 = plan.frames.find((f) => f.shotNumber === 2);
       const shot9 = plan.frames.find((f) => f.shotNumber === 9);
-      expect(shot2?.approvedMediaAssetId).toBe("media-2");
+      expect(shot2).not.toHaveProperty("approvedMediaAssetId");
+      expect(shot2?.imageStaleReason).toBe("prompt_changed");
       expect(shot2?.productReferenceAssetIds).toEqual(["asset-7"]);
       // Shot 9 has no prior state to carry over — behaves exactly like the
       // no-previous-frames-at-all case, for THIS shot only.

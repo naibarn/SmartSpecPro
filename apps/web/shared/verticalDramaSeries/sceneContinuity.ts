@@ -404,7 +404,10 @@ export function renderSceneContinuityLockBlock(
     cleanString(state.spatialLayout) ? `- Spatial layout: ${cleanString(state.spatialLayout)}` : "",
     cleanString(state.stagingAxis) ? `- Staging axis: ${cleanString(state.stagingAxis)}` : "",
     wardrobe ? `- Wardrobe: ${wardrobe}` : "",
-    props ? `- Active props: ${props}` : "",
+    props ? `- Continuity prop candidates (not all visible): ${props}` : "",
+    props
+      ? "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices."
+      : "",
     cleanString(state.paletteMood) ? `- Palette and mood: ${cleanString(state.paletteMood)}` : "",
   ].filter(Boolean);
   return lines.length > 0 ? [VD_SCENE_CONTINUITY_LOCK_HEADER, ...lines].join("\n") : undefined;
@@ -431,7 +434,9 @@ export function filterSceneContinuityLockBlockForShot(
   const filtered = normalized
     .split("\n")
     .flatMap(line => {
-      const match = line.match(/^(\s*-\s*Active props\s*:\s*)(.*)$/i);
+      const match = line.match(
+        /^(\s*-\s*(?:Active props|Continuity prop candidates(?: \(not all visible\))?)\s*:\s*)(.*)$/i
+      );
       if (!match) return [line];
       const visibleProps = match[2]
         .split(/\s*;\s*/)

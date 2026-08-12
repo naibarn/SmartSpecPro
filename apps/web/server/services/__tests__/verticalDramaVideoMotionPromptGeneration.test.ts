@@ -1321,7 +1321,8 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
     const lock = [
       "SCENE CONTINUITY LOCK",
-      "- Active props: evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+      "- Continuity prop candidates (not all visible): evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+      "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
     ].join("\n");
     await generateVerticalDramaShotVideoPrompt(
       baseShotVideoPromptParams({
@@ -2105,7 +2106,8 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
     const lock = [
       "SCENE CONTINUITY LOCK",
-      "- Active props: evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+      "- Continuity prop candidates (not all visible): evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+      "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
     ].join("\n");
     await generateVerticalDramaShotVideoPromptSpeakerSwitch(
       baseSpeakerSwitchParams({

@@ -735,7 +735,8 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
       "- Spatial layout: ไอริน at the counter; ปราง beside the entrance",
       "- Staging axis: ภาคิน faces ไอริน while ภูมิ waits behind them",
       "- Wardrobe: ปราง wears a black blazer; ภูมิ wears a green shirt",
-      "- Active props: phone and coffee cup",
+      "- Continuity prop candidates (not all visible): phone and coffee cup",
+      "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
       "- Palette: warm wood and cream",
     ].join("\n");
 
@@ -753,7 +754,9 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
     );
     expect(prompt).toContain("Lighting: daytime, soft ambient key");
     expect(prompt).toContain("Fixed elements: cafe counter, menu board");
-    expect(prompt).toContain("Active props: phone and coffee cup");
+    expect(prompt).toContain(
+      "Continuity prop candidates (not all visible): phone and coffee cup"
+    );
     expect(prompt).toContain("Palette: warm wood and cream");
     expect(prompt).not.toContain("ปราง");
     expect(prompt).not.toContain("ภูมิ");
@@ -779,7 +782,8 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
   it("does not leak a future active prop into start-frame prompts or render-plan locks", () => {
     const block = [
       "SCENE CONTINUITY LOCK",
-      "- Active props: evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+      "- Continuity prop candidates (not all visible): evidence folder — in hand (from shot 1); handcuffs — on wrist (from shot 8)",
+      "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
     ].join("\n");
 
     const shotFourPrompt = buildDeterministicPolicySafeImagePrompt({

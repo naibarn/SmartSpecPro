@@ -31,3 +31,4 @@ export * from "./imagePromptModelFamily";
 export * from "./barrierDialogue";
 export * from "./barrierMultiView";
 export * from "./supportingPresence";
+export * from "./shotComposition";

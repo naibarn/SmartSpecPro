@@ -30,6 +30,7 @@ import type {
   VdMotionProfile,
 } from "./motionProfile";
 import type { VdSceneVisualState } from "./sceneContinuity";
+import type { VerticalDramaShotComposition } from "./shotComposition";
 import type { VerticalDramaSupportingPresence } from "./supportingPresence";
 
 /* -------------------------------------------------------------------------- */
@@ -553,6 +554,11 @@ export type VerticalDramaStartFramePlan = {
      * source tracking and keeps the legacy fallback behavior.
      */
     canonicalShotSummary?: string;
+    /** Durable current-shot camera/body-language facts used to ground image prompts. */
+    shotComposition?: VerticalDramaShotComposition;
+    /** Set when the prompt changed after the previously approved image was created. */
+    imageStaleReason?: "prompt_changed";
+    imageStaleAt?: string;
     /**
      * Additive (2026-07-06 product-reference picker) — true once the user has
      * EXPLICITLY set/edited this shot's `productReferenceAssetIds` via the

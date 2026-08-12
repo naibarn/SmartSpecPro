@@ -71,6 +71,9 @@ import {
   resolveVerticalDramaSupportingPresenceForShot,
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
+import {
+  normalizeVerticalDramaShotComposition,
+} from "@shared/verticalDramaSeries/shotComposition";
 // Part B2/B3 (planning/`polished-toasting-gadget.md`) — pure, shared
 // formatter for the compact episode plan-context block injected into the
 // start-frame + video motion prompt stages below. Safe as a static import
@@ -3481,6 +3484,13 @@ export class VerticalDramaEpisodePipeline {
             : [camera?.shot_type, camera?.angle, camera?.movement]
                 .filter(Boolean)
                 .join(", ");
+        const shotComposition = normalizeVerticalDramaShotComposition({
+          ...(camera ?? {}),
+          composition: camera?.composition ?? s.composition,
+          body_language: s.body_language,
+          gaze_direction: s.gaze_direction,
+          facial_expression: s.facial_expression,
+        });
         const storedCharacterIds =
           Array.isArray(s.required_character_refs) &&
           s.required_character_refs.length

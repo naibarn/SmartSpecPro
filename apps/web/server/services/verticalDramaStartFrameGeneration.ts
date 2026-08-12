@@ -118,6 +118,10 @@ import {
   renderSupportingPresencePromptBlock,
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
+import {
+  renderVerticalDramaShotCompositionLock,
+  type VerticalDramaShotComposition,
+} from "@shared/verticalDramaSeries/shotComposition";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -328,6 +332,8 @@ export interface StartFrameRenderPlanProjection {
     supportingPresenceCustomized?: boolean;
     productReferenceAssetIds: string[];
     canonicalShotSummary?: string;
+    shotComposition?: VerticalDramaShotComposition;
+    imageStaleReason?: "prompt_changed";
     /** See `VerticalDramaStartFramePlan.frames[].productRefsCustomized` in `@shared/verticalDramaSeries`. */
     productRefsCustomized?: boolean;
     /**
@@ -569,7 +575,8 @@ export function projectStartFramePlan(
   shotSupportingPresenceByShotNumber?: Map<
     number,
     VerticalDramaSupportingPresence[]
-  >
+  >,
+  shotCompositionByShotNumber?: Map<number, VerticalDramaShotComposition>
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -621,6 +628,24 @@ export function projectStartFramePlan(
         const canonicalShotSummary =
           canonicalShotSummaryByShotNumber?.get(r.shot_number) ??
           previous?.canonicalShotSummary;
+        const shotComposition =
+          shotCompositionByShotNumber?.get(r.shot_number) ??
+          previous?.shotComposition;
+        const baseImagePrompt = mergeImageNegativePromptIntoPrompt(
+          r.prompt,
+          r.negative_prompt ?? ""
+        );
+        const compositionLock = renderVerticalDramaShotCompositionLock(
+          shotComposition
+        );
+        const imagePrompt =
+          compositionLock &&
+          !baseImagePrompt.includes("CURRENT SHOT COMPOSITION LOCK")
+            ? `${baseImagePrompt}\n${compositionLock}`
+            : baseImagePrompt;
+        const promptChanged =
+          previous?.imagePrompt !== undefined &&
+          previous.imagePrompt !== imagePrompt;
         // `r.prompt` is now the FINAL text as-authored by the
         // `vertical-drama-shot-start-frame-render` skill — no code-side
         // identity-lock append (vertical-drama-skill-first-architecture
@@ -632,10 +657,7 @@ export function projectStartFramePlan(
         // post-hoc bracket append is no longer needed here).
         return {
           shotNumber: r.shot_number,
-          imagePrompt: mergeImageNegativePromptIntoPrompt(
-            r.prompt,
-            r.negative_prompt ?? ""
-          ),
+          imagePrompt,
           negativePrompt: "",
           ...(screenCallerCharacterRefs.length > 0
             ? { screenCallerCharacterRefs }
@@ -652,11 +674,15 @@ export function projectStartFramePlan(
             : {}),
           productReferenceAssetIds: previous?.productReferenceAssetIds ?? [],
           ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
+          ...(shotComposition ? { shotComposition } : {}),
           ...(previous?.productRefsCustomized !== undefined
             ? { productRefsCustomized: previous.productRefsCustomized }
             : {}),
-          ...(previous?.approvedMediaAssetId !== undefined
+          ...(!promptChanged && previous?.approvedMediaAssetId !== undefined
             ? { approvedMediaAssetId: previous.approvedMediaAssetId }
+            : {}),
+          ...(promptChanged && previous?.approvedMediaAssetId !== undefined
+            ? { imageStaleReason: "prompt_changed" as const }
             : {}),
           ...(previous?.locationKey !== undefined
             ? { locationKey: previous.locationKey }
@@ -713,6 +739,8 @@ export interface GenerateStartFrameRenderPlanParams {
     durationSeconds: number;
     /** Active Overview shot summary; the skill must prefer it over stale storyboard prose. */
     canonicalShotSummary?: string;
+    /** Current-shot camera, staging, gaze, and expression facts. */
+    shotComposition?: VerticalDramaShotComposition;
     /**
      * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
      * bible) — this shot's location/setting fact, resolved by
@@ -984,9 +1012,12 @@ export function buildStartFrameRenderPlanUserPrompt(
         s.cameraSetup,
         barrierDialogue || barrierMultiView ? 1 : s.characterIds.length
       );
+      const compositionLock = renderVerticalDramaShotCompositionLock(
+        s.shotComposition
+      );
       return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${remappedCameraSetup} | physical_scene_refs: ${
         s.characterIds.length ? s.characterIds.join(", ") : "(none)"
-      }${screenCallerSuffix}${characterSelectionSuffix}${supportingPresenceBlock ? `\n${supportingPresenceBlock}` : ""}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
+      }${screenCallerSuffix}${characterSelectionSuffix}${supportingPresenceBlock ? `\n${supportingPresenceBlock}` : ""}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${compositionLock ? `\n${compositionLock}` : ""}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
     })
     .join("\n");
 
@@ -1374,6 +1405,11 @@ export async function generateStartFrameRenderPlan(
       .filter(s => Boolean(s.canonicalShotSummary?.trim()))
       .map(s => [s.shotNumber, s.canonicalShotSummary!.trim()])
   );
+  const shotCompositionByShotNumber = new Map(
+    params.storyboardShots
+      .filter(s => Boolean(s.shotComposition))
+      .map(s => [s.shotNumber, s.shotComposition!])
+  );
   const plan = projectStartFramePlan(
     planData,
     params.selectedImageModelId ?? "dry-run-image-model",
@@ -1428,7 +1464,8 @@ export async function generateStartFrameRenderPlan(
           (entry): entry is readonly [number, VerticalDramaSupportingPresence[]] =>
             entry !== null
         )
-    )
+    ),
+    shotCompositionByShotNumber
   );
 
   return {
@@ -1853,6 +1890,7 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
   screenCallerCharacterRefs?: string[];
   locationReferenceImage?: { url: string; label: string };
   sceneContinuityLockBlock?: string;
+  shotComposition?: VerticalDramaShotComposition;
   excludedVisualCharacterNames?: string[];
 }): string {
   const characterMappings = params.characterReferenceManifest
@@ -1898,6 +1936,7 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
     prompt: [
       mapping,
       physicalCastLock,
+      renderVerticalDramaShotCompositionLock(params.shotComposition),
       sanitizeSceneContinuityLockForShot(
         params.sceneContinuityLockBlock,
         params.shotNumber,
@@ -2108,6 +2147,8 @@ export interface GenerateStartFrameShotPromptParams {
    * producing a byte-identical prompt.
    */
   location?: { name: string; description: string; hasReferenceImage: boolean };
+  /** Current-shot camera, staging, gaze, and expression facts. */
+  shotComposition?: VerticalDramaShotComposition;
   /** Pre-rendered lock block; blank/omitted preserves the legacy prompt. */
   sceneContinuityLockBlock?: string;
   /**
@@ -2380,6 +2421,7 @@ export function buildStartFrameShotPromptUserPrompt(
             : ""
         }`
       : null,
+    renderVerticalDramaShotCompositionLock(params.shotComposition) ?? null,
     sanitizeSceneContinuityLockForShot(
       params.sceneContinuityLockBlock,
       params.shotNumber,
@@ -2833,6 +2875,7 @@ export async function generateStartFrameShotPrompt(
       screenCallerCharacterRefs: params.screenCallerCharacterRefs,
       locationReferenceImage: params.locationReferenceImage,
       sceneContinuityLockBlock: params.sceneContinuityLockBlock,
+      shotComposition: params.shotComposition,
       excludedVisualCharacterNames: params.excludedVisualCharacterNames,
     });
     const policySafePrompt = [
@@ -3114,6 +3157,15 @@ export async function generateStartFrameShotPrompt(
       entry => entry.name
     ),
   });
+  const shotCompositionLock = renderVerticalDramaShotCompositionLock(
+    params.shotComposition
+  );
+  if (
+    shotCompositionLock &&
+    !outputPrompt.includes("CURRENT SHOT COMPOSITION LOCK")
+  ) {
+    outputPrompt = `${outputPrompt}\n${shotCompositionLock}`;
+  }
 
   // Two-mode start-frame image prompt switch — `usedMode` mirrors
   // `params.imagePromptMode` UNLESS `referenceFrameMode` forced the legacy

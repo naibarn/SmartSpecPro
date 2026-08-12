@@ -194,10 +194,12 @@ describe("projectStartFramePlan scene state carry-over", () => {
     } as any;
     const frame = projectStartFramePlan(rawPlan, "model-x", undefined, undefined, new Map([[1, previous]])).frames[0] as any;
     expect(frame).toMatchObject({
-      productReferenceAssetIds: [9], productRefsCustomized: true, approvedMediaAssetId: 10,
+      productReferenceAssetIds: [9], productRefsCustomized: true,
       locationKey: "kitchen", canonicalShotSummary: "summary",
       angleGrid: { columns: 3 }, angleGridAssetIds: [11],
     });
+    expect(frame).not.toHaveProperty("approvedMediaAssetId");
+    expect(frame.imageStaleReason).toBe("prompt_changed");
     expect(frame).not.toHaveProperty("promptMode");
     expect(frame).not.toHaveProperty("promptSafetyAdjustments");
     expect(frame).not.toHaveProperty("promptAnalysis");

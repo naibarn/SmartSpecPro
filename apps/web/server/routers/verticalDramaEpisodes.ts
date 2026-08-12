@@ -244,6 +244,10 @@ import {
   normalizeVerticalDramaSupportingPresence,
   resolveVerticalDramaSupportingPresenceForShot,
 } from "@shared/verticalDramaSeries/supportingPresence";
+import {
+  findVerticalDramaShotGroundingIssues,
+  normalizeVerticalDramaShotComposition,
+} from "@shared/verticalDramaSeries/shotComposition";
 import { normalizeVerticalDramaBarrierDialogue } from "@shared/verticalDramaSeries/barrierDialogue";
 import {
   deriveVerticalDramaBarrierMultiViewStatus,
@@ -8829,13 +8833,53 @@ export const verticalDramaEpisodesRouter = router({
       if (input.storyboard !== undefined)
         updates.storyboard = effectiveStoryboard;
       if (input.startFramePlan !== undefined)
-        updates.startFramePlan =
-          input.startFramePlan && effectiveStoryboard
-            ? stampArtifactForStoryboard(
-                input.startFramePlan,
-                effectiveStoryboard
-              )
-            : input.startFramePlan;
+        updates.startFramePlan = (() => {
+          const incomingPlan = input.startFramePlan;
+          const incomingFrames = (incomingPlan as Record<string, unknown> | null)
+            ?.frames;
+          if (
+            !incomingPlan ||
+            !Array.isArray(incomingFrames) ||
+            !existingEpisode.startFramePlan ||
+            !Array.isArray(
+              (existingEpisode.startFramePlan as Record<string, unknown>).frames
+            )
+          ) {
+            return incomingPlan && effectiveStoryboard
+              ? stampArtifactForStoryboard(incomingPlan, effectiveStoryboard)
+              : incomingPlan;
+          }
+          const previousFrames = new Map(
+            (
+              (existingEpisode.startFramePlan as Record<string, unknown>)
+                .frames as Array<Record<string, unknown>>
+            ).map(frame => [Number(frame.shotNumber), frame])
+          );
+          const frames = (incomingFrames as Array<Record<string, unknown>>).map(
+            frame => {
+              const previous = previousFrames.get(Number(frame.shotNumber));
+              if (
+                previous?.approvedMediaAssetId &&
+                previous.imagePrompt !== frame.imagePrompt
+              ) {
+                return {
+                  ...frame,
+                  approvedMediaAssetId: undefined,
+                  imageStaleReason: "prompt_changed",
+                  imageStaleAt: new Date().toISOString(),
+                  sceneContinuity: undefined,
+                  deviceOrientationQc: undefined,
+                  videoSafety: undefined,
+                };
+              }
+              return frame;
+            }
+          );
+          const nextPlan = { ...incomingPlan, frames };
+          return effectiveStoryboard
+            ? stampArtifactForStoryboard(nextPlan, effectiveStoryboard)
+            : nextPlan;
+        })();
       if (input.dialogueAudioPlan !== undefined)
         updates.dialogueAudioPlan = input.dialogueAudioPlan;
       if (input.motionPromptPack !== undefined)
@@ -12230,6 +12274,8 @@ export const verticalDramaEpisodesRouter = router({
       updatedFrames[frameIndex] = {
         ...updatedFrames[frameIndex],
         approvedMediaAssetId: input.mediaAssetId,
+        imageStaleReason: undefined,
+        imageStaleAt: undefined,
       };
       const updatedPlan: VerticalDramaStartFramePlan = {
         ...plan,
@@ -14818,6 +14864,26 @@ export const verticalDramaEpisodesRouter = router({
           message: `Shot ${input.shotNumber} has no image prompt yet`,
         });
       }
+      const storyboardForComposition = Array.isArray(
+        (row.storyboard as Record<string, unknown> | null)?.shots
+      )
+        ? (((row.storyboard as Record<string, unknown>).shots ?? []) as Array<
+            Record<string, unknown>
+          >).find(
+            shot => Number(shot.shot_number ?? shot.shotNumber) === input.shotNumber
+          )
+        : undefined;
+      const renderShotComposition =
+        frame.shotComposition ??
+        normalizeVerticalDramaShotComposition({
+          ...((storyboardForComposition?.camera as Record<string, unknown> | undefined) ?? {}),
+          composition:
+            (storyboardForComposition?.camera as Record<string, unknown> | undefined)
+              ?.composition ?? storyboardForComposition?.composition,
+          body_language: storyboardForComposition?.body_language,
+          gaze_direction: storyboardForComposition?.gaze_direction,
+          facial_expression: storyboardForComposition?.facial_expression,
+        });
 
       // Wave-4A (spec §13.1) tie-in gate — REJECT paid start-frame render for
       // a tie-in-carrying shot when the latest tie-in quality report is
@@ -14915,6 +14981,14 @@ export const verticalDramaEpisodesRouter = router({
           .filter(Boolean)
           .join(", ");
       }
+      if (renderShotComposition) {
+        softenedNegativePrompt = [
+          softenedNegativePrompt,
+          "duplicate handheld devices, extra phones, extra tablets, fused hands, merged objects, impossible fingers, duplicated props",
+        ]
+          .filter(Boolean)
+          .join(", ");
+      }
 
       const shotReferenceRoles = resolveExplicitShotReferenceRoles(
         row.storyboard,
@@ -14990,6 +15064,16 @@ export const verticalDramaEpisodesRouter = router({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: `พรอมต์ภาพไม่ตรงกับตัวละครในช็อต ${input.shotNumber} — มีการเพิ่ม/เปลี่ยนตัวละครของช็อตนี้หลังสร้างพรอมต์ ทำให้ลำดับรูปตัวละครที่แนบเลื่อน (ถ้าสร้างภาพตอนนี้ หน้าตัวละครอาจสลับกัน) วิธีแก้: สร้างพรอมต์ของช็อตนี้ใหม่ก่อน แล้วจึงสร้างภาพ`,
+        });
+      }
+      const groundingIssues = findVerticalDramaShotGroundingIssues({
+        prompt: softenedImagePrompt,
+        composition: renderShotComposition,
+      });
+      if (groundingIssues.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `พรอมต์ภาพของช็อต ${input.shotNumber} ยังไม่มีข้อมูลจัดองค์ประกอบช็อตปัจจุบันครบถ้วน (${groundingIssues.join(", ")}) — กรุณาสร้างพรอมต์ช็อตนี้ใหม่ก่อน เพื่อป้องกันภาพผิดธรรมชาติและการใส่อุปกรณ์ซ้ำซ้อน`,
         });
       }
       const sceneNeighborAnchorsEnabled =
@@ -17991,6 +18075,16 @@ export const verticalDramaEpisodesRouter = router({
         ),
         productReferenceAssetIds: [],
       };
+      const shotComposition =
+        normalizeVerticalDramaShotComposition({
+          ...((storyboardShot?.camera as Record<string, unknown> | undefined) ?? {}),
+          composition:
+            (storyboardShot?.camera as Record<string, unknown> | undefined)
+              ?.composition ?? storyboardShot?.composition,
+          body_language: storyboardShot?.body_language,
+          gaze_direction: storyboardShot?.gaze_direction,
+          facial_expression: storyboardShot?.facial_expression,
+        }) ?? frame.shotComposition;
 
       // Resolve region/product-lock/character-identity facts — the SAME
       // router-private helpers `repairShotImage`/
@@ -18575,6 +18669,7 @@ export const verticalDramaEpisodesRouter = router({
                 ),
               }
             : undefined,
+          shotComposition,
           sceneContinuityLockBlock: shotSceneContinuityLockBlock,
           // Speaker-order composition fix — see this procedure's own
           // `shotStartFramePromptSpeakingOrder` resolution above. Omitted
@@ -18719,6 +18814,7 @@ export const verticalDramaEpisodesRouter = router({
           ...(targetIndex === -1 ? frame : updatedFrames[targetIndex]),
           imagePrompt: shotStartFramePromptResult.prompt,
           negativePrompt: shotStartFramePromptResult.negativePrompt,
+          ...(shotComposition ? { shotComposition } : {}),
           requiredCharacterRefs: shotStartFramePromptPhysicalCharacterRefs,
           screenCallerCharacterRefs: shotStartFramePromptScreenCallerRefs,
           ...(shotStartFramePromptCanonicalSynopsis
@@ -18742,6 +18838,20 @@ export const verticalDramaEpisodesRouter = router({
             ? { promptAnalysis: shotStartFramePromptResult.promptAnalysis }
             : {}),
         };
+        const priorPrompt =
+          targetIndex === -1 ? frame.imagePrompt : updatedFrames[targetIndex].imagePrompt;
+        const priorApprovedAssetId = updatedFrame.approvedMediaAssetId;
+        if (
+          priorApprovedAssetId &&
+          priorPrompt !== shotStartFramePromptResult.prompt
+        ) {
+          delete updatedFrame.approvedMediaAssetId;
+          updatedFrame.imageStaleReason = "prompt_changed";
+          updatedFrame.imageStaleAt = new Date().toISOString();
+          delete updatedFrame.sceneContinuity;
+          delete updatedFrame.deviceOrientationQc;
+          delete updatedFrame.videoSafety;
+        }
         if (sceneNeighborAnchorsEnabled) {
           if (sceneNeighborAnchor) {
             updatedFrame.sceneAnchor = {

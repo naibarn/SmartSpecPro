@@ -621,6 +621,8 @@ export interface VerticalDramaStartFramePlanFrame {
   barrierMultiView?: VerticalDramaBarrierMultiView;
   productReferenceAssetIds?: string[];
   approvedMediaAssetId?: string;
+  imageStaleReason?: "prompt_changed";
+  imageStaleAt?: string;
   /** Per-shot location override (Phase D, `planning/polished-toasting-
    *  gadget.md` — location visual bible), set via the `setShotLocation`
    *  mutation. Mirrors `VerticalDramaStartFramePlan["frames"][number]
@@ -3981,7 +3983,13 @@ export function VerticalDramaStoryboardPanel({
                       <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
                         <ImageOff aria-hidden="true" className="h-5 w-5" />
                         <span className="px-1 text-center text-[11px]">
-                          {t(locale, "ยังไม่มีภาพ", "No image yet")}
+                          {frame?.imageStaleReason === "prompt_changed"
+                            ? t(
+                                locale,
+                                "พรอมต์เปลี่ยนแล้ว ต้องสร้างภาพใหม่",
+                                "Prompt changed — generate a new image"
+                              )
+                            : t(locale, "ยังไม่มีภาพ", "No image yet")}
                         </span>
                       </div>
                     )}

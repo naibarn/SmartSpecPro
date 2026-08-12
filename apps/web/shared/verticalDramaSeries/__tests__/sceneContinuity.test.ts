@@ -210,7 +210,8 @@ describe("scene state resolution and lock rendering", () => {
       "- Spatial layout: door left, ledge right",
       "- Staging axis: camera remains south of the actors",
       "- Wardrobe: Aria: navy jacket",
-      "- Active props: envelope — on ledge (from shot 2)",
+      "- Continuity prop candidates (not all visible): envelope — on ledge (from shot 2)",
+      "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
       "- Palette and mood: muted blue and concrete gray",
     ].join("\n"));
   });
@@ -245,13 +246,15 @@ describe("scene state resolution and lock rendering", () => {
   it("filters future props from already-persisted rendered lock text", () => {
     const block = [
       "SCENE CONTINUITY LOCK",
-      "- Active props: coffee cup — on table; handcuffs — on wrist (from shot 8); evidence folder — in hand (from shot 2)",
+      "- Continuity prop candidates (not all visible): coffee cup — on table; handcuffs — on wrist (from shot 8); evidence folder — in hand (from shot 2)",
+      "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
     ].join("\n");
 
     expect(filterSceneContinuityLockBlockForShot(block, 1)).toBe(
       [
         "SCENE CONTINUITY LOCK",
-        "- Active props: coffee cup — on table",
+        "- Continuity prop candidates (not all visible): coffee cup — on table",
+        "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
       ].join("\n")
     );
     expect(filterSceneContinuityLockBlockForShot(block, 2)).toContain(
