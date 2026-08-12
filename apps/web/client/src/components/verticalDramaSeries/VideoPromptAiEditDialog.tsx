@@ -49,6 +49,8 @@ const COPY = {
     noShotImageHint: "ช็อตนี้ยังไม่มีภาพ Start Frame AI จะปรับแก้จากข้อความเท่านั้น",
     submit: "ให้ AI ปรับ",
     submitting: "กำลังปรับ…",
+    queued: "ส่งงานแล้ว — รอคิว…",
+    running: "กำลังสร้างพรอมต์…",
     cancel: "ยกเลิก",
     successNote: "ปรับ prompt สำเร็จ",
     errorPrefix: "เกิดข้อผิดพลาด",
@@ -76,6 +78,8 @@ const COPY = {
     noShotImageHint: "This shot doesn't have a start frame yet. AI will adjust based on text only.",
     submit: "AI adjust",
     submitting: "Adjusting…",
+    queued: "Submitted — waiting in queue…",
+    running: "Generating prompt…",
     cancel: "Cancel",
     successNote: "Prompt adjusted",
     errorPrefix: "Error",
@@ -92,6 +96,8 @@ const MAX_INSTRUCTION_CHARS = 2000;
 export type VideoPromptAiEditJobStatus =
   | "idle"
   | "submitting"
+  | "queued"
+  | "running"
   | "succeeded"
   | "failed";
 
@@ -132,7 +138,10 @@ export function VideoPromptAiEditDialog({
   const [instruction, setInstruction] = useState("");
   const [attachShotImage, setAttachShotImage] = useState(true);
 
-  const busy = jobStatus === "submitting";
+  const busy =
+    jobStatus === "submitting" ||
+    jobStatus === "queued" ||
+    jobStatus === "running";
   const isOverLimit = instruction.length > MAX_INSTRUCTION_CHARS;
   const canSubmit =
     instruction.trim().length > 0 && !busy && !isOverLimit;
@@ -293,8 +302,16 @@ export function VideoPromptAiEditDialog({
 
           {/* ---- Job status feedback ---- */}
           <div aria-live="polite" className="min-h-[1.25rem] text-sm">
-            {jobStatus === "submitting" ? (
-              <span className="text-muted-foreground">{t.submitting}</span>
+            {jobStatus === "submitting" ||
+            jobStatus === "queued" ||
+            jobStatus === "running" ? (
+              <span className="text-muted-foreground">
+                {jobStatus === "queued"
+                  ? t.queued
+                  : jobStatus === "running"
+                    ? t.running
+                    : t.submitting}
+              </span>
             ) : jobStatus === "succeeded" ? (
               <span className="text-emerald-600 dark:text-emerald-400">
                 ✓ {t.successNote}

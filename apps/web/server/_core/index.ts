@@ -175,6 +175,10 @@ import {
   closeVerticalDramaShotPromptJobsQueue,
 } from "../services/verticalDramaShotPromptJobs";
 import {
+  initVerticalDramaShotVideoPromptJobsQueue,
+  closeVerticalDramaShotVideoPromptJobsQueue,
+} from "../services/verticalDramaShotVideoPromptJobs";
+import {
   initVideoIntelligenceJobsQueue,
   closeVideoIntelligenceJobsQueue,
 } from "../services/videoIntelligenceJobs";
@@ -1790,6 +1794,15 @@ async function main() {
     console.error("[Startup] Failed to initialize vertical drama shot prompt jobs queue:", error);
   }
 
+  // Per-shot video-prompt jobs. Admission is intentionally separate from the
+  // start-frame queue: multiple shots can be submitted while each episode is
+  // still serialized by its Redis turn lock.
+  try {
+    await initVerticalDramaShotVideoPromptJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama shot video prompt jobs queue:", error);
+  }
+
   // Initialize Video Intelligence Jobs queue (BullMQ — Video Studio's async
   // scene-plan / quality-review / quality-repair stages, feature 142
   // section-01). A missing init here strands every dispatched stage at
@@ -2172,6 +2185,7 @@ process.on("SIGTERM", async () => {
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
   await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
+  await closeVerticalDramaShotVideoPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
@@ -2242,6 +2256,7 @@ process.on("SIGINT", async () => {
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
   await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
+  await closeVerticalDramaShotVideoPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});

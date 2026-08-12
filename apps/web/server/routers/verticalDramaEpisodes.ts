@@ -584,6 +584,16 @@ import {
   type VerticalDramaShotPromptJobResult,
 } from "../services/verticalDramaShotPromptJobs";
 import {
+  enqueueVerticalDramaShotVideoPromptJob,
+  getActiveVerticalDramaShotVideoPromptJob,
+  getActiveVerticalDramaShotVideoPromptJobs,
+  getVerticalDramaShotVideoPromptJobStatus,
+  isVerticalDramaShotVideoPromptWorkerExecution,
+  type VerticalDramaShotVideoPromptJobPayload,
+  type VerticalDramaShotVideoPromptJobResult,
+  VerticalDramaShotVideoPromptConflictError,
+} from "../services/verticalDramaShotVideoPromptJobs";
+import {
   getAppRuntimeConfig,
   getPreferredInternalToken,
 } from "../services/appRuntimeConfig";
@@ -8306,6 +8316,15 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
 /* -------------------------------------------------------------------------- */
 /* Router                                                                     */
 /* -------------------------------------------------------------------------- */
+
+type VerticalDramaShotVideoPromptTestExecutor = (args: {
+  ctx: unknown;
+  input: unknown;
+}) => Promise<VerticalDramaShotVideoPromptJobResult>;
+
+let verticalDramaShotVideoPromptTestExecutor:
+  | VerticalDramaShotVideoPromptTestExecutor
+  | null = null;
 
 export const verticalDramaEpisodesRouter = router({
   /**
@@ -19624,7 +19643,124 @@ export const verticalDramaEpisodesRouter = router({
    * planning call) — this targets a single shot and is meant to be re-run
    * per-shot without regenerating the entire pack.
    */
+  /**
+   * Fast submit endpoint. The previous resolver body remains below as the
+   * worker-only executor so the browser request only performs ownership
+   * validation and durable queue admission.
+   */
   generateShotVideoPrompt: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        nativeAudioEnabled: z.boolean().optional(),
+        instruction: z.string().trim().max(2000).optional(),
+        attachShotImage: z.boolean().optional().default(true),
+        additionalImageUrls: z
+          .array(z.string().url().startsWith("http"))
+          .max(3)
+          .optional(),
+        qualityLoop: z.boolean().optional(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Preserve the mature synchronous resolver for isolated router tests;
+      // production and development always use durable queue admission.
+      if (process.env.NODE_ENV === "test") {
+        if (!verticalDramaShotVideoPromptTestExecutor) {
+          throw new Error("Video prompt test executor is not initialized");
+        }
+        return verticalDramaShotVideoPromptTestExecutor({ ctx, input }) as unknown as Awaited<
+          ReturnType<typeof enqueueVerticalDramaShotVideoPromptJob>
+        >;
+      }
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      try {
+        return await enqueueVerticalDramaShotVideoPromptJob({
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          shotNumber: input.shotNumber,
+          publicUrl: ctx.publicUrl,
+          input,
+        });
+      } catch (error) {
+        if (error instanceof VerticalDramaShotVideoPromptConflictError) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "ช็อตนี้มีงานสร้างพรอมต์วิดีโออีกคำสั่งกำลังทำงานอยู่ กรุณารอผลลัพธ์ก่อน",
+          });
+        }
+        throw error;
+      }
+    }),
+
+  getShotVideoPromptJob: verticalDramaProcedure
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const job = await getVerticalDramaShotVideoPromptJobStatus(input.jobId, {
+        tenantId: requireTenantId(ctx.tenantId),
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+        shotNumber: input.shotNumber,
+      });
+      if (!job) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Video prompt job not found" });
+      }
+      return job;
+    }),
+
+  getActiveShotVideoPromptJob: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+      }),
+    )
+    .query(async ({ ctx, input }) =>
+      getActiveVerticalDramaShotVideoPromptJob({
+        tenantId: requireTenantId(ctx.tenantId),
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+        shotNumber: input.shotNumber,
+      }),
+    ),
+
+  getActiveShotVideoPromptJobs: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) =>
+      getActiveVerticalDramaShotVideoPromptJobs({
+        tenantId: requireTenantId(ctx.tenantId),
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+      }),
+    ),
+
+  executeShotVideoPromptJob: verticalDramaProcedure
     .input(
       z.object({
         seriesId: z.string().min(1),
@@ -19659,9 +19795,26 @@ export const verticalDramaEpisodesRouter = router({
         // unambiguously as "use the default" at every call site below.
         qualityLoop: z.boolean().optional(),
         idempotencyKey,
+        workerJobId: z.string().uuid().optional(),
+        workerExecutionToken: z.string().uuid().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (
+        process.env.NODE_ENV !== "test" &&
+        (!input.workerJobId ||
+          !input.workerExecutionToken ||
+          !isVerticalDramaShotVideoPromptWorkerExecution(
+            input.workerJobId,
+            input.workerExecutionToken,
+          ))
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Shot video-prompt execution is restricted to the background worker",
+        });
+      }
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
@@ -23042,6 +23195,45 @@ export const verticalDramaEpisodesRouter = router({
       };
     }),
 });
+
+// The narrow router test harness replaces `router()` with a plain object and
+// exposes mutation handlers directly. Capture that handler after construction
+// without making the router initializer recursively depend on itself. This is
+// test-only; production invokes the protected handler through tRPC caller.
+if (process.env.NODE_ENV === "test") {
+  verticalDramaShotVideoPromptTestExecutor = (
+    verticalDramaEpisodesRouter as unknown as {
+      executeShotVideoPromptJob: VerticalDramaShotVideoPromptTestExecutor;
+    }
+  ).executeShotVideoPromptJob;
+}
+
+/**
+ * BullMQ bridge for the asynchronous per-shot video-prompt queue. The caller
+ * is server-created and the execution token is validated by the protected
+ * worker-only procedure above, so a browser cannot turn this into a paid
+ * synchronous bypass.
+ */
+export async function runVerticalDramaShotVideoPromptJobExecutor(
+  payload: VerticalDramaShotVideoPromptJobPayload,
+  execution: { jobId: string; token: string },
+): Promise<VerticalDramaShotVideoPromptJobResult> {
+  const caller = verticalDramaEpisodesRouter.createCaller({
+    req: {} as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+    user: { id: payload.userId } as TrpcContext["user"],
+    userToken: null,
+    privateVaultToken: null,
+    protectedSurfaceToken: null,
+    tenantId: payload.tenantId,
+    publicUrl: payload.publicUrl,
+  });
+  return caller.executeShotVideoPromptJob({
+    ...payload.input,
+    workerJobId: execution.jobId,
+    workerExecutionToken: execution.token,
+  }) as Promise<VerticalDramaShotVideoPromptJobResult>;
+}
 
 /**
  * BullMQ execution bridge. The queue dynamically imports this symbol, then

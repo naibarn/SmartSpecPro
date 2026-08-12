@@ -6164,13 +6164,16 @@ function EpisodeWorkspaceShell({
   }
 
   /* ---- Phase 6.6 — per-shot video prompt generation (`generateShotVideoPrompt`) ----
-   *  Synchronous LLM call (no polling) — the LLM analyzes the shot's actual
-   *  approved image. Refetches `getEpisodeDetail` on success so the video
-   *  prompt box + dialogue lines reflect the server-persisted result. */
+   *  The mutation is a fast durable submit. The browser polls the job record
+   *  while the worker analyzes the approved image, then refetches
+   *  `getEpisodeDetail` only after terminal success. */
   const [
     generatingShotVideoPromptForShot,
     setGeneratingShotVideoPromptForShot,
   ] = useState<Set<number>>(new Set());
+  const [videoPromptJobStatusByShot, setVideoPromptJobStatusByShot] = useState<
+    Record<number, "queued" | "running">
+  >({});
   const [usedVisionByShot, setUsedVisionByShot] = useState<
     Record<number, boolean>
   >({});
@@ -6184,19 +6187,121 @@ function EpisodeWorkspaceShell({
         }
         toast.error(err.message);
       },
-      onSettled: (_data, _err, variables) => {
-        setGeneratingShotVideoPromptForShot(prev => {
-          const next = new Set(prev);
-          next.delete(variables.shotNumber);
-          return next;
-        });
-      },
     });
 
+  const activeShotVideoPromptJobsQuery =
+    trpc.verticalDramaEpisodes.getActiveShotVideoPromptJobs.useQuery(
+      { seriesId, episodeId },
+      {
+        enabled: Boolean(seriesId && episodeId),
+        refetchInterval: 3000,
+        refetchOnWindowFocus: true,
+      }
+    );
+
+  useEffect(() => {
+    const jobs = activeShotVideoPromptJobsQuery.data ?? [];
+    if (!jobs.length) return;
+    setVideoPromptJobStatusByShot(prev => {
+      const next = { ...prev };
+      for (const job of jobs) {
+        if (job.status !== "queued" && job.status !== "running") continue;
+        next[job.shotNumber] = job.status === "running" ? "running" : "queued";
+      }
+      return next;
+    });
+    setGeneratingShotVideoPromptForShot(prev => {
+      const next = new Set(prev);
+      for (const job of jobs) next.add(job.shotNumber);
+      return next;
+    });
+  }, [activeShotVideoPromptJobsQuery.data]);
+
+  async function submitAndWaitForShotVideoPrompt(input: {
+    seriesId: string;
+    episodeId: string;
+    shotNumber: number;
+    nativeAudioEnabled?: boolean;
+    instruction?: string;
+    attachShotImage?: boolean;
+    idempotencyKey: string;
+  },
+  onStatus?: (status: "queued" | "running") => void
+  ) {
+    const submitted = await generateShotVideoPromptMutation.mutateAsync(input);
+    const submittedStatus =
+      submitted.status === "running" ? "running" : "queued";
+    onStatus?.(submittedStatus);
+    setVideoPromptJobStatusByShot(prev => ({
+      ...prev,
+      [input.shotNumber]: submittedStatus,
+    }));
+    setGeneratingShotVideoPromptForShot(prev =>
+      new Set(prev).add(input.shotNumber)
+    );
+
+    for (let attempt = 0; attempt < 720; attempt += 1) {
+      const job = await utils.verticalDramaEpisodes.getShotVideoPromptJob.fetch({
+        jobId: submitted.jobId,
+        seriesId: input.seriesId,
+        episodeId: input.episodeId,
+        shotNumber: input.shotNumber,
+      });
+      if (job.status === "queued" || job.status === "running") {
+        const activeStatus: "queued" | "running" =
+          job.status === "running" ? "running" : "queued";
+        onStatus?.(activeStatus);
+        setVideoPromptJobStatusByShot(prev => ({
+          ...prev,
+          [input.shotNumber]: activeStatus,
+        }));
+      }
+      if (job.status === "succeeded" && job.result) {
+        setUsedVisionByShot(prev => ({
+          ...prev,
+          [input.shotNumber]: job.result?.usedVision ?? false,
+        }));
+        setGeneratingShotVideoPromptForShot(prev => {
+          const next = new Set(prev);
+          next.delete(input.shotNumber);
+          return next;
+        });
+        setVideoPromptJobStatusByShot(prev => {
+          const next = { ...prev };
+          delete next[input.shotNumber];
+          return next;
+        });
+        void refreshEpisodeDetailAfterPromptMutation();
+        return job.result;
+      }
+      if (job.status === "failed") {
+        setGeneratingShotVideoPromptForShot(prev => {
+          const next = new Set(prev);
+          next.delete(input.shotNumber);
+          return next;
+        });
+        throw new Error(
+          job.error ||
+            (lang.toLowerCase() === "th"
+              ? "สร้างพรอมต์วิดีโอไม่สำเร็จ กรุณาลองใหม่"
+              : "Failed to generate the video prompt — try again.")
+        );
+      }
+      await new Promise(resolve => setTimeout(resolve, 2500));
+    }
+    throw new Error(
+      lang.toLowerCase() === "th"
+        ? "ส่งงานแล้ว แต่ใช้เวลานานกว่าปกติ งานยังอยู่ในคิวและจะทำต่อแม้ปิดหน้านี้"
+        : "The job was submitted but is taking longer than usual. It remains queued and will continue after you leave this page."
+    );
+  }
+
   function handleGenerateShotVideoPrompt(shotNumber: number) {
+    // Successful terminal polling refreshes the persisted episode detail via
+    // refreshEpisodeDetailAfterPromptMutation before the button is released.
     if (!requireModelSelectedOrToast("video")) return;
     setGeneratingShotVideoPromptForShot(prev => new Set(prev).add(shotNumber));
-    generateShotVideoPromptMutation.mutate(
+    void submitAndWaitForShotVideoPrompt(
       {
         seriesId,
         episodeId,
@@ -6207,17 +6312,15 @@ function EpisodeWorkspaceShell({
         // + the selected model's `supportsNativeAudio` capability, so this
         // is safe to always send.
         nativeAudioEnabled,
-      },
-      {
-        onSuccess: data => {
-          setUsedVisionByShot(prev => ({
-            ...prev,
-            [shotNumber]: data.usedVision,
-          }));
-          void refreshEpisodeDetailAfterPromptMutation();
-        },
       }
-    );
+    ).catch(error => {
+      setGeneratingShotVideoPromptForShot(prev => {
+        const next = new Set(prev);
+        next.delete(shotNumber);
+        return next;
+      });
+      toast.error(error instanceof Error ? error.message : String(error));
+    });
   }
 
   /* ---- 2026-07-07 unusable-dialogue fix — `regenerateClipDialogue` ----
@@ -6929,6 +7032,7 @@ function EpisodeWorkspaceShell({
             onCloseRepairImageDialog: handleCloseRepairImageDialog,
             onGenerateShotVideoPrompt: handleGenerateShotVideoPrompt,
             generatingShotVideoPromptForShot,
+            videoPromptJobStatusByShot,
             usedVisionByShot,
             compiledVideo,
             onAssembleCompiledVideo: handleAssembleCompiledVideo,
@@ -7123,7 +7227,7 @@ function EpisodeWorkspaceShell({
             if (!requireModelSelectedOrToast("video")) return;
             setVideoPromptAiEditJobStatus("submitting");
             setVideoPromptAiEditError(undefined);
-            generateShotVideoPromptMutation.mutate(
+            void submitAndWaitForShotVideoPrompt(
               {
                 seriesId,
                 episodeId,
@@ -7132,23 +7236,19 @@ function EpisodeWorkspaceShell({
                 attachShotImage,
                 idempotencyKey: crypto.randomUUID(),
               },
-              {
-                onSuccess: data => {
-                  setUsedVisionByShot(prev => ({
-                    ...prev,
-                    [target.shotNumber]: data.usedVision,
-                  }));
-                  setVideoPromptAiEditJobStatus("succeeded");
-                  void refreshEpisodeDetailAfterPromptMutation();
-                  // Close dialog automatically after a short success delay
-                  setTimeout(() => setVideoPromptAiEditTarget(null), 1200);
-                },
-                onError: err => {
-                  setVideoPromptAiEditJobStatus("failed");
-                  setVideoPromptAiEditError(err.message);
-                },
-              }
-            );
+              status => setVideoPromptAiEditJobStatus(status)
+            )
+              .then(() => {
+                setVideoPromptAiEditJobStatus("succeeded");
+                // Close dialog automatically after a short success delay
+                setTimeout(() => setVideoPromptAiEditTarget(null), 1200);
+              })
+              .catch(error => {
+                setVideoPromptAiEditJobStatus("failed");
+                setVideoPromptAiEditError(
+                  error instanceof Error ? error.message : String(error)
+                );
+              });
           }}
         />
 
@@ -7276,29 +7376,24 @@ function EpisodeWorkspaceShell({
               // state on top (React Query runs hook-level callbacks first,
               // then these), the same per-call layering
               // `handleGenerateShotVideoPrompt` above already relies on.
-              generateShotVideoPromptMutation.mutate(
+              void submitAndWaitForShotVideoPrompt(
                 {
                   seriesId,
                   episodeId,
                   shotNumber,
                   instruction,
                   idempotencyKey: crypto.randomUUID(),
-                },
-                {
-                  onSuccess: data => {
-                    setUsedVisionByShot(prev => ({
-                      ...prev,
-                      [shotNumber]: data.usedVision,
-                    }));
-                    setRepairJobStatus("succeeded");
-                    void refreshEpisodeDetailAfterPromptMutation();
-                  },
-                  onError: err => {
-                    setRepairJobStatus("failed");
-                    setRepairError(err.message);
-                  },
                 }
-              );
+              )
+                .then(() => {
+                  setRepairJobStatus("succeeded");
+                })
+                .catch(error => {
+                  setRepairJobStatus("failed");
+                  setRepairError(
+                    error instanceof Error ? error.message : String(error)
+                  );
+                });
               return;
             }
             repairMutation.mutate({

@@ -1,0 +1,730 @@
+import { createHash, randomUUID } from "crypto";
+import { debugError } from "../_core/logger";
+import { getRedisClient } from "./redis";
+
+export const VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE =
+  "vertical_drama_shot_video_prompt_jobs";
+
+const RECORD_TTL_SECONDS = 6 * 60 * 60;
+const POINTER_TTL_SECONDS = 6 * 60 * 60;
+const SEQUENCE_TTL_SECONDS = 24 * 60 * 60;
+const WORKER_CONCURRENCY = 3;
+const TURN_WAIT_TIMEOUT_MS = 30 * 60 * 1000;
+const STALE_RUNNING_MS = 30 * 60 * 1000;
+const MAX_ERROR_CHARS = 2_000;
+
+export type VerticalDramaShotVideoPromptJobStatus =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed";
+
+export interface VerticalDramaShotVideoPromptJobInput {
+  seriesId: string;
+  episodeId: string;
+  shotNumber: number;
+  nativeAudioEnabled?: boolean;
+  instruction?: string;
+  attachShotImage?: boolean;
+  additionalImageUrls?: string[];
+  qualityLoop?: boolean;
+  idempotencyKey?: string;
+}
+
+export interface VerticalDramaShotVideoPromptJobOwner {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  episodeId: number;
+  shotNumber: number;
+}
+
+export interface VerticalDramaShotVideoPromptJobResult {
+  prompt: string;
+  dialogue?: unknown;
+  creditsUsed: number;
+  usedVision: boolean;
+  audioDirection?: unknown;
+  promptModelTarget?: unknown;
+  promptQuality?: unknown;
+}
+
+export interface VerticalDramaShotVideoPromptJobPayload extends VerticalDramaShotVideoPromptJobOwner {
+  publicUrl: string | null;
+  input: VerticalDramaShotVideoPromptJobInput;
+}
+
+export interface VerticalDramaShotVideoPromptJobRecord extends VerticalDramaShotVideoPromptJobPayload {
+  jobId: string;
+  sequence: number;
+  requestFingerprint: string;
+  status: VerticalDramaShotVideoPromptJobStatus;
+  result: VerticalDramaShotVideoPromptJobResult | null;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VerticalDramaShotVideoPromptJobSummary {
+  jobId: string;
+  shotNumber: number;
+  status: VerticalDramaShotVideoPromptJobStatus;
+  result: VerticalDramaShotVideoPromptJobResult | null;
+  error: string | null;
+  queuePosition: number;
+  activeJobCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type VerticalDramaShotVideoPromptJobExecutor = (
+  payload: VerticalDramaShotVideoPromptJobPayload,
+  execution: { jobId: string; token: string }
+) => Promise<VerticalDramaShotVideoPromptJobResult>;
+
+const activeWorkerExecutions = new Map<string, string>();
+
+export function isVerticalDramaShotVideoPromptWorkerExecution(
+  jobId: string,
+  token: string
+): boolean {
+  return activeWorkerExecutions.get(jobId) === token;
+}
+
+export class VerticalDramaShotVideoPromptConflictError extends Error {
+  readonly code = "CONFLICT";
+
+  constructor() {
+    super("A different video-prompt request is already active for this shot");
+    this.name = "VerticalDramaShotVideoPromptConflictError";
+  }
+}
+
+export interface VerticalDramaShotVideoPromptJobRedisAdapter {
+  get(key: string): Promise<string | null>;
+  set(
+    key: string,
+    value: string,
+    mode: "EX",
+    seconds: number
+  ): Promise<unknown>;
+  setNx(key: string, value: string, seconds: number): Promise<boolean>;
+  incr(key: string): Promise<number>;
+  del(key: string): Promise<unknown>;
+  compareDelete(key: string, expectedValue: string): Promise<boolean>;
+}
+
+export interface VerticalDramaShotVideoPromptJobStoreDependencies {
+  redis: VerticalDramaShotVideoPromptJobRedisAdapter;
+  now: () => number;
+  sleep?: (milliseconds: number) => Promise<void>;
+}
+
+export interface VerticalDramaShotVideoPromptJobEnqueueDependencies extends Partial<VerticalDramaShotVideoPromptJobStoreDependencies> {
+  enqueueBullmqJob?: (jobId: string) => Promise<void>;
+}
+
+function defaultRedisAdapter(): VerticalDramaShotVideoPromptJobRedisAdapter {
+  const client = getRedisClient();
+  return {
+    get: key => client.get(key),
+    set: (key, value, mode, seconds) => client.set(key, value, mode, seconds),
+    setNx: async (key, value, seconds) =>
+      (await client.set(key, value, "EX", seconds, "NX")) === "OK",
+    incr: key => client.incr(key),
+    del: key => client.del(key),
+    compareDelete: async (key, expectedValue) => {
+      const result = await client.eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+        1,
+        key,
+        expectedValue
+      );
+      return Number(result) === 1;
+    },
+  };
+}
+
+function resolveDependencies(
+  dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
+): VerticalDramaShotVideoPromptJobStoreDependencies {
+  return {
+    redis: dependencies?.redis ?? defaultRedisAdapter(),
+    now: dependencies?.now ?? Date.now,
+    sleep:
+      dependencies?.sleep ??
+      (milliseconds =>
+        new Promise(resolve => setTimeout(resolve, milliseconds))),
+  };
+}
+
+function scopeKey(
+  owner: Pick<
+    VerticalDramaShotVideoPromptJobOwner,
+    "tenantId" | "userId" | "seriesId" | "episodeId"
+  >
+): string {
+  return [
+    "vd:shot-video-prompt-job:scope",
+    owner.tenantId,
+    owner.userId,
+    owner.seriesId,
+    owner.episodeId,
+  ].join(":");
+}
+
+function recordKey(jobId: string): string {
+  return `vd:shot-video-prompt-job:${jobId}`;
+}
+
+function activePointerKey(owner: VerticalDramaShotVideoPromptJobOwner): string {
+  return [
+    "vd:shot-video-prompt-job:active",
+    owner.tenantId,
+    owner.userId,
+    owner.seriesId,
+    owner.episodeId,
+    owner.shotNumber,
+  ].join(":");
+}
+
+function sequenceKey(
+  owner: Pick<
+    VerticalDramaShotVideoPromptJobOwner,
+    "tenantId" | "userId" | "seriesId" | "episodeId"
+  >
+): string {
+  return `${scopeKey(owner)}:sequence`;
+}
+
+function nextSequenceKey(
+  owner: Pick<
+    VerticalDramaShotVideoPromptJobOwner,
+    "tenantId" | "userId" | "seriesId" | "episodeId"
+  >
+): string {
+  return `${scopeKey(owner)}:next`;
+}
+
+function sequenceJobKey(
+  owner: Pick<
+    VerticalDramaShotVideoPromptJobOwner,
+    "tenantId" | "userId" | "seriesId" | "episodeId"
+  >,
+  sequence: number
+): string {
+  return `${scopeKey(owner)}:job:${sequence}`;
+}
+
+function episodeLockKey(
+  owner: Pick<
+    VerticalDramaShotVideoPromptJobOwner,
+    "tenantId" | "userId" | "seriesId" | "episodeId"
+  >
+): string {
+  return `${scopeKey(owner)}:lock`;
+}
+
+function idempotencyPointerKey(
+  owner: VerticalDramaShotVideoPromptJobOwner,
+  idempotencyKey: string
+): string {
+  const digest = createHash("sha256").update(idempotencyKey).digest("hex");
+  return [
+    "vd:shot-video-prompt-job:idempotency",
+    owner.tenantId,
+    owner.userId,
+    owner.seriesId,
+    owner.episodeId,
+    owner.shotNumber,
+    digest,
+  ].join(":");
+}
+
+function requestFingerprint(
+  input: VerticalDramaShotVideoPromptJobInput
+): string {
+  const canonical = JSON.stringify({
+    seriesId: input.seriesId,
+    episodeId: input.episodeId,
+    shotNumber: input.shotNumber,
+    nativeAudioEnabled: input.nativeAudioEnabled ?? null,
+    instruction: input.instruction?.trim() ?? null,
+    attachShotImage: input.attachShotImage ?? true,
+    additionalImageUrls: input.additionalImageUrls ?? [],
+    qualityLoop: input.qualityLoop ?? null,
+  });
+  return createHash("sha256").update(canonical).digest("hex");
+}
+
+function ownerMatches(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  owner: VerticalDramaShotVideoPromptJobOwner
+): boolean {
+  return (
+    record.tenantId === owner.tenantId &&
+    record.userId === owner.userId &&
+    record.seriesId === owner.seriesId &&
+    record.episodeId === owner.episodeId &&
+    record.shotNumber === owner.shotNumber
+  );
+}
+
+function isActive(status: VerticalDramaShotVideoPromptJobStatus): boolean {
+  return status === "queued" || status === "running";
+}
+
+function boundedError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return (message.trim() || "Failed to generate the video prompt").slice(
+    0,
+    MAX_ERROR_CHARS
+  );
+}
+
+async function readRecord(
+  jobId: string,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<VerticalDramaShotVideoPromptJobRecord | null> {
+  const raw = await deps.redis.get(recordKey(jobId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as VerticalDramaShotVideoPromptJobRecord;
+  } catch {
+    return null;
+  }
+}
+
+async function writeRecord(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<void> {
+  await deps.redis.set(
+    recordKey(record.jobId),
+    JSON.stringify(record),
+    "EX",
+    RECORD_TTL_SECONDS
+  );
+}
+
+async function clearPointers(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<void> {
+  await deps.redis
+    .compareDelete(activePointerKey(record), record.jobId)
+    .catch(() => false);
+}
+
+async function setNextSequence(
+  owner: VerticalDramaShotVideoPromptJobOwner,
+  sequence: number,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<void> {
+  await deps.redis.set(
+    nextSequenceKey(owner),
+    String(sequence),
+    "EX",
+    SEQUENCE_TTL_SECONDS
+  );
+}
+
+async function getQueuePosition(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<{ queuePosition: number; activeJobCount: number }> {
+  const next = Number(
+    (await deps.redis.get(nextSequenceKey(record))) ?? record.sequence
+  );
+  const last = Number(
+    (await deps.redis.get(sequenceKey(record))) ?? record.sequence
+  );
+  const activeJobCount = Math.max(0, last - next + 1);
+  return {
+    queuePosition: isActive(record.status)
+      ? Math.max(1, record.sequence - next + 1)
+      : 0,
+    activeJobCount,
+  };
+}
+
+async function toSummary(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<VerticalDramaShotVideoPromptJobSummary> {
+  return {
+    jobId: record.jobId,
+    shotNumber: record.shotNumber,
+    status: record.status,
+    result: record.result,
+    error: record.error,
+    ...(await getQueuePosition(record, deps)),
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
+export async function getVerticalDramaShotVideoPromptJobStatus(
+  jobId: string,
+  owner: VerticalDramaShotVideoPromptJobOwner,
+  dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
+): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
+  const deps = resolveDependencies(dependencies);
+  const record = await readRecord(jobId, deps);
+  return record && ownerMatches(record, owner) ? toSummary(record, deps) : null;
+}
+
+export async function getActiveVerticalDramaShotVideoPromptJobs(
+  owner: Pick<
+    VerticalDramaShotVideoPromptJobOwner,
+    "tenantId" | "userId" | "seriesId" | "episodeId"
+  >,
+  dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
+): Promise<VerticalDramaShotVideoPromptJobSummary[]> {
+  const deps = resolveDependencies(dependencies);
+  const next = Number((await deps.redis.get(nextSequenceKey(owner))) ?? 1);
+  const last = Number((await deps.redis.get(sequenceKey(owner))) ?? 0);
+  const jobs: VerticalDramaShotVideoPromptJobSummary[] = [];
+  for (
+    let sequence = next;
+    sequence <= last && sequence < next + 100;
+    sequence += 1
+  ) {
+    const jobId = await deps.redis.get(sequenceJobKey(owner, sequence));
+    if (!jobId) continue;
+    const record = await readRecord(jobId, deps);
+    if (
+      record &&
+      ownerMatches(record, { ...owner, shotNumber: record.shotNumber }) &&
+      isActive(record.status)
+    ) {
+      jobs.push(await toSummary(record, deps));
+    }
+  }
+  return jobs;
+}
+
+export async function getActiveVerticalDramaShotVideoPromptJob(
+  owner: VerticalDramaShotVideoPromptJobOwner,
+  dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
+): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
+  const deps = resolveDependencies(dependencies);
+  const jobId = await deps.redis.get(activePointerKey(owner));
+  if (!jobId) return null;
+  const record = await readRecord(jobId, deps);
+  if (!record || !ownerMatches(record, owner) || !isActive(record.status)) {
+    await deps.redis
+      .compareDelete(activePointerKey(owner), jobId)
+      .catch(() => false);
+    return null;
+  }
+  return toSummary(record, deps);
+}
+
+export async function enqueueVerticalDramaShotVideoPromptJob(
+  payload: VerticalDramaShotVideoPromptJobPayload,
+  dependencies?: VerticalDramaShotVideoPromptJobEnqueueDependencies
+): Promise<VerticalDramaShotVideoPromptJobSummary & { deduplicated: boolean }> {
+  const deps = resolveDependencies(dependencies);
+  const fingerprint = requestFingerprint(payload.input);
+  const idempotencyPointer = payload.input.idempotencyKey
+    ? idempotencyPointerKey(payload, payload.input.idempotencyKey)
+    : null;
+
+  if (idempotencyPointer) {
+    const priorJobId = await deps.redis.get(idempotencyPointer);
+    if (priorJobId) {
+      const prior = await readRecord(priorJobId, deps);
+      if (prior && ownerMatches(prior, payload)) {
+        return { ...(await toSummary(prior, deps)), deduplicated: true };
+      }
+      await deps.redis
+        .compareDelete(idempotencyPointer, priorJobId)
+        .catch(() => false);
+    }
+  }
+
+  const activePointer = activePointerKey(payload);
+  const existingJobId = await deps.redis.get(activePointer);
+  if (existingJobId) {
+    const existing = await readRecord(existingJobId, deps);
+    if (
+      existing &&
+      ownerMatches(existing, payload) &&
+      isActive(existing.status)
+    ) {
+      if (existing.requestFingerprint !== fingerprint) {
+        throw new VerticalDramaShotVideoPromptConflictError();
+      }
+      return { ...(await toSummary(existing, deps)), deduplicated: true };
+    }
+    await deps.redis
+      .compareDelete(activePointer, existingJobId)
+      .catch(() => false);
+  }
+
+  const jobId = randomUUID();
+  const sequence = await deps.redis.incr(sequenceKey(payload));
+  await deps.redis.setNx(nextSequenceKey(payload), "1", SEQUENCE_TTL_SECONDS);
+  const nowIso = new Date(deps.now()).toISOString();
+  const record: VerticalDramaShotVideoPromptJobRecord = {
+    ...payload,
+    jobId,
+    sequence,
+    requestFingerprint: fingerprint,
+    status: "queued",
+    result: null,
+    error: null,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+  await writeRecord(record, deps);
+
+  const claimed = await deps.redis.setNx(
+    activePointer,
+    jobId,
+    POINTER_TTL_SECONDS
+  );
+  if (!claimed) {
+    const winnerId = await deps.redis.get(activePointer);
+    const winner = winnerId ? await readRecord(winnerId, deps) : null;
+    await deps.redis.del(recordKey(jobId));
+    if (winner && isActive(winner.status)) {
+      if (winner.requestFingerprint !== fingerprint) {
+        throw new VerticalDramaShotVideoPromptConflictError();
+      }
+      return { ...(await toSummary(winner, deps)), deduplicated: true };
+    }
+    throw new Error("Unable to reserve the video prompt job slot — retry");
+  }
+
+  await deps.redis.set(
+    sequenceJobKey(payload, sequence),
+    jobId,
+    "EX",
+    SEQUENCE_TTL_SECONDS
+  );
+  if (idempotencyPointer) {
+    await deps.redis.set(idempotencyPointer, jobId, "EX", RECORD_TTL_SECONDS);
+  }
+
+  try {
+    await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+  } catch (error) {
+    const failed: VerticalDramaShotVideoPromptJobRecord = {
+      ...record,
+      status: "failed",
+      error: boundedError(error),
+      updatedAt: new Date(deps.now()).toISOString(),
+    };
+    await writeRecord(failed, deps);
+    await clearPointers(failed, deps);
+    debugError(
+      "verticalDramaShotVideoPromptJobs",
+      `Failed to enqueue video prompt job ${jobId}`,
+      error
+    );
+    return { ...(await toSummary(failed, deps)), deduplicated: false };
+  }
+
+  return { ...(await toSummary(record, deps)), deduplicated: false };
+}
+
+async function markTerminalAndAdvance(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  status: "succeeded" | "failed",
+  result: VerticalDramaShotVideoPromptJobResult | null,
+  error: string | null,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<void> {
+  await writeRecord(
+    {
+      ...record,
+      status,
+      result,
+      error,
+      updatedAt: new Date(deps.now()).toISOString(),
+    },
+    deps
+  );
+  await setNextSequence(record, record.sequence + 1, deps);
+  await clearPointers(record, deps);
+}
+
+async function waitForTurn(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<boolean> {
+  const startedWaiting = deps.now();
+  const lockKey = episodeLockKey(record);
+  while (deps.now() - startedWaiting < TURN_WAIT_TIMEOUT_MS) {
+    const next = Number((await deps.redis.get(nextSequenceKey(record))) ?? 1);
+    if (next > record.sequence) return false;
+
+    const priorJobId =
+      next < record.sequence
+        ? await deps.redis.get(sequenceJobKey(record, next))
+        : null;
+    if (priorJobId) {
+      const prior = await readRecord(priorJobId, deps);
+      if (prior && isActive(prior.status)) {
+        if (
+          prior.status === "running" &&
+          deps.now() - new Date(prior.updatedAt).getTime() > STALE_RUNNING_MS
+        ) {
+          await markTerminalAndAdvance(
+            prior,
+            "failed",
+            null,
+            "Background job became stale; it was not retried automatically.",
+            deps
+          );
+          continue;
+        }
+        await deps.sleep?.(500);
+        continue;
+      }
+      await setNextSequence(record, next + 1, deps);
+      continue;
+    }
+    if (next < record.sequence) {
+      await setNextSequence(record, next + 1, deps);
+      continue;
+    }
+
+    if (await deps.redis.setNx(lockKey, record.jobId, 30 * 60)) return true;
+    await deps.sleep?.(250);
+  }
+  return false;
+}
+
+export async function runVerticalDramaShotVideoPromptJob(
+  jobId: string,
+  executor: VerticalDramaShotVideoPromptJobExecutor,
+  dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
+): Promise<void> {
+  const deps = resolveDependencies(dependencies);
+  const record = await readRecord(jobId, deps);
+  if (!record || !isActive(record.status)) return;
+
+  const hasTurn = await waitForTurn(record, deps);
+  if (!hasTurn) {
+    if (record.status === "queued") {
+      await markTerminalAndAdvance(
+        record,
+        "failed",
+        null,
+        "The queued video prompt job timed out before it could start.",
+        deps
+      );
+    }
+    return;
+  }
+
+  const running: VerticalDramaShotVideoPromptJobRecord = {
+    ...record,
+    status: "running",
+    error: null,
+    updatedAt: new Date(deps.now()).toISOString(),
+  };
+  await writeRecord(running, deps);
+  const executionToken = randomUUID();
+  activeWorkerExecutions.set(jobId, executionToken);
+  try {
+    const result = await executor(
+      {
+        tenantId: running.tenantId,
+        userId: running.userId,
+        seriesId: running.seriesId,
+        episodeId: running.episodeId,
+        shotNumber: running.shotNumber,
+        publicUrl: running.publicUrl,
+        input: running.input,
+      },
+      { jobId, token: executionToken }
+    );
+    await markTerminalAndAdvance(running, "succeeded", result, null, deps);
+  } catch (error) {
+    await markTerminalAndAdvance(
+      running,
+      "failed",
+      null,
+      boundedError(error),
+      deps
+    ).catch(() => {});
+  } finally {
+    activeWorkerExecutions.delete(jobId);
+    await deps.redis
+      .compareDelete(episodeLockKey(running), running.jobId)
+      .catch(() => false);
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let queue: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let worker: any = null;
+
+async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
+  if (!queue) {
+    throw new Error(
+      `${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE} queue is not initialized`
+    );
+  }
+  await queue.add(
+    "run",
+    { jobId },
+    {
+      jobId,
+      attempts: 1,
+      removeOnComplete: true,
+      removeOnFail: { age: 24 * 60 * 60 },
+    }
+  );
+}
+
+export async function initVerticalDramaShotVideoPromptJobsQueue(): Promise<void> {
+  if (queue) return;
+  try {
+    const { Queue, Worker } = await import("bullmq");
+    const connection = getRedisClient();
+    queue = new Queue(VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE, {
+      connection,
+    });
+    worker = new Worker(
+      VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE,
+      async (bullJob: any) => {
+        const { runVerticalDramaShotVideoPromptJobExecutor } =
+          await import("../routers/verticalDramaEpisodes");
+        await runVerticalDramaShotVideoPromptJob(
+          bullJob.data.jobId,
+          runVerticalDramaShotVideoPromptJobExecutor
+        );
+      },
+      { connection, concurrency: WORKER_CONCURRENCY }
+    );
+    worker.on("failed", (bullJob: any, error: Error) => {
+      console.error(
+        `[${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE}] Job ${bullJob?.id} failed:`,
+        error.message
+      );
+    });
+  } catch (error) {
+    console.warn(
+      `[${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE}] BullMQ initialization skipped:`,
+      boundedError(error)
+    );
+  }
+}
+
+export async function closeVerticalDramaShotVideoPromptJobsQueue(): Promise<void> {
+  try {
+    await worker?.close();
+    await queue?.close();
+  } catch {
+    // Best-effort shutdown.
+  } finally {
+    worker = null;
+    queue = null;
+  }
+}

@@ -1681,10 +1681,11 @@ interface VerticalDramaStoryboardPanelProps {
   onCloseRepairImageDialog?: () => void;
 
   /* ---- Phase 6.6 — per-shot video prompt generation ---- */
-  /** Submits `generateShotVideoPrompt` for one shot (synchronous LLM call,
-   *  no polling) — disabled when the shot has no approved image yet. */
+  /** Submits `generateShotVideoPrompt` for one shot; the durable worker job
+   *  status is reflected in the button until completion. */
   onGenerateShotVideoPrompt?: (shotNumber: number) => void;
   generatingShotVideoPromptForShot?: ReadonlySet<number>;
+  videoPromptJobStatusByShot?: Record<number, "queued" | "running">;
   /** True once the most recent `generateShotVideoPrompt` response for this
    *  shot reported `usedVision: true` — shown as a small note next to the
    *  video prompt box. */
@@ -1961,6 +1962,7 @@ export function VerticalDramaStoryboardPanel({
   onCloseRepairImageDialog,
   onGenerateShotVideoPrompt,
   generatingShotVideoPromptForShot = EMPTY_SHOT_NUMBER_SET,
+  videoPromptJobStatusByShot = {},
   usedVisionByShot = {},
   compiledVideo = null,
   onAssembleCompiledVideo,
@@ -6485,8 +6487,12 @@ export function VerticalDramaStoryboardPanel({
                                   className="h-3 w-3"
                                 />
                               )}
-                              {generatingShotVideoPromptForShot.has(shotNumber)
-                                ? t2.generatingShotVideoPrompt
+                              {videoPromptJobStatusByShot[shotNumber] === "queued"
+                                ? t(locale, "ส่งงานแล้ว — รอคิว…", "Submitted — waiting in queue…")
+                                : videoPromptJobStatusByShot[shotNumber] === "running"
+                                  ? t(locale, "กำลังสร้างพรอมต์…", "Generating prompt…")
+                                  : generatingShotVideoPromptForShot.has(shotNumber)
+                                    ? t2.generatingShotVideoPrompt
                                 : t2.generateShotVideoPrompt}
                             </Button>
                             {!asset?.url ? (

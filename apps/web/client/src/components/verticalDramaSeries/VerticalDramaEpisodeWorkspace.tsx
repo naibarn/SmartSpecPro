@@ -734,6 +734,7 @@ export interface VerticalDramaStoryboardPanelData {
   /* ---- Phase 6.6 — per-shot video prompt generation ---- */
   onGenerateShotVideoPrompt?: (shotNumber: number) => void;
   generatingShotVideoPromptForShot?: ReadonlySet<number>;
+  videoPromptJobStatusByShot?: Record<number, "queued" | "running">;
   usedVisionByShot?: Record<number, boolean>;
 
   /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
@@ -1602,6 +1603,9 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateShotVideoPrompt={storyboardPanel?.onGenerateShotVideoPrompt}
           generatingShotVideoPromptForShot={
             storyboardPanel?.generatingShotVideoPromptForShot
+          }
+          videoPromptJobStatusByShot={
+            storyboardPanel?.videoPromptJobStatusByShot
           }
           usedVisionByShot={storyboardPanel?.usedVisionByShot}
           compiledVideo={storyboardPanel?.compiledVideo}
