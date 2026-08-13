@@ -30,9 +30,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Clapperboard,
+  Clock3,
+  Loader2,
   Menu,
   Plus,
+  RefreshCw,
   Search,
+  Trash2,
+  XCircle,
 } from "lucide-react";
 
 import { LocaleToggle } from "@/components/LocaleToggle";
@@ -42,7 +47,12 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { CreateSeriesWizard } from "./CreateSeriesWizard";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  CreateSeriesWizard,
+  clearPersistedCreateSeriesWorkspace,
+  hasRecoverableCreateSeriesWorkspace,
+} from "./CreateSeriesWizard";
 import {
   pickCopy,
   sequelBadgeText,
@@ -71,7 +81,6 @@ const DESKTOP_SIDEBAR_BREAKPOINT_PX = 1280; // Tailwind `xl:`
  *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
  *  the whole click handler BEFORE the real (state) action fired. Swallow the
  *  error and let the real action proceed. */
-
 
 interface VerticalDramaShellContextValue {
   openCreateWizard: () => void;
@@ -144,7 +153,10 @@ export type SidebarSeriesClass = "main" | "sequel" | "special";
  * requirement rests on this default bucket.
  */
 export function classifySidebarSeriesItem(
-  item: Pick<SidebarSeriesItem, "createMode" | "seasonNumber" | "parentSeriesId">
+  item: Pick<
+    SidebarSeriesItem,
+    "createMode" | "seasonNumber" | "parentSeriesId"
+  >
 ): SidebarSeriesClass {
   if (item.createMode === "special_edition") return "special";
   if (
@@ -189,7 +201,9 @@ export function groupMainViewSeries(
   const orphanSequels: SidebarSeriesItem[] = [];
   for (const sequel of sequels) {
     const parent =
-      sequel.parentSeriesId != null ? byId.get(sequel.parentSeriesId) : undefined;
+      sequel.parentSeriesId != null
+        ? byId.get(sequel.parentSeriesId)
+        : undefined;
     if (parent && classifySidebarSeriesItem(parent) === "main") {
       const bucket = childrenByParentId.get(parent.id) ?? [];
       bucket.push(sequel);
@@ -245,7 +259,9 @@ export function resolveSidebarSeriesView(
   if (filterChip === "special") {
     return {
       mode: "flat",
-      items: series.filter(item => classifySidebarSeriesItem(item) === "special"),
+      items: series.filter(
+        item => classifySidebarSeriesItem(item) === "special"
+      ),
     };
   }
   return { mode: "grouped-main", groups: groupMainViewSeries(series) };
@@ -275,15 +291,77 @@ export function VerticalDramaShell({
   children: ReactNode;
 }) {
   const lang = useVerticalDramaLang();
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [hasRecoverableDraftWorkspace, setHasRecoverableDraftWorkspace] =
+    useState(false);
+  const [selectedRecoverySessionId, setSelectedRecoverySessionId] = useState<
+    string | undefined
+  >();
+  const [selectedRecoveryJobId, setSelectedRecoveryJobId] = useState<
+    string | undefined
+  >();
+  const [selectedRecoveryQcRunId, setSelectedRecoveryQcRunId] = useState<
+    string | undefined
+  >();
+  const [createWizardRequestPending, setCreateWizardRequestPending] =
+    useState(false);
+  const [wizardInstanceKey, setWizardInstanceKey] = useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
-  const [filterChip, setFilterChip] = useState<SidebarProjectFilterChip>("main");
+  const [filterChip, setFilterChip] =
+    useState<SidebarProjectFilterChip>("main");
   const [expandedMainIds, setExpandedMainIds] = useState<Set<string>>(
     () => new Set()
   );
+
+  const draftJobsQuery = trpc.verticalDramaSeries.listDraftJobs.useQuery(
+    { includeArchived: false, limit: 50 },
+    {
+      enabled: !authLoading && isAuthenticated,
+      staleTime: 15_000,
+      retry: 1,
+      refetchOnMount: "always",
+      refetchInterval: query => {
+        const jobs = query.state.data?.jobs ?? [];
+        return jobs.some(job =>
+          ["queued", "composing", "qc_running"].includes(job.jobStatus)
+        )
+          ? 2_000
+          : false;
+      },
+    }
+  );
+  const recoverableDrafts = draftJobsQuery.data?.jobs ?? [];
+  const recoveryCheckPending =
+    authLoading ||
+    (isAuthenticated &&
+      !draftJobsQuery.isSuccess &&
+      !draftJobsQuery.isError);
+
+  // `CreateSeriesWizard` persists the work, but this shell owns the dialog's
+  // open state. After a browser refresh, keep both user intents available:
+  // resume the saved workspace or start a genuinely new story.
+  useEffect(() => {
+    if (hasRecoverableCreateSeriesWorkspace()) {
+      setHasRecoverableDraftWorkspace(true);
+      if (createWizardRequestPending) {
+        setCreateWizardRequestPending(false);
+        setWizardOpen(false);
+      }
+      return;
+    }
+    if (createWizardRequestPending && !recoveryCheckPending) {
+      setCreateWizardRequestPending(false);
+      setWizardOpen(true);
+    }
+  }, [
+    createWizardRequestPending,
+    recoveryCheckPending,
+    recoverableDrafts.length,
+  ]);
 
   // Default expanded on desktop/tablet-landscape, collapsed elsewhere — unless
   // the user already made an explicit choice (persisted across the 3 pages).
@@ -332,23 +410,88 @@ export function VerticalDramaShell({
   );
   const series = (listQuery.data?.series ?? []) as SidebarSeriesItem[];
   const isSearchActive = search.trim().length > 0;
-  const sidebarView = resolveSidebarSeriesView(series, filterChip, isSearchActive);
+  const sidebarView = resolveSidebarSeriesView(
+    series,
+    filterChip,
+    isSearchActive
+  );
 
   const contextValue = useMemo<VerticalDramaShellContextValue>(
-    () => ({ openCreateWizard: () => setWizardOpen(true) }),
+    () => ({
+      openCreateWizard: () => startNewSeriesFromScratch(),
+    }),
     []
   );
+
+  function loadDraftJob(job: (typeof recoverableDrafts)[number]) {
+    setSelectedRecoveryJobId(job.id);
+    setSelectedRecoverySessionId(job.draftSessionId);
+    setSelectedRecoveryQcRunId(job.qcRunId ?? undefined);
+    setHasRecoverableDraftWorkspace(false);
+    setWizardInstanceKey(value => value + 1);
+    setWizardOpen(true);
+  }
+
+  function startNewSeriesFromScratch() {
+    clearPersistedCreateSeriesWorkspace();
+    setSelectedRecoveryJobId(undefined);
+    setSelectedRecoverySessionId(undefined);
+    setSelectedRecoveryQcRunId(undefined);
+    setHasRecoverableDraftWorkspace(false);
+    setWizardOpen(true);
+    // The wizard reads the persisted snapshot only on its first mount. Force a
+    // fresh instance after clearing it so "new story" cannot inherit old form
+    // values, job ids, or QC state from the previous workspace.
+    setWizardInstanceKey(value => value + 1);
+  }
 
   function handleSelectSeries(seriesId: string) {
     setLocation(verticalDramaRoutes.seriesDetail(seriesId));
     setIsMobilePanelOpen(false);
   }
 
+  const cancelDraftJobMutation =
+    trpc.verticalDramaSeries.cancelDraftJob.useMutation({
+      onSuccess: () => void draftJobsQuery.refetch(),
+    });
+  const archiveDraftJobMutation =
+    trpc.verticalDramaSeries.archiveDraftJob.useMutation({
+      onSuccess: () => void draftJobsQuery.refetch(),
+    });
+
+  function draftJobStatusText(status: string): string {
+    const labels: Record<string, [string, string]> = {
+      queued: ["รอเริ่ม", "Queued"],
+      composing: ["กำลังสร้าง Draft", "Composing"],
+      ready_for_qc: ["พร้อมตรวจ QC", "Ready for QC"],
+      qc_running: ["กำลังตรวจ QC", "QC running"],
+      passed: ["QC ผ่าน", "QC passed"],
+      failed: ["ล้มเหลว", "Failed"],
+      cancelled: ["ยกเลิกแล้ว", "Cancelled"],
+      applied: ["นำไปใช้แล้ว", "Applied"],
+      archived: ["เก็บแล้ว", "Archived"],
+    };
+    const [th, en] = labels[status] ?? [status, status];
+    return lang === "th" ? th : en;
+  }
+
+  function formatDraftJobTime(value: unknown): string {
+    const date = new Date(String(value));
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString(lang === "th" ? "th-TH" : "en-US", {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+  }
+
   function renderSeriesCard(item: SidebarSeriesItem) {
     const isSelected = item.id === currentSeriesId;
     const statusLabel =
       seriesStatusCopy[item.status as VerticalDramaSeriesStatus] != null
-        ? pickCopy(lang, seriesStatusCopy[item.status as VerticalDramaSeriesStatus])
+        ? pickCopy(
+            lang,
+            seriesStatusCopy[item.status as VerticalDramaSeriesStatus]
+          )
         : item.status;
     return (
       <button
@@ -374,7 +517,10 @@ export function VerticalDramaShell({
             aria-hidden="true"
             className="flex h-10 w-7 shrink-0 items-center justify-center rounded bg-slate-100"
           >
-            <Clapperboard className="h-3.5 w-3.5 text-slate-300" aria-hidden="true" />
+            <Clapperboard
+              className="h-3.5 w-3.5 text-slate-300"
+              aria-hidden="true"
+            />
           </div>
         )}
         <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -390,30 +536,36 @@ export function VerticalDramaShell({
               {item.title}
             </span>
             {item.pendingApprovalCount > 0 && (
-              <Badge variant="destructive" className="shrink-0 px-1.5 py-0 text-[10px]">
+              <Badge
+                variant="destructive"
+                className="shrink-0 px-1.5 py-0 text-[10px]"
+              >
                 {item.pendingApprovalCount}
               </Badge>
             )}
           </span>
           <span className="truncate pl-4 text-xs text-muted-foreground">
             {statusLabel} · SUB-EP {item.episodeCount}
-            {typeof item.targetEpisodeCount === "number" && item.targetEpisodeCount > 0
+            {typeof item.targetEpisodeCount === "number" &&
+            item.targetEpisodeCount > 0
               ? `/${item.targetEpisodeCount}`
               : ""}
           </span>
           {/* Stage 2.6 — lineage badge. Feature-detected: renders only once
               `list` starts including these fields (see `SidebarSeriesItem`'s
               own doc comment). */}
-          {item.createMode === "sequel" && typeof item.seasonNumber === "number" && (
-            <span className="truncate pl-4 text-[11px] text-cyan-700">
-              {sequelBadgeText(lang, item.seasonNumber)}
-            </span>
-          )}
-          {item.createMode === "special_edition" && item.lineage?.parentTitle && (
-            <span className="truncate pl-4 text-[11px] text-cyan-700">
-              {specialEditionBadgeText(lang, item.lineage.parentTitle)}
-            </span>
-          )}
+          {item.createMode === "sequel" &&
+            typeof item.seasonNumber === "number" && (
+              <span className="truncate pl-4 text-[11px] text-cyan-700">
+                {sequelBadgeText(lang, item.seasonNumber)}
+              </span>
+            )}
+          {item.createMode === "special_edition" &&
+            item.lineage?.parentTitle && (
+              <span className="truncate pl-4 text-[11px] text-cyan-700">
+                {specialEditionBadgeText(lang, item.lineage.parentTitle)}
+              </span>
+            )}
         </span>
       </button>
     );
@@ -461,7 +613,7 @@ export function VerticalDramaShell({
             type="button"
             size="sm"
             className="shrink-0 gap-1.5"
-            onClick={() => setWizardOpen(true)}
+            onClick={startNewSeriesFromScratch}
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             {pickCopy(lang, verticalDramaCopy.sidebarNewSeries)}
@@ -473,19 +625,26 @@ export function VerticalDramaShell({
         {!isSearchActive && (
           <div
             role="group"
-            aria-label={pickCopy(lang, verticalDramaCopy.sidebarFilterGroupLabel)}
+            aria-label={pickCopy(
+              lang,
+              verticalDramaCopy.sidebarFilterGroupLabel
+            )}
             className="mt-2 flex items-center gap-1.5"
           >
-            {(
-              [
-                { chip: "main" as const, copy: verticalDramaCopy.sidebarFilterMain },
-                {
-                  chip: "special" as const,
-                  copy: verticalDramaCopy.sidebarFilterSpecial,
-                },
-                { chip: "all" as const, copy: verticalDramaCopy.sidebarFilterAll },
-              ]
-            ).map(({ chip, copy }) => (
+            {[
+              {
+                chip: "main" as const,
+                copy: verticalDramaCopy.sidebarFilterMain,
+              },
+              {
+                chip: "special" as const,
+                copy: verticalDramaCopy.sidebarFilterSpecial,
+              },
+              {
+                chip: "all" as const,
+                copy: verticalDramaCopy.sidebarFilterAll,
+              },
+            ].map(({ chip, copy }) => (
               <button
                 key={chip}
                 type="button"
@@ -504,6 +663,145 @@ export function VerticalDramaShell({
           </div>
         )}
       </div>
+
+      <section
+        aria-labelledby="vertical-drama-draft-job-inbox"
+        className="border-b bg-slate-50/70 p-3"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h3
+            id="vertical-drama-draft-job-inbox"
+            className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-800"
+          >
+            <Clock3 className="h-3.5 w-3.5 text-cyan-600" aria-hidden="true" />
+            <span className="truncate">
+              {lang === "th" ? "งาน Draft ค้าง" : "Draft Job Inbox"}
+            </span>
+            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+              {recoverableDrafts.length}
+            </Badge>
+          </h3>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={() => void draftJobsQuery.refetch()}
+            aria-label={lang === "th" ? "รีเฟรชงาน Draft" : "Refresh Draft jobs"}
+          >
+            {draftJobsQuery.isFetching ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
+          </Button>
+        </div>
+        {draftJobsQuery.isLoading ? (
+          <div className="mt-2 space-y-1.5">
+            <Skeleton className="h-12 w-full rounded-lg" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+          </div>
+        ) : draftJobsQuery.isError ? (
+          <p className="mt-2 rounded-md border border-dashed border-red-200 bg-red-50 px-2.5 py-2 text-[11px] text-red-700">
+            {lang === "th"
+              ? "โหลดรายการงานค้างไม่สำเร็จ กดรีเฟรชเพื่อลองใหม่"
+              : "Could not load Draft jobs. Refresh to retry."}
+          </p>
+        ) : recoverableDrafts.length === 0 ? (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {lang === "th" ? "ไม่มีงาน Draft ค้าง" : "No pending Draft jobs"}
+          </p>
+        ) : (
+          <div className="mt-2 max-h-64 space-y-1.5 overflow-y-auto pr-0.5">
+            {recoverableDrafts.map(job => {
+              const isActive = ["queued", "composing", "qc_running"].includes(
+                job.jobStatus
+              );
+              const isMutating =
+                (cancelDraftJobMutation.isPending &&
+                  cancelDraftJobMutation.variables?.jobId === job.id) ||
+                (archiveDraftJobMutation.isPending &&
+                  archiveDraftJobMutation.variables?.jobId === job.id);
+              return (
+                <div
+                  key={job.id}
+                  className="rounded-lg border bg-white p-2 shadow-sm"
+                >
+                  <button
+                    type="button"
+                    className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => loadDraftJob(job)}
+                    title={job.logline ?? undefined}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] font-semibold text-cyan-700">
+                        #{job.jobCode}
+                      </span>
+                      <span className="truncate text-xs font-medium text-slate-900">
+                        {job.title ||
+                          (lang === "th" ? "Draft ไม่มีชื่อ" : "Untitled Draft")}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                      <span className="truncate">
+                        {draftJobStatusText(job.jobStatus)} · v{job.currentVersion}
+                        {typeof job.lastQcScore === "number"
+                          ? ` · QC ${(job.lastQcScore / 10).toFixed(1)}/10`
+                          : ""}
+                      </span>
+                      <span className="shrink-0">
+                        {formatDraftJobTime(job.updatedAt)}
+                      </span>
+                    </div>
+                  </button>
+                  <div className="mt-1.5 flex items-center justify-between gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 px-2 text-[10px]"
+                      onClick={() => loadDraftJob(job)}
+                    >
+                      {lang === "th" ? "โหลดงานนี้" : "Load"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                      disabled={isMutating}
+                      onClick={() => {
+                        if (isActive) {
+                          cancelDraftJobMutation.mutate({ jobId: job.id });
+                        } else {
+                          archiveDraftJobMutation.mutate({ jobId: job.id });
+                        }
+                      }}
+                      aria-label={
+                        isActive
+                          ? lang === "th"
+                            ? "ยกเลิกงาน Draft"
+                            : "Cancel Draft job"
+                          : lang === "th"
+                            ? "เก็บงาน Draft ออกจากรายการ"
+                            : "Archive Draft job"
+                      }
+                    >
+                      {isMutating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                      ) : isActive ? (
+                        <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <div className="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-contain">
         <div className="space-y-1.5 p-2">
@@ -552,7 +850,10 @@ export function VerticalDramaShell({
                           )}
                           aria-hidden="true"
                         />
-                        {sidebarChildSeasonsCountText(lang, group.children.length)}
+                        {sidebarChildSeasonsCountText(
+                          lang,
+                          group.children.length
+                        )}
                       </button>
                       {isExpanded && (
                         <div className="mt-1 space-y-1.5 border-l pl-3">
@@ -613,6 +914,69 @@ export function VerticalDramaShell({
         </header>
 
         <main className="mx-auto w-full max-w-none px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+          {createWizardRequestPending && recoveryCheckPending && (
+            <div
+              role="status"
+              className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+            >
+              {pickCopy(lang, verticalDramaCopy.draftRecoveryChecking)}
+            </div>
+          )}
+          {hasRecoverableDraftWorkspace && !wizardOpen && (
+            <div
+              role="status"
+              className="mb-4 flex flex-col gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <p className="font-semibold">
+                  {pickCopy(lang, verticalDramaCopy.draftRecoveryTitle)}
+                </p>
+                <p className="mt-1 text-xs text-sky-800">
+                  {pickCopy(lang, verticalDramaCopy.draftRecoveryBody)}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {recoverableDrafts.slice(0, 4).map(workspace => (
+                  <Button
+                    key={workspace.id}
+                    type="button"
+                    size="sm"
+                    onClick={() => loadDraftJob(workspace)}
+                    className="max-w-[18rem] shrink-0"
+                    title={workspace.logline ?? undefined}
+                  >
+                    {workspace.title ||
+                      pickCopy(lang, verticalDramaCopy.draftRecoveryOpen)}
+                    <span className="ml-1 text-[10px] opacity-75">
+                      v{workspace.currentVersion}
+                    </span>
+                  </Button>
+                ))}
+                {recoverableDrafts.length === 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setHasRecoverableDraftWorkspace(true);
+                      setWizardOpen(true);
+                    }}
+                    className="shrink-0"
+                  >
+                    {pickCopy(lang, verticalDramaCopy.draftRecoveryOpen)}
+                  </Button>
+                )}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={startNewSeriesFromScratch}
+                className="shrink-0"
+              >
+                {pickCopy(lang, verticalDramaCopy.draftRecoveryNew)}
+              </Button>
+            </div>
+          )}
           <div
             className={cn(
               "grid grid-cols-1 gap-4",
@@ -656,12 +1020,21 @@ export function VerticalDramaShell({
       </div>
 
       <CreateSeriesWizard
+        key={wizardInstanceKey}
         open={wizardOpen}
         lang={lang}
+        recoveryJobId={selectedRecoveryJobId}
+        recoverySessionId={selectedRecoverySessionId}
+        recoveryQcRunId={selectedRecoveryQcRunId}
         onOpenChange={setWizardOpen}
         onCreated={seriesId => {
           setWizardOpen(false);
+          setSelectedRecoveryJobId(undefined);
+          setSelectedRecoverySessionId(undefined);
+          setSelectedRecoveryQcRunId(undefined);
+          setHasRecoverableDraftWorkspace(false);
           void listQuery.refetch();
+          void draftJobsQuery.refetch();
           setLocation(verticalDramaRoutes.seriesDetail(seriesId));
         }}
       />

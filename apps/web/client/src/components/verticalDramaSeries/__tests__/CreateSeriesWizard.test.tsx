@@ -1,5 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  computeDraftQualityQcReport,
+  fingerprintDraftQualityQcCandidate,
+} from "@shared/verticalDramaSeries/draftQualityQc";
+import { CREATE_SERIES_FIELD_LIMITS } from "@shared/verticalDramaSeries";
 
 const mockListGenrePresetsQuery = vi.fn();
 const mockListProductsQuery = vi.fn();
@@ -19,6 +24,64 @@ const mockPlanningModelsQuery = vi.fn();
 const mockCarryOverMutate = vi.fn();
 const mockSpecialEditionMutate = vi.fn();
 const mockUploadMutate = vi.fn();
+const mockDraftQcEstimateQuery = vi.fn();
+const mockDraftQcStatusQuery = vi.fn();
+const mockDraftQcStartMutate = vi.fn();
+const mockDraftQcCancelMutate = vi.fn();
+
+let mockDraftQcStatus: { data?: unknown } = { data: undefined };
+
+function makePassingDraftQcResult(draft: Record<string, unknown>) {
+  const report = computeDraftQualityQcReport(
+    {
+      criteria: [
+        "hook_strength",
+        "premise_core_conflict",
+        "vertical_drama_engine",
+        "escalation_twist_potential",
+        "character_emotional_engine",
+        "target_audience_market_fit",
+        "originality_differentiation",
+        "long_form_sustainability",
+      ].map(criterionId => ({
+        criterionId,
+        rawScore: 5,
+        evidence: "test evidence",
+      })) as never,
+      criticalFails: [],
+      strengths: ["clear hook"],
+      weaknesses: [],
+      recommendations: [],
+    },
+    "2026-08-12T00:00:00.000Z"
+  );
+  return {
+    best: {
+      draft,
+      report,
+      round: 0,
+      fingerprint: fingerprintDraftQualityQcCandidate(draft),
+    },
+    history: [
+      {
+        round: 0,
+        score: report.overallScore,
+        status: report.status,
+        kept: true,
+        reason: "passed",
+      },
+    ],
+    creditEstimate: {
+      baselineCalls: 1,
+      maxImprovementRounds: 3,
+      maxCalls: 7,
+      estimatedCredits: 7,
+      actualCredits: 1,
+    },
+    stopReason: "passed",
+    model: "test-model",
+  };
+}
 
 let mockSynthesizeMutationState: {
   data: unknown;
@@ -28,6 +91,7 @@ let mockSynthesizeMutationState: {
   data: undefined,
   isPending: false,
 };
+let mockDraftCompositionStatus: { data: any } = { data: undefined };
 
 let mockCarryOverMutationState: {
   data: unknown;
@@ -49,6 +113,138 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
+      getDraftCompositionStatus: {
+        useQuery: () =>
+          mockDraftCompositionStatus.data
+            ? mockDraftCompositionStatus
+            : mockSynthesizeMutationState.error
+              ? {
+                  data: {
+                    status: "failed",
+                    error: mockSynthesizeMutationState.error.message,
+                  },
+                }
+              : mockSynthesizeMutationState.data
+                ? {
+                    data: {
+                      status: "ready_for_qc",
+                      result: mockSynthesizeMutationState.data,
+                    },
+                  }
+                : mockDraftCompositionStatus,
+      },
+      getDraftWorkspaceStatus: { useQuery: () => ({ data: null }) },
+      startDraftComposition: {
+        useMutation: (opts: {
+          onSuccess?: (data: unknown) => void;
+          onError?: (err: unknown) => void;
+        }) => ({
+          mutate: (input: unknown) => {
+            mockSynthesizeMutate(input);
+            if (!mockSynthesizeMutationState.data) {
+              mockSynthesizeMutationState.data = {
+                draft: {
+                  contract_version: 1,
+                  title: "Generated Test Draft",
+                  titleOptions: [
+                    "Generated Test Draft",
+                    "Second Draft",
+                    "Third Draft",
+                    "Fourth Draft",
+                  ],
+                  category: "sci_fi_mecha",
+                  logline: "generated logline",
+                  mainPlot: "generated main plot",
+                  seasonArc: "generated season arc",
+                  tone: "generated tone",
+                  cliffhangerStyle: "generated cliff",
+                  creatorSummary: {
+                    whatItIsAbout: "about",
+                    protagonistAndGoal: "goal",
+                    conflictAndDiscovery: "conflict",
+                    centralMystery: "mystery",
+                    decisionNotes: ["note"],
+                  },
+                  characters: [
+                    {
+                      name: "A",
+                      role: "Lead",
+                      description: "desc",
+                      narrativeRole: "protagonist",
+                      roleTier: "lead_female",
+                      occupation: "pilot",
+                    },
+                    {
+                      name: "B",
+                      role: "Support",
+                      description: "desc",
+                      narrativeRole: "supporting",
+                      roleTier: "support_memorable",
+                      occupation: "engineer",
+                    },
+                    {
+                      name: "C",
+                      role: "Rival",
+                      description: "desc",
+                      narrativeRole: "antagonist",
+                      roleTier: "rival_male",
+                      occupation: "rival",
+                    },
+                  ],
+                  locations: [
+                    { name: "Base", description: "base" },
+                    { name: "Lab", description: "lab" },
+                    { name: "Arena", description: "arena" },
+                  ],
+                  visualBible: "generated visual bible",
+                  warnings: [],
+                },
+              };
+            }
+            mockDraftCompositionStatus = {
+              data: {
+                status: "ready_for_qc",
+                result: mockSynthesizeMutationState.data,
+              },
+            };
+            opts.onSuccess?.({
+              jobId: "00000000-0000-4000-8000-000000000002",
+              deduped: false,
+            });
+          },
+          isPending: false,
+          reset: vi.fn(),
+          error: undefined,
+        }),
+      },
+      getDraftQualityQcEstimate: { useQuery: () => mockDraftQcEstimateQuery() },
+      getDraftQualityQcStatus: { useQuery: () => mockDraftQcStatusQuery() },
+      startDraftQualityQc: {
+        useMutation: (opts: { onSuccess?: (data: unknown) => void }) => ({
+          mutate: (input: unknown) => {
+            mockDraftQcStartMutate(input);
+            const draft = (input as { draft: Record<string, unknown> }).draft;
+            mockDraftQcStatus = {
+              data: {
+                status: "succeeded",
+                result: makePassingDraftQcResult(draft),
+              },
+            };
+            opts.onSuccess?.({
+              runId: "00000000-0000-4000-8000-000000000001",
+              deduped: false,
+              candidateFingerprint: fingerprintDraftQualityQcCandidate(draft),
+            });
+          },
+          isPending: false,
+        }),
+      },
+      cancelDraftQualityQc: {
+        useMutation: () => ({
+          mutate: (input: unknown) => mockDraftQcCancelMutate(input),
+          isPending: false,
+        }),
+      },
       list: { useQuery: () => mockSeriesListQuery() },
       get: { useQuery: () => mockGetSeriesQuery() },
       getSeriesMemory: { useQuery: () => mockGetSeriesMemoryQuery() },
@@ -76,10 +272,12 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
       proposeSpecialEditionBrief: {
-        useMutation: (opts: {
-          onSuccess?: (data: unknown) => void;
-          onError?: (err: unknown) => void;
-        } = {}) => ({
+        useMutation: (
+          opts: {
+            onSuccess?: (data: unknown) => void;
+            onError?: (err: unknown) => void;
+          } = {}
+        ) => ({
           mutate: (input: unknown) => {
             mockSpecialEditionMutate(input);
             if (mockSpecialEditionMutationState.data) {
@@ -107,6 +305,32 @@ vi.mock("@/lib/trpc", () => ({
         }) => ({
           mutate: (input: unknown) => {
             mockSynthesizeMutate(input);
+            if (
+              !mockSynthesizeMutationState.data &&
+              !mockSynthesizeMutationState.error
+            ) {
+              mockSynthesizeMutationState.data = {
+                draft: {
+                  contract_version: 1,
+                  title: "Generated Test Draft",
+                  category: "sci_fi_mecha",
+                  logline: "generated logline",
+                  mainPlot: "generated main plot",
+                  seasonArc: "generated season arc",
+                  tone: "generated tone",
+                  cliffhangerStyle: "generated cliff",
+                  characters: [
+                    { name: "A", role: "Lead", description: "desc" },
+                    { name: "B", role: "Support", description: "desc" },
+                    { name: "C", role: "Rival", description: "desc" },
+                  ],
+                  visualBible: "generated visual bible",
+                  warnings: [],
+                },
+                creditsUsed: 1,
+                model: "test-model",
+              };
+            }
             opts?.onSuccess?.(mockSynthesizeMutationState.data);
           },
           get data() {
@@ -154,7 +378,12 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
-import { CreateSeriesWizard } from "@/components/verticalDramaSeries/CreateSeriesWizard";
+import {
+  CreateSeriesWizard,
+  clearPersistedCreateSeriesWorkspace,
+  hasRecoverableCreateSeriesWorkspace,
+  mergeSynthesizedDraftIntoWizardForm,
+} from "@/components/verticalDramaSeries/CreateSeriesWizard";
 
 const presetOne = {
   id: "1",
@@ -216,6 +445,201 @@ function selectCategoryAndPresets(ids: string[]) {
   }
 }
 
+function getTitleInput(): HTMLInputElement {
+  const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
+  return titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+}
+
+function getWizardPremiseTextarea(): HTMLTextAreaElement {
+  const premiseLabel = screen.getByText(/^โจทย์เรื่องที่อยากได้/);
+  return premiseLabel
+    .closest("div")
+    ?.querySelector("textarea") as HTMLTextAreaElement;
+}
+
+function generateDraft(buttonName: RegExp = /ให้ AI สร้าง/) {
+  fireEvent.click(screen.getByRole("button", { name: buttonName }));
+}
+
+function applyDraft() {
+  const qcButton = screen.queryByRole("button", { name: "เริ่มตรวจ QC" });
+  if (qcButton && !qcButton.hasAttribute("disabled")) fireEvent.click(qcButton);
+  fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+}
+
+it("rehydrates every wizard section from a migrated ledger Draft snapshot", () => {
+  const previous = {
+    title: "",
+    genre: "",
+    userPremise: "",
+    audienceAgeRating: "18plus",
+    logline: "",
+    targetEpisodeCount: "10",
+    locale: "th",
+    spokenLocale: "auto",
+    shotDurationSeconds: "8",
+    mainPlot: "",
+    seasonArc: "",
+    tone: "",
+    cliffhangerStyle: "",
+    characters: "",
+    locations: "",
+    visualBible: "",
+  } as any;
+  const result = mergeSynthesizedDraftIntoWizardForm(
+    previous,
+    {
+      contract_version: 1,
+      title: "Proof of Us",
+      titleOptions: ["Proof of Us"],
+      category: "campus-romance",
+      logline: "A complete logline",
+      mainPlot: "A complete main plot",
+      seasonArc: "A complete season arc",
+      tone: "Warm and intense",
+      cliffhangerStyle: "A new failure",
+      characters: [
+        { name: "Maya", role: "Lead", description: "Mathematician" },
+      ],
+      locations: [{ name: "Campus Lab", description: "A structural lab" }],
+      visualBible: "Concrete, steel, and blueprints",
+    } as any,
+    {}
+  );
+
+  expect(result.title).toBe("Proof of Us");
+  expect(result.logline).toBe("A complete logline");
+  expect(result.mainPlot).toBe("A complete main plot");
+  expect(result.seasonArc).toBe("A complete season arc");
+  expect(result.characters).toContain("Maya");
+  expect(result.locations).toContain("Campus Lab");
+  expect(result.visualBible).toContain("blueprints");
+});
+
+describe("CreateSeriesWizard — draft confirmation gate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockDraftCompositionStatus = { data: undefined };
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
+    mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockDraftQcEstimateQuery.mockReturnValue({
+      data: {
+        model: "test-model",
+        baselineCalls: 1,
+        maxImprovementRounds: 3,
+        maxCalls: 7,
+        estimatedCredits: 7,
+        actualCredits: 0,
+      },
+      isLoading: false,
+    });
+    mockDraftQcStatus = { data: undefined };
+    mockDraftQcStatusQuery.mockImplementation(() => mockDraftQcStatus);
+  });
+
+  it("keeps Next disabled until a generated draft is applied", () => {
+    renderWizard();
+
+    expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
+
+    generateDraft();
+
+    expect(
+      screen.getByRole("button", { name: "ใช้ draft นี้" })
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
+  });
+
+  it("restores the workspace after refresh without submitting the draft again", () => {
+    const firstRender = renderWizard();
+    const premise =
+      "Proof of Us — a mathematics scholar builds structures that change the world";
+    fireEvent.change(getWizardPremiseTextarea(), {
+      target: { value: premise },
+    });
+    generateDraft();
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledTimes(1);
+
+    firstRender.unmount();
+    renderWizard();
+
+    expect(getWizardPremiseTextarea().value).toBe(premise);
+    expect(mockSynthesizeMutate).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks a persisted composition job as recoverable for the outer shell", () => {
+    sessionStorage.setItem(
+      "smartspec.vertical-drama.create-workspace.v1",
+      JSON.stringify({
+        version: 1,
+        savedAt: Date.now(),
+        draftSessionId: "draft-workspace-test",
+        form: {},
+        draftCompositionJobId: "composition-job-1",
+        draftQcRunId: null,
+        synthesisRequestKey: 1,
+        appliedDraftKey: null,
+      })
+    );
+
+    expect(hasRecoverableCreateSeriesWorkspace()).toBe(true);
+    clearPersistedCreateSeriesWorkspace();
+    expect(hasRecoverableCreateSeriesWorkspace()).toBe(false);
+  });
+
+  it("keeps optional-field guidance and examples visible outside the inputs", () => {
+    renderWizard();
+
+    expect(
+      screen.getByText("กรอกเท่าที่รู้ ไม่ต้องกรอกให้ครบ")
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/นักศึกษาปีสุดท้ายแกล้งคบกับเพื่อนเก่า/).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/AI จะเติมให้จากโจทย์/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/AI จะเสนอชื่อ 4–5 แบบจาก draft/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/ไม่ต้องกรอกก็ได้ — ถ้าเขียนเองให้สรุป 1–2 ประโยค/)
+    ).toBeInTheDocument();
+  });
+
+  it("opens navigation only after the user applies a draft with a resolved title", () => {
+    renderWizard();
+
+    fireEvent.change(getTitleInput(), { target: { value: "Applied Series" } });
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
+
+    applyDraft();
+
+    expect(screen.getByRole("button", { name: "ถัดไป" })).not.toBeDisabled();
+  });
+
+  it("invalidates the applied draft when the source premise changes or the draft is regenerated", () => {
+    renderWizard();
+
+    fireEvent.change(getTitleInput(), { target: { value: "Stale Series" } });
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    applyDraft();
+    expect(screen.getByRole("button", { name: "ถัดไป" })).not.toBeDisabled();
+
+    fireEvent.change(getWizardPremiseTextarea(), {
+      target: { value: "โจทย์ใหม่" },
+    });
+    expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "ปรับใหม่" }));
+    expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
+  });
+});
+
 describe("CreateSeriesWizard — series look lock", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -227,23 +651,39 @@ describe("CreateSeriesWizard — series look lock", () => {
       isLoading: false,
     });
     mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
-    mockSeriesListQuery.mockReturnValue({ data: { series: [] }, isLoading: false });
+    mockSeriesListQuery.mockReturnValue({
+      data: { series: [] },
+      isLoading: false,
+    });
     mockGetSeriesQuery.mockReturnValue({ data: undefined, isLoading: false });
-    mockGetSeriesMemoryQuery.mockReturnValue({ data: undefined, isLoading: false });
+    mockGetSeriesMemoryQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    });
     mockPlanningModelsQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
   it("sends the selected visual genre in the initial create payload", () => {
     renderWizard();
-    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
+    const titleInput = titleLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Look Locked Series" } });
-    fireEvent.click(screen.getByRole("checkbox", { name: "แอ็กชัน / มหากาพย์" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "แอ็กชัน / มหากาพย์" })
+    );
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    applyDraft();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
-    expect(mockCreateMutate).toHaveBeenCalledWith(expect.objectContaining({
-      lookLock: { mode: "genre", genreKey: "action_epic" },
-    }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lookLock: { mode: "genre", genreKey: "action_epic" },
+      })
+    );
   });
 
   it("forwards a complete AI-mix look candidate only when source inheritance is selected", () => {
@@ -253,6 +693,12 @@ describe("CreateSeriesWizard — series look lock", () => {
         draft: {
           contract_version: 2,
           title: "AI Look Series",
+          titleOptions: [
+            "AI Look Series",
+            "AI Look Series: Afterimage",
+            "AI Look Series: Signal",
+            "AI Look Series: Refracted",
+          ],
           category: "sci_fi_mecha",
           logline: "mixed logline",
           mainPlot: "mixed main plot",
@@ -262,7 +708,11 @@ describe("CreateSeriesWizard — series look lock", () => {
           characters: [{ name: "E", role: "Lead", description: "desc" }],
           visualBible: "mixed visual bible",
           visualIdentity: candidate,
-          mixRecipe: { primaryFlavor: "1", supportingFlavors: [], rationale: "mix" },
+          mixRecipe: {
+            primaryFlavor: "1",
+            supportingFlavors: [],
+            rationale: "mix",
+          },
           blendReport: {
             contractVersion: 2,
             facets: [],
@@ -278,14 +728,20 @@ describe("CreateSeriesWizard — series look lock", () => {
       isPending: false,
     };
     renderWizard();
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    fireEvent.change(getTitleInput(), { target: { value: "AI Look Series" } });
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    applyDraft();
     fireEvent.click(screen.getByRole("checkbox", { name: "ใช้ลุคจากต้นทาง" }));
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
 
-    expect(mockCreateMutate).toHaveBeenCalledWith(expect.objectContaining({
-      lookLock: { mode: "inherit_source", candidateIdentity: candidate },
-    }));
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lookLock: { mode: "inherit_source", candidateIdentity: candidate },
+      })
+    );
   });
 });
 
@@ -300,10 +756,17 @@ describe("CreateSeriesWizard — series look lock", () => {
  * touches any lineage code path.
  */
 beforeEach(() => {
+  sessionStorage.clear();
   mockUseTenantFeatureFlag.mockReturnValue(false);
-  mockSeriesListQuery.mockReturnValue({ data: { series: [] }, isLoading: false });
+  mockSeriesListQuery.mockReturnValue({
+    data: { series: [] },
+    isLoading: false,
+  });
   mockGetSeriesQuery.mockReturnValue({ data: undefined, isLoading: false });
-  mockGetSeriesMemoryQuery.mockReturnValue({ data: undefined, isLoading: false });
+  mockGetSeriesMemoryQuery.mockReturnValue({
+    data: undefined,
+    isLoading: false,
+  });
   mockPlanningModelsQuery.mockReturnValue({ data: [], isLoading: false });
   mockCarryOverMutationState = { data: undefined, isPending: false };
   mockSpecialEditionMutationState = { data: undefined, isPending: false };
@@ -317,6 +780,8 @@ describe("CreateSeriesWizard — Sub-episode terminology", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockDraftCompositionStatus = { data: undefined };
+    mockDraftCompositionStatus = { data: undefined };
     mockListGenrePresetsQuery.mockReturnValue({
       data: { presets: [presetOne, presetTwo] },
       isLoading: false,
@@ -328,14 +793,19 @@ describe("CreateSeriesWizard — Sub-episode terminology", () => {
     renderWizard();
 
     expect(
-      screen.getByText("จำนวนตอนย่อย (Sub-episode) ในโครงสร้างเรื่อง")
+      screen.getByText(/จำนวนตอนย่อย \(Sub-episode\) ในโครงสร้างเรื่อง/)
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "ใช้กำหนดจำนวนตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP ที่เผยแพร่จริง Public EP จะถูกรวมจากตอนย่อยภายหลัง"
+        "ไม่ต้องกรอกก็ได้ ระบบใช้ค่าเริ่มต้น 10 ตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP"
       )
     ).toBeInTheDocument();
 
+    fireEvent.change(getTitleInput(), {
+      target: { value: "Terminology Series" },
+    });
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    applyDraft();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     expect(screen.getByText("ตอนย่อยในโครงสร้างเรื่อง")).toBeInTheDocument();
     expect(screen.getByText("10")).toBeInTheDocument();
@@ -346,6 +816,7 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockDraftCompositionStatus = { data: undefined };
     mockListGenrePresetsQuery.mockReturnValue({
       data: { presets: [presetOne, presetTwo] },
       isLoading: false,
@@ -393,9 +864,7 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
   it("sends `selections` (v2) alongside legacy `selectedPresetIds` when generating a mix", () => {
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
-    fireEvent.click(
-      screen.getByRole("button", { name: /ให้ AI ผสม Preset/ })
-    );
+    fireEvent.click(screen.getByRole("button", { name: /ให้ AI ผสม Preset/ }));
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -485,7 +954,8 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
           cliffhangerStyle: "cliff",
           creatorSummary: {
             whatItIsAbout: "ร้านเล็กกำลังสู้เพื่อรักษาชุมชน",
-            protagonistAndGoal: "ฟ้าต้องกอบกู้ร้านของแม่เพื่อไม่ให้ทุกคนต้องย้ายออก",
+            protagonistAndGoal:
+              "ฟ้าต้องกอบกู้ร้านของแม่เพื่อไม่ให้ทุกคนต้องย้ายออก",
             conflictAndDiscovery: "เธอพบคู่แข่งและหลักฐานการซื้อพื้นที่",
             centralMystery: "ใครกำลังบงการการซื้อพื้นที่",
             decisionNotes: ["ร้านเป็นแกนเรื่อง", "ปมจะคลี่คลายในช่วงท้าย"],
@@ -510,9 +980,18 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     renderWizard();
 
     expect(screen.getByTestId("vd-creator-summary")).toBeInTheDocument();
-    expect(screen.getByText("ร้านเล็กกำลังสู้เพื่อรักษาชุมชน")).toBeInTheDocument();
+    expect(
+      screen.getByText("ร้านเล็กกำลังสู้เพื่อรักษาชุมชน")
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("vd-draft-language-contract")).toHaveTextContent(
+      "เนื้อเรื่อง: ไทย"
+    );
+    expect(screen.getByText("เรื่องย่อหลัก")).toBeInTheDocument();
+    expect(screen.getByText("เส้นเรื่องของซีซั่น")).toBeInTheDocument();
     expect(screen.queryByText("technical rationale")).not.toBeInTheDocument();
-    expect(screen.getByText("รายละเอียดการผสม (สำหรับตรวจสอบเท่านั้น)")).toBeInTheDocument();
+    expect(
+      screen.getByText("รายละเอียดการผสม (สำหรับตรวจสอบเท่านั้น)")
+    ).toBeInTheDocument();
   });
 
   it("shows a retryable synthesis error without asking the creator to refresh", () => {
@@ -527,7 +1006,9 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     expect(screen.getByRole("alert")).toHaveTextContent(
       "AI สร้าง draft ที่อ่านได้ไม่ครบ"
     );
-    expect(screen.getByRole("button", { name: "ลองสร้างใหม่" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ลองสร้างใหม่" })
+    ).toBeInTheDocument();
     expect(screen.queryByText(/รีเฟรชหน้า/)).not.toBeInTheDocument();
   });
 
@@ -566,17 +1047,17 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     ).not.toBeInTheDocument();
   });
 
-  it("remembers appliedPresetId when a single preset is applied directly, and forwards it to create", () => {
+  it("routes a single preset through AI synthesis and never stamps a stored preset identity", () => {
     renderWizard();
 
-    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel
-      .closest("div")
-      ?.querySelector("input") as HTMLInputElement;
-    fireEvent.change(titleInput, { target: { value: "My Series" } });
+    fireEvent.change(getTitleInput(), { target: { value: "My Series" } });
 
     selectCategoryAndPresets(["1"]);
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ Preset นี้/ }));
+    expect(
+      screen.queryByRole("button", { name: /ใช้ Preset นี้/ })
+    ).not.toBeInTheDocument();
+    generateDraft(/ให้ AI สร้าง draft ใหม่จาก preset นี้/);
+    applyDraft();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -584,7 +1065,10 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     );
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "My Series", appliedPresetId: "1" })
+      expect.objectContaining({
+        title: "My Series",
+        appliedPresetId: undefined,
+      })
     );
   });
 
@@ -611,18 +1095,12 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     };
     renderWizard();
 
-    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel
-      .closest("div")
-      ?.querySelector("input") as HTMLInputElement;
-    fireEvent.change(titleInput, { target: { value: "My Series 2" } });
+    fireEvent.change(getTitleInput(), { target: { value: "My Series 2" } });
 
-    // First apply a SINGLE preset directly (sets appliedPresetId = "1")...
+    // A single preset now uses the same skill-backed draft path as every other source.
     selectCategoryAndPresets(["1"]);
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ Preset นี้/ }));
-
-    // ...then apply the (pre-mocked) AI-mixed draft instead, which must clear it.
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    generateDraft(/ให้ AI สร้าง draft ใหม่จาก preset นี้/);
+    applyDraft();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -646,6 +1124,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockDraftCompositionStatus = { data: undefined };
     mockListGenrePresetsQuery.mockReturnValue({
       data: { presets: [presetOne, presetTwo] },
       isLoading: false,
@@ -664,22 +1143,51 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       ?.querySelector("textarea") as HTMLTextAreaElement;
   }
 
-  it("typing into the premise textarea updates form state and is clamped at 2,000 chars", () => {
+  it("typing into the premise textarea accepts a long treatment and clamps at the shared limit", () => {
     renderWizard();
     const textarea = getPremiseTextarea();
-    const longValue = "ก".repeat(2500);
+    const longValue = "ก".repeat(CREATE_SERIES_FIELD_LIMITS.userPremise + 500);
     fireEvent.change(textarea, { target: { value: longValue } });
-    expect(textarea.value.length).toBeLessThanOrEqual(2000);
+    expect(textarea.value.length).toBe(CREATE_SERIES_FIELD_LIMITS.userPremise);
+  });
+
+  it("keeps a complete Proof of Us-style treatment instead of truncating it at the old 2,000-char limit", () => {
+    renderWizard();
+    const textarea = getPremiseTextarea();
+    const proofOfUsPremise = [
+      "## ชื่อชั่วคราว: Proof of Us",
+      "**แนว:** Young Adult / Campus Romance / Academic Rivalry / Coming-of-Age / Underdog / Science & Engineering Drama",
+      "เด็กสาวอัจฉริยะทางคณิตศาสตร์จากชนบทในเอเชียเรียนรู้ทุกอย่างด้วยตัวเอง ก่อนจะได้รับทุนเข้าเรียนมหาวิทยาลัยชั้นนำในสหรัฐฯ และกลายเป็นคนนอกทั้งด้านภาษา วัฒนธรรม ฐานะ และพื้นฐานการศึกษา",
+      "ในห้องเรียน เธอถูกมองว่าไม่เก่งเพราะตอบคำถามภาษาอังกฤษไม่คล่อง จนสามารถแก้ปัญหาคณิตศาสตร์ที่ไม่มีใครทำได้ ทำให้คู่แข่งชายดาวเด่นของภาควิชาเริ่มมองเธอใหม่ และเมื่อทั้งคู่ต้องทำงานร่วมกัน ความเป็นคู่แข่งจึงค่อย ๆ เปลี่ยนเป็นความเคารพ ความเข้าใจ และความรัก",
+      "ความสำเร็จในมหาวิทยาลัยเป็นเพียงจุดเริ่มต้น เธอหันไปศึกษาการประยุกต์คณิตศาสตร์กับวิศวกรรมโครงสร้าง การคำนวณเชิงตัวเลข และการออกแบบโครงสร้างด้วยคอมพิวเตอร์ เพื่อออกแบบโครงสร้างที่ใช้วัสดุน้อยลงแต่ยังปลอดภัย รับแรงหลายรูปแบบ และคำนึงถึงลม การสั่นสะเทือน น้ำหนัก อายุการใช้งาน และข้อจำกัดในการก่อสร้างพร้อมกัน",
+      "แบบจำลองรุ่นแรกมีข้อผิดพลาด ผลการทดลองบางครั้งใช้สร้างจริงไม่ได้ และวิศวกรบางคนมองว่างานของเธอเป็นเพียงทฤษฎี เธอจึงต้องเรียนรู้ว่าคำตอบที่สวยงามทางคณิตศาสตร์ไม่ได้แปลว่าจะเป็นคำตอบที่ดีที่สุดในโลกจริง",
+      "หลังจากทำงานร่วมกับนักวิจัย วิศวกรโครงสร้าง สถาปนิก และผู้เชี่ยวชาญด้านวัสดุ แนวคิดของเธอจึงค่อย ๆ ถูกพิสูจน์ผ่านการจำลอง การทดลอง ชิ้นส่วนต้นแบบ และโครงการขนาดเล็ก จนวิธีคิดของเธอได้รับโอกาสนำไปใช้กับโครงการโครงสร้างขนาดใหญ่จริง",
+      "แกนเรื่อง: คนนอกที่ไม่มีใครเห็นค่า → คู่แข่งที่ไม่มีใครคาดคิด → นักศึกษาที่ค้นพบว่าความสามารถมีความหมายมากกว่าคะแนนสอบ → นักวิจัยที่กล้าตั้งคำถามกับวิธีคิดเดิม → ผู้สร้างองค์ความรู้ที่ถูกนำไปเปลี่ยนโลกจริง",
+      "แก่นสำคัญ: คุณค่าที่แท้จริงของการเรียนรู้คือวันที่เราสามารถใช้สิ่งที่รู้แก้ปัญหาที่ยังไม่มีใครมีคำตอบ คณิตศาสตร์จึงกลายเป็นภาษาที่เธอใช้สร้างอนาคต ไม่ใช่เพียงสิ่งที่ใช้พิสูจน์ว่าตัวเองฉลาด",
+      "Tagline: She understands every equation—until she finds one the world hasn't solved yet.",
+      "รายละเอียดเส้นทางตัวละคร: เธอต้องรับมือกับความโดดเดี่ยว การถูกดูแคลนจากสำเนียงและฐานะ ความกลัวว่าจะทำให้ผู้สนับสนุนผิดหวัง และความขัดแย้งระหว่างการพิสูจน์ตัวเองกับการยอมรับความช่วยเหลือจากทีม เธอค่อย ๆ เรียนรู้ว่าความร่วมมือไม่ได้ลดทอนความเป็นอัจฉริยะ แต่ทำให้ความคิดของเธอเดินทางไปถึงโลกจริงได้",
+      "รายละเอียดกลไกซีรีย์: แต่ละช่วงจะมีโจทย์คณิตศาสตร์หรือวิศวกรรมที่สะท้อนความสัมพันธ์ของตัวละคร ตั้งแต่การแก้โจทย์ในห้องเรียน การแข่งขันกับคู่แข่ง การสร้างแบบจำลองที่ล้มเหลว การทดสอบต้นแบบ ไปจนถึงการตัดสินใจครั้งสุดท้ายที่ต้องเลือกความปลอดภัยและความเป็นไปได้เหนือคำตอบที่ดูสมบูรณ์แบบบนกระดาษ",
+    ].join("\n\n");
+    expect(proofOfUsPremise.length).toBeGreaterThan(2000);
+    expect(proofOfUsPremise.length).toBeLessThanOrEqual(
+      CREATE_SERIES_FIELD_LIMITS.userPremise
+    );
+
+    fireEvent.change(textarea, { target: { value: proofOfUsPremise } });
+
+    expect(textarea.value).toBe(proofOfUsPremise);
   });
 
   it("handleCreate sends userPremise as a top-level field, omitted (undefined) when the textarea is empty", () => {
     renderWizard();
-    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
     const titleInput = titleLabel
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Premise-less Series" } });
 
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    applyDraft();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
@@ -692,7 +1200,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
 
   it("handleCreate sends the trimmed userPremise as a top-level field (sibling of bible, not nested)", () => {
     renderWizard();
-    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
     const titleInput = titleLabel
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
@@ -703,6 +1211,8 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       target: { value: "  ตำรวจสาวสืบคดีฆาตกรรม  " },
     });
 
+    generateDraft(/ให้ AI สร้างดราฟต์ซีรีย์จากโจทย์/);
+    applyDraft();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
@@ -739,9 +1249,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
   it("handleSynthesizePreset omits (undefined) userPremise when the textarea is empty", () => {
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
-    fireEvent.click(
-      screen.getByRole("button", { name: /ให้ AI ผสม Preset/ })
-    );
+    fireEvent.click(screen.getByRole("button", { name: /ให้ AI ผสม Preset/ }));
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
       expect.objectContaining({ userPremise: undefined })
@@ -775,7 +1283,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       isPending: false,
     };
     renderWizard();
-    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
     const titleInput = titleLabel
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
@@ -801,7 +1309,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       })
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    applyDraft();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -838,7 +1346,11 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     const textarea = getPremiseTextarea();
     fireEvent.change(textarea, { target: { value: "โจทย์นี้ต้องไม่หาย" } });
 
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    fireEvent.change(getTitleInput(), {
+      target: { value: "No Clobber Series" },
+    });
+    generateDraft(/ให้ AI สร้างดราฟต์ซีรีย์จากโจทย์/);
+    applyDraft();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -925,10 +1437,10 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       name: /ให้ AI สร้างทั้งหมดให้/,
     });
     expect(button).toBeEnabled();
+    expect(screen.getByText(/ไม่ต้องเลือก preset ก็ได้/)).toBeInTheDocument();
     expect(
-      screen.getByText(/ไม่ต้องเลือก preset ก็ได้/)
+      screen.getByText(/กดให้ AI สร้าง draft ก่อนจึงไปต่อได้/)
     ).toBeInTheDocument();
-    expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
 
   it("typing a premise switches the basics-only action to the premise-primary action", () => {
@@ -964,13 +1476,13 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     expect(
       Boolean(
         textarea.compareDocumentPosition(button) &
-          Node.DOCUMENT_POSITION_FOLLOWING
+        Node.DOCUMENT_POSITION_FOLLOWING
       )
     ).toBe(true);
     expect(
       Boolean(
         button.compareDocumentPosition(presetLibraryHeading) &
-          Node.DOCUMENT_POSITION_FOLLOWING
+        Node.DOCUMENT_POSITION_FOLLOWING
       )
     ).toBe(true);
   });
@@ -985,7 +1497,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       screen.getByText("ผลลัพธ์จาก AI — แก้ไขได้เสมอ")
     ).toBeInTheDocument();
 
-    const genreLabel = screen.getByText("แนวเรื่อง");
+    const genreLabel = screen.getByText(/^แนวเรื่อง/);
     const genreInput = genreLabel
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
@@ -1012,6 +1524,7 @@ describe("CreateSeriesWizard — misplaced-premise rescue and clamped hints (fix
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockDraftCompositionStatus = { data: undefined };
     mockListGenrePresetsQuery.mockReturnValue({
       data: { presets: [presetOne, presetTwo] },
       isLoading: false,
@@ -1020,10 +1533,8 @@ describe("CreateSeriesWizard — misplaced-premise rescue and clamped hints (fix
   });
 
   function getGenreInput(): HTMLInputElement {
-    const label = screen.getByText("แนวเรื่อง");
-    return label
-      .closest("div")
-      ?.querySelector("input") as HTMLInputElement;
+    const label = screen.getByText(/^แนวเรื่อง/);
+    return label.closest("div")?.querySelector("input") as HTMLInputElement;
   }
 
   it("regression: a >100-char genre is clamped to <=100 chars in genreHint before the mutation fires (2026-07-31 09:14:56 too_big BAD_REQUEST)", () => {
@@ -1102,6 +1613,7 @@ describe("CreateSeriesWizard — LLM model pin at creation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockDraftCompositionStatus = { data: undefined };
     mockListGenrePresetsQuery.mockReturnValue({
       data: { presets: [presetOne, presetTwo] },
       isLoading: false,
@@ -1109,19 +1621,27 @@ describe("CreateSeriesWizard — LLM model pin at creation", () => {
     mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
     mockPlanningModelsQuery.mockReturnValue({
       data: [
-        { modelId: "google/gemini-3.1-flash-lite-preview", label: "Google — Gemini 3.1 Flash Lite Preview" },
-        { modelId: "anthropic/claude-quality-large", label: "Anthropic — Claude Quality Large" },
+        {
+          modelId: "google/gemini-3.1-flash-lite-preview",
+          label: "Google — Gemini 3.1 Flash Lite Preview",
+        },
+        {
+          modelId: "anthropic/claude-quality-large",
+          label: "Anthropic — Claude Quality Large",
+        },
       ],
       isLoading: false,
     });
   });
 
   function fillTitleAndCreate(title: string) {
-    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
     const titleInput = titleLabel
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: title } });
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    applyDraft();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
@@ -1138,7 +1658,8 @@ describe("CreateSeriesWizard — LLM model pin at creation", () => {
     // dropdown item) — `getAllByText` avoids a false "multiple elements"
     // failure that `getByText` would throw here.
     expect(
-      screen.getAllByText("อัตโนมัติ (เลือกโมเดลที่ดีที่สุดให้อัตโนมัติ)").length
+      screen.getAllByText("อัตโนมัติ (เลือกโมเดลที่ดีที่สุดให้อัตโนมัติ)")
+        .length
     ).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByText("Google — Gemini 3.1 Flash Lite Preview")
@@ -1292,8 +1813,10 @@ describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker
     };
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
+    generateDraft(/ให้ AI ผสม Preset/);
 
     fireEvent.click(screen.getByRole("button", { name: "Alt Title Two" }));
+    applyDraft();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -1316,7 +1839,11 @@ describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker
     };
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    generateDraft(/ให้ AI ผสม Preset/);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Default Draft Title" })
+    );
+    applyDraft();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -1331,7 +1858,7 @@ describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker
     );
   });
 
-  it("(b) backward compat: a draft WITHOUT titleOptions/locations applies exactly as before — no title-candidate group renders, and form.locations stays untouched", () => {
+  it("(b) a draft WITHOUT titleOptions needs a manual title, while form.locations stays untouched", () => {
     mockSynthesizeMutationState = {
       data: {
         draft: {
@@ -1354,19 +1881,23 @@ describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker
     };
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
+    fireEvent.change(getTitleInput(), {
+      target: { value: "Manual Legacy Title" },
+    });
+    generateDraft(/ให้ AI ผสม Preset/);
 
     expect(
       screen.queryByRole("group", { name: /ตัวเลือกชื่อเรื่อง/ })
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+    applyDraft();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
 
     const call = mockCreateMutate.mock.calls[0][0];
-    expect(call.title).toBe("No Extras Draft");
+    expect(call.title).toBe("Manual Legacy Title");
     expect(call.bible.locationsDraft).toBe("");
   });
 });

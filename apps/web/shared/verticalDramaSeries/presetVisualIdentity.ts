@@ -347,6 +347,26 @@ export type VerticalDramaBlendFacetEntry = {
   contributions: VerticalDramaBlendFacetContribution[];
 };
 
+export const VERTICAL_DRAMA_BLEND_MODES = [
+  "single_source",
+  "multi_source",
+  "premise_only",
+  "premise_plus_presets",
+  "no_sources",
+] as const;
+
+export type VerticalDramaBlendMode = (typeof VERTICAL_DRAMA_BLEND_MODES)[number];
+
+export const VERTICAL_DRAMA_BLEND_STATUSES = [
+  "not_applicable",
+  "complete",
+  "incomplete",
+  "legacy_unknown",
+] as const;
+
+export type VerticalDramaBlendStatus =
+  (typeof VERTICAL_DRAMA_BLEND_STATUSES)[number];
+
 /** Blend provenance report (spec §8.2.2.C) — proves every selection contributed. */
 export type VerticalDramaBlendReport = {
   contractVersion: 2;
@@ -357,6 +377,18 @@ export type VerticalDramaBlendReport = {
   minFacetsPerPreset: number;
   /** presetIds below the floor after the one corrective retry. */
   underBlended: string[];
+  /** Additive provenance fields. Absent on older persisted/transient reports. */
+  blendMode?: VerticalDramaBlendMode;
+  status?: VerticalDramaBlendStatus;
+  sourceIds?: string[];
+  sourceCount?: number;
+  /** Explains an intentionally empty report instead of leaving the UI blank. */
+  emptyReason?:
+    | "single_source_no_blend"
+    | "premise_only_no_preset"
+    | "no_blendable_sources"
+    | "legacy_report_without_provenance"
+    | "multi_source_report_incomplete";
 };
 
 export const verticalDramaBlendFacetContributionSchema = z.object({
@@ -377,6 +409,19 @@ export const verticalDramaBlendReportSchema = z
     contributionCoverage: z.record(z.string(), z.number().int().nonnegative()),
     minFacetsPerPreset: z.number().int().positive(),
     underBlended: z.array(z.string()),
+    blendMode: z.enum(VERTICAL_DRAMA_BLEND_MODES).optional(),
+    status: z.enum(VERTICAL_DRAMA_BLEND_STATUSES).optional(),
+    sourceIds: z.array(z.string().min(1)).optional(),
+    sourceCount: z.number().int().nonnegative().optional(),
+    emptyReason: z
+      .enum([
+        "single_source_no_blend",
+        "premise_only_no_preset",
+        "no_blendable_sources",
+        "legacy_report_without_provenance",
+        "multi_source_report_incomplete",
+      ])
+      .optional(),
   })
   .passthrough();
 

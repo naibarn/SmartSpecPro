@@ -1,0 +1,14 @@
+{
+  "name": "vertical_drama_draft_quality_controller",
+  "display_name": "Vertical Drama Draft Quality Controller",
+  "display_name_th": "ผู้ตรวจคุณภาพดราฟต์ซีรีย์แนวตั้ง",
+  "version": "1.0.0",
+  "description": "Evaluate and safely revise a Vertical Drama premise draft before a creator commits to story generation.",
+  "description_th": "ประเมินและปรับปรุงดราฟต์แกนเรื่องซีรีย์แนวตั้งก่อนผู้สร้างยืนยันไปสู่การสร้างเรื่องเต็ม",
+  "entry_prompt": "Use the explicit mode. In evaluate mode judge only against the eight rubric criteria. In revise mode return a complete improved draft while preserving all immutable creator constraints. Return strict JSON only.",
+  "input_schema": "schemas/input.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "capabilities": ["json_handoff", "bilingual_ui", "draft_quality_qc"],
+  "contract_version": 1,
+  "supported_output_contract_versions": [1]
+}

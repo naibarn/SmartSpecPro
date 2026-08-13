@@ -184,4 +184,31 @@ describe("VerticalDramaBlendReportPanel", () => {
     );
     expect(screen.getByTestId("vd-blend-report-panel").textContent).toContain("2");
   });
+
+  it("explains an intentionally empty single-source report instead of rendering a blank panel", () => {
+    const { container } = render(
+      <VerticalDramaBlendReportPanel
+        lang="en"
+        blendReport={makeBlendReport({
+          facets: [],
+          contributionCoverage: { "1": 0 },
+          underBlended: [],
+          blendMode: "single_source",
+          status: "not_applicable",
+          sourceIds: ["1"],
+          sourceCount: 1,
+          emptyReason: "single_source_no_blend",
+        })}
+        presetOrder={["1"]}
+        presetTitleById={presetTitleById}
+      />,
+    );
+
+    expect(container.textContent).toContain(
+      "A single source was used, so no multi-preset blend was needed",
+    );
+    expect(container.textContent).toContain(
+      "There are no additional blend details for this status",
+    );
+  });
 });

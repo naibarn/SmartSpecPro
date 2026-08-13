@@ -66,6 +66,20 @@ export const verticalDramaCopy = {
     th: "โหมดวางแผน — ยังไม่มีการสร้างสื่อที่มีค่าใช้จ่าย",
     en: "Planning mode — no paid generation is triggered",
   },
+  draftRecoveryTitle: {
+    th: "พบงานสร้าง Draft เดิม",
+    en: "A previous Draft workspace was found",
+  },
+  draftRecoveryBody: {
+    th: "ระบบจะโหลดโจทย์และ Draft ที่บันทึกไว้กลับมาให้เลือก โดยไม่สร้างงานหรือหักเครดิตซ้ำ",
+    en: "Saved Draft workspaces will be listed for recovery without submitting a duplicate job or charging credits again.",
+  },
+  draftRecoveryOpen: { th: "โหลดงานเดิม", en: "Load previous work" },
+  draftRecoveryNew: { th: "สร้างเรื่องใหม่", en: "Create a new story" },
+  draftRecoveryChecking: {
+    th: "กำลังตรวจสอบงาน Draft ที่บันทึกไว้…",
+    en: "Checking for saved Draft workspaces…",
+  },
   searchPlaceholder: { th: "ค้นหาซีรีย์ตามชื่อ", en: "Search series by title" },
   allStatuses: { th: "ทุกสถานะ", en: "All statuses" },
   loading: { th: "กำลังโหลด…", en: "Loading…" },
@@ -195,6 +209,36 @@ export const verticalDramaCopy = {
   },
   blendAdjustWeightsCta: { th: "ปรับน้ำหนัก", en: "Adjust weights" },
   blendCoverageUnit: { th: "ด้าน", en: "facets" },
+  blendSourceStatusTitle: { th: "สถานะการผสม", en: "Blend status" },
+  blendSourceCountLabel: { th: "แหล่งที่ใช้", en: "Sources used" },
+  blendSingleSourceStatus: {
+    th: "ใช้แหล่งเดียว จึงไม่มีการผสมหลาย Preset",
+    en: "A single source was used, so no multi-preset blend was needed",
+  },
+  blendCompleteStatus: {
+    th: "ผสมจากหลายแหล่งสำเร็จและตรวจสอบ contribution แล้ว",
+    en: "Multi-source blend completed and contributions were verified",
+  },
+  blendIncompleteStatus: {
+    th: "รายงานการผสมยังไม่ครบ — draft ยังเปิดดูได้ แต่ควรตรวจสอบก่อนใช้ต่อ",
+    en: "The blend report is incomplete — the draft is available, but review it before continuing",
+  },
+  blendPremiseOnlyStatus: {
+    th: "สร้างจากโจทย์เรื่องโดยไม่มี Preset จึงไม่มีการผสม",
+    en: "Built from the premise without presets, so there was no blend",
+  },
+  blendNoSourcesStatus: {
+    th: "ยังไม่มีโจทย์เรื่องหรือ Preset ที่ใช้เป็นแหล่งข้อมูล",
+    en: "No premise or preset source was provided",
+  },
+  blendLegacyStatus: {
+    th: "Draft รุ่นเก่าไม่มีข้อมูลแหล่งที่มาของการผสม",
+    en: "This legacy draft has no blend provenance metadata",
+  },
+  blendEmptyDetails: {
+    th: "ไม่มีรายละเอียดการผสมเพิ่มเติมตามสถานะนี้",
+    en: "There are no additional blend details for this status",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Arc re-plan review card (§7.7.3, section-13) — Memory tab surface,     */
@@ -814,7 +858,11 @@ export const wizardSteps: Array<{ id: string; th: string; en: string }> = [
  * silently renumber another step's case body.
  */
 const sequelWizardSteps: Array<{ id: string; th: string; en: string }> = [
-  { id: "basic", th: "ตั้งค่าพื้นฐาน + ภาคก่อนหน้า", en: "Basic setup + prior season" },
+  {
+    id: "basic",
+    th: "ตั้งค่าพื้นฐาน + ภาคก่อนหน้า",
+    en: "Basic setup + prior season",
+  },
   { id: "story", th: "ปมใหม่ของภาคนี้", en: "This season's new conflict" },
   {
     id: "characters",
@@ -830,26 +878,31 @@ const sequelWizardSteps: Array<{ id: string; th: string; en: string }> = [
   { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },
 ];
 
-const specialEditionWizardSteps: Array<{ id: string; th: string; en: string }> = [
-  {
-    id: "basic",
-    th: "ตั้งค่าพื้นฐาน + ซีรีส์ต้นฉบับ",
-    en: "Basic setup + parent series",
-  },
-  {
-    id: "story",
-    th: "จะรีวิว/แนะนำอะไร",
-    en: "What to review/introduce",
-  },
-  { id: "characters", th: "ตัวละคร (ยกมาอัตโนมัติ)", en: "Cast (auto-carried)" },
-  { id: "bible", th: "วิชวลไบเบิล", en: "Visual bible" },
-  {
-    id: "product",
-    th: "แหล่งข้อมูลภาคพิเศษ",
-    en: "Special edition sources",
-  },
-  { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },
-];
+const specialEditionWizardSteps: Array<{ id: string; th: string; en: string }> =
+  [
+    {
+      id: "basic",
+      th: "ตั้งค่าพื้นฐาน + ซีรีส์ต้นฉบับ",
+      en: "Basic setup + parent series",
+    },
+    {
+      id: "story",
+      th: "จะรีวิว/แนะนำอะไร",
+      en: "What to review/introduce",
+    },
+    {
+      id: "characters",
+      th: "ตัวละคร (ยกมาอัตโนมัติ)",
+      en: "Cast (auto-carried)",
+    },
+    { id: "bible", th: "วิชวลไบเบิล", en: "Visual bible" },
+    {
+      id: "product",
+      th: "แหล่งข้อมูลภาคพิเศษ",
+      en: "Special edition sources",
+    },
+    { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },
+  ];
 
 /**
  * Resolves the wizard's step list for a given `createMode`. For `undefined`
@@ -971,7 +1024,10 @@ export const carryOverAvailabilityCopy: Record<
 };
 
 export const carryOverCopy = {
-  proposeCta: { th: "ให้ AI เสนอการกลับมาของตัวละคร", en: "Propose cast carry-over" },
+  proposeCta: {
+    th: "ให้ AI เสนอการกลับมาของตัวละคร",
+    en: "Propose cast carry-over",
+  },
   regenerateCta: { th: "เสนอใหม่", en: "Propose again" },
   postFinaleStatusLabel: { th: "สถานะท้ายภาคก่อน", en: "Post-finale status" },
   availabilityLabel: { th: "สถานะในภาคนี้", en: "Status in this season" },
@@ -987,7 +1043,10 @@ export const carryOverCopy = {
     th: "AI แนะนำตัวละครใหม่",
     en: "AI-suggested new characters",
   },
-  newConflictDirectionsTitle: { th: "แนวทางปมใหม่", en: "New conflict directions" },
+  newConflictDirectionsTitle: {
+    th: "แนวทางปมใหม่",
+    en: "New conflict directions",
+  },
   antagonistStrategyTitle: { th: "กลยุทธ์ตัวร้าย", en: "Antagonist strategy" },
   carriedRelationshipsTitle: {
     th: "ความสัมพันธ์ที่ยกมา",
@@ -999,23 +1058,41 @@ export const carryOverCopy = {
 } as const;
 
 export const specialEditionCopy = {
-  storyFunctionLabel: { th: "จุดประสงค์ของภาคพิเศษ", en: "Special edition purpose" },
+  storyFunctionLabel: {
+    th: "จุดประสงค์ของภาคพิเศษ",
+    en: "Special edition purpose",
+  },
   storyFunctionReview: { th: "รีวิวตรงไปตรงมา", en: "Straightforward review" },
   storyFunctionTieIn: {
     th: "ผูกเป็นทางออกในเนื้อเรื่อง",
     en: "Woven in as a story solution",
   },
-  episodeCountLabel: { th: "จำนวนตอนย่อย (1-2)", en: "Sub-episode count (1-2)" },
-  marketplaceSourceTitle: { th: "1. สินค้าจากคลัง", en: "1. Marketplace product" },
-  uploadSourceTitle: { th: "2. อัปโหลดรูป + สรุป", en: "2. Upload images + summary" },
+  episodeCountLabel: {
+    th: "จำนวนตอนย่อย (1-2)",
+    en: "Sub-episode count (1-2)",
+  },
+  marketplaceSourceTitle: {
+    th: "1. สินค้าจากคลัง",
+    en: "1. Marketplace product",
+  },
+  uploadSourceTitle: {
+    th: "2. อัปโหลดรูป + สรุป",
+    en: "2. Upload images + summary",
+  },
   uploadSummaryLabel: {
     th: "สรุปสั้น ๆ เกี่ยวกับสิ่งที่อัปโหลด",
     en: "Short summary of what you uploaded",
   },
   uploadButtonLabel: { th: "อัปโหลดรูปภาพ", en: "Upload image" },
   uploadingLabel: { th: "กำลังอัปโหลด…", en: "Uploading…" },
-  storyFunctionSourceTitle: { th: "3. จุดประสงค์เรื่อง", en: "3. Story function" },
-  generateBriefCta: { th: "ให้ AI ร่างภาคพิเศษ", en: "Draft the special edition" },
+  storyFunctionSourceTitle: {
+    th: "3. จุดประสงค์เรื่อง",
+    en: "3. Story function",
+  },
+  generateBriefCta: {
+    th: "ให้ AI ร่างภาคพิเศษ",
+    en: "Draft the special edition",
+  },
   regenerateBriefCta: { th: "ร่างใหม่", en: "Draft again" },
   suggestedPremiseLabel: {
     th: "โจทย์ที่ AI ร่างให้ (แก้ไขได้ก่อนสร้าง)",
@@ -1030,7 +1107,7 @@ export const specialEditionCopy = {
 
 /** Coverage warning (review step, sequel only) — same copy fns as `verticalDramaSeriesMemoryCopy.ts`'s `coverageHeadlineText`/`coverageSecondaryText`, reused directly rather than duplicated. This is only the "see the full timeline" link's own copy. */
 export const lineageCoverageLinkCopy = {
-  th: "ดูรายละเอียดความจำซีรีย์ทั้งหมดในแท็บ \"ความจำซีรีย์\" ของซีรีส์ต้นฉบับ",
+  th: 'ดูรายละเอียดความจำซีรีย์ทั้งหมดในแท็บ "ความจำซีรีย์" ของซีรีส์ต้นฉบับ',
   en: 'See the full timeline in the parent series\' "Series Memory" tab',
 } as const;
 
@@ -1041,7 +1118,10 @@ export const lineageReviewSummaryCopy = {
 } as const;
 
 /** Sidebar/series-card badge text (`VerticalDramaShell.tsx`). */
-export function sequelBadgeText(lang: VerticalDramaLang, seasonNumber: number): string {
+export function sequelBadgeText(
+  lang: VerticalDramaLang,
+  seasonNumber: number
+): string {
   return lang === "th" ? `ภาค ${seasonNumber}` : `Season ${seasonNumber}`;
 }
 
@@ -1063,7 +1143,9 @@ export function sidebarChildSeasonsCountText(
   lang: VerticalDramaLang,
   count: number
 ): string {
-  return lang === "th" ? `+${count} ภาค` : `+${count} season${count === 1 ? "" : "s"}`;
+  return lang === "th"
+    ? `+${count} ภาค`
+    : `+${count} season${count === 1 ? "" : "s"}`;
 }
 
 /* -------------------------------------------------------------------------- */

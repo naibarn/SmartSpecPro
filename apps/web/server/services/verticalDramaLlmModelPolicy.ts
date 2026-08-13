@@ -52,8 +52,61 @@ import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaSeries } from "../../drizzle/schema";
 import type { VerticalDramaSeriesLlmModelPolicy } from "@shared/verticalDramaSeries/contracts";
-import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import {
+  loadEnabledLlmModelRows,
+  type EnabledLlmModelRow,
+} from "./enabledLlmModels";
 import { resolveStoryBibleModel } from "./verticalDramaStoryBible";
+
+const VERTICAL_DRAMA_DRAFT_MIN_CONTEXT_LENGTH = 1_000_000;
+
+function isRecommendedVerticalDramaDraftModel(
+  row: EnabledLlmModelRow,
+): boolean {
+  return (
+    row.isRecommended === true &&
+    (row.contextLength ?? 0) >= VERTICAL_DRAMA_DRAFT_MIN_CONTEXT_LENGTH &&
+    row.isFree !== true &&
+    row.supportsThinking === true &&
+    row.supportsStructuredOutputs === true
+  );
+}
+
+/**
+ * Resolves the model for the pre-QC Draft pipeline.
+ *
+ * This is intentionally stricter than `resolveStoryBibleModel()`. Draft
+ * foundation, synthesis, completion, and Draft QC are quality-critical and
+ * must only use an admin-recommended large-context thinking model. There is
+ * deliberately no legacy/default-model fallback here: using a non-recommended
+ * model is worse than failing admission because it produces a misleading
+ * quality/credit record and can send the wizard into avoidable QC loops.
+ */
+export async function resolveVerticalDramaRecommendedDraftModel(): Promise<string> {
+  const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+  const recommended = rows
+    .filter(isRecommendedVerticalDramaDraftModel)
+    .sort((a, b) => a.priority - b.priority || a.modelId.localeCompare(b.modelId));
+  const model = recommended[0]?.modelId;
+  if (!model) {
+    throw new Error(
+      "No admin-recommended Vertical Drama Draft LLM is available; configure an enabled recommended large-context thinking model before generating a Draft.",
+    );
+  }
+  return model;
+}
+
+/** Fails closed when a queued job references a model that is no longer recommended. */
+export async function assertVerticalDramaRecommendedDraftModel(
+  modelId: string,
+): Promise<void> {
+  const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+  if (!rows.some(row => row.modelId === modelId && isRecommendedVerticalDramaDraftModel(row))) {
+    throw new Error(
+      `Vertical Drama Draft model is not in the active LLM Recommend set: ${modelId}`,
+    );
+  }
+}
 
 export async function resolveVerticalDramaSeriesModel(
   seriesId: number,

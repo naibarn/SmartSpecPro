@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "oneOf": [
+    {
+      "required": ["criteria", "criticalFails", "strengths", "weaknesses", "recommendations"],
+      "properties": {
+        "criteria": { "type": "array", "minItems": 8, "maxItems": 8 },
+        "criticalFails": { "type": "array", "maxItems": 8 },
+        "strengths": { "type": "array", "maxItems": 3 },
+        "weaknesses": { "type": "array", "maxItems": 3 },
+        "recommendations": { "type": "array", "maxItems": 3 }
+      }
+    },
+    {
+      "required": ["draft", "changedFields"],
+      "properties": {
+        "draft": { "type": "object", "additionalProperties": true },
+        "changedFields": { "type": "array", "maxItems": 12 }
+      }
+    }
+  ]
+}

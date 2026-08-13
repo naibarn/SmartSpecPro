@@ -41,6 +41,8 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -48,17 +50,39 @@ import {
 import {
   genrePresetCategoryLabel,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
-  VERTICAL_DRAMA_SERIES_LOCALES,
+  VERTICAL_DRAMA_SUPPORTED_SHOT_DURATIONS_SECONDS,
   clampToCreateSeriesLimit,
   CREATE_SERIES_FIELD_LIMITS,
+  verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+import {
+  buildVerticalDramaSpokenLanguageProfile,
+  VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_EN,
+  VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_TH,
+  VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS,
+  type VerticalDramaSpokenLocaleId,
+} from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import { resolveVerticalDramaDraftLanguageContract } from "@shared/verticalDramaSeries/draftLanguageContract";
+import { getVerticalDramaCharacterNamingPreview } from "@shared/verticalDramaSeries/characterNaming";
+import {
+  hasBlockingVerticalDramaDraftDiagnostics,
+  getVerticalDramaDraftFactValue,
+  type VerticalDramaDraftDiagnostic,
+  type VerticalDramaDraftFact,
+  type VerticalDramaDraftStoryContext,
+} from "@shared/verticalDramaSeries/draftStoryContext";
+import type { VerticalDramaDraftStoryDesign } from "@shared/verticalDramaSeries/draftStoryDesign";
+import type { VerticalDramaStoryArchitectureContract } from "@shared/verticalDramaSeries/storyArchitecture";
 import type {
   VerticalDramaBlendReport,
   VerticalDramaPresetMixWeight,
   VerticalDramaPresetVisualIdentity,
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
-import type { NarrativeRole, RoleTier } from "@shared/verticalDramaSeries/narrativeRole";
+import type {
+  NarrativeRole,
+  RoleTier,
+} from "@shared/verticalDramaSeries/narrativeRole";
 import {
   AUDIENCE_AGE_RATINGS,
   AUDIENCE_AGE_RATING_LABELS,
@@ -78,8 +102,14 @@ import type {
   VdRelationshipState,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
 import { detectGenrePollution } from "@shared/verticalDramaSeries/genrePollutionGuard";
-import type { VdLookLockGenre, VdLookLockMode } from "@shared/verticalDramaSeries/seriesLookLock";
+import type {
+  VdLookLockGenre,
+  VdLookLockMode,
+} from "@shared/verticalDramaSeries/seriesLookLock";
+import type { VerticalDramaVisualNarrativeProfile } from "@shared/verticalDramaSeries/visualNarrativeProfile";
+import { fingerprintDraftQualityQcCandidate } from "@shared/verticalDramaSeries/draftQualityQc";
 import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
+import { VerticalDramaDraftQualityQcPanel } from "./VerticalDramaDraftQualityQcPanel";
 import { SeriesLookLockPicker } from "./SeriesLookLockPicker";
 import { DisclosureBadge } from "./VerticalDramaSeriesMemoryStateTab";
 import {
@@ -133,7 +163,8 @@ interface WizardState {
   logline: string;
   targetEpisodeCount: string;
   locale: VerticalDramaSeriesLocale;
-  targetDurationSeconds: string;
+  spokenLocale: VerticalDramaSpokenLocaleId;
+  shotDurationSeconds: string;
   mainPlot: string;
   seasonArc: string;
   tone: string;
@@ -160,6 +191,13 @@ interface WizardState {
    */
   locations: string;
   visualBible: string;
+  visualNarrativeProfile?: VerticalDramaVisualNarrativeProfile;
+  /** Additive story identity facts produced by the skill; absent on legacy drafts. */
+  storyContext?: VerticalDramaDraftStoryContext;
+  /** Additive story-engine and continuity plan produced by the skill. */
+  storyDesign?: VerticalDramaDraftStoryDesign;
+  /** Additive foundation contract produced before synopsis synthesis. */
+  storyContract?: VerticalDramaStoryArchitectureContract;
   productTieInEnabled: boolean;
   productName: string;
   productId?: string;
@@ -212,7 +250,11 @@ interface WizardState {
   /** Stage 2.5 source 1 (marketplace) — description companion to the existing `productName`/`productId` fields shared with the Product tie-in step. */
   productDescription?: string;
   /** Stage 2.5 source 2 — uploaded reference images, kept as plain `{url,mimeType,fileName}` (never `resolveMediaAssetForImport`, which requires a series id that doesn't exist yet in this wizard). */
-  uploadedReferences: Array<{ url: string; mimeType: string; fileName: string }>;
+  uploadedReferences: Array<{
+    url: string;
+    mimeType: string;
+    fileName: string;
+  }>;
   /** Stage 2.5 source 2 — short summary of what was uploaded. */
   uploadedSummary?: string;
   /**
@@ -225,6 +267,7 @@ interface WizardState {
   defaultModelId: string | null;
   lookLockMode: VdLookLockMode;
   lookLockGenreKey?: VdLookLockGenre;
+  visualNarrativeEnabled: boolean;
 }
 
 const INITIAL_WIZARD: WizardState = {
@@ -235,7 +278,8 @@ const INITIAL_WIZARD: WizardState = {
   logline: "",
   targetEpisodeCount: "10",
   locale: "th",
-  targetDurationSeconds: "60",
+  spokenLocale: "auto",
+  shotDurationSeconds: "8",
   mainPlot: "",
   seasonArc: "",
   tone: "",
@@ -260,7 +304,102 @@ const INITIAL_WIZARD: WizardState = {
   defaultModelId: null,
   lookLockMode: "none",
   lookLockGenreKey: undefined,
+  // Opt-in by design: selecting a look must not silently alter story planning
+  // for creators who are continuing the legacy visual-only workflow.
+  visualNarrativeEnabled: false,
 };
+
+const CREATE_SERIES_WORKSPACE_STORAGE_KEY =
+  "smartspec.vertical-drama.create-workspace.v1";
+const WORKSPACE_RECOVERY_WINDOW_MS = 30_000;
+
+interface PersistedCreateSeriesWorkspace {
+  version: 1;
+  savedAt: number;
+  draftSessionId: string;
+  form: WizardState;
+  stepIndex: number;
+  mixPresetIds: string[];
+  mixCategories: string[];
+  mixBusinessContext: string;
+  mixPrimarySelectionId?: string;
+  mixWeights: Record<string, VerticalDramaPresetMixWeight>;
+  titleOrigin: DraftTitleOrigin;
+  synthesisRequestKey: number | null;
+  synthesisSourceSignature: string | null;
+  appliedDraftKey: number | null;
+  draftQcRunId: string | null;
+  draftQcSourceSignature: string | null;
+  draftCompositionJobId: string | null;
+  draftCompositionSourceSignature: string | null;
+  draftQcMaxRounds: number;
+  draftQcOverride: boolean;
+  synthesisRequestCounter: number;
+}
+
+function createDraftSessionId(): string {
+  return `draft-workspace-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
+function readPersistedCreateSeriesWorkspace(): PersistedCreateSeriesWorkspace | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(
+      CREATE_SERIES_WORKSPACE_STORAGE_KEY
+    );
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<PersistedCreateSeriesWorkspace>;
+    if (
+      value.version !== 1 ||
+      !value.form ||
+      typeof value.draftSessionId !== "string"
+    ) {
+      return null;
+    }
+    return value as PersistedCreateSeriesWorkspace;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The shell is mounted outside the wizard dialog. It uses this lightweight
+ * check to reopen the wizard after a full browser refresh without duplicating
+ * the storage key or parsing rules in another component.
+ */
+export function hasRecoverableCreateSeriesWorkspace(): boolean {
+  const workspace = readPersistedCreateSeriesWorkspace();
+  if (!workspace) return false;
+  return Boolean(
+    workspace.draftCompositionJobId ||
+    workspace.draftQcRunId ||
+    workspace.synthesisRequestKey !== null ||
+    workspace.appliedDraftKey !== null
+  );
+}
+
+export function clearPersistedCreateSeriesWorkspace(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(CREATE_SERIES_WORKSPACE_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
+}
+
+function persistCreateSeriesWorkspace(
+  value: PersistedCreateSeriesWorkspace
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      CREATE_SERIES_WORKSPACE_STORAGE_KEY,
+      JSON.stringify(value)
+    );
+  } catch {
+    // The server-side job pointers remain the authoritative recovery path.
+  }
+}
 
 /**
  * Manual LLM model override — sentinel `<Select>` value standing in for
@@ -298,13 +437,13 @@ export function clampMixWeight(value: number): VerticalDramaPresetMixWeight {
  * |---|---|---|
  * | yes | 0     | synthesize_from_premise_only  (AI builds from premise alone) |
  * | yes | 1..5  | synthesize_premise_and_presets (premise primary, preset(s) as flavor) |
- * | no  | 1     | apply_preset_verbatim         (unchanged legacy "Use this preset") |
+ * | no  | 1     | synthesize_single_preset     (skill creates a new variation) |
  * | no  | 2..5  | synthesize_presets_only        (unchanged legacy AI preset mix) |
  * | no  | 0     | synthesize_from_basics when defaults/basic facts exist |
  * | no  | 0     | blocked only when no basic seed exists at all |
  */
 export type CreateSeriesPresetActionKind =
-  | "apply_preset_verbatim"
+  | "synthesize_single_preset"
   | "synthesize_from_premise_only"
   | "synthesize_premise_and_presets"
   | "synthesize_presets_only"
@@ -325,9 +464,8 @@ export interface CreateSeriesPresetAction {
    * Short answer to "what happens when I press this" for the AI-synthesis
    * kinds — surfaced next to the CTA so the button label itself can stay
    * concise while the panel still states the concrete outcome (title,
-   * logline, main plot, season arc, cast). Undefined for
-   * `apply_preset_verbatim` (nothing to explain — it just applies the
-   * preset) and `blocked` (explained by `blockedReason` instead).
+   * logline, main plot, season arc, cast). Undefined only for `blocked`, which
+   * is explained by `blockedReason` instead.
    */
   outcomeHint?: string;
 }
@@ -348,15 +486,6 @@ export function resolveCreateSeriesPresetAction(params: {
   } = params;
   const th = lang === "th";
 
-  // No premise + exactly 1 preset — legacy verbatim path, byte-identical to
-  // pre-Phase-3 behavior (nothing else to build from besides the preset).
-  if (presetCount === 1 && !hasUserPremise) {
-    return {
-      kind: "apply_preset_verbatim",
-      label: th ? "ใช้ Preset นี้" : "Use this preset",
-    };
-  }
-
   // What the synthesis actually produces, spelled out once here so every
   // synthesize_* kind below can point the CTA's surrounding hint at it
   // instead of leaving the button label ("ผสม"/"mix") as the only
@@ -370,6 +499,19 @@ export function resolveCreateSeriesPresetAction(params: {
   const outcomeHint = th
     ? "ระบบจะสร้างดราฟต์ซีรีย์ให้ครบทุกแท็บ: ชื่อเรื่อง (ให้เลือก 4-5 แบบ) เรื่องย่อ โครงเรื่องหลัก อาร์กของซีซัน ตัวละคร ฉาก/สถานที่ และ Visual Bible — แก้ไขทับได้ทุกช่องก่อนกดสร้างจริง"
     : "This fills in every tab — title candidates to choose from, logline, main plot, season arc, cast, locations, and visual bible — all still editable before you confirm.";
+
+  // A single preset is an inspiration source only. It must go through the
+  // same skill-first draft flow as every other source so the result is a new
+  // story variation and the user gets an explicit review/apply gate.
+  if (presetCount === 1 && !hasUserPremise) {
+    return {
+      kind: "synthesize_single_preset",
+      label: th
+        ? "ให้ AI สร้าง draft ใหม่จาก preset นี้"
+        : "Let AI create a new draft from this preset",
+      outcomeHint,
+    };
+  }
 
   // A premise exists — it is always the spine; 0..5 presets are supplements.
   if (hasUserPremise) {
@@ -398,7 +540,7 @@ export function resolveCreateSeriesPresetAction(params: {
         };
   }
 
-  // No premise, 2-5 presets — legacy AI preset-mix path, unchanged.
+  // No premise, 2-5 presets — AI preset-mix path.
   if (presetCount >= 2) {
     return {
       kind: "synthesize_presets_only",
@@ -437,7 +579,7 @@ export function resolveCreateSeriesPresetAction(params: {
 export function resolveGenreAfterPresetDraft(
   currentGenre: string,
   draftCategory: string,
-  seriesTitle: string,
+  seriesTitle: string
 ): string {
   const existing = currentGenre.trim();
   if (existing && !detectGenrePollution(existing, seriesTitle)) {
@@ -483,31 +625,163 @@ export function resolveCarryOverCharacters(
 export function CreateSeriesWizard({
   open,
   lang,
+  recoveryJobId,
+  recoverySessionId,
+  recoveryQcRunId,
   onOpenChange,
   onCreated,
 }: {
   open: boolean;
   lang: "th" | "en";
+  recoveryJobId?: string;
+  recoverySessionId?: string;
+  recoveryQcRunId?: string;
   onOpenChange: (open: boolean) => void;
   onCreated: (seriesId: string) => void;
 }) {
-  const [stepIndex, setStepIndex] = useState(0);
-  const [form, setForm] = useState<WizardState>(INITIAL_WIZARD);
+  const initialWorkspaceRef = useRef<
+    PersistedCreateSeriesWorkspace | null | undefined
+  >(undefined);
+  if (initialWorkspaceRef.current === undefined) {
+    initialWorkspaceRef.current = readPersistedCreateSeriesWorkspace();
+  }
+  const initialWorkspace =
+    recoverySessionId &&
+    initialWorkspaceRef.current?.draftSessionId !== recoverySessionId
+      ? null
+      : initialWorkspaceRef.current;
+  const [stepIndex, setStepIndex] = useState(
+    () => initialWorkspace?.stepIndex ?? 0
+  );
+  const [form, setForm] = useState<WizardState>(
+    () => initialWorkspace?.form ?? INITIAL_WIZARD
+  );
   const [presetSearch, setPresetSearch] = useState("");
-  const [mixPresetIds, setMixPresetIds] = useState<string[]>([]);
-  const [mixCategories, setMixCategories] = useState<string[]>([]);
-  const [mixBusinessContext, setMixBusinessContext] = useState("");
+  const [mixPresetIds, setMixPresetIds] = useState<string[]>(
+    () => initialWorkspace?.mixPresetIds ?? []
+  );
+  const [mixCategories, setMixCategories] = useState<string[]>(
+    () => initialWorkspace?.mixCategories ?? []
+  );
+  const [mixBusinessContext, setMixBusinessContext] = useState(
+    () => initialWorkspace?.mixBusinessContext ?? ""
+  );
   const [mixPrimarySelectionId, setMixPrimarySelectionId] = useState<
     string | undefined
-  >();
+  >(() => initialWorkspace?.mixPrimarySelectionId);
   // Preset Mix v2 (spec §8.2.2.C.1, section-15) — sparse map, missing entries
   // default to DEFAULT_MIX_WEIGHT at read time; intentionally NOT cleared when
   // a preset is deselected, so re-selecting it remembers the user's prior
   // adjustment instead of silently resetting it.
   const [mixWeights, setMixWeights] = useState<
     Record<string, VerticalDramaPresetMixWeight>
-  >({});
+  >(() => initialWorkspace?.mixWeights ?? {});
   const [productSearch, setProductSearch] = useState("");
+  const [titleOrigin, setTitleOrigin] = useState<DraftTitleOrigin>(
+    () => initialWorkspace?.titleOrigin
+  );
+  const [synthesisRequestKey, setSynthesisRequestKey] = useState<number | null>(
+    () => initialWorkspace?.synthesisRequestKey ?? null
+  );
+  const [synthesisSourceSignature, setSynthesisSourceSignature] = useState<
+    string | null
+  >(() => initialWorkspace?.synthesisSourceSignature ?? null);
+  const [appliedDraftKey, setAppliedDraftKey] = useState<number | null>(
+    () => initialWorkspace?.appliedDraftKey ?? null
+  );
+  const [draftQcRunId, setDraftQcRunId] = useState<string | null>(
+    () => recoveryQcRunId ?? initialWorkspace?.draftQcRunId ?? null
+  );
+  const [draftQcSourceSignature, setDraftQcSourceSignature] = useState<
+    string | null
+  >(() => initialWorkspace?.draftQcSourceSignature ?? null);
+  const [draftCompositionJobId, setDraftCompositionJobId] = useState<
+    string | null
+  >(() => recoveryJobId ?? initialWorkspace?.draftCompositionJobId ?? null);
+  const [draftCompositionSourceSignature, setDraftCompositionSourceSignature] =
+    useState<string | null>(
+      () => initialWorkspace?.draftCompositionSourceSignature ?? null
+    );
+  const [draftQcMaxRounds, setDraftQcMaxRounds] = useState(
+    () => initialWorkspace?.draftQcMaxRounds ?? 2
+  );
+  const latestCompositionRequest = useRef<{
+    key: number;
+    signature: string;
+  } | null>(null);
+  const [draftQcOverride, setDraftQcOverride] = useState(
+    () => initialWorkspace?.draftQcOverride ?? false
+  );
+  const draftQcSessionId = useRef(
+    recoverySessionId ?? initialWorkspace?.draftSessionId ?? createDraftSessionId()
+  );
+  const synthesisRequestCounter = useRef(
+    initialWorkspace?.synthesisRequestCounter ?? 0
+  );
+  const recoveryHydrationPendingRef = useRef<string | null>(null);
+  const [recoveryJobHydratedId, setRecoveryJobHydratedId] = useState<
+    string | null
+  >(null);
+  const [recoveryFormHydratedId, setRecoveryFormHydratedId] = useState<
+    string | null
+  >(null);
+
+  const currentSynthesisSourceSignature = useMemo(
+    () =>
+      buildSynthesisSourceSignature({
+        form,
+        mixPresetIds,
+        mixCategories,
+        mixBusinessContext,
+        mixPrimarySelectionId,
+        mixWeights,
+      }),
+    [
+      form,
+      mixPresetIds,
+      mixCategories,
+      mixBusinessContext,
+      mixPrimarySelectionId,
+      mixWeights,
+    ]
+  );
+
+  const draftWorkspaceStatusQuery =
+    trpc.verticalDramaSeries.getDraftWorkspaceStatus.useQuery(
+      { draftSessionId: draftQcSessionId.current },
+      {
+        enabled: open,
+        refetchInterval: query => {
+          const compositionStatus = query.state.data?.composition?.status;
+          const qcStatus = query.state.data?.qc?.status;
+          const recoveryNeeded =
+            synthesisRequestKey !== null &&
+            !draftCompositionJobId &&
+            !draftQcRunId &&
+            !workspaceRestoreAttempted.current;
+          if (recoveryNeeded) {
+            workspaceRecoveryStartedAt.current ??= Date.now();
+            if (
+              Date.now() - workspaceRecoveryStartedAt.current <
+              WORKSPACE_RECOVERY_WINDOW_MS
+            ) {
+              return 1200;
+            }
+          }
+          return [
+            "queued",
+            "building_foundation",
+            "composing",
+            "completing",
+            "validating",
+            "running",
+          ].includes(compositionStatus ?? "") ||
+            ["queued", "running"].includes(qcStatus ?? "")
+            ? 1200
+            : false;
+        },
+      }
+    );
 
   const presetsQuery = trpc.verticalDramaSeries.listGenrePresets.useQuery({
     locale: lang,
@@ -523,7 +797,10 @@ export function CreateSeriesWizard({
   // `productTieInEnabled` checkbox is off.
   const productsQuery = trpc.marketplaceCapture.listProducts.useQuery(
     { query: productSearch || undefined, limit: 20 },
-    { enabled: form.productTieInEnabled || form.createMode === "special_edition" }
+    {
+      enabled:
+        form.productTieInEnabled || form.createMode === "special_edition",
+    }
   );
   const products = productsQuery.data ?? [];
 
@@ -533,7 +810,9 @@ export function CreateSeriesWizard({
   // so flag-off is provably identical to the pre-existing wizard.
   const lineageEnabled = useTenantFeatureFlag("verticalDramaSeriesLineage");
   const lookLockEnabled = useTenantFeatureFlag("verticalDramaSeriesLookLock");
-  const presetMixEnabled = useTenantFeatureFlag("verticalDramaSeriesPresetMixV2");
+  const presetMixEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesPresetMixV2"
+  );
 
   const seriesListQuery = trpc.verticalDramaSeries.list.useQuery(
     { limit: 100 },
@@ -608,18 +887,272 @@ export function CreateSeriesWizard({
 
   const uploadMutation = trpc.ai.upload.useMutation();
 
-  const synthesizePresetMutation =
-    trpc.verticalDramaSeries.synthesizeGenrePreset.useMutation({
-      onSuccess: () => {
+  const draftCompositionMutation =
+    trpc.verticalDramaSeries.startDraftComposition.useMutation({
+      onSuccess: data => {
+        const request = latestCompositionRequest.current;
+        if (
+          !request ||
+          request.key !== synthesisRequestCounter.current ||
+          request.signature !== currentSynthesisSourceSignature
+        )
+          return;
+        setDraftCompositionJobId(data.jobId);
+        setDraftCompositionSourceSignature(request.signature);
+        setDraftQcRunId(null);
+        setDraftQcSourceSignature(null);
+        setDraftQcOverride(false);
         toast.success(
           lang === "th"
-            ? "AI ผสมแนวเรื่องเป็น draft ให้แล้ว"
-            : "AI created a mixed preset draft"
+            ? "เริ่มสร้าง Draft ฉบับสมบูรณ์แล้ว"
+            : "Complete Draft generation started"
         );
       },
-      onError: (err: { message?: string }) => {
-        toast.error(formatPresetSynthesisError(err, lang));
+      onError: error => toast.error(formatPresetSynthesisError(error, lang)),
+    });
+
+  const draftCompositionStatusQuery =
+    trpc.verticalDramaSeries.getDraftCompositionStatus.useQuery(
+      {
+        jobId: draftCompositionJobId ?? "00000000-0000-4000-8000-000000000000",
       },
+      {
+        enabled: Boolean(draftCompositionJobId),
+        refetchInterval: query =>
+          [
+            "queued",
+            "building_foundation",
+            "composing",
+            "completing",
+            "validating",
+          ].includes(query.state.data?.status ?? "")
+            ? 1200
+            : false,
+      }
+    );
+
+  // Keep older isolated Wizard tests/mounts compatible while the server
+  // procedure rolls out; production always exposes this query.
+  const recoveryJobProcedure = trpc.verticalDramaSeries.getDraftJob;
+  const recoveryJobQuery = recoveryJobProcedure?.useQuery
+    ? recoveryJobProcedure.useQuery(
+        { jobId: recoveryJobId ?? "00000000-0000-4000-8000-000000000000" },
+        {
+          enabled: open && Boolean(recoveryJobId),
+          retry: 1,
+        }
+      )
+    : { data: undefined };
+  const recoveredRequestJson = (recoveryJobQuery.data?.job.requestJson ?? {}) as
+    | Record<string, unknown>
+    | undefined;
+  const recoveredRequestSynthesis =
+    (recoveredRequestJson?.synthesis ?? {}) as Record<string, unknown>;
+  const recoveredPremiseMissing = Boolean(
+    recoveryJobId &&
+      recoveryJobQuery.data?.job &&
+      !(
+        typeof recoveredRequestSynthesis.userPremise === "string" &&
+        recoveredRequestSynthesis.userPremise.trim()
+      )
+  );
+
+  // A selected Inbox job carries the original server-approved request snapshot.
+  // Restore the editable basics before the status gates evaluate signatures, so
+  // loading a job never turns a valid Draft into a false "stale" result.
+  useEffect(() => {
+    if (
+      !open ||
+      !recoveryJobId ||
+      recoveryJobQuery.data?.job.id !== recoveryJobId ||
+      recoveryJobHydratedId === recoveryJobId
+    )
+      return;
+    const job = recoveryJobQuery.data.job;
+    const request = (job.requestJson ?? {}) as Record<string, unknown>;
+    const synthesis = (request.synthesis ?? {}) as Record<string, unknown>;
+    const draft = (job.currentJson ?? {}) as Record<string, unknown>;
+    const text = (value: unknown): string | undefined =>
+      typeof value === "string" && value.trim() ? value : undefined;
+    const title = text(synthesis.seriesTitleHint) ?? text(draft.title);
+    const genre = text(synthesis.genreHint);
+    const premise = text(synthesis.userPremise);
+    const tone = text(synthesis.toneHint);
+    const targetEpisodeCount =
+      typeof synthesis.targetEpisodeCount === "number"
+        ? String(synthesis.targetEpisodeCount)
+        : undefined;
+    recoveryHydrationPendingRef.current = recoveryJobId;
+    const recoveredDraftIsUsable =
+      typeof draft.title === "string" &&
+      typeof draft.logline === "string" &&
+      typeof draft.mainPlot === "string" &&
+      typeof draft.seasonArc === "string" &&
+      typeof draft.tone === "string" &&
+      typeof draft.cliffhangerStyle === "string" &&
+      Array.isArray(draft.characters) &&
+      draft.characters.every(
+        character =>
+          Boolean(character) &&
+          typeof character === "object" &&
+          typeof (character as Record<string, unknown>).name === "string" &&
+          typeof (character as Record<string, unknown>).role === "string" &&
+          typeof (character as Record<string, unknown>).description === "string"
+      ) &&
+      (!draft.locations ||
+        (Array.isArray(draft.locations) &&
+          draft.locations.every(
+            location =>
+              Boolean(location) &&
+              typeof location === "object" &&
+              typeof (location as Record<string, unknown>).name === "string" &&
+              typeof (location as Record<string, unknown>).description ===
+                "string"
+          )));
+    setForm(previous => {
+      const hydrated = {
+        ...previous,
+        ...(title ? { title } : {}),
+        ...(genre ? { genre } : {}),
+        ...(premise ? { userPremise: premise } : {}),
+        ...(tone ? { tone } : {}),
+        ...(targetEpisodeCount ? { targetEpisodeCount } : {}),
+      };
+      if (!recoveredDraftIsUsable) return hydrated;
+      return mergeSynthesizedDraftIntoWizardForm(
+        hydrated,
+        draft as unknown as SynthesizedGenrePresetDraft,
+        synthesis
+      );
+    });
+    // Old migrated jobs may have no Redis composition record. Mark the form
+    // hydrated from the durable ledger directly so the second status-based
+    // effect cannot leave the wizard with only the Inbox title.
+    if (recoveredDraftIsUsable) setRecoveryFormHydratedId(recoveryJobId);
+    const selectedPresetIds = Array.isArray(synthesis.selectedPresetIds)
+      ? synthesis.selectedPresetIds.filter(
+          (value): value is string => typeof value === "string"
+        )
+      : [];
+    const selectedCategories = Array.isArray(synthesis.selectedCategories)
+      ? synthesis.selectedCategories.filter(
+          (value): value is string => typeof value === "string"
+        )
+      : [];
+    const selections = Array.isArray(synthesis.selections)
+      ? synthesis.selections.filter(value => {
+          if (!value || typeof value !== "object") return false;
+          const item = value as Record<string, unknown>;
+          return (
+            typeof item.presetId === "string" &&
+            [1, 2, 3, 4, 5].includes(item.weight as number)
+          );
+        }) as Array<{ presetId: string; weight: 1 | 2 | 3 | 4 | 5 }>
+      : [];
+    if (selectedPresetIds.length > 0) setMixPresetIds(selectedPresetIds);
+    if (selectedCategories.length > 0) setMixCategories(selectedCategories);
+    if (typeof synthesis.businessContext === "string") {
+      setMixBusinessContext(synthesis.businessContext);
+    }
+    if (typeof synthesis.primarySelectionId === "string") {
+      setMixPrimarySelectionId(synthesis.primarySelectionId);
+    }
+    if (selections.length > 0) {
+      setMixWeights(
+        Object.fromEntries(
+          selections.map(selection => [selection.presetId, selection.weight])
+        )
+      );
+    }
+    if (title) setTitleOrigin("manual");
+    setSynthesisRequestKey(previous => previous ?? 1);
+    setRecoveryJobHydratedId(recoveryJobId);
+  }, [
+    open,
+    recoveryJobId,
+    recoveryJobQuery.data,
+    recoveryJobHydratedId,
+  ]);
+
+  const draftQcEstimateQuery =
+    trpc.verticalDramaSeries.getDraftQualityQcEstimate.useQuery(
+      { maxImprovementRounds: draftQcMaxRounds as 0 | 1 | 2 | 3 | 5 | 10 },
+      { enabled: open }
+    );
+  const draftQcStatusQuery =
+    trpc.verticalDramaSeries.getDraftQualityQcStatus.useQuery(
+      { runId: draftQcRunId ?? "00000000-0000-4000-8000-000000000000" },
+      {
+        enabled: Boolean(draftQcRunId),
+        refetchInterval: query =>
+          query.state.data?.status === "queued" ||
+          query.state.data?.status === "running"
+            ? 1200
+            : false,
+      }
+    );
+
+  const workspaceRestoreAttempted = useRef(false);
+  const workspaceRecoveryStartedAt = useRef<number | null>(null);
+  useEffect(() => {
+    if (!open || workspaceRestoreAttempted.current) return;
+    const workspace = draftWorkspaceStatusQuery.data;
+    if (!workspace) return;
+    const composition = workspace.composition;
+    const qc = workspace.qc;
+    if (!composition?.jobId && !qc?.runId) return;
+    workspaceRestoreAttempted.current = true;
+    workspaceRecoveryStartedAt.current = null;
+    if (!draftCompositionJobId && composition?.jobId) {
+      setDraftCompositionJobId(composition.jobId);
+      setDraftCompositionSourceSignature(currentSynthesisSourceSignature);
+      setSynthesisSourceSignature(
+        prev => prev ?? currentSynthesisSourceSignature
+      );
+      setSynthesisRequestKey(prev => prev ?? 1);
+    }
+    if (!draftQcRunId && qc?.runId) {
+      setDraftQcRunId(qc.runId);
+      setDraftQcSourceSignature(currentSynthesisSourceSignature);
+    }
+  }, [
+    open,
+    draftWorkspaceStatusQuery.data,
+    currentSynthesisSourceSignature,
+    draftCompositionJobId,
+    draftQcRunId,
+  ]);
+  const draftQcStartMutation =
+    trpc.verticalDramaSeries.startDraftQualityQc.useMutation({
+      onSuccess: data => {
+        setDraftQcRunId(data.runId);
+        setDraftQcSourceSignature(currentSynthesisSourceSignature);
+        setDraftQcOverride(false);
+        toast.success(
+          lang === "th" ? "เริ่มตรวจคุณภาพ Draft แล้ว" : "Draft QC started"
+        );
+      },
+      onError: error =>
+        toast.error(
+          error.message ||
+            (lang === "th"
+              ? "เริ่มตรวจ QC ไม่สำเร็จ"
+              : "Could not start Draft QC")
+        ),
+    });
+  const draftQcCancelMutation =
+    trpc.verticalDramaSeries.cancelDraftQualityQc.useMutation({
+      onSuccess: () =>
+        toast.success(
+          lang === "th" ? "ยกเลิกการตรวจ QC แล้ว" : "Draft QC cancelled"
+        ),
+      onError: error =>
+        toast.error(
+          error.message ||
+            (lang === "th"
+              ? "ยกเลิก QC ไม่สำเร็จ"
+              : "Could not cancel Draft QC")
+        ),
     });
 
   const generateStoryMutation =
@@ -651,6 +1184,20 @@ export function CreateSeriesWizard({
       const seriesId = data.series.id;
       setForm(INITIAL_WIZARD);
       setStepIndex(0);
+      setTitleOrigin(undefined);
+      setSynthesisRequestKey(null);
+      setSynthesisSourceSignature(null);
+      setAppliedDraftKey(null);
+      setDraftQcRunId(null);
+      setDraftQcSourceSignature(null);
+      setDraftCompositionJobId(null);
+      setDraftCompositionSourceSignature(null);
+      setDraftQcOverride(false);
+      clearPersistedCreateSeriesWorkspace();
+      draftQcSessionId.current = createDraftSessionId();
+      workspaceRestoreAttempted.current = false;
+      workspaceRecoveryStartedAt.current = null;
+      synthesisRequestCounter.current = 0;
       onCreated(seriesId);
       // Best-effort: immediately expand the wizard's bible into a full story.
       // A failure here is non-fatal — the series shell still exists and the
@@ -665,8 +1212,340 @@ export function CreateSeriesWizard({
     },
   });
 
-  const set = <K extends keyof WizardState>(key: K, value: WizardState[K]) =>
+  const draftQcRecheckFields = new Set<keyof WizardState>([
+    "logline",
+    "mainPlot",
+    "seasonArc",
+    "tone",
+    "cliffhangerStyle",
+    "characters",
+    "characterProfiles",
+    "locations",
+    "visualBible",
+    "storyContext",
+    "storyDesign",
+    "storyContract",
+    "visualNarrativeProfile",
+  ]);
+  const set = <K extends keyof WizardState>(key: K, value: WizardState[K]) => {
+    // Generated story fields are editable after Apply, but changing one means
+    // the approved candidate is no longer the candidate being submitted.
+    // Force a fresh QC instead of allowing create to fail later on a receipt
+    // mismatch or, worse, persisting an unreviewed story spine.
+    if (draftQcRunId && draftQcRecheckFields.has(key)) {
+      setDraftQcRunId(null);
+      setDraftQcSourceSignature(null);
+      setDraftQcOverride(false);
+      setAppliedDraftKey(null);
+    }
     setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  // The current UI language is the authoritative narrative language for a
+  // new series. Keep the persisted legacy `locale` field synchronized so old
+  // create APIs and downstream story services continue to receive the same
+  // content-language value without exposing a second confusing selector.
+  useEffect(() => {
+    if (!open) return;
+    setForm(prev => (prev.locale === lang ? prev : { ...prev, locale: lang }));
+  }, [open, lang]);
+
+  function handleManualTitleChange(value: string) {
+    setForm(prev => ({ ...prev, title: value }));
+    setTitleOrigin(value.trim() ? "manual" : undefined);
+  }
+
+  const synthesizedDraft = draftCompositionStatusQuery.data?.result?.draft as
+    | SynthesizedGenrePresetDraft
+    | undefined;
+
+  // The ledger is the source of truth for the full generated Draft. Older
+  // migrated jobs do not have requestJson, but their currentJson still has the
+  // complete AI output. Restore that output into every wizard section instead
+  // of only restoring the title from the Inbox row.
+  useEffect(() => {
+    if (
+      !open ||
+      !recoveryJobId ||
+      recoveryFormHydratedId === recoveryJobId ||
+      !synthesizedDraft
+    )
+      return;
+    const request = (recoveryJobQuery.data?.job.requestJson ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const synthesis = (request.synthesis ?? {}) as Record<string, unknown>;
+    recoveryHydrationPendingRef.current = recoveryJobId;
+    setForm(previous =>
+      mergeSynthesizedDraftIntoWizardForm(previous, synthesizedDraft, synthesis)
+    );
+    setTitleOrigin("manual");
+    setSynthesisRequestKey(previous => previous ?? 1);
+    setRecoveryFormHydratedId(recoveryJobId);
+  }, [
+    open,
+    recoveryJobId,
+    recoveryFormHydratedId,
+    recoveryJobQuery.data,
+    synthesizedDraft,
+  ]);
+
+  useEffect(() => {
+    if (
+      !recoveryJobId ||
+      recoveryJobHydratedId !== recoveryJobId ||
+      !synthesizedDraft
+    )
+      return;
+    setSynthesisSourceSignature(currentSynthesisSourceSignature);
+    setDraftCompositionSourceSignature(currentSynthesisSourceSignature);
+    if (recoveryQcRunId || draftQcRunId) {
+      setDraftQcSourceSignature(currentSynthesisSourceSignature);
+    }
+  }, [
+    recoveryJobId,
+    recoveryJobHydratedId,
+    recoveryQcRunId,
+    draftQcRunId,
+    synthesizedDraft,
+    currentSynthesisSourceSignature,
+  ]);
+  const draftQcStatus =
+    draftQcRunId && draftQcSourceSignature === currentSynthesisSourceSignature
+      ? (draftQcStatusQuery.data?.status ?? "queued")
+      : "idle";
+  const draftQcResult =
+    draftQcRunId && draftQcSourceSignature === currentSynthesisSourceSignature
+      ? draftQcStatusQuery.data?.result
+      : undefined;
+  // QC may keep a revised candidate that is better than the original
+  // synthesis. That candidate becomes the draft the creator reviews/applies;
+  // otherwise the receipt fingerprint would refer to a different object than
+  // the one sent to create, silently blocking the intended best-candidate
+  // behavior.
+  const draftToReview = (draftQcResult?.best?.draft ?? synthesizedDraft) as
+    | SynthesizedGenrePresetDraft
+    | undefined;
+  const draftQcReport = draftQcResult?.best.report;
+  const draftQcCandidateMatches = Boolean(
+    draftToReview &&
+    draftQcResult?.best.fingerprint ===
+      fingerprintDraftQualityQcCandidate(draftToReview)
+  );
+  const draftQcPassed = Boolean(
+    draftQcStatus === "succeeded" &&
+    draftQcReport?.pass &&
+    draftQcCandidateMatches
+  );
+  const draftQcOverrideEligible = Boolean(
+    draftQcStatus === "succeeded" &&
+    draftQcResult?.stopReason === "max_rounds" &&
+    draftQcReport &&
+    draftQcReport.criticalFails.length === 0 &&
+    !draftQcReport.pass
+  );
+  const draftQcAccepted =
+    draftQcPassed || (draftQcOverrideEligible && draftQcOverride);
+  const normalizedDraftTitleOptions = normalizeDraftTitleOptions(
+    draftToReview?.titleOptions
+  );
+  const draftIsCurrent = Boolean(
+    synthesizedDraft &&
+    draftCompositionJobId !== null &&
+    draftCompositionStatusQuery.data?.status === "ready_for_qc" &&
+    draftCompositionSourceSignature === currentSynthesisSourceSignature &&
+    synthesisSourceSignature === currentSynthesisSourceSignature &&
+    !draftCompositionMutation.isPending
+  );
+  const hasManualTitle =
+    titleOrigin === "manual" && form.title.trim().length > 0;
+  const hasSelectedGeneratedTitle = Boolean(
+    titleOrigin === "candidate" &&
+    hasValidDraftTitleOptions(draftToReview) &&
+    normalizedDraftTitleOptions.includes(form.title.trim())
+  );
+  const draftTitleReady = hasManualTitle || hasSelectedGeneratedTitle;
+  const draftDiagnostics = (draftToReview?.diagnostics ??
+    []) as VerticalDramaDraftDiagnostic[];
+  const hasBlockingDraftDiagnostics =
+    hasBlockingVerticalDramaDraftDiagnostics(draftDiagnostics);
+  const draftCompositionReady =
+    draftCompositionStatusQuery.data?.status === "ready_for_qc";
+  const draftCanBeApplied =
+    draftIsCurrent &&
+    draftTitleReady &&
+    draftCompositionReady &&
+    !hasBlockingDraftDiagnostics &&
+    draftQcAccepted;
+  const draftGateSatisfied = Boolean(
+    draftCanBeApplied &&
+    synthesisRequestKey !== null &&
+    appliedDraftKey === synthesisRequestKey
+  );
+  const draftGateReason = !synthesizedDraft
+    ? lang === "th"
+      ? "กดให้ AI สร้าง draft ก่อนจึงไปต่อได้"
+      : "Generate an AI draft before continuing"
+    : !draftCompositionReady
+      ? lang === "th"
+        ? "AI กำลังเติมข้อมูลโครงสร้างเรื่องให้ครบก่อนเข้า QC"
+        : "AI is completing the story structure before Draft QC"
+      : !draftIsCurrent
+        ? lang === "th"
+          ? "draft เก่าแล้ว เพราะข้อมูลต้นทางเปลี่ยน — กรุณาสร้างใหม่"
+          : "This draft is stale because the source changed — generate a new one"
+        : hasBlockingDraftDiagnostics
+          ? lang === "th"
+            ? "draft มีข้อมูลโครงสร้างเรื่องหรือบทบาทตัวละครไม่ครบ — กดปรับใหม่ก่อนจึงเริ่ม QC ได้"
+            : "This draft has incomplete story architecture or character-role data — regenerate it before Draft QC"
+          : !draftQcAccepted
+            ? lang === "th"
+              ? "ต้องตรวจ QC ให้ผ่าน 9.0/10 หรือยืนยันใช้แบบมีคำเตือนก่อน"
+              : "Run Draft QC and reach 9.0/10, or confirm the eligible override"
+            : !draftTitleReady
+              ? hasValidDraftTitleOptions(draftToReview)
+                ? lang === "th"
+                  ? "เลือกชื่อเรื่อง 1 รายการ หรือกรอกชื่อเรื่องเองก่อน"
+                  : "Select one title candidate or enter your own title"
+                : lang === "th"
+                  ? "draft นี้ไม่มีตัวเลือกชื่อเรื่องที่ครบ 4-5 แบบ — กดปรับใหม่"
+                  : "This draft has no valid 4–5 title choices — generate a new one"
+              : !draftGateSatisfied
+                ? lang === "th"
+                  ? "กด ใช้ draft นี้ ก่อนจึงไปต่อได้"
+                  : "Apply this draft before continuing"
+                : "";
+
+  function startDraftQualityQc() {
+    if (
+      !synthesizedDraft ||
+      !draftIsCurrent ||
+      !draftCompositionReady ||
+      hasBlockingDraftDiagnostics ||
+      draftQcStartMutation.isPending
+    )
+      return;
+    draftQcStartMutation.mutate({
+      draftSessionId: draftQcSessionId.current,
+      draftId: draftCompositionStatusQuery.data?.result?.draftArtifactId,
+      draft: synthesizedDraft as unknown as Record<string, unknown>,
+      immutableConstraints: {
+        preservedPaths: [
+          "storyContext",
+          "storyDesign",
+          "storyContract",
+          "visualNarrativeProfile",
+        ],
+        narrativeLocale: form.locale,
+        spokenLanguageProfile:
+          form.spokenLocale === "auto"
+            ? undefined
+            : buildVerticalDramaSpokenLanguageProfile(form.spokenLocale),
+        genre: form.genre,
+        userPremise: form.userPremise.trim() || undefined,
+        targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
+      },
+      maxImprovementRounds: draftQcMaxRounds as 0 | 1 | 2 | 3 | 5 | 10,
+    });
+  }
+
+  function cancelDraftQualityQc() {
+    if (!draftQcRunId || draftQcCancelMutation.isPending) return;
+    draftQcCancelMutation.mutate({ runId: draftQcRunId });
+  }
+
+  const draftQualityQcReceipt =
+    draftQcResult && draftQcRunId
+      ? {
+          runId: draftQcRunId,
+          candidateFingerprint: draftQcResult.best.fingerprint,
+          explicitOverride: draftQcOverride,
+        }
+      : undefined;
+
+  const previousSynthesisSourceSignature = useRef(
+    currentSynthesisSourceSignature
+  );
+  useEffect(() => {
+    if (
+      previousSynthesisSourceSignature.current !==
+      currentSynthesisSourceSignature
+    ) {
+      previousSynthesisSourceSignature.current =
+        currentSynthesisSourceSignature;
+      if (recoveryHydrationPendingRef.current === recoveryJobId) {
+        recoveryHydrationPendingRef.current = null;
+        return;
+      }
+      if (draftCompositionJobId || draftQcRunId) {
+        draftQcSessionId.current = createDraftSessionId();
+        workspaceRestoreAttempted.current = false;
+        workspaceRecoveryStartedAt.current = null;
+      }
+      setAppliedDraftKey(null);
+      setDraftCompositionJobId(null);
+      setDraftCompositionSourceSignature(null);
+      setDraftQcRunId(null);
+      setDraftQcSourceSignature(null);
+      setDraftQcOverride(false);
+      latestCompositionRequest.current = null;
+    }
+  }, [
+    currentSynthesisSourceSignature,
+    draftCompositionJobId,
+    draftQcRunId,
+    recoveryJobId,
+  ]);
+
+  // Keep the pre-create workspace recoverable across a browser refresh. The
+  // server-side Redis pointers are authoritative for job status; this snapshot
+  // restores the source form/signatures and the job ids needed to poll them.
+  useEffect(() => {
+    if (!open) return;
+    persistCreateSeriesWorkspace({
+      version: 1,
+      savedAt: Date.now(),
+      draftSessionId: draftQcSessionId.current,
+      form,
+      stepIndex,
+      mixPresetIds,
+      mixCategories,
+      mixBusinessContext,
+      mixPrimarySelectionId,
+      mixWeights,
+      titleOrigin,
+      synthesisRequestKey,
+      synthesisSourceSignature,
+      appliedDraftKey,
+      draftQcRunId,
+      draftQcSourceSignature,
+      draftCompositionJobId,
+      draftCompositionSourceSignature,
+      draftQcMaxRounds,
+      draftQcOverride,
+      synthesisRequestCounter: synthesisRequestCounter.current,
+    });
+  }, [
+    open,
+    form,
+    stepIndex,
+    mixPresetIds,
+    mixCategories,
+    mixBusinessContext,
+    mixPrimarySelectionId,
+    mixWeights,
+    titleOrigin,
+    synthesisRequestKey,
+    synthesisSourceSignature,
+    appliedDraftKey,
+    draftQcRunId,
+    draftQcSourceSignature,
+    draftCompositionJobId,
+    draftCompositionSourceSignature,
+    draftQcMaxRounds,
+    draftQcOverride,
+  ]);
 
   // Stage 2.6 — once a parent series loads for a sequel/special edition,
   // inherit genre (both modes) + tone (sequel only) verbatim and lock them in
@@ -685,7 +1564,9 @@ export function CreateSeriesWizard({
       ...prev,
       genre: parentSeries.genre ?? prev.genre,
       tone:
-        prev.createMode === "sequel" ? parentSeries.tone ?? prev.tone : prev.tone,
+        prev.createMode === "sequel"
+          ? (parentSeries.tone ?? prev.tone)
+          : prev.tone,
       visualBible: prev.visualBible.trim()
         ? prev.visualBible
         : typeof (parentSeries.bible as Record<string, unknown> | null)
@@ -697,7 +1578,9 @@ export function CreateSeriesWizard({
   }, [form.createMode, form.parentSeriesId, parentSeries]);
 
   /** Switching create mode resets the parent-selection-dependent state so a stale pick from a different mode can never leak into `create`'s payload. */
-  function handleSetCreateMode(mode: VerticalDramaSeriesCreateMode | undefined) {
+  function handleSetCreateMode(
+    mode: VerticalDramaSeriesCreateMode | undefined
+  ) {
     lineagePrefilledForRef.current = null;
     setForm(prev => ({
       ...prev,
@@ -712,7 +1595,9 @@ export function CreateSeriesWizard({
       // chosen, rather than waiting for the user to notice the field itself.
       targetEpisodeCount:
         mode === "special_edition"
-          ? String(Math.min(2, Math.max(1, Number(prev.targetEpisodeCount) || 1)))
+          ? String(
+              Math.min(2, Math.max(1, Number(prev.targetEpisodeCount) || 1))
+            )
           : prev.targetEpisodeCount,
     }));
     carryOverMutation.reset();
@@ -760,10 +1645,14 @@ export function CreateSeriesWizard({
     if (!form.parentSeriesId || !form.storyFunctionChoice) return;
     specialEditionMutation.mutate({
       parentSeriesId: form.parentSeriesId,
-      targetEpisodeCount: Math.min(2, Math.max(1, Number(form.targetEpisodeCount) || 1)),
+      targetEpisodeCount: Math.min(
+        2,
+        Math.max(1, Number(form.targetEpisodeCount) || 1)
+      ),
       storyFunctionChoice: form.storyFunctionChoice,
       marketplaceProductName: form.productName.trim() || undefined,
-      marketplaceProductDescription: form.productDescription?.trim() || undefined,
+      marketplaceProductDescription:
+        form.productDescription?.trim() || undefined,
       uploadedSummary: form.uploadedSummary?.trim() || undefined,
     });
   }
@@ -803,102 +1692,17 @@ export function CreateSeriesWizard({
     }
   }
 
-  function applyPreset(preset: (typeof presets)[number]) {
-    set(
-      "genre",
-      clampToCreateSeriesLimit(preset.title, "genre") ?? preset.title
-    );
-    set("logline", preset.logline);
-    set("mainPlot", preset.mainPlot);
-    set("seasonArc", preset.seasonArc);
-    set("tone", clampToCreateSeriesLimit(preset.tone, "tone") ?? preset.tone);
-    set("cliffhangerStyle", preset.cliffhangerStyle);
-    set(
-      "characters",
-      preset.characters
-        .map(c => `${c.name} — ${c.role}: ${c.description}`)
-        .join("\n")
-    );
-    set(
-      "characterProfiles",
-      preset.characters.map(c => ({
-        name: c.name,
-        role: c.role,
-        description: c.description,
-        narrativeRole: c.narrativeRole,
-        roleTier: c.roleTier,
-        occupation: c.occupation,
-      })),
-    );
-    set("visualBible", preset.visualBible);
-    // Spec §8.2.2.A flow-through rule (section-15) — remembered so `create`
-    // can additively stamp this preset's `visualIdentityJson` (if any) into
-    // the new series' bible; a no-op server side for presets without one.
-    set("appliedPresetId", preset.id);
-    set("aiMixVisualIdentity", undefined);
-    // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
-    // creative-intent input, never overwritten by preset application.
-    // Deliberately not touched here.
-    toast.success(
-      lang === "th"
-        ? `นำ Preset "${preset.title}" มาใช้แล้ว — แก้ไขต่อได้ทุกแท็บ`
-        : `Applied preset "${preset.title}" — edit any tab freely`
-    );
-  }
-
   function applyPresetDraft(draft: SynthesizedGenrePresetDraft) {
-    setForm(prev => {
-      const resolvedTitle = prev.title.trim() ? prev.title : draft.title;
-      return {
-        ...prev,
-        title: resolvedTitle,
-        genre: resolveGenreAfterPresetDraft(
-          prev.genre,
-          draft.category,
-          resolvedTitle,
-        ),
-        logline: draft.logline,
-        mainPlot: draft.mainPlot,
-        seasonArc: draft.seasonArc,
-        tone: clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone,
-        cliffhangerStyle: draft.cliffhangerStyle,
-        characters: draft.characters
-          .map(c => `${c.name} — ${c.role}: ${c.description}`)
-          .join("\n"),
-        characterProfiles: draft.characters.map(c => ({
-          name: c.name,
-          role: c.role,
-          description: c.description,
-          narrativeRole: c.narrativeRole,
-          roleTier: c.roleTier,
-          occupation: c.occupation,
-        })),
-        visualBible: draft.visualBible,
-        // Stage 1/2 (fix-create-series-premise-blend plan-phase2-mode-first,
-        // gap analysis item 2) — `locations` was never written here before,
-        // leaving the "ตัวละคร & ฉาก" tab's location roster permanently
-        // empty. Same join convention as `characters` above (`"name —
-        // description"` per line, matching the server's
-        // `parseLocationsDraft`). Optional/additive: an older or shorter
-        // model response without `draft.locations` leaves `prev.locations`
-        // untouched — byte-identical to before this field existed.
-        locations: draft.locations
-          ? draft.locations
-              .map(l => `${l.name} — ${l.description}`)
-              .join("\n")
-          : prev.locations,
-        // An AI-mixed draft is not itself a single stored preset row — clear
-        // any single-preset `appliedPresetId` a prior "Use this preset" click
-        // may have left behind so `create` doesn't stamp the wrong identity.
-        appliedPresetId: undefined,
-        aiMixVisualIdentity:
-          draft.contract_version === 2 ? draft.visualIdentity : undefined,
-        // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
-        // creative-intent input, never overwritten by preset application.
-        // `prev` is already spread above, so `userPremise` is deliberately not
-        // listed here (leaving it untouched).
-      };
-    });
+    if (
+      !draftCanBeApplied ||
+      draft !== draftToReview ||
+      synthesisRequestKey === null
+    ) {
+      toast.error(draftGateReason);
+      return;
+    }
+    setForm(prev => mergeSynthesizedDraftIntoWizardForm(prev, draft));
+    setAppliedDraftKey(synthesisRequestKey);
     toast.success(
       lang === "th"
         ? "ใช้ draft นี้แล้ว — แก้ไขต่อได้ทุกแท็บ"
@@ -955,14 +1759,14 @@ export function CreateSeriesWizard({
       hasLineageSeed: Boolean(form.createMode && form.parentSeriesId),
       hasBasicSeed: Boolean(
         form.title.trim() ||
-          form.genre.trim() ||
-          form.tone.trim() ||
-          mixCategories.length > 0 ||
-          mixBusinessContext.trim() ||
-          form.productName.trim() ||
-          Number(form.targetEpisodeCount) > 0 ||
-          form.audienceAgeRating ||
-          (form.createMode && form.parentSeriesId)
+        form.genre.trim() ||
+        form.tone.trim() ||
+        mixCategories.length > 0 ||
+        mixBusinessContext.trim() ||
+        form.productName.trim() ||
+        Number(form.targetEpisodeCount) > 0 ||
+        form.audienceAgeRating ||
+        (form.createMode && form.parentSeriesId)
       ),
       lang,
     });
@@ -970,12 +1774,30 @@ export function CreateSeriesWizard({
       toast.error(action.blockedReason);
       return;
     }
+    const requestKey = synthesisRequestCounter.current + 1;
+    synthesisRequestCounter.current = requestKey;
+    draftQcSessionId.current = createDraftSessionId();
+    workspaceRestoreAttempted.current = false;
+    workspaceRecoveryStartedAt.current = null;
+    latestCompositionRequest.current = {
+      key: requestKey,
+      signature: currentSynthesisSourceSignature,
+    };
+    setSynthesisRequestKey(requestKey);
+    setSynthesisSourceSignature(currentSynthesisSourceSignature);
+    setAppliedDraftKey(null);
+    if (titleOrigin === "candidate") {
+      setTitleOrigin(undefined);
+      setForm(prev => ({ ...prev, title: "" }));
+    }
     // Clear the previous response/error before a new request so a stale draft
     // cannot look like the result of the current selection and no refresh is
     // needed to recover the wizard state after a failed request.
-    synthesizePresetMutation.reset();
-    synthesizePresetMutation.mutate({
+    draftCompositionMutation.reset();
+    draftCompositionMutation.mutate({
+      draftSessionId: draftQcSessionId.current,
       locale: lang,
+      spokenLocale: form.spokenLocale,
       selectedPresetIds: mixPresetIds,
       // Category chips are filters while presets are selected. With zero
       // presets, however, the chosen categories become legitimate basics-only
@@ -1020,14 +1842,22 @@ export function CreateSeriesWizard({
       // pass the same bounded lineage/carry-over snapshot that `create` will
       // persist so the basics-only draft respects continuity.
       lineageContext: buildLineagePayload(),
-    } as Parameters<typeof synthesizePresetMutation.mutate>[0]);
+      // The server resolves genre look identities from its catalog and
+      // resolves inherited/preset identities from owned rows. The profile is
+      // strictly opt-in and never sent when the tenant feature is unavailable.
+      visualNarrativeEnabled: lookLockEnabled
+        ? form.visualNarrativeEnabled
+        : undefined,
+      lookLockMode: lookLockEnabled ? form.lookLockMode : undefined,
+      lookLockGenreKey: lookLockEnabled ? form.lookLockGenreKey : undefined,
+    } as Parameters<typeof draftCompositionMutation.mutate>[0]);
   }
 
   /**
    * Rescue action for the misplaced-premise UX bug (2026-07-31 09:14:56
    * production BAD_REQUEST) — the genre field is only 100 chars and reads
    * naturally in Thai as "story direction", so a full premise regularly ends
-   * up typed there instead of in the 2000-char premise box above. Moves that
+   * up typed there instead of in the long premise box above. Moves that
    * text into `userPremise` and clears `genre`, never overwriting existing
    * premise text: if a premise is already present, the genre text is
    * appended after it instead of replacing it.
@@ -1061,12 +1891,14 @@ export function CreateSeriesWizard({
   // therefore untouched for the original wizard.
   const steps = resolveWizardSteps(form.createMode);
 
-  // All steps are always reachable (freely-navigable tabs) — this only drives
-  // a per-step completion badge so the user can see what's filled vs. still
-  // needs attention before creating the series.
+  // A step can be revisited freely, but the first step is not complete until
+  // the current skill draft has been explicitly applied and its title rule is
+  // satisfied. This keeps the progress indicator aligned with the real gate.
   const stepComplete = useMemo(() => {
     return [
-      form.title.trim().length > 0 && Number(form.targetEpisodeCount) > 0,
+      draftGateSatisfied &&
+        form.title.trim().length > 0 &&
+        Number(form.targetEpisodeCount) > 0,
       form.mainPlot.trim().length > 0 || form.seasonArc.trim().length > 0,
       form.characters.trim().length > 0,
       form.visualBible.trim().length > 0,
@@ -1075,19 +1907,22 @@ export function CreateSeriesWizard({
     ];
   }, [form]);
 
-  // Hard requirement to actually create the series (title + Sub-episode count) —
-  // this only gates the final Create action, never tab navigation. Stage 2.6
-  // adds: a sequel/special-edition create MUST have a chosen parent series.
-  const createValid =
+  // Hard requirement to actually create the series (applied AI draft + title +
+  // Sub-episode count). Stage 2.6 adds: a sequel/special-edition create MUST
+  // have a chosen parent series.
+  const basicCreateValid =
     form.title.trim().length > 0 &&
     Number(form.targetEpisodeCount) > 0 &&
     (!form.createMode || Boolean(form.parentSeriesId));
+  const createValid = basicCreateValid && draftGateSatisfied;
   const createBlockedReason = !createValid
-    ? form.createMode && !form.parentSeriesId
-      ? pickCopy(lang, parentSeriesPickerCopy.required)
-      : lang === "th"
-        ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนย่อยที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
-        : "Enter a series title and a valid Sub-episode count in the 'Basic setup' tab"
+    ? !draftGateSatisfied
+      ? draftGateReason
+      : form.createMode && !form.parentSeriesId
+        ? pickCopy(lang, parentSeriesPickerCopy.required)
+        : lang === "th"
+          ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนย่อยที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
+          : "Enter a series title and a valid Sub-episode count in the 'Basic setup' tab"
     : "";
 
   const isLast = stepIndex === steps.length - 1;
@@ -1099,9 +1934,7 @@ export function CreateSeriesWizard({
   // `createValid` already blocks that latter case from ever reaching here
   // for the picker itself, but the carry-over draft is optional even for a
   // sequel: a user may create before proposing one).
-  const buildLineagePayload = ():
-    | VerticalDramaSeriesLineage
-    | undefined => {
+  const buildLineagePayload = (): VerticalDramaSeriesLineage | undefined => {
     if (!form.createMode || !form.parentSeriesId) return undefined;
     const parentSeriesIdNum = Number(form.parentSeriesId);
     const parentTitle = parentSeries?.title ?? "";
@@ -1115,8 +1948,9 @@ export function CreateSeriesWizard({
         createMode: "sequel",
         seasonNumber: Number(form.seasonNumber) || undefined,
         priorSeasonSummary: parentSeries?.memory
-          ? ((parentSeries.memory as Record<string, unknown>)
-              .compactSummary as string | undefined)
+          ? ((parentSeries.memory as Record<string, unknown>).compactSummary as
+              | string
+              | undefined)
           : undefined,
         carryOver: draft
           ? {
@@ -1146,10 +1980,14 @@ export function CreateSeriesWizard({
 
   const handleCreate = () => {
     if (createMutation.isPending || generateStoryMutation.isPending) return;
+    if (!createValid) {
+      toast.error(createBlockedReason);
+      return;
+    }
     const resolvedGenre = resolveGenreAfterPresetDraft(
       form.genre,
-      synthesizePresetMutation.data?.draft.category ?? "",
-      form.title,
+      draftToReview?.category ?? "",
+      form.title
     );
     createMutation.mutate({
       title: form.title.trim(),
@@ -1157,8 +1995,7 @@ export function CreateSeriesWizard({
       genre: resolvedGenre || undefined,
       tone: form.tone.trim() || undefined,
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
-      defaultEpisodeDurationSeconds:
-        Number(form.targetDurationSeconds) || undefined,
+      shotDurationSeconds: Number(form.shotDurationSeconds) || undefined,
       bible:
         // Widened (previously `characters`/`locations`-only input silently
         // dropped the whole `bible` object, losing both drafts): a user who
@@ -1170,7 +2007,12 @@ export function CreateSeriesWizard({
         form.seasonArc ||
         form.visualBible ||
         form.characters.trim() ||
-        form.locations.trim()
+        form.locations.trim() ||
+        form.visualNarrativeProfile ||
+        form.storyContext ||
+        form.storyDesign ||
+        form.storyContract ||
+        form.spokenLocale !== "auto"
           ? {
               logline: form.logline,
               mainPlot: form.mainPlot,
@@ -1180,8 +2022,35 @@ export function CreateSeriesWizard({
               charactersDraft: form.characters,
               characterProfiles: form.characterProfiles,
               locationsDraft: form.locations,
+              ...(form.spokenLocale !== "auto"
+                ? {
+                    dialogueLanguageProfile:
+                      buildVerticalDramaSpokenLanguageProfile(
+                        form.spokenLocale
+                      ),
+                  }
+                : {}),
+              ...(form.visualNarrativeProfile
+                ? { visualNarrativeProfile: form.visualNarrativeProfile }
+                : {}),
+              ...(form.storyContext ? { storyContext: form.storyContext } : {}),
+              ...(form.storyDesign
+                ? {
+                    storyDesign: form.storyDesign,
+                    ...(form.storyDesign.storyControlSeed
+                      ? { storyControlSeed: form.storyDesign.storyControlSeed }
+                      : {}),
+                  }
+                : {}),
+              ...(form.storyContract
+                ? { storyContract: form.storyContract }
+                : {}),
             }
           : undefined,
+      draftQualityQcReceipt,
+      draftQualityQcCandidate: draftToReview as
+        | Record<string, unknown>
+        | undefined,
       // Stage 2.5 special edition — a special edition IS a product tie-in for
       // its entire runtime regardless of the (original-mode-only)
       // `productTieInEnabled` checkbox, so this branch is sent unconditionally
@@ -1229,7 +2098,8 @@ export function CreateSeriesWizard({
             : undefined,
       // Spec §8.2.2.A flow-through rule (section-15) — best-effort on the
       // server; a no-op when unset, invalid, or the preset has no
-      // `visualIdentityJson`. See `applyPreset`/`applyPresetDraft` above.
+      // `visualIdentityJson`. The current wizard only produces skill drafts;
+      // their apply path explicitly clears this legacy identity field.
       appliedPresetId: form.appliedPresetId,
       // Feature 132 §4.2 (F132A) — top-level sibling of `bible` (NOT nested
       // inside it), matching the router schema shape; sent unconditionally,
@@ -1254,8 +2124,12 @@ export function CreateSeriesWizard({
             ...(form.lookLockMode === "genre" && form.lookLockGenreKey
               ? { genreKey: form.lookLockGenreKey }
               : {}),
-            ...(form.lookLockMode === "inherit_source" && form.aiMixVisualIdentity
+            ...(form.lookLockMode === "inherit_source" &&
+            form.aiMixVisualIdentity
               ? { candidateIdentity: form.aiMixVisualIdentity }
+              : {}),
+            ...(form.lookLockMode !== "none" && form.visualNarrativeEnabled
+              ? { visualNarrativeEnabled: form.visualNarrativeEnabled }
               : {}),
           }
         : undefined,
@@ -1290,13 +2164,15 @@ export function CreateSeriesWizard({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Stepper — every step is always clickable; the dot shows completion, not access. */}
+          {/* Stepper — previous steps remain reachable; forward steps wait for
+              the skill draft confirmation gate. */}
           <ol className="mt-3 flex flex-wrap gap-1.5" aria-label="wizard steps">
             {steps.map((step, i) => (
               <li key={step.id}>
                 <button
                   type="button"
                   aria-current={i === stepIndex ? "step" : undefined}
+                  disabled={i > stepIndex && !draftGateSatisfied}
                   onClick={() => setStepIndex(i)}
                   className={cn(
                     "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
@@ -1342,18 +2218,74 @@ export function CreateSeriesWizard({
             onMixPrimarySelectionIdChange={setMixPrimarySelectionId}
             mixWeights={mixWeights}
             onMixWeightChange={setMixWeight}
-            mixDraft={synthesizePresetMutation.data?.draft}
-            mixDraftLoading={synthesizePresetMutation.isPending}
+            mixDraft={draftToReview}
+            mixDraftLoading={
+              draftCompositionMutation.isPending ||
+              Boolean(
+                draftCompositionJobId &&
+                !draftCompositionReady &&
+                !draftCompositionStatusQuery.error &&
+                !draftCompositionStatusQuery.data?.error
+              )
+            }
+            draftCompositionStage={
+              draftCompositionStatusQuery.data?.progress?.stage
+            }
             mixDraftError={
-              synthesizePresetMutation.error
-                ? formatPresetSynthesisError(synthesizePresetMutation.error, lang)
+              draftCompositionStatusQuery.data?.error ||
+              draftCompositionStatusQuery.error ||
+              draftCompositionMutation.error
+                ? draftCompositionStatusQuery.data?.error
+                  ? formatPresetSynthesisError(
+                      {
+                        message: draftCompositionStatusQuery.data.error,
+                        failure: draftCompositionStatusQuery.data.failure,
+                      },
+                      lang
+                    )
+                  : draftCompositionStatusQuery.error
+                    ? formatPresetSynthesisError(
+                        { message: draftCompositionStatusQuery.error.message },
+                        lang
+                      )
+                    : formatPresetSynthesisError(
+                        draftCompositionMutation.error,
+                        lang
+                      )
                 : undefined
             }
             onToggleMixPreset={toggleMixPreset}
             onToggleMixCategory={toggleMixCategory}
             onSynthesizePreset={handleSynthesizePreset}
             onApplyPresetDraft={applyPresetDraft}
-            onApplyPreset={applyPreset}
+            onManualTitleChange={handleManualTitleChange}
+            onGeneratedTitleSelect={value => {
+              set("title", value);
+              setTitleOrigin("candidate");
+            }}
+            draftCanBeApplied={draftCanBeApplied}
+            draftGateSatisfied={draftGateSatisfied}
+            draftGateReason={draftGateReason}
+            draftQualityQcStatus={draftQcStatus}
+            draftQualityQcProgress={draftQcStatusQuery.data?.progress}
+            draftQualityQcReport={draftQcReport}
+            draftQualityQcHistory={
+              draftQcResult?.history ??
+              draftQcStatusQuery.data?.failure?.history
+            }
+            draftQualityQcError={draftQcStatusQuery.data?.error}
+            draftQualityQcFailure={draftQcStatusQuery.data?.failure}
+            draftQualityQcEstimate={draftQcEstimateQuery.data}
+            draftQualityQcMaxRounds={draftQcMaxRounds}
+            draftQualityQcBusy={
+              draftQcStartMutation.isPending || draftQcCancelMutation.isPending
+            }
+            draftQualityQcOverrideSelected={draftQcOverride}
+            draftQualityQcOverrideEligible={draftQcOverrideEligible}
+            onDraftQualityQcMaxRoundsChange={setDraftQcMaxRounds}
+            onStartDraftQualityQc={startDraftQualityQc}
+            onCancelDraftQualityQc={cancelDraftQualityQc}
+            onDraftQualityQcOverrideChange={setDraftQcOverride}
             onMoveGenreToPremise={handleMoveGenreToPremise}
             products={products as MarketplaceProductOption[]}
             productsLoading={productsQuery.isLoading}
@@ -1362,8 +2294,9 @@ export function CreateSeriesWizard({
             lineageEnabled={lineageEnabled}
             lookLockEnabled={lookLockEnabled}
             lookLockHasInheritedSource={Boolean(
-              form.parentSeriesId || (presetMixEnabled && form.appliedPresetId)
-                || form.aiMixVisualIdentity
+              form.parentSeriesId ||
+              (presetMixEnabled && form.appliedPresetId) ||
+              form.aiMixVisualIdentity
             )}
             onSetCreateMode={handleSetCreateMode}
             parentSeriesOptions={parentSeriesOptions}
@@ -1392,6 +2325,7 @@ export function CreateSeriesWizard({
             uploadPending={uploadMutation.isPending}
             parentMemoryCoverage={parentMemoryQuery.data?.coverage}
             planningModels={planningModels}
+            recoveredPremiseMissing={recoveredPremiseMissing}
           />
         </div>
 
@@ -1410,9 +2344,10 @@ export function CreateSeriesWizard({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {isLast && createBlockedReason && (
+            {((isLast && createBlockedReason) ||
+              (!isLast && !draftGateSatisfied && draftGateReason)) && (
               <span className="text-xs text-destructive" role="note">
-                {createBlockedReason}
+                {isLast ? createBlockedReason : draftGateReason}
               </span>
             )}
             {isLast ? (
@@ -1448,6 +2383,11 @@ export function CreateSeriesWizard({
               <Button
                 onClick={() =>
                   setStepIndex(i => Math.min(steps.length - 1, i + 1))
+                }
+                disabled={
+                  createMutation.isPending ||
+                  generateStoryMutation.isPending ||
+                  !draftGateSatisfied
                 }
               >
                 {lang === "th" ? "ถัดไป" : "Next"}
@@ -1510,6 +2450,7 @@ interface SynthesizedGenrePresetDraftBase {
   seasonArc: string;
   tone: string;
   cliffhangerStyle: string;
+  visualNarrativeProfile?: VerticalDramaVisualNarrativeProfile;
   creatorSummary?: {
     whatItIsAbout: string;
     protagonistAndGoal: string;
@@ -1517,6 +2458,10 @@ interface SynthesizedGenrePresetDraftBase {
     centralMystery: string;
     decisionNotes: string[];
   };
+  storyContext?: VerticalDramaDraftStoryContext;
+  storyDesign?: VerticalDramaDraftStoryDesign;
+  storyContract?: VerticalDramaStoryArchitectureContract;
+  diagnostics?: VerticalDramaDraftDiagnostic[];
   characters: GenrePresetCharacter[];
   visualBible: string;
   /**
@@ -1560,26 +2505,250 @@ type SynthesizedGenrePresetDraft =
   | SynthesizedGenrePresetDraftV1
   | SynthesizedGenrePresetDraftV2;
 
-function formatPresetSynthesisError(
-  error: unknown,
-  lang: "th" | "en",
-): string {
+/**
+ * Rehydrate every editable wizard section from a generated Draft snapshot.
+ * This is intentionally additive: user-entered premise and unrelated
+ * settings survive, while generated story fields are restored in one atomic
+ * state update. `requestSynthesis` is optional because pre-Inbox migrated
+ * ledgers contain the Draft output but not the original request envelope.
+ */
+export function mergeSynthesizedDraftIntoWizardForm(
+  previous: WizardState,
+  draft: SynthesizedGenrePresetDraft,
+  requestSynthesis?: Record<string, unknown>
+): WizardState {
+  const requestString = (key: string): string | undefined => {
+    const value = requestSynthesis?.[key];
+    return typeof value === "string" && value.trim() ? value : undefined;
+  };
+  const requestNumber = (key: string): string | undefined => {
+    const value = requestSynthesis?.[key];
+    return typeof value === "number" && Number.isFinite(value)
+      ? String(value)
+      : undefined;
+  };
+  const resolvedTitle = previous.title.trim() ? previous.title : draft.title;
+  const mappedCharacters = draft.characters.map(character => ({
+    name: character.name,
+    role: character.role,
+    description: character.description,
+    narrativeRole: character.narrativeRole,
+    roleTier: character.roleTier,
+    occupation: character.occupation,
+  }));
+  const mappedLocations = draft.locations
+    ? draft.locations.map(location => `${location.name} — ${location.description}`).join("\n")
+    : previous.locations;
+  const locale = requestString("locale");
+  const spokenLocale = requestString("spokenLocale");
+  const audienceAgeRating = requestString("audienceAgeRating");
+
+  return {
+    ...previous,
+    title: resolvedTitle,
+    genre: resolveGenreAfterPresetDraft(
+      previous.genre,
+      draft.category,
+      resolvedTitle
+    ),
+    ...(requestString("userPremise")
+      ? { userPremise: requestString("userPremise") }
+      : {}),
+    ...(locale === "th" || locale === "en" ? { locale } : {}),
+    ...(spokenLocale ? { spokenLocale: spokenLocale as WizardState["spokenLocale"] } : {}),
+    ...(audienceAgeRating && AUDIENCE_AGE_RATINGS.includes(audienceAgeRating as AudienceAgeRating)
+      ? { audienceAgeRating: audienceAgeRating as AudienceAgeRating }
+      : {}),
+    ...(requestNumber("targetEpisodeCount")
+      ? { targetEpisodeCount: requestNumber("targetEpisodeCount") }
+      : {}),
+    logline: draft.logline,
+    mainPlot: draft.mainPlot,
+    seasonArc: draft.seasonArc,
+    tone: clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone,
+    cliffhangerStyle: draft.cliffhangerStyle,
+    characters: mappedCharacters
+      .map(character => `${character.name} — ${character.role}: ${character.description}`)
+      .join("\n"),
+    characterProfiles: mappedCharacters,
+    locations: mappedLocations,
+    visualBible: draft.visualBible,
+    aiMixVisualIdentity:
+      draft.contract_version === 2 ? draft.visualIdentity : undefined,
+    visualNarrativeProfile: draft.visualNarrativeProfile,
+    storyContext: draft.storyContext,
+    storyDesign: draft.storyDesign,
+    storyContract: draft.storyContract,
+    appliedPresetId: undefined,
+  };
+}
+
+export type DraftTitleOrigin = "manual" | "candidate" | undefined;
+
+/**
+ * Normalizes generated title choices at the wizard boundary. The service
+ * schema intentionally remains backward-compatible for non-wizard callers,
+ * so the wizard must reject empty/duplicate candidates without inventing a
+ * title locally.
+ */
+export function normalizeDraftTitleOptions(options?: string[]): string[] {
+  const seen = new Set<string>();
+  return (options ?? []).reduce<string[]>((result, option) => {
+    const normalized = option.trim();
+    if (!normalized || seen.has(normalized)) return result;
+    seen.add(normalized);
+    result.push(normalized);
+    return result;
+  }, []);
+}
+
+export function hasValidDraftTitleOptions(
+  draft?: Pick<SynthesizedGenrePresetDraftBase, "title" | "titleOptions">
+): boolean {
+  if (!draft) return false;
+  const options = normalizeDraftTitleOptions(draft.titleOptions);
+  const title = draft.title.trim();
+  return (
+    (options.length === 4 || options.length === 5) &&
+    Boolean(title) &&
+    options.includes(title)
+  );
+}
+
+function buildSynthesisSourceSignature(params: {
+  form: WizardState;
+  mixPresetIds: string[];
+  mixCategories: string[];
+  mixBusinessContext: string;
+  mixPrimarySelectionId?: string;
+  mixWeights: Record<string, VerticalDramaPresetMixWeight>;
+}): string {
+  const {
+    form,
+    mixPresetIds,
+    mixCategories,
+    mixBusinessContext,
+    mixPrimarySelectionId,
+    mixWeights,
+  } = params;
+  const storyFacingLookEnabled =
+    form.visualNarrativeEnabled && form.lookLockMode !== "none";
+  return JSON.stringify({
+    createMode: form.createMode ?? null,
+    parentSeriesId: form.parentSeriesId ?? null,
+    seasonNumber: form.seasonNumber ?? null,
+    locale: form.locale,
+    spokenLocale: form.spokenLocale,
+    audienceAgeRating: form.audienceAgeRating,
+    userPremise: form.userPremise.trim(),
+    targetEpisodeCount: form.targetEpisodeCount,
+    productName: form.productName.trim(),
+    businessContext: mixBusinessContext.trim(),
+    primarySelectionId: mixPrimarySelectionId ?? null,
+    presetIds: [...mixPresetIds],
+    categories: [...mixCategories].sort(),
+    weights: [...mixPresetIds]
+      .sort()
+      .map(id => [id, mixWeights[id] ?? DEFAULT_MIX_WEIGHT]),
+    carryOverPremise: form.carryOverPremise.trim(),
+    // Production-look changes are image-only by default and therefore must
+    // not invalidate a story draft. Only the explicit story-facing opt-in is
+    // part of the draft source contract.
+    visualNarrativeEnabled: storyFacingLookEnabled,
+    visualNarrativeLook: storyFacingLookEnabled
+      ? {
+          mode: form.lookLockMode,
+          genreKey: form.lookLockGenreKey ?? null,
+          candidateIdentity: form.aiMixVisualIdentity ?? null,
+        }
+      : null,
+  });
+}
+
+function formatPresetSynthesisError(error: unknown, lang: "th" | "en"): string {
   const raw =
     typeof error === "object" && error !== null && "message" in error
       ? String((error as { message?: unknown }).message ?? "")
       : "";
   const normalized = raw.toLowerCase();
+  const failure =
+    typeof error === "object" && error !== null && "failure" in error
+      ? (
+          error as {
+            failure?: {
+              code?: string;
+              stage?: string;
+              modelId?: string;
+              qualityGate?: string;
+              retryable?: boolean;
+              message?: string;
+              detail?: string;
+            };
+          }
+        ).failure
+      : undefined;
+  if (failure?.code) {
+    const stageLabels =
+      lang === "th"
+        ? {
+            building_foundation: "วางโครงสร้างเรื่อง",
+            composing: "สร้างเนื้อหา Draft",
+            completing: "เติมข้อมูล Draft ให้ครบ",
+            validating: "ตรวจความครบถ้วน Draft",
+          }
+        : {
+            building_foundation: "story foundation",
+            composing: "draft composition",
+            completing: "draft completion",
+            validating: "draft validation",
+          };
+    const stage =
+      stageLabels[failure.stage as keyof typeof stageLabels] ??
+      failure.stage ??
+      "Draft";
+    const model = failure.modelId ? ` [model: ${failure.modelId}]` : "";
+    const detail = failure.detail ? ` — ${failure.detail}` : "";
+    const prefix =
+      lang === "th" ? `ขั้นตอน${stage}${model}` : `${stage}${model}`;
+    const message =
+      failure.code === "recommended_model_unavailable"
+        ? lang === "th"
+          ? "ไม่มี LLM ในชุด LLM Recommend ที่ผ่านเกณฑ์ Draft ขณะนี้ ระบบจึงหยุดโดยไม่ fallback ไปใช้โมเดลอื่น"
+          : "No active LLM Recommend model meets the Draft quality policy. Generation stopped without falling back to another model."
+        : failure.code === "llm_provider_error"
+          ? lang === "th"
+            ? `${prefix} เรียกบริการ LLM ไม่สำเร็จ${failure.retryable ? " — สามารถลองใหม่ได้" : ""}`
+            : `${prefix} could not reach the LLM provider${failure.retryable ? " — retry is possible" : ""}`
+          : failure.code === "llm_output_quality_insufficient"
+            ? lang === "th"
+              ? `${prefix} ได้ผลลัพธ์ไม่ครบหรือไม่ตรงโครงสร้าง Draft จึงไม่ผ่าน quality gate${failure.qualityGate === "llm-recommended-draft-quality" ? " (โมเดลผ่าน LLM Recommend แล้ว แต่ output ยังไม่ผ่าน)" : ""}`
+              : `${prefix} returned incomplete or structurally invalid Draft data, so it failed the quality gate${failure.qualityGate === "llm-recommended-draft-quality" ? " (the model passed LLM Recommend, but its output did not)" : ""}`
+            : failure.code === "draft_completion_incomplete"
+              ? lang === "th"
+                ? `${prefix} เติมข้อมูลไม่ครบภายในจำนวนรอบที่กำหนด จึงไม่ส่ง Draft เข้า QC`
+                : `${prefix} could not complete the Draft within the allowed repair rounds, so it was not sent to QC`
+              : lang === "th"
+                ? `${prefix} หยุดทำงานจากข้อผิดพลาดภายในระบบ`
+                : `${prefix} stopped because of an internal system error`;
+    return `${message}${detail}`;
+  }
   if (/credit|เครดิต|insufficient/.test(normalized)) {
     return lang === "th"
       ? "เครดิตไม่พอสำหรับการผสมเรื่อง — ตรวจเครดิตแล้วลองใหม่"
       : "Not enough credits to mix the story — check credits and try again.";
   }
-  if (/timeout|timed out|network|upstream|rate limit|429|502|503|504/.test(normalized)) {
+  if (
+    /timeout|timed out|network|upstream|rate limit|429|502|503|504/.test(
+      normalized
+    )
+  ) {
     return lang === "th"
       ? "การเชื่อมต่อบริการ AI ขัดข้องชั่วคราว — กดลองใหม่ได้โดยไม่ต้องรีเฟรชหน้า"
       : "The AI service is temporarily unavailable — retry without refreshing the page.";
   }
-  if (/schema|json|validation|unprocessable|preset synthesis/.test(normalized)) {
+  if (
+    /schema|json|validation|unprocessable|preset synthesis/.test(normalized)
+  ) {
     return lang === "th"
       ? "AI สร้าง draft ที่อ่านได้ไม่ครบ ระบบยังไม่ได้ใช้ draft นี้ — กดลองใหม่ได้"
       : "The AI draft was incomplete or unreadable. It was not applied — retry to generate a new draft.";
@@ -1635,12 +2804,32 @@ function WizardStep({
   onMixWeightChange,
   mixDraft,
   mixDraftLoading,
+  draftCompositionStage,
   mixDraftError,
   onToggleMixPreset,
   onToggleMixCategory,
   onSynthesizePreset,
   onApplyPresetDraft,
-  onApplyPreset,
+  onManualTitleChange,
+  onGeneratedTitleSelect,
+  draftCanBeApplied,
+  draftGateSatisfied,
+  draftGateReason,
+  draftQualityQcStatus,
+  draftQualityQcProgress,
+  draftQualityQcReport,
+  draftQualityQcHistory,
+  draftQualityQcError,
+  draftQualityQcFailure,
+  draftQualityQcEstimate,
+  draftQualityQcMaxRounds,
+  draftQualityQcBusy,
+  draftQualityQcOverrideSelected,
+  draftQualityQcOverrideEligible,
+  onDraftQualityQcMaxRoundsChange,
+  onStartDraftQualityQc,
+  onCancelDraftQualityQc,
+  onDraftQualityQcOverrideChange,
   onMoveGenreToPremise,
   products,
   productsLoading,
@@ -1668,6 +2857,7 @@ function WizardStep({
   uploadPending,
   parentMemoryCoverage,
   planningModels,
+  recoveredPremiseMissing,
 }: {
   stepId: string;
   lang: "th" | "en";
@@ -1688,12 +2878,49 @@ function WizardStep({
   onMixWeightChange: (id: string, weight: VerticalDramaPresetMixWeight) => void;
   mixDraft?: SynthesizedGenrePresetDraft;
   mixDraftLoading: boolean;
+  draftCompositionStage?:
+    | "building_foundation"
+    | "composing"
+    | "completing"
+    | "validating"
+    | "ready_for_qc";
   mixDraftError?: string;
   onToggleMixPreset: (id: string) => void;
   onToggleMixCategory: (category: string) => void;
   onSynthesizePreset: () => void;
   onApplyPresetDraft: (draft: SynthesizedGenrePresetDraft) => void;
-  onApplyPreset: (preset: GenrePreset) => void;
+  onManualTitleChange: (value: string) => void;
+  onGeneratedTitleSelect: (value: string) => void;
+  draftCanBeApplied: boolean;
+  draftGateSatisfied: boolean;
+  draftGateReason: string;
+  draftQualityQcStatus:
+    | "idle"
+    | "queued"
+    | "running"
+    | "succeeded"
+    | "failed"
+    | "cancelled";
+  draftQualityQcProgress?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcProgress
+    | null;
+  draftQualityQcReport?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcReport
+    | null;
+  draftQualityQcHistory?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry[];
+  draftQualityQcError?: string;
+  draftQualityQcFailure?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcFailure;
+  draftQualityQcEstimate?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcCreditEstimate
+    | null;
+  draftQualityQcMaxRounds: number;
+  draftQualityQcBusy: boolean;
+  draftQualityQcOverrideSelected: boolean;
+  draftQualityQcOverrideEligible: boolean;
+  onDraftQualityQcMaxRoundsChange: (value: number) => void;
+  onStartDraftQualityQc: () => void;
+  onCancelDraftQualityQc: () => void;
+  onDraftQualityQcOverrideChange: (value: boolean) => void;
   /** Misplaced-premise rescue (fix-create-series-premise-blend plan) — moves an oversized genre value into `userPremise` and clears genre. */
   onMoveGenreToPremise: () => void;
   products: MarketplaceProductOption[];
@@ -1749,6 +2976,7 @@ function WizardStep({
   };
   /** Manual LLM model pin at creation time (mirrors `VerticalDramaSettingsTab`'s query of the same name) — mode-independent. */
   planningModels: Array<{ modelId: string; label: string }>;
+  recoveredPremiseMissing: boolean;
 }) {
   const th = lang === "th";
   // Stage 2.6 — used by both the "basic" (genre) and "story" (tone) cases
@@ -1776,9 +3004,7 @@ function WizardStep({
   // selections when toggled. Defaults to `"premise"` — matches the
   // pre-existing shipped default (premise-first hero, presets already
   // labelled optional) and the plan's own stated default.
-  const [seriesMode, setSeriesMode] = useState<"premise" | "preset">(
-    "premise"
-  );
+  const [seriesMode, setSeriesMode] = useState<"premise" | "preset">("premise");
   // vd-premise-first-wizard follow-up (discoverability fix) — the weight
   // sliders live inside `MixAndMatchPresetPanel` (the preset rail), but the
   // "Adjust weights" link inside a blend report can now render either there
@@ -1800,14 +3026,14 @@ function WizardStep({
       const hasUserPremise = form.userPremise.trim().length > 0;
       const hasBasicSeed = Boolean(
         form.title.trim() ||
-          form.genre.trim() ||
-          form.tone.trim() ||
-          mixCategories.length > 0 ||
-          mixBusinessContext.trim() ||
-          form.productName.trim() ||
-          Number(form.targetEpisodeCount) > 0 ||
-          form.audienceAgeRating ||
-          (form.createMode && form.parentSeriesId)
+        form.genre.trim() ||
+        form.tone.trim() ||
+        mixCategories.length > 0 ||
+        mixBusinessContext.trim() ||
+        form.productName.trim() ||
+        Number(form.targetEpisodeCount) > 0 ||
+        form.audienceAgeRating ||
+        (form.createMode && form.parentSeriesId)
       );
       return (
         <div className="grid gap-4">
@@ -1942,7 +3168,10 @@ function WizardStep({
                       onValueChange={v => onSelectParentSeries(v)}
                     >
                       <SelectTrigger
-                        aria-label={pickCopy(lang, parentSeriesPickerCopy.label)}
+                        aria-label={pickCopy(
+                          lang,
+                          parentSeriesPickerCopy.label
+                        )}
                       >
                         <SelectValue
                           placeholder={pickCopy(
@@ -1984,10 +3213,7 @@ function WizardStep({
 
                   {isSpecialEdition && (
                     <p className="rounded-md border border-dashed bg-background px-2.5 py-1.5 text-xs text-muted-foreground">
-                      {pickCopy(
-                        lang,
-                        specialEditionEpisodeCountLockedHintCopy
-                      )}
+                      {pickCopy(lang, specialEditionEpisodeCountLockedHintCopy)}
                     </p>
                   )}
                 </div>
@@ -2001,11 +3227,16 @@ function WizardStep({
               value={{
                 mode: form.lookLockMode,
                 genreKey: form.lookLockGenreKey,
+                visualNarrativeEnabled: form.visualNarrativeEnabled,
               }}
               hasInheritedLook={lookLockHasInheritedSource}
               onChange={value => {
                 set("lookLockMode", value.mode);
                 set("lookLockGenreKey", value.genreKey);
+                set(
+                  "visualNarrativeEnabled",
+                  value.visualNarrativeEnabled ?? false
+                );
               }}
             />
           ) : null}
@@ -2026,6 +3257,78 @@ function WizardStep({
             }
             className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm"
           >
+            <div
+              className="mb-4 grid gap-3 rounded-lg border bg-background/70 p-3"
+              data-testid="vd-wizard-language-contract"
+            >
+              <div className="grid gap-1">
+                <p className="text-xs font-semibold">
+                  {th ? "ภาษาของเนื้อเรื่อง" : "Narrative language"}
+                </p>
+                <p className="text-sm font-medium">
+                  {VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[lang]}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {th
+                    ? "ชื่อเรื่อง เรื่องย่อ โครงเรื่อง ตัวละคร และข้อมูลเนื้อเรื่องจะสร้างตามภาษาของหน้าจอปัจจุบัน ช่องนี้ไม่ใช่ภาษาพูดของนักแสดง"
+                    : "Titles, loglines, plots, character descriptions, and story information follow the current UI language. This is separate from the actors' spoken language."}
+                </p>
+              </div>
+              <Field
+                label={
+                  th
+                    ? "ภาษาพูดของตัวละคร (ไม่บังคับ)"
+                    : "Character spoken language (optional)"
+                }
+                helperText={
+                  th
+                    ? "ใช้เฉพาะบทพูด subtitle และเสียงพากย์ — Auto จะวิเคราะห์จาก setting ตลาด และตัวละคร ไม่สุ่ม และไม่เปลี่ยนภาษาของเนื้อเรื่อง"
+                    : "Applies only to dialogue, subtitles, and voice — Auto infers from setting, market, and characters; it does not change the narrative language."
+                }
+              >
+                <Select
+                  value={form.spokenLocale}
+                  onValueChange={value =>
+                    set("spokenLocale", value as VerticalDramaSpokenLocaleId)
+                  }
+                >
+                  <SelectTrigger data-testid="vd-wizard-dialogue-language-profile">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[min(70vh,32rem)]">
+                    {Array.from(
+                      new Set(
+                        VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.map(
+                          option => option.group
+                        )
+                      )
+                    ).map(group => (
+                      <SelectGroup key={group}>
+                        <SelectLabel>
+                          {(th
+                            ? VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_TH
+                            : VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_EN)[
+                            group
+                          ] ?? group}
+                        </SelectLabel>
+                        {VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.filter(
+                          option => option.group === group
+                        ).map(option => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {th ? option.labelTh : option.labelEn}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {th
+                    ? `ตัวอย่างค่าที่เลือก: ${VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(option => option.id === form.spokenLocale)?.prompt ?? "Auto"}`
+                    : `Example contract: ${VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(option => option.id === form.spokenLocale)?.prompt ?? "Auto"}`}
+                </p>
+              </Field>
+            </div>
             <Field
               label={
                 th
@@ -2046,6 +3349,34 @@ function WizardStep({
                     : "If provided, the system uses your premise as the primary story spine and blends any preset(s) you choose below (0-5, optional) to intensify and add contemporary flavor — skip presets entirely and AI will build purely from your premise."
               }
             >
+              <OptionalInputGuide
+                lang={lang}
+                title={
+                  th
+                    ? "กรอกเท่าที่รู้ ไม่ต้องกรอกให้ครบ"
+                    : "Add only what you know — nothing is required"
+                }
+                description={
+                  th
+                    ? "ใส่ได้ทั้งแนวเรื่อง ตัวละคร สถานที่ ปม ความสัมพันธ์ จุดขาย หรือฉากที่อยากเห็น เว้นส่วนที่ยังไม่รู้ไว้ให้ AI เติมได้"
+                    : "Add genres, characters, setting, conflict, relationships, selling points, or scenes you want. Leave unknown parts for AI to complete."
+                }
+                example={
+                  th
+                    ? "นักศึกษาปีสุดท้ายแกล้งคบกับเพื่อนเก่าในช่วงฤดูร้อน ก่อนความสัมพันธ์ปลอมจะกลายเป็นรักจริง"
+                    : "A final-year student fake-dates her former rival over one summer before the arrangement becomes real love."
+                }
+              />
+              {recoveredPremiseMissing && (
+                <p
+                  role="status"
+                  className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                >
+                  {th
+                    ? "งาน Draft เดิมนี้มีผลลัพธ์ Draft อยู่ครบ แต่ไม่มีการเก็บโจทย์ต้นฉบับไว้ในระบบรุ่นเก่า จึงไม่สามารถกู้ข้อความเดิมกลับมาแบบตรงตัวได้ — กรุณาใส่โจทย์อีกครั้งหากต้องการแก้ไขหรือสร้างต่อจากโจทย์เดิม"
+                    : "This older Draft job has its generated Draft, but its original premise was not stored by the legacy system. The exact source text cannot be recovered; re-enter it if you want to edit or continue from the original premise."}
+                </p>
+              )}
               <Textarea
                 value={form.userPremise}
                 onChange={e => {
@@ -2067,14 +3398,25 @@ function WizardStep({
                       ""
                   )
                 }
-                rows={4}
+                rows={16}
                 maxLength={CREATE_SERIES_FIELD_LIMITS.userPremise}
                 placeholder={
                   th
-                    ? "อยากได้เรื่องเกี่ยวกับอะไร แนวไหน เกิดที่ไหน ตัวเอกเป็นใคร ปมหลักคืออะไร — ระบุเท่าที่อยากกำหนด ที่เหลือให้ AI ช่วยเติม"
-                    : "What is it about, which genre, where does it happen, who's the lead, what's the core conflict — specify as much as you want, AI fills the rest."
+                    ? "พิมพ์โจทย์เรื่องของคุณที่นี่"
+                    : "Write your story premise here"
                 }
               />
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>
+                  {th
+                    ? "ข้อความนี้จะเป็นแกนเรื่องหลักของ AI"
+                    : "This becomes the AI's primary story spine"}
+                </span>
+                <span aria-live="polite">
+                  {form.userPremise.length}/
+                  {CREATE_SERIES_FIELD_LIMITS.userPremise}
+                </span>
+              </div>
             </Field>
 
             {/* Discoverability fix (2026-07-17 follow-up to
@@ -2099,19 +3441,48 @@ function WizardStep({
               <div className="mt-4 border-t border-primary/15 pt-4">
                 <PresetSynthesisActionPanel
                   lang={lang}
+                  spokenLocale={form.spokenLocale}
                   presets={presets}
                   selectedPresetIds={mixPresetIds}
                   hasUserPremise={hasUserPremise}
                   hasBasicSeed={hasBasicSeed}
-                  hasLineageSeed={Boolean(form.createMode && form.parentSeriesId)}
+                  hasLineageSeed={Boolean(
+                    form.createMode && form.parentSeriesId
+                  )}
                   loading={mixDraftLoading}
+                  draftCompositionStage={draftCompositionStage}
                   errorMessage={mixDraftError}
                   draft={mixDraft}
                   currentTitle={form.title}
-                  onSelectTitle={value => set("title", value)}
+                  onSelectTitle={onGeneratedTitleSelect}
                   onGenerate={onSynthesizePreset}
-                  onApplySinglePreset={onApplyPreset}
                   onApplyDraft={onApplyPresetDraft}
+                  draftCanBeApplied={draftCanBeApplied}
+                  draftGateSatisfied={draftGateSatisfied}
+                  draftGateReason={draftGateReason}
+                  draftQualityQcStatus={draftQualityQcStatus}
+                  draftQualityQcProgress={draftQualityQcProgress}
+                  draftQualityQcReport={draftQualityQcReport}
+                  draftQualityQcHistory={draftQualityQcHistory}
+                  draftQualityQcError={draftQualityQcError}
+                  draftQualityQcFailure={draftQualityQcFailure}
+                  draftQualityQcEstimate={draftQualityQcEstimate}
+                  draftQualityQcMaxRounds={draftQualityQcMaxRounds}
+                  draftQualityQcBusy={draftQualityQcBusy}
+                  draftQualityQcOverrideSelected={
+                    draftQualityQcOverrideSelected
+                  }
+                  draftQualityQcOverrideEligible={
+                    draftQualityQcOverrideEligible
+                  }
+                  onDraftQualityQcMaxRoundsChange={
+                    onDraftQualityQcMaxRoundsChange
+                  }
+                  onStartDraftQualityQc={onStartDraftQualityQc}
+                  onCancelDraftQualityQc={onCancelDraftQualityQc}
+                  onDraftQualityQcOverrideChange={
+                    onDraftQualityQcOverrideChange
+                  }
                   onAdjustWeights={scrollToWeights}
                   emphasize
                 />
@@ -2142,19 +3513,19 @@ function WizardStep({
                     touches (verified against its field list: title only when
                     blank, genre, logline, mainPlot, seasonArc, tone,
                     cliffhangerStyle, characters — never targetEpisodeCount,
-                    audienceAgeRating, locale, or targetDurationSeconds).
+                    audienceAgeRating, locale, or shotDurationSeconds).
                     They stay as plain, un-demoted inputs. */}
                 <Field
-                  label={th ? "ชื่อซีรีย์ *" : "Series title *"}
+                  label={th ? "ชื่อซีรีย์" : "Series title"}
                   helperText={
                     th
-                      ? "ถ้าเว้นว่างไว้ AI จะตั้งชื่อให้จากผลลัพธ์ที่สร้าง — ต้องมีชื่อก่อนสร้างซีรีย์จริงในขั้นตอนสุดท้าย"
-                      : "Leave blank and AI will name it from the generated draft — a title is still required before the final Create step."
+                      ? "เว้นว่างได้ — AI จะเสนอชื่อ 4–5 แบบจาก draft ให้เลือก แล้วต้องยืนยันชื่อหนึ่งรายการก่อนสร้างจริง"
+                      : "Leave blank — AI will suggest 4–5 titles from the draft; choose or enter one before final creation."
                   }
                 >
                   <Input
                     value={form.title}
-                    onChange={e => set("title", e.target.value)}
+                    onChange={e => onManualTitleChange(e.target.value)}
                     autoFocus
                   />
                 </Field>
@@ -2166,8 +3537,8 @@ function WizardStep({
                   }
                   helperText={
                     th
-                      ? "ใช้กำหนดจำนวนตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP ที่เผยแพร่จริง Public EP จะถูกรวมจากตอนย่อยภายหลัง"
-                      : "Sets the number of Sub-episodes used for story planning and short-video production. This is not the number of Public Episodes; Public Episodes are grouped later."
+                      ? "ไม่ต้องกรอกก็ได้ ระบบใช้ค่าเริ่มต้น 10 ตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP"
+                      : "Optional — defaults to 10 Sub-episodes for story planning and short-video production, not Public Episodes."
                   }
                 >
                   <Input
@@ -2259,38 +3630,37 @@ function WizardStep({
                   </Select>
                 </Field>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                  <Field label={th ? "ภาษา" : "Language"}>
-                    <Select
-                      value={form.locale}
-                      onValueChange={v =>
-                        set("locale", v as VerticalDramaSeriesLocale)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[min(60vh,24rem)]">
-                        {VERTICAL_DRAMA_SERIES_LOCALES.map(code => (
-                          <SelectItem key={code} value={code}>
-                            {VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[code]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
                   <Field
                     label={
-                      th ? "ความยาวต่อตอน (วินาที)" : "Target duration (sec)"
+                      th
+                        ? "จำนวนวินาทีต่อช็อต (ทั้งหมด 9 ช็อต)"
+                        : "Seconds per shot (9 shots)"
                     }
                   >
-                    <Input
-                      type="number"
-                      min={1}
-                      value={form.targetDurationSeconds}
-                      onChange={e =>
-                        set("targetDurationSeconds", e.target.value)
-                      }
-                    />
+                    <Select
+                      value={form.shotDurationSeconds}
+                      onValueChange={value => set("shotDurationSeconds", value)}
+                    >
+                      <SelectTrigger data-testid="vd-wizard-shot-duration">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VERTICAL_DRAMA_SUPPORTED_SHOT_DURATIONS_SECONDS.map(
+                          duration => (
+                            <SelectItem key={duration} value={String(duration)}>
+                              {th
+                                ? `9 ช็อต × ${duration} วินาที = ${duration * 9} วินาที`
+                                : `9 shots × ${duration}s = ${duration * 9}s`}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {th
+                        ? "ความยาวตอนคำนวณจาก 9 ช็อต ไม่ใช้ค่าความยาวต่อตอนแบบเดิม"
+                        : "Episode runtime is derived from nine shots, not a fixed episode setting."}
+                    </p>
                   </Field>
                 </div>
 
@@ -2323,7 +3693,7 @@ function WizardStep({
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {th
-                          ? "สองช่องนี้ถูกเติมอัตโนมัติจากโจทย์ด้านบน (หรือ preset ที่เลือก) เมื่อกด \"ใช้ draft นี้\" — ไม่ต้องกรอกเองก็ได้ แต่แก้ไขทับได้ตลอดถ้าต้องการกำหนดเอง"
+                          ? 'สองช่องนี้ถูกเติมอัตโนมัติจากโจทย์ด้านบน (หรือ preset ที่เลือก) เมื่อกด "ใช้ draft นี้" — ไม่ต้องกรอกเองก็ได้ แต่แก้ไขทับได้ตลอดถ้าต้องการกำหนดเอง'
                           : "These two fields are auto-filled from your premise above (or the chosen preset) once you apply a draft — you don't need to fill them yourself, but you can always override them."}
                       </p>
                     </div>
@@ -2337,11 +3707,9 @@ function WizardStep({
                       // owner's own words in the plan's Context section).
                       isLineageMode
                         ? pickCopy(lang, genreLockedHintCopy)
-                        : form.genre.trim()
-                          ? undefined
-                          : th
-                            ? "ว่างไว้ก็ได้ — AI จะเติมให้"
-                            : "Leave blank — AI will fill this in"
+                        : th
+                          ? "ไม่ต้องกรอกก็ได้ — AI จะเติมให้จากโจทย์ ถ้ากรอกให้ใช้คำสั้น ๆ เช่น Young Adult, Fake Dating, Coming-of-Age, Romance"
+                          : "Optional — AI infers it from the premise. If you add one, use short tags such as Young Adult, Fake Dating, Coming-of-Age, Romance."
                     }
                   >
                     <Input
@@ -2358,7 +3726,7 @@ function WizardStep({
                   {/* Misplaced-premise rescue (2026-07-31 09:14:56 production
                       BAD_REQUEST) — "แนวเรื่อง" reads naturally in Thai as
                       "story direction", so a full story premise regularly
-                      lands here instead of in the 2000-char premise box
+                      lands here instead of in the long premise box
                       above (which is easy to scroll past). Genre is capped
                       at 100 chars server-side; intentionally NO `maxLength`
                       on the `<Input>` above — silently truncating keystrokes
@@ -2396,11 +3764,9 @@ function WizardStep({
                   <Field
                     label={th ? "เรื่องย่อ (logline)" : "Logline"}
                     helperText={
-                      form.logline.trim()
-                        ? undefined
-                        : th
-                          ? "ว่างไว้ก็ได้ — AI จะเขียนเรื่องย่อให้จากโจทย์ด้านบน"
-                          : "Leave blank — AI will write this from your premise above"
+                      th
+                        ? "ไม่ต้องกรอกก็ได้ — ถ้าเขียนเองให้สรุป 1–2 ประโยค เช่น นักศึกษาปีสุดท้ายแกล้งคบกับเพื่อนเก่า ก่อนความสัมพันธ์ปลอมจะกลายเป็นรักจริง"
+                        : "Optional — if you write it yourself, use 1–2 sentences. Example: A final-year student fake-dates her former rival before the arrangement becomes real love."
                     }
                   >
                     <Textarea
@@ -2429,7 +3795,11 @@ function WizardStep({
                   ? "เพิ่ม preset เสริมรสชาติ (ไม่บังคับ)"
                   : "Add optional presets"
               }
-              className="flex min-h-[26rem] flex-col rounded-xl border bg-muted/20 p-4 shadow-sm xl:min-h-[calc(90dvh-22rem)]"
+              className={cn(
+                "flex flex-col rounded-xl border bg-muted/20 p-4 shadow-sm",
+                seriesMode === "preset" &&
+                  "min-h-[26rem] xl:min-h-[calc(90dvh-22rem)]"
+              )}
             >
               <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
@@ -2518,19 +3888,48 @@ function WizardStep({
                   hasUserPremise && seriesMode !== "preset" ? null : (
                     <PresetSynthesisActionPanel
                       lang={lang}
+                      spokenLocale={form.spokenLocale}
                       presets={presets}
                       selectedPresetIds={mixPresetIds}
                       hasUserPremise={hasUserPremise}
                       hasBasicSeed={hasBasicSeed}
-                      hasLineageSeed={Boolean(form.createMode && form.parentSeriesId)}
+                      hasLineageSeed={Boolean(
+                        form.createMode && form.parentSeriesId
+                      )}
                       loading={mixDraftLoading}
+                      draftCompositionStage={draftCompositionStage}
                       errorMessage={mixDraftError}
                       draft={mixDraft}
                       currentTitle={form.title}
-                      onSelectTitle={value => set("title", value)}
+                      onSelectTitle={onGeneratedTitleSelect}
                       onGenerate={onSynthesizePreset}
-                      onApplySinglePreset={onApplyPreset}
                       onApplyDraft={onApplyPresetDraft}
+                      draftCanBeApplied={draftCanBeApplied}
+                      draftGateSatisfied={draftGateSatisfied}
+                      draftGateReason={draftGateReason}
+                      draftQualityQcStatus={draftQualityQcStatus}
+                      draftQualityQcProgress={draftQualityQcProgress}
+                      draftQualityQcReport={draftQualityQcReport}
+                      draftQualityQcHistory={draftQualityQcHistory}
+                      draftQualityQcError={draftQualityQcError}
+                      draftQualityQcFailure={draftQualityQcFailure}
+                      draftQualityQcEstimate={draftQualityQcEstimate}
+                      draftQualityQcMaxRounds={draftQualityQcMaxRounds}
+                      draftQualityQcBusy={draftQualityQcBusy}
+                      draftQualityQcOverrideSelected={
+                        draftQualityQcOverrideSelected
+                      }
+                      draftQualityQcOverrideEligible={
+                        draftQualityQcOverrideEligible
+                      }
+                      onDraftQualityQcMaxRoundsChange={
+                        onDraftQualityQcMaxRoundsChange
+                      }
+                      onStartDraftQualityQc={onStartDraftQualityQc}
+                      onCancelDraftQualityQc={onCancelDraftQualityQc}
+                      onDraftQualityQcOverrideChange={
+                        onDraftQualityQcOverrideChange
+                      }
                       onAdjustWeights={scrollToWeights}
                     />
                   )
@@ -2550,7 +3949,9 @@ function WizardStep({
       if (isSpecialEdition) {
         return (
           <div className="grid gap-4">
-            <Field label={pickCopy(lang, specialEditionCopy.storyFunctionLabel)}>
+            <Field
+              label={pickCopy(lang, specialEditionCopy.storyFunctionLabel)}
+            >
               <div className="grid gap-1.5" role="radiogroup">
                 {(
                   [
@@ -2646,7 +4047,9 @@ function WizardStep({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field
               label={th ? "โทน" : "Tone"}
-              helperText={isSequel ? pickCopy(lang, toneLockedHintCopy) : undefined}
+              helperText={
+                isSequel ? pickCopy(lang, toneLockedHintCopy) : undefined
+              }
             >
               <Input
                 value={form.tone}
@@ -2770,7 +4173,8 @@ function WizardStep({
               <>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {carryOverDraft.characters.map(character => {
-                    const override = form.carryOverOverrides[character.characterKey];
+                    const override =
+                      form.carryOverOverrides[character.characterKey];
                     const availability =
                       override?.availability ?? character.availability;
                     return (
@@ -2788,7 +4192,8 @@ function WizardStep({
                           value={availability}
                           onValueChange={v =>
                             onCarryOverOverride(character.characterKey, {
-                              availability: v as VerticalDramaCarryOverAvailability,
+                              availability:
+                                v as VerticalDramaCarryOverAvailability,
                             })
                           }
                         >
@@ -2856,7 +4261,10 @@ function WizardStep({
                 {carryOverDraft.newCharacterSuggestions.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold">
-                      {pickCopy(lang, carryOverCopy.newCharacterSuggestionsTitle)}
+                      {pickCopy(
+                        lang,
+                        carryOverCopy.newCharacterSuggestionsTitle
+                      )}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {carryOverDraft.newCharacterSuggestions.map(
@@ -2875,8 +4283,8 @@ function WizardStep({
                                     ? `${form.characters}\n${suggestion}`
                                     : suggestion
                                 );
-                                setAcceptedCharacterSuggestions(
-                                  prev => new Set(prev).add(suggestion)
+                                setAcceptedCharacterSuggestions(prev =>
+                                  new Set(prev).add(suggestion)
                                 );
                               }}
                               className={cn(
@@ -2940,7 +4348,10 @@ function WizardStep({
                             className="flex flex-wrap items-center gap-2 rounded-md border bg-background p-2 text-xs"
                           >
                             <Badge variant="outline" className="shrink-0">
-                              {pickCopy(lang, threadClassCopy[thread.threadClass])}
+                              {pickCopy(
+                                lang,
+                                threadClassCopy[thread.threadClass]
+                              )}
                             </Badge>
                             <span>{thread.description}</span>
                           </div>
@@ -3201,7 +4612,10 @@ function WizardStep({
                 {pickCopy(lang, specialEditionCopy.marketplaceSourceTitle)}
               </p>
               <Field
-                label={pickCopy(lang, specialEditionCopy.productDescriptionLabel)}
+                label={pickCopy(
+                  lang,
+                  specialEditionCopy.productDescriptionLabel
+                )}
               >
                 <Textarea
                   value={form.productDescription ?? ""}
@@ -3236,7 +4650,9 @@ function WizardStep({
                   </Badge>
                 ))}
               </div>
-              <Field label={pickCopy(lang, specialEditionCopy.uploadSummaryLabel)}>
+              <Field
+                label={pickCopy(lang, specialEditionCopy.uploadSummaryLabel)}
+              >
                 <Textarea
                   value={form.uploadedSummary ?? ""}
                   onChange={e => set("uploadedSummary", e.target.value)}
@@ -3267,10 +4683,22 @@ function WizardStep({
             value={form.targetEpisodeCount || "-"}
           />
           <ReviewRow
-            label={th ? "ภาษา" : "Language"}
+            label={th ? "ภาษาเนื้อเรื่อง" : "Narrative language"}
             value={
               VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[form.locale] ??
               form.locale
+            }
+          />
+          <ReviewRow
+            label={th ? "ภาษาพูดของตัวละคร" : "Character spoken language"}
+            value={
+              (th
+                ? VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(
+                    option => option.id === form.spokenLocale
+                  )?.labelTh
+                : VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(
+                    option => option.id === form.spokenLocale
+                  )?.labelEn) ?? form.spokenLocale
             }
           />
           <div className="flex items-center justify-between gap-4 border-b py-1.5 last:border-b-0">
@@ -3562,7 +4990,6 @@ function MixAndMatchPresetPanel({
     },
     {}
   );
-
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
@@ -3623,9 +5050,7 @@ function MixAndMatchPresetPanel({
           <Input
             value={categorySearch}
             onChange={e => setCategorySearch(e.target.value)}
-            placeholder={
-              th ? "ค้นหาหมวดแนวเรื่อง…" : "Search categories…"
-            }
+            placeholder={th ? "ค้นหาหมวดแนวเรื่อง…" : "Search categories…"}
             className="h-9 pl-9 text-xs"
             aria-label={th ? "ค้นหาหมวดแนวเรื่อง" : "Search categories"}
           />
@@ -3867,29 +5292,55 @@ function MixAndMatchPresetPanel({
  */
 function PresetSynthesisActionPanel({
   lang,
+  spokenLocale,
   presets,
   selectedPresetIds,
   hasUserPremise,
   hasBasicSeed,
   hasLineageSeed,
   loading,
+  draftCompositionStage,
   errorMessage,
   draft,
   currentTitle,
   onSelectTitle,
   onGenerate,
-  onApplySinglePreset,
   onApplyDraft,
+  draftCanBeApplied,
+  draftGateSatisfied,
+  draftGateReason,
+  draftQualityQcStatus,
+  draftQualityQcProgress,
+  draftQualityQcReport,
+  draftQualityQcHistory,
+  draftQualityQcError,
+  draftQualityQcFailure,
+  draftQualityQcEstimate,
+  draftQualityQcMaxRounds,
+  draftQualityQcBusy,
+  draftQualityQcOverrideSelected,
+  draftQualityQcOverrideEligible,
+  onDraftQualityQcMaxRoundsChange,
+  onStartDraftQualityQc,
+  onCancelDraftQualityQc,
+  onDraftQualityQcOverrideChange,
   onAdjustWeights,
   emphasize,
 }: {
   lang: "th" | "en";
+  spokenLocale: VerticalDramaSpokenLocaleId;
   presets: GenrePreset[];
   selectedPresetIds: string[];
   hasUserPremise: boolean;
   hasBasicSeed: boolean;
   hasLineageSeed?: boolean;
   loading: boolean;
+  draftCompositionStage?:
+    | "building_foundation"
+    | "composing"
+    | "completing"
+    | "validating"
+    | "ready_for_qc";
   errorMessage?: string;
   draft?: SynthesizedGenrePresetDraft;
   /** Stage 2 — the wizard's current `form.title`, so the title picker below can highlight the option (if any) that's already selected. */
@@ -3897,13 +5348,64 @@ function PresetSynthesisActionPanel({
   /** Stage 2 — writes the chosen candidate into `form.title` directly (an explicit user pick, so it may replace an existing value — unlike `applyPresetDraft`'s own no-clobber `resolvedTitle` rule, which only applies to the AUTOMATIC apply). */
   onSelectTitle: (title: string) => void;
   onGenerate: () => void;
-  onApplySinglePreset: (preset: GenrePreset) => void;
   onApplyDraft: (draft: SynthesizedGenrePresetDraft) => void;
+  draftCanBeApplied: boolean;
+  draftGateSatisfied: boolean;
+  draftGateReason: string;
+  draftQualityQcStatus:
+    | "idle"
+    | "queued"
+    | "running"
+    | "succeeded"
+    | "failed"
+    | "cancelled";
+  draftQualityQcProgress?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcProgress
+    | null;
+  draftQualityQcReport?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcReport
+    | null;
+  draftQualityQcHistory?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry[];
+  draftQualityQcError?: string;
+  draftQualityQcFailure?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcFailure;
+  draftQualityQcEstimate?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcCreditEstimate
+    | null;
+  draftQualityQcMaxRounds: number;
+  draftQualityQcBusy: boolean;
+  draftQualityQcOverrideSelected: boolean;
+  draftQualityQcOverrideEligible: boolean;
+  onDraftQualityQcMaxRoundsChange: (value: number) => void;
+  onStartDraftQualityQc: () => void;
+  onCancelDraftQualityQc: () => void;
+  onDraftQualityQcOverrideChange: (value: boolean) => void;
   onAdjustWeights: () => void;
   /** True when rendered in the hero — makes the CTA read as the page's main action (larger, full-width on mobile), not a quiet secondary link. */
   emphasize?: boolean;
 }) {
   const th = lang === "th";
+  const draftLanguageContract = resolveVerticalDramaDraftLanguageContract({
+    narrativeLocale: lang,
+    dialogueLanguageProfile:
+      buildVerticalDramaSpokenLanguageProfile(spokenLocale),
+  });
+  const narrativeLanguageLabel = draftLanguageLabel(
+    draftLanguageContract.narrativeLocale,
+    lang
+  );
+  const titleLanguageLabel = draftLanguageLabel(
+    draftLanguageContract.titleLocale,
+    lang
+  );
+  const spokenLanguageLabel =
+    VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(
+      option => option.id === spokenLocale
+    )?.[th ? "labelTh" : "labelEn"] ?? spokenLocale;
+  const characterNamingPreview = getVerticalDramaCharacterNamingPreview({
+    narrativeLocale: lang,
+    dialogueLanguageProfile:
+      buildVerticalDramaSpokenLanguageProfile(spokenLocale),
+  });
   const selectionCount = selectedPresetIds.length;
   const presetAction = resolveCreateSeriesPresetAction({
     hasUserPremise,
@@ -3912,18 +5414,13 @@ function PresetSynthesisActionPanel({
     hasLineageSeed,
     lang,
   });
-  const canApplySingle =
-    presetAction.kind === "apply_preset_verbatim" && !loading;
   const canGenerate =
-    (presetAction.kind === "synthesize_from_premise_only" ||
+    (presetAction.kind === "synthesize_single_preset" ||
+      presetAction.kind === "synthesize_from_premise_only" ||
       presetAction.kind === "synthesize_premise_and_presets" ||
       presetAction.kind === "synthesize_presets_only" ||
       presetAction.kind === "synthesize_from_basics") &&
     !loading;
-  const selectedSinglePreset =
-    selectionCount === 1
-      ? presets.find(preset => preset.id === selectedPresetIds[0])
-      : undefined;
   const presetTitleById = presets.reduce<Record<string, string>>(
     (acc, preset) => {
       acc[preset.id] = preset.title;
@@ -3931,6 +5428,7 @@ function PresetSynthesisActionPanel({
     },
     {}
   );
+  const titleOptions = normalizeDraftTitleOptions(draft?.titleOptions);
 
   return (
     <div className="grid gap-2">
@@ -3940,50 +5438,61 @@ function PresetSynthesisActionPanel({
             ? `เลือก preset แล้ว ${selectionCount}/5 แบบ`
             : `${selectionCount}/5 presets selected`}
         </p>
-        {canApplySingle ? (
-          <Button
-            type="button"
-            size={emphasize ? "lg" : "default"}
-            onClick={() =>
-              selectedSinglePreset && onApplySinglePreset(selectedSinglePreset)
-            }
-            disabled={!selectedSinglePreset}
-            className={cn("gap-2", emphasize && "w-full sm:w-auto")}
-          >
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {presetAction.label}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size={emphasize ? "lg" : "default"}
-            onClick={onGenerate}
-            disabled={!canGenerate}
-            className={cn("gap-2", emphasize && "w-full sm:w-auto")}
-          >
-            {loading && (
-              <Loader2
-                className="h-4 w-4 animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-            )}
-            {loading
-              ? th
-                ? "AI กำลังจัดรสชาติเรื่องให้เข้ากัน..."
-                : "AI is mixing the story flavors..."
-              : presetAction.label}
-          </Button>
-        )}
+        <Button
+          type="button"
+          size={emphasize ? "lg" : "default"}
+          onClick={onGenerate}
+          disabled={!canGenerate}
+          className={cn("gap-2", emphasize && "w-full sm:w-auto")}
+        >
+          {loading && (
+            <Loader2
+              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          )}
+          {loading
+            ? th
+              ? "AI กำลังสร้าง draft ใหม่..."
+              : "AI is creating a new draft..."
+            : presetAction.label}
+        </Button>
       </div>
 
       {/* "What do I press, and what will the system do for me" — the button
           label alone used to just say "ผสม" (mix), which didn't say what
           pressing it actually produces. Only shown for the AI-synthesis
-          kinds; `apply_preset_verbatim` needs no explanation and `blocked`
-          has its own reason below. */}
+          kinds; `blocked` has its own reason below. */}
       {presetAction.outcomeHint && (
         <p className="text-[11px] text-muted-foreground">
           {presetAction.outcomeHint}
+        </p>
+      )}
+
+      {loading && draftCompositionStage && (
+        <p className="text-[11px] text-muted-foreground" role="status">
+          {th
+            ? (
+                {
+                  building_foundation:
+                    "กำลังวางโครงสร้างเรื่องและปลายทางของซีรีย์…",
+                  composing: "กำลังเขียน Draft จากโครงสร้างเรื่อง…",
+                  completing: "กำลังเติมข้อมูลที่ขาดและซ่อมความต่อเนื่อง…",
+                  validating: "กำลังตรวจความครบถ้วนก่อนเข้า QC…",
+                  ready_for_qc: "Draft พร้อมเข้าสู่ QC แล้ว",
+                } as const
+              )[draftCompositionStage]
+            : (
+                {
+                  building_foundation:
+                    "Building the story foundation and long-term destination…",
+                  composing: "Composing the draft from the story foundation…",
+                  completing:
+                    "Completing missing data and repairing continuity…",
+                  validating: "Validating completeness before QC…",
+                  ready_for_qc: "Draft is ready for QC",
+                } as const
+              )[draftCompositionStage]}
         </p>
       )}
 
@@ -4005,7 +5514,10 @@ function PresetSynthesisActionPanel({
           className="flex flex-col gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-start gap-2">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <AlertCircle
+              className="mt-0.5 h-4 w-4 shrink-0"
+              aria-hidden="true"
+            />
             <span>{errorMessage}</span>
           </div>
           <Button
@@ -4033,6 +5545,312 @@ function PresetSynthesisActionPanel({
         <div className="rounded-md border bg-background p-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
+              <div
+                className="mb-3 grid gap-1 rounded-md border border-sky-200/70 bg-sky-50/60 p-2.5 text-xs dark:border-sky-900/70 dark:bg-sky-950/30"
+                data-testid="vd-draft-language-contract"
+                role="note"
+              >
+                <p className="font-semibold text-foreground">
+                  {th ? "ภาษาของ draft นี้" : "Language used in this draft"}
+                </p>
+                <p className="text-muted-foreground">
+                  {th ? "เนื้อเรื่อง:" : "Narrative:"} {narrativeLanguageLabel}
+                </p>
+                <p className="text-muted-foreground">
+                  {th
+                    ? "ชื่อเรื่องและตัวเลือกชื่อ:"
+                    : "Title and title choices:"}{" "}
+                  {titleLanguageLabel}
+                  {draftLanguageContract.titleSource === "spoken"
+                    ? th
+                      ? " (ตามตลาดภาษาพูดที่เลือก)"
+                      : " (aligned to the selected spoken market)"
+                    : th
+                      ? " (ตามภาษาหน้าจอ)"
+                      : " (follows the UI language)"}
+                </p>
+                <p className="text-muted-foreground">
+                  {th ? "บทพูดภายหลัง:" : "Dialogue later:"}{" "}
+                  {spokenLanguageLabel}
+                </p>
+                <p className="text-muted-foreground">
+                  {th ? "ชื่อตัวละคร:" : "Character names:"}{" "}
+                  {characterNamingPreview}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {th
+                    ? "ชื่อที่ผู้ใช้ระบุหรือ heritage/setting ในเรื่องมี priority สูงกว่า market และจะไม่ถูกแปลทับ"
+                    : "Creator-supplied names and explicit heritage/setting override the market default and are never translated over."}
+                </p>
+              </div>
+              {draft.storyContext && (
+                <div
+                  className="mb-3 grid gap-2 rounded-md border border-indigo-200/70 bg-indigo-50/50 p-3 text-xs dark:border-indigo-900/70 dark:bg-indigo-950/20"
+                  data-testid="vd-draft-story-identity"
+                  role="note"
+                >
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {th
+                        ? "ตัวตนของเรื่องที่ AI แยกไว้"
+                        : "Story identity separated by AI"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {th
+                        ? "ตลาด เรื่องที่เกิดขึ้น พื้นหลังตัวละคร และภาษาพูดเป็นคนละข้อมูล ระบบจะไม่สรุปสัญชาติจากภาษาอย่างเดียว"
+                        : "Market, setting, character background, and spoken language are separate facts; language alone never determines nationality."}
+                    </p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {(
+                      [
+                        [
+                          th ? "ตลาดเป้าหมาย" : "Target market",
+                          draft.storyContext.targetMarket,
+                        ],
+                        [
+                          th ? "สถานที่/โลกของเรื่อง" : "Story setting",
+                          draft.storyContext.storySetting,
+                        ],
+                        [
+                          th ? "พื้นหลังตัวละครนำ" : "Lead background",
+                          draft.storyContext.leadBackground,
+                        ],
+                        [
+                          th ? "ประเทศ/ถิ่นกำเนิด" : "Lead origin",
+                          draft.storyContext.leadOrigin,
+                        ],
+                        [
+                          th ? "ภาษาพูด" : "Spoken dialogue",
+                          draft.storyContext.spokenDialogue,
+                        ],
+                        [
+                          th ? "กติกาการตั้งชื่อ" : "Naming policy",
+                          draft.storyContext.namingPolicy,
+                        ],
+                      ] as Array<[string, VerticalDramaDraftFact | undefined]>
+                    ).map(([label, fact]) => {
+                      const value = getVerticalDramaDraftFactValue(fact);
+                      return (
+                        <div
+                          key={String(label)}
+                          className="rounded-md border border-indigo-200/60 bg-background/70 p-2 dark:border-indigo-900/60"
+                        >
+                          <p className="text-[11px] font-medium text-foreground/80">
+                            {label}
+                          </p>
+                          <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                            {value ||
+                              (th
+                                ? "ยังไม่ระบุ — ให้ผู้สร้างตรวจสอบ"
+                                : "Not specified — creator review needed")}
+                          </p>
+                          {fact?.source && (
+                            <p className="mt-1 text-[10px] text-muted-foreground/80">
+                              {fact.source === "user_provided"
+                                ? th
+                                  ? "จากผู้ใช้"
+                                  : "Creator-provided"
+                                : fact.source === "needs_creator_decision"
+                                  ? th
+                                    ? "รอผู้สร้างตัดสินใจ"
+                                    : "Needs creator decision"
+                                  : th
+                                    ? "AI วิเคราะห์"
+                                    : "AI-inferred"}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {draft.storyContract && (
+                <div
+                  className="mb-3 grid gap-2 rounded-md border border-violet-200/70 bg-violet-50/50 p-3 text-xs dark:border-violet-900/70 dark:bg-violet-950/20"
+                  data-testid="vd-draft-story-architecture"
+                  role="note"
+                >
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {th
+                        ? "สถาปัตยกรรมเรื่องก่อนเขียนเต็ม"
+                        : "Story Architecture before full writing"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {th
+                        ? "นี่คือสัญญาหลักที่กำหนดปลายทาง การเปลี่ยนแปลง เครื่องยนต์เรื่อง และปมที่ต้องได้รับผลลัพธ์ ก่อนเข้าสู่ Draft QC"
+                        : "This foundation contract fixes the destination, transformation, story engine, and required arcs before Draft QC."}
+                    </p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-md border border-violet-200/60 bg-background/70 p-2 dark:border-violet-900/60">
+                      <p className="text-[11px] font-medium text-foreground/80">
+                        {th ? "คำสัญญาต่อผู้ชม" : "Audience promise"}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.storyContract.audiencePromise.emotionalPromise}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-violet-200/60 bg-background/70 p-2 dark:border-violet-900/60">
+                      <p className="text-[11px] font-medium text-foreground/80">
+                        {th
+                          ? "เป้าหมายระยะยาวของตัวเอก"
+                          : "Protagonist long-term destination"}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.storyContract.protagonistArc.longTermDestination}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-violet-200/60 bg-background/70 p-2 dark:border-violet-900/60">
+                      <p className="text-[11px] font-medium text-foreground/80">
+                        {th
+                          ? "ปลายทางซีซัน / ปลายทางเรื่อง"
+                          : "Season / long-term endpoint"}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.storyContract.destination.seasonEndpoint}
+                        {"\n"}
+                        {draft.storyContract.destination.longTermEndpoint}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-violet-200/60 bg-background/70 p-2 dark:border-violet-900/60">
+                      <p className="text-[11px] font-medium text-foreground/80">
+                        {th ? "ภาพปิดเรื่อง" : "Final image"}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.storyContract.destination.finalImage}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-violet-200/60 bg-background/70 p-2 dark:border-violet-900/60">
+                    <p className="text-[11px] font-medium text-foreground/80">
+                      {th
+                        ? "เครื่องยนต์หลักที่ทำงานซ้ำในแต่ละตอน"
+                        : "Repeatable primary story engine"}
+                    </p>
+                    <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                      {draft.storyContract.primaryEngine.statement}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {draft.storyContract.arcBundles.map((arc, index) => (
+                      <Badge
+                        key={`${arc.id}-${index}`}
+                        variant={arc.required ? "default" : "outline"}
+                      >
+                        {arc.label}
+                      </Badge>
+                    ))}
+                    <Badge variant="outline">
+                      {
+                        draft.storyContract.protagonistArc.transformationStages
+                          .length
+                      }{" "}
+                      {th ? "ระยะการเปลี่ยนแปลง" : "transformation stages"}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {th
+                      ? "จุดจบที่เห็นในซีซันอาจไม่ใช่จุดจบระยะยาว ระบบจะแยกสองระดับนี้เพื่อไม่ให้ปลายทางสำคัญหลุดหาย"
+                      : "The season ending may be only one milestone; the separate long-term endpoint prevents the larger destination from being lost."}
+                  </p>
+                </div>
+              )}
+              {draft.storyDesign && (
+                <div
+                  className="mb-3 grid gap-2 rounded-md border border-emerald-200/70 bg-emerald-50/50 p-3 text-xs dark:border-emerald-900/70 dark:bg-emerald-950/20"
+                  data-testid="vd-draft-story-design"
+                  role="note"
+                >
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {th
+                        ? "แกนเรื่องและแรงกดดันที่วางไว้"
+                        : "Story spine and pressure plan"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {th
+                        ? "ใช้ตรวจสอบว่าเรื่องมีแกนหลัก จุด payoff ความสัมพันธ์ และการสลับความได้เปรียบก่อนสร้างเต็ม"
+                        : "Review the primary engine, early payoff, romance progression, and advantage shifts before generating the full season."}
+                    </p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-md border border-emerald-200/60 bg-background/70 p-2 dark:border-emerald-900/60">
+                      <p className="text-[11px] font-medium text-foreground/80">
+                        {th ? "แกนหลัก" : "Primary engine"}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.storyDesign.primaryEngine}
+                      </p>
+                    </div>
+                    <div className="rounded-md border border-emerald-200/60 bg-background/70 p-2 dark:border-emerald-900/60">
+                      <p className="text-[11px] font-medium text-foreground/80">
+                        {th ? "จุด payoff แรก" : "Early payoff"}
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.storyDesign.earlyPayoff.promise}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Badge variant="outline">
+                      {draft.storyDesign.pressureThreads.length}{" "}
+                      {th ? "แรงกดดันที่มีเจ้าของ" : "bounded pressure threads"}
+                    </Badge>
+                    <Badge variant="outline">
+                      {draft.storyDesign.romanceProgression.length}{" "}
+                      {th ? "ช่วงความสัมพันธ์" : "romance phases"}
+                    </Badge>
+                    <Badge variant="outline">
+                      {draft.storyDesign.advantageBeats.length}{" "}
+                      {th ? "จังหวะได้เปรียบเสียเปรียบ" : "advantage beats"}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+              {draft.diagnostics && draft.diagnostics.length > 0 && (
+                <div
+                  className="mb-3 grid gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/50 dark:text-amber-100"
+                  data-testid="vd-draft-diagnostics"
+                  role="alert"
+                >
+                  <p className="font-semibold">
+                    {th
+                      ? "ตรวจสอบ draft ก่อนใช้"
+                      : "Review this draft before applying"}
+                  </p>
+                  {draft.diagnostics.map((diagnostic, index) => (
+                    <div
+                      key={`${diagnostic.code}-${index}`}
+                      className="grid gap-1"
+                    >
+                      <p>
+                        <span className="font-medium">
+                          {diagnostic.severity === "blocking" ||
+                          diagnostic.severity === "error"
+                            ? "⛔ "
+                            : "ⓘ "}
+                        </span>
+                        {th
+                          ? diagnostic.message
+                          : (diagnostic.messageEn ?? diagnostic.message)}
+                      </p>
+                      {diagnostic.paths && diagnostic.paths.length > 0 && (
+                        <details className="text-[10px] text-amber-900/80 dark:text-amber-100/80">
+                          <summary className="cursor-pointer">
+                            {th ? "รายละเอียดทางเทคนิค" : "Technical details"}
+                          </summary>
+                          <code>
+                            {diagnostic.code}: {diagnostic.paths.join(", ")}
+                          </code>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               <p className="text-sm font-semibold">{draft.title}</p>
               {/* Stage 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
                   — 4-5 title candidates (`draft.titleOptions`), server-optional
@@ -4045,21 +5863,19 @@ function PresetSynthesisActionPanel({
                   (never overwrite a title the user already typed) still
                   governs what happens on "ใช้ draft นี้" for whichever title
                   ends up in `form.title` at that point. */}
-              {draft.titleOptions && draft.titleOptions.length > 0 && (
+              {titleOptions.length > 0 && (
                 <div className="mt-2">
                   <p className="text-[11px] text-muted-foreground">
                     {th
-                      ? "เลือกชื่อเรื่อง (หรือแก้ไขเองที่ช่อง \"ชื่อซีรีย์\" ด้านล่างได้เสมอ)"
-                      : 'Pick a title (or edit your own in the "Series title" field below — always editable)'}
+                      ? `เลือกชื่อเรื่อง (${titleLanguageLabel}) หรือแก้ไขเองที่ช่อง "ชื่อซีรีย์" ด้านล่างได้เสมอ`
+                      : `Pick a ${titleLanguageLabel} title (or edit your own in the "Series title" field below — always editable)`}
                   </p>
                   <div
                     className="mt-1 flex flex-wrap gap-1.5"
                     role="group"
-                    aria-label={
-                      th ? "ตัวเลือกชื่อเรื่อง" : "Title candidates"
-                    }
+                    aria-label={th ? "ตัวเลือกชื่อเรื่อง" : "Title candidates"}
                   >
-                    {draft.titleOptions.map(option => (
+                    {titleOptions.map(option => (
                       <button
                         key={option}
                         type="button"
@@ -4078,9 +5894,14 @@ function PresetSynthesisActionPanel({
                   </div>
                 </div>
               )}
-              <p className="mt-1 text-xs text-muted-foreground">
-                {draft.logline}
-              </p>
+              <div className="mt-2 grid gap-0.5">
+                <p className="text-[11px] font-semibold text-foreground">
+                  {th ? "เรื่องย่อสั้น" : "Short logline"}
+                </p>
+                <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                  {draft.logline}
+                </p>
+              </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Badge variant="secondary">
                   {genrePresetCategoryLabel(draft.category, lang)}
@@ -4088,6 +5909,24 @@ function PresetSynthesisActionPanel({
                 <Badge variant="outline">
                   {draft.characters.length} {th ? "ตัวละคร" : "characters"}
                 </Badge>
+              </div>
+              <div className="mt-3 grid gap-2 rounded-md border border-border/70 bg-muted/20 p-3">
+                <div>
+                  <p className="text-[11px] font-semibold text-foreground">
+                    {th ? "เรื่องย่อหลัก" : "Main synopsis"}
+                  </p>
+                  <p className="mt-0.5 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                    {draft.mainPlot}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-foreground">
+                    {th ? "เส้นเรื่องของซีซั่น" : "Season arc"}
+                  </p>
+                  <p className="mt-0.5 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                    {draft.seasonArc}
+                  </p>
+                </div>
               </div>
               {(() => {
                 const summary = draft.creatorSummary ?? {
@@ -4102,10 +5941,22 @@ function PresetSynthesisActionPanel({
                   ],
                 };
                 const summaryRows = [
-                  [th ? "เรื่องนี้เกี่ยวกับอะไร" : "What the story is about", summary.whatItIsAbout],
-                  [th ? "ตัวนำและเป้าหมาย" : "Protagonist and goal", summary.protagonistAndGoal],
-                  [th ? "ความขัดแย้งและสิ่งที่พบ" : "Conflict and discovery", summary.conflictAndDiscovery],
-                  [th ? "ปมสำคัญของเรื่อง" : "Central mystery", summary.centralMystery],
+                  [
+                    th ? "เรื่องนี้เกี่ยวกับอะไร" : "What the story is about",
+                    summary.whatItIsAbout,
+                  ],
+                  [
+                    th ? "ตัวนำและเป้าหมาย" : "Protagonist and goal",
+                    summary.protagonistAndGoal,
+                  ],
+                  [
+                    th ? "ความขัดแย้งและสิ่งที่พบ" : "Conflict and discovery",
+                    summary.conflictAndDiscovery,
+                  ],
+                  [
+                    th ? "ปมสำคัญของเรื่อง" : "Central mystery",
+                    summary.centralMystery,
+                  ],
                 ] as const;
                 return (
                   <div
@@ -4113,19 +5964,27 @@ function PresetSynthesisActionPanel({
                     className="mt-3 grid gap-2 rounded-md border border-primary/20 bg-primary/5 p-3"
                   >
                     <p className="text-xs font-semibold text-foreground">
-                      {th ? "สรุปเรื่องก่อนยืนยัน" : "Story summary before applying"}
+                      {th
+                        ? "สรุปเรื่องก่อนยืนยัน"
+                        : "Story summary before applying"}
                     </p>
                     <div className="grid gap-2">
                       {summaryRows.map(([label, value]) => (
                         <div key={label} className="grid gap-0.5">
-                          <p className="text-[11px] font-medium text-foreground/80">{label}</p>
-                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{value}</p>
+                          <p className="text-[11px] font-medium text-foreground/80">
+                            {label}
+                          </p>
+                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                            {value}
+                          </p>
                         </div>
                       ))}
                     </div>
                     <div className="grid gap-1">
                       <p className="text-[11px] font-medium text-foreground/80">
-                        {th ? "สิ่งที่ควรรู้ก่อนตัดสินใจ" : "Know before deciding"}
+                        {th
+                          ? "สิ่งที่ควรรู้ก่อนตัดสินใจ"
+                          : "Know before deciding"}
                       </p>
                       <ul className="list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-muted-foreground">
                         {summary.decisionNotes.map((note, index) => (
@@ -4148,14 +6007,127 @@ function PresetSynthesisActionPanel({
                   </div>
                 </div>
               )}
+              {draft.visualNarrativeProfile && (
+                <div
+                  className="mt-3 grid gap-2 rounded-md border border-sky-200/70 bg-sky-50/60 p-3 dark:border-sky-900 dark:bg-sky-950/20"
+                  data-testid="vd-visual-narrative-profile"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">
+                      {th
+                        ? "ลุคนี้ช่วยเล่าเรื่องอย่างไร"
+                        : "How this look can support the story"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {th
+                        ? "แนวทางเสริมจากลุคภาพ ไม่ใช่การเพิ่มหรือล็อกปมของเรื่อง"
+                        : "Additive guidance from the visual look; it does not add or lock plot threads."}
+                    </p>
+                  </div>
+                  <div className="grid gap-2 text-xs">
+                    <div>
+                      <p className="font-medium text-foreground/80">
+                        {th ? "อารมณ์รวม" : "Emotional register"}
+                      </p>
+                      <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.visualNarrativeProfile.emotionalRegister}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground/80">
+                        {th ? "พื้นผิวของโลกเรื่อง" : "World texture"}
+                      </p>
+                      <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                        {draft.visualNarrativeProfile.worldTexture}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground/80">
+                        {th ? "motif ที่เลือกใช้" : "Selected motifs"}
+                      </p>
+                      <ul className="list-disc space-y-0.5 pl-4 leading-relaxed text-muted-foreground">
+                        {draft.visualNarrativeProfile.recurringMotifs.map(
+                          item => (
+                            <li key={`${item.motif}-${item.narrativeFunction}`}>
+                              <span className="font-medium text-foreground/80">
+                                {item.motif}:
+                              </span>{" "}
+                              {item.narrativeFunction}
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                    {draft.visualNarrativeProfile.relationshipVisualLanguage
+                      .length > 0 && (
+                      <div>
+                        <p className="font-medium text-foreground/80">
+                          {th
+                            ? "ภาษาภาพของความสัมพันธ์"
+                            : "Relationship visual language"}
+                        </p>
+                        <ul className="list-disc space-y-0.5 pl-4 leading-relaxed text-muted-foreground">
+                          {draft.visualNarrativeProfile.relationshipVisualLanguage.map(
+                            item => (
+                              <li
+                                key={`${item.phase}-${item.visualExpression}`}
+                              >
+                                <span className="font-medium text-foreground/80">
+                                  {item.phase}:
+                                </span>{" "}
+                                {item.visualExpression}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-foreground/80">
+                        {th ? "ข้อจำกัดเพื่อไม่ให้หลุดแกนเรื่อง" : "Guardrails"}
+                      </p>
+                      <ul className="list-disc space-y-0.5 pl-4 leading-relaxed text-muted-foreground">
+                        {draft.visualNarrativeProfile.constraints.map(item => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <VerticalDramaDraftQualityQcPanel
+                lang={lang}
+                status={draftQualityQcStatus}
+                progress={draftQualityQcProgress}
+                report={draftQualityQcReport}
+                history={draftQualityQcHistory}
+                error={draftQualityQcError}
+                failure={draftQualityQcFailure}
+                estimate={draftQualityQcEstimate}
+                maxRounds={draftQualityQcMaxRounds}
+                disabled={loading || draftQualityQcBusy}
+                overrideSelected={draftQualityQcOverrideSelected}
+                overrideEligible={draftQualityQcOverrideEligible}
+                onMaxRoundsChange={onDraftQualityQcMaxRoundsChange}
+                onStart={onStartDraftQualityQc}
+                onCancel={onCancelDraftQualityQc}
+                onOverrideChange={onDraftQualityQcOverrideChange}
+              />
             </div>
             <div className="flex shrink-0 gap-2">
               <Button
                 type="button"
                 size="sm"
                 onClick={() => onApplyDraft(draft)}
+                disabled={!draftCanBeApplied || draftGateSatisfied}
               >
-                {th ? "ใช้ draft นี้" : "Use this draft"}
+                {draftGateSatisfied
+                  ? th
+                    ? "ใช้ draft นี้แล้ว"
+                    : "Draft applied"
+                  : th
+                    ? "ใช้ draft นี้"
+                    : "Use this draft"}
               </Button>
               <Button
                 type="button"
@@ -4168,6 +6140,11 @@ function PresetSynthesisActionPanel({
               </Button>
             </div>
           </div>
+          {!draftCanBeApplied && !loading && (
+            <p role="note" className="text-xs text-destructive">
+              {draftGateReason}
+            </p>
+          )}
           {draft.warnings && draft.warnings.length > 0 && (
             // Render EVERY warning, not just `warnings[0]` — the
             // `premise_coverage_low` warning ("the AI drifted from your
@@ -4200,7 +6177,9 @@ function PresetSynthesisActionPanel({
           {draft.contract_version === 2 && (
             <details className="mt-3 rounded-md border bg-muted/20 p-2">
               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-                {th ? "รายละเอียดการผสม (สำหรับตรวจสอบเท่านั้น)" : "Blend details (technical)"}
+                {th
+                  ? "รายละเอียดการผสม (สำหรับตรวจสอบเท่านั้น)"
+                  : "Blend details (technical)"}
               </summary>
               <div className="pt-2">
                 <VerticalDramaBlendReportPanel
@@ -4217,6 +6196,16 @@ function PresetSynthesisActionPanel({
       )}
     </div>
   );
+}
+
+function draftLanguageLabel(
+  locale: VerticalDramaSeriesLocale,
+  uiLang: "th" | "en"
+): string {
+  const native = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[locale];
+  const english = verticalDramaLocaleEnglishName(locale);
+  if (native === english) return english;
+  return uiLang === "th" ? `${native} (${english})` : `${english} (${native})`;
 }
 
 /**
@@ -4274,6 +6263,31 @@ function Field({
       {helperText && (
         <p className="text-[11px] text-muted-foreground">{helperText}</p>
       )}
+    </div>
+  );
+}
+
+function OptionalInputGuide({
+  lang,
+  title,
+  description,
+  example,
+}: {
+  lang: "th" | "en";
+  title: string;
+  description: string;
+  example: string;
+}) {
+  return (
+    <div className="grid gap-1 rounded-md border border-dashed border-primary/25 bg-primary/5 px-3 py-2.5 text-[11px]">
+      <p className="font-semibold text-foreground">{title}</p>
+      <p className="text-muted-foreground">{description}</p>
+      <p className="text-muted-foreground">
+        <span className="font-medium text-foreground">
+          {lang === "th" ? "ตัวอย่าง: " : "Example: "}
+        </span>
+        {example}
+      </p>
     </div>
   );
 }

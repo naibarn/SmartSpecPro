@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["locale", "selectedCategories", "selectedPresets", "targetEpisodeCount"],
+  "properties": {
+    "locale": { "enum": ["th", "en"] },
+    "userPremise": { "type": "string" },
+    "genreHint": { "type": "string" },
+    "seriesTitleHint": { "type": "string" },
+    "toneHint": { "type": "string" },
+    "selectedCategories": { "type": "array", "items": { "type": "string" } },
+    "selectedPresets": { "type": "array", "items": { "type": "object" } },
+    "targetEpisodeCount": { "type": "integer", "minimum": 1 },
+    "lineageContext": { "type": ["object", "null"] }
+  },
+  "additionalProperties": true
+}

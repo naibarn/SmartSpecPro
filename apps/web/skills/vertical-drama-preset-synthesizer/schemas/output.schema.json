@@ -122,6 +122,52 @@
       "type": "string",
       "minLength": 1
     },
+    "visualNarrativeProfile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["version", "emotionalRegister", "worldTexture", "recurringMotifs", "relationshipVisualLanguage", "sceneOpportunities", "constraints"],
+      "properties": {
+        "version": { "const": 1 },
+        "emotionalRegister": { "type": "string", "minLength": 1, "maxLength": 280 },
+        "worldTexture": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "recurringMotifs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["motif", "narrativeFunction"],
+            "properties": {
+              "motif": { "type": "string", "minLength": 1, "maxLength": 180 },
+              "narrativeFunction": { "type": "string", "minLength": 1, "maxLength": 360 }
+            }
+          }
+        },
+        "relationshipVisualLanguage": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["phase", "visualExpression"],
+            "properties": {
+              "phase": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "visualExpression": { "type": "string", "minLength": 1, "maxLength": 360 }
+            }
+          }
+        },
+        "sceneOpportunities": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "type": "string", "minLength": 1, "maxLength": 260 }
+        },
+        "constraints": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": { "type": "string", "minLength": 1, "maxLength": 260 }
+        }
+      }
+    },
     "mixRecipe": {
       "type": "object",
       "required": ["primaryFlavor", "supportingFlavors", "rationale"],
@@ -163,8 +209,88 @@
         }
       }
     },
+    "storyContext": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Additive identity facts. Keep targetMarket, storySetting, leadBackground, leadOrigin, spokenDialogue, and namingPolicy separate; do not infer nationality from language alone.",
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "targetMarket": { "$ref": "#/definitions/draftFact" },
+        "storySetting": { "$ref": "#/definitions/draftFact" },
+        "leadBackground": { "$ref": "#/definitions/draftFact" },
+        "leadOrigin": { "$ref": "#/definitions/draftFact" },
+        "spokenDialogue": { "$ref": "#/definitions/draftFact" },
+        "namingPolicy": { "$ref": "#/definitions/draftFact" }
+      }
+    },
+    "storyDesign": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Additive bounded story-engine, pressure, payoff, romance, advantage, guardrail, and continuity plan.",
+      "required": ["primaryEngine", "secondaryEngines", "pressureThreads", "earlyPayoff", "romanceProgression", "advantageBeats", "conflictGuardrails"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "primaryEngine": { "type": "string", "minLength": 1 },
+        "secondaryEngines": { "type": "array", "items": { "type": "string" } },
+        "pressureThreads": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "earlyPayoff": { "type": "object", "additionalProperties": true },
+        "romanceProgression": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "advantageBeats": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "conflictGuardrails": { "type": "array", "items": { "type": "string" } },
+        "storyControlSeed": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "storyContract": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Authoritative Story Architecture Contract planned before readable synopsis synthesis. Preserve destination, transformation, required arcs, failure model, and final payoff.",
+      "required": ["contractVersion", "premiseAnchor", "requiredArcTypes", "audiencePromise", "protagonistArc", "primaryEngine", "arcBundles", "realityFailureModel", "destination", "promisePayoffMap", "storyGuardrails"],
+      "properties": {
+        "contractVersion": { "const": 1 },
+        "premiseAnchor": { "type": "string", "minLength": 1 },
+        "requiredArcTypes": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "audiencePromise": { "type": "object" },
+        "protagonistArc": { "type": "object" },
+        "primaryEngine": { "type": "object" },
+        "arcBundles": { "type": "array", "items": { "type": "object" }, "minItems": 1 },
+        "realityFailureModel": { "type": "object" },
+        "destination": { "type": "object" },
+        "promisePayoffMap": { "type": "array", "items": { "type": "object" }, "minItems": 1 },
+        "storyGuardrails": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "description": "Machine-readable structural diagnostics; creator-facing warnings remain in warnings.",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "additionalProperties": true,
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "severity": { "type": "string", "enum": ["info", "warning", "error", "blocking"] },
+          "message": { "type": "string", "minLength": 1 },
+          "messageEn": { "type": "string" },
+          "paths": { "type": "array", "items": { "type": "string" } },
+          "repairable": { "type": "boolean" }
+        }
+      }
+    },
     "contract_version": {
       "const": 1
+    }
+  },
+  "definitions": {
+    "draftFact": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "value": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "source": { "type": "string", "enum": ["user_provided", "ai_inferred", "needs_creator_decision", "legacy_default"] },
+        "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+        "rationale": { "type": "string", "maxLength": 500 },
+        "alternatives": { "type": "array", "maxItems": 5, "items": { "type": "string" } }
+      }
     }
   }
 }

@@ -10,6 +10,10 @@ import { z } from "zod";
 import type { VerticalDramaMemoryRetrievalPolicy } from "./memory";
 import type { VerticalDramaAssemblyManifest } from "./assembly";
 import { VERTICAL_DRAMA_DEFAULT_DURATION_PROFILE_ID } from "./assembly";
+import type {
+  VerticalDramaDurationPlan,
+  VerticalDramaSupportedShotDurationSeconds,
+} from "./durationProfiles";
 // Model-family-aware, vision-grounded video prompt quality upgrade
 // (`planning/vd-video-prompt-model-family-quality/plan.md`) — type-only, the
 // resolver/label map themselves live in `videoPromptModelFamily.ts` and are
@@ -132,6 +136,11 @@ export type VerticalDramaSeriesBible = {
   relationshipMap: VerticalDramaRelationship[];
   recurringProps: VerticalDramaProp[];
   continuityRules: string[];
+  /**
+   * Additive spoken-language/market contract. Absent on legacy series and
+   * intentionally resolved as Auto by the shared dialogue-profile reader.
+   */
+  dialogueLanguageProfile?: import("./dialogueLanguageProfile").VerticalDramaDialogueLanguageProfile;
   /**
    * Additive (2026-07-06 character-prompt quality upgrade) — the series'
    * default target-audience region/ethnicity look, injected as a DEFAULT
@@ -322,6 +331,8 @@ export type VerticalDramaMinimalInput = {
   locale?: VerticalDramaSeriesLocale;
   storyTitle: string;
   durationSeconds?: 60;
+  /** New planning input: one duration applied to each of the nine shots. */
+  shotDurationSeconds?: VerticalDramaSupportedShotDurationSeconds;
   storyBrief: string;
   characters: Array<{
     characterId: string;
@@ -357,6 +368,10 @@ export const verticalDramaMinimalInputSchema = z.object({
   locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
   storyTitle: z.string().min(1),
   durationSeconds: z.literal(60).optional(),
+  shotDurationSeconds: z
+    .number()
+    .positive()
+    .optional(),
   storyBrief: z.string().min(1),
   characters: z
     .array(
@@ -430,7 +445,9 @@ export type VerticalDramaSeriesProject = {
   aspectRatio: "9:16";
   status: "draft" | "planning" | "active" | "paused" | "completed" | "archived";
   targetEpisodeCount: number;
-  defaultEpisodeDurationSeconds: 60;
+  /** Legacy DB field; retained for old records and never used as the new UI source of truth. */
+  defaultEpisodeDurationSeconds: number;
+  durationPlan?: VerticalDramaDurationPlan;
   genre: string;
   tone: string;
   targetAudience: string;
@@ -557,7 +574,10 @@ export type VerticalDramaStartFramePlan = {
     /** Durable current-shot camera/body-language facts used to ground image prompts. */
     shotComposition?: VerticalDramaShotComposition;
     /** Set when the prompt changed after the previously approved image was created. */
-    imageStaleReason?: "prompt_changed";
+  imageStaleReason?:
+    | "prompt_changed"
+    | "character_references_changed"
+    | "supporting_presence_changed";
     imageStaleAt?: string;
     /**
      * Additive (2026-07-06 product-reference picker) — true once the user has
@@ -1396,8 +1416,10 @@ export type VerticalDramaEpisode = {
   episodeNumber: number;
   title: string;
   status: VerticalDramaEpisodeStatus;
-  targetDurationSeconds: 60;
+  /** Legacy compatibility field. New episodes use durationPlan. */
+  targetDurationSeconds: number;
   durationProfileId: typeof VERTICAL_DRAMA_DEFAULT_DURATION_PROFILE_ID | string;
+  durationPlan?: VerticalDramaDurationPlan;
   script?: VerticalDramaEpisodeScript;
   storyboard?: VerticalDramaShotgrid;
   startFramePlan?: VerticalDramaStartFramePlan;
@@ -1455,7 +1477,9 @@ export type NormalizedEpisodeInput = {
   episodeId: string;
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
-  targetDurationSeconds: 60;
+  /** Legacy compatibility field; durationPlan is authoritative when present. */
+  targetDurationSeconds: number;
+  durationPlan?: VerticalDramaDurationPlan;
   aspectRatio: "9:16";
   storyBrief: string;
   memoryBundle: VerticalDramaSeriesMemory;

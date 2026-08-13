@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "premiseAnchor",
+    "requiredArcTypes",
+    "audiencePromise",
+    "protagonistArc",
+    "primaryEngine",
+    "arcBundles",
+    "realityFailureModel",
+    "destination",
+    "promisePayoffMap",
+    "storyGuardrails"
+  ],
+  "properties": {
+    "contractVersion": { "const": 1 },
+    "premiseAnchor": { "type": "string" },
+    "requiredArcTypes": { "type": "array", "items": { "type": "string" } },
+    "audiencePromise": { "type": "object" },
+    "protagonistArc": { "type": "object" },
+    "primaryEngine": { "type": "object" },
+    "arcBundles": { "type": "array", "items": { "type": "object" } },
+    "realityFailureModel": { "type": "object" },
+    "destination": { "type": "object" },
+    "promisePayoffMap": { "type": "array", "items": { "type": "object" } },
+    "storyGuardrails": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

@@ -1,6 +1,6 @@
 ---
 name: Vertical Drama Full Story Architect
-description: Generate the FULL story for a vertical-drama series — complete season breakdown with per-sub-episode 9-shot detailed drafts (shot synopsis, characters with explicit emotions, explicit locations, spoken-Thai dialogue) plus declarations of any NEW locations needed, following production-grade vertical-drama craft guidelines. Invoked by the deep story draft generation flow (generateStoryBibleDeep), never from chat.
+description: Generate the FULL story for a vertical-drama series — complete season breakdown with per-sub-episode 9-shot detailed drafts (shot synopsis, characters with explicit emotions, explicit locations, natural spoken dialogue following the caller's language profile) plus declarations of any NEW locations needed, following production-grade vertical-drama craft guidelines. Invoked by the deep story draft generation flow (generateStoryBibleDeep), never from chat.
 version: 1.0.0
 category: video_prompt_generation
 execution_mode: llm-only
@@ -43,6 +43,73 @@ Treat every rule in it as binding. The rules below are the non-negotiable
 contract points the pipeline validates mechanically.
 
 ## Hard requirements — validated by code, violations are rejected
+
+### Dialogue language profile — MANDATORY
+
+The caller supplies a `DIALOGUE LANGUAGE PROFILE (HARD CONTRACT)` block. Treat
+that block as authoritative for every spoken line, cliffhanger line, and any
+other text intended to be performed aloud. Follow its locale, market, setting,
+age/status, relationship, and character-voice implications. The profile may
+select a specific English market or ask you to infer the best fit from the
+story setting and target market.
+
+Dialogue must be natural contemporary speech for the selected audience, easy
+for an actor to perform, and must not be translated sentence structure or
+formal written prose. Do not change story facts, character identity, romance
+phase, thread IDs, or continuity to satisfy the language profile. If the
+profile is absent, use the content language and established story setting;
+legacy series therefore remain safe and default to the same Auto behavior as
+the caller.
+
+The narrative/content language is a separate contract: it follows the current
+UI/content language supplied by the caller for titles, loglines, plots,
+character descriptions, summaries, and story metadata. Never switch those
+narrative fields because a spoken profile selects another language or dialect.
+The spoken profile applies only to performable dialogue, subtitle text that
+mirrors dialogue, and audio/TTS pronunciation.
+
+### Approved story identity and design facts — hard continuity boundary
+
+When the caller includes `APPROVED STORY IDENTITY CONTEXT` or `APPROVED STORY
+DESIGN CONTROL`, preserve those facts and stable IDs. Target market, story
+setting, lead background/origin, spoken language, and naming policy are separate
+facts; do not turn an English-speaking market into a nationality or rewrite an
+explicit cross-cultural identity. The primary story engine remains dominant.
+Use bounded pressure threads only when their IDs, owners, evidence, and payoff
+or deferral are present. Use the seed's romance phases and advantage intent as
+the continuity skeleton, while the skill decides the scene-level meaning and
+dialogue. Do not add a new subplot, resolve a thread, reset a relationship, or
+change a character's name merely to satisfy a visual or language preference.
+
+### Character naming and cultural coherence — hard identity rule
+
+Character names are identity facts, not prose-language translations. Preserve
+creator-supplied names, established heritage, setting, lineage canon, and
+character-level casting choices. Do not translate, anglicize, or replace a
+canonical name merely because the title or dialogue is English. If a new name
+must be chosen and no setting, heritage, or canonical name is supplied, choose
+one coherent naming convention from the effective spoken market (for example,
+contemporary American names for English US), while keeping the character's
+description in the narrative/content language. A cross-cultural name is valid
+when the story establishes it; make that context legible and keep one spelling
+across the character bible, aliases, dialogue speakers, subtitles, and visual
+prompts.
+
+### Visual Narrative DNA — additive story guidance
+
+When the user message includes `VISUAL NARRATIVE DNA (SOFT STORY GUIDANCE)`,
+use it as a secondary visual-story layer. It may enrich the texture of an
+already-approved location, the meaning of a recurring prop or motif, the
+emotional staging of a beat, wardrobe continuity, and the visual expression of
+an already-established relationship phase.
+
+The precedence is strict: user premise and canon > story-control and episode
+continuity > genre/audience/market constraints > visual narrative DNA > raw
+production look. Never add, remove, resolve, or contradict a plot thread,
+character fact, relationship state, setting fact, or romance phase merely to
+honor a motif. Use motifs selectively and omit any suggestion that does not
+serve the planned beat. Do not change the narrative/content language or the
+dialogue language because of this layer.
 
 1. **Complete coverage.** Output EVERY episode number requested in this
    chunk, each with EXACTLY the required number of shot drafts (9 unless the
@@ -117,13 +184,14 @@ contract points the pipeline validates mechanically.
    `"ศูนย์ควบคุมการปฏิบัติการบิน (รับสายด่วน)"` when that place already exists) —
    the situation belongs in the scene itself, not the location's identity.
 
-4. **Dialogue accessibility (ภาษาที่เด็กมัธยมฟังรู้เรื่อง).** All dialogue is
-   natural spoken Thai that a high-school student understands on first
-   listen: short sentences, everyday vocabulary, real speech rhythm with
-   character-appropriate pronouns and particles. Domain-specific terms are
-   allowed only when the story genuinely needs them, used sparingly, and
+4. **Dialogue accessibility.** All dialogue follows the caller's dialogue
+   language profile and should be understandable to the intended audience on
+   first listen: short speakable sentences, everyday vocabulary, real speech
+   rhythm, and character-appropriate forms of address. Domain-specific terms
+   are allowed only when the story genuinely needs them, used sparingly, and
    made understandable from context or a natural in-scene reaction — never
-   stacked jargon, never written-register Thai, never plot-summary speech.
+   stacked jargon, translated syntax, written-register prose, or plot-summary
+   speech.
 
 5. **Consistency.** Respect the series memory/recap and everything already
    established: character personalities, known facts, resolved plot, world
@@ -188,7 +256,7 @@ Shape:
     { "thread_id": string, "description": string,
       "thread_class": "plot" | "domestic" | "career" | "financial" | "health" | "relationship" }
   ],
-  "threads_resolved": string[],       // thread_id values (opened this episode OR an earlier one) that closed this episode
+  "threads_resolved": string[],       // exact thread_id values from the canonical thread ledger that closed this episode; never invent, translate, or paraphrase IDs
   "relationship_changes": [
     { "pair": [string, string],       // the two characters' names, exactly as spelled in the character bible
       "status": string,               // free text describing the relationship right now, e.g. "คบกันแบบเปิดเผย", "หย่าแล้ว", "พี่น้องห่างเหิน"
@@ -247,6 +315,56 @@ mundane things a character is still dealing with:
   "ทั้งคู่รู้สึกดีต่อกันแต่ยังไม่มีใครพูดออกมา", "disclosure": "undeclared",
   "known_by": []}` — this is a legitimate, common state; do not force it into
   `"secret"` or `"public"` just because those feel more "resolved".
+
+## STORY CONTROL SEED — bounded season intent, not a second script
+
+When the caller asks for the full-story/outline pass, also return one bounded
+top-level `storyControlSeed` object. It is the writer's continuity intent for
+later episode drafting; it is NOT a replacement for the approved breakdown,
+the append-only ledger, or per-shot drafts, and it must not contain a full
+season of scene prose.
+
+Use this shape:
+
+```json
+{
+  "contractVersion": 1,
+  "premiseAnchor": "the promise the audience must keep feeling",
+  "canonicalCharacterKeys": ["exact canonical character keys"],
+  "threadCandidates": [{
+    "threadId": "stable-kebab-id",
+    "label": "what the audience is wondering",
+    "scope": "moment_hook | episode_thread | arc_thread | season_thread",
+    "ownerCharacters": ["canonical character key"],
+    "plantEpisode": 1,
+    "payoffWindow": {"startEpisode": 3, "endEpisode": 6},
+    "expectedEvidence": ["specific clue or consequence"],
+    "resolutionCost": "what must be risked or changed to resolve it"
+  }],
+  "romancePhaseSkeleton": [{
+    "phase": "none | friction | flirt | vulnerability | trust_shift | sweet | rupture | reconciliation | confession | commitment | pause",
+    "episodeWindow": {"startEpisode": 1, "endEpisode": 3},
+    "pair": ["canonical character key", "canonical character key"],
+    "purpose": "why this phase belongs here",
+    "allowPause": true
+  }],
+  "advantageIntent": [{
+    "episodeNumber": 1,
+    "advantagedSide": "protagonist | antagonist | shared | unclear",
+    "cost": "the price of this advantage or stalemate",
+    "opponentResponse": "how the other side adapts"
+  }]
+}
+```
+
+IDs must be stable, unique, and based only on the canonical cast and premise
+you were given. Keep durable candidates few; a momentary hook belongs at
+`moment_hook` and must not become a season thread without a real payoff reason.
+A romance phase may be `none` or `pause`, and advantage may be `shared` or
+`unclear`; never force a sweet scene or an alternating win/loss formula. Every
+intended payoff must name evidence and a cost. If the outline and a candidate
+conflict, preserve the approved outline and omit or mark the candidate for
+review rather than rewriting story events to satisfy the seed.
 
 ## SEQUEL / NEXT SEASON
 

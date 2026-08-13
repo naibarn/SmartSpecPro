@@ -60,14 +60,20 @@ export interface VerticalDramaPresetContributionSummary {
  * Exported for direct unit testing.
  */
 export function buildPresetContributionSummaries(
-  blendReport: Pick<VerticalDramaBlendReport, "facets" | "contributionCoverage" | "underBlended">,
+  blendReport: Pick<
+    VerticalDramaBlendReport,
+    "facets" | "contributionCoverage" | "underBlended" | "sourceIds"
+  >,
   presetOrder: string[],
   presetTitleById: Record<string, string>,
 ): VerticalDramaPresetContributionSummary[] {
   const underBlendedSet = new Set(blendReport.underBlended);
   const orderedIds = [
     ...presetOrder,
-    ...Object.keys(blendReport.contributionCoverage).filter((id) => !presetOrder.includes(id)),
+    ...(blendReport.sourceIds ?? []).filter((id) => !presetOrder.includes(id)),
+    ...Object.keys(blendReport.contributionCoverage).filter(
+      (id) => !presetOrder.includes(id) && !(blendReport.sourceIds ?? []).includes(id),
+    ),
   ];
 
   return orderedIds
@@ -111,6 +117,32 @@ export function VerticalDramaBlendReportPanel({
   const th = lang === "th";
   const summaries = buildPresetContributionSummaries(blendReport, presetOrder, presetTitleById);
   const underBlendedSummaries = summaries.filter((s) => s.underBlended);
+  const sourceCount =
+    blendReport.sourceCount ??
+    blendReport.sourceIds?.length ??
+    (presetOrder.length || Object.keys(blendReport.contributionCoverage).length);
+  const inferredStatus =
+    blendReport.status ??
+    (sourceCount > 1
+      ? underBlendedSummaries.length === 0 && blendReport.facets.length > 0
+        ? "complete"
+        : "incomplete"
+      : "not_applicable");
+  const statusText =
+    inferredStatus === "complete"
+      ? pickCopy(lang, verticalDramaCopy.blendCompleteStatus)
+      : inferredStatus === "incomplete"
+        ? pickCopy(lang, verticalDramaCopy.blendIncompleteStatus)
+        : inferredStatus === "legacy_unknown"
+          ? pickCopy(lang, verticalDramaCopy.blendLegacyStatus)
+          : blendReport.blendMode === "premise_only"
+          ? pickCopy(lang, verticalDramaCopy.blendPremiseOnlyStatus)
+          : blendReport.blendMode === "no_sources"
+            ? pickCopy(lang, verticalDramaCopy.blendNoSourcesStatus)
+            : sourceCount === 1
+              ? pickCopy(lang, verticalDramaCopy.blendSingleSourceStatus)
+              : pickCopy(lang, verticalDramaCopy.blendEmptyDetails);
+  const statusIsWarning = inferredStatus === "incomplete";
   // One facet open at a time (spec/UX: `<details open>` on every facet forced
   // them all expanded) — defaults to the first facet so there's always
   // something visible on first render.
@@ -129,6 +161,25 @@ export function VerticalDramaBlendReportPanel({
           {pickCopy(lang, verticalDramaCopy.blendMinFacetsLabel)}: {blendReport.minFacetsPerPreset}{" "}
           {pickCopy(lang, verticalDramaCopy.blendCoverageUnit)}
         </p>
+      </div>
+      <div
+        className={
+          statusIsWarning
+            ? "grid gap-1 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+            : "grid gap-1 rounded-md border bg-background/70 p-2.5 text-xs"
+        }
+        role={statusIsWarning ? "alert" : undefined}
+        data-testid="vd-blend-report-status"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="font-medium">
+            {pickCopy(lang, verticalDramaCopy.blendSourceStatusTitle)}
+          </span>
+          <Badge variant={statusIsWarning ? "outline" : "secondary"}>
+            {sourceCount} {pickCopy(lang, verticalDramaCopy.blendSourceCountLabel)}
+          </Badge>
+        </div>
+        <span>{statusText}</span>
       </div>
       <div className="grid gap-4 text-sm">
         <div className="grid gap-2">
@@ -149,6 +200,11 @@ export function VerticalDramaBlendReportPanel({
                 </p>
               </li>
             ))}
+            {summaries.length === 0 && (
+              <li className="rounded-md border border-dashed p-2.5 text-xs text-muted-foreground">
+                {statusText}
+              </li>
+            )}
           </ul>
         </div>
 
@@ -220,6 +276,11 @@ export function VerticalDramaBlendReportPanel({
                 </ul>
               </details>
             ))}
+            {blendReport.facets.length === 0 && (
+              <p className="rounded-md border border-dashed p-2.5 text-xs italic text-muted-foreground">
+                {pickCopy(lang, verticalDramaCopy.blendEmptyDetails)}
+              </p>
+            )}
           </div>
         </div>
       </div>

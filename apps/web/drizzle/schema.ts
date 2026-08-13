@@ -21452,6 +21452,95 @@ export type InsertVerticalDramaGenrePresetRow =
   typeof verticalDramaGenrePresets.$inferInsert;
 
 /**
+ * Durable pre-create draft ledger. The ledger is intentionally independent of
+ * a series row because it exists before the creator applies the draft.
+ * `currentJson` is the recoverable structured snapshot; every change is also
+ * retained in `verticalDramaDraftVersions` and mirrored to immutable storage.
+ */
+export const verticalDramaDraftLedgers = pgTable(
+  "vertical_drama_draft_ledgers",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    /** Human-facing stable job number; the UUID remains the API identity. */
+    jobCode: bigint("jobCode", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('vertical_drama_draft_job_code_seq')`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    draftSessionId: varchar("draftSessionId", { length: 120 }).notNull(),
+    jobStatus: varchar("jobStatus", { length: 32 })
+      .notNull()
+      .default("queued"),
+    /** Server-approved input snapshot needed to restore a selected job. */
+    requestJson: jsonb("requestJson").notNull().default({}),
+    compositionJobId: varchar("compositionJobId", { length: 36 }),
+    qcRunId: varchar("qcRunId", { length: 36 }),
+    lastError: text("lastError"),
+    lastQcScore: integer("lastQcScore"),
+    lastQcPassed: boolean("lastQcPassed"),
+    archivedAt: timestamp("archivedAt", { withTimezone: true }),
+    currentVersion: integer("currentVersion").notNull().default(0),
+    currentStage: varchar("currentStage", { length: 40 }).notNull().default("created"),
+    currentJson: jsonb("currentJson").notNull().default({}),
+    currentMarkdownKey: text("currentMarkdownKey"),
+    currentJsonKey: text("currentJsonKey"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("vdd_ledger_owner_session_idx").on(t.tenantId, t.userId, t.draftSessionId),
+    index("vdd_ledger_owner_updated_idx").on(t.tenantId, t.userId, t.updatedAt),
+  ],
+);
+
+export type VerticalDramaDraftLedgerRow =
+  typeof verticalDramaDraftLedgers.$inferSelect;
+export type InsertVerticalDramaDraftLedgerRow =
+  typeof verticalDramaDraftLedgers.$inferInsert;
+
+/** Immutable snapshots. There is deliberately no update/delete path. */
+export const verticalDramaDraftVersions = pgTable(
+  "vertical_drama_draft_versions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    draftId: varchar("draftId", { length: 36 })
+      .notNull()
+      .references(() => verticalDramaDraftLedgers.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    stage: varchar("stage", { length: 40 }).notNull(),
+    contentJson: jsonb("contentJson").notNull(),
+    markdown: text("markdown").notNull(),
+    contentHash: varchar("contentHash", { length: 64 }).notNull(),
+    jsonStorageKey: text("jsonStorageKey").notNull(),
+    markdownStorageKey: text("markdownStorageKey").notNull(),
+    parentVersion: integer("parentVersion"),
+    jobId: varchar("jobId", { length: 36 }),
+    runId: varchar("runId", { length: 36 }),
+    changedPaths: jsonb("changedPaths").$type<string[]>().notNull().default([]),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("vdd_versions_draft_version_idx").on(t.draftId, t.version),
+    index("vdd_versions_draft_created_idx").on(t.draftId, t.createdAt),
+    index("vdd_versions_hash_idx").on(t.contentHash),
+  ],
+);
+
+export type VerticalDramaDraftVersionRow =
+  typeof verticalDramaDraftVersions.$inferSelect;
+export type InsertVerticalDramaDraftVersionRow =
+  typeof verticalDramaDraftVersions.$inferInsert;
+
+/**
  * Video Intelligence Platform (feature 133, section-05-db-tables-brand-kit)
  * — mirrors `drizzle/manual_video_intelligence_tables.sql` exactly (that
  * migration was hand-authored and applied directly via psql because

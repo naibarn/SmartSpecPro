@@ -53,6 +53,20 @@ This skill does not auto-trigger. The Vertical Drama story pipeline invokes
 it explicitly, once per breakdown version, as the `ledger_plan` step (runs
 after "outline", before per-episode drafting).
 
+When a `story_control_seed` block is supplied, treat it as bounded author
+intent only. Reuse its stable thread IDs and payoff windows where the approved
+breakdown supports them, and report conflicts for review. Do not invent a new
+plot to satisfy the seed, silently rename/drop a candidate, or duplicate the
+seed as a second ledger. Romance intent is an episode/arc annotation:
+`none`/`pause` are valid. Advantage intent must name a cost and an opponent
+response; it does not require a rigid alternating schedule.
+
+When a `duration_profile` block is supplied, preserve exactly 9 logical shots
+and the supplied shot-duration vector. Runtime is derived from that vector (or
+the declared render mapping), never assumed to be 60 or 90 seconds. A missing
+profile is `duration_pending`; a legacy profile is compatibility evidence and
+must not be rewritten.
+
 Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Every
 field name inside `ledgers` MUST use the EXACT camelCase key names shown in
 the skeleton below (not snake_case) — this output is validated directly

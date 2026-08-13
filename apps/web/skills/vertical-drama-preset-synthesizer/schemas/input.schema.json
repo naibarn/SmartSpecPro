@@ -52,6 +52,29 @@
     },
     "toneHint": {
       "type": "string"
+    },
+    "visualNarrativeEnabled": {
+      "type": "boolean",
+      "description": "Opt in to an additive story-facing interpretation of the selected production look."
+    },
+    "visualNarrativeContext": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Production-look facts used only to derive soft visual narrative guidance."
+    },
+    "userPremise": {
+      "type": "string",
+      "description": "Optional creator premise; when present it is the primary story spine."
+    },
+    "dialogueLanguageProfile": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Spoken-language profile for dialogue, subtitles, and TTS only; it never changes narrative/content language."
+    },
+    "storyIdentityConstraints": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional explicit setting, heritage, origin, naming, or market facts. Creator-provided facts outrank inferred defaults."
     }
   }
 }
