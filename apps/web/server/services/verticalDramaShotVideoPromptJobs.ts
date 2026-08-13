@@ -10,6 +10,10 @@ const POINTER_TTL_SECONDS = 6 * 60 * 60;
 const SEQUENCE_TTL_SECONDS = 24 * 60 * 60;
 const WORKER_CONCURRENCY = 3;
 const TURN_WAIT_TIMEOUT_MS = 30 * 60 * 1000;
+// Vision + LLM prompt authoring can exceed BullMQ's default lock duration.
+// Keep the worker lease alive long enough that healthy jobs are not marked
+// stalled while their durable Redis record remains "running".
+const BULLMQ_LOCK_DURATION_MS = 35 * 60 * 1000;
 const STALE_RUNNING_MS = 30 * 60 * 1000;
 const MAX_ERROR_CHARS = 2_000;
 
@@ -329,6 +333,28 @@ async function setNextSequence(
   );
 }
 
+/** Advance past terminal/missing jobs without skipping an active predecessor. */
+async function advanceNextSequence(
+  owner: VerticalDramaShotVideoPromptJobOwner,
+  minimumSequence: number,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<void> {
+  let next = Math.max(
+    1,
+    Number((await deps.redis.get(nextSequenceKey(owner))) ?? 1)
+  );
+  const last = Number((await deps.redis.get(sequenceKey(owner))) ?? next - 1);
+  while (next <= last) {
+    const jobId = await deps.redis.get(sequenceJobKey(owner, next));
+    if (jobId) {
+      const record = await readRecord(jobId, deps);
+      if (record && isActive(record.status)) break;
+    }
+    next += 1;
+  }
+  await setNextSequence(owner, Math.max(next, minimumSequence), deps);
+}
+
 async function getQueuePosition(
   record: VerticalDramaShotVideoPromptJobRecord,
   deps: VerticalDramaShotVideoPromptJobStoreDependencies
@@ -547,8 +573,21 @@ async function markTerminalAndAdvance(
     },
     deps
   );
-  await setNextSequence(record, record.sequence + 1, deps);
+  await advanceNextSequence(record, record.sequence + 1, deps);
   await clearPointers(record, deps);
+}
+
+/** Reconcile BullMQ terminal failures with the durable Redis job record. */
+export async function recoverVerticalDramaShotVideoPromptJob(
+  jobId: string,
+  error: string,
+  dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
+): Promise<boolean> {
+  const deps = resolveDependencies(dependencies);
+  const record = await readRecord(jobId, deps);
+  if (!record || !isActive(record.status)) return false;
+  await markTerminalAndAdvance(record, "failed", null, error, deps);
+  return true;
 }
 
 async function waitForTurn(
@@ -584,11 +623,11 @@ async function waitForTurn(
         await deps.sleep?.(500);
         continue;
       }
-      await setNextSequence(record, next + 1, deps);
+      await advanceNextSequence(record, next + 1, deps);
       continue;
     }
     if (next < record.sequence) {
-      await setNextSequence(record, next + 1, deps);
+      await advanceNextSequence(record, next + 1, deps);
       continue;
     }
 
@@ -701,12 +740,27 @@ export async function initVerticalDramaShotVideoPromptJobsQueue(): Promise<void>
           runVerticalDramaShotVideoPromptJobExecutor
         );
       },
-      { connection, concurrency: WORKER_CONCURRENCY }
+      {
+        connection,
+        concurrency: WORKER_CONCURRENCY,
+        lockDuration: BULLMQ_LOCK_DURATION_MS,
+      }
     );
-    worker.on("failed", (bullJob: any, error: Error) => {
+    worker.on("failed", async (bullJob: any, error: Error) => {
       console.error(
         `[${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE}] Job ${bullJob?.id} failed:`,
         error.message
+      );
+      const jobId = bullJob?.data?.jobId;
+      if (!jobId) return;
+      await recoverVerticalDramaShotVideoPromptJob(
+        jobId,
+        `BullMQ job failed: ${boundedError(error)}`
+      ).catch(recoveryError =>
+        console.error(
+          `[${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE}] Failed to reconcile job ${jobId}:`,
+          recoveryError
+        )
       );
     });
   } catch (error) {

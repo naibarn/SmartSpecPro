@@ -12,6 +12,7 @@ import {
   getActiveVerticalDramaShotVideoPromptJobs,
   getVerticalDramaShotVideoPromptJobStatus,
   isVerticalDramaShotVideoPromptWorkerExecution,
+  recoverVerticalDramaShotVideoPromptJob,
   runVerticalDramaShotVideoPromptJob,
   VerticalDramaShotVideoPromptConflictError,
   type VerticalDramaShotVideoPromptJobPayload,
@@ -195,5 +196,42 @@ describe("vertical drama shot video prompt queue", () => {
         executor.mock.calls[0]?.[1].token
       )
     ).toBe(false);
+  });
+
+  it("reconciles a BullMQ failure so a stalled job cannot block later shots", async () => {
+    const redis = makeFakeRedis();
+    const first = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const second = await enqueueVerticalDramaShotVideoPromptJob(
+      payload({
+        shotNumber: 10,
+        input: {
+          ...payload().input,
+          shotNumber: 10,
+          idempotencyKey: "shot-10-recovery",
+        },
+      }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) }
+    );
+
+    await expect(
+      recoverVerticalDramaShotVideoPromptJob(
+        first.jobId,
+        "BullMQ job stalled",
+        { redis }
+      )
+    ).resolves.toBe(true);
+
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(first.jobId, owner, { redis })
+    ).resolves.toMatchObject({ status: "failed", error: "BullMQ job stalled" });
+    await expect(
+      getActiveVerticalDramaShotVideoPromptJobs(
+        { tenantId: owner.tenantId, userId: owner.userId, seriesId: 21, episodeId: 137 },
+        { redis }
+      )
+    ).resolves.toEqual([expect.objectContaining({ jobId: second.jobId, queuePosition: 1 })]);
   });
 });
