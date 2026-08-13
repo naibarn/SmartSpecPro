@@ -73,6 +73,7 @@ import {
   upsertEpisodeMemory,
   upsertEpisodeMemories,
   persistDeepDraftEpisodeMemories,
+  repairSeriesMemoryContinuity,
 } from "../verticalDramaSeriesMemoryProjection";
 import { foldSeriesMemory } from "@shared/verticalDramaSeries/seriesMemoryState";
 import { VERTICAL_DRAMA_MEMORY_RETRIEVAL_POLICY_DEFAULT } from "@shared/verticalDramaSeries/memory";
@@ -238,6 +239,68 @@ describe("buildCompactSummary", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("upsertEpisodeMemories", () => {
+  it("sanitizes orphan resolutions before persisting series memory", async () => {
+    setStoredMemory(null);
+
+    await upsertEpisodeMemories(10, "tenant-1", 1, [
+      episodeMemory({
+        episodeNumber: 11,
+        threadsResolved: ["never-opened"],
+      }),
+      episodeMemory({
+        episodeNumber: 12,
+        threadsOpened: [
+          {
+            threadId: "opened-and-resolved",
+            description: "A valid thread",
+            threadClass: "plot",
+            openedEpisode: 12,
+          },
+        ],
+        threadsResolved: ["opened-and-resolved"],
+      }),
+    ]);
+
+    const written = getLastUpdateValues().memory;
+    expect(written.episodes[0].threadsResolved).toEqual([]);
+    expect(written.episodes[1].threadsResolved).toEqual([
+      "opened-and-resolved",
+    ]);
+  });
+
+  it("sanitizes repeated thread openings before persisting series memory", async () => {
+    setStoredMemory(null);
+
+    await upsertEpisodeMemories(10, "tenant-1", 1, [
+      episodeMemory({
+        episodeNumber: 5,
+        threadsOpened: [
+          {
+            threadId: "t4",
+            description: "Original thread",
+            threadClass: "plot",
+            openedEpisode: 5,
+          },
+        ],
+      }),
+      episodeMemory({
+        episodeNumber: 6,
+        threadsOpened: [
+          {
+            threadId: "t4",
+            description: "Repeated continuation marker",
+            threadClass: "plot",
+            openedEpisode: 6,
+          },
+        ],
+      }),
+    ]);
+
+    const written = getLastUpdateValues().memory;
+    expect(written.episodes[0].threadsOpened).toHaveLength(1);
+    expect(written.episodes[1].threadsOpened).toEqual([]);
+  });
+
   it("merges into an empty series (no prior memory row content)", async () => {
     setStoredMemory(null);
 
@@ -408,5 +471,68 @@ describe("persistDeepDraftEpisodeMemories", () => {
       skippedUserEdited: false,
     });
     expect(mockDb.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("repairSeriesMemoryContinuity", () => {
+  it("repairs legacy orphan resolutions without requiring a new draft", async () => {
+    setStoredMemory({
+      contractVersion: 1,
+      episodes: [
+        episodeMemory({
+          episodeNumber: 11,
+          threadsResolved: ["legacy-orphan"],
+        }),
+      ],
+      currentState: foldSeriesMemory([]),
+      compactSummary: "legacy",
+      lastFoldedEpisode: 11,
+    });
+
+    const result = await repairSeriesMemoryContinuity(10, "tenant-1", 1);
+
+    expect(result.quarantinedResolutionCount).toBe(1);
+    expect(getLastUpdateValues().memory.episodes[0].threadsResolved).toEqual(
+      [],
+    );
+  });
+
+  it("repairs legacy repeated openings without changing the original opening", async () => {
+    setStoredMemory({
+      contractVersion: 1,
+      episodes: [
+        episodeMemory({
+          episodeNumber: 5,
+          threadsOpened: [
+            {
+              threadId: "t4",
+              description: "Original thread",
+              threadClass: "plot",
+              openedEpisode: 5,
+            },
+          ],
+        }),
+        episodeMemory({
+          episodeNumber: 6,
+          threadsOpened: [
+            {
+              threadId: "t4",
+              description: "Repeated continuation marker",
+              threadClass: "plot",
+              openedEpisode: 6,
+            },
+          ],
+        }),
+      ],
+      currentState: foldSeriesMemory([]),
+      compactSummary: "legacy",
+      lastFoldedEpisode: 6,
+    });
+
+    const result = await repairSeriesMemoryContinuity(10, "tenant-1", 1);
+
+    expect(result.quarantinedOpeningCount).toBe(1);
+    expect(getLastUpdateValues().memory.episodes[0].threadsOpened).toHaveLength(1);
+    expect(getLastUpdateValues().memory.episodes[1].threadsOpened).toEqual([]);
   });
 });

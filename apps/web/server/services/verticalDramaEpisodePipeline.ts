@@ -84,6 +84,13 @@ import {
 } from "@shared/verticalDramaSeries/storyScriptText";
 // Type-only (erased at runtime — no import-chain side effects in tests).
 import type { VerticalDramaEpisodeTieInPlacement } from "@shared/verticalDramaSeries/contentBudget";
+import type { VdEpisodeMemory } from "@shared/verticalDramaSeries/seriesMemoryState";
+import {
+  normalizeVerticalDramaContinuityTimeline,
+  selectPriorVerticalDramaMemories,
+  validateVerticalDramaContinuity,
+  type VerticalDramaContinuityQuarantine,
+} from "@shared/verticalDramaSeries/storyContinuity";
 import {
   verticalDramaSeriesMemoryService,
   type VerticalDramaSeriesMemoryService,
@@ -91,6 +98,7 @@ import {
 import {
   generateEpisodeScript,
   resolveScriptEpisodeMemory,
+  scriptBuilderOutputSchema,
   InsufficientCreditsError as ScriptInsufficientCreditsError,
   VdSchemaValidationError as ScriptVdSchemaValidationError,
   type ScriptBuilderOutput,
@@ -98,7 +106,10 @@ import {
 // Series memory — Producer B persist (`planning/vd-series-memory-and-lineage/
 // plan.md` Stage 1.2). Reuses the SAME `upsertEpisodeMemory` write path
 // Producer A (deep-draft) uses — no parallel implementation.
-import { upsertEpisodeMemory } from "./verticalDramaSeriesMemoryProjection";
+import {
+  repairSeriesMemoryContinuity,
+  upsertEpisodeMemory,
+} from "./verticalDramaSeriesMemoryProjection";
 import {
   generateStoryboardShotgrid,
   InsufficientCreditsError as StoryboardInsufficientCreditsError,
@@ -1530,6 +1541,132 @@ async function resolveEpisodeDraftHydration(
   const shots = readItemShotDrafts(item);
   if (!shots) return null;
   return { shots, cliffhanger_line: readItemCliffhangerLine(item) };
+}
+
+const VERTICAL_DRAMA_CONTINUITY_GATE_STAGES = new Set<VerticalDramaPipelineStage>([
+  "storyboard_shotgrid",
+  "start_frame_render_plan",
+  "render_or_import_start_frames",
+  "dialogue_audio_plan",
+  "video_motion_prompt_pack",
+  "create_storyboard_review_project",
+  "render_or_import_video_clips",
+  "assemble_episode_manifest",
+]);
+
+function readStoredEpisodeMemories(raw: unknown): VdEpisodeMemory[] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const episodes = (raw as { episodes?: unknown }).episodes;
+  if (!Array.isArray(episodes)) return [];
+  return episodes.filter((episode): episode is VdEpisodeMemory => {
+    if (!episode || typeof episode !== "object" || Array.isArray(episode)) {
+      return false;
+    }
+    const value = episode as Record<string, unknown>;
+    return (
+      typeof value.episodeNumber === "number" &&
+      typeof value.recap === "string" &&
+      Array.isArray(value.threadsOpened) &&
+      Array.isArray(value.threadsResolved)
+    );
+  });
+}
+
+type VerticalDramaEpisodeContinuityGateResult = ReturnType<
+  typeof validateVerticalDramaContinuity
+> & {
+  quarantinedResolutions: VerticalDramaContinuityQuarantine[];
+  quarantinedOpenings: VerticalDramaContinuityQuarantine[];
+};
+
+async function validateEpisodeContinuityBeforeMedia(
+  owner: EpisodeRunOwner,
+  episode: VerticalDramaEpisodeRow,
+): Promise<VerticalDramaEpisodeContinuityGateResult> {
+  const [series] = await db
+    .select({ memory: verticalDramaSeries.memory, targetEpisodeCount: verticalDramaSeries.targetEpisodeCount })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, owner.seriesId),
+        eq(verticalDramaSeries.tenantId, owner.tenantId),
+        eq(verticalDramaSeries.userId, owner.userId),
+      ),
+    )
+    .limit(1);
+  if (!series) {
+    return {
+      ok: true,
+      issues: [],
+      openThreads: [],
+      quarantinedResolutions: [],
+      quarantinedOpenings: [],
+    };
+  }
+
+  const currentScript = scriptBuilderOutputSchema.safeParse(episode.script);
+  const stored = readStoredEpisodeMemories(series.memory);
+  const timeline = selectPriorVerticalDramaMemories(
+    stored,
+    episode.episodeNumber,
+  );
+  if (currentScript.success) {
+    timeline.push(
+      resolveScriptEpisodeMemory(currentScript.data, episode.episodeNumber),
+    );
+  }
+
+  const normalizedTimeline = normalizeVerticalDramaContinuityTimeline(timeline);
+  if (
+    normalizedTimeline.quarantinedResolutions.length > 0 ||
+    normalizedTimeline.quarantinedOpenings.length > 0
+  ) {
+    try {
+      await repairSeriesMemoryContinuity(
+        owner.seriesId,
+        owner.tenantId,
+        owner.userId,
+      );
+    } catch (error) {
+      // The normalized in-memory timeline still protects this run. A repair
+      // failure must be visible but must not turn a valid media request into
+      // a database-repair outage.
+      debugError(
+        "vd_continuity_repair",
+        `Could not persist continuity quarantine cleanup for series #${owner.seriesId}`,
+        error,
+      );
+    }
+  }
+
+  const isSeasonBoundary =
+    series.targetEpisodeCount != null &&
+    episode.episodeNumber >= series.targetEpisodeCount;
+  const validation = validateVerticalDramaContinuity({
+    episodes: normalizedTimeline.episodes,
+    ...(isSeasonBoundary
+      ? { seasonEndEpisode: series.targetEpisodeCount ?? episode.episodeNumber }
+      : {}),
+  });
+  // Legacy scripts may have no structured memory contract. Keep their old
+  // non-final production path grandfathered; a final episode still gets the
+  // season-boundary check so an old dangling hook cannot reach paid media.
+  const hasStructuredMemory =
+    currentScript.success && currentScript.data.episode_memory != null;
+  if (!isSeasonBoundary && !hasStructuredMemory) {
+    return {
+      ...validation,
+      issues: [],
+      ok: true,
+      quarantinedResolutions: normalizedTimeline.quarantinedResolutions,
+      quarantinedOpenings: normalizedTimeline.quarantinedOpenings,
+    };
+  }
+  return {
+    ...validation,
+    quarantinedResolutions: normalizedTimeline.quarantinedResolutions,
+    quarantinedOpenings: normalizedTimeline.quarantinedOpenings,
+  };
 }
 
 /**
@@ -4309,6 +4446,110 @@ export class VerticalDramaEpisodePipeline {
       memoryBundle,
     });
 
+    // Continuity gate is deliberately before storyboard/provider work. It is
+    // active only for real runs, so dry-run previews and all legacy episode
+    // reads remain unchanged. A failed gate writes a normal repairable run
+    // and never mutates the episode's existing script/storyboard.
+    if (paidModeAllowed && VERTICAL_DRAMA_CONTINUITY_GATE_STAGES.has(stage)) {
+      let continuityValidation;
+      try {
+        continuityValidation = await validateEpisodeContinuityBeforeMedia(
+          owner,
+          episode,
+        );
+      } catch (error) {
+        debugError(
+          "vd_continuity_gate",
+          `Continuity gate could not read episode #${owner.episodeId} context; blocking downstream media for safety`,
+          error,
+        );
+        continuityValidation = {
+          ok: false,
+          openThreads: [],
+          quarantinedResolutions: [],
+          quarantinedOpenings: [],
+          issues: [
+            {
+              code: "season_thread_unresolved" as const,
+              episodeNumber: episode.episodeNumber,
+              threadId: "continuity-context-unavailable",
+              message:
+                "Continuity context could not be read. Repair or retry the continuity check before generating media.",
+            },
+          ],
+        };
+      }
+      const quarantinedContinuityMarkers = [
+        ...continuityValidation.quarantinedResolutions.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_ORPHAN_RESOLUTION_QUARANTINED",
+        })),
+        ...continuityValidation.quarantinedOpenings.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_DUPLICATE_OPENING_QUARANTINED",
+        })),
+      ];
+      if (quarantinedContinuityMarkers.length > 0) {
+        for (const { quarantine, code } of quarantinedContinuityMarkers) {
+          stageQcWarnings.push({
+            code,
+            severity: "warning",
+            message: quarantine.message,
+            targetStage: stage,
+            repairable: false,
+          });
+        }
+      }
+      if (!continuityValidation.ok) {
+        const errors: RunResult["errors"] = continuityValidation.issues.map(
+          issue => ({
+            code: "VD_CONTINUITY_GATE_FAILED",
+            message: issue.message,
+            repairable: true,
+          }),
+        );
+        payload = {
+          ...payload,
+          continuity_review: {
+            status: "needs_repair",
+            issues: continuityValidation.issues,
+            quarantinedResolutions: continuityValidation.quarantinedResolutions,
+            quarantinedOpenings: continuityValidation.quarantinedOpenings,
+          },
+        };
+        const runId = await this.writeRunForStage(owner, stage, mode, opts, {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: stageQcWarnings,
+          errors,
+        });
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          [],
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors,
+          warnings: stageQcWarnings,
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
     // Same override convention as `storyboard_shotgrid` below, for
     // `plan_episode_script`: only when the mode is not dry_run/plan_only do
     // we replace the deterministic placeholder script with a real
@@ -5547,6 +5788,67 @@ export class VerticalDramaEpisodePipeline {
 
       const episode = await this.loadEpisode(owner);
 
+      // The storyboard worker has a dedicated tail rather than delegating to
+      // runStage, so apply the same pre-provider gate here as well.
+      const continuityValidation = await validateEpisodeContinuityBeforeMedia(
+        owner,
+        episode,
+      );
+      const continuityWarnings: VerticalDramaWarning[] =
+        [
+          ...continuityValidation.quarantinedResolutions.map(quarantine => ({
+            quarantine,
+            code: "VD_CONTINUITY_ORPHAN_RESOLUTION_QUARANTINED",
+          })),
+          ...continuityValidation.quarantinedOpenings.map(quarantine => ({
+            quarantine,
+            code: "VD_CONTINUITY_DUPLICATE_OPENING_QUARANTINED",
+          })),
+        ].map(({ quarantine, code }) => ({
+          code,
+          severity: "warning" as const,
+          message: quarantine.message,
+          targetStage: "storyboard_shotgrid" as const,
+          repairable: false,
+        }));
+      if (!continuityValidation.ok) {
+        const errors: RunResult["errors"] = continuityValidation.issues.map(
+          issue => ({
+            code: "VD_CONTINUITY_GATE_FAILED",
+            message: issue.message,
+            repairable: true,
+          }),
+        );
+        payload = {
+          ...payload,
+          continuity_review: {
+            status: "needs_repair",
+            issues: continuityValidation.issues,
+            quarantinedResolutions: continuityValidation.quarantinedResolutions,
+            quarantinedOpenings: continuityValidation.quarantinedOpenings,
+          },
+        };
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          payload,
+          [],
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({
+            status: "failed",
+            nextAction: "repair",
+            artifactIds: [String(artifact.id)],
+            errors,
+            warnings: continuityWarnings,
+            updatedAt: new Date(),
+          })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        return;
+      }
+
       try {
         const generated = await this.generateRealStoryboard(
           owner,
@@ -5646,7 +5948,7 @@ export class VerticalDramaEpisodePipeline {
             status: "failed",
             next_action: "repair",
             errors: [genError],
-            warnings: [],
+            warnings: continuityWarnings,
           }
         );
         return;
@@ -5668,7 +5970,7 @@ export class VerticalDramaEpisodePipeline {
             status: "failed",
             next_action: "repair",
             errors: validation.errors,
-            warnings: [],
+            warnings: continuityWarnings,
           }
         );
         return;
@@ -5700,7 +6002,7 @@ export class VerticalDramaEpisodePipeline {
           status: "succeeded",
           next_action: "resume_next_stage",
           errors: [],
-          warnings: [],
+          warnings: continuityWarnings,
           qc,
           createCheckpoint: true,
         }

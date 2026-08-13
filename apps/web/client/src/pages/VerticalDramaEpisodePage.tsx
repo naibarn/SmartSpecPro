@@ -979,6 +979,7 @@ function EpisodeWorkspaceShell({
   const storyboardShotgridPollPromiseRef = useRef<Promise<
     "succeeded" | "failed" | "timeout"
   > | null>(null);
+  const storyboardShotgridFailureMessageRef = useRef<string | null>(null);
   const STORYBOARD_SHOTGRID_POLL_INTERVAL_MS = 2500;
   // Same 30-minute budget as `VIDEO_CLIP_POLL_MAX_ATTEMPTS` below — an LLM
   // planning call plus queue wait time can legitimately take a while.
@@ -991,23 +992,20 @@ function EpisodeWorkspaceShell({
    *  from whichever of the three storyboard_shotgrid call sites' poll
    *  actually observes the terminal status.
    *
-   *  Note: unlike `runStageMutation.onSuccess`'s inline `errors[0]?.message`
-   *  detail on failure, `listEpisodeRuns` (what the poll reads) does not
-   *  expose the run's `errors` column — only `status`/`nextAction`/
-   *  `artifactIds` etc. (see that procedure in
-   *  `verticalDramaEpisodes.ts`). The failure toast here is therefore
-   *  message-less; the user can still open the run detail / use Repair for
-   *  specifics. */
+   *  The poll reads the same persisted `errors` payload exposed by
+   *  `listEpisodeRuns`, so background failures retain their actionable
+   *  server-side reason instead of collapsing into a generic toast. */
   function announceStoryboardShotgridTerminal(outcome: {
     status: "succeeded" | "failed";
     nextAction: RunResult["next_action"];
+    message?: string;
   }) {
     invalidateRuns();
     if (outcome.status === "failed") {
       toast.error(
         lang === "th"
-          ? `ขั้นตอนล้มเหลว — ลองใหม่หรือกด "ซ่อม"`
-          : `Stage failed — try again or use Repair.`
+          ? `ขั้นตอนล้มเหลว${outcome.message ? `: ${outcome.message}` : ""} — ลองใหม่หรือกด "ซ่อม"`
+          : `Stage failed${outcome.message ? `: ${outcome.message}` : ""} — try again or use Repair.`
       );
     } else if (outcome.nextAction === "approve") {
       toast.success(
@@ -1054,6 +1052,7 @@ function EpisodeWorkspaceShell({
       "succeeded" | "failed" | "timeout"
     > => {
       setPollingStoryboardShotgrid(true);
+      storyboardShotgridFailureMessageRef.current = null;
       try {
         for (
           let attempt = 0;
@@ -1067,9 +1066,12 @@ function EpisodeWorkspaceShell({
             });
           const row = runs.find(r => String(r.runId) === String(runId));
           if (row?.status === "succeeded" || row?.status === "failed") {
+            storyboardShotgridFailureMessageRef.current =
+              row.errors?.[0]?.message ?? null;
             announceStoryboardShotgridTerminal({
               status: row.status,
               nextAction: row.nextAction as RunResult["next_action"],
+              message: storyboardShotgridFailureMessageRef.current ?? undefined,
             });
             return row.status;
           }
@@ -1112,6 +1114,7 @@ function EpisodeWorkspaceShell({
       announceStoryboardShotgridTerminal({
         status: outcome.result.status,
         nextAction: outcome.result.next_action,
+        message: outcome.result.errors[0]?.message,
       });
       return outcome.result.status;
     }
@@ -1297,8 +1300,10 @@ function EpisodeWorkspaceShell({
                     ? "การสร้างสตอรีบอร์ดใช้เวลานานกว่าปกติ ระบบยังทำงานอยู่เบื้องหลัง — กลับมาตรวจสอบภายหลัง"
                     : "Storyboard generation is taking longer than usual and is still running in the background — check back shortly."
                   : lang === "th"
-                    ? 'สร้างสตอรีบอร์ดล้มเหลว — ลองใหม่หรือกด "ซ่อม"'
-                    : "Storyboard generation failed — try again or use Repair.",
+                    ? storyboardShotgridFailureMessageRef.current ??
+                      'สร้างสตอรีบอร์ดล้มเหลว — ลองใหม่หรือกด "ซ่อม"'
+                    : storyboardShotgridFailureMessageRef.current ??
+                      "Storyboard generation failed — try again or use Repair.",
             });
             setGeneratingEpisodeStage(null);
             return;
@@ -2307,6 +2312,8 @@ function EpisodeWorkspaceShell({
         startedAt: r.startedAt,
         updatedAt: r.updatedAt,
         completedAt: r.completedAt,
+        warnings: r.warnings,
+        errors: r.errors,
         artifactLedgerHref: r.artifactLedgerHref,
       })),
     [runRows]
@@ -2326,6 +2333,8 @@ function EpisodeWorkspaceShell({
         status: r.status as RunResult["status"],
         nextAction: r.nextAction as RunResult["next_action"],
         artifactIds: r.artifactIds,
+        warnings: r.warnings,
+        errors: r.errors,
       };
     }
     for (const cp of checkpointsQuery.data?.checkpoints ?? []) {

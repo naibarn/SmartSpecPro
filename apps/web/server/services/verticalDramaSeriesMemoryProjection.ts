@@ -80,6 +80,7 @@ import {
   type VdSeriesMemoryCurrentState,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
 import { VERTICAL_DRAMA_MEMORY_RETRIEVAL_POLICY_DEFAULT } from "@shared/verticalDramaSeries/memory";
+import { normalizeVerticalDramaContinuityTimeline } from "@shared/verticalDramaSeries/storyContinuity";
 
 /* -------------------------------------------------------------------------- */
 /* 1. Raw `episode_memory` LLM block -> trustworthy `VdEpisodeMemory`          */
@@ -518,7 +519,9 @@ export async function upsertEpisodeMemories(
           skippedUserEdited: true,
         };
       }
-      const mergedEpisodes = appendNewOnlyEpisodes(stored.episodes, incoming);
+      const mergedEpisodes = normalizeVerticalDramaContinuityTimeline(
+        appendNewOnlyEpisodes(stored.episodes, incoming),
+      ).episodes;
       const nextMemory: VdSeriesMemory = { ...stored, episodes: mergedEpisodes };
       await tx
         .update(verticalDramaSeries)
@@ -531,7 +534,13 @@ export async function upsertEpisodeMemories(
       };
     }
 
-    const mergedEpisodes = supersedeEpisodes(stored.episodes, incoming);
+    // This is the canonical write boundary. Never persist an LLM-produced
+    // resolution that cannot be tied to an opening in the chronological
+    // series ledger; otherwise one bad ID poisons every later media gate.
+    const normalized = normalizeVerticalDramaContinuityTimeline(
+      supersedeEpisodes(stored.episodes, incoming),
+    );
+    const mergedEpisodes = normalized.episodes;
     const currentState = foldSeriesMemory(mergedEpisodes);
     const lastFoldedEpisode = mergedEpisodes.reduce(
       (max, ep) => Math.max(max, ep.episodeNumber),
@@ -565,6 +574,70 @@ export async function upsertEpisodeMemory(
   episodeMemory: VdEpisodeMemory
 ): Promise<VdEpisodeMemoryUpsertSummary> {
   return upsertEpisodeMemories(seriesId, tenantId, userId, [episodeMemory]);
+}
+
+/**
+ * Idempotent repair for legacy series memory. It removes only quarantined
+ * lifecycle markers; episode recaps, openings, relationships, and user-edited
+ * projections remain intact. This is intentionally safe to call from a
+ * defensive media gate when an old series is encountered for the first time.
+ */
+export async function repairSeriesMemoryContinuity(
+  seriesId: number,
+  tenantId: string,
+  userId: number,
+): Promise<{
+  quarantinedResolutionCount: number;
+  quarantinedOpeningCount: number;
+}> {
+  return db.transaction(async tx => {
+    const ownershipWhere = and(
+      eq(verticalDramaSeries.id, seriesId),
+      eq(verticalDramaSeries.tenantId, tenantId),
+      eq(verticalDramaSeries.userId, userId),
+    );
+    const [row] = await tx
+      .select({ memory: verticalDramaSeries.memory })
+      .from(verticalDramaSeries)
+      .where(ownershipWhere)
+      .for("update");
+    if (!row) {
+      return { quarantinedResolutionCount: 0, quarantinedOpeningCount: 0 };
+    }
+
+    const stored = readStoredSeriesMemory(row.memory);
+    const normalized = normalizeVerticalDramaContinuityTimeline(stored.episodes);
+    if (
+      normalized.quarantinedResolutions.length === 0 &&
+      normalized.quarantinedOpenings.length === 0
+    ) {
+      return { quarantinedResolutionCount: 0, quarantinedOpeningCount: 0 };
+    }
+
+    const nextMemory: VdSeriesMemory = stored.userEdited
+      ? { ...stored, episodes: normalized.episodes }
+      : {
+          contractVersion: 1,
+          episodes: normalized.episodes,
+          currentState: foldSeriesMemory(normalized.episodes),
+          compactSummary: buildCompactSummary(
+            foldSeriesMemory(normalized.episodes),
+            normalized.episodes,
+          ),
+          lastFoldedEpisode: normalized.episodes.reduce(
+            (max, episode) => Math.max(max, episode.episodeNumber),
+            0,
+          ),
+        };
+    await tx
+      .update(verticalDramaSeries)
+      .set({ memory: nextMemory, updatedAt: new Date() })
+      .where(ownershipWhere);
+    return {
+      quarantinedResolutionCount: normalized.quarantinedResolutions.length,
+      quarantinedOpeningCount: normalized.quarantinedOpenings.length,
+    };
+  });
 }
 
 /**
