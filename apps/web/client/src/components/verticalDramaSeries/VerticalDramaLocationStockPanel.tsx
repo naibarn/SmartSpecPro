@@ -17,8 +17,9 @@
  * Deliberately much simpler than `VerticalDramaCharacterStockPanel.tsx`: no
  * variants/twins, no voice/speech-profile sections, no character-sheet/
  * turnaround UI, no drag-drop Library/History sidebar picker. Locations are a
- * flat roster with at most one approved establishing-plate reference each in
- * this phase.
+ * flat roster with one primary establishing plate plus additive camera-view
+ * coverage images (reverse, side, and detail) managed from the selected
+ * location detail card.
  *
  * It DOES carry an image-model picker (model-picker parity plan) mirroring
  * `VerticalDramaCharacterStockPanel.tsx`'s own: `trpc.mediaModels.list`,
@@ -38,11 +39,13 @@
  * location" control.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
+  Camera,
   Check,
   Clock,
+  Expand,
   Loader2,
   MapPin,
   Save,
@@ -73,6 +76,13 @@ import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSe
 import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
+import {
+  VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS,
+  getVerticalDramaLocationCameraViewLabel,
+  type VerticalDramaLocationCameraPreset,
+  type VerticalDramaLocationCameraView,
+  type VerticalDramaLocationCoverageRole,
+} from "@shared/verticalDramaSeries/locationAssets";
 
 /* -------------------------------------------------------------------------- */
 /* Localized copy                                                             */
@@ -276,6 +286,46 @@ export function sortLocationCandidatesForGallery<T extends { isPrimary: boolean 
   return [...primary, ...rest];
 }
 
+const CAMERA_PRESET_LABELS: Record<VerticalDramaLocationCameraPreset, [string, string]> = {
+  wide_shot: ["Wide Shot", "ภาพกว้าง"],
+  extreme_wide_shot: ["Extreme Wide Shot", "ภาพกว้างมาก"],
+  eye_level_shot: ["Eye-Level Shot", "ระดับสายตา"],
+  low_angle_shot: ["Low Angle Shot", "มุมเงย"],
+  high_angle_shot: ["High Angle Shot", "มุมกด"],
+  birds_eye_top_down: ["Bird's-Eye / Top-Down", "มุมสูงจากด้านบน"],
+  worms_eye_view: ["Worm's-Eye View", "มุมต่ำมาก"],
+  over_the_shoulder: ["Over-the-Shoulder", "ข้ามไหล่"],
+  point_of_view: ["Point-of-View", "มุมมองตัวละคร"],
+  three_quarter_view: ["Three-Quarter View", "สามส่วน"],
+  profile_shot: ["Profile Shot", "ด้านข้างโปรไฟล์"],
+  front_view: ["Front View", "ด้านหน้า"],
+  rear_back_shot: ["Rear / Back Shot", "ด้านหลัง"],
+  dutch_angle: ["Dutch Angle", "มุมเอียง"],
+  insert_detail_shot: ["Insert / Detail Shot", "ภาพแทรก/รายละเอียด"],
+  custom: ["Custom view", "กำหนดเอง"],
+};
+
+export function buildLocationCameraView(params: {
+  preset?: string | null;
+  directive?: string | null;
+}): VerticalDramaLocationCameraView | undefined {
+  const preset = params.preset?.trim();
+  const directive = params.directive?.trim();
+  if (!preset && !directive) return undefined;
+  const knownPreset = preset && (VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS as readonly string[]).includes(preset)
+    ? (preset as VerticalDramaLocationCameraPreset)
+    : undefined;
+  const presetLabel = knownPreset ? CAMERA_PRESET_LABELS[knownPreset][0] : undefined;
+  const label = knownPreset && directive
+    ? `${presetLabel} — ${directive}`
+    : directive || presetLabel || preset || "Custom view";
+  return {
+    ...(preset ? { preset } : {}),
+    label,
+    ...(directive ? { directive } : {}),
+  };
+}
+
 /**
  * Builds the transport-connection fields for `generateLocationImage`'s
  * mutation input — extracted so the conditional-spread rule is directly
@@ -383,6 +433,23 @@ export function VerticalDramaLocationStockPanel({
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
+
+  /** Make the view-management UI discoverable on first load. Previously the
+   * detail card (including the camera-view selector) stayed hidden until the
+   * user guessed that a roster card was clickable. Preserve an explicit close
+   * action by only auto-selecting when the current selection is absent or no
+   * longer exists. */
+  useEffect(() => {
+    if (locations.length === 0) {
+      setSelectedLocationId(null);
+      return;
+    }
+    setSelectedLocationId(current =>
+      current && locations.some(location => location.locationId === current)
+        ? current
+        : locations[0].locationId,
+    );
+  }, [locations]);
 
   /** Model picker for the "Generate image" action, mirroring
    *  `VerticalDramaCharacterStockPanel.tsx`'s own model-selector-before-
@@ -575,8 +642,18 @@ export function VerticalDramaLocationStockPanel({
   const approveMutation = trpc.verticalDramaLocations.approveAsset.useMutation();
 
   const [previewByLocationId, setPreviewByLocationId] = useState<
-    Record<string, { prompt: string; negativePrompt?: string }>
+    Record<string, {
+      prompt: string;
+      negativePrompt?: string;
+      coverageRole?: VerticalDramaLocationCoverageRole;
+      cameraView?: VerticalDramaLocationCameraView;
+    }>
   >({});
+  const [coverageRoleByLocationId, setCoverageRoleByLocationId] = useState<
+    Record<string, VerticalDramaLocationCoverageRole>
+  >({});
+  const [cameraPresetByLocationId, setCameraPresetByLocationId] = useState<Record<string, string>>({});
+  const [cameraDirectiveByLocationId, setCameraDirectiveByLocationId] = useState<Record<string, string>>({});
   const [pendingPreviewLocationId, setPendingPreviewLocationId] = useState<string | null>(null);
   const [renderingLocationId, setRenderingLocationId] = useState<string | null>(null);
   const [candidateByLocationId, setCandidateByLocationId] = useState<
@@ -651,6 +728,15 @@ export function VerticalDramaLocationStockPanel({
   }
 
   const handlePreview = (location: VdLocationListItem) => {
+    const coverageRole = coverageRoleByLocationId[location.locationId];
+    const cameraView = buildLocationCameraView({
+      preset: cameraPresetByLocationId[location.locationId],
+      directive: cameraDirectiveByLocationId[location.locationId],
+    });
+    if (cameraView?.preset === "custom" && !cameraView.directive) {
+      toast.error(t(lang, "กรุณาระบุรายละเอียดมุมกล้องแบบกำหนดเอง", "Describe the custom camera view first"));
+      return;
+    }
     requestConfirmation({
       title: t(lang, "ยืนยันสร้าง prompt สถานที่", "Confirm location prompt generation"),
       description: t(lang, "การทำงานนี้ใช้ AI เพื่อสร้าง prompt และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "This uses AI to generate a location prompt and may spend credits. Continue?"),
@@ -663,13 +749,20 @@ export function VerticalDramaLocationStockPanel({
           {
             seriesId,
             locationId: location.locationId,
+            ...(coverageRole ? { coverageRole } : {}),
+            ...(cameraView ? { cameraView } : {}),
             ...(selectedImageModelId ? { selectedImageModelId } : {}),
           },
           {
             onSuccess: (res) => {
               setPreviewByLocationId((prev) => ({
                 ...prev,
-                [location.locationId]: { prompt: res.establishingPlatePrompt, negativePrompt: res.negativePrompt },
+                [location.locationId]: {
+                  prompt: res.establishingPlatePrompt,
+                  negativePrompt: res.negativePrompt,
+                  ...(coverageRole ? { coverageRole } : {}),
+                  ...(cameraView ? { cameraView } : {}),
+                },
               }));
               setPendingPreviewLocationId(null);
             },
@@ -699,6 +792,8 @@ export function VerticalDramaLocationStockPanel({
         seriesId,
         locationId: location.locationId,
         approvedPrompt: preview.prompt,
+        ...(preview.coverageRole ? { coverageRole: preview.coverageRole } : {}),
+        ...(preview.cameraView ? { cameraView: preview.cameraView } : {}),
         ...(preview.negativePrompt ? { approvedNegativePrompt: preview.negativePrompt } : {}),
         // Always sent (never conditionally spread) — the server now
         // REJECTS image generation without an explicit
@@ -741,13 +836,17 @@ export function VerticalDramaLocationStockPanel({
         url: imageUrl,
         mimeType: guessLocationImageMimeTypeFromUrl(imageUrl),
       });
-      const linked = await linkMutation.mutateAsync({
+    const linked = await linkMutation.mutateAsync({
         seriesId,
         locationId,
         mediaAssetId: resolved.mediaAssetId,
         assetType: "location_reference",
-        role: "establishing_plate",
+        role: previewByLocationId[locationId]?.coverageRole
+          ?? (previewByLocationId[locationId]?.cameraView ? "other" : "establishing_plate"),
         source: "generated",
+        metadata: previewByLocationId[locationId]?.cameraView
+          ? { cameraView: previewByLocationId[locationId].cameraView }
+          : undefined,
       });
       await approveMutation.mutateAsync({ seriesId, assetLinkId: linked.asset.assetLinkId });
       setApprovedAssetLinkByLocationId((prev) => ({ ...prev, [locationId]: linked.asset.assetLinkId }));
@@ -1002,17 +1101,18 @@ export function VerticalDramaLocationStockPanel({
                 const thumbnailUrl = resolveLocationCardThumbnailUrl(location, candidate?.imageUrl);
                 return (
                   <li key={location.locationId}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedLocationId(location.locationId)}
-                      className={cn(
-                        "flex w-full flex-col gap-2 rounded-lg border p-2.5 text-left transition-colors",
-                        active
-                          ? "border-purple-400 bg-purple-50/60 ring-2 ring-purple-100 dark:bg-purple-950/20"
-                          : "border-border hover:border-muted-foreground/40",
-                      )}
-                      data-testid={`vd-location-card-${location.locationId}`}
-                    >
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLocationId(location.locationId)}
+                        className={cn(
+                          "flex w-full flex-col gap-2 rounded-lg border p-2.5 text-left transition-colors",
+                          active
+                            ? "border-purple-400 bg-purple-50/60 ring-2 ring-purple-100 dark:bg-purple-950/20"
+                            : "border-border hover:border-muted-foreground/40",
+                        )}
+                        data-testid={`vd-location-card-${location.locationId}`}
+                      >
                       <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
                         {thumbnailUrl ? (
                           <img src={thumbnailUrl} alt={location.name} className="h-full w-full object-cover" />
@@ -1035,7 +1135,33 @@ export function VerticalDramaLocationStockPanel({
                           {t(lang, "มีภาพอ้างอิงแล้ว", "Reference set")}
                         </Badge>
                       ) : null}
-                    </button>
+                      <span
+                        className={cn(
+                          "flex items-center gap-1 text-[10px] font-medium",
+                          active
+                            ? "text-purple-700 dark:text-purple-300"
+                            : "text-sky-700 dark:text-sky-300",
+                        )}
+                      >
+                        <Camera aria-hidden="true" className="h-3 w-3" />
+                        {active
+                          ? t(lang, "กำลังจัดการมุมมองด้านล่าง", "View manager opened below")
+                          : t(lang, "กดเพื่อดู/เพิ่มมุมมองสถานที่", "Select to view/add location angles")}
+                      </span>
+                      </button>
+                      {thumbnailUrl ? (
+                        <button
+                          type="button"
+                          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white shadow-sm hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                          onClick={() => setLightboxImage({ src: thumbnailUrl, alt: location.name })}
+                          aria-label={t(lang, `ดูภาพขยายของ ${location.name}`, `View full-size image of ${location.name}`)}
+                          title={t(lang, "ขยายภาพเต็มจอ", "Open full screen")}
+                          data-testid={`vd-location-card-fullscreen-${location.locationId}`}
+                        >
+                          <Expand aria-hidden="true" className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
                   </li>
                 );
               })}
@@ -1058,6 +1184,25 @@ export function VerticalDramaLocationStockPanel({
               <X aria-hidden="true" className="h-4 w-4" />
             </Button>
           </CardHeader>
+          <div
+            className="mx-3 mb-1 flex flex-col gap-1 rounded-md border border-sky-200 bg-sky-50/70 px-3 py-2 dark:border-sky-900 dark:bg-sky-950/20"
+            data-testid={`vd-location-view-manager-${selectedLocation.locationId}`}
+          >
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-sky-900 dark:text-sky-100">
+              <Camera aria-hidden="true" className="h-4 w-4" />
+              {t(lang, "มุมมองของสถานที่", "Location camera views")}
+              <Badge variant="outline" className="text-[10px]">
+                {t(lang, "ภาพหลัก + มุมเพิ่มเติม", "Primary + coverage views")}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-sky-800/80 dark:text-sky-200/80">
+              {t(
+                lang,
+                "เลือกมุมมาตรฐานหรือกำหนดจุดมองเฉพาะสถานที่ แล้วสร้างภาพเพิ่ม ภาพทั้งหมดจะถูกเก็บไว้กับสถานที่เดียวกันและเลือกใช้ใน storyboard ได้",
+                "Choose a standard camera grammar or describe a location-specific viewpoint, then generate an additional image. All views stay attached to this location and can be selected in the storyboard.",
+              )}
+            </p>
+          </div>
           <CardContent className="flex flex-col gap-4 p-3 sm:flex-row sm:items-start">
             <div className="flex h-32 w-full shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30 sm:w-56">
               {detailThumbnailUrl ? (
@@ -1196,13 +1341,10 @@ export function VerticalDramaLocationStockPanel({
                         )}
                         {candidate.role && candidate.role !== "establishing_plate" ? (
                           <span className="text-[9px] text-sky-700 dark:text-sky-300">
-                            {candidate.role === "reverse_angle"
-                              ? t(lang, "มุมย้อน", "Reverse angle")
-                              : candidate.role === "side_angle"
-                                ? t(lang, "มุมด้านข้าง", "Side angle")
-                                : candidate.role === "detail_corner"
-                                  ? t(lang, "มุมรายละเอียด", "Detail corner")
-                                  : candidate.role}
+                            {getVerticalDramaLocationCameraViewLabel({
+                              role: candidate.role,
+                              metadata: candidate.metadata,
+                            })}
                           </span>
                         ) : null}
                       </button>
@@ -1221,6 +1363,101 @@ export function VerticalDramaLocationStockPanel({
                   permanently capping it at one candidate. */}
               {!readOnly && (
                 <div className="flex flex-col gap-1.5 border-t pt-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Label
+                      htmlFor={`vd-location-camera-role-${selectedLocation.locationId}`}
+                      className="text-xs text-muted-foreground"
+                    >
+                      {t(lang, "มุมกล้องของสถานที่", "Location camera view")}
+                    </Label>
+                    <select
+                      id={`vd-location-camera-role-${selectedLocation.locationId}`}
+                      value={
+                        coverageRoleByLocationId[selectedLocation.locationId]
+                          ?? cameraPresetByLocationId[selectedLocation.locationId]
+                          ?? ""
+                      }
+                      onChange={event => {
+                        const value = event.target.value;
+                        const legacyRole = ["reverse_angle", "side_angle", "detail_corner"].includes(value);
+                        setCoverageRoleByLocationId(prev => {
+                          const next = { ...prev };
+                          if (legacyRole) next[selectedLocation.locationId] = value as VerticalDramaLocationCoverageRole;
+                          else delete next[selectedLocation.locationId];
+                          return next;
+                        });
+                        setCameraPresetByLocationId(prev => {
+                          const next = { ...prev };
+                          if (!legacyRole && value) next[selectedLocation.locationId] = value;
+                          else delete next[selectedLocation.locationId];
+                          return next;
+                        });
+                        if (legacyRole || !value) {
+                          setCameraDirectiveByLocationId(prev => {
+                            const next = { ...prev };
+                            delete next[selectedLocation.locationId];
+                            return next;
+                          });
+                        }
+                        setPreviewByLocationId(prev => {
+                          const next = { ...prev };
+                          delete next[selectedLocation.locationId];
+                          return next;
+                        });
+                      }}
+                      className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                      data-testid={`vd-location-camera-role-${selectedLocation.locationId}`}
+                    >
+                      <option value="">
+                        {t(lang, "ภาพหลัก / มุมสร้างบริบท", "Primary / establishing")}
+                      </option>
+                      <option value="reverse_angle">
+                        {t(lang, "มุมย้อน / Reverse view", "Reverse view")}
+                      </option>
+                      <option value="side_angle">
+                        {t(lang, "มุมด้านข้าง / Lateral view", "Lateral view")}
+                      </option>
+                      <option value="detail_corner">
+                        {t(lang, "มุมรายละเอียด / Detail view", "Detail view")}
+                      </option>
+                      <optgroup label={t(lang, "มุมกล้องมาตรฐาน", "Standard camera grammar")}>
+                        {VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS.filter(preset => preset !== "custom").map(preset => (
+                          <option key={preset} value={preset}>
+                            {CAMERA_PRESET_LABELS[preset][lang === "th" ? 1 : 0]}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <option value="custom">
+                        {t(lang, "กำหนดเอง / Custom view", "Custom view")}
+                      </option>
+                    </select>
+                    {cameraPresetByLocationId[selectedLocation.locationId] ? (
+                      <Input
+                        value={cameraDirectiveByLocationId[selectedLocation.locationId] ?? ""}
+                        onChange={event => {
+                          const directive = event.target.value;
+                          setCameraDirectiveByLocationId(prev => ({
+                            ...prev,
+                            [selectedLocation.locationId]: directive,
+                          }));
+                          setPreviewByLocationId(prev => {
+                            const next = { ...prev };
+                            delete next[selectedLocation.locationId];
+                            return next;
+                          });
+                        }}
+                        placeholder={t(
+                          lang,
+                          "ระบุจุด/ทิศ/องค์ประกอบ เช่น โต๊ะริมหน้าต่าง หรือใต้น้ำเหนือปะการัง",
+                          "Describe the place-specific view, e.g. table by the window or underwater above the coral",
+                        )}
+                        className="min-w-64 flex-1 text-xs"
+                        maxLength={1000}
+                        aria-label={t(lang, "รายละเอียดมุมกล้องเฉพาะสถานที่", "Location-specific camera directive")}
+                        data-testid={`vd-location-camera-directive-${selectedLocation.locationId}`}
+                      />
+                    ) : null}
+                  </div>
                   {/* Image-model picker (model-picker parity plan) — shown
                       above every generate-flow state (fresh/preview/candidate)
                       so the model (and its per-model credit cost, shown inside

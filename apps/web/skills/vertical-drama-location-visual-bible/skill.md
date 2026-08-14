@@ -172,6 +172,17 @@ present in the environment if it is consistent with the location facts; do not i
 unrelated set dressing. If no coverage role is supplied, author the normal
 `establishing_plate` view.
 
+When `camera_view` is present, treat it as the shot-specific camera grammar for the
+same physical location. `preset` may be any standard film-language term (for example
+`wide_shot`, `over_the_shoulder`, `point_of_view`, `birds_eye_top_down`, or
+`dutch_angle`), while `label` and `directive` may describe a creator-authored view.
+Examples include "table by the window", "side of the lighthouse on the sea rocks",
+"beside the stranded fishing boat", "underwater above the coral", and "front of the
+island from the beach". Preserve the location's fixed identity and use the directive
+to decide framing, camera height, axis, lens impression, and visible landmark. Never
+assume a doorway, window, room, or indoor architecture unless the location facts say
+so. A custom directive refines the view; it does not create a second location.
+
 Good example (`has_own_reference_image: true`, regenerating the convenience-store
 location for a later episode):
 > "wide establishing shot, environment only, no people: the attached reference image is

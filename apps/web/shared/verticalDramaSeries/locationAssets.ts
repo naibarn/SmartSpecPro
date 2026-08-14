@@ -47,6 +47,65 @@ export type VerticalDramaLocationCoverageRole =
   (typeof VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES)[number];
 
 /**
+ * Camera grammar presets accepted by the location-view authoring UI.
+ * These are intentionally open-ended at the metadata boundary: the list is a
+ * helpful picker, not a validation allow-list, so a creator can still author
+ * a location-specific/custom view without a schema migration.
+ */
+export const VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS = [
+  "wide_shot",
+  "extreme_wide_shot",
+  "eye_level_shot",
+  "low_angle_shot",
+  "high_angle_shot",
+  "birds_eye_top_down",
+  "worms_eye_view",
+  "over_the_shoulder",
+  "point_of_view",
+  "three_quarter_view",
+  "profile_shot",
+  "front_view",
+  "rear_back_shot",
+  "dutch_angle",
+  "insert_detail_shot",
+  "custom",
+] as const;
+
+export type VerticalDramaLocationCameraPreset =
+  (typeof VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS)[number];
+
+/** Creator-authored camera/view metadata for one location asset. */
+export type VerticalDramaLocationCameraView = {
+  preset?: string;
+  label: string;
+  directive?: string;
+};
+
+/** Safe display label used by storyboard and galleries for legacy/new assets. */
+export function getVerticalDramaLocationCameraViewLabel(params: {
+  role?: string | null;
+  metadata?: Record<string, unknown> | null;
+}): string {
+  const metadataView = params.metadata?.cameraView;
+  if (metadataView && typeof metadataView === "object" && !Array.isArray(metadataView)) {
+    const label = (metadataView as { label?: unknown }).label;
+    if (typeof label === "string" && label.trim()) return label.trim();
+  }
+  switch (params.role) {
+    case "reverse_angle":
+      return "Reverse view";
+    case "side_angle":
+      return "Lateral view";
+    case "detail_corner":
+      return "Detail view";
+    case "establishing_plate":
+      return "Primary / establishing";
+    default:
+      return params.role?.trim() || "Camera view";
+  }
+}
+
+/**
  * A durable location-stock asset link. `mediaAssetId` is the tenant-scoped
  * canonical asset id; browser-facing projections never carry provider URLs.
  *

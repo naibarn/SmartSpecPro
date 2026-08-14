@@ -74,6 +74,7 @@ import {
 import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
 import { verticalDramaCharacterStockService } from "../services/verticalDramaCharacterStock";
 import { verticalDramaLocationStockService } from "../services/verticalDramaLocationStock";
+import { getVerticalDramaLocationCameraViewLabel } from "@shared/verticalDramaSeries/locationAssets";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import {
   buildEpisodeCoverGenerationSnapshot,
@@ -2953,7 +2954,8 @@ async function resolveShotLocationReferenceEntry(
   seriesId: number,
   storyboard: unknown,
   shotNumber: number,
-  overrideLocationKey?: string
+  overrideLocationKey?: string,
+  locationVariantId?: string
 ): Promise<{
   url?: string;
   name?: string;
@@ -2981,10 +2983,13 @@ async function resolveShotLocationReferenceEntry(
       ? ((locationRow.data as Record<string, unknown>).description as string)
       : undefined;
 
-  const url = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
-    { tenantId, userId, seriesId },
-    locationRow.id
-  );
+  const url = await resolveLocationReferenceUrl({
+    tenantId,
+    userId,
+    seriesId,
+    locationId: locationRow.id,
+    locationVariantId,
+  });
 
   return {
     url,
@@ -2992,6 +2997,45 @@ async function resolveShotLocationReferenceEntry(
     description,
     hasReferenceImage: Boolean(url),
   };
+}
+
+/** Resolve a selected location camera variant, falling back to the primary
+ * establishing plate for legacy shots and for the explicit reset state. */
+async function resolveLocationReferenceUrl(input: {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  locationId: number;
+  locationVariantId?: string;
+}): Promise<string | undefined> {
+  if (input.locationVariantId) {
+    const variantId = Number(input.locationVariantId);
+    if (Number.isInteger(variantId) && variantId > 0) {
+      const variants = await verticalDramaLocationStockService.listLocationAssets(
+        {
+          tenantId: input.tenantId,
+          userId: input.userId,
+          seriesId: input.seriesId,
+        },
+        input.locationId
+      );
+      const selected = variants.find(
+        asset =>
+          asset.assetLinkId === variantId &&
+          asset.approved &&
+          asset.role !== "establishing_plate"
+      );
+      if (selected) return selected.url;
+    }
+  }
+  return verticalDramaLocationStockService.getPrimaryReferenceUrl(
+    {
+      tenantId: input.tenantId,
+      userId: input.userId,
+      seriesId: input.seriesId,
+    },
+    input.locationId
+  );
 }
 
 /**
@@ -3019,7 +3063,8 @@ async function resolveShotVideoPromptLocationReferenceImage(
   userId: number,
   seriesId: number,
   locationIdentity: VerticalDramaLocationIdentity | undefined,
-  publicUrl: string | undefined
+  publicUrl: string | undefined,
+  locationVariantId?: string
 ): Promise<{ url: string; name?: string } | null> {
   if (!locationIdentity) return null;
   const locationRow = await resolveLocationRosterRowByIdentity(
@@ -3029,10 +3074,13 @@ async function resolveShotVideoPromptLocationReferenceImage(
     locationIdentity
   );
   if (!locationRow) return null;
-  const url = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
-    { tenantId, userId, seriesId },
-    locationRow.id
-  );
+  const url = await resolveLocationReferenceUrl({
+    tenantId,
+    userId,
+    seriesId,
+    locationId: locationRow.id,
+    locationVariantId,
+  });
   if (!url) return null;
   return { url: resolveReferenceUrl(url, publicUrl), name: locationRow.name };
 }
@@ -3055,7 +3103,8 @@ async function resolveShotLocationReferenceAssetId(
   tenantId: string,
   userId: number,
   seriesId: number,
-  locationIdentity: VerticalDramaLocationIdentity | undefined
+  locationIdentity: VerticalDramaLocationIdentity | undefined,
+  locationVariantId?: string
 ): Promise<number | undefined> {
   if (!locationIdentity) return undefined;
   const locationRow = await resolveLocationRosterRowByIdentity(
@@ -3065,6 +3114,22 @@ async function resolveShotLocationReferenceAssetId(
     locationIdentity
   );
   if (!locationRow) return undefined;
+  if (locationVariantId) {
+    const variantId = Number(locationVariantId);
+    if (Number.isInteger(variantId) && variantId > 0) {
+      const variants = await verticalDramaLocationStockService.listLocationAssets(
+        { tenantId, userId, seriesId },
+        locationRow.id
+      );
+      const selected = variants.find(
+        asset =>
+          asset.assetLinkId === variantId &&
+          asset.approved &&
+          asset.role !== "establishing_plate"
+      );
+      if (selected) return selected.mediaAssetId;
+    }
+  }
   return verticalDramaLocationStockService.getPrimaryReferenceAssetId(
     { tenantId, userId, seriesId },
     locationRow.id
@@ -3101,7 +3166,19 @@ async function resolveSeriesEpisodeLocations(
   userId: number,
   seriesId: number
 ): Promise<
-  Array<{ locationKey: string; name: string; primaryReferenceUrl?: string }>
+  Array<{
+    locationKey: string;
+    name: string;
+    primaryReferenceUrl?: string;
+    locationId?: string;
+    cameraVariants?: Array<{
+      variantId: string;
+      label: string;
+      role: string;
+      url: string;
+      approved: boolean;
+    }>;
+  }>
 > {
   try {
     const rows = await verticalDramaLocationStockService.listRows({
@@ -3109,11 +3186,41 @@ async function resolveSeriesEpisodeLocations(
       userId,
       seriesId,
     });
-    return rows.map(row => ({
-      locationKey: row.locationKey,
-      name: row.name,
-      primaryReferenceUrl: row.primaryReferenceUrl,
-    }));
+    return await Promise.all(
+      rows.map(async row => {
+        // A missing/temporarily unavailable coverage lookup must not hide the
+        // location roster itself. The primary plate is already persisted on
+        // the location row; variants are an additive enhancement.
+        const assets = await verticalDramaLocationStockService
+          .listLocationAssets({ tenantId, userId, seriesId }, row.id)
+          .catch(err => {
+            debugError(
+              "verticalDramaEpisodes.getEpisodeDetail",
+              `location camera variants lookup failed (locationId=${row.id})`,
+              err
+            );
+            return [];
+          });
+        return {
+          locationKey: row.locationKey,
+          name: row.name,
+          primaryReferenceUrl: row.primaryReferenceUrl,
+          locationId: String(row.id),
+          cameraVariants: assets
+            .filter(asset => asset.approved && asset.role !== "establishing_plate")
+            .map(asset => ({
+              variantId: String(asset.assetLinkId),
+              label: getVerticalDramaLocationCameraViewLabel({
+                role: asset.role,
+                metadata: asset.metadata,
+              }),
+              role: asset.role ?? "camera_variant",
+              url: asset.url,
+              approved: asset.approved,
+            })),
+        };
+      })
+    );
   } catch (err) {
     debugError(
       "verticalDramaEpisodes.getEpisodeDetail",
@@ -10342,7 +10449,8 @@ export const verticalDramaEpisodesRouter = router({
         owner.seriesId,
         row.storyboard,
         input.shotNumber,
-        frame.locationKey
+        frame.locationKey,
+        frame.locationVariantId
       );
 
       let qcResult: RunFrameContinuityQcResult;
@@ -10618,7 +10726,8 @@ export const verticalDramaEpisodesRouter = router({
         owner.seriesId,
         row.storyboard,
         input.shotNumber,
-        frame.locationKey
+        frame.locationKey,
+        frame.locationVariantId
       );
       const { runFrameContinuityQc } =
         await import("../services/verticalDramaFrameContinuityQc");
@@ -13655,6 +13764,9 @@ export const verticalDramaEpisodesRouter = router({
       updatedFrames[frameIndex] = {
         ...updatedFrames[frameIndex],
         locationKey: input.locationKey ?? undefined,
+        // A camera variant belongs to the previous physical location and is
+        // never allowed to leak into the newly selected location.
+        locationVariantId: undefined,
         ...(currentDualView
           ? {
               barrierMultiView: {
@@ -13679,6 +13791,123 @@ export const verticalDramaEpisodesRouter = router({
         .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
         .where(eq(verticalDramaEpisodes.id, episodeId));
 
+      return { startFramePlan: updatedPlan };
+    }),
+
+  /**
+   * Select an approved camera view of the shot's effective location. This is
+   * deliberately separate from `setShotLocation`: changing the physical
+   * location and changing the view inside the same location are different
+   * authoring decisions. The variant is a durable location-asset link id,
+   * so it remains stable across reloads and is resolved by every downstream
+   * image/video reference path. `null` restores the location's primary plate.
+   */
+  setShotLocationVariant: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        locationVariantId: z.string().min(1).nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      if (!plan || !Array.isArray(plan.frames)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No start-frame plan exists yet for this episode",
+        });
+      }
+      const frameIndex = plan.frames.findIndex(
+        frame => frame.shotNumber === input.shotNumber
+      );
+      if (frameIndex < 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `No start-frame plan entry for shot ${input.shotNumber}`,
+        });
+      }
+
+      if (input.locationVariantId !== null) {
+        const variantId = parseId(input.locationVariantId, "location variant id");
+        const frame = plan.frames[frameIndex];
+        const identity = resolveEffectiveShotLocationIdentity(
+          row.storyboard,
+          input.shotNumber,
+          frame.locationKey
+        );
+        if (!identity) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "เลือกมุมกล้องไม่ได้จนกว่าจะกำหนดสถานที่ของช็อตนี้",
+          });
+        }
+        const locationRow = await resolveLocationRosterRowByIdentity(
+          tenantId,
+          userId,
+          seriesId,
+          identity
+        );
+        if (!locationRow) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown location key: ${identity.locationKey}`,
+          });
+        }
+        const variants = await verticalDramaLocationStockService.listLocationAssets(
+          { tenantId, userId, seriesId },
+          locationRow.id
+        );
+        const variant = variants.find(
+          asset =>
+            asset.assetLinkId === variantId &&
+            asset.approved &&
+            asset.role !== "establishing_plate"
+        );
+        if (!variant) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "ไม่พบมุมกล้องของสถานที่นี้ หรือภาพยังไม่ผ่านการอนุมัติ",
+          });
+        }
+      }
+
+      const updatedFrames = plan.frames.slice();
+      const current = updatedFrames[frameIndex];
+      updatedFrames[frameIndex] = {
+        ...current,
+        locationVariantId: input.locationVariantId ?? undefined,
+        approvedMediaAssetId: undefined,
+        videoStartMediaAssetId: undefined,
+        videoSafety: undefined,
+        sceneContinuity: undefined,
+        angleGrid: undefined,
+        imageStaleReason:
+          input.locationVariantId === null
+            ? undefined
+            : "location_variant_changed",
+        imageStaleAt:
+          input.locationVariantId === null ? undefined : new Date().toISOString(),
+      };
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: updatedFrames,
+      };
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodes.id, episodeId));
       return { startFramePlan: updatedPlan };
     }),
 
@@ -15023,7 +15252,8 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         row.storyboard,
         input.shotNumber,
-        frame.locationKey
+        frame.locationKey,
+        frame.locationVariantId
       );
       const locationRefUrls = locationRefEntry?.url
         ? [locationRefEntry.url]
@@ -15760,7 +15990,8 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         row.storyboard,
         input.shotNumber,
-        frame.locationKey
+        frame.locationKey,
+        frame.locationVariantId
       );
       const locationRefUrls = locationRefEntry?.url
         ? [locationRefEntry.url]
@@ -16915,7 +17146,8 @@ export const verticalDramaEpisodesRouter = router({
         tenantId,
         userId,
         seriesId,
-        clipLocationIdentity
+        clipLocationIdentity,
+        primaryStartFrame?.locationVariantId
       );
 
       const capabilities = resolveVerticalDramaCapabilities(model.id, {
@@ -18231,7 +18463,8 @@ export const verticalDramaEpisodesRouter = router({
           seriesId,
           row.storyboard,
           input.shotNumber,
-          frame.locationKey
+          frame.locationKey,
+          frame.locationVariantId
         );
       const sceneContinuityEnabled =
         hasVerticalDramaSceneIdentity(
@@ -19082,7 +19315,8 @@ export const verticalDramaEpisodesRouter = router({
           input.shotNumber,
           input.locationKey?.trim() ||
             frame.barrierMultiView?.referenceView.locationKey ||
-            frame.locationKey
+            frame.locationKey,
+          frame.locationVariantId
         );
       const referenceFrameInstruction = referenceFrameBarrierView
         ? referenceFrameBarrierView.scenario === "physical_barrier"
@@ -19478,7 +19712,8 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         row.storyboard,
         input.shotNumber,
-        referenceFrameDualView?.referenceView.locationKey ?? frame.locationKey
+        referenceFrameDualView?.referenceView.locationKey ?? frame.locationKey,
+        frame.locationVariantId
       );
       const locationRefUrls = locationRefEntry?.url
         ? [locationRefEntry.url]
@@ -20463,7 +20698,8 @@ export const verticalDramaEpisodesRouter = router({
           userId,
           seriesId,
           shotVideoLocationIdentity,
-          ctx.publicUrl ?? undefined
+          ctx.publicUrl ?? undefined,
+          frame?.locationVariantId
         );
 
       // Speaker-aware sub-shots (Package 3) — the deterministic split

@@ -42,7 +42,10 @@ import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript"
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
-import type { VerticalDramaLocationCoverageRole } from "@shared/verticalDramaSeries/locationAssets";
+import type {
+  VerticalDramaLocationCameraView,
+  VerticalDramaLocationCoverageRole,
+} from "@shared/verticalDramaSeries/locationAssets";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -157,6 +160,8 @@ export interface GenerateLocationVisualPromptsParams {
   coverageRole?: VerticalDramaLocationCoverageRole;
   /** Feature 138 P2 — a concrete planner-reported coverage gap to ground. */
   gapDescription?: string;
+  /** Optional standard or creator-authored camera/view directive. */
+  cameraView?: VerticalDramaLocationCameraView;
   /** Effective prompt budget for the selected output image model. */
   imagePromptMaxChars?: number;
   idempotencyKey?: string;
@@ -204,6 +209,15 @@ export function buildLocationVisualPromptsUserPrompt(params: GenerateLocationVis
     ...(params.hasOwnReferenceImage ? { has_own_reference_image: true } : {}),
     ...(params.coverageRole ? { coverage_role: params.coverageRole } : {}),
     ...(params.gapDescription ? { coverage_gap: params.gapDescription } : {}),
+    ...(params.cameraView
+      ? {
+          camera_view: {
+            ...(params.cameraView.preset ? { preset: params.cameraView.preset } : {}),
+            label: params.cameraView.label,
+            ...(params.cameraView.directive ? { directive: params.cameraView.directive } : {}),
+          },
+        }
+      : {}),
     ...(params.imagePromptMaxChars
       ? { prompt_max_chars: Math.min(20_000, Math.max(3_800, Math.floor(params.imagePromptMaxChars))) }
       : {}),

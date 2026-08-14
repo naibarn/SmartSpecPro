@@ -64,6 +64,7 @@ import {
 import {
   VERTICAL_DRAMA_LOCATION_ASSET_STATES,
   VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES,
+  type VerticalDramaLocationCameraView,
   type VerticalDramaLocationCoverageRole,
 } from "@shared/verticalDramaSeries/locationAssets";
 import { mediaGenerationService } from "../services/mediaGenerationService";
@@ -335,6 +336,18 @@ function getLocationMediaUserToken(ctx: { userToken: string | null; user: { id: 
 
 const seriesScope = z.object({ seriesId: z.string().min(1) });
 
+const cameraViewInput = z
+  .object({
+    preset: z.string().trim().max(80).optional(),
+    label: z.string().trim().min(1).max(160),
+    directive: z.string().trim().max(1000).optional(),
+  })
+  .transform(value => ({
+    ...value,
+    ...(value.preset ? { preset: value.preset } : {}),
+    ...(value.directive ? { directive: value.directive } : {}),
+  } satisfies VerticalDramaLocationCameraView));
+
 const assetStateEnum = z.enum(
   VERTICAL_DRAMA_LOCATION_ASSET_STATES as unknown as [string, ...string[]],
 );
@@ -441,6 +454,7 @@ export const verticalDramaLocationsRouter = router({
         selectedImageModelId: z.string().trim().min(1).max(128).optional(),
         coverageRole: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
         gapDescription: z.string().trim().max(500).optional(),
+        cameraView: cameraViewInput.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -509,6 +523,7 @@ export const verticalDramaLocationsRouter = router({
             ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
             : {}),
           ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+          ...(input.cameraView ? { cameraView: input.cameraView } : {}),
           ...(imagePromptMaxChars ? { imagePromptMaxChars } : {}),
         });
       } catch (err) {
@@ -585,6 +600,7 @@ export const verticalDramaLocationsRouter = router({
         // Feature 138 P2 — optional coverage-pack angle directive.
         coverageRole: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
         gapDescription: z.string().trim().max(500).optional(),
+        cameraView: cameraViewInput.optional(),
         // Feature 135 — Hermes Grok media worker (section 09, row 4).
         // Required only when the resolved model is Hermes-transport and the
         // caller has no default Hermes connection for images.
@@ -667,6 +683,7 @@ export const verticalDramaLocationsRouter = router({
               ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
               : {}),
             ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+            ...(input.cameraView ? { cameraView: input.cameraView } : {}),
             imagePromptMaxChars,
           });
         } catch (err) {
@@ -819,7 +836,8 @@ export const verticalDramaLocationsRouter = router({
             __vd_series_id: String(seriesId),
             __vd_location_id: String(locationId),
             ...(input.coverageRole ? { __vd_location_coverage_role: input.coverageRole } : {}),
-            ...(input.gapDescription ? { __vd_location_coverage_gap: input.gapDescription } : {}),
+          ...(input.gapDescription ? { __vd_location_coverage_gap: input.gapDescription } : {}),
+          ...(input.cameraView ? { __vd_location_camera_view: input.cameraView } : {}),
           },
           droppedReferenceCount,
         });
@@ -832,6 +850,7 @@ export const verticalDramaLocationsRouter = router({
           droppedReferenceCount,
           ...(input.coverageRole ? { coverageRole: input.coverageRole } : {}),
           ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+          ...(input.cameraView ? { cameraView: input.cameraView } : {}),
         };
       }
 
@@ -879,6 +898,7 @@ export const verticalDramaLocationsRouter = router({
               __vd_location_id: String(locationId),
               ...(input.coverageRole ? { __vd_location_coverage_role: input.coverageRole } : {}),
               ...(input.gapDescription ? { __vd_location_coverage_gap: input.gapDescription } : {}),
+              ...(input.cameraView ? { __vd_location_camera_view: input.cameraView } : {}),
             },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
@@ -915,6 +935,7 @@ export const verticalDramaLocationsRouter = router({
         creditsUsed: { promptGeneration: promptCreditsUsed, imageRender: imageCreditCost },
         ...(input.coverageRole ? { coverageRole: input.coverageRole } : {}),
         ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+        ...(input.cameraView ? { cameraView: input.cameraView } : {}),
       };
     }),
 
@@ -930,6 +951,7 @@ export const verticalDramaLocationsRouter = router({
         locationId: z.string().min(1),
         role: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
         gapDescription: z.string().trim().max(500).optional(),
+        cameraView: cameraViewInput.optional(),
         selectedImageModelId: z.string().trim().min(1).max(128),
         mcpConnectionId: z.string().max(64).optional(),
         sharedGroupId: z.number().int().positive().optional(),
@@ -953,6 +975,7 @@ export const verticalDramaLocationsRouter = router({
       return routerValue.createCaller(ctx).generateLocationImage({
         ...input,
         coverageRole: input.role,
+        ...(input.cameraView ? { cameraView: input.cameraView } : {}),
       });
     }),
 
