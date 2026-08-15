@@ -67,6 +67,7 @@ const DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY = "smartaihub.desktop-release.bu
 const DESKTOP_RELEASE_BUILD_STALE_AFTER_MS = 30 * 60 * 1000;
 const CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/marketplace-extension/download";
 const WORKER_APP_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/download";
+const WORKER_APP_MAC_SOURCE_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/macos-source/download";
 
 type PublicDashboardRelease = {
   version: string;
@@ -686,6 +687,16 @@ export function DesktopReleasePanel(props: {
     latestUrl: "/api/desktop-releases/worker-app/latest",
     unavailableError: "worker_app_release_unavailable",
   });
+  const {
+    release: workerAppMacSourceRelease,
+    isLoading: workerAppMacSourceLoading,
+    error: workerAppMacSourceError,
+    refresh: refreshWorkerAppMacSourceRelease,
+  } = usePublicDashboardRelease({
+    enabled: variant === "dashboard" && enabled,
+    latestUrl: "/api/desktop-releases/worker-app/macos-source/latest",
+    unavailableError: "worker_app_macos_source_release_unavailable",
+  });
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [buildSubmitting, setBuildSubmitting] = useState(false);
@@ -770,6 +781,7 @@ export function DesktopReleasePanel(props: {
     triggerBuildHistoryRefresh(true);
     refreshMarketplaceExtensionRelease();
     refreshWorkerAppRelease();
+    refreshWorkerAppMacSourceRelease();
   };
 
   const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
@@ -1727,6 +1739,99 @@ export function DesktopReleasePanel(props: {
                     <Download className="mr-2 h-4 w-4" />
                   )}
                   {t("dashboard:desktopReleases.workerApp.download")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-violet-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-100 bg-violet-50 text-violet-700">
+                <Download className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.workerAppMacSource.title")}
+                  </p>
+                  {workerAppMacSourceRelease ? (
+                    <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-700">
+                      {t("dashboard:desktopReleases.version", { version: workerAppMacSourceRelease.version })}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {workerAppMacSourceLoading
+                        ? t("dashboard:desktopReleases.loading")
+                        : t("dashboard:desktopReleases.noRelease")}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    ZIP
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.workerAppMacSource.description")}
+                </p>
+                {workerAppMacSourceRelease ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {workerAppMacSourceRelease.fileName} · {formatBytes(workerAppMacSourceRelease.fileSizeBytes)}
+                  </p>
+                ) : workerAppMacSourceError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {workerAppMacSourceError}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.workerAppMacSource.installHint")}
+                </p>
+                <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/70 p-3 text-xs leading-5 text-slate-700">
+                  <p className="font-semibold text-violet-900">
+                    {t("dashboard:desktopReleases.workerAppMacSource.whatItIs")}
+                  </p>
+                  <p className="mt-2 font-semibold text-slate-800">
+                    {t("dashboard:desktopReleases.workerAppMacSource.requirementsTitle")}
+                  </p>
+                  <p className="mt-1">{t("dashboard:desktopReleases.workerAppMacSource.requirements")}</p>
+                  <p className="mt-2 font-semibold text-slate-800">
+                    {t("dashboard:desktopReleases.workerAppMacSource.stepsTitle")}
+                  </p>
+                  <ol className="mt-1 list-decimal space-y-1 pl-5">
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step1")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step2")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step3")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step4")}</li>
+                    <li>{t("dashboard:desktopReleases.workerAppMacSource.step5")}</li>
+                  </ol>
+                  <p className="mt-2 font-semibold text-slate-800">
+                    {t("dashboard:desktopReleases.workerAppMacSource.commandsTitle")}
+                  </p>
+                  <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-950 p-3 font-mono text-[11px] leading-5 text-slate-100">
+                    <code>{`cd smart-ai-hub-worker-app-macos-source-${workerAppMacSourceRelease?.version ?? "VERSION"}\nnpm install --legacy-peer-deps\nnpm run typecheck --workspace @smartspec/worker-app\nnpm run test --workspace @smartspec/worker-app`}</code>
+                  </pre>
+                  <p className="mt-2 font-medium text-amber-800">
+                    {t("dashboard:desktopReleases.workerAppMacSource.nextBuild")}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {workerAppMacSourceRelease ? (
+                <Button asChild className="bg-violet-700 text-white hover:bg-violet-800">
+                  <a href={workerAppMacSourceRelease.downloadUrl || WORKER_APP_MAC_SOURCE_FALLBACK_DOWNLOAD_URL} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.workerAppMacSource.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {workerAppMacSourceLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.workerAppMacSource.download")}
                 </Button>
               )}
             </div>

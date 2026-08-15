@@ -49,6 +49,7 @@ const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
 const MARKETPLACE_EXTENSION_FILE_PATTERN = /^smartaihub-marketplace-capture-extension-(.+)\.zip$/i;
 const WORKER_APP_FILE_PATTERN = /^smart-ai-hub-worker-app-(.+)-x64-setup\.(exe|msi)$/i;
+const WORKER_APP_MAC_SOURCE_FILE_PATTERN = /^smart-ai-hub-worker-app-macos-source-(.+)\.zip$/i;
 
 fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
 
@@ -283,6 +284,15 @@ function getLatestWorkerAppRelease(): PublicDashboardRelease | null {
   })[0] ?? null;
 }
 
+function getLatestWorkerAppMacSourceRelease(): PublicDashboardRelease | null {
+  return listPublicDashboardReleases({
+    filePattern: WORKER_APP_MAC_SOURCE_FILE_PATTERN,
+    downloadUrl: "/api/desktop-releases/worker-app/macos-source/download",
+    resolveContentType: () => "application/zip",
+    resolveInstallerFormat: () => "zip",
+  })[0] ?? null;
+}
+
 function sendPublicDashboardRelease(res: any, release: PublicDashboardRelease): void {
   res.setHeader("Content-Disposition", buildDownloadDisposition(release.fileName));
   res.setHeader("Content-Type", release.contentType);
@@ -420,6 +430,46 @@ export function createDesktopReleaseRouter(): Router {
     } catch (error) {
       res.status(400).json({
         error: error instanceof Error ? error.message : "failed_to_download_worker_app_release",
+      });
+    }
+  });
+
+  router.get("/worker-app/macos-source/latest", (_req, res) => {
+    try {
+      const release = getLatestWorkerAppMacSourceRelease();
+      res.setHeader("Cache-Control", "no-store");
+      res.json({
+        generatedAt: new Date().toISOString(),
+        release: release
+          ? {
+            version: release.version,
+            fileName: release.fileName,
+            fileSizeBytes: release.fileSizeBytes,
+            updatedAt: release.updatedAt,
+            downloadUrl: release.downloadUrl,
+            installerFormat: release.installerFormat,
+          }
+          : null,
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_list_worker_app_macos_source_release",
+      });
+    }
+  });
+
+  router.get("/worker-app/macos-source/download", (_req, res) => {
+    try {
+      const release = getLatestWorkerAppMacSourceRelease();
+      if (!release) {
+        res.status(404).json({ error: "worker_app_macos_source_release_not_found" });
+        return;
+      }
+
+      sendPublicDashboardRelease(res, release);
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_download_worker_app_macos_source_release",
       });
     }
   });
