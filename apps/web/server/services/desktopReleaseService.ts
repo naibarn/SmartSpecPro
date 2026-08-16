@@ -16,6 +16,7 @@ import {
   type DesktopReleaseChannel,
   type DesktopReleaseInstallerFormat,
   type DesktopReleasePlatform,
+  isDesktopReleaseVersionBlockedFromPublic,
 } from "../../shared/desktopReleases";
 
 type DesktopReleasePublicRow = {
@@ -40,6 +41,7 @@ type DesktopReleasePublicRow = {
 
 type DesktopReleaseStorageRow = {
   id: number;
+  version: string;
   storageKey: string;
   fileName: string;
   contentType: string;
@@ -330,6 +332,7 @@ async function selectStorageRow(id: number): Promise<DesktopReleaseStorageRow | 
   const [row] = await drizzle
     .select({
       id: desktopInstallerReleases.id,
+      version: desktopInstallerReleases.version,
       storageKey: desktopInstallerReleases.storageKey,
       fileName: desktopInstallerReleases.fileName,
       contentType: desktopInstallerReleases.contentType,
@@ -363,6 +366,7 @@ export async function listDesktopReleaseCatalog(input: {
   }
   const mapped = rows
     .map(mapPublicRow)
+    .filter((release) => !input.includeUnpublished || !isDesktopReleaseVersionBlockedFromPublic(release.version))
     .filter((release) => !input.platform || release.platform === input.platform)
     .sort(sortReleasesDescending);
 

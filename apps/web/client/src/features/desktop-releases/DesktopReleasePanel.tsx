@@ -38,6 +38,7 @@ import {
   type DesktopReleaseChannel,
   type DesktopReleaseInstallerFormat,
   type DesktopReleasePlatform,
+  filterDesktopReleaseCatalogForPublic,
 } from "@shared/desktopReleases";
 import {
   desktopReleaseBuildBundleModeValues,
@@ -728,12 +729,18 @@ export function DesktopReleasePanel(props: {
   const lastHistoryRefreshAtRef = useRef(0);
 
   const preferredPlatform = useMemo(() => detectPreferredDesktopPlatform(), []);
-  const primaryRelease = useMemo(
-    () => getPrimaryRelease(catalog, preferredPlatform),
-    [catalog, preferredPlatform],
+  const activeCatalog = useMemo(
+    () => variant === "dashboard" && catalog
+      ? filterDesktopReleaseCatalogForPublic(catalog)
+      : catalog,
+    [catalog, variant],
   );
-  const latestReleases = catalog?.releases ?? [];
-  const hasCatalog = Boolean(catalog);
+  const primaryRelease = useMemo(
+    () => getPrimaryRelease(activeCatalog, preferredPlatform),
+    [activeCatalog, preferredPlatform],
+  );
+  const latestReleases = activeCatalog?.releases ?? [];
+  const hasCatalog = Boolean(activeCatalog);
   const showCatalogLoading = isLoading && !hasCatalog;
   const showCatalogRefreshing = isLoading && hasCatalog;
   const suggestedBuildVersion = useMemo(
@@ -1564,7 +1571,7 @@ export function DesktopReleasePanel(props: {
               </p>
               <div className="mt-3 space-y-2">
                 {desktopReleasePlatformValues.map((candidatePlatform) => {
-                  const release = catalog?.latestByPlatform[candidatePlatform] ?? null;
+                  const release = activeCatalog?.latestByPlatform[candidatePlatform] ?? null;
                   return (
                     <div
                       key={candidatePlatform}

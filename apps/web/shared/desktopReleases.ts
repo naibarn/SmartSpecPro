@@ -61,6 +61,39 @@ export type DesktopReleaseCatalogResponse = z.infer<
   typeof desktopReleaseCatalogResponseSchema
 >;
 
+export const desktopReleasePublicBlockedVersions = ["0.1.4"] as const;
+
+export function isDesktopReleaseVersionBlockedFromPublic(version: string): boolean {
+  return desktopReleasePublicBlockedVersions.includes(
+    version.trim() as (typeof desktopReleasePublicBlockedVersions)[number],
+  );
+}
+
+export function filterDesktopReleaseCatalogForPublic(
+  catalog: DesktopReleaseCatalogResponse,
+): DesktopReleaseCatalogResponse {
+  const releases = catalog.releases.filter(
+    (release) => !isDesktopReleaseVersionBlockedFromPublic(release.version),
+  );
+  const latestByPlatform: DesktopReleaseCatalogResponse["latestByPlatform"] = {
+    windows: null,
+    macos: null,
+    linux: null,
+  };
+
+  for (const release of releases) {
+    if (latestByPlatform[release.platform] == null) {
+      latestByPlatform[release.platform] = release;
+    }
+  }
+
+  return {
+    ...catalog,
+    releases,
+    latestByPlatform,
+  };
+}
+
 export const desktopReleaseUploadRequestSchema = z.object({
   version: z.string().min(1).max(64),
   platform: desktopReleasePlatformSchema,

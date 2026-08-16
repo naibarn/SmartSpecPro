@@ -31,6 +31,7 @@ import {
   desktopReleasePresignResponseSchema,
   desktopReleaseUploadRequestSchema,
   desktopReleaseUploadFinalizeRequestSchema,
+  isDesktopReleaseVersionBlockedFromPublic,
 } from "../../shared/desktopReleases";
 import {
   desktopReleaseBuildRequestSchema,
@@ -578,6 +579,11 @@ export function createDesktopReleaseRouter(): Router {
         return;
       }
       if (!release.isPublished && (!viewer || !isDesktopReleaseAdminRole(viewer.role))) {
+        res.status(404).json({ error: "desktop_release_not_found" });
+        return;
+      }
+      if (isDesktopReleaseVersionBlockedFromPublic(release.version)
+        && (!viewer || !isDesktopReleaseAdminRole(viewer.role))) {
         res.status(404).json({ error: "desktop_release_not_found" });
         return;
       }
