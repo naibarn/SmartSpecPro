@@ -1097,6 +1097,7 @@ export async function generateVideoMotionPromptPack(
         schema: videoMotionPromptPackOutputSchema,
         firstAttemptMaxTokens: 16000,
         retryMaxTokens: 32000,
+        disableModelFallback: true,
       })
     : await executeJsonPlanningCallWithRetry<VideoMotionPromptPackOutput>({
         model,
@@ -2707,7 +2708,16 @@ export async function generateVerticalDramaShotVideoPrompt(
     // Bumped 2000 -> 2600 (frame_analysis headroom); retry ceiling unchanged.
     firstAttemptMaxTokens: 2600,
     retryMaxTokens: 4000,
+    disableModelFallback: true,
   });
+
+  // The retry helper may recover with text-only mode after the selected
+  // vision model fails. Character/image-grounded prompts must not persist that
+  // downgraded result as if the attached frame had been inspected.
+  assertVisionForCharacterGroundedPrompt(
+    outcome.usedVision,
+    hasEstablishedCharacters || Boolean(params.barrierReferenceImage),
+  );
 
   // Keep the source dialogue authoritative when a weak model copies the
   // speaker label into the quoted speech. This is deliberately limited to
@@ -3400,7 +3410,15 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     // Bumped 3000 -> 3600 (frame_analysis headroom); retry ceiling unchanged.
     firstAttemptMaxTokens: 3600,
     retryMaxTokens: 6000,
+    disableModelFallback: true,
   });
+
+  // Keep speaker-switch prompts fail-closed too: a text-only recovery is not
+  // valid when the prompt is grounded in attached character/reference images.
+  assertVisionForCharacterGroundedPrompt(
+    outcome.usedVision,
+    hasEstablishedCharacters || Boolean(params.barrierReferenceImage),
+  );
 
   // Source-backed native dialogue is authoritative. Repair only the narrow
   // failure where a model prefixes a quoted line with its speaker label;
@@ -3987,6 +4005,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
           : [],
       userId: args.userId,
       schema: judgeOutputSchema,
+      disableModelFallback: true,
       firstAttemptMaxTokens: 1200,
       retryMaxTokens: 2000,
     });

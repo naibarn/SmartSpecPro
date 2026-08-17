@@ -1759,6 +1759,13 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
   firstAttemptMaxTokens: number;
   retryMaxTokens: number;
+  /**
+   * Video-prompt generation must not jump to an unrelated catalog model after
+   * a schema/provider hiccup. Its caller already selected the authoritative
+   * Vertical Drama model; provider fallback inside executeWithFallback remains
+   * available for that same model.
+   */
+  disableModelFallback?: boolean;
 }): Promise<{ data: T; response: VisionAwareCallResponse; usedVision: boolean }> {
   try {
     const result = await runVisionAwareJsonAttempt<T>({
@@ -1786,7 +1793,9 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       return { ...result, usedVision: args.hasVision };
     } catch (retryError) {
       if (isProviderUnavailableError(retryError)) throw retryError;
-      const fallbackModel = await resolveVisionAwareFallbackModel(args.model);
+      const fallbackModel = args.disableModelFallback
+        ? null
+        : await resolveVisionAwareFallbackModel(args.model);
       console.warn(
         `[executeVisionAwareJsonCallWithRetry] Retry attempt failed with model ${args.model}.${fallbackModel ? ` Attempting active fallback model ${fallbackModel}...` : " No active vision-capable fallback model is available; attempting text-only mode..."}`,
         retryError instanceof Error ? retryError.message : retryError,

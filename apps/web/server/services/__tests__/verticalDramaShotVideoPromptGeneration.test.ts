@@ -610,14 +610,14 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
       VdSchemaValidationError,
     );
 
-    // Vision-aware retry also exercises a live catalog fallback model and the
-    // final text-only recovery attempt before surfacing the schema error.
-    expect(mockExecute).toHaveBeenCalledTimes(4);
+    // Video-prompt generation must stay on the caller-selected model. Even
+    // when another vision model is present in the live catalog, it must not
+    // silently switch models before the final text-only recovery attempt.
+    expect(mockExecute).toHaveBeenCalledTimes(3);
     expect(mockExecute.mock.calls.map(([request]) => request.model)).toEqual([
       "active-vision-model",
       "active-vision-model",
-      "active-vision-fallback",
-      "active-vision-fallback",
+      "active-vision-model",
     ]);
     expect(mockExecute.mock.calls.some(([request]) => request.model === "gpt-4o-mini")).toBe(false);
     expect(mockDeductCredits).not.toHaveBeenCalled();
