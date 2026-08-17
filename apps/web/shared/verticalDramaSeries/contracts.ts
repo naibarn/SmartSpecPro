@@ -665,6 +665,13 @@ export type VerticalDramaStartFramePlan = {
       skillVersion?: string;
     };
     /**
+     * Human-confirmed physical cast order for the exact current video anchor.
+     * Stable keys are ordered from viewer-left to viewer-right. Multi-character
+     * spoken shots fail closed before prompt/video credit spend when this lock
+     * is missing, stale, or does not cover the exact required cast.
+     */
+    castPositionLock?: import("./castPositionLock").VerticalDramaCastPositionLock;
+    /**
      * Per-shot location override (Phase D, `planning/polished-toasting-
      * gadget.md` — location visual bible). Set via the `setShotLocation`
      * mutation (`verticalDramaEpisodes.ts`) — a pure data patch, no
@@ -1129,6 +1136,8 @@ export type VerticalDramaMotionPromptPack = {
       positionSource?: string;
       facesSeparated?: boolean;
     };
+    /** Snapshot of the exact frame/cast lock used to author this prompt. */
+    castPositionLock?: import("./castPositionLock").VerticalDramaCastPositionLock;
     /**
      * Feature 137 P1 motion contract. Optional for old clips and bulk-pack
      * output. `effectiveRisk` is the maximum of the skill declaration and

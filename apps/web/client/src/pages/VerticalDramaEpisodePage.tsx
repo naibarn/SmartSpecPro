@@ -2950,6 +2950,34 @@ function EpisodeWorkspaceShell({
     );
   }
 
+  const setShotCastPositionLockMutation =
+    trpc.verticalDramaEpisodes.setShotCastPositionLock.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "ยืนยันลำดับตัวละครซ้าย→ขวาแล้ว"
+            : "Left-to-right cast order confirmed.",
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+          seriesId,
+          episodeId,
+        });
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotCastPositionLock(
+    shotNumber: number,
+    orderedCharacterRefs: string[],
+  ) {
+    setShotCastPositionLockMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      orderedCharacterRefs,
+    });
+  }
+
   const [savingShotSupportingPresenceForShot, setSavingShotSupportingPresenceForShot] =
     useState<number | null>(null);
   const setShotSupportingPresenceMutation =
@@ -6871,6 +6899,7 @@ function EpisodeWorkspaceShell({
               setImageSwapTarget({ type: "characterPortrait", characterId }),
             onDropCharacterReference: handleDropCharacterReference,
             onSetShotCharacterReferences: handleSetShotCharacterReferences,
+            onSetShotCastPositionLock: handleSetShotCastPositionLock,
             onSetShotScreenCallerReferences:
               handleSetShotScreenCallerReferences,
             onSetShotSupportingPresence: handleSetShotSupportingPresence,

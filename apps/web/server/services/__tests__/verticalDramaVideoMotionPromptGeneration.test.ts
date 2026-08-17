@@ -2227,6 +2227,54 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     );
   });
 
+  it("treats the user-confirmed cast position lock as authoritative for prompt validation", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+      verticalDramaReady: true,
+    } as any);
+    mockExecute.mockResolvedValue(
+      successResponse(
+        speakerSwitchOutput({
+          prompt:
+            'Alice (viewer-left) says "Why didn\'t you tell me?" while Bob (viewer-right) listens. Bob (viewer-right) says "I was going to." while Alice (viewer-left) listens. Alice (viewer-left) says "That\'s not good enough."',
+          frame_analysis: {
+            people: [
+              { name: "Alice", position: "viewer-right" },
+              { name: "Bob", position: "viewer-right" },
+            ],
+            position_source: "image",
+          },
+        }),
+      ),
+    );
+
+    await expect(
+      generateVerticalDramaShotVideoPromptSpeakerSwitch(
+        baseSpeakerSwitchParams({
+          characterReferenceImages: [
+            { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
+            { characterKey: "bob", name: "Bob", url: "https://example.com/bob.png" },
+          ],
+          verifiedCastPositions: [
+            { characterKey: "alice", name: "Alice", position: "viewer-left" },
+            { characterKey: "bob", name: "Bob", position: "viewer-right" },
+          ],
+        }),
+      ),
+    ).rejects.toThrow("position anchors contradict");
+
+    const retryText = (mockExecute.mock.calls[1][0].messages[1].content as any[])
+      .find((part: any) => part.type === "text")
+      .text;
+    expect(retryText).toContain(
+      "VERIFIED CAST POSITION LOCK (AUTHORITATIVE; user confirmed against the exact attached start frame)",
+    );
+    expect(retryText).toContain("Alice [characterKey=alice]=viewer-left");
+  });
+
   it("rejects an unscoped Dual View frame analysis instead of treating the View 2 speaker as present in Image 1", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,

@@ -493,6 +493,11 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     characterRefs: string[]
   ) => void;
+  /** Persist the user-confirmed viewer-left -> viewer-right cast order. */
+  onSetShotCastPositionLock?: (
+    shotNumber: number,
+    orderedCharacterRefs: string[]
+  ) => void;
   /** Same per-shot override for portraits that must appear only inside a phone/video-call screen. */
   onSetShotScreenCallerReferences?: (
     shotNumber: number,
@@ -1421,6 +1426,9 @@ export function VerticalDramaEpisodeWorkspace({
           onDropCharacterReference={storyboardPanel?.onDropCharacterReference}
           onSetShotCharacterReferences={
             storyboardPanel?.onSetShotCharacterReferences
+          }
+          onSetShotCastPositionLock={
+            storyboardPanel?.onSetShotCastPositionLock
           }
           onSetShotScreenCallerReferences={
             storyboardPanel?.onSetShotScreenCallerReferences
