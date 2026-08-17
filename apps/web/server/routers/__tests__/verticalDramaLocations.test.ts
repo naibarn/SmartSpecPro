@@ -68,7 +68,7 @@ const {
   class MockVerticalDramaLocationStockError extends Error {
     constructor(
       public readonly reason: string,
-      message: string,
+      message: string
     ) {
       super(message);
       this.name = "VerticalDramaLocationStockError";
@@ -117,11 +117,12 @@ vi.mock("../../services/pricingCalculator", () => ({
   calculateCreditCost: mockCalculateCreditCost,
 }));
 
-const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } = vi.hoisted(() => ({
-  mockHasEnoughCredits: vi.fn(),
-  mockDeductCredits: vi.fn(),
-  mockRefundCredits: vi.fn(),
-}));
+const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } =
+  vi.hoisted(() => ({
+    mockHasEnoughCredits: vi.fn(),
+    mockDeductCredits: vi.fn(),
+    mockRefundCredits: vi.fn(),
+  }));
 vi.mock("../../services/creditService", () => ({
   hasEnoughCredits: mockHasEnoughCredits,
   deductCredits: mockDeductCredits,
@@ -147,6 +148,17 @@ const {
 });
 vi.mock("../../services/verticalDramaLocationImageGeneration", () => ({
   generateLocationVisualPrompts: mockGenerateLocationVisualPrompts,
+  buildLocationImageEditPrompt: (params: {
+    locationName: string;
+    description: string;
+    editInstruction: string;
+  }) =>
+    [
+      "IMAGE-TO-IMAGE EDIT",
+      `Location: ${params.locationName}`,
+      `Existing location description: ${params.description}`,
+      `Creator's required edit: ${params.editInstruction}`,
+    ].join("\n"),
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
 }));
@@ -174,7 +186,10 @@ vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
-  mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
+  mediaGenerationLimiter: {
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  },
 }));
 
 const { mockCreateAssetFromAttachment } = vi.hoisted(() => ({
@@ -204,11 +219,16 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 /* imported"). `verticalDramaCharacterStock` is mocked for the same reason    */
 /* even though this router never calls it directly.                          */
 /* -------------------------------------------------------------------------- */
-const { mockGetModelsByTypeAsync } = vi.hoisted(() => ({
-  mockGetModelsByTypeAsync: vi.fn(),
-}));
+const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } =
+  vi.hoisted(() => ({
+    mockGetModelsByTypeAsync: vi.fn(),
+    mockResolveVerticalDramaCapabilities: vi.fn(() => ({
+      maxReferenceImages: 1,
+    })),
+  }));
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
   isDbModelCatalogLoaded: () => true,
 }));
 
@@ -252,7 +272,8 @@ vi.mock("../../services/hermesMediaReferences", () => ({
     creditsUsed: 0,
     createdAt: new Date().toISOString(),
   }),
-  resolveHermesReferenceAssetIdFromUrl: mockResolveHermesReferenceAssetIdFromUrl,
+  resolveHermesReferenceAssetIdFromUrl:
+    mockResolveHermesReferenceAssetIdFromUrl,
   resolveHermesOrderedRefsFromUrls: async (params: {
     tenantId: string;
     userId: number;
@@ -260,7 +281,8 @@ vi.mock("../../services/hermesMediaReferences", () => ({
     roleFor?: (i: number) => string;
     labelFor?: (i: number) => string;
   }) => {
-    const orderedRefs: Array<{ assetId: string; role: string; label: string }> = [];
+    const orderedRefs: Array<{ assetId: string; role: string; label: string }> =
+      [];
     let droppedReferenceCount = 0;
     for (let i = 0; i < params.urls.length; i++) {
       const assetId = await mockResolveHermesReferenceAssetIdFromUrl({
@@ -294,7 +316,7 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   VerticalDramaCharacterStockError: class extends Error {
     constructor(
       public readonly reason: string,
-      message: string,
+      message: string
     ) {
       super(message);
     }
@@ -303,10 +325,21 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
 
 import { verticalDramaLocationsRouter } from "../verticalDramaLocations";
 
-const router = verticalDramaLocationsRouter as unknown as Record<string, Function>;
+const router = verticalDramaLocationsRouter as unknown as Record<
+  string,
+  Function
+>;
 
-function ctx(overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}) {
-  return { tenantId: "tenant-1", user: { id: 42 }, userToken: "session-token", publicUrl: undefined, ...overrides };
+function ctx(
+  overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}
+) {
+  return {
+    tenantId: "tenant-1",
+    user: { id: 42 },
+    userToken: "session-token",
+    publicUrl: undefined,
+    ...overrides,
+  };
 }
 
 /** Thenable select-chain stub — resolves at ANY point in the chain, same
@@ -331,7 +364,12 @@ function updateChain(returned: unknown[]) {
 }
 
 const SERIES_ROW = { id: 10 };
-const SERIES_CONTEXT_ROW = { title: "Sisters of the Silk Market", genre: "family drama", tone: "warm", bible: null };
+const SERIES_CONTEXT_ROW = {
+  title: "Sisters of the Silk Market",
+  genre: "family drama",
+  tone: "warm",
+  bible: null,
+};
 const LOCATION_ROW = {
   id: 5,
   tenantId: "tenant-1",
@@ -346,7 +384,8 @@ const LOCATION_ROW = {
 
 function visualPromptResult(overrides: Partial<Record<string, unknown>> = {}) {
   return {
-    establishingPlatePrompt: "wide establishing shot, environment only, no people: ...",
+    establishingPlatePrompt:
+      "wide establishing shot, environment only, no people: ...",
     negativePrompt: "no people, no human figures",
     raw: { contract_version: 1 },
     creditsUsed: 2,
@@ -357,9 +396,12 @@ function visualPromptResult(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: false });
+  mockGetTenantFeatureFlags.mockResolvedValue({
+    verticalDramaSeriesPresetMixV2: false,
+  });
   mockGetPrimaryReferenceUrl.mockResolvedValue(undefined);
   mockGetPrimaryReferenceAssetId.mockResolvedValue(undefined);
+  mockListLocationAssets.mockResolvedValue([]);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockGenerateImageAsync.mockResolvedValue({ id: "task-1" });
@@ -374,12 +416,19 @@ describe("list", () => {
   it("returns the roster with primaryReferenceUrl, delegating entirely to listRows", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW])); // loadOwnedSeries
     mockListRows.mockResolvedValue([
-      { ...LOCATION_ROW, primaryReferenceUrl: "https://cdn.example.com/store-plate.png" },
+      {
+        ...LOCATION_ROW,
+        primaryReferenceUrl: "https://cdn.example.com/store-plate.png",
+      },
     ]);
 
     const result = await router.list({ ctx: ctx(), input: { seriesId: "10" } });
 
-    expect(mockListRows).toHaveBeenCalledWith({ tenantId: "tenant-1", userId: 42, seriesId: 10 });
+    expect(mockListRows).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+    });
     expect(result.locations).toHaveLength(1);
     expect(result.locations[0]).toMatchObject({
       locationId: "5",
@@ -400,10 +449,54 @@ describe("list", () => {
     expect(result.locations[0].primaryReferenceUrl).toBeUndefined();
   });
 
+  it("returns approved alternate camera views in the dedicated scene roster", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
+    mockListRows.mockResolvedValue([{ ...LOCATION_ROW }]);
+    mockListLocationAssets.mockResolvedValueOnce([
+      {
+        assetLinkId: 701,
+        mediaAssetId: 801,
+        url: "https://cdn.example.com/store-reverse.png",
+        approved: true,
+        isPrimary: false,
+        role: "reverse_angle",
+        metadata: null,
+        updatedAt: new Date("2026-08-17T00:00:00.000Z"),
+      },
+      {
+        assetLinkId: 702,
+        mediaAssetId: 802,
+        url: "https://cdn.example.com/store-pending.png",
+        approved: false,
+        isPrimary: false,
+        role: "side_angle",
+        metadata: null,
+        updatedAt: new Date("2026-08-17T00:00:00.000Z"),
+      },
+    ]);
+
+    const result = await router.list({
+      ctx: ctx(),
+      input: { seriesId: "10" },
+    });
+
+    expect(result.locations[0].cameraVariants).toEqual([
+      {
+        variantId: "701",
+        label: "Reverse view",
+        role: "reverse_angle",
+        url: "https://cdn.example.com/store-reverse.png",
+        approved: true,
+      },
+    ]);
+  });
+
   it("throws NOT_FOUND when the series is not owned by the caller", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([])); // loadOwnedSeries — no row
 
-    await expect(router.list({ ctx: ctx(), input: { seriesId: "10" } })).rejects.toMatchObject({
+    await expect(
+      router.list({ ctx: ctx(), input: { seriesId: "10" } })
+    ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     expect(mockListRows).not.toHaveBeenCalled();
@@ -435,13 +528,14 @@ describe("previewLocationPrompt", () => {
         locationKey: "loc_convenience_store",
         locationName: "ร้านสะดวกซื้อ",
         description: "แถวชั้นวางของเด็ก แสงไฟนีออนสีขาวจากเพดาน",
-        seriesContext: "Series title: Sisters of the Silk Market | Genre: family drama | Tone: warm",
+        seriesContext:
+          "Series title: Sisters of the Silk Market | Genre: family drama | Tone: warm",
         hasOwnReferenceImage: true,
-      }),
+      })
     );
     expect(result).toEqual({
-      establishingPlatePrompt: "wide establishing shot, environment only, no people: ...",
-      negativePrompt: "no people, no human figures",
+      establishingPlatePrompt:
+        "wide establishing shot, environment only, no people: ...\n\nAvoid: no people, no human figures",
       model: "gpt-4o-mini",
     });
   });
@@ -473,7 +567,10 @@ describe("previewLocationPrompt", () => {
       .mockReturnValueOnce(selectChain([])); // loadOwnedLocation — no row
 
     await expect(
-      router.previewLocationPrompt({ ctx: ctx(), input: { seriesId: "10", locationId: "999" } }),
+      router.previewLocationPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", locationId: "999" },
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mockGenerateLocationVisualPrompts).not.toHaveBeenCalled();
   });
@@ -484,11 +581,14 @@ describe("previewLocationPrompt", () => {
       .mockReturnValueOnce(selectChain([LOCATION_ROW]))
       .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]));
     mockGenerateLocationVisualPrompts.mockRejectedValueOnce(
-      new MockInsufficientCreditsError("insufficient credits"),
+      new MockInsufficientCreditsError("insufficient credits")
     );
 
     await expect(
-      router.previewLocationPrompt({ ctx: ctx(), input: { seriesId: "10", locationId: "5" } }),
+      router.previewLocationPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", locationId: "5" },
+      })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
@@ -497,10 +597,15 @@ describe("previewLocationPrompt", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([LOCATION_ROW]))
       .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]));
-    mockGenerateLocationVisualPrompts.mockRejectedValueOnce(new MockVdSchemaValidationError("bad schema"));
+    mockGenerateLocationVisualPrompts.mockRejectedValueOnce(
+      new MockVdSchemaValidationError("bad schema")
+    );
 
     await expect(
-      router.previewLocationPrompt({ ctx: ctx(), input: { seriesId: "10", locationId: "5" } }),
+      router.previewLocationPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", locationId: "5" },
+      })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
   });
 });
@@ -533,7 +638,6 @@ describe("generateLocationImage", () => {
         locationId: "5",
         selectedImageModelId: "google-banana-2-lite",
         approvedPrompt: "already-approved establishing plate prompt",
-        approvedNegativePrompt: "no people",
       },
     });
 
@@ -541,7 +645,7 @@ describe("generateLocationImage", () => {
     expect(mockGenerateImageAsync).toHaveBeenCalledTimes(1);
     const [request] = mockGenerateImageAsync.mock.calls[0];
     expect(request.prompt).toBe("already-approved establishing plate prompt");
-    expect(request.negativePrompt).toBe("no people");
+    expect(request).not.toHaveProperty("negativePrompt");
     expect(request.aspectRatio).toBe("16:9");
     expect(result.taskId).toBe("task-1");
     expect(result.creditsUsed).toEqual({ promptGeneration: 0, imageRender: 5 });
@@ -556,12 +660,18 @@ describe("generateLocationImage", () => {
 
     const result = await router.generateLocationImage({
       ctx: ctx(),
-      input: { seriesId: "10", locationId: "5", selectedImageModelId: "google-banana-2-lite" },
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        selectedImageModelId: "google-banana-2-lite",
+      },
     });
 
     expect(mockGenerateLocationVisualPrompts).toHaveBeenCalledTimes(1);
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.prompt).toBe("wide establishing shot, environment only, no people: ...");
+    expect(request.prompt).toBe(
+      "wide establishing shot, environment only, no people: ...\n\nAvoid: no people, no human figures"
+    );
     expect(result.creditsUsed).toEqual({ promptGeneration: 2, imageRender: 5 });
   });
 
@@ -587,12 +697,13 @@ describe("generateLocationImage", () => {
       expect.objectContaining({
         coverageRole: "side_angle",
         gapDescription: "the fixed checkout counter must remain visible",
-      }),
+      })
     );
     const [request] = mockGenerateImageAsync.mock.calls[0];
     expect(request.extraParams).toMatchObject({
       __vd_location_coverage_role: "side_angle",
-      __vd_location_coverage_gap: "the fixed checkout counter must remain visible",
+      __vd_location_coverage_gap:
+        "the fixed checkout counter must remain visible",
     });
     expect(result.coverageRole).toBe("side_angle");
   });
@@ -602,7 +713,9 @@ describe("generateLocationImage", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([LOCATION_ROW]))
       .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
 
     await router.generateLocationImage({
       ctx: ctx(),
@@ -615,7 +728,103 @@ describe("generateLocationImage", () => {
     });
 
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/store-plate.png"]);
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/store-plate.png",
+    ]);
+    expect(request.auditContext).toMatchObject({
+      userId: 42,
+      tenantId: "tenant-1",
+    });
+  });
+
+  it("uses deterministic image-to-image editing, keeps the creator instruction intact, and records the source", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
+    mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(501);
+
+    const result = await router.generateLocationImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        selectedImageModelId: "google-banana-2-lite",
+        editInstruction:
+          "เปลี่ยนโต๊ะริมหน้าต่างเป็นโต๊ะไม้สีเข้ม แต่คงหน้าต่างและแสงเดิมไว้",
+        cameraView: {
+          preset: "custom",
+          label: "โต๊ะริมหน้าต่าง",
+          directive: "camera faces the window-side table",
+        },
+      },
+    });
+
+    expect(mockGenerateLocationVisualPrompts).not.toHaveBeenCalled();
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/store-plate.png",
+    ]);
+    expect(request.prompt).toContain("IMAGE-TO-IMAGE EDIT");
+    expect(request.prompt).toContain("เปลี่ยนโต๊ะริมหน้าต่างเป็นโต๊ะไม้สีเข้ม");
+    expect(request.extraParams).toMatchObject({
+      __vd_location_generation_mode: "image_to_image",
+      __vd_location_edit_instruction:
+        "เปลี่ยนโต๊ะริมหน้าต่างเป็นโต๊ะไม้สีเข้ม แต่คงหน้าต่างและแสงเดิมไว้",
+      __vd_location_source_media_asset_id: "501",
+    });
+    expect(result).toMatchObject({
+      generationMode: "image_to_image",
+      sourceMediaAssetId: "501",
+    });
+  });
+
+  it("fails closed when the selected image model does not support reference editing", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
+    mockResolveVerticalDramaCapabilities.mockReturnValueOnce({
+      maxReferenceImages: 0,
+    });
+
+    await expect(
+      router.generateLocationImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          selectedImageModelId: "google-banana-2-lite",
+          editInstruction: "เปลี่ยนสีผนัง",
+        },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("does not degrade an edit request to text-to-image when the primary image is missing", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]));
+
+    await expect(
+      router.generateLocationImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          selectedImageModelId: "google-banana-2-lite",
+          editInstruction: "เพิ่มโคมไฟ",
+        },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
   });
 
   it("skips the reserve/refund cycle entirely for a zero-cost model", async () => {
@@ -645,7 +854,9 @@ describe("generateLocationImage", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([LOCATION_ROW]))
       .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
-    mockGenerateImageAsync.mockRejectedValueOnce(new Error("provider unavailable"));
+    mockGenerateImageAsync.mockRejectedValueOnce(
+      new Error("provider unavailable")
+    );
 
     await expect(
       router.generateLocationImage({
@@ -656,7 +867,7 @@ describe("generateLocationImage", () => {
           selectedImageModelId: "google-banana-2-lite",
           approvedPrompt: "approved prompt",
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
     expect(mockRefundCredits).toHaveBeenCalledTimes(1);
@@ -676,7 +887,7 @@ describe("generateLocationImage", () => {
           selectedImageModelId: "google-banana-2-lite",
           approvedPrompt: "x",
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
@@ -702,7 +913,11 @@ describe("generateLocationImage — image-model picker (model-picker parity plan
     await expect(
       router.generateLocationImage({
         ctx: ctx(),
-        input: { seriesId: "10", locationId: "5", approvedPrompt: "approved prompt" },
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          approvedPrompt: "approved prompt",
+        },
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
@@ -758,7 +973,7 @@ describe("generateLocationImage — image-model picker (model-picker parity plan
           approvedPrompt: "approved prompt",
           selectedImageModelId: "does-not-exist",
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockGenerateImageAsync).not.toHaveBeenCalled();
@@ -782,7 +997,7 @@ describe("generateLocationImage — image-model picker (model-picker parity plan
           approvedPrompt: "approved prompt",
           selectedImageModelId: "google-banana-2-lite",
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockGenerateImageAsync).not.toHaveBeenCalled();
@@ -824,10 +1039,13 @@ describe("generateLocationImage — image-model picker (model-picker parity plan
         requestedTransport: "mcp",
         mcpConnectionId: "conn-123",
         providerKey: "higgsfield",
-      }),
+      })
     );
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.transportMetadata).toMatchObject({ transport: "mcp", providerKey: "higgsfield" });
+    expect(request.transportMetadata).toMatchObject({
+      transport: "mcp",
+      providerKey: "higgsfield",
+    });
   });
 
   it("rejects with BAD_REQUEST when an MCP-transport model is selected without a connected mcpConnectionId (fails BEFORE reserving credits)", async () => {
@@ -850,7 +1068,7 @@ describe("generateLocationImage — image-model picker (model-picker parity plan
           selectedImageModelId: "higgsfield/nano-banana-pro",
           // mcpConnectionId intentionally omitted
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockResolveMediaTransport).not.toHaveBeenCalled();
@@ -874,7 +1092,9 @@ describe("generateLocationImage — Hermes transport (section 09, row 4)", () =>
     // never leak into this suite's own sequence.
     mockDb.select.mockReset();
     mockGetModelsByTypeAsync.mockReset();
-    mockQueueHermesMediaJob.mockReset().mockResolvedValue({ created: true, taskId: "hermes_job-1", job: {} });
+    mockQueueHermesMediaJob
+      .mockReset()
+      .mockResolvedValue({ created: true, taskId: "hermes_job-1", job: {} });
     mockBuildHermesMediaReferences.mockReset().mockResolvedValue([]);
     mockListHermesConnections.mockReset().mockResolvedValue([]);
   });
@@ -890,9 +1110,12 @@ describe("generateLocationImage — Hermes transport (section 09, row 4)", () =>
         selectChain([
           {
             creditCost: 0,
-            configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+            configJson: {
+              transport: "hermes_worker",
+              hermes: { providerModelId: "grok-imagine-image" },
+            },
           },
-        ]),
+        ])
       );
 
     const result = await router.generateLocationImage({
@@ -917,7 +1140,7 @@ describe("generateLocationImage — Hermes transport (section 09, row 4)", () =>
         connectionId: "hermes-conn-1",
         tenantId: "tenant-1",
         requestedByUserId: 42,
-      }),
+      })
     );
     expect(result.taskId).toBe("hermes_job-1");
     expect(result.creditsUsed.imageRender).toBe(0);
@@ -935,9 +1158,12 @@ describe("generateLocationImage — Hermes transport (section 09, row 4)", () =>
         selectChain([
           {
             creditCost: 0,
-            configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+            configJson: {
+              transport: "hermes_worker",
+              hermes: { providerModelId: "grok-imagine-image" },
+            },
           },
-        ]),
+        ])
       );
 
     await expect(
@@ -950,7 +1176,7 @@ describe("generateLocationImage — Hermes transport (section 09, row 4)", () =>
           selectedImageModelId: "hermes-grok/grok-imagine-image",
           // hermesConnectionId intentionally omitted
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockQueueHermesMediaJob).not.toHaveBeenCalled();
@@ -995,7 +1221,7 @@ describe("listLocationAssets", () => {
 
     expect(mockListLocationAssets).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
-      5,
+      5
     );
     expect(result).toEqual({
       assets: [
@@ -1029,9 +1255,44 @@ describe("listLocationAssets", () => {
       .mockReturnValueOnce(selectChain([])); // loadOwnedLocation — no row
 
     await expect(
-      router.listLocationAssets({ ctx: ctx(), input: { seriesId: "10", locationId: "999" } }),
+      router.listLocationAssets({
+        ctx: ctx(),
+        input: { seriesId: "10", locationId: "999" },
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mockListLocationAssets).not.toHaveBeenCalled();
+  });
+});
+
+describe("linkAsset primary preservation", () => {
+  it("pins the previous primary after linking an edited candidate", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]));
+    const asset = {
+      assetLinkId: 902,
+      mediaAssetId: 502,
+      role: "establishing_plate",
+    };
+    mockLinkAsset.mockResolvedValueOnce(asset);
+
+    const result = await router.linkAsset({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        mediaAssetId: "502",
+        source: "generated",
+        preservePrimaryAssetLinkId: "901",
+      },
+    });
+
+    expect(mockSetPrimaryAsset).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      5,
+      901
+    );
+    expect(result).toEqual({ asset });
   });
 });
 
@@ -1050,7 +1311,7 @@ describe("setPrimaryLocationAsset", () => {
     expect(mockSetPrimaryAsset).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
       5,
-      901,
+      901
     );
     expect(result).toEqual({ ok: true });
   });
@@ -1064,7 +1325,7 @@ describe("setPrimaryLocationAsset", () => {
       router.setPrimaryLocationAsset({
         ctx: ctx(),
         input: { seriesId: "10", locationId: "999", assetLinkId: "901" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(mockSetPrimaryAsset).not.toHaveBeenCalled();
   });
@@ -1088,59 +1349,86 @@ describe("VerticalDramaLocationStockError -> generic NOT_FOUND mapping (security
     "illegal_state_transition",
   ];
 
-  it.each(REASONS)("linkAsset: reason=%s maps to a generic NOT_FOUND, never leaking the reason string", async reason => {
-    mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW])); // loadOwnedSeries
-    mockLinkAsset.mockRejectedValueOnce(
-      new MockVerticalDramaLocationStockError(reason, `Referenced media asset belongs to another ${reason}`),
-    );
+  it.each(REASONS)(
+    "linkAsset: reason=%s maps to a generic NOT_FOUND, never leaking the reason string",
+    async reason => {
+      mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW])); // loadOwnedSeries
+      mockLinkAsset.mockRejectedValueOnce(
+        new MockVerticalDramaLocationStockError(
+          reason,
+          `Referenced media asset belongs to another ${reason}`
+        )
+      );
 
-    let caught: any;
-    try {
-      await router.linkAsset({
-        ctx: ctx(),
-        input: { seriesId: "10", mediaAssetId: "77", source: "imported" },
-      });
-    } catch (err) {
-      caught = err;
+      let caught: any;
+      try {
+        await router.linkAsset({
+          ctx: ctx(),
+          input: { seriesId: "10", mediaAssetId: "77", source: "imported" },
+        });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toMatchObject({ code: "NOT_FOUND" });
+      // The specific machine-readable reason (e.g. "cross_tenant") must NEVER
+      // appear in the client-visible message — this is the actual security
+      // assertion, not just the error code.
+      expect(String(caught.message)).not.toContain(reason);
+      expect(String(caught.message).toLowerCase()).not.toContain("tenant");
+      expect(String(caught.message).toLowerCase()).not.toContain("cross");
     }
-    expect(caught).toMatchObject({ code: "NOT_FOUND" });
-    // The specific machine-readable reason (e.g. "cross_tenant") must NEVER
-    // appear in the client-visible message — this is the actual security
-    // assertion, not just the error code.
-    expect(String(caught.message)).not.toContain(reason);
-    expect(String(caught.message).toLowerCase()).not.toContain("tenant");
-    expect(String(caught.message).toLowerCase()).not.toContain("cross");
-  });
+  );
 
-  it.each(REASONS)("approveAsset: reason=%s maps to a generic NOT_FOUND", async reason => {
-    mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
-    mockTransition.mockRejectedValueOnce(new MockVerticalDramaLocationStockError(reason, `boom ${reason}`));
+  it.each(REASONS)(
+    "approveAsset: reason=%s maps to a generic NOT_FOUND",
+    async reason => {
+      mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
+      mockTransition.mockRejectedValueOnce(
+        new MockVerticalDramaLocationStockError(reason, `boom ${reason}`)
+      );
 
-    await expect(
-      router.approveAsset({ ctx: ctx(), input: { seriesId: "10", assetLinkId: "9" } }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
-  });
+      await expect(
+        router.approveAsset({
+          ctx: ctx(),
+          input: { seriesId: "10", assetLinkId: "9" },
+        })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  );
 
-  it.each(REASONS)("transitionAsset: reason=%s maps to a generic NOT_FOUND (not PRECONDITION_FAILED, even for illegal_state_transition)", async reason => {
-    mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
-    mockTransition.mockRejectedValueOnce(new MockVerticalDramaLocationStockError(reason, `boom ${reason}`));
+  it.each(REASONS)(
+    "transitionAsset: reason=%s maps to a generic NOT_FOUND (not PRECONDITION_FAILED, even for illegal_state_transition)",
+    async reason => {
+      mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
+      mockTransition.mockRejectedValueOnce(
+        new MockVerticalDramaLocationStockError(reason, `boom ${reason}`)
+      );
 
-    await expect(
-      router.transitionAsset({
-        ctx: ctx(),
-        input: { seriesId: "10", assetLinkId: "9", to: "approved" },
-      }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
-  });
+      await expect(
+        router.transitionAsset({
+          ctx: ctx(),
+          input: { seriesId: "10", assetLinkId: "9", to: "approved" },
+        })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  );
 
-  it.each(REASONS)("deleteAsset: reason=%s maps to a generic NOT_FOUND", async reason => {
-    mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
-    mockDeleteAsset.mockRejectedValueOnce(new MockVerticalDramaLocationStockError(reason, `boom ${reason}`));
+  it.each(REASONS)(
+    "deleteAsset: reason=%s maps to a generic NOT_FOUND",
+    async reason => {
+      mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
+      mockDeleteAsset.mockRejectedValueOnce(
+        new MockVerticalDramaLocationStockError(reason, `boom ${reason}`)
+      );
 
-    await expect(
-      router.deleteAsset({ ctx: ctx(), input: { seriesId: "10", assetLinkId: "9" } }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
-  });
+      await expect(
+        router.deleteAsset({
+          ctx: ctx(),
+          input: { seriesId: "10", assetLinkId: "9" },
+        })
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    }
+  );
 
   it.each(REASONS)(
     "setPrimaryLocationAsset: reason=%s maps to a generic NOT_FOUND, never leaking the reason string",
@@ -1149,7 +1437,7 @@ describe("VerticalDramaLocationStockError -> generic NOT_FOUND mapping (security
         .mockReturnValueOnce(selectChain([SERIES_ROW])) // loadOwnedSeries
         .mockReturnValueOnce(selectChain([LOCATION_ROW])); // loadOwnedLocation
       mockSetPrimaryAsset.mockRejectedValueOnce(
-        new MockVerticalDramaLocationStockError(reason, `boom ${reason}`),
+        new MockVerticalDramaLocationStockError(reason, `boom ${reason}`)
       );
 
       let caught: any;
@@ -1163,18 +1451,20 @@ describe("VerticalDramaLocationStockError -> generic NOT_FOUND mapping (security
       }
       expect(caught).toMatchObject({ code: "NOT_FOUND" });
       expect(String(caught.message)).not.toContain(reason);
-    },
+    }
   );
 
   it("a non-stock-error (e.g. a genuine programming error) is rethrown unchanged, not masked as NOT_FOUND", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
-    mockLinkAsset.mockRejectedValueOnce(new Error("unexpected DB connection failure"));
+    mockLinkAsset.mockRejectedValueOnce(
+      new Error("unexpected DB connection failure")
+    );
 
     await expect(
       router.linkAsset({
         ctx: ctx(),
         input: { seriesId: "10", mediaAssetId: "77", source: "imported" },
-      }),
+      })
     ).rejects.toMatchObject({ message: "unexpected DB connection failure" });
   });
 });

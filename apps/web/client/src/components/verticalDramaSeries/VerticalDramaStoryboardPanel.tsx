@@ -54,6 +54,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { trpc } from "@/lib/trpc";
 import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import {
@@ -625,7 +626,7 @@ export interface VerticalDramaStartFramePlanFrame {
   barrierMultiView?: VerticalDramaBarrierMultiView;
   productReferenceAssetIds?: string[];
   approvedMediaAssetId?: string;
-  imageStaleReason?: "prompt_changed";
+  imageStaleReason?: "prompt_changed" | "location_variant_changed";
   imageStaleAt?: string;
   /** Per-shot location override (Phase D, `planning/polished-toasting-
    *  gadget.md` — location visual bible), set via the `setShotLocation`
@@ -635,6 +636,8 @@ export interface VerticalDramaStartFramePlanFrame {
    *  type. Absent means "no override" — the effective location falls back
    *  to the storyboard's own `distinct_locations[]` grouping for this shot. */
   locationKey?: string;
+  /** Approved location camera variant selected for this shot. */
+  locationVariantId?: string;
   sceneAnchor?: VerticalDramaShotSceneAnchorView;
   angleGrid?: VerticalDramaAngleGridView;
   imageTask?: VerticalDramaImageTaskView;
@@ -894,6 +897,16 @@ export interface VerticalDramaEpisodeLocationView {
   name: string;
   primaryReferenceUrl?: string;
   locationId?: string;
+  /** Approved alternate camera views for this physical location. */
+  cameraVariants?: VerticalDramaLocationCameraVariantView[];
+}
+
+export interface VerticalDramaLocationCameraVariantView {
+  variantId: string;
+  label: string;
+  role: string;
+  url: string;
+  approved: boolean;
 }
 
 /**
@@ -1195,7 +1208,10 @@ interface VerticalDramaStoryboardPanelProps {
     characterRefs: string[]
   ) => void;
   /** Persist the user-confirmed viewer-left -> viewer-right cast order. */
-  onSetShotCastPositionLock?: (shotNumber: number, orderedCharacterRefs: string[]) => void;
+  onSetShotCastPositionLock?: (
+    shotNumber: number,
+    orderedCharacterRefs: string[]
+  ) => void;
   /** Same per-shot override, but for callers whose portraits appear only inside a phone/video-call screen. */
   onSetShotScreenCallerReferences?: (
     shotNumber: number,
@@ -1238,6 +1254,11 @@ interface VerticalDramaStoryboardPanelProps {
    * The caller wires this straight to the `setShotLocation` mutation.
    */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
+  /** Select an approved camera view within the shot's effective location. */
+  onSetShotLocationVariant?: (
+    shotNumber: number,
+    locationVariantId: string | null
+  ) => void;
   onSetShotBarrierReferenceLocation?: (
     shotNumber: number,
     locationKey: string
@@ -1786,6 +1807,73 @@ function StoryboardMetaSection({
   );
 }
 
+/**
+ * The storyboard is consumed by image/video models, so a phone caller must
+ * have an unambiguous visual grammar in the review surface too: one portrait
+ * inside one vertical phone frame per caller. Keeping this as a presentational
+ * component prevents the caller row from silently regressing to a plain
+ * character chip when the surrounding shot card changes.
+ */
+function SpokenCallerVirtualScreen({
+  shotNumber,
+  callerKey,
+  portrait,
+  locale,
+}: {
+  shotNumber: number;
+  callerKey: string;
+  portrait?: VerticalDramaCharacterPortraitMap[string];
+  locale: Lang;
+}) {
+  const callerName = portrait?.variantLabel ?? portrait?.name ?? callerKey;
+  return (
+    <div
+      className="flex w-24 flex-col items-center gap-1.5 text-center text-[10px]"
+      data-testid={`vd-storyboard-virtual-phone-screen-${shotNumber}-${callerKey}`}
+      data-orientation="vertical"
+      aria-label={t(
+        locale,
+        `หน้าจอโทรศัพท์แนวตั้งของ ${callerName}`,
+        `Vertical phone screen for ${callerName}`
+      )}
+    >
+      <div className="relative w-20 rounded-[1.15rem] border-[3px] border-slate-800 bg-slate-950 p-1 shadow-md dark:border-slate-600">
+        <div className="relative aspect-[9/16] overflow-hidden rounded-[0.85rem] bg-muted">
+          {portrait?.portraitUrl ? (
+            <AuthenticatedMediaImage
+              src={portrait.portraitUrl}
+              alt={t(
+                locale,
+                `ใบหน้าของ ${callerName} ในสายโทรศัพท์`,
+                `${callerName} on the phone`
+              )}
+              className="h-full w-full object-cover object-top"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-lg text-muted-foreground">
+              ?
+            </span>
+          )}
+          <span className="absolute left-1 top-1 rounded-full bg-red-500/90 px-1 py-0.5 text-[7px] font-semibold tracking-wide text-white">
+            LIVE
+          </span>
+          <span className="absolute inset-x-1 bottom-1 truncate rounded bg-black/65 px-1 py-0.5 text-[8px] text-white">
+            {callerName}
+          </span>
+        </div>
+        <span className="pointer-events-none absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-slate-600" />
+      </div>
+      <span className="w-full truncate">{callerName}</span>
+      <Badge
+        variant="outline"
+        className="border-sky-300 px-1 py-0 text-[9px] text-sky-700 dark:text-sky-200"
+      >
+        {t(locale, "Virtual screen", "Virtual screen")}
+      </Badge>
+    </div>
+  );
+}
+
 /** Client-facing view of `VerticalDramaCompiledVideoState`
  *  (`@shared/verticalDramaSeries`) — re-declared locally (not imported) so
  *  this presentational panel stays decoupled from the shared package import,
@@ -1841,6 +1929,7 @@ export function VerticalDramaStoryboardPanel({
   savingShotCharacterReferencesForShot = null,
   savingShotSupportingPresenceForShot = null,
   onSetShotLocation,
+  onSetShotLocationVariant,
   onSetShotBarrierReferenceLocation,
   sceneContinuityEnabled = false,
   sceneContinuityQcEnabled = false,
@@ -2901,6 +2990,7 @@ export function VerticalDramaStoryboardPanel({
             seriesId={seriesId}
             locale={locale}
             distinctLocations={storyboard.distinct_locations}
+            episodeLocations={episodeLocations}
             sceneContinuityEnabled={sceneContinuityEnabled}
             sceneContinuityQcEnabled={sceneContinuityQcEnabled}
             sceneVisualStates={startFramePlan?.sceneVisualStates}
@@ -3392,7 +3482,7 @@ export function VerticalDramaStoryboardPanel({
                   </div>
                 ) : null}
                 {portrait.portraitUrl ? (
-                  <img
+                  <AuthenticatedMediaImage
                     src={portrait.portraitUrl}
                     alt={portrait.name}
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
@@ -3849,11 +3939,12 @@ export function VerticalDramaStoryboardPanel({
           const videoSafetyNeedsReview =
             (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
             (!videoSafetyIsCurrent || videoSafetyVerdict !== "safe");
-          const castPositionLockIsCurrent = validateVerticalDramaCastPositionLock({
-            lock: frame?.castPositionLock,
-            activeAssetId: selectedVideoAnchorAssetId,
-            requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
-          }).valid;
+          const castPositionLockIsCurrent =
+            validateVerticalDramaCastPositionLock({
+              lock: frame?.castPositionLock,
+              activeAssetId: selectedVideoAnchorAssetId,
+              requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
+            }).valid;
           const castPositionLockNeedsReview =
             !barrierMultiView &&
             (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
@@ -3958,7 +4049,7 @@ export function VerticalDramaStoryboardPanel({
                       </div>
                     ) : asset?.thumbnailUrl || asset?.url ? (
                       <>
-                        <img
+                        <AuthenticatedMediaImage
                           src={asset.thumbnailUrl ?? asset.url}
                           alt={t(
                             locale,
@@ -4009,7 +4100,14 @@ export function VerticalDramaStoryboardPanel({
                                 "พรอมต์เปลี่ยนแล้ว ต้องสร้างภาพใหม่",
                                 "Prompt changed — generate a new image"
                               )
-                            : t(locale, "ยังไม่มีภาพ", "No image yet")}
+                            : frame?.imageStaleReason ===
+                                "location_variant_changed"
+                              ? t(
+                                  locale,
+                                  "เปลี่ยนมุมกล้องสถานที่แล้ว ต้องสร้างภาพใหม่",
+                                  "Location camera view changed — generate a new image"
+                                )
+                              : t(locale, "ยังไม่มีภาพ", "No image yet")}
                         </span>
                       </div>
                     )}
@@ -4031,7 +4129,7 @@ export function VerticalDramaStoryboardPanel({
                       className="flex items-center gap-2 rounded-md border border-sky-400/50 bg-sky-50/50 p-1.5 dark:bg-sky-950/20"
                       data-testid={`vd-storyboard-video-start-frame-${shotNumber}`}
                     >
-                      <img
+                      <AuthenticatedMediaImage
                         src={
                           videoStartAsset.thumbnailUrl ?? videoStartAsset.url
                         }
@@ -4180,7 +4278,11 @@ export function VerticalDramaStoryboardPanel({
                           className="gap-1 border-amber-400 px-1.5 py-0 text-[9px] text-amber-700 dark:text-amber-300"
                           data-testid={`vd-storyboard-cast-position-review-${shotNumber}`}
                         >
-                          {t(locale, "ต้องยืนยันซ้าย→ขวา", "Confirm left→right cast")}
+                          {t(
+                            locale,
+                            "ต้องยืนยันซ้าย→ขวา",
+                            "Confirm left→right cast"
+                          )}
                         </Badge>
                       ) : null}
                     </div>
@@ -4669,7 +4771,7 @@ export function VerticalDramaStoryboardPanel({
                               }
                               data-testid={`vd-stored-angle-grid-${shotNumber}-${asset.mediaAssetId}`}
                             >
-                              <img
+                              <AuthenticatedMediaImage
                                 src={asset.url}
                                 alt=""
                                 className="h-full w-full object-cover"
@@ -4944,7 +5046,11 @@ export function VerticalDramaStoryboardPanel({
                             {t(locale, "ไฟล์หมดอายุ", "File expired")}
                           </span>
                           <span className="text-[10px]">
-                            {t(locale, "กดสร้างวิดีโอใหม่", "Generate a new video")}
+                            {t(
+                              locale,
+                              "กดสร้างวิดีโอใหม่",
+                              "Generate a new video"
+                            )}
                           </span>
                         </div>
                       ) : clip?.videoTask?.videoUrl ? (
@@ -5484,7 +5590,7 @@ export function VerticalDramaStoryboardPanel({
                                   </span>
                                 ) : null}
                                 {portrait?.portraitUrl ? (
-                                  <img
+                                  <AuthenticatedMediaImage
                                     src={portrait.portraitUrl}
                                     alt={portrait.name}
                                     className="aspect-[3/4] w-full rounded-md object-cover object-top"
@@ -5572,7 +5678,7 @@ export function VerticalDramaStoryboardPanel({
                                       data-testid={`vd-storyboard-look-switch-option-${shotNumber}-${key}-${option.key}`}
                                     >
                                       {option.portraitUrl ? (
-                                        <img
+                                        <AuthenticatedMediaImage
                                           src={option.portraitUrl}
                                           alt=""
                                           className="h-6 w-5 shrink-0 rounded object-cover object-top"
@@ -5620,32 +5726,40 @@ export function VerticalDramaStoryboardPanel({
                     );
                   })()}
 
-                  {onSetShotSupportingPresence ? (
-                    (() => {
-                      const supportingPresence =
-                        frame?.supportingPresenceCustomized === true
-                          ? normalizeVerticalDramaSupportingPresence(
-                              frame.supportingPresence ?? [],
-                              { source: "manual" }
-                            )
-                          : resolveVerticalDramaSupportingPresenceForShot(
-                              shot.supporting_presence,
-                              shot,
-                              { idPrefix: `shot-${shotNumber}-supporting` }
-                            );
-                      return (
-                        <VerticalDramaSupportingPresenceEditor
-                          shotNumber={shotNumber}
-                          locale={locale}
-                          entries={supportingPresence}
-                          customized={frame?.supportingPresenceCustomized === true}
-                          saving={savingShotSupportingPresenceForShot === shotNumber}
-                          onSave={entries => onSetShotSupportingPresence(shotNumber, entries)}
-                          onReset={() => onResetShotSupportingPresence?.(shotNumber)}
-                        />
-                      );
-                    })()
-                  ) : null}
+                  {onSetShotSupportingPresence
+                    ? (() => {
+                        const supportingPresence =
+                          frame?.supportingPresenceCustomized === true
+                            ? normalizeVerticalDramaSupportingPresence(
+                                frame.supportingPresence ?? [],
+                                { source: "manual" }
+                              )
+                            : resolveVerticalDramaSupportingPresenceForShot(
+                                shot.supporting_presence,
+                                shot,
+                                { idPrefix: `shot-${shotNumber}-supporting` }
+                              );
+                        return (
+                          <VerticalDramaSupportingPresenceEditor
+                            shotNumber={shotNumber}
+                            locale={locale}
+                            entries={supportingPresence}
+                            customized={
+                              frame?.supportingPresenceCustomized === true
+                            }
+                            saving={
+                              savingShotSupportingPresenceForShot === shotNumber
+                            }
+                            onSave={entries =>
+                              onSetShotSupportingPresence(shotNumber, entries)
+                            }
+                            onReset={() =>
+                              onResetShotSupportingPresence?.(shotNumber)
+                            }
+                          />
+                        );
+                      })()
+                    : null}
 
                   {(() => {
                     const physicalKeys =
@@ -5723,38 +5837,45 @@ export function VerticalDramaStoryboardPanel({
                             )}
                           </Button>
                         ) : null}
-                        {callerKeys.map(key => {
-                          const portrait = characterPortraits[key];
-                          return (
+                        {callerKeys.map(key =>
+                          frame?.barrierDialogue ? (
                             <div
                               key={key}
                               className="flex w-16 flex-col items-center gap-1 text-center text-[10px]"
                             >
-                              {portrait?.portraitUrl ? (
-                                <img
-                                  src={portrait.portraitUrl}
-                                  alt={portrait.name}
-                                  className="aspect-[3/4] w-16 rounded-md object-cover object-top ring-2 ring-sky-400/70"
+                              {characterPortraits[key]?.portraitUrl ? (
+                                <AuthenticatedMediaImage
+                                  src={characterPortraits[key].portraitUrl}
+                                  alt={characterPortraits[key].name}
+                                  className="aspect-[3/4] w-16 rounded-md object-cover object-top ring-2 ring-amber-400/70"
                                 />
                               ) : (
-                                <span className="flex aspect-[3/4] w-16 items-center justify-center rounded-md bg-muted text-muted-foreground ring-2 ring-sky-400/70">
+                                <span className="flex aspect-[3/4] w-16 items-center justify-center rounded-md bg-muted text-muted-foreground ring-2 ring-amber-400/70">
                                   ?
                                 </span>
                               )}
                               <span className="w-full truncate">
-                                {portrait?.variantLabel ??
-                                  portrait?.name ??
+                                {characterPortraits[key]?.variantLabel ??
+                                  characterPortraits[key]?.name ??
                                   key}
                               </span>
                               <Badge
                                 variant="outline"
-                                className="border-sky-300 px-1 py-0 text-[9px] text-sky-700 dark:text-sky-200"
+                                className="border-amber-300 px-1 py-0 text-[9px] text-amber-700 dark:text-amber-200"
                               >
-                                {t(locale, "Caller", "Caller")}
+                                {t(locale, "อีกฝั่งประตู", "Behind door")}
                               </Badge>
                             </div>
-                          );
-                        })}
+                          ) : (
+                            <SpokenCallerVirtualScreen
+                              key={key}
+                              shotNumber={shotNumber}
+                              callerKey={key}
+                              portrait={characterPortraits[key]}
+                              locale={locale}
+                            />
+                          )
+                        )}
                         {onSetShotScreenCallerReferences &&
                         !frame?.barrierDialogue ? (
                           <button
@@ -5791,7 +5912,8 @@ export function VerticalDramaStoryboardPanel({
                         : shot.required_character_refs?.length
                           ? shot.required_character_refs
                           : (shot.characters ?? []);
-                    if (barrierMultiView || physicalKeys.length < 2) return null;
+                    if (barrierMultiView || physicalKeys.length < 2)
+                      return null;
                     const activeAssetId = [
                       frame?.videoStartMediaAssetId,
                       frame?.approvedMediaAssetId,
@@ -5799,11 +5921,15 @@ export function VerticalDramaStoryboardPanel({
                       .map(value => Number(value))
                       .find(value => Number.isInteger(value) && value > 0);
                     const lock = frame?.castPositionLock;
-                    const lockIsCurrent = validateVerticalDramaCastPositionLock({
-                      lock,
-                      activeAssetId: activeAssetId ? String(activeAssetId) : undefined,
-                      requiredCharacterRefs: physicalKeys,
-                    }).valid;
+                    const lockIsCurrent = validateVerticalDramaCastPositionLock(
+                      {
+                        lock,
+                        activeAssetId: activeAssetId
+                          ? String(activeAssetId)
+                          : undefined,
+                        requiredCharacterRefs: physicalKeys,
+                      }
+                    ).valid;
                     const persistedDraft =
                       castPositionDraftByShot[shotNumber] ??
                       lock?.orderedCharacterRefs ??
@@ -5822,7 +5948,9 @@ export function VerticalDramaStoryboardPanel({
                     const draftIsComplete =
                       draft.length === physicalKeys.length &&
                       draft.every(
-                        key => physicalKeys.includes(key) && draft.indexOf(key) === draft.lastIndexOf(key),
+                        key =>
+                          physicalKeys.includes(key) &&
+                          draft.indexOf(key) === draft.lastIndexOf(key)
                       );
                     return (
                       <div
@@ -5830,50 +5958,91 @@ export function VerticalDramaStoryboardPanel({
                           "rounded-md border p-2",
                           lockIsCurrent
                             ? "border-emerald-300/70 bg-emerald-50/40 dark:bg-emerald-950/10"
-                            : "border-amber-300/70 bg-amber-50/40 dark:bg-amber-950/10",
+                            : "border-amber-300/70 bg-amber-50/40 dark:bg-amber-950/10"
                         )}
                         data-testid={`vd-storyboard-cast-position-lock-${shotNumber}`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div>
                             <p className="text-xs font-medium">
-                              {t(locale, "ยืนยันตำแหน่งตัวละครซ้าย → ขวา", "Confirm cast positions left → right")}
+                              {t(
+                                locale,
+                                "ยืนยันตำแหน่งตัวละครซ้าย → ขวา",
+                                "Confirm cast positions left → right"
+                              )}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
                               {lockIsCurrent
-                                ? t(locale, "ยืนยันกับภาพปัจจุบันแล้ว", "Confirmed for the current image")
-                                : t(locale, "ภาพไม่ชัดหรือตำแหน่งเปลี่ยน — แก้ภาพก่อนสร้าง prompt/วิดีโอ", "Unclear or changed image — fix it before generating a prompt/video")}
+                                ? t(
+                                    locale,
+                                    "ยืนยันกับภาพปัจจุบันแล้ว",
+                                    "Confirmed for the current image"
+                                  )
+                                : t(
+                                    locale,
+                                    "ภาพไม่ชัดหรือตำแหน่งเปลี่ยน — แก้ภาพก่อนสร้าง prompt/วิดีโอ",
+                                    "Unclear or changed image — fix it before generating a prompt/video"
+                                  )}
                             </p>
                           </div>
                           <Badge
                             variant="outline"
-                            className={lockIsCurrent ? "border-emerald-400 text-emerald-700 dark:text-emerald-300" : "border-amber-400 text-amber-700 dark:text-amber-300"}
+                            className={
+                              lockIsCurrent
+                                ? "border-emerald-400 text-emerald-700 dark:text-emerald-300"
+                                : "border-amber-400 text-amber-700 dark:text-amber-300"
+                            }
                           >
-                            {lockIsCurrent ? t(locale, "พร้อม", "Ready") : t(locale, "ต้องยืนยัน", "Needs confirmation")}
+                            {lockIsCurrent
+                              ? t(locale, "พร้อม", "Ready")
+                              : t(locale, "ต้องยืนยัน", "Needs confirmation")}
                           </Badge>
                         </div>
                         <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
                           {draft.map((key, index) => (
-                            <label key={`${shotNumber}-${index}`} className="flex items-center gap-1.5 text-[10px]">
-                              <span className="w-5 shrink-0 text-muted-foreground">{index + 1}</span>
+                            <label
+                              key={`${shotNumber}-${index}`}
+                              className="flex items-center gap-1.5 text-[10px]"
+                            >
+                              <span className="w-5 shrink-0 text-muted-foreground">
+                                {index + 1}
+                              </span>
                               <select
-                                aria-label={t(locale, `ตัวละครตำแหน่งที่ ${index + 1}`, `Character at position ${index + 1}`)}
+                                aria-label={t(
+                                  locale,
+                                  `ตัวละครตำแหน่งที่ ${index + 1}`,
+                                  `Character at position ${index + 1}`
+                                )}
                                 className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs"
                                 value={key}
                                 onChange={event => {
                                   const next = [...draft];
                                   next[index] = event.target.value;
-                                  setCastPositionDraftByShot(previous => ({ ...previous, [shotNumber]: next }));
+                                  setCastPositionDraftByShot(previous => ({
+                                    ...previous,
+                                    [shotNumber]: next,
+                                  }));
                                 }}
                               >
-                                <option value="">{t(locale, "เลือกตัวละคร", "Select character")}</option>
+                                <option value="">
+                                  {t(
+                                    locale,
+                                    "เลือกตัวละคร",
+                                    "Select character"
+                                  )}
+                                </option>
                                 {physicalKeys.map(optionKey => (
                                   <option
                                     key={optionKey}
                                     value={optionKey}
-                                    disabled={draft.some((selected, selectedIndex) => selected === optionKey && selectedIndex !== index)}
+                                    disabled={draft.some(
+                                      (selected, selectedIndex) =>
+                                        selected === optionKey &&
+                                        selectedIndex !== index
+                                    )}
                                   >
-                                    {characterPortraits[optionKey]?.name ?? optionKey}
+                                    {characterPortraits[optionKey]?.name ??
+                                      optionKey}
                                   </option>
                                 ))}
                               </select>
@@ -5886,8 +6055,14 @@ export function VerticalDramaStoryboardPanel({
                             size="sm"
                             variant="outline"
                             className="h-7 gap-1 px-2 text-[10px]"
-                            disabled={!onSetShotCastPositionLock || !activeAssetId || !draftIsComplete}
-                            onClick={() => onSetShotCastPositionLock?.(shotNumber, draft)}
+                            disabled={
+                              !onSetShotCastPositionLock ||
+                              !activeAssetId ||
+                              !draftIsComplete
+                            }
+                            onClick={() =>
+                              onSetShotCastPositionLock?.(shotNumber, draft)
+                            }
                             data-testid={`vd-storyboard-confirm-cast-position-${shotNumber}`}
                           >
                             <Check aria-hidden="true" className="h-3 w-3" />
@@ -5895,15 +6070,27 @@ export function VerticalDramaStoryboardPanel({
                           </Button>
                           {!activeAssetId ? (
                             <span className="text-[10px] text-amber-700 dark:text-amber-300">
-                              {t(locale, "ต้องมีภาพปัจจุบันก่อน", "A current image is required first")}
+                              {t(
+                                locale,
+                                "ต้องมีภาพปัจจุบันก่อน",
+                                "A current image is required first"
+                              )}
                             </span>
                           ) : !draftIsComplete ? (
                             <span className="text-[10px] text-red-700 dark:text-red-300">
-                              {t(locale, "เลือกตัวละครให้ครบและห้ามซ้ำ", "Choose every character exactly once")}
+                              {t(
+                                locale,
+                                "เลือกตัวละครให้ครบและห้ามซ้ำ",
+                                "Choose every character exactly once"
+                              )}
                             </span>
                           ) : !lockIsCurrent ? (
                             <span className="text-[10px] text-amber-700 dark:text-amber-300">
-                              {t(locale, "ถ้าหน้า/ตำแหน่งอ่านไม่ชัด ให้เปลี่ยนภาพหรือสร้าง Video-Safe frame", "If faces/positions are unclear, change the image or generate a Video-Safe frame")}
+                              {t(
+                                locale,
+                                "ถ้าหน้า/ตำแหน่งอ่านไม่ชัด ให้เปลี่ยนภาพหรือสร้าง Video-Safe frame",
+                                "If faces/positions are unclear, change the image or generate a Video-Safe frame"
+                              )}
                             </span>
                           ) : null}
                         </div>
@@ -5962,7 +6149,15 @@ export function VerticalDramaStoryboardPanel({
                         matchingLocation?.location_name);
                     if (barrierMultiView) return null;
                     if (!displayName) return null;
-                    const thumbnailUrl = rosterLocation?.primaryReferenceUrl;
+                    const selectedLocationVariant = frame?.locationVariantId
+                      ? rosterLocation?.cameraVariants?.find(
+                          variant =>
+                            variant.variantId === frame.locationVariantId
+                        )
+                      : undefined;
+                    const thumbnailUrl =
+                      selectedLocationVariant?.url ??
+                      rosterLocation?.primaryReferenceUrl;
                     // Only show the storyboard group's own description
                     // tooltip when this shot's effective location actually
                     // came FROM that group — an override may point at a
@@ -5979,12 +6174,19 @@ export function VerticalDramaStoryboardPanel({
                             title={descriptionTooltip}
                             data-testid={`vd-storyboard-location-chip-${shotNumber}`}
                           >
-                            <img
+                            <AuthenticatedMediaImage
                               src={thumbnailUrl}
                               alt={displayName}
                               className="h-16 w-24 rounded-md object-cover"
                             />
-                            {displayName}
+                            <span className="flex flex-col">
+                              <span>{displayName}</span>
+                              {selectedLocationVariant ? (
+                                <span className="text-[10px] text-sky-700 dark:text-sky-300">
+                                  {selectedLocationVariant.label}
+                                </span>
+                              ) : null}
+                            </span>
                           </span>
                         ) : (
                           <span
@@ -6134,7 +6336,7 @@ export function VerticalDramaStoryboardPanel({
                             }
                           >
                             {thumbnailUrl ? (
-                              <img
+                              <AuthenticatedMediaImage
                                 src={thumbnailUrl}
                                 alt={
                                   tieIn?.productName ??
@@ -6634,10 +6836,14 @@ export function VerticalDramaStoryboardPanel({
                                 !asset?.url
                                   ? t2.generateShotVideoPromptNeedsImage
                                   : castPositionLockNeedsReview
-                                    ? t(locale, "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน", "Confirm the left-to-right cast order for the current image first")
-                                  : !selectedVideoModelId
-                                    ? t2.selectVideoModelFirst
-                                    : undefined
+                                    ? t(
+                                        locale,
+                                        "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
+                                        "Confirm the left-to-right cast order for the current image first"
+                                      )
+                                    : !selectedVideoModelId
+                                      ? t2.selectVideoModelFirst
+                                      : undefined
                               }
                               data-testid={`vd-storyboard-generate-shot-video-prompt-${shotNumber}`}
                             >
@@ -6654,13 +6860,25 @@ export function VerticalDramaStoryboardPanel({
                                   className="h-3 w-3"
                                 />
                               )}
-                              {videoPromptJobStatusByShot[shotNumber] === "queued"
-                                ? t(locale, "ส่งงานแล้ว — รอคิว…", "Submitted — waiting in queue…")
-                                : videoPromptJobStatusByShot[shotNumber] === "running"
-                                  ? t(locale, "กำลังสร้างพรอมต์…", "Generating prompt…")
-                                  : generatingShotVideoPromptForShot.has(shotNumber)
+                              {videoPromptJobStatusByShot[shotNumber] ===
+                              "queued"
+                                ? t(
+                                    locale,
+                                    "ส่งงานแล้ว — รอคิว…",
+                                    "Submitted — waiting in queue…"
+                                  )
+                                : videoPromptJobStatusByShot[shotNumber] ===
+                                    "running"
+                                  ? t(
+                                      locale,
+                                      "กำลังสร้างพรอมต์…",
+                                      "Generating prompt…"
+                                    )
+                                  : generatingShotVideoPromptForShot.has(
+                                        shotNumber
+                                      )
                                     ? t2.generatingShotVideoPrompt
-                                : t2.generateShotVideoPrompt}
+                                    : t2.generateShotVideoPrompt}
                             </Button>
                             {!asset?.url ? (
                               <span className="text-[10px] text-muted-foreground">
@@ -6842,10 +7060,14 @@ export function VerticalDramaStoryboardPanel({
                                 }
                                 title={
                                   castPositionLockNeedsReview
-                                    ? t(locale, "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน", "Confirm the left-to-right cast order for the current image first")
+                                    ? t(
+                                        locale,
+                                        "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
+                                        "Confirm the left-to-right cast order for the current image first"
+                                      )
                                     : !selectedVideoModelId
-                                    ? t2.selectVideoModelFirst
-                                    : undefined
+                                      ? t2.selectVideoModelFirst
+                                      : undefined
                                 }
                                 data-testid={`vd-storyboard-generate-video-${clip.clipNumber}`}
                               >
@@ -7135,7 +7357,7 @@ export function VerticalDramaStoryboardPanel({
                                             className="flex w-12 flex-col items-center gap-1 text-center text-[10px]"
                                           >
                                             {portrait?.portraitUrl ? (
-                                              <img
+                                              <AuthenticatedMediaImage
                                                 src={portrait.portraitUrl}
                                                 alt={portrait.name}
                                                 className="h-12 w-10 rounded-md object-cover object-top"
@@ -7194,7 +7416,7 @@ export function VerticalDramaStoryboardPanel({
                                   </div>
                                   <div className="mt-2 flex min-h-16 items-center gap-2">
                                     {location?.primaryReferenceUrl ? (
-                                      <img
+                                      <AuthenticatedMediaImage
                                         src={location.primaryReferenceUrl}
                                         alt=""
                                         className="h-14 w-20 shrink-0 rounded-md object-cover"
@@ -7370,7 +7592,7 @@ export function VerticalDramaStoryboardPanel({
                     >
                       <div className="aspect-[9/16] overflow-hidden rounded-lg bg-muted">
                         {asset?.thumbnailUrl || asset?.url ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={asset.thumbnailUrl || asset.url}
                             alt={t(
                               locale,
@@ -7514,7 +7736,7 @@ export function VerticalDramaStoryboardPanel({
                     >
                       <div className="aspect-[9/16] overflow-hidden rounded-lg bg-muted">
                         {barrierReferenceUrl ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={barrierReferenceUrl}
                             alt={t(
                               locale,
@@ -8022,7 +8244,7 @@ export function VerticalDramaStoryboardPanel({
                                   )}
                                   data-testid={`vd-angle-candidate-${shotNumber}-${originalIndex}`}
                                 >
-                                  <img
+                                  <AuthenticatedMediaImage
                                     src={dataUrl}
                                     alt={`Angle ${originalIndex + 1}`}
                                     className="h-full w-full object-cover"
@@ -8519,8 +8741,7 @@ export function VerticalDramaStoryboardPanel({
                     className="gap-1.5"
                     onClick={() => onAssembleCompiledVideo(assemblyRequest)}
                     disabled={
-                      assemblingCompiledVideo ||
-                      readyShotNumbers.length === 0
+                      assemblingCompiledVideo || readyShotNumbers.length === 0
                     }
                     data-testid="vd-compiled-video-assemble"
                   >
@@ -8822,8 +9043,18 @@ export function VerticalDramaStoryboardPanel({
             locationPickerForShot,
             frameByShot.get(locationPickerForShot)?.locationKey
           )}
+          currentLocationVariantId={
+            frameByShot.get(locationPickerForShot)?.locationVariantId
+          }
           onSelect={locationKey => {
             onSetShotLocation?.(locationPickerForShot, locationKey);
+            setLocationPickerForShot(null);
+          }}
+          onSelectVariant={locationVariantId => {
+            onSetShotLocationVariant?.(
+              locationPickerForShot,
+              locationVariantId
+            );
             setLocationPickerForShot(null);
           }}
           onClose={() => setLocationPickerForShot(null)}
@@ -9082,6 +9313,7 @@ function VerticalDramaLocationsBibleCard({
   seriesId,
   locale,
   distinctLocations,
+  episodeLocations = [],
   sceneContinuityEnabled = false,
   sceneContinuityQcEnabled = false,
   sceneVisualStates,
@@ -9093,6 +9325,7 @@ function VerticalDramaLocationsBibleCard({
   seriesId: string;
   locale: Lang;
   distinctLocations: VerticalDramaStoryboardDistinctLocationView[];
+  episodeLocations?: VerticalDramaEpisodeLocationView[];
   sceneContinuityEnabled?: boolean;
   sceneContinuityQcEnabled?: boolean;
   sceneVisualStates?: Record<string, VerticalDramaSceneVisualStateView>;
@@ -9117,7 +9350,11 @@ function VerticalDramaLocationsBibleCard({
   const locationRoster = listQuery.data?.locations ?? [];
 
   const invalidate = () =>
-    void utils.verticalDramaLocations.list.invalidate({ seriesId });
+    void Promise.all([
+      utils.verticalDramaLocations.list.invalidate({ seriesId }),
+      utils.verticalDramaLocations.listLocationAssets.invalidate(),
+      utils.verticalDramaEpisodes.getEpisodeDetail.invalidate(),
+    ]);
 
   const onError = (err: { message?: string }) => {
     // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed message
@@ -9181,10 +9418,19 @@ function VerticalDramaLocationsBibleCard({
   const approveMutation =
     trpc.verticalDramaLocations.approveAsset.useMutation();
 
-  /** Prompt text once `previewLocationPrompt` resolves, keyed by
-   *  `locationKey` — independent locations can preview concurrently. */
+  /** Prompt review draft once `previewLocationPrompt` resolves, keyed by
+   *  `locationKey` — independent locations can preview concurrently. The
+   *  prompt fields are deliberately local/editable until the user confirms a
+   *  paid image render. */
   const [previewByKey, setPreviewByKey] = useState<
-    Record<string, { prompt: string; negativePrompt?: string }>
+    Record<
+      string,
+      {
+        prompt: string;
+        coverageRole?: VerticalDramaLocationCoverageRole;
+        gapDescription?: string;
+      }
+    >
   >({});
   /** Which location is currently waiting on `previewMutation`. */
   const [pendingPreviewKey, setPendingPreviewKey] = useState<string | null>(
@@ -9206,6 +9452,21 @@ function VerticalDramaLocationsBibleCard({
   const [coverageGapByKey, setCoverageGapByKey] = useState<
     Record<string, string>
   >({});
+
+  const updatePreviewDraft = (
+    locationKey: string,
+    patch: Partial<{
+      prompt: string;
+      coverageRole?: VerticalDramaLocationCoverageRole;
+      gapDescription?: string;
+    }>
+  ) => {
+    setPreviewByKey(prev => {
+      const current = prev[locationKey];
+      if (!current) return prev;
+      return { ...prev, [locationKey]: { ...current, ...patch } };
+    });
+  };
 
   /** Poll a submitted location-image render task to completion — same
    *  `utils.media.getTask.fetch` loop shape (120 attempts, 2.5s interval)
@@ -9312,7 +9573,10 @@ function VerticalDramaLocationsBibleCard({
                 ...prev,
                 [locationKey]: {
                   prompt: res.establishingPlatePrompt,
-                  negativePrompt: res.negativePrompt,
+                  ...(coverageRole ? { coverageRole } : {}),
+                  ...(gapDescription?.trim()
+                    ? { gapDescription: gapDescription.trim() }
+                    : {}),
                 },
               }));
               setPendingPreviewKey(null);
@@ -9327,6 +9591,17 @@ function VerticalDramaLocationsBibleCard({
   const handleGenerate = (locationId: string, locationKey: string) => {
     const preview = previewByKey[locationKey];
     if (!preview) return;
+    const approvedPrompt = preview.prompt.trim();
+    if (!approvedPrompt) {
+      toast.error(
+        t(
+          locale,
+          "กรุณาใส่คำสั่งสร้างภาพก่อนสร้างมุมย่อย",
+          "Enter a prompt before generating the sub-view."
+        )
+      );
+      return;
+    }
     if (!selectedImageModelId) {
       toast.error(
         t(
@@ -9338,8 +9613,11 @@ function VerticalDramaLocationsBibleCard({
       setIsModelDialogOpen(true);
       return;
     }
-    const coverageRole = coverageRoleByKey[locationKey];
-    const gapDescription = coverageGapByKey[locationKey]?.trim() || undefined;
+    const coverageRole = preview.coverageRole ?? coverageRoleByKey[locationKey];
+    const gapDescription =
+      preview.gapDescription?.trim() ||
+      coverageGapByKey[locationKey]?.trim() ||
+      undefined;
     const onSuccess = (res: unknown) => {
       const taskId = (res as { taskId?: string } | null)?.taskId;
       if (taskId) void pollLocationImageTask(taskId, locationKey);
@@ -9368,10 +9646,7 @@ function VerticalDramaLocationsBibleCard({
           {
             seriesId,
             locationId,
-            approvedPrompt: preview.prompt,
-            ...(preview.negativePrompt
-              ? { approvedNegativePrompt: preview.negativePrompt }
-              : {}),
+            approvedPrompt,
             selectedImageModelId,
             ...(coverageRole ? { coverageRole } : {}),
             ...(gapDescription ? { gapDescription } : {}),
@@ -9401,7 +9676,10 @@ function VerticalDramaLocationsBibleCard({
         locationId,
         mediaAssetId: resolved.mediaAssetId,
         assetType: "location_reference",
-        role: coverageRoleByKey[locationKey] ?? "establishing_plate",
+        role:
+          previewByKey[locationKey]?.coverageRole ??
+          coverageRoleByKey[locationKey] ??
+          "establishing_plate",
         source: "generated",
       });
       await approveMutation.mutateAsync({
@@ -9449,11 +9727,17 @@ function VerticalDramaLocationsBibleCard({
           const locationKey = group.location_key;
           const locationName = group.location_name;
           if (!locationKey || !locationName) return null;
-          const roster = resolveStoryboardLocationRoster(
-            locationRoster,
-            locationKey,
-            locationName
-          );
+          const roster =
+            resolveStoryboardLocationRoster(
+              locationRoster,
+              locationKey,
+              locationName
+            ) ??
+            resolveStoryboardLocationRoster(
+              episodeLocations,
+              locationKey,
+              locationName
+            );
           const thumbnailUrl = roster?.primaryReferenceUrl;
           const candidate = candidateByKey[locationKey];
           const preview = previewByKey[locationKey];
@@ -9471,15 +9755,19 @@ function VerticalDramaLocationsBibleCard({
             >
               <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
                 {thumbnailUrl ? (
-                  <img
+                  <AuthenticatedMediaImage
                     src={thumbnailUrl}
                     alt={locationName}
                     className="h-full w-full object-cover"
                   />
                 ) : candidate?.imageUrl ? (
-                  <img
+                  <AuthenticatedMediaImage
                     src={candidate.imageUrl}
-                    alt={locationName}
+                    alt={t(
+                      locale,
+                      `${locationName} มุมย่อยที่รอตรวจสอบ`,
+                      `${locationName} pending sub-view`
+                    )}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -9574,6 +9862,7 @@ function VerticalDramaLocationsBibleCard({
                             variant="ghost"
                             className="h-auto justify-start px-1.5 py-1 text-left text-[10px]"
                             onClick={() => {
+                              if (!roster?.locationId) return;
                               setCoverageGapByKey(prev => ({
                                 ...prev,
                                 [locationKey]: gap,
@@ -9591,6 +9880,16 @@ function VerticalDramaLocationsBibleCard({
                                 gap
                               );
                             }}
+                            disabled={!roster?.locationId || isPreviewLoading}
+                            title={
+                              roster?.locationId
+                                ? undefined
+                                : t(
+                                    locale,
+                                    "กำลังรอซิงก์สถานที่ก่อนสร้างมุม",
+                                    "Wait for the location to finish syncing before generating a view"
+                                  )
+                            }
                             data-testid={`vd-location-coverage-gap-${locationKey}-${gapIndex}`}
                           >
                             {t(
@@ -9627,16 +9926,48 @@ function VerticalDramaLocationsBibleCard({
                       "Not ready to generate yet (waiting on data sync)"
                     )}
                   </p>
-                ) : thumbnailUrl ? null : candidate ? (
+                ) : candidate ? (
                   <div className="flex flex-col gap-1.5">
-                    <p className="text-[11px] text-muted-foreground">
-                      {t(
-                        locale,
-                        "ตรวจสอบภาพที่สร้างแล้วกด “อนุมัติ” เพื่อบันทึกเป็นภาพอ้างอิงหลัก",
-                        "Review the rendered image, then approve to save it as the primary reference."
-                      )}
-                    </p>
+                    <div className="flex items-start gap-2 rounded border border-sky-400/40 bg-sky-50/40 p-1.5 dark:bg-sky-950/20">
+                      <AuthenticatedMediaImage
+                        src={candidate.imageUrl}
+                        alt={t(
+                          locale,
+                          `${locationName} มุมย่อยที่รอตรวจสอบ`,
+                          `${locationName} pending sub-view`
+                        )}
+                        className="h-16 w-24 shrink-0 rounded object-cover"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(
+                          locale,
+                          "ตรวจสอบภาพมุมย่อย แล้วกด “ใช้มุมนี้” เพื่อเก็บไว้เลือกใช้ในช็อต (ภาพหลักเดิมยังคงอยู่)",
+                          "Review this sub-view, then approve it for shot selection. The original primary image remains unchanged."
+                        )}
+                      </p>
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setCandidateByKey(prev => {
+                            const next = { ...prev };
+                            delete next[locationKey];
+                            return next;
+                          });
+                        }}
+                        data-testid={`vd-location-edit-prompt-${locationKey}`}
+                      >
+                        <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t(
+                          locale,
+                          "แก้ไขคำสั่ง/สร้างใหม่",
+                          "Edit prompt / regenerate"
+                        )}
+                      </Button>
                       <Button
                         type="button"
                         size="sm"
@@ -9656,15 +9987,69 @@ function VerticalDramaLocationsBibleCard({
                         ) : (
                           <Check aria-hidden="true" className="h-3.5 w-3.5" />
                         )}
-                        {t(locale, "อนุมัติภาพนี้", "Approve this image")}
+                        {t(locale, "ใช้มุมนี้", "Use this sub-view")}
                       </Button>
                     </div>
                   </div>
                 ) : preview ? (
                   <div className="flex flex-col gap-1.5">
-                    <p className="rounded border border-border/60 bg-muted/30 p-1.5 text-[11px] text-muted-foreground">
-                      {preview.prompt}
-                    </p>
+                    <div
+                      className="flex flex-col gap-2 rounded border border-sky-400/50 bg-sky-50/50 p-2 dark:bg-sky-950/20"
+                      data-testid={`vd-location-angle-review-${locationKey}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <p className="text-[11px] font-semibold text-sky-900 dark:text-sky-100">
+                          {t(
+                            locale,
+                            "ตรวจสอบคำสั่งสร้างมุมย่อย",
+                            "Review sub-view generation prompt"
+                          )}
+                        </p>
+                        <Badge variant="outline" className="text-[9px]">
+                          {t(locale, "ยังไม่บันทึก", "Not saved yet")}
+                        </Badge>
+                      </div>
+                      {preview.gapDescription ? (
+                        <p className="text-[10px] text-amber-800 dark:text-amber-200">
+                          {t(
+                            locale,
+                            "เหตุผลที่ต้องสร้างมุม: ",
+                            "Coverage gap: "
+                          )}
+                          {preview.gapDescription}
+                        </p>
+                      ) : null}
+                      <label className="flex flex-col gap-1 text-[10px] font-medium text-muted-foreground">
+                        {t(
+                          locale,
+                          "คำสั่งสร้างภาพมุมย่อย",
+                          "Sub-view image prompt"
+                        )}
+                        <Textarea
+                          value={preview.prompt}
+                          onChange={event =>
+                            updatePreviewDraft(locationKey, {
+                              prompt: event.target.value,
+                            })
+                          }
+                          rows={5}
+                          className="min-h-24 resize-y bg-background text-xs"
+                          aria-label={t(
+                            locale,
+                            `คำสั่งสร้างมุมย่อยของ ${locationName}`,
+                            `Sub-view prompt for ${locationName}`
+                          )}
+                          data-testid={`vd-location-prompt-editor-${locationKey}`}
+                        />
+                      </label>
+                      <p className="text-[10px] text-sky-800/80 dark:text-sky-200/80">
+                        {t(
+                          locale,
+                          "ภาพที่อนุมัติจะถูกเก็บเป็นมุมย่อยของสถานที่นี้ และเลือกใช้แยกในแต่ละช็อตได้ โดยไม่แทนภาพหลัก",
+                          "An approved image is saved as a reusable sub-view for this location and can be selected per shot without replacing the primary image."
+                        )}
+                      </p>
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
                       <Button
                         type="button"
@@ -9678,6 +10063,27 @@ function VerticalDramaLocationsBibleCard({
                         {selectedImageModelId
                           ? `${t(locale, "โมเดล", "Model")}: ${selectedImageModelRecord?.name ?? selectedImageModelId}`
                           : t(locale, "เลือกโมเดลภาพ", "Select image model")}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5"
+                        onClick={() =>
+                          handlePreview(
+                            roster.locationId,
+                            locationKey,
+                            preview.coverageRole ??
+                              coverageRoleByKey[locationKey],
+                            preview.gapDescription ??
+                              coverageGapByKey[locationKey]
+                          )
+                        }
+                        disabled={isPreviewLoading}
+                        data-testid={`vd-location-regenerate-prompt-${locationKey}`}
+                      >
+                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t(locale, "สร้างคำสั่งใหม่", "Regenerate prompt")}
                       </Button>
                       <Button
                         type="button"
@@ -9720,7 +10126,7 @@ function VerticalDramaLocationsBibleCard({
                       </Button>
                     </div>
                   </div>
-                ) : (
+                ) : thumbnailUrl ? null : (
                   <div className="flex flex-wrap gap-1.5">
                     <Button
                       type="button"
@@ -11084,12 +11490,12 @@ function ShotReferenceStrip({
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [failedReferenceIds, setFailedReferenceIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set()
   );
   const atLimit =
     maxReferenceImages != null && references.length >= maxReferenceImages;
   const visibleReferenceImages = references.filter(
-    ref => ref.thumbnailUrl && !failedReferenceIds.has(ref.referenceId),
+    ref => ref.thumbnailUrl && !failedReferenceIds.has(ref.referenceId)
   );
 
   return (
@@ -11150,15 +11556,17 @@ function ShotReferenceStrip({
               className="block h-full w-full"
               onClick={() => {
                 const imageIndex = visibleReferenceImages.findIndex(
-                  image => image.referenceId === ref.referenceId,
+                  image => image.referenceId === ref.referenceId
                 );
                 if (imageIndex >= 0) setLightboxIndex(imageIndex);
               }}
-              disabled={!ref.thumbnailUrl || failedReferenceIds.has(ref.referenceId)}
+              disabled={
+                !ref.thumbnailUrl || failedReferenceIds.has(ref.referenceId)
+              }
               data-testid={`vd-storyboard-reference-${shotNumber}-${ref.referenceId}`}
             >
               {ref.thumbnailUrl && !failedReferenceIds.has(ref.referenceId) ? (
-                <img
+                <AuthenticatedMediaImage
                   src={ref.thumbnailUrl}
                   alt=""
                   className="h-full w-full object-cover"
@@ -11329,7 +11737,7 @@ function GeneratedReferenceFrameRow({
             data-testid={`vd-reference-frame-thumb-${shotNumber}-${ref.referenceId}`}
           >
             {ref.thumbnailUrl ? (
-              <img
+              <AuthenticatedMediaImage
                 src={ref.thumbnailUrl}
                 alt=""
                 className="h-full w-full object-cover"
@@ -11791,7 +12199,7 @@ function ProductImagePickerDialog({
                   data-testid={`vd-storyboard-product-image-option-${shotNumber}-${img.url}`}
                   aria-pressed={selected}
                 >
-                  <img
+                  <AuthenticatedMediaImage
                     src={img.url}
                     alt={img.label ?? ""}
                     className="h-full w-full object-cover"
@@ -11948,7 +12356,7 @@ function ShotCharacterReferencePickerDialog({
           onCheckedChange={() => onToggle(opts.key)}
         />
         {opts.portraitUrl ? (
-          <img
+          <AuthenticatedMediaImage
             src={opts.portraitUrl}
             alt=""
             className="h-5 w-5 shrink-0 rounded-full object-cover"
@@ -12117,16 +12525,20 @@ function ShotLocationPickerDialog({
   shotNumber,
   locations,
   currentLocationKey,
+  currentLocationVariantId,
   allowDefault = true,
   onSelect,
+  onSelectVariant,
   onClose,
 }: {
   locale: Lang;
   shotNumber: number;
   locations: VerticalDramaEpisodeLocationView[];
   currentLocationKey?: string;
+  currentLocationVariantId?: string;
   allowDefault?: boolean;
   onSelect: (locationKey: string | null) => void;
+  onSelectVariant?: (locationVariantId: string | null) => void;
   onClose: () => void;
 }) {
   const title = t(
@@ -12195,29 +12607,73 @@ function ShotLocationPickerDialog({
             </p>
           ) : (
             locations.map(loc => (
-              <button
-                key={loc.locationKey}
-                type="button"
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted",
-                  currentLocationKey === loc.locationKey ? "bg-muted" : ""
-                )}
-                onClick={() => onSelect(loc.locationKey)}
-                data-testid={`vd-storyboard-location-picker-option-${shotNumber}-${loc.locationKey}`}
-              >
-                {loc.primaryReferenceUrl ? (
-                  <img
-                    src={loc.primaryReferenceUrl}
-                    alt=""
-                    className="h-8 w-12 shrink-0 rounded object-cover"
-                  />
-                ) : (
-                  <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
-                    <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
-                  </span>
-                )}
-                <span className="flex-1 truncate">{loc.name}</span>
-              </button>
+              <Fragment key={loc.locationKey}>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted",
+                    currentLocationKey === loc.locationKey ? "bg-muted" : ""
+                  )}
+                  onClick={() => onSelect(loc.locationKey)}
+                  data-testid={`vd-storyboard-location-picker-option-${shotNumber}-${loc.locationKey}`}
+                >
+                  {loc.primaryReferenceUrl ? (
+                    <AuthenticatedMediaImage
+                      src={loc.primaryReferenceUrl}
+                      alt=""
+                      className="h-8 w-12 shrink-0 rounded object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                      <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                  <span className="flex-1 truncate">{loc.name}</span>
+                  {loc.cameraVariants?.length ? (
+                    <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                      {loc.cameraVariants.length} {t(locale, "มุม", "views")}
+                    </Badge>
+                  ) : null}
+                </button>
+                {onSelectVariant &&
+                currentLocationKey === loc.locationKey &&
+                loc.cameraVariants?.length ? (
+                  <div className="ml-6 flex flex-wrap gap-1 pb-1">
+                    <button
+                      type="button"
+                      className={cn(
+                        "rounded border px-2 py-1 text-[11px] hover:bg-muted",
+                        !currentLocationVariantId &&
+                          "border-primary bg-primary/10"
+                      )}
+                      onClick={() => onSelectVariant(null)}
+                      data-testid={`vd-storyboard-location-variant-default-${shotNumber}`}
+                    >
+                      {t(locale, "ภาพหลัก", "Primary")}
+                    </button>
+                    {loc.cameraVariants.map(variant => (
+                      <button
+                        key={variant.variantId}
+                        type="button"
+                        className={cn(
+                          "flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:bg-muted",
+                          currentLocationVariantId === variant.variantId &&
+                            "border-primary bg-primary/10"
+                        )}
+                        onClick={() => onSelectVariant(variant.variantId)}
+                        data-testid={`vd-storyboard-location-variant-${shotNumber}-${variant.variantId}`}
+                      >
+                        <AuthenticatedMediaImage
+                          src={variant.url}
+                          alt=""
+                          className="h-5 w-7 rounded object-cover"
+                        />
+                        {variant.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </Fragment>
             ))
           )}
         </div>
@@ -12299,7 +12755,7 @@ function RepairImageDialog({
                   {t2.repairImageBefore}
                 </span>
                 <div className="aspect-[9/16] w-full overflow-hidden rounded-md border border-border bg-muted">
-                  <img
+                  <AuthenticatedMediaImage
                     src={result.beforeUrl}
                     alt={t2.repairImageBefore}
                     className="h-full w-full object-cover"
@@ -12311,7 +12767,7 @@ function RepairImageDialog({
                   {t2.repairImageAfter}
                 </span>
                 <div className="aspect-[9/16] w-full overflow-hidden rounded-md border border-primary/50 bg-muted">
-                  <img
+                  <AuthenticatedMediaImage
                     src={result.afterUrl}
                     alt={t2.repairImageAfter}
                     className="h-full w-full object-cover"
@@ -12344,7 +12800,7 @@ function RepairImageDialog({
           <div className="flex flex-col gap-2">
             {beforeUrl ? (
               <div className="mx-auto aspect-[9/16] w-32 overflow-hidden rounded-md border border-border bg-muted">
-                <img
+                <AuthenticatedMediaImage
                   src={beforeUrl}
                   alt={t2.repairImageBefore}
                   className="h-full w-full object-cover"

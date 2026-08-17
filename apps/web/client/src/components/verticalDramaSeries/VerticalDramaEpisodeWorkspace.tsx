@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -535,6 +536,10 @@ export interface VerticalDramaStoryboardPanelData {
    *  location visual bible) — per-shot location override, distinct from the
    *  storyboard's own `distinct_locations[]` grouping. */
   onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
+  onSetShotLocationVariant?: (
+    shotNumber: number,
+    locationVariantId: string | null
+  ) => void;
   onSetShotBarrierReferenceLocation?: (
     shotNumber: number,
     locationKey: string
@@ -1448,6 +1453,7 @@ export function VerticalDramaEpisodeWorkspace({
             storyboardPanel?.savingShotSupportingPresenceForShot
           }
           onSetShotLocation={storyboardPanel?.onSetShotLocation}
+          onSetShotLocationVariant={storyboardPanel?.onSetShotLocationVariant}
           onSetShotBarrierReferenceLocation={
             storyboardPanel?.onSetShotBarrierReferenceLocation
           }
@@ -2592,7 +2598,7 @@ function VerticalDramaAdBannerPlanSection({
                       data-testid={`vd-ad-banner-checkbox-${design.id}`}
                     />
                     {design.imageUrl ? (
-                      <img
+                      <AuthenticatedMediaImage
                         src={design.imageUrl}
                         alt={design.label}
                         className="h-10 w-10 rounded object-cover"

@@ -14,7 +14,7 @@ function normalizeCloudflareR2ObjectUrl(source: string): string | null {
 
   const pathParts = parsed.pathname
     .split("/")
-    .map((part) => part.trim())
+    .map(part => part.trim())
     .filter(Boolean);
   if (pathParts.length < 2) {
     return null;
@@ -30,9 +30,19 @@ function normalizeCloudflareR2ObjectUrl(source: string): string | null {
  * Accepts absolute URLs, data/blob URLs, and root-relative paths as-is.
  * Bare storage keys are converted to the storage proxy route.
  */
-export function normalizeMediaSourceUrl(source: string | null | undefined): string {
+export function normalizeMediaSourceUrl(
+  source: string | null | undefined
+): string {
   const trimmed = String(source ?? "").trim();
   if (!trimmed) {
+    return "";
+  }
+  // Do not turn missing API fields into apparently valid storage URLs such as
+  // `/api/storage/files/undefined`. Those URLs hide the real media state and
+  // create an avoidable authenticated request on every render.
+  if (
+    /^(?:undefined|null|nan|false|true|\[object\s+object\])$/i.test(trimmed)
+  ) {
     return "";
   }
   if (/^https?:\/\//i.test(trimmed)) {

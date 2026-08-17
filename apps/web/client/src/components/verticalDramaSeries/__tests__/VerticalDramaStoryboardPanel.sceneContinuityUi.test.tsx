@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { VerticalDramaStoryboardPanel } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
 
 const baseProps = {
@@ -64,9 +64,9 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
       "title",
       "ช่วงเย็น แสงทอง"
     );
-    expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveTextContent(
-      "สร้างโดยอ้างอิงภาพช็อต 2"
-    );
+    expect(
+      screen.getByTestId("vd-storyboard-scene-anchor-1")
+    ).toHaveTextContent("สร้างโดยอ้างอิงภาพช็อต 2");
     expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveAttribute(
       "title",
       "อ้างอิงภาพที่อนุมัติแล้ว"
@@ -93,12 +93,49 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
         }}
       />
     );
-    expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveTextContent(
-      "Generated using shot 2 as reference"
-    );
+    expect(
+      screen.getByTestId("vd-storyboard-scene-anchor-1")
+    ).toHaveTextContent("Generated using shot 2 as reference");
     expect(screen.getByTestId("vd-storyboard-scene-anchor-1")).toHaveAttribute(
       "title",
       "Latest generated frame reference"
     );
+  });
+
+  it("lets a shot reuse an approved scene camera view from the location library", () => {
+    const onSetShotLocation = vi.fn();
+    const onSetShotLocationVariant = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        episodeLocations={[
+          {
+            locationKey: "hall",
+            name: "โถง",
+            primaryReferenceUrl: "/hall-primary.png",
+            cameraVariants: [
+              {
+                variantId: "701",
+                label: "Reverse view",
+                role: "reverse_angle",
+                url: "/hall-reverse.png",
+                approved: true,
+              },
+            ],
+          },
+        ]}
+        onSetShotLocation={onSetShotLocation}
+        onSetShotLocationVariant={onSetShotLocationVariant}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("vd-storyboard-location-edit-1"));
+    expect(
+      screen.getByTestId("vd-storyboard-location-variant-1-701")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("vd-storyboard-location-variant-1-701"));
+
+    expect(onSetShotLocationVariant).toHaveBeenCalledWith(1, "701");
+    expect(onSetShotLocation).not.toHaveBeenCalled();
   });
 });

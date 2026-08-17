@@ -23,17 +23,16 @@ const {
   mockGetModelsByTypeAsync,
   mockGetStaticModelById,
   mockResolveVerticalDramaCapabilities,
-} =
-  vi.hoisted(() => ({
-    mockGetModelsByTypeAsync: vi.fn(),
-    mockGetStaticModelById: vi.fn(() => undefined),
-    mockResolveVerticalDramaCapabilities: vi.fn(() => ({
-      supportsStartFrame: true,
-      maxReferenceImages: 10,
-      nativeAudioDialogue: true,
-      verticalDramaReady: true,
-    })),
-  }));
+} = vi.hoisted(() => ({
+  mockGetModelsByTypeAsync: vi.fn(),
+  mockGetStaticModelById: vi.fn(() => undefined),
+  mockResolveVerticalDramaCapabilities: vi.fn(() => ({
+    supportsStartFrame: true,
+    maxReferenceImages: 10,
+    nativeAudioDialogue: true,
+    verticalDramaReady: true,
+  })),
+}));
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
@@ -125,12 +124,16 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   },
 }));
 
-const { mockGetPrimaryReferenceUrl } = vi.hoisted(() => ({
-  mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
-}));
+const { mockGetPrimaryReferenceUrl, mockListLocationAssets } = vi.hoisted(
+  () => ({
+    mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
+    mockListLocationAssets: vi.fn(() => Promise.resolve([])),
+  })
+);
 vi.mock("../../services/verticalDramaLocationStock", () => ({
   verticalDramaLocationStockService: {
     getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
+    listLocationAssets: mockListLocationAssets,
   },
 }));
 
@@ -252,9 +255,14 @@ vi.mock("../../services/verticalDramaShotImageAction", () => ({
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 
-const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
+const router = verticalDramaEpisodesRouter as unknown as Record<
+  string,
+  Function
+>;
 
-function ctx(overrides: Partial<{ tenantId: string; user: { id: number } }> = {}) {
+function ctx(
+  overrides: Partial<{ tenantId: string; user: { id: number } }> = {}
+) {
   return {
     tenantId: "tenant-1",
     user: { id: 42 },
@@ -346,6 +354,7 @@ beforeEach(() => {
   });
   mockGetTenantFeatureFlags.mockResolvedValue({} as any);
   mockGetPrimaryReferenceUrl.mockResolvedValue(undefined);
+  mockListLocationAssets.mockResolvedValue([]);
 });
 
 describe("generateStartFrameImage — location reference attachment (Phase 2 location visual bible)", () => {
@@ -384,7 +393,9 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([LOCATION_ROW]))
       .mockReturnValueOnce(
-        selectChain([{ id: 901, originalUrl: "https://cdn.example.com/shot-1.png" }])
+        selectChain([
+          { id: 901, originalUrl: "https://cdn.example.com/shot-1.png" },
+        ])
       )
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
     mockGetPrimaryReferenceUrl.mockResolvedValueOnce(undefined);
@@ -412,7 +423,7 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
             }),
           ]),
         }),
-      }),
+      })
     );
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -424,7 +435,7 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
           layer: "render",
           dropped: false,
         }),
-      }),
+      })
     );
   });
 
@@ -469,7 +480,9 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     const [request] = mockGenerateImageAsync.mock.calls[0];
     expect(request.referenceImageUrls).toBeUndefined();
     expect(mockAuditLog).not.toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: "vd_scene_neighbor_anchor_attached" }),
+      expect.objectContaining({
+        eventType: "vd_scene_neighbor_anchor_attached",
+      })
     );
   });
 
@@ -490,13 +503,17 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
 
   it("resolves and attaches the shot's location reference URL when the storyboard has a matching distinct_locations group", async () => {
     const episodeRow = baseEpisodeRow({
-      storyboard: { distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP] },
+      storyboard: {
+        distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP],
+      },
     });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([LOCATION_ROW])) // resolveShotLocationReferenceEntry roster lookup
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
 
     const result = await router.generateStartFrameImage({
       ctx: ctx(),
@@ -508,8 +525,56 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
       55
     );
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/store-plate.png"]);
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/store-plate.png",
+    ]);
     expect(result.trimmedProductReferenceCount).toBe(0);
+  });
+
+  it("attaches the selected approved camera variant instead of the primary plate", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: { distinct_locations: [STORE_LOCATION_GROUP] },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "A rear-corner view of the cafe.",
+            negativePrompt: "identity drift",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationVariantId: "777",
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockListLocationAssets.mockResolvedValueOnce([
+      {
+        assetLinkId: 777,
+        mediaAssetId: 888,
+        url: "https://cdn.example.com/store-rear-corner.png",
+        approved: true,
+        role: "detail_corner",
+      },
+    ]);
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).not.toHaveBeenCalled();
+    expect(mockGenerateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: ["https://cdn.example.com/store-rear-corner.png"],
+      }),
+      expect.any(String)
+    );
   });
 
   it("resolves a canonical roster image when the legacy storyboard key and situation-qualified name drifted (series 18 regression)", async () => {
@@ -518,8 +583,7 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
         distinct_locations: [
           {
             location_key: "location-2-visit1",
-            location_name:
-              "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
+            location_name: "ศูนย์ควบคุมการปฏิบัติการบิน (ช่วงเช้า)",
             description: "flight control center during the morning crisis",
             shot_numbers: [1],
           },
@@ -561,7 +625,9 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
 
   it("shot 4 (kitchen group) resolves the KITCHEN location, not the store — group matching is per-shot, not per-episode", async () => {
     const episodeRow = baseEpisodeRow({
-      storyboard: { distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP] },
+      storyboard: {
+        distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP],
+      },
       startFramePlan: {
         mode: "single_frame_per_shot",
         selectedImageModelId: "google-nano-banana-pro",
@@ -578,9 +644,20 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ id: 56, locationKey: "loc_kitchen", name: "ครัวที่บ้าน", data: { description: "kitchen desc" } }]))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 56,
+            locationKey: "loc_kitchen",
+            name: "ครัวที่บ้าน",
+            data: { description: "kitchen desc" },
+          },
+        ])
+      )
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/kitchen-plate.png");
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/kitchen-plate.png"
+    );
 
     await router.generateStartFrameImage({
       ctx: ctx(),
@@ -662,8 +739,12 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
       ) // resolveRequiredShotCharacterAttachmentManifest character lookup
       .mockReturnValueOnce(selectChain([LOCATION_ROW])) // location roster lookup
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
-    mockGetPrimaryPortraitUrl.mockResolvedValueOnce("https://cdn.example.com/portrait-a.png");
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+    mockGetPrimaryPortraitUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/portrait-a.png"
+    );
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
 
     const result = await router.generateStartFrameImage({
       ctx: ctx(),
@@ -674,7 +755,9 @@ describe("generateStartFrameImage — location reference attachment (Phase 2 loc
     // With maxReferenceImages=1, only the character portrait survives — the
     // location ref is trimmed off the end before it, per the character ->
     // location -> product priority order.
-    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/portrait-a.png"]);
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/portrait-a.png",
+    ]);
     expect(result.trimmedProductReferenceCount).toBe(1);
   });
 });
@@ -698,14 +781,18 @@ describe("generateStartFrameAngleVariations — location reference attachment (P
 
   it("resolves and attaches the shot's location reference URL when present", async () => {
     const episodeRow = baseEpisodeRow({
-      storyboard: { distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP] },
+      storyboard: {
+        distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP],
+      },
     });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([LOCATION_ROW])) // resolveShotLocationReferenceEntry roster lookup
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])) // pricing lookup
       .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
 
     await router.generateStartFrameAngleVariations({
       ctx: ctx(),
@@ -713,7 +800,56 @@ describe("generateStartFrameAngleVariations — location reference attachment (P
     });
 
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/store-plate.png"]);
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/store-plate.png",
+    ]);
+  });
+
+  it("attaches the selected approved camera variant for angle-grid generation", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: { distinct_locations: [STORE_LOCATION_GROUP] },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "A rear-corner view of the cafe.",
+            negativePrompt: "identity drift",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationVariantId: "777",
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]))
+      .mockReturnValueOnce(selectChain([]));
+    mockListLocationAssets.mockResolvedValueOnce([
+      {
+        assetLinkId: 777,
+        mediaAssetId: 888,
+        url: "https://cdn.example.com/store-rear-corner.png",
+        approved: true,
+        role: "detail_corner",
+      },
+    ]);
+
+    await router.generateStartFrameAngleVariations({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).not.toHaveBeenCalled();
+    expect(mockGenerateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: ["https://cdn.example.com/store-rear-corner.png"],
+      }),
+      expect.any(String)
+    );
   });
 });
 
@@ -729,7 +865,9 @@ describe("resolveShotLocationReferenceEntry — per-shot override precedence (Ph
   it("the shot's own startFramePlan.frames[].locationKey override takes precedence over the storyboard's distinct_locations grouping", async () => {
     const episodeRow = baseEpisodeRow({
       // Storyboard groups shot 1 under the STORE location...
-      storyboard: { distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP] },
+      storyboard: {
+        distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP],
+      },
       startFramePlan: {
         mode: "single_frame_per_shot",
         selectedImageModelId: "google-nano-banana-pro",
@@ -749,10 +887,19 @@ describe("resolveShotLocationReferenceEntry — per-shot override precedence (Ph
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(
-        selectChain([{ id: 56, locationKey: "loc_kitchen", name: "ครัวที่บ้าน", data: { description: "kitchen desc" } }])
+        selectChain([
+          {
+            id: 56,
+            locationKey: "loc_kitchen",
+            name: "ครัวที่บ้าน",
+            data: { description: "kitchen desc" },
+          },
+        ])
       ) // roster lookup for the OVERRIDE key (loc_kitchen), not the storyboard-matched loc_store
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/kitchen-plate.png");
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/kitchen-plate.png"
+    );
 
     await router.generateStartFrameImage({
       ctx: ctx(),
@@ -764,7 +911,9 @@ describe("resolveShotLocationReferenceEntry — per-shot override precedence (Ph
       56
     );
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/kitchen-plate.png"]);
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/kitchen-plate.png",
+    ]);
   });
 
   it("the override resolves the location even when the storyboard carries no distinct_locations data at all", async () => {
@@ -789,7 +938,9 @@ describe("resolveShotLocationReferenceEntry — per-shot override precedence (Ph
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([LOCATION_ROW])) // roster lookup for the override key
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
 
     await router.generateStartFrameImage({
       ctx: ctx(),
@@ -801,7 +952,9 @@ describe("resolveShotLocationReferenceEntry — per-shot override precedence (Ph
       55
     );
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/store-plate.png"]);
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/store-plate.png",
+    ]);
   });
 
   it("an override locationKey with no matching roster row yet resolves gracefully to no location reference, never throws", async () => {
@@ -845,7 +998,9 @@ describe("resolveShotLocationReferenceEntry — per-shot override precedence (Ph
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([LOCATION_ROW])) // roster lookup via the storyboard-matched key
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
-    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
 
     await router.generateStartFrameImage({
       ctx: ctx(),

@@ -64,19 +64,26 @@ import {
 import {
   VERTICAL_DRAMA_LOCATION_ASSET_STATES,
   VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES,
+  getVerticalDramaLocationCameraViewLabel,
   type VerticalDramaLocationCameraView,
   type VerticalDramaLocationCoverageRole,
 } from "@shared/verticalDramaSeries/locationAssets";
 import { mediaGenerationService } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import { resolveVdImagePromptBudgetForModel } from "../services/modelPromptBudget";
-import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  refundCredits,
+} from "../services/creditService";
 import { signBearerToken } from "../_core/tokens";
 import {
   generateLocationVisualPrompts,
+  buildLocationImageEditPrompt,
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../services/verticalDramaLocationImageGeneration";
+import { resolveVerticalDramaCapabilities } from "../services/modelRegistry";
 // Generic, non-character-specific bible reader (reads `bible.presetVisualIdentity`,
 // pure — no character logic) — genuinely SHARED utility, not a feature-specific
 // character concern, so importing it directly here (rather than duplicating its
@@ -126,14 +133,17 @@ import {
 // `reconcileLocationDetectionPlan`/error classes, plus
 // `getActiveBreakdown`/`readItemShotDrafts`) are loaded via a DYNAMIC
 // `import()` INSIDE `detectLocationsNow` only.
-import type { StoryScriptLang, StoryScriptEpisodeInput } from "@shared/verticalDramaSeries/storyScriptText";
+import type {
+  StoryScriptLang,
+  StoryScriptEpisodeInput,
+} from "@shared/verticalDramaSeries/storyScriptText";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                          */
 /* -------------------------------------------------------------------------- */
 
 const verticalDramaProcedure = protectedProcedure.use(
-  requireFeatureFlag("verticalDramaSeries"),
+  requireFeatureFlag("verticalDramaSeries")
 );
 
 /** Feature 138 P2 coverage-pack entry point. The legacy location renderer
@@ -141,11 +151,26 @@ const verticalDramaProcedure = protectedProcedure.use(
  * opt-in surface for reverse/side/detail coverage work. The child flag is
  * chained behind the scene-continuity parent, matching episode QC routes. */
 const verticalDramaSceneContinuityProcedure = verticalDramaProcedure.use(
-  requireFeatureFlag("verticalDramaSceneContinuity"),
+  requireFeatureFlag("verticalDramaSceneContinuity")
 );
-const verticalDramaSceneContinuityQcProcedure = verticalDramaSceneContinuityProcedure.use(
-  requireFeatureFlag("verticalDramaSceneContinuityQc"),
-);
+const verticalDramaSceneContinuityQcProcedure =
+  verticalDramaSceneContinuityProcedure.use(
+    requireFeatureFlag("verticalDramaSceneContinuityQc")
+  );
+
+/**
+ * Location image providers used by this surface accept one prompt field.
+ * Keep the model-generated exclusions as ordinary prompt instructions instead
+ * of sending a separate `negativePrompt` transport field.
+ */
+function composeLocationImagePrompt(
+  prompt: string,
+  negativePrompt?: string | null
+): string {
+  const base = prompt.trim();
+  const exclusions = negativePrompt?.trim();
+  return exclusions ? `${base}\n\nAvoid: ${exclusions}` : base;
+}
 
 /** Resolve a non-null tenant id or fail closed. */
 function requireTenantId(tenantId: string | null): string {
@@ -172,7 +197,11 @@ function parseId(value: string, label: string): number {
  * another tenant's/user's series. Byte-identical convention to
  * `verticalDramaCharacters.ts`'s own `loadOwnedSeries`.
  */
-async function loadOwnedSeries(tenantId: string, userId: number, seriesId: number) {
+async function loadOwnedSeries(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+) {
   const [row] = await db
     .select({ id: verticalDramaSeries.id })
     .from(verticalDramaSeries)
@@ -180,11 +209,12 @@ async function loadOwnedSeries(tenantId: string, userId: number, seriesId: numbe
       and(
         eq(verticalDramaSeries.id, seriesId),
         eq(verticalDramaSeries.tenantId, tenantId),
-        eq(verticalDramaSeries.userId, userId),
-      ),
+        eq(verticalDramaSeries.userId, userId)
+      )
     )
     .limit(1);
-  if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+  if (!row)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
   return row;
 }
 
@@ -193,7 +223,7 @@ async function loadOwnedLocation(
   tenantId: string,
   userId: number,
   seriesId: number,
-  locationId: number,
+  locationId: number
 ): Promise<VerticalDramaLocationRow> {
   const [row] = await db
     .select()
@@ -203,11 +233,12 @@ async function loadOwnedLocation(
         eq(verticalDramaLocations.id, locationId),
         eq(verticalDramaLocations.tenantId, tenantId),
         eq(verticalDramaLocations.userId, userId),
-        eq(verticalDramaLocations.seriesId, seriesId),
-      ),
+        eq(verticalDramaLocations.seriesId, seriesId)
+      )
     )
     .limit(1);
-  if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Location not found" });
+  if (!row)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Location not found" });
   return row;
 }
 
@@ -226,7 +257,10 @@ async function loadOwnedLocation(
  */
 function mapLocationStockError(err: unknown): never {
   if (err instanceof VerticalDramaLocationStockError) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Location asset not found" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Location asset not found",
+    });
   }
   throw err;
 }
@@ -243,7 +277,7 @@ function mapLocationStockError(err: unknown): never {
  */
 async function resolveLocationPresetVisualIdentity(
   tenantId: string,
-  bible: Record<string, unknown> | null,
+  bible: Record<string, unknown> | null
 ) {
   const flags = await getTenantFeatureFlags(tenantId);
   const lookLockEnabled = flags.verticalDramaSeriesLookLock === true;
@@ -258,7 +292,9 @@ async function resolveLocationPresetVisualIdentity(
 }
 
 /** Best-effort location description drawn from `verticalDramaLocations.data.description`. */
-function extractLocationDescription(data: Record<string, unknown> | null): string {
+function extractLocationDescription(
+  data: Record<string, unknown> | null
+): string {
   if (data && typeof data.description === "string" && data.description.trim()) {
     return data.description.trim();
   }
@@ -273,7 +309,9 @@ function extractLocationDescription(data: Record<string, unknown> | null): strin
  * all creative use of these facts happens in skill.md, not here.
  */
 function buildLocationSeriesContext(
-  seriesRow: { title?: string | null; genre?: string | null; tone?: string | null } | undefined,
+  seriesRow:
+    | { title?: string | null; genre?: string | null; tone?: string | null }
+    | undefined
 ): string | undefined {
   if (!seriesRow) return undefined;
   const parts: string[] = [];
@@ -294,20 +332,57 @@ function buildLocationSeriesContext(
  * round-trip to look it up.
  */
 function locationRowToDto(
-  row: VerticalDramaLocationRow & { primaryReferenceUrl?: string; primaryReferenceAssetLinkId?: number },
+  row: VerticalDramaLocationRow & {
+    primaryReferenceUrl?: string;
+    primaryReferenceAssetLinkId?: number;
+  }
 ) {
   return {
     locationId: String(row.id),
     seriesId: String(row.seriesId),
     locationKey: row.locationKey,
     name: row.name,
-    description: extractLocationDescription((row.data as Record<string, unknown> | null) ?? null),
+    description: extractLocationDescription(
+      (row.data as Record<string, unknown> | null) ?? null
+    ),
     primaryReferenceUrl: row.primaryReferenceUrl,
     primaryReferenceAssetLinkId:
-      row.primaryReferenceAssetLinkId != null ? String(row.primaryReferenceAssetLinkId) : undefined,
-    createdAt: (row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt)).toISOString(),
-    updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
+      row.primaryReferenceAssetLinkId != null
+        ? String(row.primaryReferenceAssetLinkId)
+        : undefined,
+    createdAt: (row.createdAt instanceof Date
+      ? row.createdAt
+      : new Date(row.createdAt)
+    ).toISOString(),
+    updatedAt: (row.updatedAt instanceof Date
+      ? row.updatedAt
+      : new Date(row.updatedAt)
+    ).toISOString(),
   };
+}
+
+function locationCameraVariantsToDto(
+  assets: Array<{
+    assetLinkId: number;
+    mediaAssetId: number;
+    url: string;
+    approved: boolean;
+    role: string | null;
+    metadata: Record<string, unknown> | null;
+  }>
+) {
+  return assets
+    .filter(asset => asset.approved && asset.role !== "establishing_plate")
+    .map(asset => ({
+      variantId: String(asset.assetLinkId),
+      label: getVerticalDramaLocationCameraViewLabel({
+        role: asset.role,
+        metadata: asset.metadata,
+      }),
+      role: asset.role ?? "camera_variant",
+      url: asset.url,
+      approved: asset.approved,
+    }));
 }
 
 /**
@@ -317,7 +392,10 @@ function locationRowToDto(
  * `getStartFrameMediaUserToken`: prefer the caller's own session token (so
  * usage attributes correctly), fall back to minting a scoped token.
  */
-function getLocationMediaUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
+function getLocationMediaUserToken(ctx: {
+  userToken: string | null;
+  user: { id: number };
+}): string {
   if (ctx.userToken) return ctx.userToken;
   return signBearerToken(
     {
@@ -326,7 +404,7 @@ function getLocationMediaUserToken(ctx: { userToken: string | null; user: { id: 
       scopes: ["media:generate"],
       jti: `vd_location_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
     },
-    "15m",
+    "15m"
   );
 }
 
@@ -342,14 +420,17 @@ const cameraViewInput = z
     label: z.string().trim().min(1).max(160),
     directive: z.string().trim().max(1000).optional(),
   })
-  .transform(value => ({
-    ...value,
-    ...(value.preset ? { preset: value.preset } : {}),
-    ...(value.directive ? { directive: value.directive } : {}),
-  } satisfies VerticalDramaLocationCameraView));
+  .transform(
+    value =>
+      ({
+        ...value,
+        ...(value.preset ? { preset: value.preset } : {}),
+        ...(value.directive ? { directive: value.directive } : {}),
+      }) satisfies VerticalDramaLocationCameraView
+  );
 
 const assetStateEnum = z.enum(
-  VERTICAL_DRAMA_LOCATION_ASSET_STATES as unknown as [string, ...string[]],
+  VERTICAL_DRAMA_LOCATION_ASSET_STATES as unknown as [string, ...string[]]
 );
 
 /* -------------------------------------------------------------------------- */
@@ -374,8 +455,23 @@ export const verticalDramaLocationsRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       await loadOwnedSeries(tenantId, userId, seriesId);
 
-      const rows = await verticalDramaLocationStockService.listRows({ tenantId, userId, seriesId });
-      return { locations: rows.map((row) => locationRowToDto(row)) };
+      const rows = await verticalDramaLocationStockService.listRows({
+        tenantId,
+        userId,
+        seriesId,
+      });
+      const locations = await Promise.all(
+        rows.map(async row => {
+          const assets = await verticalDramaLocationStockService
+            .listLocationAssets({ tenantId, userId, seriesId }, row.id)
+            .catch(() => []);
+          return {
+            ...locationRowToDto(row),
+            cameraVariants: locationCameraVariantsToDto(assets),
+          };
+        })
+      );
+      return { locations };
     }),
 
   /**
@@ -391,7 +487,7 @@ export const verticalDramaLocationsRouter = router({
         locationId: z.string().min(1),
         name: z.string().trim().min(1).max(255).optional(),
         description: z.string().trim().max(4000).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
@@ -399,12 +495,18 @@ export const verticalDramaLocationsRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const locationId = parseId(input.locationId, "location id");
       await loadOwnedSeries(tenantId, userId, seriesId);
-      const existing = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+      const existing = await loadOwnedLocation(
+        tenantId,
+        userId,
+        seriesId,
+        locationId
+      );
 
       const patch: Record<string, unknown> = { updatedAt: new Date() };
       if (input.name !== undefined) patch.name = input.name;
       if (input.description !== undefined) {
-        const existingData = (existing.data as Record<string, unknown> | null) ?? {};
+        const existingData =
+          (existing.data as Record<string, unknown> | null) ?? {};
         patch.data = { ...existingData, description: input.description };
       }
 
@@ -416,8 +518,8 @@ export const verticalDramaLocationsRouter = router({
             eq(verticalDramaLocations.id, locationId),
             eq(verticalDramaLocations.tenantId, tenantId),
             eq(verticalDramaLocations.userId, userId),
-            eq(verticalDramaLocations.seriesId, seriesId),
-          ),
+            eq(verticalDramaLocations.seriesId, seriesId)
+          )
         )
         .returning();
 
@@ -443,7 +545,7 @@ export const verticalDramaLocationsRouter = router({
    * charges) — NOT literally zero-cost; this procedure never performs a
    * SECOND/duplicate charge beyond what the one shared prompt-generation
    * call already does. The caller then passes the approved text back as
-   * `approvedPrompt`/`approvedNegativePrompt` on `generateLocationImage` so
+   * `approvedPrompt` on `generateLocationImage` so
    * that LLM leg is never re-run (and never double-charged) for the same
    * spend.
    */
@@ -455,7 +557,7 @@ export const verticalDramaLocationsRouter = router({
         coverageRole: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
         gapDescription: z.string().trim().max(500).optional(),
         cameraView: cameraViewInput.optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = `user:${ctx.user.id}`;
@@ -471,12 +573,20 @@ export const verticalDramaLocationsRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const locationId = parseId(input.locationId, "location id");
       await loadOwnedSeries(tenantId, userId, seriesId);
-      const location = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+      const location = await loadOwnedLocation(
+        tenantId,
+        userId,
+        seriesId,
+        locationId
+      );
 
       let imagePromptMaxChars: number | undefined;
       if (input.selectedImageModelId) {
         const [modelRow] = await db
-          .select({ configJson: mediaModels.configJson, provider: mediaModels.provider })
+          .select({
+            configJson: mediaModels.configJson,
+            provider: mediaModels.provider,
+          })
           .from(mediaModels)
           .where(eq(mediaModels.modelId, input.selectedImageModelId))
           .limit(1);
@@ -495,17 +605,24 @@ export const verticalDramaLocationsRouter = router({
           bible: verticalDramaSeries.bible,
         })
         .from(verticalDramaSeries)
-        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId)
+          )
+        )
         .limit(1);
 
-      const { identity: presetVisualIdentity } = await resolveLocationPresetVisualIdentity(
-        tenantId,
-        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
-      const hasOwnReferenceAssetId = await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
-        { tenantId, userId, seriesId },
-        locationId,
-      );
+      const { identity: presetVisualIdentity } =
+        await resolveLocationPresetVisualIdentity(
+          tenantId,
+          (seriesRow?.bible as Record<string, unknown> | null) ?? null
+        );
+      const hasOwnReferenceAssetId =
+        await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
+          { tenantId, userId, seriesId },
+          locationId
+        );
 
       let promptResult;
       try {
@@ -515,14 +632,22 @@ export const verticalDramaLocationsRouter = router({
           seriesId,
           locationKey: location.locationKey,
           locationName: location.name,
-          description: extractLocationDescription((location.data as Record<string, unknown> | null) ?? null) || location.name,
+          description:
+            extractLocationDescription(
+              (location.data as Record<string, unknown> | null) ?? null
+            ) || location.name,
           seriesContext: buildLocationSeriesContext(seriesRow),
           presetVisualIdentity,
           hasOwnReferenceImage: Boolean(hasOwnReferenceAssetId),
           ...(input.coverageRole
-            ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
+            ? {
+                coverageRole:
+                  input.coverageRole as VerticalDramaLocationCoverageRole,
+              }
             : {}),
-          ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+          ...(input.gapDescription
+            ? { gapDescription: input.gapDescription }
+            : {}),
           ...(input.cameraView ? { cameraView: input.cameraView } : {}),
           ...(imagePromptMaxChars ? { imagePromptMaxChars } : {}),
         });
@@ -531,17 +656,25 @@ export const verticalDramaLocationsRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: err.message });
         }
         if (err instanceof VdSchemaValidationError) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: err.message,
+          });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: err instanceof Error ? err.message : "Location visual prompt generation failed",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Location visual prompt generation failed",
         });
       }
 
       return {
-        establishingPlatePrompt: promptResult.establishingPlatePrompt,
-        negativePrompt: promptResult.negativePrompt,
+        establishingPlatePrompt: composeLocationImagePrompt(
+          promptResult.establishingPlatePrompt,
+          promptResult.negativePrompt
+        ),
         model: promptResult.model,
       };
     }),
@@ -556,7 +689,7 @@ export const verticalDramaLocationsRouter = router({
    * the caller polls `media.getTask({taskId})`, then finalizes via
    * `resolveMediaAssetForImport` + `linkAsset`, both already defined below).
    *
-   * `approvedPrompt`/`approvedNegativePrompt` (optional): when the caller
+   * `approvedPrompt` (optional): when the caller
    * already ran `previewLocationPrompt` and had the user approve the exact
    * text, pass it here to skip the internal `generateLocationVisualPrompts`
    * call entirely — mirrors `generateCharacterImage`'s EXACT
@@ -587,7 +720,6 @@ export const verticalDramaLocationsRouter = router({
       seriesScope.extend({
         locationId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
-        approvedNegativePrompt: z.string().optional(),
         // Caller-selected image model (location tab's own model picker) —
         // validated + must be enabled. REQUIRED — no server-side fallback;
         // throws BAD_REQUEST when absent. See `resolveCharacterImageModelId`.
@@ -601,11 +733,14 @@ export const verticalDramaLocationsRouter = router({
         coverageRole: z.enum(VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES).optional(),
         gapDescription: z.string().trim().max(500).optional(),
         cameraView: cameraViewInput.optional(),
+        /** Explicit image-to-image edit request. Requires the location's
+         * current primary reference and a model with reference-image support. */
+        editInstruction: z.string().trim().min(1).max(1200).optional(),
         // Feature 135 — Hermes Grok media worker (section 09, row 4).
         // Required only when the resolved model is Hermes-transport and the
         // caller has no default Hermes connection for images.
         hermesConnectionId: z.string().max(64).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = `user:${ctx.user.id}`;
@@ -621,9 +756,44 @@ export const verticalDramaLocationsRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const locationId = parseId(input.locationId, "location id");
       const ownedSeriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
-      const location = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+      const location = await loadOwnedLocation(
+        tenantId,
+        userId,
+        seriesId,
+        locationId
+      );
 
-      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
+      if (input.editInstruction && input.approvedPrompt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Image edit requests cannot be combined with an approved text-to-image prompt.",
+        });
+      }
+
+      // Resolve the source before prompt construction so an edit can never
+      // silently degrade into text-to-image when the old image disappeared.
+      const referenceUrl =
+        await verticalDramaLocationStockService.getPrimaryReferenceUrl(
+          { tenantId, userId, seriesId },
+          locationId
+        );
+      const referenceMediaAssetId =
+        await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
+          { tenantId, userId, seriesId },
+          locationId
+        );
+      if (input.editInstruction && !referenceUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "แก้ไขภาพเดิมไม่ได้ เพราะสถานที่นี้ยังไม่มีภาพอ้างอิงหลัก / Cannot edit the existing image because this location has no primary reference image.",
+        });
+      }
+
+      const resolvedImageModelId = await resolveCharacterImageModelId(
+        input.selectedImageModelId
+      );
       // Resolve the prompt-authoring budget from the selected model's static
       // catalog entry before the optional LLM call. The persisted catalog row
       // is re-read below for the final render pricing/transport path.
@@ -639,14 +809,25 @@ export const verticalDramaLocationsRouter = router({
       let negativePrompt: string | undefined;
       let promptModel: string | null = null;
       let promptCreditsUsed = 0;
-      let { identity: presetVisualIdentity, lookLockEnabled } = await resolveLocationPresetVisualIdentity(
-        tenantId,
-        (ownedSeriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
+      let { identity: presetVisualIdentity, lookLockEnabled } =
+        await resolveLocationPresetVisualIdentity(
+          tenantId,
+          (ownedSeriesRow?.bible as Record<string, unknown> | null) ?? null
+        );
 
-      if (input.approvedPrompt) {
+      if (input.editInstruction) {
+        establishingPlatePrompt = buildLocationImageEditPrompt({
+          locationName: location.name,
+          description:
+            extractLocationDescription(
+              (location.data as Record<string, unknown> | null) ?? null
+            ) || location.name,
+          editInstruction: input.editInstruction,
+          ...(input.cameraView ? { cameraView: input.cameraView } : {}),
+        });
+        promptModel = "deterministic-location-image-edit";
+      } else if (input.approvedPrompt) {
         establishingPlatePrompt = input.approvedPrompt;
-        negativePrompt = input.approvedNegativePrompt;
       } else {
         const [seriesRow] = await db
           .select({
@@ -656,16 +837,23 @@ export const verticalDramaLocationsRouter = router({
             bible: verticalDramaSeries.bible,
           })
           .from(verticalDramaSeries)
-          .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+          .where(
+            and(
+              eq(verticalDramaSeries.id, seriesId),
+              eq(verticalDramaSeries.tenantId, tenantId)
+            )
+          )
           .limit(1);
-        ({ identity: presetVisualIdentity, lookLockEnabled } = await resolveLocationPresetVisualIdentity(
-          tenantId,
-          (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-        ));
-        const hasOwnReferenceAssetId = await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
-          { tenantId, userId, seriesId },
-          locationId,
-        );
+        ({ identity: presetVisualIdentity, lookLockEnabled } =
+          await resolveLocationPresetVisualIdentity(
+            tenantId,
+            (seriesRow?.bible as Record<string, unknown> | null) ?? null
+          ));
+        const hasOwnReferenceAssetId =
+          await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
+            { tenantId, userId, seriesId },
+            locationId
+          );
 
         let promptResult;
         try {
@@ -675,14 +863,22 @@ export const verticalDramaLocationsRouter = router({
             seriesId,
             locationKey: location.locationKey,
             locationName: location.name,
-            description: extractLocationDescription((location.data as Record<string, unknown> | null) ?? null) || location.name,
+            description:
+              extractLocationDescription(
+                (location.data as Record<string, unknown> | null) ?? null
+              ) || location.name,
             seriesContext: buildLocationSeriesContext(seriesRow),
             presetVisualIdentity,
             hasOwnReferenceImage: Boolean(hasOwnReferenceAssetId),
             ...(input.coverageRole
-              ? { coverageRole: input.coverageRole as VerticalDramaLocationCoverageRole }
+              ? {
+                  coverageRole:
+                    input.coverageRole as VerticalDramaLocationCoverageRole,
+                }
               : {}),
-            ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+            ...(input.gapDescription
+              ? { gapDescription: input.gapDescription }
+              : {}),
             ...(input.cameraView ? { cameraView: input.cameraView } : {}),
             imagePromptMaxChars,
           });
@@ -691,11 +887,17 @@ export const verticalDramaLocationsRouter = router({
             throw new TRPCError({ code: "FORBIDDEN", message: err.message });
           }
           if (err instanceof VdSchemaValidationError) {
-            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: err.message,
+            });
           }
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: err instanceof Error ? err.message : "Location visual prompt generation failed",
+            message:
+              err instanceof Error
+                ? err.message
+                : "Location visual prompt generation failed",
           });
         }
         establishingPlatePrompt = promptResult.establishingPlatePrompt;
@@ -713,18 +915,23 @@ export const verticalDramaLocationsRouter = router({
         .from(mediaModels)
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
-      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null, provider: undefined };
+      const pricingModel = pricingRow ?? {
+        creditCost: 10,
+        configJson: null,
+        provider: undefined,
+      };
       imagePromptMaxChars = resolveVdImagePromptBudgetForModel({
         modelId: resolvedImageModelId,
         configJson: pricingModel.configJson,
         provider: pricingModel.provider,
       });
       if (lookLockEnabled && presetVisualIdentity) {
-        ({ prompt: establishingPlatePrompt, negativePrompt } = applySeriesLookToImagePrompt({
-          prompt: establishingPlatePrompt,
-          negativePrompt,
-          identity: presetVisualIdentity,
-        }));
+        ({ prompt: establishingPlatePrompt, negativePrompt } =
+          applySeriesLookToImagePrompt({
+            prompt: establishingPlatePrompt,
+            negativePrompt,
+            identity: presetVisualIdentity,
+          }));
         await recordSeriesLookLockAuditEvent({
           eventType: VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
           tenantId,
@@ -733,15 +940,33 @@ export const verticalDramaLocationsRouter = router({
           path: "locations.generateImage",
         });
       }
-
-      // Identity-lock reference — this location's existing approved plate
-      // (if any), so a regeneration/refresh stays visually consistent with
-      // the prior render. Same "resolve reference BEFORE the image-render
-      // credit reservation" ordering as `generateCharacterImage`.
-      const referenceUrl = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
-        { tenantId, userId, seriesId },
-        locationId,
+      const singleFieldPrompt = composeLocationImagePrompt(
+        establishingPlatePrompt,
+        negativePrompt
       );
+
+      if (input.editInstruction) {
+        const capabilities = resolveVerticalDramaCapabilities(
+          resolvedImageModelId,
+          {
+            type: "image",
+            configJson:
+              (pricingModel.configJson as
+                | Record<string, any>
+                | null
+                | undefined) ?? undefined,
+          }
+        );
+        if (
+          capabilities.maxReferenceImages === undefined ||
+          capabilities.maxReferenceImages < 1
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `โมเดล ${resolvedImageModelId} ไม่รองรับ image-to-image ที่มีภาพอ้างอิง กรุณาเลือกโมเดลที่รองรับ / Model "${resolvedImageModelId}" does not support image-to-image reference editing. Choose a compatible model.`,
+          });
+        }
+      }
 
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
       //    from the prompt-generation LLM call above. Prices + generates
@@ -749,7 +974,9 @@ export const verticalDramaLocationsRouter = router({
       //    which is now REQUIRED — `resolveCharacterImageModelId` throws
       //    BAD_REQUEST when none was selected, same fail-closed behavior as
       //    `generateCharacterImage`.
-      const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
+      const imageCreditCost = calculateCreditCost(pricingModel, {
+        numImages: 1,
+      });
 
       // Zero-cost models skip the reserve/refund cycle entirely — same
       // convention as `generateCharacterImage`/`generateStartFrameImage`
@@ -793,22 +1020,28 @@ export const verticalDramaLocationsRouter = router({
       }
 
       if (transportDecision.kind === "hermes") {
-        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const { queueHermesMediaJob } =
+          await import("../services/hermesMediaScheduler");
         const {
           buildHermesMediaReferences,
           buildHermesMediaTaskEnvelope,
           resolveHermesOrderedRefsFromUrls,
         } = await import("../services/hermesMediaReferences");
         const hermesTraceId = crypto.randomUUID();
-        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+        const { orderedRefs, droppedReferenceCount } =
+          await resolveHermesOrderedRefsFromUrls({
+            tenantId,
+            userId,
+            urls: referenceUrl ? [referenceUrl] : [],
+            traceId: hermesTraceId,
+            connectionId: transportDecision.connectionId,
+            roleFor: () => "identity_lock",
+          });
+        const references = await buildHermesMediaReferences({
           tenantId,
           userId,
-          urls: referenceUrl ? [referenceUrl] : [],
-          traceId: hermesTraceId,
-          connectionId: transportDecision.connectionId,
-          roleFor: () => "identity_lock",
+          orderedRefs,
         });
-        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
         const hermesProviderModelId =
           resolveMediaModelTransportConfig({
             modelId: resolvedImageModelId,
@@ -818,8 +1051,12 @@ export const verticalDramaLocationsRouter = router({
           contractVersion: 1,
           operation: references.length > 0 ? "image.edit" : "image.generate",
           connectionId: transportDecision.connectionId,
-          prompt: establishingPlatePrompt,
-          settings: { model: hermesProviderModelId, aspectRatio: "16:9", outputCount: 1 },
+          prompt: singleFieldPrompt,
+          settings: {
+            model: hermesProviderModelId,
+            aspectRatio: "16:9",
+            outputCount: 1,
+          },
           references,
           entity: { type: "vertical_drama_location", id: String(locationId) },
           traceId: hermesTraceId,
@@ -831,31 +1068,53 @@ export const verticalDramaLocationsRouter = router({
           userId,
           mediaType: "image",
           model: hermesProviderModelId,
-          prompt: establishingPlatePrompt,
+          prompt: singleFieldPrompt,
           extraParams: {
             __vd_series_id: String(seriesId),
             __vd_location_id: String(locationId),
-            ...(input.coverageRole ? { __vd_location_coverage_role: input.coverageRole } : {}),
-          ...(input.gapDescription ? { __vd_location_coverage_gap: input.gapDescription } : {}),
-          ...(input.cameraView ? { __vd_location_camera_view: input.cameraView } : {}),
+            ...(input.editInstruction
+              ? {
+                  __vd_location_generation_mode: "image_to_image",
+                  __vd_location_edit_instruction: input.editInstruction,
+                  ...(referenceMediaAssetId != null
+                    ? {
+                        __vd_location_source_media_asset_id: String(
+                          referenceMediaAssetId
+                        ),
+                      }
+                    : {}),
+                }
+              : { __vd_location_generation_mode: "text_to_image" }),
+            ...(input.coverageRole
+              ? { __vd_location_coverage_role: input.coverageRole }
+              : {}),
+            ...(input.gapDescription
+              ? { __vd_location_coverage_gap: input.gapDescription }
+              : {}),
+            ...(input.cameraView
+              ? { __vd_location_camera_view: input.cameraView }
+              : {}),
           },
           droppedReferenceCount,
         });
         return {
           taskId: hermesTask.id,
-          establishingPlatePrompt,
-          negativePrompt,
+          establishingPlatePrompt: singleFieldPrompt,
           promptModel,
           creditsUsed: { promptGeneration: promptCreditsUsed, imageRender: 0 },
           droppedReferenceCount,
           ...(input.coverageRole ? { coverageRole: input.coverageRole } : {}),
-          ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+          ...(input.gapDescription
+            ? { gapDescription: input.gapDescription }
+            : {}),
           ...(input.cameraView ? { cameraView: input.cameraView } : {}),
         };
       }
 
       const transportMetadata =
-        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
+        transportDecision.kind === "mcp"
+          ? transportDecision.transportMetadata
+          : undefined;
 
       if (shouldChargeImageCredits) {
         // Reserve credits BEFORE starting the task — `media.getTask`
@@ -878,14 +1137,12 @@ export const verticalDramaLocationsRouter = router({
           },
         });
       }
-
       const userToken = getLocationMediaUserToken(ctx);
       let task;
       try {
         task = await mediaGenerationService.generateImageAsync(
           {
-            prompt: establishingPlatePrompt,
-            negativePrompt,
+            prompt: singleFieldPrompt,
             model: resolvedImageModelId,
             numImages: 1,
             // Wide establishing shot — see this procedure's own doc comment.
@@ -896,20 +1153,40 @@ export const verticalDramaLocationsRouter = router({
             extraParams: {
               __vd_series_id: String(seriesId),
               __vd_location_id: String(locationId),
-              ...(input.coverageRole ? { __vd_location_coverage_role: input.coverageRole } : {}),
-              ...(input.gapDescription ? { __vd_location_coverage_gap: input.gapDescription } : {}),
-              ...(input.cameraView ? { __vd_location_camera_view: input.cameraView } : {}),
+              ...(input.editInstruction
+                ? {
+                    __vd_location_generation_mode: "image_to_image",
+                    __vd_location_edit_instruction: input.editInstruction,
+                    ...(referenceMediaAssetId != null
+                      ? {
+                          __vd_location_source_media_asset_id: String(
+                            referenceMediaAssetId
+                          ),
+                        }
+                      : {}),
+                  }
+                : { __vd_location_generation_mode: "text_to_image" }),
+              ...(input.coverageRole
+                ? { __vd_location_coverage_role: input.coverageRole }
+                : {}),
+              ...(input.gapDescription
+                ? { __vd_location_coverage_gap: input.gapDescription }
+                : {}),
+              ...(input.cameraView
+                ? { __vd_location_camera_view: input.cameraView }
+                : {}),
             },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
+              tenantId,
               traceId: crypto.randomUUID(),
               source: "trpc.verticalDramaLocations.generateLocationImage",
               stage: "submission",
             },
           },
-          userToken,
+          userToken
         );
       } catch (err) {
         if (shouldChargeImageCredits) {
@@ -918,23 +1195,40 @@ export const verticalDramaLocationsRouter = router({
             amount: imageCreditCost,
             description: `Refund: location image render failed to submit (location #${locationId})`,
             sourceType: "media_image",
-            metadata: { feature: "vertical_drama_location_visual_bible", seriesId, locationId },
+            metadata: {
+              feature: "vertical_drama_location_visual_bible",
+              seriesId,
+              locationId,
+            },
           });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: err instanceof Error ? err.message : "Location image generation failed to submit",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Location image generation failed to submit",
         });
       }
 
       return {
         taskId: task.id,
-        establishingPlatePrompt,
-        negativePrompt,
+        establishingPlatePrompt: singleFieldPrompt,
         promptModel,
-        creditsUsed: { promptGeneration: promptCreditsUsed, imageRender: imageCreditCost },
+        creditsUsed: {
+          promptGeneration: promptCreditsUsed,
+          imageRender: imageCreditCost,
+        },
+        ...(input.editInstruction
+          ? { generationMode: "image_to_image" as const }
+          : { generationMode: "text_to_image" as const }),
+        ...(referenceMediaAssetId != null
+          ? { sourceMediaAssetId: String(referenceMediaAssetId) }
+          : {}),
         ...(input.coverageRole ? { coverageRole: input.coverageRole } : {}),
-        ...(input.gapDescription ? { gapDescription: input.gapDescription } : {}),
+        ...(input.gapDescription
+          ? { gapDescription: input.gapDescription }
+          : {}),
         ...(input.cameraView ? { cameraView: input.cameraView } : {}),
       };
     }),
@@ -957,8 +1251,7 @@ export const verticalDramaLocationsRouter = router({
         sharedGroupId: z.number().int().positive().optional(),
         hermesConnectionId: z.string().max(64).optional(),
         approvedPrompt: z.string().min(1).optional(),
-        approvedNegativePrompt: z.string().optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const routerValue = verticalDramaLocationsRouter as unknown as {
@@ -996,7 +1289,11 @@ export const verticalDramaLocationsRouter = router({
         source: z.enum(["generated", "imported"]),
         checksumSha256: z.string().max(64).optional(),
         metadata: z.record(z.string(), z.unknown()).optional(),
-      }),
+        /** Keep an existing approved primary pinned while linking an edited
+         * candidate. This prevents image-to-image edits from silently
+         * changing the location's source image before the creator chooses it. */
+        preservePrimaryAssetLinkId: z.string().min(1).optional(),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
@@ -1010,7 +1307,10 @@ export const verticalDramaLocationsRouter = router({
         await loadOwnedLocation(tenantId, userId, seriesId, locationId);
       }
 
-      const mediaAssetId = input.mediaAssetId != null ? parseId(input.mediaAssetId, "media asset id") : null;
+      const mediaAssetId =
+        input.mediaAssetId != null
+          ? parseId(input.mediaAssetId, "media asset id")
+          : null;
 
       try {
         const asset = await verticalDramaLocationStockService.linkAsset({
@@ -1025,6 +1325,16 @@ export const verticalDramaLocationsRouter = router({
           checksumSha256: input.checksumSha256 ?? null,
           metadata: input.metadata ?? null,
         });
+        if (input.preservePrimaryAssetLinkId != null && locationId != null) {
+          await verticalDramaLocationStockService.setPrimaryAsset(
+            { tenantId, userId, seriesId },
+            locationId,
+            parseId(
+              input.preservePrimaryAssetLinkId,
+              "preserve primary asset link id"
+            )
+          );
+        }
         return { asset };
       } catch (err) {
         mapLocationStockError(err);
@@ -1062,8 +1372,8 @@ export const verticalDramaLocationsRouter = router({
             mimeType: z.string().min(1),
             fileName: z.string().optional(),
           }),
-        ]),
-      ),
+        ])
+      )
     )
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = `user:${ctx.user.id}`;
@@ -1093,12 +1403,15 @@ export const verticalDramaLocationsRouter = router({
             and(
               eq(libraryItems.id, input.libraryItemId),
               eq(libraryItems.tenantId, tenantId),
-              eq(libraryItems.ownerUserId, userId),
-            ),
+              eq(libraryItems.ownerUserId, userId)
+            )
           )
           .limit(1);
         if (!item) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Library item not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Library item not found",
+          });
         }
         if (!item.sourceUrl) {
           throw new TRPCError({
@@ -1124,7 +1437,7 @@ export const verticalDramaLocationsRouter = router({
         // uses.
         const { assetId } = await createAssetFromAttachment(
           { type: "image", url: item.sourceUrl, mimeType } as any,
-          { tenantId, userId } as any,
+          { tenantId, userId } as any
         );
         return { mediaAssetId: String(assetId) };
       }
@@ -1132,7 +1445,7 @@ export const verticalDramaLocationsRouter = router({
       // source === "url"
       const { assetId } = await createAssetFromAttachment(
         { type: "image", url: input.url, mimeType: input.mimeType } as any,
-        { tenantId, userId } as any,
+        { tenantId, userId } as any
       );
       return { mediaAssetId: String(assetId) };
     }),
@@ -1177,7 +1490,7 @@ export const verticalDramaLocationsRouter = router({
         assetLinkId: z.string().min(1),
         to: assetStateEnum,
         rejectionReason: z.string().max(2000).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
@@ -1210,7 +1523,7 @@ export const verticalDramaLocationsRouter = router({
     .input(
       seriesScope.extend({
         assetLinkIds: z.array(z.string().min(1)).min(1).max(200),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
@@ -1218,10 +1531,10 @@ export const verticalDramaLocationsRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       await loadOwnedSeries(tenantId, userId, seriesId);
 
-      const ids = input.assetLinkIds.map((id) => parseId(id, "asset link id"));
+      const ids = input.assetLinkIds.map(id => parseId(id, "asset link id"));
       const staleCount = await verticalDramaLocationStockService.markStale(
         { tenantId, userId, seriesId },
-        ids,
+        ids
       );
       return { staleCount };
     }),
@@ -1244,7 +1557,7 @@ export const verticalDramaLocationsRouter = router({
       try {
         await verticalDramaLocationStockService.deleteAsset(
           { tenantId, userId, seriesId },
-          assetLinkId,
+          assetLinkId
         );
         return { deleted: true };
       } catch (err) {
@@ -1276,10 +1589,10 @@ export const verticalDramaLocationsRouter = router({
 
       const rows = await verticalDramaLocationStockService.listLocationAssets(
         { tenantId, userId, seriesId },
-        locationId,
+        locationId
       );
       return {
-        assets: rows.map((row) => ({
+        assets: rows.map(row => ({
           assetLinkId: String(row.assetLinkId),
           mediaAssetId: String(row.mediaAssetId),
           url: row.url,
@@ -1287,7 +1600,10 @@ export const verticalDramaLocationsRouter = router({
           isPrimary: row.isPrimary,
           role: row.role ?? "establishing_plate",
           metadata: row.metadata ?? null,
-          updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
+          updatedAt: (row.updatedAt instanceof Date
+            ? row.updatedAt
+            : new Date(row.updatedAt)
+          ).toISOString(),
         })),
       };
     }),
@@ -1306,7 +1622,12 @@ export const verticalDramaLocationsRouter = router({
    * which rate-limit either.
    */
   setPrimaryLocationAsset: verticalDramaProcedure
-    .input(seriesScope.extend({ locationId: z.string().min(1), assetLinkId: z.string().min(1) }))
+    .input(
+      seriesScope.extend({
+        locationId: z.string().min(1),
+        assetLinkId: z.string().min(1),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
@@ -1320,7 +1641,7 @@ export const verticalDramaLocationsRouter = router({
         await verticalDramaLocationStockService.setPrimaryAsset(
           { tenantId, userId, seriesId },
           locationId,
-          assetLinkId,
+          assetLinkId
         );
         return { ok: true };
       } catch (err) {
@@ -1388,14 +1709,21 @@ export const verticalDramaLocationsRouter = router({
           bible: verticalDramaSeries.bible,
         })
         .from(verticalDramaSeries)
-        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId)
+          )
+        )
         .limit(1);
       const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? {};
       const lang: StoryScriptLang = seriesRow?.locale === "th" ? "th" : "en";
 
-      const { getActiveBreakdown, readItemShotDrafts, readItemCliffhangerLine } = await import(
-        "../services/verticalDramaStoryBible"
-      );
+      const {
+        getActiveBreakdown,
+        readItemShotDrafts,
+        readItemCliffhangerLine,
+      } = await import("../services/verticalDramaStoryBible");
       const {
         generateLocationDetectionPlan,
         reconcileLocationDetectionPlan,
@@ -1404,14 +1732,17 @@ export const verticalDramaLocationsRouter = router({
       } = await import("../services/verticalDramaLocationDetector");
 
       const activeItems = getActiveBreakdown(bible);
-      const draftedItems = activeItems.filter((item) => readItemShotDrafts(item) !== null);
+      const draftedItems = activeItems.filter(
+        item => readItemShotDrafts(item) !== null
+      );
       if (draftedItems.length === 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Generate deep story drafts first before detecting locations",
+          message:
+            "Generate deep story drafts first before detecting locations",
         });
       }
-      const episodes: StoryScriptEpisodeInput[] = draftedItems.map((item) => ({
+      const episodes: StoryScriptEpisodeInput[] = draftedItems.map(item => ({
         episodeNumber: item.episodeNumber,
         workingTitle: item.workingTitle,
         logline: item.logline,
@@ -1430,13 +1761,15 @@ export const verticalDramaLocationsRouter = router({
           and(
             eq(verticalDramaLocations.tenantId, tenantId),
             eq(verticalDramaLocations.userId, userId),
-            eq(verticalDramaLocations.seriesId, seriesId),
-          ),
+            eq(verticalDramaLocations.seriesId, seriesId)
+          )
         );
-      const existingLocations = locationRows.map((row) => ({
+      const existingLocations = locationRows.map(row => ({
         locationKey: row.locationKey,
         name: row.name,
-        description: extractLocationDescription((row.data as Record<string, unknown> | null) ?? null),
+        description: extractLocationDescription(
+          (row.data as Record<string, unknown> | null) ?? null
+        ),
       }));
 
       let planResult: Awaited<ReturnType<typeof generateLocationDetectionPlan>>;
@@ -1454,15 +1787,22 @@ export const verticalDramaLocationsRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: err.message });
         }
         if (err instanceof VdSchemaValidationError) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: err.message,
+          });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: err instanceof Error ? err.message : "Location detection failed",
+          message:
+            err instanceof Error ? err.message : "Location detection failed",
         });
       }
 
-      const summary = await reconcileLocationDetectionPlan({ tenantId, userId, seriesId }, planResult.plan);
+      const summary = await reconcileLocationDetectionPlan(
+        { tenantId, userId, seriesId },
+        planResult.plan
+      );
 
       return {
         locationsCreated: summary.createdLocations.length,

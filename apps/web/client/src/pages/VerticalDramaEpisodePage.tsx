@@ -3171,6 +3171,31 @@ function EpisodeWorkspaceShell({
     });
   }
 
+  const setShotLocationVariantMutation =
+    trpc.verticalDramaEpisodes.setShotLocationVariant.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "อัปเดตมุมกล้องของสถานที่แล้ว — ต้องสร้างภาพช็อตใหม่"
+            : "Location camera view updated — regenerate the shot image."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotLocationVariant(
+    shotNumber: number,
+    locationVariantId: string | null
+  ) {
+    setShotLocationVariantMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      locationVariantId,
+    });
+  }
+
   const setShotBarrierReferenceLocationMutation =
     trpc.verticalDramaEpisodes.setShotBarrierReferenceLocation.useMutation({
       onSuccess: () => {
@@ -6909,6 +6934,7 @@ function EpisodeWorkspaceShell({
             savingShotCharacterReferencesForShot,
             savingShotSupportingPresenceForShot,
             onSetShotLocation: handleSetShotLocation,
+            onSetShotLocationVariant: handleSetShotLocationVariant,
             onSetShotBarrierReferenceLocation:
               handleSetShotBarrierReferenceLocation,
             sceneContinuityEnabled:

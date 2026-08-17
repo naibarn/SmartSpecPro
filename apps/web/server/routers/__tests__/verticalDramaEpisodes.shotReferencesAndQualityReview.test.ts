@@ -146,16 +146,19 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
 const {
   mockGetPrimaryReferenceUrl,
   mockGetPrimaryReferenceAssetId,
+  mockListLocationAssets,
   mockListLocationRows,
 } = vi.hoisted(() => ({
   mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
   mockGetPrimaryReferenceAssetId: vi.fn(() => Promise.resolve(undefined)),
+  mockListLocationAssets: vi.fn(() => Promise.resolve([])),
   mockListLocationRows: vi.fn(() => Promise.resolve([])),
 }));
 vi.mock("../../services/verticalDramaLocationStock", () => ({
   verticalDramaLocationStockService: {
     getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
     getPrimaryReferenceAssetId: mockGetPrimaryReferenceAssetId,
+    listLocationAssets: mockListLocationAssets,
     listRows: mockListLocationRows,
   },
 }));
@@ -1212,7 +1215,7 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
 });
 
 describe("setShotCharacterReference — manual per-shot character/variant override (planning/vertical-drama-twin-variant-completeness W6 backend)", () => {
-  function episodeRowWithTwoShots() {
+  function episodeRowWithTwoShots(includeApprovedAsset = false) {
     return {
       id: 100,
       tenantId: "tenant-1",
@@ -1225,6 +1228,7 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
             shotNumber: 1,
             imagePrompt: "shot one prompt",
             requiredCharacterRefs: ["hero"],
+            ...(includeApprovedAsset ? { approvedMediaAssetId: "1840" } : {}),
           },
           {
             shotNumber: 2,
@@ -1239,7 +1243,7 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
 
   it("patches only the target shot's requiredCharacterRefs and leaves every other shot untouched", async () => {
     mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots(true)])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ characterKey: "hero-formal" }])); // roster validation
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -1257,7 +1261,12 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
       shotNumber: 1,
       requiredCharacterRefs: ["hero-formal"],
       characterRefsCustomized: true,
+      imagePrompt: "",
+      imageStaleReason: "character_references_changed",
     });
+    expect(
+      result.startFramePlan.frames[0].approvedMediaAssetId
+    ).toBeUndefined();
     // Shot 2 is byte-identical to before — this mutation never touches any
     // shot other than the one targeted by `shotNumber`.
     expect(result.startFramePlan.frames[1]).toMatchObject({
@@ -4673,6 +4682,75 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
           referenceImageUrls: [
             "https://cdn/900.png",
             "https://cdn/950-location-plate.png",
+          ],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("uses the selected approved location camera variant for the video reference", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_store",
+              locationVariantId: "777",
+            },
+          ],
+        },
+      };
+      mockListLocationAssets.mockResolvedValueOnce([
+        {
+          assetLinkId: 777,
+          mediaAssetId: 951,
+          url: "https://cdn/950-location-rear-corner.png",
+          approved: true,
+          role: "detail_corner",
+        },
+      ]);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+        )
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            {
+              id: 951,
+              originalUrl: "https://cdn/950-location-rear-corner.png",
+            },
+          ])
+        )
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        );
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceAssetId).not.toHaveBeenCalled();
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: [
+            "https://cdn/900.png",
+            "https://cdn/950-location-rear-corner.png",
           ],
         }),
         expect.any(String)

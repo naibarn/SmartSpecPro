@@ -16,4 +16,10 @@ describe("normalizeMediaSourceUrl", () => {
       "https://cdn.example.com/audio.mp3",
     );
   });
+
+  it("does not fabricate storage URLs from missing API values", () => {
+    expect(normalizeMediaSourceUrl("undefined")).toBe("");
+    expect(normalizeMediaSourceUrl("null")).toBe("");
+    expect(normalizeMediaSourceUrl("[object Object]")).toBe("");
+  });
 });

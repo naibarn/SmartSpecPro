@@ -64,6 +64,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { trpc } from "@/lib/trpc";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
@@ -73,7 +74,10 @@ import ModelSelectorDialog, {
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
 import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
-import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
+import {
+  formatHermesErrorForToast,
+  presentHermesError,
+} from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import {
@@ -119,7 +123,6 @@ const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
  *  the whole click handler BEFORE the real (state/mutation) action fired.
  *  Swallow the error and let the real action proceed. */
 
-
 function safeStorageRemove(key: string): void {
   if (typeof window === "undefined") return;
   try {
@@ -147,7 +150,8 @@ function storeMcpConnectionId(connectionId: string | null): void {
  *  `VerticalDramaCharacterStockPanel.tsx`/`VerticalDramaEpisodePage.tsx`).
  *  Exported (unlike the MCP helpers above) so the storage contract is
  *  directly unit-testable. */
-export const HERMES_CONNECTION_ID_STORAGE_KEY = "smartspec_hermes_connection_id";
+export const HERMES_CONNECTION_ID_STORAGE_KEY =
+  "smartspec_hermes_connection_id";
 
 export function readStoredHermesConnectionId(): string | null {
   return safeStorageGet(HERMES_CONNECTION_ID_STORAGE_KEY);
@@ -202,7 +206,7 @@ export function guessLocationImageMimeTypeFromUrl(url: string): string {
  *  `resolveVdCharacterMutationErrorMessage`. */
 export function resolveLocationMutationErrorMessage(
   err: { message?: string } | null | undefined,
-  lang: Lang,
+  lang: Lang
 ): string {
   // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed message
   // (pinned server wire convention, `shared/hermesMedia.ts`) renders via
@@ -224,7 +228,7 @@ export function resolveLocationMutationErrorMessage(
  *  `VerticalDramaCharacterStockPanel.tsx`'s own
  *  `isImageModelSelectionError`. */
 export function isLocationImageModelSelectionError(
-  err: { message?: string } | null | undefined,
+  err: { message?: string } | null | undefined
 ): boolean {
   const message = err?.message ?? "";
   return /เลือกโมเดลภาพ/.test(message) || /image model/i.test(message);
@@ -237,15 +241,19 @@ export function isLocationImageModelSelectionError(
  *  reads like a failure even though the call succeeded. */
 export function buildDetectLocationsSummaryMessage(
   lang: Lang,
-  result: { locationsCreated: number; locationsReused: number },
+  result: { locationsCreated: number; locationsReused: number }
 ): string {
   if (result.locationsCreated === 0 && result.locationsReused === 0) {
-    return t(lang, "ไม่พบฉากใหม่จากเนื้อเรื่องปัจจุบัน", "No new locations found in the current story");
+    return t(
+      lang,
+      "ไม่พบฉากใหม่จากเนื้อเรื่องปัจจุบัน",
+      "No new locations found in the current story"
+    );
   }
   return t(
     lang,
     `สร้างฉากใหม่ ${result.locationsCreated} รายการ, ใช้ฉากเดิม ${result.locationsReused} รายการ`,
-    `Created ${result.locationsCreated} location(s), matched ${result.locationsReused} existing`,
+    `Created ${result.locationsCreated} location(s), matched ${result.locationsReused} existing`
   );
 }
 
@@ -258,7 +266,7 @@ export function buildDetectLocationsSummaryMessage(
  */
 export function resolveLocationCardThumbnailUrl(
   location: { primaryReferenceUrl?: string },
-  candidateImageUrl?: string | null,
+  candidateImageUrl?: string | null
 ): string | null {
   // `||`, not `??`, is deliberate: unlike a free-text error message (where an
   // explicit empty string is a legitimate distinct value — see
@@ -280,13 +288,18 @@ export function resolveLocationCardThumbnailUrl(
  * testable without a full component render — same convention as this file's
  * other extracted pure helpers.
  */
-export function sortLocationCandidatesForGallery<T extends { isPrimary: boolean }>(assets: T[]): T[] {
+export function sortLocationCandidatesForGallery<
+  T extends { isPrimary: boolean },
+>(assets: T[]): T[] {
   const primary = assets.filter(a => a.isPrimary);
   const rest = assets.filter(a => !a.isPrimary);
   return [...primary, ...rest];
 }
 
-const CAMERA_PRESET_LABELS: Record<VerticalDramaLocationCameraPreset, [string, string]> = {
+const CAMERA_PRESET_LABELS: Record<
+  VerticalDramaLocationCameraPreset,
+  [string, string]
+> = {
   wide_shot: ["Wide Shot", "ภาพกว้าง"],
   extreme_wide_shot: ["Extreme Wide Shot", "ภาพกว้างมาก"],
   eye_level_shot: ["Eye-Level Shot", "ระดับสายตา"],
@@ -312,13 +325,20 @@ export function buildLocationCameraView(params: {
   const preset = params.preset?.trim();
   const directive = params.directive?.trim();
   if (!preset && !directive) return undefined;
-  const knownPreset = preset && (VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS as readonly string[]).includes(preset)
-    ? (preset as VerticalDramaLocationCameraPreset)
+  const knownPreset =
+    preset &&
+    (VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS as readonly string[]).includes(
+      preset
+    )
+      ? (preset as VerticalDramaLocationCameraPreset)
+      : undefined;
+  const presetLabel = knownPreset
+    ? CAMERA_PRESET_LABELS[knownPreset][0]
     : undefined;
-  const presetLabel = knownPreset ? CAMERA_PRESET_LABELS[knownPreset][0] : undefined;
-  const label = knownPreset && directive
-    ? `${presetLabel} — ${directive}`
-    : directive || presetLabel || preset || "Custom view";
+  const label =
+    knownPreset && directive
+      ? `${presetLabel} — ${directive}`
+      : directive || presetLabel || preset || "Custom view";
   return {
     ...(preset ? { preset } : {}),
     label,
@@ -344,11 +364,17 @@ export function buildLocationGenerateImageTransportFields(params: {
   sharedGroupId?: number | null;
   imageModelUsesHermes: boolean;
   hermesConnectionId?: string | null;
-}): { mcpConnectionId?: string; sharedGroupId?: number; hermesConnectionId?: string } {
+}): {
+  mcpConnectionId?: string;
+  sharedGroupId?: number;
+  hermesConnectionId?: string;
+} {
   const usesMcp = params.imageModelUsesMcp && Boolean(params.mcpConnectionId);
   return {
     ...(usesMcp ? { mcpConnectionId: params.mcpConnectionId as string } : {}),
-    ...(usesMcp && params.sharedGroupId != null ? { sharedGroupId: params.sharedGroupId } : {}),
+    ...(usesMcp && params.sharedGroupId != null
+      ? { sharedGroupId: params.sharedGroupId }
+      : {}),
     ...(params.imageModelUsesHermes && params.hermesConnectionId && !usesMcp
       ? { hermesConnectionId: params.hermesConnectionId }
       : {}),
@@ -379,6 +405,13 @@ interface VdLocationListItem {
   description: string;
   primaryReferenceUrl?: string;
   primaryReferenceAssetLinkId?: string;
+  cameraVariants?: Array<{
+    variantId: string;
+    label: string;
+    role: string;
+    url: string;
+    approved: boolean;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -399,6 +432,36 @@ interface VdLocationAssetCandidate {
   role?: string;
   metadata?: Record<string, unknown> | null;
   updatedAt: string;
+}
+
+type LocationGenerationMetadata = {
+  mode: "text_to_image" | "image_to_image";
+  editInstruction?: string;
+  sourceAssetLinkId?: string;
+  cameraView?: VerticalDramaLocationCameraView;
+};
+
+type VdLocationMediaModel = MediaModel & {
+  maxReferenceImages?: number;
+};
+
+function getLocationModelMaxReferenceImages(
+  model: VdLocationMediaModel | undefined
+): number | undefined {
+  if (!model) return undefined;
+  if (typeof model.maxReferenceImages === "number")
+    return model.maxReferenceImages;
+  const config = model.configJson;
+  if (!config || typeof config !== "object" || Array.isArray(config))
+    return undefined;
+  const record = config as Record<string, unknown>;
+  const nested = record.imageCapabilities;
+  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+    const nestedLimit = (nested as Record<string, unknown>).maxReferenceImages;
+    if (typeof nestedLimit === "number") return nestedLimit;
+  }
+  const limit = record.maxReferenceImages ?? record.referenceImageLimit;
+  return typeof limit === "number" ? limit : undefined;
 }
 
 export interface VerticalDramaLocationStockPanelProps {
@@ -424,15 +487,20 @@ export function VerticalDramaLocationStockPanel({
 
   const listQuery = trpc.verticalDramaLocations.list.useQuery(
     { seriesId },
-    { enabled: Boolean(seriesId), staleTime: 15_000 },
+    { enabled: Boolean(seriesId), staleTime: 15_000 }
   );
   const locations = (listQuery.data?.locations ?? []) as VdLocationListItem[];
 
   const onError = (err: { message?: string }) =>
     toast.error(resolveLocationMutationErrorMessage(err, lang));
 
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
-  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    null
+  );
+  const [lightboxImage, setLightboxImage] = useState<{
+    src: string;
+    alt?: string;
+  } | null>(null);
 
   /** Make the view-management UI discoverable on first load. Previously the
    * detail card (including the camera-view selector) stayed hidden until the
@@ -447,7 +515,7 @@ export function VerticalDramaLocationStockPanel({
     setSelectedLocationId(current =>
       current && locations.some(location => location.locationId === current)
         ? current
-        : locations[0].locationId,
+        : locations[0].locationId
     );
   }, [locations]);
 
@@ -461,7 +529,7 @@ export function VerticalDramaLocationStockPanel({
    *  this file's own top-of-file doc comment. */
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [selectedImageModelId, setSelectedImageModelId] = useState(
-    () => safeStorageGet(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY) || "",
+    () => safeStorageGet(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY) || ""
   );
   const handleSelectImageModel = (modelId: string) => {
     setSelectedImageModelId(modelId);
@@ -481,8 +549,13 @@ export function VerticalDramaLocationStockPanel({
     if (isLocationImageModelSelectionError(err)) setIsModelDialogOpen(true);
   };
   const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
-  const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
-  const selectedImageModelRecord = imageModels.find((m) => m.modelId === selectedImageModelId);
+  const imageModels = (imageModelsQuery.data?.models ??
+    []) as VdLocationMediaModel[];
+  const selectedImageModelRecord = imageModels.find(
+    m => m.modelId === selectedImageModelId
+  );
+  const selectedImageModelMaxReferenceImages =
+    getLocationModelMaxReferenceImages(selectedImageModelRecord);
   /** Whether the currently-selected image model is MCP-transport (e.g.
    *  `higgsfield/*`, `magnific-mcp/*`) — byte-identical derivation to
    *  `VerticalDramaCharacterStockPanel.tsx`'s own `imageModelUsesMcp`. */
@@ -491,9 +564,13 @@ export function VerticalDramaLocationStockPanel({
     resolveMediaModelTransportConfig({
       provider: selectedImageModelRecord?.provider,
       modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
-      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+      configJson: selectedImageModelRecord?.configJson as
+        | Record<string, unknown>
+        | undefined,
     }).transport === "mcp";
-  const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(readStoredMcpConnectionId);
+  const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(
+    readStoredMcpConnectionId
+  );
   const [mcpSharedGroupId, setMcpSharedGroupId] = useState<number | null>(null);
   const handleSelectMcpConnection = (connectionId: string | null) => {
     setMcpConnectionIdState(connectionId);
@@ -509,7 +586,11 @@ export function VerticalDramaLocationStockPanel({
   const requireModelSelected = (): boolean => {
     if (selectedImageModelId) return true;
     toast.info(
-      t(lang, "กรุณาเลือกโมเดลสร้างภาพก่อน", "Please choose an image model first"),
+      t(
+        lang,
+        "กรุณาเลือกโมเดลสร้างภาพก่อน",
+        "Please choose an image model first"
+      )
     );
     setIsModelDialogOpen(true);
     return false;
@@ -522,7 +603,11 @@ export function VerticalDramaLocationStockPanel({
   const requireMcpConnectionOrToast = (): boolean => {
     if (!imageModelUsesMcp || mcpConnectionId) return true;
     toast.error(
-      t(lang, "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้", "Select an MCP connection before using this image model."),
+      t(
+        lang,
+        "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้",
+        "Select an MCP connection before using this image model."
+      )
     );
     return false;
   };
@@ -535,9 +620,13 @@ export function VerticalDramaLocationStockPanel({
     resolveMediaModelTransportConfig({
       provider: selectedImageModelRecord?.provider,
       modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
-      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+      configJson: selectedImageModelRecord?.configJson as
+        | Record<string, unknown>
+        | undefined,
     }).transport === "hermes_worker";
-  const [hermesConnectionId, setHermesConnectionIdState] = useState<string | null>(readStoredHermesConnectionId);
+  const [hermesConnectionId, setHermesConnectionIdState] = useState<
+    string | null
+  >(readStoredHermesConnectionId);
   const handleSelectHermesConnection = (connectionId: string | null) => {
     setHermesConnectionIdState(connectionId);
     storeHermesConnectionId(connectionId);
@@ -547,7 +636,11 @@ export function VerticalDramaLocationStockPanel({
   const requireHermesConnectionOrToast = (): boolean => {
     if (!imageModelUsesHermes || hermesConnectionId) return true;
     toast.error(
-      t(lang, "ต้องเลือกบัญชี Grok (Hermes) ก่อนใช้โมเดลนี้", "Select a Grok (Hermes) connection before using this image model."),
+      t(
+        lang,
+        "ต้องเลือกบัญชี Grok (Hermes) ก่อนใช้โมเดลนี้",
+        "Select a Grok (Hermes) connection before using this image model."
+      )
     );
     return false;
   };
@@ -574,31 +667,46 @@ export function VerticalDramaLocationStockPanel({
    *  convention/rationale as `VerticalDramaCharacterStockPanel.tsx`'s own
    *  `speechProfileFormFor`): reading always falls back to the persisted
    *  server value when no local draft exists yet for that location. */
-  const [editDrafts, setEditDrafts] = useState<Record<string, { name: string; description: string }>>({});
-  const editDraftFor = (locationId: string): { name: string; description: string } => {
+  const [editDrafts, setEditDrafts] = useState<
+    Record<string, { name: string; description: string }>
+  >({});
+  const editDraftFor = (
+    locationId: string
+  ): { name: string; description: string } => {
     const draft = editDrafts[locationId];
     if (draft) return draft;
-    const location = locations.find((l) => l.locationId === locationId);
-    return { name: location?.name ?? "", description: location?.description ?? "" };
+    const location = locations.find(l => l.locationId === locationId);
+    return {
+      name: location?.name ?? "",
+      description: location?.description ?? "",
+    };
   };
-  const updateEditDraft = (locationId: string, patch: Partial<{ name: string; description: string }>) => {
-    setEditDrafts((prev) => ({ ...prev, [locationId]: { ...editDraftFor(locationId), ...patch } }));
+  const updateEditDraft = (
+    locationId: string,
+    patch: Partial<{ name: string; description: string }>
+  ) => {
+    setEditDrafts(prev => ({
+      ...prev,
+      [locationId]: { ...editDraftFor(locationId), ...patch },
+    }));
   };
 
-  const updateLocationMutation = trpc.verticalDramaLocations.updateLocation.useMutation({ onError });
+  const updateLocationMutation =
+    trpc.verticalDramaLocations.updateLocation.useMutation({ onError });
 
   /** "ตรวจจับฉากตอนนี้" (`detectLocationsNow`) — a real, slow LLM call
    *  (seconds, costs credits), so it's deliberately NOT folded into any
    *  per-card `mutating` flag; its own button carries its own `isPending`
    *  spinner. Byte-identical convention to
    *  `VerticalDramaCharacterStockPanel.tsx`'s own `detectVariantsMutation`. */
-  const detectLocationsMutation = trpc.verticalDramaLocations.detectLocationsNow.useMutation({
-    onSuccess: (res) => {
-      invalidate();
-      toast.success(buildDetectLocationsSummaryMessage(lang, res));
-    },
-    onError,
-  });
+  const detectLocationsMutation =
+    trpc.verticalDramaLocations.detectLocationsNow.useMutation({
+      onSuccess: res => {
+        invalidate();
+        toast.success(buildDetectLocationsSummaryMessage(lang, res));
+      },
+      onError,
+    });
 
   const handleSaveEdit = (location: VdLocationListItem) => {
     const draft = editDraftFor(location.locationId);
@@ -608,10 +716,15 @@ export function VerticalDramaLocationStockPanel({
       return;
     }
     updateLocationMutation.mutate(
-      { seriesId, locationId: location.locationId, name, description: draft.description },
+      {
+        seriesId,
+        locationId: location.locationId,
+        name,
+        description: draft.description,
+      },
       {
         onSuccess: () => {
-          setEditDrafts((prev) => {
+          setEditDrafts(prev => {
             const next = { ...prev };
             delete next[location.locationId];
             return next;
@@ -619,7 +732,7 @@ export function VerticalDramaLocationStockPanel({
           invalidate();
           toast.success(t(lang, "บันทึกแล้ว", "Saved"));
         },
-      },
+      }
     );
   };
 
@@ -628,47 +741,69 @@ export function VerticalDramaLocationStockPanel({
    * generate -> poll -> explicit approve), keyed by `locationId` directly
    * (simpler than that card's `locationKey` join — this panel reads straight
    * off the roster, no storyboard `distinct_locations` join needed). */
-  const previewMutation = trpc.verticalDramaLocations.previewLocationPrompt.useMutation({ onError });
-  const generateMutation = trpc.verticalDramaLocations.generateLocationImage.useMutation({
-    onError: onImageModelError,
-  });
+  const previewMutation =
+    trpc.verticalDramaLocations.previewLocationPrompt.useMutation({ onError });
+  const generateMutation =
+    trpc.verticalDramaLocations.generateLocationImage.useMutation({
+      onError: onImageModelError,
+    });
   // No hook-level `onError` on the resolve/link/approve trio — all three are
   // only ever awaited inside `handleApprove`'s own try/catch below, which
   // already surfaces exactly one toast on failure; a hook-level `onError`
   // here would double-toast the same failure (same convention as
   // `VerticalDramaLocationsBibleCard`).
-  const resolveMutation = trpc.verticalDramaLocations.resolveMediaAssetForImport.useMutation();
+  const resolveMutation =
+    trpc.verticalDramaLocations.resolveMediaAssetForImport.useMutation();
   const linkMutation = trpc.verticalDramaLocations.linkAsset.useMutation();
-  const approveMutation = trpc.verticalDramaLocations.approveAsset.useMutation();
+  const approveMutation =
+    trpc.verticalDramaLocations.approveAsset.useMutation();
 
   const [previewByLocationId, setPreviewByLocationId] = useState<
-    Record<string, {
-      prompt: string;
-      negativePrompt?: string;
-      coverageRole?: VerticalDramaLocationCoverageRole;
-      cameraView?: VerticalDramaLocationCameraView;
-    }>
+    Record<
+      string,
+      {
+        prompt: string;
+        coverageRole?: VerticalDramaLocationCoverageRole;
+        cameraView?: VerticalDramaLocationCameraView;
+      }
+    >
   >({});
   const [coverageRoleByLocationId, setCoverageRoleByLocationId] = useState<
     Record<string, VerticalDramaLocationCoverageRole>
   >({});
-  const [cameraPresetByLocationId, setCameraPresetByLocationId] = useState<Record<string, string>>({});
-  const [cameraDirectiveByLocationId, setCameraDirectiveByLocationId] = useState<Record<string, string>>({});
-  const [pendingPreviewLocationId, setPendingPreviewLocationId] = useState<string | null>(null);
-  const [renderingLocationId, setRenderingLocationId] = useState<string | null>(null);
+  const [cameraPresetByLocationId, setCameraPresetByLocationId] = useState<
+    Record<string, string>
+  >({});
+  const [cameraDirectiveByLocationId, setCameraDirectiveByLocationId] =
+    useState<Record<string, string>>({});
+  const [pendingPreviewLocationId, setPendingPreviewLocationId] = useState<
+    string | null
+  >(null);
+  const [renderingLocationId, setRenderingLocationId] = useState<string | null>(
+    null
+  );
   const [candidateByLocationId, setCandidateByLocationId] = useState<
     Record<string, { imageUrl: string; approving?: boolean }>
   >({});
+  const [generationMetadataByLocationId, setGenerationMetadataByLocationId] =
+    useState<Record<string, LocationGenerationMetadata>>({});
+  const [editInstructionByLocationId, setEditInstructionByLocationId] =
+    useState<Record<string, string>>({});
   /** `locationId` -> `assetLinkId` for a reference approved THIS session —
    *  the only source of a manageable `assetLinkId` until the backend's
    *  `list` DTO carries `primaryReferenceAssetLinkId` for pre-existing
    *  approved references (see `VdLocationListItem`'s own doc comment). */
-  const [approvedAssetLinkByLocationId, setApprovedAssetLinkByLocationId] = useState<Record<string, string>>({});
+  const [approvedAssetLinkByLocationId, setApprovedAssetLinkByLocationId] =
+    useState<Record<string, string>>({});
 
   /** Poll a submitted location-image render task to completion — same
    *  `utils.media.getTask.fetch` loop shape (120 attempts, 2.5s interval) as
    *  `VerticalDramaLocationsBibleCard`'s own `pollLocationImageTask`. */
-  async function pollLocationImageTask(taskId: string, locationId: string) {
+  async function pollLocationImageTask(
+    taskId: string,
+    locationId: string,
+    generationMetadata: LocationGenerationMetadata
+  ) {
     try {
       for (let attempt = 0; attempt < 120; attempt++) {
         const task = await utils.media.getTask.fetch({ taskId });
@@ -677,7 +812,11 @@ export function VerticalDramaLocationStockPanel({
           const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
           if (!resultUrl) {
             toast.error(
-              t(lang, "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์", "Generation completed but no result URL."),
+              t(
+                lang,
+                "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์",
+                "Generation completed but no result URL."
+              )
             );
             return;
           }
@@ -694,12 +833,22 @@ export function VerticalDramaLocationStockPanel({
           // LocationImage` clears it and refreshes the roster/gallery on
           // success, or leaves it in place (with the manual "approve" button
           // as a retry) if the persist itself fails.
-          setCandidateByLocationId((prev) => ({ ...prev, [locationId]: { imageUrl: resultUrl } }));
-          await persistGeneratedLocationImage(locationId, resultUrl);
+          setCandidateByLocationId(prev => ({
+            ...prev,
+            [locationId]: { imageUrl: resultUrl },
+          }));
+          await persistGeneratedLocationImage(
+            locationId,
+            resultUrl,
+            generationMetadata
+          );
           return;
         }
         if (status === "failed") {
-          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          const failedTask = task as {
+            errorMessage?: string;
+            errorCode?: string;
+          } | null;
           const errorMessage = failedTask?.errorMessage;
           // Feature 135 section-10 review fix: prefer the typed hermes
           // presentation (reads `MediaTask.errorCode`, section-06) when this
@@ -712,18 +861,24 @@ export function VerticalDramaLocationStockPanel({
               : t(
                   lang,
                   `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
-                  `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`,
-                ),
+                  `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
+                )
           );
           return;
         }
-        await new Promise((resolve) => setTimeout(resolve, 2500));
+        await new Promise(resolve => setTimeout(resolve, 2500));
       }
       toast.error(
-        t(lang, "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง", "Generation is taking too long — check back later."),
+        t(
+          lang,
+          "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง",
+          "Generation is taking too long — check back later."
+        )
       );
     } finally {
-      setRenderingLocationId((current) => (current === locationId ? null : current));
+      setRenderingLocationId(current =>
+        current === locationId ? null : current
+      );
     }
   }
 
@@ -734,12 +889,26 @@ export function VerticalDramaLocationStockPanel({
       directive: cameraDirectiveByLocationId[location.locationId],
     });
     if (cameraView?.preset === "custom" && !cameraView.directive) {
-      toast.error(t(lang, "กรุณาระบุรายละเอียดมุมกล้องแบบกำหนดเอง", "Describe the custom camera view first"));
+      toast.error(
+        t(
+          lang,
+          "กรุณาระบุรายละเอียดมุมกล้องแบบกำหนดเอง",
+          "Describe the custom camera view first"
+        )
+      );
       return;
     }
     requestConfirmation({
-      title: t(lang, "ยืนยันสร้าง prompt สถานที่", "Confirm location prompt generation"),
-      description: t(lang, "การทำงานนี้ใช้ AI เพื่อสร้าง prompt และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "This uses AI to generate a location prompt and may spend credits. Continue?"),
+      title: t(
+        lang,
+        "ยืนยันสร้าง prompt สถานที่",
+        "Confirm location prompt generation"
+      ),
+      description: t(
+        lang,
+        "การทำงานนี้ใช้ AI เพื่อสร้าง prompt และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+        "This uses AI to generate a location prompt and may spend credits. Continue?"
+      ),
       confirmLabel: t(lang, "สร้าง prompt", "Generate prompt"),
       cancelLabel: t(lang, "ยกเลิก", "Cancel"),
       testId: `vd-credit-confirm-location-prompt-${location.locationId}`,
@@ -754,12 +923,11 @@ export function VerticalDramaLocationStockPanel({
             ...(selectedImageModelId ? { selectedImageModelId } : {}),
           },
           {
-            onSuccess: (res) => {
-              setPreviewByLocationId((prev) => ({
+            onSuccess: res => {
+              setPreviewByLocationId(prev => ({
                 ...prev,
                 [location.locationId]: {
                   prompt: res.establishingPlatePrompt,
-                  negativePrompt: res.negativePrompt,
                   ...(coverageRole ? { coverageRole } : {}),
                   ...(cameraView ? { cameraView } : {}),
                 },
@@ -767,7 +935,7 @@ export function VerticalDramaLocationStockPanel({
               setPendingPreviewLocationId(null);
             },
             onError: () => setPendingPreviewLocationId(null),
-          },
+          }
         );
       },
     });
@@ -780,40 +948,162 @@ export function VerticalDramaLocationStockPanel({
     if (!requireMcpConnectionOrToast()) return;
     if (!requireHermesConnectionOrToast()) return;
     requestConfirmation({
-      title: t(lang, "ยืนยันสร้างภาพสถานที่", "Confirm location image generation"),
-      description: t(lang, "การทำงานนี้จะสร้างภาพสถานที่ด้วย AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?", "This generates a location image with AI and spends credits. Continue?"),
+      title: t(
+        lang,
+        "ยืนยันสร้างภาพสถานที่",
+        "Confirm location image generation"
+      ),
+      description: t(
+        lang,
+        "การทำงานนี้จะสร้างภาพสถานที่ด้วย AI และมีค่าใช้จ่ายเครดิต ต้องการดำเนินการต่อหรือไม่?",
+        "This generates a location image with AI and spends credits. Continue?"
+      ),
       confirmLabel: t(lang, "สร้างภาพ", "Generate image"),
       cancelLabel: t(lang, "ยกเลิก", "Cancel"),
       testId: `vd-credit-confirm-location-image-${location.locationId}`,
       onConfirm: () => {
         setRenderingLocationId(location.locationId);
+        const generationMetadata: LocationGenerationMetadata = {
+          mode: "text_to_image",
+          ...(preview.cameraView ? { cameraView: preview.cameraView } : {}),
+        };
+        setGenerationMetadataByLocationId(prev => ({
+          ...prev,
+          [location.locationId]: generationMetadata,
+        }));
         generateMutation.mutate(
           {
-        seriesId,
-        locationId: location.locationId,
-        approvedPrompt: preview.prompt,
-        ...(preview.coverageRole ? { coverageRole: preview.coverageRole } : {}),
-        ...(preview.cameraView ? { cameraView: preview.cameraView } : {}),
-        ...(preview.negativePrompt ? { approvedNegativePrompt: preview.negativePrompt } : {}),
-        // Always sent (never conditionally spread) — the server now
-        // REJECTS image generation without an explicit
-        // `selectedImageModelId` (fail-closed, no more silent
-        // `DEFAULT_MODELS.image` fallback). Safe to assert non-empty here:
-        // `requireModelSelected()` above already returned early when it was
-        // blank.
-        selectedImageModelId,
-        ...buildLocationGenerateImageTransportFields({
-          imageModelUsesMcp,
-          mcpConnectionId,
-          sharedGroupId: mcpSharedGroupId,
-          imageModelUsesHermes,
-          hermesConnectionId,
-        }),
+            seriesId,
+            locationId: location.locationId,
+            approvedPrompt: preview.prompt,
+            ...(preview.coverageRole
+              ? { coverageRole: preview.coverageRole }
+              : {}),
+            ...(preview.cameraView ? { cameraView: preview.cameraView } : {}),
+            // Always sent (never conditionally spread) — the server now
+            // REJECTS image generation without an explicit
+            // `selectedImageModelId` (fail-closed, no more silent
+            // `DEFAULT_MODELS.image` fallback). Safe to assert non-empty here:
+            // `requireModelSelected()` above already returned early when it was
+            // blank.
+            selectedImageModelId,
+            ...buildLocationGenerateImageTransportFields({
+              imageModelUsesMcp,
+              mcpConnectionId,
+              sharedGroupId: mcpSharedGroupId,
+              imageModelUsesHermes,
+              hermesConnectionId,
+            }),
           },
           {
-        onSuccess: (res) => void pollLocationImageTask(res.taskId, location.locationId),
-        onError: () => setRenderingLocationId((current) => (current === location.locationId ? null : current)),
+            onSuccess: res =>
+              void pollLocationImageTask(
+                res.taskId,
+                location.locationId,
+                generationMetadata
+              ),
+            onError: () =>
+              setRenderingLocationId(current =>
+                current === location.locationId ? null : current
+              ),
+          }
+        );
+      },
+    });
+  };
+
+  const handleEditExistingImage = (location: VdLocationListItem) => {
+    const editInstruction =
+      editInstructionByLocationId[location.locationId]?.trim();
+    if (!editInstruction) {
+      toast.error(
+        t(
+          lang,
+          "กรุณาระบุสิ่งที่ต้องการแก้ไขภาพ",
+          "Describe what should be changed in the image"
+        )
+      );
+      return;
+    }
+    if (
+      !location.primaryReferenceAssetLinkId ||
+      !location.primaryReferenceUrl
+    ) {
+      toast.error(
+        t(
+          lang,
+          "ไม่พบภาพหลักหรือรหัสภาพหลัก กรุณารีเฟรชข้อมูลสถานที่ก่อนแก้ไขภาพ",
+          "The primary image or its asset link is unavailable. Refresh the location data before editing."
+        )
+      );
+      return;
+    }
+    if (!requireModelSelected()) return;
+    if (!requireMcpConnectionOrToast()) return;
+    if (!requireHermesConnectionOrToast()) return;
+    const cameraView = buildLocationCameraView({
+      preset: cameraPresetByLocationId[location.locationId],
+      directive: cameraDirectiveByLocationId[location.locationId],
+    });
+    if (cameraView?.preset === "custom" && !cameraView.directive) {
+      toast.error(
+        t(
+          lang,
+          "กรุณาระบุรายละเอียดมุมกล้องแบบกำหนดเอง",
+          "Describe the custom camera view first"
+        )
+      );
+      return;
+    }
+    const generationMetadata: LocationGenerationMetadata = {
+      mode: "image_to_image",
+      editInstruction,
+      sourceAssetLinkId: location.primaryReferenceAssetLinkId,
+      ...(cameraView ? { cameraView } : {}),
+    };
+    requestConfirmation({
+      title: t(lang, "ยืนยันแก้ไขภาพเดิม", "Confirm existing-image edit"),
+      description: t(
+        lang,
+        "ระบบจะใช้ภาพหลักเดิมเป็นภาพอ้างอิงและสร้างภาพผู้สมัครใหม่ โดยจะไม่เปลี่ยนภาพหลักจนกว่าคุณจะเลือกเอง",
+        "The current primary image will be used as the reference and a new candidate will be created. The primary image will not change until you choose it."
+      ),
+      confirmLabel: t(lang, "แก้ไขภาพด้วย AI", "Edit image with AI"),
+      cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-location-image-edit-${location.locationId}`,
+      onConfirm: () => {
+        setRenderingLocationId(location.locationId);
+        setGenerationMetadataByLocationId(prev => ({
+          ...prev,
+          [location.locationId]: generationMetadata,
+        }));
+        generateMutation.mutate(
+          {
+            seriesId,
+            locationId: location.locationId,
+            editInstruction,
+            selectedImageModelId,
+            ...(cameraView ? { cameraView } : {}),
+            ...buildLocationGenerateImageTransportFields({
+              imageModelUsesMcp,
+              mcpConnectionId,
+              sharedGroupId: mcpSharedGroupId,
+              imageModelUsesHermes,
+              hermesConnectionId,
+            }),
           },
+          {
+            onSuccess: res =>
+              void pollLocationImageTask(
+                res.taskId,
+                location.locationId,
+                generationMetadata
+              ),
+            onError: () =>
+              setRenderingLocationId(current =>
+                current === location.locationId ? null : current
+              ),
+          }
         );
       },
     });
@@ -827,8 +1117,15 @@ export function VerticalDramaLocationStockPanel({
    *  `approving` for the button spinner; on success clears the candidate +
    *  preview and refreshes the roster/gallery; on failure leaves the
    *  candidate in place so the manual button can retry. Never throws. */
-  const persistGeneratedLocationImage = async (locationId: string, imageUrl: string): Promise<void> => {
-    setCandidateByLocationId((prev) => ({ ...prev, [locationId]: { imageUrl, approving: true } }));
+  const persistGeneratedLocationImage = async (
+    locationId: string,
+    imageUrl: string,
+    generationMetadata?: LocationGenerationMetadata
+  ): Promise<void> => {
+    setCandidateByLocationId(prev => ({
+      ...prev,
+      [locationId]: { imageUrl, approving: true },
+    }));
     try {
       const resolved = await resolveMutation.mutateAsync({
         seriesId,
@@ -836,46 +1133,97 @@ export function VerticalDramaLocationStockPanel({
         url: imageUrl,
         mimeType: guessLocationImageMimeTypeFromUrl(imageUrl),
       });
-    const linked = await linkMutation.mutateAsync({
+      const metadata = {
+        generationMode: generationMetadata?.mode ?? "text_to_image",
+        ...(generationMetadata?.editInstruction
+          ? { editInstruction: generationMetadata.editInstruction }
+          : {}),
+        ...(generationMetadata?.sourceAssetLinkId
+          ? { sourceAssetLinkId: generationMetadata.sourceAssetLinkId }
+          : {}),
+        ...(generationMetadata?.cameraView
+          ? { cameraView: generationMetadata.cameraView }
+          : {}),
+        ...(previewByLocationId[locationId]?.cameraView
+          ? { cameraView: previewByLocationId[locationId].cameraView }
+          : {}),
+      };
+      const linked = await linkMutation.mutateAsync({
         seriesId,
         locationId,
         mediaAssetId: resolved.mediaAssetId,
         assetType: "location_reference",
-        role: previewByLocationId[locationId]?.coverageRole
-          ?? (previewByLocationId[locationId]?.cameraView ? "other" : "establishing_plate"),
+        role:
+          previewByLocationId[locationId]?.coverageRole ??
+          (previewByLocationId[locationId]?.cameraView
+            ? "other"
+            : "establishing_plate"),
         source: "generated",
-        metadata: previewByLocationId[locationId]?.cameraView
-          ? { cameraView: previewByLocationId[locationId].cameraView }
-          : undefined,
+        metadata,
+        ...(generationMetadata?.sourceAssetLinkId
+          ? { preservePrimaryAssetLinkId: generationMetadata.sourceAssetLinkId }
+          : {}),
       });
-      await approveMutation.mutateAsync({ seriesId, assetLinkId: linked.asset.assetLinkId });
-      setApprovedAssetLinkByLocationId((prev) => ({ ...prev, [locationId]: linked.asset.assetLinkId }));
-      setCandidateByLocationId((prev) => {
+      await approveMutation.mutateAsync({
+        seriesId,
+        assetLinkId: linked.asset.assetLinkId,
+      });
+      setApprovedAssetLinkByLocationId(prev => ({
+        ...prev,
+        [locationId]: linked.asset.assetLinkId,
+      }));
+      setCandidateByLocationId(prev => {
         const next = { ...prev };
         delete next[locationId];
         return next;
       });
-      setPreviewByLocationId((prev) => {
+      setPreviewByLocationId(prev => {
+        const next = { ...prev };
+        delete next[locationId];
+        return next;
+      });
+      setGenerationMetadataByLocationId(prev => {
+        const next = { ...prev };
+        delete next[locationId];
+        return next;
+      });
+      setEditInstructionByLocationId(prev => {
         const next = { ...prev };
         delete next[locationId];
         return next;
       });
       invalidate();
-      void utils.verticalDramaLocations.listLocationAssets.invalidate({ seriesId, locationId });
-      toast.success(t(lang, "บันทึกภาพสถานที่แล้ว", "Location reference saved"));
+      void utils.verticalDramaLocations.listLocationAssets.invalidate({
+        seriesId,
+        locationId,
+      });
+      toast.success(
+        t(lang, "บันทึกภาพสถานที่แล้ว", "Location reference saved")
+      );
     } catch (err) {
       // Persist failed — keep the candidate visible with the manual "approve"
       // button as a retry (the paid render is NOT lost, it's still the
       // candidate URL), and surface why.
-      toast.error(err instanceof Error ? err.message : t(lang, "บันทึกภาพไม่สำเร็จ", "Failed to save image"));
-      setCandidateByLocationId((prev) => ({ ...prev, [locationId]: { imageUrl, approving: false } }));
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(lang, "บันทึกภาพไม่สำเร็จ", "Failed to save image")
+      );
+      setCandidateByLocationId(prev => ({
+        ...prev,
+        [locationId]: { imageUrl, approving: false },
+      }));
     }
   };
 
   const handleApprove = async (location: VdLocationListItem) => {
     const candidate = candidateByLocationId[location.locationId];
     if (!candidate) return;
-    await persistGeneratedLocationImage(location.locationId, candidate.imageUrl);
+    await persistGeneratedLocationImage(
+      location.locationId,
+      candidate.imageUrl,
+      generationMetadataByLocationId[location.locationId]
+    );
   };
 
   /* ---- Basic asset management (delete / reject / mark stale) ----
@@ -883,31 +1231,50 @@ export function VerticalDramaLocationStockPanel({
    * session's own approve flow above, or (once the backend adds it) the
    * roster row's own `primaryReferenceAssetLinkId` — see
    * `VdLocationListItem`'s own doc comment. */
-  const resolveAssetLinkId = (location: VdLocationListItem): string | undefined =>
-    approvedAssetLinkByLocationId[location.locationId] ?? location.primaryReferenceAssetLinkId;
+  const resolveAssetLinkId = (
+    location: VdLocationListItem
+  ): string | undefined =>
+    approvedAssetLinkByLocationId[location.locationId] ??
+    location.primaryReferenceAssetLinkId;
 
   const clearLocationSessionState = (locationId: string) => {
-    setCandidateByLocationId((prev) => {
+    setCandidateByLocationId(prev => {
       const next = { ...prev };
       delete next[locationId];
       return next;
     });
-    setPreviewByLocationId((prev) => {
+    setPreviewByLocationId(prev => {
       const next = { ...prev };
       delete next[locationId];
       return next;
     });
-    setApprovedAssetLinkByLocationId((prev) => {
+    setApprovedAssetLinkByLocationId(prev => {
+      const next = { ...prev };
+      delete next[locationId];
+      return next;
+    });
+    setGenerationMetadataByLocationId(prev => {
+      const next = { ...prev };
+      delete next[locationId];
+      return next;
+    });
+    setEditInstructionByLocationId(prev => {
       const next = { ...prev };
       delete next[locationId];
       return next;
     });
   };
 
-  const transitionAssetMutation = trpc.verticalDramaLocations.transitionAsset.useMutation({ onError });
-  const markStaleMutation = trpc.verticalDramaLocations.markStale.useMutation({ onError });
-  const deleteAssetMutation = trpc.verticalDramaLocations.deleteAsset.useMutation({ onError });
-  const [confirmingDeleteLocationId, setConfirmingDeleteLocationId] = useState<string | null>(null);
+  const transitionAssetMutation =
+    trpc.verticalDramaLocations.transitionAsset.useMutation({ onError });
+  const markStaleMutation = trpc.verticalDramaLocations.markStale.useMutation({
+    onError,
+  });
+  const deleteAssetMutation =
+    trpc.verticalDramaLocations.deleteAsset.useMutation({ onError });
+  const [confirmingDeleteLocationId, setConfirmingDeleteLocationId] = useState<
+    string | null
+  >(null);
 
   /* ---- Multiple candidates, pick a primary (Location Visual Bible Phase C) ----
    * `listLocationAssets` is the durable-side companion to the in-session
@@ -920,23 +1287,38 @@ export function VerticalDramaLocationStockPanel({
    * input the query never actually runs with, since `enabled` gates it. */
   const assetsQuery = trpc.verticalDramaLocations.listLocationAssets.useQuery(
     { seriesId, locationId: selectedLocationId ?? "" },
-    { enabled: Boolean(seriesId) && Boolean(selectedLocationId), staleTime: 10_000 },
+    {
+      enabled: Boolean(seriesId) && Boolean(selectedLocationId),
+      staleTime: 10_000,
+    }
   );
   const candidatesForSelected = sortLocationCandidatesForGallery(
-    (assetsQuery.data?.assets ?? []) as VdLocationAssetCandidate[],
+    (assetsQuery.data?.assets ?? []) as VdLocationAssetCandidate[]
   );
 
-  const setPrimaryMutation = trpc.verticalDramaLocations.setPrimaryLocationAsset.useMutation({ onError });
-  const handleSetPrimary = (location: VdLocationListItem, candidate: VdLocationAssetCandidate) => {
+  const setPrimaryMutation =
+    trpc.verticalDramaLocations.setPrimaryLocationAsset.useMutation({
+      onError,
+    });
+  const handleSetPrimary = (
+    location: VdLocationListItem,
+    candidate: VdLocationAssetCandidate
+  ) => {
     if (candidate.isPrimary) return;
     setPrimaryMutation.mutate(
-      { seriesId, locationId: location.locationId, assetLinkId: candidate.assetLinkId },
+      {
+        seriesId,
+        locationId: location.locationId,
+        assetLinkId: candidate.assetLinkId,
+      },
       {
         onSuccess: () => {
           invalidate();
-          toast.success(t(lang, "ตั้งเป็นภาพหลักแล้ว", "Set as primary reference"));
+          toast.success(
+            t(lang, "ตั้งเป็นภาพหลักแล้ว", "Set as primary reference")
+          );
         },
-      },
+      }
     );
   };
 
@@ -951,7 +1333,7 @@ export function VerticalDramaLocationStockPanel({
           invalidate();
           toast.success(t(lang, "ปฏิเสธภาพอ้างอิงแล้ว", "Reference rejected"));
         },
-      },
+      }
     );
   };
 
@@ -966,7 +1348,7 @@ export function VerticalDramaLocationStockPanel({
           invalidate();
           toast.success(t(lang, "ทำเครื่องหมายว่าล้าสมัยแล้ว", "Marked stale"));
         },
-      },
+      }
     );
   };
 
@@ -982,24 +1364,46 @@ export function VerticalDramaLocationStockPanel({
           invalidate();
           toast.success(t(lang, "ลบภาพอ้างอิงแล้ว", "Reference deleted"));
         },
-      },
+      }
     );
   };
 
-  const selectedLocation = locations.find((l) => l.locationId === selectedLocationId) ?? null;
-  const candidateForSelected = selectedLocation ? candidateByLocationId[selectedLocation.locationId] : undefined;
-  const previewForSelected = selectedLocation ? previewByLocationId[selectedLocation.locationId] : undefined;
-  const isRenderingSelected = selectedLocation ? renderingLocationId === selectedLocation.locationId : false;
-  const isPreviewLoadingSelected = selectedLocation ? pendingPreviewLocationId === selectedLocation.locationId : false;
+  const selectedLocation =
+    locations.find(l => l.locationId === selectedLocationId) ?? null;
+  const candidateForSelected = selectedLocation
+    ? candidateByLocationId[selectedLocation.locationId]
+    : undefined;
+  const previewForSelected = selectedLocation
+    ? previewByLocationId[selectedLocation.locationId]
+    : undefined;
+  const isRenderingSelected = selectedLocation
+    ? renderingLocationId === selectedLocation.locationId
+    : false;
+  const isPreviewLoadingSelected = selectedLocation
+    ? pendingPreviewLocationId === selectedLocation.locationId
+    : false;
   const detailThumbnailUrl = selectedLocation
-    ? resolveLocationCardThumbnailUrl(selectedLocation, candidateForSelected?.imageUrl)
+    ? resolveLocationCardThumbnailUrl(
+        selectedLocation,
+        candidateForSelected?.imageUrl
+      )
     : null;
-  const detailHasApprovedReference = Boolean(selectedLocation?.primaryReferenceUrl);
-  const resolvedAssetLinkIdForSelected = selectedLocation ? resolveAssetLinkId(selectedLocation) : undefined;
+  const detailHasApprovedReference = Boolean(
+    selectedLocation?.primaryReferenceUrl
+  );
+  const resolvedAssetLinkIdForSelected = selectedLocation
+    ? resolveAssetLinkId(selectedLocation)
+    : undefined;
 
   if (listQuery.isLoading) {
     return (
-      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3", className)} aria-busy="true">
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3",
+          className
+        )}
+        aria-busy="true"
+      >
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-40 w-full" />
         <Skeleton className="h-40 w-full" />
@@ -1013,10 +1417,14 @@ export function VerticalDramaLocationStockPanel({
   if (listQuery.isError && !listQuery.data) {
     return (
       <Card className={cn("border-destructive/40", className)}>
-        <CardContent role="alert" className="flex flex-col items-center gap-3 py-10 text-center">
+        <CardContent
+          role="alert"
+          className="flex flex-col items-center gap-3 py-10 text-center"
+        >
           <p className="flex items-center gap-2 text-sm text-destructive">
             <AlertTriangle aria-hidden="true" className="h-4 w-4 shrink-0" />
-            {listQuery.error?.message ?? t(lang, "โหลดสถานที่ไม่สำเร็จ", "Failed to load locations")}
+            {listQuery.error?.message ??
+              t(lang, "โหลดสถานที่ไม่สำเร็จ", "Failed to load locations")}
           </p>
           <Button variant="outline" onClick={() => listQuery.refetch()}>
             {t(lang, "ลองอีกครั้ง", "Retry")}
@@ -1052,12 +1460,20 @@ export function VerticalDramaLocationStockPanel({
               title={t(
                 lang,
                 "สแกนเนื้อเรื่องปัจจุบันหาฉากใหม่ (ใช้ LLM จริง อาจใช้เวลาสักครู่)",
-                "Scans the current story for new locations (real LLM call, may take a moment)",
+                "Scans the current story for new locations (real LLM call, may take a moment)"
               )}
               onClick={() =>
                 requestConfirmation({
-                  title: t(lang, "ยืนยันตรวจจับสถานที่", "Confirm location detection"),
-                  description: t(lang, "การทำงานนี้ใช้ LLM วิเคราะห์เรื่องและอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?", "This uses an LLM to analyze the story and may spend credits. Continue?"),
+                  title: t(
+                    lang,
+                    "ยืนยันตรวจจับสถานที่",
+                    "Confirm location detection"
+                  ),
+                  description: t(
+                    lang,
+                    "การทำงานนี้ใช้ LLM วิเคราะห์เรื่องและอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                    "This uses an LLM to analyze the story and may spend credits. Continue?"
+                  ),
                   confirmLabel: t(lang, "เริ่มตรวจจับ", "Start detection"),
                   cancelLabel: t(lang, "ยกเลิก", "Cancel"),
                   testId: "vd-credit-confirm-detect-locations",
@@ -1067,7 +1483,10 @@ export function VerticalDramaLocationStockPanel({
               data-testid="vd-location-detect-now"
             >
               {detectLocationsMutation.isPending ? (
-                <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                <Loader2
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin"
+                />
               ) : (
                 <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
               )}
@@ -1079,7 +1498,9 @@ export function VerticalDramaLocationStockPanel({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">{t(lang, "รายชื่อสถานที่", "Location roster")}</CardTitle>
+          <CardTitle className="text-sm">
+            {t(lang, "รายชื่อสถานที่", "Location roster")}
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-3">
           {locations.length === 0 ? (
@@ -1087,7 +1508,7 @@ export function VerticalDramaLocationStockPanel({
               {t(
                 lang,
                 "ยังไม่มีสถานที่ — สถานที่จะถูกสร้างจากข้อมูลตอนสร้างซีรีย์ หรือจากเนื้อเรื่องที่สร้างขึ้น",
-                "No locations yet — locations are seeded when the series is created, or generated from the story.",
+                "No locations yet — locations are seeded when the series is created, or generated from the story."
               )}
             </p>
           ) : (
@@ -1095,66 +1516,126 @@ export function VerticalDramaLocationStockPanel({
               className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
               aria-label={t(lang, "รายชื่อสถานที่", "Location list")}
             >
-              {locations.map((location) => {
+              {locations.map(location => {
                 const active = location.locationId === selectedLocationId;
                 const candidate = candidateByLocationId[location.locationId];
-                const thumbnailUrl = resolveLocationCardThumbnailUrl(location, candidate?.imageUrl);
+                const thumbnailUrl = resolveLocationCardThumbnailUrl(
+                  location,
+                  candidate?.imageUrl
+                );
                 return (
                   <li key={location.locationId}>
                     <div className="relative">
                       <button
                         type="button"
-                        onClick={() => setSelectedLocationId(location.locationId)}
+                        onClick={() =>
+                          setSelectedLocationId(location.locationId)
+                        }
                         className={cn(
                           "flex w-full flex-col gap-2 rounded-lg border p-2.5 text-left transition-colors",
                           active
                             ? "border-purple-400 bg-purple-50/60 ring-2 ring-purple-100 dark:bg-purple-950/20"
-                            : "border-border hover:border-muted-foreground/40",
+                            : "border-border hover:border-muted-foreground/40"
                         )}
                         data-testid={`vd-location-card-${location.locationId}`}
                       >
-                      <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
-                        {thumbnailUrl ? (
-                          <img src={thumbnailUrl} alt={location.name} className="h-full w-full object-cover" />
-                        ) : (
-                          <MapPin aria-hidden="true" className="h-6 w-6 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{location.name}</p>
-                        {location.description ? (
-                          <p className="line-clamp-2 text-xs text-muted-foreground">{location.description}</p>
+                        <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
+                          {thumbnailUrl ? (
+                            <AuthenticatedMediaImage
+                              src={thumbnailUrl}
+                              alt={location.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <MapPin
+                              aria-hidden="true"
+                              className="h-6 w-6 text-muted-foreground"
+                            />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {location.name}
+                          </p>
+                          {location.description ? (
+                            <p className="line-clamp-2 text-xs text-muted-foreground">
+                              {location.description}
+                            </p>
+                          ) : null}
+                        </div>
+                        {location.primaryReferenceUrl ? (
+                          <Badge
+                            variant="outline"
+                            className="w-fit gap-1 border-emerald-400/60 px-1.5 py-0 text-[9px] text-emerald-700 dark:text-emerald-400"
+                          >
+                            <Check aria-hidden="true" className="h-2.5 w-2.5" />
+                            {t(lang, "มีภาพอ้างอิงแล้ว", "Reference set")}
+                          </Badge>
                         ) : null}
-                      </div>
-                      {location.primaryReferenceUrl ? (
-                        <Badge
-                          variant="outline"
-                          className="w-fit gap-1 border-emerald-400/60 px-1.5 py-0 text-[9px] text-emerald-700 dark:text-emerald-400"
+                        {location.cameraVariants?.length ? (
+                          <div
+                            className="flex items-center gap-1.5"
+                            data-testid={`vd-location-card-variants-${location.locationId}`}
+                          >
+                            <span className="text-[10px] font-medium text-sky-700 dark:text-sky-300">
+                              {t(
+                                lang,
+                                `มุมย่อย ${location.cameraVariants.length} มุม`,
+                                `${location.cameraVariants.length} reusable views`
+                              )}
+                            </span>
+                            <span className="flex -space-x-1">
+                              {location.cameraVariants
+                                .slice(0, 4)
+                                .map(variant => (
+                                  <AuthenticatedMediaImage
+                                    key={variant.variantId}
+                                    src={variant.url}
+                                    alt={variant.label}
+                                    title={variant.label}
+                                    className="h-6 w-8 rounded border-2 border-background object-cover"
+                                  />
+                                ))}
+                            </span>
+                          </div>
+                        ) : null}
+                        <span
+                          className={cn(
+                            "flex items-center gap-1 text-[10px] font-medium",
+                            active
+                              ? "text-purple-700 dark:text-purple-300"
+                              : "text-sky-700 dark:text-sky-300"
+                          )}
                         >
-                          <Check aria-hidden="true" className="h-2.5 w-2.5" />
-                          {t(lang, "มีภาพอ้างอิงแล้ว", "Reference set")}
-                        </Badge>
-                      ) : null}
-                      <span
-                        className={cn(
-                          "flex items-center gap-1 text-[10px] font-medium",
-                          active
-                            ? "text-purple-700 dark:text-purple-300"
-                            : "text-sky-700 dark:text-sky-300",
-                        )}
-                      >
-                        <Camera aria-hidden="true" className="h-3 w-3" />
-                        {active
-                          ? t(lang, "กำลังจัดการมุมมองด้านล่าง", "View manager opened below")
-                          : t(lang, "กดเพื่อดู/เพิ่มมุมมองสถานที่", "Select to view/add location angles")}
-                      </span>
+                          <Camera aria-hidden="true" className="h-3 w-3" />
+                          {active
+                            ? t(
+                                lang,
+                                "กำลังจัดการมุมมองด้านล่าง",
+                                "View manager opened below"
+                              )
+                            : t(
+                                lang,
+                                "กดเพื่อดู/เพิ่มมุมมองสถานที่",
+                                "Select to view/add location angles"
+                              )}
+                        </span>
                       </button>
                       {thumbnailUrl ? (
                         <button
                           type="button"
                           className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white shadow-sm hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                          onClick={() => setLightboxImage({ src: thumbnailUrl, alt: location.name })}
-                          aria-label={t(lang, `ดูภาพขยายของ ${location.name}`, `View full-size image of ${location.name}`)}
+                          onClick={() =>
+                            setLightboxImage({
+                              src: thumbnailUrl,
+                              alt: location.name,
+                            })
+                          }
+                          aria-label={t(
+                            lang,
+                            `ดูภาพขยายของ ${location.name}`,
+                            `View full-size image of ${location.name}`
+                          )}
                           title={t(lang, "ขยายภาพเต็มจอ", "Open full screen")}
                           data-testid={`vd-location-card-fullscreen-${location.locationId}`}
                         >
@@ -1173,7 +1654,9 @@ export function VerticalDramaLocationStockPanel({
       {selectedLocation ? (
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
-            <CardTitle className="text-sm">{t(lang, "รายละเอียดสถานที่", "Location detail")}</CardTitle>
+            <CardTitle className="text-sm">
+              {t(lang, "รายละเอียดสถานที่", "Location detail")}
+            </CardTitle>
             <Button
               type="button"
               variant="ghost"
@@ -1199,7 +1682,7 @@ export function VerticalDramaLocationStockPanel({
               {t(
                 lang,
                 "เลือกมุมมาตรฐานหรือกำหนดจุดมองเฉพาะสถานที่ แล้วสร้างภาพเพิ่ม ภาพทั้งหมดจะถูกเก็บไว้กับสถานที่เดียวกันและเลือกใช้ใน storyboard ได้",
-                "Choose a standard camera grammar or describe a location-specific viewpoint, then generate an additional image. All views stay attached to this location and can be selected in the storyboard.",
+                "Choose a standard camera grammar or describe a location-specific viewpoint, then generate an additional image. All views stay attached to this location and can be selected in the storyboard."
               )}
             </p>
           </div>
@@ -1209,41 +1692,67 @@ export function VerticalDramaLocationStockPanel({
                 <button
                   type="button"
                   className="block h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                  onClick={() => setLightboxImage({ src: detailThumbnailUrl, alt: selectedLocation.name })}
+                  onClick={() =>
+                    setLightboxImage({
+                      src: detailThumbnailUrl,
+                      alt: selectedLocation.name,
+                    })
+                  }
                   aria-label={t(
                     lang,
                     `ดูภาพขยายของ ${selectedLocation.name}`,
-                    `View full-size image of ${selectedLocation.name}`,
+                    `View full-size image of ${selectedLocation.name}`
                   )}
                 >
-                  <img src={detailThumbnailUrl} alt="" className="h-full w-full object-cover" />
+                  <AuthenticatedMediaImage
+                    src={detailThumbnailUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ) : (
-                <MapPin aria-hidden="true" className="h-8 w-8 text-muted-foreground" />
+                <MapPin
+                  aria-hidden="true"
+                  className="h-8 w-8 text-muted-foreground"
+                />
               )}
             </div>
 
             <div className="flex min-w-0 flex-1 flex-col gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="vd-location-name" className="text-xs font-medium text-muted-foreground">
+                <Label
+                  htmlFor="vd-location-name"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   {t(lang, "ชื่อสถานที่", "Location name")}
                 </Label>
                 <Input
                   id="vd-location-name"
                   value={editDraftFor(selectedLocation.locationId).name}
-                  onChange={(e) => updateEditDraft(selectedLocation.locationId, { name: e.target.value })}
+                  onChange={e =>
+                    updateEditDraft(selectedLocation.locationId, {
+                      name: e.target.value,
+                    })
+                  }
                   disabled={readOnly}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="vd-location-description" className="text-xs font-medium text-muted-foreground">
+                <Label
+                  htmlFor="vd-location-description"
+                  className="text-xs font-medium text-muted-foreground"
+                >
                   {t(lang, "คำอธิบาย", "Description")}
                 </Label>
                 <Textarea
                   id="vd-location-description"
                   rows={3}
                   value={editDraftFor(selectedLocation.locationId).description}
-                  onChange={(e) => updateEditDraft(selectedLocation.locationId, { description: e.target.value })}
+                  onChange={e =>
+                    updateEditDraft(selectedLocation.locationId, {
+                      description: e.target.value,
+                    })
+                  }
                   disabled={readOnly}
                 />
               </div>
@@ -1257,7 +1766,10 @@ export function VerticalDramaLocationStockPanel({
                   disabled={updateLocationMutation.isPending}
                 >
                   {updateLocationMutation.isPending ? (
-                    <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 animate-spin"
+                    />
                   ) : (
                     <Save aria-hidden="true" className="h-3.5 w-3.5" />
                   )}
@@ -1285,12 +1797,12 @@ export function VerticalDramaLocationStockPanel({
                   <span className="text-[11px] font-medium text-foreground/80">
                     {t(
                       lang,
-                      `ภาพผู้สมัครทั้งหมด (${candidatesForSelected.length})`,
-                      `All candidates (${candidatesForSelected.length})`,
+                      `คลังภาพฉาก — ภาพหลักและมุมย่อย (${candidatesForSelected.length})`,
+                      `Scene image library — primary and reusable views (${candidatesForSelected.length})`
                     )}
                   </span>
                   <div className="flex flex-wrap items-start gap-2">
-                    {candidatesForSelected.map((candidate) => (
+                    {candidatesForSelected.map(candidate => (
                       <button
                         key={candidate.assetLinkId}
                         type="button"
@@ -1303,34 +1815,52 @@ export function VerticalDramaLocationStockPanel({
                         aria-pressed={candidate.isPrimary}
                         aria-label={
                           candidate.isPrimary
-                            ? t(lang, "ภาพหลักปัจจุบัน", "Current primary image")
+                            ? t(
+                                lang,
+                                "ภาพหลักปัจจุบัน",
+                                "Current primary image"
+                              )
                             : candidate.role !== "establishing_plate"
-                              ? t(lang, "ภาพ coverage (เลือกเป็นภาพหลักไม่ได้)", "Coverage image (not primary)")
-                              : t(lang, "ตั้งเป็นภาพหลัก", "Set as primary image")
+                              ? t(
+                                  lang,
+                                  "ภาพ coverage (เลือกเป็นภาพหลักไม่ได้)",
+                                  "Coverage image (not primary)"
+                                )
+                              : t(
+                                  lang,
+                                  "ตั้งเป็นภาพหลัก",
+                                  "Set as primary image"
+                                )
                         }
                         className={cn(
                           "flex flex-col items-center gap-0.5",
                           readOnly ||
-                          candidate.isPrimary ||
-                          candidate.role !== "establishing_plate"
+                            candidate.isPrimary ||
+                            candidate.role !== "establishing_plate"
                             ? "cursor-default"
-                            : "cursor-pointer",
+                            : "cursor-pointer"
                         )}
-                        onClick={() => handleSetPrimary(selectedLocation, candidate)}
+                        onClick={() =>
+                          handleSetPrimary(selectedLocation, candidate)
+                        }
                         data-testid={`vd-location-candidate-${candidate.assetLinkId}`}
                       >
                         <span className="relative block">
-                          <img
+                          <AuthenticatedMediaImage
                             src={candidate.url}
                             alt=""
                             className={cn(
                               "h-14 w-14 rounded border border-border object-cover",
-                              candidate.isPrimary && "border-emerald-400 ring-2 ring-emerald-300",
+                              candidate.isPrimary &&
+                                "border-emerald-400 ring-2 ring-emerald-300"
                             )}
                           />
                           {candidate.isPrimary && (
                             <span className="absolute -right-1 -top-1 rounded-full bg-emerald-500 p-0.5 text-white">
-                              <Check aria-hidden="true" className="h-2.5 w-2.5" />
+                              <Check
+                                aria-hidden="true"
+                                className="h-2.5 w-2.5"
+                              />
                             </span>
                           )}
                         </span>
@@ -1339,7 +1869,8 @@ export function VerticalDramaLocationStockPanel({
                             {t(lang, "รอตรวจสอบ", "Pending")}
                           </span>
                         )}
-                        {candidate.role && candidate.role !== "establishing_plate" ? (
+                        {candidate.role &&
+                        candidate.role !== "establishing_plate" ? (
                           <span className="text-[9px] text-sky-700 dark:text-sky-300">
                             {getVerticalDramaLocationCameraViewLabel({
                               role: candidate.role,
@@ -1373,22 +1904,29 @@ export function VerticalDramaLocationStockPanel({
                     <select
                       id={`vd-location-camera-role-${selectedLocation.locationId}`}
                       value={
-                        coverageRoleByLocationId[selectedLocation.locationId]
-                          ?? cameraPresetByLocationId[selectedLocation.locationId]
-                          ?? ""
+                        coverageRoleByLocationId[selectedLocation.locationId] ??
+                        cameraPresetByLocationId[selectedLocation.locationId] ??
+                        ""
                       }
                       onChange={event => {
                         const value = event.target.value;
-                        const legacyRole = ["reverse_angle", "side_angle", "detail_corner"].includes(value);
+                        const legacyRole = [
+                          "reverse_angle",
+                          "side_angle",
+                          "detail_corner",
+                        ].includes(value);
                         setCoverageRoleByLocationId(prev => {
                           const next = { ...prev };
-                          if (legacyRole) next[selectedLocation.locationId] = value as VerticalDramaLocationCoverageRole;
+                          if (legacyRole)
+                            next[selectedLocation.locationId] =
+                              value as VerticalDramaLocationCoverageRole;
                           else delete next[selectedLocation.locationId];
                           return next;
                         });
                         setCameraPresetByLocationId(prev => {
                           const next = { ...prev };
-                          if (!legacyRole && value) next[selectedLocation.locationId] = value;
+                          if (!legacyRole && value)
+                            next[selectedLocation.locationId] = value;
                           else delete next[selectedLocation.locationId];
                           return next;
                         });
@@ -1409,7 +1947,11 @@ export function VerticalDramaLocationStockPanel({
                       data-testid={`vd-location-camera-role-${selectedLocation.locationId}`}
                     >
                       <option value="">
-                        {t(lang, "ภาพหลัก / มุมสร้างบริบท", "Primary / establishing")}
+                        {t(
+                          lang,
+                          "ภาพหลัก / มุมสร้างบริบท",
+                          "Primary / establishing"
+                        )}
                       </option>
                       <option value="reverse_angle">
                         {t(lang, "มุมย้อน / Reverse view", "Reverse view")}
@@ -1420,10 +1962,22 @@ export function VerticalDramaLocationStockPanel({
                       <option value="detail_corner">
                         {t(lang, "มุมรายละเอียด / Detail view", "Detail view")}
                       </option>
-                      <optgroup label={t(lang, "มุมกล้องมาตรฐาน", "Standard camera grammar")}>
-                        {VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS.filter(preset => preset !== "custom").map(preset => (
+                      <optgroup
+                        label={t(
+                          lang,
+                          "มุมกล้องมาตรฐาน",
+                          "Standard camera grammar"
+                        )}
+                      >
+                        {VERTICAL_DRAMA_LOCATION_CAMERA_PRESETS.filter(
+                          preset => preset !== "custom"
+                        ).map(preset => (
                           <option key={preset} value={preset}>
-                            {CAMERA_PRESET_LABELS[preset][lang === "th" ? 1 : 0]}
+                            {
+                              CAMERA_PRESET_LABELS[preset][
+                                lang === "th" ? 1 : 0
+                              ]
+                            }
                           </option>
                         ))}
                       </optgroup>
@@ -1433,7 +1987,11 @@ export function VerticalDramaLocationStockPanel({
                     </select>
                     {cameraPresetByLocationId[selectedLocation.locationId] ? (
                       <Input
-                        value={cameraDirectiveByLocationId[selectedLocation.locationId] ?? ""}
+                        value={
+                          cameraDirectiveByLocationId[
+                            selectedLocation.locationId
+                          ] ?? ""
+                        }
                         onChange={event => {
                           const directive = event.target.value;
                           setCameraDirectiveByLocationId(prev => ({
@@ -1449,11 +2007,15 @@ export function VerticalDramaLocationStockPanel({
                         placeholder={t(
                           lang,
                           "ระบุจุด/ทิศ/องค์ประกอบ เช่น โต๊ะริมหน้าต่าง หรือใต้น้ำเหนือปะการัง",
-                          "Describe the place-specific view, e.g. table by the window or underwater above the coral",
+                          "Describe the place-specific view, e.g. table by the window or underwater above the coral"
                         )}
                         className="min-w-64 flex-1 text-xs"
                         maxLength={1000}
-                        aria-label={t(lang, "รายละเอียดมุมกล้องเฉพาะสถานที่", "Location-specific camera directive")}
+                        aria-label={t(
+                          lang,
+                          "รายละเอียดมุมกล้องเฉพาะสถานที่",
+                          "Location-specific camera directive"
+                        )}
                         data-testid={`vd-location-camera-directive-${selectedLocation.locationId}`}
                       />
                     ) : null}
@@ -1490,12 +2052,15 @@ export function VerticalDramaLocationStockPanel({
                       className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
                       data-testid={`vd-location-image-model-required-notice-${selectedLocation.locationId}`}
                     >
-                      <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                      <AlertTriangle
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5"
+                      />
                       <span>
                         {t(
                           lang,
                           "ยังไม่ได้เลือกโมเดลภาพ — กรุณาเลือกโมเดลก่อนจึงจะสร้างภาพได้",
-                          "No image model selected — choose a model before you can generate.",
+                          "No image model selected — choose a model before you can generate."
                         )}
                       </span>
                       <button
@@ -1518,8 +2083,12 @@ export function VerticalDramaLocationStockPanel({
                       providerKey={
                         resolveMediaModelTransportConfig({
                           provider: selectedImageModelRecord?.provider,
-                          modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
-                          configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+                          modelId:
+                            selectedImageModelRecord?.modelId ??
+                            selectedImageModelId,
+                          configJson: selectedImageModelRecord?.configJson as
+                            | Record<string, unknown>
+                            | undefined,
                         }).providerKey ?? undefined
                       }
                     />
@@ -1535,17 +2104,119 @@ export function VerticalDramaLocationStockPanel({
                         assetType="image"
                       />
                       {!hermesConnectionId ? (
-                        <p className="text-xs text-amber-600" data-testid="hermes-connection-required-hint">
-                          {t(lang, "เลือกบัญชี Grok ก่อน", "Select a Grok connection first")}
+                        <p
+                          className="text-xs text-amber-600"
+                          data-testid="hermes-connection-required-hint"
+                        >
+                          {t(
+                            lang,
+                            "เลือกบัญชี Grok ก่อน",
+                            "Select a Grok connection first"
+                          )}
                         </p>
                       ) : null}
+                    </div>
+                  )}
+
+                  {detailHasApprovedReference && (
+                    <div className="flex flex-col gap-2 rounded-md border border-sky-300/70 bg-sky-50/70 p-3 dark:bg-sky-950/20">
+                      <div className="flex items-center gap-2">
+                        <Wand2
+                          aria-hidden="true"
+                          className="h-4 w-4 text-sky-600"
+                        />
+                        <Label
+                          htmlFor={`vd-location-edit-instruction-${selectedLocation.locationId}`}
+                        >
+                          {t(
+                            lang,
+                            "แก้ไขภาพเดิมด้วย image-to-image",
+                            "Edit existing image with image-to-image"
+                          )}
+                        </Label>
+                      </div>
+                      <Textarea
+                        id={`vd-location-edit-instruction-${selectedLocation.locationId}`}
+                        value={
+                          editInstructionByLocationId[
+                            selectedLocation.locationId
+                          ] ?? ""
+                        }
+                        onChange={event =>
+                          setEditInstructionByLocationId(prev => ({
+                            ...prev,
+                            [selectedLocation.locationId]: event.target.value,
+                          }))
+                        }
+                        placeholder={t(
+                          lang,
+                          "ระบุเฉพาะสิ่งที่ต้องการแก้ เช่น เปลี่ยนโต๊ะเป็นโต๊ะไม้สีเข้ม แต่คงหน้าต่าง ผังห้อง และแสงเดิมไว้",
+                          "Describe only the requested change, e.g. replace the desk with dark wood while preserving the windows, layout, and lighting."
+                        )}
+                        maxLength={1200}
+                        rows={3}
+                        disabled={isRenderingSelected}
+                        data-testid={`vd-location-edit-instruction-${selectedLocation.locationId}`}
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(
+                          lang,
+                          "ภาพหลักเดิมจะถูกใช้เป็นภาพอ้างอิง ระบบจะสร้างภาพผู้สมัครใหม่และคงภาพหลักเดิมไว้จนกว่าจะเลือกเปลี่ยนเอง",
+                          "The current primary image is the source reference. A new candidate is created while the current primary stays unchanged until you choose to replace it."
+                        )}
+                      </p>
+                      {selectedImageModelMaxReferenceImages === 0 ? (
+                        <p className="text-xs text-destructive">
+                          {t(
+                            lang,
+                            "โมเดลนี้ไม่รองรับ image-to-image กรุณาเลือกโมเดลที่รองรับภาพอ้างอิง",
+                            "This model does not support image-to-image references. Choose a compatible model."
+                          )}
+                        </p>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-fit gap-1.5"
+                        onClick={() =>
+                          handleEditExistingImage(selectedLocation)
+                        }
+                        disabled={
+                          isRenderingSelected ||
+                          !editInstructionByLocationId[
+                            selectedLocation.locationId
+                          ]?.trim() ||
+                          !selectedImageModelId ||
+                          selectedImageModelMaxReferenceImages === 0
+                        }
+                        data-testid={`vd-location-edit-existing-image-${selectedLocation.locationId}`}
+                      >
+                        {isRenderingSelected ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
+                        ) : (
+                          <Sparkles
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
+                        )}
+                        {isRenderingSelected
+                          ? t(lang, "กำลังแก้ไขภาพ…", "Editing image…")
+                          : t(
+                              lang,
+                              "แก้ไขภาพเดิมด้วย AI",
+                              "Edit existing image with AI"
+                            )}
+                      </Button>
                     </div>
                   )}
 
                   {candidateForSelected ? (
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
-                        <img
+                        <AuthenticatedMediaImage
                           src={candidateForSelected.imageUrl}
                           alt=""
                           className="h-14 w-14 shrink-0 rounded border border-border object-cover"
@@ -1554,7 +2225,7 @@ export function VerticalDramaLocationStockPanel({
                           {t(
                             lang,
                             "ตรวจสอบภาพที่สร้างแล้วกด “อนุมัติ” เพื่อเพิ่มเป็นภาพผู้สมัคร (เลือกภาพหลักได้ในแกลเลอรีด้านบน)",
-                            "Review the rendered image, then approve to add it as a candidate (pick the primary from the gallery above).",
+                            "Review the rendered image, then approve to add it as a candidate (pick the primary from the gallery above)."
                           )}
                         </p>
                       </div>
@@ -1568,7 +2239,10 @@ export function VerticalDramaLocationStockPanel({
                         data-testid={`vd-location-approve-${selectedLocation.locationId}`}
                       >
                         {candidateForSelected.approving ? (
-                          <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
                         ) : (
                           <Check aria-hidden="true" className="h-3.5 w-3.5" />
                         )}
@@ -1590,18 +2264,32 @@ export function VerticalDramaLocationStockPanel({
                         title={
                           selectedImageModelId
                             ? undefined
-                            : t(lang, "เลือกโมเดลภาพก่อนสร้าง", "Select an image model first")
+                            : t(
+                                lang,
+                                "เลือกโมเดลภาพก่อนสร้าง",
+                                "Select an image model first"
+                              )
                         }
                         data-testid={`vd-location-generate-image-${selectedLocation.locationId}`}
                       >
                         {isRenderingSelected ? (
-                          <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
                         ) : (
-                          <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                          <Sparkles
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
                         )}
                         {isRenderingSelected
                           ? t(lang, "กำลังสร้าง…", "Generating…")
-                          : t(lang, "สร้างภาพ (มีค่าใช้จ่าย)", "Generate image (paid)")}
+                          : t(
+                              lang,
+                              "สร้างภาพ (มีค่าใช้จ่าย)",
+                              "Generate image (paid)"
+                            )}
                       </Button>
                     </div>
                   ) : (
@@ -1609,7 +2297,11 @@ export function VerticalDramaLocationStockPanel({
                       {detailHasApprovedReference && (
                         <div className="flex flex-col gap-1.5">
                           <p className="text-[11px] text-muted-foreground">
-                            {t(lang, "มีภาพอ้างอิงหลักแล้ว", "A primary reference image is set")}
+                            {t(
+                              lang,
+                              "มีภาพอ้างอิงหลักแล้ว",
+                              "A primary reference image is set"
+                            )}
                           </p>
                           {resolvedAssetLinkIdForSelected ? (
                             <div className="flex flex-wrap items-center gap-1.5">
@@ -1618,11 +2310,16 @@ export function VerticalDramaLocationStockPanel({
                                 size="sm"
                                 variant="outline"
                                 className="gap-1.5"
-                                onClick={() => handleMarkStale(selectedLocation)}
+                                onClick={() =>
+                                  handleMarkStale(selectedLocation)
+                                }
                                 disabled={markStaleMutation.isPending}
                                 data-testid={`vd-location-mark-stale-${selectedLocation.locationId}`}
                               >
-                                <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+                                <Clock
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
                                 {t(lang, "ทำเครื่องหมายล้าสมัย", "Mark stale")}
                               </Button>
                               <Button
@@ -1637,7 +2334,8 @@ export function VerticalDramaLocationStockPanel({
                                 <X aria-hidden="true" className="h-3.5 w-3.5" />
                                 {t(lang, "ปฏิเสธ", "Reject")}
                               </Button>
-                              {confirmingDeleteLocationId === selectedLocation.locationId ? (
+                              {confirmingDeleteLocationId ===
+                              selectedLocation.locationId ? (
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[11px] text-muted-foreground">
                                     {t(lang, "ยืนยันการลบ?", "Confirm delete?")}
@@ -1646,24 +2344,41 @@ export function VerticalDramaLocationStockPanel({
                                     type="button"
                                     size="icon-sm"
                                     variant="ghost"
-                                    onClick={() => setConfirmingDeleteLocationId(null)}
+                                    onClick={() =>
+                                      setConfirmingDeleteLocationId(null)
+                                    }
                                     aria-label={t(lang, "ยกเลิก", "Cancel")}
                                   >
-                                    <X aria-hidden="true" className="h-3.5 w-3.5" />
+                                    <X
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
                                   </Button>
                                   <Button
                                     type="button"
                                     size="icon-sm"
                                     variant="destructive"
-                                    onClick={() => handleDelete(selectedLocation)}
+                                    onClick={() =>
+                                      handleDelete(selectedLocation)
+                                    }
                                     disabled={deleteAssetMutation.isPending}
-                                    aria-label={t(lang, "ยืนยันลบภาพนี้", "Confirm delete this image")}
+                                    aria-label={t(
+                                      lang,
+                                      "ยืนยันลบภาพนี้",
+                                      "Confirm delete this image"
+                                    )}
                                     data-testid={`vd-location-confirm-delete-${selectedLocation.locationId}`}
                                   >
                                     {deleteAssetMutation.isPending ? (
-                                      <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                                      <Loader2
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5 animate-spin"
+                                      />
                                     ) : (
-                                      <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                      <Trash2
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5"
+                                      />
                                     )}
                                   </Button>
                                 </div>
@@ -1673,10 +2388,17 @@ export function VerticalDramaLocationStockPanel({
                                   size="sm"
                                   variant="outline"
                                   className="gap-1.5 text-destructive"
-                                  onClick={() => setConfirmingDeleteLocationId(selectedLocation.locationId)}
+                                  onClick={() =>
+                                    setConfirmingDeleteLocationId(
+                                      selectedLocation.locationId
+                                    )
+                                  }
                                   data-testid={`vd-location-delete-${selectedLocation.locationId}`}
                                 >
-                                  <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                  <Trash2
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5"
+                                  />
                                   {t(lang, "ลบ", "Delete")}
                                 </Button>
                               )}
@@ -1686,7 +2408,7 @@ export function VerticalDramaLocationStockPanel({
                               {t(
                                 lang,
                                 "จัดการภาพนี้ไม่ได้ในตอนนี้ (สร้างไว้ก่อนหน้าเซสชันนี้)",
-                                "Can't manage this reference yet (created before this session)",
+                                "Can't manage this reference yet (created before this session)"
                               )}
                             </p>
                           )}
@@ -1702,7 +2424,10 @@ export function VerticalDramaLocationStockPanel({
                         data-testid={`vd-location-preview-prompt-${selectedLocation.locationId}`}
                       >
                         {isPreviewLoadingSelected ? (
-                          <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
                         ) : (
                           <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
                         )}
