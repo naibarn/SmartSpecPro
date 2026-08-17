@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { llmProviders, modelProviderMap } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { buildModelLookupCandidates } from "./modelLookup";
+import { isAvailable } from "./providerHealth";
 import { resolveProviderCatalogDefaults } from "../routers/llmProviders";
 import {
   buildProviderCatalogLookupKey,
@@ -211,6 +212,37 @@ export function resolveEnabledLlmModelIdFromRows(input: {
   }
 
   return rows[0]?.modelId ?? null;
+}
+
+/**
+ * Resolve only to a model that still has at least one provider outside the
+ * provider-health cooldown. "Enabled" is catalog state; this is the runtime
+ * admission check that prevents callers from selecting a model which cannot
+ * currently be routed.
+ */
+export function resolveRoutableLlmModelIdFromRows(input: {
+  rows: EnabledLlmModelRow[];
+  preferredModelIds?: Array<string | null | undefined>;
+}): string | null {
+  const routableRows = input.rows.filter((row) => isAvailable(row.providerId));
+  if (routableRows.length === 0) return null;
+
+  for (const preferredModelId of input.preferredModelIds ?? []) {
+    const match = routableRows.find((row) => rowMatchesModelId(row, preferredModelId));
+    if (match) return match.modelId;
+  }
+
+  return null;
+}
+
+export function hasRoutableLlmModelIdFromRows(
+  rows: EnabledLlmModelRow[],
+  modelId: string | null | undefined,
+): boolean {
+  return resolveRoutableLlmModelIdFromRows({
+    rows,
+    preferredModelIds: [modelId],
+  }) !== null;
 }
 
 export async function loadEnabledLlmModelRows(

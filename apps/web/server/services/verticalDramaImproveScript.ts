@@ -92,6 +92,7 @@ import { getSkillByIdAsync } from "./skillRegistry";
 import { resolveSkillExecutionPolicy, type SkillExecutionPolicyResult } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback, type SkillLlmResult } from "./skillModelFallback";
 import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
+import { isAvailable } from "./providerHealth";
 import { deductCreditsForModel } from "./creditService";
 import type { VerticalDramaStoryJobProgress } from "./verticalDramaStoryJobs";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
@@ -351,7 +352,9 @@ export function selectQualityLargeContextEligibleModels(
 export async function resolveQualityLargeContextModelId(): Promise<string | null> {
   try {
     const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-    const eligible = selectQualityLargeContextEligibleModels(rows);
+    const eligible = selectQualityLargeContextEligibleModels(
+      rows.filter((row) => isAvailable(row.providerId)),
+    );
     const recommended = eligible.filter((row) => row.isRecommended === true);
     if (recommended.length > 0) {
       const ranked = [...recommended].sort((a, b) => a.priority - b.priority);

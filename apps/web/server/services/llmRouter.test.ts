@@ -335,6 +335,24 @@ describe("executeWithFallback", () => {
     });
   }
 
+  it("returns an actionable model-specific error when all mapped providers are unavailable", async () => {
+    setupProviderResolution([]);
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result).toEqual({
+      type: "error",
+      error: expect.stringContaining('No healthy provider is available for model "gpt-4o"'),
+      statusCode: 503,
+    });
+    expect((result as any).error).toContain("try again or select another model");
+  });
+
   it("successful primary provider returns {type: 'success'}", async () => {
     const provider = makeCandidate({ providerId: 1 });
     setupProviderResolution([provider]);

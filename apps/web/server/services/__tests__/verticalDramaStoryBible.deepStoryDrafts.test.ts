@@ -165,7 +165,9 @@ function baseDeepParams(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
   mockResolveVerticalDramaSeriesModel.mockImplementation(
     async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
   );
@@ -779,7 +781,9 @@ describe('generateStoryBibleDeep — mode: "standard" byte-identity (W11-A)', ()
     const omittedCallArgs = mockExecuteWithFallback.mock.calls[0][0];
 
     vi.clearAllMocks();
-    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCredits.mockResolvedValue(undefined);
     mockCalculateCreditsForLLM.mockReturnValue(3);

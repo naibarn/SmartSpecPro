@@ -20,6 +20,7 @@ import {
   resolveSkillManifestPath,
 } from "./skillFiles";
 import { executeWithFallback } from "./llmRouter";
+import { isAvailable } from "./providerHealth";
 import {
   loadEnabledLlmModelRows,
   type EnabledLlmModelRow,
@@ -192,41 +193,32 @@ import {
   type VerticalDramaQualityLedgers,
 } from "@shared/verticalDramaSeries/qualityLedgers";
 
-const LAST_RESORT_MODEL = "gpt-4o-mini";
 const DEEP_STORY_DRAFT_MIN_CONTEXT_LENGTH = 1_000_000;
+const NO_ACTIVE_VERTICAL_DRAMA_LLM_MESSAGE =
+  "No active LLM model is available for Vertical Drama generation. Enable a healthy provider/model before retrying.";
 
 export async function resolveStoryBibleModel(): Promise<string> {
-  try {
-    const rows = await loadEnabledLlmModelRows();
-    if (rows.length === 0) return LAST_RESORT_MODEL;
-    const best = selectBestLlmModel({ supportsStructuredOutputs: true }, rows);
-    return (
-      best ??
-      rows.sort((a, b) => a.priority - b.priority)[0]?.modelId ??
-      LAST_RESORT_MODEL
-    );
-  } catch {
-    return LAST_RESORT_MODEL;
-  }
+  const rows = await loadEnabledLlmModelRows();
+  const routableRows = rows.filter((row) => isAvailable(row.providerId));
+  const best = selectBestLlmModel({ supportsStructuredOutputs: true }, routableRows);
+  const model = best ?? routableRows.sort((a, b) => a.priority - b.priority)[0]?.modelId;
+  if (!model) throw new Error(NO_ACTIVE_VERTICAL_DRAMA_LLM_MESSAGE);
+  return model;
 }
 
 export async function resolveDeepStoryDraftModel(): Promise<string> {
-  try {
-    const rows = await loadEnabledLlmModelRows();
-    if (rows.length === 0) return LAST_RESORT_MODEL;
-    const best = selectBestLlmModel(
-      {
-        supportsThinking: true,
-        supportsStructuredOutputs: true,
-        supportsResponses: true,
-        contextLength: DEEP_STORY_DRAFT_MIN_CONTEXT_LENGTH,
-      },
-      rows
-    );
-    return best ?? (await resolveStoryBibleModel());
-  } catch {
-    return resolveStoryBibleModel();
-  }
+  const rows = await loadEnabledLlmModelRows();
+  const routableRows = rows.filter((row) => isAvailable(row.providerId));
+  const best = selectBestLlmModel(
+    {
+      supportsThinking: true,
+      supportsStructuredOutputs: true,
+      supportsResponses: true,
+      contextLength: DEEP_STORY_DRAFT_MIN_CONTEXT_LENGTH,
+    },
+    routableRows,
+  );
+  return best ?? resolveStoryBibleModel();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1651,6 +1643,32 @@ export type VisionAwareContent =
       | { type: "image_url"; image_url: { url: string; detail: "high" } }
     >;
 
+async function resolveVisionAwareFallbackModel(currentModel: string): Promise<string | null> {
+  try {
+    const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+    const candidates = rows.filter(
+      (row) =>
+        isAvailable(row.providerId) &&
+        row.modelId !== currentModel &&
+        row.supportsVision === true &&
+        row.supportsStructuredOutputs === true,
+    );
+    return (
+      selectBestLlmModel(
+        { supportsVision: true, supportsStructuredOutputs: true },
+        candidates,
+      ) ?? candidates.sort((a, b) => a.priority - b.priority)[0]?.modelId ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+function isProviderUnavailableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /No (?:healthy )?providers? (?:is |are )?available for model/i.test(message);
+}
+
 export interface VisionAwareImageInput {
   url: string;
   label?: string;
@@ -1754,6 +1772,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
     return { ...result, usedVision: args.hasVision };
   } catch (firstError) {
     console.warn(`[executeVisionAwareJsonCallWithRetry] First attempt failed with model ${args.model}:`, firstError instanceof Error ? firstError.message : firstError);
+    if (isProviderUnavailableError(firstError)) throw firstError;
     const retryText = `${args.userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
     try {
       const result = await runVisionAwareJsonAttempt<T>({
@@ -1766,9 +1785,13 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       });
       return { ...result, usedVision: args.hasVision };
     } catch (retryError) {
-      console.warn(`[executeVisionAwareJsonCallWithRetry] Retry attempt failed with model ${args.model}. Attempting fallback model gpt-4o-mini...`, retryError instanceof Error ? retryError.message : retryError);
-      const fallbackModel = "gpt-4o-mini";
-      if (args.model !== fallbackModel) {
+      if (isProviderUnavailableError(retryError)) throw retryError;
+      const fallbackModel = await resolveVisionAwareFallbackModel(args.model);
+      console.warn(
+        `[executeVisionAwareJsonCallWithRetry] Retry attempt failed with model ${args.model}.${fallbackModel ? ` Attempting active fallback model ${fallbackModel}...` : " No active vision-capable fallback model is available; attempting text-only mode..."}`,
+        retryError instanceof Error ? retryError.message : retryError,
+      );
+      if (fallbackModel) {
         try {
           const result = await runVisionAwareJsonAttempt<T>({
             model: fallbackModel,
@@ -1780,12 +1803,13 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           });
           return { ...result, usedVision: args.hasVision };
         } catch (fallbackErr) {
-          console.warn(`[executeVisionAwareJsonCallWithRetry] Fallback model ${fallbackModel} failed. Attempting text-only mode...`, fallbackErr instanceof Error ? fallbackErr.message : fallbackErr);
+          console.warn(`[executeVisionAwareJsonCallWithRetry] Active fallback model ${fallbackModel} failed. Attempting text-only mode...`, fallbackErr instanceof Error ? fallbackErr.message : fallbackErr);
+          if (isProviderUnavailableError(fallbackErr)) throw fallbackErr;
         }
       }
       if (args.hasVision && args.images.length > 0) {
         const result = await runVisionAwareJsonAttempt<T>({
-          model: args.model !== fallbackModel ? fallbackModel : args.model,
+          model: fallbackModel ?? args.model,
           systemPrompt: args.systemPrompt,
           content: args.userPromptText,
           userId: args.userId,

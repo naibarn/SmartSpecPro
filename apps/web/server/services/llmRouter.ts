@@ -731,7 +731,11 @@ export async function executeWithFallback(params: {
   }
 
   if (targets.length === 0) {
-    return { type: "error", error: "No providers available for model", statusCode: 503 };
+    return {
+      type: "error",
+      error: `No healthy provider is available for model "${resolvedModel}". The model may be temporarily unavailable; try again or select another model.`,
+      statusCode: 503,
+    };
   }
 
   // 1 primary + optional provider fallbacks.

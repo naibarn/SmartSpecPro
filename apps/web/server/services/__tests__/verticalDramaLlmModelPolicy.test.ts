@@ -39,6 +39,7 @@ vi.mock("../../db", () => ({
 
 vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: vi.fn(),
+  resolveRoutableLlmModelIdFromRows: vi.fn(),
 }));
 
 vi.mock("../verticalDramaStoryBible", () => ({
@@ -46,11 +47,19 @@ vi.mock("../verticalDramaStoryBible", () => ({
 }));
 
 import { db } from "../../db";
-import { loadEnabledLlmModelRows } from "../enabledLlmModels";
+import {
+  loadEnabledLlmModelRows,
+  resolveRoutableLlmModelIdFromRows,
+} from "../enabledLlmModels";
 import { resolveStoryBibleModel } from "../verticalDramaStoryBible";
-import { resolveVerticalDramaSeriesModel } from "../verticalDramaLlmModelPolicy";
+import {
+  assertVerticalDramaRecommendedDraftModel,
+  resolveVerticalDramaRecommendedDraftModel,
+  resolveVerticalDramaSeriesModel,
+} from "../verticalDramaLlmModelPolicy";
 
 const mockLoadEnabledLlmModelRows = vi.mocked(loadEnabledLlmModelRows);
+const mockResolveRoutableLlmModelIdFromRows = vi.mocked(resolveRoutableLlmModelIdFromRows);
 const mockResolveStoryBibleModel = vi.mocked(resolveStoryBibleModel);
 
 const ENABLED_ROWS = [
@@ -61,7 +70,13 @@ const ENABLED_ROWS = [
 beforeEach(() => {
   vi.clearAllMocks();
   hoisted.seriesRows = [];
-  mockResolveStoryBibleModel.mockResolvedValue("gpt-4o-mini");
+  mockResolveStoryBibleModel.mockResolvedValue("active-story-bible-model");
+  mockResolveRoutableLlmModelIdFromRows.mockImplementation(({ rows, preferredModelIds }) => {
+    const preferred = preferredModelIds?.find((modelId) =>
+      rows.some((row) => row.modelId === modelId),
+    );
+    return preferred ?? null;
+  });
 });
 
 describe("resolveVerticalDramaSeriesModel", () => {
@@ -87,19 +102,35 @@ describe("resolveVerticalDramaSeriesModel", () => {
     expect(autoFallback).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to autoFallback when there is no override configured (llmModelPolicy null)", async () => {
-    hoisted.seriesRows = [{ llmModelPolicy: null }];
+  it("falls back when the pinned model is enabled but every mapped provider is in health cooldown", async () => {
+    hoisted.seriesRows = [{ llmModelPolicy: { defaultModelId: "override-model" } }];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ENABLED_ROWS);
+    mockResolveRoutableLlmModelIdFromRows.mockImplementation(({ preferredModelIds }) =>
+      preferredModelIds?.[0] === "override-model" ? null : "auto-fallback-model",
+    );
     const autoFallback = vi.fn().mockResolvedValue("auto-fallback-model");
 
     const modelId = await resolveVerticalDramaSeriesModel(6, autoFallback);
 
     expect(modelId).toBe("auto-fallback-model");
-    expect(mockLoadEnabledLlmModelRows).not.toHaveBeenCalled();
+    expect(autoFallback).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to autoFallback when there is no override configured (llmModelPolicy null)", async () => {
+    hoisted.seriesRows = [{ llmModelPolicy: null }];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ENABLED_ROWS);
+    const autoFallback = vi.fn().mockResolvedValue("auto-fallback-model");
+
+    const modelId = await resolveVerticalDramaSeriesModel(6, autoFallback);
+
+    expect(modelId).toBe("auto-fallback-model");
+    expect(mockLoadEnabledLlmModelRows).toHaveBeenCalledWith({ autoSelectionOnly: true });
     expect(autoFallback).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to autoFallback when the series row itself is missing", async () => {
     hoisted.seriesRows = [];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ENABLED_ROWS);
     const autoFallback = vi.fn().mockResolvedValue("auto-fallback-model");
 
     const modelId = await resolveVerticalDramaSeriesModel(999, autoFallback);
@@ -127,7 +158,72 @@ describe("resolveVerticalDramaSeriesModel", () => {
 
     const modelId = await resolveVerticalDramaSeriesModel(6, autoFallback);
 
-    expect(modelId).toBe("gpt-4o-mini");
+    expect(modelId).toBe("active-story-bible-model");
     expect(mockResolveStoryBibleModel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("resolveVerticalDramaRecommendedDraftModel", () => {
+  it("selects only the admin-recommended quality model and excludes gpt-5.4-nano", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      {
+        modelId: "openai/gpt-5.4-nano",
+        isRecommended: false,
+        contextLength: 400_000,
+        supportsThinking: true,
+        supportsStructuredOutputs: true,
+        isFree: false,
+        priority: 0,
+      },
+      {
+        modelId: "openai/gpt-5.6-luna",
+        isRecommended: true,
+        contextLength: 1_050_000,
+        supportsThinking: true,
+        supportsStructuredOutputs: true,
+        isFree: false,
+        priority: 4,
+      },
+    ] as never);
+
+    await expect(resolveVerticalDramaRecommendedDraftModel()).resolves.toBe(
+      "openai/gpt-5.6-luna",
+    );
+  });
+
+  it("fails closed when no active recommended Draft model exists", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      {
+        modelId: "openai/gpt-5.4-nano",
+        isRecommended: false,
+        contextLength: 400_000,
+        supportsThinking: true,
+        supportsStructuredOutputs: true,
+        isFree: false,
+        priority: 0,
+      },
+    ] as never);
+
+    await expect(resolveVerticalDramaRecommendedDraftModel()).rejects.toThrow(
+      /No admin-recommended Vertical Drama Draft LLM/,
+    );
+  });
+
+  it("rejects a queued model after it leaves the recommendation set", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      {
+        modelId: "openai/gpt-5.6-luna",
+        isRecommended: false,
+        contextLength: 1_050_000,
+        supportsThinking: true,
+        supportsStructuredOutputs: true,
+        isFree: false,
+        priority: 4,
+      },
+    ] as never);
+
+    await expect(
+      assertVerticalDramaRecommendedDraftModel("openai/gpt-5.6-luna"),
+    ).rejects.toThrow(/not in the active LLM Recommend set/);
   });
 });

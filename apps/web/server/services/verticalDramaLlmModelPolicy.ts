@@ -28,9 +28,8 @@
  * own filter is only consulted for the AUTOMATIC fallback path, never to
  * reject an explicit user override.
  *
- * Contract — best-effort, NEVER throws (same convention as every other
- * resolver in this codebase, e.g. `resolveStoryBibleModel`,
- * `resolveQualityLargeContextModelId`):
+ * Contract — resolves a currently routable model or fails closed with an
+ * actionable error; it must never revive a retired hardcoded model:
  *  1. Read the series' `llmModelPolicy.defaultModelId`.
  *  2. If set (non-null) and still an enabled/eligible-for-auto-selection
  *     model, return it as-is — this wins over every tier's own auto logic.
@@ -40,12 +39,9 @@
  *     (`resolveStoryBibleModel` or `resolveQualityLargeContextModelId`,
  *     depending on the stage's tier), so behavior for series with no
  *     override is completely unchanged.
- *  4. If `autoFallback` itself can't find anything (returns `null` — e.g.
- *     `resolveQualityLargeContextModelId`'s catalog-empty case), fall back
- *     one level further to `resolveStoryBibleModel()` so this function's own
- *     contract (`Promise<string>`, never null) always holds, mirroring
- *     `resolveScopedPlanningModel`'s identical last-resort fallback from the
- *     first-cut implementation this file replaces.
+ *  4. If no active model remains after the automatic and story-bible
+ *     selectors, `resolveStoryBibleModel()` throws an actionable admission
+ *     error. There is intentionally no static legacy-model last resort.
  */
 
 import { eq } from "drizzle-orm";
@@ -53,9 +49,11 @@ import { db } from "../db";
 import { verticalDramaSeries } from "../../drizzle/schema";
 import type { VerticalDramaSeriesLlmModelPolicy } from "@shared/verticalDramaSeries/contracts";
 import {
+  resolveRoutableLlmModelIdFromRows,
   loadEnabledLlmModelRows,
   type EnabledLlmModelRow,
 } from "./enabledLlmModels";
+import { isAvailable } from "./providerHealth";
 import { resolveStoryBibleModel } from "./verticalDramaStoryBible";
 
 const VERTICAL_DRAMA_DRAFT_MIN_CONTEXT_LENGTH = 1_000_000;
@@ -85,7 +83,7 @@ function isRecommendedVerticalDramaDraftModel(
 export async function resolveVerticalDramaRecommendedDraftModel(): Promise<string> {
   const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
   const recommended = rows
-    .filter(isRecommendedVerticalDramaDraftModel)
+    .filter((row) => isAvailable(row.providerId) && isRecommendedVerticalDramaDraftModel(row))
     .sort((a, b) => a.priority - b.priority || a.modelId.localeCompare(b.modelId));
   const model = recommended[0]?.modelId;
   if (!model) {
@@ -112,6 +110,17 @@ export async function resolveVerticalDramaSeriesModel(
   seriesId: number,
   autoFallback: () => Promise<string | null>,
 ): Promise<string> {
+  let enabledRows: EnabledLlmModelRow[] | null = null;
+  const getEnabledRows = async (): Promise<EnabledLlmModelRow[]> => {
+    if (enabledRows) return enabledRows;
+    try {
+      enabledRows = (await loadEnabledLlmModelRows({ autoSelectionOnly: true })) ?? [];
+    } catch {
+      enabledRows = [];
+    }
+    return enabledRows;
+  };
+
   try {
     const [row] = await db
       .select({ llmModelPolicy: verticalDramaSeries.llmModelPolicy })
@@ -121,16 +130,33 @@ export async function resolveVerticalDramaSeriesModel(
     const overrideId = (row?.llmModelPolicy as VerticalDramaSeriesLlmModelPolicy | null)
       ?.defaultModelId;
     if (overrideId) {
-      const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-      if (rows.some((enabledRow) => enabledRow.modelId === overrideId)) {
-        return overrideId;
+      const routableOverride = resolveRoutableLlmModelIdFromRows({
+        rows: await getEnabledRows(),
+        preferredModelIds: [overrideId],
+      });
+      if (routableOverride) {
+        return routableOverride;
       }
       // Override was set but the pinned model has since been disabled/removed
-      // from the catalog — fall through to automatic selection below rather
-      // than throwing; a stale pin should never break generation.
+      // or all of its providers are in health cooldown — fall through to
+      // automatic selection rather than sending an unroutable request.
     }
   } catch {
     // Best-effort, same as every other resolver in this codebase — never throw.
   }
-  return (await autoFallback()) ?? (await resolveStoryBibleModel());
+  const autoModel = await autoFallback();
+  if (autoModel) {
+    const routableAutoModel = resolveRoutableLlmModelIdFromRows({
+      rows: await getEnabledRows(),
+      preferredModelIds: [autoModel],
+    });
+    if (routableAutoModel) return routableAutoModel;
+  }
+
+  const activeStoryBibleModel = await resolveStoryBibleModel();
+  const routableStoryBibleModel = resolveRoutableLlmModelIdFromRows({
+    rows: await getEnabledRows(),
+    preferredModelIds: [activeStoryBibleModel],
+  });
+  return routableStoryBibleModel ?? activeStoryBibleModel;
 }

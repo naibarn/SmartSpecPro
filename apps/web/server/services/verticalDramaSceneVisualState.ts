@@ -18,6 +18,7 @@ import type { StoryScriptLang } from "@shared/verticalDramaSeries/storyScriptTex
 import { calculateCreditsForLLM, deductCredits, hasEnoughCredits } from "./creditService";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
+import { isAvailable } from "./providerHealth";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
 import { resolveStartFramePlanModel } from "./verticalDramaImproveScript";
 import {
@@ -229,7 +230,8 @@ async function resolveSceneVisualStateModel(
   if (!hasLocationImage) return { model: configured, hasVision: false };
   try {
     const rows = await loadEnabledLlmModelRows();
-    const configuredRow = rows.find(row =>
+    const routableRows = rows.filter((row) => isAvailable(row.providerId));
+    const configuredRow = routableRows.find(row =>
       row.modelId === configured ||
       row.providerModelId === configured ||
       Boolean(row.legacyModelAliases?.includes(configured)),
@@ -237,7 +239,7 @@ async function resolveSceneVisualStateModel(
     if (configuredRow?.supportsVision === true) return { model: configured, hasVision: true };
     const visionModel = selectBestLlmModel(
       { supportsVision: true, supportsStructuredOutputs: true },
-      rows,
+      routableRows,
     );
     if (visionModel) return { model: visionModel, hasVision: true };
   } catch {

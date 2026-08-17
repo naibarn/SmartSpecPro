@@ -221,7 +221,9 @@ function userPromptOf(callIndex: number): string {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
   mockResolveVerticalDramaSeriesModel.mockImplementation(
     async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
   );

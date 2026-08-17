@@ -35,6 +35,7 @@ import { mediaGenerationLimiter } from "./rateLimiter";
 import { debugError } from "../_core/logger";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
+import { isAvailable } from "./providerHealth";
 import {
   executeJsonPlanningCallWithRetry,
   executeVisionAwareJsonCallWithRetry,
@@ -2528,8 +2529,9 @@ async function resolveStartFrameShotPromptModel(
   }
   try {
     const rows = await loadEnabledLlmModelRows();
-    if (rows.length > 0) {
-      const configuredRow = rows.find(
+    const routableRows = rows.filter((row) => isAvailable(row.providerId));
+    if (routableRows.length > 0) {
+      const configuredRow = routableRows.find(
         r =>
           r.modelId === configuredModel ||
           r.providerModelId === configuredModel ||
@@ -2541,7 +2543,7 @@ async function resolveStartFrameShotPromptModel(
       }
       const visionModel = selectBestLlmModel(
         { supportsVision: true, supportsStructuredOutputs: true },
-        rows
+        routableRows
       );
       if (visionModel) return { model: visionModel, hasVision: true };
     }

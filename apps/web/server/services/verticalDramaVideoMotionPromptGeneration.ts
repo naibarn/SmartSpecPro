@@ -35,6 +35,7 @@ import { mediaGenerationLimiter } from "./rateLimiter";
 import { executeWithFallback } from "./llmRouter";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
+import { isAvailable } from "./providerHealth";
 import { resolveVerticalDramaCapabilities, type ModelDefinition } from "./modelRegistry";
 import { detectProviderFamily } from "./verticalDramaProviderRouting";
 import {
@@ -1246,10 +1247,11 @@ async function resolveShotVideoPromptModel(
 ): Promise<{ model: string; hasVision: boolean }> {
   try {
     const rows = await loadEnabledLlmModelRows();
-    if (rows.length > 0) {
+    const routableRows = rows.filter((row) => isAvailable(row.providerId));
+    if (routableRows.length > 0) {
       const visionModel = selectBestLlmModel(
         { supportsVision: true, supportsStructuredOutputs: true },
-        rows,
+        routableRows,
       );
       if (visionModel) return { model: visionModel, hasVision: true };
     }

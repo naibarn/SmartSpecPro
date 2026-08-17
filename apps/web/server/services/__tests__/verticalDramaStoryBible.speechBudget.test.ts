@@ -118,7 +118,9 @@ function mockLlmResponse(payload: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);

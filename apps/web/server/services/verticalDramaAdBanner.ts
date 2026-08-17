@@ -45,6 +45,7 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import { executeWithFallback } from "./llmRouter";
+import { isAvailable } from "./providerHealth";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
@@ -260,11 +261,12 @@ export async function resolveAdBannerPromptModel(
 ): Promise<{ model: string; hasVision: boolean }> {
   try {
     const rows = await loadEnabledLlmModelRows();
-    if (rows.length > 0) {
+    const routableRows = rows.filter((row) => isAvailable(row.providerId));
+    if (routableRows.length > 0) {
       const requirements = hasReferenceImages
         ? { supportsVision: true, supportsStructuredOutputs: true }
         : { supportsStructuredOutputs: true };
-      const selected = selectBestLlmModel(requirements, rows);
+      const selected = selectBestLlmModel(requirements, routableRows);
       if (selected) return { model: selected, hasVision: hasReferenceImages };
     }
   } catch {

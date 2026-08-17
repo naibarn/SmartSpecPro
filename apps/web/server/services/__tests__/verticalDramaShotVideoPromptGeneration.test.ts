@@ -40,6 +40,9 @@ vi.mock("../enabledLlmModels", () => ({
 vi.mock("../intelligentModelSelector", () => ({
   selectBestLlmModel: vi.fn(),
 }));
+vi.mock("../providerHealth", () => ({
+  isAvailable: vi.fn(),
+}));
 vi.mock("../modelRegistry", () => ({
   resolveVerticalDramaCapabilities: vi.fn(),
 }));
@@ -93,6 +96,7 @@ import { mediaGenerationLimiter } from "../rateLimiter";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
 import { loadEnabledLlmModelRows } from "../enabledLlmModels";
 import { selectBestLlmModel } from "../intelligentModelSelector";
+import { isAvailable } from "../providerHealth";
 import { resolveVerticalDramaCapabilities } from "../modelRegistry";
 import { resolveStoryBibleModel, InsufficientCreditsError, VdSchemaValidationError } from "../verticalDramaStoryBible";
 import { resolveQualityLargeContextModelId } from "../verticalDramaImproveScript";
@@ -112,6 +116,7 @@ const mockReadFileSync = vi.mocked(fs.readFileSync);
 const mockParseSkillFile = vi.mocked(parseSkillFile);
 const mockLoadEnabledLlmModelRows = vi.mocked(loadEnabledLlmModelRows);
 const mockSelectBestLlmModel = vi.mocked(selectBestLlmModel);
+const mockIsProviderAvailable = vi.mocked(isAvailable);
 const mockResolveVerticalDramaCapabilities = vi.mocked(resolveVerticalDramaCapabilities);
 
 function baseParams(
@@ -179,8 +184,8 @@ function truncatedResponse() {
 describe("generateVerticalDramaShotVideoPrompt", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveModel.mockResolvedValue("gpt-4o-mini");
-    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveModel.mockResolvedValue("active-vision-model");
+    mockResolveQualityModel.mockResolvedValue("active-text-model");
     mockCalculateCredits.mockReturnValue(5);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockIsAllowed.mockReturnValue(true);
@@ -200,6 +205,7 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
       { modelId: "vision-model-1" } as any,
     ]);
     mockSelectBestLlmModel.mockReturnValue("vision-model-1");
+    mockIsProviderAvailable.mockReturnValue(true);
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,
       maxReferenceImages: 3,
@@ -251,13 +257,31 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     const result = await generateVerticalDramaShotVideoPrompt(baseParams());
 
     expect(result.usedVision).toBe(false);
-    expect(result.model).toBe("gpt-4o-mini");
+    expect(result.model).toBe("active-text-model");
     const call = mockExecute.mock.calls[0][0];
     const userMessage = call.messages[1];
     expect(typeof userMessage.content).toBe("string");
     expect(userMessage.content).toContain(
       "A young man kneels in a cold corridor, morning light.",
     );
+  });
+
+  it("skips a vision model whose provider is in health cooldown and uses the next routable model", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "down-vision-model", providerId: 1, supportsVision: true } as any,
+      { modelId: "healthy-vision-model", providerId: 2, supportsVision: true } as any,
+    ]);
+    mockIsProviderAvailable.mockImplementation((providerId) => providerId !== 1);
+    mockSelectBestLlmModel.mockImplementation((_requirements, rows) => rows[0]?.modelId ?? null);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Healthy provider motion prompt.", dialogue: [] }),
+    );
+
+    const result = await generateVerticalDramaShotVideoPrompt(baseParams());
+
+    expect(result.model).toBe("healthy-vision-model");
+    expect(result.usedVision).toBe(true);
   });
 
   it("fails closed for character-grounded prompts when no vision-capable model is available", async () => {
@@ -575,15 +599,27 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
 
   it("throws VdSchemaValidationError (does not silently deduct credits) when BOTH attempts fail schema validation", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-vision-model", providerId: 1, supportsVision: true, supportsStructuredOutputs: true } as any,
+      { modelId: "active-vision-fallback", providerId: 2, supportsVision: true, supportsStructuredOutputs: true } as any,
+    ]);
+    mockSelectBestLlmModel.mockImplementation((_requirements, rows) => rows[0]?.modelId ?? null);
     mockExecute.mockResolvedValue(truncatedResponse());
 
     await expect(generateVerticalDramaShotVideoPrompt(baseParams())).rejects.toThrow(
       VdSchemaValidationError,
     );
 
-    // Vision-aware retry also exercises the configured fallback model and
+    // Vision-aware retry also exercises a live catalog fallback model and the
     // final text-only recovery attempt before surfacing the schema error.
     expect(mockExecute).toHaveBeenCalledTimes(4);
+    expect(mockExecute.mock.calls.map(([request]) => request.model)).toEqual([
+      "active-vision-model",
+      "active-vision-model",
+      "active-vision-fallback",
+      "active-vision-fallback",
+    ]);
+    expect(mockExecute.mock.calls.some(([request]) => request.model === "gpt-4o-mini")).toBe(false);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
@@ -717,8 +753,8 @@ describe("generateVerticalDramaShotVideoPrompt â€” duration-aware prompt (spec Â
   // retains whatever state the LAST test of that other block left behind.
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveModel.mockResolvedValue("gpt-4o-mini");
-    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveModel.mockResolvedValue("active-vision-model");
+    mockResolveQualityModel.mockResolvedValue("active-text-model");
     mockCalculateCredits.mockReturnValue(5);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockIsAllowed.mockReturnValue(true);

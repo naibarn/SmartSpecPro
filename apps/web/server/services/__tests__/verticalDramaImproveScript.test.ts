@@ -82,6 +82,16 @@ vi.mock("../skillModelFallback", () => ({
 }));
 vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: vi.fn(),
+  filterAutoSelectableLlmModelRows: (rows: unknown[]) => rows,
+  resolveRoutableLlmModelIdFromRows: vi.fn(({ rows, preferredModelIds }) => {
+    const preferred = preferredModelIds?.find((modelId: string | null | undefined) =>
+      rows.some((row: { modelId?: string }) => row.modelId === modelId),
+    );
+    return preferred ?? null;
+  }),
+}));
+vi.mock("../providerHealth", () => ({
+  isAvailable: vi.fn(() => true),
 }));
 vi.mock("../creditService", () => ({
   deductCreditsForModel: vi.fn(),
@@ -110,6 +120,7 @@ import { resolveSkillExecutionPolicy } from "../skillExecutionPolicy";
 import { executeSkillLlmWithFallback } from "../skillModelFallback";
 import { loadEnabledLlmModelRows } from "../enabledLlmModels";
 import type { EnabledLlmModelRow } from "../enabledLlmModels";
+import { isAvailable } from "../providerHealth";
 import { deductCreditsForModel } from "../creditService";
 import {
   generateCharacterVariantPlan,
@@ -131,6 +142,7 @@ const mockGetSkillByIdAsync = vi.mocked(getSkillByIdAsync);
 const mockResolveSkillExecutionPolicy = vi.mocked(resolveSkillExecutionPolicy);
 const mockExecuteSkillLlmWithFallback = vi.mocked(executeSkillLlmWithFallback);
 const mockLoadEnabledLlmModelRows = vi.mocked(loadEnabledLlmModelRows);
+const mockIsAvailable = vi.mocked(isAvailable);
 const mockDeductCreditsForModel = vi.mocked(deductCreditsForModel);
 const mockGenerateCharacterVariantPlan = vi.mocked(generateCharacterVariantPlan);
 const mockReconcileCharacterVariantPlan = vi.mocked(reconcileCharacterVariantPlan);
@@ -300,6 +312,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   hoisted.seriesRows = [];
   hoisted.characterRows = [];
+  mockIsAvailable.mockReturnValue(true);
 
   mockGetSkillByIdAsync.mockResolvedValue(makeSkillDefinition() as never);
   // Explicit pin — `resolveImproveScriptExecutionPolicy` returns this as-is,
@@ -534,6 +547,17 @@ describe("runImproveScriptJob — whole-block primary pass", () => {
 });
 
 describe("resolveQualityLargeContextModelId", () => {
+  it("skips eligible models whose providers are in health cooldown", async () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({ providerId: 1, modelId: "down-recommended", isRecommended: true, priority: 1, supportsThinking: true }),
+      makeModelRow({ providerId: 2, modelId: "healthy-recommended", isRecommended: true, priority: 2, supportsThinking: true }),
+    ];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(rows);
+    mockIsAvailable.mockImplementation((providerId) => providerId !== 1);
+
+    await expect(resolveQualityLargeContextModelId()).resolves.toBe("healthy-recommended");
+  });
+
   it("(d) [empty-recommended fallback] picks the cheapest THINKING-capable eligible model, skipping a cheaper non-thinking one — none of these rows are isRecommended, so this covers the pre-2026-07-31 cheapest-first fallback path", async () => {
     const rows: EnabledLlmModelRow[] = [
       makeModelRow({
@@ -1078,15 +1102,15 @@ describe("resolveStartFramePlanModel / resolveStoryboardModel", () => {
     expect(modelId).toBe("auto-cheapest-eligible");
   });
 
-  it("never throws and falls all the way back to resolveStoryBibleModel's last resort when nothing is eligible at all", async () => {
+  it("fails before an LLM call when no active model is available", async () => {
     hoisted.seriesRows = [{ llmModelPolicy: null }];
-    // Empty catalog: resolveQualityLargeContextModelId -> null,
-    // resolveStoryBibleModel (LAST_RESORT_MODEL) is the final fallback.
+    // Empty catalog: resolveQualityLargeContextModelId -> null and the
+    // story-bible resolver must not revive a retired hardcoded model.
     mockLoadEnabledLlmModelRows.mockResolvedValue([]);
 
-    const modelId = await resolveStoryboardModel(6);
-
-    expect(modelId).toBe("gpt-4o-mini");
+    await expect(resolveStoryboardModel(6)).rejects.toThrow(
+      "No active LLM model is available for Vertical Drama generation",
+    );
   });
 
   it("never throws and falls back to automatic selection when the DB read itself fails", async () => {

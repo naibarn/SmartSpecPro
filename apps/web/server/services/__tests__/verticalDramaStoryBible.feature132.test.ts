@@ -122,7 +122,9 @@ function mockLlmResponse(payload: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -171,7 +173,9 @@ describe("generateStoryBible — user premise (F132A)", () => {
 
     vi.clearAllMocks();
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
     mockLlmResponse(validExpandedResponse());
     await generateStoryBible(baseParams());
     const systemPromptWithoutPremise = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
@@ -253,7 +257,9 @@ describe("generateStoryBible — genre pollution guard (Stage 1.5)", () => {
 
     vi.clearAllMocks();
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
     mockLlmResponse(validExpandedResponse());
     await generateStoryBible(baseParams({ genre: "โรแมนติกดราม่าย้อนเวลา", title: "รักข้ามเวลา" }));
     const secondUserPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
