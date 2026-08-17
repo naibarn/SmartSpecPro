@@ -1480,6 +1480,48 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     expect(mockExecute).not.toHaveBeenCalled();
   });
 
+  it("uses an enabled vision model even when it is not admin-recommended", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      {
+        modelId: "vision-model",
+        providerId: 1,
+        supportsVision: true,
+        supportsStructuredOutputs: true,
+        isRecommended: false,
+      } as any,
+    ]);
+    mockSelectBestLlmModel
+      .mockReturnValueOnce(undefined as any)
+      .mockReturnValueOnce("vision-model");
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await expect(
+      generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          characterReferenceImages: [
+            {
+              characterKey: "character-1",
+              name: "ฝ้าย",
+              url: "https://example.com/portrait-1.png",
+            },
+          ],
+        }),
+      ),
+    ).resolves.toEqual(expect.objectContaining({ prompt: expect.any(String) }));
+    expect(mockSelectBestLlmModel).toHaveBeenCalledTimes(2);
+    expect(mockSelectBestLlmModel).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ recommendedOnly: true, supportsVision: true }),
+      expect.any(Array),
+    );
+    expect(mockSelectBestLlmModel).toHaveBeenNthCalledWith(
+      2,
+      { supportsVision: true, supportsStructuredOutputs: true },
+      expect.any(Array),
+    );
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+  });
+
   it("compliance-retry-carries-same-images: the hand-rolled compliance-correction retry (native-audio verbatim-embedding fix) attaches the same images as the first attempt", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       nativeAudioDialogue: true,

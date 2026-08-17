@@ -1216,9 +1216,9 @@ export async function generateVideoMotionPromptPack(
  * context ≥1M/non-free/thinking-capable, not vision. `intelligentModel
  * Selector.ts`'s `CapabilityRequirements`/`selectBestLlmModel` DOES expose a
  * `supportsVision` flag, so `resolveShotVideoPromptModel` below explicitly
- * requires it (falling back to `resolveQualityLargeContextModelId()`'s
- * non-vision default only when no enabled model declares vision support, per
- * the task's "closest viable alternative" instruction) — and in EITHER case, the
+ * requires it (preferring the admin-recommended vision pool, then falling back
+ * to any enabled/routable model that truthfully declares vision support before
+ * using `resolveQualityLargeContextModelId()`'s non-vision default) — and in EITHER case, the
  * shot's `imagePrompt` text is always folded into the user message too, so a
  * non-vision model still gets a rich textual description of what the start
  * frame contains, never just a bare image the model cannot see.
@@ -1276,14 +1276,20 @@ async function resolveShotVideoPromptModel(
     const rows = await loadEnabledLlmModelRows();
     const routableRows = rows.filter((row) => isAvailable(row.providerId));
     if (routableRows.length > 0) {
+      const visionRequirements = {
+        supportsVision: true,
+        supportsStructuredOutputs: true,
+      } as const;
+      // Recommended-only is a quality preference, not a capability gate. A
+      // complete reference set must not be rejected merely because the
+      // tenant's only vision model has not been marked `isRecommended` yet.
       const visionModel = selectBestLlmModel(
         {
-          supportsVision: true,
-          supportsStructuredOutputs: true,
+          ...visionRequirements,
           recommendedOnly: true,
         },
         routableRows,
-      );
+      ) ?? selectBestLlmModel(visionRequirements, routableRows);
       if (visionModel) return { model: visionModel, hasVision: true };
     }
   } catch {
