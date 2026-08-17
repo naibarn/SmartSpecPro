@@ -7,8 +7,11 @@ import type { db as dbProxy } from "../db";
 import {
   buildEpisodeCoverPrompt,
   readEpisodeCoverState,
+  readEpisodeCoverVariants,
+  type VerticalDramaEpisodeCoverSlotId,
   selectEpisodeCoverReferences,
   toEpisodeCoverDisplay,
+  upsertEpisodeCoverVariant,
   type EpisodeCoverReferenceCandidate,
   type VerticalDramaEpisodeCoverDisplay,
   type VerticalDramaEpisodeCoverState,
@@ -58,9 +61,24 @@ type StartFrameLike = {
 };
 
 export function readEpisodeCoverStateFromRow(
-  row: Pick<VerticalDramaEpisodeRow, "coverImage">
+  row: Pick<VerticalDramaEpisodeRow, "coverImage">,
+  slotId?: VerticalDramaEpisodeCoverSlotId
 ): VerticalDramaEpisodeCoverState | null {
-  return readEpisodeCoverState(row.coverImage);
+  return readEpisodeCoverState(row.coverImage, slotId);
+}
+
+export function readEpisodeCoverVariantsFromRow(
+  row: Pick<VerticalDramaEpisodeRow, "coverImage">
+) {
+  return readEpisodeCoverVariants(row.coverImage);
+}
+
+export function upsertEpisodeCoverStateInRow(
+  row: Pick<VerticalDramaEpisodeRow, "coverImage">,
+  slotId: VerticalDramaEpisodeCoverSlotId,
+  state: VerticalDramaEpisodeCoverState
+) {
+  return upsertEpisodeCoverVariant(row.coverImage, slotId, state);
 }
 
 export async function resolveEpisodeCoverAssetUrls(
@@ -141,8 +159,10 @@ export function buildEpisodeCoverGenerationSnapshot(input: {
   narrative: EpisodeCoverNarrativeSnapshot;
   startFramePlan: unknown;
   referenceUrls: Map<string, string>;
+  coverSlotId?: VerticalDramaEpisodeCoverSlotId;
   logoReferences?: readonly EpisodeCoverLogoReference[];
   maxReferenceImages?: number;
+  referenceImageCount?: number;
 }): EpisodeCoverGenerationSnapshot {
   const frames =
     input.startFramePlan && typeof input.startFramePlan === "object"
@@ -194,7 +214,7 @@ export function buildEpisodeCoverGenerationSnapshot(input: {
   const selected = selectEpisodeCoverReferences(
     candidates,
     narrativeText,
-    frameReferenceLimit
+    Math.min(frameReferenceLimit, input.referenceImageCount ?? frameReferenceLimit)
   );
   const references = selected.flatMap(reference => {
     const url = input.referenceUrls.get(reference.approvedMediaAssetId);
@@ -213,6 +233,7 @@ export function buildEpisodeCoverGenerationSnapshot(input: {
     ...input.narrative,
     prompt: buildEpisodeCoverPrompt({
       ...input.narrative,
+      coverSlotId: input.coverSlotId,
       logoReferences: logoReferences.map(reference => reference.kind),
       referenceImageCountBeforeLogos: references.length,
     }),
@@ -258,4 +279,29 @@ export function projectEpisodeCover(
   url: string | null
 ): VerticalDramaEpisodeCoverDisplay | null {
   return toEpisodeCoverDisplay(value, url);
+}
+
+export async function projectEpisodeCoverVariants(
+  db: Db,
+  owner: EpisodeCoverOwner,
+  row: Pick<VerticalDramaEpisodeRow, "coverImage">
+): Promise<
+  Array<{
+    slotId: VerticalDramaEpisodeCoverSlotId;
+    coverImage: VerticalDramaEpisodeCoverDisplay;
+  }>
+> {
+  const variants = readEpisodeCoverVariants(row.coverImage);
+  const urls = await resolveEpisodeCoverAssetUrls(
+    db,
+    owner,
+    variants.map(variant => variant.state)
+  );
+  return variants.flatMap(variant => {
+    const url = variant.state.mediaAssetId
+      ? (urls.get(variant.state.mediaAssetId) ?? null)
+      : null;
+    const coverImage = projectEpisodeCover(variant.state, url);
+    return coverImage ? [{ slotId: variant.slotId, coverImage }] : [];
+  });
 }

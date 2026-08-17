@@ -40,6 +40,27 @@ describe("vertical drama episode cover service helpers", () => {
     ]);
   });
 
+  it("carries the selected cover slot into the generic composition direction", () => {
+    const snapshot = buildEpisodeCoverGenerationSnapshot({
+      narrative: {
+        seriesTitle: "เรื่องหลัก",
+        episodeNumber: 2,
+        episodeTitle: "เหตุการณ์สำคัญ",
+        synopsis: "ตัวละครพบเหตุการณ์สำคัญ",
+        plotBeats: [],
+      },
+      startFramePlan: {
+        frames: [{ shotNumber: 1, approvedMediaAssetId: "11" }],
+      },
+      referenceUrls: new Map([["11", "https://cdn/11.jpg"]]),
+      coverSlotId: 3,
+    });
+
+    expect(snapshot.prompt).toContain("แนวทางองค์ประกอบหน้าปกแบบที่ 3");
+    expect(snapshot.prompt).toContain("เน้นการกระทำ ปฏิสัมพันธ์ หรือความขัดแย้ง");
+    expect(snapshot.prompt).not.toContain("คาเฟ่");
+  });
+
   it("projects only safe fields for the episode list", () => {
     expect(
       projectEpisodeCover(

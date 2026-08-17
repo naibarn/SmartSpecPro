@@ -28,6 +28,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import { WebAssetResolver } from "@/services/webAssetResolver";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { parseSeriesWatermarkConfig } from "@shared/verticalDramaSeries/textOverlay";
 import type { VerticalDramaEpisodePreviewState } from "@shared/verticalDramaSeries/episodePreview";
 import { useVerticalDramaCreditConfirmation } from "./VerticalDramaCreditConfirmDialog";
@@ -39,6 +40,15 @@ type CoverModel = { modelId: string; name: string; isEnabled?: boolean };
 
 const coverModelStorageKey = (seriesId: string) =>
   `smartspec_vd_series_${seriesId}_cover_model`;
+const lastCoverModelStorageKey = "smartspec_vd_last_cover_model";
+
+function readCoverModelPreference(seriesId: string): string {
+  return (
+    safeStorageGet(coverModelStorageKey(seriesId)) ??
+    safeStorageGet(lastCoverModelStorageKey) ??
+    ""
+  );
+}
 
 function newIdempotencyKey(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -76,10 +86,13 @@ export function VerticalDramaEpisodePreviewPanel({
   const { requestConfirmation, creditConfirmDialog } =
     useVerticalDramaCreditConfirmation();
   const coverAssetResolverRef = useRef(new WebAssetResolver());
-  const [coverModelId, setCoverModelId] = useState("");
+  const [coverModelId, setCoverModelId] = useState(() =>
+    readCoverModelPreference(seriesId)
+  );
   const [includeTitleLogo, setIncludeTitleLogo] = useState(true);
   const [includeChannelLogo, setIncludeChannelLogo] = useState(true);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [activeCoverSlotId, setActiveCoverSlotId] = useState<number | null>(null);
   const [selectedBySlot, setSelectedBySlot] = useState<
     Record<number, number[]>
   >(() =>
@@ -97,11 +110,38 @@ export function VerticalDramaEpisodePreviewPanel({
     verticalDramaReady: true,
   });
   const imageModels = (imageModelsQuery.data?.models ?? []) as CoverModel[];
-  const coverQuery = trpc.verticalDramaEpisodes.getEpisodeCoverStatus.useQuery({
+  const coverQuery1 = trpc.verticalDramaEpisodes.getEpisodeCoverStatus.useQuery({
     seriesId,
     episodeId,
+    coverSlotId: 1,
   });
-  const coverImage = coverQuery.data?.coverImage ?? null;
+  const coverQuery2 = trpc.verticalDramaEpisodes.getEpisodeCoverStatus.useQuery({
+    seriesId,
+    episodeId,
+    coverSlotId: 2,
+  });
+  const coverQuery3 = trpc.verticalDramaEpisodes.getEpisodeCoverStatus.useQuery({
+    seriesId,
+    episodeId,
+    coverSlotId: 3,
+  });
+  const coverQuery4 = trpc.verticalDramaEpisodes.getEpisodeCoverStatus.useQuery({
+    seriesId,
+    episodeId,
+    coverSlotId: 4,
+  });
+  const coverQueries = [coverQuery1, coverQuery2, coverQuery3, coverQuery4] as const;
+  const coverImages = Array.from(
+    new Map(
+      coverQueries
+        .flatMap(query => query.data?.coverImages ?? [])
+        .map(item => [item.slotId, item] as const)
+    ).values()
+  );
+  const coverImageBySlot = new Map(
+    coverImages.map(item => [item.slotId, item.coverImage])
+  );
+  const hasReadyCover = coverImages.some(item => item.coverImage.status === "ready");
   const watermarkConfig = useMemo(
     () => parseSeriesWatermarkConfig(watermark),
     [watermark]
@@ -115,21 +155,25 @@ export function VerticalDramaEpisodePreviewPanel({
   );
 
   useEffect(() => {
-    const stored = safeStorageGet(coverModelStorageKey(seriesId)) || "";
+    const stored = readCoverModelPreference(seriesId);
     if (
+      stored &&
       imageModels.some(
         model => model.modelId === stored && model.isEnabled !== false
-      )
+      ) &&
+      coverModelId !== stored
     ) {
       setCoverModelId(stored);
     }
-  }, [imageModels, seriesId]);
+  }, [coverModelId, imageModels, seriesId]);
 
   useEffect(() => {
-    if (coverImage?.status !== "generating") return;
-    const timer = window.setInterval(() => void coverQuery.refetch(), 2500);
+    if (!coverImages.some(item => item.coverImage.status === "generating")) return;
+    const timer = window.setInterval(() => {
+      void Promise.all(coverQueries.map(query => query.refetch()));
+    }, 2500);
     return () => window.clearInterval(timer);
-  }, [coverImage?.status, coverQuery]);
+  }, [coverImages, coverQueries]);
 
   useEffect(() => {
     setSelectedBySlot(current => {
@@ -153,17 +197,25 @@ export function VerticalDramaEpisodePreviewPanel({
 
   const generateCoverMutation =
     trpc.verticalDramaEpisodes.generateEpisodeCover.useMutation({
-      onSuccess: () => void coverQuery.refetch(),
-      onError: error => toast.error(error.message),
+      onSuccess: () => {
+        setActiveCoverSlotId(null);
+        void Promise.all(coverQueries.map(query => query.refetch()));
+      },
+      onError: error => {
+        setActiveCoverSlotId(null);
+        toast.error(error.message);
+      },
     });
   const setCoverAssetMutation =
     trpc.verticalDramaEpisodes.setEpisodeCoverAsset.useMutation({
       onSuccess: () => {
+        setActiveCoverSlotId(null);
         setUploadingCover(false);
-        void coverQuery.refetch();
+        void Promise.all(coverQueries.map(query => query.refetch()));
         toast.success(lang === "th" ? "เปลี่ยนหน้าปกแล้ว" : "Cover replaced");
       },
       onError: error => {
+        setActiveCoverSlotId(null);
         setUploadingCover(false);
         toast.error(error.message);
       },
@@ -185,7 +237,7 @@ export function VerticalDramaEpisodePreviewPanel({
       onError: error => toast.error(error.message),
     });
 
-  const handleGenerateCover = () => {
+  const handleGenerateCover = (coverSlotId: number) => {
     if (!coverModelId || generateCoverMutation.isPending) return;
     const modelName =
       imageModels.find(model => model.modelId === coverModelId)?.name ??
@@ -203,9 +255,11 @@ export function VerticalDramaEpisodePreviewPanel({
       cancelLabel: lang === "th" ? "ยกเลิก" : "Cancel",
       testId: "vd-episode-preview-cover-confirm",
       onConfirm: () => {
+        setActiveCoverSlotId(coverSlotId);
         generateCoverMutation.mutate({
           seriesId,
           episodeId,
+          coverSlotId: coverSlotId as 1 | 2 | 3 | 4,
           modelId: coverModelId,
           includeTitleLogo,
           includeChannelLogo,
@@ -215,8 +269,9 @@ export function VerticalDramaEpisodePreviewPanel({
     });
   };
 
-  const handleUploadCover = async (file: File) => {
+  const handleUploadCover = async (file: File, coverSlotId: number) => {
     if (!file.type.startsWith("image/")) return;
+    setActiveCoverSlotId(coverSlotId);
     setUploadingCover(true);
     try {
       const upload = coverAssetResolverRef.current.uploadAsset(file);
@@ -231,10 +286,12 @@ export function VerticalDramaEpisodePreviewPanel({
       setCoverAssetMutation.mutate({
         seriesId,
         episodeId,
+        coverSlotId: coverSlotId as 1 | 2 | 3 | 4,
         mediaAssetId: result.mediaAssetId,
       });
     } catch (error) {
       setUploadingCover(false);
+      setActiveCoverSlotId(null);
       toast.error(
         error instanceof Error ? error.message : "Cover upload failed"
       );
@@ -328,23 +385,44 @@ export function VerticalDramaEpisodePreviewPanel({
               {lang === "th" ? "หน้าปกของตอน" : "Episode cover"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-3">
-            <VerticalDramaEpisodeCoverSurface
-              lang={lang}
-              episodeNumber={episodeNumber}
-              title={episodeTitle}
-              imageUrl={coverImage?.url ?? null}
-              fallbackUrl={null}
-              status={coverImage?.status ?? undefined}
-              error={coverImage?.error ?? undefined}
-              isGenerating={generateCoverMutation.isPending}
-              isUploading={uploadingCover || setCoverAssetMutation.isPending}
-              canGenerate={Boolean(coverModelId) && !imageModelsQuery.isError}
-              onGenerate={handleGenerateCover}
-              onRetry={handleGenerateCover}
-              onOpen={url => setLightboxUrl(url)}
-              onUpload={file => void handleUploadCover(file)}
-            />
+          <CardContent className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3" data-testid="vd-episode-cover-slots">
+              {([1, 2, 3, 4] as const).map(coverSlotId => {
+                const coverImage = coverImageBySlot.get(coverSlotId);
+                const slotBusy =
+                  (generateCoverMutation.isPending &&
+                    activeCoverSlotId === coverSlotId) ||
+                  (setCoverAssetMutation.isPending &&
+                    activeCoverSlotId === coverSlotId);
+                return (
+                  <div
+                    key={coverSlotId}
+                    className="min-w-0 rounded-lg border border-border/60 bg-background/50 p-2"
+                    data-testid={`vd-episode-cover-slot-${coverSlotId}`}
+                  >
+                    <p className="mb-2 text-xs font-semibold">
+                      {lang === "th" ? `หน้าปกแบบที่ ${coverSlotId}` : `Cover variant ${coverSlotId}`}
+                    </p>
+                    <VerticalDramaEpisodeCoverSurface
+                      lang={lang}
+                      episodeNumber={episodeNumber}
+                      title={episodeTitle}
+                      imageUrl={coverImage?.url ?? null}
+                      fallbackUrl={null}
+                      status={coverImage?.status ?? undefined}
+                      error={coverImage?.error ?? undefined}
+                      isGenerating={slotBusy}
+                      isUploading={slotBusy || uploadingCover}
+                      canGenerate={Boolean(coverModelId) && !imageModelsQuery.isError}
+                      onGenerate={() => handleGenerateCover(coverSlotId)}
+                      onRetry={() => handleGenerateCover(coverSlotId)}
+                      onOpen={url => setLightboxUrl(url)}
+                      onUpload={file => void handleUploadCover(file, coverSlotId)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
             <div className="w-full space-y-2">
               <Label className="text-xs text-muted-foreground">
                 {lang === "th" ? "โมเดลสร้างหน้าปก" : "Cover model"}
@@ -354,6 +432,7 @@ export function VerticalDramaEpisodePreviewPanel({
                 onValueChange={value => {
                   setCoverModelId(value);
                   safeStorageSet(coverModelStorageKey(seriesId), value);
+                  safeStorageSet(lastCoverModelStorageKey, value);
                 }}
               >
                 <SelectTrigger
@@ -435,6 +514,16 @@ export function VerticalDramaEpisodePreviewPanel({
                   ? "เลือกได้ 2 ช็อตต่อชุด · ช็อตที่ยังไม่มีวิดีโอจะกดไม่ได้"
                   : "Select two shots per set · shots without a rendered video are disabled."}
               </p>
+              {readyShotCount < 2 ? (
+                <p
+                  className="mt-1 text-[11px] text-amber-700 dark:text-amber-400"
+                  data-testid="vd-episode-preview-video-requirement"
+                >
+                  {lang === "th"
+                    ? "สร้างหรืออัปโหลดวิดีโอให้พร้อมอย่างน้อย 2 ช็อตก่อนจึงจะสร้างตัวอย่างได้ — หน้าปกยังสร้างได้จากภาพ"
+                    : "Render or upload at least two video shots before creating a preview — the cover can still be generated from images."}
+                </p>
+              ) : null}
             </div>
             <Badge variant="secondary">
               {lang === "th" ? "สูงสุด 4 ชุด" : "Up to 4 sets"}
@@ -593,7 +682,7 @@ export function VerticalDramaEpisodePreviewPanel({
                         selected.length !== 2 ||
                         busy ||
                         hasPendingPreview ||
-                        coverImage?.status !== "ready"
+                        !hasReadyCover
                       }
                       onClick={() => handleCreatePreview(slotId)}
                       data-testid={`vd-episode-preview-create-${slotId}`}
@@ -616,11 +705,11 @@ export function VerticalDramaEpisodePreviewPanel({
                           ? "สร้างตัวอย่างชุดนี้"
                           : "Render this set"}
                     </Button>
-                    {coverImage?.status !== "ready" ? (
+                    {!hasReadyCover ? (
                       <p className="text-[11px] text-amber-700 dark:text-amber-400">
                         {lang === "th"
-                          ? "สร้างหน้าปกให้เสร็จก่อนจึงจะสร้างตัวอย่างได้"
-                          : "Generate the episode cover before rendering a preview."}
+                          ? "สร้างหน้าปกอย่างน้อย 1 แบบให้เสร็จก่อนจึงจะสร้างตัวอย่างได้"
+                          : "Generate at least one episode cover before rendering a preview."}
                       </p>
                     ) : null}
                     {hasPendingPreview ? (
@@ -647,7 +736,7 @@ export function VerticalDramaEpisodePreviewPanel({
             lang === "th" ? "ปิดหน้าปกเต็มจอ" : "Close fullscreen cover"
           }
         >
-          <img
+          <AuthenticatedMediaImage
             src={lightboxUrl}
             alt={lang === "th" ? "หน้าปกตอนย่อย" : "Episode cover"}
             className="max-h-full max-w-full rounded-xl object-contain shadow-2xl"

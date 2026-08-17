@@ -1,5 +1,9 @@
 export type VerticalDramaEpisodeCoverStatus = "generating" | "ready" | "failed";
 
+export const verticalDramaEpisodeCoverSlotIds = [1, 2, 3, 4] as const;
+export type VerticalDramaEpisodeCoverSlotId =
+  (typeof verticalDramaEpisodeCoverSlotIds)[number];
+
 /** Internal JSONB state for one episode cover. */
 export type VerticalDramaEpisodeCoverState = {
   status: VerticalDramaEpisodeCoverStatus;
@@ -15,6 +19,18 @@ export type VerticalDramaEpisodeCoverState = {
   idempotencyKey?: string;
   /** Server-only stale-task cleanup handle for a manual replacement. */
   supersededTaskId?: string;
+  /** Internal record of how this variant selected scene references. */
+  referenceStrategy?: "one" | "two" | "three" | "random";
+  referenceImageCount?: number;
+};
+
+export type VerticalDramaEpisodeCoverVariantsEnvelope = {
+  version: 2;
+  activeSlotId?: VerticalDramaEpisodeCoverSlotId;
+  variants: Array<{
+    slotId: VerticalDramaEpisodeCoverSlotId;
+    state: VerticalDramaEpisodeCoverState;
+  }>;
 };
 
 export type VerticalDramaEpisodeCoverDisplay = {
@@ -32,6 +48,8 @@ export type EpisodeCoverPromptInput = {
   episodeTitle?: string | null;
   synopsis?: string | null;
   plotBeats?: readonly string[] | null;
+  /** Optional slot-specific composition role for visibly distinct variants. */
+  coverSlotId?: VerticalDramaEpisodeCoverSlotId;
   /** Logo reference kinds in the same order as the attached image URLs. */
   logoReferences?: readonly ("title_logo" | "channel_logo")[];
   /** Number of scene references attached before the logo references. */
@@ -65,6 +83,33 @@ function cleanBeats(value: unknown): string[] {
   return value.map(clean).filter(Boolean);
 }
 
+function coverVariantDirection(
+  slotId: VerticalDramaEpisodeCoverSlotId
+): string {
+  switch (slotId) {
+    case 1:
+      return [
+        "**แนวทางองค์ประกอบหน้าปกแบบที่ 1**",
+        "เน้นตัวละครหรือความสัมพันธ์หลักและอารมณ์สำคัญของตอน ใช้การจัดวางระยะใกล้หรือระยะกลางให้จุดเด่นของเรื่องอยู่ชัดเจน",
+      ].join("\n");
+    case 2:
+      return [
+        "**แนวทางองค์ประกอบหน้าปกแบบที่ 2**",
+        "เปิดบริบทสถานที่และบรรยากาศของเหตุการณ์ให้เห็นชัด ใช้การจัดวางมุมกว้างหรือระยะไกล และวางตัวละครให้สัมพันธ์กับสภาพแวดล้อม",
+      ].join("\n");
+    case 3:
+      return [
+        "**แนวทางองค์ประกอบหน้าปกแบบที่ 3**",
+        "เน้นการกระทำ ปฏิสัมพันธ์ หรือความขัดแย้งสำคัญของตอน ใช้การจัดวางระยะกลางที่สื่อทิศทางและความเคลื่อนไหวของเหตุการณ์",
+      ].join("\n");
+    case 4:
+      return [
+        "**แนวทางองค์ประกอบหน้าปกแบบที่ 4**",
+        "สร้างมุมกล้องหรือการจัดเฟรมแบบภาพยนตร์ที่แตกต่างจากหน้าปกแบบอื่นอย่างชัดเจน เช่น เปลี่ยนมุมมอง ระยะภาพ หรือการใช้พื้นที่ว่าง โดยยังคงเหตุการณ์และตัวตนของตัวละครให้สอดคล้องกับเรื่อง",
+      ].join("\n");
+  }
+}
+
 /** Build only the exact user-approved prompt; no style or negative text is appended. */
 export function buildEpisodeCoverPrompt(
   input: EpisodeCoverPromptInput
@@ -84,6 +129,13 @@ export function buildEpisodeCoverPrompt(
   }
   if (beats.length > 0) {
     sections.push("**จุดดำเนินเรื่อง**", beats.join("\n"));
+  }
+
+  if (input.coverSlotId) {
+    sections.push(
+      coverVariantDirection(input.coverSlotId),
+      "ปรับแนวทางนี้ให้เข้ากับชื่อเรื่อง เรื่องย่อ จุดดำเนินเรื่อง และภาพอ้างอิงของตอนนี้โดยอัตโนมัติ ห้ามเพิ่มเหตุการณ์หรือตัวละครที่ไม่มีข้อมูลอ้างอิง และต้องสร้างองค์ประกอบภาพที่แตกต่างอย่างมีความหมายจากหน้าปกแบบอื่น"
+    );
   }
 
   const logoReferences = input.logoReferences ?? [];
@@ -233,7 +285,7 @@ export function selectEpisodeCoverReferences(
     }));
 }
 
-export function readEpisodeCoverState(
+function readSingleEpisodeCoverState(
   value: unknown
 ): VerticalDramaEpisodeCoverState | null {
   if (!value || typeof value !== "object") return null;
@@ -250,6 +302,16 @@ export function readEpisodeCoverState(
         (shotNumber): shotNumber is number =>
           Number.isInteger(shotNumber) && shotNumber > 0
       )
+    : undefined;
+  const referenceStrategy =
+    raw.referenceStrategy === "one" ||
+    raw.referenceStrategy === "two" ||
+    raw.referenceStrategy === "three" ||
+    raw.referenceStrategy === "random"
+      ? raw.referenceStrategy
+      : undefined;
+  const referenceImageCount = Number.isInteger(raw.referenceImageCount)
+    ? Number(raw.referenceImageCount)
     : undefined;
   return {
     status: raw.status,
@@ -273,7 +335,137 @@ export function readEpisodeCoverState(
     ...(clean(raw.supersededTaskId)
       ? { supersededTaskId: clean(raw.supersededTaskId) }
       : {}),
+    ...(referenceStrategy ? { referenceStrategy } : {}),
+    ...(referenceImageCount !== undefined && referenceImageCount >= 0
+      ? { referenceImageCount }
+      : {}),
   };
+}
+
+function isCoverSlotId(value: unknown): value is VerticalDramaEpisodeCoverSlotId {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    verticalDramaEpisodeCoverSlotIds.includes(value as VerticalDramaEpisodeCoverSlotId)
+  );
+}
+
+export function readEpisodeCoverVariants(
+  value: unknown
+): Array<{
+  slotId: VerticalDramaEpisodeCoverSlotId;
+  state: VerticalDramaEpisodeCoverState;
+}> {
+  if (value && typeof value === "object") {
+    const raw = value as Record<string, unknown>;
+    if (raw.version === 2 && Array.isArray(raw.variants)) {
+      return raw.variants
+        .map(item => {
+          if (!item || typeof item !== "object") return null;
+          const variant = item as Record<string, unknown>;
+          const slotId = isCoverSlotId(variant.slotId) ? variant.slotId : null;
+          const state = readSingleEpisodeCoverState(variant.state);
+          return slotId && state ? { slotId, state } : null;
+        })
+        .filter(
+          (
+            item
+          ): item is {
+            slotId: VerticalDramaEpisodeCoverSlotId;
+            state: VerticalDramaEpisodeCoverState;
+          } => Boolean(item)
+        )
+        .sort((a, b) => a.slotId - b.slotId);
+    }
+  }
+  const legacyState = readSingleEpisodeCoverState(value);
+  return legacyState ? [{ slotId: 1, state: legacyState }] : [];
+}
+
+export function buildEpisodeCoverVariantsEnvelope(
+  variants: readonly {
+    slotId: VerticalDramaEpisodeCoverSlotId;
+    state: VerticalDramaEpisodeCoverState;
+  }[],
+  activeSlotId: VerticalDramaEpisodeCoverSlotId = 1
+): VerticalDramaEpisodeCoverVariantsEnvelope {
+  return {
+    version: 2,
+    activeSlotId,
+    variants: [...variants]
+      .filter((variant, index, all) =>
+        all.findIndex(item => item.slotId === variant.slotId) === index
+      )
+      .sort((a, b) => a.slotId - b.slotId)
+      .map(variant => ({
+        slotId: variant.slotId,
+        state: { ...variant.state },
+      })),
+  };
+}
+
+export function upsertEpisodeCoverVariant(
+  currentValue: unknown,
+  slotId: VerticalDramaEpisodeCoverSlotId,
+  state: VerticalDramaEpisodeCoverState
+): VerticalDramaEpisodeCoverVariantsEnvelope {
+  const current = readEpisodeCoverVariants(currentValue).filter(
+    variant => variant.slotId !== slotId
+  );
+  return buildEpisodeCoverVariantsEnvelope(
+    [...current, { slotId, state }],
+    slotId
+  );
+}
+
+function stableSeed(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function resolveEpisodeCoverReferenceCount(
+  slotId: VerticalDramaEpisodeCoverSlotId,
+  availableReferenceCount: number,
+  seed: string
+): { strategy: "one" | "two" | "three" | "random"; count: number } {
+  const available = Math.max(0, Math.floor(availableReferenceCount));
+  if (available === 0) return { strategy: slotId === 4 ? "random" : "one", count: 0 };
+  if (slotId === 1) return { strategy: "one", count: Math.min(1, available) };
+  if (slotId === 2) return { strategy: "two", count: Math.min(2, available) };
+  if (slotId === 3) return { strategy: "three", count: Math.min(3, available) };
+  return { strategy: "random", count: 1 + (stableSeed(seed) % Math.min(3, available)) };
+}
+
+export function selectEpisodePreviewCoverSlot(
+  readySlotIds: readonly VerticalDramaEpisodeCoverSlotId[],
+  usedSlotIds: readonly VerticalDramaEpisodeCoverSlotId[],
+  seed: string
+): VerticalDramaEpisodeCoverSlotId | null {
+  const ready = [...new Set(readySlotIds)].filter(isCoverSlotId).sort();
+  if (ready.length === 0) return null;
+  const unused = ready.filter(slotId => !usedSlotIds.includes(slotId));
+  const candidates = unused.length > 0 ? unused : ready;
+  return candidates[stableSeed(seed) % candidates.length] ?? null;
+}
+
+export function readEpisodeCoverState(
+  value: unknown,
+  slotId?: VerticalDramaEpisodeCoverSlotId
+): VerticalDramaEpisodeCoverState | null {
+  const variants = readEpisodeCoverVariants(value);
+  if (variants.length > 0) {
+    if (slotId) return variants.find(item => item.slotId === slotId)?.state ?? null;
+    const raw = value as Record<string, unknown>;
+    const activeSlotId = isCoverSlotId(raw.activeSlotId) ? raw.activeSlotId : 1;
+    return (
+      variants.find(item => item.slotId === activeSlotId)?.state ?? variants[0].state
+    );
+  }
+  return null;
 }
 
 export function toEpisodeCoverDisplay(

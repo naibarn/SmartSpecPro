@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEpisodeCoverPrompt,
+  readEpisodeCoverVariants,
   readEpisodeCoverState,
+  resolveEpisodeCoverReferenceCount,
+  selectEpisodePreviewCoverSlot,
   selectEpisodeCoverReferences,
   toEpisodeCoverDisplay,
+  upsertEpisodeCoverVariant,
 } from "./episodeCover";
 
 describe("episode cover prompt", () => {
@@ -45,6 +49,28 @@ describe("episode cover prompt", () => {
         episodeTitle: "ตอนแรก",
       }),
     ).toBe("ช่วยหน้าปก ซีรีย์\n\nเรื่องหลัก\n\n**ตอนย่อยที่ 1  · ตอนแรก**");
+  });
+
+  it("adds generic, slot-specific composition directions without story-specific assumptions", () => {
+    const prompts = ([1, 2, 3, 4] as const).map(coverSlotId =>
+      buildEpisodeCoverPrompt({
+        seriesTitle: "เรื่องหลัก",
+        episodeNumber: 1,
+        episodeTitle: "ตอนแรก",
+        synopsis: "ตัวละครเผชิญเหตุการณ์สำคัญ",
+        coverSlotId,
+      })
+    );
+
+    expect(new Set(prompts).size).toBe(4);
+    expect(prompts[0]).toContain("เน้นตัวละครหรือความสัมพันธ์หลัก");
+    expect(prompts[1]).toContain("เปิดบริบทสถานที่และบรรยากาศ");
+    expect(prompts[2]).toContain("เน้นการกระทำ ปฏิสัมพันธ์ หรือความขัดแย้ง");
+    expect(prompts[3]).toContain("มุมกล้องหรือการจัดเฟรมแบบภาพยนตร์ที่แตกต่าง");
+    for (const prompt of prompts) {
+      expect(prompt).not.toContain("คาเฟ่");
+      expect(prompt).not.toContain("ขอแต่งงาน");
+    }
   });
 });
 
@@ -112,5 +138,44 @@ describe("cover state parsing", () => {
       url: "https://cdn/previous-cover.jpg",
       pendingTaskId: null,
     });
+  });
+
+  it("keeps legacy cover data and adds independent variant slots", () => {
+    const envelope = upsertEpisodeCoverVariant(
+      { status: "ready", mediaAssetId: "44" },
+      3,
+      { status: "ready", mediaAssetId: "99", source: "upload" }
+    );
+    expect(readEpisodeCoverState(envelope, 1)).toMatchObject({
+      mediaAssetId: "44",
+    });
+    expect(readEpisodeCoverState(envelope, 3)).toMatchObject({
+      mediaAssetId: "99",
+    });
+    expect(readEpisodeCoverVariants(envelope)).toHaveLength(2);
+  });
+
+  it("uses one, two, three, and deterministic random references per cover slot", () => {
+    expect(resolveEpisodeCoverReferenceCount(1, 4, "seed")).toMatchObject({
+      strategy: "one",
+      count: 1,
+    });
+    expect(resolveEpisodeCoverReferenceCount(2, 4, "seed")).toMatchObject({
+      strategy: "two",
+      count: 2,
+    });
+    expect(resolveEpisodeCoverReferenceCount(3, 4, "seed")).toMatchObject({
+      strategy: "three",
+      count: 3,
+    });
+    expect(resolveEpisodeCoverReferenceCount(4, 4, "seed")).toEqual(
+      resolveEpisodeCoverReferenceCount(4, 4, "seed")
+    );
+  });
+
+  it("prefers unused ready covers and reuses them only after all are used", () => {
+    expect(selectEpisodePreviewCoverSlot([1, 2, 3], [1], "a")).not.toBe(1);
+    expect(selectEpisodePreviewCoverSlot([2], [2], "a")).toBe(2);
+    expect(selectEpisodePreviewCoverSlot([], [], "a")).toBeNull();
   });
 });

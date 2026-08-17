@@ -80,9 +80,12 @@ import {
   buildEpisodeCoverGenerationSnapshot,
   projectEpisodeCover,
   readEpisodeCoverStateFromRow,
+  readEpisodeCoverVariantsFromRow,
   resolveEpisodeCoverLogoReferences,
   resolveEpisodeCoverAssetUrls,
   resolveOwnedEpisodeCoverReferenceUrls,
+  projectEpisodeCoverVariants,
+  upsertEpisodeCoverStateInRow,
 } from "../services/verticalDramaEpisodeCover";
 import {
   verticalDramaShotReferencesService,
@@ -490,6 +493,11 @@ import {
   verticalDramaEpisodePreviewSelectedShotsSchema,
   verticalDramaEpisodePreviewSlotIdSchema,
 } from "../../shared/verticalDramaSeries/episodePreview";
+import {
+  resolveEpisodeCoverReferenceCount,
+  selectEpisodePreviewCoverSlot,
+  type VerticalDramaEpisodeCoverSlotId,
+} from "../../shared/verticalDramaSeries/episodeCover";
 // Task #34 — the Text Overlay Suite's data model + pure derivation helpers
 // (zod schemas, priority resolvers, watermark corner auto-avoid). Pure/
 // isomorphic module, safe as a normal static import (same posture as
@@ -12050,19 +12058,39 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      const coverState = readEpisodeCoverStateFromRow(row);
+      const coverVariants = readEpisodeCoverVariantsFromRow(row);
       const coverUrls = await resolveEpisodeCoverAssetUrls(
         db,
         { tenantId, userId },
-        [coverState]
+        coverVariants.map(variant => variant.state)
       );
-      const coverUrl = coverState?.mediaAssetId
-        ? (coverUrls.get(coverState.mediaAssetId) ?? null)
+      const readyCoverVariants = coverVariants.filter(
+        variant =>
+          variant.state.status === "ready" &&
+          Boolean(
+            variant.state.mediaAssetId &&
+              coverUrls.get(variant.state.mediaAssetId)
+          )
+      );
+      const coverSlotId = selectEpisodePreviewCoverSlot(
+        readyCoverVariants.map(variant => variant.slotId),
+        existingPreviews
+          .map(preview => preview.coverSlotId)
+          .filter((slotId): slotId is VerticalDramaEpisodeCoverSlotId =>
+            typeof slotId === "number"
+          ),
+        `${input.idempotencyKey}:${input.slotId}`
+      );
+      const selectedCoverVariant = coverSlotId
+        ? readyCoverVariants.find(variant => variant.slotId === coverSlotId)
+        : undefined;
+      const coverUrl = selectedCoverVariant?.state.mediaAssetId
+        ? (coverUrls.get(selectedCoverVariant.state.mediaAssetId) ?? null)
         : null;
-      if (coverState?.status !== "ready" || !coverUrl) {
+      if (!coverSlotId || !selectedCoverVariant || !coverUrl) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "กรุณาสร้างหน้าปกของตอนนี้ให้เสร็จก่อนสร้างตัวอย่างซีรีย์",
+          message: "กรุณาสร้างหน้าปกอย่างน้อย 1 แบบให้เสร็จก่อนสร้างตัวอย่างซีรีย์",
         });
       }
 
@@ -12115,6 +12143,7 @@ export const verticalDramaEpisodesRouter = router({
       });
       const preview = {
         slotId: input.slotId,
+        coverSlotId,
         selectedShotNumbers,
         status: "pending" as const,
         pendingJobId: submitted.jobId,
@@ -14385,6 +14414,7 @@ export const verticalDramaEpisodesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
+        coverSlotId: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).default(1),
         modelId: z.string().trim().min(1).max(128),
         idempotencyKey: z.string().trim().min(1).max(128),
         includeTitleLogo: z.boolean().default(true),
@@ -14413,7 +14443,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
-      const currentCover = readEpisodeCoverStateFromRow(row);
+      const currentCover = readEpisodeCoverStateFromRow(row, input.coverSlotId);
       if (currentCover?.status === "generating") {
         if (currentCover.idempotencyKey === input.idempotencyKey) {
           return {
@@ -14482,12 +14512,19 @@ export const verticalDramaEpisodesRouter = router({
           message: `Selected image model supports ${maxReferences} reference image(s), but the selected cover logos require ${logoReferences.length}`,
         });
       }
+      const referenceSelection = resolveEpisodeCoverReferenceCount(
+        input.coverSlotId,
+        maxReferences - logoReferences.length,
+        input.idempotencyKey
+      );
       const snapshot = buildEpisodeCoverGenerationSnapshot({
         narrative,
         startFramePlan: plan,
         referenceUrls,
+        coverSlotId: input.coverSlotId,
         logoReferences,
         maxReferenceImages: maxReferences,
+        referenceImageCount: referenceSelection.count,
       });
       if (snapshot.references.length === 0 && maxReferences <= 0) {
         throw new TRPCError({
@@ -14547,6 +14584,8 @@ export const verticalDramaEpisodesRouter = router({
         sourceShotNumbers: snapshot.references.map(ref => ref.shotNumber),
         prompt: snapshot.prompt,
         idempotencyKey: input.idempotencyKey,
+        referenceStrategy: referenceSelection.strategy,
+        referenceImageCount: referenceSelection.count,
         ...(currentCover?.mediaAssetId
           ? { mediaAssetId: currentCover.mediaAssetId }
           : {}),
@@ -14554,7 +14593,14 @@ export const verticalDramaEpisodesRouter = router({
       };
       await db
         .update(verticalDramaEpisodes)
-        .set({ coverImage: generatingState, updatedAt: new Date() })
+        .set({
+          coverImage: upsertEpisodeCoverStateInRow(
+            row,
+            input.coverSlotId,
+            generatingState
+          ),
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(verticalDramaEpisodes.id, episodeId),
@@ -14655,6 +14701,7 @@ export const verticalDramaEpisodesRouter = router({
               ...(transportMetadata ? { transportMetadata } : {}),
               auditContext: {
                 userId,
+                tenantId,
                 traceId: crypto.randomUUID(),
                 source: "trpc.verticalDramaEpisodes.generateEpisodeCover",
                 stage: "submission",
@@ -14681,11 +14728,11 @@ export const verticalDramaEpisodesRouter = router({
         await db
           .update(verticalDramaEpisodes)
           .set({
-            coverImage: {
+            coverImage: upsertEpisodeCoverStateInRow(row, input.coverSlotId, {
               ...generatingState,
               status: "failed",
               error: "สร้างหน้าปกไม่สำเร็จ กรุณาลองอีกครั้ง",
-            },
+            }),
             updatedAt: new Date(),
           })
           .where(
@@ -14708,7 +14755,10 @@ export const verticalDramaEpisodesRouter = router({
       const finalState = { ...generatingState, pendingTaskId: taskId };
       await db
         .update(verticalDramaEpisodes)
-        .set({ coverImage: finalState, updatedAt: new Date() })
+        .set({
+          coverImage: upsertEpisodeCoverStateInRow(row, input.coverSlotId, finalState),
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(verticalDramaEpisodes.id, episodeId),
@@ -14731,6 +14781,9 @@ export const verticalDramaEpisodesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
+        coverSlotId: z
+          .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+          .default(1),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -14744,8 +14797,17 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
-      const state = readEpisodeCoverStateFromRow(row);
-      if (!state) return { coverImage: null, taskStatus: null };
+      const state = readEpisodeCoverStateFromRow(row, input.coverSlotId);
+      const projectCovers = (
+        sourceRow: typeof row = row
+      ) => projectEpisodeCoverVariants(db, { tenantId, userId }, sourceRow);
+      if (!state) {
+        return {
+          coverImage: null,
+          coverImages: await projectCovers(),
+          taskStatus: null,
+        };
+      }
       const coverAssetUrls = await resolveEpisodeCoverAssetUrls(
         db,
         { tenantId, userId },
@@ -14762,6 +14824,7 @@ export const verticalDramaEpisodesRouter = router({
           // a null URL here made the preview panel look empty and invited a
           // duplicate paid generation.
           coverImage: projectEpisodeCover(state, currentCoverUrl),
+          coverImages: await projectCovers(),
           taskStatus: null,
         };
 
@@ -14796,7 +14859,10 @@ export const verticalDramaEpisodesRouter = router({
           delete nextState.supersededTaskId;
           await db
             .update(verticalDramaEpisodes)
-            .set({ coverImage: nextState, updatedAt: new Date() })
+            .set({
+              coverImage: upsertEpisodeCoverStateInRow(row, input.coverSlotId, nextState),
+              updatedAt: new Date(),
+            })
             .where(
               and(
                 eq(verticalDramaEpisodes.id, episodeId),
@@ -14807,11 +14873,20 @@ export const verticalDramaEpisodesRouter = router({
             );
           return {
             coverImage: projectEpisodeCover(nextState, currentCoverUrl),
+            coverImages: await projectCovers({
+              ...row,
+              coverImage: upsertEpisodeCoverStateInRow(
+                row,
+                input.coverSlotId,
+                nextState
+              ),
+            }),
             taskStatus: task.status,
           };
         }
         return {
           coverImage: projectEpisodeCover(state, currentCoverUrl),
+          coverImages: await projectCovers(),
           taskStatus: task.status,
         };
       }
@@ -14823,7 +14898,7 @@ export const verticalDramaEpisodesRouter = router({
           seriesId,
           episodeId,
         });
-        const freshState = readEpisodeCoverStateFromRow(freshRow);
+        const freshState = readEpisodeCoverStateFromRow(freshRow, input.coverSlotId);
         if (
           !freshState ||
           freshState.pendingTaskId !== taskId ||
@@ -14840,6 +14915,11 @@ export const verticalDramaEpisodesRouter = router({
               freshState?.mediaAssetId
                 ? (freshCoverUrls.get(freshState.mediaAssetId) ?? null)
                 : null
+            ),
+            coverImages: await projectEpisodeCoverVariants(
+              db,
+              { tenantId, userId },
+              freshRow
             ),
             taskStatus: task.status,
           };
@@ -14865,7 +14945,10 @@ export const verticalDramaEpisodesRouter = router({
         delete nextState.pendingTaskId;
         await db
           .update(verticalDramaEpisodes)
-          .set({ coverImage: nextState, updatedAt: new Date() })
+          .set({
+            coverImage: upsertEpisodeCoverStateInRow(row, input.coverSlotId, nextState),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(verticalDramaEpisodes.id, episodeId),
@@ -14875,7 +14958,19 @@ export const verticalDramaEpisodesRouter = router({
             )
           );
         return {
-            coverImage: projectEpisodeCover(nextState, durable.url),
+          coverImage: projectEpisodeCover(nextState, durable.url),
+          coverImages: await projectEpisodeCoverVariants(
+            db,
+            { tenantId, userId },
+            {
+              ...freshRow,
+              coverImage: upsertEpisodeCoverStateInRow(
+                freshRow,
+                input.coverSlotId,
+                nextState
+              ),
+            }
+          ),
           taskStatus: task.status,
         };
       }
@@ -14891,7 +14986,14 @@ export const verticalDramaEpisodesRouter = router({
         delete nextState.pendingTaskId;
         await db
           .update(verticalDramaEpisodes)
-          .set({ coverImage: nextState, updatedAt: new Date() })
+          .set({
+            coverImage: upsertEpisodeCoverStateInRow(
+              freshRow,
+              input.coverSlotId,
+              nextState
+            ),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(verticalDramaEpisodes.id, episodeId),
@@ -14902,12 +15004,21 @@ export const verticalDramaEpisodesRouter = router({
           );
         return {
           coverImage: projectEpisodeCover(nextState, currentCoverUrl),
+          coverImages: await projectCovers({
+            ...row,
+            coverImage: upsertEpisodeCoverStateInRow(
+              row,
+              input.coverSlotId,
+              nextState
+            ),
+          }),
           taskStatus: task.status,
         };
       }
 
       return {
         coverImage: projectEpisodeCover(state, currentCoverUrl),
+        coverImages: await projectCovers(),
         taskStatus: task.status,
       };
     }),
@@ -14917,6 +15028,7 @@ export const verticalDramaEpisodesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
+        coverSlotId: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).default(1),
         mediaAssetId: z.string().min(1),
       })
     )
@@ -14949,7 +15061,7 @@ export const verticalDramaEpisodesRouter = router({
           message: "Uploaded asset is not an owned image",
         });
       }
-      const currentState = readEpisodeCoverStateFromRow(row);
+      const currentState = readEpisodeCoverStateFromRow(row, input.coverSlotId);
       const nextState = {
         status: "ready" as const,
         source: "upload" as const,
@@ -14962,7 +15074,10 @@ export const verticalDramaEpisodesRouter = router({
       };
       await db
         .update(verticalDramaEpisodes)
-        .set({ coverImage: nextState, updatedAt: new Date() })
+        .set({
+          coverImage: upsertEpisodeCoverStateInRow(row, input.coverSlotId, nextState),
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(verticalDramaEpisodes.id, episodeId),
@@ -14971,7 +15086,10 @@ export const verticalDramaEpisodesRouter = router({
             eq(verticalDramaEpisodes.seriesId, seriesId)
           )
         );
-      return { coverImage: projectEpisodeCover(nextState, null) };
+      return {
+        coverImage: projectEpisodeCover(nextState, null),
+        coverSlotId: input.coverSlotId,
+      };
     }),
 
   /**
