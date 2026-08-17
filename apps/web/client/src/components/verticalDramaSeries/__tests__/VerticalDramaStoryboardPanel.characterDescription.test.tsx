@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { VerticalDramaStoryboardPanel } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
@@ -110,5 +111,60 @@ describe("VerticalDramaStoryboardPanel — shot-local character descriptions", (
 
     expect(aliceInput).toHaveValue("ผู้หญิงที่ใส่ผ้ากันเปื้อน");
     expect(bobInput).toHaveValue("ผู้ชายเสื้อเชิ้ตสีขาว");
+  });
+
+  it("keeps every character while the user types one letter at a time", async () => {
+    const user = userEvent.setup();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...({
+          ...baseProps,
+          onSetShotCharacterDescriptionOverrides: vi.fn(),
+        } as any)}
+      />,
+    );
+
+    const aliceInput = screen.getByTestId(
+      "vd-storyboard-character-description-input-1-alice",
+    );
+    await user.type(aliceInput, "ผู้หญิง");
+
+    expect(aliceInput).toHaveValue("ผู้หญิง");
+  });
+
+  it("keeps the draft when the parent rebuilds shot props after each keystroke", () => {
+    const { rerender } = render(
+      <VerticalDramaStoryboardPanel
+        {...({
+          ...baseProps,
+          onSetShotCharacterDescriptionOverrides: vi.fn(),
+        } as any)}
+      />,
+    );
+    const aliceInput = screen.getByTestId(
+      "vd-storyboard-character-description-input-1-alice",
+    );
+    let value = "";
+    for (const character of "abc") {
+      value += character;
+      fireEvent.change(aliceInput, { target: { value } });
+      rerender(
+        <VerticalDramaStoryboardPanel
+          {...({
+            ...baseProps,
+            storyboard: {
+              ...baseProps.storyboard,
+              shots: [...baseProps.storyboard.shots],
+            },
+            startFramePlan: {
+              ...baseProps.startFramePlan,
+              frames: [...baseProps.startFramePlan.frames],
+            },
+            onSetShotCharacterDescriptionOverrides: vi.fn(),
+          } as any)}
+        />,
+      );
+      expect(aliceInput).toHaveValue(value);
+    }
   });
 });

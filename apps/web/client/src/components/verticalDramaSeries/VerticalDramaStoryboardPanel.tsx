@@ -11865,8 +11865,14 @@ function ShotCharacterDescriptionEditor({
   );
   const normalizedInitialSignature = JSON.stringify(normalizedInitial);
   const [draft, setDraft] = useState(normalizedInitial);
+  const hasLocalDraftRef = useRef(false);
+  const lastInitialSignatureRef = useRef(normalizedInitialSignature);
   useEffect(() => {
-    setDraft(normalizedInitial);
+    if (lastInitialSignatureRef.current === normalizedInitialSignature) return;
+    lastInitialSignatureRef.current = normalizedInitialSignature;
+    // Server/query refreshes are allowed to hydrate an untouched editor, but
+    // must never replace a draft while the user is typing into a textarea.
+    if (!hasLocalDraftRef.current) setDraft(normalizedInitial);
   }, [normalizedInitial, normalizedInitialSignature]);
   const hasChanges =
     JSON.stringify(draft) !== JSON.stringify(normalizedInitial);
@@ -11896,12 +11902,13 @@ function ShotCharacterDescriptionEditor({
             </span>
             <Textarea
               value={draft[key] ?? ""}
-              onChange={event =>
+              onChange={event => {
+                hasLocalDraftRef.current = true;
                 setDraft(previous => ({
                   ...previous,
                   [key]: event.target.value,
-                }))
-              }
+                }));
+              }}
               placeholder={
                 locale === "th"
                   ? "เช่น ผู้หญิงที่ใส่ผ้ากันเปื้อน"
