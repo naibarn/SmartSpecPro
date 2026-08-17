@@ -45,7 +45,7 @@ import {
 } from "./enabledMediaModelSelection";
 import { resolveMediaTransport } from "./mediaTransportResolver";
 import { getMcpMediaTask, submitMcpMediaGeneration } from "./mcpMediaAdapter";
-import { createManagedStorageDownloadRef } from "./mcpDownloadBrokerService";
+import { createProviderManagedStorageDownloadRef } from "./mcpDownloadBrokerService";
 import { getHermesMediaTask, isHermesMediaTaskId } from "./hermesMediaAdapter";
 import { normalizeMcpProviderModelIdForProvider } from "./mcpProviderModelAliases";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
@@ -1611,7 +1611,7 @@ async function resolveProviderReferenceUrls(
     const resolved = resolveReferenceUrl(url, publicUrl);
     const storageKey = managedStorageKeyFromProviderReference(resolved);
     if (!storageKey) return resolved;
-    const ref = await createManagedStorageDownloadRef(storageKey, viewer);
+    const ref = await createProviderManagedStorageDownloadRef(storageKey, viewer);
     return buildManagedStorageDownloadUrl(baseUrl!, ref.downloadRef, ref.fileName);
   }));
 }
@@ -1923,6 +1923,43 @@ function resolveExtraParamsUrls(
     }
   }
   return resolved;
+}
+
+async function resolveProviderExtraParamsUrls(
+  extraParams: Record<string, any>,
+  request: { auditContext?: MediaAuditContext },
+  userToken: string,
+  publicUrl?: string | null,
+): Promise<Record<string, any>> {
+  const resolveValue = async (key: string, value: unknown): Promise<unknown> => {
+    if (typeof value === "string" && isLikelyUrlLikeExtraParamKey(key)) {
+      return (await resolveProviderReferenceUrls([value], request, userToken, publicUrl))?.[0] ?? value;
+    }
+    if (Array.isArray(value)) {
+      if (value.every(entry => typeof entry === "string") && isLikelyUrlLikeExtraParamKey(key)) {
+        return await resolveProviderReferenceUrls(value as string[], request, userToken, publicUrl) ?? value;
+      }
+      return Promise.all(value.map(entry =>
+        entry && typeof entry === "object" && !Array.isArray(entry)
+          ? resolveObject(entry as Record<string, unknown>)
+          : entry
+      ));
+    }
+    if (value && typeof value === "object") {
+      return resolveObject(value as Record<string, unknown>);
+    }
+    return value;
+  };
+
+  const resolveObject = async (value: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    const next: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value)) {
+      next[key] = await resolveValue(key, entry);
+    }
+    return next;
+  };
+
+  return resolveObject(extraParams) as Promise<Record<string, any>>;
 }
 
 function normalizeAspectRatioExtraParams(
@@ -2962,19 +2999,25 @@ export class MediaGenerationService {
       defaultInputParams
     );
     if (effectiveExtraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(
-        effectiveExtraParams,
+      payload.extra_params = await resolveProviderExtraParamsUrls(
+        buildPythonBackendExtraParams(effectiveExtraParams, publicUrl, request.aspectRatio),
+        request,
+        userToken,
         publicUrl,
-        request.aspectRatio
       );
     }
 
     // Add reference images if provided (1-5 images)
     // Convert relative URLs to full URLs for Python backend
-    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+    const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
+      resolveReferenceImageUrlsForModel(
       modelId,
       request.referenceImageUrls,
       publicUrl
+      ),
+      request,
+      userToken,
+      publicUrl,
     );
     if (resolvedReferenceImageUrls) {
       payload.reference_image_urls = resolvedReferenceImageUrls;
@@ -2991,10 +3034,10 @@ export class MediaGenerationService {
 
     // Add reference style if provided
     if (request.referenceStyleUrl) {
-      payload.reference_style_url = resolveReferenceUrl(
-        request.referenceStyleUrl,
-        publicUrl
-      );
+      const [resolvedStyleUrl] = await resolveProviderReferenceUrls(
+        [request.referenceStyleUrl], request, userToken, publicUrl,
+      ) ?? [];
+      payload.reference_style_url = resolvedStyleUrl;
     }
 
     this.logMediaRequest({
@@ -3117,19 +3160,25 @@ export class MediaGenerationService {
     // Add extra params from dynamic input fields
     // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
     if ((request as any).extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(
-        (request as any).extraParams,
+      payload.extra_params = await resolveProviderExtraParamsUrls(
+        buildPythonBackendExtraParams((request as any).extraParams, publicUrl, request.aspectRatio),
+        request,
+        userToken,
         publicUrl,
-        request.aspectRatio
       );
     }
 
     // Add reference images for img2vid
     // Convert relative URLs to full URLs for Python backend
-    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+    const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
+      resolveReferenceImageUrlsForModel(
       modelId,
       request.referenceImageUrls,
       publicUrl
+      ),
+      request,
+      userToken,
+      publicUrl,
     );
     if (resolvedReferenceImageUrls) {
       payload.reference_image_urls = resolvedReferenceImageUrls;
@@ -3152,9 +3201,12 @@ export class MediaGenerationService {
           ? [request.referenceVideoUrl]
           : [];
     if (referenceVideoUrls.length > 0) {
-      const resolvedVideoUrls = referenceVideoUrls.map(url =>
-        resolveReferenceUrl(url, publicUrl)
-      );
+      const resolvedVideoUrls = await resolveProviderReferenceUrls(
+        referenceVideoUrls.map(url => resolveReferenceUrl(url, publicUrl)),
+        request,
+        userToken,
+        publicUrl,
+      ) ?? [];
       payload.reference_video_urls = resolvedVideoUrls;
       payload.reference_video_url = resolvedVideoUrls[0];
     }
@@ -3163,9 +3215,12 @@ export class MediaGenerationService {
     // that the prompt cites by order, alongside the image/video references.
     const referenceAudioUrls = request.referenceAudioUrls ?? [];
     if (referenceAudioUrls.length > 0) {
-      payload.reference_audio_urls = referenceAudioUrls.map(url =>
-        resolveReferenceUrl(url, publicUrl)
-      );
+      payload.reference_audio_urls = await resolveProviderReferenceUrls(
+        referenceAudioUrls.map(url => resolveReferenceUrl(url, publicUrl)),
+        request,
+        userToken,
+        publicUrl,
+      ) ?? [];
     }
 
     this.logMediaRequest({
@@ -3285,9 +3340,11 @@ export class MediaGenerationService {
 
     // Add extraParams for model-specific fields
     if (normalizedExtraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(
-        normalizedExtraParams,
-        request.publicUrl
+      payload.extra_params = await resolveProviderExtraParamsUrls(
+        buildPythonBackendExtraParams(normalizedExtraParams, request.publicUrl),
+        request,
+        userToken,
+        request.publicUrl,
       );
     }
 
@@ -3430,18 +3487,24 @@ export class MediaGenerationService {
       defaultInputParams
     );
     if (effectiveExtraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(
-        effectiveExtraParams,
+      payload.extra_params = await resolveProviderExtraParamsUrls(
+        buildPythonBackendExtraParams(effectiveExtraParams, publicUrl, request.aspectRatio),
+        request,
+        userToken,
         publicUrl,
-        request.aspectRatio
       );
     }
 
     // Add reference images if provided (1-5 images)
-    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+    const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
+      resolveReferenceImageUrlsForModel(
       modelId,
       request.referenceImageUrls,
       publicUrl
+      ),
+      request,
+      userToken,
+      publicUrl,
     );
     if (resolvedReferenceImageUrls) {
       payload.reference_image_urls = resolvedReferenceImageUrls;
@@ -3458,10 +3521,13 @@ export class MediaGenerationService {
 
     // Add reference style if provided
     if (request.referenceStyleUrl) {
-      payload.reference_style_url = resolveReferenceUrl(
-        request.referenceStyleUrl,
-        publicUrl
-      );
+      const [resolvedStyleUrl] = await resolveProviderReferenceUrls(
+        [request.referenceStyleUrl],
+        request,
+        userToken,
+        publicUrl,
+      ) ?? [];
+      payload.reference_style_url = resolvedStyleUrl;
     }
 
     this.logMediaRequest({
@@ -3585,10 +3651,15 @@ export class MediaGenerationService {
     const publicUrl = request.publicUrl;
 
     // Add reference images for img2vid
-    const resolvedReferenceImageUrls = resolveReferenceImageUrlsForModel(
+    const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
+      resolveReferenceImageUrlsForModel(
       modelId,
       request.referenceImageUrls,
       publicUrl
+      ),
+      request,
+      userToken,
+      publicUrl,
     );
     if (resolvedReferenceImageUrls) {
       payload.reference_image_urls = resolvedReferenceImageUrls;
@@ -3602,9 +3673,12 @@ export class MediaGenerationService {
           ? [request.referenceVideoUrl]
           : [];
     if (referenceVideoUrls.length > 0) {
-      const resolvedVideoUrls = referenceVideoUrls.map(url =>
-        resolveReferenceUrl(url, publicUrl)
-      );
+      const resolvedVideoUrls = await resolveProviderReferenceUrls(
+        referenceVideoUrls.map(url => resolveReferenceUrl(url, publicUrl)),
+        request,
+        userToken,
+        publicUrl,
+      ) ?? [];
       payload.reference_video_urls = resolvedVideoUrls;
       payload.reference_video_url = resolvedVideoUrls[0];
     }
@@ -3613,9 +3687,12 @@ export class MediaGenerationService {
     // that the prompt cites by order, alongside the image/video references.
     const referenceAudioUrls = request.referenceAudioUrls ?? [];
     if (referenceAudioUrls.length > 0) {
-      payload.reference_audio_urls = referenceAudioUrls.map(url =>
-        resolveReferenceUrl(url, publicUrl)
-      );
+      payload.reference_audio_urls = await resolveProviderReferenceUrls(
+        referenceAudioUrls,
+        request,
+        userToken,
+        publicUrl,
+      ) ?? [];
     }
 
     // Add apiConfig for model-specific endpoints and payload formats (e.g., Veo 3)
@@ -3625,10 +3702,11 @@ export class MediaGenerationService {
 
     // Add extraParams for additional model-specific parameters
     if (request.extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(
-        request.extraParams,
+      payload.extra_params = await resolveProviderExtraParamsUrls(
+        buildPythonBackendExtraParams(request.extraParams, publicUrl, request.aspectRatio),
+        request,
+        userToken,
         publicUrl,
-        request.aspectRatio
       );
     }
 
@@ -3747,9 +3825,11 @@ export class MediaGenerationService {
 
     // Add extraParams for model-specific fields
     if (normalizedExtraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(
-        normalizedExtraParams,
-        request.publicUrl
+      payload.extra_params = await resolveProviderExtraParamsUrls(
+        buildPythonBackendExtraParams(normalizedExtraParams, request.publicUrl),
+        request,
+        userToken,
+        request.publicUrl,
       );
     }
 
@@ -3862,7 +3942,9 @@ export class MediaGenerationService {
           "Hermes media task polling requires authenticated user context"
         );
       }
-      const task = await getHermesMediaTask(taskId, userId);
+      const task = await getHermesMediaTask(taskId, userId, {
+        tenantId: typeof auditContext?.tenantId === "string" ? auditContext.tenantId : undefined,
+      });
       if (!task) {
         throw new Error(`Task ${taskId} not found`);
       }
@@ -3891,7 +3973,11 @@ export class MediaGenerationService {
       if (!userId) {
         throw new Error("MCP task polling requires authenticated user context");
       }
-      const task = await getMcpMediaTask(taskId, userId);
+      const task = await getMcpMediaTask(
+        taskId,
+        userId,
+        typeof auditContext?.tenantId === "string" ? auditContext.tenantId : undefined,
+      );
       if (!task) {
         throw new Error(`Task ${taskId} not found`);
       }

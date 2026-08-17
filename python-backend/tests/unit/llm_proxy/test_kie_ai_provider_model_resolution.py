@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -5,10 +6,45 @@ import pytest
 
 from app.llm_proxy.providers.kie_ai_provider import (
     KieAIProvider,
+    _clean_endpoint,
     get_model_resolution_stats,
     reset_model_resolution_stats,
     resolve_api_model,
 )
+
+
+def test_clean_endpoint_removes_repeated_api_version_prefixes():
+    assert _clean_endpoint("/api/v1/jobs/createTask") == "jobs/createTask"
+    assert _clean_endpoint("api/v1/api/v1/jobs/createTask") == "jobs/createTask"
+    assert _clean_endpoint("https://api.kie.ai/api/v1/jobs/createTask") == "jobs/createTask"
+
+
+@pytest.mark.asyncio
+async def test_make_request_cannot_build_duplicate_api_version_path():
+    provider = KieAIProvider(api_key="test-key")
+    response = httpx.Response(
+        200,
+        request=httpx.Request("POST", "https://api.kie.ai/api/v1/jobs/createTask"),
+        json={"ok": True},
+    )
+    provider.client.post = AsyncMock(return_value=response)
+
+    await provider._make_request("POST", "/api/v1/jobs/createTask", data={})
+
+    request = provider.client.post.await_args.args[0]
+    assert request == "https://api.kie.ai/api/v1/jobs/createTask"
+
+
+def test_http_client_is_recreated_when_provider_crosses_event_loops():
+    provider = KieAIProvider(api_key="test-key")
+
+    async def get_client():
+        return provider._get_client_for_current_loop()
+
+    first_client = asyncio.run(get_client())
+    second_client = asyncio.run(get_client())
+
+    assert second_client is not first_client
 
 
 def test_resolve_api_model_prefers_config_kie_model_id_variants():
@@ -326,9 +362,12 @@ async def test_generate_video_builds_grok_imagine_video_15_payload():
         prompt="A cinematic product reveal with soft studio light.",
         callback_url="",
         wait_for_completion=False,
-        reference_image_urls=["https://cdn.example.com/product.png"],
-        resolution="720p",
-        duration=8,
+        reference_image_urls=[
+            f"https://cdn.example.com/product-{index}.png"
+            for index in range(1, 8)
+        ],
+        resolution="1080p",
+        duration=15,
         aspect_ratio="16:9",
         api_config={
             "kie_model_id": "grok-imagine-video-1-5-preview",
@@ -342,10 +381,13 @@ async def test_generate_video_builds_grok_imagine_video_15_payload():
     assert args[0] == "grok-imagine-video-1-5-preview"
     assert args[1] == {
         "prompt": "A cinematic product reveal with soft studio light.",
-        "duration": 8,
+        "duration": 15,
         "aspect_ratio": "16:9",
-        "resolution": "720p",
-        "image_urls": ["https://cdn.example.com/product.png"],
+        "resolution": "1080p",
+        "image_urls": [
+            f"https://cdn.example.com/product-{index}.png"
+            for index in range(1, 8)
+        ],
     }
 
 

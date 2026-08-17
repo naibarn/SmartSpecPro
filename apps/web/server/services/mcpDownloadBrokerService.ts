@@ -2,6 +2,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 import type { Readable } from "node:stream";
+import type { SignOptions } from "jsonwebtoken";
 
 import { getLibraryItemById, type LibraryActor } from "./libraryService";
 import { getMcpMediaTask } from "./mcpMediaAdapter";
@@ -18,6 +19,8 @@ import { getCacheClient } from "./redisClients";
 const MCP_DOWNLOAD_AUDIENCE = "smartspec-mcp-download";
 const MCP_DOWNLOAD_TTL = "5m";
 const MCP_DOWNLOAD_TTL_SECONDS = 5 * 60;
+const MCP_PROVIDER_DOWNLOAD_TTL = "60m";
+export const MCP_PROVIDER_DOWNLOAD_TTL_SECONDS = 60 * 60;
 const MCP_DOWNLOAD_GRANT_PREFIX = "ssp:f145:mcp:download:grant:";
 
 type DownloadResourceType = "library_item" | "media_task" | "storage_key";
@@ -104,7 +107,11 @@ async function issueDownloadRef(input: {
   resourceId: string;
   fileName: string;
   contentType: string;
+  ttl?: SignOptions["expiresIn"];
+  ttlSeconds?: number;
 }): Promise<string> {
+  const ttl = input.ttl ?? MCP_DOWNLOAD_TTL;
+  const ttlSeconds = input.ttlSeconds ?? MCP_DOWNLOAD_TTL_SECONDS;
   const token = signBearerToken(
     {
       sub: String(input.viewer.userId),
@@ -120,7 +127,7 @@ async function issueDownloadRef(input: {
       scopes: ["media:download"],
       jti: `mcp_download_${crypto.randomUUID()}`,
     } as McpDownloadClaims,
-    MCP_DOWNLOAD_TTL,
+    ttl,
   );
   const claims = await verifyBearerToken(token) as McpDownloadClaims;
   if (!claims.jti) throw new Error("download_ref_invalid");
@@ -128,7 +135,7 @@ async function issueDownloadRef(input: {
     `${MCP_DOWNLOAD_GRANT_PREFIX}${crypto.createHash("sha256").update(claims.jti).digest("hex")}`,
     JSON.stringify({ tenantId: input.viewer.tenantId, userId: input.viewer.userId, resourceType: input.resourceType, resourceId: input.resourceId }),
     "EX",
-    MCP_DOWNLOAD_TTL_SECONDS,
+    ttlSeconds,
   );
   return token;
 }
@@ -226,6 +233,15 @@ export async function createManagedStorageDownloadRef(
   storageKey: string,
   viewer: McpDownloadViewer,
 ): Promise<{ downloadRef: string; expiresInSeconds: number; fileName: string; contentType: string }> {
+  return createManagedStorageDownloadRefWithTtl(storageKey, viewer);
+}
+
+async function createManagedStorageDownloadRefWithTtl(
+  storageKey: string,
+  viewer: McpDownloadViewer,
+  ttl: SignOptions["expiresIn"] = MCP_DOWNLOAD_TTL,
+  ttlSeconds = MCP_DOWNLOAD_TTL_SECONDS,
+): Promise<{ downloadRef: string; expiresInSeconds: number; fileName: string; contentType: string }> {
   const normalizedKey = normalizeManagedMediaKey(storageKey);
   if (!normalizedKey || !(await canReadManagedStorageKey(normalizedKey, viewer))) {
     throw new Error("media_file_unavailable");
@@ -250,11 +266,25 @@ export async function createManagedStorageDownloadRef(
       resourceId: normalizedKey,
       fileName,
       contentType,
+      ttl,
+      ttlSeconds,
     }),
-    expiresInSeconds: MCP_DOWNLOAD_TTL_SECONDS,
+    expiresInSeconds: ttlSeconds,
     fileName,
     contentType,
   };
+}
+
+export async function createProviderManagedStorageDownloadRef(
+  storageKey: string,
+  viewer: McpDownloadViewer,
+): Promise<{ downloadRef: string; expiresInSeconds: number; fileName: string; contentType: string }> {
+  return createManagedStorageDownloadRefWithTtl(
+    storageKey,
+    viewer,
+    MCP_PROVIDER_DOWNLOAD_TTL,
+    MCP_PROVIDER_DOWNLOAD_TTL_SECONDS,
+  );
 }
 
 async function resolveResourceStorageKey(

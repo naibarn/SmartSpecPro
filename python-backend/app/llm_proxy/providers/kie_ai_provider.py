@@ -305,6 +305,10 @@ def _clean_endpoint(endpoint: str | None) -> str:
     if not cleaned:
         return DEFAULT_CREATE_TASK_ENDPOINT
 
+    if "://" in cleaned:
+        parsed = urlparse(cleaned)
+        cleaned = parsed.path or ""
+
     cleaned = _API_VERSION_PREFIX_RE.sub("", cleaned).lstrip("/")
     return cleaned or DEFAULT_CREATE_TASK_ENDPOINT
 
@@ -312,6 +316,17 @@ def _clean_endpoint(endpoint: str | None) -> str:
 def _is_reference_url_key(key: str) -> bool:
     lowered = key.lower()
     return lowered.endswith("url") or lowered.endswith("urls")
+
+
+def _redact_url_for_log(value: str) -> str:
+    """Keep provider diagnostics useful without persisting signed URL tokens."""
+    try:
+        parsed = urlparse(value)
+        if parsed.query:
+            return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, "[redacted]", ""))
+    except ValueError:
+        pass
+    return value
 
 
 def _normalize_ref_urls_for_model(model: str | None, input_params: dict[str, Any]) -> dict[str, Any]:
@@ -1000,6 +1015,11 @@ class KieAIProvider:
         self.callback_url = callback_url
         # Increased timeout to 600s to handle longer generation times
         self.client = httpx.AsyncClient(timeout=600.0)
+        # httpx keeps async synchronization primitives in its transport. A
+        # provider instance can outlive the event loop that first used it
+        # (notably when shared between FastAPI and Celery), so never reuse the
+        # client across event loops.
+        self._client_loop: asyncio.AbstractEventLoop | None = None
 
         if raw_base_url and self.base_url != str(raw_base_url).rstrip("/"):
             logger.warning(
@@ -1010,6 +1030,21 @@ class KieAIProvider:
 
         if callback_url:
             logger.info("kie_ai_callback_configured", callback_url=callback_url)
+
+    def _get_client_for_current_loop(self) -> httpx.AsyncClient:
+        """Return a client owned by the currently running event loop."""
+        current_loop = asyncio.get_running_loop()
+        if self._client_loop is None or self._client_loop is current_loop:
+            self._client_loop = current_loop
+            return self.client
+
+        # Do not await the old client's close here: it belongs to another loop
+        # and may already be closed. Its transport will be reclaimed normally;
+        # the important invariant is that a client is never used cross-loop.
+        self.client = httpx.AsyncClient(timeout=600.0)
+        self._client_loop = current_loop
+        logger.info("kie_ai_http_client_recreated_for_event_loop")
+        return self.client
 
     @staticmethod
     def _extract_task_id(result: dict[str, Any], *, include_record_id: bool = False) -> str | None:
@@ -1239,15 +1274,20 @@ class KieAIProvider:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        # Model catalog entries historically stored both `/jobs/...` and
+        # `/api/v1/jobs/...`.  Normalize at the final request boundary too so
+        # a stale/custom catalog row can never produce `/api/v1/api/v1/...`.
+        relative_endpoint = _clean_endpoint(endpoint)
+        url = f"{self.base_url}/{relative_endpoint}"
 
         logger.info("kie_ai_request", method=method, url=url)
 
         try:
+            client = self._get_client_for_current_loop()
             if method == "POST":
-                response = await self.client.post(url, headers=headers, json=data)
+                response = await client.post(url, headers=headers, json=data)
             elif method == "GET":
-                response = await self.client.get(url, headers=headers, params=data)
+                response = await client.get(url, headers=headers, params=data)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
@@ -1899,7 +1939,7 @@ class KieAIProvider:
                     count=len(ref_urls),
                     field_key=reference_image_input_key,
                     field_type=reference_image_input_type,
-                    urls=ref_urls[:2],
+                    urls=[_redact_url_for_log(url) for url in ref_urls[:2]],
                 )  # Log first 2 for debug
 
         # Add reference style URL if provided
@@ -2300,7 +2340,7 @@ class KieAIProvider:
 
         with open(file_path, "rb") as f:
             files = {"file": (os.path.basename(file_path), f, "image/jpeg")}
-            response = await self.client.post(url, headers=headers, files=files)
+            response = await self._get_client_for_current_loop().post(url, headers=headers, files=files)
             response.raise_for_status()
             return response.json()
 
