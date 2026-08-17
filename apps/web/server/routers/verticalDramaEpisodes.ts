@@ -13211,21 +13211,6 @@ export const verticalDramaEpisodesRouter = router({
           message: "ต้องมีภาพ start frame ของช็อตนี้ก่อนยืนยันตำแหน่งตัวละคร",
         });
       }
-      const videoStartAssetId = Number(frame.videoStartMediaAssetId);
-      const approvedAssetId = Number(frame.approvedMediaAssetId);
-      const activeAssetId =
-        Number.isInteger(videoStartAssetId) && videoStartAssetId > 0
-          ? videoStartAssetId
-          : Number.isInteger(approvedAssetId) && approvedAssetId > 0
-            ? approvedAssetId
-            : undefined;
-      if (!activeAssetId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message:
-            "ภาพยังไม่พร้อมยืนยันตำแหน่ง — เปลี่ยนภาพ ซ่อมภาพ หรือสร้าง Video-Safe frame ก่อน",
-        });
-      }
       const orderedCharacterRefs = input.orderedCharacterRefs.map(key => key.trim());
       const rosterRows = await db
         .select({ characterKey: verticalDramaCharacters.characterKey })
@@ -13237,68 +13222,125 @@ export const verticalDramaEpisodesRouter = router({
             inArray(verticalDramaCharacters.characterKey, orderedCharacterRefs),
           ),
         );
-      const foundKeys = new Set(rosterRows.map(row => row.characterKey));
+      const foundKeys = new Set(
+        rosterRows.map((row: { characterKey: string }) => row.characterKey),
+      );
       if (orderedCharacterRefs.some(key => !foundKeys.has(key))) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "ผังตำแหน่งมีตัวละครที่ไม่อยู่ใน roster ของซีรีส์",
         });
       }
-      const lock: VerticalDramaCastPositionLock = {
-        assetId: String(activeAssetId),
-        orderedCharacterRefs,
-        confirmedAt: new Date().toISOString(),
-      };
-      const validation = validateVerticalDramaCastPositionLock({
-        lock,
-        activeAssetId: String(activeAssetId),
-        requiredCharacterRefs: frame.requiredCharacterRefs ?? [],
-      });
-      if (!validation.valid) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "ต้องเลือกตัวละครทุกตัวในช็อตให้ครบหนึ่งครั้งและเรียงจากซ้ายไปขวาโดยไม่ซ้ำกัน",
-        });
-      }
-      const frameIndex = plan.frames.findIndex(f => f.shotNumber === input.shotNumber);
-      const updatedFrames = plan.frames.slice();
-      updatedFrames[frameIndex] = { ...frame, castPositionLock: lock };
-      const updatedPlan: VerticalDramaStartFramePlan = {
-        ...plan,
-        frames: updatedFrames,
-      };
-      const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
-      const updatedPack = existingPack
-        ? {
-            ...existingPack,
-            clips: existingPack.clips.filter(
-              clip =>
-                !(
-                  clip.sourceShotNumbers?.includes(input.shotNumber) ||
-                  clip.parentShotNumber === input.shotNumber ||
-                  clip.clipNumber === input.shotNumber
-                ),
+      // Position confirmation can race with saving a shot-specific identity
+      // description. Lock and re-read the row so this update always merges
+      // with the latest frame instead of writing a stale JSON snapshot that
+      // drops the newly saved description.
+      const updatedPlan = await db.transaction(async tx => {
+        const [freshRow] = await tx
+          .select()
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
             ),
-          }
-        : existingPack;
-      await db
-        .update(verticalDramaEpisodes)
-        .set({
-          startFramePlan: updatedPlan,
-          ...(updatedPack
-            ? { motionPromptPack: updatedPack as VerticalDramaMotionPromptPack }
-            : {}),
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(verticalDramaEpisodes.id, episodeId),
-            eq(verticalDramaEpisodes.tenantId, tenantId),
-            eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId),
-          ),
-        );
+          )
+          .for("update")
+          .limit(1);
+        const freshPlan =
+          (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
+          null;
+        const freshFrameIndex =
+          freshPlan?.frames?.findIndex(
+            candidate => candidate.shotNumber === input.shotNumber,
+          ) ?? -1;
+        const freshFrame =
+          freshPlan && freshFrameIndex >= 0
+            ? freshPlan.frames[freshFrameIndex]
+            : undefined;
+        if (!freshRow || !freshPlan || !freshFrame) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "ต้องมีภาพ start frame ของช็อตนี้ก่อนยืนยันตำแหน่งตัวละคร",
+          });
+        }
+        const videoStartAssetId = Number(freshFrame.videoStartMediaAssetId);
+        const approvedAssetId = Number(freshFrame.approvedMediaAssetId);
+        const activeAssetId =
+          Number.isInteger(videoStartAssetId) && videoStartAssetId > 0
+            ? videoStartAssetId
+            : Number.isInteger(approvedAssetId) && approvedAssetId > 0
+              ? approvedAssetId
+              : undefined;
+        if (!activeAssetId) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "ภาพยังไม่พร้อมยืนยันตำแหน่ง — เปลี่ยนภาพ ซ่อมภาพ หรือสร้าง Video-Safe frame ก่อน",
+          });
+        }
+        const lock: VerticalDramaCastPositionLock = {
+          assetId: String(activeAssetId),
+          orderedCharacterRefs,
+          confirmedAt: new Date().toISOString(),
+        };
+        const validation = validateVerticalDramaCastPositionLock({
+          lock,
+          activeAssetId: String(activeAssetId),
+          requiredCharacterRefs: freshFrame.requiredCharacterRefs ?? [],
+        });
+        if (!validation.valid) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "ต้องเลือกตัวละครทุกตัวในช็อตให้ครบหนึ่งครั้งและเรียงจากซ้ายไปขวาโดยไม่ซ้ำกัน",
+          });
+        }
+        const updatedFrames = freshPlan.frames.slice();
+        updatedFrames[freshFrameIndex] = {
+          ...freshFrame,
+          castPositionLock: lock,
+        };
+        const nextPlan: VerticalDramaStartFramePlan = {
+          ...freshPlan,
+          frames: updatedFrames,
+        };
+        const existingPack =
+          freshRow.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const updatedPack = existingPack
+          ? {
+              ...existingPack,
+              clips: existingPack.clips.filter(
+                clip =>
+                  !(
+                    clip.sourceShotNumbers?.includes(input.shotNumber) ||
+                    clip.parentShotNumber === input.shotNumber ||
+                    clip.clipNumber === input.shotNumber
+                  ),
+              ),
+            }
+          : existingPack;
+        await tx
+          .update(verticalDramaEpisodes)
+          .set({
+            startFramePlan: nextPlan,
+            ...(updatedPack
+              ? { motionPromptPack: updatedPack as VerticalDramaMotionPromptPack }
+              : {}),
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+            ),
+          );
+        return nextPlan;
+      });
       return { startFramePlan: updatedPlan };
     }),
 
@@ -13326,72 +13368,94 @@ export const verticalDramaEpisodesRouter = router({
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
       const episodeId = parseId(input.episodeId, "episode id");
-      const row = await loadOwnedEpisode({
+      await loadOwnedEpisode({
         tenantId,
         userId,
         seriesId,
         episodeId,
       });
-      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
-      const frameIndex = plan?.frames?.findIndex(
-        frame => frame.shotNumber === input.shotNumber,
-      ) ?? -1;
-      if (!plan || frameIndex < 0) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "ไม่พบภาพเริ่มต้นของช็อตนี้",
-        });
-      }
-      const frame = plan.frames[frameIndex];
-      const overrides = normalizeVerticalDramaCharacterDescriptionOverrides(
-        input.overrides,
-        frame.requiredCharacterRefs ?? [],
-      );
-      const updatedFrame = {
-        ...frame,
-        ...(Object.keys(overrides).length > 0
-          ? { characterDescriptionOverrides: overrides }
-          : { characterDescriptionOverrides: undefined }),
-      };
-      const updatedPlan: VerticalDramaStartFramePlan = {
-        ...plan,
-        frames: plan.frames.map((entry, index) =>
-          index === frameIndex ? updatedFrame : entry,
-        ),
-      };
-      const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
-      const updatedPack = existingPack
-        ? {
-            ...existingPack,
-            clips: existingPack.clips.filter(
-              clip =>
-                !(
-                  clip.sourceShotNumbers?.includes(input.shotNumber) ||
-                  clip.parentShotNumber === input.shotNumber ||
-                  clip.clipNumber === input.shotNumber
-                ),
+      // Serialize this JSON snapshot update with cast-position confirmation.
+      // Both controls edit the same frame, so the latest locked row must be
+      // the source of truth or one fast click can erase the other field.
+      return db.transaction(async tx => {
+        const [freshRow] = await tx
+          .select()
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
             ),
-          }
-        : existingPack;
-      await db
-        .update(verticalDramaEpisodes)
-        .set({
-          startFramePlan: updatedPlan,
-          ...(updatedPack ? { motionPromptPack: updatedPack } : {}),
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(verticalDramaEpisodes.id, episodeId),
-            eq(verticalDramaEpisodes.tenantId, tenantId),
-            eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId),
-          ),
+          )
+          .for("update")
+          .limit(1);
+        const plan =
+          (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
+          null;
+        const frameIndex =
+          plan?.frames?.findIndex(
+            frame => frame.shotNumber === input.shotNumber,
+          ) ?? -1;
+        if (!freshRow || !plan || frameIndex < 0) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "ไม่พบภาพเริ่มต้นของช็อตนี้",
+          });
+        }
+        const frame = plan.frames[frameIndex];
+        const overrides = normalizeVerticalDramaCharacterDescriptionOverrides(
+          input.overrides,
+          frame.requiredCharacterRefs ?? [],
         );
-      return {
-        startFramePlan: updatedPlan,
-        overrides: overrides as VerticalDramaCharacterDescriptionOverrides,
-      };
+        const updatedFrame = {
+          ...frame,
+          ...(Object.keys(overrides).length > 0
+            ? { characterDescriptionOverrides: overrides }
+            : { characterDescriptionOverrides: undefined }),
+        };
+        const updatedPlan: VerticalDramaStartFramePlan = {
+          ...plan,
+          frames: plan.frames.map((entry, index) =>
+            index === frameIndex ? updatedFrame : entry,
+          ),
+        };
+        const existingPack =
+          freshRow.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const updatedPack = existingPack
+          ? {
+              ...existingPack,
+              clips: existingPack.clips.filter(
+                clip =>
+                  !(
+                    clip.sourceShotNumbers?.includes(input.shotNumber) ||
+                    clip.parentShotNumber === input.shotNumber ||
+                    clip.clipNumber === input.shotNumber
+                  ),
+              ),
+            }
+          : existingPack;
+        await tx
+          .update(verticalDramaEpisodes)
+          .set({
+            startFramePlan: updatedPlan,
+            ...(updatedPack ? { motionPromptPack: updatedPack } : {}),
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+            ),
+          );
+        return {
+          startFramePlan: updatedPlan,
+          overrides: overrides as VerticalDramaCharacterDescriptionOverrides,
+        };
+      });
     }),
 
   /**

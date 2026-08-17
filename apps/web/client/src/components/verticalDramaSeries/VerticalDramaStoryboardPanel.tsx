@@ -11848,18 +11848,26 @@ function ShotCharacterDescriptionEditor({
   saving: boolean;
   canSave: boolean;
 }) {
+  // `characterKeys` and `initialOverrides` are rebuilt from the parent shot
+  // view whenever another control (for example cast-position selection)
+  // changes. Depend on their value, rather than those transient object
+  // identities, so an unrelated parent render cannot discard text the user
+  // has typed but has not saved yet.
+  const characterKeysSignature = characterKeys.join("\u0000");
+  const initialOverridesSignature = JSON.stringify(initialOverrides ?? {});
   const normalizedInitial = useMemo(
     () =>
       normalizeVerticalDramaCharacterDescriptionOverrides(
         initialOverrides,
         characterKeys
       ),
-    [initialOverrides, characterKeys]
+    [initialOverridesSignature, characterKeysSignature]
   );
+  const normalizedInitialSignature = JSON.stringify(normalizedInitial);
   const [draft, setDraft] = useState(normalizedInitial);
   useEffect(() => {
     setDraft(normalizedInitial);
-  }, [normalizedInitial]);
+  }, [normalizedInitial, normalizedInitialSignature]);
   const hasChanges =
     JSON.stringify(draft) !== JSON.stringify(normalizedInitial);
 
