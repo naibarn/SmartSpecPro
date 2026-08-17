@@ -1488,9 +1488,15 @@ def handle_render_mp4(spec: dict, tmp_dir: str, runner=None) -> dict:
     if not safe_filename.lower().endswith(".mp4"):
         safe_filename += ".mp4"
 
-    # Write to media_storage/renders/{userId}/{jobId}/{filename}
+    # Tenant-scoped jobs use media_storage/renders/{tenantId}/{userId}/{jobId}/{filename}.
+    # Keep the legacy user-only layout when older specs do not carry a tenant.
     media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    render_dir = os.path.join(media_storage_path, "renders", user_id, job_id)
+    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
+    render_parts = [media_storage_path, "renders"]
+    if tenant_id:
+        render_parts.append(tenant_id)
+    render_parts.extend([user_id, job_id])
+    render_dir = os.path.join(*render_parts)
     os.makedirs(render_dir, exist_ok=True)
     output_path = os.path.join(render_dir, safe_filename)
 
@@ -1652,7 +1658,11 @@ def handle_render_mp4(spec: dict, tmp_dir: str, runner=None) -> dict:
         )
 
     # Return serveable URL (Python backend serves this via /api/v1/media/files/renders/)
-    serve_url = f"/api/v1/media/files/renders/{user_id}/{job_id}/{safe_filename}"
+    serve_url = (
+        f"/api/v1/media/files/renders/{tenant_id}/{user_id}/{job_id}/{safe_filename}"
+        if tenant_id
+        else f"/api/v1/media/files/renders/{user_id}/{job_id}/{safe_filename}"
+    )
     result: dict[str, Any] = {
         "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
     }
@@ -2236,7 +2246,7 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     without re-encoding (no quality loss). Otherwise, transcodes to
     H.264 High profile with CRF 23 (good quality/size balance).
 
-    Output is stored in media_storage/transcoded/{userId}/{jobId}/.
+    Output is stored in a tenant-scoped directory when tenant metadata is present.
     """
     job_id = spec["jobId"]
     user_id = str(spec.get("_userId", "unknown"))
@@ -2270,7 +2280,12 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     # Build output path
     media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    transcode_dir = os.path.join(media_storage_path, "transcoded", user_id, job_id)
+    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
+    transcode_parts = [media_storage_path, "transcoded"]
+    if tenant_id:
+        transcode_parts.append(tenant_id)
+    transcode_parts.extend([user_id, job_id])
+    transcode_dir = os.path.join(*transcode_parts)
     os.makedirs(transcode_dir, exist_ok=True)
 
     # Use original filename with _h264 suffix
@@ -2331,7 +2346,11 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     report_progress(job_id, 0.95, "finalizing", "Finalizing transcoded file")
 
     # Return serveable URL
-    serve_url = f"/api/v1/media/files/transcoded/{user_id}/{job_id}/{output_filename}"
+    serve_url = (
+        f"/api/v1/media/files/transcoded/{tenant_id}/{user_id}/{job_id}/{output_filename}"
+        if tenant_id
+        else f"/api/v1/media/files/transcoded/{user_id}/{job_id}/{output_filename}"
+    )
     return {
         "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
         "derived": {
@@ -2351,7 +2370,7 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Extract audio track from a video file to AAC/M4A.
 
     Uses FFmpeg to copy or re-encode the audio stream without the video.
-    Output is stored in media_storage/audio_extracts/{userId}/{jobId}/.
+    Output is stored in a tenant-scoped directory when tenant metadata is present.
     """
     job_id = spec["jobId"]
     user_id = str(spec.get("_userId", "unknown"))
@@ -2375,7 +2394,12 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     # Build output path
     media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    extract_dir = os.path.join(media_storage_path, "audio_extracts", user_id, job_id)
+    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
+    extract_parts = [media_storage_path, "audio_extracts"]
+    if tenant_id:
+        extract_parts.append(tenant_id)
+    extract_parts.extend([user_id, job_id])
+    extract_dir = os.path.join(*extract_parts)
     os.makedirs(extract_dir, exist_ok=True)
     output_filename = "audio.m4a"
     output_path = os.path.join(extract_dir, output_filename)
@@ -2417,7 +2441,11 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.95, "finalizing", "Finalizing extracted audio")
 
-    serve_url = f"/api/v1/media/files/audio_extracts/{user_id}/{job_id}/{output_filename}"
+    serve_url = (
+        f"/api/v1/media/files/audio_extracts/{tenant_id}/{user_id}/{job_id}/{output_filename}"
+        if tenant_id
+        else f"/api/v1/media/files/audio_extracts/{user_id}/{job_id}/{output_filename}"
+    )
     return {
         "artifacts": [{"kind": "audio", "uri": serve_url, "mime": "audio/mp4"}],
         "derived": {
@@ -2485,6 +2513,7 @@ async def _persist_render_to_db(
         task = MediaTask(
             id=db_id,
             user_id=int(user_id),
+            tenant_id=spec.get("tenantId") or spec.get("tenant_id"),
             media_type="video",
             status="completed",
             model="ffmpeg-render",

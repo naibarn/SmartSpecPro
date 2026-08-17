@@ -2803,7 +2803,7 @@ export const agencyRouter = router({
           count: expiredCount,
         });
       }
-      const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken);
+      const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken, tenantId, userId);
 
       if (!result.conversationId) {
         throw new TRPCError({
@@ -2864,7 +2864,7 @@ export const agencyRouter = router({
           count: expiredCount,
         });
       }
-      const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken);
+      const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken, tenantId, userId);
 
       if (!result.conversationId) {
         throw new TRPCError({
@@ -3062,7 +3062,8 @@ export const agencyRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userToken = ctx.userToken ?? "";
-      await agencyBridge.cancelRun(input.agencyId, input.runId, userToken);
+      const tenantId = resolveTenantId(ctx);
+      await agencyBridge.cancelRun(input.agencyId, input.runId, userToken, tenantId, ctx.user!.id);
       return { success: true };
     }),
 
@@ -3441,10 +3442,10 @@ export const agencyRouter = router({
           const runs = await agencyBridge.listRuns(agency.id, userToken, {
             status: "running,queued",
             limit: 100,
-          });
+          }, input.tenantId, ctx.user!.id);
           for (const run of runs.runs) {
             try {
-              await agencyBridge.cancelRun(agency.id, run.id, userToken);
+              await agencyBridge.cancelRun(agency.id, run.id, userToken, input.tenantId, ctx.user!.id);
               cancelledCount++;
             } catch {
               // Continue cancelling other runs

@@ -3564,7 +3564,7 @@ export async function generatePresentationSlideDraft(
             extraParams: slidePayload as unknown as Record<string, unknown>,
           },
           input.userId,
-          createInternalTokenFromAuth({ userId: input.userId }, ["skill:execute"]),
+          createInternalTokenFromAuth({ userId: input.userId, tenantId: input.tenantId }, ["skill:execute"]),
           input.tenantId,
         );
 
@@ -3823,7 +3823,7 @@ async function generateArticleWithAgency(
     source: "web",
   });
 
-  const userToken = createInternalTokenFromAuth({ userId: input.userId }, ["agency:run"]);
+  const userToken = createInternalTokenFromAuth({ userId: input.userId, tenantId: input.tenantId }, ["agency:run"]);
   const result = await agencyBridge.executeRun({
     agencyId: agency.id,
     conversationId,

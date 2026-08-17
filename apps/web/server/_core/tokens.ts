@@ -63,7 +63,9 @@ export interface TokenClaims {
  */
 export async function verifyBearerToken(token: string): Promise<TokenClaims> {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenClaims;
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+    }) as TokenClaims;
     return decoded;
   } catch (error: any) {
     throw new Error(`Invalid token: ${error.message}`);
@@ -78,7 +80,10 @@ export async function verifyBearerToken(token: string): Promise<TokenClaims> {
  */
 export async function verifyBearerTokenIgnoringExpiration(token: string): Promise<TokenClaims> {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as TokenClaims;
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+      ignoreExpiration: true,
+    }) as TokenClaims;
     return decoded;
   } catch (error: any) {
     throw new Error(`Invalid token: ${error.message}`);
@@ -95,9 +100,7 @@ export function signBearerToken(
   claims: TokenClaims,
   expiresIn: SignOptions["expiresIn"] = "1h",
 ): string {
-  return expiresIn == null
-    ? jwt.sign(claims, JWT_SECRET)
-    : jwt.sign(claims, JWT_SECRET, { expiresIn });
+  return jwt.sign(claims, JWT_SECRET, { expiresIn: expiresIn ?? "1h", algorithm: "HS256" });
 }
 
 /**
@@ -178,12 +181,15 @@ export function getDefaultScopes(): string[] {
  * (e.g., Python backend communication via X-User-Token header).
  */
 export function createInternalTokenFromAuth(
-  auth: { userId: number },
+  auth: { userId: number; tenantId?: string | null },
   scopes?: string[],
 ): string {
   return signBearerToken(
     {
       sub: String(auth.userId),
+      ...(auth.tenantId ? { tenantId: auth.tenantId } : {}),
+      aud: "smartspec-internal-service",
+      tokenUse: "internal_service",
       type: "access",
       scopes: scopes ?? ["media:generate", "presentation:export"],
       jti: `api_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,

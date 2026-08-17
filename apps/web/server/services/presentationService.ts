@@ -572,6 +572,7 @@ async function pollAudioTaskToCompletion(
       userToken,
       {
         userId: actor.userId,
+        tenantId: actor.tenantId,
         source: "presentation.generateSlideAudioFromSavedNote",
         stage: "poll",
       },

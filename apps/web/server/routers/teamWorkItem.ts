@@ -28,7 +28,7 @@ const citationRefSchema = z.object({
   note: z.string().optional(),
 });
 
-function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
+function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: string | number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
   if (!tid) throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });
   return tid;

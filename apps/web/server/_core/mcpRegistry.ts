@@ -1515,7 +1515,8 @@ async function getMediaStatus(args: Record<string, unknown>, ctx: McpExecutionCo
   }
   const task = await mediaGenerationService.getTask(
     taskId,
-    createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate"]),
+    createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate"]),
+    { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp.media.status" },
   );
   return {
     id: task.id,
@@ -1808,7 +1809,8 @@ async function getVideoProject(args: Record<string, unknown>, ctx: McpExecutionC
   }
   const task = await mediaGenerationService.getTask(
     projectId,
-    createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate"]),
+    createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate"]),
+    { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp.video_project.status" },
   );
   return {
     id: task.id,
@@ -1830,7 +1832,8 @@ async function downloadVideoProject(args: Record<string, unknown>, ctx: McpExecu
   }
   const task = await mediaGenerationService.getTask(
     projectId,
-    createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate"]),
+    createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate"]),
+    { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp.video_project.download" },
   );
   if (task.status !== "completed" || !task.resultUrl) {
     throw new Error("Export not ready");

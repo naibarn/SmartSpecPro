@@ -424,7 +424,7 @@ const metricSliceDimensionSchema = z.enum([
   "policy_profile",
 ]);
 
-function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
+function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: string | number | null } | null }): string {
   const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
   if (!tenantId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });

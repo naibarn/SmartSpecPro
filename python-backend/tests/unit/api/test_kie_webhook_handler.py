@@ -73,7 +73,7 @@ async def test_valid_webhook_signature_updates_job_to_done(client):
         MockDedup.return_value.is_duplicate = AsyncMock(return_value=False)
         MockDedup.return_value.mark_processed = AsyncMock()
         MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -88,7 +88,7 @@ async def test_valid_webhook_signature_updates_job_to_done(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["success"] is True
-    MockTaskService.update_task_by_external_id.assert_awaited_once()
+    MockTaskService.update_task_status.assert_awaited_once()
     mock_enqueue.assert_awaited_once()
 
 
@@ -128,7 +128,7 @@ async def test_valid_webhook_enqueues_media_processing_task(client):
         MockDedup.return_value.is_duplicate = AsyncMock(return_value=False)
         MockDedup.return_value.mark_processed = AsyncMock()
         MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)
@@ -297,7 +297,7 @@ async def test_webhook_stores_dedup_key_in_redis(client):
         dedup_instance.is_duplicate = AsyncMock(return_value=False)
         dedup_instance.mark_processed = AsyncMock()
         MockTaskService.get_task_by_external_id = AsyncMock(return_value=mock_task)
-        MockTaskService.update_task_by_external_id = AsyncMock(return_value=mock_task)
+        MockTaskService.update_task_status = AsyncMock(return_value=mock_task)
 
         mock_db = AsyncMock()
         MockSession.return_value.__aenter__ = AsyncMock(return_value=mock_db)

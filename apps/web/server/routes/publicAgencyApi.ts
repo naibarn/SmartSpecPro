@@ -263,7 +263,7 @@ export function createPublicAgencyRouter(): Router {
             } as any);
           }
 
-          const userToken = createInternalTokenFromAuth({ userId });
+          const userToken = createInternalTokenFromAuth({ userId, tenantId });
 
           try {
             const result = await agencyBridge.executeRun({
@@ -415,8 +415,8 @@ export function createPublicAgencyRouter(): Router {
 
         // Fetch run details and emit as SSE
         try {
-          const userToken = createInternalTokenFromAuth({ userId });
-          const result = await agencyBridge.getRunDetails(agencyId, runId, userToken);
+          const userToken = createInternalTokenFromAuth({ userId, tenantId });
+          const result = await agencyBridge.getRunDetails(agencyId, runId, userToken, tenantId, userId);
           res.write(`data: ${JSON.stringify({ type: "run_status", data: result })}\n\n`);
         } catch (e) {
           res.write(
@@ -455,8 +455,8 @@ export function createPublicAgencyRouter(): Router {
           return;
         }
 
-        const userToken = createInternalTokenFromAuth({ userId });
-        const result = await agencyBridge.getRunDetails(agencyId, runId, userToken);
+        const userToken = createInternalTokenFromAuth({ userId, tenantId });
+        const result = await agencyBridge.getRunDetails(agencyId, runId, userToken, tenantId, userId);
 
         res.json({
           run_id: result.runId,

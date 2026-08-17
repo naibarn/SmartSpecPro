@@ -2088,7 +2088,7 @@ async function refreshVideoTasks(
   pipeline: AutoTeamMediaPipelineState,
 ): Promise<AutoTeamMediaPipelineState> {
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   for (const task of pipeline.clipTasks) {
@@ -2096,6 +2096,7 @@ async function refreshVideoTasks(
     try {
       const latest = await mediaGenerationService.getTask(task.taskId, token, {
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         source: "auto_team_media_pipeline",
         stage: "poll_video_task",
       });
@@ -2142,7 +2143,7 @@ async function refreshImageTasks(
   pipeline.imageTasks = pipeline.imageTasks ?? [];
   if (pipeline.imageTasks.length === 0) return pipeline;
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const known = new Set((pipeline.storyboardImages ?? []).map(image => image.url));
@@ -2158,6 +2159,7 @@ async function refreshImageTasks(
     try {
       const latest = await mediaGenerationService.getTask(task.taskId, token, {
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         source: "auto_team_media_pipeline",
         stage: "poll_image_task",
       });
@@ -2229,7 +2231,7 @@ async function repairFailedImageTask(
     return false;
   }
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const repaired = await mediaGenerationService.generateImageAsync(
@@ -2237,6 +2239,12 @@ async function repairFailedImageTask(
       prompt: `${task.prompt}\n\nRepair attempt ${repairAttempts + 1}: regenerate this storyboard keyframe safely and consistently with the project objective.`,
       model: task.model ?? undefined,
       numImages: 1,
+      auditContext: {
+        userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
+        source: "auto_team_media_pipeline",
+        stage: "repair_image_task",
+      },
     } as never,
     token,
   );
@@ -2272,7 +2280,7 @@ async function repairFailedVideoTask(
     return false;
   }
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const referenceImageUrl =
@@ -2287,6 +2295,12 @@ async function repairFailedVideoTask(
       model: task.model ?? undefined,
       duration: task.plannedDurationSeconds ?? 10,
       referenceImageUrls: referenceImageUrl ? [referenceImageUrl] : undefined,
+      auditContext: {
+        userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
+        source: "auto_team_media_pipeline",
+        stage: "repair_video_task",
+      },
     } as never,
     token,
   );
@@ -2343,7 +2357,7 @@ async function queueMissingVideoTasksFromStoryboards(
   }
 
   const token = createInternalTokenFromAuth(
-    { userId: pipeline.userId },
+    { userId: pipeline.userId, tenantId: pipeline.tenantId },
     ["media:generate", "media:read"],
   );
   const clipPlan = resolveAutoTeamClipPlan({
@@ -2369,6 +2383,12 @@ async function queueMissingVideoTasksFromStoryboards(
         prompt,
         duration: clipPlan.durationSeconds,
         referenceImageUrls: storyboard?.url ? [storyboard.url] : undefined,
+        auditContext: {
+          userId: pipeline.userId,
+          tenantId: pipeline.tenantId,
+          source: "auto_team_media_pipeline",
+          stage: "submit_video_task",
+        },
       } as never,
       token,
     );

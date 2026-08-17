@@ -282,7 +282,7 @@ contentComposerStreamRouter.post("/api/content-composer/generate-stream", async 
         source: "web",
       });
 
-      const userToken = createInternalTokenFromAuth({ userId: user.id }, ["agency:run"]);
+      const userToken = createInternalTokenFromAuth({ userId: user.id, tenantId: tenant.id }, ["agency:run"]);
       const result = await agencyBridge.executeRun({
         agencyId: agency.id,
         conversationId,

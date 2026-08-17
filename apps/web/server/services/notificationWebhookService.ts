@@ -341,7 +341,7 @@ export async function deliverWebhook(
             .from(users)
             .where(
               and(
-                eq(users.currentTenantId, parseInt(webhook.tenantId, 10)),
+                eq(users.currentTenantId, webhook.tenantId),
                 eq(users.role, "admin")
               )
             )

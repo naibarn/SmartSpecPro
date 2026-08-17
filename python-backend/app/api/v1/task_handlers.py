@@ -117,7 +117,9 @@ async def poll_job(request: Request):
 
     # 1. Look up job and check if already terminal
     async with AsyncSessionLocal() as db:
-        task = await MediaTaskService.get_task_by_external_id(db, kie_job_id)
+        task = await MediaTaskService.get_task(db, job_id)
+        if task and task.task_id != kie_job_id:
+            task = None
         if not task:
             logger.warning("poll_job_task_not_found", kie_job_id=kie_job_id)
             return JSONResponse(
@@ -219,9 +221,9 @@ async def poll_job(request: Request):
         # 3. Handle completed
         if normalized_state == "success":
             result_url = _extract_first_kie_result_url(status_response)
-            await MediaTaskService.update_task_by_external_id(
+            await MediaTaskService.update_task_status(
                 db,
-                kie_job_id,
+                task.id,
                 TaskStatus.COMPLETED,
                 result_url=result_url,
                 result_data={"kie_response": status_response},
@@ -258,9 +260,9 @@ async def poll_job(request: Request):
                 or status_response.get("data", {}).get("errorMessage")
                 or "Task failed on Kie AI"
             )
-            await MediaTaskService.update_task_by_external_id(
+            await MediaTaskService.update_task_status(
                 db,
-                kie_job_id,
+                task.id,
                 TaskStatus.FAILED,
                 error_message=error_msg,
             )
@@ -281,9 +283,9 @@ async def poll_job(request: Request):
         # 5. Still processing — check timeout
         now_ms = int(time.time() * 1000)
         if submitted_at and (now_ms - submitted_at) > POLL_TIMEOUT_MS:
-            await MediaTaskService.update_task_by_external_id(
+            await MediaTaskService.update_task_status(
                 db,
-                kie_job_id,
+                task.id,
                 TaskStatus.FAILED,
                 error_message="Polling timeout: job did not complete within 24 hours",
             )
@@ -409,9 +411,9 @@ async def process_media(request: Request):
         }
 
         async with AsyncSessionLocal() as db:
-            await MediaTaskService.update_task_by_external_id(
+            await MediaTaskService.update_task_status(
                 db,
-                kie_job_id or task.task_id,
+                task.id,
                 TaskStatus.COMPLETED,
                 result_url=r2_info["result_url"],
                 result_data=result_data,
@@ -452,9 +454,9 @@ async def process_media(request: Request):
                 status_code=e.response.status_code,
             )
             async with AsyncSessionLocal() as db:
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    kie_job_id or job_id,
+                    task.id,
                     TaskStatus.FAILED,
                     error_message=f"Download failed: HTTP {e.response.status_code}",
                 )
@@ -481,9 +483,9 @@ async def process_media(request: Request):
         )
         if is_dead_letter:
             async with AsyncSessionLocal() as db:
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    kie_job_id or job_id,
+                    task.id,
                     TaskStatus.FAILED,
                     error_message=f"Dead letter: {e}",
                 )
@@ -519,9 +521,9 @@ async def process_media(request: Request):
         # Permanent pipeline error
         logger.error("process_media_pipeline_error", job_id=job_id, error=str(e))
         async with AsyncSessionLocal() as db:
-            await MediaTaskService.update_task_by_external_id(
+            await MediaTaskService.update_task_status(
                 db,
-                kie_job_id or job_id,
+                task.id,
                 TaskStatus.FAILED,
                 error_message=str(e),
             )

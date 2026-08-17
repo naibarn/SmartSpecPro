@@ -448,6 +448,7 @@ export async function pollMediaJob(
     .where(eq(autoTeamMediaJobRefs.id, jobRef.id))
     .limit(1);
   const task = await mediaGenerationService.getTask(jobRef.providerTaskId, jobRef.userToken, {
+    tenantId: jobRef.tenantId,
     source: "auto_team_media_execution",
   });
   const nextStatus =

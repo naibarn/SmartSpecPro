@@ -120,6 +120,7 @@ class MediaTaskService:
         task = MediaTask(
             id=str(uuid.uuid4()),
             user_id=user.id,
+            tenant_id=getattr(user, "currentTenantId", None),
             media_type=media_type_value,
             status=TaskStatus.PENDING.value,
             model=model,
@@ -133,12 +134,17 @@ class MediaTaskService:
 
     @staticmethod
     async def get_task(
-        db: AsyncSession, task_id: str, user_id: Optional[str] = None
+        db: AsyncSession,
+        task_id: str,
+        user_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> Optional[MediaTask]:
         """Get a task by ID, optionally filtered by user"""
         query = select(MediaTask).where(MediaTask.id == task_id)
         if user_id:
             query = query.where(MediaTask.user_id == user_id)
+        if tenant_id:
+            query = query.where(MediaTask.tenant_id == tenant_id)
 
         result = await db.execute(query)
         return result.scalar_one_or_none()
@@ -154,9 +160,10 @@ class MediaTaskService:
         credits_used: Optional[int] = None,
         credits_balance: Optional[int] = None,
         external_task_id: Optional[str] = None,
+        tenant_id: Optional[str] = None,
     ) -> Optional[MediaTask]:
         """Update task status and results"""
-        task = await MediaTaskService.get_task(db, task_id)
+        task = await MediaTaskService.get_task(db, task_id, tenant_id=tenant_id)
         if not task:
             return None
 
@@ -197,9 +204,11 @@ class MediaTaskService:
         return task
 
     @staticmethod
-    async def cancel_task(db: AsyncSession, task_id: str, user_id: str) -> Optional[MediaTask]:
+    async def cancel_task(
+        db: AsyncSession, task_id: str, user_id: str, tenant_id: Optional[str] = None
+    ) -> Optional[MediaTask]:
         """Cancel a pending or processing task"""
-        task = await MediaTaskService.get_task(db, task_id, user_id)
+        task = await MediaTaskService.get_task(db, task_id, user_id, tenant_id)
         if not task:
             return None
 
@@ -207,12 +216,19 @@ class MediaTaskService:
         if task.status not in [TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]:
             return None
 
-        return await MediaTaskService.update_task_status(db, task_id, TaskStatus.CANCELLED)
+        return await MediaTaskService.update_task_status(
+            db,
+            task_id,
+            TaskStatus.CANCELLED,
+            tenant_id=tenant_id,
+        )
 
     @staticmethod
-    async def delete_task(db: AsyncSession, task_id: str, user_id: str) -> bool:
+    async def delete_task(
+        db: AsyncSession, task_id: str, user_id: str, tenant_id: Optional[str] = None
+    ) -> bool:
         """Delete a task from the database"""
-        task = await MediaTaskService.get_task(db, task_id, user_id)
+        task = await MediaTaskService.get_task(db, task_id, user_id, tenant_id)
         if not task:
             return False
 
@@ -233,9 +249,12 @@ class MediaTaskService:
         limit: int = 50,
         offset: int = 0,
         days_ago: Optional[int] = None,
+        tenant_id: Optional[str] = None,
     ) -> List[MediaTask]:
         """List tasks for a user with optional filters"""
         query = select(MediaTask).where(MediaTask.user_id == user_id)
+        if tenant_id:
+            query = query.where(MediaTask.tenant_id == tenant_id)
 
         if media_type:
             # Convert enum to string value for comparison
@@ -266,11 +285,14 @@ class MediaTaskService:
         media_type: Optional[MediaType] = None,
         status: Optional[TaskStatus] = None,
         days_ago: Optional[int] = None,
+        tenant_id: Optional[str] = None,
     ) -> int:
         """Get count of tasks for a user"""
         from sqlalchemy import func
 
         query = select(func.count(MediaTask.id)).where(MediaTask.user_id == user_id)
+        if tenant_id:
+            query = query.where(MediaTask.tenant_id == tenant_id)
 
         if media_type:
             # Convert enum to string value for comparison
@@ -342,10 +364,14 @@ class MediaTaskService:
 
     @staticmethod
     async def get_task_by_external_id(
-        db: AsyncSession, external_task_id: str
+        db: AsyncSession,
+        external_task_id: str,
+        tenant_id: Optional[str] = None,
     ) -> Optional[MediaTask]:
         """Get a task by external provider task ID (e.g., Kie.ai task ID)"""
         query = select(MediaTask).where(MediaTask.task_id == external_task_id)
+        if tenant_id:
+            query = query.where(MediaTask.tenant_id == tenant_id)
         result = await db.execute(query)
         return result.scalar_one_or_none()
 
@@ -354,6 +380,7 @@ class MediaTaskService:
         db: AsyncSession,
         external_task_id: str,
         status: TaskStatus,
+        tenant_id: Optional[str] = None,
         result_url: Optional[str] = None,
         result_data: Optional[dict] = None,
         error_message: Optional[str] = None,
@@ -364,7 +391,7 @@ class MediaTaskService:
         if not external_task_id:
             raise ValueError("external_task_id (provider_task_id) is required")
 
-        task = await MediaTaskService.get_task_by_external_id(db, external_task_id)
+        task = await MediaTaskService.get_task_by_external_id(db, external_task_id, tenant_id)
         if not task:
             return None
 

@@ -376,6 +376,7 @@ export async function addMediaTaskToLibrary(
     input.userToken,
     {
       userId: actor.userId,
+      tenantId: String(actor.tenantId),
       traceId: `media_library:${input.mediaTaskId}`,
       source: "media_library.addTaskToLibrary",
       stage: "task_lookup",
@@ -391,7 +392,8 @@ export async function addMediaTaskToLibrary(
   const normalizedPrompt = normalizeMediaPrompt(task.prompt);
 
   // Download the external provider URL into our own storage so it never expires
-  // and can be served without CORS issues. Falls back to the original URL on failure.
+  // and can be served without CORS issues. Never persist a provider URL as a
+  // fallback: those URLs are commonly signed and will break after a short TTL.
   let storedUrl: string | null = null;
   if (task.resultUrl) {
     storedUrl = await downloadAndStore(
@@ -401,7 +403,16 @@ export async function addMediaTaskToLibrary(
       actor.tenantId
     );
   }
-  const resolvedSourceUrl = storedUrl ?? task.resultUrl ?? null;
+  const taskResultUrl = task.resultUrl?.trim() || "";
+  const isDurableManagedUrl =
+    taskResultUrl.startsWith("/api/storage/files/") &&
+    !taskResultUrl.includes("?");
+  if (taskResultUrl && !storedUrl && !isDurableManagedUrl) {
+    throw new Error(
+      "Media result could not be copied to durable storage. The Library item was not created; please retry while the provider result is still available.",
+    );
+  }
+  const resolvedSourceUrl = storedUrl ?? (isDurableManagedUrl ? taskResultUrl : null);
 
   const created = await createLibraryItem(
     {

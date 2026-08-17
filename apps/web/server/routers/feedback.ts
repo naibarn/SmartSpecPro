@@ -113,6 +113,7 @@ export const feedbackRouter = router({
           and(
             eq(feedbackTickets.submittedBy, ctx.user.id),
             eq(feedbackTickets.submittedByType, "human"),
+            ...(ctx.tenantId ? [eq(feedbackTickets.tenantId, ctx.tenantId)] : []),
           ),
         )
         .orderBy(desc(feedbackTickets.createdAt))
@@ -129,7 +130,11 @@ export const feedbackRouter = router({
       const tickets = await db
         .select()
         .from(feedbackTickets)
-        .where(and(eq(feedbackTickets.id, input.id), eq(feedbackTickets.submittedBy, ctx.user.id)))
+        .where(and(
+          eq(feedbackTickets.id, input.id),
+          eq(feedbackTickets.submittedBy, ctx.user.id),
+          ...(ctx.tenantId ? [eq(feedbackTickets.tenantId, ctx.tenantId)] : []),
+        ))
         .limit(1);
 
       if (tickets.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
@@ -266,14 +271,20 @@ export const feedbackRouter = router({
       await db
         .update(feedbackTickets)
         .set({ respondedAt: new Date(), updatedAt: new Date() })
-        .where(eq(feedbackTickets.id, input.ticketId));
+        .where(and(
+          eq(feedbackTickets.id, input.ticketId),
+          adminTicketTenantCondition(ctx.tenantId) ?? sql`true`,
+        ));
 
       // Notify the ticket submitter (non-internal comments only)
       if (!input.isInternal) {
         const [ticket] = await db
           .select({ submittedBy: feedbackTickets.submittedBy, title: feedbackTickets.title })
           .from(feedbackTickets)
-          .where(eq(feedbackTickets.id, input.ticketId))
+          .where(and(
+            eq(feedbackTickets.id, input.ticketId),
+            adminTicketTenantCondition(ctx.tenantId) ?? sql`true`,
+          ))
           .limit(1);
 
         if (ticket?.submittedBy && ticket.submittedBy !== ctx.user.id) {
@@ -325,17 +336,27 @@ export const feedbackRouter = router({
         updates.closedAt = new Date();
       }
 
-      await db
+      const tenantCondition = adminTicketTenantCondition(ctx.tenantId);
+      const updateConditions = [eq(feedbackTickets.id, input.ticketId)];
+      if (tenantCondition) updateConditions.push(tenantCondition);
+
+      const updated = await db
         .update(feedbackTickets)
         .set(updates)
-        .where(eq(feedbackTickets.id, input.ticketId));
+        .where(and(...updateConditions))
+        .returning({ id: feedbackTickets.id });
+
+      if (updated.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
 
       // Notify user on meaningful status changes
       if (["resolved", "closed", "in_progress"].includes(input.status)) {
         const [ticket] = await db
           .select({ submittedBy: feedbackTickets.submittedBy, title: feedbackTickets.title })
           .from(feedbackTickets)
-          .where(eq(feedbackTickets.id, input.ticketId))
+          .where(and(
+            eq(feedbackTickets.id, input.ticketId),
+            adminTicketTenantCondition(ctx.tenantId) ?? sql`true`,
+          ))
           .limit(1);
 
         if (ticket?.submittedBy && ticket.submittedBy !== ctx.user.id) {
@@ -420,8 +441,23 @@ export const feedbackRouter = router({
 
       if (!att) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Verify ownership: uploader or admin
       const isAdmin = ctx.user.role === "admin" || ctx.user.role === "domain_admin";
+      const ticketConditions = [eq(feedbackTickets.id, att.ticketId)];
+      if (!isAdmin) ticketConditions.push(eq(feedbackTickets.submittedBy, ctx.user.id));
+      const tenantCondition = isAdmin
+        ? adminTicketTenantCondition(ctx.tenantId)
+        : ctx.tenantId
+          ? eq(feedbackTickets.tenantId, ctx.tenantId)
+          : null;
+      if (tenantCondition) ticketConditions.push(tenantCondition);
+      const [ticket] = await db
+        .select({ id: feedbackTickets.id })
+        .from(feedbackTickets)
+        .where(and(...ticketConditions))
+        .limit(1);
+      if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Verify ownership: uploader or admin
       if (att.uploadedBy !== ctx.user.id && !isAdmin) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to delete this attachment" });
       }
@@ -434,7 +470,10 @@ export const feedbackRouter = router({
       // Delete from DB
       await db
         .delete(feedbackTicketAttachments)
-        .where(eq(feedbackTicketAttachments.id, input.attachmentId));
+        .where(and(
+          eq(feedbackTicketAttachments.id, input.attachmentId),
+          eq(feedbackTicketAttachments.ticketId, ticket.id),
+        ));
 
       return { success: true };
     }),

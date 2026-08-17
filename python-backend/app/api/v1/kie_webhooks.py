@@ -134,9 +134,9 @@ async def kie_webhook_handler(request: Request):
                         "result_url": result_url,
                     },
                 })
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    kie_job_id,
+                    task.id,
                     TaskStatus.COMPLETED,
                     result_url=result_url,
                     result_data=result_data,
@@ -160,9 +160,9 @@ async def kie_webhook_handler(request: Request):
                 )
                 should_enqueue_processing = False
             else:
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    kie_job_id,
+                    task.id,
                     TaskStatus.COMPLETED,
                     result_url=result_url,
                     result_data={"webhook_payload": redacted_body},
@@ -197,9 +197,9 @@ async def kie_webhook_handler(request: Request):
                 or body.get("error")
                 or "Task failed on Kie AI"
             )
-            await MediaTaskService.update_task_by_external_id(
+            await MediaTaskService.update_task_status(
                 db,
-                kie_job_id,
+                task.id,
                 TaskStatus.FAILED,
                 error_message=error_msg,
             )

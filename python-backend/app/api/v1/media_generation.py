@@ -892,7 +892,8 @@ async def list_tasks(
         status=status_enum,
         limit=limit,
         offset=offset,
-        days_ago=days_ago
+        days_ago=days_ago,
+        tenant_id=current_user.currentTenantId,
     )
 
     total = await MediaTaskService.get_task_count(
@@ -900,7 +901,8 @@ async def list_tasks(
         current_user.id,
         media_type=media_type_enum,
         status=status_enum,
-        days_ago=days_ago
+        days_ago=days_ago,
+        tenant_id=current_user.currentTenantId,
     )
 
     return TaskListResponse(
@@ -921,7 +923,7 @@ async def get_task_status(
     Get the status of a media generation task.
     Supports polling for async task completion.
     """
-    task = await MediaTaskService.get_task(db, task_id, current_user.id)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -941,7 +943,7 @@ async def cancel_task(
     Cancel a pending or processing task.
     Only the task owner can cancel it.
     """
-    task = await MediaTaskService.cancel_task(db, task_id, current_user.id)
+    task = await MediaTaskService.cancel_task(db, task_id, current_user.id, current_user.currentTenantId)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -962,7 +964,7 @@ async def delete_task(
     Only allows deletion of tasks that belong to the current user.
     """
     # Get task to verify ownership
-    task = await MediaTaskService.get_task(db, task_id, current_user.id)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -970,7 +972,7 @@ async def delete_task(
         )
 
     # Delete the task
-    success = await MediaTaskService.delete_task(db, task_id, current_user.id)
+    success = await MediaTaskService.delete_task(db, task_id, current_user.id, current_user.currentTenantId)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -996,7 +998,7 @@ async def fetch_task_result(
     - User wants to manually check status
     """
     # Get our task from database
-    task = await MediaTaskService.get_task(db, task_id, current_user.id)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1702,7 +1704,7 @@ async def download_media(
     Download generated media file.
     Only the task owner can download.
     """
-    task = await MediaTaskService.get_task(db, task_id, current_user.id)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1736,6 +1738,50 @@ async def download_media(
 
 # ==================== Render File Serving ====================
 
+def _serve_media_file(
+    media_kind: str,
+    user_id: str,
+    job_id: str,
+    filename: str,
+    current_user: User,
+    tenant_id: str | None = None,
+):
+    """Serve a media file while retaining compatibility with legacy paths."""
+    is_admin = getattr(current_user, "role", None) == "admin"
+    if str(current_user.id) != user_id and not is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if tenant_id and str(getattr(current_user, "currentTenantId", "")) != tenant_id and not is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied")
+
+    safe_filename = os.path.basename(filename)
+    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+    path_parts = [media_storage, media_kind]
+    if tenant_id:
+        path_parts.append(tenant_id)
+    path_parts.extend([user_id, job_id, safe_filename])
+    file_path = os.path.join(*path_parts)
+
+    real_path = os.path.realpath(file_path)
+    real_base = os.path.realpath(media_storage)
+    if not real_path.startswith(real_base + os.sep):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
+    if not os.path.isfile(real_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    media_type = "audio/mpeg" if media_kind == "audio_extracts" else "video/mp4"
+    return FileResponse(real_path, media_type=media_type, filename=safe_filename)
+
+
+@router.get("/files/renders/{tenant_id}/{user_id}/{job_id}/{filename}")
+async def serve_tenant_render_file(
+    tenant_id: str,
+    user_id: str,
+    job_id: str,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    return _serve_media_file("renders", user_id, job_id, filename, current_user, tenant_id)
+
 @router.get("/files/renders/{user_id}/{job_id}/{filename}")
 async def serve_render_file(
     user_id: str,
@@ -1747,24 +1793,18 @@ async def serve_render_file(
     Serve a rendered video file from media_storage/renders/.
     Only the file owner (or admin) can access.
     """
-    # Ownership check
-    if str(current_user.id) != user_id and getattr(current_user, "role", None) != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return _serve_media_file("renders", user_id, job_id, filename, current_user)
 
-    # Path traversal prevention — use only the basename
-    safe_filename = os.path.basename(filename)
-    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    file_path = os.path.join(media_storage, "renders", user_id, job_id, safe_filename)
 
-    real_path = os.path.realpath(file_path)
-    real_base = os.path.realpath(media_storage)
-    if not real_path.startswith(real_base + os.sep):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
-
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
-    return FileResponse(file_path, media_type="video/mp4", filename=safe_filename)
+@router.get("/files/transcoded/{tenant_id}/{user_id}/{job_id}/{filename}")
+async def serve_tenant_transcoded_file(
+    tenant_id: str,
+    user_id: str,
+    job_id: str,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    return _serve_media_file("transcoded", user_id, job_id, filename, current_user, tenant_id)
 
 
 @router.get("/files/transcoded/{user_id}/{job_id}/{filename}")
@@ -1778,22 +1818,18 @@ async def serve_transcoded_file(
     Serve a transcoded video file from media_storage/transcoded/.
     Only the file owner (or admin) can access.
     """
-    if str(current_user.id) != user_id and getattr(current_user, "role", None) != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return _serve_media_file("transcoded", user_id, job_id, filename, current_user)
 
-    safe_filename = os.path.basename(filename)
-    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    file_path = os.path.join(media_storage, "transcoded", user_id, job_id, safe_filename)
 
-    real_path = os.path.realpath(file_path)
-    real_base = os.path.realpath(media_storage)
-    if not real_path.startswith(real_base + os.sep):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
-
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
-    return FileResponse(file_path, media_type="video/mp4", filename=safe_filename)
+@router.get("/files/audio_extracts/{tenant_id}/{user_id}/{job_id}/{filename}")
+async def serve_tenant_audio_extract_file(
+    tenant_id: str,
+    user_id: str,
+    job_id: str,
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    return _serve_media_file("audio_extracts", user_id, job_id, filename, current_user, tenant_id)
 
 
 @router.get("/files/audio_extracts/{user_id}/{job_id}/{filename}")
@@ -1807,22 +1843,7 @@ async def serve_audio_extract_file(
     Serve an extracted audio file from media_storage/audio_extracts/.
     Only the file owner (or admin) can access.
     """
-    if str(current_user.id) != user_id and getattr(current_user, "role", None) != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-    safe_filename = os.path.basename(filename)
-    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    file_path = os.path.join(media_storage, "audio_extracts", user_id, job_id, safe_filename)
-
-    real_path = os.path.realpath(file_path)
-    real_base = os.path.realpath(media_storage)
-    if not real_path.startswith(real_base + os.sep):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
-
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
-    return FileResponse(file_path, media_type="audio/mp4", filename=safe_filename)
+    return _serve_media_file("audio_extracts", user_id, job_id, filename, current_user)
 
 
 # ==================== Async Endpoints with Celery ====================
@@ -2215,9 +2236,9 @@ async def kie_ai_callback(
                             },
                         },
                     )
-                    await MediaTaskService.update_task_by_external_id(
+                    await MediaTaskService.update_task_status(
                         db,
-                        task_id,
+                        task_record.id,
                         TaskStatus.COMPLETED,
                         result_url=result_url,
                         result_data=result_data,
@@ -2237,17 +2258,17 @@ async def kie_ai_callback(
                         original_response=body,
                     )
                 else:
-                    await MediaTaskService.update_task_by_external_id(
+                    await MediaTaskService.update_task_status(
                         db,
-                        task_id,
+                        task_record.id,
                         TaskStatus.COMPLETED,
                         result_url=result_url,
                         result_data={"output": output},
                     )
             elif status_str == "failed":
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    task_id,
+                    task_record.id if task_record else task_id,
                     TaskStatus.FAILED,
                     error_message=error or "Task failed",
                 )
@@ -2286,7 +2307,7 @@ async def get_callback_status(
         }
 
     # Check database for task status
-    task = await MediaTaskService.get_task(db, task_id, current_user.id)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
     if task:
         callback_event = await get_latest_callback_event_by_provider_task_id(db, task.task_id or "")
         return {

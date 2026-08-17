@@ -99,7 +99,7 @@ import {
 
 function requireTenantId(ctx: {
   tenantId: string | null;
-  user?: { currentTenantId?: number | null } | null;
+  user?: { currentTenantId?: string | number | null } | null;
 }): string {
   const tenantId = resolveTenantIdVarchar(
     ctx.tenantId,
@@ -629,7 +629,7 @@ function buildLaunchBlockedBundle(input: {
     user?: {
       id?: number | null;
       role?: string | null;
-      currentTenantId?: number | null;
+      currentTenantId?: string | number | null;
       userPreferences?: unknown;
     } | null;
   };
@@ -965,7 +965,7 @@ async function loadProjectionWithPreflightAccess(input: {
     user?: {
       id?: number | null;
       role?: string | null;
-      currentTenantId?: number | null;
+      currentTenantId?: string | number | null;
       userPreferences?: unknown;
     } | null;
   };
@@ -1007,7 +1007,7 @@ async function loadStoredPreflightBundle(input: {
     user?: {
       id?: number | null;
       role?: string | null;
-      currentTenantId?: number | null;
+      currentTenantId?: string | number | null;
       userPreferences?: unknown;
     } | null;
   };
@@ -1046,7 +1046,7 @@ async function buildCurrentDraftForStoredBundle(input: {
     user?: {
       id?: number | null;
       role?: string | null;
-      currentTenantId?: number | null;
+      currentTenantId?: string | number | null;
       userPreferences?: unknown;
     } | null;
   };
@@ -1391,7 +1391,7 @@ async function buildPreflightBundleDraft(input: {
     user?: {
       id?: number | null;
       role?: string | null;
-      currentTenantId?: number | null;
+      currentTenantId?: string | number | null;
       userPreferences?: unknown;
     } | null;
   };

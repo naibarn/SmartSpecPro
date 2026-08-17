@@ -200,7 +200,7 @@ export function createPresentationPublicRouter(): Router {
       }
 
       try {
-        const userToken = createInternalTokenFromAuth({ userId }, [
+        const userToken = createInternalTokenFromAuth({ userId, tenantId }, [
           "media:generate",
           "presentation:export",
         ]);
@@ -298,7 +298,7 @@ export function createPresentationPublicRouter(): Router {
       }
 
       try {
-        const userToken = createInternalTokenFromAuth({ userId }, [
+        const userToken = createInternalTokenFromAuth({ userId, tenantId }, [
           "media:generate",
           "presentation:export",
         ]);
@@ -459,7 +459,7 @@ export function createPresentationPublicRouter(): Router {
         res.setHeader("X-Credits-Remaining", String(remaining));
 
         // Generate internal token for Python backend calls
-        const userToken = createInternalTokenFromAuth({ userId }, [
+        const userToken = createInternalTokenFromAuth({ userId, tenantId }, [
           "media:generate",
           "presentation:export",
         ]);

@@ -87,6 +87,7 @@ import {
   buildSmartCharacterLlmPrompt,
   validateSmartCharacterPromptOutput,
 } from "../services/smartCharacterPromptOutput";
+import { resolveExternalMediaReferenceUrls } from "../services/mediaGenerationService";
 
 const localSkillPlatformSchema = z.enum(["web", "tauri"]).default("web");
 const localSkillOriginSchema = z
@@ -296,9 +297,10 @@ async function handleIscCreateSkill(
 }
 
 // Helper to create secure token for skill execution
-function createSkillToken(userId: number): string {
+function createSkillToken(userId: number, tenantId?: string | null): string {
   return signBearerToken({
     sub: String(userId),
+    ...(tenantId ? { tenantId } : {}),
     type: "access", // Required by Python backend for token validation
     scopes: ["skill:execute"],
     jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -2514,16 +2516,23 @@ export const chatRouter = router({
           : (Array.isArray(mergedExtraParams.reference_images)
             ? (mergedExtraParams.reference_images as unknown[]).filter((u): u is string => typeof u === "string" && u.length > 0)
             : []);
-        const hasRefImages = refImageUrls.length > 0;
+        const resolvedRefImageUrls = await resolveExternalMediaReferenceUrls(
+          refImageUrls,
+          ctx.tenantId
+            ? { userId: ctx.user.id, tenantId: ctx.tenantId }
+            : undefined,
+          ctx.publicUrl,
+        ) ?? [];
+        const hasRefImages = resolvedRefImageUrls.length > 0;
         const attachments = hasRefImages
-          ? refImageUrls.map((url: string) => ({ type: "image" as const, url }))
+          ? resolvedRefImageUrls.map((url: string) => ({ type: "image" as const, url }))
           : undefined;
         if (hasRefImages) {
           const baseUrl = (ctx.publicUrl || "").replace(/\/+$/, "");
           const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
             { type: "text", text: userPrompt || `Use ${skill.name}` },
           ];
-          for (const imgUrl of refImageUrls) {
+          for (const imgUrl of resolvedRefImageUrls) {
             // Convert relative URLs (e.g. /uploads/...) to absolute for external LLM API
             const absoluteUrl = (
               imgUrl.startsWith("http")
@@ -2963,7 +2972,7 @@ export const chatRouter = router({
 
       // Use the user's session token for media generation (from context)
       // This ensures the Python backend receives a valid token signed with the same secret
-      const userToken = ctx.userToken || createSkillToken(ctx.user.id);
+      const userToken = ctx.userToken || createSkillToken(ctx.user.id, ctx.tenantId);
 
       // Resolve referenceImageUrls: prefer top-level input, fall back to dynamicParams.reference_images
       const resolvedRefImageUrls: string[] | undefined = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
@@ -3378,7 +3387,7 @@ export const chatRouter = router({
         traceId: input.traceId,
       };
 
-      const userToken = ctx.userToken || createSkillToken(ctx.user.id);
+      const userToken = ctx.userToken || createSkillToken(ctx.user.id, ctx.tenantId);
       const result = await executeSkill(
         skillDef,
         execParams,

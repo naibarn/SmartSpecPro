@@ -299,7 +299,7 @@ export function createPublicSkillsRouter(): Router {
             skill,
             execParams as any,
             userId,
-            createInternalTokenFromAuth({ userId }),
+            createInternalTokenFromAuth({ userId, tenantId }),
             tenantId,
           );
         });

@@ -100,7 +100,7 @@ export function createPublicVideoRouter(): Router {
           }),
         } as any);
 
-        const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
+        const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
 
         return mediaGenerationService.generateVideoAsync(
           {
@@ -142,10 +142,15 @@ export function createPublicVideoRouter(): Router {
     const { id } = req.params;
     const auth = req.auth!;
     const userId = (auth as any).userId as number;
+    const tenantId = (auth as any).tenantId as string;
 
     try {
-      const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
-      const task = await mediaGenerationService.getTask(id, userToken);
+      const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
+      const task = await mediaGenerationService.getTask(id, userToken, {
+        userId,
+        tenantId,
+        source: "public_video_api",
+      });
 
       res.json({
         id: task.id,
@@ -174,10 +179,15 @@ export function createPublicVideoRouter(): Router {
     const { id } = req.params;
     const auth = req.auth!;
     const userId = (auth as any).userId as number;
+    const tenantId = (auth as any).tenantId as string;
 
     try {
-      const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
-      const task = await mediaGenerationService.getTask(id, userToken);
+      const userToken = createInternalTokenFromAuth({ userId, tenantId }, ["media:generate"]);
+      const task = await mediaGenerationService.getTask(id, userToken, {
+        userId,
+        tenantId,
+        source: "public_video_api",
+      });
 
       if (task.status !== "completed" || !task.resultUrl) {
         sendApiError(res, 404, "not_found", "Export not ready");

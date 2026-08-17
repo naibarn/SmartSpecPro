@@ -155,6 +155,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
       // Generate a temporary execution token
       const userToken = signBearerToken({
         sub: String(userId),
+        ...((schedule as any).tenantId ? { tenantId: String((schedule as any).tenantId) } : {}),
         type: "access",
         scopes: ["skill:execute"],
         jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -287,6 +288,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
       // Generate a temporary token for this user
       const userToken = signBearerToken({
         sub: String(userId),
+        ...((schedule as any).tenantId ? { tenantId: String((schedule as any).tenantId) } : {}),
         type: "access",
         scopes: ["media:generate"],
         jti: `auto_draft_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,

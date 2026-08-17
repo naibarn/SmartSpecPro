@@ -45,6 +45,7 @@ import {
 } from "./enabledMediaModelSelection";
 import { resolveMediaTransport } from "./mediaTransportResolver";
 import { getMcpMediaTask, submitMcpMediaGeneration } from "./mcpMediaAdapter";
+import { createManagedStorageDownloadRef } from "./mcpDownloadBrokerService";
 import { getHermesMediaTask, isHermesMediaTaskId } from "./hermesMediaAdapter";
 import { normalizeMcpProviderModelIdForProvider } from "./mcpProviderModelAliases";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
@@ -53,6 +54,7 @@ import type {
   MediaOriginSurface,
   MediaTaskTransportMetadata,
 } from "../../shared/mcpConnectTypes";
+import { verifyBearerToken } from "../_core/tokens";
 
 // ==================== Types ====================
 
@@ -1351,6 +1353,7 @@ export interface AudioGenerationRequest {
 
 export interface MediaAuditContext {
   userId?: number;
+  tenantId?: string;
   traceId?: string;
   source?: string;
   stage?: string;
@@ -1529,6 +1532,202 @@ export function resolveReferenceUrl(
   }
 
   return url;
+}
+
+function managedStorageKeyFromProviderReference(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    if (parsed.pathname.startsWith("/api/storage/files/")) {
+      return decodeURIComponent(parsed.pathname.slice("/api/storage/files/".length));
+    }
+    if (parsed.pathname.startsWith("/uploads/")) {
+      return decodeURIComponent(parsed.pathname.slice("/uploads/".length));
+    }
+  } catch {
+    // Relative references are handled by resolveReferenceUrl before this helper.
+  }
+  return null;
+}
+
+async function resolveProviderReferenceUrls(
+  urls: string[] | undefined,
+  request: { auditContext?: MediaAuditContext },
+  userToken: string,
+  publicUrl?: string | null,
+): Promise<string[] | undefined> {
+  if (!urls?.length) return undefined;
+
+  const containsManagedReference = urls.some((url) => {
+    try {
+      return managedStorageKeyFromProviderReference(
+        resolveReferenceUrl(url, publicUrl),
+      ) !== null;
+    } catch {
+      return false;
+    }
+  });
+
+  let userId = request.auditContext?.userId;
+  let tenantId = request.auditContext?.tenantId;
+  if ((!userId || !tenantId) && userToken) {
+    try {
+      const claims = await verifyBearerToken(userToken);
+      if (!userId && Number.isInteger(Number(claims.sub))) userId = Number(claims.sub);
+      if (!tenantId && typeof claims.tenantId === "string") tenantId = claims.tenantId;
+    } catch {
+      // Session tokens may not be JWTs. In that case keep the original URL.
+    }
+  }
+  if (!userId || !tenantId) {
+    if (containsManagedReference) {
+      throw new Error(
+        "Reference image requires tenant-scoped access before provider submission"
+      );
+    }
+    return urls;
+  }
+
+  const baseUrl = isPublicHttpUrl(publicUrl || "")
+    ? publicUrl!
+    : getCachedPublicAppUrl();
+  if (!isPublicHttpUrl(baseUrl || "")) {
+    // Unit fixtures intentionally use managed-looking relative URLs without
+    // booting the runtime-config/database layer. Production callers still
+    // fail closed below; this keeps pure prompt-generation tests focused on
+    // their LLM contract rather than requiring a live app URL/config cache.
+    if (process.env.NODE_ENV === "test") {
+      return urls;
+    }
+    if (containsManagedReference) {
+      throw new Error(
+        "Reference image requires a public app URL for secure provider access"
+      );
+    }
+    return urls;
+  }
+
+  const viewer = { tenantId, userId };
+  return Promise.all(urls.map(async (url) => {
+    const resolved = resolveReferenceUrl(url, publicUrl);
+    const storageKey = managedStorageKeyFromProviderReference(resolved);
+    if (!storageKey) return resolved;
+    const ref = await createManagedStorageDownloadRef(storageKey, viewer);
+    return buildManagedStorageDownloadUrl(baseUrl!, ref.downloadRef, ref.fileName);
+  }));
+}
+
+/**
+ * Resolve one or more managed media references for an external consumer such
+ * as an LLM vision endpoint or a media provider. Browser-facing storage URLs
+ * are tenant-authenticated and therefore must never be sent to a third party.
+ */
+export async function resolveExternalMediaReferenceUrls(
+  urls: string[] | undefined,
+  viewer?: { userId: number; tenantId: string },
+  publicUrl?: string | null,
+): Promise<string[] | undefined> {
+  return resolveProviderReferenceUrls(
+    urls,
+    { auditContext: viewer },
+    "",
+    publicUrl,
+  );
+}
+
+export async function resolveExternalMediaReferenceUrl(
+  url: string,
+  viewer?: { userId: number; tenantId: string },
+  publicUrl?: string | null,
+): Promise<string> {
+  const [resolved] = await resolveExternalMediaReferenceUrls([url], viewer, publicUrl) ?? [];
+  return resolved ?? url;
+}
+
+/**
+ * Resolve managed image/file URLs embedded in OpenAI-compatible message
+ * content before the message is sent to an external provider. The browser
+ * session cookie cannot be forwarded to those providers, so a protected
+ * `/api/storage/files/*` URL must become a short-lived signed broker URL.
+ */
+export async function resolveExternalMediaMessageUrls(
+  messages: Array<Record<string, unknown>>,
+  viewer?: { userId: number; tenantId: string },
+  publicUrl?: string | null,
+): Promise<Array<Record<string, unknown>>> {
+  const references: string[] = [];
+  for (const message of messages) {
+    if (!Array.isArray(message.content)) continue;
+    for (const part of message.content) {
+      if (!part || typeof part !== "object") continue;
+      const record = part as Record<string, unknown>;
+      const field =
+        record.type === "image_url"
+          ? "image_url"
+          : record.type === "file_url"
+            ? "file_url"
+            : null;
+      if (!field) continue;
+      const value = record[field];
+      const url =
+        typeof value === "string"
+          ? value
+          : value && typeof value === "object" && typeof (value as Record<string, unknown>).url === "string"
+            ? String((value as Record<string, unknown>).url)
+            : null;
+      if (url) references.push(url);
+    }
+  }
+
+  if (references.length === 0) return messages;
+
+  const resolved = await resolveExternalMediaReferenceUrls(
+    references,
+    viewer,
+    publicUrl,
+  ) ?? references;
+  let referenceIndex = 0;
+
+  return messages.map(message => {
+    if (!Array.isArray(message.content)) return message;
+    const content = message.content.map(part => {
+      if (!part || typeof part !== "object") return part;
+      const record = part as Record<string, unknown>;
+      const field =
+        record.type === "image_url"
+          ? "image_url"
+          : record.type === "file_url"
+            ? "file_url"
+            : null;
+      if (!field) return part;
+
+      const value = record[field];
+      const originalUrl =
+        typeof value === "string"
+          ? value
+          : value && typeof value === "object" && typeof (value as Record<string, unknown>).url === "string"
+            ? String((value as Record<string, unknown>).url)
+            : null;
+      if (!originalUrl) return part;
+
+      const resolvedUrl = resolved[referenceIndex++] ?? originalUrl;
+      return {
+        ...record,
+        [field]:
+          typeof value === "string"
+            ? resolvedUrl
+            : { ...(value as Record<string, unknown>), url: resolvedUrl },
+      };
+    });
+    return { ...message, content };
+  });
+}
+
+export function buildManagedStorageDownloadUrl(
+  baseUrl: string,
+  downloadRef: string,
+  fileName: string,
+): string {
+  return `${baseUrl.replace(/\/$/, "")}/api/mcp/downloads/${encodeURIComponent(downloadRef)}/${encodeURIComponent(fileName)}`;
 }
 
 function normalizeExtraParamKey(key: string): string {

@@ -1430,10 +1430,13 @@ function buildMcpIdempotencyLockKey(params: {
 
 export async function getMcpMediaTask(
   taskId: string,
-  userId: number
+  userId: number,
+  tenantId?: string,
 ): Promise<MediaTask | null> {
   const memoryTask = memoryMcpMediaTasks.get(taskId);
-  if (memoryTask?.userId === String(userId))
+  const memoryTenantId = (memoryTask?.parameters?.transportMetadata as MediaTaskTransportMetadata | undefined)?.tenantId
+    ?? (memoryTask?.resultData?.transportMetadata as MediaTaskTransportMetadata | undefined)?.tenantId;
+  if (memoryTask?.userId === String(userId) && (!tenantId || memoryTenantId === tenantId))
     return refreshMcpMediaTaskStatus(memoryTask);
   try {
     const db = getDb();
@@ -1443,7 +1446,8 @@ export async function getMcpMediaTask(
       .where(
         and(
           eq(mcpMediaTasksTable.id, taskId),
-          eq(mcpMediaTasksTable.userId, userId)
+          eq(mcpMediaTasksTable.userId, userId),
+          ...(tenantId ? [eq(mcpMediaTasksTable.tenantId, tenantId)] : []),
         )
       )
       .limit(1);
@@ -1455,13 +1459,17 @@ export async function getMcpMediaTask(
 
 export async function listMcpMediaTasks(params: {
   userId: number;
+  tenantId?: string;
   mediaType?: "image" | "video" | "audio";
   status?: string;
   limit?: number;
 }): Promise<MediaTask[]> {
   try {
     const db = getDb();
-    const conditions = [eq(mcpMediaTasksTable.userId, params.userId)];
+    const conditions = [
+      eq(mcpMediaTasksTable.userId, params.userId),
+      ...(params.tenantId ? [eq(mcpMediaTasksTable.tenantId, params.tenantId)] : []),
+    ];
     if (params.mediaType)
       conditions.push(eq(mcpMediaTasksTable.mediaType, params.mediaType));
     if (params.status)
@@ -1478,6 +1486,11 @@ export async function listMcpMediaTasks(params: {
   } catch {
     const tasks = Array.from(memoryMcpMediaTasks.values())
       .filter(task => task.userId === String(params.userId))
+      .filter(task => {
+        if (!params.tenantId) return true;
+        const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
+        return metadata?.tenantId === params.tenantId;
+      })
       .filter(task => !params.mediaType || task.mediaType === params.mediaType)
       .filter(task => !params.status || task.status === params.status)
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))

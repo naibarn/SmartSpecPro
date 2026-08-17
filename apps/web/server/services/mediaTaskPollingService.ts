@@ -29,15 +29,24 @@ export async function getUnifiedMediaTask(
     import("./mediaGenerationService"),
   ]);
 
-  const mcpTask = await getMcpMediaTask(input.taskId, input.userId);
+  const auditContext = input.auditContext
+    ? {
+        ...input.auditContext,
+        ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+      }
+    : input.tenantId
+      ? { tenantId: input.tenantId }
+      : undefined;
+
+  const mcpTask = await getMcpMediaTask(input.taskId, input.userId, input.tenantId ?? undefined);
   if (mcpTask) return durabilizeTask(mcpTask, input);
 
   const deferredTask = await getDeferredMediaTask(
     input.taskId,
     input.userId,
     input.userToken,
-    input.auditContext
-      ? { ...input.auditContext, stage: "deferred_poll" }
+    auditContext
+      ? { ...auditContext, stage: "deferred_poll" }
       : undefined
   );
   if (deferredTask) return durabilizeTask(deferredTask, input);
@@ -45,7 +54,7 @@ export async function getUnifiedMediaTask(
   const task = await mediaGenerationService.getTask(
     input.taskId,
     input.userToken,
-    input.auditContext
+    auditContext
   );
   return durabilizeTask(task, input);
 }

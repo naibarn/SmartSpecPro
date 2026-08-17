@@ -228,13 +228,21 @@ export class AgencyBridge {
     };
   }
 
-  async cancelRun(agencyId: string, runId: string, userToken: string): Promise<void> {
+  async cancelRun(
+    agencyId: string,
+    runId: string,
+    userToken: string,
+    tenantId?: string | null,
+    userId?: number,
+  ): Promise<void> {
     const runtime = await getAppRuntimeConfig();
     const url = `${runtime.pythonBackendUrl}/api/v1/agencies/${agencyId}/runs/${runId}/cancel`;
 
     const response = await fetch(url, {
       method: "POST",
-      headers: await makeHeaders(userToken),
+      headers: tenantId && userId != null
+        ? await makeHeadersWithMeta(userToken, tenantId, userId)
+        : await makeHeaders(userToken),
     });
 
     await handleResponse<any>(response, "cancelRun");
@@ -244,6 +252,8 @@ export class AgencyBridge {
     agencyId: string,
     userToken: string,
     filters: RunFilters,
+    tenantId?: string | null,
+    userId?: number,
   ): Promise<RunListResult> {
     const runtime = await getAppRuntimeConfig();
     const params = new URLSearchParams();
@@ -256,7 +266,9 @@ export class AgencyBridge {
 
     const response = await fetch(url, {
       method: "GET",
-      headers: await makeHeaders(userToken),
+      headers: tenantId && userId != null
+        ? await makeHeadersWithMeta(userToken, tenantId, userId)
+        : await makeHeaders(userToken),
     });
 
     return handleResponse<RunListResult>(response, "listRuns");
@@ -266,13 +278,17 @@ export class AgencyBridge {
     agencyId: string,
     runId: string,
     userToken: string,
+    tenantId?: string | null,
+    userId?: number,
   ): Promise<RunResult> {
     const runtime = await getAppRuntimeConfig();
     const url = `${runtime.pythonBackendUrl}/api/v1/agencies/${agencyId}/runs/${runId}`;
 
     const response = await fetch(url, {
       method: "GET",
-      headers: await makeHeaders(userToken),
+      headers: tenantId && userId != null
+        ? await makeHeadersWithMeta(userToken, tenantId, userId)
+        : await makeHeaders(userToken),
     });
 
     const data = await handleResponse<any>(response, "getRunDetails");

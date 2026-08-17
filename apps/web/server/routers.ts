@@ -822,7 +822,7 @@ const authRouter = router({
       const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
 
       // Auto-assign tenant by domain
-      let tenantId: number | null = null;
+      let tenantId: string | null = null;
       try {
         const [autoSetting] = await db.select().from(systemSettings)
           .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "auto_assign_tenant")))
@@ -832,7 +832,7 @@ const authRouter = router({
           const [tenant] = await db.select().from(tenants)
             .where(eq(tenants.primaryDomain, hostname))
             .limit(1);
-          if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+          if (tenant) tenantId = tenant.id;
         }
       } catch { /* skip tenant assignment */ }
 

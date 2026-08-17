@@ -82,7 +82,13 @@ export async function tenantMiddleware(
   try {
     // Skip tenant detection for static asset requests
     const urlPath = req.path || req.url;
-    if (/\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ttf|eot|map)(\?.*)?$/.test(urlPath)) {
+    const isManagedStorageProxy = urlPath.startsWith("/api/storage/files/");
+    if (
+      !isManagedStorageProxy &&
+      /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ttf|eot|map)(\?.*)?$/.test(
+        urlPath
+      )
+    ) {
       return next();
     }
 

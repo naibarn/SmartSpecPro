@@ -316,12 +316,13 @@ async function projectHermesMediaJob(
 export async function getHermesMediaTask(
   taskId: string,
   userId: number,
-  deps: GetHermesMediaTaskDeps = {},
+  deps: GetHermesMediaTaskDeps & { tenantId?: string } = {},
 ): Promise<MediaTask | null> {
   const repo = deps.repo ?? defaultHermesMediaAdapterRepo;
   const jobId = hermesTaskIdToJobId(taskId);
   const job = await repo.getJobById(jobId);
   if (!job) return null;
+  if (deps.tenantId && job.tenantId !== deps.tenantId) return null;
   return projectHermesMediaJob(job, userId, deps);
 }
 
@@ -331,6 +332,7 @@ export async function getHermesMediaTask(
 
 export interface ListHermesMediaTasksParams {
   userId: number;
+  tenantId?: string;
   mediaType?: MediaTask["mediaType"];
   status?: TaskStatus;
   limit?: number;
@@ -358,6 +360,7 @@ async function listHermesJobsForUser(
   const limit = Math.min(100, Math.max(1, params.limit ?? 50));
   const conditions = [
     eq(workerJobs.requestedByUserId, params.userId),
+    ...(params.tenantId ? [eq(workerJobs.tenantId, params.tenantId)] : []),
     params.mediaType === "image"
       ? eq(workerJobs.jobType, HERMES_MEDIA_IMAGE_JOB_TYPE)
       : params.mediaType === "video"

@@ -256,6 +256,20 @@ describe("AgencyBridge", () => {
       );
       expect(options.method).toBe("POST");
     });
+
+    it("forwards tenant and user metadata when provided", async () => {
+      fetchSpy.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ status: "cancelled" }),
+      });
+
+      await bridge.cancelRun("agency-001", "run-001", "user-token", "tenant-001", 42);
+
+      const [, options] = fetchSpy.mock.calls[0];
+      expect(options.headers["X-Tenant-Id"]).toBe("tenant-001");
+      expect(options.headers["X-User-Id"]).toBe("42");
+    });
   });
 
   describe("listRuns", () => {

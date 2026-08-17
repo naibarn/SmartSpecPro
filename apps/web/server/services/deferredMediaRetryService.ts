@@ -253,9 +253,10 @@ async function resolveLinkedRecordTask(
   }
 }
 
-function createDeferredMediaToken(userId: string): string {
+function createDeferredMediaToken(userId: string, tenantId?: string | null): string {
   return signBearerToken({
     sub: userId,
+    ...(tenantId ? { tenantId } : {}),
     type: "access",
     scopes: ["media:generate"],
     jti: `deferred_media_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -322,7 +323,7 @@ async function submitRecord(record: DeferredVideoRetryRecord): Promise<void> {
           stage: "deferred_retry_submission",
         },
       },
-      createDeferredMediaToken(submitting.userId),
+      createDeferredMediaToken(submitting.userId, submitting.auditContext?.tenantId),
     );
     await saveRecord({
       ...submitting,
@@ -393,15 +394,25 @@ export async function getDeferredMediaTask(
   const record = await readRecord(taskId);
   if (!record || record.userId !== String(userId)) return null;
 
-  return resolveLinkedRecordTask(record, userToken || createDeferredMediaToken(record.userId), auditContext);
+  const expectedTenantId = auditContext?.tenantId;
+  const recordTenantId = record.auditContext?.tenantId;
+  if (expectedTenantId && recordTenantId && expectedTenantId !== recordTenantId) return null;
+
+  return resolveLinkedRecordTask(
+    record,
+    userToken || createDeferredMediaToken(record.userId, recordTenantId),
+    auditContext,
+  );
 }
 
 export async function cancelDeferredMediaTask(
   taskId: string,
   userId: number | string,
+  tenantId?: string | null,
 ): Promise<MediaTask | null> {
   const record = await readRecord(taskId);
   if (!record || record.userId !== String(userId)) return null;
+  if (tenantId && record.auditContext?.tenantId && record.auditContext.tenantId !== tenantId) return null;
   const refundedRecord = await refundDeferredReservationIfNeeded(record);
 
   const cancelled: DeferredVideoRetryRecord = {
@@ -417,9 +428,11 @@ export async function cancelDeferredMediaTask(
 export async function deleteDeferredMediaTask(
   taskId: string,
   userId: number | string,
+  tenantId?: string | null,
 ): Promise<boolean> {
   const record = await readRecord(taskId);
   if (!record || record.userId !== String(userId)) return false;
+  if (tenantId && record.auditContext?.tenantId && record.auditContext.tenantId !== tenantId) return false;
   await refundDeferredReservationIfNeeded(record);
 
   const redis = getRedisClient();
@@ -431,6 +444,7 @@ export async function deleteDeferredMediaTask(
 export async function listDeferredMediaTasks(
   userId: number | string,
   limit = 50,
+  tenantId?: string,
 ): Promise<MediaTask[]> {
   const redis = getRedisClient();
   const keys = await redis.keys(`${DEFERRED_TASK_PREFIX}deferred-*`);
@@ -440,12 +454,16 @@ export async function listDeferredMediaTasks(
     if (!raw) continue;
     try {
       const record = JSON.parse(raw) as DeferredVideoRetryRecord;
-      if (record.userId === String(userId)) {
+      const recordTenantId = typeof record.auditContext?.tenantId === "string"
+        ? record.auditContext.tenantId
+        : null;
+      if (record.userId === String(userId) && (!tenantId || recordTenantId === tenantId)) {
         tasks.push(await resolveLinkedRecordTask(
           record,
-          createDeferredMediaToken(record.userId),
+          createDeferredMediaToken(record.userId, recordTenantId),
           {
             userId: Number.isFinite(Number(record.userId)) ? Number(record.userId) : undefined,
+            ...(recordTenantId ? { tenantId: recordTenantId } : {}),
             source: "trpc.media.listTasks",
             stage: "deferred_history_refresh",
           },

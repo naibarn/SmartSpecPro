@@ -27,7 +27,7 @@ import { getAutoTeamLedgerSnapshot } from "../services/autoTeamLedgerService";
 
 function requireTenantId(ctx: {
   tenantId: string | null;
-  user?: { currentTenantId?: number | null } | null;
+  user?: { currentTenantId?: string | number | null } | null;
 }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
   if (!tid)

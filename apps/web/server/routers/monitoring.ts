@@ -17,7 +17,7 @@ import * as workOsService from "../services/workOsService";
 import * as contextEngineEvaluationService from "../services/contextEngineEvaluationService";
 import * as libraryKnowledgeObservabilityService from "../services/libraryKnowledgeObservabilityService";
 
-function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
+function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: string | number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
   if (!tid) throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });
   return tid;

@@ -90,7 +90,7 @@ describe("getUnifiedMediaTask", () => {
     expect(mocks.getTask).toHaveBeenCalledWith(
       input.taskId,
       input.userToken,
-      input.auditContext
+      { ...input.auditContext, tenantId: input.tenantId }
     );
   });
 
