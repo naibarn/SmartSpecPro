@@ -245,6 +245,14 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     // prompt sent as this call's `system` message (loaded from skill.md).
     expect(call.messages[0].content).toBe("System prompt body");
     expect(textPart.text).toContain("attached image");
+    expect(mockSelectBestLlmModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        supportsVision: true,
+        supportsStructuredOutputs: true,
+        recommendedOnly: true,
+      }),
+      expect.any(Array),
+    );
   });
 
   it("falls back to the non-vision default model + text-only content when no enabled model supports vision", async () => {
@@ -600,8 +608,9 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
   it("throws VdSchemaValidationError (does not silently deduct credits) when BOTH attempts fail schema validation", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockLoadEnabledLlmModelRows.mockResolvedValue([
-      { modelId: "active-vision-model", providerId: 1, supportsVision: true, supportsStructuredOutputs: true } as any,
-      { modelId: "active-vision-fallback", providerId: 2, supportsVision: true, supportsStructuredOutputs: true } as any,
+      { modelId: "active-vision-model", providerId: 1, supportsVision: true, supportsStructuredOutputs: true, isRecommended: true, priority: 1 } as any,
+      { modelId: "active-vision-fallback", providerId: 2, supportsVision: true, supportsStructuredOutputs: true, isRecommended: true, priority: 2 } as any,
+      { modelId: "unapproved-gemini", providerId: 3, supportsVision: true, supportsStructuredOutputs: true, isRecommended: false, priority: 0 } as any,
     ]);
     mockSelectBestLlmModel.mockImplementation((_requirements, rows) => rows[0]?.modelId ?? null);
     mockExecute.mockResolvedValue(truncatedResponse());
@@ -610,16 +619,34 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
       VdSchemaValidationError,
     );
 
-    // Video-prompt generation must stay on the caller-selected model. Even
-    // when another vision model is present in the live catalog, it must not
-    // silently switch models before the final text-only recovery attempt.
-    expect(mockExecute).toHaveBeenCalledTimes(3);
+    // Recovery may rotate once, but only into the admin-recommended set.
+    expect(mockExecute).toHaveBeenCalledTimes(4);
     expect(mockExecute.mock.calls.map(([request]) => request.model)).toEqual([
       "active-vision-model",
       "active-vision-model",
-      "active-vision-model",
+      "active-vision-fallback",
+      "active-vision-fallback",
     ]);
+    expect(mockExecute.mock.calls.some(([request]) => request.model === "unapproved-gemini")).toBe(false);
     expect(mockExecute.mock.calls.some(([request]) => request.model === "gpt-4o-mini")).toBe(false);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("does not leave the Recommend set when no approved fallback is available", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-vision-model", providerId: 1, supportsVision: true, supportsStructuredOutputs: true, isRecommended: true, priority: 1 } as any,
+      { modelId: "unapproved-gemini", providerId: 2, supportsVision: true, supportsStructuredOutputs: true, isRecommended: false, priority: 0 } as any,
+    ]);
+    mockSelectBestLlmModel.mockImplementation((_requirements, rows) => rows[0]?.modelId ?? null);
+    mockExecute.mockResolvedValue(truncatedResponse());
+
+    await expect(generateVerticalDramaShotVideoPrompt(baseParams())).rejects.toThrow(
+      VdSchemaValidationError,
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockExecute.mock.calls.every(([request]) => request.model === "active-vision-model")).toBe(true);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 

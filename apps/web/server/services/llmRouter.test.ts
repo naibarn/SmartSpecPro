@@ -540,10 +540,8 @@ describe("executeWithFallback", () => {
       stream: false,
       userId: 1,
       maxTokens: 6000,
+      disableProviderFallbacks: true,
       extraBodyParams: {
-        provider: {
-          allow_fallbacks: false,
-        },
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -576,7 +574,7 @@ describe("executeWithFallback", () => {
       max_tokens: 6000,
       provider: expect.objectContaining({
         allow_fallbacks: false,
-        require_parameters: true,
+        require_parameters: false,
       }),
       response_format: expect.objectContaining({
         type: "json_schema",
@@ -763,6 +761,40 @@ describe("executeWithFallback", () => {
       responsePayload: expect.objectContaining({
         bodyPreview: "Bad request",
       }),
+    }));
+  });
+
+  it("records cross-model fallback provenance in request and response audit events", async () => {
+    setupProviderResolution([makeCandidate({ providerId: 1, providerModelId: "recommended-fallback" })]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        choices: [{ message: { content: "Recovered" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+      headers: { get: () => "application/json" },
+    });
+
+    const result = await executeWithFallback({
+      model: "recommended-fallback",
+      modelFallbackFrom: "primary-model",
+      modelFallbackReason: "transient_retries_exhausted",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "llm_request",
+      modelFallbackFrom: "primary-model",
+      modelFallbackReason: "transient_retries_exhausted",
+    }));
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "llm_response",
+      modelFallbackFrom: "primary-model",
+      modelFallbackReason: "transient_retries_exhausted",
     }));
   });
 

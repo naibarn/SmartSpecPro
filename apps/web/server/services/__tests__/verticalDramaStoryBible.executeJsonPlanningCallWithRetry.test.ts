@@ -25,18 +25,30 @@ import { z } from "zod";
 vi.mock("../llmRouter", () => ({
   executeWithFallback: vi.fn(),
 }));
+vi.mock("../enabledLlmModels", async () => {
+  const actual = await vi.importActual<typeof import("../enabledLlmModels")>("../enabledLlmModels");
+  return { ...actual, loadEnabledLlmModelRows: vi.fn() };
+});
+vi.mock("../providerHealth", async () => {
+  const actual = await vi.importActual<typeof import("../providerHealth")>("../providerHealth");
+  return { ...actual, isAvailable: vi.fn(() => true) };
+});
 vi.mock("../_core/logger", () => ({
   debugLog: vi.fn(),
   debugError: vi.fn(),
 }));
 
 import { executeWithFallback } from "../llmRouter";
+import { loadEnabledLlmModelRows } from "../enabledLlmModels";
+import { isAvailable } from "../providerHealth";
 import {
   executeJsonPlanningCallWithRetry,
   VdSchemaValidationError,
 } from "../verticalDramaStoryBible";
 
 const mockExecute = vi.mocked(executeWithFallback);
+const mockLoadEnabledLlmModelRows = vi.mocked(loadEnabledLlmModelRows);
+const mockIsAvailable = vi.mocked(isAvailable);
 
 const schema = z.object({ items: z.array(z.string()).length(3) });
 
@@ -72,6 +84,7 @@ function baseArgs(overrides: Partial<Parameters<typeof executeJsonPlanningCallWi
 describe("executeJsonPlanningCallWithRetry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsAvailable.mockReturnValue(true);
   });
 
   it("returns parsed+validated data on the first attempt without retrying when the JSON is valid", async () => {
@@ -82,6 +95,29 @@ describe("executeJsonPlanningCallWithRetry", () => {
     expect(result.data).toEqual({ items: ["a", "b", "c"] });
     expect(result.retried).toBe(false);
     expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it("forwards structured-output and provider-pinning controls to the router", async () => {
+    mockExecute.mockResolvedValue(successWith(VALID_JSON));
+
+    await executeJsonPlanningCallWithRetry(
+      baseArgs({
+        extraBodyParams: {
+          response_format: {
+            type: "json_schema",
+            json_schema: { name: "test_contract", schema: { type: "object" } },
+          },
+        },
+        disableProviderFallbacks: true,
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extraBodyParams: expect.objectContaining({ response_format: expect.any(Object) }),
+        disableProviderFallbacks: true,
+      }),
+    );
   });
 
   it("retries exactly once on truncated JSON, using the SAME model both times (never auto-switches models)", async () => {
@@ -112,6 +148,23 @@ describe("executeJsonPlanningCallWithRetry", () => {
     );
     expect(retryUserMessage.content).toMatch(/Do not truncate/i);
     expect(retryUserMessage.content).toContain("user prompt"); // original prompt preserved
+  });
+
+  it("repeats a caller-owned output contract on every schema retry", async () => {
+    const invalid = JSON.stringify({ items: ["a"] });
+    mockExecute
+      .mockResolvedValueOnce(successWith(invalid))
+      .mockResolvedValueOnce(successWith(VALID_JSON));
+
+    await executeJsonPlanningCallWithRetry(
+      baseArgs({ schemaRetryContract: 'The required key "criticalFails" must be present; use [] when none.' })
+    );
+
+    const retryUserMessage = mockExecute.mock.calls[1][0].messages.find(
+      (message: { role: string }) => message.role === "user",
+    );
+    expect(retryUserMessage.content).toContain('"criticalFails"');
+    expect(retryUserMessage.content).toContain("use [] when none");
   });
 
   it("includes exact validation paths in a schema retry without echoing invalid values", async () => {
@@ -365,6 +418,57 @@ describe("executeJsonPlanningCallWithRetry", () => {
     });
     afterEach(() => {
       vi.useRealTimers();
+    });
+
+    it("rotates once to a different recommended model after transient retries, never to an unapproved catalog model", async () => {
+      mockLoadEnabledLlmModelRows.mockResolvedValue([
+        {
+          modelId: "gpt-4o-mini",
+          providerModelId: "gpt-4o-mini",
+          providerId: 1,
+          supportsStructuredOutputs: true,
+          isRecommended: true,
+          priority: 1,
+        } as any,
+        {
+          modelId: "recommended-fallback",
+          providerModelId: "recommended-fallback",
+          providerId: 2,
+          supportsStructuredOutputs: true,
+          isRecommended: true,
+          priority: 2,
+        } as any,
+        {
+          modelId: "unapproved-gemini",
+          providerModelId: "unapproved-gemini",
+          providerId: 3,
+          supportsStructuredOutputs: true,
+          isRecommended: false,
+          priority: 0,
+        } as any,
+      ]);
+      mockExecute
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        .mockResolvedValueOnce(successWith(VALID_JSON));
+
+      const promise = executeJsonPlanningCallWithRetry(
+        baseArgs({ modelFallbackPolicy: "recommended", maxTransientRetries: 1 }),
+      );
+      await vi.advanceTimersByTimeAsync(5_000);
+      const result = await promise;
+
+      expect(result.data).toEqual({ items: ["a", "b", "c"] });
+      expect(mockExecute.mock.calls.map(([request]) => request.model)).toEqual([
+        "gpt-4o-mini",
+        "gpt-4o-mini",
+        "recommended-fallback",
+      ]);
+      expect(mockExecute.mock.calls.some(([request]) => request.model === "unapproved-gemini")).toBe(false);
+      expect(mockExecute.mock.calls[2][0]).toEqual(expect.objectContaining({
+        modelFallbackFrom: "gpt-4o-mini",
+        modelFallbackReason: "transient_retries_exhausted",
+      }));
     });
 
     it("retries a transient network/timeout error (\"This operation was aborted\") after a 5s backoff and succeeds", async () => {

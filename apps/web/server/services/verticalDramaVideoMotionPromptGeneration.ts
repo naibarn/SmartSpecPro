@@ -1097,7 +1097,7 @@ export async function generateVideoMotionPromptPack(
         schema: videoMotionPromptPackOutputSchema,
         firstAttemptMaxTokens: 16000,
         retryMaxTokens: 32000,
-        disableModelFallback: true,
+        modelFallbackPolicy: "recommended",
       })
     : await executeJsonPlanningCallWithRetry<VideoMotionPromptPackOutput>({
         model,
@@ -1108,6 +1108,7 @@ export async function generateVideoMotionPromptPack(
         maxTokens: 16000,
         schema: videoMotionPromptPackOutputSchema,
         label: "Video motion prompt pack",
+        modelFallbackPolicy: "recommended",
       });
   const { data: validatedData, response } = generationResult;
   const usedVision = hasVision && "usedVision" in generationResult
@@ -1251,7 +1252,11 @@ async function resolveShotVideoPromptModel(
     const routableRows = rows.filter((row) => isAvailable(row.providerId));
     if (routableRows.length > 0) {
       const visionModel = selectBestLlmModel(
-        { supportsVision: true, supportsStructuredOutputs: true },
+        {
+          supportsVision: true,
+          supportsStructuredOutputs: true,
+          recommendedOnly: true,
+        },
         routableRows,
       );
       if (visionModel) return { model: visionModel, hasVision: true };
@@ -2704,11 +2709,13 @@ export async function generateVerticalDramaShotVideoPrompt(
       params.additionalImageUrls,
     ),
     userId: params.userId,
+    tenantId: params.tenantId,
+    publicUrl: params.publicUrl,
     schema: shotVideoPromptOutputSchema,
     // Bumped 2000 -> 2600 (frame_analysis headroom); retry ceiling unchanged.
     firstAttemptMaxTokens: 2600,
     retryMaxTokens: 4000,
-    disableModelFallback: true,
+    modelFallbackPolicy: "recommended",
   });
 
   // The retry helper may recover with text-only mode after the selected
@@ -3410,7 +3417,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     // Bumped 3000 -> 3600 (frame_analysis headroom); retry ceiling unchanged.
     firstAttemptMaxTokens: 3600,
     retryMaxTokens: 6000,
-    disableModelFallback: true,
+    modelFallbackPolicy: "recommended",
   });
 
   // Keep speaker-switch prompts fail-closed too: a text-only recovery is not
@@ -4005,7 +4012,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
           : [],
       userId: args.userId,
       schema: judgeOutputSchema,
-      disableModelFallback: true,
+      modelFallbackPolicy: "recommended",
       firstAttemptMaxTokens: 1200,
       retryMaxTokens: 2000,
     });

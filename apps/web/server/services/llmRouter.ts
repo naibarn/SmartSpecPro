@@ -680,6 +680,9 @@ export async function executeWithFallback(params: {
   extraBodyParams?: Record<string, unknown>;
   /** When true, only the first resolved provider is attempted. */
   disableProviderFallbacks?: boolean;
+  /** Optional cross-model recovery provenance for audit logs. */
+  modelFallbackFrom?: string;
+  modelFallbackReason?: string;
   /** If false, free provider mappings are filtered out before routing. */
   allowFreeModels?: boolean;
   /**
@@ -882,7 +885,17 @@ export async function executeWithFallback(params: {
                       ? (providerFromExtra as Record<string, unknown>)
                       : undefined;
                   const provider = openRouterNeedsProviderGuard
-                    ? { ...(providerFromRequest ?? {}), require_parameters: true }
+                    ? {
+                        ...(providerFromRequest ?? {}),
+                        // OpenRouter may have no endpoint advertising
+                        // json_schema for a model. Do not reject the model at
+                        // routing time; the application validates the JSON
+                        // against its own contract after the response.
+                        require_parameters: false,
+                        ...(params.disableProviderFallbacks
+                          ? { allow_fallbacks: false }
+                          : {}),
+                      }
                     : providerFromRequest;
 
                   return {
@@ -900,6 +913,8 @@ export async function executeWithFallback(params: {
         providerName: candidate.providerName,
         model: candidate.providerModelId,
         requestType: "chat",
+        modelFallbackFrom: params.modelFallbackFrom,
+        modelFallbackReason: params.modelFallbackReason,
         requestPayload: {
           messageCount: params.messages.length,
           messages: params.messages.map((m) => {
@@ -1049,6 +1064,8 @@ export async function executeWithFallback(params: {
           wasFallback: i > 0,
           fallbackAttempt: i,
           fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+          modelFallbackFrom: params.modelFallbackFrom,
+          modelFallbackReason: params.modelFallbackReason,
           statusCode: 200,
           responsePayload: {
             usage: {
@@ -1119,6 +1136,8 @@ export async function executeWithFallback(params: {
         wasFallback: i > 0,
         fallbackAttempt: i,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+        modelFallbackFrom: params.modelFallbackFrom,
+        modelFallbackReason: params.modelFallbackReason,
         responsePayload: {
           contentType,
           bodyPreview: compactText(errorText.replace(/\s+/g, " "), 400),
@@ -1192,6 +1211,8 @@ export async function executeWithFallback(params: {
         wasFallback: i > 0,
         fallbackAttempt: i,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+        modelFallbackFrom: params.modelFallbackFrom,
+        modelFallbackReason: params.modelFallbackReason,
       });
 
       // Check free->paid boundary

@@ -245,6 +245,9 @@ export interface AuditLogEntry {
   wasFallback?: boolean;
   fallbackAttempt?: number;
   fallbackFromProviderId?: number;
+  /** Cross-model recovery metadata; distinct from provider fallback fields. */
+  modelFallbackFrom?: string;
+  modelFallbackReason?: string;
 
   skillSlug?: string;
   skillDetectionConfidence?: number;

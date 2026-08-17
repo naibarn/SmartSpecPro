@@ -1323,9 +1323,9 @@ const VD_TRANSIENT_RETRY_BACKOFFS_MS = [5_000, 15_000];
  */
 const VD_SCHEMA_MAX_RETRIES = 2;
 
-/** Hard ceiling on TOTAL LLM calls a single `executeJsonPlanningCallWithRetry` invocation may make: 1 initial + at most `VD_SCHEMA_MAX_RETRIES` schema-retries + at most `VD_TRANSIENT_RETRY_BACKOFFS_MS.length` transient-retries. */
+/** Hard ceiling: 1 initial + schema retries + transient retries + one optional recommended-model rotation (6 with current budgets). */
 const VD_PLANNING_CALL_MAX_ATTEMPTS =
-  1 + VD_SCHEMA_MAX_RETRIES + VD_TRANSIENT_RETRY_BACKOFFS_MS.length;
+  1 + VD_SCHEMA_MAX_RETRIES + VD_TRANSIENT_RETRY_BACKOFFS_MS.length + 1;
 
 function vdSleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -1337,9 +1337,10 @@ function vdSleep(ms: number): Promise<void> {
  * (`generateStoryBible`, `generateEpisodeScript`, `generateStoryboardShotgrid`,
  * `generateStartFrameRenderPlan`, `generateVideoMotionPromptPack`).
  *
- * Two INDEPENDENT (orthogonal) retry mechanisms, both against the SAME model
- * (never switches models — vertical drama and the wider app never
- * auto-switch a model chosen for a call):
+ * Two INDEPENDENT (orthogonal) retry mechanisms, normally against the SAME
+ * model. Video Prompt callers may opt into one bounded rotation to an
+ * admin-recommended compatible model after transient retries are exhausted;
+ * all other callers retain same-model behavior:
  *  1. **Schema retry** — on a `"schema"`-classified failure
  *     (JSON-parse/zod-validation), retries up to `VD_SCHEMA_MAX_RETRIES` (2)
  *     times with (a) the same system+user prompt plus one appended
@@ -1360,7 +1361,8 @@ function vdSleep(ms: number): Promise<void> {
  *     credit) are NEVER retried.
  * A transient failure of the schema-retry attempt (or vice versa) may also
  * be retried — the two mechanisms are orthogonal — but TOTAL LLM calls for a
- * single invocation are hard-capped at `VD_PLANNING_CALL_MAX_ATTEMPTS` (4).
+ * single invocation are hard-capped at `VD_PLANNING_CALL_MAX_ATTEMPTS` (6
+ * when the opt-in model rotation is used; default callers stop earlier).
  * Logs every retry attempt and the final failure via the shared
  * file/console `debugLog`/`debugError` logger (never logs prompt or response
  * bodies — only lengths/codes/messages, per the secret/PII logging rules).
@@ -1377,6 +1379,12 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   userId: number;
   maxTokens: number;
   retryMaxTokens?: number;
+  /** Extra body params forwarded to the selected provider, e.g. structured output. */
+  extraBodyParams?: Record<string, unknown>;
+  /** Draft stages can opt out of provider fallback while retaining legacy defaults elsewhere. */
+  disableProviderFallbacks?: boolean;
+  /** After transient retries, rotate once into the admin-curated LLM Recommend set. */
+  modelFallbackPolicy?: "recommended";
   /** zod schema (or any object exposing `safeParse`) validating the parsed JSON. */
   schema: {
     safeParse: (value: unknown) => {
@@ -1470,9 +1478,17 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   /** Only present when `onSchemaRetriesExhausted` accepted a degraded response instead of throwing. Absent (`undefined`) on every normal successful parse, and for every caller that never supplies the option. */
   warnings?: string[];
 }> {
-  const attempt = async (userPrompt: string, maxTokens: number) => {
+  let activeModel = params.model;
+  let modelFallbackUsed = false;
+
+  const attempt = async (
+    userPrompt: string,
+    maxTokens: number,
+    model: string,
+    modelFallbackFrom?: string,
+  ) => {
     const result = await executeWithFallback({
-      model: params.model,
+      model,
       messages: [
         { role: "system", content: params.systemPrompt },
         { role: "user", content: userPrompt },
@@ -1482,6 +1498,10 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       maxTokens,
       temperature: params.temperature,
       timeoutMs: params.timeoutMs,
+      extraBodyParams: params.extraBodyParams,
+      disableProviderFallbacks: params.disableProviderFallbacks,
+      modelFallbackFrom,
+      modelFallbackReason: modelFallbackFrom ? "transient_retries_exhausted" : undefined,
     });
 
     if (result.type !== "success") {
@@ -1523,12 +1543,17 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   for (;;) {
     attemptNumber++;
     try {
-      const result = await attempt(currentUserPrompt, currentMaxTokens);
+      const result = await attempt(
+        currentUserPrompt,
+        currentMaxTokens,
+        activeModel,
+        activeModel !== params.model ? params.model : undefined,
+      );
       if (attemptNumber > 1) {
         debugLog(
           "vd_planning_retry",
-          `${params.label}: retry succeeded for model ${params.model} (attempt ${attemptNumber}/${VD_PLANNING_CALL_MAX_ATTEMPTS})`,
-          { attemptNumber }
+          `${params.label}: retry succeeded for model ${activeModel} (attempt ${attemptNumber}/${VD_PLANNING_CALL_MAX_ATTEMPTS})`,
+          { attemptNumber, model: activeModel, modelFallbackFrom: activeModel !== params.model ? params.model : undefined }
         );
       }
       return {
@@ -1558,12 +1583,18 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
         schemaRetriesUsed++;
         debugError(
           "vd_planning_retry",
-          `${params.label}: attempt ${attemptNumber} failed schema validation for model ${params.model}, retrying with stricter instruction + higher token ceiling (schema retry ${schemaRetriesUsed}/${effectiveMaxSchemaRetries})`,
+          `${params.label}: attempt ${attemptNumber} failed schema validation for model ${activeModel}, retrying with stricter instruction + higher token ceiling (schema retry ${schemaRetriesUsed}/${effectiveMaxSchemaRetries})`,
           { message: errorMessage }
         );
         currentMaxTokens =
           params.retryMaxTokens ?? Math.max(params.maxTokens * 2, 16000);
-        currentUserPrompt = `${params.userPrompt}\n\n${buildSchemaRetryInstruction(error)}`;
+        currentUserPrompt = [
+          params.userPrompt,
+          buildSchemaRetryInstruction(error),
+          params.schemaRetryContract,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
         continue;
       }
 
@@ -1588,6 +1619,37 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
         );
         await vdSleep(backoffMs);
         continue;
+      }
+
+      if (
+        classification === "transient"
+        && params.modelFallbackPolicy === "recommended"
+        && !modelFallbackUsed
+        && attemptNumber < VD_PLANNING_CALL_MAX_ATTEMPTS
+      ) {
+        const fallbackModel = await resolveRecommendedModelFallback(activeModel, {
+          supportsStructuredOutputs: true,
+        });
+        if (fallbackModel) {
+          const previousModel = activeModel;
+          activeModel = fallbackModel;
+          modelFallbackUsed = true;
+          schemaRetriesUsed = 0;
+          transientRetriesUsed = 0;
+          currentUserPrompt = params.userPrompt;
+          currentMaxTokens = params.maxTokens;
+          debugLog(
+            "vd_planning_retry",
+            `${params.label}: rotating from failed model ${previousModel} to recommended fallback ${fallbackModel}`,
+            {
+              attemptNumber,
+              modelFallbackFrom: previousModel,
+              modelFallbackTo: fallbackModel,
+              reason: "transient_retries_exhausted",
+            },
+          );
+          continue;
+        }
       }
 
       // Graceful-degradation escape hatch (opt-in — see `onSchemaRetriesExhausted`'s
@@ -1664,6 +1726,61 @@ async function resolveVisionAwareFallbackModel(currentModel: string): Promise<st
   }
 }
 
+type RecommendedModelFallbackRequirements = {
+  supportsVision?: boolean;
+  supportsStructuredOutputs?: boolean;
+};
+
+/**
+ * Resolve one bounded, admin-recommended model for a transient/model-level
+ * recovery. This is intentionally separate from the legacy all-catalog
+ * fallback above: Vertical Drama must never turn a temporary provider error
+ * into an arbitrary quality-policy change (for example, Gemini appearing in a
+ * video-prompt request just because it advertises vision).
+ *
+ * The shortlist is priority-ranked and capped, then rotated randomly within
+ * that small approved set. Prefer a different provider from the failed model
+ * first because a provider outage is more likely to affect sibling models.
+ */
+async function resolveRecommendedModelFallback(
+  currentModel: string,
+  requirements: RecommendedModelFallbackRequirements,
+): Promise<string | null> {
+  try {
+    const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+    const currentProviderIds = new Set(
+      rows
+        .filter(row => row.modelId === currentModel || row.providerModelId === currentModel)
+        .map(row => row.providerId),
+    );
+    const candidates = rows
+      .filter(row => (
+        row.modelId !== currentModel
+        && row.isRecommended === true
+        && isAvailable(row.providerId)
+        && (requirements.supportsVision !== true || row.supportsVision === true)
+        && (requirements.supportsStructuredOutputs !== true || row.supportsStructuredOutputs === true)
+      ))
+      .sort((a, b) => a.priority - b.priority || a.modelId.localeCompare(b.modelId));
+    if (candidates.length === 0) return null;
+
+    const differentProviderCandidates = candidates.filter(
+      candidate => !currentProviderIds.has(candidate.providerId),
+    );
+    const pool = (differentProviderCandidates.length > 0
+      ? differentProviderCandidates
+      : candidates
+    ).slice(0, 3);
+    const randomIndex = Math.min(
+      pool.length - 1,
+      Math.floor(Math.max(0, Math.random()) * pool.length),
+    );
+    return pool[randomIndex]?.modelId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function isProviderUnavailableError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /No (?:healthy )?providers? (?:is |are )?available for model/i.test(message);
@@ -1709,6 +1826,8 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   userId: number;
   maxTokens: number;
   schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
+  modelFallbackFrom?: string;
+  modelFallbackReason?: string;
 }): Promise<{ data: T; response: VisionAwareCallResponse }> {
   const result = await executeWithFallback({
     model: args.model,
@@ -1720,6 +1839,8 @@ export async function runVisionAwareJsonAttempt<T>(args: {
     userId: args.userId,
     maxTokens: args.maxTokens,
     temperature: 0.7,
+    modelFallbackFrom: args.modelFallbackFrom,
+    modelFallbackReason: args.modelFallbackReason,
   });
 
   if (result.type !== "success") {
@@ -1756,6 +1877,8 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   hasVision: boolean;
   images: VisionAwareImageInput[];
   userId: number;
+  tenantId?: string;
+  publicUrl?: string | null;
   schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
   firstAttemptMaxTokens: number;
   retryMaxTokens: number;
@@ -1779,23 +1902,28 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
     return { ...result, usedVision: args.hasVision };
   } catch (firstError) {
     console.warn(`[executeVisionAwareJsonCallWithRetry] First attempt failed with model ${args.model}:`, firstError instanceof Error ? firstError.message : firstError);
-    if (isProviderUnavailableError(firstError)) throw firstError;
+    if (isProviderUnavailableError(firstError) && !args.modelFallbackPolicy) throw firstError;
     const retryText = `${args.userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
     try {
       const result = await runVisionAwareJsonAttempt<T>({
         model: args.model,
         systemPrompt: args.systemPrompt,
-        content: buildVisionAwareContent(retryText, args.hasVision, args.images),
+        content: buildVisionAwareContent(retryText, args.hasVision, images),
         userId: args.userId,
         maxTokens: args.retryMaxTokens,
         schema: args.schema,
       });
       return { ...result, usedVision: args.hasVision };
     } catch (retryError) {
-      if (isProviderUnavailableError(retryError)) throw retryError;
-      const fallbackModel = args.disableModelFallback
-        ? null
-        : await resolveVisionAwareFallbackModel(args.model);
+      if (isProviderUnavailableError(retryError) && !args.modelFallbackPolicy) throw retryError;
+      const fallbackModel = args.modelFallbackPolicy === "recommended"
+        ? await resolveRecommendedModelFallback(args.model, {
+            supportsVision: args.hasVision,
+            supportsStructuredOutputs: true,
+          })
+        : args.disableModelFallback
+          ? null
+          : await resolveVisionAwareFallbackModel(args.model);
       console.warn(
         `[executeVisionAwareJsonCallWithRetry] Retry attempt failed with model ${args.model}.${fallbackModel ? ` Attempting active fallback model ${fallbackModel}...` : " No active vision-capable fallback model is available; attempting text-only mode..."}`,
         retryError instanceof Error ? retryError.message : retryError,
@@ -1805,10 +1933,12 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           const result = await runVisionAwareJsonAttempt<T>({
             model: fallbackModel,
             systemPrompt: args.systemPrompt,
-            content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
+            content: buildVisionAwareContent(args.userPromptText, args.hasVision, images),
             userId: args.userId,
             maxTokens: args.retryMaxTokens,
             schema: args.schema,
+            modelFallbackFrom: args.model,
+            modelFallbackReason: "vision_retry_failed",
           });
           return { ...result, usedVision: args.hasVision };
         } catch (fallbackErr) {
