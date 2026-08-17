@@ -90,22 +90,22 @@ function coverVariantDirection(
     case 1:
       return [
         "**แนวทางองค์ประกอบหน้าปกแบบที่ 1**",
-        "เน้นตัวละครหรือความสัมพันธ์หลักและอารมณ์สำคัญของตอน ใช้การจัดวางระยะใกล้หรือระยะกลางให้จุดเด่นของเรื่องอยู่ชัดเจน",
+        "สร้างภาพ close-up หรือ medium close-up ที่เน้นตัวละครหรือความสัมพันธ์หลักและอารมณ์สำคัญของตอน ให้ใบหน้า มือ หรือวัตถุสำคัญเด่นชัด ฉากหลังละลายและหลีกเลี่ยงภาพกลุ่มหรือมุมกว้าง",
       ].join("\n");
     case 2:
       return [
         "**แนวทางองค์ประกอบหน้าปกแบบที่ 2**",
-        "เปิดบริบทสถานที่และบรรยากาศของเหตุการณ์ให้เห็นชัด ใช้การจัดวางมุมกว้างหรือระยะไกล และวางตัวละครให้สัมพันธ์กับสภาพแวดล้อม",
+        "สร้างภาพ wide establishing shot ให้สถานที่และบรรยากาศของเหตุการณ์เป็นจุดเด่น วางตัวละครขนาดเล็กลงในพื้นที่หนึ่งส่วนสามของภาพ และแสดงความสัมพันธ์กับสภาพแวดล้อมอย่างชัดเจน ห้ามใช้เฟรมระยะใกล้แบบหน้าปกอื่น",
       ].join("\n");
     case 3:
       return [
         "**แนวทางองค์ประกอบหน้าปกแบบที่ 3**",
-        "เน้นการกระทำ ปฏิสัมพันธ์ หรือความขัดแย้งสำคัญของตอน ใช้การจัดวางระยะกลางที่สื่อทิศทางและความเคลื่อนไหวของเหตุการณ์",
+        "สร้างภาพ action framing ระยะกลางที่จับการกระทำ ปฏิสัมพันธ์ หรือความขัดแย้งสำคัญของตอน เช่น มือ วัตถุ หรือท่าทางที่กำลังเกิดขึ้น ใช้เส้นทแยงและการแยก foreground/background เพื่อไม่ให้กลายเป็นภาพยืนเรียงกัน",
       ].join("\n");
     case 4:
       return [
         "**แนวทางองค์ประกอบหน้าปกแบบที่ 4**",
-        "สร้างมุมกล้องหรือการจัดเฟรมแบบภาพยนตร์ที่แตกต่างจากหน้าปกแบบอื่นอย่างชัดเจน เช่น เปลี่ยนมุมมอง ระยะภาพ หรือการใช้พื้นที่ว่าง โดยยังคงเหตุการณ์และตัวตนของตัวละครให้สอดคล้องกับเรื่อง",
+        "สร้าง alternate cinematic angle ที่แตกต่างจากหน้าปกแบบอื่นอย่างชัดเจน เช่น มุมสูง มุมต่ำ มุมมองผ่าน foreground หรือการจัดองค์ประกอบแบบอสมมาตรที่มีพื้นที่ว่าง โดยยังคงเหตุการณ์และตัวตนของตัวละครให้สอดคล้องกับเรื่อง",
       ].join("\n");
   }
 }
@@ -221,7 +221,8 @@ function scoreCandidate(
 export function selectEpisodeCoverReferences(
   candidates: readonly EpisodeCoverReferenceCandidate[],
   narrativeText: string,
-  maxReferences: number = MAX_REFERENCES
+  maxReferences: number = MAX_REFERENCES,
+  selectionOffset: number = 0
 ): EpisodeCoverReference[] {
   const limit = Math.max(
     0,
@@ -260,20 +261,27 @@ export function selectEpisodeCoverReferences(
   let selected: EpisodeCoverReferenceCandidate[];
   if (!hasNarrativeMatch) {
     const step = (unique.length - 1) / Math.max(1, limit - 1);
+    const offset =
+      Math.abs(Math.floor(selectionOffset)) % Math.max(1, unique.length);
     const indexes = new Set(
-      Array.from({ length: limit }, (_, index) => Math.round(index * step))
+      Array.from({ length: limit }, (_, index) =>
+        (Math.round(index * step) + offset) % unique.length
+      )
     );
     selected = Array.from(indexes)
       .sort((a, b) => a - b)
       .map(index => unique[index]);
   } else {
-    selected = scored
+    const ranked = scored
       .sort(
         (a, b) =>
           b.score - a.score || a.candidate.sourceIndex - b.candidate.sourceIndex
       )
-      .slice(0, limit)
       .map(item => item.candidate);
+    const offset = Math.abs(Math.floor(selectionOffset)) % ranked.length;
+    selected = Array.from({ length: limit }, (_, index) =>
+      ranked[(index + offset) % ranked.length]
+    );
   }
 
   return selected

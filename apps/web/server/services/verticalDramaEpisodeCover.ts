@@ -163,6 +163,8 @@ export function buildEpisodeCoverGenerationSnapshot(input: {
   logoReferences?: readonly EpisodeCoverLogoReference[];
   maxReferenceImages?: number;
   referenceImageCount?: number;
+  /** Deterministically rotates the selected frames between cover variants. */
+  referenceSelectionOffset?: number;
 }): EpisodeCoverGenerationSnapshot {
   const frames =
     input.startFramePlan && typeof input.startFramePlan === "object"
@@ -214,7 +216,9 @@ export function buildEpisodeCoverGenerationSnapshot(input: {
   const selected = selectEpisodeCoverReferences(
     candidates,
     narrativeText,
-    Math.min(frameReferenceLimit, input.referenceImageCount ?? frameReferenceLimit)
+    Math.min(frameReferenceLimit, input.referenceImageCount ?? frameReferenceLimit),
+    input.referenceSelectionOffset ??
+      (input.coverSlotId ? input.coverSlotId - 1 : 0)
   );
   const references = selected.flatMap(reference => {
     const url = input.referenceUrls.get(reference.approvedMediaAssetId);

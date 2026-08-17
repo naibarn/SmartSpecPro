@@ -63,10 +63,10 @@ describe("episode cover prompt", () => {
     );
 
     expect(new Set(prompts).size).toBe(4);
-    expect(prompts[0]).toContain("เน้นตัวละครหรือความสัมพันธ์หลัก");
-    expect(prompts[1]).toContain("เปิดบริบทสถานที่และบรรยากาศ");
-    expect(prompts[2]).toContain("เน้นการกระทำ ปฏิสัมพันธ์ หรือความขัดแย้ง");
-    expect(prompts[3]).toContain("มุมกล้องหรือการจัดเฟรมแบบภาพยนตร์ที่แตกต่าง");
+    expect(prompts[0]).toContain("สร้างภาพ close-up หรือ medium close-up");
+    expect(prompts[1]).toContain("สร้างภาพ wide establishing shot");
+    expect(prompts[2]).toContain("สร้างภาพ action framing ระยะกลาง");
+    expect(prompts[3]).toContain("สร้าง alternate cinematic angle");
     for (const prompt of prompts) {
       expect(prompt).not.toContain("คาเฟ่");
       expect(prompt).not.toContain("ขอแต่งงาน");
@@ -103,6 +103,15 @@ describe("approved Start Frame selection", () => {
         "ข้อความที่ไม่ตรงกัน",
       ).map(item => item.shotNumber),
     ).toEqual([1, 4, 6, 9]);
+  });
+
+  it("rotates reference selection between cover variants", () => {
+    const first = selectEpisodeCoverReferences(candidates, "", 2, 0);
+    const second = selectEpisodeCoverReferences(candidates, "", 2, 1);
+
+    expect(first.map(item => item.shotNumber)).not.toEqual(
+      second.map(item => item.shotNumber),
+    );
   });
 });
 

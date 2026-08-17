@@ -57,8 +57,50 @@ describe("vertical drama episode cover service helpers", () => {
     });
 
     expect(snapshot.prompt).toContain("แนวทางองค์ประกอบหน้าปกแบบที่ 3");
-    expect(snapshot.prompt).toContain("เน้นการกระทำ ปฏิสัมพันธ์ หรือความขัดแย้ง");
+    expect(snapshot.prompt).toContain("สร้างภาพ action framing ระยะกลาง");
     expect(snapshot.prompt).not.toContain("คาเฟ่");
+  });
+
+  it("rotates scene references when building different cover slots", () => {
+    const startFramePlan = {
+      frames: Array.from({ length: 5 }, (_, index) => ({
+        shotNumber: index + 1,
+        approvedMediaAssetId: String(index + 11),
+      })),
+    };
+    const referenceUrls = new Map<string, string>(
+      Array.from(
+        { length: 5 }, (_, index) => [
+          String(index + 11),
+          `https://cdn/${index + 11}.jpg`,
+        ],
+      ),
+    );
+    const baseInput = {
+      narrative: {
+        seriesTitle: "เรื่องหลัก",
+        episodeNumber: 2,
+        episodeTitle: "เหตุการณ์สำคัญ",
+        synopsis: "",
+        plotBeats: [],
+      },
+      startFramePlan,
+      referenceUrls,
+    };
+    const slotTwo = buildEpisodeCoverGenerationSnapshot({
+      ...baseInput,
+      coverSlotId: 2,
+      referenceImageCount: 2,
+    });
+    const slotThree = buildEpisodeCoverGenerationSnapshot({
+      ...baseInput,
+      coverSlotId: 3,
+      referenceImageCount: 3,
+    });
+
+    expect(slotTwo.references.map(reference => reference.shotNumber)).not.toEqual(
+      slotThree.references.map(reference => reference.shotNumber),
+    );
   });
 
   it("projects only safe fields for the episode list", () => {
