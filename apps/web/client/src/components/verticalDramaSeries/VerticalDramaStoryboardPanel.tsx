@@ -5984,6 +5984,13 @@ export function VerticalDramaStoryboardPanel({
                                     "Unclear or changed image — fix it before generating a prompt/video"
                                   )}
                             </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {t(
+                                locale,
+                                "ระหว่างสลับตำแหน่งเลือกชื่อซ้ำชั่วคราวได้ ระบบจะตรวจความซ้ำก่อนยืนยัน",
+                                "You can temporarily choose the same name while swapping; duplicates are checked before confirmation."
+                              )}
+                            </p>
                           </div>
                           <Badge
                             variant="outline"
@@ -6035,11 +6042,6 @@ export function VerticalDramaStoryboardPanel({
                                   <option
                                     key={optionKey}
                                     value={optionKey}
-                                    disabled={draft.some(
-                                      (selected, selectedIndex) =>
-                                        selected === optionKey &&
-                                        selectedIndex !== index
-                                    )}
                                   >
                                     {characterPortraits[optionKey]?.name ??
                                       optionKey}
