@@ -4,12 +4,15 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.models.media_task import TaskStatus
+from app.services.notification_service import notify_task_failed
 from app.tasks.media_tasks import (
     _generate_image_async,
     _generate_audio_async,
     _is_non_retryable_media_error,
+    _is_openai_policy_media_error,
     _mark_task_failed_async,
     _mark_task_retrying_async,
+    _send_failure_notifications,
 )
 
 
@@ -77,6 +80,84 @@ def test_provider_file_type_validation_errors_are_non_retryable():
 
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
+
+
+def _notification_session():
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    lookup_result = MagicMock()
+    lookup_result.first.return_value = ("gpt-image-1", "provider-task-1")
+    session.execute = AsyncMock(return_value=lookup_result)
+    return session
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_openai_policy_failure_only_notifies_task_owner_without_auto_feedback():
+    session = _notification_session()
+    notify_owner = AsyncMock()
+    notify_admins = AsyncMock()
+    auto_report = AsyncMock()
+    policy_error = (
+        "500: Image generation failed: Task failed: Sorry, but the image we created "
+        "may violate OpenAI's content policies."
+    )
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
+         patch("app.services.notification_service.notify_task_failed", notify_owner), \
+         patch("app.services.notification_service.notify_admin_task_alert", notify_admins), \
+         patch("app.services.system_auto_report.report_system_failure", auto_report):
+        await _send_failure_notifications("task-1", "user-1", "image", policy_error)
+
+    notify_owner.assert_awaited_once()
+    assert "OpenAI's content policy" in notify_owner.await_args.kwargs["user_message"]
+    assert "revise the prompt or reference image" in notify_owner.await_args.kwargs["user_message"]
+    notify_admins.assert_not_awaited()
+    auto_report.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_non_policy_failure_keeps_admin_and_auto_feedback_notifications():
+    session = _notification_session()
+    notify_owner = AsyncMock()
+    notify_admins = AsyncMock()
+    auto_report = AsyncMock()
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
+         patch("app.services.notification_service.notify_task_failed", notify_owner), \
+         patch("app.services.notification_service.notify_admin_task_alert", notify_admins), \
+         patch("app.services.system_auto_report.report_system_failure", auto_report):
+        await _send_failure_notifications("task-2", "user-2", "image", "provider timeout")
+
+    notify_owner.assert_awaited_once()
+    notify_admins.assert_awaited_once()
+    auto_report.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_task_failure_notification_uses_policy_copy_when_provided():
+    notification_service = MagicMock()
+    notification_service.create_notification = AsyncMock()
+
+    with patch(
+        "app.services.notification_service.NotificationService",
+        return_value=notification_service,
+    ):
+        await notify_task_failed(
+            db=MagicMock(),
+            user_id="user-1",
+            task_id="task-1",
+            media_type="image",
+            error="raw provider refusal",
+            user_message="Revise the prompt and try again.",
+        )
+
+    assert notification_service.create_notification.await_args.kwargs["message"] == (
+        "Revise the prompt and try again."
+    )
 
 
 @pytest.mark.unit

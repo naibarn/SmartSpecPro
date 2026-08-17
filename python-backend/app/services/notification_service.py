@@ -428,14 +428,15 @@ async def notify_task_failed(
     task_id: str,
     media_type: str,
     error: str,
+    user_message: Optional[str] = None,
 ):
-    """Notify the task owner that their media generation failed after all retries."""
+    """Notify the task owner, optionally overriding the generic failure copy."""
     service = NotificationService(db)
     await service.create_notification(
         user_id=user_id,
         type="error",
         title=f"{media_type.capitalize()} Generation Failed",
-        message=(
+        message=user_message or (
             f"Your {media_type} generation task failed after multiple retries. "
             f"Error: {error[:200]}"
         ),

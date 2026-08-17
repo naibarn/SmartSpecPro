@@ -475,6 +475,24 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
     return ("we're so sorry" in message or "we are so sorry" in message) and "prompt" in message
 
 
+def _is_openai_policy_media_error(error: Exception | str) -> bool:
+    """Return true for user-input content-policy refusals, not system faults."""
+    message = str(error).lower()
+    policy_markers = (
+        "content policy",
+        "content policies",
+        "safety policy",
+        "moderation",
+        "prohibited",
+        "disallowed",
+        "not allowed",
+        "violat",
+        "nsfw",
+        "sensitive content",
+    )
+    return any(marker in message for marker in policy_markers)
+
+
 def _extract_model_query_endpoint(config_json: Any) -> Optional[str]:
     """Extract model-specific status/query endpoint from configJson."""
     if not config_json:
@@ -1634,8 +1652,8 @@ def _extract_exception_debug_payload(error: Exception) -> dict[str, Any]:
 
 
 async def _send_failure_notifications(task_id: str, user_id: str, media_type: str, error: str):
-    """Send in-app + email notifications on final task failure, and auto-file
-    an admin feedback ticket so the failure is triaged without manual digging."""
+    """Notify the owner of a failed task and auto-report genuine system failures."""
+    is_policy_error = media_type == "image" and _is_openai_policy_media_error(error)
     async with AsyncSessionLocal() as db:
         model_name = None
         external_task_id = None
@@ -1646,7 +1664,17 @@ async def _send_failure_notifications(task_id: str, user_id: str, media_type: st
             await notify_task_failed(
                 db=db, user_id=str(user_id), task_id=task_id,
                 media_type=media_type, error=error,
+                user_message=(
+                    "Image generation was blocked because OpenAI's content policy rejected "
+                    "this request. Please revise the prompt or reference image and try again."
+                    if is_policy_error else None
+                ),
             )
+
+            # A policy refusal is caused by the user's prompt/reference, not by
+            # SmartAIHub. Keep it out of admin alerts.
+            if is_policy_error:
+                return
 
             # Notify all admins
             await notify_admin_task_alert(
@@ -1658,6 +1686,11 @@ async def _send_failure_notifications(task_id: str, user_id: str, media_type: st
             )
         except Exception as notify_err:
             logger.warning("failure_notification_error", task_id=task_id, error=str(notify_err))
+
+        # Even if owner notification itself failed, a policy refusal must never
+        # become an automatic feedback ticket.
+        if is_policy_error:
+            return
 
         # Best-effort lookup of extra context for the auto-report. Runs even if
         # the notification calls above failed — the auto-report must not be
