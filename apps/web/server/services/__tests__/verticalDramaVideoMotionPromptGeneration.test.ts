@@ -2275,6 +2275,49 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     expect(retryText).toContain("Alice [characterKey=alice]=viewer-left");
   });
 
+  it("uses a custom character description instead of a conflicting screen position", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse(
+        speakerSwitchOutput({
+          prompt:
+            'The woman wearing an apron (Alice) says "Why didn\'t you tell me?" while Bob (viewer-right) listens. Bob (viewer-right) says "I was going to." while the woman wearing an apron listens. The woman wearing an apron says "That\'s not good enough."',
+          frame_analysis: {
+            people: [
+              { name: "Alice", position: "viewer-right" },
+              { name: "Bob", position: "viewer-right" },
+            ],
+            position_source: "image",
+          },
+        }),
+      ),
+    );
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams({
+        characterReferenceImages: [
+          { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
+          { characterKey: "bob", name: "Bob", url: "https://example.com/bob.png" },
+        ],
+        verifiedCastPositions: [
+          { characterKey: "alice", name: "Alice", position: "viewer-left" },
+          { characterKey: "bob", name: "Bob", position: "viewer-right" },
+        ],
+        characterDescriptionOverrides: {
+          alice: "the woman wearing an apron",
+        },
+      }),
+    );
+
+    expect(result.prompt).toContain("the woman wearing an apron");
+    const userMessage = mockExecute.mock.calls[0][0].messages.find((m: any) => m.role === "user");
+    const content = typeof userMessage.content === "string"
+      ? userMessage.content
+      : userMessage.content.map((part: any) => part.text ?? "").join("\n");
+    expect(content).toContain("CUSTOM CHARACTER IDENTIFICATION OVERRIDES");
+    expect(content).toContain("Do not combine the custom description with a conflicting position cue");
+    expect(content).not.toContain("alice]=viewer-left");
+  });
+
   it("rejects an unscoped Dual View frame analysis instead of treating the View 2 speaker as present in Image 1", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,

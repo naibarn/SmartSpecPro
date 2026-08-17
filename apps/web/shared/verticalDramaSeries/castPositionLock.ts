@@ -17,6 +17,42 @@ export type VerticalDramaCastPositionLock = {
   confirmedAt: string;
 };
 
+/**
+ * Optional, user-authored identity cues for a character in one shot. These
+ * cues are deliberately shot-local: a crowded frame may contain several
+ * people who are not part of the series roster, so a concise wardrobe/role
+ * description can identify the speaking person more reliably than a
+ * left/right coordinate.
+ */
+export type VerticalDramaCharacterDescriptionOverrides = Record<string, string>;
+
+export const VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH = 240;
+
+/** Normalize a persisted/UI-provided description map and optionally scope it
+ * to the shot's known character refs. Empty descriptions are omitted so an
+ * empty object cleanly means "no override". */
+export function normalizeVerticalDramaCharacterDescriptionOverrides(
+  value: unknown,
+  allowedCharacterRefs?: readonly string[],
+): VerticalDramaCharacterDescriptionOverrides {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const allowed = allowedCharacterRefs
+    ? new Set(allowedCharacterRefs.map(key => key.trim()).filter(Boolean))
+    : undefined;
+  const entries = Object.entries(value as Record<string, unknown>);
+  const normalized: VerticalDramaCharacterDescriptionOverrides = {};
+  for (const [rawKey, rawDescription] of entries) {
+    const key = rawKey.trim();
+    const description =
+      typeof rawDescription === "string"
+        ? rawDescription.trim().slice(0, VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH)
+        : "";
+    if (!key || !description || (allowed && !allowed.has(key))) continue;
+    normalized[key] = description;
+  }
+  return normalized;
+}
+
 export type VerticalDramaVerifiedCastPosition = {
   characterKey: string;
   name: string;

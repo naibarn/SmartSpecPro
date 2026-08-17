@@ -499,6 +499,11 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     orderedCharacterRefs: string[]
   ) => void;
+  onSetShotCharacterDescriptionOverrides?: (
+    shotNumber: number,
+    overrides: Record<string, string>
+  ) => void;
+  savingCharacterDescriptionOverridesForShot?: number | null;
   /** Same per-shot override for portraits that must appear only inside a phone/video-call screen. */
   onSetShotScreenCallerReferences?: (
     shotNumber: number,
@@ -1434,6 +1439,12 @@ export function VerticalDramaEpisodeWorkspace({
           }
           onSetShotCastPositionLock={
             storyboardPanel?.onSetShotCastPositionLock
+          }
+          onSetShotCharacterDescriptionOverrides={
+            storyboardPanel?.onSetShotCharacterDescriptionOverrides
+          }
+          savingCharacterDescriptionOverridesForShot={
+            storyboardPanel?.savingCharacterDescriptionOverridesForShot
           }
           onSetShotScreenCallerReferences={
             storyboardPanel?.onSetShotScreenCallerReferences

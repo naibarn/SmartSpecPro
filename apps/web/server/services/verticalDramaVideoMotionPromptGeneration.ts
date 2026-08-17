@@ -78,9 +78,17 @@ import type {
   SpeakerSwitchSubShotWindow,
 } from "@shared/verticalDramaSeries";
 import type { VerticalDramaBarrierMultiView } from "@shared/verticalDramaSeries/barrierMultiView";
-import type { VerticalDramaVerifiedCastPosition } from "@shared/verticalDramaSeries/castPositionLock";
+import {
+  normalizeVerticalDramaCharacterDescriptionOverrides,
+  type VerticalDramaCharacterDescriptionOverrides,
+  type VerticalDramaVerifiedCastPosition,
+} from "@shared/verticalDramaSeries/castPositionLock";
 import { renderVerticalDramaBarrierMultiViewFactBlock } from "@shared/verticalDramaSeries/barrierMultiView";
 import { filterSceneContinuityLockBlockForShot } from "@shared/verticalDramaSeries/sceneContinuity";
+import {
+  deriveVerticalDramaSpokenCallerVirtualScreens,
+  renderVerticalDramaSpokenCallerVirtualScreenPromptBlock,
+} from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 
 import {
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
@@ -663,6 +671,7 @@ export function syncStartFramesOntoMotionPromptClips(
 export interface GenerateVideoMotionPromptPackParams {
   userId: number;
   tenantId?: string;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   episodeTitle: string;
@@ -727,6 +736,8 @@ export interface GenerateVideoMotionPromptPackParams {
     durationSeconds: number;
     /** Character keys established in this shot, in the start-frame contract order. */
     characterKeys?: string[];
+    /** Explicit caller keys shown only inside phone/video-call screens. */
+    screenCallerCharacterKeys?: string[];
     /** Speaker-attributed source lines, so the bulk skill cannot lose who owns a line. */
     dialogueLines?: Array<{
       line: string;
@@ -858,6 +869,17 @@ function buildUserPrompt(
       const characters = s.characterKeys?.length
         ? ` | established characters: ${s.characterKeys.join(", ")}`
         : "";
+      const spokenCallerPolicy = deriveVerticalDramaSpokenCallerVirtualScreens({
+        physicalSceneCharacterRefs: s.characterKeys ?? [],
+        screenCallerCharacterRefs: s.screenCallerCharacterKeys ?? [],
+        dialogueSpeakerRefs: (s.dialogueLines ?? []).flatMap(line =>
+          [line.characterKey, line.speakerName].filter(
+            (value): value is string => Boolean(value?.trim())
+          )
+        ),
+      });
+      const spokenCallerVirtualScreenBlock =
+        renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(spokenCallerPolicy);
       const retentionMarkers = [
         s.shotNumber === openingShotNumber ? "is_opening_shot: true (episode's hook shot)" : null,
         s.shotNumber === endingShotNumber
@@ -867,7 +889,7 @@ function buildUserPrompt(
         .filter(Boolean)
         .join(", ");
       const retentionMarkersSuffix = retentionMarkers ? ` | ${retentionMarkers}` : "";
-      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${characters}${dialogue}${retentionMarkersSuffix}`;
+      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${characters}${dialogue}${retentionMarkersSuffix}${spokenCallerVirtualScreenBlock ? ` | ${spokenCallerVirtualScreenBlock}` : ""}`;
     })
     .join("\n");
 
@@ -1095,6 +1117,8 @@ export async function generateVideoMotionPromptPack(
             })),
           ]),
         userId: params.userId,
+        tenantId: params.tenantId,
+        publicUrl: params.publicUrl,
         schema: videoMotionPromptPackOutputSchema,
         firstAttemptMaxTokens: 16000,
         retryMaxTokens: 32000,
@@ -1675,6 +1699,28 @@ function buildFrameAnalysisPositionLock(
   return entries.length > 0 ? entries.join(", ") : undefined;
 }
 
+function getCharacterDescriptionOverride(
+  characterKey: string | undefined,
+  overrides?: VerticalDramaCharacterDescriptionOverrides,
+): string | undefined {
+  if (!characterKey) return undefined;
+  const description = overrides?.[characterKey]?.trim();
+  return description || undefined;
+}
+
+function buildCharacterDescriptionOverrideBlock(
+  overrides: VerticalDramaCharacterDescriptionOverrides | undefined,
+  characterNameByKey?: ReadonlyMap<string, string>,
+): string | undefined {
+  const entries = Object.entries(overrides ?? {});
+  if (entries.length === 0) return undefined;
+  const lines = entries.map(([characterKey, description]) => {
+    const name = characterNameByKey?.get(characterKey) ?? characterKey;
+    return `${name} [characterKey=${characterKey}]: ${description}`;
+  });
+  return `CUSTOM CHARACTER IDENTIFICATION OVERRIDES (AUTHORITATIVE; user supplied for this shot): ${lines.join("; ")}. For every listed character, use the supplied description as the identity anchor and do NOT identify or anchor that character by viewer-left/viewer-right screen position. Do not combine the custom description with a conflicting position cue.`;
+}
+
 /**
  * Position-anchor compliance check (`planning/vd-video-prompt-model-family-
  * quality/plan.md`, item C) — returns a short, human-readable issue string
@@ -1705,6 +1751,7 @@ function findPositionAnchorIssues(
   hasEstablishedCharacters: boolean,
   barrierMultiView?: VerticalDramaBarrierMultiView,
   verifiedCastPositions?: readonly VerticalDramaVerifiedCastPosition[],
+  characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides,
 ): string[] {
   const issues: string[] = [];
   const people = data.frame_analysis?.people;
@@ -1713,6 +1760,9 @@ function findPositionAnchorIssues(
     issues.push(`frame_analysis.people is missing or empty`);
   }
   for (const locked of verifiedCastPositions ?? []) {
+    if (getCharacterDescriptionOverride(locked.characterKey, characterDescriptionOverrides)) {
+      continue;
+    }
     const entries = resolveFrameAnalysisSpeakerEntries(
       { characterKey: locked.characterKey, speakerName: locked.name },
       framePositions,
@@ -1735,6 +1785,18 @@ function findPositionAnchorIssues(
     const quoteIndex = findQuotedLineStartIndex(prompt, line.lineTh);
     if (quoteIndex < 0) continue;
     const window = prompt.slice(Math.max(0, quoteIndex - ANCHOR_WINDOW_CHARS), quoteIndex);
+    const customDescription = getCharacterDescriptionOverride(
+      line.characterKey,
+      characterDescriptionOverrides,
+    );
+    if (customDescription) {
+      if (!prompt.toLocaleLowerCase().includes(customDescription.toLocaleLowerCase())) {
+        issues.push(
+          `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — custom character identification override is missing from prompt: ${customDescription}`,
+        );
+      }
+      continue;
+    }
     const normalizedWindow = normalizeSpeakerLabel(window);
     const normalizedSpeaker = speaker ? normalizeSpeakerLabel(speaker) : "";
     const hasName = speaker ? normalizedWindow.includes(normalizedSpeaker) : true;
@@ -1904,6 +1966,7 @@ export function resolveShotVideoPromptMotionProfile(
 export interface GenerateVerticalDramaShotVideoPromptParams {
   userId: number;
   tenantId?: string;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   shotNumber: number;
@@ -1990,6 +2053,9 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * must agree with it rather than validating against each other.
    */
   verifiedCastPositions?: VerticalDramaVerifiedCastPosition[];
+  /** Optional shot-local identity cues. A supplied cue replaces screen-position
+   * anchoring for that character only. */
+  characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides;
   /**
    * Location reference image (Phase E of `planning/polished-toasting-
    * gadget.md` — location visual bible) — this shot's single environment/
@@ -2081,6 +2147,10 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
     characterIdentityMap?: string;
     /** Two-view physical barrier contract; never a phone/video-call role. */
     barrierMultiView?: VerticalDramaBarrierMultiView;
+    /** Explicit caller refs; caller status is never inferred from synopsis. */
+    screenCallerCharacterRefs?: string[];
+    /** Optional canonical speaker order for caller-screen derivation. */
+    speakingOrder?: string[];
     /**
      * Product tie-in context (spec §13) — present ONLY when this shot is a
      * tie-in shot per the script stage's `product_tie_in_plan.tie_ins[]`
@@ -2313,6 +2383,22 @@ export function buildShotVideoPromptUserPrompt(
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
   const dialogueLines = shotContext.dialogueLines ?? [];
+  const characterDescriptionOverrides = normalizeVerticalDramaCharacterDescriptionOverrides(
+    params.characterDescriptionOverrides,
+  );
+  const spokenCallerPolicy = deriveVerticalDramaSpokenCallerVirtualScreens({
+    physicalSceneCharacterRefs: [],
+    screenCallerCharacterRefs: shotContext.screenCallerCharacterRefs ?? [],
+    dialogueSpeakerRefs:
+      shotContext.speakingOrder ??
+      dialogueLines.flatMap(line =>
+        [line.characterKey, line.speakerName].filter(
+          (value): value is string => Boolean(value?.trim())
+        )
+      ),
+  });
+  const spokenCallerVirtualScreenBlock =
+    renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(spokenCallerPolicy);
   const dialogueBlock = dialogueLines.length
     ? dialogueLines
         .map((l, i) => {
@@ -2332,6 +2418,13 @@ export function buildShotVideoPromptUserPrompt(
           if (l.delivery?.pauses) parts.push(`pauses: ${l.delivery.pauses}`);
           if (l.delivery?.texture) parts.push(`voice texture: ${l.delivery.texture}`);
           if (l.subtext) parts.push(`subtext: ${l.subtext}`);
+          const customDescription = getCharacterDescriptionOverride(
+            l.characterKey,
+            characterDescriptionOverrides,
+          );
+          if (customDescription) {
+            parts.push(`custom visual identity (use instead of screen position): ${customDescription}`);
+          }
           return parts.join(" | ");
         })
         .join("\n")
@@ -2364,16 +2457,32 @@ export function buildShotVideoPromptUserPrompt(
   const characterIdentityManifest = (params.characterReferenceImages ?? [])
     .map(c => `Portrait label: name=${c.name ?? c.characterKey}, characterKey=${c.characterKey}`)
     .join("; ");
-  const verifiedCastPositionLock = params.verifiedCastPositions?.length
-    ? `VERIFIED CAST POSITION LOCK (AUTHORITATIVE; user confirmed against the exact attached start frame): ${params.verifiedCastPositions
+  const characterNameByKey = new Map(
+    (params.characterReferenceImages ?? []).map(c => [
+      c.characterKey,
+      c.name ?? c.characterKey,
+    ]),
+  );
+  for (const person of params.verifiedCastPositions ?? []) {
+    characterNameByKey.set(person.characterKey, person.name);
+  }
+  const customCharacterDescriptionBlock = buildCharacterDescriptionOverrideBlock(
+    characterDescriptionOverrides,
+    characterNameByKey,
+  );
+  const verifiedCastPositionFacts = (params.verifiedCastPositions ?? []).filter(
+    person => !getCharacterDescriptionOverride(person.characterKey, characterDescriptionOverrides),
+  );
+  const verifiedCastPositionLock = verifiedCastPositionFacts.length
+    ? `VERIFIED CAST POSITION LOCK (AUTHORITATIVE; user confirmed against the exact attached start frame): ${verifiedCastPositionFacts
         .map(
           person =>
             `${person.name} [characterKey=${person.characterKey}]=${person.position}`,
         )
-        .join(", ")}. Use these viewer/camera-relative positions exactly in both frame_analysis and prompt. Do not reassign identities or positions from an AI guess.`
+        .join(", ")}. Use these viewer/camera-relative positions exactly in both frame_analysis and prompt for characters without a custom identity description. Do not reassign identities or positions from an AI guess.`
     : null;
   const speakerFaceBindingInstruction = dialogueLines.length
-    ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named characterKey; state that speaker's observed screen position from frame_analysis using ONLY viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right next to the line. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
+    ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named characterKey. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character, state the observed screen position from frame_analysis using ONLY viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right next to the line. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
     : null;
   // Location reference image (Phase E of `planning/polished-toasting-
   // gadget.md` — location visual bible) — same purely FACTUAL announcement
@@ -2404,6 +2513,7 @@ export function buildShotVideoPromptUserPrompt(
       ? `AUTHORITATIVE SHOT BEAT (story overview — the single source of truth for what visibly happens in this shot; ground the video motion in THIS; when it conflicts with the shorter shot description below, follow this): ${shotContext.canonicalShotSummary.trim()}`
       : null,
     shotContext.description ? `Shot description: ${shotContext.description}` : null,
+    spokenCallerVirtualScreenBlock,
     shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
     // Persistence/pin root-cause fix (`planning/vd-video-prompt-skill-first/
@@ -2437,6 +2547,7 @@ export function buildShotVideoPromptUserPrompt(
         ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
         : null,
     shotContext.characterIdentityMap ?? null,
+    customCharacterDescriptionBlock,
     verifiedCastPositionLock,
     characterReferenceImageNames.length > 0 && params.attachShotImage !== false
       ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
@@ -2651,6 +2762,9 @@ export async function generateVerticalDramaShotVideoPrompt(
   const model = resolvedModel.model;
   const hasVision = params.attachShotImage === false ? false : resolvedModel.hasVision;
   const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 1;
+  const characterDescriptionOverrides = normalizeVerticalDramaCharacterDescriptionOverrides(
+    params.characterDescriptionOverrides,
+  );
   // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
   // Phase 1b) — a visible server-log signal (instead of a silent guess) that
   // this generation ran without ever seeing the actual start-frame image, so
@@ -2829,6 +2943,7 @@ export async function generateVerticalDramaShotVideoPrompt(
           hasEstablishedCharacters,
           params.shotContext.barrierMultiView,
           params.verifiedCastPositions,
+          characterDescriptionOverrides,
         )
       : [];
 
@@ -2913,6 +3028,7 @@ export async function generateVerticalDramaShotVideoPrompt(
         hasEstablishedCharacters,
         params.shotContext.barrierMultiView,
         params.verifiedCastPositions,
+        characterDescriptionOverrides,
       );
       const positionMismatches = remainingIssues.filter(issue =>
         issue.includes(POSITION_ANCHOR_MARKER) ||
@@ -3153,6 +3269,9 @@ function buildSpeakerSwitchUserPrompt(
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
   const allDialogueLines = shotContext.dialogueLines ?? [];
+  const characterDescriptionOverrides = normalizeVerticalDramaCharacterDescriptionOverrides(
+    params.characterDescriptionOverrides,
+  );
   // Multi-character reference images (multi-character disambiguation fix,
   // `polished-toasting-gadget.md`) — see `buildShotVideoPromptUserPrompt`'s
   // identical `characterReferenceImageNames` doc comment.
@@ -3162,13 +3281,29 @@ function buildSpeakerSwitchUserPrompt(
   const characterIdentityManifest = (params.characterReferenceImages ?? [])
     .map(c => `Portrait label: name=${c.name ?? c.characterKey}, characterKey=${c.characterKey}`)
     .join("; ");
-  const verifiedCastPositionLock = params.verifiedCastPositions?.length
-    ? `VERIFIED CAST POSITION LOCK (AUTHORITATIVE; user confirmed against the exact attached start frame): ${params.verifiedCastPositions
+  const characterNameByKey = new Map(
+    (params.characterReferenceImages ?? []).map(c => [
+      c.characterKey,
+      c.name ?? c.characterKey,
+    ]),
+  );
+  for (const person of params.verifiedCastPositions ?? []) {
+    characterNameByKey.set(person.characterKey, person.name);
+  }
+  const customCharacterDescriptionBlock = buildCharacterDescriptionOverrideBlock(
+    characterDescriptionOverrides,
+    characterNameByKey,
+  );
+  const verifiedCastPositionFacts = (params.verifiedCastPositions ?? []).filter(
+    person => !getCharacterDescriptionOverride(person.characterKey, characterDescriptionOverrides),
+  );
+  const verifiedCastPositionLock = verifiedCastPositionFacts.length
+    ? `VERIFIED CAST POSITION LOCK (AUTHORITATIVE; user confirmed against the exact attached start frame): ${verifiedCastPositionFacts
         .map(
           person =>
             `${person.name} [characterKey=${person.characterKey}]=${person.position}`,
         )
-        .join(", ")}. Use these viewer/camera-relative positions exactly in both frame_analysis and every timed prompt segment. Do not reassign identities or positions from an AI guess.`
+        .join(", ")}. Use these viewer/camera-relative positions exactly in both frame_analysis and every timed prompt segment for characters without a custom identity description. Do not reassign identities or positions from an AI guess.`
     : null;
   // Location reference image (Phase E of `planning/polished-toasting-
   // gadget.md` — location visual bible) — see
@@ -3209,6 +3344,13 @@ function buildSpeakerSwitchUserPrompt(
               if (l.delivery?.pauses) parts.push(`pauses: ${l.delivery.pauses}`);
               if (l.delivery?.texture) parts.push(`voice texture: ${l.delivery.texture}`);
               if (l.subtext) parts.push(`subtext: ${l.subtext}`);
+              const customDescription = getCharacterDescriptionOverride(
+                l.characterKey,
+                characterDescriptionOverrides,
+              );
+              if (customDescription) {
+                parts.push(`custom visual identity (use instead of screen position): ${customDescription}`);
+              }
               return parts.join(" | ");
             })
             .join("\n")
@@ -3249,6 +3391,7 @@ function buildSpeakerSwitchUserPrompt(
         ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
         : null,
     shotContext.characterIdentityMap ?? null,
+    customCharacterDescriptionBlock,
     verifiedCastPositionLock,
     // Multi-character reference images (multi-character disambiguation fix,
     // `polished-toasting-gadget.md`) — factual announcement only; see
@@ -3260,7 +3403,7 @@ function buildSpeakerSwitchUserPrompt(
       ? `CHARACTER FACE IDENTITY MANIFEST (label-to-face mapping; the attached start frame remains authoritative for actual position): ${characterIdentityManifest}`
       : null,
     allDialogueLines.length
-      ? "SPEAKER-TO-FACE BINDING (MANDATORY): inspect the attached start frame first, match each visible face to the labeled portrait manifest by facial identity, and bind every timed segment to the exact characterKey/name plus observed screen position from frame_analysis. Use only viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right; these are always coordinates from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or requested layout; keep non-speakers' mouths closed and flag any unmatched face instead of guessing."
+      ? "SPEAKER-TO-FACE BINDING (MANDATORY): inspect the attached start frame first, match every visible face to the labeled portrait manifest by facial identity, and bind each timed segment to the exact characterKey/name. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character, include the observed screen position from frame_analysis using only viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right. These are always coordinates from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or requested layout; keep non-speakers' mouths closed and flag any unmatched face instead of guessing."
       : null,
     // Location reference image (Phase E of `planning/polished-toasting-
     // gadget.md` — location visual bible) — factual announcement only; see
@@ -3423,6 +3566,9 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     targetVideoModelFactBlock,
   );
 
+  const characterDescriptionOverrides = normalizeVerticalDramaCharacterDescriptionOverrides(
+    params.characterDescriptionOverrides,
+  );
   const allDialogueLines = params.shotContext.dialogueLines ?? [];
   const dialogue: VerticalDramaMotionPromptClipDialogueLine[] = params.subShotWindows.flatMap(
     (w) =>
@@ -3463,6 +3609,8 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       params.additionalImageUrls,
     ),
     userId: params.userId,
+    tenantId: params.tenantId,
+    publicUrl: params.publicUrl,
     schema: shotVideoPromptOutputSchema,
     // Bumped 3000 -> 3600 (frame_analysis headroom); retry ceiling unchanged.
     firstAttemptMaxTokens: 3600,
@@ -3509,6 +3657,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
           hasEstablishedCharacters,
           params.shotContext.barrierMultiView,
           params.verifiedCastPositions,
+          characterDescriptionOverrides,
         )
       : [];
 
@@ -3582,6 +3731,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         hasEstablishedCharacters,
         params.shotContext.barrierMultiView,
         params.verifiedCastPositions,
+        characterDescriptionOverrides,
       );
       const positionMismatches = remainingIssues.filter(issue =>
         issue.includes(POSITION_ANCHOR_MARKER) ||
@@ -3852,6 +4002,7 @@ function buildCandidateFactSheet(
   hasEstablishedCharacters: boolean,
   barrierMultiView?: VerticalDramaBarrierMultiView,
   verifiedCastPositions?: readonly VerticalDramaVerifiedCastPosition[],
+  characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides,
 ): VdVideoPromptCandidateFactSheet {
   const chars = data.prompt.length;
   const musicHaystack = `${data.prompt} ${data.audioDirection ?? ""}`;
@@ -3864,6 +4015,7 @@ function buildCandidateFactSheet(
     hasEstablishedCharacters,
     barrierMultiView,
     verifiedCastPositions,
+    characterDescriptionOverrides,
   );
   const faceObservability = data.frameAnalysis?.people
     .filter(person =>
@@ -4028,6 +4180,7 @@ function buildJudgeTimedSegmentFacts(subShotWindows: SpeakerSwitchSubShotWindow[
 async function callVerticalDramaVideoPromptJudge(args: {
   userId: number;
   tenantId?: string;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   shotNumber: number;
@@ -4065,6 +4218,8 @@ async function callVerticalDramaVideoPromptJudge(args: {
             )
           : [],
       userId: args.userId,
+      tenantId: args.tenantId,
+      publicUrl: args.publicUrl,
       schema: judgeOutputSchema,
       modelFallbackPolicy: "recommended",
       firstAttemptMaxTokens: 1200,
@@ -4208,6 +4363,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     hasEstablishedCharacters,
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
+    params.characterDescriptionOverrides,
   );
   const factSheetB = buildCandidateFactSheet(
     { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
@@ -4216,6 +4372,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     hasEstablishedCharacters,
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
+    params.characterDescriptionOverrides,
   );
 
   const judgeUserPromptText = buildJudgeUserPrompt({
@@ -4251,6 +4408,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
   const judgeOutcome = await callVerticalDramaVideoPromptJudge({
     userId: params.userId,
     tenantId: params.tenantId,
+    publicUrl: params.publicUrl,
     seriesId: params.seriesId,
     episodeId: params.episodeId,
     shotNumber: params.shotNumber,
@@ -4335,6 +4493,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     hasEstablishedCharacters,
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
+    params.characterDescriptionOverrides,
   );
 
   const repairedImprovesContract =
@@ -4461,6 +4620,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     hasEstablishedCharacters,
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
+    params.characterDescriptionOverrides,
   );
   const factSheetB = buildCandidateFactSheet(
     { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
@@ -4469,6 +4629,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     hasEstablishedCharacters,
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
+    params.characterDescriptionOverrides,
   );
 
   const judgeUserPromptText = buildJudgeUserPrompt({
@@ -4505,6 +4666,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
   const judgeOutcome = await callVerticalDramaVideoPromptJudge({
     userId: params.userId,
     tenantId: params.tenantId,
+    publicUrl: params.publicUrl,
     seriesId: params.seriesId,
     episodeId: params.episodeId,
     shotNumber: params.shotNumber,
@@ -4587,6 +4749,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     hasEstablishedCharacters,
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
+    params.characterDescriptionOverrides,
   );
 
   const repairedImprovesContract =

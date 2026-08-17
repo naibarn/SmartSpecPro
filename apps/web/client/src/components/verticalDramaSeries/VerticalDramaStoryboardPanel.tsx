@@ -62,8 +62,11 @@ import {
   swapShotCharacterRefKey,
 } from "@/lib/shotCharacterLooks";
 import {
+  normalizeVerticalDramaCharacterDescriptionOverrides,
+  VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH,
   validateVerticalDramaCastPositionLock,
   type VerticalDramaCastPositionLock,
+  type VerticalDramaCharacterDescriptionOverrides,
 } from "@shared/verticalDramaSeries/castPositionLock";
 import {
   getBase64DataUrlByteLength,
@@ -619,6 +622,7 @@ export interface VerticalDramaStartFramePlanFrame {
   imagePrompt: string;
   negativePrompt?: string;
   requiredCharacterRefs?: string[];
+  characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides;
   screenCallerCharacterRefs?: string[];
   supportingPresence?: VerticalDramaSupportingPresence[];
   supportingPresenceCustomized?: boolean;
@@ -1212,6 +1216,12 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     orderedCharacterRefs: string[]
   ) => void;
+  /** Persist optional shot-local identity cues for difficult/crowded frames. */
+  onSetShotCharacterDescriptionOverrides?: (
+    shotNumber: number,
+    overrides: VerticalDramaCharacterDescriptionOverrides
+  ) => void;
+  savingCharacterDescriptionOverridesForShot?: number | null;
   /** Same per-shot override, but for callers whose portraits appear only inside a phone/video-call screen. */
   onSetShotScreenCallerReferences?: (
     shotNumber: number,
@@ -1921,6 +1931,8 @@ export function VerticalDramaStoryboardPanel({
   onDropCharacterReference,
   onSetShotCharacterReferences,
   onSetShotCastPositionLock,
+  onSetShotCharacterDescriptionOverrides,
+  savingCharacterDescriptionOverridesForShot = null,
   onSetShotScreenCallerReferences,
   onSetShotSupportingPresence,
   onResetShotSupportingPresence,
@@ -3779,6 +3791,25 @@ export function VerticalDramaStoryboardPanel({
           const shotNumber = shot.shot_number ?? i + 1;
           const frame = frameByShot.get(shotNumber);
           const clipsForShot = clipByShot.get(shotNumber) ?? [];
+          const dialogueCharacterKeys = (() => {
+            const keys = new Set<string>();
+            for (const clip of clipsForShot) {
+              for (const line of clip.dialogue ?? []) {
+                if (line.characterKey?.trim()) keys.add(line.characterKey.trim());
+              }
+            }
+            if (keys.size === 0) {
+              const canonical = canonicalDialogueByShot.get(shotNumber);
+              for (const line of canonical?.dialogueLines ?? []) {
+                const match = Object.entries(characterPortraits).find(
+                  ([key, portrait]) =>
+                    key === line.speaker || portrait.name === line.speaker
+                );
+                if (match) keys.add(match[0]);
+              }
+            }
+            return Array.from(keys);
+          })();
           // A shot with no clip generated yet renders exactly one "empty"
           // slot (`undefined`), matching the previous single-`clip` behavior
           // byte-for-byte. A shot with one generated clip is a 1-item array
@@ -6899,6 +6930,31 @@ export function VerticalDramaStoryboardPanel({
                               </Badge>
                             ) : null}
                           </div>
+                        ) : null}
+
+                        {clipIndex === 0 && dialogueCharacterKeys.length > 0 ? (
+                          <ShotCharacterDescriptionEditor
+                            locale={locale}
+                            shotNumber={shotNumber}
+                            characterKeys={dialogueCharacterKeys}
+                            characterPortraits={characterPortraits}
+                            initialOverrides={
+                              frame?.characterDescriptionOverrides
+                            }
+                            onSave={overrides =>
+                              onSetShotCharacterDescriptionOverrides?.(
+                                shotNumber,
+                                overrides
+                              )
+                            }
+                            saving={
+                              savingCharacterDescriptionOverridesForShot ===
+                              shotNumber
+                            }
+                            canSave={Boolean(
+                              onSetShotCharacterDescriptionOverrides
+                            )}
+                          />
                         ) : null}
 
                         {/* Dialogue box (Phase 3.4) — surfaces
@@ -11765,6 +11821,127 @@ function GeneratedReferenceFrameRow({
           onClose={() => setLightboxIndex(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** Optional shot-local identity cues for dialogue speakers. These cues are
+ * intentionally separate from the cast-position lock: entering one makes
+ * that character use the user's precise description instead of a left/right
+ * position anchor when the video prompt is generated. */
+function ShotCharacterDescriptionEditor({
+  locale,
+  shotNumber,
+  characterKeys,
+  characterPortraits,
+  initialOverrides,
+  onSave,
+  saving,
+  canSave,
+}: {
+  locale: Lang;
+  shotNumber: number;
+  characterKeys: string[];
+  characterPortraits: VerticalDramaCharacterPortraitMap;
+  initialOverrides?: VerticalDramaCharacterDescriptionOverrides;
+  onSave: (overrides: VerticalDramaCharacterDescriptionOverrides) => void;
+  saving: boolean;
+  canSave: boolean;
+}) {
+  const normalizedInitial = useMemo(
+    () =>
+      normalizeVerticalDramaCharacterDescriptionOverrides(
+        initialOverrides,
+        characterKeys
+      ),
+    [initialOverrides, characterKeys]
+  );
+  const [draft, setDraft] = useState(normalizedInitial);
+  useEffect(() => {
+    setDraft(normalizedInitial);
+  }, [normalizedInitial]);
+  const hasChanges =
+    JSON.stringify(draft) !== JSON.stringify(normalizedInitial);
+
+  return (
+    <div
+      className="mt-1 flex flex-col gap-1.5 rounded-md border border-sky-300/70 bg-sky-50/40 p-2 dark:bg-sky-950/10"
+      data-testid={`vd-storyboard-character-description-${shotNumber}`}
+    >
+      <div>
+        <p className="text-xs font-medium text-foreground">
+          {locale === "th"
+            ? "รายละเอียดระบุตัวละครในช็อต (ไม่บังคับ)"
+            : "Optional character identification details"}
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {locale === "th"
+            ? "ถ้าใส่ ระบบจะใช้รายละเอียดนี้แทนตำแหน่งซ้าย/ขวาของตัวละครนั้น เพื่อแยกคนในภาพที่ซับซ้อน"
+            : "When provided, this replaces left/right positioning for that character so crowded frames are easier to disambiguate."}
+        </p>
+      </div>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {characterKeys.map(key => (
+          <label key={key} className="flex flex-col gap-1 text-[10px]">
+            <span className="font-medium text-foreground">
+              {characterPortraits[key]?.name ?? key}
+            </span>
+            <Textarea
+              value={draft[key] ?? ""}
+              onChange={event =>
+                setDraft(previous => ({
+                  ...previous,
+                  [key]: event.target.value,
+                }))
+              }
+              placeholder={
+                locale === "th"
+                  ? "เช่น ผู้หญิงที่ใส่ผ้ากันเปื้อน"
+                  : "e.g. woman wearing an apron"
+              }
+              rows={2}
+              maxLength={VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH}
+              className="text-xs"
+              aria-label={
+                locale === "th"
+                  ? `รายละเอียดของ ${characterPortraits[key]?.name ?? key}`
+                  : `Description for ${characterPortraits[key]?.name ?? key}`
+              }
+              data-testid={`vd-storyboard-character-description-input-${shotNumber}-${key}`}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] text-muted-foreground">
+          {locale === "th"
+            ? "เว้นว่างได้ — ระบบจะใช้ตำแหน่งจากภาพตามเดิม"
+            : "Leave blank to keep using the image position as before."}
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 gap-1 px-2 text-[10px]"
+          onClick={() =>
+            onSave(
+              normalizeVerticalDramaCharacterDescriptionOverrides(
+                draft,
+                characterKeys
+              )
+            )
+          }
+          disabled={!canSave || saving || !hasChanges}
+          data-testid={`vd-storyboard-character-description-save-${shotNumber}`}
+        >
+          {saving ? (
+            <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+          ) : (
+            <Check aria-hidden="true" className="h-3 w-3" />
+          )}
+          {locale === "th" ? "บันทึกรายละเอียด" : "Save details"}
+        </Button>
+      </div>
     </div>
   );
 }

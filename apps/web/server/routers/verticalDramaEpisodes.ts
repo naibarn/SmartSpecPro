@@ -372,9 +372,11 @@ import type {
 } from "@shared/verticalDramaSeries";
 import {
   buildVerticalDramaVerifiedCastPositions,
+  normalizeVerticalDramaCharacterDescriptionOverrides,
   resolveVerticalDramaSpeakerIdentity,
   validateVerticalDramaCastPositionLock,
   type VerticalDramaCastPositionLock,
+  type VerticalDramaCharacterDescriptionOverrides,
   type VerticalDramaSpeakerIdentityCandidate,
 } from "@shared/verticalDramaSeries/castPositionLock";
 // Model-family-aware, vision-grounded video prompt quality upgrade — the
@@ -7982,6 +7984,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
    * forwards it to `generateVerticalDramaShotVideoPromptSpeakerSwitch`).
    */
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  characterDescriptionOverrides?: Record<string, string>;
   verifiedCastPositions?: ReturnType<
     typeof buildVerticalDramaVerifiedCastPositions
   >;
@@ -8056,6 +8059,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     extraDialogueCreditsUsed,
     subShotWindows,
     characterReferenceImages,
+    characterDescriptionOverrides,
     verifiedCastPositions,
     barrierMultiView,
     barrierReferenceImage,
@@ -8082,12 +8086,14 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     await generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch({
       userId,
       tenantId,
+      publicUrl: args.publicUrl,
       seriesId,
       episodeId,
       shotNumber,
       imageUrl,
       imagePrompt,
       characterReferenceImages,
+      characterDescriptionOverrides,
       verifiedCastPositions,
       barrierReferenceImage,
       locationReferenceImage,
@@ -13294,6 +13300,98 @@ export const verticalDramaEpisodesRouter = router({
           ),
         );
       return { startFramePlan: updatedPlan };
+    }),
+
+  /**
+   * Persist optional, shot-local identity cues for dialogue speakers. These
+   * cues are user-authored facts (for example, "woman wearing an apron") and
+   * take precedence over screen position for the named character only. Any
+   * existing video prompts for the shot are discarded because they were
+   * generated without the new identity fact.
+   */
+  setShotCharacterDescriptionOverrides: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        overrides: z.record(
+          z.string().trim().min(1).max(120),
+          z.string().trim().max(240),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frameIndex = plan?.frames?.findIndex(
+        frame => frame.shotNumber === input.shotNumber,
+      ) ?? -1;
+      if (!plan || frameIndex < 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "ไม่พบภาพเริ่มต้นของช็อตนี้",
+        });
+      }
+      const frame = plan.frames[frameIndex];
+      const overrides = normalizeVerticalDramaCharacterDescriptionOverrides(
+        input.overrides,
+        frame.requiredCharacterRefs ?? [],
+      );
+      const updatedFrame = {
+        ...frame,
+        ...(Object.keys(overrides).length > 0
+          ? { characterDescriptionOverrides: overrides }
+          : { characterDescriptionOverrides: undefined }),
+      };
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: plan.frames.map((entry, index) =>
+          index === frameIndex ? updatedFrame : entry,
+        ),
+      };
+      const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const updatedPack = existingPack
+        ? {
+            ...existingPack,
+            clips: existingPack.clips.filter(
+              clip =>
+                !(
+                  clip.sourceShotNumbers?.includes(input.shotNumber) ||
+                  clip.parentShotNumber === input.shotNumber ||
+                  clip.clipNumber === input.shotNumber
+                ),
+            ),
+          }
+        : existingPack;
+      await db
+        .update(verticalDramaEpisodes)
+        .set({
+          startFramePlan: updatedPlan,
+          ...(updatedPack ? { motionPromptPack: updatedPack } : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+          ),
+        );
+      return {
+        startFramePlan: updatedPlan,
+        overrides: overrides as VerticalDramaCharacterDescriptionOverrides,
+      };
     }),
 
   /**
@@ -20910,6 +21008,11 @@ export const verticalDramaEpisodesRouter = router({
         return { ...line, characterKey: resolution.characterKey };
       });
       dialogueLines = normalizeShotDialogueLines(dialogueLines);
+      const characterDescriptionOverrides =
+        normalizeVerticalDramaCharacterDescriptionOverrides(
+          frame?.characterDescriptionOverrides,
+          frame?.requiredCharacterRefs ?? [],
+        );
       const requiresCastLock =
         !barrierMultiView &&
         (frame?.requiredCharacterRefs?.length ?? 0) >= 2;
@@ -21144,6 +21247,7 @@ export const verticalDramaEpisodesRouter = router({
             extraDialogueCreditsUsed,
             subShotWindows: subShotDecision.windows,
             characterReferenceImages: splitShotVideoCharacterReferenceImages,
+            characterDescriptionOverrides,
             verifiedCastPositions,
             barrierMultiView,
             barrierReferenceImage,
@@ -21198,6 +21302,7 @@ export const verticalDramaEpisodesRouter = router({
           imageUrl,
           imagePrompt: frame?.imagePrompt,
           characterReferenceImages: shotVideoCharacterReferenceImages,
+          characterDescriptionOverrides,
           verifiedCastPositions,
           barrierReferenceImage,
           motionContractsEnabled,

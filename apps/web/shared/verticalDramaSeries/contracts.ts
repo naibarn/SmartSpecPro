@@ -557,6 +557,12 @@ export type VerticalDramaStartFramePlan = {
     /** Two physical views for a conversation across a closed barrier. */
     barrierMultiView?: import("./barrierMultiView").VerticalDramaBarrierMultiView;
     requiredCharacterRefs: string[];
+    /**
+     * Optional shot-local identity cues entered by the user for difficult or
+     * crowded frames. When present for a speaker, video-prompt generation
+     * uses this description instead of a left/right screen-position anchor.
+     */
+    characterDescriptionOverrides?: import("./castPositionLock").VerticalDramaCharacterDescriptionOverrides;
     /** True after the user explicitly assigns this shot's scene/caller references. */
     characterRefsCustomized?: boolean;
     /** Generic visible people/groups, scoped only to this shot. */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildVerticalDramaVerifiedCastPositions,
+  normalizeVerticalDramaCharacterDescriptionOverrides,
   requiresVerticalDramaCastPositionLock,
   resolveVerticalDramaSpeakerIdentity,
   validateVerticalDramaCastPositionLock,
@@ -162,5 +163,23 @@ describe("Vertical Drama cast position lock", () => {
         dialogueLines: [],
       })
     ).toBe(false);
+  });
+
+  it("normalizes shot-local character descriptions and scopes them to the frame cast", () => {
+    const result = normalizeVerticalDramaCharacterDescriptionOverrides(
+      {
+        alice: "  ผู้หญิงที่ใส่ผ้ากันเปื้อน  ",
+        bob: " ",
+        stranger: "บุคคลที่ไม่เกี่ยวข้อง",
+        long: "x".repeat(300),
+        invalid: 42,
+      },
+      ["alice", "bob", "long"],
+    );
+
+    expect(result).toEqual({
+      alice: "ผู้หญิงที่ใส่ผ้ากันเปื้อน",
+      long: "x".repeat(240),
+    });
   });
 });

@@ -2978,6 +2978,34 @@ function EpisodeWorkspaceShell({
     });
   }
 
+  const setShotCharacterDescriptionOverridesMutation =
+    trpc.verticalDramaEpisodes.setShotCharacterDescriptionOverrides.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "บันทึกรายละเอียดระบุตัวละครของช็อตนี้แล้ว"
+            : "Shot-specific character details saved.",
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+          seriesId,
+          episodeId,
+        });
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotCharacterDescriptionOverrides(
+    shotNumber: number,
+    overrides: Record<string, string>,
+  ) {
+    setShotCharacterDescriptionOverridesMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      overrides,
+    });
+  }
+
   const [savingShotSupportingPresenceForShot, setSavingShotSupportingPresenceForShot] =
     useState<number | null>(null);
   const setShotSupportingPresenceMutation =
