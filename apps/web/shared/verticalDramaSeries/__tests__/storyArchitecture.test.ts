@@ -226,4 +226,31 @@ describe("vertical drama story architecture contract", () => {
       "story_architecture_missing"
     );
   });
+
+  it("keeps episode-window drift advisory when the planned count changes", () => {
+    const changedCountArchitecture = {
+      ...proofOfUsArchitecture,
+      arcBundles: proofOfUsArchitecture.arcBundles.map((arc, index) =>
+        index === 0
+          ? { ...arc, episodeWindow: { startEpisode: 1, endEpisode: 25 } }
+          : arc
+      ),
+    };
+    const result = evaluateVerticalDramaStoryArchitecture({
+      contract: changedCountArchitecture,
+      genre:
+        "Young Adult / Campus Romance / Academic Rivalry / Underdog / Science & Engineering Drama",
+      userPremise:
+        "A mathematics student develops structural engineering innovation after university.",
+      targetEpisodeCount: 10,
+    });
+
+    expect(result.ready).toBe(true);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "architecture_episode_window_invalid",
+        severity: "warning",
+      })
+    );
+  });
 });

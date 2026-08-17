@@ -362,12 +362,19 @@ import {
   enqueueVerticalDramaDraftQualityQc,
   getVerticalDramaDraftQualityQcStatus,
   getVerticalDramaDraftQualityQcStatusBySession,
+  getVerticalDramaDraftQualityQcRunIdBySession,
+  clearVerticalDramaDraftQualityQcPointer,
+  reconcileVerticalDramaDraftQualityQc,
+  recoverVerticalDramaDraftQualityQcHistory,
+  recoverVerticalDramaDraftQualityQcResultByRunId,
+  recoverVerticalDramaDraftQualityQcResultFromFailure,
 } from "../services/verticalDramaDraftQualityQcJobs";
 import {
   cancelVerticalDramaDraftComposition,
   enqueueVerticalDramaDraftComposition,
   getVerticalDramaDraftCompositionStatus,
   getVerticalDramaDraftCompositionStatusBySession,
+  type VerticalDramaDraftCompositionResult,
 } from "../services/verticalDramaDraftCompositionJobs";
 import {
   getVerticalDramaDraftLedger,
@@ -376,6 +383,7 @@ import {
   archiveVerticalDramaDraftJob,
   listVerticalDramaDraftLedgers,
   updateVerticalDramaDraftJob,
+  getVerticalDramaDraftVersion,
 } from "../services/verticalDramaDraftLedger";
 import {
   draftQualityQcReceiptSchema,
@@ -392,13 +400,48 @@ function recoveredDraftCompositionStatus(ledger: {
   currentJson: unknown;
 }) {
   const draft = (ledger.currentJson ?? {}) as Record<string, unknown>;
+  const hasDraftPayload = [
+    "title",
+    "logline",
+    "mainPlot",
+    "seasonArc",
+    "characters",
+    "storyContext",
+    "storyDesign",
+  ].some(key => draft[key] != null);
   const completion = inspectVerticalDramaDraftCompleteness({ draft });
   const now = new Date().toISOString();
-  if (!completion.ready) {
+  if (!hasDraftPayload) {
     return {
       status: "failed" as const,
       progress: null,
       result: undefined,
+      error: "ไม่พบเนื้อหา Draft ที่กู้กลับได้จากงานเดิม งานนี้ยังไม่ถึงขั้นสร้าง Draft",
+      failure: {
+        code: "internal_error" as const,
+        stage: "building_foundation" as const,
+        qualityGate: "not-available" as const,
+        retryable: true,
+        message: "The persisted job has no recoverable Draft payload.",
+      },
+      jobId: ledger.id,
+      requestFingerprint: `ledger:${ledger.id}:${ledger.currentVersion}`,
+    };
+  }
+  if (!completion.ready) {
+    const partialResult: VerticalDramaDraftCompositionResult = {
+      draft: draft as VerticalDramaDraftCompositionResult["draft"],
+      report: completion.report,
+      model: "recovered-ledger",
+      creditsUsed: 0,
+      draftArtifactId: ledger.id,
+    };
+    return {
+      status: "failed" as const,
+      progress: null,
+      // Keep incomplete recovered work available for diagnostic QC. The
+      // failed status still blocks full series creation.
+      result: partialResult,
       error: `Recovered Draft is incomplete: ${completion.report.missingPaths
         .concat(completion.report.contradictionPaths)
         .slice(0, 8)
@@ -5104,24 +5147,52 @@ export const verticalDramaSeriesRouter = router({
           receipt.runId,
           { tenantId, userId }
         );
+        // A completed run is intentionally also recoverable from the durable
+        // ledger after Redis/BullMQ expiry. The receipt still has to identify
+        // the exact owner-scoped run and candidate fingerprint; this fallback
+        // only prevents a refresh/TTL boundary from making a valid Draft
+        // impossible to confirm.
         const qcResult =
-          qcRecord?.status === "succeeded" ? qcRecord.result : null;
+          qcRecord?.result ??
+          (qcRecord?.status === "failed" && qcRecord.failure
+            ? await recoverVerticalDramaDraftQualityQcResultFromFailure(
+                qcRecord,
+                qcRecord.failure
+              )
+            : qcRecord?.status === "succeeded"
+              ? qcRecord.result
+              : await recoverVerticalDramaDraftQualityQcResultByRunId(
+                  receipt.runId,
+                  { tenantId, userId }
+                ));
         if (!qcResult) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
             message: "Draft QC has not completed successfully",
           });
         }
-        const canOverride =
-          receipt.explicitOverride === true &&
-          qcResult.stopReason === "max_rounds" &&
-          qcResult.best.report.criticalFails.length === 0;
-        if (!qcResult.best.report.pass && !canOverride) {
+        const selectedHistoryEntry =
+          qcResult.history.find(
+            entry => entry.candidateFingerprint === receipt.candidateFingerprint
+          ) ??
+          (receipt.candidateFingerprint === qcResult.best.fingerprint
+            ? {
+                report: qcResult.best.report,
+                score: qcResult.best.report.overallScore,
+                status: qcResult.best.report.status,
+              }
+            : undefined);
+        const selectedReport = selectedHistoryEntry?.report;
+        if (!selectedReport) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: "Draft QC must pass 9.0/10 before creating the series",
+            message:
+              "Draft QC candidate is not one of the evaluated Draft versions",
           });
         }
+        // Draft QC is advisory. A completed receipt proves which Draft was
+        // evaluated and preserves the scorecard for audit, but the creator
+        // remains free to continue with any score or critical finding.
         // A creator may explicitly choose another generated title or enter a
         // custom title. The approved candidate fingerprint still protects the
         // story fields; title choice is a presentation-level user decision,
@@ -5163,10 +5234,10 @@ export const verticalDramaSeriesRouter = router({
           contractVersion: "vd-draft-qc-v1",
           runId: receipt.runId,
           candidateFingerprint: receipt.candidateFingerprint,
-          overallScore: qcResult.best.report.overallScore,
-          status: qcResult.best.report.status,
-          pass: qcResult.best.report.pass,
-          explicitOverride: canOverride,
+          overallScore: selectedReport.overallScore,
+          status: selectedReport.status,
+          pass: selectedReport.pass,
+          explicitOverride: receipt.explicitOverride === true,
           appliedTitle: input.title.trim(),
           bestRound: qcResult.best.round,
           stopReason: qcResult.stopReason,
@@ -6992,53 +7063,101 @@ export const verticalDramaSeriesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const constraints = input.immutableConstraints ?? {};
-      const completion = inspectVerticalDramaDraftCompleteness({
+      const targetEpisodeCount =
+        typeof constraints.targetEpisodeCount === "number"
+          ? constraints.targetEpisodeCount
+          : undefined;
+      const genre =
+        typeof constraints.genre === "string" ? constraints.genre : undefined;
+      const userPremise =
+        typeof constraints.userPremise === "string"
+          ? constraints.userPremise
+          : undefined;
+      const locale =
+        typeof constraints.narrativeLocale === "string" &&
+        constraints.narrativeLocale.toLowerCase().startsWith("en")
+          ? ("en" as const)
+          : ("th" as const);
+      const model = await resolveVerticalDramaRecommendedDraftModel();
+      const {
+        repairVerticalDramaDraftBeforeQc,
+        deductVerticalDramaDraftCompletionCredits,
+      } = await import("../services/verticalDramaDraftCompletion");
+      const repaired = await repairVerticalDramaDraftBeforeQc({
         draft: input.draft,
-        targetEpisodeCount:
-          typeof constraints.targetEpisodeCount === "number"
-            ? constraints.targetEpisodeCount
-            : undefined,
-        genre:
-          typeof constraints.genre === "string" ? constraints.genre : undefined,
-        userPremise:
-          typeof constraints.userPremise === "string"
-            ? constraints.userPremise
-            : undefined,
+        model,
+        userId: ctx.user.id,
+        context: {
+          locale,
+          targetEpisodeCount,
+          genre,
+          userPremise,
+          storyArchitecture: readVerticalDramaStoryArchitecture(
+            input.draft.storyContract
+          ) ?? undefined,
+        },
+        onCreditsUsed: usage =>
+          deductVerticalDramaDraftCompletionCredits({
+            userId: ctx.user.id,
+            tenantId,
+            creditsUsed: usage.creditsUsed,
+            model: usage.model,
+            repairRound: usage.repairRound,
+          }),
       });
-      if (!completion.ready) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Draft must be complete before QC: ${
-            completion.report.missingPaths.slice(0, 6).join(", ") ||
-            completion.report.contradictionPaths.slice(0, 6).join(", ")
-          }`,
+      let draftForQc = repaired.draft;
+      const qcImmutableConstraints = {
+        ...(input.immutableConstraints ?? {}),
+        // QC is diagnostic here; an incomplete Draft remains blocked from
+        // full series creation by the existing readiness gate.
+        preQcCompleteness: {
+          status: repaired.report.status,
+          repairRound: repaired.report.repairRound,
+          missingPaths: repaired.report.missingPaths,
+          contradictionPaths: repaired.report.contradictionPaths,
+          diagnostics: repaired.report.diagnostics,
+        },
+      };
+      if (repaired.repaired && input.draftId) {
+        const { appendVerticalDramaDraftVersion } = await import(
+          "../services/verticalDramaDraftLedger"
+        );
+        await appendVerticalDramaDraftVersion({
+          tenantId,
+          userId: ctx.user.id,
+          draftId: input.draftId,
+          draftSessionId: input.draftSessionId,
+          stage: "completion",
+          content: draftForQc,
+          changedPaths: [
+            ...repaired.report.missingPaths,
+            ...repaired.report.contradictionPaths,
+          ],
+          metadata: {
+            source: "pre_qc_repair",
+            model: repaired.model,
+            creditsUsed: repaired.creditsUsed,
+          },
         });
       }
       const result = await enqueueVerticalDramaDraftQualityQc({
-        tenantId,
-        userId: ctx.user.id,
-        model: await resolveVerticalDramaRecommendedDraftModel(),
-        draftSessionId: input.draftSessionId,
-        draftId: input.draftId,
-        draft: input.draft,
-        immutableConstraints: input.immutableConstraints ?? {},
-        maxImprovementRounds: input.maxImprovementRounds ?? 2,
-      }, {
-        persistJobStatus: updateVerticalDramaDraftJob,
-      });
-      if (input.draftId) {
-        await updateVerticalDramaDraftJob(input.draftId, {
           tenantId,
           userId: ctx.user.id,
-        }, {
-          qcRunId: result.runId,
-          jobStatus: "ready_for_qc",
-          lastError: null,
-        });
-      }
+          model,
+          draftSessionId: input.draftSessionId,
+          draftId: input.draftId,
+          draft: draftForQc,
+          immutableConstraints: qcImmutableConstraints,
+          maxImprovementRounds: input.maxImprovementRounds ?? 2,
+      }, {
+          persistJobStatus: updateVerticalDramaDraftJob,
+      });
       return {
         ...result,
-        candidateFingerprint: fingerprintDraftQualityQcCandidate(input.draft),
+        candidateFingerprint: fingerprintDraftQualityQcCandidate(draftForQc),
+        repaired: repaired.repaired,
+        repairRound: repaired.report.repairRound,
+        preQcCompleteness: repaired.report,
       };
     }),
 
@@ -7046,20 +7165,55 @@ export const verticalDramaSeriesRouter = router({
     .input(z.object({ runId: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
-      const record = await getVerticalDramaDraftQualityQcStatus(input.runId, {
-        tenantId,
-        userId: ctx.user.id,
-      });
+      const reconciliation = await reconcileVerticalDramaDraftQualityQc(
+        input.runId,
+        {
+          tenantId,
+          userId: ctx.user.id,
+        }
+      );
+      const record = reconciliation.record;
       if (!record) {
+        if (reconciliation.stale) {
+          return {
+            status: "failed" as const,
+            progress: null,
+            result: undefined,
+            error: reconciliation.message,
+            failure: undefined,
+            historicalResult: reconciliation.historicalResult,
+            runId: input.runId,
+            requestFingerprint: "",
+          };
+        }
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Draft QC run not found",
         });
       }
+      const recoverableResult =
+        record.status === "failed" && record.failure && !record.result
+          ? await recoverVerticalDramaDraftQualityQcResultFromFailure(
+              record,
+              record.failure
+            )
+          : null;
       return {
         status: record.status,
         progress: record.progress,
-        result: record.status === "succeeded" ? record.result : undefined,
+        // A failed run may still contain an immutable, fully scored candidate
+        // recovered from the ledger. Expose it without changing the terminal
+        // status so the UI can require an explicit warning confirmation.
+        result: record.result ?? recoverableResult ?? undefined,
+        historicalResult: record.draftId
+          ? (
+              await recoverVerticalDramaDraftQualityQcHistory(
+                record.draftId,
+                { tenantId, userId: ctx.user.id },
+                record.runId
+              )
+            )[0]
+          : undefined,
         error:
           record.status === "failed" ? (record.error ?? undefined) : undefined,
         failure:
@@ -7068,6 +7222,67 @@ export const verticalDramaSeriesRouter = router({
             : undefined,
         runId: record.runId,
         requestFingerprint: record.requestFingerprint,
+      };
+    }),
+
+  /**
+   * Return an immutable QC candidate selected from the round history. The
+   * version, run and fingerprint are checked together so a client cannot mix
+   * a scorecard from one run with Draft content from another run.
+   */
+  selectDraftQualityQcCandidate: verticalDramaProcedure
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        draftId: z.string().uuid(),
+        version: z.number().int().positive(),
+        candidateFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const owner = { tenantId, userId: ctx.user.id };
+      const version = await getVerticalDramaDraftVersion(
+        input.draftId,
+        input.version,
+        owner
+      );
+      if (
+        !version ||
+        version.runId !== input.runId ||
+        !["qc-baseline", "qc-revision"].includes(version.stage)
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Draft QC candidate version was not found",
+        });
+      }
+      const draft =
+        version.contentJson &&
+        typeof version.contentJson === "object" &&
+        !Array.isArray(version.contentJson)
+          ? (version.contentJson as Record<string, unknown>)
+          : null;
+      if (!draft) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Draft QC candidate content is invalid",
+        });
+      }
+      const fingerprint = fingerprintDraftQualityQcCandidate(draft);
+      if (fingerprint !== input.candidateFingerprint) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Draft QC candidate fingerprint does not match its ledger version",
+        });
+      }
+      return {
+        draft,
+        draftId: version.draftId,
+        version: version.version,
+        stage: version.stage,
+        candidateFingerprint: fingerprint,
+        runId: version.runId,
       };
     }),
 
@@ -7090,19 +7305,55 @@ export const verticalDramaSeriesRouter = router({
           input.draftSessionId,
           owner
         ),
+        getVerticalDramaDraftLedgerBySession(input.draftSessionId, owner),
+        getVerticalDramaDraftQualityQcRunIdBySession(
+          input.draftSessionId,
+          owner
+        ),
       ]);
       let recoveredComposition = composition;
       // Redis is intentionally short-lived. The ledger is the durable recovery
       // path used after refresh, another browser, or Redis expiry.
-      if (!recoveredComposition) {
-        const ledger = await getVerticalDramaDraftLedgerBySession(
+      if (!recoveredComposition && ledger) {
+        recoveredComposition = recoveredDraftCompositionStatus(ledger) as any;
+      }
+      const qcRunId = qc?.runId ?? ledger?.qcRunId ?? pointerRunId ?? null;
+      const qcReconciliation = qcRunId
+        ? await reconcileVerticalDramaDraftQualityQc(qcRunId, owner)
+        : null;
+      if (pointerRunId && pointerRunId !== qcRunId) {
+        await clearVerticalDramaDraftQualityQcPointer(
           input.draftSessionId,
           owner
         );
-        if (ledger) {
-          recoveredComposition = recoveredDraftCompositionStatus(ledger) as any;
-        }
       }
+      if (pointerRunId && !qc && !ledger) {
+        await clearVerticalDramaDraftQualityQcPointer(
+          input.draftSessionId,
+          owner
+        );
+      }
+      const recoveredQc = qcReconciliation?.record ?? qc;
+      const historicalQcResult =
+        qcReconciliation?.historicalResult ??
+        (recoveredQc?.draftId
+          ? (
+              await recoverVerticalDramaDraftQualityQcHistory(
+                recoveredQc.draftId,
+                owner,
+                recoveredQc.runId
+              )
+            )[0]
+          : undefined);
+      const recoverableQcResult =
+        recoveredQc?.status === "failed" &&
+        recoveredQc.failure &&
+        !recoveredQc.result
+          ? await recoverVerticalDramaDraftQualityQcResultFromFailure(
+              recoveredQc,
+              recoveredQc.failure
+            )
+          : null;
       return {
         draftSessionId: input.draftSessionId,
         composition: recoveredComposition
@@ -7125,19 +7376,33 @@ export const verticalDramaSeriesRouter = router({
               requestFingerprint: recoveredComposition.requestFingerprint,
             }
           : null,
-        qc: qc
+        qc: recoveredQc
           ? {
-              runId: qc.runId,
-              status: qc.status,
-              progress: qc.progress,
-              result: qc.status === "succeeded" ? qc.result : undefined,
+              runId: recoveredQc.runId,
+              status: recoveredQc.status,
+              progress: recoveredQc.progress,
+              result: recoveredQc.result ?? recoverableQcResult ?? undefined,
+              historicalResult: historicalQcResult,
               error:
-                qc.status === "failed" ? (qc.error ?? undefined) : undefined,
+                recoveredQc.status === "failed"
+                  ? (recoveredQc.error ?? undefined)
+                  : undefined,
               failure:
-                qc.status === "failed" ? (qc.failure ?? undefined) : undefined,
-              requestFingerprint: qc.requestFingerprint,
+                recoveredQc.status === "failed"
+                  ? (recoveredQc.failure ?? undefined)
+                  : undefined,
+              requestFingerprint: recoveredQc.requestFingerprint,
             }
-          : null,
+          : qcReconciliation?.stale
+            ? {
+                runId: qcRunId,
+                status: "failed" as const,
+                progress: null,
+                error: qcReconciliation.message,
+                historicalResult: historicalQcResult,
+                requestFingerprint: "",
+              }
+            : null,
       };
     }),
 
@@ -7390,10 +7655,19 @@ export const verticalDramaSeriesRouter = router({
       };
       const record = await getVerticalDramaDraftCompositionStatus(input.jobId, owner);
       if (record) {
+        let recoveredResult = record.result ?? undefined;
+        if (!recoveredResult && record.status === "failed") {
+          const ledger = await getVerticalDramaDraftLedger(input.jobId, owner);
+          if (ledger) {
+            recoveredResult = recoveredDraftCompositionStatus(ledger).result;
+          }
+        }
         return {
           status: record.status,
           progress: record.progress,
-          result: record.status === "ready_for_qc" ? record.result : undefined,
+          // A failed composition can still have a durable partial Draft. Keep
+          // it available for diagnostic QC rather than forcing regeneration.
+          result: recoveredResult,
           error:
             record.status === "failed" ? (record.error ?? undefined) : undefined,
           failure: record.status === "failed" ? record.failure : undefined,

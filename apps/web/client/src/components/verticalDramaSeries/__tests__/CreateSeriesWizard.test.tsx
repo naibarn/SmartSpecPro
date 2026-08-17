@@ -31,7 +31,10 @@ const mockDraftQcCancelMutate = vi.fn();
 
 let mockDraftQcStatus: { data?: unknown } = { data: undefined };
 
-function makePassingDraftQcResult(draft: Record<string, unknown>) {
+function makePassingDraftQcResult(
+  draft: Record<string, unknown>,
+  rawScore = 5
+) {
   const report = computeDraftQualityQcReport(
     {
       criteria: [
@@ -45,7 +48,7 @@ function makePassingDraftQcResult(draft: Record<string, unknown>) {
         "long_form_sustainability",
       ].map(criterionId => ({
         criterionId,
-        rawScore: 5,
+        rawScore,
         evidence: "test evidence",
       })) as never,
       criticalFails: [],
@@ -78,7 +81,7 @@ function makePassingDraftQcResult(draft: Record<string, unknown>) {
       estimatedCredits: 7,
       actualCredits: 1,
     },
-    stopReason: "passed",
+    stopReason: rawScore >= 4.5 ? "passed" : "max_rounds",
     model: "test-model",
   };
 }
@@ -244,6 +247,9 @@ vi.mock("@/lib/trpc", () => ({
           mutate: (input: unknown) => mockDraftQcCancelMutate(input),
           isPending: false,
         }),
+      },
+      selectDraftQualityQcCandidate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       list: { useQuery: () => mockSeriesListQuery() },
       get: { useQuery: () => mockGetSeriesQuery() },
@@ -463,7 +469,13 @@ function generateDraft(buttonName: RegExp = /ให้ AI สร้าง/) {
 
 function applyDraft() {
   const qcButton = screen.queryByRole("button", { name: "เริ่มตรวจ QC" });
-  if (qcButton && !qcButton.hasAttribute("disabled")) fireEvent.click(qcButton);
+  if (qcButton && !qcButton.hasAttribute("disabled")) {
+    fireEvent.click(qcButton);
+    const confirmQcButton = screen.queryByRole("button", {
+      name: "ยืนยันและเริ่ม",
+    });
+    if (confirmQcButton) fireEvent.click(confirmQcButton);
+  }
   fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
 }
 
@@ -572,6 +584,98 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     expect(mockSynthesizeMutate).toHaveBeenCalledTimes(1);
   });
 
+  it("restarts QC from the persisted best draft when the composition job is gone", () => {
+    const view = renderWizard();
+    generateDraft();
+
+    const firstQcButton = screen.getByRole("button", { name: "เริ่มตรวจ QC" });
+    fireEvent.click(firstQcButton);
+    fireEvent.click(screen.getByRole("button", { name: "ยืนยันและเริ่ม" }));
+    expect(mockDraftQcStartMutate).toHaveBeenCalledTimes(1);
+
+    const firstResult = (
+      mockDraftQcStatus.data as
+        | {
+            result?: {
+              best: {
+                draft: Record<string, unknown>;
+                report: Record<string, unknown>;
+              };
+              stopReason: string;
+            };
+          }
+        | undefined
+    )?.result;
+    expect(firstResult).toBeDefined();
+    firstResult.best.report = {
+      ...firstResult.best.report,
+      pass: false,
+      overallScore: 8.79,
+    };
+    firstResult.stopReason = "max_rounds";
+    mockDraftCompositionStatus = {
+      data: { status: "failed", error: "composition record reconciled" },
+    };
+    view.rerender(
+      <CreateSeriesWizard
+        open
+        lang="th"
+        onOpenChange={() => {}}
+        onCreated={() => {}}
+      />
+    );
+
+    const retryQcButton = screen.getByRole("button", { name: "เริ่มตรวจ QC" });
+    fireEvent.click(retryQcButton);
+    fireEvent.click(screen.getByRole("button", { name: "ยืนยันและเริ่ม" }));
+
+    expect(mockDraftQcStartMutate).toHaveBeenCalledTimes(2);
+    expect(mockDraftQcStartMutate.mock.calls[1][0]).toMatchObject({
+      draft: firstResult.best.draft,
+    });
+  });
+
+  it("keeps a failed composition's partial Draft available for diagnostic QC", () => {
+    const view = renderWizard();
+    generateDraft();
+
+    const partialDraft = (mockSynthesizeMutationState.data as any).draft;
+    mockDraftCompositionStatus = {
+      data: {
+        status: "failed",
+        error: "Draft completion failed: storyDesign.totalEpisodeCount",
+        result: {
+          draft: partialDraft,
+          draftArtifactId: "partial-draft-artifact",
+        },
+      },
+    };
+    view.rerender(
+      <CreateSeriesWizard
+        open
+        lang="th"
+        onOpenChange={() => {}}
+        onCreated={() => {}}
+      />
+    );
+
+    expect(
+      screen.getAllByText(
+        "Draft ยังไม่ครบ จึงยังสร้างเรื่องเต็มไม่ได้ แต่สามารถส่งเข้า QC เพื่อดูจุดที่ต้องแก้ได้"
+      ).length
+    ).toBeGreaterThan(0);
+    const qcButton = screen.getByRole("button", { name: "เริ่มตรวจ QC" });
+    expect(qcButton).not.toBeDisabled();
+    fireEvent.click(qcButton);
+    fireEvent.click(screen.getByRole("button", { name: "ยืนยันและเริ่ม" }));
+    expect(mockDraftQcStartMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draft: partialDraft,
+        draftId: "partial-draft-artifact",
+      })
+    );
+  });
+
   it("marks a persisted composition job as recoverable for the outer shell", () => {
     sessionStorage.setItem(
       "smartspec.vertical-drama.create-workspace.v1",
@@ -620,6 +724,26 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     applyDraft();
 
     expect(screen.getByRole("button", { name: "ถัดไป" })).not.toBeDisabled();
+  });
+
+  it("lets the creator apply a Draft without QC and change the planned count", () => {
+    renderWizard();
+
+    fireEvent.change(getTitleInput(), { target: { value: "Advisory Series" } });
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+
+    const applyButton = screen.getByRole("button", { name: "ใช้ draft นี้" });
+    expect(applyButton).not.toBeDisabled();
+    fireEvent.click(applyButton);
+    expect(screen.getByRole("button", { name: "ถัดไป" })).not.toBeDisabled();
+
+    fireEvent.change(screen.getByRole("spinbutton"), {
+      target: { value: "24" },
+    });
+    expect(screen.getByRole("button", { name: "ถัดไป" })).not.toBeDisabled();
+    expect(
+      screen.getByText(/9\.0\/10 เป็นเกณฑ์แนะนำเท่านั้น/i)
+    ).toBeInTheDocument();
   });
 
   it("invalidates the applied draft when the source premise changes or the draft is regenerated", () => {

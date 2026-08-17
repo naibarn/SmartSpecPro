@@ -107,7 +107,11 @@ import type {
   VdLookLockMode,
 } from "@shared/verticalDramaSeries/seriesLookLock";
 import type { VerticalDramaVisualNarrativeProfile } from "@shared/verticalDramaSeries/visualNarrativeProfile";
-import { fingerprintDraftQualityQcCandidate } from "@shared/verticalDramaSeries/draftQualityQc";
+import {
+  DRAFT_QC_IMMUTABLE_PRESERVED_PATHS,
+  fingerprintDraftQualityQcCandidate,
+  type DraftQualityQcResultSnapshot,
+} from "@shared/verticalDramaSeries/draftQualityQc";
 import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
 import { VerticalDramaDraftQualityQcPanel } from "./VerticalDramaDraftQualityQcPanel";
 import { SeriesLookLockPicker } from "./SeriesLookLockPicker";
@@ -712,6 +716,15 @@ export function CreateSeriesWizard({
   const [draftQcOverride, setDraftQcOverride] = useState(
     () => initialWorkspace?.draftQcOverride ?? false
   );
+  const [draftQcPreviousResultState, setDraftQcPreviousResult] =
+    useState<DraftQualityQcResultSnapshot | null>(null);
+  const [draftQcSelectedCandidateFingerprint, setDraftQcSelectedCandidateFingerprint] =
+    useState<string | null>(null);
+  const [draftQcSelectedCandidateDraft, setDraftQcSelectedCandidateDraft] =
+    useState<SynthesizedGenrePresetDraft | null>(null);
+  const [draftQcHistoricalRunId, setDraftQcHistoricalRunId] = useState<
+    string | null
+  >(null);
   const draftQcSessionId = useRef(
     recoverySessionId ?? initialWorkspace?.draftSessionId ?? createDraftSessionId()
   );
@@ -901,6 +914,7 @@ export function CreateSeriesWizard({
         setDraftCompositionSourceSignature(request.signature);
         setDraftQcRunId(null);
         setDraftQcSourceSignature(null);
+        setDraftQcPreviousResult(null);
         setDraftQcOverride(false);
         toast.success(
           lang === "th"
@@ -1084,6 +1098,7 @@ export function CreateSeriesWizard({
       { runId: draftQcRunId ?? "00000000-0000-4000-8000-000000000000" },
       {
         enabled: Boolean(draftQcRunId),
+        retry: false,
         refetchInterval: query =>
           query.state.data?.status === "queued" ||
           query.state.data?.status === "running"
@@ -1122,14 +1137,64 @@ export function CreateSeriesWizard({
     draftCompositionJobId,
     draftQcRunId,
   ]);
+
+  // A browser can retain an old run id after Redis/BullMQ has already
+  // reconciled and removed that run. Never turn a missing status into a
+  // phantom "queued" state; return to the explicit Start QC action.
+  useEffect(() => {
+    if (!open || !draftQcRunId) return;
+    const workspaceQc = draftWorkspaceStatusQuery.data?.qc;
+    const statusError = draftQcStatusQuery.error;
+    if (
+      statusError ||
+      (draftWorkspaceStatusQuery.isFetched &&
+        workspaceQc == null &&
+        draftWorkspaceStatusQuery.data?.composition?.status === "ready_for_qc")
+    ) {
+      setDraftQcRunId(null);
+      setDraftQcSourceSignature(null);
+      setDraftQcOverride(false);
+    }
+  }, [
+    open,
+    draftQcRunId,
+    draftQcStatusQuery.error,
+    draftWorkspaceStatusQuery.data,
+    draftWorkspaceStatusQuery.isFetched,
+  ]);
+
+  // Keep a durable comparison result in local state before the active run id
+  // is cleared by reconciliation. This prevents a refresh/stale-queue repair
+  // from hiding the old scorecard while a new QC run is started.
+  useEffect(() => {
+    const historical = draftQcStatusQuery.data?.historicalResult;
+    if (!historical) return;
+    setDraftQcHistoricalRunId(
+      historical.runId ?? draftQcStatusQuery.data?.runId ?? null
+    );
+    setDraftQcPreviousResult(previous =>
+      previous?.best.fingerprint === historical.best.fingerprint
+        ? previous
+        : historical
+    );
+  }, [draftQcStatusQuery.data?.historicalResult]);
   const draftQcStartMutation =
     trpc.verticalDramaSeries.startDraftQualityQc.useMutation({
       onSuccess: data => {
         setDraftQcRunId(data.runId);
         setDraftQcSourceSignature(currentSynthesisSourceSignature);
+        setDraftQcSelectedCandidateFingerprint(null);
+        setDraftQcSelectedCandidateDraft(null);
+        setDraftQcHistoricalRunId(null);
         setDraftQcOverride(false);
         toast.success(
-          lang === "th" ? "เริ่มตรวจคุณภาพ Draft แล้ว" : "Draft QC started"
+          data.repaired
+            ? lang === "th"
+              ? "ซ่อมข้อมูลควบคุมเรื่องแบบไม่ลบข้อมูลเดิมแล้ว และเริ่มตรวจ QC ใหม่"
+              : "Story-control data was repaired additively and a new QC run started"
+            : lang === "th"
+              ? "เริ่มตรวจคุณภาพ Draft แล้ว"
+              : "Draft QC started"
         );
       },
       onError: error =>
@@ -1138,6 +1203,29 @@ export function CreateSeriesWizard({
             (lang === "th"
               ? "เริ่มตรวจ QC ไม่สำเร็จ"
               : "Could not start Draft QC")
+        ),
+    });
+  const draftQcCandidateSelectMutation =
+    trpc.verticalDramaSeries.selectDraftQualityQcCandidate.useMutation({
+      onSuccess: data => {
+        setDraftQcSelectedCandidateFingerprint(data.candidateFingerprint);
+        setDraftQcSelectedCandidateDraft(
+          data.draft as unknown as SynthesizedGenrePresetDraft
+        );
+        setDraftQcOverride(false);
+        setAppliedDraftKey(null);
+        toast.success(
+          lang === "th"
+            ? `เลือก Draft รอบ ${data.version} แล้ว — ตรวจ receipt ของฉบับนี้ก่อนใช้`
+            : `Draft version ${data.version} selected — its QC receipt is required before use`
+        );
+      },
+      onError: error =>
+        toast.error(
+          error.message ||
+            (lang === "th"
+              ? "โหลด Draft รอบที่เลือกไม่สำเร็จ"
+              : "Could not load the selected Draft version")
         ),
     });
   const draftQcCancelMutation =
@@ -1190,6 +1278,7 @@ export function CreateSeriesWizard({
       setAppliedDraftKey(null);
       setDraftQcRunId(null);
       setDraftQcSourceSignature(null);
+      setDraftQcPreviousResult(null);
       setDraftCompositionJobId(null);
       setDraftCompositionSourceSignature(null);
       setDraftQcOverride(false);
@@ -1235,6 +1324,10 @@ export function CreateSeriesWizard({
     if (draftQcRunId && draftQcRecheckFields.has(key)) {
       setDraftQcRunId(null);
       setDraftQcSourceSignature(null);
+      setDraftQcPreviousResult(null);
+      setDraftQcSelectedCandidateFingerprint(null);
+      setDraftQcSelectedCandidateDraft(null);
+      setDraftQcHistoricalRunId(null);
       setDraftQcOverride(false);
       setAppliedDraftKey(null);
     }
@@ -1313,40 +1406,71 @@ export function CreateSeriesWizard({
   ]);
   const draftQcStatus =
     draftQcRunId && draftQcSourceSignature === currentSynthesisSourceSignature
-      ? (draftQcStatusQuery.data?.status ?? "queued")
+      ? (draftQcStatusQuery.error
+          ? "idle"
+          : (draftQcStatusQuery.data?.status ?? "queued"))
       : "idle";
   const draftQcResult =
     draftQcRunId && draftQcSourceSignature === currentSynthesisSourceSignature
       ? draftQcStatusQuery.data?.result
       : undefined;
-  // QC may keep a revised candidate that is better than the original
-  // synthesis. That candidate becomes the draft the creator reviews/applies;
-  // otherwise the receipt fingerprint would refer to a different object than
-  // the one sent to create, silently blocking the intended best-candidate
-  // behavior.
-  const draftToReview = (draftQcResult?.best?.draft ?? synthesizedDraft) as
+  const draftQcHistoricalResult =
+    draftQcRunId && draftQcSourceSignature === currentSynthesisSourceSignature
+      ? draftQcStatusQuery.data?.historicalResult
+      : undefined;
+  const draftQcPreviousResult =
+    draftQcHistoricalResult ?? draftQcPreviousResultState;
+  const draftQcRecoveredFromFailure = Boolean(
+    draftQcResult?.recoveredFromFailure
+  );
+  // A failed/expired active run must not hide a completed result recovered
+  // from the durable Draft ledger. Keep the failed run visible for diagnosis,
+  // but use the recovered result only when building the confirmation receipt.
+  // If the creator selected a historical candidate while a newer run exists,
+  // switch the receipt back to that historical run as well.
+  const selectedCurrentQcHistoryEntry = draftQcResult?.history.find(
+    item => item.candidateFingerprint === draftQcSelectedCandidateFingerprint
+  );
+  const selectedHistoricalQcHistoryEntry = draftQcPreviousResult?.history.find(
+    item => item.candidateFingerprint === draftQcSelectedCandidateFingerprint
+  );
+  const draftQcAuthoritativeResult = selectedHistoricalQcHistoryEntry
+    ? draftQcPreviousResult
+    : draftQcResult ?? draftQcPreviousResult;
+  const draftQcAuthoritativeRunId = selectedHistoricalQcHistoryEntry
+    ? draftQcPreviousResult?.runId ?? draftQcHistoricalRunId
+    : draftQcResult
+      ? draftQcRunId
+      : draftQcPreviousResult?.runId ?? draftQcHistoricalRunId;
+  // The best candidate is the default, but every scored round can be selected
+  // explicitly. The selected content and its report always travel together so
+  // the create receipt cannot approve a different Draft.
+  const selectedDraftHistoryEntry =
+    selectedCurrentQcHistoryEntry ?? selectedHistoricalQcHistoryEntry;
+  const draftToReview = (draftQcSelectedCandidateDraft ??
+    draftQcAuthoritativeResult?.best?.draft ??
+    synthesizedDraft) as
     | SynthesizedGenrePresetDraft
     | undefined;
-  const draftQcReport = draftQcResult?.best.report;
+  const draftQcReport =
+    selectedDraftHistoryEntry?.report ?? draftQcAuthoritativeResult?.best.report;
   const draftQcCandidateMatches = Boolean(
     draftToReview &&
-    draftQcResult?.best.fingerprint ===
-      fingerprintDraftQualityQcCandidate(draftToReview)
-  );
-  const draftQcPassed = Boolean(
-    draftQcStatus === "succeeded" &&
-    draftQcReport?.pass &&
-    draftQcCandidateMatches
+    (!draftQcAuthoritativeResult ||
+      (draftQcSelectedCandidateFingerprint
+        ? selectedDraftHistoryEntry?.candidateFingerprint ===
+          fingerprintDraftQualityQcCandidate(draftToReview)
+        : draftQcAuthoritativeResult.best.fingerprint ===
+          fingerprintDraftQualityQcCandidate(draftToReview)))
   );
   const draftQcOverrideEligible = Boolean(
-    draftQcStatus === "succeeded" &&
-    draftQcResult?.stopReason === "max_rounds" &&
+    (Boolean(draftQcResult) ||
+      Boolean(draftQcPreviousResult) ||
+      draftQcRecoveredFromFailure) &&
     draftQcReport &&
     draftQcReport.criticalFails.length === 0 &&
     !draftQcReport.pass
   );
-  const draftQcAccepted =
-    draftQcPassed || (draftQcOverrideEligible && draftQcOverride);
   const normalizedDraftTitleOptions = normalizeDraftTitleOptions(
     draftToReview?.titleOptions
   );
@@ -1357,6 +1481,37 @@ export function CreateSeriesWizard({
     draftCompositionSourceSignature === currentSynthesisSourceSignature &&
     synthesisSourceSignature === currentSynthesisSourceSignature &&
     !draftCompositionMutation.isPending
+  );
+  const draftCompositionHasPartialResult = Boolean(
+    synthesizedDraft &&
+    draftCompositionJobId !== null &&
+    draftCompositionStatusQuery.data?.status === "failed" &&
+    draftCompositionStatusQuery.data.result?.draft &&
+    draftCompositionSourceSignature === currentSynthesisSourceSignature &&
+    synthesisSourceSignature === currentSynthesisSourceSignature &&
+    !draftCompositionMutation.isPending
+  );
+  // A completed QC run can outlive the composition worker record after a
+  // refresh, Redis reconciliation, or a migrated workspace. The best
+  // candidate is still a valid source for a new QC run when it belongs to the
+  // current form signature; do not force composition to run again.
+  const draftQcCandidateIsCurrent = Boolean(
+    draftQcResult?.best?.draft &&
+    draftQcSourceSignature &&
+    draftQcSourceSignature === currentSynthesisSourceSignature
+  );
+  const draftQcHistoricalCandidateIsCurrent = Boolean(
+    draftQcPreviousResult &&
+    draftQcAuthoritativeRunId &&
+    draftQcSourceSignature === currentSynthesisSourceSignature
+  );
+  const draftQcSourceReady = Boolean(
+    draftToReview &&
+    !draftCompositionMutation.isPending &&
+    (draftIsCurrent ||
+      draftQcCandidateIsCurrent ||
+      draftQcHistoricalCandidateIsCurrent ||
+      draftCompositionHasPartialResult)
   );
   const hasManualTitle =
     titleOrigin === "manual" && form.title.trim().length > 0;
@@ -1373,11 +1528,10 @@ export function CreateSeriesWizard({
   const draftCompositionReady =
     draftCompositionStatusQuery.data?.status === "ready_for_qc";
   const draftCanBeApplied =
-    draftIsCurrent &&
+    draftQcSourceReady &&
     draftTitleReady &&
-    draftCompositionReady &&
     !hasBlockingDraftDiagnostics &&
-    draftQcAccepted;
+    draftQcCandidateMatches;
   const draftGateSatisfied = Boolean(
     draftCanBeApplied &&
     synthesisRequestKey !== null &&
@@ -1387,56 +1541,61 @@ export function CreateSeriesWizard({
     ? lang === "th"
       ? "กดให้ AI สร้าง draft ก่อนจึงไปต่อได้"
       : "Generate an AI draft before continuing"
-    : !draftCompositionReady
+    : draftCompositionHasPartialResult
       ? lang === "th"
-        ? "AI กำลังเติมข้อมูลโครงสร้างเรื่องให้ครบก่อนเข้า QC"
-        : "AI is completing the story structure before Draft QC"
-      : !draftIsCurrent
+        ? "Draft ยังไม่ครบ จึงยังสร้างเรื่องเต็มไม่ได้ แต่สามารถส่งเข้า QC เพื่อดูจุดที่ต้องแก้ได้"
+        : "The Draft is incomplete, so full-series creation is blocked, but it can still be sent to QC for diagnosis"
+      : !draftCompositionReady && !draftQcSourceReady
         ? lang === "th"
-          ? "draft เก่าแล้ว เพราะข้อมูลต้นทางเปลี่ยน — กรุณาสร้างใหม่"
-          : "This draft is stale because the source changed — generate a new one"
-        : hasBlockingDraftDiagnostics
+          ? "AI กำลังเติมข้อมูลโครงสร้างเรื่องให้ครบก่อนเข้า QC"
+          : "AI is completing the story structure before Draft QC"
+        : !draftQcSourceReady && !draftIsCurrent
           ? lang === "th"
-            ? "draft มีข้อมูลโครงสร้างเรื่องหรือบทบาทตัวละครไม่ครบ — กดปรับใหม่ก่อนจึงเริ่ม QC ได้"
-            : "This draft has incomplete story architecture or character-role data — regenerate it before Draft QC"
-          : !draftQcAccepted
+            ? "draft เก่าแล้ว เพราะข้อมูลต้นทางเปลี่ยน — กรุณาโหลดงานล่าสุดหรือสร้างใหม่"
+            : "This draft is stale because the source changed — load the latest job or generate a new one"
+          : hasBlockingDraftDiagnostics
             ? lang === "th"
-              ? "ต้องตรวจ QC ให้ผ่าน 9.0/10 หรือยืนยันใช้แบบมีคำเตือนก่อน"
-              : "Run Draft QC and reach 9.0/10, or confirm the eligible override"
+              ? "draft มีข้อมูลโครงสร้างเรื่องหรือบทบาทตัวละครไม่ครบ — กดปรับใหม่ก่อนจึงเริ่ม QC ได้"
+              : "This draft has incomplete story architecture or character-role data — regenerate it before Draft QC"
             : !draftTitleReady
-              ? hasValidDraftTitleOptions(draftToReview)
-                ? lang === "th"
-                  ? "เลือกชื่อเรื่อง 1 รายการ หรือกรอกชื่อเรื่องเองก่อน"
-                  : "Select one title candidate or enter your own title"
-                : lang === "th"
-                  ? "draft นี้ไม่มีตัวเลือกชื่อเรื่องที่ครบ 4-5 แบบ — กดปรับใหม่"
-                  : "This draft has no valid 4–5 title choices — generate a new one"
-              : !draftGateSatisfied
-                ? lang === "th"
-                  ? "กด ใช้ draft นี้ ก่อนจึงไปต่อได้"
-                  : "Apply this draft before continuing"
-                : "";
+                ? hasValidDraftTitleOptions(draftToReview)
+                  ? lang === "th"
+                    ? "เลือกชื่อเรื่อง 1 รายการ หรือกรอกชื่อเรื่องเองก่อน"
+                    : "Select one title candidate or enter your own title"
+                  : lang === "th"
+                    ? "draft นี้ไม่มีตัวเลือกชื่อเรื่องที่ครบ 4-5 แบบ — กดปรับใหม่"
+                    : "This draft has no valid 4–5 title choices — generate a new one"
+                : !draftGateSatisfied
+                  ? lang === "th"
+                    ? "กด ใช้ draft นี้ ก่อนจึงไปต่อได้"
+                    : "Apply this draft before continuing"
+                  : "";
 
-  function startDraftQualityQc() {
+  function startDraftQualityQc(maxRoundsOverride?: number) {
     if (
-      !synthesizedDraft ||
-      !draftIsCurrent ||
-      !draftCompositionReady ||
-      hasBlockingDraftDiagnostics ||
+      !draftQcSourceReady ||
       draftQcStartMutation.isPending
-    )
+    ) {
+      toast.error(
+        lang === "th"
+          ? !draftToReview
+            ? "ยังไม่มี Draft ที่พร้อมตรวจ QC — กรุณาสร้างหรือโหลด Draft ก่อน"
+            : "Draft ยังไม่พร้อมเริ่ม QC หรือเป็น Draft เก่า — กรุณาโหลดงานล่าสุดแล้วลองใหม่"
+          : !draftToReview
+            ? "No usable Draft is available for QC — generate or load a Draft first."
+            : "The Draft is not ready for QC or is stale — load the latest job and try again."
+      );
       return;
+    }
+    if (draftQcHistoricalResult) {
+      setDraftQcPreviousResult(draftQcHistoricalResult);
+    }
     draftQcStartMutation.mutate({
       draftSessionId: draftQcSessionId.current,
       draftId: draftCompositionStatusQuery.data?.result?.draftArtifactId,
-      draft: synthesizedDraft as unknown as Record<string, unknown>,
+      draft: draftToReview as unknown as Record<string, unknown>,
       immutableConstraints: {
-        preservedPaths: [
-          "storyContext",
-          "storyDesign",
-          "storyContract",
-          "visualNarrativeProfile",
-        ],
+        preservedPaths: [...DRAFT_QC_IMMUTABLE_PRESERVED_PATHS],
         narrativeLocale: form.locale,
         spokenLanguageProfile:
           form.spokenLocale === "auto"
@@ -1446,8 +1605,24 @@ export function CreateSeriesWizard({
         userPremise: form.userPremise.trim() || undefined,
         targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
       },
-      maxImprovementRounds: draftQcMaxRounds as 0 | 1 | 2 | 3 | 5 | 10,
+      maxImprovementRounds: (maxRoundsOverride ?? draftQcMaxRounds) as
+        | 0
+        | 1
+        | 2
+        | 3
+        | 5
+        | 10,
     });
+  }
+
+  function repairDraftQualityQc() {
+    if (!draftQcReport || draftQcReport.pass || draftQcStartMutation.isPending) {
+      return;
+    }
+    // A repair is deliberately bounded to one Skill revision/evaluation
+    // round. The user already has a real scorecard and should never be sent
+    // into an unbounded credit loop.
+    startDraftQualityQc(1);
   }
 
   function cancelDraftQualityQc() {
@@ -1455,11 +1630,55 @@ export function CreateSeriesWizard({
     draftQcCancelMutation.mutate({ runId: draftQcRunId });
   }
 
+  function selectDraftQualityQcCandidate(
+    item: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry
+  ) {
+    // Resolve the source result from the item being clicked, not from the
+    // previous selection state. This matters when a completed historical
+    // round is selected while a newer active run (possibly failed) is also
+    // present in the wizard.
+    const itemBelongsToHistoricalResult = Boolean(
+      item.candidateFingerprint &&
+      draftQcPreviousResult?.history.some(
+        entry => entry.candidateFingerprint === item.candidateFingerprint
+      ) &&
+      !draftQcResult?.history.some(
+        entry => entry.candidateFingerprint === item.candidateFingerprint
+      )
+    );
+    const selectedResult = itemBelongsToHistoricalResult
+      ? draftQcPreviousResult
+      : draftQcResult ?? draftQcPreviousResult;
+    const draftId =
+      selectedResult?.draftArtifactId ??
+      draftCompositionStatusQuery.data?.result?.draftArtifactId;
+    const runId = selectedResult?.runId ?? draftQcAuthoritativeRunId;
+    if (
+      !draftId ||
+      !runId ||
+      !item.candidateVersion ||
+      !item.candidateFingerprint
+    ) {
+      toast.error(
+        lang === "th"
+          ? "Draft รอบนี้ไม่มีฉบับเต็มที่โหลดได้ — กรุณาเริ่ม QC ใหม่"
+          : "This Draft round has no loadable immutable version — start QC again"
+      );
+      return;
+    }
+    draftQcCandidateSelectMutation.mutate({
+      runId,
+      draftId,
+      version: item.candidateVersion,
+      candidateFingerprint: item.candidateFingerprint,
+    });
+  }
+
   const draftQualityQcReceipt =
-    draftQcResult && draftQcRunId
+    draftQcAuthoritativeResult && draftQcAuthoritativeRunId
       ? {
-          runId: draftQcRunId,
-          candidateFingerprint: draftQcResult.best.fingerprint,
+          runId: draftQcAuthoritativeRunId,
+          candidateFingerprint: fingerprintDraftQualityQcCandidate(draftToReview),
           explicitOverride: draftQcOverride,
         }
       : undefined;
@@ -1488,6 +1707,8 @@ export function CreateSeriesWizard({
       setDraftCompositionSourceSignature(null);
       setDraftQcRunId(null);
       setDraftQcSourceSignature(null);
+      setDraftQcPreviousResult(null);
+      setDraftQcHistoricalRunId(null);
       setDraftQcOverride(false);
       latestCompositionRequest.current = null;
     }
@@ -2269,10 +2490,29 @@ export function CreateSeriesWizard({
             draftQualityQcStatus={draftQcStatus}
             draftQualityQcProgress={draftQcStatusQuery.data?.progress}
             draftQualityQcReport={draftQcReport}
+            draftQualityQcPreviousResult={draftQcPreviousResult}
             draftQualityQcHistory={
               draftQcResult?.history ??
+              draftQcPreviousResult?.history ??
               draftQcStatusQuery.data?.failure?.history
             }
+            draftQualityQcRecoveredResult={Boolean(
+              (draftQcStatus === "failed" &&
+                (!draftQcResult || draftQcRecoveredFromFailure) &&
+                (draftQcPreviousResult || draftQcRecoveredFromFailure))
+            )}
+            draftQualityQcSelectedCandidateFingerprint={
+              draftQcSelectedCandidateFingerprint
+            }
+            draftQualityQcCandidateSelectionPending={
+              draftQcCandidateSelectMutation.isPending
+            }
+            onSelectDraftQualityQcCandidate={selectDraftQualityQcCandidate}
+            onConfirmDraftQualityQcCandidate={() =>
+              applyPresetDraft(draftToReview as SynthesizedGenrePresetDraft)
+            }
+            draftQualityQcCandidateCanBeConfirmed={draftCanBeApplied}
+            draftQualityQcCandidateAlreadyConfirmed={draftGateSatisfied}
             draftQualityQcError={draftQcStatusQuery.data?.error}
             draftQualityQcFailure={draftQcStatusQuery.data?.failure}
             draftQualityQcEstimate={draftQcEstimateQuery.data}
@@ -2284,6 +2524,7 @@ export function CreateSeriesWizard({
             draftQualityQcOverrideEligible={draftQcOverrideEligible}
             onDraftQualityQcMaxRoundsChange={setDraftQcMaxRounds}
             onStartDraftQualityQc={startDraftQualityQc}
+            onRepairDraftQualityQc={repairDraftQualityQc}
             onCancelDraftQualityQc={cancelDraftQualityQc}
             onDraftQualityQcOverrideChange={setDraftQcOverride}
             onMoveGenreToPremise={handleMoveGenreToPremise}
@@ -2641,7 +2882,6 @@ function buildSynthesisSourceSignature(params: {
     spokenLocale: form.spokenLocale,
     audienceAgeRating: form.audienceAgeRating,
     userPremise: form.userPremise.trim(),
-    targetEpisodeCount: form.targetEpisodeCount,
     productName: form.productName.trim(),
     businessContext: mixBusinessContext.trim(),
     primarySelectionId: mixPrimarySelectionId ?? null,
@@ -2818,7 +3058,15 @@ function WizardStep({
   draftQualityQcStatus,
   draftQualityQcProgress,
   draftQualityQcReport,
+  draftQualityQcPreviousResult,
+  draftQualityQcRecoveredResult,
   draftQualityQcHistory,
+  draftQualityQcSelectedCandidateFingerprint,
+  draftQualityQcCandidateSelectionPending,
+  onSelectDraftQualityQcCandidate,
+  onConfirmDraftQualityQcCandidate,
+  draftQualityQcCandidateCanBeConfirmed,
+  draftQualityQcCandidateAlreadyConfirmed,
   draftQualityQcError,
   draftQualityQcFailure,
   draftQualityQcEstimate,
@@ -2828,6 +3076,7 @@ function WizardStep({
   draftQualityQcOverrideEligible,
   onDraftQualityQcMaxRoundsChange,
   onStartDraftQualityQc,
+  onRepairDraftQualityQc,
   onCancelDraftQualityQc,
   onDraftQualityQcOverrideChange,
   onMoveGenreToPremise,
@@ -2907,7 +3156,19 @@ function WizardStep({
   draftQualityQcReport?:
     | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcReport
     | null;
+  draftQualityQcPreviousResult?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcResultSnapshot
+    | null;
+  draftQualityQcRecoveredResult?: boolean;
   draftQualityQcHistory?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry[];
+  draftQualityQcSelectedCandidateFingerprint?: string | null;
+  draftQualityQcCandidateSelectionPending?: boolean;
+  onSelectDraftQualityQcCandidate?: (
+    item: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry
+  ) => void;
+  onConfirmDraftQualityQcCandidate?: () => void;
+  draftQualityQcCandidateCanBeConfirmed?: boolean;
+  draftQualityQcCandidateAlreadyConfirmed?: boolean;
   draftQualityQcError?: string;
   draftQualityQcFailure?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcFailure;
   draftQualityQcEstimate?:
@@ -2919,6 +3180,7 @@ function WizardStep({
   draftQualityQcOverrideEligible: boolean;
   onDraftQualityQcMaxRoundsChange: (value: number) => void;
   onStartDraftQualityQc: () => void;
+  onRepairDraftQualityQc: () => void;
   onCancelDraftQualityQc: () => void;
   onDraftQualityQcOverrideChange: (value: boolean) => void;
   /** Misplaced-premise rescue (fix-create-series-premise-blend plan) — moves an oversized genre value into `userPremise` and clears genre. */
@@ -3463,7 +3725,27 @@ function WizardStep({
                   draftQualityQcStatus={draftQualityQcStatus}
                   draftQualityQcProgress={draftQualityQcProgress}
                   draftQualityQcReport={draftQualityQcReport}
+                  draftQualityQcPreviousResult={draftQualityQcPreviousResult}
+                  draftQualityQcRecoveredResult={draftQualityQcRecoveredResult}
                   draftQualityQcHistory={draftQualityQcHistory}
+                  draftQualityQcSelectedCandidateFingerprint={
+                    draftQualityQcSelectedCandidateFingerprint
+                  }
+                  draftQualityQcCandidateSelectionPending={
+                    draftQualityQcCandidateSelectionPending
+                  }
+                  onSelectDraftQualityQcCandidate={
+                    onSelectDraftQualityQcCandidate
+                  }
+                  onConfirmDraftQualityQcCandidate={
+                    onConfirmDraftQualityQcCandidate
+                  }
+                  draftQualityQcCandidateCanBeConfirmed={
+                    draftQualityQcCandidateCanBeConfirmed
+                  }
+                  draftQualityQcCandidateAlreadyConfirmed={
+                    draftQualityQcCandidateAlreadyConfirmed
+                  }
                   draftQualityQcError={draftQualityQcError}
                   draftQualityQcFailure={draftQualityQcFailure}
                   draftQualityQcEstimate={draftQualityQcEstimate}
@@ -3479,6 +3761,7 @@ function WizardStep({
                     onDraftQualityQcMaxRoundsChange
                   }
                   onStartDraftQualityQc={onStartDraftQualityQc}
+                  onRepairDraftQualityQc={onRepairDraftQualityQc}
                   onCancelDraftQualityQc={onCancelDraftQualityQc}
                   onDraftQualityQcOverrideChange={
                     onDraftQualityQcOverrideChange
@@ -3910,7 +4193,27 @@ function WizardStep({
                       draftQualityQcStatus={draftQualityQcStatus}
                       draftQualityQcProgress={draftQualityQcProgress}
                       draftQualityQcReport={draftQualityQcReport}
+                      draftQualityQcPreviousResult={draftQualityQcPreviousResult}
+                      draftQualityQcRecoveredResult={draftQualityQcRecoveredResult}
                       draftQualityQcHistory={draftQualityQcHistory}
+                      draftQualityQcSelectedCandidateFingerprint={
+                        draftQualityQcSelectedCandidateFingerprint
+                      }
+                      draftQualityQcCandidateSelectionPending={
+                        draftQualityQcCandidateSelectionPending
+                      }
+                      onSelectDraftQualityQcCandidate={
+                        onSelectDraftQualityQcCandidate
+                      }
+                      onConfirmDraftQualityQcCandidate={
+                        onConfirmDraftQualityQcCandidate
+                      }
+                      draftQualityQcCandidateCanBeConfirmed={
+                        draftQualityQcCandidateCanBeConfirmed
+                      }
+                      draftQualityQcCandidateAlreadyConfirmed={
+                        draftQualityQcCandidateAlreadyConfirmed
+                      }
                       draftQualityQcError={draftQualityQcError}
                       draftQualityQcFailure={draftQualityQcFailure}
                       draftQualityQcEstimate={draftQualityQcEstimate}
@@ -3926,6 +4229,7 @@ function WizardStep({
                         onDraftQualityQcMaxRoundsChange
                       }
                       onStartDraftQualityQc={onStartDraftQualityQc}
+                      onRepairDraftQualityQc={onRepairDraftQualityQc}
                       onCancelDraftQualityQc={onCancelDraftQualityQc}
                       onDraftQualityQcOverrideChange={
                         onDraftQualityQcOverrideChange
@@ -5312,7 +5616,15 @@ function PresetSynthesisActionPanel({
   draftQualityQcStatus,
   draftQualityQcProgress,
   draftQualityQcReport,
+  draftQualityQcPreviousResult,
+  draftQualityQcRecoveredResult,
   draftQualityQcHistory,
+  draftQualityQcSelectedCandidateFingerprint,
+  draftQualityQcCandidateSelectionPending,
+  onSelectDraftQualityQcCandidate,
+  onConfirmDraftQualityQcCandidate,
+  draftQualityQcCandidateCanBeConfirmed,
+  draftQualityQcCandidateAlreadyConfirmed,
   draftQualityQcError,
   draftQualityQcFailure,
   draftQualityQcEstimate,
@@ -5322,6 +5634,7 @@ function PresetSynthesisActionPanel({
   draftQualityQcOverrideEligible,
   onDraftQualityQcMaxRoundsChange,
   onStartDraftQualityQc,
+  onRepairDraftQualityQc,
   onCancelDraftQualityQc,
   onDraftQualityQcOverrideChange,
   onAdjustWeights,
@@ -5365,7 +5678,19 @@ function PresetSynthesisActionPanel({
   draftQualityQcReport?:
     | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcReport
     | null;
+  draftQualityQcPreviousResult?:
+    | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcResultSnapshot
+    | null;
+  draftQualityQcRecoveredResult?: boolean;
   draftQualityQcHistory?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry[];
+  draftQualityQcSelectedCandidateFingerprint?: string | null;
+  draftQualityQcCandidateSelectionPending?: boolean;
+  onSelectDraftQualityQcCandidate?: (
+    item: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry
+  ) => void;
+  onConfirmDraftQualityQcCandidate?: () => void;
+  draftQualityQcCandidateCanBeConfirmed?: boolean;
+  draftQualityQcCandidateAlreadyConfirmed?: boolean;
   draftQualityQcError?: string;
   draftQualityQcFailure?: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcFailure;
   draftQualityQcEstimate?:
@@ -5377,6 +5702,7 @@ function PresetSynthesisActionPanel({
   draftQualityQcOverrideEligible: boolean;
   onDraftQualityQcMaxRoundsChange: (value: number) => void;
   onStartDraftQualityQc: () => void;
+  onRepairDraftQualityQc: () => void;
   onCancelDraftQualityQc: () => void;
   onDraftQualityQcOverrideChange: (value: boolean) => void;
   onAdjustWeights: () => void;
@@ -6100,7 +6426,21 @@ function PresetSynthesisActionPanel({
                 status={draftQualityQcStatus}
                 progress={draftQualityQcProgress}
                 report={draftQualityQcReport}
+                previousResult={draftQualityQcPreviousResult}
+                recoveredResult={draftQualityQcRecoveredResult}
                 history={draftQualityQcHistory}
+                selectedCandidateFingerprint={
+                  draftQualityQcSelectedCandidateFingerprint
+                }
+                candidateSelectionPending={
+                  draftQualityQcCandidateSelectionPending
+                }
+                onSelectCandidate={onSelectDraftQualityQcCandidate}
+                onConfirmCandidate={onConfirmDraftQualityQcCandidate}
+                candidateCanBeConfirmed={draftQualityQcCandidateCanBeConfirmed}
+                candidateAlreadyConfirmed={
+                  draftQualityQcCandidateAlreadyConfirmed
+                }
                 error={draftQualityQcError}
                 failure={draftQualityQcFailure}
                 estimate={draftQualityQcEstimate}
@@ -6110,6 +6450,7 @@ function PresetSynthesisActionPanel({
                 overrideEligible={draftQualityQcOverrideEligible}
                 onMaxRoundsChange={onDraftQualityQcMaxRoundsChange}
                 onStart={onStartDraftQualityQc}
+                onRepair={onRepairDraftQualityQc}
                 onCancel={onCancelDraftQualityQc}
                 onOverrideChange={onDraftQualityQcOverrideChange}
               />

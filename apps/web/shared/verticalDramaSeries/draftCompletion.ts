@@ -155,21 +155,21 @@ export function inspectVerticalDramaDraftCompleteness(params: {
     userPremise: params.userPremise,
     targetEpisodeCount: params.targetEpisodeCount,
   });
+  diagnostics.push(
+    ...architecture.diagnostics.map(item => ({
+      code: item.code,
+      severity: item.severity,
+      message: item.message,
+      messageEn: item.messageEn,
+      paths: item.paths,
+      repairable: item.repairable,
+    }))
+  );
   if (!architecture.ready) {
     missing.push(
-      ...architecture.diagnostics.flatMap(
-        item => item.paths ?? ["storyContract"]
-      )
-    );
-    diagnostics.push(
-      ...architecture.diagnostics.map(item => ({
-        code: item.code,
-        severity: item.severity,
-        message: item.message,
-        messageEn: item.messageEn,
-        paths: item.paths,
-        repairable: item.repairable,
-      }))
+      ...architecture.diagnostics
+        .filter(item => item.severity === "blocking")
+        .flatMap(item => item.paths ?? ["storyContract"])
     );
   }
 

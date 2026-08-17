@@ -19,6 +19,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { stampPresetVisualIdentityIntoBible } from "../verticalDramaSeries";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import { fingerprintDraftQualityQcCandidate } from "@shared/verticalDramaSeries/draftQualityQc";
 
 const { mockDb } = vi.hoisted(() => ({
   mockDb: {
@@ -42,9 +43,11 @@ vi.mock("../../_core/trpc", () => {
     };
     return proc;
   };
+  const adminProcedure = createProcedure();
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure,
   };
 });
 
@@ -68,6 +71,15 @@ const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
 }));
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
+}));
+
+const { mockGetDraftQualityQcStatus } = vi.hoisted(() => ({
+  mockGetDraftQualityQcStatus: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaDraftQualityQcJobs", () => ({
+  getVerticalDramaDraftQualityQcStatus: mockGetDraftQualityQcStatus,
+  enqueueVerticalDramaDraftQualityQc: vi.fn(),
+  cancelVerticalDramaDraftQualityQc: vi.fn(),
 }));
 
 import { createSeriesInput, verticalDramaSeriesRouter } from "../verticalDramaSeries";
@@ -349,5 +361,169 @@ describe("create — preset visual-identity stamping (flag-gated, best-effort)",
     });
 
     expect(result.series.id).toBe("10");
+  });
+
+  it("accepts only the owner-scoped authoritative QC result and persists a sanitized audit", async () => {
+    const candidate = {
+      title: "Proof of Us",
+      logline: "A student must protect her scholarship.",
+      mainPlot: "Rivalry becomes collaboration.",
+      seasonArc: "Trust becomes love.",
+      storyContext: { targetMarket: "United States" },
+    };
+    const candidateFingerprint = fingerprintDraftQualityQcCandidate(candidate);
+    mockGetDraftQualityQcStatus.mockResolvedValueOnce({
+      tenantId: "tenant-1",
+      userId: 42,
+      status: "succeeded",
+      result: {
+        best: {
+          draft: candidate,
+          fingerprint: candidateFingerprint,
+          round: 1,
+          report: {
+            overallScore: 9.25,
+            status: "passed",
+            pass: true,
+            criticalFails: [],
+            evaluatedAt: "2026-08-12T00:00:00.000Z",
+          },
+        },
+        history: [],
+        creditEstimate: { baselineCalls: 1, maxImprovementRounds: 1, maxCalls: 3, estimatedCredits: 3, actualCredits: 2 },
+        stopReason: "passed",
+        model: "test-model",
+      },
+    });
+    let inserted: any;
+    const chain: any = {
+      values: vi.fn((value: any) => { inserted = value; return chain; }),
+      returning: vi.fn(async () => [{ ...INSERTED_ROW, title: "Custom Title", bible: inserted.bible }]),
+    };
+    mockDb.insert.mockReturnValueOnce(chain);
+
+    const result = await router.create({
+      ctx: ctx(),
+      input: {
+        title: "Custom Title",
+        bible: {
+          logline: candidate.logline,
+          mainPlot: candidate.mainPlot,
+          seasonArc: candidate.seasonArc,
+        },
+        draftQualityQcReceipt: {
+          runId: "00000000-0000-4000-8000-000000000001",
+          candidateFingerprint,
+        },
+        draftQualityQcCandidate: candidate,
+      },
+    });
+
+    expect(result.series.title).toBe("Custom Title");
+    expect(inserted.bible.draftQualityQc).toMatchObject({
+      contractVersion: "vd-draft-qc-v1",
+      candidateFingerprint,
+      overallScore: 9.25,
+      pass: true,
+      appliedTitle: "Custom Title",
+    });
+    expect(inserted.bible.draftQualityQc).not.toHaveProperty("best");
+  });
+
+  it("allows creation with a completed low-score QC receipt because QC is advisory", async () => {
+    const candidate = {
+      title: "Draft with warnings",
+      logline: "A student faces a difficult choice.",
+      mainPlot: "The choice creates new pressure.",
+      seasonArc: "The student decides what to do next.",
+    };
+    const candidateFingerprint = fingerprintDraftQualityQcCandidate(candidate);
+    mockGetDraftQualityQcStatus.mockResolvedValueOnce({
+      tenantId: "tenant-1",
+      userId: 42,
+      status: "succeeded",
+      result: {
+        best: {
+          draft: candidate,
+          fingerprint: candidateFingerprint,
+          round: 1,
+          report: {
+            overallScore: 5.5,
+            status: "needs_work",
+            pass: false,
+            criticalFails: ["episode window needs review"],
+            evaluatedAt: "2026-08-17T00:00:00.000Z",
+          },
+        },
+        history: [],
+        creditEstimate: {
+          baselineCalls: 1,
+          maxImprovementRounds: 0,
+          maxCalls: 1,
+          estimatedCredits: 1,
+          actualCredits: 1,
+        },
+        stopReason: "max_rounds",
+        model: "test-model",
+      },
+    });
+    let inserted: any;
+    const chain: any = {
+      values: vi.fn((value: any) => {
+        inserted = value;
+        return chain;
+      }),
+      returning: vi.fn(async () => [
+        { ...INSERTED_ROW, title: candidate.title, bible: inserted.bible },
+      ]),
+    };
+    mockDb.insert.mockReturnValueOnce(chain);
+
+    const result = await router.create({
+      ctx: ctx(),
+      input: {
+        title: candidate.title,
+        bible: {
+          logline: candidate.logline,
+          mainPlot: candidate.mainPlot,
+          seasonArc: candidate.seasonArc,
+        },
+        draftQualityQcReceipt: {
+          runId: "00000000-0000-4000-8000-000000000002",
+          candidateFingerprint,
+        },
+        draftQualityQcCandidate: candidate,
+      },
+    });
+
+    expect(result.series.title).toBe(candidate.title);
+    expect(inserted.bible.draftQualityQc).toMatchObject({
+      overallScore: 5.5,
+      pass: false,
+      status: "needs_work",
+      explicitOverride: false,
+    });
+  });
+
+  it("rejects a forged candidate fingerprint before touching the series insert", async () => {
+    mockGetDraftQualityQcStatus.mockResolvedValueOnce({
+      tenantId: "tenant-1",
+      userId: 42,
+      status: "succeeded",
+      result: { best: { report: { pass: true, criticalFails: [] } } },
+    });
+
+    await expect(router.create({
+      ctx: ctx(),
+      input: {
+        title: "Forged",
+        draftQualityQcReceipt: {
+          runId: "00000000-0000-4000-8000-000000000001",
+          candidateFingerprint: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        },
+        draftQualityQcCandidate: { title: "Different candidate" },
+      },
+    })).rejects.toThrow("does not match the approved run");
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 });

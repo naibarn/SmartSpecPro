@@ -236,11 +236,12 @@ export function evaluateVerticalDramaStoryArchitecture(params: {
     code: VerticalDramaStoryArchitectureDiagnostic["code"],
     message: string,
     messageEn: string,
-    paths: string[]
+    paths: string[],
+    severity: VerticalDramaStoryArchitectureDiagnostic["severity"] = "blocking"
   ) =>
     diagnostics.push({
       code,
-      severity: "blocking",
+      severity,
       message,
       messageEn,
       paths,
@@ -318,7 +319,8 @@ export function evaluateVerticalDramaStoryArchitecture(params: {
         "architecture_episode_window_invalid",
         `Arc ${arc.label} กำหนดช่วงตอนเกินจำนวนตอนที่เลือกไว้`,
         `Arc ${arc.label} extends beyond the planned episode count.`,
-        [`storyContract.arcBundles[${index}].episodeWindow`]
+        [`storyContract.arcBundles[${index}].episodeWindow`],
+        "warning"
       );
     }
   }
@@ -342,7 +344,11 @@ export function evaluateVerticalDramaStoryArchitecture(params: {
     );
   }
 
-  return { ready: diagnostics.length === 0, contract, diagnostics };
+  return {
+    ready: diagnostics.every(diagnostic => diagnostic.severity !== "blocking"),
+    contract,
+    diagnostics,
+  };
 }
 
 export function renderVerticalDramaStoryArchitectureBlock(
