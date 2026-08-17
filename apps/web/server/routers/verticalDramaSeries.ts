@@ -386,6 +386,11 @@ import {
   getVerticalDramaDraftVersion,
 } from "../services/verticalDramaDraftLedger";
 import {
+  archiveVerticalDramaStaleDraftJobs,
+  getVerticalDramaStaleDraftCounts,
+  verticalDramaStaleDraftDaysSchema,
+} from "../services/verticalDramaDraftCleanup";
+import {
   draftQualityQcReceiptSchema,
   draftQualityQcRoundBudgetSchema,
   estimateDraftQualityQcCredits,
@@ -7417,12 +7422,18 @@ export const verticalDramaSeriesRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
-      return {
-        jobs: await listVerticalDramaDraftLedgers(
-          { tenantId, userId: ctx.user.id },
+      const owner = { tenantId, userId: ctx.user.id };
+      const [jobs, counts] = await Promise.all([
+        listVerticalDramaDraftLedgers(
+          owner,
           input?.limit ?? 50,
           input?.includeArchived ?? false
         ),
+        getVerticalDramaStaleDraftCounts(owner),
+      ]);
+      return {
+        jobs,
+        cleanup: { counts },
       };
     }),
 
@@ -7469,6 +7480,21 @@ export const verticalDramaSeriesRouter = router({
         });
       }
       return { ok: true };
+    }),
+
+  archiveStaleDraftJobs: verticalDramaProcedure
+    .input(
+      z.object({
+        olderThanDays: verticalDramaStaleDraftDaysSchema,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const archivedCount = await archiveVerticalDramaStaleDraftJobs(
+        { tenantId, userId: ctx.user.id },
+        input.olderThanDays
+      );
+      return { ok: true, archivedCount };
     }),
 
   cancelDraftJob: verticalDramaProcedure

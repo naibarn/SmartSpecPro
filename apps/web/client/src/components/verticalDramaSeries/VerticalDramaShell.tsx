@@ -54,6 +54,13 @@ import {
   hasRecoverableCreateSeriesWorkspace,
 } from "./CreateSeriesWizard";
 import {
+  VerticalDramaStaleDraftCleanupDialog,
+  isVerticalDramaSeriesIndexPath,
+  useVerticalDramaStaleDraftCleanupOffer,
+  useVerticalDramaStaleDraftCleanupMutation,
+  type VerticalDramaStaleDraftCounts,
+} from "./VerticalDramaStaleDraftCleanupDialog";
+import {
   pickCopy,
   sequelBadgeText,
   seriesStatusCopy,
@@ -292,7 +299,8 @@ export function VerticalDramaShell({
 }) {
   const lang = useVerticalDramaLang();
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const isSeriesIndexPage = isVerticalDramaSeriesIndexPath(location);
   const [search, setSearch] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
   const [hasRecoverableDraftWorkspace, setHasRecoverableDraftWorkspace] =
@@ -320,10 +328,10 @@ export function VerticalDramaShell({
   const draftJobsQuery = trpc.verticalDramaSeries.listDraftJobs.useQuery(
     { includeArchived: false, limit: 50 },
     {
-      enabled: !authLoading && isAuthenticated,
+      enabled: isSeriesIndexPage && !authLoading && isAuthenticated,
       staleTime: 15_000,
       retry: 1,
-      refetchOnMount: "always",
+      refetchOnMount: true,
       refetchInterval: query => {
         const jobs = query.state.data?.jobs ?? [];
         return jobs.some(job =>
@@ -335,16 +343,31 @@ export function VerticalDramaShell({
     }
   );
   const recoverableDrafts = draftJobsQuery.data?.jobs ?? [];
+  const staleDraftCounts: VerticalDramaStaleDraftCounts = {
+    5: Number(draftJobsQuery.data?.cleanup?.counts?.[5] ?? 0),
+    7: Number(draftJobsQuery.data?.cleanup?.counts?.[7] ?? 0),
+    10: Number(draftJobsQuery.data?.cleanup?.counts?.[10] ?? 0),
+  };
+  const staleDraftCleanupOffer = useVerticalDramaStaleDraftCleanupOffer({
+    enabled: isSeriesIndexPage,
+    isLoaded: draftJobsQuery.isSuccess,
+    counts: staleDraftCounts,
+  });
   const recoveryCheckPending =
-    authLoading ||
-    (isAuthenticated &&
-      !draftJobsQuery.isSuccess &&
-      !draftJobsQuery.isError);
+    isSeriesIndexPage &&
+    (authLoading ||
+      (isAuthenticated &&
+        !draftJobsQuery.isSuccess &&
+        !draftJobsQuery.isError));
 
   // `CreateSeriesWizard` persists the work, but this shell owns the dialog's
   // open state. After a browser refresh, keep both user intents available:
   // resume the saved workspace or start a genuinely new story.
   useEffect(() => {
+    if (!isSeriesIndexPage) {
+      setHasRecoverableDraftWorkspace(false);
+      return;
+    }
     if (hasRecoverableCreateSeriesWorkspace()) {
       setHasRecoverableDraftWorkspace(true);
       if (createWizardRequestPending) {
@@ -361,6 +384,7 @@ export function VerticalDramaShell({
     createWizardRequestPending,
     recoveryCheckPending,
     recoverableDrafts.length,
+    isSeriesIndexPage,
   ]);
 
   // Default expanded on desktop/tablet-landscape, collapsed elsewhere — unless
@@ -450,13 +474,25 @@ export function VerticalDramaShell({
     setIsMobilePanelOpen(false);
   }
 
+  function refreshDraftJobs() {
+    if (isSeriesIndexPage) void draftJobsQuery.refetch();
+  }
+
   const cancelDraftJobMutation =
     trpc.verticalDramaSeries.cancelDraftJob.useMutation({
-      onSuccess: () => void draftJobsQuery.refetch(),
+      onSuccess: refreshDraftJobs,
     });
   const archiveDraftJobMutation =
     trpc.verticalDramaSeries.archiveDraftJob.useMutation({
-      onSuccess: () => void draftJobsQuery.refetch(),
+      onSuccess: refreshDraftJobs,
+    });
+  const archiveStaleDraftJobsMutation =
+    useVerticalDramaStaleDraftCleanupMutation({
+      lang,
+      onCompleted: () => {
+        staleDraftCleanupOffer.setOpen(false);
+        refreshDraftJobs();
+      },
     });
 
   function draftJobStatusText(status: string): string {
@@ -664,10 +700,11 @@ export function VerticalDramaShell({
         )}
       </div>
 
-      <section
-        aria-labelledby="vertical-drama-draft-job-inbox"
-        className="border-b bg-slate-50/70 p-3"
-      >
+      {isSeriesIndexPage && (
+        <section
+          aria-labelledby="vertical-drama-draft-job-inbox"
+          className="border-b bg-slate-50/70 p-3"
+        >
         <div className="flex items-center justify-between gap-2">
           <h3
             id="vertical-drama-draft-job-inbox"
@@ -686,7 +723,7 @@ export function VerticalDramaShell({
             size="icon"
             variant="ghost"
             className="h-7 w-7"
-            onClick={() => void draftJobsQuery.refetch()}
+            onClick={refreshDraftJobs}
             aria-label={lang === "th" ? "รีเฟรชงาน Draft" : "Refresh Draft jobs"}
           >
             {draftJobsQuery.isFetching ? (
@@ -801,7 +838,8 @@ export function VerticalDramaShell({
             })}
           </div>
         )}
-      </section>
+        </section>
+      )}
 
       <div className="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-contain">
         <div className="space-y-1.5 p-2">
@@ -1034,10 +1072,28 @@ export function VerticalDramaShell({
           setSelectedRecoveryQcRunId(undefined);
           setHasRecoverableDraftWorkspace(false);
           void listQuery.refetch();
-          void draftJobsQuery.refetch();
+          refreshDraftJobs();
           setLocation(verticalDramaRoutes.seriesDetail(seriesId));
         }}
       />
+      {isSeriesIndexPage && (
+        <VerticalDramaStaleDraftCleanupDialog
+          lang={lang}
+          open={staleDraftCleanupOffer.open}
+          counts={staleDraftCounts}
+          selectedDays={staleDraftCleanupOffer.selectedDays}
+          isPending={archiveStaleDraftJobsMutation.isPending}
+          onOpenChange={staleDraftCleanupOffer.setOpen}
+          onSelectedDaysChange={staleDraftCleanupOffer.setSelectedDays}
+          onConfirm={() => {
+            if (staleDraftCounts[staleDraftCleanupOffer.selectedDays] > 0) {
+              archiveStaleDraftJobsMutation.mutate({
+                olderThanDays: staleDraftCleanupOffer.selectedDays,
+              });
+            }
+          }}
+        />
+      )}
     </VerticalDramaShellContext.Provider>
   );
 }
