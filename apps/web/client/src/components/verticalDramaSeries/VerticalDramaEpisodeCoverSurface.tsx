@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 export function VerticalDramaEpisodeCoverSurface({
   lang,
   episodeNumber,
+  coverSlotId,
   title,
   imageUrl,
   fallbackUrl,
@@ -30,6 +31,7 @@ export function VerticalDramaEpisodeCoverSurface({
 }: {
   lang: "th" | "en";
   episodeNumber: number;
+  coverSlotId: 1 | 2 | 3 | 4;
   title?: string | null;
   imageUrl: string | null;
   fallbackUrl: string | null;
@@ -48,6 +50,13 @@ export function VerticalDramaEpisodeCoverSurface({
   const [dragging, setDragging] = useState(false);
   const visibleUrl = imageUrl ?? fallbackUrl;
   const busy = Boolean(isGenerating || isUploading);
+  const fileExtension = visibleUrl
+    ? visibleUrl
+        .split(/[?#]/, 1)[0]
+        .match(/\.(jpe?g|png|webp|gif)$/i)?.[1]
+        ?.toLowerCase() ?? "png"
+    : "png";
+  const downloadFilename = `episode-${episodeNumber}-cover-${coverSlotId}.${fileExtension}`;
   const alt =
     lang === "th"
       ? `หน้าปกตอนย่อยที่ ${episodeNumber}${title ? ` · ${title}` : ""}`
@@ -77,7 +86,7 @@ export function VerticalDramaEpisodeCoverSurface({
           setDragging(false);
           chooseFile(event.dataTransfer.files?.[0]);
         }}
-        data-testid={`vd-episode-cover-surface-${episodeNumber}`}
+        data-testid={`vd-episode-cover-surface-${episodeNumber}-${coverSlotId}`}
       >
         {visibleUrl ? (
           <img
@@ -138,7 +147,7 @@ export function VerticalDramaEpisodeCoverSurface({
       {!readOnly ? (
         <div
           className="mt-2 flex flex-wrap justify-center gap-1.5"
-          data-testid={`vd-episode-cover-actions-${episodeNumber}`}
+          data-testid={`vd-episode-cover-actions-${episodeNumber}-${coverSlotId}`}
         >
           <Button
             type="button"
@@ -199,7 +208,7 @@ export function VerticalDramaEpisodeCoverSurface({
           {visibleUrl ? (
             <a
               href={visibleUrl}
-              download={`episode-${episodeNumber}-cover`}
+              download={downloadFilename}
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

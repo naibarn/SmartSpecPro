@@ -406,6 +406,7 @@ export function VerticalDramaEpisodePreviewPanel({
                     <VerticalDramaEpisodeCoverSurface
                       lang={lang}
                       episodeNumber={episodeNumber}
+                      coverSlotId={coverSlotId}
                       title={episodeTitle}
                       imageUrl={coverImage?.url ?? null}
                       fallbackUrl={null}
