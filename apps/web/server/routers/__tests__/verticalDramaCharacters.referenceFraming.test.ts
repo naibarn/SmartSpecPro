@@ -129,8 +129,11 @@ vi.mock("../../services/creditService", () => ({
   refundCredits: mockRefundCredits,
 }));
 
+const { mockSignBearerToken } = vi.hoisted(() => ({
+  mockSignBearerToken: vi.fn(() => "token"),
+}));
 vi.mock("../../_core/tokens", () => ({
-  signBearerToken: vi.fn(() => "token"),
+  signBearerToken: mockSignBearerToken,
 }));
 
 const { mockGenerateCharacterVisualPrompts, mockResolveFaceSourceReferenceForCharacter } =
@@ -189,12 +192,15 @@ import {
 
 const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
 
-function ctx() {
+function ctx(
+  overrides: Partial<{ tenantId: string | null; userToken: string | null }> = {},
+) {
   return {
     tenantId: "tenant-1",
     user: { id: 42 },
     userToken: "session-token",
     publicUrl: undefined,
+    ...overrides,
   };
 }
 
@@ -305,6 +311,21 @@ beforeEach(() => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateCharacterImage — has_own_reference_image reflects the reference TIER", () => {
+  it("includes tenant scope when minting the fallback media token", async () => {
+    queueRenderSelects(BASE_CHARACTER_ROW);
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await router.generateCharacterImage({
+      ctx: ctx({ userToken: null }),
+      input: { seriesId: "10", characterId: "1", selectedImageModelId: "kie-gpt-image-2" },
+    });
+
+    expect(mockSignBearerToken).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: "42", tenantId: "tenant-1" }),
+      "15m",
+    );
+  });
+
   it("is false for a brand-new look whose only reference is the parent's borrowed portrait", async () => {
     queueRenderSelects(LOOK_CHARACTER_ROW);
     // Tier 2 (the look's own portrait) misses; tier 3 (parent id 1) hits.
@@ -326,6 +347,9 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
     expect(mockGenerateImageAsync.mock.calls[0][0].referenceImageUrls).toEqual([
       PARENT_PORTRAIT_URL,
     ]);
+    expect(mockGenerateImageAsync.mock.calls[0][0].auditContext).toEqual(
+      expect.objectContaining({ userId: 42, tenantId: "tenant-1" }),
+    );
   });
 
   it("stays true when the character is regenerating its OWN approved portrait", async () => {
@@ -445,6 +469,9 @@ describe("generateCharacterSheet — reference tier + customInstruction", () => 
         hasOwnReferenceImage: false,
         requestedSheetType: "pose_library",
       }),
+    );
+    expect(mockGenerateImageAsync.mock.calls[0][0].auditContext).toEqual(
+      expect.objectContaining({ userId: 42, tenantId: "tenant-1" }),
     );
   });
 

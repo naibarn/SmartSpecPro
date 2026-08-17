@@ -562,10 +562,14 @@ export function referenceSourceIsOwnLikeness(
  * `getUserToken` convention exactly: prefer the caller's own session token
  * (so usage attributes correctly), fall back to minting a scoped token.
  */
-function createCharacterPortraitMediaToken(userId: number): string {
+function createCharacterPortraitMediaToken(
+  userId: number,
+  tenantId?: string | null,
+): string {
   return signBearerToken(
     {
       sub: String(userId),
+      ...(tenantId ? { tenantId } : {}),
       type: "access",
       scopes: ["media:generate"],
       jti: `vd_char_portrait_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -574,8 +578,14 @@ function createCharacterPortraitMediaToken(userId: number): string {
   );
 }
 
-function getCharacterPortraitUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
-  return ctx.userToken || createCharacterPortraitMediaToken(ctx.user.id);
+function getCharacterPortraitUserToken(ctx: {
+  userToken: string | null;
+  user: { id: number };
+  tenantId?: string | null;
+}): string {
+  return (
+    ctx.userToken || createCharacterPortraitMediaToken(ctx.user.id, ctx.tenantId)
+  );
 }
 
 function readMediaTaskInternalParameter(
@@ -1790,6 +1800,7 @@ export const verticalDramaCharactersRouter = router({
                 ...(transportMetadata ? { transportMetadata } : {}),
                 auditContext: {
                   userId,
+                  tenantId,
                   traceId: crypto.randomUUID(),
                   source: "trpc.verticalDramaCharacters.generatePortraitCandidateBatch",
                   stage: "submission",
@@ -1927,6 +1938,7 @@ export const verticalDramaCharactersRouter = router({
         tenantId,
         auditContext: {
           userId,
+          tenantId,
           source: "trpc.verticalDramaCharacters.settlePortraitCandidate",
           stage: "poll",
         },
@@ -4109,6 +4121,7 @@ export const verticalDramaCharactersRouter = router({
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
+              tenantId,
               traceId: crypto.randomUUID(),
               source: "trpc.verticalDramaCharacters.generateCharacterImage",
               stage: "submission",
@@ -4806,6 +4819,7 @@ export const verticalDramaCharactersRouter = router({
             ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
+              tenantId,
               traceId: crypto.randomUUID(),
               source: "trpc.verticalDramaCharacters.generateCharacterSheet",
               stage: "submission",
@@ -5104,6 +5118,7 @@ export const verticalDramaCharactersRouter = router({
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId,
+              tenantId,
               traceId: crypto.randomUUID(),
               source: "trpc.verticalDramaCharacters.previewCharacterVoice",
               stage: "submission",
