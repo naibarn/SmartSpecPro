@@ -1578,6 +1578,9 @@ function findQuotedLineStartIndex(prompt: string, lineTh: string): number {
 /** Screen-position vocabulary the skill's FRAME ANALYSIS FIRST section teaches. */
 const POSITION_ANCHOR_WORDS = /\b(center[-\s]left|center[-\s]right|left|center|right)\b/i;
 const POSITION_ANCHOR_MARKER = "position mismatch";
+const CUSTOM_IDENTITY_POSITION_MARKER = "custom identity position conflict";
+const CUSTOM_IDENTITY_POSITION_WORDS =
+  /\b(?:viewer|screen)[ -](?:left|right|center(?:[ -](?:left|right))?)\b/iu;
 const POSITION_AMBIGUITY_MARKER = "ambiguous screen position";
 const POSITION_VIEW_SCOPE_MARKER = "view scope mismatch";
 const POSITION_AMBIGUITY_WORDS = /\b(?:left|right)[ -]hand(?:[ -]side)?\b/i;
@@ -1728,6 +1731,134 @@ function buildCharacterDescriptionOverrideBlock(
 }
 
 /**
+ * Keep shot-local identity cues in the final provider prompt, not only in the
+ * LLM's input facts. This makes the user-authored description durable even
+ * when the model paraphrases or omits the instruction in its prose.
+ */
+function appendCustomCharacterIdentityLocks(
+  prompt: string,
+  overrides: VerticalDramaCharacterDescriptionOverrides | undefined,
+  characterNameByKey: ReadonlyMap<string, string>,
+): string {
+  const entries = Object.entries(overrides ?? {}).filter(([, description]) =>
+    description.trim().length > 0,
+  );
+  if (entries.length === 0) return prompt.trim();
+  if (prompt.includes("CUSTOM CHARACTER IDENTITY LOCK")) return prompt.trim();
+  const lock = entries
+    .map(([characterKey, description]) => {
+      const name = characterNameByKey.get(characterKey) ?? characterKey;
+      return `${name} [characterKey=${characterKey}]: ${description.trim()}`;
+    })
+    .join("; ");
+  return `${prompt.trim()}\nCUSTOM CHARACTER IDENTITY LOCK (AUTHORITATIVE; use instead of screen position): ${lock}. Do not identify these characters by viewer-left, viewer-right, viewer-center, or any other screen position.`;
+}
+
+function findDirectCustomIdentityPositionCue(
+  value: string,
+  label: string | undefined,
+): string | undefined {
+  if (!label?.trim()) return undefined;
+  const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = value.match(
+    new RegExp(
+      `${escapedLabel}.{0,40}${CUSTOM_IDENTITY_POSITION_WORDS.source}|${CUSTOM_IDENTITY_POSITION_WORDS.source}.{0,40}${escapedLabel}`,
+      "iu",
+    ),
+  );
+  return match?.[0];
+}
+
+/**
+ * A custom identity cue and a viewer-relative position are mutually
+ * exclusive. Detect the contradiction before credit deduction/persistence so
+ * a model cannot silently ship the ambiguous version shown in the UI bug.
+ */
+function findCustomIdentityPositionIssues(
+  prompt: string,
+  dialogueLines: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
+  overrides: VerticalDramaCharacterDescriptionOverrides | undefined,
+  characterNameByKey: ReadonlyMap<string, string>,
+): string[] {
+  const entries = Object.entries(overrides ?? {}).filter(([, description]) =>
+    description.trim().length > 0,
+  );
+  if (entries.length === 0) return [];
+
+  const labelsByKey = new Map<string, Set<string>>(
+    entries.map(([characterKey]) => [characterKey, new Set<string>()]),
+  );
+  for (const line of dialogueLines) {
+    if (!line.characterKey || !labelsByKey.has(line.characterKey)) continue;
+    if (line.speakerName?.trim()) {
+      labelsByKey.get(line.characterKey)!.add(line.speakerName.trim());
+    }
+  }
+  for (const [characterKey] of entries) {
+    const name = characterNameByKey.get(characterKey);
+    if (name?.trim()) labelsByKey.get(characterKey)!.add(name.trim());
+    // Bare generated keys such as "character" are too generic to identify a
+    // person in prose ("the character on viewer-left" is common and may refer
+    // to someone else). Use them only when no human/display label is known.
+    if (
+      labelsByKey.get(characterKey)!.size === 0 &&
+      !/^character(?:-\d+)?$/iu.test(characterKey)
+    ) {
+      labelsByKey.get(characterKey)!.add(characterKey);
+    }
+  }
+
+  const issues: string[] = [];
+  const lowerPrompt = prompt.toLocaleLowerCase();
+  for (const [characterKey, labels] of labelsByKey) {
+    for (const label of labels) {
+      const lowerLabel = label.toLocaleLowerCase();
+      let searchFrom = 0;
+      while (searchFrom < lowerPrompt.length) {
+        const labelIndex = lowerPrompt.indexOf(lowerLabel, searchFrom);
+        if (labelIndex < 0) break;
+        const window = prompt.slice(
+          Math.max(0, labelIndex - 40),
+          Math.min(prompt.length, labelIndex + label.length + 50),
+        );
+        const positionMatch = findDirectCustomIdentityPositionCue(window, label);
+        if (positionMatch) {
+          issues.push(
+            `${label} [characterKey=${characterKey}] — ${CUSTOM_IDENTITY_POSITION_MARKER}: custom identity must not be combined with ${positionMatch[0]}`,
+          );
+          break;
+        }
+        searchFrom = labelIndex + lowerLabel.length;
+      }
+      if (issues.some(issue => issue.includes(`[characterKey=${characterKey}]`))) {
+        break;
+      }
+    }
+  }
+  return issues;
+}
+
+function buildCharacterNameByKey(
+  characterReferenceImages: ShotVideoPromptCharacterReferenceImage[] | undefined,
+  verifiedCastPositions: readonly VerticalDramaVerifiedCastPosition[] | undefined,
+  dialogueLines: Array<{ characterKey?: string; speakerName?: string }>,
+): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const ref of characterReferenceImages ?? []) {
+    if (ref.name?.trim()) names.set(ref.characterKey, ref.name.trim());
+  }
+  for (const position of verifiedCastPositions ?? []) {
+    if (position.name?.trim()) names.set(position.characterKey, position.name.trim());
+  }
+  for (const line of dialogueLines) {
+    if (line.characterKey && line.speakerName?.trim()) {
+      names.set(line.characterKey, line.speakerName.trim());
+    }
+  }
+  return names;
+}
+
+/**
  * Position-anchor compliance check (`planning/vd-video-prompt-model-family-
  * quality/plan.md`, item C) — returns a short, human-readable issue string
  * per dialogue line whose speaker/screen-position isn't anchored near its
@@ -1796,9 +1927,13 @@ function findPositionAnchorIssues(
       characterDescriptionOverrides,
     );
     if (customDescription) {
-      if (!prompt.toLocaleLowerCase().includes(customDescription.toLocaleLowerCase())) {
+      const customPosition = findDirectCustomIdentityPositionCue(
+        window,
+        speaker ?? line.characterKey,
+      );
+      if (customPosition) {
         issues.push(
-          `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — custom character identification override is missing from prompt: ${customDescription}`,
+          `"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — ${CUSTOM_IDENTITY_POSITION_MARKER}: custom identity must not be combined with ${customPosition[0]}`,
         );
       }
       continue;
@@ -2928,6 +3063,11 @@ export async function generateVerticalDramaShotVideoPrompt(
     : (params.shotContext.dialogueLines?.length ?? 0) > 0
       ? params.shotContext.dialogueLines!
       : outcome.data.dialogue ?? [];
+  const characterNameByKey = buildCharacterNameByKey(
+    params.characterReferenceImages,
+    params.verifiedCastPositions,
+    requiredDialogue,
+  );
   const dialogueVerbatimMissing =
     nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, requiredDialogue);
 
@@ -2941,17 +3081,26 @@ export async function generateVerticalDramaShotVideoPrompt(
   // weak models, but an explicit contradiction between the
   // prompt and image-derived `frame_analysis` is hard-blocked after the one
   // corrective retry so a known-wrong identity cue cannot be persisted.
-  const initialPositionAnchorIssues =
-    hasEstablishedCharacters && hasVision && requiredDialogue.length > 0
-      ? findPositionAnchorIssues(
-          outcome.data,
-          requiredDialogue,
-          hasEstablishedCharacters,
-          params.shotContext.barrierMultiView,
-          params.verifiedCastPositions,
-          characterDescriptionOverrides,
-        )
-      : [];
+  const initialPositionAnchorIssues = Array.from(
+    new Set([
+      ...(hasEstablishedCharacters && hasVision && requiredDialogue.length > 0
+        ? findPositionAnchorIssues(
+            outcome.data,
+            requiredDialogue,
+            hasEstablishedCharacters,
+            params.shotContext.barrierMultiView,
+            params.verifiedCastPositions,
+            characterDescriptionOverrides,
+          )
+        : []),
+      ...findCustomIdentityPositionIssues(
+        outcome.data.prompt,
+        requiredDialogue,
+        characterDescriptionOverrides,
+        characterNameByKey,
+      ),
+    ]),
+  );
 
   const warnings: string[] = [];
 
@@ -2966,6 +3115,14 @@ export async function generateVerticalDramaShotVideoPrompt(
         );
       }
       if (initialPositionAnchorIssues.length > 0) {
+        const customIdentityIssues = initialPositionAnchorIssues.filter(issue =>
+          issue.includes(CUSTOM_IDENTITY_POSITION_MARKER),
+        );
+        if (customIdentityIssues.length > 0) {
+          correctionParts.push(
+            `CUSTOM IDENTITY CORRECTION (MANDATORY): ${customIdentityIssues.join("; ")}. Preserve each user's custom character description as the identity anchor, include the exact supplied detail in the final "prompt", and remove every viewer-left/viewer-right/viewer-center position cue for those characters. Use screen positions only for characters without a custom identity description.`,
+          );
+        }
         const positionLock = buildFrameAnalysisPositionLock(
           outcome.data.frame_analysis,
           params.shotContext.barrierMultiView,
@@ -3039,11 +3196,14 @@ export async function generateVerticalDramaShotVideoPrompt(
       const positionMismatches = remainingIssues.filter(issue =>
         issue.includes(POSITION_ANCHOR_MARKER) ||
         issue.includes(POSITION_AMBIGUITY_MARKER) ||
-        issue.includes(POSITION_VIEW_SCOPE_MARKER),
+        issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
+        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER),
       );
       if (positionMismatches.length > 0) {
         throw new VdSchemaValidationError(
-          `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
+          positionMismatches.some(issue => issue.includes(CUSTOM_IDENTITY_POSITION_MARKER))
+            ? `Shot ${params.shotNumber}: custom identity position conflicts with the assigned character description after 1 corrective retry`
+            : `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
           positionMismatches,
         );
       }
@@ -3108,6 +3268,11 @@ export async function generateVerticalDramaShotVideoPrompt(
   const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
     ? data.prompt.trim()
     : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
+  const finalPrompt = appendCustomCharacterIdentityLocks(
+    stitchedBasePrompt,
+    characterDescriptionOverrides,
+    characterNameByKey,
+  );
   // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — this
   // function used to fold ` SFX cues: <audioDirection>` onto the returned
   // `prompt` here (the "SFX budget-aware concat", item E of `planning/vd-
@@ -3120,13 +3285,14 @@ export async function generateVerticalDramaShotVideoPrompt(
   // skill's own rule 8 priority) now write the closing sound clause
   // directly into `data.prompt` themselves when `native_audio: true`, so
   // `stitchedBasePrompt` (the skill's own text, only touched by the
-  // dialogue-verbatim safety net above) is returned completely as-is —
-  // NEVER append a second copy here or in the formatter (that append is
-  // removed too, see that file). `audioDirection` keeps being returned/
+  // dialogue-verbatim safety net above) is returned as-is apart from the
+  // deterministic custom-identity lock appended below. NEVER append a second
+  // sound copy here or in the formatter (that append is removed too, see that
+  // file). `audioDirection` keeps being returned/
   // persisted unchanged below — the UI "เสียง:" block and audit trail read
   // it from there, independent of what's now embedded in `prompt`.
   return {
-    prompt: stitchedBasePrompt,
+    prompt: finalPrompt,
     negativeMotionPrompt: data.negative_motion_prompt || undefined,
     dialogue: data.dialogue,
     creditsUsed,
@@ -3601,6 +3767,11 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         .filter((l): l is NonNullable<typeof l> => Boolean(l))
         .map((l) => ({ lineTh: l.lineTh, characterKey: l.characterKey, speakerName: l.speakerName })),
     );
+  const characterNameByKey = buildCharacterNameByKey(
+    params.characterReferenceImages,
+    params.verifiedCastPositions,
+    dialogueForBlock,
+  );
 
   let outcome = await executeVisionAwareJsonCallWithRetry<ShotVideoPromptOutput>({
     model,
@@ -3655,17 +3826,26 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   // full rationale. `dialogueForBlock` (not the stripped `dialogue` array)
   // carries `speakerName`, needed to check the name-anchor half of the
   // check.
-  const initialPositionAnchorIssues =
-    hasEstablishedCharacters && hasVision && dialogue.length > 0
-      ? findPositionAnchorIssues(
-          outcome.data,
-          dialogueForBlock,
-          hasEstablishedCharacters,
-          params.shotContext.barrierMultiView,
-          params.verifiedCastPositions,
-          characterDescriptionOverrides,
-        )
-      : [];
+  const initialPositionAnchorIssues = Array.from(
+    new Set([
+      ...(hasEstablishedCharacters && hasVision && dialogue.length > 0
+        ? findPositionAnchorIssues(
+            outcome.data,
+            dialogueForBlock,
+            hasEstablishedCharacters,
+            params.shotContext.barrierMultiView,
+            params.verifiedCastPositions,
+            characterDescriptionOverrides,
+          )
+        : []),
+      ...findCustomIdentityPositionIssues(
+        outcome.data.prompt,
+        dialogueForBlock,
+        characterDescriptionOverrides,
+        characterNameByKey,
+      ),
+    ]),
+  );
 
   const warnings: string[] = [];
 
@@ -3679,6 +3859,14 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         );
       }
       if (initialPositionAnchorIssues.length > 0) {
+        const customIdentityIssues = initialPositionAnchorIssues.filter(issue =>
+          issue.includes(CUSTOM_IDENTITY_POSITION_MARKER),
+        );
+        if (customIdentityIssues.length > 0) {
+          correctionParts.push(
+            `CUSTOM IDENTITY CORRECTION (MANDATORY): ${customIdentityIssues.join("; ")}. Preserve each user's custom character description as the identity anchor, include the exact supplied detail in the final "prompt", and remove every viewer-left/viewer-right/viewer-center position cue for those characters. Use screen positions only for characters without a custom identity description.`,
+          );
+        }
         const positionLock = buildFrameAnalysisPositionLock(
           outcome.data.frame_analysis,
           params.shotContext.barrierMultiView,
@@ -3742,11 +3930,14 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       const positionMismatches = remainingIssues.filter(issue =>
         issue.includes(POSITION_ANCHOR_MARKER) ||
         issue.includes(POSITION_AMBIGUITY_MARKER) ||
-        issue.includes(POSITION_VIEW_SCOPE_MARKER),
+        issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
+        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER),
       );
       if (positionMismatches.length > 0) {
         throw new VdSchemaValidationError(
-          `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
+          positionMismatches.some(issue => issue.includes(CUSTOM_IDENTITY_POSITION_MARKER))
+            ? `Shot ${params.shotNumber}: custom identity position conflicts with the assigned character description after 1 corrective retry`
+            : `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
           positionMismatches,
         );
       }
@@ -3826,16 +4017,22 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
     ? data.prompt.trim()
     : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
+  const finalPrompt = appendCustomCharacterIdentityLocks(
+    stitchedBasePrompt,
+    characterDescriptionOverrides,
+    characterNameByKey,
+  );
   // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — mirrors
   // `generateVerticalDramaShotVideoPrompt`'s identical fix above: this
   // function no longer folds an SFX tail onto `prompt` (the skill now
   // writes its closing sound clause directly into `data.prompt` itself, and
   // the render-time formatter no longer appends `clip.audioDirection`
   // either — see both files' updated doc comments). `stitchedBasePrompt` is
-  // returned completely as-is; `audioDirection` keeps being returned/
+  // returned as-is apart from the deterministic custom-identity lock;
+  // `audioDirection` keeps being returned/
   // persisted unchanged for the UI/audit trail.
   return {
-    prompt: stitchedBasePrompt,
+    prompt: finalPrompt,
     negativeMotionPrompt: data.negative_motion_prompt || undefined,
     dialogue,
     durationSeconds,

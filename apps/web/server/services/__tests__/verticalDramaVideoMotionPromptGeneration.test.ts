@@ -1522,6 +1522,72 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     expect(mockExecute).toHaveBeenCalledTimes(2);
   });
 
+  it("rejects a custom identity that is still paired with a viewer position", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse(
+        shotVideoPromptOutput({
+          prompt: 'Alice on viewer-left says "Hello there" while Bob listens.',
+        }),
+      ),
+    );
+
+    await expect(
+      generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          characterReferenceImages: [
+            { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
+          ],
+          characterDescriptionOverrides: {
+            alice: "the woman wearing an apron",
+          },
+          shotContext: {
+            description: "A character stands in a kitchen",
+            camera: "medium shot",
+            dialogueLines: [
+              { characterKey: "alice", speakerName: "Alice", lineTh: "Hello there" },
+            ],
+          },
+        }),
+      ),
+    ).rejects.toThrow("custom identity");
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("persists the exact custom identity lock without adding a position cue", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse(
+        shotVideoPromptOutput({
+          prompt: 'The woman wearing an apron says "Hello there" while Bob listens.',
+        }),
+      ),
+    );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        characterReferenceImages: [
+          { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
+        ],
+        characterDescriptionOverrides: {
+          alice: "the woman wearing an apron",
+        },
+        shotContext: {
+          description: "A character stands in a kitchen",
+          camera: "medium shot",
+          dialogueLines: [
+            { characterKey: "alice", speakerName: "Alice", lineTh: "Hello there" },
+          ],
+        },
+      }),
+    );
+
+    expect(result.prompt).toContain(
+      "CUSTOM CHARACTER IDENTITY LOCK (AUTHORITATIVE; use instead of screen position): Alice [characterKey=alice]: the woman wearing an apron.",
+    );
+    expect(result.prompt).not.toContain("Alice on viewer-left");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
   it("compliance-retry-carries-same-images: the hand-rolled compliance-correction retry (native-audio verbatim-embedding fix) attaches the same images as the first attempt", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       nativeAudioDialogue: true,
