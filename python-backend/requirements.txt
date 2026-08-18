@@ -16,7 +16,7 @@ langchain>=0.3.0
 langgraph-checkpoint-postgres>=2.0.0
 langchain-core>=0.3.0
 langchain-community>=0.3.0
-langchain-openai>=0.2.0
+langchain-openai>=1.5.1,<2
 
 # LLM Providers
 openai>=3,<4
@@ -51,7 +51,7 @@ cryptography==42.0.0
 
 # HTTP & Async
 httpx>=0.24.1
-aiohttp==3.9.1
+aiohttp>=3.13,<4
 aiofiles==23.2.1
 
 # Utilities

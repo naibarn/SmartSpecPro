@@ -21043,11 +21043,32 @@ export const verticalDramaEpisodesRouter = router({
           .filter((c): c is typeof c & { name: string } => Boolean(c.name))
           .map(c => [c.characterKey, c.name])
       );
-      const shotVideoCharacterCandidates: VerticalDramaSpeakerIdentityCandidate[] =
-        shotVideoCharacterIdentitySources.map(source => ({
+      // A storyboard shot's `characterIds` is also an authoritative cast
+      // declaration. Older episodes may not yet have copied those keys into
+      // `requiredCharacterRefs` on the start-frame plan, so keep dialogue
+      // normalization deterministic for those rows instead of rejecting a
+      // valid speaker merely because the newer frame metadata is absent. The
+      // identity-source rows still win (and provide display-name matching);
+      // storyboard keys are only a safe key-only fallback.
+      const storyboardCharacterKeys = Array.isArray(storyboardShot?.characterIds)
+        ? storyboardShot.characterIds.filter(
+            (value): value is string => typeof value === "string" && value.trim().length > 0
+          )
+        : [];
+      const shotVideoCharacterCandidates: VerticalDramaSpeakerIdentityCandidate[] = [
+        ...shotVideoCharacterIdentitySources.map(source => ({
           characterKey: source.characterKey,
           name: source.name,
-        }));
+        })),
+        ...storyboardCharacterKeys
+          .filter(
+            key =>
+              !shotVideoCharacterIdentitySources.some(
+                source => source.characterKey === key
+              )
+          )
+          .map(characterKey => ({ characterKey })),
+      ];
       // Canonical Overview dialogue may use a display name. Normalize it to a
       // stable roster key before any speaker-switch decision, portrait lookup,
       // prompt generation, or persistence. Unknown/ambiguous labels are a

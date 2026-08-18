@@ -411,6 +411,13 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // `clearAllMocks` does not consume queued `mockReturnValueOnce` chains.
+  // Reset the database doubles so an earlier precondition test cannot shift
+  // the episode/start-frame/roster rows seen by the next case.
+  mockDb.select.mockReset();
+  mockDb.update.mockReset();
+  mockDb.insert.mockReset();
+  mockDb.delete.mockReset();
   // Default: transaction re-reads resolve to an empty row, so the merge
   // falls back to the outer `pack` snapshot already captured by
   // `loadOwnedEpisode` — same default convention as

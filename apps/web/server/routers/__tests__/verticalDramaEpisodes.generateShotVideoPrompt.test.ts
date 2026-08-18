@@ -383,7 +383,10 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
           shotNumber: 1,
           description: "Hero stands in the rain, looking up",
           cameraSetup: "wide shot, low angle",
-          characterIds: ["hero"],
+          // Storyboard characterIds remain a valid cast fallback for legacy
+          // fixtures whose start-frame requiredCharacterRefs were not yet
+          // backfilled.
+          characterIds: ["hero", "grandmother", "หนูนา", "villain"],
           continuityNotes: [],
           durationSeconds: 6,
         },
@@ -417,6 +420,15 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Clear queued Drizzle-chain implementations between cases. `clearAllMocks`
+  // only clears call history; a test that intentionally fails before its
+  // asset/roster queries are consumed would otherwise leak those
+  // `mockReturnValueOnce` rows into the next case and make valid fixtures look
+  // like missing episodes, frames, or character references.
+  mockDb.select.mockReset();
+  mockDb.update.mockReset();
+  mockDb.insert.mockReset();
+  mockDb.delete.mockReset();
   // 2026-07-11 lost-update race fix — `generateShotVideoPrompt`'s final
   // persist step now runs inside `db.transaction(...)`, re-reading +
   // locking the row (`tx.select(...).for("update")`) right before merging
@@ -730,12 +742,15 @@ describe("generateShotVideoPrompt", () => {
     });
     const rosterRows = [
       { id: 501, name: "ไอริณ", characterKey: "character" },
-      { id: 502, name: "คุณกฤต", characterKey: "character-3" },
+      { id: 502, name: "กฤต", characterKey: "character-3" },
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(
         selectChain([{ id: 900, originalUrl: "https://cdn/inside.png" }])
+      )
+      .mockReturnValueOnce(
+        selectChain(rosterRows) // resolveShotCharacterIdentitySources
       )
       .mockReturnValueOnce(
         selectChain([{ id: 901, originalUrl: "https://cdn/outside.png" }])
@@ -780,7 +795,7 @@ describe("generateShotVideoPrompt", () => {
             }),
             expect.objectContaining({
               characterKey: "character-3",
-              speakerName: "คุณกฤต",
+              speakerName: "กฤต",
             }),
           ],
         }),
@@ -2346,6 +2361,11 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
               requiredCharacterRefs: ["hero", "grandmother"],
               productReferenceAssetIds: [],
               approvedMediaAssetId: "900",
+              castPositionLock: {
+                assetId: "900",
+                orderedCharacterRefs: ["hero", "grandmother"],
+                confirmedAt: "2026-08-18T00:00:00.000Z",
+              },
             },
           ],
         },
@@ -2406,23 +2426,30 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
               requiredCharacterRefs: ["a", "b", "c", "d"],
               productReferenceAssetIds: [],
               approvedMediaAssetId: "900",
+              castPositionLock: {
+                assetId: "900",
+                orderedCharacterRefs: ["a", "b", "c", "d"],
+                confirmedAt: "2026-08-18T00:00:00.000Z",
+              },
             },
           ],
         },
       });
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
-        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        )
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
         .mockReturnValueOnce(selectChain([{ locale: "th" }]))
         .mockReturnValueOnce(selectChain([]))
-        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
         .mockReturnValueOnce(
           selectChain([
             { id: 1, name: "A", characterKey: "a" },
             { id: 2, name: "B", characterKey: "b" },
             { id: 3, name: "C", characterKey: "c" },
             { id: 4, name: "D", characterKey: "d" },
-          ]),
+          ])
         );
 
       const portraitUrlByCharacterId: Record<number, string> = {
@@ -2444,47 +2471,54 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
 
       const call = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
       expect(call.characterReferenceImages).toHaveLength(3);
-      expect(call.characterReferenceImages.map((c: any) => c.characterKey)).toEqual([
-        "a",
-        "b",
-        "c",
-      ]);
+      expect(
+        call.characterReferenceImages.map((c: any) => c.characterKey)
+      ).toEqual(["a", "b", "c"]);
     });
 
     it("silently omits a required character with no approved portrait yet, without throwing", async () => {
       const episodeRow = twoCharacterEpisodeRow();
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
-        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        )
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
         .mockReturnValueOnce(selectChain([{ locale: "th" }]))
         .mockReturnValueOnce(selectChain([]))
-        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
         .mockReturnValueOnce(
           selectChain([
             { id: 501, name: "Hero", characterKey: "hero" },
             { id: 502, name: "Grandmother", characterKey: "grandmother" },
-          ]),
+          ])
         );
 
-      mockGetPrimaryPortraitUrl.mockImplementation(async (_owner: unknown, characterId: number) =>
-        characterId === 501 ? "https://cdn/hero-portrait.png" : null,
+      mockGetPrimaryPortraitUrl.mockImplementation(
+        async (_owner: unknown, characterId: number) =>
+          characterId === 501 ? "https://cdn/hero-portrait.png" : null
       );
 
-      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn(() => updateChain([episodeRow])),
+      });
 
       await expect(
         router.generateShotVideoPrompt({
           ctx: ctx(),
           input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
-        }),
+        })
       ).resolves.toBeDefined();
 
       expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
           characterReferenceImages: [
-            { characterKey: "hero", name: "Hero", url: "https://cdn/hero-portrait.png" },
+            {
+              characterKey: "hero",
+              name: "Hero",
+              url: "https://cdn/hero-portrait.png",
+            },
           ],
-        }),
+        })
       );
     });
 
@@ -2492,22 +2526,29 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
       const episodeRow = twoCharacterEpisodeRow();
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
-        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        )
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
         .mockReturnValueOnce(selectChain([{ locale: "th" }]))
         .mockReturnValueOnce(selectChain([]))
-        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
         .mockReturnValueOnce(
           selectChain([
             { id: 501, name: "Hero", characterKey: "hero" },
             { id: 502, name: "Grandmother", characterKey: "grandmother" },
-          ]),
+          ])
         );
 
-      mockGetPrimaryPortraitUrl.mockImplementation(async (_owner: unknown, characterId: number) =>
-        characterId === 501 ? "/uploads/hero-portrait.png" : "/uploads/grandma-portrait.png",
+      mockGetPrimaryPortraitUrl.mockImplementation(
+        async (_owner: unknown, characterId: number) =>
+          characterId === 501
+            ? "/uploads/hero-portrait.png"
+            : "/uploads/grandma-portrait.png"
       );
 
-      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn(() => updateChain([episodeRow])),
+      });
 
       await router.generateShotVideoPrompt({
         ctx: ctx({ publicUrl: "https://smartaihub.app" }),
