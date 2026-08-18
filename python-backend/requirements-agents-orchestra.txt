@@ -1,0 +1,7 @@
+# Isolated Orchestra dependency profile.
+#
+# Keep this profile separate until the Agency Swarm import/dependency removal
+# wave is complete: Agency Swarm 1.8.0 pins openai-agents==0.9.3 and openai<3,
+# while the current OpenAI Agents SDK requires openai>=3,<4.
+openai>=3,<4
+openai-agents==0.21.1
