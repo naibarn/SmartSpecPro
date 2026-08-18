@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from .agent_output_assurance import AssuranceRequest, AssuranceResult
+
 CURRENT_RUNTIME_CONTRACT_VERSION = 2
 CURRENT_TRACE_SCHEMA_VERSION = 2
 CURRENT_CHECKPOINT_SCHEMA_VERSION = 2
@@ -463,6 +465,7 @@ class AgentRuntimeRequest(ContractVersions):
     executionEnvelope: ExecutionEnvelope
     gatewayInvocationMetadata: AgentsGatewayInvocationMetadata | None = None
     productionAgentsSdkCapabilityManifest: ProductionAgentsSdkCapabilityManifest | None = None
+    assurance: AssuranceRequest | None = None
 
     @model_validator(mode="after")
     def validate_request_consistency(self) -> AgentRuntimeRequest:
@@ -599,6 +602,7 @@ class AgentRuntimeResponse(ContractVersions):
     checkpointMetadata: dict[str, Any] | None = None
     eventSequenceMetadata: dict[str, Any] = Field(default_factory=dict)
     stepLinks: list[StepLink] = Field(default_factory=list)
+    assurance: AssuranceResult | None = None
 
 
 def _redact_validation_errors(exc: ValidationError) -> list[dict[str, str]]:
