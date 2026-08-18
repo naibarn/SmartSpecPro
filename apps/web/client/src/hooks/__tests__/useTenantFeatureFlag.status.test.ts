@@ -100,9 +100,7 @@ describe("useTenantFeatureFlagStatus", () => {
 
   it("exposes a retryable error instead of treating a failed request as disabled", async () => {
     mockFetch
-      .mockRejectedValueOnce(new Error("gateway timeout"))
-      .mockRejectedValueOnce(new Error("gateway timeout"))
-      .mockRejectedValueOnce(new Error("gateway timeout"))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockResolvedValueOnce(
         makeResponse(200, { tenant: { featureFlags: { [FLAG]: true } } }),
       );
@@ -116,11 +114,23 @@ describe("useTenantFeatureFlagStatus", () => {
     });
     expect(result.current.isResolved).toBe(false);
     expect(result.current.enabled).toBe(FEATURE_FLAG_DEFAULTS[FLAG]);
+    expect(result.current.isTransientError).toBe(true);
 
     await act(async () => {
       await result.current.retry();
     });
     await waitFor(() => expect(result.current.isResolved).toBe(true));
     expect(result.current.enabled).toBe(true);
+  });
+
+  it("does not classify a permission response as a service restart", async () => {
+    mockFetch.mockResolvedValue(makeResponse(403));
+
+    const { result } = renderHook(() => useTenantFeatureFlagStatus(FLAG), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.isTransientError).toBe(false);
   });
 });

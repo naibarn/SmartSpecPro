@@ -29,6 +29,9 @@ describe("vertical-drama-preset-synthesizer skill — v2 runtime contract", () =
       expect(content).toMatch(/no preset and no user premise/i);
       expect(content).toContain("Sequel lineage — continuity outranks premise");
       expect(content).toContain("continuation, never an unrelated reboot");
+      expect(content).toContain("DRAFT LANGUAGE CONTRACT (HARD CONTRACT)");
+      expect(content).toContain("title language named by that contract");
+      expect(content).toContain("spoken-language profile is NOT a draft-content language instruction");
     }
   });
 
@@ -37,6 +40,8 @@ describe("vertical-drama-preset-synthesizer skill — v2 runtime contract", () =
     expect(content).toContain("Mix and Match v2");
     expect(content).toContain("contract_version: 2");
     expect(content).toContain("blendFacets");
+    expect(content).toContain("DRAFT LANGUAGE CONTRACT (HARD CONTRACT)");
+    expect(content).toContain("English title choices even when the narrative language is Thai");
   });
 });
 

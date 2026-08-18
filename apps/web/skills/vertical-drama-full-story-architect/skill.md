@@ -254,7 +254,9 @@ Shape:
   "canonical_facts": string[],        // durable facts this episode establishes (names, jobs, backstory reveals, rules)
   "threads_opened": [
     { "thread_id": string, "description": string,
-      "thread_class": "plot" | "domestic" | "career" | "financial" | "health" | "relationship" }
+      "thread_class": "plot" | "domestic" | "career" | "financial" | "health" | "relationship",
+      "expected_resolution": "this_episode" | "future_episode" | "season",
+      "expected_resolution_episode": number (optional) }
   ],
   "threads_resolved": string[],       // exact thread_id values from the canonical thread ledger that closed this episode; never invent, translate, or paraphrase IDs
   "relationship_changes": [
@@ -268,6 +270,12 @@ Shape:
   ]
 }
 ```
+
+Every opened thread must declare `expected_resolution`. If this chunk contains
+the configured final episode, resolve every thread that pays off there using
+its exact canonical `thread_id`. A thread intentionally continuing beyond the
+season must be marked `season`; never classify a final-episode carry-over as
+`future_episode` or leave it unclassified.
 
 **The `disclosure` axis — read this carefully, it changes how you write the
 scene.** Every relationship has a visibility state, independent of what the

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SmartAIHub Marketplace Capture",
-  "version": "0.1.136",
-  "description": "Capture product data from Shopee and TikTok Shop into SmartAIHub.",
+  "name": "SmartAIHub Companion",
+  "version": "0.1.138",
+  "description": "Connect SmartAIHub capture, production, storyboard, drama, local AI, and supported browser workflows.",
   "permissions": [
     "activeTab",
     "scripting",
@@ -94,6 +94,6 @@
     }
   ],
   "action": {
-    "default_title": "SmartAIHub Capture"
+    "default_title": "SmartAIHub Companion"
   }
 }

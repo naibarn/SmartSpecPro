@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.jwt_manager import get_jwt_manager, create_access_token as jwt_create_access, create_refresh_token as jwt_create_refresh
 from app.models.user import User
+from app.models.tenant import TenantUser
 from app.models.token_blacklist import TokenBlacklist
 
 logger = structlog.get_logger(__name__)
@@ -184,6 +185,28 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+
+    # Internal Node/MCP tokens may pin the request to a tenant. Verify active
+    # membership here before any user-scoped media/library endpoint runs; a
+    # user can belong to more than one tenant, so user_id alone is not enough.
+    token_tenant_id = payload.get("tenantId") or payload.get("tenant_id")
+    if token_tenant_id:
+        membership = await db.execute(
+            select(TenantUser.id).where(
+                TenantUser.tenant_id == str(token_tenant_id),
+                TenantUser.user_id == user.id,
+                TenantUser.is_active.is_(True),
+            )
+        )
+        if membership.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User is not an active member of the requested tenant",
+            )
+        # Carry the verified token tenant through the request object so task
+        # creation and history queries cannot silently fall back to the user's
+        # database-default tenant when the same user belongs to several ones.
+        user.currentTenantId = str(token_tenant_id)
     
     return user
 

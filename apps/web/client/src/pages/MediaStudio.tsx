@@ -66,6 +66,7 @@ import {
   type StoryboardPromptPlannerOptions,
   type StoryboardReviewTask,
 } from "@/components/media/StoryboardBatchReviewDialog";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   ProductionWorkspace,
   type ProductionMediaModelOption,
@@ -322,6 +323,11 @@ import {
 import { inferMediaStudioModelInputSyncTarget } from "@/lib/mediaStudioModelInputSync";
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { resolveTransparentBackgroundCapability } from "@shared/mediaModelCapabilities";
+import {
+  GROK_IMAGINE_IMAGE_2_SEGMENT_MAP_MODEL_ID,
+  isGrokImagineImage2Model,
+} from "@shared/grokImagineImage2";
 import {
   GEMINI_OMNI_AUDIO_CAPABILITY,
   GEMINI_OMNI_CHARACTER_CAPABILITY,
@@ -7090,6 +7096,8 @@ const QWEN3_TTS_VOICE_FIELD_OPTIONS = [
 interface ReferenceImage {
   url: string;
   name: string;
+  /** Internal media task ID used for authorized provider task operations. */
+  sourceTaskId?: string;
   marketplaceProduct?: MarketplaceProductReferenceContext;
   productionContext?: StoryboardProductionContext | null;
 }
@@ -13416,8 +13424,16 @@ export default function MediaStudio() {
   // the switch is invisible, and so is the fact that a mode may ignore a
   // control they just set (minimax-h3 image-to-video drops aspect ratio).
   const selectedMediaModelActiveMode = useMemo(
-    () =>
-      resolveModelGenerationMode(selectedMediaModel as any, {
+    () => {
+      if (activeTab === "image" && isGrokImagineImage2Model(selectedModel)) {
+        if (selectedModel === GROK_IMAGINE_IMAGE_2_SEGMENT_MAP_MODEL_ID) {
+          return { id: "segment-map", label: "Segment Map", notice: null };
+        }
+        return referenceImages.some(image => Boolean(image.sourceTaskId?.trim()))
+          ? { id: "image-edit", label: "Image Edit", notice: null }
+          : { id: "text-to-image", label: "Text to Image", notice: null };
+      }
+      return resolveModelGenerationMode(selectedMediaModel as any, {
         images: selectedMediaModelReferenceSupport.imageUrls
           ? referenceImages.length
           : 0,
@@ -13431,12 +13447,15 @@ export default function MediaStudio() {
           modelInputValues,
           "audio_urls"
         ),
-      }),
+      });
+    },
     [
+      activeTab,
       selectedMediaModel,
+      selectedModel,
       selectedMediaModelReferenceSupport.imageUrls,
       selectedMediaModelReferenceSupport.videoUrls,
-      referenceImages.length,
+      referenceImages,
       referenceVideos.length,
       modelInputValues,
     ]
@@ -15540,12 +15559,14 @@ export default function MediaStudio() {
       selectedMediaModelForInputFields ??
       visibleMediaModels.find(m => m.modelId === selectedModel);
     const config = model?.configJson as any;
-    if (!config?.inputFields) {
+    if (!config) {
       setModelInputValues({});
       return;
     }
     const defaults: Record<string, any> = {};
-    const inputFields = config.inputFields as any[];
+    const inputFields = Array.isArray(config.inputFields)
+      ? config.inputFields as any[]
+      : [];
     for (const field of inputFields) {
       // Seed from static default first
       if (field.default !== undefined) {
@@ -15569,6 +15590,10 @@ export default function MediaStudio() {
         defaults[field.key] = aspectRatio;
       }
     }
+    const transparentBackground = resolveTransparentBackgroundCapability(config);
+    if (transparentBackground) {
+      defaults[transparentBackground.inputKey] = transparentBackground.disabledValue;
+    }
     const persistedPreferences = readPersistedModelInputPreferences(
       activeTab,
       selectedModel,
@@ -15577,7 +15602,7 @@ export default function MediaStudio() {
     setModelInputValues({ ...defaults, ...persistedPreferences });
 
     // Reset aspect ratio if current value is not supported by the new model
-    const arField = config.inputFields.find(
+    const arField = inputFields.find(
       (f: any) => f.key === "aspect_ratio"
     );
     const arOptions = arField?.options?.map((o: any) => o.value) as
@@ -16156,6 +16181,7 @@ export default function MediaStudio() {
     (input: {
       url: string;
       name: string;
+      sourceTaskId?: string;
       marketplaceProduct?: MarketplaceProductReferenceContext | null;
       silent?: boolean;
     }): boolean => {
@@ -16225,6 +16251,7 @@ export default function MediaStudio() {
         {
           url,
           name: input.name,
+          ...(input.sourceTaskId ? { sourceTaskId: input.sourceTaskId } : {}),
           ...(input.marketplaceProduct
             ? { marketplaceProduct: input.marketplaceProduct }
             : {}),
@@ -16356,6 +16383,7 @@ export default function MediaStudio() {
     }
 
     let uploadedCount = 0;
+    let failedUploadMessage = "";
     for (const file of filesToUpload) {
       if (!file.type.startsWith("image/")) {
         continue;
@@ -16374,6 +16402,9 @@ export default function MediaStudio() {
           fileType: file.type,
           fileBase64: base64,
         });
+        if (!result.url) {
+          throw new Error("Upload response missing URL");
+        }
 
         const added = attachImageUrlToSelectedTarget({
           url: result.url,
@@ -16385,7 +16416,19 @@ export default function MediaStudio() {
         }
       } catch (error) {
         console.error("Upload failed:", error);
+        failedUploadMessage =
+          `${file.name}: ${
+            error instanceof Error ? error.message : "Unknown upload error"
+          }`;
       }
+    }
+
+    if (failedUploadMessage) {
+      toast.error(
+        t("mediaStudio.referenceUploadFailed", {
+          error: failedUploadMessage,
+        })
+      );
     }
 
     if (filesToUpload.length > 1 && uploadedCount > 0) {
@@ -16688,6 +16731,7 @@ export default function MediaStudio() {
     attachImageUrlToSelectedTarget({
       url: task.resultUrl,
       name: `history-${task.id}`,
+      sourceTaskId: task.id,
     });
   };
 
@@ -18912,6 +18956,16 @@ export default function MediaStudio() {
       }
     }
 
+    const transparentBackground = activeTab === "image"
+      ? resolveTransparentBackgroundCapability(modelConfig)
+      : null;
+    if (transparentBackground) {
+      extraParams[transparentBackground.inputKey] = (
+        modelInputValues[transparentBackground.inputKey]
+        ?? transparentBackground.disabledValue
+      );
+    }
+
     const mergedExtraParams = {
       ...extraParams,
       ...omnivoiceExtraParams,
@@ -18936,6 +18990,13 @@ export default function MediaStudio() {
     }
     const outputFormatValue =
       modelInputValues.outputFormat ?? modelInputValues.output_format;
+    const transparentBackgroundEnabled = Boolean(
+      transparentBackground
+      && modelInputValues[transparentBackground.inputKey] === transparentBackground.enabledValue,
+    );
+    const effectiveOutputFormatValue = transparentBackgroundEnabled
+      ? (transparentBackground?.outputFormat ?? outputFormatValue)
+      : outputFormatValue;
     const referenceStyleUrl = (modelInputValues.referenceStyleUrl ??
       modelInputValues.reference_style_url) as string | undefined;
     const referenceVideoUrl = (modelInputValues.referenceVideoUrl ??
@@ -18961,6 +19022,24 @@ export default function MediaStudio() {
         : [];
     const effectiveReferenceVideos =
       selectedMediaModelReferenceSupport.videoUrls ? referenceVideos : [];
+    if (activeTab === "image" && isGrokImagineImage2Model(selectedModel)) {
+      const sourceTaskIds = Array.from(
+        new Set(
+          effectiveReferenceImages
+            .map(image => String(image.sourceTaskId ?? "").trim())
+            .filter(Boolean),
+        ),
+      );
+      if (sourceTaskIds.length > 1) {
+        toast.error("Grok Imagine Image 2 editing accepts one source task at a time.");
+        return;
+      }
+      if (sourceTaskIds[0]) {
+        mergedExtraParams.sourceMediaTaskId = sourceTaskIds[0];
+      } else {
+        delete mergedExtraParams.sourceMediaTaskId;
+      }
+    }
     if (isGeminiOmniVideoSelected) {
       mergedExtraParams.character_ids = geminiOmni.selectedCharacterIds;
       mergedExtraParams.audio_ids = geminiOmni.selectedAudioIds;
@@ -19168,8 +19247,8 @@ export default function MediaStudio() {
             ...commonPayload,
             ...transportPayload,
             numImages: 1, // Keep progressive UI behavior
-            ...(outputFormatValue
-              ? { outputFormat: String(outputFormatValue) }
+            ...(effectiveOutputFormatValue
+              ? { outputFormat: String(effectiveOutputFormatValue) }
               : {}),
             ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
           } as any);
@@ -21100,6 +21179,15 @@ export default function MediaStudio() {
           }
         }
       }
+      const retryTransparentBackground = targetTab === "image"
+        ? resolveTransparentBackgroundCapability(modelConfig)
+        : null;
+      if (retryTransparentBackground) {
+        extraParams[retryTransparentBackground.inputKey] = (
+          tabState.modelInputValues[retryTransparentBackground.inputKey]
+          ?? retryTransparentBackground.disabledValue
+        );
+      }
       const mergedExtraParams = {
         ...extraParams,
         ...omnivoiceExtraParams,
@@ -21142,6 +21230,24 @@ export default function MediaStudio() {
       const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
         ? tabState.referenceVideos
         : [];
+      if (targetTab === "image" && isGrokImagineImage2Model(retryModel)) {
+        const sourceTaskIds = Array.from(
+          new Set(
+            effectiveReferenceImages
+              .map(image => String(image.sourceTaskId ?? "").trim())
+              .filter(Boolean),
+          ),
+        );
+        if (sourceTaskIds.length > 1) {
+          toast.error("Grok Imagine Image 2 editing accepts one source task at a time.");
+          return;
+        }
+        if (sourceTaskIds[0]) {
+          mergedExtraParams.sourceMediaTaskId = sourceTaskIds[0];
+        } else {
+          delete mergedExtraParams.sourceMediaTaskId;
+        }
+      }
       if (targetTab === "video" && retryModel === GEMINI_OMNI_VIDEO_MODEL_ID) {
         mergedExtraParams.character_ids =
           tabState.geminiOmni.selectedCharacterIds;
@@ -21197,6 +21303,13 @@ export default function MediaStudio() {
       const outputFormatValue =
         tabState.modelInputValues.outputFormat ??
         tabState.modelInputValues.output_format;
+      const transparentBackgroundEnabled = Boolean(
+        retryTransparentBackground
+        && tabState.modelInputValues[retryTransparentBackground.inputKey] === retryTransparentBackground.enabledValue,
+      );
+      const effectiveOutputFormatValue = transparentBackgroundEnabled
+        ? (retryTransparentBackground?.outputFormat ?? outputFormatValue)
+        : outputFormatValue;
       const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ??
         tabState.modelInputValues.reference_style_url) as string | undefined;
       const referenceVideoUrl = (tabState.modelInputValues.referenceVideoUrl ??
@@ -21263,8 +21376,8 @@ export default function MediaStudio() {
           const taskResult = await generateImageAsyncMutation.mutateAsync({
             ...commonPayload,
             numImages: 1,
-            ...(outputFormatValue
-              ? { outputFormat: String(outputFormatValue) }
+            ...(effectiveOutputFormatValue
+              ? { outputFormat: String(effectiveOutputFormatValue) }
               : {}),
             ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
           } as any);
@@ -38433,7 +38546,7 @@ export default function MediaStudio() {
                             <div className="flex flex-wrap gap-2">
                               {referenceImages.map((img, idx) => (
                                 <div key={idx} className="relative group">
-                                  <img
+                                  <AuthenticatedMediaImage
                                     src={img.url}
                                     alt={img.name}
                                     className="h-16 w-16 rounded-lg object-cover border"
@@ -39062,14 +39175,51 @@ export default function MediaStudio() {
                         return true;
                       });
 
+                      const transparentBackground = resolveTransparentBackgroundCapability(config);
+
                       if (
                         syncedFields.length === 0 &&
-                        editableFields.length === 0
+                        editableFields.length === 0 &&
+                        !transparentBackground
                       )
                         return null;
 
                       return (
                         <>
+                          {transparentBackground && (
+                            <div className="space-y-1 rounded-md border border-dashed border-primary/20 bg-primary/5 p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <label
+                                  htmlFor="media-studio-transparent-background"
+                                  className="cursor-pointer text-sm font-medium text-foreground"
+                                >
+                                  {t("mediaStudio.transparentBackground")}
+                                </label>
+                                <Switch
+                                  id="media-studio-transparent-background"
+                                  checked={
+                                    modelInputValues[transparentBackground.inputKey] ===
+                                    transparentBackground.enabledValue
+                                  }
+                                  onCheckedChange={enabled =>
+                                    setModelInputValues(prev => ({
+                                      ...prev,
+                                      [transparentBackground.inputKey]: enabled
+                                        ? transparentBackground.enabledValue
+                                        : transparentBackground.disabledValue,
+                                    }))
+                                  }
+                                  aria-describedby="media-studio-transparent-background-help"
+                                />
+                              </div>
+                              <p
+                                id="media-studio-transparent-background-help"
+                                className="text-xs text-muted-foreground"
+                              >
+                                {t("mediaStudio.transparentBackgroundHelp")}
+                              </p>
+                            </div>
+                          )}
                           {/* Synced (read-only) fields */}
                           {syncedFields.map((field: any) => {
                             const sw: string = inferModelInputSyncTarget(field);
@@ -41018,6 +41168,7 @@ export default function MediaStudio() {
                         excludeFields={["aspectRatio", "aspect_ratio"]}
                         onImageUpload={async files => {
                           const urls: string[] = [];
+                          let failedUploadMessage = "";
                           for (const file of Array.from(files)) {
                             if (!file.type.startsWith("image/")) continue;
                             try {
@@ -41035,10 +41186,25 @@ export default function MediaStudio() {
                                 fileType: file.type,
                                 fileBase64: base64,
                               });
+                              if (!result.url) {
+                                throw new Error("Upload response missing URL");
+                              }
                               urls.push(result.url);
                             } catch (error) {
                               console.error("Upload failed:", error);
+                              failedUploadMessage = `${file.name}: ${
+                                error instanceof Error
+                                  ? error.message
+                                  : "Unknown upload error"
+                              }`;
                             }
+                          }
+                          if (failedUploadMessage) {
+                            toast.error(
+                              t("mediaStudio.referenceUploadFailed", {
+                                error: failedUploadMessage,
+                              }),
+                            );
                           }
                           return urls;
                         }}

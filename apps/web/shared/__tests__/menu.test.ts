@@ -68,6 +68,18 @@ describe("Private Files menu entry", () => {
     expect(userMainItems.find((menuItem) => menuItem.id === "admin-agent-experience-preview")).toBeUndefined();
   });
 
+  it("exposes the billing review console to admins only", () => {
+    const adminItems = getMenuItemsByGroup("web", "admin", "admin");
+    const userItems = getMenuItemsByGroup("web", "user", "admin");
+    const billingItem = adminItems.find((menuItem) => menuItem.id === "admin-billing");
+
+    expect(billingItem).toBeDefined();
+    expect(billingItem?.path).toBe("/admin/billing");
+    expect(billingItem?.icon).toBe("ClipboardCheck");
+    expect(billingItem?.roles).toEqual(["admin"]);
+    expect(userItems.find((menuItem) => menuItem.id === "admin-billing")).toBeUndefined();
+  });
+
   it("hides Marketplace Intelligence when all tenant intelligence flags are disabled", () => {
     const items = getMenuItemsByGroup("web", "user", "main", undefined, {
       MARKETPLACE_CAPTURE_ENABLED: true,

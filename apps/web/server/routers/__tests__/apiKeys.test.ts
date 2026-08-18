@@ -31,13 +31,14 @@ vi.mock("../../../drizzle/schema", () => ({
   },
 }));
 vi.mock("../../_core/trpc", () => ({
-  protectedProcedure: { input: vi.fn().mockReturnThis(), query: vi.fn().mockReturnThis(), mutation: vi.fn().mockReturnThis() },
-  adminProcedure: { input: vi.fn().mockReturnThis(), query: vi.fn().mockReturnThis(), mutation: vi.fn().mockReturnThis() },
+  protectedProcedure: { use: vi.fn().mockReturnThis(), input: vi.fn().mockReturnThis(), query: vi.fn().mockReturnThis(), mutation: vi.fn().mockReturnThis() },
+  adminProcedure: { use: vi.fn().mockReturnThis(), input: vi.fn().mockReturnThis(), query: vi.fn().mockReturnThis(), mutation: vi.fn().mockReturnThis() },
   router: vi.fn((procedures) => ({ _def: { procedures }, ...procedures })),
 }));
 
 import { getDb } from "../../db";
 import { createKey, listKeys, revokeKey } from "../../services/apiKeyService";
+import { ALLOWED_API_SCOPES } from "../../../shared/publicApiTypes";
 
 const mockGetDb = vi.mocked(getDb as any);
 const mockCreateKey = vi.mocked(createKey);
@@ -89,15 +90,9 @@ describe("apiKeys router — service delegation", () => {
 // ---------------------------------------------------------------------------
 
 describe("scope validation", () => {
-  const ALLOWED_API_SCOPES = [
-    "skills:list", "skills:execute", "agencies:list", "agencies:invoke",
-    "presentations:create", "video_projects:create", "media:generate",
-    "llm:chat", "mcp:read", "mcp:write", "jobs:create", "jobs:read",
-    "webhooks:manage", "events:read", "api_keys:manage",
-  ];
   const allowedSet = new Set(ALLOWED_API_SCOPES);
 
-  it("accepts all 15 known scopes", () => {
+  it("accepts every canonical known scope", () => {
     for (const scope of ALLOWED_API_SCOPES) {
       expect(allowedSet.has(scope)).toBe(true);
     }

@@ -28,6 +28,7 @@ fn manifest(sidecar_sha256: String) -> RuntimePackManifest {
         runtime_platform: None,
         sidecar_script_path: None,
         remotion_platform_contract_version: None,
+        remotion_sidecar_script_path: None,
     }
 }
 

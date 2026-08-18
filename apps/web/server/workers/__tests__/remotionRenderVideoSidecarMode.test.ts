@@ -9,7 +9,7 @@
  * Chromium/ffmpeg process) — this is the contract the P2 Rust executor is
  * being built against, so the exact event shapes matter.
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
@@ -19,7 +19,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // eslint-disable-next-line import/no-relative-packages -- the tracked sidecar
 // source lives in a sibling app (`apps/worker-app`), not a workspace package;
 // the runtime-release packager copies this exact file to the Rust-spawned path.
-import { runRenderVideoMode } from "../../../../worker-app/runtime-sidecar-remotion/render.mjs";
+import {
+  rewriteRemotionRenderVideoPayload,
+  runRenderVideoMode,
+  stageRemotionAssetsLocally,
+  startLocalRemotionAssetServer,
+} from "../../../../worker-app/runtime-sidecar-remotion/render.mjs";
 
 const REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION = "2026-07-12";
 const REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION = "remotion-1";
@@ -76,6 +81,152 @@ describe("remotion-sidecar render.mjs — runRenderVideoMode", () => {
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("stages a manifest asset once, verifies its hash, and serves rewritten media locally", async () => {
+    const sourceUrl = "https://storage.example.test/assets/scene.mp4";
+    const bytes = Buffer.from("verified-remotion-media");
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const fetchAsset = vi.fn(async () => new Response(bytes, { status: 200 }));
+
+    const staged = await stageRemotionAssetsLocally({
+      workspace: join(dir, "ws"),
+      assetManifest: {
+        sources: [{ role: "video", url: sourceUrl, sha256 }],
+      },
+      fetchAsset,
+    });
+
+    expect(fetchAsset).toHaveBeenCalledTimes(1);
+    expect(staged.verifiedCount).toBe(1);
+    expect(readFileSync(join(staged.rootDir, staged.urlMap.get(sourceUrl)!))).toEqual(bytes);
+
+    const server = await startLocalRemotionAssetServer(staged.rootDir);
+    try {
+      const rewritten = rewriteRemotionRenderVideoPayload(
+        buildPayload({
+          assetManifest: { sources: [{ role: "video", url: sourceUrl, sha256 }] },
+          remotionTemplate: {
+            ...buildPayload().remotionTemplate,
+            layers: [
+              {
+                id: "video-1",
+                type: "video",
+                src: sourceUrl,
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 100,
+                rotationDeg: 0,
+                opacity: 1,
+                zIndex: 0,
+                startFrame: 0,
+                durationFrames: 30,
+                trimStartSec: 0,
+                muted: true,
+                volume: 1,
+              },
+            ],
+          },
+        }),
+        url => {
+          const fileName = staged.urlMap.get(url);
+          return fileName ? server.urlFor(fileName) : undefined;
+        },
+      );
+
+      const localUrl = rewritten.remotionTemplate.layers[0].src;
+      expect(localUrl).toMatch(/^http:\/\/127\.0\.0\.1:/);
+      expect(Buffer.from(await (await fetch(localUrl)).arrayBuffer())).toEqual(bytes);
+      expect(rewritten.assetManifest.sources[0].url).toBe(sourceUrl);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("reuses the staged URL and stage summary across transient retry attempts", async () => {
+    const payloadPath = join(dir, "payload.json");
+    const sourceUrl = "https://storage.example.test/assets/scene.mp4";
+    const sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef";
+    writeFileSync(
+      payloadPath,
+      JSON.stringify(
+        buildPayload({
+          assetManifest: { sources: [{ role: "video", url: sourceUrl, sha256 }] },
+          remotionTemplate: {
+            ...buildPayload().remotionTemplate,
+            layers: [
+              {
+                id: "video-1",
+                type: "video",
+                src: sourceUrl,
+                x: 0,
+                y: 0,
+                width: 100,
+                height: 100,
+                rotationDeg: 0,
+                opacity: 1,
+                zIndex: 0,
+                startFrame: 0,
+                durationFrames: 30,
+                trimStartSec: 0,
+                muted: true,
+                volume: 1,
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    const finalMp4Path = join(dir, "fake-render.mp4");
+    writeFakeMp4(finalMp4Path);
+    const stageAssetsLocally = vi.fn(async () => ({
+      rootDir: join(dir, "staged"),
+      urlMap: new Map([[sourceUrl, "asset-0.mp4"]]),
+      verifiedCount: 1,
+      skippedCount: 0,
+    }));
+    const createAssetServer = vi.fn(async () => ({
+      urlFor: (fileName: string) => `http://127.0.0.1:12345/asset/${fileName}`,
+      close: vi.fn(async () => {}),
+    }));
+    const executeRemotionRenderVideoJob = vi
+      .fn()
+      .mockImplementationOnce(async (_input: unknown, deps: any) => {
+        await deps.stageAssets({});
+        throw new Error("A delayRender() fetch timed out from the storage proxy");
+      })
+      .mockImplementationOnce(async (input: any, deps: any) => {
+        await deps.stageAssets({});
+        expect(input.payload.remotionTemplate.layers[0].src).toBe(
+          "http://127.0.0.1:12345/asset/asset-0.mp4",
+        );
+        return {
+          outputArtifactRef: { url: finalMp4Path, key: "render.mp4" },
+          artifacts: [{ artifactType: "remotion_render_probe_report", inline: { durationSec: 2 } }],
+        };
+      });
+
+    const result = await runRenderVideoMode(
+      { payloadPath, workspace: join(dir, "ws"), outputDir: join(dir, "out") },
+      {
+        executeRemotionRenderVideoJob,
+        stageAssetsLocally,
+        createAssetServer,
+        sleep: vi.fn(async () => {}),
+        resolveRuntimePackPaths: () => ({
+          ffmpegPath: "ffmpeg",
+          ffprobePath: "ffprobe",
+          browserExecutable: undefined,
+        }),
+        probeDurationSeconds: async () => 2,
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(stageAssetsLocally).toHaveBeenCalledTimes(1);
+    expect(createAssetServer).toHaveBeenCalledTimes(1);
+    expect(executeRemotionRenderVideoJob).toHaveBeenCalledTimes(2);
   });
 
   it("emits progress lines then a completed line with path/sha256/duration/dimensions", async () => {

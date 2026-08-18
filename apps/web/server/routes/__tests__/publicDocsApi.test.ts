@@ -10,7 +10,9 @@ vi.mock("swagger-ui-express", () => ({
     serve: [(_req: any, _res: any, next: any) => next()],
     setup: vi.fn(() => (_req: any, res: any) => {
       res.setHeader("Content-Type", "text/html");
-      res.send("<html><body id='swagger-ui'>swagger-ui spec-url=/v1/openapi.json</body></html>");
+      res.send(
+        "<html><body id='swagger-ui'>swagger-ui spec-url=/v1/openapi.json</body></html>"
+      );
     }),
   },
 }));
@@ -42,8 +44,8 @@ describe("OpenAPI Spec", () => {
     expect(spec.openapi).toMatch(/^3\.0\./);
   });
 
-  it("info.title is 'SmartSpecPro Public API'", () => {
-    expect(spec.info.title).toBe("SmartSpecPro Public API");
+  it("info.title is 'SmartAIHub Public API'", () => {
+    expect(spec.info.title).toBe("SmartAIHub Public API");
   });
 
   it("contains securitySchemes with bearerAuth (type: http, scheme: bearer)", () => {
@@ -72,7 +74,7 @@ describe("OpenAPI Spec", () => {
       "events",
     ];
     for (const group of groups) {
-      const hasGroup = paths.some((p) => p.includes(`/v1/${group}`));
+      const hasGroup = paths.some(p => p.includes(`/v1/${group}`));
       expect(hasGroup, `expected path group /v1/${group}`).toBe(true);
     }
   });
@@ -84,11 +86,64 @@ describe("OpenAPI Spec", () => {
     expect((spec.paths as any)["/v1/credits"]?.get).toBeDefined();
     expect((spec.paths as any)["/v1/mcp"]?.post).toBeDefined();
     expect((spec.paths as any)["/v1/mcp/catalog"]?.get).toBeDefined();
-    expect((spec.paths as any)["/v1/knowledge/library/search"]?.post).toBeDefined();
-    expect((spec.paths as any)["/v1/knowledge/library/upload"]?.post).toBeDefined();
+    expect(
+      (spec.paths as any)["/v1/knowledge/library/search"]?.post
+    ).toBeDefined();
+    expect(
+      (spec.paths as any)["/v1/knowledge/library/upload"]?.post
+    ).toBeDefined();
     expect((spec.paths as any)["/v1/knowledge/rag/search"]?.post).toBeDefined();
     expect((spec.paths as any)["/v1/knowledge/rag/ingest"]?.post).toBeDefined();
     expect((spec.paths as any)["/v1/embeddings"]).toBeUndefined();
+  });
+
+  it("documents the canonical MCP OAuth flow separately from REST API keys", () => {
+    expect(spec.info.description).toContain(
+      "POST https://smartaihub.app/v1/mcp"
+    );
+    expect(spec.info.description).toContain("Hermes One — desktop UI");
+    expect(spec.info.description).toContain(
+      "Hermes CLI / Hermes Agent — terminal"
+    );
+    expect(spec.info.description).toContain(
+      "Claude / Claude Desktop — remote Connector UI"
+    );
+    expect(spec.info.description).toContain("Codex CLI / Codex Desktop");
+    expect(spec.info.description).toContain(
+      "Other MCP clients — generic remote setup"
+    );
+    expect(spec.info.description).toContain(
+      "codex mcp add smartaihub --url https://smartaihub.app/v1/mcp"
+    );
+    expect(spec.info.description).toContain(
+      "claude mcp add --transport http smartaihub https://smartaihub.app/v1/mcp"
+    );
+    expect(spec.info.description).toContain("OAuth / Sign in with browser");
+    expect(spec.info.description).toContain(
+      "/.well-known/oauth-protected-resource"
+    );
+    expect(spec.info.description).toContain("server/discover");
+    expect(spec.info.description).toContain("tools/list");
+    expect(spec.info.description).toContain(
+      "hermes mcp add smartaihub --url https://smartaihub.app/v1/mcp --auth oauth"
+    );
+    expect(spec.info.description).toContain("hermes mcp login smartaihub");
+    expect(spec.info.description).toContain(
+      "Do not use `hermes mcp add ... --auth header`"
+    );
+    expect(spec.info.description).toContain("Remotion Executor");
+    expect(spec.info.description).toContain(
+      "API Server Key not set — chat will fail"
+    );
+    expect(spec.info.description).toContain(
+      "The canonical integration is `/v1/mcp` with OAuth/PKCE"
+    );
+    expect(spec.info.description).toContain(
+      "Public REST/OpenAPI authentication"
+    );
+    expect(spec.info.description).toContain(
+      "The `/v1/mcp` JSON-RPC endpoint is a separate integration"
+    );
   });
 
   it("each path operation has at least one response schema defined", () => {

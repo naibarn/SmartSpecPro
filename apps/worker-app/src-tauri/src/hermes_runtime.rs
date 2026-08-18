@@ -16,8 +16,8 @@ use crate::runtime_manifest::{DoctorCheck, DoctorSummary};
 
 /// Runtime ids — frozen strings, kept in lockstep with the server-side
 /// manifest-serving region (`workerRuntime.ts`) and the pack build script
-/// (`build-hermes-runtime-pack.ts`). Windows ships first (spec §1); the
-/// macOS id is registered `allowed: false` until its pack is built.
+/// (`build-hermes-runtime-pack.ts`). The macOS pack is native Apple Silicon
+/// (`aarch64-apple-darwin`); Intel Macs intentionally do not match this id.
 pub const HERMES_RUNTIME_ID_WINDOWS: &str = "hermes-windows-x64";
 pub const HERMES_RUNTIME_ID_MACOS: &str = "hermes-macos-arm64";
 
@@ -389,6 +389,9 @@ mod tests {
         let (manifest_path, root) = hermes_runtime_pack_paths(dir.path());
 
         assert_eq!(root, dir.path().join("hermes-runtime"));
-        assert_eq!(manifest_path, dir.path().join("hermes-runtime/manifest.json"));
+        assert_eq!(
+            manifest_path,
+            dir.path().join("hermes-runtime/manifest.json")
+        );
     }
 }

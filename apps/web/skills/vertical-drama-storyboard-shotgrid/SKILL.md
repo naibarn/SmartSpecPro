@@ -45,6 +45,14 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Narrative and spoken-language separation
+
+When the caller supplies a `DIALOGUE LANGUAGE PROFILE (HARD CONTRACT)`, use it
+only for dialogue text, subtitle text that mirrors dialogue, and spoken-audio
+direction. Narrative summaries and production metadata remain in the caller's
+UI/content language. Never change plot facts, character identity, scene
+assignment, or continuity to satisfy a dialect or market selection.
+
 ## Physical scene characters vs. screen callers — MANDATORY
 
 For every shot, keep physical scene presence and remote callers in separate fields:

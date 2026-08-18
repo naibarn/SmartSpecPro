@@ -192,6 +192,23 @@ const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
   { value: "9:16", label: "9:16" },
 ];
 
+const GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS = [
+  { value: "auto", label: "Auto" },
+  { value: "1:1", label: "1:1" },
+  { value: "16:9", label: "16:9" },
+  { value: "9:16", label: "9:16" },
+  { value: "3:2", label: "3:2" },
+  { value: "2:3", label: "2:3" },
+];
+
+const GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS = [
+  { value: "480p", label: "480p" },
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
+];
+
+const GROK_IMAGINE_VIDEO_15_DURATIONS = Array.from({ length: 15 }, (_, index) => index + 1);
+
 const GEMINI_OMNI_PRICING_TIERS = {
   default: 120,
   "720p-4s-without-video": 90,
@@ -479,6 +496,13 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       kieModelId: "gpt-image-2-text-to-image",
       generateType: "text-to-image",
       maxPromptLength: 20_000,
+      supportsTransparentBackground: true,
+      transparentBackground: {
+        inputKey: "background",
+        enabledValue: "transparent",
+        disabledValue: "auto",
+        outputFormat: "png",
+      },
       verticalDramaCharacterPromptContract: {
         family: "gpt_image_2",
         negativePromptMode: "inline_only",
@@ -515,6 +539,100 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     },
     isEnabled: true,
     priority: 15,
+  },
+  {
+    id: "grok-imagine-image-2",
+    type: "image",
+    name: "Grok Imagine Image 2",
+    provider: "kie.ai",
+    description: "Grok Imagine Image 2 text-to-image generation and editing of a completed Grok image task.",
+    aliases: [
+      "grok image 2",
+      "grok-imagine-image-2",
+      "grok imagine image 2",
+      "grok-image-2",
+    ],
+    creditCost: 20,
+    aspectRatios: ["1:1", "2:3", "3:2", "16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      maxReferenceImages: 1,
+      supportsReferenceImages: true,
+      operationModes: ["text-to-image", "image-edit"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/text-to-image",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        operations: {
+          "text-to-image": {
+            kie_model_id: "grok-imagine-image-2-0/text-to-image",
+          },
+          "image-edit": {
+            kie_model_id: "grok-imagine-image-2-0/image-edit",
+            drop_params: ["aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+          },
+        },
+      },
+      inputFields: [
+        {
+          key: "aspect_ratio",
+          label: "Aspect Ratio",
+          type: "select",
+          options: [
+            { value: "1:1", label: "1:1" },
+            { value: "2:3", label: "2:3" },
+            { value: "3:2", label: "3:2" },
+            { value: "16:9", label: "16:9" },
+            { value: "9:16", label: "9:16" },
+          ],
+          default: "1:1",
+          syncWith: "aspect_ratio",
+        },
+        {
+          key: "mask_indexs",
+          label: "Mask Indexes (optional)",
+          type: "array",
+          maxItems: 64,
+          itemFields: [
+            { key: "value", label: "Mask Index", type: "number", min: 0, max: 64, step: 1 },
+          ],
+          description: "Optional mask indexes returned by Segment Map.",
+        },
+      ],
+    },
+    isEnabled: true,
+    priority: 8,
+  },
+  {
+    id: "grok-imagine-image-2/segment-map",
+    type: "image",
+    name: "Grok Imagine Image 2 Segment Map",
+    provider: "kie.ai",
+    description: "Create a segment map from a completed Grok Imagine Image 2 task.",
+    aliases: ["grok image 2 segment map", "grok-segment-map"],
+    creditCost: 0,
+    aspectRatios: [],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/segment-map",
+      generateType: "segment-map",
+      operationOnly: true,
+      maxPromptLength: 0,
+      maxReferenceImages: 1,
+      supportsReferenceImages: true,
+      operationModes: ["segment-map"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/segment-map",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        drop_params: ["prompt", "aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+      },
+    },
+    isEnabled: true,
+    priority: 9,
   },
   {
     id: "google/pro-image-to-image",
@@ -1080,13 +1198,14 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     // Verified callable on kie.ai: `grok-imagine-video-1-5-preview` is a real,
     // already-mapped model id in the Python provider's
     // `FALLBACK_MODEL_NAME_MAP` (`kie_ai_provider.py`) AND in
-    // `MODEL_METADATA` (`core/media_models.py`) — it requires exactly one
-    // reference image (`requires_reference_image: True, max_reference_images:
-    // 1`, i.e. image-to-video only, no text-to-video mode), which the generic
+    // `MODEL_METADATA` (`core/media_models.py`) — it accepts up to seven
+    // reference images (`requires_reference_image: True, max_reference_images:
+    // 7`, i.e. image-to-video only, no text-to-video mode), which the generic
     // "market" `/api/v1/jobs/createTask` dispatch (same code path as
     // `gemini-omni-video`/HappyHorse below) already supports via
     // `image_urls`. No dedicated first/last-frame bridge mode is documented
-    // for this model (single start-frame reference only). Grok Imagine v1.x
+    // for this model; the first image remains the start frame in managed
+    // storyboard flows. Grok Imagine v1.x
     // generates native in-video audio including speech (xAI added
     // synchronized audio in late 2025; user-confirmed 2026-07-06), so
     // dialogue is embedded verbatim for Vertical Drama.
@@ -1094,7 +1213,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     type: "video",
     name: "Grok Imagine Video 1.5",
     provider: "kie.ai",
-    description: "xAI Grok Imagine Video 1.5 — image-to-video generation from a single reference frame",
+    description: "xAI Grok Imagine Video 1.5 — image-to-video generation with up to seven reference images",
     aliases: [
       "grok imagine 1.5",
       "grok imagine video 1.5",
@@ -1104,8 +1223,8 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       "grok video 1.5",
     ],
     creditCost: 90,
-    durations: [6, 10, 15],
-    aspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
+    durations: GROK_IMAGINE_VIDEO_15_DURATIONS,
+    aspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
     isEnabled: true,
     priority: 19,
     configJson: {
@@ -1117,28 +1236,21 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       hasAudio: true,
       maxDuration: 15,
       maxPromptLength: 5000,
-      maxReferenceImages: 1,
-      supportedDurations: [6, 10, 15],
-      supportedAspectRatios: ["auto", "1:1", "16:9", "9:16", "4:3", "3:4"],
-      supportedResolutions: ["480p", "720p"],
+      maxReferenceImages: 7,
+      supportedDurations: GROK_IMAGINE_VIDEO_15_DURATIONS,
+      supportedAspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
+      supportedResolutions: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS.map((option) => option.value),
       apiConfig: {
         reference_image_input_key: "image_urls",
         reference_image_input_type: "array",
       },
       inputFields: [
-        { key: "image_urls", label: "Start Frame (required)", type: "image_urls", required: true, syncWith: "reference_images" },
+        { key: "image_urls", label: "Reference Images (required)", type: "image_urls", required: true, syncWith: "reference_images", maxItems: 7 },
         {
           key: "aspect_ratio",
           label: "Aspect Ratio",
           type: "select",
-          options: [
-            { value: "auto", label: "Auto" },
-            { value: "1:1", label: "1:1" },
-            { value: "16:9", label: "16:9" },
-            { value: "9:16", label: "9:16" },
-            { value: "4:3", label: "4:3" },
-            { value: "3:4", label: "3:4" },
-          ],
+          options: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS,
           default: "auto",
           syncWith: "aspect_ratio",
         },
@@ -1146,18 +1258,18 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
           key: "duration",
           label: "Duration",
           type: "select",
-          options: [6, 10, 15].map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
-          default: "6",
+          options: GROK_IMAGINE_VIDEO_15_DURATIONS.map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
+          default: "8",
           affectsPricing: true,
         },
-        { key: "resolution", label: "Resolution", type: "select", options: [{ value: "480p", label: "480p" }, { value: "720p", label: "720p" }], default: "720p" },
+        { key: "resolution", label: "Resolution", type: "select", options: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS, default: "720p" },
         { key: "seed", label: "Seed", type: "number", required: false },
       ],
       pricingTiers: { default: 90 },
       pricingFormula: "flat",
     },
     supportsStartFrame: true,
-    maxReferenceImages: 1,
+    maxReferenceImages: 7,
     nativeAudioDialogue: true,
     // Task #36 — see this entry's own comment above: xAI added synchronized
     // in-video audio (incl. speech) to Grok Imagine v1.x in late 2025,

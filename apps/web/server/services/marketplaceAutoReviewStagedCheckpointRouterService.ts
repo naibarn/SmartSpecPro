@@ -17,6 +17,7 @@ import {
   StagedSequentialStoryboardMetadataV1Schema,
   type StagedCheckpointApprovalExpectationV1,
 } from "@shared/marketplaceAutoReview/stagedContracts";
+import { createMarketplaceDraftQcState } from "@shared/marketplaceAutoReview/draftQualityQc";
 import { buildProductionStableHash } from "../../shared/mediaProduction";
 import { deriveAssemblyDocumentationFromProductTruth } from "../../shared/marketplaceCapture/sequentialEvidencePreview";
 import {
@@ -489,6 +490,7 @@ export async function getStagedAutoReviewCheckpointState(
     planRevision: metadata.stagedSequentialStoryboard.planRevision,
     stateDigest: stagedMetadataStateDigest(metadata),
     planReview: metadata.planReview,
+    creativeQc: (metadata as any).creativeQc ?? null,
     audioPlan:
       stagedPipeline?.audioPlan && typeof stagedPipeline.audioPlan === "object"
         ? {
@@ -647,6 +649,18 @@ async function mutateOwnedCheckpoint(input: {
     }
     assertStagedRunMutable(run);
     const metadata = parseStagedMetadata(run);
+    const currentCheckpoint = metadata.stagedSequentialStoryboard.reviewCheckpoints.find(
+      checkpoint => checkpoint.checkpointId === input.checkpointId
+    );
+    if (
+      input.mutation.type === "approve" &&
+      currentCheckpoint?.kind === "story_plan"
+    ) {
+      const { assertMarketplaceAutoReviewCreativeQcApproved } = await import(
+        "./marketplaceAutoReviewService"
+      );
+      assertMarketplaceAutoReviewCreativeQcApproved(metadata as any);
+    }
     const [existingJob] = await tx
       .select()
       .from(marketplaceAutoReviewOutboxJobs)
@@ -809,14 +823,20 @@ async function mutateOwnedStagedMetadata(input: {
     }
     const operationId = `staged-op-${nanoid(12)}`;
     const changed = await input.mutate(existingMetadata, operationId);
+    const planRevisionChanged =
+      changed.planRevision !== existingMetadata.stagedSequentialStoryboard.planRevision;
+    const changedMetadata =
+      planRevisionChanged && changed.metadata.creativeQc
+        ? { ...changed.metadata, creativeQc: createMarketplaceDraftQcState() }
+        : changed.metadata;
     const metadata = {
-      ...changed.metadata,
+      ...changedMetadata,
       stagedPipeline: {
         ...((changed.metadata as any).stagedPipeline ?? {}),
         correctionRequired: null,
       },
       planReview: {
-        ...changed.metadata.planReview,
+        ...changedMetadata.planReview,
         lastOperationId: operationId,
       },
     };
@@ -2196,7 +2216,7 @@ export function computeRetryStagedAutoReviewFinalAssemblyMetadata(
               : checkpoint
         ),
       },
-    } as typeof metadata,
+    } as unknown as typeof metadata,
     planRevision: metadata.planReview.planRevision,
   };
 }

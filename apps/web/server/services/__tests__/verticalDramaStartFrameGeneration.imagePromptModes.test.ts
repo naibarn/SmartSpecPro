@@ -77,6 +77,7 @@ import {
   buildStartFrameShotPromptUserPrompt,
   buildStartFrameShotPromptVisionImages,
   buildDeterministicPolicySafeImagePrompt,
+  ensureSpokenCallerVirtualScreenPrompt,
   buildRenderPlanSceneContinuityLockSection,
   guardStartFramePromptVisibleCast,
   validatePolicySafeSynopsisRewrite,
@@ -725,6 +726,59 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
     ).toBe(
       `REFERENCE MAPPING: Image 1 = อาเรีย.\nPHYSICAL CAST LOCK (MANDATORY): exactly 1 physical scene character — อาเรีย. Do not add any other named or unnamed person, background extra, staff member, reflection, or duplicate body.\n${block}\nอารียืนในคาเฟ่`
     );
+  });
+
+  it("always persists the virtual-screen contract in policy-safe caller prompts", () => {
+    const prompt = buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis:
+        "ภาคินเปิดลำโพงฟังคำเตือนจากกฤต ขณะที่ไอริณยืนอยู่ข้างเขา",
+      shotNumber: 3,
+      characterReferenceManifest: [
+        { index: 1, name: "ภาคิน", presence: "scene" },
+        { index: 2, name: "ไอริณ", presence: "scene" },
+        {
+          index: 3,
+          characterId: "character-3",
+          name: "กฤต",
+          presence: "screen_caller",
+        },
+      ],
+      screenCallerCharacterRefs: ["character-3"],
+      spokenCallerCharacterRefs: ["character-3"],
+    });
+
+    expect(prompt).toContain("SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)");
+    expect(prompt).toContain("screen_1=character-3");
+    expect(prompt).toContain("vertical phone screen");
+    expect(prompt).toContain("Never show a spoken caller physically in the room");
+    expect(prompt).toContain("CALLER FACE IDENTITY LOCK (MANDATORY)");
+    expect(prompt).toContain("Image 3 = character-3");
+    expect(prompt).toContain("Never use a different face");
+  });
+
+  it("has a final-prompt invariant that repairs a caller prompt missing the marker", () => {
+    const prompt = ensureSpokenCallerVirtualScreenPrompt({
+      prompt: "A physical scene with two characters.",
+      screenCallerCharacterRefs: ["character-3"],
+      callerFaceReferenceImageIndexes: { "character-3": 3 },
+    });
+
+    expect(prompt).toContain("SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)");
+    expect(prompt).toContain("screen_1=character-3");
+    expect(prompt).toContain("Image 3 = character-3");
+  });
+
+  it("repairs a virtual-screen prompt that still lacks the face-lock clause", () => {
+    const prompt = ensureSpokenCallerVirtualScreenPrompt({
+      prompt:
+        "SPOKEN CALLER VIRTUAL SCREENS (MANDATORY): screen_1=character-3 (vertical phone screen).",
+      screenCallerCharacterRefs: ["character-3"],
+      callerFaceReferenceImageIndexes: { "character-3": 3 },
+    });
+
+    expect(prompt).toContain("SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)");
+    expect(prompt).toContain("CALLER FACE IDENTITY LOCK (MANDATORY)");
+    expect(prompt).toContain("Image 3 = character-3");
   });
 
   it("removes scene-wide cast staging while preserving environment continuity", () => {

@@ -157,6 +157,54 @@ describe("VerticalDramaStoryboardPanel — per-shot character reference picker (
     expect(onSetCaller).toHaveBeenCalledWith(1, []);
   });
 
+  it("renders each phone caller as a separate vertical virtual screen", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          characterPortraits: {
+            hero: {
+              characterId: "1",
+              name: "พระเอก",
+              portraitUrl: "https://cdn.test/hero.jpg",
+            },
+            "hero-twin": {
+              characterId: "3",
+              name: "น้องเอก",
+              portraitUrl: "https://cdn.test/caller.jpg",
+            },
+            "caller-two": {
+              characterId: "4",
+              name: "เพื่อน",
+              portraitUrl: "https://cdn.test/caller-two.jpg",
+            },
+          },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a prompt",
+                requiredCharacterRefs: ["hero"],
+                screenCallerCharacterRefs: ["hero-twin", "caller-two"],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    const firstScreen = screen.getByTestId(
+      "vd-storyboard-virtual-phone-screen-1-hero-twin"
+    );
+    expect(firstScreen).toHaveAttribute("data-orientation", "vertical");
+    expect(firstScreen.querySelector("img")).toHaveAttribute(
+      "src",
+      "https://cdn.test/caller.jpg"
+    );
+    expect(
+      screen.getByTestId("vd-storyboard-virtual-phone-screen-1-caller-two")
+    ).toBeInTheDocument();
+  });
+
   it("an unchecked-then-saved selection sends an empty array (explicit clear)", () => {
     const onSet = vi.fn();
     render(

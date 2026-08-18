@@ -15,6 +15,8 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { HelpButton } from "@/components/help/HelpButton";
+import { Button } from "@/components/ui/button";
+import { ShieldCheck } from "lucide-react";
 import type { TenantFeatureFlags, TenantFeatureFlagKey } from "@shared/featureFlags";
 import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags.ts";
 import { buildTenantFeatureFlagGroups } from "./tenantFeatureFlagGroups";
@@ -74,6 +76,23 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
       { tenantId, flags: { [flag]: !currentValue } },
       { onSettled: () => setPendingKey(null) },
     );
+  };
+
+  const enableMcpProductionGates = () => {
+    if (!canEdit || mutation.isPending) return;
+    mutation.mutate({
+      tenantId,
+      flags: {
+        mcpServerRegistry: true,
+        mcpOAuth: true,
+        mcpModernProtocolEnabled: true,
+        mcpResourcesEnabled: true,
+        mcpOAuthProtectedResourceEnabled: true,
+        mcpOAuthAuthorizationServerEnabled: true,
+        // Dynamic registration remains an explicit opt-in safety gate.
+        mcpOAuthDynamicRegistrationEnabled: false,
+      },
+    });
   };
 
   const toggleGroup = (title: string) => {
@@ -136,6 +155,12 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
             size="sm"
             label={isThai ? "คู่มือการตั้งค่า" : "Setup Help"}
           />
+          {canEdit ? (
+            <Button type="button" size="sm" variant="outline" onClick={enableMcpProductionGates} disabled={mutation.isPending}>
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {isThai ? "เปิด MCP/OAuth สำหรับ tenant นี้" : "Enable MCP/OAuth for this tenant"}
+            </Button>
+          ) : null}
         </div>
 
         {/* Summary + Search */}

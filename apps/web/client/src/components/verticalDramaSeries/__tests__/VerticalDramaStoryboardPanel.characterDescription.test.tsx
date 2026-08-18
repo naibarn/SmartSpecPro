@@ -167,4 +167,26 @@ describe("VerticalDramaStoryboardPanel — shot-local character descriptions", (
       expect(aliceInput).toHaveValue(value);
     }
   });
+
+  it("shows the latest video-prompt failure instead of leaving a running label", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...({
+          ...baseProps,
+          selectedVideoModelId: "grok-imagine-video-1-5-preview",
+          onGenerateShotVideoPrompt: vi.fn(),
+          generatingShotVideoPromptForShot: new Set(),
+          videoPromptJobStatusByShot: {},
+          videoPromptJobErrorByShot: {
+            1: "สร้างพรอมต์ไม่สำเร็จ: ไม่พบชื่อผู้พูด",
+          },
+        } as any)}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "สร้างพรอมต์ไม่สำเร็จ: ไม่พบชื่อผู้พูด",
+    );
+    expect(screen.queryByText("กำลังสร้างพรอมต์…")).not.toBeInTheDocument();
+  });
 });

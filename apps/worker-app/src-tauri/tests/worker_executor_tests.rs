@@ -6,9 +6,8 @@ use smart_ai_hub_worker_app_lib::worker_executor::{
     build_required_artifact_uploads, build_sidecar_command, build_sidecar_manifest,
     classify_job_type, compact_json_artifact_metadata, parse_remotion_sidecar_event,
     prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
-    validate_final_video_artifact, validate_workspace_path, ClaimedWorkerJob,
-    RemotionSidecarEvent, WorkerJobKind, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES,
-    REMOTION_RENDER_VIDEO_JOB_TYPE,
+    validate_final_video_artifact, validate_workspace_path, ClaimedWorkerJob, RemotionSidecarEvent,
+    WorkerJobKind, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, REMOTION_RENDER_VIDEO_JOB_TYPE,
 };
 
 fn ready_doctor() -> DoctorSummary {
@@ -457,7 +456,18 @@ fn classify_job_type_routes_remotion_render_video() {
         classify_job_type("hyperframes_final_composite"),
         WorkerJobKind::Hyperframes
     );
-    assert_eq!(classify_job_type("some_other_job_type"), WorkerJobKind::Unknown);
+    assert_eq!(
+        classify_job_type("comfy_image_generation"),
+        WorkerJobKind::ComfyImageGeneration
+    );
+    assert_eq!(
+        classify_job_type("comfy_workflow_run"),
+        WorkerJobKind::ComfyWorkflowRun
+    );
+    assert_eq!(
+        classify_job_type("some_other_job_type"),
+        WorkerJobKind::Unknown
+    );
 }
 
 #[test]
@@ -466,7 +476,9 @@ fn remotion_execution_plan_requires_matching_job_type_and_assignment_attempt() {
     let job = remotion_claimed_job();
     let plan = prepare_remotion_render_video_execution_plan(&job, dir.path()).unwrap();
     assert_eq!(plan.job_id, "remotion-job-1");
-    assert!(plan.payload_path.ends_with("remotion-render-video-input.json"));
+    assert!(plan
+        .payload_path
+        .ends_with("remotion-render-video-input.json"));
     assert!(plan.output_dir.ends_with("out"));
 
     let mut wrong_type = job.clone();
@@ -601,7 +613,8 @@ fn remotion_progress_event_builder_ignores_unknown_stage() {
 
     // An unrecognized stage must never be forwarded — the server rejects
     // any job.progress event whose stage isn't in the declared list.
-    let unknown = build_remotion_render_video_progress_event(&job, 5, "totally_made_up_stage", 60, None);
+    let unknown =
+        build_remotion_render_video_progress_event(&job, 5, "totally_made_up_stage", 60, None);
     assert!(unknown.is_none());
 }
 
@@ -609,7 +622,8 @@ fn remotion_progress_event_builder_ignores_unknown_stage() {
 fn remotion_failure_event_coerces_unknown_failure_code_to_render_failed() {
     let job = remotion_claimed_job();
 
-    let known = build_remotion_render_video_failure_event(&job, 9, "bundle_failed", "webpack blew up");
+    let known =
+        build_remotion_render_video_failure_event(&job, 9, "bundle_failed", "webpack blew up");
     assert_eq!(known.payload_json["failureCode"], "bundle_failed");
 
     let unknown =

@@ -41,6 +41,10 @@ draft. Do not calculate or return an overall score. Flag critical failures when
 the protagonist goal, core conflict, repeatable engine, escalation path, market
 identity, explicit creator constraint, or causal setup for twists is missing or
 contradictory.
+`criticalFails` is mandatory in every evaluation response; return `[]` when no
+critical failure exists. Never omit it, return null, use free-form codes, or
+return malformed rows. An incomplete critical-failure section is an invalid
+response and must be retried by the caller.
 
 ## Revision scope
 
@@ -50,14 +54,27 @@ the approved `storyContract` Story Architecture (including its season and
 long-term destinations, required arcs, and final payoff),
 heritage/background, story setting, target market, narrative locale, spoken
 language profile, title-language contract, configured episode/shot design,
-look/identity constraints, and existing story-control facts. Do not silently
+look/identity constraints, and existing non-targeted story-control facts. The
+server may accept targeted changes only in the allowlisted `storyDesign`
+control-plane keys needed for the reported repair: `contractVersion`,
+`totalEpisodeCount`, `primaryEngine`, `secondaryEngines`, `pressureThreads`,
+`earlyPayoff`, `romanceProgression`, `advantageBeats`,
+`conflictGuardrails`, and `storyControlSeed`. Do not add or change unknown
+passthrough keys. Do not silently
 turn a romance into another genre, change a character's nationality to match a
 market, or add unrelated subplot threads. Keep a clear cause-and-effect path.
 
 The revised response must be a complete draft in the same shape as the input,
 not a patch or a commentary. Keep creator-readable synopsis fields populated.
-Return a short `changedFields` list separately from the draft. Never include
+Return a concise `changedFields` list separately from the draft (up to 64
+bounded field paths). Never include
 private reasoning, prompt text, token data, or a model-computed score.
+
+For a user-confirmed repair, execute one bounded revision from the supplied
+repair plan only. Preserve immutable story identity and every non-targeted
+story-control field. Never invent facts, add uncontrolled subplot threads, or
+claim that the repair passed QC; the server will run a fresh QC afterwards and
+keeps the source Draft active until explicit selection.
 
 ## Language contract
 

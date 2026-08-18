@@ -173,6 +173,9 @@ export const verticalDramaCharacterDesignContextSchema = z
       title: z.string().trim().min(1).max(255),
       genre: z.string().trim().max(100).nullable().optional(),
       tone: z.string().trim().max(100).nullable().optional(),
+      locale: z.string().trim().max(32).nullable().optional(),
+      targetAudience: z.string().trim().max(200).nullable().optional(),
+      dialogueLanguage: boundedDnaText.optional(),
       storyWorld: boundedDnaText,
       emotionalEngine: boundedDnaText,
       visualCulture: boundedDnaText,
@@ -231,6 +234,7 @@ export const verticalDramaApprovedCharacterVisualBibleSchema = z
     audienceAppealNotes: z.string().trim().min(1).max(2_000).optional(),
     promptContractVersion: z.string().trim().max(80).optional(),
     promptProfile: z.enum(["rich", "compact", "legacy"]).optional(),
+    castingPreferencesFingerprint: z.string().trim().max(1_000).optional(),
     // Bounded planning retry count carried with the approved snapshot so
     // later paid renders can report the same prompt-generation diagnostics.
     semanticRetryCount: z.number().int().min(0).max(8).optional(),

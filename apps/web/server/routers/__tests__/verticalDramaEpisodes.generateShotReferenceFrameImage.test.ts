@@ -514,6 +514,10 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
     );
     expect(request.negativePrompt).toBeUndefined();
     expect(request.referenceImageUrls).toEqual([PORTRAIT_A]);
+    expect(request.auditContext).toMatchObject({
+      userId: 42,
+      tenantId: "tenant-1",
+    });
     expect(request.extraParams).toMatchObject({
       __vd_series_id: "10",
       __vd_episode_id: "100",

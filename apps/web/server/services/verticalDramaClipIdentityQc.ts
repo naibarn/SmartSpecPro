@@ -48,6 +48,7 @@ export type ClipIdentityQcCharacter = { characterKey: string; name: string };
 export type RunClipIdentityQcInput = {
   userId: number;
   tenantId: string;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   clipNumber: number;
@@ -131,6 +132,8 @@ export async function runClipIdentityQc(
     hasVision: true,
     images: referenceImages,
     userId: input.userId,
+    tenantId: input.tenantId,
+    publicUrl: input.publicUrl,
     schema: outputSchema,
     firstAttemptMaxTokens: 1600,
     retryMaxTokens: 2200,

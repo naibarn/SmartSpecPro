@@ -64,6 +64,18 @@ describe("resolveScriptEpisodeMemory — LLM-authored episode_memory block prese
         ],
         knowledge_changes: [],
       },
+      thread_actions: [
+        {
+          action: "open",
+          proposedThreadId: "new-boardroom-lead",
+          note: "find the hidden shareholder",
+        },
+        {
+          action: "resolve",
+          threadId: "reno-unfinished",
+          evidenceRefs: [{ episodeNumber: 7, kind: "payoff" }],
+        },
+      ],
     });
 
     const memory = resolveScriptEpisodeMemory(script, 7);
@@ -74,12 +86,18 @@ describe("resolveScriptEpisodeMemory — LLM-authored episode_memory block prese
     expect(memory.canonicalFacts).not.toContain(
       "this fact must NOT leak into canonicalFacts"
     );
-    expect(memory.threadsOpened).toHaveLength(1);
+    expect(memory.threadsOpened).toHaveLength(2);
     expect(memory.threadsOpened[0]).toMatchObject({
       threadId: "reno-unfinished",
       threadClass: "domestic",
       openedEpisode: 7,
     });
+    expect(memory.threadsOpened[1]).toMatchObject({
+      threadId: "new-boardroom-lead",
+      description: "find the hidden shareholder",
+      openedEpisode: 7,
+    });
+    expect(memory.threadsResolved).toEqual(["reno-unfinished"]);
     expect(memory.relationshipChanges).toEqual([
       {
         pair: ["char_aria", "char_noah"],

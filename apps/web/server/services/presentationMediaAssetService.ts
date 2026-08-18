@@ -1,10 +1,13 @@
 import crypto from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import type { MediaTask } from "./mediaGenerationService";
 import {
   downloadMediaToTempFile,
   type VerticalDramaMediaType,
 } from "./verticalDramaMediaAssetService";
-import { assertR2StorageActive, storagePutFromPath } from "../storage";
+import { getDb } from "../db";
+import { mediaAssets } from "../../drizzle/schema";
+import { assertR2StorageActive, storageExists, storagePutFromPath } from "../storage";
 
 export type PresentationMediaType = "image" | "video";
 
@@ -48,6 +51,97 @@ function extensionFor(mediaType: PresentationMediaType, mimeType: string): strin
   return known[mimeType] ?? (mediaType === "image" ? ".png" : ".mp4");
 }
 
+function extensionForSource(
+  mediaType: PresentationMediaType,
+  sourceUrl: string,
+  fallbackMimeType: string,
+): string {
+  try {
+    const pathname = new URL(sourceUrl).pathname.toLowerCase();
+    const extension = pathname.match(/\.(avif|bmp|gif|jpe?g|mov|mp4|png|tiff?|webm|webp)$/)?.[0];
+    if (extension) return extension === ".jpeg" ? ".jpg" : extension;
+  } catch {
+    // Fall back to the media type when the provider URL is not parseable.
+  }
+  return extensionFor(mediaType, fallbackMimeType);
+}
+
+async function registerPresentationMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  deckId: number;
+  storageKey: string;
+  durableUrl: string;
+  mimeType: string;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [existing] = await db
+    .select({ id: mediaAssets.id })
+    .from(mediaAssets)
+    .where(and(
+      eq(mediaAssets.tenantId, input.tenantId),
+      eq(mediaAssets.userId, input.userId),
+      eq(mediaAssets.storageKey, input.storageKey),
+    ))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(mediaAssets)
+      .set({
+        sourceType: "presentation_generated",
+        projectId: `presentation:${input.deckId}`,
+        status: "ready",
+        originalUrl: input.durableUrl,
+        mimeType: input.mimeType,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(mediaAssets.id, existing.id),
+        eq(mediaAssets.tenantId, input.tenantId),
+        eq(mediaAssets.userId, input.userId),
+      ));
+    return existing.id;
+  }
+
+  const [inserted] = await db
+    .insert(mediaAssets)
+    .values({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      projectId: `presentation:${input.deckId}`,
+      sourceType: "presentation_generated",
+      status: "ready",
+      storageKey: input.storageKey,
+      originalUrl: input.durableUrl,
+      mimeType: input.mimeType,
+    })
+    .returning({ id: mediaAssets.id });
+  if (!inserted) throw new Error("Failed to register Presentation media asset");
+  return inserted.id;
+}
+
+function buildDurableTask(
+  task: MediaTask,
+  storageKey: string,
+  durableUrl: string,
+  mediaAssetId: number,
+): MediaTask {
+  return {
+    ...task,
+    resultUrl: durableUrl,
+    // Do not return provider URLs from completed Presentation tasks. The
+    // browser only needs the durable URL and the audit identifiers below.
+    resultData: {
+      presentationDurabilityStatus: "ready",
+      presentationStorageKey: storageKey,
+      presentationMediaAssetId: mediaAssetId,
+    },
+  };
+}
+
 export async function ensurePresentationTaskResultDurable(input: {
   tenantId: string;
   userId: number;
@@ -62,57 +156,77 @@ export async function ensurePresentationTaskResultDurable(input: {
 
   const existingKey = managedStorageKey(sourceUrl);
   if (existingKey) {
+    if (!(await storageExists(existingKey))) return null;
     const durableUrl = `/api/storage/files/${encodeURI(existingKey)}`;
+    const mediaAssetId = await registerPresentationMediaAsset({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      deckId: input.deckId,
+      storageKey: existingKey,
+      durableUrl,
+      mimeType: input.mediaType === "image" ? "image/png" : "video/mp4",
+    });
     return {
-      task: {
-        ...input.task,
-        resultData: {
-          ...(input.task.resultData ?? {}),
-          presentationDurabilityStatus: "ready",
-          presentationStorageKey: existingKey,
-        },
-      },
-      resultUrl: durableUrl,
+      task: buildDurableTask(input.task, existingKey, durableUrl, mediaAssetId),
       durableUrl,
       storageKey: existingKey,
     };
   }
 
   await assertR2StorageActive();
+  const identity = input.task.id || sourceUrl;
+  const fallbackMimeType = input.mediaType === "image" ? "image/png" : "video/mp4";
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(`${input.tenantId}:${input.userId}:${input.deckId}:${input.mediaType}:${identity}`)
+    .digest("hex");
+  const storageKeyPrefix = [
+    "presentation",
+    safePart(input.tenantId),
+    `deck-${safePart(input.deckId)}`,
+    input.mediaType,
+    safePart(input.slotId || "media"),
+  ].join("/");
+  const storageKey = `${storageKeyPrefix}/${safePart(identity)}-${contentHash}${extensionForSource(input.mediaType, sourceUrl, fallbackMimeType)}`;
+  const durableUrl = `/api/storage/files/${encodeURI(storageKey)}`;
+
+  // Polling can call this function repeatedly after the provider has already
+  // expired its URL. Reuse the registered object before touching the provider.
+  if (await storageExists(storageKey)) {
+    const mediaAssetId = await registerPresentationMediaAsset({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      deckId: input.deckId,
+      storageKey,
+      durableUrl,
+      mimeType: fallbackMimeType,
+    });
+    return {
+      task: buildDurableTask(input.task, storageKey, durableUrl, mediaAssetId),
+      durableUrl,
+      storageKey,
+    };
+  }
+
   const downloaded = await downloadMediaToTempFile(
     sourceUrl,
     input.mediaType as VerticalDramaMediaType,
-    input.mediaType === "image" ? "image/png" : "video/mp4",
+    fallbackMimeType,
   );
   try {
-    const identity = input.task.id || sourceUrl;
-    const contentHash = crypto
-      .createHash("sha256")
-      .update(`${input.tenantId}:${input.userId}:${input.deckId}:${input.mediaType}:${identity}`)
-      .digest("hex");
-    const storageKey = [
-      "presentation",
-      safePart(input.tenantId),
-      `deck-${safePart(input.deckId)}`,
-      input.mediaType,
-      safePart(input.slotId || "media"),
-      `${safePart(identity)}-${contentHash}${extensionFor(input.mediaType, downloaded.mimeType)}`,
-    ].join("/");
     const stored = await storagePutFromPath(storageKey, downloaded.tempPath, downloaded.mimeType);
-    const durableUrl = `/api/storage/files/${encodeURI(stored.key)}`;
-    const resultData = {
-      ...(input.task.resultData ?? {}),
-      presentationDurabilityStatus: "ready",
-      presentationStorageKey: stored.key,
-      presentationSourceUrl: sourceUrl,
-    };
+    const storedUrl = `/api/storage/files/${encodeURI(stored.key)}`;
+    const mediaAssetId = await registerPresentationMediaAsset({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      deckId: input.deckId,
+      storageKey: stored.key,
+      durableUrl: storedUrl,
+      mimeType: downloaded.mimeType,
+    });
     return {
-      task: {
-        ...input.task,
-        resultUrl: durableUrl,
-        resultData,
-      },
-      durableUrl,
+      task: buildDurableTask(input.task, stored.key, storedUrl, mediaAssetId),
+      durableUrl: storedUrl,
       storageKey: stored.key,
     };
   } finally {

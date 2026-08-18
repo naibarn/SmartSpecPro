@@ -117,6 +117,19 @@ describe("AuthCallback OAuth 2FA flow", () => {
     });
 
     expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "/trpc/auth.oauthExchangeSession",
+      expect.objectContaining({
+        body: JSON.stringify({
+          json: {
+            accessToken: "python-oauth-token",
+            provider: "google",
+            isNewUser: false,
+          },
+        }),
+      }),
+    );
     expect(getPendingOAuthTwoFactor()).toEqual({
       email: "user@example.com",
       hasBackupEmail: true,

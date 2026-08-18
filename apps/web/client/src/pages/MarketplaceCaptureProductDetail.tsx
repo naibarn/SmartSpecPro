@@ -3587,6 +3587,8 @@ export default function MarketplaceCaptureProductDetail() {
     autoReviewPlanReviewRedraftError,
     setAutoReviewPlanReviewRedraftError,
   ] = useState<string | null>(null);
+  const [autoReviewCreativeQcError, setAutoReviewCreativeQcError] =
+    useState<string | null>(null);
   const approveAutoReviewPlanReviewMutation =
     trpc.marketplaceCapture.approveAutoReviewPlanReview.useMutation({
       onSuccess: async () => {
@@ -3595,6 +3597,68 @@ export default function MarketplaceCaptureProductDetail() {
       },
       onError: error => {
         setAutoReviewPlanReviewApproveError(error.message);
+        toast.error(error.message);
+      },
+    });
+  const startAutoReviewCreativeQcMutation =
+    trpc.marketplaceCapture.startAutoReviewDraftQualityQc.useMutation({
+      onSuccess: async result => {
+        setAutoReviewCreativeQcError(null);
+        const freshRunId = compactText(
+          (result as Record<string, unknown> | undefined)?.id
+        );
+        if (freshRunId) {
+          utils.marketplaceCapture.getAutoReviewRun.setData(
+            { runId: freshRunId },
+            result
+          );
+        }
+        await autoReviewRuns.refetch();
+      },
+      onError: error => {
+        setAutoReviewCreativeQcError(error.message);
+        toast.error(error.message);
+      },
+    });
+  const repairAutoReviewCreativeQcMutation =
+    trpc.marketplaceCapture.startAutoReviewDraftQualityQcRepair.useMutation({
+      onSuccess: async result => {
+        setAutoReviewCreativeQcError(null);
+        const freshRunId = compactText(
+          (result as Record<string, unknown> | undefined)?.id
+        );
+        if (freshRunId) {
+          utils.marketplaceCapture.getAutoReviewRun.setData(
+            { runId: freshRunId },
+            result
+          );
+        }
+        await autoReviewRuns.refetch();
+        toast.success("เริ่มซ่อม Draft และจะตรวจ QC ฉบับใหม่ให้อัตโนมัติ");
+      },
+      onError: error => {
+        setAutoReviewCreativeQcError(error.message);
+        toast.error(error.message);
+      },
+    });
+  const selectAutoReviewCreativeQcRepairMutation =
+    trpc.marketplaceCapture.selectAutoReviewDraftQualityQcRepair.useMutation({
+      onSuccess: async result => {
+        setAutoReviewCreativeQcError(null);
+        const freshRunId = compactText(
+          (result as Record<string, unknown> | undefined)?.id
+        );
+        if (freshRunId) {
+          utils.marketplaceCapture.getAutoReviewRun.setData(
+            { runId: freshRunId },
+            result
+          );
+        }
+        await autoReviewRuns.refetch();
+        toast.success("เลือก Draft ที่ซ่อมผ่านแล้ว");
+      },
+      onError: error => {
+        setAutoReviewCreativeQcError(error.message);
         toast.error(error.message);
       },
     });
@@ -8757,6 +8821,36 @@ export default function MarketplaceCaptureProductDetail() {
                             requestAutoReviewPlanRedraftMutation.isPending
                           }
                           redraftError={autoReviewPlanReviewRedraftError}
+                          creativeQc={
+                            (statusAutoReviewRunMetadata.creativeQc as any) ?? null
+                          }
+                          onStartCreativeQc={rounds => {
+                            setAutoReviewCreativeQcError(null);
+                            startAutoReviewCreativeQcMutation.mutate({
+                              runId: String(statusAutoReviewRun.id),
+                              maxImprovementRounds: rounds,
+                            });
+                          }}
+                          creativeQcStarting={
+                            startAutoReviewCreativeQcMutation.isPending
+                          }
+                          creativeQcError={autoReviewCreativeQcError}
+                          onRepairCreativeQc={() => {
+                            setAutoReviewCreativeQcError(null);
+                            repairAutoReviewCreativeQcMutation.mutate({
+                              runId: String(statusAutoReviewRun.id),
+                            });
+                          }}
+                          onSelectCreativeQcRepair={() => {
+                            setAutoReviewCreativeQcError(null);
+                            selectAutoReviewCreativeQcRepairMutation.mutate({
+                              runId: String(statusAutoReviewRun.id),
+                            });
+                          }}
+                          creativeQcRepairing={
+                            repairAutoReviewCreativeQcMutation.isPending
+                          }
+                          creativeQcRepairError={autoReviewCreativeQcError}
                           onCancelRun={() =>
                             cancelAutoReviewMutation.mutate({
                               runId: String(statusAutoReviewRun.id),

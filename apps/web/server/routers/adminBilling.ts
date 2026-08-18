@@ -70,6 +70,14 @@ import {
   getBillingRuntimeSettingsAdmin,
   updateBillingRuntimeSettings,
 } from "../services/billing/runtimeConfig";
+import {
+  approvePromptPayPayment,
+  getPromptPayReview,
+  listPromptPayReviewQueue,
+  rejectPromptPayPayment,
+  resolvePromptPaySlipAccess,
+} from "../services/billing/promptpayDirectService";
+import { runTopupInvoiceRetentionCleanupJob } from "../jobs/billingJobs";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 
 const tenantIdSchema = z
@@ -134,7 +142,7 @@ const beamProviderSettingsSchema = z.object({
 });
 
 const billingRuntimeSettingsSchema = z.object({
-  BILLING_ACTIVE_PROVIDER: z.enum(["stripe", "beam"]).optional(),
+  BILLING_ACTIVE_PROVIDER: z.enum(["stripe", "beam", "promptpay_direct"]).optional(),
   BILLING_STRIPE_ENABLED: z.boolean().optional(),
   BILLING_BEAM_ENABLED: z.boolean().optional(),
   PAYMENT_RECONCILIATION_ENABLED: z.boolean().optional(),
@@ -164,6 +172,7 @@ const billingRuntimeSettingsSchema = z.object({
   BILLING_OVERDUE_DAYS: z.string().trim().max(16).optional(),
   BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: z.string().trim().max(16).optional(),
   BILLING_TOPUP_DUE_DAYS: z.string().trim().max(16).optional(),
+  BILLING_TOPUP_PENDING_RETENTION_DAYS: z.string().trim().max(16).optional(),
   BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: z.string().trim().max(16).optional(),
   BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: z.string().trim().max(16).optional(),
   BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: z.string().trim().max(16).optional(),
@@ -172,6 +181,20 @@ const billingRuntimeSettingsSchema = z.object({
   BILLING_SUBSCRIPTION_CUTOVER_READY: z.boolean().optional(),
   BILLING_PUBLIC_URL: z.string().trim().max(2048).optional(),
   BILLING_PHASE2_STEP_UP_SECRET: z.string().trim().max(2048).optional(),
+  PROMPTPAY_DIRECT_ENABLED: z.boolean().optional(),
+  PROMPTPAY_DIRECT_RECIPIENT_ID: z.string().trim().max(128).optional(),
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: z.enum(["phone", "national_id", "tax_id", "ewallet"]).optional(),
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: z.string().trim().max(128).optional(),
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: z.string().trim().max(16).optional(),
+  PROMPTPAY_DIRECT_FX_PROVIDER: z.literal("frankfurter_daily").optional(),
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: z.string().trim().max(16).optional(),
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: z.string().trim().max(16).optional(),
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: z.string().trim().max(16).optional(),
+  PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: z.literal("1").optional(),
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: z.string().trim().max(16).optional(),
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: z.string().trim().max(16).optional(),
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: z.string().trim().max(16).optional(),
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: z.string().trim().max(512).optional(),
 });
 
 function actorFromContext(ctx: {
@@ -403,6 +426,63 @@ export const adminBillingRouter = router({
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       assertBillingActionAuthorized(actorFromContext(ctx), "edit_tax_and_numbering", { tenantId });
       return updateBillingRuntimeSettings(input, ctx.user.id);
+    }),
+
+  listPromptPayReviewQueue: protectedProcedure
+    .input(z.object({ tenantId: tenantIdSchema, query: z.string().trim().max(128).optional().nullable(), limit: z.number().int().min(1).max(200).optional() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = input.tenantId ?? resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      assertBillingActionAuthorized(actorFromContext(ctx), "view_invoice", { tenantId });
+      return listPromptPayReviewQueue({ tenantId, query: input.query ?? null, limit: input.limit });
+    }),
+
+  getPromptPayReview: protectedProcedure
+    .input(z.object({ paymentId: z.number().int().positive(), tenantId: tenantIdSchema }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = input.tenantId ?? resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      assertBillingActionAuthorized(actorFromContext(ctx), "view_invoice", { tenantId });
+      const result = await getPromptPayReview({ paymentId: input.paymentId, tenantId });
+      if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
+      return result;
+    }),
+
+  getPromptPaySlipAccess: protectedProcedure
+    .input(z.object({ slipId: z.number().int().positive(), tenantId: tenantIdSchema, ttlSeconds: z.number().int().min(60).max(3600).optional() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = input.tenantId ?? resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      assertBillingActionAuthorized(actorFromContext(ctx), "view_invoice", { tenantId });
+      const access = await resolvePromptPaySlipAccess({ slipId: input.slipId, actorUserId: ctx.user.id, isAdmin: true, tenantId, ttlSeconds: input.ttlSeconds });
+      if (!access) throw new TRPCError({ code: "NOT_FOUND", message: "Slip not found" });
+      return access;
+    }),
+
+  approvePromptPayPayment: protectedProcedure
+    .input(z.object({ paymentId: z.number().int().positive(), tenantId: tenantIdSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = input.tenantId ?? resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      assertBillingActionAuthorized(actorFromContext(ctx), "approve_promptpay_direct", { tenantId });
+      return approvePromptPayPayment({
+        paymentId: input.paymentId,
+        actorUserId: ctx.user.id,
+        tenantId,
+        allowSelfApproval: ctx.user.role === "admin",
+      });
+    }),
+
+  rejectPromptPayPayment: protectedProcedure
+    .input(z.object({ paymentId: z.number().int().positive(), tenantId: tenantIdSchema, reason: z.string().trim().min(3).max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = input.tenantId ?? resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      assertBillingActionAuthorized(actorFromContext(ctx), "reject_promptpay_direct", { tenantId });
+      return rejectPromptPayPayment({ paymentId: input.paymentId, actorUserId: ctx.user.id, reason: input.reason, tenantId });
+    }),
+
+  clearStaleTopupInvoices: protectedProcedure
+    .input(z.object({ tenantId: tenantIdSchema }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = input?.tenantId ?? resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      assertBillingActionAuthorized(actorFromContext(ctx), "cancel_invoice", { tenantId });
+      return runTopupInvoiceRetentionCleanupJob({ tenantId, actorUserId: ctx.user.id });
     }),
 
   listRenewalAttempts: protectedProcedure

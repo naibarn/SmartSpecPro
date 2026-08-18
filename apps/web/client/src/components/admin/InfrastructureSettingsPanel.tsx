@@ -173,6 +173,71 @@ interface AppRuntimeForm {
   llm_gateway_service_account_id: string;
 }
 
+interface McpRuntimeForm {
+  modern_protocol_enabled: boolean;
+  oauth_inbound_enabled: boolean;
+  oauth_protected_resource_enabled: boolean;
+  oauth_authorization_server_enabled: boolean;
+  oauth_dynamic_registration_enabled: boolean;
+  public_base_url: string;
+  oauth_issuer: string;
+  oauth_resource: string;
+  oauth_jwks_uri: string;
+  oauth_audience: string;
+  oauth_authorization_servers: string;
+  oauth_scopes_supported: string;
+  cors_allowed_origins: string;
+  session_allowed_origins: string;
+  session_ttl_seconds: number;
+  workspace_root: string;
+  workspace_write_enabled: boolean;
+  max_read_bytes: number;
+  max_write_bytes: number;
+  extension_allowlist: string;
+  mcp_rpm: number;
+}
+
+function buildRecommendedMcpRuntimeForm(
+  scopes: readonly string[],
+  publicBaseUrl = "https://smartaihub.app",
+): McpRuntimeForm {
+  const normalizedBaseUrl = publicBaseUrl.trim().replace(/\/$/, "") || "https://smartaihub.app";
+  return {
+    modern_protocol_enabled: true,
+    oauth_inbound_enabled: true,
+    oauth_protected_resource_enabled: true,
+    oauth_authorization_server_enabled: true,
+    // Hermes CLI and other native MCP clients use RFC 7591 registration to
+    // obtain a client_id before starting the browser-based PKCE flow. The
+    // registration endpoint remains safe because the server only accepts
+    // HTTPS or explicit loopback redirect URIs and applies a rate limit.
+    oauth_dynamic_registration_enabled: true,
+    public_base_url: normalizedBaseUrl,
+    oauth_issuer: normalizedBaseUrl,
+    oauth_resource: `${normalizedBaseUrl}/v1/mcp`,
+    oauth_jwks_uri: `${normalizedBaseUrl}/.well-known/jwks.json`,
+    oauth_audience: "smartaihub-mcp",
+    oauth_authorization_servers: normalizedBaseUrl,
+    oauth_scopes_supported: scopes.join("\n"),
+    cors_allowed_origins: normalizedBaseUrl,
+    session_allowed_origins: normalizedBaseUrl,
+    session_ttl_seconds: 1800,
+    workspace_root: "",
+    workspace_write_enabled: false,
+    max_read_bytes: 1_048_576,
+    max_write_bytes: 1_048_576,
+    extension_allowlist: ".md,.txt,.json,.yaml,.yml,.ts,.tsx,.js,.py,.css,.html",
+    mcp_rpm: 240,
+  };
+}
+
+function getBrowserPublicBaseUrl(): string {
+  if (typeof window !== "undefined" && window.location.origin.startsWith("https://")) {
+    return window.location.origin.replace(/\/$/, "");
+  }
+  return "https://smartaihub.app";
+}
+
 // ============================================================
 // Constants
 // ============================================================
@@ -222,6 +287,7 @@ export default function InfrastructureSettingsPanel() {
       redis: isThai ? "Redis" : "Redis",
       monitoring: isThai ? "มอนิเตอร์" : "Monitoring",
       scaleTier: isThai ? "ระดับการสเกล" : "Scale Tier",
+      mcp: isThai ? "MCP/OAuth" : "MCP/OAuth",
     },
     gcp: {
       title: isThai ? "ตั้งค่า GCP" : "GCP Configuration",
@@ -240,6 +306,33 @@ export default function InfrastructureSettingsPanel() {
       title: isThai ? "ปลายทางและโทเคนของ App Runtime" : "App Runtime Endpoints & Tokens",
       hideSecrets: isThai ? "ซ่อน secrets" : "Hide secrets",
       showSecrets: isThai ? "แสดง secrets" : "Show secrets",
+    },
+    mcp: {
+      title: isThai ? "MCP และ OAuth" : "MCP & OAuth",
+      description: isThai ? "ตั้งค่า MCP สำหรับ Hermes, Claude และ Codex ผ่านฐานข้อมูล ไม่ต้องแก้ env บน production" : "Configure MCP for Hermes, Claude, and Codex through the database; no production env editing is required.",
+      source: isThai ? "แหล่งค่าปัจจุบัน" : "Current source",
+      database: isThai ? "ฐานข้อมูล (UI)" : "Database (UI)",
+      none: isThai ? "ยังไม่ได้ตั้งค่า" : "Not configured",
+      save: isThai ? "บันทึก MCP/OAuth" : "Save MCP/OAuth",
+      keyReady: isThai ? "มี signing key แล้ว" : "Signing key configured",
+      keyMissing: isThai ? "ยังไม่มี signing key" : "Signing key missing",
+      keyAutomatic: isThai ? "ระบบจะสร้าง signing key อัตโนมัติเมื่อเปิด OAuth Authorization Server" : "The server creates the signing key automatically when OAuth Authorization Server is enabled.",
+      productionNote: isThai ? "Production จะอ่านค่าจาก UI/ฐานข้อมูลเท่านั้น บันทึกแล้ว refresh runtime ทันที ไม่ต้องใส่ค่า MCP_* ใน env" : "Production reads MCP settings from the UI/database only. Saving refreshes the runtime immediately; MCP_* env values are not required.",
+      modern: isThai ? "เปิด Modern MCP protocol" : "Enable Modern MCP protocol",
+      inbound: isThai ? "รับและตรวจสอบ OAuth bearer token" : "Accept and verify OAuth bearer tokens",
+      protectedResource: isThai ? "เปิด OAuth Protected Resource Metadata" : "Publish OAuth Protected Resource Metadata",
+      authorizationServer: isThai ? "เปิด OAuth Authorization Server" : "Enable OAuth Authorization Server",
+      dynamicRegistration: isThai ? "อนุญาต dynamic client registration (จำเป็นสำหรับ CLI ครั้งแรก)" : "Allow dynamic client registration (required for first-time CLI setup)",
+      publicBaseUrl: isThai ? "Public base URL" : "Public base URL",
+      issuer: isThai ? "OAuth issuer" : "OAuth issuer",
+      resource: isThai ? "MCP resource" : "MCP resource",
+      jwks: isThai ? "JWKS URL" : "JWKS URL",
+      audience: isThai ? "Audience" : "Audience",
+      authServers: isThai ? "Authorization servers (บรรทัดละหนึ่งรายการ)" : "Authorization servers (one per line)",
+      scopes: isThai ? "Scopes ที่อนุญาต (บรรทัดละหนึ่งรายการ)" : "Allowed scopes (one per line)",
+      cors: isThai ? "CORS origins (บรรทัดละหนึ่งรายการ)" : "CORS origins (one per line)",
+      sessionOrigins: isThai ? "Session origins (บรรทัดละหนึ่งรายการ)" : "Session origins (one per line)",
+      sessionTtl: isThai ? "อายุ session (วินาที)" : "Session TTL (seconds)",
     },
     renderWorker: {
       title: isThai ? "Render Worker ในเครื่องนี้" : "In-Server Render Worker",
@@ -303,6 +396,29 @@ export default function InfrastructureSettingsPanel() {
     forge_api_key: "",
     llm_gateway_service_account_id: "",
   });
+  const [mcpRuntimeForm, setMcpRuntimeForm] = useState<McpRuntimeForm>({
+    modern_protocol_enabled: false,
+    oauth_inbound_enabled: false,
+    oauth_protected_resource_enabled: false,
+    oauth_authorization_server_enabled: false,
+    oauth_dynamic_registration_enabled: false,
+    public_base_url: "",
+    oauth_issuer: "",
+    oauth_resource: "",
+    oauth_jwks_uri: "",
+    oauth_audience: "smartaihub-mcp",
+    oauth_authorization_servers: "",
+    oauth_scopes_supported: "",
+    cors_allowed_origins: "",
+    session_allowed_origins: "",
+    session_ttl_seconds: 1800,
+    workspace_root: "",
+    workspace_write_enabled: false,
+    max_read_bytes: 1_048_576,
+    max_write_bytes: 1_048_576,
+    extension_allowlist: ".md,.txt,.json,.yaml,.yml,.ts,.tsx,.js,.py,.css,.html",
+    mcp_rpm: 240,
+  });
   const [webProcessRenderWorkerEnabled, setWebProcessRenderWorkerEnabled] = useState(false);
   const [confirmServerFfmpegWorker, setConfirmServerFfmpegWorker] = useState(false);
 
@@ -358,6 +474,12 @@ export default function InfrastructureSettingsPanel() {
     isLoading: appRuntimeLoading,
     refetch: refetchAppRuntime,
   } = trpc.infrastructure.getAppRuntimeConfig.useQuery();
+
+  const {
+    data: mcpRuntimeConfig,
+    isLoading: mcpRuntimeLoading,
+    refetch: refetchMcpRuntime,
+  } = trpc.infrastructure.getMcpRuntimeConfig.useQuery();
 
   const {
     data: monitoringStatus,
@@ -439,6 +561,26 @@ export default function InfrastructureSettingsPanel() {
       refetchAppRuntime();
     },
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
+  const updateMcpRuntimeMutation = trpc.infrastructure.updateMcpRuntimeConfig.useMutation({
+    onSuccess: () => {
+      toast.success(isThai ? "บันทึก MCP/OAuth สำเร็จ และ refresh runtime แล้ว" : "MCP/OAuth saved and runtime refreshed");
+      refetchMcpRuntime();
+    },
+    onError: (err) => toast.error(`Failed to save MCP/OAuth: ${err.message}`),
+  });
+
+  const generateMcpOAuthSigningKeyMutation = trpc.infrastructure.generateMcpOAuthSigningKey.useMutation({
+    onSuccess: (data) => {
+      toast.success(isThai
+        ? `สร้าง signing key สำเร็จ (${data.kid})`
+        : `Signing key created (${data.kid})`);
+      refetchMcpRuntime();
+    },
+    onError: (err) => toast.error(isThai
+      ? `สร้าง signing key ไม่สำเร็จ: ${err.message}`
+      : `Failed to create signing key: ${err.message}`),
   });
 
   const updateGcpMutation = trpc.infrastructure.updateGcpConfig.useMutation({
@@ -573,6 +715,41 @@ export default function InfrastructureSettingsPanel() {
   }, [appRuntimeConfig]);
 
   useEffect(() => {
+    const config = mcpRuntimeConfig?.config;
+    if (!config) return;
+    // Empty URL values are rendered as placeholders by the browser and are
+    // easy to mistake for real values. Seed only missing fields from the
+    // current HTTPS origin so the first production save is actionable.
+    const defaults = buildRecommendedMcpRuntimeForm(
+      mcpRuntimeConfig?.defaults?.scopesSupported ?? [],
+      getBrowserPublicBaseUrl(),
+    );
+    setMcpRuntimeForm({
+      modern_protocol_enabled: config.modernProtocolEnabled,
+      oauth_inbound_enabled: config.oauthInboundEnabled,
+      oauth_protected_resource_enabled: config.oauthProtectedResourceEnabled,
+      oauth_authorization_server_enabled: config.oauthAuthorizationServerEnabled,
+      oauth_dynamic_registration_enabled: config.oauthDynamicRegistrationEnabled,
+      public_base_url: config.publicBaseUrl || defaults.public_base_url,
+      oauth_issuer: config.oauthIssuer || defaults.oauth_issuer,
+      oauth_resource: config.oauthResource || defaults.oauth_resource,
+      oauth_jwks_uri: config.oauthJwksUri || defaults.oauth_jwks_uri,
+      oauth_audience: config.oauthAudience,
+      oauth_authorization_servers: config.oauthAuthorizationServers.join("\n") || defaults.oauth_authorization_servers,
+      oauth_scopes_supported: config.oauthScopesSupported.join("\n") || defaults.oauth_scopes_supported,
+      cors_allowed_origins: config.corsAllowedOrigins.join("\n") || defaults.cors_allowed_origins,
+      session_allowed_origins: config.sessionAllowedOrigins.join("\n") || defaults.session_allowed_origins,
+      session_ttl_seconds: config.sessionTtlSeconds,
+      workspace_root: config.workspaceRoot,
+      workspace_write_enabled: config.workspaceWriteEnabled,
+      max_read_bytes: config.maxReadBytes,
+      max_write_bytes: config.maxWriteBytes,
+      extension_allowlist: config.extensionAllowlist.join(","),
+      mcp_rpm: config.mcpRpm,
+    });
+  }, [mcpRuntimeConfig]);
+
+  useEffect(() => {
     if (scaleTierData?.tier) {
       setSelectedTier(scaleTierData.tier);
     }
@@ -626,6 +803,46 @@ export default function InfrastructureSettingsPanel() {
     updateAppRuntimeMutation.mutate(appRuntimeForm as any);
   };
 
+  const handleSaveMcpRuntime = () => {
+    const urlFields = [
+      ["Public base URL", mcpRuntimeForm.public_base_url],
+      ["OAuth issuer", mcpRuntimeForm.oauth_issuer],
+      ["MCP resource", mcpRuntimeForm.oauth_resource],
+      ["JWKS URL", mcpRuntimeForm.oauth_jwks_uri],
+    ] as const;
+    const invalidField = urlFields.find(([, value]) => {
+      try {
+        const parsed = new URL(value.trim());
+        return parsed.protocol !== "https:" || !parsed.hostname;
+      } catch {
+        return true;
+      }
+    });
+    if (invalidField) {
+      toast.error(isThai
+        ? `กรุณากรอก ${invalidField[0]} เป็น HTTPS URL ที่ถูกต้อง หรือกด “ใช้ค่ามาตรฐาน production”`
+        : `${invalidField[0]} must be a valid HTTPS URL. Use “Use production defaults” to fill it automatically.`);
+      return;
+    }
+    updateMcpRuntimeMutation.mutate({
+      ...mcpRuntimeForm,
+      public_base_url: mcpRuntimeForm.public_base_url.trim(),
+      oauth_issuer: mcpRuntimeForm.oauth_issuer.trim(),
+      oauth_resource: mcpRuntimeForm.oauth_resource.trim(),
+      oauth_jwks_uri: mcpRuntimeForm.oauth_jwks_uri.trim(),
+    });
+  };
+
+  const applyRecommendedMcpRuntime = () => {
+    const scopes = mcpRuntimeConfig?.defaults?.scopesSupported
+      ?? mcpRuntimeConfig?.config?.oauthScopesSupported
+      ?? [];
+    setMcpRuntimeForm(buildRecommendedMcpRuntimeForm(scopes));
+    toast.info(isThai
+      ? "ใส่ค่ามาตรฐาน production แล้ว กดบันทึกเพื่อเปิดใช้งาน"
+      : "Production-safe MCP defaults loaded. Save to apply them.");
+  };
+
   const hasGcpConfig = !!(gcpForm.gcp_project_id && gcpForm.gcp_region);
 
   // --- Loading state ---
@@ -640,7 +857,7 @@ export default function InfrastructureSettingsPanel() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
           <TabsTrigger value="gcp" className="flex items-center gap-1">
             <Cloud className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.gcp}</span>
@@ -648,6 +865,10 @@ export default function InfrastructureSettingsPanel() {
           <TabsTrigger value="app-runtime" className="flex items-center gap-1">
             <Globe className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.runtime}</span>
+          </TabsTrigger>
+          <TabsTrigger value="mcp" className="flex items-center gap-1">
+            <Shield className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{copy.tabs.mcp}</span>
           </TabsTrigger>
           <TabsTrigger value="tasks" className="flex items-center gap-1">
             <Server className="h-3.5 w-3.5" />
@@ -1068,6 +1289,123 @@ done`}
                 <Button onClick={handleSaveAppRuntime} disabled={updateAppRuntimeMutation.isPending}>
                   {updateAppRuntimeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Save App Runtime Configuration
+                </Button>
+              </div>
+            </div>
+          </DashboardCard>
+        </TabsContent>
+
+        <TabsContent value="mcp">
+          <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+            <div className="border-b bg-gradient-to-r from-emerald-50/60 to-cyan-50/40 pb-5">
+              <h3 className="flex items-center gap-2 text-lg"><Shield className="w-5 h-5 text-emerald-600" />{copy.mcp.title}</h3>
+              <p>{copy.mcp.description}</p>
+            </div>
+            <div className="space-y-5 pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 text-sm text-cyan-950">
+                <div>
+                  <div className="font-semibold">{isThai ? "เปิดใช้งาน production แบบแนะนำ" : "Enable the recommended production profile"}</div>
+                  <div className="mt-1 text-xs text-cyan-800">
+                    {isThai
+                      ? "เปิด Modern MCP, OAuth inbound, PRM, Authorization Server, dynamic registration สำหรับ Hermes/Claude Code/Codex CLI และสร้าง signing key อัตโนมัติเมื่อกดบันทึก โดยไม่เปิด workspace write"
+                      : "Enables Modern MCP, inbound OAuth, PRM, the Authorization Server, and controlled dynamic registration for Hermes/Claude Code/Codex CLI. Saving also provisions the signing key; workspace writes stay off."}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => refetchMcpRuntime()} disabled={mcpRuntimeLoading}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {isThai ? "ตรวจสอบค่าปัจจุบัน" : "Refresh status"}
+                  </Button>
+                  <Button type="button" size="sm" onClick={applyRecommendedMcpRuntime}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    {isThai ? "ใช้ค่ามาตรฐาน production" : "Use production defaults"}
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-900">
+                <div className="font-semibold">{copy.mcp.productionNote}</div>
+                <div className="mt-2">{copy.mcp.source}: <Badge variant="outline">{mcpRuntimeConfig?.source === "db" ? copy.mcp.database : mcpRuntimeConfig?.source === "env" ? "development fallback" : copy.mcp.none}</Badge></div>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  {mcpRuntimeConfig?.keyConfigured ? (
+                    <span className="text-emerald-700">✓ {copy.mcp.keyReady}</span>
+                  ) : (
+                    <>
+                      <span className="text-amber-700">⚠ {copy.mcp.keyMissing}</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-300 bg-white text-amber-900 hover:bg-amber-50"
+                        disabled={generateMcpOAuthSigningKeyMutation.isPending}
+                        onClick={() => generateMcpOAuthSigningKeyMutation.mutate()}
+                      >
+                        {generateMcpOAuthSigningKeyMutation.isPending
+                          ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          : <Shield className="mr-2 h-4 w-4" />}
+                        {isThai ? "สร้าง signing key" : "Create signing key"}
+                      </Button>
+                      <span className="text-xs text-amber-800">{copy.mcp.keyAutomatic}</span>
+                    </>
+                  )}
+                </div>
+                <div className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
+                  <span>POST {mcpRuntimeForm.oauth_resource || "https://smartaihub.app/v1/mcp"}</span>
+                  <span>PRM {mcpRuntimeForm.oauth_protected_resource_enabled ? "enabled" : "off"}</span>
+                  <span>JWKS {mcpRuntimeForm.oauth_jwks_uri || "not configured"}</span>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {([
+                  ["modern_protocol_enabled", copy.mcp.modern],
+                  ["oauth_inbound_enabled", copy.mcp.inbound],
+                  ["oauth_protected_resource_enabled", copy.mcp.protectedResource],
+                  ["oauth_authorization_server_enabled", copy.mcp.authorizationServer],
+                  ["oauth_dynamic_registration_enabled", copy.mcp.dynamicRegistration],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center justify-between rounded-xl border p-3 text-sm">
+                    <span>{label}</span>
+                    <Switch checked={mcpRuntimeForm[key]} onCheckedChange={(checked) => setMcpRuntimeForm((prev) => ({ ...prev, [key]: checked }))} />
+                  </label>
+                ))}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div><Label htmlFor="mcp_public_base_url">{copy.mcp.publicBaseUrl}</Label><Input id="mcp_public_base_url" type="url" value={mcpRuntimeForm.public_base_url} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, public_base_url: e.target.value }))} placeholder="https://smartaihub.app" /></div>
+                <div><Label htmlFor="mcp_oauth_issuer">{copy.mcp.issuer}</Label><Input id="mcp_oauth_issuer" type="url" value={mcpRuntimeForm.oauth_issuer} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_issuer: e.target.value }))} placeholder="https://smartaihub.app" /></div>
+                <div><Label htmlFor="mcp_oauth_resource">{copy.mcp.resource}</Label><Input id="mcp_oauth_resource" type="url" value={mcpRuntimeForm.oauth_resource} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_resource: e.target.value }))} placeholder="https://smartaihub.app/v1/mcp" /></div>
+                <div><Label htmlFor="mcp_oauth_jwks_uri">{copy.mcp.jwks}</Label><Input id="mcp_oauth_jwks_uri" type="url" value={mcpRuntimeForm.oauth_jwks_uri} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_jwks_uri: e.target.value }))} placeholder="https://smartaihub.app/.well-known/jwks.json" /></div>
+                <div><Label htmlFor="mcp_oauth_audience">{copy.mcp.audience}</Label><Input id="mcp_oauth_audience" value={mcpRuntimeForm.oauth_audience} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_audience: e.target.value }))} /></div>
+                <div><Label htmlFor="mcp_session_ttl">{copy.mcp.sessionTtl}</Label><Input id="mcp_session_ttl" type="number" min={300} max={86400} value={mcpRuntimeForm.session_ttl_seconds} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, session_ttl_seconds: Number(e.target.value) }))} /></div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {([
+                  ["oauth_authorization_servers", copy.mcp.authServers],
+                  ["oauth_scopes_supported", copy.mcp.scopes],
+                  ["cors_allowed_origins", copy.mcp.cors],
+                  ["session_allowed_origins", copy.mcp.sessionOrigins],
+                ] as const).map(([key, label]) => (
+                  <div key={key}><Label htmlFor={`mcp_${key}`}>{label}</Label><textarea id={`mcp_${key}`} rows={key === "oauth_scopes_supported" ? 8 : 4} value={mcpRuntimeForm[key]} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, [key]: e.target.value }))} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm" /></div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4 space-y-4">
+                <div className="font-medium">Legacy workspace MCP compatibility</div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div><Label htmlFor="mcp_workspace_root">Workspace root</Label><Input id="mcp_workspace_root" value={mcpRuntimeForm.workspace_root} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, workspace_root: e.target.value }))} placeholder="/srv/smartaihub/workspace" /></div>
+                  <div><Label htmlFor="mcp_rpm">Legacy MCP requests per minute</Label><Input id="mcp_rpm" type="number" min={10} max={10000} value={mcpRuntimeForm.mcp_rpm} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, mcp_rpm: Number(e.target.value) }))} /></div>
+                  <div><Label htmlFor="mcp_max_read_bytes">Maximum read bytes</Label><Input id="mcp_max_read_bytes" type="number" value={mcpRuntimeForm.max_read_bytes} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, max_read_bytes: Number(e.target.value) }))} /></div>
+                  <div><Label htmlFor="mcp_max_write_bytes">Maximum write bytes</Label><Input id="mcp_max_write_bytes" type="number" value={mcpRuntimeForm.max_write_bytes} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, max_write_bytes: Number(e.target.value) }))} /></div>
+                </div>
+                <div><Label htmlFor="mcp_extension_allowlist">Allowed file extensions</Label><Input id="mcp_extension_allowlist" value={mcpRuntimeForm.extension_allowlist} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, extension_allowlist: e.target.value }))} /></div>
+                <label className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>Allow legacy workspace writes</span><Switch checked={mcpRuntimeForm.workspace_write_enabled} onCheckedChange={(checked) => setMcpRuntimeForm((p) => ({ ...p, workspace_write_enabled: checked }))} /></label>
+                <div className="text-xs text-slate-500">Workspace writes require the OAuth `mcp:write` scope. An existing legacy token remains a compatibility fallback but is never shown or requested in this UI.</div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button onClick={handleSaveMcpRuntime} disabled={mcpRuntimeLoading || updateMcpRuntimeMutation.isPending}>
+                  {updateMcpRuntimeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{copy.mcp.save}
                 </Button>
               </div>
             </div>

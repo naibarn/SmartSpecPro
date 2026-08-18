@@ -2,10 +2,25 @@ import { describe, expect, it } from "vitest";
 import {
   classifySidebarSeriesItem,
   groupMainViewSeries,
+  isVerticalDramaSeriesIndexPath,
   resolveSidebarSeriesView,
   type SidebarSeriesGroupNode,
   type SidebarSeriesItem,
 } from "@/components/verticalDramaSeries/VerticalDramaShell";
+
+describe("isVerticalDramaSeriesIndexPath", () => {
+  it("allows the series index route, including a trailing slash/query", () => {
+    expect(isVerticalDramaSeriesIndexPath("/drama-series")).toBe(true);
+    expect(isVerticalDramaSeriesIndexPath("/drama-series/?tab=all")).toBe(true);
+  });
+
+  it("keeps series detail and episode routes out of the Draft Inbox", () => {
+    expect(isVerticalDramaSeriesIndexPath("/drama-series/21")).toBe(false);
+    expect(isVerticalDramaSeriesIndexPath("/drama-series/21/episodes/140")).toBe(
+      false
+    );
+  });
+});
 
 /**
  * Coverage for the lineage-aware sidebar filter/grouping fix

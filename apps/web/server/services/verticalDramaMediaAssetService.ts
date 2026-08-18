@@ -66,7 +66,8 @@ export async function ensureVerticalDramaManagedMediaAsset(input: {
     input.mimeType ||
     (input.mediaType === "image" ? "image/png" : "video/mp4");
   const durableUrl = `/api/storage/files/${encodeURI(storageKey)}`;
-  if (existing?.status === "ready") {
+  const objectExists = await storageExists(storageKey);
+  if (existing?.status === "ready" && objectExists) {
     return {
       mediaAssetId: existing.id,
       storageKey,
@@ -75,10 +76,21 @@ export async function ensureVerticalDramaManagedMediaAsset(input: {
     };
   }
 
-  // A missing object must not create a seemingly-ready asset row. This also
-  // keeps a stale legacy URL visible as a normal missing-file error instead
-  // of turning it into a new, misleading media asset.
-  if (!(await storageExists(storageKey))) return null;
+  if (!objectExists) {
+    if (existing && existing.status !== "expired") {
+      await db
+        .update(mediaAssets)
+        .set({ status: "expired", updatedAt: new Date() })
+        .where(
+          and(
+            eq(mediaAssets.id, existing.id),
+            eq(mediaAssets.tenantId, input.tenantId),
+            eq(mediaAssets.userId, input.userId),
+          ),
+        );
+    }
+    return null;
+  }
 
   if (existing) {
     const [repaired] = await db
@@ -389,6 +401,13 @@ export async function ingestVerticalDramaMediaAsset(input: {
       throw new Error(
         "Vertical Drama managed media asset is not registered for this account",
       );
+    }
+    if (!(await storageExists(managedKey))) {
+      await db
+        .update(mediaAssets)
+        .set({ status: "expired", updatedAt: new Date() })
+        .where(eq(mediaAssets.id, existing.id));
+      throw new Error("Vertical Drama managed media object is missing from storage");
     }
     return {
       mediaAssetId: existing.id,

@@ -1,5 +1,16 @@
 import { z } from "zod";
 import {
+  remotionExecutorRuntimeMetadataSchema,
+  remotionExecutorCapabilityProfileSchema,
+  remotionExecutorReadinessSchema,
+  remotionExecutionTargetSchema,
+  remotionResolvedExecutionTargetSchema,
+  remotionExecutionTargetResolutionReasonSchema,
+  remotionExecutionTargetResolutionSchema,
+  remotionExecutorRuntimePackManifestSchema,
+  REMOTION_EXECUTOR_RUNTIME_PACK_IDS,
+} from "@smartspec/remotion-render/render-video-schema";
+import {
   HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
   HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
 } from "./hyperframes/limits";
@@ -14,6 +25,12 @@ export const workerRuntimeTypeValues = [
   "nemoclaw_sandbox",
   "hiclaw_cluster",
   "hermes_agent_gateway",
+  "remotion_executor",
+] as const;
+
+export const workerRuntimeSourceValues = [
+  "existing_hermes_install",
+  "managed_runtime_pack",
 ] as const;
 
 export const workerStatusValues = [
@@ -68,6 +85,79 @@ export const workerResourceProfileValues = [
   "sandbox_required",
   "human_observable",
 ] as const;
+
+export const hermesTaskCorrelationStateValues = [
+  "queued",
+  "offered",
+  "accepted",
+  "running",
+  "awaiting_input",
+  "uploading",
+  "publishing",
+  "completed",
+  "partial",
+  "failed",
+  "canceled",
+  "expired",
+  "offline",
+  "pending_publication",
+] as const;
+
+export const hermesTaskCorrelationOperationValues = [
+  "external_agent_task",
+  "comfy_image_generation",
+  "comfy_workflow_run",
+  "remotion_render_video",
+  "vertical_drama_ffmpeg_assembly",
+  "local_ai_task",
+] as const;
+
+/**
+ * Bounded, non-secret lineage metadata for a Hermes parent task. It is kept
+ * in the existing worker job instructions JSON so retries and reconnects can
+ * recover the relationship without introducing another queue or table.
+ */
+export const hermesTaskCorrelationSchema = z
+  .object({
+    schemaVersion: z.literal("2026-08-18.1"),
+    tenantId: z.string().trim().min(1).max(64),
+    requestedByUserId: z.number().int().positive(),
+    conversationId: z.string().trim().min(1).max(128),
+    messageId: z.string().trim().max(128).nullable().optional(),
+    targetDeviceId: z.string().trim().max(128).nullable().optional(),
+    operation: z.enum(hermesTaskCorrelationOperationValues),
+    approvalState: z.enum(["not_required", "pending", "approved", "denied"]),
+    reservationId: z.string().trim().max(128).nullable().optional(),
+    parentJobId: z.string().trim().max(128).nullable().optional(),
+    childJobIds: z.array(z.string().trim().min(1).max(128)).max(32).default([]),
+    state: z.enum(hermesTaskCorrelationStateValues),
+    idempotencyKey: z.string().trim().min(1).max(160),
+    expiresAt: z.string().datetime({ offset: true }),
+    safeSummary: z.string().trim().min(1).max(500),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const serialized = JSON.stringify(value);
+    if (
+      /-----BEGIN|bearer\s+|api[_-]?key|access[_-]?token|refresh[_-]?token/i.test(
+        serialized
+      )
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Correlation metadata must not contain credentials",
+      });
+    }
+    if (
+      /[A-Za-z]:\\|\/(?:home|Users|var|tmp)\//i.test(serialized) ||
+      /https?:\/\//i.test(serialized)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Correlation metadata must not contain local paths or URLs",
+      });
+    }
+  });
 
 export const workerScopeValues = [
   "workers:register",
@@ -145,7 +235,9 @@ export const videoAssemblyFailureCodeValues = [
   "artifact_publish_failed",
 ] as const;
 
-export const VIDEO_ASSEMBLY_PROGRESS_STAGES = [...videoAssemblyProgressStageValues];
+export const VIDEO_ASSEMBLY_PROGRESS_STAGES = [
+  ...videoAssemblyProgressStageValues,
+];
 export const VIDEO_ASSEMBLY_FAILURE_CODES = [...videoAssemblyFailureCodeValues];
 
 export const localFolderIngestProgressStageValues = [
@@ -168,8 +260,12 @@ export const localFolderIngestFailureCodeValues = [
   "artifact_publish_failed",
 ] as const;
 
-export const LOCAL_FOLDER_INGEST_PROGRESS_STAGES = [...localFolderIngestProgressStageValues];
-export const LOCAL_FOLDER_INGEST_FAILURE_CODES = [...localFolderIngestFailureCodeValues];
+export const LOCAL_FOLDER_INGEST_PROGRESS_STAGES = [
+  ...localFolderIngestProgressStageValues,
+];
+export const LOCAL_FOLDER_INGEST_FAILURE_CODES = [
+  ...localFolderIngestFailureCodeValues,
+];
 
 export const comfyImageGenerationProgressStageValues = [
   "validate_service",
@@ -192,8 +288,12 @@ export const comfyImageGenerationFailureCodeValues = [
   "unsupported_output",
 ] as const;
 
-export const COMFY_IMAGE_GENERATION_PROGRESS_STAGES = [...comfyImageGenerationProgressStageValues];
-export const COMFY_IMAGE_GENERATION_FAILURE_CODES = [...comfyImageGenerationFailureCodeValues];
+export const COMFY_IMAGE_GENERATION_PROGRESS_STAGES = [
+  ...comfyImageGenerationProgressStageValues,
+];
+export const COMFY_IMAGE_GENERATION_FAILURE_CODES = [
+  ...comfyImageGenerationFailureCodeValues,
+];
 
 export const comfyWorkflowRunProgressStageValues = [
   "validate_service",
@@ -216,8 +316,12 @@ export const comfyWorkflowRunFailureCodeValues = [
   "unsupported_output",
 ] as const;
 
-export const COMFY_WORKFLOW_RUN_PROGRESS_STAGES = [...comfyWorkflowRunProgressStageValues];
-export const COMFY_WORKFLOW_RUN_FAILURE_CODES = [...comfyWorkflowRunFailureCodeValues];
+export const COMFY_WORKFLOW_RUN_PROGRESS_STAGES = [
+  ...comfyWorkflowRunProgressStageValues,
+];
+export const COMFY_WORKFLOW_RUN_FAILURE_CODES = [
+  ...comfyWorkflowRunFailureCodeValues,
+];
 
 export const hyperframesFinalCompositeProgressStageValues = [
   "resolve_inputs",
@@ -267,10 +371,7 @@ export const localAiWorkerJobFamilyValues = [
   "local_ai_multimodal",
 ] as const;
 
-export const localAiProviderValues = [
-  "ollama",
-  "lm_studio",
-] as const;
+export const localAiProviderValues = ["ollama", "lm_studio"] as const;
 
 export const SMARTAIHUB_WORKER_MCP_TOOL_NAMES = [
   "smartaihub.worker.get_capabilities",
@@ -286,22 +387,32 @@ export const SMARTAIHUB_WORKER_MCP_TOOL_NAMES = [
 ] as const;
 
 export type WorkerRuntimeType = (typeof workerRuntimeTypeValues)[number];
+export type WorkerRuntimeSource = (typeof workerRuntimeSourceValues)[number];
 export type WorkerStatus = (typeof workerStatusValues)[number];
 export type WorkerJobStatus = (typeof workerJobStatusValues)[number];
 export type WorkerMode = (typeof workerModeValues)[number];
 export type WorkerRuntimeMode = (typeof workerRuntimeModeValues)[number];
 export type WorkerFileScopeMode = (typeof workerFileScopeModeValues)[number];
-export type WorkerResourceProfile = (typeof workerResourceProfileValues)[number];
+export type WorkerResourceProfile =
+  (typeof workerResourceProfileValues)[number];
 export type WorkerScope = (typeof workerScopeValues)[number];
-export type WorkerDesktopServiceMode = (typeof workerDesktopServiceModeValues)[number];
-export type WorkerExecutionIdentityMode = (typeof workerExecutionIdentityModeValues)[number];
+export type WorkerDesktopServiceMode =
+  (typeof workerDesktopServiceModeValues)[number];
+export type WorkerExecutionIdentityMode =
+  (typeof workerExecutionIdentityModeValues)[number];
 export type WorkerApprovalMode = (typeof workerApprovalModeValues)[number];
-export type WorkerBudgetAttributionMode = (typeof workerBudgetAttributionModeValues)[number];
-export type WorkerTokenRotationTrigger = (typeof workerTokenRotationTriggerValues)[number];
-export type VideoAssemblyProgressStage = (typeof videoAssemblyProgressStageValues)[number];
-export type VideoAssemblyFailureCode = (typeof videoAssemblyFailureCodeValues)[number];
-export type LocalFolderIngestProgressStage = (typeof localFolderIngestProgressStageValues)[number];
-export type LocalFolderIngestFailureCode = (typeof localFolderIngestFailureCodeValues)[number];
+export type WorkerBudgetAttributionMode =
+  (typeof workerBudgetAttributionModeValues)[number];
+export type WorkerTokenRotationTrigger =
+  (typeof workerTokenRotationTriggerValues)[number];
+export type VideoAssemblyProgressStage =
+  (typeof videoAssemblyProgressStageValues)[number];
+export type VideoAssemblyFailureCode =
+  (typeof videoAssemblyFailureCodeValues)[number];
+export type LocalFolderIngestProgressStage =
+  (typeof localFolderIngestProgressStageValues)[number];
+export type LocalFolderIngestFailureCode =
+  (typeof localFolderIngestFailureCodeValues)[number];
 export type ComfyImageGenerationProgressStage =
   (typeof comfyImageGenerationProgressStageValues)[number];
 export type ComfyImageGenerationFailureCode =
@@ -316,11 +427,14 @@ export type HyperframesFinalCompositeFailureCode =
   (typeof hyperframesFinalCompositeFailureCodeValues)[number];
 export type HyperframesFinalCompositeCapabilityFamily =
   (typeof HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES)[number];
-export type LocalAiWorkerJobFamily = (typeof localAiWorkerJobFamilyValues)[number];
+export type LocalAiWorkerJobFamily =
+  (typeof localAiWorkerJobFamilyValues)[number];
 export type LocalAiProvider = (typeof localAiProviderValues)[number];
-export type SmartAiHubWorkerMcpToolName = (typeof SMARTAIHUB_WORKER_MCP_TOOL_NAMES)[number];
+export type SmartAiHubWorkerMcpToolName =
+  (typeof SMARTAIHUB_WORKER_MCP_TOOL_NAMES)[number];
 
 export const workerRuntimeTypeSchema = z.enum(workerRuntimeTypeValues);
+export const workerRuntimeSourceSchema = z.enum(workerRuntimeSourceValues);
 export const workerStatusSchema = z.enum(workerStatusValues);
 export const workerJobStatusSchema = z.enum(workerJobStatusValues);
 export const workerModeSchema = z.enum(workerModeValues);
@@ -328,43 +442,105 @@ export const workerRuntimeModeSchema = z.enum(workerRuntimeModeValues);
 export const workerFileScopeModeSchema = z.enum(workerFileScopeModeValues);
 export const workerResourceProfileSchema = z.enum(workerResourceProfileValues);
 export const workerScopeSchema = z.enum(workerScopeValues);
-export const workerDesktopServiceModeSchema = z.enum(workerDesktopServiceModeValues);
-export const workerExecutionIdentityModeSchema = z.enum(workerExecutionIdentityModeValues);
+export const workerDesktopServiceModeSchema = z.enum(
+  workerDesktopServiceModeValues
+);
+export const workerExecutionIdentityModeSchema = z.enum(
+  workerExecutionIdentityModeValues
+);
 export const workerApprovalModeSchema = z.enum(workerApprovalModeValues);
-export const workerBudgetAttributionModeSchema = z.enum(workerBudgetAttributionModeValues);
-export const workerTokenRotationTriggerSchema = z.enum(workerTokenRotationTriggerValues);
-export const videoAssemblyProgressStageSchema = z.enum(videoAssemblyProgressStageValues);
-export const videoAssemblyFailureCodeSchema = z.enum(videoAssemblyFailureCodeValues);
-export const localFolderIngestProgressStageSchema = z.enum(localFolderIngestProgressStageValues);
-export const localFolderIngestFailureCodeSchema = z.enum(localFolderIngestFailureCodeValues);
-export const comfyImageGenerationProgressStageSchema = z.enum(comfyImageGenerationProgressStageValues);
-export const comfyImageGenerationFailureCodeSchema = z.enum(comfyImageGenerationFailureCodeValues);
-export const comfyWorkflowRunProgressStageSchema = z.enum(comfyWorkflowRunProgressStageValues);
-export const comfyWorkflowRunFailureCodeSchema = z.enum(comfyWorkflowRunFailureCodeValues);
+export const workerBudgetAttributionModeSchema = z.enum(
+  workerBudgetAttributionModeValues
+);
+export const workerTokenRotationTriggerSchema = z.enum(
+  workerTokenRotationTriggerValues
+);
+export const videoAssemblyProgressStageSchema = z.enum(
+  videoAssemblyProgressStageValues
+);
+export const videoAssemblyFailureCodeSchema = z.enum(
+  videoAssemblyFailureCodeValues
+);
+export const localFolderIngestProgressStageSchema = z.enum(
+  localFolderIngestProgressStageValues
+);
+export const localFolderIngestFailureCodeSchema = z.enum(
+  localFolderIngestFailureCodeValues
+);
+export const comfyImageGenerationProgressStageSchema = z.enum(
+  comfyImageGenerationProgressStageValues
+);
+export const comfyImageGenerationFailureCodeSchema = z.enum(
+  comfyImageGenerationFailureCodeValues
+);
+export const comfyWorkflowRunProgressStageSchema = z.enum(
+  comfyWorkflowRunProgressStageValues
+);
+export const comfyWorkflowRunFailureCodeSchema = z.enum(
+  comfyWorkflowRunFailureCodeValues
+);
 export const hyperframesFinalCompositeProgressStageSchema = z.enum(
-  hyperframesFinalCompositeProgressStageValues,
+  hyperframesFinalCompositeProgressStageValues
 );
 export const hyperframesFinalCompositeFailureCodeSchema = z.enum(
-  hyperframesFinalCompositeFailureCodeValues,
+  hyperframesFinalCompositeFailureCodeValues
 );
-export const localAiWorkerJobFamilySchema = z.enum(localAiWorkerJobFamilyValues);
+export const localAiWorkerJobFamilySchema = z.enum(
+  localAiWorkerJobFamilyValues
+);
 export const localAiProviderSchema = z.enum(localAiProviderValues);
 export const mcpWorkerToolNameSchema = z.enum(SMARTAIHUB_WORKER_MCP_TOOL_NAMES);
 export const hyperframesFinalCompositeCapabilityFamilySchema = z.enum(
-  HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
+  HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES
 );
 
 export const workerProtocolCompatibilitySchema = z.object({
   protocolVersion: z.string().min(1).default(WORKER_RUNTIME_PROTOCOL_VERSION),
   runtimeVersion: z.string().min(1),
-  minServerProtocolVersion: z.string().min(1).nullable().optional().default(null),
-  maxServerProtocolVersion: z.string().min(1).nullable().optional().default(null),
-  runtimeFamilySchemaVersion: z.string().min(1).default(WORKER_RUNTIME_FAMILY_SCHEMA_VERSION),
-  runtimeProfileSchemaVersion: z.string().min(1).default(WORKER_RUNTIME_PROFILE_SCHEMA_VERSION),
-  minRuntimeFamilySchemaVersion: z.string().min(1).nullable().optional().default(null),
-  maxRuntimeFamilySchemaVersion: z.string().min(1).nullable().optional().default(null),
-  minRuntimeProfileSchemaVersion: z.string().min(1).nullable().optional().default(null),
-  maxRuntimeProfileSchemaVersion: z.string().min(1).nullable().optional().default(null),
+  minServerProtocolVersion: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .default(null),
+  maxServerProtocolVersion: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .default(null),
+  runtimeFamilySchemaVersion: z
+    .string()
+    .min(1)
+    .default(WORKER_RUNTIME_FAMILY_SCHEMA_VERSION),
+  runtimeProfileSchemaVersion: z
+    .string()
+    .min(1)
+    .default(WORKER_RUNTIME_PROFILE_SCHEMA_VERSION),
+  minRuntimeFamilySchemaVersion: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .default(null),
+  maxRuntimeFamilySchemaVersion: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .default(null),
+  minRuntimeProfileSchemaVersion: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .default(null),
+  maxRuntimeProfileSchemaVersion: z
+    .string()
+    .min(1)
+    .nullable()
+    .optional()
+    .default(null),
 });
 
 export const workerDeviceBindingSchema = z.object({
@@ -387,7 +563,7 @@ export const workerDesktopRuntimeMetadataSchema = z.object({
     z.object({
       root: z.string().min(1),
       accessMode: workerFileScopeModeSchema.optional(),
-    }),
+    })
   ),
   gpuSnapshot: z.record(z.string(), z.unknown()),
   toolchainSummary: z.record(z.string(), z.unknown()),
@@ -418,79 +594,179 @@ export const workerHiClawRuntimeMetadataSchema = z.object({
   matrixVisibilityMode: z.string().min(1),
 });
 
-export const workerHermesRuntimeMetadataSchema = z.object({
-  hermesVersion: z.string().min(1),
-  profileName: z.string().min(1),
-  profileLabel: z.string().min(1).nullable().optional().default(null),
-  profilePurpose: z.string().min(1).nullable().optional().default(null),
-  llmRoutingMode: z.enum(["auto", "pinned_provider"]).default("auto"),
-  preferredProviderId: z.number().int().positive().nullable().optional().default(null),
-  preferredProviderName: z.string().min(1).nullable().optional().default(null),
-  channelStatus: z.enum(["connected", "inactive", "revoked"]).nullable().optional().default(null),
-  apiServerEnabled: z.boolean().default(true),
-  apiServerBaseUrl: z.string().url().nullable().optional().default(null),
-  remoteEndpointPolicyExceptionId: z.string().trim().min(1).nullable().optional().default(null),
-  terminalBackend: z.string().min(1),
-  gatewayPlatforms: z.array(z.string().min(1)).default([]),
-  supportsDelegatedHttp: z.boolean().default(false),
-  supportsDelegatedMcp: z.boolean().default(false),
-  supportsBoundConnector: z.boolean().default(false),
-  supportsCallbacks: z.boolean().default(false),
-  memorySyncEnabled: z.boolean().default(false),
-  memorySyncScope: z.enum(["personal", "team_shared", "workspace_shared", "cross_channel"]).nullable().optional().default(null),
-  memorySyncStatus: z.enum(["disabled", "active", "inactive", "quarantined"]).nullable().optional().default(null),
-  workerAccessPolicy: z.object({
-    permissionPreset: z.string().min(1).nullable().optional().default(null),
-    permissionScopes: z.array(z.string().min(1)).default([]),
-    quotaHourly: z.number().int().positive().nullable().optional().default(null),
-    quotaDaily: z.number().int().positive().nullable().optional().default(null),
-    quotaWeekly: z.number().int().positive().nullable().optional().default(null),
-    quotaMonthly: z.number().int().positive().nullable().optional().default(null),
-  }).nullable().optional().default(null),
-  hostPlatform: z.string().min(1),
-  hostExecutionMode: z.string().min(1),
-}).superRefine((payload, ctx) => {
-  if (payload.apiServerEnabled && !payload.apiServerBaseUrl) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["apiServerBaseUrl"],
-      message: "Hermes bridge metadata requires apiServerBaseUrl when apiServerEnabled is true",
-    });
-  }
-  if (
-    payload.apiServerBaseUrl
-    && !isWorkerLoopbackUrl(payload.apiServerBaseUrl)
-    && payload.remoteEndpointPolicyExceptionId
-    && !isWorkerHttpsUrl(payload.apiServerBaseUrl)
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["apiServerBaseUrl"],
-      message: "Hermes bridge remote API server URLs must use https when an audited exception is granted",
-    });
-  }
-  if (payload.llmRoutingMode === "pinned_provider" && !payload.preferredProviderId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["preferredProviderId"],
-      message: "Hermes pinned provider routing requires preferredProviderId",
-    });
-  }
-  if (payload.preferredProviderId && payload.llmRoutingMode !== "pinned_provider") {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["llmRoutingMode"],
-      message: "preferredProviderId requires llmRoutingMode to be pinned_provider",
-    });
-  }
-  if (payload.preferredProviderName && !payload.preferredProviderId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["preferredProviderName"],
-      message: "preferredProviderName requires preferredProviderId",
-    });
-  }
-});
+export const workerHermesRuntimeMetadataSchema = z
+  .object({
+    hermesVersion: z.string().min(1),
+    profileName: z.string().min(1),
+    profileLabel: z.string().min(1).nullable().optional().default(null),
+    profilePurpose: z.string().min(1).nullable().optional().default(null),
+    llmRoutingMode: z.enum(["auto", "pinned_provider"]).default("auto"),
+    preferredProviderId: z
+      .number()
+      .int()
+      .positive()
+      .nullable()
+      .optional()
+      .default(null),
+    preferredProviderName: z
+      .string()
+      .min(1)
+      .nullable()
+      .optional()
+      .default(null),
+    channelStatus: z
+      .enum(["connected", "inactive", "revoked"])
+      .nullable()
+      .optional()
+      .default(null),
+    apiServerEnabled: z.boolean().default(true),
+    apiServerBaseUrl: z.string().url().nullable().optional().default(null),
+    remoteEndpointPolicyExceptionId: z
+      .string()
+      .trim()
+      .min(1)
+      .nullable()
+      .optional()
+      .default(null),
+    terminalBackend: z.string().min(1),
+    gatewayPlatforms: z.array(z.string().min(1)).default([]),
+    supportsDelegatedHttp: z.boolean().default(false),
+    supportsDelegatedMcp: z.boolean().default(false),
+    supportsBoundConnector: z.boolean().default(false),
+    supportsCallbacks: z.boolean().default(false),
+    memorySyncEnabled: z.boolean().default(false),
+    memorySyncScope: z
+      .enum(["personal", "team_shared", "workspace_shared", "cross_channel"])
+      .nullable()
+      .optional()
+      .default(null),
+    memorySyncStatus: z
+      .enum(["disabled", "active", "inactive", "quarantined"])
+      .nullable()
+      .optional()
+      .default(null),
+    workerAccessPolicy: z
+      .object({
+        permissionPreset: z.string().min(1).nullable().optional().default(null),
+        permissionScopes: z.array(z.string().min(1)).default([]),
+        quotaHourly: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .default(null),
+        quotaDaily: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .default(null),
+        quotaWeekly: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .default(null),
+        quotaMonthly: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .default(null),
+      })
+      .nullable()
+      .optional()
+      .default(null),
+    hostPlatform: z.string().min(1),
+    hostExecutionMode: z.string().min(1),
+  })
+  .superRefine((payload, ctx) => {
+    if (payload.apiServerEnabled && !payload.apiServerBaseUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["apiServerBaseUrl"],
+        message:
+          "Hermes bridge metadata requires apiServerBaseUrl when apiServerEnabled is true",
+      });
+    }
+    if (
+      payload.apiServerBaseUrl &&
+      !isWorkerLoopbackUrl(payload.apiServerBaseUrl) &&
+      payload.remoteEndpointPolicyExceptionId &&
+      !isWorkerHttpsUrl(payload.apiServerBaseUrl)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["apiServerBaseUrl"],
+        message:
+          "Hermes bridge remote API server URLs must use https when an audited exception is granted",
+      });
+    }
+    if (
+      payload.llmRoutingMode === "pinned_provider" &&
+      !payload.preferredProviderId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["preferredProviderId"],
+        message: "Hermes pinned provider routing requires preferredProviderId",
+      });
+    }
+    if (
+      payload.preferredProviderId &&
+      payload.llmRoutingMode !== "pinned_provider"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["llmRoutingMode"],
+        message:
+          "preferredProviderId requires llmRoutingMode to be pinned_provider",
+      });
+    }
+    if (payload.preferredProviderName && !payload.preferredProviderId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["preferredProviderName"],
+        message: "preferredProviderName requires preferredProviderId",
+      });
+    }
+  });
+
+export const workerRemotionExecutorRuntimeMetadataSchema =
+  remotionExecutorRuntimeMetadataSchema;
+
+export const workerRemotionExecutorRegistrationSchema = z
+  .object({
+    runtimeMetadataJson: remotionExecutorRuntimeMetadataSchema,
+    capabilitiesJson: remotionExecutorCapabilityProfileSchema,
+    healthSummaryJson: remotionExecutorReadinessSchema,
+  })
+  .strict()
+  .superRefine((registration, ctx) => {
+    if (
+      registration.runtimeMetadataJson.maxConcurrency !==
+      registration.capabilitiesJson.maxConcurrency
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["capabilitiesJson", "maxConcurrency"],
+        message:
+          "Runtime metadata and capability profile concurrency must match",
+      });
+    }
+    if (registration.healthSummaryJson.status !== "ready") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["healthSummaryJson", "status"],
+        message:
+          "A worker registration must be ready before it can claim Remotion work",
+      });
+    }
+  });
 
 export interface HermesRuntimePersonaSummary {
   profileName: string | null;
@@ -512,15 +788,37 @@ export interface HermesRuntimeChannelSummary {
 
 export interface HermesRuntimeMemorySyncSummary {
   memorySyncEnabled: boolean;
-  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
-  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  memorySyncScope:
+    | "personal"
+    | "team_shared"
+    | "workspace_shared"
+    | "cross_channel"
+    | null;
+  memorySyncStatus:
+    | "disabled"
+    | "active"
+    | "inactive"
+    | "quarantined"
+    | "unknown";
   displayLabel: string;
   isSharedScope: boolean;
 }
 
 export interface HermesTaskModeSummary {
-  taskMode: "coordination" | "research_summary" | "channel_response" | "team_update_drafting" | "monitoring_triage" | "generic_fallback";
-  scopeProfile: "worker_gateway_readonly" | "worker_gateway_content_creator" | "worker_gateway_researcher" | "worker_gateway_media_operator" | "worker_gateway_hybrid_executor" | null;
+  taskMode:
+    | "coordination"
+    | "research_summary"
+    | "channel_response"
+    | "team_update_drafting"
+    | "monitoring_triage"
+    | "generic_fallback";
+  scopeProfile:
+    | "worker_gateway_readonly"
+    | "worker_gateway_content_creator"
+    | "worker_gateway_researcher"
+    | "worker_gateway_media_operator"
+    | "worker_gateway_hybrid_executor"
+    | null;
   displayLabel: string;
 }
 
@@ -532,7 +830,11 @@ export interface HermesProviderRoutingSummary {
 }
 
 const HERMES_SCOPE_PROFILE_TO_TASK_MODE: Record<
-  "worker_gateway_readonly" | "worker_gateway_content_creator" | "worker_gateway_researcher" | "worker_gateway_media_operator" | "worker_gateway_hybrid_executor",
+  | "worker_gateway_readonly"
+  | "worker_gateway_content_creator"
+  | "worker_gateway_researcher"
+  | "worker_gateway_media_operator"
+  | "worker_gateway_hybrid_executor",
   HermesTaskModeSummary["taskMode"]
 > = {
   worker_gateway_readonly: "coordination",
@@ -543,9 +845,11 @@ const HERMES_SCOPE_PROFILE_TO_TASK_MODE: Record<
 };
 
 export function summarizeHermesRuntimePersona(
-  runtimeMetadataJson: Record<string, unknown> | null | undefined,
+  runtimeMetadataJson: Record<string, unknown> | null | undefined
 ): HermesRuntimePersonaSummary {
-  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(
+    runtimeMetadataJson ?? {}
+  );
   if (!parsed.success) {
     return {
       profileName: null,
@@ -561,7 +865,9 @@ export function summarizeHermesRuntimePersona(
   const profileLabel = parsed.data.profileLabel?.trim() || null;
   const profilePurpose = parsed.data.profilePurpose?.trim() || null;
   const displayLabel = profileLabel ?? profileName ?? "Generic Hermes";
-  const displayPurpose = profilePurpose ?? (profileName ? "Default Hermes behavior" : "No persona selected");
+  const displayPurpose =
+    profilePurpose ??
+    (profileName ? "Default Hermes behavior" : "No persona selected");
 
   return {
     profileName,
@@ -569,16 +875,19 @@ export function summarizeHermesRuntimePersona(
     profilePurpose,
     displayLabel,
     displayPurpose,
-    isGenericFallback: profileName === null && profileLabel === null && profilePurpose === null,
+    isGenericFallback:
+      profileName === null && profileLabel === null && profilePurpose === null,
   };
 }
 
 export function summarizeHermesRuntimeChannel(
   runtimeMetadataJson: Record<string, unknown> | null | undefined,
   workerStatus?: string | null,
-  revokedAt?: string | null,
+  revokedAt?: string | null
 ): HermesRuntimeChannelSummary {
-  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(
+    runtimeMetadataJson ?? {}
+  );
   if (!parsed.success) {
     return {
       channelStatus: "unknown",
@@ -590,17 +899,26 @@ export function summarizeHermesRuntimeChannel(
     };
   }
 
-  const status = parsed.data.channelStatus
-    ?? (revokedAt ? "revoked" : null)
-    ?? (workerStatus === "disabled" || workerStatus === "draining" ? "inactive" : null)
-    ?? ((parsed.data.supportsCallbacks || parsed.data.supportsDelegatedHttp || parsed.data.supportsDelegatedMcp || parsed.data.gatewayPlatforms.length > 0)
+  const status =
+    parsed.data.channelStatus ??
+    (revokedAt ? "revoked" : null) ??
+    (workerStatus === "disabled" || workerStatus === "draining"
+      ? "inactive"
+      : null) ??
+    (parsed.data.supportsCallbacks ||
+    parsed.data.supportsDelegatedHttp ||
+    parsed.data.supportsDelegatedMcp ||
+    parsed.data.gatewayPlatforms.length > 0
       ? "connected"
       : "inactive");
   const displayLabel =
-    status === "connected" ? "Connected"
-    : status === "revoked" ? "Revoked"
-    : status === "inactive" ? "Inactive"
-    : "Unknown";
+    status === "connected"
+      ? "Connected"
+      : status === "revoked"
+        ? "Revoked"
+        : status === "inactive"
+          ? "Inactive"
+          : "Unknown";
 
   return {
     channelStatus: status,
@@ -608,14 +926,18 @@ export function summarizeHermesRuntimeChannel(
     hasCallbackSupport: parsed.data.supportsCallbacks === true,
     hasDelegatedHttpSupport: parsed.data.supportsDelegatedHttp === true,
     hasDelegatedMcpSupport: parsed.data.supportsDelegatedMcp === true,
-    connectedPlatforms: parsed.data.gatewayPlatforms.map((platform) => platform.trim().toLowerCase()).filter(Boolean),
+    connectedPlatforms: parsed.data.gatewayPlatforms
+      .map(platform => platform.trim().toLowerCase())
+      .filter(Boolean),
   };
 }
 
 export function summarizeHermesRuntimeMemorySync(
-  runtimeMetadataJson: Record<string, unknown> | null | undefined,
+  runtimeMetadataJson: Record<string, unknown> | null | undefined
 ): HermesRuntimeMemorySyncSummary {
-  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(
+    runtimeMetadataJson ?? {}
+  );
   if (!parsed.success) {
     return {
       memorySyncEnabled: false,
@@ -628,11 +950,13 @@ export function summarizeHermesRuntimeMemorySync(
 
   const memorySyncEnabled = parsed.data.memorySyncEnabled === true;
   const memorySyncScope = parsed.data.memorySyncScope ?? null;
-  const memorySyncStatus = parsed.data.memorySyncStatus
-    ?? (memorySyncEnabled ? "active" : "disabled");
+  const memorySyncStatus =
+    parsed.data.memorySyncStatus ?? (memorySyncEnabled ? "active" : "disabled");
   const displayLabel =
     memorySyncStatus === "active"
-      ? (memorySyncScope === "personal" || !memorySyncScope ? "Personal memory sync" : "Shared memory sync")
+      ? memorySyncScope === "personal" || !memorySyncScope
+        ? "Personal memory sync"
+        : "Shared memory sync"
       : memorySyncStatus === "quarantined"
         ? "Memory sync quarantined"
         : memorySyncStatus === "inactive"
@@ -644,14 +968,18 @@ export function summarizeHermesRuntimeMemorySync(
     memorySyncScope,
     memorySyncStatus,
     displayLabel,
-    isSharedScope: memorySyncScope === "team_shared" || memorySyncScope === "workspace_shared" || memorySyncScope === "cross_channel",
+    isSharedScope:
+      memorySyncScope === "team_shared" ||
+      memorySyncScope === "workspace_shared" ||
+      memorySyncScope === "cross_channel",
   };
 }
 
 export function summarizeHermesTaskMode(
-  scopeProfile: string | null | undefined,
+  scopeProfile: string | null | undefined
 ): HermesTaskModeSummary {
-  const normalized = typeof scopeProfile === "string" ? scopeProfile.trim() : "";
+  const normalized =
+    typeof scopeProfile === "string" ? scopeProfile.trim() : "";
   if (!normalized) {
     return {
       taskMode: "generic_fallback",
@@ -661,7 +989,8 @@ export function summarizeHermesTaskMode(
   }
 
   const profile = normalized as keyof typeof HERMES_SCOPE_PROFILE_TO_TASK_MODE;
-  const taskMode = HERMES_SCOPE_PROFILE_TO_TASK_MODE[profile] ?? "generic_fallback";
+  const taskMode =
+    HERMES_SCOPE_PROFILE_TO_TASK_MODE[profile] ?? "generic_fallback";
   const displayLabelMap: Record<HermesTaskModeSummary["taskMode"], string> = {
     coordination: "Coordination",
     research_summary: "Research summary",
@@ -673,15 +1002,19 @@ export function summarizeHermesTaskMode(
 
   return {
     taskMode,
-    scopeProfile: (profile in HERMES_SCOPE_PROFILE_TO_TASK_MODE ? profile : null) as HermesTaskModeSummary["scopeProfile"],
+    scopeProfile: (profile in HERMES_SCOPE_PROFILE_TO_TASK_MODE
+      ? profile
+      : null) as HermesTaskModeSummary["scopeProfile"],
     displayLabel: displayLabelMap[taskMode],
   };
 }
 
 export function summarizeHermesProviderRouting(
-  runtimeMetadataJson: Record<string, unknown> | null | undefined,
+  runtimeMetadataJson: Record<string, unknown> | null | undefined
 ): HermesProviderRoutingSummary {
-  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(
+    runtimeMetadataJson ?? {}
+  );
   if (!parsed.success) {
     return {
       llmRoutingMode: "auto",
@@ -692,7 +1025,8 @@ export function summarizeHermesProviderRouting(
   }
 
   const preferredProviderId = parsed.data.preferredProviderId ?? null;
-  const preferredProviderName = parsed.data.preferredProviderName?.trim() || null;
+  const preferredProviderName =
+    parsed.data.preferredProviderName?.trim() || null;
   if (parsed.data.llmRoutingMode === "pinned_provider" && preferredProviderId) {
     return {
       llmRoutingMode: "pinned_provider",
@@ -734,34 +1068,105 @@ const workerRegistrationPayloadBaseSchema = z.object({
   deviceBinding: workerDeviceBindingSchema.nullable().optional().default(null),
 });
 
-export const workerRegistrationPayloadSchema = workerRegistrationPayloadBaseSchema.superRefine(
-  (payload, ctx) => {
-    validateWorkerRuntimeMetadata(payload.runtimeType, payload.workerMode, payload.runtimeMetadataJson, ctx);
+export const workerRegistrationPayloadSchema =
+  workerRegistrationPayloadBaseSchema.superRefine((payload, ctx) => {
+    validateWorkerRuntimeMetadata(
+      payload.runtimeType,
+      payload.workerMode,
+      payload.runtimeMetadataJson,
+      ctx
+    );
     if (payload.runtimeType === "hermes_agent_gateway") {
       if (payload.workerMode !== "per_user") {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["workerMode"],
-          message: "Hermes bridge registrations must use per_user worker mode in v1",
+          message:
+            "Hermes bridge registrations must use per_user worker mode in v1",
         });
       }
       if (payload.runtimeMode !== "external_managed") {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["runtimeMode"],
-          message: "Hermes bridge registrations must use external_managed runtime mode in v1",
+          message:
+            "Hermes bridge registrations must use external_managed runtime mode in v1",
         });
       }
       if (!payload.externalReference.startsWith("hermes://")) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["externalReference"],
-          message: "Hermes bridge externalReference must use hermes:// URI form",
+          message:
+            "Hermes bridge externalReference must use hermes:// URI form",
         });
       }
     }
-  },
-);
+    if (payload.runtimeType === "remotion_executor") {
+      if (
+        payload.runtimeMode !== "native_constrained" &&
+        payload.runtimeMode !== "wsl2_managed"
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["runtimeMode"],
+          message:
+            "Standalone Remotion executors must use native_constrained or wsl2_managed runtime mode",
+        });
+      }
+      if (
+        !/^remotion-executor:\/\/[A-Za-z0-9_-]{1,128}$/.test(
+          payload.externalReference
+        )
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["externalReference"],
+          message:
+            "Standalone Remotion executor externalReference must use an opaque remotion-executor:// device form",
+        });
+      }
+      if (payload.fileScopeMode !== "workspace_scoped") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["fileScopeMode"],
+          message:
+            "Standalone Remotion executors must use workspace_scoped file access",
+        });
+      }
+      if (!payload.deviceBinding) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["deviceBinding"],
+          message: "Standalone Remotion executors require device binding",
+        });
+      }
+      const runtimeMetadata = remotionExecutorRuntimeMetadataSchema.safeParse(
+        payload.runtimeMetadataJson
+      );
+      if (runtimeMetadata.success) {
+        const requiresWsl =
+          runtimeMetadata.data.installationMode === "windows_wsl2";
+        if (requiresWsl !== (payload.runtimeMode === "wsl2_managed")) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["runtimeMode"],
+            message: "runtimeMode must match the executor installation mode",
+          });
+        }
+      }
+      const registration = workerRemotionExecutorRegistrationSchema.safeParse({
+        runtimeMetadataJson: payload.runtimeMetadataJson,
+        capabilitiesJson: payload.capabilitiesJson,
+        healthSummaryJson: payload.healthSummaryJson,
+      });
+      if (!registration.success) {
+        for (const issue of registration.error.issues) {
+          ctx.addIssue({ ...issue, path: issue.path });
+        }
+      }
+    }
+  });
 
 export const workerHeartbeatPayloadSchema = z.object({
   compatibility: workerProtocolCompatibilitySchema,
@@ -783,7 +1188,13 @@ export const workerClaimRequestSchema = z.object({
 export const workerJobEventPayloadSchema = z.object({
   eventType: z.string().min(1),
   payloadJson: z.record(z.string(), z.unknown()).default({}),
-  sequenceNumber: z.number().int().positive().nullable().optional().default(null),
+  sequenceNumber: z
+    .number()
+    .int()
+    .positive()
+    .nullable()
+    .optional()
+    .default(null),
   leaseOwnerToken: z.string().min(1),
   assignmentAttempt: z.string().min(1).nullable().optional().default(null),
 });
@@ -825,36 +1236,76 @@ export const workerGatewayCompatibilityMetadataSchema = z.object({
   contractVersion: z.string().min(1).default(WORKER_RUNTIME_PROTOCOL_VERSION),
   preferredTransport: z.literal("http").default("http"),
   authMode: z.enum(["bearer", "api_key", "internal_token"]).default("bearer"),
-  embeddingsSupport: z.enum(["supported", "unsupported", "deferred"]).default("unsupported"),
+  embeddingsSupport: z
+    .enum(["supported", "unsupported", "deferred"])
+    .default("unsupported"),
   httpEndpoints: z.array(workerGatewayEndpointSchema).min(1),
 });
 
-export const DEFAULT_CLAW_GATEWAY_COMPATIBILITY = workerGatewayCompatibilityMetadataSchema.parse({
-  authMode: "bearer",
-  embeddingsSupport: "unsupported",
-  httpEndpoints: [
-    { method: "GET", path: "/v1/openapi.json", purpose: "HTTP capability discovery" },
-    { method: "POST", path: "/v1/chat/completions", purpose: "OpenAI-compatible chat" },
-    { method: "POST", path: "/v1/responses", purpose: "Responses API proxy" },
-    { method: "GET", path: "/v1/models", purpose: "Model discovery" },
-    { method: "GET", path: "/v1/credits", purpose: "Credit visibility" },
-    { method: "POST", path: "/v1/knowledge/library/search", purpose: "Owner library search" },
-    { method: "POST", path: "/v1/knowledge/library/upload", purpose: "Owner library upload" },
-    { method: "POST", path: "/v1/knowledge/rag/search", purpose: "Owner RAG search" },
-    { method: "POST", path: "/v1/knowledge/rag/ingest", purpose: "Owner RAG ingest" },
-  ],
-});
+export const DEFAULT_CLAW_GATEWAY_COMPATIBILITY =
+  workerGatewayCompatibilityMetadataSchema.parse({
+    authMode: "bearer",
+    embeddingsSupport: "unsupported",
+    httpEndpoints: [
+      {
+        method: "GET",
+        path: "/v1/openapi.json",
+        purpose: "HTTP capability discovery",
+      },
+      {
+        method: "POST",
+        path: "/v1/chat/completions",
+        purpose: "OpenAI-compatible chat",
+      },
+      { method: "POST", path: "/v1/responses", purpose: "Responses API proxy" },
+      { method: "GET", path: "/v1/models", purpose: "Model discovery" },
+      { method: "GET", path: "/v1/credits", purpose: "Credit visibility" },
+      {
+        method: "POST",
+        path: "/v1/knowledge/library/search",
+        purpose: "Owner library search",
+      },
+      {
+        method: "POST",
+        path: "/v1/knowledge/library/upload",
+        purpose: "Owner library upload",
+      },
+      {
+        method: "POST",
+        path: "/v1/knowledge/rag/search",
+        purpose: "Owner RAG search",
+      },
+      {
+        method: "POST",
+        path: "/v1/knowledge/rag/ingest",
+        purpose: "Owner RAG ingest",
+      },
+    ],
+  });
 
-export const DEFAULT_HERMES_GATEWAY_COMPATIBILITY = workerGatewayCompatibilityMetadataSchema.parse({
-  authMode: "bearer",
-  embeddingsSupport: "unsupported",
-  httpEndpoints: [
-    { method: "GET", path: "/health", purpose: "Hermes API server health check" },
-    { method: "POST", path: "/v1/chat/completions", purpose: "OpenAI-compatible chat bridge" },
-    { method: "POST", path: "/v1/responses", purpose: "OpenAI-compatible responses bridge" },
-    { method: "GET", path: "/v1/models", purpose: "Hermes model discovery" },
-  ],
-});
+export const DEFAULT_HERMES_GATEWAY_COMPATIBILITY =
+  workerGatewayCompatibilityMetadataSchema.parse({
+    authMode: "bearer",
+    embeddingsSupport: "unsupported",
+    httpEndpoints: [
+      {
+        method: "GET",
+        path: "/health",
+        purpose: "Hermes API server health check",
+      },
+      {
+        method: "POST",
+        path: "/v1/chat/completions",
+        purpose: "OpenAI-compatible chat bridge",
+      },
+      {
+        method: "POST",
+        path: "/v1/responses",
+        purpose: "OpenAI-compatible responses bridge",
+      },
+      { method: "GET", path: "/v1/models", purpose: "Hermes model discovery" },
+    ],
+  });
 
 export interface WorkerRuntimeDefinition {
   runtimeType: WorkerRuntimeType;
@@ -878,8 +1329,12 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
     featureFlag: "openClawExternalRuntime",
     registrationSupport: "stable",
     dispatchSupport: "stable",
-    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
-    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    supportedRuntimeFamilySchemaVersions: [
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+    ],
+    supportedRuntimeProfileSchemaVersions: [
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+    ],
     gatewayCompatibility: DEFAULT_CLAW_GATEWAY_COMPATIBILITY,
   },
   desktop_zeroclaw_managed: {
@@ -889,8 +1344,12 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
     featureFlag: "desktopZeroClawWorker",
     registrationSupport: "feature_gated",
     dispatchSupport: "limited",
-    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
-    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    supportedRuntimeFamilySchemaVersions: [
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+    ],
+    supportedRuntimeProfileSchemaVersions: [
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+    ],
     gatewayCompatibility: null,
   },
   nemoclaw_sandbox: {
@@ -900,8 +1359,12 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
     featureFlag: "nemoClawSecureWorkerPool",
     registrationSupport: "admin_gated",
     dispatchSupport: "admin_gated",
-    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
-    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    supportedRuntimeFamilySchemaVersions: [
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+    ],
+    supportedRuntimeProfileSchemaVersions: [
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+    ],
     gatewayCompatibility: null,
   },
   hiclaw_cluster: {
@@ -911,8 +1374,12 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
     featureFlag: "hiClawClusterRuntime",
     registrationSupport: "admin_gated",
     dispatchSupport: "admin_gated",
-    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
-    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    supportedRuntimeFamilySchemaVersions: [
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+    ],
+    supportedRuntimeProfileSchemaVersions: [
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+    ],
     gatewayCompatibility: null,
   },
   hermes_agent_gateway: {
@@ -922,13 +1389,34 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
     featureFlag: "hermesAgentRuntime",
     registrationSupport: "feature_gated",
     dispatchSupport: "limited",
-    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
-    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    supportedRuntimeFamilySchemaVersions: [
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+    ],
+    supportedRuntimeProfileSchemaVersions: [
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+    ],
     gatewayCompatibility: DEFAULT_HERMES_GATEWAY_COMPATIBILITY,
+  },
+  remotion_executor: {
+    runtimeType: "remotion_executor",
+    displayName: "Standalone Remotion Executor",
+    familyName: "Remotion",
+    featureFlag: "remotionDedicatedExecutorEnabled",
+    registrationSupport: "feature_gated",
+    dispatchSupport: "limited",
+    supportedRuntimeFamilySchemaVersions: [
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+    ],
+    supportedRuntimeProfileSchemaVersions: [
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+    ],
+    gatewayCompatibility: null,
   },
 };
 
-export function getWorkerRuntimeDefinition(runtimeType: WorkerRuntimeType): WorkerRuntimeDefinition {
+export function getWorkerRuntimeDefinition(
+  runtimeType: WorkerRuntimeType
+): WorkerRuntimeDefinition {
   return WORKER_RUNTIME_DEFINITIONS[runtimeType];
 }
 
@@ -939,7 +1427,7 @@ function compareVersionStrings(left: string, right: string): number {
 function isVersionWithinWindow(
   current: string,
   minVersion: string | null | undefined,
-  maxVersion: string | null | undefined,
+  maxVersion: string | null | undefined
 ): boolean {
   if (minVersion && compareVersionStrings(current, minVersion) < 0) {
     return false;
@@ -953,7 +1441,7 @@ function isVersionWithinWindow(
 function compatibilityReason(
   supported: boolean,
   workerVersion: string,
-  supportedVersions: readonly string[],
+  supportedVersions: readonly string[]
 ): string | null {
   if (supported) {
     return null;
@@ -980,36 +1468,45 @@ export interface WorkerCompatibilityEvaluation {
 
 export function evaluateWorkerCompatibility(
   runtimeType: WorkerRuntimeType,
-  compatibility: WorkerProtocolCompatibility,
+  compatibility: WorkerProtocolCompatibility
 ): WorkerCompatibilityEvaluation {
-  const normalizedCompatibility = workerProtocolCompatibilitySchema.parse(compatibility);
+  const normalizedCompatibility =
+    workerProtocolCompatibilitySchema.parse(compatibility);
   const definition = getWorkerRuntimeDefinition(runtimeType);
   const transportCompatible =
-    normalizedCompatibility.protocolVersion === WORKER_RUNTIME_PROTOCOL_VERSION
-    && isVersionWithinWindow(
+    normalizedCompatibility.protocolVersion ===
+      WORKER_RUNTIME_PROTOCOL_VERSION &&
+    isVersionWithinWindow(
       WORKER_RUNTIME_PROTOCOL_VERSION,
       normalizedCompatibility.minServerProtocolVersion,
-      normalizedCompatibility.maxServerProtocolVersion,
+      normalizedCompatibility.maxServerProtocolVersion
     );
   const runtimeFamilyCompatible =
-    definition.supportedRuntimeFamilySchemaVersions.includes(normalizedCompatibility.runtimeFamilySchemaVersion)
-    && isVersionWithinWindow(
+    definition.supportedRuntimeFamilySchemaVersions.includes(
+      normalizedCompatibility.runtimeFamilySchemaVersion
+    ) &&
+    isVersionWithinWindow(
       WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
       normalizedCompatibility.minRuntimeFamilySchemaVersion,
-      normalizedCompatibility.maxRuntimeFamilySchemaVersion,
+      normalizedCompatibility.maxRuntimeFamilySchemaVersion
     );
   const runtimeProfileCompatible =
-    definition.supportedRuntimeProfileSchemaVersions.includes(normalizedCompatibility.runtimeProfileSchemaVersion)
-    && isVersionWithinWindow(
+    definition.supportedRuntimeProfileSchemaVersions.includes(
+      normalizedCompatibility.runtimeProfileSchemaVersion
+    ) &&
+    isVersionWithinWindow(
       WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
       normalizedCompatibility.minRuntimeProfileSchemaVersion,
-      normalizedCompatibility.maxRuntimeProfileSchemaVersion,
+      normalizedCompatibility.maxRuntimeProfileSchemaVersion
     );
 
   return {
     runtimeType,
     checkedAt: new Date().toISOString(),
-    compatible: transportCompatible && runtimeFamilyCompatible && runtimeProfileCompatible,
+    compatible:
+      transportCompatible &&
+      runtimeFamilyCompatible &&
+      runtimeProfileCompatible,
     transport: {
       compatible: transportCompatible,
       workerVersion: normalizedCompatibility.protocolVersion,
@@ -1027,7 +1524,7 @@ export function evaluateWorkerCompatibility(
       reason: compatibilityReason(
         runtimeFamilyCompatible,
         normalizedCompatibility.runtimeFamilySchemaVersion,
-        definition.supportedRuntimeFamilySchemaVersions,
+        definition.supportedRuntimeFamilySchemaVersions
       ),
     },
     runtimeProfile: {
@@ -1038,7 +1535,7 @@ export function evaluateWorkerCompatibility(
       reason: compatibilityReason(
         runtimeProfileCompatible,
         normalizedCompatibility.runtimeProfileSchemaVersion,
-        definition.supportedRuntimeProfileSchemaVersions,
+        definition.supportedRuntimeProfileSchemaVersions
       ),
     },
   };
@@ -1056,18 +1553,9 @@ const videoAssemblySubtitleSourcePrioritySchema = z.enum([
   "external_integration",
 ]);
 
-const videoAssemblySubtitleModeSchema = z.enum([
-  "burn_in",
-  "soft_mux",
-  "none",
-]);
+const videoAssemblySubtitleModeSchema = z.enum(["burn_in", "soft_mux", "none"]);
 
-const videoAssemblyAspectRatioSchema = z.enum([
-  "16:9",
-  "9:16",
-  "1:1",
-  "4:5",
-]);
+const videoAssemblyAspectRatioSchema = z.enum(["16:9", "9:16", "1:1", "4:5"]);
 
 const comfyExpectedOutputTypeSchema = z.enum([
   "images",
@@ -1092,10 +1580,12 @@ export function isWorkerLoopbackUrl(value: string): boolean {
   try {
     const parsed = new URL(value.trim());
     const hostname = parsed.hostname.trim().toLowerCase();
-    return hostname === "localhost"
-      || hostname === "127.0.0.1"
-      || hostname === "::1"
-      || hostname === "[::1]";
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname === "[::1]"
+    );
   } catch {
     return false;
   }
@@ -1127,89 +1617,180 @@ export function normalizeWorkerPolicyPath(value: string): string {
 
 export function isWorkerPathWithinAllowedRoots(
   candidatePath: string,
-  allowedRoots: readonly string[],
+  allowedRoots: readonly string[]
 ): boolean {
   const normalizedCandidate = normalizeWorkerPolicyPath(candidatePath);
-  return allowedRoots.some((root) => {
+  return allowedRoots.some(root => {
     const normalizedRoot = normalizeWorkerPolicyPath(root);
-    return normalizedCandidate === normalizedRoot
-      || normalizedCandidate.startsWith(`${normalizedRoot}\\`);
+    return (
+      normalizedCandidate === normalizedRoot ||
+      normalizedCandidate.startsWith(`${normalizedRoot}\\`)
+    );
   });
 }
 
 const workerStableHashSchema = z.string().trim().min(8).max(256);
 const workerStorageRefSchema = z.string().trim().min(1).max(2_000);
-const workerDownloadUrlSchema = z.string().trim().min(1).max(8_192).regex(/^(https?:\/\/|\/).+/);
+const workerDownloadUrlSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(8_192)
+  .regex(/^(https?:\/\/|\/).+/);
 
 export const hyperframesFinalCompositeAssetManifestSchema = z.object({
-  sourceVideos: z.array(
-    z.object({
-      shotId: z.string().trim().min(1),
-      storageRef: workerStorageRefSchema,
-      downloadUrl: workerDownloadUrlSchema.nullable().optional().default(null),
-      mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).default(0),
-      durationSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
-      contentType: z.string().trim().min(1).default("video/mp4"),
-      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
-    }),
-  ).min(1),
-  audioRefs: z.array(
-    z.object({
-      role: z.enum(["source_audio", "music_bed", "sfx", "voiceover"]),
-      storageRef: workerStorageRefSchema,
-      downloadUrl: workerDownloadUrlSchema.nullable().optional().default(null),
-      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
-    }),
-  ).default([]),
-  subtitleRefs: z.array(
-    z.object({
-      shotId: z.string().trim().min(1),
-      kind: z.enum(["vtt", "srt", "json"]),
-      storageRef: workerStorageRefSchema,
-      downloadUrl: workerDownloadUrlSchema.nullable().optional().default(null),
-      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
-    }),
-  ).default([]),
-  fontRefs: z.array(
-    z.object({
-      family: z.string().trim().min(1),
-      storageRef: workerStorageRefSchema.nullable().optional().default(null),
-      required: z.boolean().default(true),
-    }),
-  ).default([]),
+  sourceVideos: z
+    .array(
+      z.object({
+        shotId: z.string().trim().min(1),
+        storageRef: workerStorageRefSchema,
+        downloadUrl: workerDownloadUrlSchema
+          .nullable()
+          .optional()
+          .default(null),
+        mediaStartSec: z
+          .number()
+          .min(0)
+          .max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC)
+          .default(0),
+        durationSec: z
+          .number()
+          .positive()
+          .max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
+        contentType: z.string().trim().min(1).default("video/mp4"),
+        checksumSha256: z
+          .string()
+          .trim()
+          .min(8)
+          .max(256)
+          .nullable()
+          .optional()
+          .default(null),
+      })
+    )
+    .min(1),
+  audioRefs: z
+    .array(
+      z.object({
+        role: z.enum(["source_audio", "music_bed", "sfx", "voiceover"]),
+        storageRef: workerStorageRefSchema,
+        downloadUrl: workerDownloadUrlSchema
+          .nullable()
+          .optional()
+          .default(null),
+        checksumSha256: z
+          .string()
+          .trim()
+          .min(8)
+          .max(256)
+          .nullable()
+          .optional()
+          .default(null),
+      })
+    )
+    .default([]),
+  subtitleRefs: z
+    .array(
+      z.object({
+        shotId: z.string().trim().min(1),
+        kind: z.enum(["vtt", "srt", "json"]),
+        storageRef: workerStorageRefSchema,
+        downloadUrl: workerDownloadUrlSchema
+          .nullable()
+          .optional()
+          .default(null),
+        checksumSha256: z
+          .string()
+          .trim()
+          .min(8)
+          .max(256)
+          .nullable()
+          .optional()
+          .default(null),
+      })
+    )
+    .default([]),
+  fontRefs: z
+    .array(
+      z.object({
+        family: z.string().trim().min(1),
+        storageRef: workerStorageRefSchema.nullable().optional().default(null),
+        required: z.boolean().default(true),
+      })
+    )
+    .default([]),
   runtimeAssets: z.record(z.string(), z.unknown()).default({}),
 });
 
-export const hyperframesFinalCompositeShotSchema = z.object({
-  shotId: z.string().trim().min(1),
-  shotIndex: z.number().int().min(0),
-  absoluteStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
-  absoluteEndSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
-  durationSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
-  mediaStartSec: z.number().min(0).max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC).default(0),
-  overlayText: z.string().trim().max(2_000).nullable().optional().default(null),
-  subtitleText: z.string().trim().max(8_000).nullable().optional().default(null),
-  stylePresetId: z.string().trim().min(1).nullable().optional().default(null),
-  transitionPresetId: z.string().trim().min(1).nullable().optional().default(null),
-  textMotionPresetId: z.string().trim().min(1).nullable().optional().default(null),
-}).superRefine((shot, ctx) => {
-  if (shot.absoluteEndSec <= shot.absoluteStartSec) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["absoluteEndSec"],
-      message: "shot absoluteEndSec must be greater than absoluteStartSec",
-    });
-  }
+export const hyperframesFinalCompositeShotSchema = z
+  .object({
+    shotId: z.string().trim().min(1),
+    shotIndex: z.number().int().min(0),
+    absoluteStartSec: z
+      .number()
+      .min(0)
+      .max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+    absoluteEndSec: z
+      .number()
+      .positive()
+      .max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+    durationSec: z
+      .number()
+      .positive()
+      .max(HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC),
+    mediaStartSec: z
+      .number()
+      .min(0)
+      .max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC)
+      .default(0),
+    overlayText: z
+      .string()
+      .trim()
+      .max(2_000)
+      .nullable()
+      .optional()
+      .default(null),
+    subtitleText: z
+      .string()
+      .trim()
+      .max(8_000)
+      .nullable()
+      .optional()
+      .default(null),
+    stylePresetId: z.string().trim().min(1).nullable().optional().default(null),
+    transitionPresetId: z
+      .string()
+      .trim()
+      .min(1)
+      .nullable()
+      .optional()
+      .default(null),
+    textMotionPresetId: z
+      .string()
+      .trim()
+      .min(1)
+      .nullable()
+      .optional()
+      .default(null),
+  })
+  .superRefine((shot, ctx) => {
+    if (shot.absoluteEndSec <= shot.absoluteStartSec) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["absoluteEndSec"],
+        message: "shot absoluteEndSec must be greater than absoluteStartSec",
+      });
+    }
 
-  const computedDuration = shot.absoluteEndSec - shot.absoluteStartSec;
-  if (computedDuration - HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC > 0.01) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["durationSec"],
-      message: `HyperFrames shots must not exceed ${HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC}s`,
-    });
-  }
-});
+    const computedDuration = shot.absoluteEndSec - shot.absoluteStartSec;
+    if (computedDuration - HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC > 0.01) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["durationSec"],
+        message: `HyperFrames shots must not exceed ${HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC}s`,
+      });
+    }
+  });
 
 export const hyperframesFinalCompositeOutputRequirementsSchema = z.object({
   format: z.literal("mp4").default("mp4"),
@@ -1224,64 +1805,108 @@ export const hyperframesFinalCompositeOutputRequirementsSchema = z.object({
   publishToLibrary: z.boolean().default(true),
 });
 
-export const hyperframesFinalCompositeWorkerInputSchema = z.object({
-  renderIntent: z.literal("hyperframes_final_composite").default("hyperframes_final_composite"),
-  compositionHash: workerStableHashSchema,
-  timelineHash: workerStableHashSchema,
-  finalCompositeConfigHash: workerStableHashSchema,
-  templateVersion: z.string().trim().min(1).max(120),
-  platformContractVersion: z.string().trim().min(1).max(120),
-  rendererPolicyVersion: z.string().trim().min(1).max(120),
-  runtimeProfileId: z.string().trim().min(1).max(120),
-  source: z.object({
-    storyboardReviewId: z.number().int().positive().nullable().optional().default(null),
-    productId: z.union([
-      z.string().trim().min(1).max(160),
-      z.number().int().positive(),
-    ]).nullable().optional().default(null),
-    manualProjectName: z.string().trim().min(1).max(240).nullable().optional().default(null),
-    runId: z.string().trim().min(1).max(180).nullable().optional().default(null),
-  }).default({}),
-  finalVideoLengthSec: z.number().positive().max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
-  shots: z.array(hyperframesFinalCompositeShotSchema).min(1).max(60),
-  assetManifest: hyperframesFinalCompositeAssetManifestSchema,
-  outputRequirements: hyperframesFinalCompositeOutputRequirementsSchema,
-  compositionHtml: z.string().trim().min(1).nullable().optional().default(null),
-  renderConfig: z.record(z.string(), z.unknown()).default({}),
-}).superRefine((payload, ctx) => {
-  const assetShotIds = new Set(payload.assetManifest.sourceVideos.map((video) => video.shotId));
-  payload.shots.forEach((shot, index) => {
-    if (!assetShotIds.has(shot.shotId)) {
+export const hyperframesFinalCompositeWorkerInputSchema = z
+  .object({
+    renderIntent: z
+      .literal("hyperframes_final_composite")
+      .default("hyperframes_final_composite"),
+    compositionHash: workerStableHashSchema,
+    timelineHash: workerStableHashSchema,
+    finalCompositeConfigHash: workerStableHashSchema,
+    templateVersion: z.string().trim().min(1).max(120),
+    platformContractVersion: z.string().trim().min(1).max(120),
+    rendererPolicyVersion: z.string().trim().min(1).max(120),
+    runtimeProfileId: z.string().trim().min(1).max(120),
+    source: z
+      .object({
+        storyboardReviewId: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .default(null),
+        productId: z
+          .union([
+            z.string().trim().min(1).max(160),
+            z.number().int().positive(),
+          ])
+          .nullable()
+          .optional()
+          .default(null),
+        manualProjectName: z
+          .string()
+          .trim()
+          .min(1)
+          .max(240)
+          .nullable()
+          .optional()
+          .default(null),
+        runId: z
+          .string()
+          .trim()
+          .min(1)
+          .max(180)
+          .nullable()
+          .optional()
+          .default(null),
+      })
+      .default({}),
+    finalVideoLengthSec: z
+      .number()
+      .positive()
+      .max(HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC),
+    shots: z.array(hyperframesFinalCompositeShotSchema).min(1).max(60),
+    assetManifest: hyperframesFinalCompositeAssetManifestSchema,
+    outputRequirements: hyperframesFinalCompositeOutputRequirementsSchema,
+    compositionHtml: z
+      .string()
+      .trim()
+      .min(1)
+      .nullable()
+      .optional()
+      .default(null),
+    renderConfig: z.record(z.string(), z.unknown()).default({}),
+  })
+  .superRefine((payload, ctx) => {
+    const assetShotIds = new Set(
+      payload.assetManifest.sourceVideos.map(video => video.shotId)
+    );
+    payload.shots.forEach((shot, index) => {
+      if (!assetShotIds.has(shot.shotId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["shots", index, "shotId"],
+          message:
+            "each HyperFrames shot must have a matching source video asset",
+        });
+      }
+      if (shot.absoluteEndSec - payload.finalVideoLengthSec > 0.01) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["shots", index, "absoluteEndSec"],
+          message: "shot end time must not exceed finalVideoLengthSec",
+        });
+      }
+    });
+
+    if (!payload.outputRequirements.requireOfficialRuntime) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["shots", index, "shotId"],
-        message: "each HyperFrames shot must have a matching source video asset",
+        path: ["outputRequirements", "requireOfficialRuntime"],
+        message:
+          "HyperFrames final composite worker jobs must require the official runtime",
       });
     }
-    if (shot.absoluteEndSec - payload.finalVideoLengthSec > 0.01) {
+    if (!payload.outputRequirements.rejectFallbackRender) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["shots", index, "absoluteEndSec"],
-        message: "shot end time must not exceed finalVideoLengthSec",
+        path: ["outputRequirements", "rejectFallbackRender"],
+        message:
+          "HyperFrames final composite worker jobs must reject fallback renders",
       });
     }
   });
-
-  if (!payload.outputRequirements.requireOfficialRuntime) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["outputRequirements", "requireOfficialRuntime"],
-      message: "HyperFrames final composite worker jobs must require the official runtime",
-    });
-  }
-  if (!payload.outputRequirements.rejectFallbackRender) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["outputRequirements", "rejectFallbackRender"],
-      message: "HyperFrames final composite worker jobs must reject fallback renders",
-    });
-  }
-});
 
 export const hyperframesFinalCompositeProgressPayloadSchema = z.object({
   stage: hyperframesFinalCompositeProgressStageSchema,
@@ -1332,6 +1957,22 @@ export {
   REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+  REMOTION_EXECUTOR_SUPPORTED_HOST_PLATFORMS,
+  REMOTION_EXECUTOR_SUPPORTED_RUNTIME_PLATFORMS,
+  REMOTION_EXECUTOR_SUPPORTED_ARCHITECTURES,
+  REMOTION_EXECUTOR_INSTALLATION_MODES,
+  REMOTION_EXECUTOR_READINESS_STATUSES,
+  REMOTION_EXECUTOR_BLOCKING_REASON_CODES,
+  REMOTION_EXECUTOR_MAX_CONCURRENCY,
+  remotionExecutorRuntimeMetadataSchema,
+  remotionExecutorCapabilityProfileSchema,
+  remotionExecutorReadinessSchema,
+  remotionExecutionTargetSchema,
+  remotionResolvedExecutionTargetSchema,
+  remotionExecutionTargetResolutionReasonSchema,
+  remotionExecutionTargetResolutionSchema,
+  remotionExecutorRuntimePackManifestSchema,
+  REMOTION_EXECUTOR_RUNTIME_PACK_IDS,
   remotionRenderVideoProgressStageSchema,
   remotionRenderVideoFailureCodeSchema,
   remotionRenderVideoCapabilityFamilySchema,
@@ -1342,192 +1983,262 @@ export type {
   RemotionRenderVideoFailureCode,
   RemotionRenderVideoCapabilityFamily,
   RemotionRenderVideoWorkerInput,
+  RemotionExecutorRuntimeMetadata,
+  RemotionExecutorCapabilityProfile,
+  RemotionExecutorReadiness,
+  RemotionExecutionTarget,
+  RemotionResolvedExecutionTarget,
+  RemotionExecutionTargetResolution,
+  RemotionExecutorRuntimePackManifest,
 } from "@smartspec/remotion-render/render-video-schema";
 
-export const localAiProviderConfigSchema = z.object({
-  providerId: localAiProviderSchema,
-  baseUrl: z.string().url(),
-  model: z.string().trim().min(1).max(240),
-  localOnly: z.boolean().default(true),
-  readiness: z.enum(["unknown", "ready", "blocked", "unavailable"]).default("unknown"),
-  timeoutSeconds: z.number().int().min(5).max(3_600).default(600),
-  metadataJson: z.record(z.string(), z.unknown()).default({}),
-}).superRefine((payload, ctx) => {
-  if (payload.localOnly && !isWorkerLoopbackUrl(payload.baseUrl)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["baseUrl"],
-      message: "Local AI worker providers must use a loopback baseUrl unless localOnly is explicitly disabled by a future policy gate",
-    });
-  }
-});
-
-export const localAiWorkerJobContractSchema = z.object({
-  family: localAiWorkerJobFamilySchema,
-  provider: localAiProviderConfigSchema,
-  input: z.object({
-    prompt: z.string().trim().min(1).max(24_000),
-    textContext: z.string().trim().max(24_000).nullable().optional().default(null),
-    imageRefs: z.array(
-      z.object({
-        storageRef: workerStorageRefSchema,
-        mimeType: z.string().trim().min(1).max(120).default("image/png"),
-        checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
-      }),
-    ).default([]),
+export const localAiProviderConfigSchema = z
+  .object({
+    providerId: localAiProviderSchema,
+    baseUrl: z.string().url(),
+    model: z.string().trim().min(1).max(240),
+    localOnly: z.boolean().default(true),
+    readiness: z
+      .enum(["unknown", "ready", "blocked", "unavailable"])
+      .default("unknown"),
+    timeoutSeconds: z.number().int().min(5).max(3_600).default(600),
     metadataJson: z.record(z.string(), z.unknown()).default({}),
-  }),
-  outputTargets: z.object({
-    publishTextResult: z.boolean().default(true),
-    publishJsonResult: z.boolean().default(true),
-    publishArtifactsToLibrary: z.boolean().default(false),
-    requireServerVerification: z.boolean().default(true),
-  }).default({}),
-  safety: z.object({
-    moderationRequired: z.boolean().default(false),
-    allowLocalModelWithoutCloudModeration: z.boolean().default(false),
-    safetyMetadataRequired: z.boolean().default(false),
-  }).default({}),
-}).superRefine((payload, ctx) => {
-  if ((payload.family === "local_ai_vision" || payload.family === "local_ai_multimodal")
-    && payload.input.imageRefs.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["input", "imageRefs"],
-      message: `${payload.family} jobs require at least one imageRef`,
-    });
-  }
-  if (!payload.outputTargets.publishTextResult
-    && !payload.outputTargets.publishJsonResult
-    && !payload.outputTargets.publishArtifactsToLibrary) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["outputTargets"],
-      message: "local AI worker jobs must publish at least one output target",
-    });
-  }
-});
-
-export const mcpWorkerCompletionPayloadSchema = z.object({
-  workerJobId: z.string().trim().min(1),
-  leaseOwnerToken: z.string().trim().min(1),
-  assignmentAttempt: z.string({
-    required_error: "assignmentAttempt is required for MCP worker completion",
-  }).trim().min(1, "assignmentAttempt is required for MCP worker completion"),
-  status: z.enum(["completed", "failed", "canceled"]).default("completed"),
-  outputJson: z.record(z.string(), z.unknown()).default({}),
-  failure: z.object({
-    code: z.string().trim().min(1).max(160),
-    message: z.string().trim().min(1).max(2_000),
-    recoverable: z.boolean().default(false),
-  }).nullable().optional().default(null),
-  artifacts: z.array(
-    z.object({
-      artifactType: z.string().trim().min(1).max(120),
-      storageRef: workerStorageRefSchema,
-      checksumSha256: z.string().trim().min(8).max(256).nullable().optional().default(null),
-      metadataJson: z.record(z.string(), z.unknown()).default({}),
-    }),
-  ).default([]),
-});
-
-export const videoAssemblyJobContractSchema = z.object({
-  inputRefs: z.array(
-    z.object({
-      sourceKind: videoAssemblyInputRefSourceKindSchema,
-      refId: z.string().min(1).optional(),
-      path: z.string().min(1).optional(),
-    }).superRefine((inputRef, ctx) => {
-      if (inputRef.sourceKind === "library_asset" && !inputRef.refId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "library_asset input refs require refId",
-        });
-      }
-      if (inputRef.sourceKind !== "library_asset" && !inputRef.path) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `${inputRef.sourceKind} input refs require path`,
-        });
-      }
-    }),
-  ).min(1),
-  editPlan: z.object({
-    clips: z.array(
-      z.object({
-        sourceRef: z.string().min(1),
-        trim: z.object({
-          startMs: z.number().int().min(0),
-          endMs: z.number().int().min(0),
-        }),
-      }),
-    ).min(1),
-    applyWatermark: z.boolean().default(false),
-  }),
-  subtitlePlan: z.object({
-    sourcePriority: videoAssemblySubtitleSourcePrioritySchema,
-    mode: videoAssemblySubtitleModeSchema,
-    transcriptRef: z.string().min(1).optional(),
-    subtitleRef: z.string().min(1).optional(),
-  }),
-  renderProfile: z.object({
-    aspectRatios: z.array(videoAssemblyAspectRatioSchema).min(1),
-    codecPreset: z.string().min(1),
-    qualityPreset: z.string().min(1),
-    gpuRequired: z.boolean().default(false),
-  }),
-  workspacePolicy: z.object({
-    mode: workerFileScopeModeSchema,
-    allowedSourceRoots: z.array(z.string().min(1)).min(1),
-  }),
-  outputTargets: z.object({
-    renderedAssets: z.array(
-      z.object({
-        label: z.string().min(1),
-        aspectRatio: videoAssemblyAspectRatioSchema,
-        publishToLibrary: z.boolean().default(true),
-      }),
-    ).min(1),
-    subtitlesOptional: z.boolean().default(false),
-    thumbnailsOptional: z.boolean().default(false),
-  }),
-}).superRefine((payload, ctx) => {
-  const declaredSourceRefs = new Set<string>();
-  for (const inputRef of payload.inputRefs) {
-    if (inputRef.refId) {
-      declaredSourceRefs.add(inputRef.refId);
-    }
-    if (inputRef.path) {
-      declaredSourceRefs.add(inputRef.path);
-    }
-  }
-
-  payload.editPlan.clips.forEach((clip, index) => {
-    if (!declaredSourceRefs.has(clip.sourceRef)) {
+  })
+  .superRefine((payload, ctx) => {
+    if (payload.localOnly && !isWorkerLoopbackUrl(payload.baseUrl)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["editPlan", "clips", index, "sourceRef"],
-        message: "clip sourceRef must match a declared inputRef path or refId",
+        path: ["baseUrl"],
+        message:
+          "Local AI worker providers must use a loopback baseUrl unless localOnly is explicitly disabled by a future policy gate",
       });
     }
   });
 
-  for (const [field, value] of [
-    ["transcriptRef", payload.subtitlePlan.transcriptRef],
-    ["subtitleRef", payload.subtitlePlan.subtitleRef],
-  ] as const) {
-    if (!value || !looksLikeWorkerLocalFilePath(value)) {
-      continue;
-    }
-    if (!isWorkerPathWithinAllowedRoots(value, payload.workspacePolicy.allowedSourceRoots)) {
+export const localAiWorkerJobContractSchema = z
+  .object({
+    family: localAiWorkerJobFamilySchema,
+    provider: localAiProviderConfigSchema,
+    input: z.object({
+      prompt: z.string().trim().min(1).max(24_000),
+      textContext: z
+        .string()
+        .trim()
+        .max(24_000)
+        .nullable()
+        .optional()
+        .default(null),
+      imageRefs: z
+        .array(
+          z.object({
+            storageRef: workerStorageRefSchema,
+            mimeType: z.string().trim().min(1).max(120).default("image/png"),
+            checksumSha256: z
+              .string()
+              .trim()
+              .min(8)
+              .max(256)
+              .nullable()
+              .optional()
+              .default(null),
+          })
+        )
+        .default([]),
+      metadataJson: z.record(z.string(), z.unknown()).default({}),
+    }),
+    outputTargets: z
+      .object({
+        publishTextResult: z.boolean().default(true),
+        publishJsonResult: z.boolean().default(true),
+        publishArtifactsToLibrary: z.boolean().default(false),
+        requireServerVerification: z.boolean().default(true),
+      })
+      .default({}),
+    safety: z
+      .object({
+        moderationRequired: z.boolean().default(false),
+        allowLocalModelWithoutCloudModeration: z.boolean().default(false),
+        safetyMetadataRequired: z.boolean().default(false),
+      })
+      .default({}),
+  })
+  .superRefine((payload, ctx) => {
+    if (
+      (payload.family === "local_ai_vision" ||
+        payload.family === "local_ai_multimodal") &&
+      payload.input.imageRefs.length === 0
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["subtitlePlan", field],
-        message: `${field} must stay inside an approved source root when using a local file path`,
+        path: ["input", "imageRefs"],
+        message: `${payload.family} jobs require at least one imageRef`,
       });
     }
-  }
+    if (
+      !payload.outputTargets.publishTextResult &&
+      !payload.outputTargets.publishJsonResult &&
+      !payload.outputTargets.publishArtifactsToLibrary
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outputTargets"],
+        message: "local AI worker jobs must publish at least one output target",
+      });
+    }
+  });
+
+export const mcpWorkerCompletionPayloadSchema = z.object({
+  workerJobId: z.string().trim().min(1),
+  leaseOwnerToken: z.string().trim().min(1),
+  assignmentAttempt: z
+    .string({
+      required_error: "assignmentAttempt is required for MCP worker completion",
+    })
+    .trim()
+    .min(1, "assignmentAttempt is required for MCP worker completion"),
+  status: z.enum(["completed", "failed", "canceled"]).default("completed"),
+  outputJson: z.record(z.string(), z.unknown()).default({}),
+  failure: z
+    .object({
+      code: z.string().trim().min(1).max(160),
+      message: z.string().trim().min(1).max(2_000),
+      recoverable: z.boolean().default(false),
+    })
+    .nullable()
+    .optional()
+    .default(null),
+  artifacts: z
+    .array(
+      z.object({
+        artifactType: z.string().trim().min(1).max(120),
+        storageRef: workerStorageRefSchema,
+        checksumSha256: z
+          .string()
+          .trim()
+          .min(8)
+          .max(256)
+          .nullable()
+          .optional()
+          .default(null),
+        metadataJson: z.record(z.string(), z.unknown()).default({}),
+      })
+    )
+    .default([]),
 });
+
+export const videoAssemblyJobContractSchema = z
+  .object({
+    inputRefs: z
+      .array(
+        z
+          .object({
+            sourceKind: videoAssemblyInputRefSourceKindSchema,
+            refId: z.string().min(1).optional(),
+            path: z.string().min(1).optional(),
+          })
+          .superRefine((inputRef, ctx) => {
+            if (inputRef.sourceKind === "library_asset" && !inputRef.refId) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "library_asset input refs require refId",
+              });
+            }
+            if (inputRef.sourceKind !== "library_asset" && !inputRef.path) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `${inputRef.sourceKind} input refs require path`,
+              });
+            }
+          })
+      )
+      .min(1),
+    editPlan: z.object({
+      clips: z
+        .array(
+          z.object({
+            sourceRef: z.string().min(1),
+            trim: z.object({
+              startMs: z.number().int().min(0),
+              endMs: z.number().int().min(0),
+            }),
+          })
+        )
+        .min(1),
+      applyWatermark: z.boolean().default(false),
+    }),
+    subtitlePlan: z.object({
+      sourcePriority: videoAssemblySubtitleSourcePrioritySchema,
+      mode: videoAssemblySubtitleModeSchema,
+      transcriptRef: z.string().min(1).optional(),
+      subtitleRef: z.string().min(1).optional(),
+    }),
+    renderProfile: z.object({
+      aspectRatios: z.array(videoAssemblyAspectRatioSchema).min(1),
+      codecPreset: z.string().min(1),
+      qualityPreset: z.string().min(1),
+      gpuRequired: z.boolean().default(false),
+    }),
+    workspacePolicy: z.object({
+      mode: workerFileScopeModeSchema,
+      allowedSourceRoots: z.array(z.string().min(1)).min(1),
+    }),
+    outputTargets: z.object({
+      renderedAssets: z
+        .array(
+          z.object({
+            label: z.string().min(1),
+            aspectRatio: videoAssemblyAspectRatioSchema,
+            publishToLibrary: z.boolean().default(true),
+          })
+        )
+        .min(1),
+      subtitlesOptional: z.boolean().default(false),
+      thumbnailsOptional: z.boolean().default(false),
+    }),
+  })
+  .superRefine((payload, ctx) => {
+    const declaredSourceRefs = new Set<string>();
+    for (const inputRef of payload.inputRefs) {
+      if (inputRef.refId) {
+        declaredSourceRefs.add(inputRef.refId);
+      }
+      if (inputRef.path) {
+        declaredSourceRefs.add(inputRef.path);
+      }
+    }
+
+    payload.editPlan.clips.forEach((clip, index) => {
+      if (!declaredSourceRefs.has(clip.sourceRef)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["editPlan", "clips", index, "sourceRef"],
+          message:
+            "clip sourceRef must match a declared inputRef path or refId",
+        });
+      }
+    });
+
+    for (const [field, value] of [
+      ["transcriptRef", payload.subtitlePlan.transcriptRef],
+      ["subtitleRef", payload.subtitlePlan.subtitleRef],
+    ] as const) {
+      if (!value || !looksLikeWorkerLocalFilePath(value)) {
+        continue;
+      }
+      if (
+        !isWorkerPathWithinAllowedRoots(
+          value,
+          payload.workspacePolicy.allowedSourceRoots
+        )
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["subtitlePlan", field],
+          message: `${field} must stay inside an approved source root when using a local file path`,
+        });
+      }
+    }
+  });
 
 /**
  * `vertical_drama_ffmpeg_assembly` worker job contract (Vertical Drama Render
@@ -1578,12 +2289,14 @@ export const verticalDramaFfmpegAssemblyJobContractSchema = z.object({
     seriesId: z.string().min(1),
     episodeId: z.string().optional(),
   }),
-  display: z.object({
-    label: z.string().optional(),
-    seriesTitle: z.string().optional(),
-    episodeNumber: z.number().optional(),
-    groupIndex: z.number().optional(),
-  }).optional(),
+  display: z
+    .object({
+      label: z.string().optional(),
+      seriesTitle: z.string().optional(),
+      episodeNumber: z.number().optional(),
+      groupIndex: z.number().optional(),
+    })
+    .optional(),
   // Opaque internal render-feed blob (verticalDramaEpisodeVideoAssembly.ts's
   // `runAssemblyJob` input) — resolved on the request path by the caller and
   // re-hydrated verbatim by the executor. Not re-validated here (see
@@ -1597,202 +2310,263 @@ export type VerticalDramaFfmpegAssemblyJobContract = z.infer<
   typeof verticalDramaFfmpegAssemblyJobContractSchema
 >;
 
-export const localFolderIngestJobContractSchema = z.object({
-  roots: z.array(
-    z.object({
-      rootId: z.string().min(1),
-      name: z.string().min(1),
-      path: z.string().min(1),
-      requestedWritebackMode: localFolderIngestWritebackModeSchema.optional().default("managed_output_only"),
-      advancedLocalMode: z.boolean().default(false),
+export const localFolderIngestJobContractSchema = z
+  .object({
+    roots: z
+      .array(
+        z.object({
+          rootId: z.string().min(1),
+          name: z.string().min(1),
+          path: z.string().min(1),
+          requestedWritebackMode: localFolderIngestWritebackModeSchema
+            .optional()
+            .default("managed_output_only"),
+          advancedLocalMode: z.boolean().default(false),
+        })
+      )
+      .min(1)
+      .max(20),
+    workspacePolicy: z.object({
+      mode: workerFileScopeModeSchema,
+      allowedSourceRoots: z.array(z.string().min(1)).min(1),
     }),
-  ).min(1).max(20),
-  workspacePolicy: z.object({
-    mode: workerFileScopeModeSchema,
-    allowedSourceRoots: z.array(z.string().min(1)).min(1),
-  }),
-  ingestPolicy: z.object({
-    maxDepth: z.number().int().min(1).max(12).default(5),
-    maxFiles: z.number().int().min(1).max(1000).default(250),
-    includePreviewText: z.boolean().default(true),
-    previewFileLimit: z.number().int().min(0).max(100).default(25),
-    snippetQuery: z.string().trim().min(1).max(200).optional(),
-    snippetFileLimit: z.number().int().min(0).max(50).default(10),
-  }),
-  outputTargets: z.object({
-    publishManifestToLibrary: z.boolean().default(true),
-    publishSummaryToLibrary: z.boolean().default(true),
-    triggerIndexing: z.boolean().default(true),
-  }),
-}).superRefine((payload, ctx) => {
-  const seenRootIds = new Set<string>();
-  const seenNormalizedPaths = new Set<string>();
+    ingestPolicy: z.object({
+      maxDepth: z.number().int().min(1).max(12).default(5),
+      maxFiles: z.number().int().min(1).max(1000).default(250),
+      includePreviewText: z.boolean().default(true),
+      previewFileLimit: z.number().int().min(0).max(100).default(25),
+      snippetQuery: z.string().trim().min(1).max(200).optional(),
+      snippetFileLimit: z.number().int().min(0).max(50).default(10),
+    }),
+    outputTargets: z.object({
+      publishManifestToLibrary: z.boolean().default(true),
+      publishSummaryToLibrary: z.boolean().default(true),
+      triggerIndexing: z.boolean().default(true),
+    }),
+  })
+  .superRefine((payload, ctx) => {
+    const seenRootIds = new Set<string>();
+    const seenNormalizedPaths = new Set<string>();
 
-  payload.roots.forEach((root, index) => {
-    if (seenRootIds.has(root.rootId)) {
+    payload.roots.forEach((root, index) => {
+      if (seenRootIds.has(root.rootId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["roots", index, "rootId"],
+          message:
+            "rootId values must be unique within a local_folder_ingest request",
+        });
+      } else {
+        seenRootIds.add(root.rootId);
+      }
+
+      if (
+        !isWorkerPathWithinAllowedRoots(
+          root.path,
+          payload.workspacePolicy.allowedSourceRoots
+        )
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["roots", index, "path"],
+          message:
+            "local_folder_ingest root paths must stay inside an approved source root",
+        });
+      }
+
+      const normalizedPath = normalizeWorkerPolicyPath(root.path);
+      if (seenNormalizedPaths.has(normalizedPath)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["roots", index, "path"],
+          message: "Duplicate local_folder_ingest root paths are not allowed",
+        });
+      } else {
+        seenNormalizedPaths.add(normalizedPath);
+      }
+    });
+
+    if (
+      !payload.outputTargets.publishManifestToLibrary &&
+      !payload.outputTargets.publishSummaryToLibrary
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["roots", index, "rootId"],
-        message: "rootId values must be unique within a local_folder_ingest request",
+        path: ["outputTargets"],
+        message:
+          "local_folder_ingest must publish at least one artifact target",
       });
-    } else {
-      seenRootIds.add(root.rootId);
-    }
-
-    if (!isWorkerPathWithinAllowedRoots(root.path, payload.workspacePolicy.allowedSourceRoots)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["roots", index, "path"],
-        message: "local_folder_ingest root paths must stay inside an approved source root",
-      });
-    }
-
-    const normalizedPath = normalizeWorkerPolicyPath(root.path);
-    if (seenNormalizedPaths.has(normalizedPath)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["roots", index, "path"],
-        message: "Duplicate local_folder_ingest root paths are not allowed",
-      });
-    } else {
-      seenNormalizedPaths.add(normalizedPath);
     }
   });
 
-  if (!payload.outputTargets.publishManifestToLibrary && !payload.outputTargets.publishSummaryToLibrary) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["outputTargets"],
-      message: "local_folder_ingest must publish at least one artifact target",
-    });
-  }
-});
-
-const comfyServiceBindingSchema = z.object({
-  baseUrl: z.string().url(),
-  submitPath: z.string().min(1).default("/prompt"),
-  historyPathTemplate: z.string().min(1).default("/history/{promptId}"),
-  viewPath: z.string().min(1).default("/view"),
-  clientId: z.string().trim().min(1).max(128).nullable().optional().default(null),
-  pollIntervalMs: z.number().int().min(250).max(30_000).default(2_000),
-  timeoutSeconds: z.number().int().min(5).max(3_600).default(600),
-  localOnly: z.boolean().default(true),
-}).superRefine((payload, ctx) => {
-  if (payload.localOnly && !isWorkerLoopbackUrl(payload.baseUrl)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["baseUrl"],
-      message: "ComfyUI local-only services must bind to a loopback baseUrl",
-    });
-  }
-
-  for (const [field, value] of [
-    ["submitPath", payload.submitPath],
-    ["historyPathTemplate", payload.historyPathTemplate],
-    ["viewPath", payload.viewPath],
-  ] as const) {
-    if (!value.startsWith("/")) {
+const comfyServiceBindingSchema = z
+  .object({
+    baseUrl: z.string().url(),
+    submitPath: z.string().min(1).default("/prompt"),
+    historyPathTemplate: z.string().min(1).default("/history/{promptId}"),
+    viewPath: z.string().min(1).default("/view"),
+    clientId: z
+      .string()
+      .trim()
+      .min(1)
+      .max(128)
+      .nullable()
+      .optional()
+      .default(null),
+    pollIntervalMs: z.number().int().min(250).max(30_000).default(2_000),
+    timeoutSeconds: z.number().int().min(5).max(3_600).default(600),
+    localOnly: z.boolean().default(true),
+  })
+  .superRefine((payload, ctx) => {
+    if (payload.localOnly && !isWorkerLoopbackUrl(payload.baseUrl)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: [field],
-        message: `${field} must begin with /`,
+        path: ["baseUrl"],
+        message: "ComfyUI local-only services must bind to a loopback baseUrl",
       });
     }
-  }
 
-  if (!payload.historyPathTemplate.includes("{promptId}")) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["historyPathTemplate"],
-      message: "historyPathTemplate must include the {promptId} placeholder",
-    });
-  }
-});
+    for (const [field, value] of [
+      ["submitPath", payload.submitPath],
+      ["historyPathTemplate", payload.historyPathTemplate],
+      ["viewPath", payload.viewPath],
+    ] as const) {
+      if (!value.startsWith("/")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `${field} must begin with /`,
+        });
+      }
+    }
 
-export const comfyImageGenerationJobContractSchema = z.object({
-  service: comfyServiceBindingSchema,
-  workflowJson: z.record(z.string(), z.unknown()),
-  generationSpec: z.object({
-    promptSummary: z.string().trim().min(1).max(4_000),
-    negativePromptSummary: z.string().trim().max(4_000).nullable().optional().default(null),
-    width: z.number().int().min(64).max(4_096).default(1_024),
-    height: z.number().int().min(64).max(4_096).default(1_024),
-    batchSize: z.number().int().min(1).max(8).default(1),
-    steps: z.number().int().min(1).max(200).default(30),
-    cfgScale: z.number().min(0.1).max(50).default(7),
-    samplerName: z.string().trim().min(1).max(100).default("euler"),
-    seed: z.number().int().min(0).nullable().optional().default(null),
-    modelCheckpoint: z.string().trim().min(1).max(200).nullable().optional().default(null),
-    gpuRequired: z.boolean().default(true),
-  }),
-  outputTargets: z.object({
-    publishImagesToLibrary: z.boolean().default(true),
-    publishManifestToLibrary: z.boolean().default(true),
-    triggerIndexing: z.boolean().default(true),
-    maxImages: z.number().int().min(1).max(32).default(8),
-  }),
-}).superRefine((payload, ctx) => {
-  if (Object.keys(payload.workflowJson).length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["workflowJson"],
-      message: "comfy_image_generation requires a non-empty workflowJson payload",
-    });
-  }
+    if (!payload.historyPathTemplate.includes("{promptId}")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["historyPathTemplate"],
+        message: "historyPathTemplate must include the {promptId} placeholder",
+      });
+    }
+  });
 
-  if (!payload.outputTargets.publishImagesToLibrary && !payload.outputTargets.publishManifestToLibrary) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["outputTargets"],
-      message: "comfy_image_generation must publish at least one artifact target",
-    });
-  }
-});
+export const comfyImageGenerationJobContractSchema = z
+  .object({
+    service: comfyServiceBindingSchema,
+    workflowJson: z.record(z.string(), z.unknown()),
+    generationSpec: z.object({
+      promptSummary: z.string().trim().min(1).max(4_000),
+      negativePromptSummary: z
+        .string()
+        .trim()
+        .max(4_000)
+        .nullable()
+        .optional()
+        .default(null),
+      width: z.number().int().min(64).max(4_096).default(1_024),
+      height: z.number().int().min(64).max(4_096).default(1_024),
+      batchSize: z.number().int().min(1).max(8).default(1),
+      steps: z.number().int().min(1).max(200).default(30),
+      cfgScale: z.number().min(0.1).max(50).default(7),
+      samplerName: z.string().trim().min(1).max(100).default("euler"),
+      seed: z.number().int().min(0).nullable().optional().default(null),
+      modelCheckpoint: z
+        .string()
+        .trim()
+        .min(1)
+        .max(200)
+        .nullable()
+        .optional()
+        .default(null),
+      gpuRequired: z.boolean().default(true),
+    }),
+    outputTargets: z.object({
+      publishImagesToLibrary: z.boolean().default(true),
+      publishManifestToLibrary: z.boolean().default(true),
+      triggerIndexing: z.boolean().default(true),
+      maxImages: z.number().int().min(1).max(32).default(8),
+    }),
+  })
+  .superRefine((payload, ctx) => {
+    if (Object.keys(payload.workflowJson).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["workflowJson"],
+        message:
+          "comfy_image_generation requires a non-empty workflowJson payload",
+      });
+    }
 
-export const comfyWorkflowRunJobContractSchema = z.object({
-  service: comfyServiceBindingSchema,
-  workflowJson: z.record(z.string(), z.unknown()),
-  workflowLabel: z.string().trim().min(1).max(200).nullable().optional().default(null),
-  executionPolicy: z.object({
-    expectedOutputTypes: z.array(comfyExpectedOutputTypeSchema).min(1).max(5).default(["images"]),
-    gpuRequired: z.boolean().default(true),
-    failOnMissingOutputs: z.boolean().default(true),
-  }),
-  outputTargets: z.object({
-    publishOutputFilesToLibrary: z.boolean().default(true),
-    publishManifestToLibrary: z.boolean().default(true),
-    triggerIndexing: z.boolean().default(true),
-    maxOutputFiles: z.number().int().min(1).max(64).default(16),
-  }),
-}).superRefine((payload, ctx) => {
-  if (Object.keys(payload.workflowJson).length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["workflowJson"],
-      message: "comfy_workflow_run requires a non-empty workflowJson payload",
-    });
-  }
+    if (
+      !payload.outputTargets.publishImagesToLibrary &&
+      !payload.outputTargets.publishManifestToLibrary
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outputTargets"],
+        message:
+          "comfy_image_generation must publish at least one artifact target",
+      });
+    }
+  });
 
-  if (
-    !payload.outputTargets.publishOutputFilesToLibrary
-    && !payload.outputTargets.publishManifestToLibrary
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["outputTargets"],
-      message: "comfy_workflow_run must publish at least one artifact target",
-    });
-  }
-});
+export const comfyWorkflowRunJobContractSchema = z
+  .object({
+    service: comfyServiceBindingSchema,
+    workflowJson: z.record(z.string(), z.unknown()),
+    workflowLabel: z
+      .string()
+      .trim()
+      .min(1)
+      .max(200)
+      .nullable()
+      .optional()
+      .default(null),
+    executionPolicy: z.object({
+      expectedOutputTypes: z
+        .array(comfyExpectedOutputTypeSchema)
+        .min(1)
+        .max(5)
+        .default(["images"]),
+      gpuRequired: z.boolean().default(true),
+      failOnMissingOutputs: z.boolean().default(true),
+    }),
+    outputTargets: z.object({
+      publishOutputFilesToLibrary: z.boolean().default(true),
+      publishManifestToLibrary: z.boolean().default(true),
+      triggerIndexing: z.boolean().default(true),
+      maxOutputFiles: z.number().int().min(1).max(64).default(16),
+    }),
+  })
+  .superRefine((payload, ctx) => {
+    if (Object.keys(payload.workflowJson).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["workflowJson"],
+        message: "comfy_workflow_run requires a non-empty workflowJson payload",
+      });
+    }
+
+    if (
+      !payload.outputTargets.publishOutputFilesToLibrary &&
+      !payload.outputTargets.publishManifestToLibrary
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["outputTargets"],
+        message: "comfy_workflow_run must publish at least one artifact target",
+      });
+    }
+  });
 
 function validateWorkerRuntimeMetadata(
   runtimeType: WorkerRuntimeType,
   workerMode: WorkerMode,
   runtimeMetadataJson: Record<string, unknown>,
-  ctx: z.RefinementCtx,
+  ctx: z.RefinementCtx
 ): void {
   if (runtimeType === "desktop_zeroclaw_managed") {
-    const parsed = workerDesktopRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    const parsed =
+      workerDesktopRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         ctx.addIssue({
@@ -1803,20 +2577,22 @@ function validateWorkerRuntimeMetadata(
       return;
     }
     if (
-      (workerMode === "shared_department" || workerMode === "dedicated_gpu")
-      && parsed.data.executionIdentity.mode !== "service_identity"
+      (workerMode === "shared_department" || workerMode === "dedicated_gpu") &&
+      parsed.data.executionIdentity.mode !== "service_identity"
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["runtimeMetadataJson", "executionIdentity", "mode"],
-        message: "Shared or dedicated desktop workers must use service identity execution mode",
+        message:
+          "Shared or dedicated desktop workers must use service identity execution mode",
       });
     }
     return;
   }
 
   if (runtimeType === "nemoclaw_sandbox") {
-    const parsed = workerNemoClawRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    const parsed =
+      workerNemoClawRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         ctx.addIssue({
@@ -1829,7 +2605,8 @@ function validateWorkerRuntimeMetadata(
   }
 
   if (runtimeType === "hiclaw_cluster") {
-    const parsed = workerHiClawRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    const parsed =
+      workerHiClawRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         ctx.addIssue({
@@ -1842,7 +2619,8 @@ function validateWorkerRuntimeMetadata(
   }
 
   if (runtimeType === "hermes_agent_gateway") {
-    const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    const parsed =
+      workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
         ctx.addIssue({
@@ -1854,54 +2632,111 @@ function validateWorkerRuntimeMetadata(
     }
 
     if (
-      parsed.data.apiServerBaseUrl
-      && !isWorkerLoopbackUrl(parsed.data.apiServerBaseUrl)
-      && !parsed.data.remoteEndpointPolicyExceptionId
+      parsed.data.apiServerBaseUrl &&
+      !isWorkerLoopbackUrl(parsed.data.apiServerBaseUrl) &&
+      !parsed.data.remoteEndpointPolicyExceptionId
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["runtimeMetadataJson", "apiServerBaseUrl"],
-        message: "Hermes bridge apiServerBaseUrl must default to a loopback address unless remoteEndpointPolicyExceptionId grants an audited exception",
+        message:
+          "Hermes bridge apiServerBaseUrl must default to a loopback address unless remoteEndpointPolicyExceptionId grants an audited exception",
       });
     }
     if (
-      parsed.data.apiServerBaseUrl
-      && !isWorkerLoopbackUrl(parsed.data.apiServerBaseUrl)
-      && parsed.data.remoteEndpointPolicyExceptionId
-      && !isWorkerHttpsUrl(parsed.data.apiServerBaseUrl)
+      parsed.data.apiServerBaseUrl &&
+      !isWorkerLoopbackUrl(parsed.data.apiServerBaseUrl) &&
+      parsed.data.remoteEndpointPolicyExceptionId &&
+      !isWorkerHttpsUrl(parsed.data.apiServerBaseUrl)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["runtimeMetadataJson", "apiServerBaseUrl"],
-        message: "Hermes bridge remote API server URLs must use https when an audited exception is granted",
+        message:
+          "Hermes bridge remote API server URLs must use https when an audited exception is granted",
       });
+    }
+  }
+
+  if (runtimeType === "remotion_executor") {
+    const parsed =
+      workerRemotionExecutorRuntimeMetadataSchema.safeParse(
+        runtimeMetadataJson
+      );
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        ctx.addIssue({
+          ...issue,
+          path: ["runtimeMetadataJson", ...issue.path],
+        });
+      }
+      return;
+    }
+    if (workerMode !== "per_user") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["workerMode"],
+        message: "Standalone Remotion executors must use per_user worker mode",
+      });
+    }
+    if (!runtimeMetadataJson || typeof runtimeMetadataJson !== "object") {
+      return;
     }
   }
 }
 
-export type WorkerProtocolCompatibility = z.infer<typeof workerProtocolCompatibilitySchema>;
-export type WorkerRegistrationPayload = z.infer<typeof workerRegistrationPayloadSchema>;
-export type WorkerHeartbeatPayload = z.infer<typeof workerHeartbeatPayloadSchema>;
+export type WorkerProtocolCompatibility = z.infer<
+  typeof workerProtocolCompatibilitySchema
+>;
+export type WorkerRegistrationPayload = z.infer<
+  typeof workerRegistrationPayloadSchema
+>;
+export type WorkerHeartbeatPayload = z.infer<
+  typeof workerHeartbeatPayloadSchema
+>;
 export type WorkerClaimRequest = z.infer<typeof workerClaimRequestSchema>;
 export type WorkerJobEventPayload = z.infer<typeof workerJobEventPayloadSchema>;
-export type WorkerArtifactInitPayload = z.infer<typeof workerArtifactInitPayloadSchema>;
-export type WorkerArtifactCompletePayload = z.infer<typeof workerArtifactCompletePayloadSchema>;
-export type WorkerDiagnosticsPayload = z.infer<typeof workerDiagnosticsPayloadSchema>;
-export type WorkerGatewayCompatibilityMetadata = z.infer<typeof workerGatewayCompatibilityMetadataSchema>;
-export type HyperframesFinalCompositeAssetManifest =
-  z.infer<typeof hyperframesFinalCompositeAssetManifestSchema>;
-export type HyperframesFinalCompositeWorkerInput =
-  z.infer<typeof hyperframesFinalCompositeWorkerInputSchema>;
-export type HyperframesFinalCompositeProgressPayload =
-  z.infer<typeof hyperframesFinalCompositeProgressPayloadSchema>;
-export type HyperframesFinalCompositeFailurePayload =
-  z.infer<typeof hyperframesFinalCompositeFailurePayloadSchema>;
-export type VideoAssemblyJobContract = z.infer<typeof videoAssemblyJobContractSchema>;
-export type LocalFolderIngestJobContract = z.infer<typeof localFolderIngestJobContractSchema>;
-export type ComfyImageGenerationJobContract = z.infer<typeof comfyImageGenerationJobContractSchema>;
-export type ComfyWorkflowRunJobContract = z.infer<typeof comfyWorkflowRunJobContractSchema>;
+export type WorkerArtifactInitPayload = z.infer<
+  typeof workerArtifactInitPayloadSchema
+>;
+export type WorkerArtifactCompletePayload = z.infer<
+  typeof workerArtifactCompletePayloadSchema
+>;
+export type WorkerDiagnosticsPayload = z.infer<
+  typeof workerDiagnosticsPayloadSchema
+>;
+export type HermesTaskCorrelation = z.infer<typeof hermesTaskCorrelationSchema>;
+export type WorkerGatewayCompatibilityMetadata = z.infer<
+  typeof workerGatewayCompatibilityMetadataSchema
+>;
+export type HyperframesFinalCompositeAssetManifest = z.infer<
+  typeof hyperframesFinalCompositeAssetManifestSchema
+>;
+export type HyperframesFinalCompositeWorkerInput = z.infer<
+  typeof hyperframesFinalCompositeWorkerInputSchema
+>;
+export type HyperframesFinalCompositeProgressPayload = z.infer<
+  typeof hyperframesFinalCompositeProgressPayloadSchema
+>;
+export type HyperframesFinalCompositeFailurePayload = z.infer<
+  typeof hyperframesFinalCompositeFailurePayloadSchema
+>;
+export type VideoAssemblyJobContract = z.infer<
+  typeof videoAssemblyJobContractSchema
+>;
+export type LocalFolderIngestJobContract = z.infer<
+  typeof localFolderIngestJobContractSchema
+>;
+export type ComfyImageGenerationJobContract = z.infer<
+  typeof comfyImageGenerationJobContractSchema
+>;
+export type ComfyWorkflowRunJobContract = z.infer<
+  typeof comfyWorkflowRunJobContractSchema
+>;
 export type LocalAiProviderConfig = z.infer<typeof localAiProviderConfigSchema>;
-export type LocalAiWorkerJobContract = z.infer<typeof localAiWorkerJobContractSchema>;
+export type LocalAiWorkerJobContract = z.infer<
+  typeof localAiWorkerJobContractSchema
+>;
 
 /**
  * Feature 135 — Hermes Grok media worker (namespace: `hermes_media` /
@@ -1918,14 +2753,26 @@ export type LocalAiWorkerJobContract = z.infer<typeof localAiWorkerJobContractSc
  * declares the `hermes_media` capability (and the `hermes-media-generation`
  * family) can claim these five job types.
  */
-export const HERMES_MEDIA_IMAGE_JOB_TYPE = "hermes_media_image_generate" as const;
-export const HERMES_MEDIA_VIDEO_JOB_TYPE = "hermes_media_video_generate" as const;
-export const HERMES_CONNECTION_AUTH_JOB_TYPE = "hermes_connection_authorize" as const;
-export const HERMES_CONNECTION_PROBE_JOB_TYPE = "hermes_connection_probe" as const;
-export const HERMES_CONNECTION_DISCONNECT_JOB_TYPE = "hermes_connection_disconnect" as const;
+export const HERMES_MEDIA_IMAGE_JOB_TYPE =
+  "hermes_media_image_generate" as const;
+export const HERMES_MEDIA_VIDEO_JOB_TYPE =
+  "hermes_media_video_generate" as const;
+export const HERMES_CONNECTION_AUTH_JOB_TYPE =
+  "hermes_connection_authorize" as const;
+export const HERMES_CONNECTION_PROBE_JOB_TYPE =
+  "hermes_connection_probe" as const;
+export const HERMES_CONNECTION_DISCONNECT_JOB_TYPE =
+  "hermes_connection_disconnect" as const;
 export const HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY = "hermes_media" as const;
-export const HERMES_MEDIA_CAPABILITY_FAMILIES = ["hermes-media-generation"] as const;
+export const HERMES_MEDIA_CAPABILITY_FAMILIES = [
+  "hermes-media-generation",
+] as const;
 
-export type HermesMediaCapabilityFamily = (typeof HERMES_MEDIA_CAPABILITY_FAMILIES)[number];
-export const hermesMediaCapabilityFamilySchema = z.enum(HERMES_MEDIA_CAPABILITY_FAMILIES);
-export type McpWorkerCompletionPayload = z.infer<typeof mcpWorkerCompletionPayloadSchema>;
+export type HermesMediaCapabilityFamily =
+  (typeof HERMES_MEDIA_CAPABILITY_FAMILIES)[number];
+export const hermesMediaCapabilityFamilySchema = z.enum(
+  HERMES_MEDIA_CAPABILITY_FAMILIES
+);
+export type McpWorkerCompletionPayload = z.infer<
+  typeof mcpWorkerCompletionPayloadSchema
+>;

@@ -6,6 +6,10 @@ import type {
   WorkerJobEventPayload,
   WorkerRegistrationPayload,
 } from "../../../shared/workerRuntime";
+import {
+  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+} from "../../../shared/workerRuntime";
 import { auditLogger } from "../auditLogger";
 
 const { mockGetDb } = vi.hoisted(() => {
@@ -623,6 +627,67 @@ describe("workerRegistryService", () => {
       leaseExpiresAt: expect.any(Date),
       heartbeatAt: expect.any(Date),
     }));
+  });
+
+  it("promotes live ComfyUI readiness from heartbeat metadata", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-comfy-1",
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "offline",
+      capabilitiesJson: {},
+      healthSummaryJson: {},
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_workerId, values) => ({
+        ...worker,
+        ...values,
+      })),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-comfy-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-comfy-1",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "0.1.140",
+        },
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {
+          comfyUi: {
+            advertised: true,
+            reason: "system_stats_ok",
+            capabilityFamilies: ["comfyui-image-generate", "comfyui-workflow-run"],
+          },
+        },
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(
+      "worker-comfy-1",
+      expect.objectContaining({
+        capabilitiesJson: expect.objectContaining({
+          comfyUi: expect.objectContaining({
+            advertised: true,
+            reason: "system_stats_ok",
+          }),
+        }),
+      }),
+    );
   });
 
   it("backfills compatibility state for legacy workers on heartbeat without re-registration", async () => {
@@ -1245,7 +1310,7 @@ describe("workerRegistryService", () => {
         // PRIMARY `.every()` capabilityFamilies check (which is a no-op
         // when `capabilityRequirementsJson.capabilityFamilies` is empty).
         capabilityRequirementsJson: {},
-        inputJson: {},
+        inputJson: { platformContractVersion: REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION },
         instructionsJson: {},
         outputJson: null,
         failureReason: null,
@@ -1269,7 +1334,7 @@ describe("workerRegistryService", () => {
           teamId: null,
           runtimeType: "desktop_zeroclaw_managed",
           status: "online",
-          capabilitiesJson: {},
+          capabilitiesJson: { workerApp: { sharingMode: "tenant" } },
         }),
         listClaimableJobs: vi.fn().mockResolvedValue([job]),
         tryClaimJob: vi.fn().mockResolvedValue({
@@ -1385,7 +1450,7 @@ describe("workerRegistryService", () => {
             runtimeType: "desktop_zeroclaw_managed",
           } as any,
           workerId: "worker-1",
-          payload: { maxJobs: 1, capabilityHints: ["remotion-render", "chromium-render", "ffmpeg-probe"] },
+          payload: { maxJobs: 1, capabilityHints: [REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY, "chromium-render", "ffmpeg-probe"] },
         },
         { repo } as any,
       );

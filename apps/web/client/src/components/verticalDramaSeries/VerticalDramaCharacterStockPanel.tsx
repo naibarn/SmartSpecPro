@@ -65,6 +65,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { trpc } from "@/lib/trpc";
 import { classifyError } from "@/lib/systemErrorMonitor";
 import {
@@ -116,6 +117,18 @@ import {
   normalizeTargetAudienceRegion,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import {
+  VERTICAL_DRAMA_CHARACTER_CASTING_LOOKS,
+  VERTICAL_DRAMA_CHARACTER_CASTING_LOOK_LABELS_EN,
+  VERTICAL_DRAMA_CHARACTER_CASTING_LOOK_LABELS_TH,
+  VERTICAL_DRAMA_CHARACTER_CASTING_REGIONS,
+  VERTICAL_DRAMA_CHARACTER_CASTING_REGION_LABELS_EN,
+  VERTICAL_DRAMA_CHARACTER_CASTING_REGION_LABELS_TH,
+  VERTICAL_DRAMA_CHARACTER_CASTING_FORM_DEFAULTS,
+  buildVerticalDramaCharacterCastingPreferences,
+  characterCastingFormFromData,
+  type VerticalDramaCharacterCastingFormState,
+} from "@shared/verticalDramaSeries/characterCasting";
 import {
   ROLE_TIER_LABELS,
   ROLE_TIER_VALUES,
@@ -207,6 +220,31 @@ export const VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS = Math.ceil(
  *  `VerticalDramaEpisodePage.tsx` reads/writes, so a connection picked on
  *  either surface carries over automatically. */
 const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
+const CHARACTER_PROMPT_JOB_STORAGE_PREFIX = "vd_character_prompt_job:";
+
+type StoredCharacterPromptJob = {
+  jobId: string;
+  characterId: string;
+};
+
+function characterPromptJobStorageKey(seriesId: string): string {
+  return `${CHARACTER_PROMPT_JOB_STORAGE_PREFIX}${seriesId}`;
+}
+
+function readStoredCharacterPromptJob(
+  seriesId: string,
+): StoredCharacterPromptJob | null {
+  const raw = safeStorageGet(characterPromptJobStorageKey(seriesId));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredCharacterPromptJob>;
+    return parsed.jobId && parsed.characterId
+      ? { jobId: parsed.jobId, characterId: parsed.characterId }
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
  *  cache (remembered model/MCP-connection defaults) — never the source of
@@ -1199,7 +1237,58 @@ export function resolveVdCharacterMutationErrorMessage(
 ): string {
   const presentation = presentHermesError(err ?? null);
   if (presentation) return formatHermesErrorForToast(presentation, lang);
+  const roleTierMismatch = resolveCharacterRoleTierMismatchMessage(err, lang);
+  if (roleTierMismatch) return roleTierMismatch;
   return err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong");
+}
+
+/**
+ * Converts the server's deliberate role-tier validation failure into an
+ * actionable creator-facing message. The raw schema error is still useful in
+ * logs, but it is not useful in a toast — especially when the model reports a
+ * coarse tier such as `support` while the authoritative character record says
+ * `child`.
+ *
+ * Keep this parser narrow: unrelated schema errors must continue to pass
+ * through their existing messages instead of being mislabeled as a role
+ * problem. The server message is stable because it is authored by
+ * `isCompatibleReportedRoleTier` in the character visual-bible service.
+ */
+export function resolveCharacterRoleTierMismatchMessage(
+  err: { message?: string } | null | undefined,
+  lang: Lang,
+): string | null {
+  const message = err?.message ?? "";
+  const match = message.match(
+    /Reported role tier "([^"]+)" does not match authoritative input tier "([^"]+)"\./i,
+  );
+  if (!match) return null;
+
+  const reportedRoleTier = match[1];
+  const expectedRoleTier = match[2];
+  const coarseRoleTierLabels: Record<string, { th: string; en: string }> = {
+    child: { th: "เด็ก", en: "Child" },
+    lead: { th: "ตัวเอก", en: "Lead" },
+    lead_female: { th: "นางเอก", en: "Female lead" },
+    lead_male: { th: "พระเอก", en: "Male lead" },
+    villain: { th: "ตัวร้าย", en: "Villain" },
+    villain_female: { th: "นางร้าย", en: "Female villain" },
+    villain_male: { th: "ตัวร้ายชาย", en: "Male villain" },
+    second_lead: { th: "ตัวรอง", en: "Second lead" },
+    support: { th: "ตัวประกอบ", en: "Supporting character" },
+    other: { th: "อื่น ๆ", en: "Other" },
+  };
+  const labelFor = (roleTier: string): string => {
+    const canonicalLabel = getCanonicalRoleLabel(roleTier, lang);
+    if (canonicalLabel) return `${canonicalLabel} (${roleTier})`;
+    const coarseLabel = coarseRoleTierLabels[roleTier];
+    if (coarseLabel) return `${lang === "th" ? coarseLabel.th : coarseLabel.en} (${roleTier})`;
+    return roleTier;
+  };
+
+  return lang === "th"
+    ? `สร้างตัวละครไม่สำเร็จ: บทบาทตัวละครไม่ตรงกัน — ระบบกำหนด “${labelFor(expectedRoleTier)}” แต่ LLM ส่งกลับ “${labelFor(reportedRoleTier)}” ระบบจึงไม่ใช้ผลลัพธ์นี้เพื่อป้องกันภาพผิดบทบาท กรุณาตรวจสอบ Role/อายุของตัวละคร แล้วลองใหม่`
+    : `Character generation stopped: role mismatch — the system expected “${labelFor(expectedRoleTier)}” but the LLM returned “${labelFor(reportedRoleTier)}”. The result was not used to prevent role drift. Check the character role/age and try again.`;
 }
 
 /** True when a generate-image mutation's `onError` message indicates the
@@ -1909,7 +1998,7 @@ export function VerticalDramaCharacterStockPanel({
   };
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
-    null
+    () => readStoredCharacterPromptJob(seriesId)?.characterId ?? null,
   );
   const [newName, setNewName] = useState("");
   const [newKey, setNewKey] = useState("");
@@ -2352,65 +2441,63 @@ export function VerticalDramaCharacterStockPanel({
     });
   };
 
-  /** Per-character ethnicity/region override — save mutation
-   *  (planning/vd-per-character-ethnicity/plan.md). A dedicated hook (rather
-   *  than reusing `updateCharacterMutation`/`updateCharacterRoleMutation`)
-   *  so its own `isPending`/`variables` can drive this section's Save button
-   *  independently, same "one hook per editing sub-section" convention as
-   *  the two above. */
-  const updateCharacterRegionMutation =
+  /** Per-character casting preferences — one durable mutation for region,
+   *  casting look, and the optional high-priority details field. Keeping the
+   *  section on its own mutation makes its pending state independent from
+   *  role/profile edits and ensures the exact same contract is used for both
+   *  existing and newly-created characters. */
+  const updateCharacterCastingMutation =
     trpc.verticalDramaCharacters.updateCharacter.useMutation({
       onSuccess: () => {
         invalidate();
-        toast.success(t(lang, "บันทึกเชื้อชาติ/ภูมิภาคของตัวละครแล้ว", "Character ethnicity/region saved"));
+        toast.success(t(lang, "บันทึกข้อมูล Casting ของตัวละครแล้ว", "Character casting preferences saved"));
       },
       onError,
     });
 
-  /** Draft-form buffer for the region/ethnicity controls, keyed by
-   *  characterId — same "local draft > persisted fallback, never reset on
-   *  selection change" convention as `speechProfileFormDrafts` above. */
-  const [regionOverrideFormDrafts, setRegionOverrideFormDrafts] = useState<
-    Record<string, VdRegionOverrideFormState>
-  >({});
+  const [castingPreferencesFormDrafts, setCastingPreferencesFormDrafts] =
+    useState<Record<string, VerticalDramaCharacterCastingFormState>>({});
 
-  const regionOverrideFormFor = (characterId: string): VdRegionOverrideFormState => {
-    const existingDraft = regionOverrideFormDrafts[characterId];
+  const castingPreferencesFormFor = (
+    characterId: string,
+  ): VerticalDramaCharacterCastingFormState => {
+    const existingDraft = castingPreferencesFormDrafts[characterId];
     if (existingDraft) return existingDraft;
     const character = characters.find(
-      (c: VdCharacterListItem) => c.characterId === characterId
+      (c: VdCharacterListItem) => c.characterId === characterId,
     );
-    return regionOverrideFormFromCharacterData(
-      (character?.data as Record<string, unknown> | null | undefined) ?? undefined
+    return characterCastingFormFromData(
+      (character?.data as Record<string, unknown> | null | undefined) ?? undefined,
     );
   };
 
-  const updateRegionOverrideForm = (
+  const updateCastingPreferencesForm = (
     characterId: string,
-    patch: Partial<VdRegionOverrideFormState>
+    patch: Partial<VerticalDramaCharacterCastingFormState>,
   ) => {
-    setRegionOverrideFormDrafts(prev => ({
+    setCastingPreferencesFormDrafts(prev => ({
       ...prev,
-      [characterId]: { ...regionOverrideFormFor(characterId), ...patch },
+      [characterId]: {
+        ...castingPreferencesFormFor(characterId),
+        ...patch,
+      },
     }));
   };
 
-  const handleSaveRegionOverride = (characterId: string) => {
-    const form = regionOverrideFormFor(characterId);
-    updateCharacterRegionMutation.mutate({
+  const handleSaveCastingPreferences = (characterId: string) => {
+    const form = castingPreferencesFormFor(characterId);
+    updateCharacterCastingMutation.mutate({
       seriesId,
       characterId,
-      ...buildCharacterRegionOverrideUpdateFields(form),
+      castingPreferences: buildVerticalDramaCharacterCastingPreferences(form),
     });
   };
 
-  /** New-character "Add character" card draft state (create surface — see
-   *  `newName`/`newRole`/`newRoleTier` above). Separate from
-   *  `regionOverrideFormDrafts` (which is for the per-character EDIT
-   *  surface, keyed by an existing characterId) since there is no
-   *  characterId yet for a not-yet-created character. */
-  const [newRegionOverride, setNewRegionOverride] =
-    useState<VdRegionOverrideFormState>(VD_REGION_OVERRIDE_FORM_DEFAULTS);
+  /** New-character "Add character" card draft state. */
+  const [newCastingPreferences, setNewCastingPreferences] =
+    useState<VerticalDramaCharacterCastingFormState>(
+      VERTICAL_DRAMA_CHARACTER_CASTING_FORM_DEFAULTS,
+    );
 
   /** Character ids currently between "preview task submitted" and
    *  "preview task completed" — same Set-keyed-by-id convention as
@@ -2552,7 +2639,7 @@ export function VerticalDramaCharacterStockPanel({
         setNewKey("");
         setNewRole("");
         setNewRoleTier("");
-        setNewRegionOverride(VD_REGION_OVERRIDE_FORM_DEFAULTS);
+        setNewCastingPreferences(VERTICAL_DRAMA_CHARACTER_CASTING_FORM_DEFAULTS);
         setSelectedCharacterId(res.character.characterId);
         invalidate();
         toast.success(t(lang, "เพิ่มตัวละครแล้ว", "Character added"));
@@ -3491,6 +3578,11 @@ export function VerticalDramaCharacterStockPanel({
   const [pendingPreviewTarget, setPendingPreviewTarget] = useState<{
     characterId: string;
   } | null>(null);
+  /** Durable BullMQ character-prompt preview currently being polled. */
+  const [characterPromptJob, setCharacterPromptJob] = useState<{
+    jobId: string;
+    characterId: string;
+  } | null>(() => readStoredCharacterPromptJob(seriesId));
 
   /** Populated once `previewCharacterPromptMutation` resolves — drives the
    *  inline `MediaPromptPreview` card. Cleared on confirm or cancel. */
@@ -3507,6 +3599,130 @@ export function VerticalDramaCharacterStockPanel({
        * despite reading a touch plain, instead of the previous silent block. */
       warnings?: string[];
     } | null>(null);
+
+  type CharacterPromptPreviewResult =
+    | {
+        mode: "candidate_batch";
+        batchId: string;
+        candidateCount: number;
+        sharedVisualLanguage?: string;
+        model?: string;
+        warnings?: string[];
+        candidates: Array<{
+          assetLinkId: string;
+          candidateId: string;
+          index: number;
+          portraitPrompt: string;
+          negativePrompt?: string;
+          visualIdentitySummary?: string;
+          warnings?: string[];
+        }>;
+      }
+    | {
+        mode: "single";
+        portraitPrompt: string;
+        turnaroundPrompt: string;
+        negativePrompt?: string;
+        model?: string;
+        warnings?: string[];
+        approvedDesignSnapshot: VerticalDramaApprovedCharacterDesignSnapshot;
+      };
+
+  const applyCharacterPromptPreviewResult = (res: CharacterPromptPreviewResult) => {
+    const characterId =
+      pendingPreviewTarget?.characterId ?? characterPromptJob?.characterId;
+    if (!characterId) return;
+    setPendingPreviewTarget(null);
+    setCharacterPromptJob(null);
+    if (res.mode === "candidate_batch") {
+      setPendingCharacterPromptPreview(null);
+      setPortraitCandidateBatches(prev => ({
+        ...prev,
+        [characterId]: {
+          batchId: res.batchId,
+          characterId,
+          sharedVisualLanguage: res.sharedVisualLanguage,
+          model: res.model,
+          warnings: res.warnings,
+          candidates: res.candidates.map(candidate => ({
+            assetLinkId: candidate.assetLinkId,
+            candidateId: candidate.candidateId,
+            index: candidate.index,
+            portraitPrompt: candidate.portraitPrompt,
+            negativePrompt: candidate.negativePrompt,
+            visualIdentitySummary: candidate.visualIdentitySummary,
+            status: "previewed",
+          })),
+        },
+      }));
+      return;
+    }
+    setPendingCharacterPromptPreview({
+      characterId,
+      portraitPrompt: res.portraitPrompt,
+      turnaroundPrompt: res.turnaroundPrompt,
+      negativePrompt: res.negativePrompt,
+      model: res.model,
+      approvedDesignSnapshot: res.approvedDesignSnapshot,
+      warnings: res.warnings,
+    });
+  };
+
+  const characterPromptJobQuery =
+    trpc.verticalDramaCharacters.getCharacterPromptJob.useQuery(
+      characterPromptJob
+        ? {
+            jobId: characterPromptJob.jobId,
+            seriesId,
+            characterId: characterPromptJob.characterId,
+          }
+        : { jobId: "00000000-0000-4000-8000-000000000000", seriesId, characterId: "0" },
+      {
+        enabled: Boolean(characterPromptJob),
+        refetchInterval: query => {
+          const status = query.state.data?.status;
+          return status === "queued" || status === "running" ? 2_000 : false;
+        },
+        refetchIntervalInBackground: true,
+      },
+    );
+
+  useEffect(() => {
+    const storageKey = characterPromptJobStorageKey(seriesId);
+    if (characterPromptJob) {
+      safeStorageSet(storageKey, JSON.stringify(characterPromptJob));
+    } else {
+      safeStorageRemove(storageKey);
+    }
+  }, [characterPromptJob, seriesId]);
+
+  useEffect(() => {
+    const job = characterPromptJobQuery.data;
+    if (characterPromptJobQuery.error) {
+      setPendingPreviewTarget(null);
+      setCharacterPromptJob(null);
+      return;
+    }
+    if (!job || !characterPromptJob) return;
+    if (job.status === "succeeded" && job.result) {
+      applyCharacterPromptPreviewResult(job.result as CharacterPromptPreviewResult);
+    } else if (job.status === "failed") {
+      setPendingPreviewTarget(null);
+      setCharacterPromptJob(null);
+      toast.error(
+        t(
+          lang,
+          `สร้าง prompt ตัวละครไม่สำเร็จ: ${job.error ?? "ไม่ทราบสาเหตุ"}`,
+          `Character prompt preview failed: ${job.error ?? "Unknown error"}`,
+        ),
+      );
+    }
+  }, [
+    characterPromptJobQuery.data,
+    characterPromptJobQuery.error,
+    characterPromptJob,
+    lang,
+  ]);
 
   /** Entry point for the portrait generate button (card grid + selected-
    *  character detail panel) — replaces the previous direct
@@ -3551,42 +3767,18 @@ export function VerticalDramaCharacterStockPanel({
           }),
           {
             onSuccess: res => {
-              setPendingPreviewTarget(null);
-              if (res.mode === "candidate_batch") {
-                setPendingCharacterPromptPreview(null);
-                setPortraitCandidateBatches(prev => ({
-                  ...prev,
-                  [characterId]: {
-                    batchId: res.batchId,
-                    characterId,
-                    sharedVisualLanguage: res.sharedVisualLanguage,
-                    model: res.model,
-                    warnings: "warnings" in res ? res.warnings : undefined,
-                    candidates: res.candidates.map(candidate => ({
-                      assetLinkId: candidate.assetLinkId,
-                      candidateId: candidate.candidateId,
-                      index: candidate.index,
-                      portraitPrompt: candidate.portraitPrompt,
-                      negativePrompt: candidate.negativePrompt,
-                      visualIdentitySummary: candidate.visualIdentitySummary,
-                      status: "previewed",
-                    })),
-                  },
-                }));
+              if (res.mode === "job") {
+                setCharacterPromptJob({
+                  jobId: res.jobId,
+                  characterId,
+                });
                 return;
               }
-              setPendingCharacterPromptPreview({
-                characterId,
-                portraitPrompt: res.portraitPrompt,
-                turnaroundPrompt: res.turnaroundPrompt,
-                negativePrompt: res.negativePrompt,
-                model: res.model,
-                approvedDesignSnapshot: res.approvedDesignSnapshot,
-                warnings: "warnings" in res ? res.warnings : undefined,
-              });
+              applyCharacterPromptPreviewResult(res);
             },
             onError: () => {
               setPendingPreviewTarget(null);
+              setCharacterPromptJob(null);
             },
           },
         );
@@ -3783,6 +3975,10 @@ export function VerticalDramaCharacterStockPanel({
           }),
           {
         onSuccess: res => {
+          if (res.mode === "job") {
+            setCharacterPromptJob({ jobId: res.jobId, characterId });
+            return;
+          }
           if (res.mode !== "candidate_batch" || res.candidates.length === 0) {
             clearRetrying();
             return;
@@ -3818,7 +4014,10 @@ export function VerticalDramaCharacterStockPanel({
           });
           clearRetrying();
         },
-        onError: clearRetrying,
+        onError: () => {
+          clearRetrying();
+          setCharacterPromptJob(null);
+        },
           },
         );
       },
@@ -3826,8 +4025,9 @@ export function VerticalDramaCharacterStockPanel({
   };
 
   const isPreviewLoadingFor = (characterId: string) =>
-    previewCharacterPromptMutation.isPending &&
-    pendingPreviewTarget?.characterId === characterId;
+    (previewCharacterPromptMutation.isPending &&
+      pendingPreviewTarget?.characterId === characterId) ||
+    characterPromptJob?.characterId === characterId;
 
   const isImageGeneratingFor = (characterId: string) =>
     isPreviewLoadingFor(characterId) ||
@@ -4162,6 +4362,45 @@ export function VerticalDramaCharacterStockPanel({
     }
     return characters[0]?.characterId ?? null;
   }, [selectedCharacterId, characters]);
+
+  /** Refresh-safe recovery for a prompt preview that was submitted before a
+   * page reload. The active pointer is cleared as soon as the worker reaches
+   * a terminal state, so this query only resumes queued/running work and can
+   * never create a duplicate paid request. */
+  const activeCharacterPromptJobQuery =
+    trpc.verticalDramaCharacters.getActiveCharacterPromptJob.useQuery(
+      {
+        seriesId,
+        characterId: effectiveSelectedId ?? "0",
+      },
+      {
+        enabled: Boolean(effectiveSelectedId),
+        refetchInterval: query => {
+          const status = query.state.data?.status;
+          return status === "queued" || status === "running" ? 2_000 : false;
+        },
+        refetchIntervalInBackground: true,
+      },
+    );
+
+  useEffect(() => {
+    const activeJob = activeCharacterPromptJobQuery.data;
+    if (!activeJob || !effectiveSelectedId) return;
+    if (
+      !characterPromptJob ||
+      characterPromptJob.jobId !== activeJob.jobId
+    ) {
+      setPendingPreviewTarget({ characterId: effectiveSelectedId });
+      setCharacterPromptJob({
+        jobId: activeJob.jobId,
+        characterId: effectiveSelectedId,
+      });
+    }
+  }, [
+    activeCharacterPromptJobQuery.data,
+    characterPromptJob,
+    effectiveSelectedId,
+  ]);
 
   const selectedCharacter =
     characters.find(
@@ -4642,7 +4881,7 @@ export function VerticalDramaCharacterStockPanel({
                                   }}
                                   className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                                 >
-                                  <img
+                                  <AuthenticatedMediaImage
                                     src={thumbnailUrl}
                                     alt=""
                                     className="aspect-[9/16] w-28 rounded-md border border-border object-cover"
@@ -5061,7 +5300,7 @@ export function VerticalDramaCharacterStockPanel({
                                           }}
                                           className="block rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                                         >
-                                          <img
+                                          <AuthenticatedMediaImage
                                             src={variantThumbnailUrl}
                                             alt=""
                                             className="aspect-[9/16] h-20 w-14 shrink-0 rounded object-cover"
@@ -6050,81 +6289,132 @@ export function VerticalDramaCharacterStockPanel({
                       </p>
                     </div>
 
-                    {/* Per-character ethnicity/region override
-                    (planning/vd-per-character-ethnicity/plan.md) — a
-                    9-preset dropdown plus a free-text override (free text
-                    wins, enforced server-side by
-                    `resolveCharacterTargetAudienceRegion`). Fixes the
-                    reported "ชื่อไทยแต่หน้าฝรั่ง" confusion: this is what
-                    drives the AI-generated FACE ethnicity for THIS
-                    character specifically; leaving both empty inherits the
-                    series-level default shown above ("กลุ่มผู้ชมเป้าหมาย"). */}
+                    {/* Skill-first per-character casting controls. The
+                    additional-details field is intentionally outside the
+                    dropdowns and is sent as a higher-priority user fact to
+                    the visual-bible skill. */}
                     {(() => {
                       const characterId = selectedCharacter.characterId;
-                      const form = regionOverrideFormFor(characterId);
+                      const form = castingPreferencesFormFor(characterId);
                       const saving =
-                        updateCharacterRegionMutation.isPending &&
-                        updateCharacterRegionMutation.variables?.characterId ===
+                        updateCharacterCastingMutation.isPending &&
+                        updateCharacterCastingMutation.variables?.characterId ===
                           characterId;
                       return (
                         <div
-                          className="flex flex-col gap-1.5 rounded-md border bg-muted/20 p-2"
-                          data-testid="vd-character-region-override"
+                          className="flex flex-col gap-2 rounded-md border bg-muted/20 p-3"
+                          data-testid="vd-character-casting-preferences"
                         >
-                          <Label
-                            htmlFor="vd-selected-region"
-                            className="text-xs font-medium text-foreground"
-                          >
-                            {t(lang, "เชื้อชาติ/ภูมิภาคของตัวละคร", "Character ethnicity/region")}
+                          <div>
+                            <p className="text-xs font-medium text-foreground">
+                              {t(lang, "Casting และภาพลักษณ์ตัวละคร", "Casting & character look")}
+                            </p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {t(
+                                lang,
+                                "ใช้บทบาท แกนเรื่อง ภาษา และตลาดของซีรีย์ร่วมกับตัวเลือกนี้เพื่อสร้างหน้าตาที่เหมาะกับตัวละคร ไม่ใช่การสุ่มหน้าตา",
+                                "The Skill combines this with the character role, story spine, language, and series market to cast a coherent face—not a random face."
+                              )}
+                            </p>
+                          </div>
+                          <Label htmlFor="vd-selected-casting-region" className="text-xs">
+                            {t(lang, "เชื้อชาติหรือภูมิภาค (Casting Region)", "Ethnicity or region (Casting Region)")}
                           </Label>
                           <Select
-                            value={form.region || VD_REGION_UNSET_SENTINEL}
+                            value={form.region}
                             onValueChange={value =>
-                              updateRegionOverrideForm(characterId, {
-                                region: value === VD_REGION_UNSET_SENTINEL ? "" : value,
+                              updateCastingPreferencesForm(characterId, {
+                                region: value as VerticalDramaCharacterCastingFormState["region"],
                               })
                             }
                             disabled={readOnly}
                           >
-                            <SelectTrigger id="vd-selected-region" className="h-9 text-xs">
+                            <SelectTrigger id="vd-selected-casting-region" className="h-9 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="max-h-[min(70vh,32rem)]">
-                              <SelectItem value={VD_REGION_UNSET_SENTINEL}>
-                                {t(lang, "ไม่ระบุ / ใช้ค่าเริ่มต้นของซีรีย์", "Unset / use series default")}
+                              <SelectItem value="auto">
+                                {t(lang, "อัตโนมัติ — ให้ AI วิเคราะห์จากเรื่อง", "Auto — let AI analyze the story")}
                               </SelectItem>
-                              {VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS.map(region => (
+                              {VERTICAL_DRAMA_CHARACTER_CASTING_REGIONS.map(region => (
                                 <SelectItem key={region} value={region}>
                                   {lang === "th"
-                                    ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[region]
-                                    : VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN[region]}
+                                    ? VERTICAL_DRAMA_CHARACTER_CASTING_REGION_LABELS_TH[region]
+                                    : VERTICAL_DRAMA_CHARACTER_CASTING_REGION_LABELS_EN[region]}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                          <Label
-                            htmlFor="vd-selected-ethnicity-text"
-                            className="text-xs"
-                          >
-                            {t(lang, "หรือระบุเอง (เช่น ลูกครึ่งไทย-ญี่ปุ่น, คนเหนือ)", "Or specify freely (e.g. Thai-Japanese mixed, Northern Thai)")}
-                          </Label>
-                          <Input
-                            id="vd-selected-ethnicity-text"
-                            value={form.ethnicityText}
-                            disabled={readOnly}
-                            onChange={e =>
-                              updateRegionOverrideForm(characterId, {
-                                ethnicityText: e.target.value,
-                              })
-                            }
-                            placeholder={t(lang, "ลูกครึ่งไทย-ญี่ปุ่น", "Thai-Japanese mixed")}
-                            maxLength={80}
-                          />
                           <p className="text-[11px] text-muted-foreground">
                             {t(
                               lang,
-                              "กำหนดหน้าตา (เชื้อชาติ) ที่ AI ใช้สร้างภาพตัวละครนี้โดยเฉพาะ ข้อความที่กรอกเองจะมีผลเหนือกว่าตัวเลือกด้านบน หากปล่อยว่างทั้งคู่ ระบบจะใช้ค่าเริ่มต้นของซีรีย์",
-                              "Drives the AI-generated face/ethnicity for this character specifically. Free text (if filled) always wins over the dropdown. Leave both empty to use the series default."
+                              "อัตโนมัติจะพิจารณา locale, setting, กลุ่มผู้ชม, บทบาท และ visual culture ของซีรีย์ก่อนตัดสินใจ",
+                              "Auto considers the series locale, setting, audience, character role, and visual culture before deciding."
+                            )}
+                          </p>
+                          <Label htmlFor="vd-selected-casting-look" className="text-xs">
+                            {t(lang, "แนวหน้าตานักแสดง (Casting Look)", "Casting look")}
+                          </Label>
+                          <Select
+                            value={form.look}
+                            onValueChange={value =>
+                              updateCastingPreferencesForm(characterId, {
+                                look: value as VerticalDramaCharacterCastingFormState["look"],
+                              })
+                            }
+                            disabled={readOnly}
+                          >
+                            <SelectTrigger id="vd-selected-casting-look" className="h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[min(70vh,32rem)]">
+                              <SelectItem value="auto">
+                                {t(lang, "อัตโนมัติ — วิเคราะห์จากตัวละคร", "Auto — analyze the character")}
+                              </SelectItem>
+                              {VERTICAL_DRAMA_CHARACTER_CASTING_LOOKS.map(look => (
+                                <SelectItem key={look} value={look}>
+                                  {lang === "th"
+                                    ? VERTICAL_DRAMA_CHARACTER_CASTING_LOOK_LABELS_TH[look]
+                                    : VERTICAL_DRAMA_CHARACTER_CASTING_LOOK_LABELS_EN[look]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[11px] text-muted-foreground">
+                            {t(
+                              lang,
+                              "อัตโนมัติจะเลือกความน่าดึงดูดให้เหมาะกับ role tier, อายุ, บุคลิก และตลาดของเรื่อง",
+                              "Auto selects an appealing look that fits the role tier, age, personality, and series market."
+                            )}
+                          </p>
+                          <Label htmlFor="vd-selected-casting-details" className="text-xs">
+                            {t(lang, "รายละเอียด Casting เพิ่มเติม (ถ้ามี)", "Additional Casting Details (optional)")}
+                          </Label>
+                          <Textarea
+                            id="vd-selected-casting-details"
+                            value={form.additionalDetails}
+                            disabled={readOnly}
+                            onChange={e =>
+                              updateCastingPreferencesForm(characterId, {
+                                additionalDetails: e.target.value,
+                              })
+                            }
+                            maxLength={800}
+                            rows={4}
+                            placeholder={t(
+                              lang,
+                              "เช่น ลูกครึ่งไทย-ญี่ปุ่น หรือหน้าคม ดูฉลาดแต่เป็นมิตร",
+                              "e.g. Asian-American; natural, not model-like; sharp, intelligent, and friendly"
+                            )}
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            {t(lang, "ตัวอย่าง: ลูกครึ่งไทย-ญี่ปุ่น · Asian-American · ดูเป็นสาวธรรมชาติ ไม่เหมือนนางแบบ · Korean drama casting แต่เป็น American character", "Examples: Thai-Japanese mixed · Asian-American · natural, not model-like · Korean-drama casting but an American character")}
+                          </p>
+                          <p className="rounded border border-primary/20 bg-primary/5 p-2 text-[11px] font-medium text-primary">
+                            {t(
+                              lang,
+                              "Priority: รายละเอียดช่องนี้มีผลสูงกว่าตัวเลือก Region และ Casting Look แต่ยังต้องสอดคล้องกับอายุ บทบาท ความปลอดภัย และ identity lock",
+                              "Priority: these details override Region and Casting Look, while still respecting age, role, safety, and identity lock."
                             )}
                           </p>
                           {!readOnly && (
@@ -6133,8 +6423,8 @@ export function VerticalDramaCharacterStockPanel({
                                 type="button"
                                 size="sm"
                                 disabled={saving}
-                                onClick={() => handleSaveRegionOverride(characterId)}
-                                data-testid="vd-character-region-save"
+                                onClick={() => handleSaveCastingPreferences(characterId)}
+                                data-testid="vd-character-casting-save"
                               >
                                 {saving ? (
                                   <Loader2
@@ -6142,7 +6432,7 @@ export function VerticalDramaCharacterStockPanel({
                                     className="mr-2 h-3.5 w-3.5 animate-spin"
                                   />
                                 ) : null}
-                                {t(lang, "บันทึกเชื้อชาติ/ภูมิภาค", "Save ethnicity/region")}
+                                {t(lang, "บันทึกข้อมูล Casting", "Save casting preferences")}
                               </Button>
                             </div>
                           )}
@@ -6235,7 +6525,7 @@ export function VerticalDramaCharacterStockPanel({
                                       }));
                                     }}
                                   >
-                                    <img
+                                    <AuthenticatedMediaImage
                                       src={candidate.thumbnailUrl}
                                       alt=""
                                       className={cn(
@@ -6943,7 +7233,7 @@ export function VerticalDramaCharacterStockPanel({
                                               `View candidate ${candidate.index + 1} full size`
                                             )}
                                           >
-                                            <img
+                                            <AuthenticatedMediaImage
                                               src={candidate.imageUrl}
                                               alt={t(
                                                 lang,
@@ -7298,7 +7588,7 @@ export function VerticalDramaCharacterStockPanel({
                                     prompt always requests "9:16") — a fixed
                                     aspect box lets it display bigger without
                                     layout jump before it loads. */}
-                                <img
+                                <AuthenticatedMediaImage
                                   src={portrait.imageUrl}
                                   alt={t(
                                     lang,
@@ -7338,7 +7628,7 @@ export function VerticalDramaCharacterStockPanel({
                                     composite, not 9:16 — let it keep its own
                                     aspect ratio (`object-contain`) instead of
                                     force-cropping it into a portrait box. */}
-                                <img
+                                <AuthenticatedMediaImage
                                   src={turnaround.imageUrl}
                                   alt={t(
                                     lang,
@@ -7395,7 +7685,7 @@ export function VerticalDramaCharacterStockPanel({
                                       }
                                       className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                                     >
-                                      <img
+                                      <AuthenticatedMediaImage
                                         src={tile.dataUrl}
                                         alt=""
                                         className="h-10 w-10 rounded object-cover"
@@ -7423,7 +7713,7 @@ export function VerticalDramaCharacterStockPanel({
                                 }
                                 className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                               >
-                                <img
+                                <AuthenticatedMediaImage
                                   src={sheet.imageUrl}
                                   alt={t(
                                     lang,
@@ -7483,7 +7773,7 @@ export function VerticalDramaCharacterStockPanel({
                                       }
                                       className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                                     >
-                                      <img
+                                      <AuthenticatedMediaImage
                                         src={tile.dataUrl}
                                         alt=""
                                         className="h-10 w-10 rounded object-cover"
@@ -7963,7 +8253,7 @@ export function VerticalDramaCharacterStockPanel({
                                   }
                                   className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                                 >
-                                  <img
+                                  <AuthenticatedMediaImage
                                     src={thumbnailUrl}
                                     alt={thumbnailAlt}
                                     className={cn(
@@ -8148,56 +8438,106 @@ export function VerticalDramaCharacterStockPanel({
                     {t(lang, "หากไม่เลือก ระบบจะแจ้งให้ตรวจบทบาทก่อนสร้างภาพ", "If omitted, the system will flag the character for role review before image generation.")}
                   </p>
                 </div>
-                <div className="flex flex-col gap-1.5 rounded-md border bg-muted/20 p-2">
-                  <Label htmlFor="vd-char-region" className="text-xs font-medium text-foreground">
-                    {t(lang, "เชื้อชาติ/ภูมิภาคของตัวละคร", "Character ethnicity/region")}
+                <div className="flex flex-col gap-2 rounded-md border bg-muted/20 p-3">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">
+                      {t(lang, "Casting และภาพลักษณ์ตัวละคร", "Casting & character look")}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {t(lang, "หากไม่เลือก ระบบจะให้ Skill วิเคราะห์จากเรื่องและตลาดอย่างเป็นเหตุเป็นผล", "If left on Auto, the Skill reasons from the story and market context.")}
+                    </p>
+                  </div>
+                  <Label htmlFor="vd-new-character-casting-region" className="text-xs">
+                    {t(lang, "เชื้อชาติหรือภูมิภาค (Casting Region)", "Ethnicity or region (Casting Region)")}
                   </Label>
                   <Select
-                    value={newRegionOverride.region || VD_REGION_UNSET_SENTINEL}
+                    value={newCastingPreferences.region}
                     onValueChange={value =>
-                      setNewRegionOverride(prev => ({
+                      setNewCastingPreferences(prev => ({
                         ...prev,
-                        region: value === VD_REGION_UNSET_SENTINEL ? "" : value,
+                        region: value as VerticalDramaCharacterCastingFormState["region"],
                       }))
                     }
                   >
-                    <SelectTrigger id="vd-char-region" className="h-9 text-xs">
+                    <SelectTrigger id="vd-new-character-casting-region" className="h-9 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-[min(70vh,32rem)]">
-                      <SelectItem value={VD_REGION_UNSET_SENTINEL}>
-                        {t(lang, "ไม่ระบุ / ใช้ค่าเริ่มต้นของซีรีย์", "Unset / use series default")}
+                      <SelectItem value="auto">
+                        {t(lang, "อัตโนมัติ — ให้ AI วิเคราะห์จากเรื่อง", "Auto — let AI analyze the story")}
                       </SelectItem>
-                      {VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS.map(region => (
+                      {VERTICAL_DRAMA_CHARACTER_CASTING_REGIONS.map(region => (
                         <SelectItem key={region} value={region}>
                           {lang === "th"
-                            ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[region]
-                            : VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN[region]}
+                            ? VERTICAL_DRAMA_CHARACTER_CASTING_REGION_LABELS_TH[region]
+                            : VERTICAL_DRAMA_CHARACTER_CASTING_REGION_LABELS_EN[region]}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Label htmlFor="vd-char-ethnicity-text" className="text-xs">
-                    {t(lang, "หรือระบุเอง (เช่น ลูกครึ่งไทย-ญี่ปุ่น, คนเหนือ)", "Or specify freely (e.g. Thai-Japanese mixed, Northern Thai)")}
-                  </Label>
-                  <Input
-                    id="vd-char-ethnicity-text"
-                    value={newRegionOverride.ethnicityText}
-                    onChange={e =>
-                      setNewRegionOverride(prev => ({
-                        ...prev,
-                        ethnicityText: e.target.value,
-                      }))
-                    }
-                    placeholder={t(lang, "ลูกครึ่งไทย-ญี่ปุ่น", "Thai-Japanese mixed")}
-                    maxLength={80}
-                  />
                   <p className="text-[11px] text-muted-foreground">
                     {t(
                       lang,
-                      "กำหนดหน้าตา (เชื้อชาติ) ที่ AI ใช้สร้างภาพตัวละครนี้โดยเฉพาะ ข้อความที่กรอกเองจะมีผลเหนือกว่าตัวเลือกด้านบน หากปล่อยว่างทั้งคู่ ระบบจะใช้ค่าเริ่มต้นของซีรีย์",
-                      "Drives the AI-generated face/ethnicity for this character specifically. Free text (if filled) always wins over the dropdown. Leave both empty to use the series default."
+                      "อัตโนมัติจะพิจารณา locale, setting, กลุ่มผู้ชม, บทบาท และ visual culture ของซีรีย์ก่อนตัดสินใจ",
+                      "Auto considers the series locale, setting, audience, character role, and visual culture before deciding."
                     )}
+                  </p>
+                  <Label htmlFor="vd-new-character-casting-look" className="text-xs">
+                    {t(lang, "แนวหน้าตานักแสดง (Casting Look)", "Casting look")}
+                  </Label>
+                  <Select
+                    value={newCastingPreferences.look}
+                    onValueChange={value =>
+                      setNewCastingPreferences(prev => ({
+                        ...prev,
+                        look: value as VerticalDramaCharacterCastingFormState["look"],
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="vd-new-character-casting-look" className="h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(70vh,32rem)]">
+                      <SelectItem value="auto">
+                        {t(lang, "อัตโนมัติ — วิเคราะห์จากตัวละคร", "Auto — analyze the character")}
+                      </SelectItem>
+                      {VERTICAL_DRAMA_CHARACTER_CASTING_LOOKS.map(look => (
+                        <SelectItem key={look} value={look}>
+                          {lang === "th"
+                            ? VERTICAL_DRAMA_CHARACTER_CASTING_LOOK_LABELS_TH[look]
+                            : VERTICAL_DRAMA_CHARACTER_CASTING_LOOK_LABELS_EN[look]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(
+                      lang,
+                      "อัตโนมัติจะเลือกความน่าดึงดูดให้เหมาะกับ role tier, อายุ, บุคลิก และตลาดของเรื่อง",
+                      "Auto selects an appealing look that fits the role tier, age, personality, and series market."
+                    )}
+                  </p>
+                  <Label htmlFor="vd-new-character-casting-details" className="text-xs">
+                    {t(lang, "รายละเอียด Casting เพิ่มเติม (ถ้ามี)", "Additional Casting Details (optional)")}
+                  </Label>
+                  <Textarea
+                    id="vd-new-character-casting-details"
+                    value={newCastingPreferences.additionalDetails}
+                    onChange={e =>
+                      setNewCastingPreferences(prev => ({
+                        ...prev,
+                        additionalDetails: e.target.value,
+                      }))
+                    }
+                    maxLength={800}
+                    rows={4}
+                    placeholder={t(lang, "เช่น ลูกครึ่งไทย-ญี่ปุ่น หรือหน้าคม ดูฉลาดแต่เป็นมิตร", "e.g. Asian-American; natural, not model-like; sharp, intelligent, and friendly")}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(lang, "ตัวอย่าง: ลูกครึ่งไทย-ญี่ปุ่น · Asian-American · ดูเป็นสาวธรรมชาติ ไม่เหมือนนางแบบ · Korean drama casting แต่เป็น American character", "Examples: Thai-Japanese mixed · Asian-American · natural, not model-like · Korean-drama casting but an American character")}
+                  </p>
+                  <p className="rounded border border-primary/20 bg-primary/5 p-2 text-[11px] font-medium text-primary">
+                    {t(lang, "Priority: รายละเอียดช่องนี้มีผลสูงกว่าตัวเลือก Region และ Casting Look แต่ยังต้องสอดคล้องกับอายุ บทบาท ความปลอดภัย และ identity lock", "Priority: these details override Region and Casting Look, while still respecting age, role, safety, and identity lock.")}
                   </p>
                 </div>
                 <Button
@@ -8214,7 +8554,9 @@ export function VerticalDramaCharacterStockPanel({
                       characterKey: newKey.trim(),
                       role: newRole.trim() || undefined,
                       roleTier: newRoleTier || undefined,
-                      ...buildCharacterRegionOverrideCreateFields(newRegionOverride),
+                      castingPreferences: buildVerticalDramaCharacterCastingPreferences(
+                        newCastingPreferences,
+                      ),
                     })
                   }
                 >
@@ -8490,7 +8832,7 @@ export function VerticalDramaCharacterStockPanel({
                 )}
               >
                 {variantReferencePreviewUrl ? (
-                  <img
+                  <AuthenticatedMediaImage
                     src={variantReferencePreviewUrl}
                     alt=""
                     className="aspect-[9/16] h-20 w-14 rounded object-cover"
@@ -8741,7 +9083,7 @@ export function VerticalDramaCharacterStockPanel({
                   >
                     <div className="flex aspect-[9/16] w-full items-center justify-center overflow-hidden rounded bg-muted">
                       {option.thumbnailUrl ? (
-                        <img
+                        <AuthenticatedMediaImage
                           src={option.thumbnailUrl}
                           alt={t(lang, option.labelTh, option.labelEn)}
                           className="h-full w-full object-cover"
@@ -8928,7 +9270,7 @@ export function VerticalDramaCharacterStockPanel({
                 )}
               >
                 {twinReferencePreviewUrl ? (
-                  <img
+                  <AuthenticatedMediaImage
                     src={twinReferencePreviewUrl}
                     alt=""
                     className="aspect-[9/16] h-20 w-14 rounded object-cover"

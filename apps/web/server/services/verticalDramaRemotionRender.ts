@@ -64,6 +64,7 @@ import {
   queueRemotionRenderVideoJob,
   type QueueRemotionRenderVideoJobInput,
 } from "./workerSchedulerService";
+import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import {
   getAdBannerPlacementPreset,
   resolvePlacementBox,
@@ -1032,6 +1033,60 @@ export interface VdRemotionRenderDeps {
   queueJob?: (
     input: QueueRemotionRenderVideoJobInput
   ) => ReturnType<typeof queueRemotionRenderVideoJob>;
+  resolveWorkerAssetUrls?: (
+    urls: string[],
+    viewer: { userId: number; tenantId: string } | undefined,
+    publicUrl: string | null
+  ) => Promise<string[] | undefined>;
+}
+
+type VdWorkerAssetUrlResolver = NonNullable<
+  VdRemotionRenderDeps["resolveWorkerAssetUrls"]
+>;
+
+function buildVdWorkerViewer(
+  tenantId: string,
+  requestedByUserId?: number | null
+): { userId: number; tenantId: string } | undefined {
+  const userId = Number(requestedByUserId);
+  if (!Number.isInteger(userId) || userId <= 0) return undefined;
+  return { userId, tenantId };
+}
+
+/**
+ * Resolve the exact ordered asset list embedded in a worker payload. Managed
+ * storage URLs require browser/session auth and therefore cannot be fetched by
+ * a Lane B worker; the canonical resolver turns them into tenant-scoped,
+ * short-lived broker URLs while leaving already-public URLs unchanged.
+ */
+async function resolveVdWorkerAssetUrls(
+  urls: string[],
+  resolver: VdWorkerAssetUrlResolver,
+  viewer: { userId: number; tenantId: string } | undefined,
+  publicUrl: string | null,
+  label: string
+): Promise<string[]> {
+  if (urls.length === 0) return [];
+  try {
+    const resolved = await resolver(urls, viewer, publicUrl);
+    if (
+      !resolved ||
+      resolved.length !== urls.length ||
+      resolved.some(url => typeof url !== "string" || url.trim().length === 0)
+    ) {
+      throw new Error("resolver returned an incomplete asset list");
+    }
+    return resolved;
+  } catch (error) {
+    if (error instanceof VdRemotionRenderError) throw error;
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new VdRemotionRenderError(
+      "asset_url_resolution_failed",
+      `Could not resolve ${label} for the Remotion worker${
+        reason ? `: ${reason}` : ""
+      }`
+    );
+  }
 }
 
 export interface SubmitVdRemotionAssemblyResult {
@@ -1056,6 +1111,8 @@ export async function submitVdRemotionAssembly(
 ): Promise<SubmitVdRemotionAssemblyResult> {
   const stageAsset = deps.stageAsset ?? defaultStageAsset;
   const queueJob = deps.queueJob ?? queueRemotionRenderVideoJob;
+  const resolveWorkerAssetUrls =
+    deps.resolveWorkerAssetUrls ?? resolveExternalMediaReferenceUrls;
 
   const orderedClips = input.clips.filter(
     clip => (clip.videoUrl ?? "").trim().length > 0
@@ -1099,10 +1156,21 @@ export async function submitVdRemotionAssembly(
   // real asset with "Asset checksum mismatch".
   const assetBaseUrl =
     String(input.publicBaseUrl ?? "").trim() || input.internalBaseUrl;
+  const workerViewer = buildVdWorkerViewer(
+    input.tenantId,
+    input.requestedByUserId
+  );
+  const workerClipUrls = await resolveVdWorkerAssetUrls(
+    orderedClips.map(clip => absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl)),
+    resolveWorkerAssetUrls,
+    workerViewer,
+    assetBaseUrl,
+    "video clips"
+  );
   const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map(
     (clip, index) => ({
       clipNumber: clip.clipNumber,
-      url: absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl),
+      url: workerClipUrls[index],
       durationSec: probedClips[index].durationSec!,
     })
   );
@@ -1112,7 +1180,7 @@ export async function submitVdRemotionAssembly(
     0
   );
 
-  const resolvedBanners: VdRemotionResolvedBanner[] = [];
+  let resolvedBanners: VdRemotionResolvedBanner[] = [];
   const bannerHashes: string[] = [];
   for (const banner of input.banners ?? []) {
     const staged = await stageAsset(
@@ -1125,6 +1193,19 @@ export async function submitVdRemotionAssembly(
       ...banner,
       resolvedImageUrl: absoluteVdAssetUrl(banner.imageUrl, assetBaseUrl),
     });
+  }
+  if (resolvedBanners.length > 0) {
+    const workerBannerUrls = await resolveVdWorkerAssetUrls(
+      resolvedBanners.map(banner => banner.resolvedImageUrl),
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      "banner images"
+    );
+    resolvedBanners = resolvedBanners.map((banner, index) => ({
+      ...banner,
+      resolvedImageUrl: workerBannerUrls[index],
+    }));
   }
 
   let resolvedDialogueAudio:
@@ -1146,13 +1227,20 @@ export async function submitVdRemotionAssembly(
         absoluteVdAssetUrl(segment.audioUrl, assetBaseUrl)
       ),
     };
+    resolvedDialogueAudio.resolvedSegmentUrls = await resolveVdWorkerAssetUrls(
+      resolvedDialogueAudio.resolvedSegmentUrls,
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      "dialogue audio"
+    );
   }
 
   // Dual watermark (`planning/vd-dual-watermark/plan.md`): stage EACH
   // configured slot's image independently — distinct staged asset + hash per
   // slot, mirroring the ffmpeg path's per-slot staging in
   // `verticalDramaEpisodeVideoAssembly.ts`.
-  const resolvedWatermarkImages: Array<
+  let resolvedWatermarkImages: Array<
     RunAssemblyJobWatermarkImageInput & { resolvedImageUrl: string }
   > = [];
   const watermarkImageHashes: string[] = [];
@@ -1167,6 +1255,21 @@ export async function submitVdRemotionAssembly(
       ...watermark,
       resolvedImageUrl: absoluteVdAssetUrl(watermark.imageUrl, assetBaseUrl),
     });
+  }
+  if (resolvedWatermarkImages.length > 0) {
+    const workerWatermarkUrls = await resolveVdWorkerAssetUrls(
+      resolvedWatermarkImages.map(watermark => watermark.resolvedImageUrl),
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      "watermark images"
+    );
+    resolvedWatermarkImages = resolvedWatermarkImages.map(
+      (watermark, index) => ({
+        ...watermark,
+        resolvedImageUrl: workerWatermarkUrls[index],
+      })
+    );
   }
 
   const { template, durationInFrames, layerCount } = buildVdRemotionTemplate({
@@ -1346,6 +1449,8 @@ export async function submitVdProductionEpisodeAssembly(
 ): Promise<SubmitVdProductionEpisodeAssemblyResult> {
   const stageAsset = deps.stageAsset ?? defaultStageAsset;
   const queueJob = deps.queueJob ?? queueRemotionRenderVideoJob;
+  const resolveWorkerAssetUrls =
+    deps.resolveWorkerAssetUrls ?? resolveExternalMediaReferenceUrls;
   if (input.segments.length === 0) {
     throw new VdRemotionRenderError(
       "no_segments",
@@ -1355,7 +1460,11 @@ export async function submitVdProductionEpisodeAssembly(
 
   const assetBaseUrl =
     String(input.publicBaseUrl ?? "").trim() || input.internalBaseUrl;
-  const resolvedWatermarkImages: Array<
+  const workerViewer = buildVdWorkerViewer(
+    input.owner.tenantId,
+    input.owner.userId
+  );
+  let resolvedWatermarkImages: Array<
     RunAssemblyJobWatermarkImageInput & { resolvedImageUrl: string }
   > = [];
   const watermarkImageHashes: string[] = [];
@@ -1371,6 +1480,21 @@ export async function submitVdProductionEpisodeAssembly(
       resolvedImageUrl: absoluteVdAssetUrl(watermark.imageUrl, assetBaseUrl),
     });
   }
+  if (resolvedWatermarkImages.length > 0) {
+    const workerWatermarkUrls = await resolveVdWorkerAssetUrls(
+      resolvedWatermarkImages.map(watermark => watermark.resolvedImageUrl),
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      "watermark images"
+    );
+    resolvedWatermarkImages = resolvedWatermarkImages.map(
+      (watermark, index) => ({
+        ...watermark,
+        resolvedImageUrl: workerWatermarkUrls[index],
+      })
+    );
+  }
 
   const bgmTracks = input.bgm?.tracks ?? [];
   if (bgmTracks.length > 10) {
@@ -1379,7 +1503,7 @@ export async function submitVdProductionEpisodeAssembly(
       "A Production Episode supports at most 10 BGM tracks"
     );
   }
-  const stagedBgmTracks: Array<
+  let stagedBgmTracks: Array<
     ProductionEpisodeRemotionBgmTrack & {
       resolvedAudioUrl: string;
       sourceDurationSeconds?: number;
@@ -1417,6 +1541,19 @@ export async function submitVdProductionEpisodeAssembly(
       sourceDurationSeconds: staged.durationSec,
       sha256: staged.sha256 ?? fallbackAssetSourceHash(track.url),
     });
+  }
+  if (stagedBgmTracks.length > 0) {
+    const workerBgmUrls = await resolveVdWorkerAssetUrls(
+      stagedBgmTracks.map(track => track.resolvedAudioUrl),
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      "background music"
+    );
+    stagedBgmTracks = stagedBgmTracks.map((track, index) => ({
+      ...track,
+      resolvedAudioUrl: workerBgmUrls[index],
+    }));
   }
 
   const segmentTemplates: RemotionTemplateConfig[] = [];
@@ -1457,10 +1594,19 @@ export async function submitVdProductionEpisodeAssembly(
       );
     }
 
+    const workerClipUrls = await resolveVdWorkerAssetUrls(
+      orderedClips.map(clip =>
+        absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl)
+      ),
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      `video clips for Sub-Episode ${segment.subEpisodeNumber}`
+    );
     const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map(
       (clip, index) => ({
         clipNumber: clip.clipNumber,
-        url: absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl),
+        url: workerClipUrls[index],
         durationSec: probedClips[index].durationSec!,
       })
     );
@@ -1671,6 +1817,8 @@ export async function submitVdEpisodePreview(
 ): Promise<SubmitVdEpisodePreviewResult> {
   const stageAsset = deps.stageAsset ?? defaultStageAsset;
   const queueJob = deps.queueJob ?? queueRemotionRenderVideoJob;
+  const resolveWorkerAssetUrls =
+    deps.resolveWorkerAssetUrls ?? resolveExternalMediaReferenceUrls;
   const orderedClips = input.clips.filter(
     clip => (clip.videoUrl ?? "").trim().length > 0
   );
@@ -1704,10 +1852,25 @@ export async function submitVdEpisodePreview(
   );
   const assetBaseUrl =
     String(input.publicBaseUrl ?? "").trim() || input.internalBaseUrl;
+  const rawWorkerAssetUrls = [
+    ...orderedClips.map(clip =>
+      absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl)
+    ),
+    absoluteVdAssetUrl(input.coverImageUrl, assetBaseUrl),
+  ];
+  const workerAssetUrls = await resolveVdWorkerAssetUrls(
+    rawWorkerAssetUrls,
+    resolveWorkerAssetUrls,
+    buildVdWorkerViewer(input.tenantId, input.requestedByUserId),
+    assetBaseUrl,
+    "preview assets"
+  );
+  const workerClipUrls = workerAssetUrls.slice(0, orderedClips.length);
+  const workerCoverUrl = workerAssetUrls[orderedClips.length];
   const resolvedClips: VdRemotionResolvedClip[] = orderedClips.map(
     (clip, index) => ({
       clipNumber: clip.clipNumber,
-      url: absoluteVdAssetUrl(clip.videoUrl!, assetBaseUrl),
+      url: workerClipUrls[index],
       durationSec: probedClips[index].durationSec!,
     })
   );
@@ -1734,7 +1897,7 @@ export async function submitVdEpisodePreview(
     videoDurationSeconds,
     previewCard: {
       label: input.episodeLabel,
-      coverImageUrl: absoluteVdAssetUrl(input.coverImageUrl, assetBaseUrl),
+      coverImageUrl: workerCoverUrl,
     },
     templateId: `vd-episode-preview-${input.owner.episodeId}-${input.slotId}`,
   });
@@ -1771,7 +1934,7 @@ export async function submitVdEpisodePreview(
         })),
         {
           role: "image" as const,
-          url: absoluteVdAssetUrl(input.coverImageUrl, assetBaseUrl),
+          url: workerCoverUrl,
           sha256:
             stagedCover.sha256 ?? fallbackAssetSourceHash(input.coverImageUrl),
         },

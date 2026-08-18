@@ -21,6 +21,7 @@ import {
 } from "./skillFiles";
 import { executeWithFallback } from "./llmRouter";
 import { isAvailable } from "./providerHealth";
+import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import {
   loadEnabledLlmModelRows,
   type EnabledLlmModelRow,
@@ -53,6 +54,28 @@ import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+import {
+  buildVerticalDramaDialogueLanguageProfilePrompt,
+  type VerticalDramaDialogueLanguageProfile,
+} from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import { buildVerticalDramaCharacterNamingContractPrompt } from "@shared/verticalDramaSeries/characterNaming";
+import {
+  renderVerticalDramaDraftStoryContextBlock,
+} from "@shared/verticalDramaSeries/draftStoryContext";
+import {
+  renderVerticalDramaDraftStoryDesignBlock,
+} from "@shared/verticalDramaSeries/draftStoryDesign";
+import type { VerticalDramaDraftStoryContext } from "@shared/verticalDramaSeries/draftStoryContext";
+import type { VerticalDramaDraftStoryDesign } from "@shared/verticalDramaSeries/draftStoryDesign";
+import {
+  renderVerticalDramaStoryArchitectureBlock,
+  type VerticalDramaStoryArchitectureContract,
+} from "@shared/verticalDramaSeries/storyArchitecture";
+import {
+  deriveVerticalDramaEpisodeRuntimeSeconds,
+  getActiveVerticalDramaShotDurations,
+  type VerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
 /**
  * Genre pollution guard (Stage 1.5, `planning/vd-series-memory-and-lineage/
  * plan.md`) — see `buildGenrePromptLine` below (this file's ONE routing
@@ -114,6 +137,11 @@ import type {
   VdRelationshipState,
   VdOpenThread,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
+import {
+  normalizeVerticalDramaContinuityTimeline,
+  validateVerticalDramaContinuity,
+  type VerticalDramaContinuityIssue,
+} from "@shared/verticalDramaSeries/storyContinuity";
 // Story-density reform (spec §7.7, section-13, added 2026-07-07) — imported
 // DIRECTLY from the submodule (not the shared barrel) per section-13: this
 // is the ONE canonical source for the content-budget/breakdown-versioning
@@ -192,6 +220,17 @@ import {
   emptyQualityLedgers,
   type VerticalDramaQualityLedgers,
 } from "@shared/verticalDramaSeries/qualityLedgers";
+import {
+  readVerticalDramaStoryControlSeed,
+  type VerticalDramaStoryControlSeed,
+} from "@shared/verticalDramaSeries/storyControl";
+import {
+  renderVisualNarrativeIdentityBlock,
+  renderVisualNarrativeProfileBlock,
+  verticalDramaVisualNarrativeProfileSchema,
+  type VerticalDramaVisualNarrativeProfile,
+} from "@shared/verticalDramaSeries/visualNarrativeProfile";
+import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 
 const DEEP_STORY_DRAFT_MIN_CONTEXT_LENGTH = 1_000_000;
 const NO_ACTIVE_VERTICAL_DRAMA_LLM_MESSAGE =
@@ -794,6 +833,12 @@ const expandedStoryBibleSchema = z.object({
     )
     .min(1),
   episodeBreakdown: z.array(episodeBreakdownItemSchema).min(1),
+  /** Bounded season-control seed; optional for legacy/partial model output. */
+  // Optional nested control data is intentionally tolerant: a malformed seed
+  // must not reject the whole legacy story-bible response. The service
+  // normalizes valid seeds and drops invalid ones; the router keeps any prior
+  // valid seed because the outer bible update starts from the existing bible.
+  storyControlSeed: z.unknown().optional(),
   premise_coverage: premiseCoverageSchema.optional(),
 });
 
@@ -1465,6 +1510,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   maxTransientRetries?: number;
   /** Optional schema-retry cap for callers with a stricter interactive contract. */
   maxSchemaRetries?: number;
+  /** Additional contract text that must be repeated on every schema retry. */
+  schemaRetryContract?: string;
 }): Promise<{
   data: T;
   response: Awaited<ReturnType<typeof executeWithFallback>> extends infer R
@@ -1889,12 +1936,26 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
    * available for that same model.
    */
   disableModelFallback?: boolean;
+  /** Restrict the recovery model to the admin-curated LLM Recommend set. */
+  modelFallbackPolicy?: "recommended";
 }): Promise<{ data: T; response: VisionAwareCallResponse; usedVision: boolean }> {
+  const images = args.hasVision
+    ? await resolveExternalMediaReferenceUrls(
+        args.images.map(image => image.url),
+        args.tenantId
+          ? { userId: args.userId, tenantId: args.tenantId }
+          : undefined,
+        args.publicUrl,
+      ).then(resolvedUrls => args.images.map((image, index) => ({
+        ...image,
+        url: resolvedUrls?.[index] ?? image.url,
+      })))
+    : args.images;
   try {
     const result = await runVisionAwareJsonAttempt<T>({
       model: args.model,
       systemPrompt: args.systemPrompt,
-      content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
+      content: buildVisionAwareContent(args.userPromptText, args.hasVision, images),
       userId: args.userId,
       maxTokens: args.firstAttemptMaxTokens,
       schema: args.schema,
@@ -1946,7 +2007,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           if (isProviderUnavailableError(fallbackErr)) throw fallbackErr;
         }
       }
-      if (args.hasVision && args.images.length > 0) {
+      if (args.hasVision && images.length > 0) {
         const result = await runVisionAwareJsonAttempt<T>({
           model: fallbackModel ?? args.model,
           systemPrompt: args.systemPrompt,
@@ -1971,11 +2032,17 @@ interface GenerateStoryBibleParams {
   seriesId: number;
   title: string;
   locale: VerticalDramaSeriesLocale;
+  /** Shared spoken-language/market contract; missing legacy values resolve to Auto. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   genre?: string | null;
   tone?: string | null;
   /** Legacy field name; this value is the planned Sub-episode count. */
   targetEpisodeCount: number;
   bible: Record<string, unknown>;
+  /** Additive story-facing interpretation of the selected series look. */
+  visualNarrativeProfile?: VerticalDramaVisualNarrativeProfile;
+  /** Legacy-safe production look fallback when no derived profile exists. */
+  visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
   /**
    * Story-density reform (spec §7.7, section-13, added 2026-07-07) — the
    * fixed per-episode target duration in seconds, used ONLY to compute the
@@ -1987,6 +2054,8 @@ interface GenerateStoryBibleParams {
    * callers that predate this field are unaffected.
    */
   episodeDurationSeconds?: number;
+  /** Additive 9-logical-shot duration profile for new story planning. */
+  durationPlan?: VerticalDramaDurationPlan;
   /**
    * Additive feature-flag bag (spec §7.7, section-13). Every flag defaults
    * to falsy/undefined, which preserves today's byte-identical prompt and
@@ -2032,16 +2101,47 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     params.locale === "th"
       ? "Write ALL string values in natural Thai."
       : `Write all string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
+  const dialogueLanguageProfilePrompt =
+    buildVerticalDramaDialogueLanguageProfilePrompt({
+      locale: params.locale,
+      profile: params.dialogueLanguageProfile,
+    });
+  const visualNarrativeProfile = verticalDramaVisualNarrativeProfileSchema.safeParse(
+    params.visualNarrativeProfile ?? params.bible.visualNarrativeProfile,
+  ).data;
+  const visualNarrativeBlock = renderVisualNarrativeProfileBlock(
+    visualNarrativeProfile,
+  );
+  const visualNarrativeIdentityBlock = renderVisualNarrativeIdentityBlock(
+    params.visualNarrativeIdentity,
+  );
+  const storyContextBlock = renderVerticalDramaDraftStoryContextBlock(
+    params.bible.storyContext,
+  );
+  const storyDesignBlock = renderVerticalDramaDraftStoryDesignBlock(
+    params.bible.storyDesign,
+  );
+  const storyArchitectureBlock = renderVerticalDramaStoryArchitectureBlock(
+    params.bible.storyContract,
+  );
 
   // Story-density reform (spec §7.7.2 Layer 1, section-13, added
   // 2026-07-07) — additive; only sent when `verticalDramaSeriesSpeechBudget`
   // is enabled, so the flag-off prompt is byte-identical to before this
   // change (section-13 acceptance: "flags off — ... byte-compatible").
   const speechBudgetEnabled = params.opts?.speechBudgetEnabled === true;
-  const episodeDurationSeconds = params.episodeDurationSeconds ?? 60;
+  const shotDurations = getActiveVerticalDramaShotDurations(params.durationPlan);
+  const derivedEpisodeDurationSeconds = shotDurations
+    ? deriveVerticalDramaEpisodeRuntimeSeconds(params.durationPlan!)
+    : undefined;
+  const episodeDurationSeconds =
+    derivedEpisodeDurationSeconds ?? params.episodeDurationSeconds ?? 60;
   const minEpisodeSpeechSeconds = Math.ceil(
     MIN_EPISODE_COVERAGE_RATIO * episodeDurationSeconds
   );
+  const durationPlanInstruction = shotDurations
+    ? `Each Sub-episode is exactly ${shotDurations.length} logical shots. The selected shot durations are ${shotDurations.join(", ")} seconds in shot order, for a derived runtime of ${episodeDurationSeconds} seconds. Plan dialogue and beats against those shot durations; do not invent a separate per-episode duration.`
+    : null;
 
   // Feature 132 §4.2.7 (F132A) — moved ahead of `systemPrompt` so the
   // premise-coverage self-assessment request below can gate on it. An
@@ -2051,14 +2151,25 @@ function buildPrompts(params: GenerateStoryBibleParams): {
   const trimmedUserPremise = params.userPremise?.trim();
 
   const responseShape = trimmedUserPremise
-    ? '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string, "aliases": string[]}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "premise_coverage": {"sufficient": boolean, "note": string}}'
-    : '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string, "aliases": string[]}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}';
+    ? '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string, "aliases": string[]}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "storyControlSeed": {"contractVersion": 1, "premiseAnchor": string, "canonicalCharacterKeys": string[], "threadCandidates": [], "romancePhaseSkeleton": [], "advantageIntent": []}, "premise_coverage": {"sufficient": boolean, "note": string}}'
+    : '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string, "aliases": string[]}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "storyControlSeed": {"contractVersion": 1, "premiseAnchor": string, "canonicalCharacterKeys": string[], "threadCandidates": [], "romancePhaseSkeleton": [], "advantageIntent": []}}';
 
   const systemPrompt = [
     renderCriteriaVersionMarker(),
     "You are a vertical-drama (short-form mobile drama series) story bible writer.",
     "Given a series' basic setup, expand it into a fuller production-ready story bible.",
     langInstruction,
+    dialogueLanguageProfilePrompt,
+    buildVerticalDramaCharacterNamingContractPrompt({
+      narrativeLocale: params.locale,
+      dialogueLanguageProfile: params.dialogueLanguageProfile,
+    }),
+    "If an APPROVED STORY IDENTITY CONTEXT or APPROVED STORY DESIGN CONTROL block is present, preserve its facts and IDs. Do not silently turn a target market into character nationality, and do not replace the primary engine with an unrelated subplot.",
+    storyArchitectureBlock
+      ? "If an APPROVED STORY ARCHITECTURE block is present, it is authoritative: preserve its season endpoint, long-term destination, transformation, required arcs, failure model, and final payoff. Do not invent a different ending."
+      : null,
+    visualNarrativeBlock,
+    visualNarrativeIdentityBlock,
     // Series-level audience age rating (Phase 1) — firm, unconditional
     // instruction; the actual constraint block is rendered in the user
     // message below (see `audienceAgeRatingBlock`).
@@ -2091,9 +2202,11 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     // deterministic (facts-only) half that makes the original names visible
     // enough for the model to actually satisfy this rule.
     'The "WIZARD CHARACTER DRAFT" block in the user message (when present) lists the creator\'s ORIGINAL character names, verbatim, before your refinement. When a "refinedCharacters" entry\'s "name" is a renamed/expanded/corrected/translated form of one of those original lines (e.g. the draft said "ผู้บงการ(คนร้าย)" and you refined it to "ผู้บงการ"), you MUST include that draft line\'s EXACT original name string in this character\'s "aliases" array — this is the ONLY way the rest of the pipeline can tell your refined name and the creator\'s original name are the same person, so never skip it.',
+    'Also return a bounded "storyControlSeed" for continuity planning: use only the canonical character names you just defined; give durable thread candidates stable IDs, a scope (moment_hook, episode_thread, arc_thread, or season_thread), a payoff window, expected evidence, and a resolution cost; add a romance phase skeleton and an advantage intent only at episode/arc level. Do not write full scenes or force a romance beat in every episode. A pause/none romance phase and shared/unclear advantage are valid when the story calls for them.',
     `"episodeBreakdown" must contain exactly ${params.targetEpisodeCount} Sub-episode entries, numbered 1..${params.targetEpisodeCount} in order, each with 3-5 short keyBeats.`,
+    durationPlanInstruction,
     speechBudgetEnabled
-      ? `Each Sub-episode is a fixed ${episodeDurationSeconds}-second short video that must carry AT LEAST ${minEpisodeSpeechSeconds} seconds of spoken dialogue (the platform's minimum speech-coverage floor) — plan enough plot/conflict per Sub-episode to genuinely fill that budget instead of padding a thin Sub-episode afterward. Each entry in "episodeBreakdown" must ALSO include a "contentBudget" object: {"beatCount": number (5-7 story beats), "estimatedSpeechSeconds": number (this Sub-episode's planned total spoken-dialogue seconds, >= ${minEpisodeSpeechSeconds}), "conflictLevel": integer 1-5 (this Sub-episode's position on the SEASON'S escalation curve — start low in early Sub-episodes and rise toward 5 near the finale; never flat across the season), "reversalTarget": integer (at least 2 reversals planned for this Sub-episode), "arcThreads": string[] (season threads this Sub-episode advances)}.`
+      ? `${durationPlanInstruction ? "Each Sub-episode" : `Each Sub-episode is a fixed ${episodeDurationSeconds}-second short video that`} must carry AT LEAST ${minEpisodeSpeechSeconds} seconds of spoken dialogue (the platform's minimum speech-coverage floor) — plan enough plot/conflict per Sub-episode to genuinely fill that budget instead of padding a thin Sub-episode afterward. Each entry in "episodeBreakdown" must ALSO include a "contentBudget" object: {"beatCount": number (5-7 story beats), "estimatedSpeechSeconds": number (this Sub-episode's planned total spoken-dialogue seconds, >= ${minEpisodeSpeechSeconds}), "conflictLevel": integer 1-5 (this Sub-episode's position on the SEASON'S escalation curve — start low in early Sub-episodes and rise toward 5 near the finale; never flat across the season), "reversalTarget": integer (at least 2 reversals planned for this Sub-episode), "arcThreads": string[] (season threads this Sub-episode advances)}.`
       : null,
     // `vertical-drama-skill-first-architecture` plan, Phase 4 item 2 —
     // replaces `evaluatePremiseCoverage`'s deterministic token-overlap
@@ -2167,7 +2280,12 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     params.tone ? `Tone: ${params.tone}` : null,
     `Target Sub-episode count (story structure, not Public Episode count): ${params.targetEpisodeCount}`,
     `Existing bible (from the creator's wizard input): ${JSON.stringify(params.bible)}`,
+    storyContextBlock,
+    storyDesignBlock,
+    storyArchitectureBlock,
     charactersDraftBlock,
+    visualNarrativeBlock,
+    visualNarrativeIdentityBlock,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -2274,6 +2392,19 @@ export async function generateStoryBible(
     ...validatedData,
     refinedCharacters: normalizeExpandedCharacterRoles(validatedData.refinedCharacters),
   };
+  // Persist only a semantically valid seed. The outer story-bible response is
+  // intentionally allowed to remain usable when a model omits or mangles the
+  // optional control-plane block; callers then keep any prior valid seed
+  // instead of replacing it with opaque/invalid JSON.
+  const storyControlSeed = readVerticalDramaStoryControlSeed(
+    validatedData.storyControlSeed,
+    { totalEpisodeCount: params.targetEpisodeCount },
+  );
+  if (storyControlSeed) {
+    expanded.storyControlSeed = storyControlSeed;
+  } else if (expanded.storyControlSeed !== undefined) {
+    delete expanded.storyControlSeed;
+  }
 
   return {
     expanded,
@@ -2733,9 +2864,11 @@ export function enforceEpisodeShotDraftSpeakability(
  * generation prompt's per-shot band was built from).
  */
 export function computeDraftCompleteness(
-  shotDrafts: VdDeepDraftShotDraft[]
+  shotDrafts: VdDeepDraftShotDraft[],
+  durationPlan?: VerticalDramaDurationPlan
 ): VdDeepDraftCompleteness {
   const clipDurations =
+    getActiveVerticalDramaShotDurations(durationPlan) ??
     VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK.shotDurationsSeconds;
   const clips = shotDrafts.map(shot => {
     const durationIndex = Math.min(
@@ -2840,7 +2973,7 @@ export function buildDeepDraftMissingEpisodesRetryInstruction(
   missingEpisodeNumbers: number[]
 ): string {
   const list = missingEpisodeNumbers.join(", ");
-  return `Your previous response was missing required Sub-episode(s): ${list}. Return the COMPLETE response again, covering EVERY requested Sub-episode from this chunk — this time make absolutely sure Sub-episode(s) ${list} are included, each with a full ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft, exactly like every other Sub-episode.`;
+  return `Your previous response was missing required episode(s): ${list} (Sub-episode(s) ${list}). Return the COMPLETE response again, covering EVERY requested Sub-episode from this chunk — this time make absolutely sure Sub-episode(s) ${list} are included, each with a full ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft, exactly like every other Sub-episode.`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2870,6 +3003,8 @@ export type VdDeepDraftCompletenessViolation = {
 };
 
 export interface VdDeepDraftCompletenessGateContext {
+  /** Selected duration profile used by the same run; omitted for legacy 60s drafts. */
+  durationPlan?: VerticalDramaDurationPlan;
   /**
    * Accepted character-name strings for BOTH the `characters[].name` check
    * below AND (Phase 2.5) the `dialogue_lines[].speaker` check — a flat set
@@ -3243,6 +3378,22 @@ const deepDraftChunkResponseSchema = z.object({
 });
 
 type DeepDraftChunkResponse = z.infer<typeof deepDraftChunkResponseSchema>;
+
+/** Narrow repair response: continuity markers only, never episode prose. */
+const deepDraftContinuityRepairSchema = z.object({
+  patches: z
+    .array(
+      z.object({
+        episodeNumber: z.number().int().positive(),
+        threadsResolved: z.array(z.string().min(1).max(128)).max(32),
+      }),
+    )
+    .max(64),
+});
+
+type DeepDraftContinuityRepairResponse = z.infer<
+  typeof deepDraftContinuityRepairSchema
+>;
 
 /**
  * Format profiles (task #23, added 2026-07-08) — compact "FORMAT PROFILE"
@@ -3746,14 +3897,57 @@ function buildSeasonLineagePromptBlock(
   )}`;
 }
 
+function buildStoryControlSeedPromptBlock(
+  seed: VerticalDramaStoryControlSeed | undefined
+): string | null {
+  if (!seed) return null;
+  return `STORY CONTROL SEED (bounded continuity facts — use it to keep the approved premise, registered thread IDs, romance phase intent, and advantage/cost direction coherent; do not expand it into a second ledger): ${JSON.stringify(
+    seed
+  )}`;
+}
+
+function buildRegisteredThreadIdsPromptBlock(
+  seed: VerticalDramaStoryControlSeed | undefined,
+  openThreadIds: string[] | undefined,
+): string | null {
+  const ids = [
+    ...(seed?.threadCandidates.map(thread => thread.threadId) ?? []),
+    ...(openThreadIds ?? []),
+  ]
+    .map(id => id.trim())
+    .filter(Boolean);
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length === 0) return null;
+  return `CANONICAL THREAD IDS (resolution is an exact-ID operation): ${JSON.stringify(
+    uniqueIds,
+  )}. Put only one of these exact IDs in episode_memory.threads_resolved. Never invent, translate, or paraphrase a thread ID; if the payoff cannot be matched exactly, omit the resolution and leave the thread open.`;
+}
+
 function buildDeepDraftPrompts(params: {
   title: string;
   locale: VerticalDramaSeriesLocale;
+  /** Shared spoken-language/market contract for every generated line. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   genre?: string | null;
   tone?: string | null;
   chunkEpisodes: StoredEpisodeBreakdownItem[];
   recapItems: DeepDraftRecapEpisode[];
   openThreads: string[];
+  openThreadIds?: string[];
+  /** Additive selected 9-logical-shot duration profile; legacy callers use fallback durations. */
+  durationPlan?: VerticalDramaDurationPlan;
+  /** Bounded full-story continuity seed; never the full season ledger. */
+  storyControlSeed?: VerticalDramaStoryControlSeed;
+  /** Additive story identity facts approved during draft synthesis. */
+  storyContext?: VerticalDramaDraftStoryContext;
+  /** Additive primary-engine/pressure/romance design approved during draft synthesis. */
+  storyDesign?: VerticalDramaDraftStoryDesign;
+  /** Additive foundation contract planned before synopsis synthesis. */
+  storyContract?: VerticalDramaStoryArchitectureContract;
+  /** Additive story-facing interpretation of the selected series look. */
+  visualNarrativeProfile?: VerticalDramaVisualNarrativeProfile;
+  /** Legacy-safe production look fallback when no derived profile exists. */
+  visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
   /**
    * Dramaturgy critic (W11.5, added 2026-07-08) — the series' full planned
    * episode count, used ONLY to detect whether THIS chunk contains the
@@ -3847,16 +4041,45 @@ function buildDeepDraftPrompts(params: {
     params.locale === "th"
       ? "Write every dialogue line, shot summary, and cliffhanger line in natural, speakable Thai."
       : `Write every dialogue line, shot summary, and cliffhanger line in ${verticalDramaLocaleEnglishName(params.locale)}.`;
+  const dialogueLanguageProfilePrompt =
+    buildVerticalDramaDialogueLanguageProfilePrompt({
+      locale: params.locale,
+      profile: params.dialogueLanguageProfile,
+    });
 
-  const perShotBudgets = derivePerShotSpeechBudgets([
-    ...VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK.shotDurationsSeconds,
-  ]);
+  const activeShotDurations = getActiveVerticalDramaShotDurations(
+    params.durationPlan
+  );
+  const shotDurations =
+    activeShotDurations ?? VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK.shotDurationsSeconds;
+  const perShotBudgets = derivePerShotSpeechBudgets([...shotDurations]);
   const perShotBandText = perShotBudgets
     .map(
       b =>
         `shot ${b.shotNumber} (${b.clipDurationSeconds}s clip): ~${b.targetSpeechSeconds.toFixed(1)}s target, ${b.minSpeechSeconds.toFixed(1)}s minimum`
     )
     .join("; ");
+  const durationProfileText = activeShotDurations
+    ? `Selected duration profile: exactly ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} logical shots in order, ${shotDurations.join(", ")} seconds per shot, derived runtime ${shotDurations.reduce((sum, duration) => sum + duration, 0)} seconds. Do not model the episode as a manually-entered fixed duration.`
+    : `Per-shot speech budget for the standard 60-second/${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot episode profile: ${perShotBandText}. Give each speaking shot enough "dialogue_lines" to reach its target — do not leave a speaking shot underfilled.`;
+  const storyControlSeedBlock = buildStoryControlSeedPromptBlock(
+    params.storyControlSeed
+  );
+  const storyContextBlock = renderVerticalDramaDraftStoryContextBlock(
+    params.storyContext,
+  );
+  const storyDesignBlock = renderVerticalDramaDraftStoryDesignBlock(
+    params.storyDesign,
+  );
+  const storyArchitectureBlock = renderVerticalDramaStoryArchitectureBlock(
+    params.storyContract,
+  );
+  const visualNarrativeBlock = renderVisualNarrativeProfileBlock(
+    params.visualNarrativeProfile,
+  );
+  const visualNarrativeIdentityBlock = renderVisualNarrativeIdentityBlock(
+    params.visualNarrativeIdentity,
+  );
 
   // Dramaturgy critic (W11.5) — bible-level fields (protagonist_stake/
   // world_rules) are requested ONCE, on whichever chunk covers episode 1;
@@ -3885,13 +4108,29 @@ function buildDeepDraftPrompts(params: {
     loadFullStoryArchitectSkillSystemPrompt(),
     `For EACH Sub-episode listed below, write a draft of EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) with speakable dialogue that fills that shot's speech budget.`,
     langInstruction,
+    dialogueLanguageProfilePrompt,
+    buildVerticalDramaCharacterNamingContractPrompt({
+      narrativeLocale: params.locale,
+      dialogueLanguageProfile: params.dialogueLanguageProfile,
+    }),
+    storyContextBlock,
+    storyDesignBlock,
+    storyArchitectureBlock,
+    storyArchitectureBlock
+      ? "Treat the APPROVED STORY ARCHITECTURE as authoritative: preserve its destination, transformation, required arcs, failure model, and final payoff across every episode."
+      : null,
+    visualNarrativeBlock,
     // Series-level audience age rating (Phase 1) — firm, unconditional
     // instruction; the actual constraint block is rendered in the user
     // message below (see `audienceAgeRatingBlockForDeepDraft`).
     "Every shot, dialogue line, and situation you draft MUST honor the AUDIENCE AGE RATING (HARD CONSTRAINT) block given in the user message below — treat it as a non-negotiable content boundary, exactly like the JSON response shape.",
     'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.',
     'A shot must NEVER set BOTH "silence_intent" and one or more "dialogue_lines" — pick exactly one: give it real speakable dialogue, or mark it "silence_intent" only if it truly has no speech at all.',
-    `Per-shot speech budget for the standard 60-second/${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot episode profile: ${perShotBandText}. Give each speaking shot enough "dialogue_lines" to reach its target — do not leave a speaking shot underfilled.`,
+    durationProfileText,
+    storyControlSeedBlock,
+    shotDurations
+      ? `Per-shot speech budget for the selected profile: ${perShotBandText}. Give each speaking shot enough "dialogue_lines" to reach its target — do not leave a speaking shot underfilled.`
+      : null,
     'Keep each episode\'s reversal/escalation grammar consistent with its "contentBudget" when one is given: honor "conflictLevel"\'s position on the season escalation curve and land at least "reversalTarget" reversals across that episode\'s shots.',
     'For each episode, ALSO include (when applicable to that episode\'s content) "antagonist_tactics": short tags naming the concrete tactic(s) the antagonist/villain uses THIS episode (e.g. "threaten", "swap_documents", "silence_witness") — vary the tactic across episodes rather than repeating the same one over and over; and "character_decisions": an array of {"character": name, "decision": short description} listing every named character who makes a real, SELF-DIRECTED decision (not just something that happens TO them) in this episode — give every character with meaningful screen time at least one decision somewhere across the season, not only the protagonist.',
     includeBibleLevelFields
@@ -3900,6 +4139,9 @@ function buildDeepDraftPrompts(params: {
     isFinaleChunk
       ? `This chunk includes the SEASON FINALE (episode ${params.totalEpisodeCount}). That episode's entry MUST ALSO include "price_paid": one concrete sentence naming the real cost, sacrifice, or consequence the protagonist(s) pay to resolve the season — the ending must not be free.`
       : null,
+    isFinaleChunk
+      ? 'FINAL-EPISODE CONTINUITY CONTRACT: in the finale entry, resolve every prior thread that pays off this season using its exact canonical thread_id in "threads_resolved". Any intentional continuation beyond the season must be classified as "expected_resolution": "season" in both the opening record and "open_threads"; never emit "future_episode" at the season boundary and never leave an opened thread unclassified.'
+      : null,
     buildFormatProfilePromptBlock(params.formatProfile, params.locale),
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     buildSceneContractPromptBlock(params.sceneContractsEnabled),
@@ -3907,7 +4149,7 @@ function buildDeepDraftPrompts(params: {
       ? '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.'
       : null,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string, "episode_memory": {"recap": string, "canonical_facts": string[], "threads_opened": [{"thread_id": string, "description": string, "thread_class": "plot"|"domestic"|"career"|"financial"|"health"|"relationship"}], "threads_resolved": string[], "relationship_changes": [{"pair": [string, string], "status": string, "disclosure": "secret"|"known_to_some"|"public"|"undeclared", "known_by": string[]}], "knowledge_changes": [{"character_key": string, "learned": string}]}}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
+    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string, "episode_memory": {"recap": string, "canonical_facts": string[], "threads_opened": [{"thread_id": string, "description": string, "thread_class": "plot"|"domestic"|"career"|"financial"|"health"|"relationship", "expected_resolution": "this_episode"|"future_episode"|"season", "expected_resolution_episode": number}], "threads_resolved": string[], "relationship_changes": [{"pair": [string, string], "status": string, "disclosure": "secret"|"known_to_some"|"public"|"undeclared", "known_by": string[]}], "knowledge_changes": [{"character_key": string, "learned": string}]}}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
     `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts", and EVERY shot's "characters" (>= 1) and "location_key" filled in per this system prompt's shot-completeness/new-location rules.`,
     '"open_threads" must be the UPDATED list of unresolved plot threads/hooks after these episodes: carry forward every thread you were given that is still open, add any new thread you introduce, and drop any thread you fully resolve.',
     '"new_locations" must contain EVERY location this response uses that is not already in the "EXISTING LOCATIONS" list given in the user message — omit the key entirely (or return an empty array) when no new location is needed this chunk.',
@@ -3917,7 +4159,7 @@ function buildDeepDraftPrompts(params: {
     // Part 1 gate caught exactly this (gpt-5.4, a strong model, returned every
     // memory array empty and the deterministic fallback took over). Do NOT
     // remove: the whole series-memory feature is dead without it.
-    'Every "episodeBreakdown" entry MUST include "episode_memory" — the continuity record for THAT Sub-episode, per this system prompt\'s Episode memory rules. "relationship_changes" is the state AFTER this Sub-episode (never a delta like "trust -> rivalry"), each with a "disclosure" that reflects what the story has actually shown: "public" only once it is openly acknowledged in-world, "secret" when it is deliberately hidden, "undeclared" when neither party has said it aloud yet. Record mundane unfinished business (an unfinished renovation, an unpaid debt) as "threads_opened" with "thread_class": "domestic" — not only plot hooks. Do NOT include "openedEpisode"/"sinceEpisode"; those are assigned automatically.',
+    'Every "episodeBreakdown" entry MUST include "episode_memory" — the continuity record for THAT Sub-episode, per this system prompt\'s Episode memory rules. Every opened thread MUST declare "expected_resolution": "this_episode", "future_episode", or "season"; use "expected_resolution_episode" when the payoff episode is known. "threads_resolved" is an exact-ID operation: use only a thread_id from the supplied canonical thread ledger, never invent, translate, or paraphrase an ID; if no exact ID matches, omit the resolution and leave the thread open. "relationship_changes" is the state AFTER this Sub-episode (never a delta like "trust -> rivalry"), each with a "disclosure" that reflects what the story has actually shown: "public" only once it is openly acknowledged in-world, "secret" when it is deliberately hidden, "undeclared" when neither party has said it aloud yet. Record mundane unfinished business (an unfinished renovation, an unpaid debt) as "threads_opened" with "thread_class": "domestic" — not only plot hooks. Do NOT include "openedEpisode"/"sinceEpisode"; those are assigned automatically.',
   ]
     .filter(Boolean)
     .join("\n");
@@ -3956,6 +4198,10 @@ function buildDeepDraftPrompts(params: {
     params.recapItems,
     params.openThreads
   );
+  const registeredThreadIdsBlock = buildRegisteredThreadIdsPromptBlock(
+    params.storyControlSeed,
+    params.openThreadIds,
+  );
 
   const knownCharactersBlock = buildKnownCharactersPromptBlock(
     params.knownCharacters
@@ -3978,9 +4224,15 @@ function buildDeepDraftPrompts(params: {
     buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
     recapText,
+    registeredThreadIdsBlock,
     knownCharactersBlock,
     knownLocationsBlock,
     seasonLineageBlock,
+    storyContextBlock,
+    storyDesignBlock,
+    storyArchitectureBlock,
+    visualNarrativeBlock,
+    visualNarrativeIdentityBlock,
     `Already-planned episodes to draft shots for: ${JSON.stringify(episodesPayload)}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -4000,6 +4252,8 @@ export interface GenerateStoryBibleDeepParams {
   seriesId: number;
   title: string;
   locale: VerticalDramaSeriesLocale;
+  /** Shared spoken-language/market contract; absent legacy series use Auto. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   genre?: string | null;
   tone?: string | null;
   /**
@@ -4007,6 +4261,20 @@ export interface GenerateStoryBibleDeepParams {
    * uses the fixed 60s/9-shot profile today (see `buildDeepDraftPrompts`).
    */
   episodeDurationSeconds?: number;
+  /** Additive 9-logical-shot duration profile for new story planning. */
+  durationPlan?: VerticalDramaDurationPlan;
+  /** Bounded continuity seed emitted by the full-story architect. */
+  storyControlSeed?: VerticalDramaStoryControlSeed;
+  /** Additive story identity facts approved during draft synthesis. */
+  storyContext?: VerticalDramaDraftStoryContext;
+  /** Additive primary-engine/pressure/romance design approved during draft synthesis. */
+  storyDesign?: VerticalDramaDraftStoryDesign;
+  /** Additive foundation contract planned before synopsis synthesis. */
+  storyContract?: VerticalDramaStoryArchitectureContract;
+  /** Additive story-facing interpretation of the selected series look. */
+  visualNarrativeProfile?: VerticalDramaVisualNarrativeProfile;
+  /** Legacy-safe production look fallback when no derived profile exists. */
+  visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
   /** Already-planned episodes (from the active breakdown) to draft shots for, any order — sorted ascending internally. */
   episodes: StoredEpisodeBreakdownItem[];
   /**
@@ -4017,7 +4285,11 @@ export interface GenerateStoryBibleDeepParams {
   priorRecap?: {
     items: DeepDraftRecapEpisode[];
     openThreads: string[];
+    /** Exact IDs of threads that are currently open in persisted memory. */
+    openThreadIds?: string[];
   };
+  /** Exact currently-open thread IDs from the series memory projection. */
+  openThreadIds?: string[];
   /**
    * Premium multi-round drafts (W11-A, added 2026-07-08) — `"standard"`
    * (the default, including when omitted entirely) runs the EXACT W10-A
@@ -4496,6 +4768,197 @@ export interface GenerateStoryBibleDeepResult {
    * `runGenerateStoryBibleDeepJob`.
    */
   newLocations: VdDeclaredLocation[];
+  /** Deterministic blocking issues when this run covered the entire season. */
+  continuityIssues: VerticalDramaContinuityIssue[];
+}
+
+function validateCompletedDeepDraftContinuity(
+  draftedItems: ReadonlyArray<DeepDraftedEpisodeItem>,
+  totalEpisodeCount: number | undefined,
+): VerticalDramaContinuityIssue[] {
+  if (totalEpisodeCount == null || totalEpisodeCount <= 0) return [];
+  const episodeNumbers = new Set(
+    draftedItems.map(item => item.episodeNumber),
+  );
+  const coversSeason = Array.from(
+    { length: totalEpisodeCount },
+    (_, index) => index + 1,
+  ).every(episodeNumber => episodeNumbers.has(episodeNumber));
+  if (!coversSeason) return [];
+  const memories = draftedItems
+    .map(item => item.episodeMemory)
+    .filter((memory): memory is VdEpisodeMemory => memory != null);
+  if (memories.length !== totalEpisodeCount) return [];
+  const normalized = normalizeVerticalDramaContinuityTimeline(memories);
+  return validateVerticalDramaContinuity({
+    episodes: normalized.episodes,
+    currentEpisodeNumber: totalEpisodeCount,
+    seasonEndEpisode: totalEpisodeCount,
+  }).issues;
+}
+
+export type DeepDraftContinuityRepairPatch = {
+  episodeNumber: number;
+  threadsResolved: string[];
+};
+
+/**
+ * Apply only exact-ID resolution markers returned by the bounded continuity
+ * repairer. Episode prose, openings, and any other memory fields are never
+ * modified here. Unknown IDs are ignored and the caller must still run the
+ * normal validator before persisting the result.
+ */
+export function applyDeepDraftContinuityRepairPatches(
+  draftedItems: ReadonlyArray<DeepDraftedEpisodeItem>,
+  patches: ReadonlyArray<DeepDraftContinuityRepairPatch>,
+): DeepDraftedEpisodeItem[] {
+  const validEpisodeNumbers = new Set(
+    draftedItems.map(item => item.episodeNumber),
+  );
+  const knownThreadIds = new Set(
+    draftedItems.flatMap(item =>
+      (item.episodeMemory?.threadsOpened ?? []).map(thread =>
+        thread.threadId.trim(),
+      ),
+    ),
+  );
+  const patchByEpisode = new Map<number, Set<string>>();
+  for (const patch of patches) {
+    if (!validEpisodeNumbers.has(patch.episodeNumber)) continue;
+    const ids = patchByEpisode.get(patch.episodeNumber) ?? new Set<string>();
+    for (const threadId of patch.threadsResolved) {
+      const normalized = threadId.trim();
+      if (knownThreadIds.has(normalized)) ids.add(normalized);
+    }
+    patchByEpisode.set(patch.episodeNumber, ids);
+  }
+
+  return draftedItems.map(item => {
+    const patchIds = patchByEpisode.get(item.episodeNumber);
+    if (!patchIds || !item.episodeMemory || patchIds.size === 0) return item;
+    const threadsResolved = [
+      ...new Set([
+        ...(item.episodeMemory.threadsResolved ?? []),
+        ...patchIds,
+      ]),
+    ];
+    return {
+      ...item,
+      episodeMemory: {
+        ...item.episodeMemory,
+        threadsResolved,
+      },
+    };
+  });
+}
+
+export async function repairDeepDraftContinuity(params: {
+  userId: number;
+  tenantId?: string;
+  seriesId: number;
+  title: string;
+  totalEpisodeCount: number;
+  draftedItems: ReadonlyArray<DeepDraftedEpisodeItem>;
+  issues: ReadonlyArray<VerticalDramaContinuityIssue>;
+}): Promise<{
+  draftedItems: DeepDraftedEpisodeItem[];
+  continuityIssues: VerticalDramaContinuityIssue[];
+  creditsUsed: number;
+}> {
+  if (params.issues.length === 0) {
+    return {
+      draftedItems: [...params.draftedItems],
+      continuityIssues: [],
+      creditsUsed: 0,
+    };
+  }
+
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveDeepStoryDraftModel,
+  );
+  if (!(await hasEnoughCredits(params.userId, 1))) {
+    throw new InsufficientCreditsError();
+  }
+
+  const seasonLedger = params.draftedItems
+    .slice()
+    .sort((a, b) => a.episodeNumber - b.episodeNumber)
+    .map(item => ({
+      episodeNumber: item.episodeNumber,
+      cliffhangerLine: item.cliffhanger_line,
+      memory: item.episodeMemory,
+    }));
+  const systemPrompt = [
+    "You are the final continuity repairer for a vertical-drama season.",
+    "Return JSON only. You may add exact canonical thread IDs to threadsResolved on an existing episode.",
+    "Do not invent IDs, change openings, rewrite prose, or move a payoff to another episode.",
+    "Only mark a thread resolved when the episode recap, beats, or cliffhanger clearly pays it off.",
+    "If the supplied draft does not support a safe resolution, return no patch for that thread; the caller will fail closed.",
+  ].join("\n");
+  const userPrompt = [
+    `Series: ${params.title}`,
+    `Season episode count: ${params.totalEpisodeCount}`,
+    "Blocking continuity issues:",
+    JSON.stringify(params.issues),
+    "Canonical season ledger:",
+    JSON.stringify(seasonLedger),
+    'Return {"patches":[{"episodeNumber":number,"threadsResolved":["exact-id"]}]}',
+  ].join("\n\n");
+
+  const { data, response } = await executeJsonPlanningCallWithRetry<
+    DeepDraftContinuityRepairResponse
+  >({
+    model,
+    systemPrompt,
+    userPrompt,
+    temperature: 0.2,
+    userId: params.userId,
+    maxTokens: 5000,
+    schema: deepDraftContinuityRepairSchema,
+    label: `Vertical Drama continuity repair (series #${params.seriesId})`,
+  });
+  const usage = response.usage;
+  const creditsUsed = calculateCreditsForLLM(
+    usage?.prompt_tokens ?? 0,
+    usage?.completion_tokens ?? 0,
+    model,
+  );
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — continuity repair (series #${params.seriesId})`,
+    sourceType: "skill",
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series_deep_story_continuity_repair",
+      seriesId: params.seriesId,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+      issueCount: params.issues.length,
+    },
+  });
+
+  const repairedDraftedItems = applyDeepDraftContinuityRepairPatches(
+    params.draftedItems,
+    data.patches,
+  );
+  const memories = repairedDraftedItems
+    .map(item => item.episodeMemory)
+    .filter((memory): memory is VdEpisodeMemory => memory != null);
+  const normalized = normalizeVerticalDramaContinuityTimeline(memories);
+  const continuityIssues = validateVerticalDramaContinuity({
+    episodes: normalized.episodes,
+    currentEpisodeNumber: params.totalEpisodeCount,
+    seasonEndEpisode: params.totalEpisodeCount,
+  }).issues;
+  return {
+    draftedItems: repairedDraftedItems,
+    continuityIssues,
+    creditsUsed,
+  };
 }
 
 /**
@@ -4545,6 +5008,7 @@ export async function generateStoryBibleDeep(
       finalOpenThreads: params.priorRecap?.openThreads ?? [],
       missingEpisodes: [],
       newLocations: [],
+      continuityIssues: [],
     };
   }
 
@@ -4581,6 +5045,7 @@ export async function generateStoryBibleDeep(
       finalOpenThreads: params.priorRecap?.openThreads ?? [],
       missingEpisodes: [],
       newLocations: [],
+      continuityIssues: [],
     };
   }
 
@@ -4621,6 +5086,9 @@ export async function generateStoryBibleDeep(
   const missingEpisodes: number[] = [];
   let recapItems = [...(params.priorRecap?.items ?? [])];
   let openThreads = [...(params.priorRecap?.openThreads ?? [])];
+  const openThreadIds = new Set(
+    params.openThreadIds ?? params.priorRecap?.openThreadIds ?? [],
+  );
   let totalCreditsUsed = 0;
   let cursor = 0;
   let partial = false;
@@ -4662,11 +5130,20 @@ export async function generateStoryBibleDeep(
     const { systemPrompt, userPrompt } = buildDeepDraftPrompts({
       title: params.title,
       locale: params.locale,
+      dialogueLanguageProfile: params.dialogueLanguageProfile,
       genre: params.genre,
       tone: params.tone,
       chunkEpisodes,
       recapItems,
       openThreads,
+      openThreadIds: [...openThreadIds],
+      durationPlan: params.durationPlan,
+      storyControlSeed: params.storyControlSeed,
+      storyContext: params.storyContext,
+      storyDesign: params.storyDesign,
+      storyContract: params.storyContract,
+      visualNarrativeProfile: params.visualNarrativeProfile,
+      visualNarrativeIdentity: params.visualNarrativeIdentity,
       totalEpisodeCount: params.totalEpisodeCount,
       formatProfile,
       tieInDraftContext: params.tieInDraftContext,
@@ -4926,13 +5403,24 @@ export async function generateStoryBibleDeep(
             episodeNumber: raw.episodeNumber,
             shotDrafts: cleanedShotDrafts,
             cliffhanger_line: raw.cliffhanger_line,
-            draftCompleteness: computeDraftCompleteness(cleanedShotDrafts),
+            draftCompleteness: computeDraftCompleteness(
+              cleanedShotDrafts,
+              params.durationPlan
+            ),
             ...extractDramaturgyStructureFields(raw),
           };
         }
       );
 
       draftedItems.push(...chunkDrafted);
+      for (const drafted of chunkDrafted) {
+        for (const thread of drafted.episodeMemory?.threadsOpened ?? []) {
+          if (thread.threadId.trim()) openThreadIds.add(thread.threadId.trim());
+        }
+        for (const threadId of drafted.episodeMemory?.threadsResolved ?? []) {
+          openThreadIds.delete(threadId.trim());
+        }
+      }
       // Resilient resume — fire-and-forget checkpoint hook, THIS chunk's
       // items only (never the resumed ones already seeded above). No-op
       // when absent, same "additive, never awaited" contract as `onProgress`.
@@ -5018,6 +5506,10 @@ export async function generateStoryBibleDeep(
     seenNewLocationKeys.add(loc.location_key);
     dedupedNewLocations.push(loc);
   }
+  const continuityIssues = validateCompletedDeepDraftContinuity(
+    draftedItems,
+    params.totalEpisodeCount,
+  );
 
   return {
     draftedItems,
@@ -5029,6 +5521,7 @@ export async function generateStoryBibleDeep(
     finalOpenThreads: openThreads,
     missingEpisodes,
     newLocations: dedupedNewLocations,
+    continuityIssues,
     ...(partial && failureMessage ? { error: failureMessage } : {}),
     ...(params.tieInDraftContext
       ? { tieInMismatchCount: tieInReconciliation.mismatchCount }
@@ -5481,7 +5974,10 @@ function gateRawPremiumEpisodes(
     )
       .slice()
       .sort((a, b) => a.shot_number - b.shot_number);
-    const draftCompleteness = computeDraftCompleteness(cleaned);
+    const draftCompleteness = computeDraftCompleteness(
+      cleaned,
+      context.durationPlan
+    );
     const completenessViolations = computeShotCompletenessViolations(
       raw.episodeNumber,
       cleaned,
@@ -6048,6 +6544,8 @@ function omitEpisodeMemoryForPrompt(
 function buildPremiumRevisePrompts(params: {
   title: string;
   locale: VerticalDramaSeriesLocale;
+  /** Shared spoken-language/market contract for revised dialogue. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   genre?: string | null;
   tone?: string | null;
   recapItems: DeepDraftRecapEpisode[];
@@ -6097,11 +6595,17 @@ function buildPremiumRevisePrompts(params: {
     params.locale === "th"
       ? "Write every dialogue line, shot summary, and cliffhanger line in natural, speakable Thai."
       : `Write every dialogue line, shot summary, and cliffhanger line in ${verticalDramaLocaleEnglishName(params.locale)}.`;
+  const dialogueLanguageProfilePrompt =
+    buildVerticalDramaDialogueLanguageProfilePrompt({
+      locale: params.locale,
+      profile: params.dialogueLanguageProfile,
+    });
 
   const systemPrompt = [
     "You are a vertical-drama (short-form mobile drama series) shot-dialogue REVISER.",
     `For EACH Sub-episode listed below, REVISE its existing ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft to address the specific feedback given for that Sub-episode — keep everything that already works, change only what the feedback calls out. The revised draft must still have EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) and must NOT change the Sub-episode's workingTitle/logline/keyBeats.`,
     langInstruction,
+    dialogueLanguageProfilePrompt,
     params.locale === "th" ? VD_NATURAL_THAI_DIALOGUE_RULES : null,
     VD_PREMIUM_SPEAKABILITY_RULES,
     VD_PREMIUM_NO_SILENCE_INTENT_WITH_DIALOGUE_RULE,
@@ -6287,11 +6791,28 @@ async function callPremiumFanoutCandidate(
   params: {
     title: string;
     locale: VerticalDramaSeriesLocale;
+    dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
     genre?: string | null;
     tone?: string | null;
     chunkEpisodes: StoredEpisodeBreakdownItem[];
     recapItems: DeepDraftRecapEpisode[];
     openThreads: string[];
+    /** Exact currently-open thread IDs used for resolution-safe prompts. */
+    openThreadIds?: string[];
+    /** Additive selected 9-logical-shot duration profile. */
+    durationPlan?: VerticalDramaDurationPlan;
+    /** Bounded full-story continuity seed. */
+    storyControlSeed?: VerticalDramaStoryControlSeed;
+    /** Additive story identity facts approved during draft synthesis. */
+    storyContext?: VerticalDramaDraftStoryContext;
+    /** Additive primary-engine/pressure/romance design approved during draft synthesis. */
+    storyDesign?: VerticalDramaDraftStoryDesign;
+    /** Additive foundation contract planned before synopsis synthesis. */
+    storyContract?: VerticalDramaStoryArchitectureContract;
+    /** Additive story-facing interpretation of the selected series look. */
+    visualNarrativeProfile?: VerticalDramaVisualNarrativeProfile;
+    /** Legacy-safe production look fallback. */
+    visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
     /** Dramaturgy critic (W11.5) — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through. */
     totalEpisodeCount?: number;
     /** Format profiles (task #23) — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through, same lens the fan-out itself already appends after this base prompt is built. */
@@ -6426,11 +6947,28 @@ async function runPremiumChunk(
   params: {
     title: string;
     locale: VerticalDramaSeriesLocale;
+    dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
     genre?: string | null;
     tone?: string | null;
     chunkEpisodes: StoredEpisodeBreakdownItem[];
     recapItems: DeepDraftRecapEpisode[];
     openThreads: string[];
+    /** Exact currently-open thread IDs used for resolution-safe prompts. */
+    openThreadIds?: string[];
+    /** Additive selected 9-logical-shot duration profile. */
+    durationPlan?: VerticalDramaDurationPlan;
+    /** Bounded full-story continuity seed. */
+    storyControlSeed?: VerticalDramaStoryControlSeed;
+    /** Additive story identity facts approved during draft synthesis. */
+    storyContext?: VerticalDramaDraftStoryContext;
+    /** Additive primary-engine/pressure/romance design approved during draft synthesis. */
+    storyDesign?: VerticalDramaDraftStoryDesign;
+    /** Additive foundation contract planned before synopsis synthesis. */
+    storyContract?: VerticalDramaStoryArchitectureContract;
+    /** Additive story-facing interpretation of the selected series look. */
+    visualNarrativeProfile?: VerticalDramaVisualNarrativeProfile;
+    /** Legacy-safe production look fallback. */
+    visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
     /** Dramaturgy critic (W11.5) — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through to the fan-out candidates below. */
     totalEpisodeCount?: number;
     /** Format profiles (task #23) — threaded to the fan-out candidates (via `callPremiumFanoutCandidate`), the missing-episode recovery retry below, and the targeted-revise floor check (`meetsPremiumDraftFloor`). */
@@ -6587,6 +7125,7 @@ async function runPremiumChunk(
       ? new Set([...knownLocationKeySet, ...acceptedKeys])
       : undefined;
     const episodes = gateRawPremiumEpisodes(data.episodeBreakdown, {
+      durationPlan: params.durationPlan,
       characterBibleNames: characterBibleNameSet,
       knownLocationKeys: combinedKnownKeys,
     });
@@ -6750,6 +7289,7 @@ async function runPremiumChunk(
       reviseResult = await callPremiumRevise(ctx, {
         title: params.title,
         locale: params.locale,
+        dialogueLanguageProfile: params.dialogueLanguageProfile,
         genre: params.genre,
         tone: params.tone,
         recapItems: params.recapItems,
@@ -6792,7 +7332,11 @@ async function runPremiumChunk(
     acceptChunkNewLocations(reviseResult.data.new_locations ?? []);
     const revisedGated = gateRawPremiumEpisodes(
       reviseResult.data.episodeBreakdown,
-      { characterBibleNames: characterBibleNameSet, knownLocationKeys: knownLocationKeySet }
+      {
+        durationPlan: params.durationPlan,
+        characterBibleNames: characterBibleNameSet,
+        knownLocationKeys: knownLocationKeySet,
+      }
     );
 
     let rejudgeResult;
@@ -6889,11 +7433,20 @@ async function runPremiumChunk(
       const base = buildDeepDraftPrompts({
         title: params.title,
         locale: params.locale,
+        dialogueLanguageProfile: params.dialogueLanguageProfile,
         genre: params.genre,
         tone: params.tone,
         chunkEpisodes: params.chunkEpisodes,
         recapItems: params.recapItems,
         openThreads: params.openThreads,
+        openThreadIds: params.openThreadIds,
+        durationPlan: params.durationPlan,
+        storyControlSeed: params.storyControlSeed,
+        storyContext: params.storyContext,
+        storyDesign: params.storyDesign,
+        storyContract: params.storyContract,
+        visualNarrativeProfile: params.visualNarrativeProfile,
+        visualNarrativeIdentity: params.visualNarrativeIdentity,
         totalEpisodeCount: params.totalEpisodeCount,
         formatProfile: params.formatProfile,
         tieInDraftContext: params.tieInDraftContext,
@@ -6931,6 +7484,7 @@ async function runPremiumChunk(
         missingEpisodeNumbers.includes(ep.episodeNumber)
       );
       const recovered = gateRawPremiumEpisodes(recoveredRaw, {
+        durationPlan: params.durationPlan,
         characterBibleNames: characterBibleNameSet,
         knownLocationKeys: knownLocationKeySet,
       });
@@ -7019,10 +7573,13 @@ async function runPremiumSeasonSweep(
   params: {
     title: string;
     locale: VerticalDramaSeriesLocale;
+    dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
     genre?: string | null;
     tone?: string | null;
     allEpisodes: StoredEpisodeBreakdownItem[];
     byEpisode: Map<number, PremiumEpisodeState>;
+    /** Additive selected 9-logical-shot duration profile. */
+    durationPlan?: VerticalDramaDurationPlan;
     // Bug fix (2026-07-11): this sweep's revise/rejudge calls previously
     // never received tie-in context at all — a tie-in-placed episode caught
     // by the season sweep silently lost its `tie_in` instruction during
@@ -7185,7 +7742,11 @@ async function runPremiumSeasonSweep(
   }
   const revisedGated = gateRawPremiumEpisodes(
     reviseResult.data.episodeBreakdown,
-    { characterBibleNames: characterBibleNameSet, knownLocationKeys: knownLocationKeySet }
+    {
+      durationPlan: params.durationPlan,
+      characterBibleNames: characterBibleNameSet,
+      knownLocationKeys: knownLocationKeySet,
+    }
   );
 
   let rejudgeResult;
@@ -7291,6 +7852,7 @@ async function generateStoryBibleDeepPremium(
       finalOpenThreads: params.priorRecap?.openThreads ?? [],
       missingEpisodes: [],
       newLocations: [],
+      continuityIssues: [],
     };
   }
 
@@ -7341,6 +7903,7 @@ async function generateStoryBibleDeepPremium(
       },
       missingEpisodes: [],
       newLocations: [],
+      continuityIssues: [],
     };
   }
 
@@ -7384,6 +7947,20 @@ async function generateStoryBibleDeepPremium(
   const allDraftedByEpisode = new Map<number, PremiumEpisodeState>();
   let recapItems = [...(params.priorRecap?.items ?? [])];
   let openThreads = [...(params.priorRecap?.openThreads ?? [])];
+  const openThreadIds = new Set(
+    params.openThreadIds ?? params.priorRecap?.openThreadIds ?? [],
+  );
+  const updateOpenThreadIds = (memory: VdEpisodeMemory | undefined) => {
+    for (const thread of memory?.threadsOpened ?? []) {
+      if (thread.threadId.trim()) openThreadIds.add(thread.threadId.trim());
+    }
+    for (const threadId of memory?.threadsResolved ?? []) {
+      openThreadIds.delete(threadId.trim());
+    }
+  };
+  for (const item of resumedDraftedItems) {
+    updateOpenThreadIds(item.episodeMemory);
+  }
   let totalCreditsUsed = 0;
   let callsMade = 0;
   let cursor = 0;
@@ -7429,6 +8006,7 @@ async function generateStoryBibleDeepPremium(
   ): boolean => {
     for (const state of chunkResult.episodeStates) {
       allDraftedByEpisode.set(state.episodeNumber, state);
+      updateOpenThreadIds(state.episodeMemory);
     }
     recapItems = [...recapItems, ...chunkResult.recapDelta];
     openThreads = chunkResult.openThreads;
@@ -7485,11 +8063,20 @@ async function generateStoryBibleDeepPremium(
         {
           title: params.title,
           locale: params.locale,
+          dialogueLanguageProfile: params.dialogueLanguageProfile,
           genre: params.genre,
           tone: params.tone,
           chunkEpisodes,
           recapItems,
           openThreads,
+          openThreadIds: [...openThreadIds],
+          durationPlan: params.durationPlan,
+          storyControlSeed: params.storyControlSeed,
+          storyContext: params.storyContext,
+          storyDesign: params.storyDesign,
+          storyContract: params.storyContract,
+          visualNarrativeProfile: params.visualNarrativeProfile,
+          visualNarrativeIdentity: params.visualNarrativeIdentity,
           totalEpisodeCount: params.totalEpisodeCount,
           formatProfile,
           chunkIndex,
@@ -7528,11 +8115,20 @@ async function generateStoryBibleDeepPremium(
               {
                 title: params.title,
                 locale: params.locale,
+                dialogueLanguageProfile: params.dialogueLanguageProfile,
                 genre: params.genre,
                 tone: params.tone,
                 chunkEpisodes: [singleEpisode],
                 recapItems,
                 openThreads,
+                openThreadIds: [...openThreadIds],
+                durationPlan: params.durationPlan,
+                storyControlSeed: params.storyControlSeed,
+                storyContext: params.storyContext,
+                storyDesign: params.storyDesign,
+                storyContract: params.storyContract,
+                visualNarrativeProfile: params.visualNarrativeProfile,
+                visualNarrativeIdentity: params.visualNarrativeIdentity,
                 totalEpisodeCount: params.totalEpisodeCount,
                 formatProfile,
                 chunkIndex,
@@ -7600,10 +8196,12 @@ async function generateStoryBibleDeepPremium(
       {
         title: params.title,
         locale: params.locale,
+        dialogueLanguageProfile: params.dialogueLanguageProfile,
         genre: params.genre,
         tone: params.tone,
         allEpisodes: episodesToProcess,
         byEpisode: allDraftedByEpisode,
+        durationPlan: params.durationPlan,
         tieInDraftContext: params.tieInDraftContext,
         knownLocations: knownLocationsForPrompt,
         characterBibleNames: params.characterBibleNames,
@@ -7695,6 +8293,10 @@ async function generateStoryBibleDeepPremium(
     seenNewLocationKeys.add(loc.location_key);
     dedupedNewLocations.push(loc);
   }
+  const continuityIssues = validateCompletedDeepDraftContinuity(
+    draftedItems,
+    params.totalEpisodeCount,
+  );
 
   return {
     draftedItems,
@@ -7707,6 +8309,7 @@ async function generateStoryBibleDeepPremium(
     premiumMetrics,
     missingEpisodes,
     newLocations: dedupedNewLocations,
+    continuityIssues,
     ...(partial && failureMessage ? { error: failureMessage } : {}),
     ...(params.tieInDraftContext
       ? { tieInMismatchCount: tieInReconciliation.mismatchCount }

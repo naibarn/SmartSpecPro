@@ -120,6 +120,26 @@ beforeEach(() => {
 });
 
 describe("generateEpisodeScript — memoryBundle wiring", () => {
+  it("includes the active plan's cliffhanger and continuity ledger in the prompt", async () => {
+    mockSuccessfulLlmResponse();
+
+    await generateEpisodeScript(
+      baseParams({
+        storySource: {
+          cliffhangerLine: "The locked-room witness appears on the screen.",
+          continuityPlan: {
+            threadLedger: [{ threadId: "mystery-witness-captured" }],
+          },
+        },
+      }),
+    );
+
+    const callArgs = mockExecuteWithFallback.mock.calls[0][0];
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === "user");
+    expect(userMessage.content).toContain("Planned cliffhanger / continuity obligation");
+    expect(userMessage.content).toContain("mystery-witness-captured");
+  });
+
   it("includes memory_state in the user prompt when memoryBundle is provided", async () => {
     mockSuccessfulLlmResponse();
 
@@ -147,6 +167,62 @@ describe("generateEpisodeScript — memoryBundle wiring", () => {
     const callArgs = mockExecuteWithFallback.mock.calls[0][0];
     const userMessage = callArgs.messages.find((m: { role: string }) => m.role === "user");
     expect(userMessage.content).not.toContain("memory_state");
+  });
+
+  it("gives the final episode an explicit continuity contract", async () => {
+    mockSuccessfulLlmResponse();
+
+    await generateEpisodeScript(
+      baseParams({
+        episodeNumber: 10,
+        seasonContext: { totalEpisodeCount: 10 },
+      }),
+    );
+
+    const callArgs = mockExecuteWithFallback.mock.calls[0][0];
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === "user");
+    expect(userMessage.content).toContain("episode 10 of 10 (FINAL EPISODE)");
+    expect(userMessage.content).toContain("Every episode_memory.threads_opened entry MUST include expected_resolution");
+    expect(userMessage.content).toContain("Do not emit future_episode at the season boundary");
+  });
+
+  it("rejects an opened thread without a resolution classification before charging credits", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_SCRIPT,
+                episode_memory: {
+                  recap: "A new clue appears.",
+                  canonical_facts: [],
+                  threads_opened: [
+                    {
+                      thread_id: "unclassified-clue",
+                      description: "A clue that needs a planned payoff.",
+                      thread_class: "plot",
+                    },
+                  ],
+                  threads_resolved: [],
+                },
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    await expect(
+      generateEpisodeScript(
+        baseParams({
+          seasonContext: { totalEpisodeCount: 10 },
+        }),
+      ),
+    ).rejects.toThrow("Episode continuity metadata failed the authoring contract");
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });
 

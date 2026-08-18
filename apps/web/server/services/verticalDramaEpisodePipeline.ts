@@ -71,9 +71,8 @@ import {
   resolveVerticalDramaSupportingPresenceForShot,
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
-import {
-  normalizeVerticalDramaShotComposition,
-} from "@shared/verticalDramaSeries/shotComposition";
+import { normalizeVerticalDramaShotComposition } from "@shared/verticalDramaSeries/shotComposition";
+import { deriveVerticalDramaSpokenCallerVirtualScreens } from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 // Part B2/B3 (planning/`polished-toasting-gadget.md`) — pure, shared
 // formatter for the compact episode plan-context block injected into the
 // start-frame + video motion prompt stages below. Safe as a static import
@@ -91,6 +90,13 @@ import {
   validateVerticalDramaContinuity,
   type VerticalDramaContinuityQuarantine,
 } from "@shared/verticalDramaSeries/storyContinuity";
+import {
+  deriveVerticalDramaEpisodeRuntimeSeconds,
+  resolveVerticalDramaEpisodeDurationPlan,
+  resolveVerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
+import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
+import { buildVerticalDramaDialogueLanguageProfileFromBible } from "@shared/verticalDramaSeries/dialogueLanguageProfile";
 import {
   verticalDramaSeriesMemoryService,
   type VerticalDramaSeriesMemoryService,
@@ -1544,16 +1550,17 @@ async function resolveEpisodeDraftHydration(
   return { shots, cliffhanger_line: readItemCliffhangerLine(item) };
 }
 
-const VERTICAL_DRAMA_CONTINUITY_GATE_STAGES = new Set<VerticalDramaPipelineStage>([
-  "storyboard_shotgrid",
-  "start_frame_render_plan",
-  "render_or_import_start_frames",
-  "dialogue_audio_plan",
-  "video_motion_prompt_pack",
-  "create_storyboard_review_project",
-  "render_or_import_video_clips",
-  "assemble_episode_manifest",
-]);
+const VERTICAL_DRAMA_CONTINUITY_GATE_STAGES =
+  new Set<VerticalDramaPipelineStage>([
+    "storyboard_shotgrid",
+    "start_frame_render_plan",
+    "render_or_import_start_frames",
+    "dialogue_audio_plan",
+    "video_motion_prompt_pack",
+    "create_storyboard_review_project",
+    "render_or_import_video_clips",
+    "assemble_episode_manifest",
+  ]);
 
 function readStoredEpisodeMemories(raw: unknown): VdEpisodeMemory[] {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
@@ -1580,19 +1587,131 @@ type VerticalDramaEpisodeContinuityGateResult = ReturnType<
   quarantinedOpenings: VerticalDramaContinuityQuarantine[];
 };
 
+/**
+ * The continuity repair loop is intentionally bounded. A model that keeps
+ * emitting the same invalid ledger must become an actionable failed run, not
+ * an unbounded credit-spending retry loop.
+ */
+export const VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS = 2;
+
+type ContinuityRepairIssue = {
+  code: string;
+  message: string;
+  /** Exact canonical ID when the validator can identify one. */
+  threadId?: string;
+  episodeNumber?: number;
+};
+
+type ContinuityRepairValidation = {
+  ok: boolean;
+  issues: ContinuityRepairIssue[];
+};
+
+type ContinuityRepairOutcome = {
+  succeeded: boolean;
+  errors?: RunResult["errors"];
+};
+
+/**
+ * Shared bounded recovery state machine used by the background storyboard
+ * job. Keeping the loop separate from DB/provider code makes the retry
+ * contract explicit and testable: validate, repair, reload, validate again.
+ */
+export async function runVerticalDramaContinuityRepairLoop<T>(args: {
+  initial: T;
+  validate: (value: T) => Promise<ContinuityRepairValidation>;
+  repair: (
+    issues: ContinuityRepairIssue[],
+    attempt: number
+  ) => Promise<ContinuityRepairOutcome>;
+  reload: () => Promise<T>;
+  maxRepairAttempts?: number;
+}): Promise<{
+  value: T;
+  validation: ContinuityRepairValidation;
+  repairAttempts: number;
+  lastRepairErrors: RunResult["errors"];
+}> {
+  let value = args.initial;
+  let validation = await args.validate(value);
+  let repairAttempts = 0;
+  let lastRepairErrors: RunResult["errors"] = [];
+  const maxRepairAttempts = Math.max(
+    0,
+    args.maxRepairAttempts ?? VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS
+  );
+
+  while (!validation.ok && repairAttempts < maxRepairAttempts) {
+    repairAttempts += 1;
+    const repairOutcome = await args.repair(validation.issues, repairAttempts);
+    lastRepairErrors = repairOutcome.errors ?? [];
+    if (!repairOutcome.succeeded) break;
+    value = await args.reload();
+    validation = await args.validate(value);
+  }
+
+  return { value, validation, repairAttempts, lastRepairErrors };
+}
+
+export function buildContinuityRepairInstruction(
+  issues: readonly ContinuityRepairIssue[]
+): string {
+  const issueLines = issues
+    .map(issue => {
+      const location = issue.threadId
+        ? ` (canonical thread_id: ${issue.threadId})`
+        : "";
+      return `- [${issue.code}]${location} ${issue.message}`;
+    })
+    .join("\n");
+  const seasonThreadIds = issues
+    .filter(
+      issue =>
+        issue.code === "season_thread_unresolved" &&
+        typeof issue.threadId === "string" &&
+        issue.threadId.trim().length > 0
+    )
+    .map(issue => issue.threadId!.trim());
+  const seasonResolutionInstruction =
+    seasonThreadIds.length > 0
+      ? [
+          "For each season_thread_unresolved listed below, use its exact canonical thread_id.",
+          "If this episode pays off that thread, add the exact ID to episode_memory.threads_resolved; do not use a description, translation, alias, or a newly invented ID.",
+          "Changing only open_loops.expected_resolution cannot repair an older persisted opening, so do not rely on open_loops alone.",
+          `Canonical IDs requiring a decision: ${seasonThreadIds.join(", ")}`,
+        ].join("\n")
+      : null;
+  return [
+    "Repair this episode script so it passes the continuity gate before storyboard generation.",
+    "Preserve the canonical thread_id for every existing thread.",
+    "Every newly opened thread must declare expected_resolution.",
+    "Resolve only a thread that was opened earlier in the timeline; use expected_resolution=season for an intentional season carry-over.",
+    seasonResolutionInstruction,
+    "Return the complete valid episode script JSON, preserving all unrelated story content.",
+    "Continuity issues found:",
+    issueLines ||
+      "- [unknown] Re-check the episode memory and continuity ledger.",
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join("\n");
+}
+
 async function validateEpisodeContinuityBeforeMedia(
   owner: EpisodeRunOwner,
-  episode: VerticalDramaEpisodeRow,
+  episode: VerticalDramaEpisodeRow
 ): Promise<VerticalDramaEpisodeContinuityGateResult> {
   const [series] = await db
-    .select({ memory: verticalDramaSeries.memory, targetEpisodeCount: verticalDramaSeries.targetEpisodeCount })
+    .select({
+      memory: verticalDramaSeries.memory,
+      targetEpisodeCount: verticalDramaSeries.targetEpisodeCount,
+    })
     .from(verticalDramaSeries)
     .where(
       and(
         eq(verticalDramaSeries.id, owner.seriesId),
         eq(verticalDramaSeries.tenantId, owner.tenantId),
-        eq(verticalDramaSeries.userId, owner.userId),
-      ),
+        eq(verticalDramaSeries.userId, owner.userId)
+      )
     )
     .limit(1);
   if (!series) {
@@ -1609,11 +1728,11 @@ async function validateEpisodeContinuityBeforeMedia(
   const stored = readStoredEpisodeMemories(series.memory);
   const timeline = selectPriorVerticalDramaMemories(
     stored,
-    episode.episodeNumber,
+    episode.episodeNumber
   );
   if (currentScript.success) {
     timeline.push(
-      resolveScriptEpisodeMemory(currentScript.data, episode.episodeNumber),
+      resolveScriptEpisodeMemory(currentScript.data, episode.episodeNumber)
     );
   }
 
@@ -1626,7 +1745,7 @@ async function validateEpisodeContinuityBeforeMedia(
       await repairSeriesMemoryContinuity(
         owner.seriesId,
         owner.tenantId,
-        owner.userId,
+        owner.userId
       );
     } catch (error) {
       // The normalized in-memory timeline still protects this run. A repair
@@ -1635,7 +1754,7 @@ async function validateEpisodeContinuityBeforeMedia(
       debugError(
         "vd_continuity_repair",
         `Could not persist continuity quarantine cleanup for series #${owner.seriesId}`,
-        error,
+        error
       );
     }
   }
@@ -2386,12 +2505,44 @@ export class VerticalDramaEpisodePipeline {
       );
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
-    const episodeBreakdown = Array.isArray(bible?.episodeBreakdown)
-      ? (bible!.episodeBreakdown as Array<Record<string, unknown>>)
-      : [];
-    const matchingBreakdown = episodeBreakdown.find(
-      item => Number(item.episodeNumber) === episode.episodeNumber
+    // The active version is authoritative. The old top-level
+    // `bible.episodeBreakdown` can be stale after an arc re-plan and was the
+    // reason planned cliffhangers disappeared before reaching the script
+    // builder.
+    const { getActiveBreakdown } = await import("./verticalDramaStoryBible");
+    const matchingBreakdown = getActiveBreakdown(bible).find(
+      item => item.episodeNumber === episode.episodeNumber
     );
+    const rawLedgers =
+      bible && typeof bible.ledgers === "object" && bible.ledgers !== null
+        ? bible.ledgers
+        : undefined;
+
+    // New episodes carry the exact profile id used at creation time. Only
+    // those rows receive the active 9-shot contract; legacy rows keep their
+    // persisted target duration even if the series later adopts a profile.
+    // This prevents a settings change from rewriting old story/runtime data.
+    const seriesDurationPlan = resolveVerticalDramaDurationPlan(
+      bible,
+      seriesRow?.defaultEpisodeDurationSeconds
+    );
+    const durationPlan =
+      seriesDurationPlan?.status === "active" &&
+      episode.durationProfileId === seriesDurationPlan.profileId
+        ? seriesDurationPlan
+        : (resolveVerticalDramaEpisodeDurationPlan(
+            episode.durationProfileId,
+            episode.targetDurationSeconds
+          ) ?? undefined);
+    const storyControlSeed =
+      readVerticalDramaStoryControlSeed(bible?.storyControlSeed, {
+        totalEpisodeCount: seriesRow?.targetEpisodeCount ?? undefined,
+      }) ?? undefined;
+    const episodeDurationSeconds =
+      episode.targetDurationSeconds ??
+      (durationPlan
+        ? deriveVerticalDramaEpisodeRuntimeSeconds(durationPlan)
+        : 60);
 
     // Product tie-in policy (spec §13) — the series' loosely-typed
     // `productTieIn` JSON blob (see `VerticalDramaProductTieInTab.tsx`'s doc
@@ -2452,7 +2603,13 @@ export class VerticalDramaEpisodePipeline {
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
-      durationSeconds: episode.targetDurationSeconds ?? 60,
+      seasonContext: {
+        totalEpisodeCount: seriesRow?.targetEpisodeCount ?? undefined,
+      },
+      dialogueLanguageProfile:
+        buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+      durationSeconds: episodeDurationSeconds,
+      durationPlan,
       productTieIn,
       episodeDraft: episodeDraft ?? undefined,
       episodeTieInPlacement,
@@ -2476,6 +2633,18 @@ export class VerticalDramaEpisodePipeline {
         keyBeats: Array.isArray(matchingBreakdown?.keyBeats)
           ? (matchingBreakdown.keyBeats as string[])
           : undefined,
+        cliffhangerLine:
+          typeof matchingBreakdown?.cliffhanger_line === "string"
+            ? matchingBreakdown.cliffhanger_line
+            : undefined,
+        continuityPlan: rawLedgers
+          ? {
+              threadLedger: (rawLedgers as Record<string, unknown>)
+                .threadLedger,
+              evidenceLedger: (rawLedgers as Record<string, unknown>)
+                .evidenceLedger,
+            }
+          : undefined,
         mainPlot:
           typeof bible?.mainPlot === "string"
             ? (bible.mainPlot as string)
@@ -2487,6 +2656,7 @@ export class VerticalDramaEpisodePipeline {
               ? (bible.seasonArc as string)
               : undefined,
         tone: seriesRow?.tone ?? undefined,
+        storyControlSeed,
       },
       characters: characterRows.map(
         (c: { characterKey: string; name: string; role: string | null }) => ({
@@ -2527,7 +2697,10 @@ export class VerticalDramaEpisodePipeline {
     model: string;
   }> {
     const [seriesRow] = await db
-      .select({ locale: verticalDramaSeries.locale })
+      .select({
+        locale: verticalDramaSeries.locale,
+        bible: verticalDramaSeries.bible,
+      })
       .from(verticalDramaSeries)
       .where(
         and(
@@ -2877,6 +3050,18 @@ export class VerticalDramaEpisodePipeline {
     const matchingBreakdown = getActiveBreakdown(bible).find(
       item => item.episodeNumber === episode.episodeNumber
     );
+    const seriesDurationPlan = resolveVerticalDramaDurationPlan(
+      bible,
+      seriesRow?.defaultEpisodeDurationSeconds
+    );
+    const durationPlan =
+      seriesDurationPlan?.status === "active" &&
+      episode.durationProfileId === seriesDurationPlan.profileId
+        ? seriesDurationPlan
+        : (resolveVerticalDramaEpisodeDurationPlan(
+            episode.durationProfileId,
+            episode.targetDurationSeconds
+          ) ?? undefined);
 
     // Ground the 9 shots in the episode's own scene-by-scene script (the
     // `plan_episode_script` stage's `scene_dialogue_summary`), not just the
@@ -2964,7 +3149,14 @@ export class VerticalDramaEpisodePipeline {
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
-      durationSeconds: episode.targetDurationSeconds ?? 60,
+      dialogueLanguageProfile:
+        buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+      durationSeconds:
+        episode.targetDurationSeconds ??
+        (durationPlan
+          ? deriveVerticalDramaEpisodeRuntimeSeconds(durationPlan)
+          : 60),
+      durationPlan,
       seriesLookRegister,
       episodeDraft: episodeDraft ?? undefined,
       existingLocations:
@@ -3124,6 +3316,10 @@ export class VerticalDramaEpisodePipeline {
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
       locale,
+      dialogueLanguageProfile:
+        buildVerticalDramaDialogueLanguageProfileFromBible(
+          (seriesRow?.bible as Record<string, unknown> | null) ?? null
+        ),
       durationSeconds,
       episodeScript: (episode.script as Record<string, unknown> | null) ?? {},
       audioStrategy: currentPlan?.audioStrategy,
@@ -3335,6 +3531,7 @@ export class VerticalDramaEpisodePipeline {
       .select({
         bible: verticalDramaSeries.bible,
         locale: verticalDramaSeries.locale,
+        genre: verticalDramaSeries.genre,
       })
       .from(verticalDramaSeries)
       .where(
@@ -3804,17 +4001,36 @@ export class VerticalDramaEpisodePipeline {
         // spread) when this shot has no resolved speaking order, same
         // "omit the key" convention as `location` immediately above.
         const speakingOrder = speakingOrderByShotNumber.get(shotNumber);
+        const characterAliases = Object.fromEntries(
+          characterIdentitySources.map(source => [
+            source.characterKey,
+            source.name ? [source.name] : [],
+          ])
+        );
+        const spokenCallerPolicy =
+          deriveVerticalDramaSpokenCallerVirtualScreens({
+            physicalSceneCharacterRefs: effectiveCharacterIds,
+            screenCallerCharacterRefs: effectiveScreenCallerCharacterIds,
+            dialogueSpeakerRefs: speakingOrder ?? [],
+            characterAliases,
+          });
         return {
           shotNumber,
           description: String(s.description ?? s.visual_description ?? ""),
           cameraSetup,
-          characterIds: effectiveCharacterIds,
+          characterIds: spokenCallerPolicy.physicalSceneCharacterRefs,
           ...(characterRefsCustomized ||
           (barrierMultiView && barrierMultiView.activationSource !== "auto")
             ? { characterRefsCustomized: true }
             : {}),
           ...(effectiveScreenCallerCharacterIds.length > 0 && !barrierDialogue
             ? { screenCallerCharacterRefs: effectiveScreenCallerCharacterIds }
+            : {}),
+          ...(spokenCallerPolicy.spokenScreenCallerCharacterRefs.length > 0
+            ? {
+                spokenCallerCharacterRefs:
+                  spokenCallerPolicy.spokenScreenCallerCharacterRefs,
+              }
             : {}),
           ...(barrierDialogue ? { barrierDialogue } : {}),
           ...(barrierMultiView ? { barrierMultiView } : {}),
@@ -3826,6 +4042,7 @@ export class VerticalDramaEpisodePipeline {
             : {}),
           durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
           ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
+          ...(shotComposition ? { shotComposition } : {}),
           ...(locationGroup
             ? {
                 location: {
@@ -4178,7 +4395,12 @@ export class VerticalDramaEpisodePipeline {
               const characterReferenceImages =
                 await resolvePipelineCharacterReferenceImages(
                   owner,
-                  f.requiredCharacterRefs ?? []
+                  Array.from(
+                    new Set([
+                      ...(f.requiredCharacterRefs ?? []),
+                      ...(f.screenCallerCharacterRefs ?? []),
+                    ])
+                  )
                 );
               return {
                 shotNumber: f.shotNumber,
@@ -4483,13 +4705,13 @@ export class VerticalDramaEpisodePipeline {
       try {
         continuityValidation = await validateEpisodeContinuityBeforeMedia(
           owner,
-          episode,
+          episode
         );
       } catch (error) {
         debugError(
           "vd_continuity_gate",
           `Continuity gate could not read episode #${owner.episodeId} context; blocking downstream media for safety`,
-          error,
+          error
         );
         continuityValidation = {
           ok: false,
@@ -4534,7 +4756,7 @@ export class VerticalDramaEpisodePipeline {
             code: "VD_CONTINUITY_GATE_FAILED",
             message: issue.message,
             repairable: true,
-          }),
+          })
         );
         payload = {
           ...payload,
@@ -4557,7 +4779,7 @@ export class VerticalDramaEpisodePipeline {
           runId,
           stage,
           payload,
-          [],
+          []
         );
         await db
           .update(verticalDramaEpisodeRuns)
@@ -5147,7 +5369,7 @@ export class VerticalDramaEpisodePipeline {
         );
         // Final-prompt QC (hard length cap) — BEFORE this pack is persisted
         // or used to render a paid video clip. Zero-cost no-op for clips
-        // already within `VD_VIDEO_PROMPT_MAX`.
+        // already within the selected provider's video-prompt budget.
         generated.pack = {
           ...generated.pack,
           clips: await Promise.all(
@@ -5815,39 +6037,107 @@ export class VerticalDramaEpisodePipeline {
         return;
       }
 
-      const episode = await this.loadEpisode(owner);
-
       // The storyboard worker has a dedicated tail rather than delegating to
-      // runStage, so apply the same pre-provider gate here as well.
-      const continuityValidation = await validateEpisodeContinuityBeforeMedia(
-        owner,
-        episode,
-      );
-      const continuityWarnings: VerticalDramaWarning[] =
-        [
-          ...continuityValidation.quarantinedResolutions.map(quarantine => ({
-            quarantine,
-            code: "VD_CONTINUITY_ORPHAN_RESOLUTION_QUARANTINED",
-          })),
-          ...continuityValidation.quarantinedOpenings.map(quarantine => ({
-            quarantine,
-            code: "VD_CONTINUITY_DUPLICATE_OPENING_QUARANTINED",
-          })),
-        ].map(({ quarantine, code }) => ({
-          code,
-          severity: "warning" as const,
-          message: quarantine.message,
-          targetStage: "storyboard_shotgrid" as const,
-          repairable: false,
-        }));
+      // runStage, so apply the same pre-provider gate here as well. A
+      // continuity failure is recoverable during the one-click workflow:
+      // repair the persisted script, reload it, and validate again before
+      // allowing the paid storyboard generation to start.
+      const initialEpisode = await this.loadEpisode(owner);
+      const recovery = await runVerticalDramaContinuityRepairLoop({
+        initial: initialEpisode,
+        validate: episode =>
+          validateEpisodeContinuityBeforeMedia(owner, episode),
+        repair: async (issues, attempt) => {
+          await db
+            .update(verticalDramaEpisodeRuns)
+            .set({
+              warnings: [
+                {
+                  code: "VD_CONTINUITY_AUTO_REPAIR_RUNNING",
+                  severity: "warning",
+                  message: `Continuity repair attempt ${attempt} of ${VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS} is running before storyboard generation.`,
+                  targetStage: "storyboard_shotgrid",
+                  repairable: true,
+                },
+              ],
+              updatedAt: new Date(),
+            })
+            .where(eq(verticalDramaEpisodeRuns.id, runId));
+
+          try {
+            const repairOutcome = await this.repairStage(
+              owner,
+              "plan_episode_script",
+              {
+                instruction: buildContinuityRepairInstruction(issues),
+                subShotFlagOn: opts.subShotFlagOn,
+                subShotPolicy: opts.subShotPolicy,
+                sceneContractsEnabled: opts.sceneContractsEnabled,
+                retentionHooksEnabled: opts.retentionHooksEnabled,
+                motionContractsEnabled: opts.motionContractsEnabled,
+              }
+            );
+            return {
+              succeeded: repairOutcome.result.status === "succeeded",
+              errors: repairOutcome.result.errors,
+            };
+          } catch (error) {
+            return {
+              succeeded: false,
+              errors: [
+                {
+                  code: "VD_CONTINUITY_AUTO_REPAIR_FAILED",
+                  message:
+                    error instanceof Error ? error.message : String(error),
+                  repairable: true,
+                },
+              ],
+            };
+          }
+        },
+        reload: () => this.loadEpisode(owner),
+      });
+      const episode = recovery.value;
+      const continuityValidation =
+        recovery.validation as VerticalDramaEpisodeContinuityGateResult;
+      const continuityWarnings: VerticalDramaWarning[] = [
+        ...continuityValidation.quarantinedResolutions.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_ORPHAN_RESOLUTION_QUARANTINED",
+        })),
+        ...continuityValidation.quarantinedOpenings.map(quarantine => ({
+          quarantine,
+          code: "VD_CONTINUITY_DUPLICATE_OPENING_QUARANTINED",
+        })),
+      ].map(({ quarantine, code }) => ({
+        code,
+        severity: "warning" as const,
+        message: quarantine.message,
+        targetStage: "storyboard_shotgrid" as const,
+        repairable: false,
+      }));
       if (!continuityValidation.ok) {
-        const errors: RunResult["errors"] = continuityValidation.issues.map(
-          issue => ({
+        const continuityErrors: RunResult["errors"] =
+          continuityValidation.issues.map(issue => ({
             code: "VD_CONTINUITY_GATE_FAILED",
             message: issue.message,
             repairable: true,
-          }),
-        );
+          }));
+        const recoveryErrors: RunResult["errors"] =
+          recovery.lastRepairErrors.length > 0
+            ? recovery.lastRepairErrors
+            : continuityErrors;
+        const errors: RunResult["errors"] = [
+          ...recoveryErrors,
+          ...continuityErrors.filter(
+            continuityError =>
+              !recoveryErrors.some(
+                recoveryError =>
+                  recoveryError.code === continuityError.code &&
+                  recoveryError.message === continuityError.message
+              )
+          ),
+        ];
         payload = {
           ...payload,
           continuity_review: {
@@ -5855,6 +6145,10 @@ export class VerticalDramaEpisodePipeline {
             issues: continuityValidation.issues,
             quarantinedResolutions: continuityValidation.quarantinedResolutions,
             quarantinedOpenings: continuityValidation.quarantinedOpenings,
+            autoRepairAttempts: recovery.repairAttempts,
+            autoRepairExhausted:
+              recovery.repairAttempts >=
+              VERTICAL_DRAMA_CONTINUITY_AUTO_REPAIR_MAX_ATTEMPTS,
           },
         };
         const artifact = await this.writeArtifact(
@@ -5862,7 +6156,7 @@ export class VerticalDramaEpisodePipeline {
           runId,
           stage,
           payload,
-          [],
+          []
         );
         await db
           .update(verticalDramaEpisodeRuns)

@@ -33,6 +33,19 @@ import {
   type UserStoryInsightDraft,
   type VideoBrief,
 } from "../shared/localAi";
+import {
+  EXTENSION_NATIVE_UPDATE_KEY,
+  EXTENSION_UPDATE_CACHE_KEY,
+  EXTENSION_UPDATE_DISMISSED_VERSION_KEY,
+  EXTENSION_UPDATE_LATEST_PATH,
+  isFreshExtensionUpdateCache,
+  parseExtensionUpdateCache,
+  parseLatestExtensionReleaseResponse,
+  parseNativeExtensionUpdateAvailability,
+  resolveExtensionUpdateNotice,
+  type ExtensionUpdateCache,
+  type ExtensionUpdateNotice,
+} from "../shared/extensionUpdate";
 
 declare const chrome: any;
 
@@ -373,6 +386,11 @@ interface ProductionMediaFileEntry {
   authHeaders?: Record<string, string>;
 }
 
+interface ProductionMediaPreviewEntry {
+  status: "loading" | "ready" | "failed";
+  objectUrl?: string;
+}
+
 type ProductionMediaPrepareJob = { url?: string | null; title: string; kind?: "image" | "video" };
 
 const CAPTURE_STEPS = [
@@ -393,8 +411,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.136";
-const EXTENSION_BUILD_LABEL = "2026-08-06 14:45 +07";
+const EXTENSION_VERSION = "0.1.138";
+const EXTENSION_BUILD_LABEL = "2026-08-18 10:18 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -2170,6 +2188,7 @@ export default function App() {
   const [progress, setProgress] = useState<ProgressStep[]>(CAPTURE_STEPS.map((label) => ({ label, status: "pending" })));
   const [status, setStatus] = useState("Ready");
   const [error, setError] = useState("");
+  const [extensionUpdateNotice, setExtensionUpdateNotice] = useState<ExtensionUpdateNotice>(null);
   const [localAISettings, setLocalAISettings] = useState<LocalAISettings>(defaultLocalAISettings);
   const extensionOrigin = `chrome-extension://${chrome.runtime.id}`;
   const wildcardExtensionOrigin = "chrome-extension://*";
@@ -2212,6 +2231,7 @@ export default function App() {
   const [productionProjectsBusy, setProductionProjectsBusy] = useState(false);
   const [productionProjectBusy, setProductionProjectBusy] = useState(false);
   const [productionMediaFiles, setProductionMediaFiles] = useState<Record<string, ProductionMediaFileEntry>>({});
+  const [productionMediaPreviews, setProductionMediaPreviews] = useState<Record<string, ProductionMediaPreviewEntry>>({});
   const [storyboardProjectSearch, setStoryboardProjectSearch] = useState("");
   const [storyboardProjects, setStoryboardProjects] = useState<StoryboardReviewProjectSummary[]>([]);
   const [selectedStoryboardProjectId, setSelectedStoryboardProjectId] = useState<number | null>(null);
@@ -2249,6 +2269,9 @@ export default function App() {
   const focusCaptureReviewProductIdRef = useRef<string | null>(null);
   const forceCaptureReviewUntilRef = useRef(0);
   const productionMediaFilesRef = useRef<Record<string, ProductionMediaFileEntry>>({});
+  const productionMediaPrepareInFlightRef = useRef<Set<string>>(new Set());
+  const productionMediaPreviewsRef = useRef<Record<string, ProductionMediaPreviewEntry>>({});
+  const productionMediaPreviewInFlightRef = useRef<Set<string>>(new Set());
   const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
   const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
   const localAIStatusView = useMemo(() => getLocalAIStatusView({
@@ -2275,6 +2298,65 @@ export default function App() {
     loadLocalAISettings().then(setLocalAISettings).catch(() => undefined);
     refreshLocalAICapability().catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    let disposed = false;
+
+    const refreshExtensionUpdateNotice = async () => {
+      const stored = await chrome.storage.local.get([
+        EXTENSION_UPDATE_CACHE_KEY,
+        EXTENSION_UPDATE_DISMISSED_VERSION_KEY,
+        EXTENSION_NATIVE_UPDATE_KEY,
+      ]);
+      const nativeUpdate = parseNativeExtensionUpdateAvailability(stored[EXTENSION_NATIVE_UPDATE_KEY]);
+      const cached = parseExtensionUpdateCache(stored[EXTENSION_UPDATE_CACHE_KEY], serverBaseUrl);
+      const cacheIsFresh = isFreshExtensionUpdateCache(cached, serverBaseUrl);
+      let release = cacheIsFresh ? cached?.release ?? null : null;
+
+      if (!cacheIsFresh) {
+        try {
+          const response = await fetch(`${serverBaseUrl}${EXTENSION_UPDATE_LATEST_PATH}`, { cache: "no-store" });
+          if (!response.ok) throw new Error(`extension update check failed (${response.status})`);
+          const parsed = parseLatestExtensionReleaseResponse(await response.json(), serverBaseUrl);
+          if (!parsed) throw new Error("extension update response is invalid");
+          release = parsed.release;
+          const nextCache: ExtensionUpdateCache = {
+            checkedAt: Date.now(),
+            serverOrigin: new URL(serverBaseUrl).origin,
+            release,
+          };
+          await chrome.storage.local.set({ [EXTENSION_UPDATE_CACHE_KEY]: nextCache });
+        } catch {
+          // Update awareness must never interrupt capture or media workflows.
+        }
+      }
+
+      if (disposed) return;
+      setExtensionUpdateNotice(resolveExtensionUpdateNotice({
+        currentVersion: EXTENSION_VERSION,
+        release,
+        dismissedVersion: stored[EXTENSION_UPDATE_DISMISSED_VERSION_KEY],
+        nativeUpdate,
+      }));
+    };
+
+    const handleUpdateStorageChange = (changes: Record<string, unknown>, areaName: string) => {
+      if (areaName !== "local") return;
+      if (
+        !changes[EXTENSION_UPDATE_CACHE_KEY]
+        && !changes[EXTENSION_UPDATE_DISMISSED_VERSION_KEY]
+        && !changes[EXTENSION_NATIVE_UPDATE_KEY]
+      ) return;
+      refreshExtensionUpdateNotice().catch(() => undefined);
+    };
+
+    refreshExtensionUpdateNotice().catch(() => undefined);
+    chrome.storage.onChanged.addListener(handleUpdateStorageChange);
+    return () => {
+      disposed = true;
+      chrome.storage.onChanged.removeListener(handleUpdateStorageChange);
+    };
+  }, [serverBaseUrl]);
 
   useEffect(() => {
     const decision = decideLocalAIProvider({ capability: localAICapability, settings: localAISettings, hasToken: Boolean(settings.token) });
@@ -2361,8 +2443,15 @@ export default function App() {
     productionMediaFilesRef.current = productionMediaFiles;
   }, [productionMediaFiles]);
 
+  useEffect(() => {
+    productionMediaPreviewsRef.current = productionMediaPreviews;
+  }, [productionMediaPreviews]);
+
   useEffect(() => () => {
     for (const entry of Object.values(productionMediaFilesRef.current)) {
+      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    }
+    for (const entry of Object.values(productionMediaPreviewsRef.current)) {
       if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
     }
   }, []);
@@ -4001,7 +4090,8 @@ export default function App() {
   async function loadDramaEpisode(episode: { id: string }) {
     if (!settings.token || !selectedDramaProject) throw new Error("กรุณาใส่ extension token ก่อน");
     setDramaEpisodeBusy(true);
-    setProductionMediaFiles({});
+    resetProductionMediaFiles();
+    resetProductionMediaPreviews();
     setDramaGridCuts({});
     dramaGridCutStartedRef.current = new Set();
     setStatus("Loading episode storyboard");
@@ -4015,28 +4105,22 @@ export default function App() {
       });
       if (!response.ok) throw new Error(await response.text());
       const json = await response.json();
-      const detail = json.episode as DramaEpisodeDetail | null | undefined;
+      const rawDetail = json.episode as DramaEpisodeDetail | null | undefined;
+      const detail = rawDetail ? {
+        ...rawDetail,
+        shots: rawDetail.shots.map((shot) => ({
+          ...shot,
+          gridImageUrl: null,
+          gridFrames: [],
+          referenceImages: shot.referenceImages.filter((image) =>
+            image.source === "character" || image.source === "reference_frame"),
+        })),
+      } satisfies DramaEpisodeDetail : null;
       setSelectedDramaEpisode(detail ?? null);
-      if (detail) {
-        void prepareDramaEpisodeMediaFiles(detail);
-        for (const shot of detail.shots) {
-          if (shot.gridImageUrl) void cutDramaShotGrid(shot);
-        }
-      }
       setStatus("Episode storyboard ready");
     } finally {
       setDramaEpisodeBusy(false);
     }
-  }
-
-  async function prepareDramaEpisodeMediaFiles(episode: DramaEpisodeDetail) {
-    const jobs: ProductionMediaPrepareJob[] = episode.shots.flatMap((shot) => [
-      { url: shot.mainImageUrl, title: `drama-shot-${shot.shotNumber}-main` },
-      { url: shot.mainImageThumbnailUrl, title: `drama-shot-${shot.shotNumber}-main` },
-      ...shot.gridFrames.map((frame) => ({ url: frame.url, title: `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}` })),
-      ...shot.referenceImages.map((image, index) => ({ url: image.url, title: `drama-shot-${shot.shotNumber}-ref-${index + 1}` })),
-    ]);
-    await prepareDragMediaFiles(jobs);
   }
 
   async function loadAutoReviewProjects(search = autoReviewProjectSearch) {
@@ -4156,6 +4240,66 @@ export default function App() {
     return fileNameFromUrl(url, fallback);
   }
 
+  function resetProductionMediaPreviews() {
+    for (const entry of Object.values(productionMediaPreviewsRef.current)) {
+      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    }
+    productionMediaPreviewsRef.current = {};
+    productionMediaPreviewInFlightRef.current.clear();
+    setProductionMediaPreviews({});
+  }
+
+  function resetProductionMediaFiles() {
+    for (const entry of Object.values(productionMediaFilesRef.current)) {
+      if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
+    }
+    productionMediaFilesRef.current = {};
+    productionMediaPrepareInFlightRef.current.clear();
+    setProductionMediaFiles({});
+  }
+
+  async function prepareAuthenticatedMediaPreview(rawUrl: string | null | undefined) {
+    const sourceUrl = rawUrl?.trim();
+    if (!sourceUrl) return;
+    const url = resolveServerUrl(serverBaseUrl, sourceUrl);
+    if (!url || url.startsWith("data:image/") || url.startsWith("blob:")) return;
+    const existing = productionMediaPreviewsRef.current[url];
+    if (existing?.status === "ready" || existing?.status === "loading" || productionMediaPreviewInFlightRef.current.has(url)) return;
+
+    productionMediaPreviewInFlightRef.current.add(url);
+    setProductionMediaPreviews((current) => {
+      const next = { ...current, [url]: { status: "loading" as const } };
+      productionMediaPreviewsRef.current = next;
+      return next;
+    });
+    try {
+      const targetOrigin = new URL(url).origin;
+      const serverOrigin = new URL(serverBaseUrl).origin;
+      const response = targetOrigin === serverOrigin
+        ? await fetch(url, { headers: await extensionAuthHeaders() })
+        : await fetch(`${serverBaseUrl}/api/media/image-proxy?url=${encodeURIComponent(url)}`, {
+            headers: await extensionAuthHeaders(),
+          });
+      if (!response.ok) throw new Error(`Unable to fetch image preview ${response.status}`);
+      const objectUrl = URL.createObjectURL(await response.blob());
+      setProductionMediaPreviews((current) => {
+        const previous = current[url];
+        if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+        const next = { ...current, [url]: { status: "ready" as const, objectUrl } };
+        productionMediaPreviewsRef.current = next;
+        return next;
+      });
+    } catch {
+      setProductionMediaPreviews((current) => {
+        const next = { ...current, [url]: { status: "failed" as const } };
+        productionMediaPreviewsRef.current = next;
+        return next;
+      });
+    } finally {
+      productionMediaPreviewInFlightRef.current.delete(url);
+    }
+  }
+
   async function downloadProductionMedia(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "video") {
     const sourceUrl = rawUrl?.trim();
     if (!sourceUrl) throw new Error("No media URL to download");
@@ -4183,13 +4327,14 @@ export default function App() {
     if (!sourceUrl) return;
     const url = resolveServerUrl(serverBaseUrl, sourceUrl);
     const existing = productionMediaFiles[url];
-    if (!url || existing?.status === "loading") return;
+    if (!url || existing?.status === "loading" || productionMediaPrepareInFlightRef.current.has(url)) return;
     if (existing?.status === "ready") {
       if (existing.dragId && existing.file) {
         void storeDragMediaForBridge({ id: existing.dragId, dataUrl: existing.dataUrl, file: existing.file, metadataOnly: !existing.dataUrl, sourceUrl: existing.sourceUrl, headers: existing.authHeaders }).catch(() => undefined);
       }
       return;
     }
+    productionMediaPrepareInFlightRef.current.add(url);
     setProductionMediaFiles((current) => ({ ...current, [url]: { status: "loading" } }));
     try {
       let blob: Blob;
@@ -4235,6 +4380,8 @@ export default function App() {
       });
     } catch {
       setProductionMediaFiles((current) => ({ ...current, [url]: { status: "failed" } }));
+    } finally {
+      productionMediaPrepareInFlightRef.current.delete(url);
     }
   }
 
@@ -4454,18 +4601,44 @@ export default function App() {
       </div>
     );
   };
+  const authenticatedPreviewImage = (input: {
+    url: string;
+    alt: string;
+    title: string;
+    className?: string;
+    loading?: "eager" | "lazy";
+  }) => {
+    const url = resolveServerUrl(serverBaseUrl, input.url);
+    const previewEntry = productionMediaPreviews[url];
+    return (
+      <img
+        className={input.className}
+        src={previewEntry?.objectUrl || url}
+        alt={input.alt}
+        loading={input.loading ?? "lazy"}
+        decoding="async"
+        draggable={false}
+        onError={() => {
+          if (!previewEntry) {
+            void prepareAuthenticatedMediaPreview(input.url);
+          }
+        }}
+      />
+    );
+  };
   const productionMediaCard = (input: { label: string; url?: string | null; urls?: Array<string | null | undefined>; title: string; kind?: "image" | "video" }) => {
     const candidateUrls = (input.urls ?? [input.url])
       .map((candidate) => candidate?.trim() ?? "")
       .filter(Boolean)
       .filter((candidate, index, list) => list.indexOf(candidate) === index);
-    // Prefer a candidate that's already ready (has a file). Fall back to first non-failed.
+    // Prefer a candidate whose lightweight preview is ready. Fall back to the
+    // first candidate that has not failed preview loading.
     const rawUrl = candidateUrls.find((candidate) => {
       const resolved = resolveServerUrl(serverBaseUrl, candidate);
-      return productionMediaFiles[resolved]?.status === "ready";
+      return productionMediaPreviews[resolved]?.status === "ready";
     }) ?? candidateUrls.find((candidate) => {
       const resolved = resolveServerUrl(serverBaseUrl, candidate);
-      return productionMediaFiles[resolved]?.status !== "failed";
+      return productionMediaPreviews[resolved]?.status !== "failed";
     }) ?? candidateUrls[0] ?? "";
     if (!rawUrl) {
       return (
@@ -4477,45 +4650,37 @@ export default function App() {
     }
     const url = resolveServerUrl(serverBaseUrl, rawUrl);
     const kind = input.kind ?? "image";
-    const fileEntry = productionMediaFiles[url];
-    // Best file entry across all candidates (pick first ready one for drag)
-    const bestFileEntry = candidateUrls
-      .map((candidate) => productionMediaFiles[resolveServerUrl(serverBaseUrl, candidate)])
-      .find((entry) => entry?.status === "ready") ?? fileEntry;
-    const displayUrl = fileEntry?.objectUrl || url;
+    const previewEntry = productionMediaPreviews[url];
+    const dragRawUrl = input.url?.trim() || rawUrl;
+    const dragUrl = resolveServerUrl(serverBaseUrl, dragRawUrl);
+    const dragFileEntry = productionMediaFiles[dragUrl];
+    const displayUrl = previewEntry?.objectUrl || url;
     const handleDragStart = (event: DragEvent<HTMLElement>) => {
-      // Trigger prepare for all candidates on drag start (in case not yet ready)
-      for (const candidate of candidateUrls) {
-        void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-      }
+      void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
       startProductionMediaDrag(event, {
-        url,
+        url: dragUrl,
         title: input.title || input.label,
         kind,
-        file: bestFileEntry?.file,
-        dragId: bestFileEntry?.dragId,
-        dataUrl: bestFileEntry?.dataUrl,
-        headers: bestFileEntry?.authHeaders,
+        file: dragFileEntry?.file,
+        dragId: dragFileEntry?.dragId,
+        dataUrl: dragFileEntry?.dataUrl,
+        headers: dragFileEntry?.authHeaders,
       });
     };
     const handleDragEnd = () => {
-      endProductionMediaDrag({ dragId: bestFileEntry?.dragId });
+      endProductionMediaDrag({ dragId: dragFileEntry?.dragId });
     };
     return (
       <div
         role="button"
         tabIndex={0}
-        className={`production-media-card${fileEntry?.status === "loading" ? " loading" : ""}${fileEntry?.status === "failed" ? " failed" : ""}`}
+        className={`production-media-card${previewEntry?.status === "loading" ? " loading" : ""}${previewEntry?.status === "failed" ? " failed" : ""}`}
         draggable
         onPointerDown={() => {
-          for (const candidate of candidateUrls) {
-            void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-          }
+          void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
         }}
         onMouseEnter={() => {
-          for (const candidate of candidateUrls) {
-            void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-          }
+          void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
         }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -4523,7 +4688,7 @@ export default function App() {
         onKeyDown={(event) => {
           if (event.key === "Enter") chrome.tabs.create({ url });
         }}
-        title={fileEntry?.file ? `Drag this ${kind} as a file into an upload drop zone. Double-click to open.` : `Preparing ${kind} drag. Wait for file ready, or double-click to open.`}
+        title={dragFileEntry?.file ? `Drag this ${kind} as a file into an upload drop zone. Double-click to open.` : `Preparing ${kind} drag. Wait for file ready, or double-click to open.`}
       >
         {kind === "video" ? (
           <div className="production-video-thumb">▶</div>
@@ -4531,20 +4696,23 @@ export default function App() {
           <img
             src={displayUrl}
             alt={input.title || input.label}
+            loading="lazy"
+            decoding="async"
             draggable={false}
-            onPointerDown={() => {
-              for (const candidate of candidateUrls) {
-                void prepareProductionMediaFile(candidate, input.title || input.label, kind);
+            onError={() => {
+              if (!previewEntry) {
+                void prepareAuthenticatedMediaPreview(rawUrl);
               }
             }}
+            onPointerDown={() => {
+              void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
+            }}
             onMouseEnter={() => {
-              for (const candidate of candidateUrls) {
-                void prepareProductionMediaFile(candidate, input.title || input.label, kind);
-              }
+              void prepareProductionMediaFile(dragRawUrl, input.title || input.label, kind);
             }}
           />
         )}
-        <span>{input.label}{fileEntry?.status === "loading" ? " · preparing" : fileEntry?.status === "ready" ? " · file ready" : ""}</span>
+        <span>{input.label}{dragFileEntry?.status === "loading" ? " · preparing" : dragFileEntry?.status === "ready" ? " · file ready" : ""}</span>
       </div>
     );
   };
@@ -4590,16 +4758,53 @@ export default function App() {
     return [clip.stopFrameUrl, referenceUrls[1], clip.referenceImageUrl, ...referenceUrls];
   };
 
+  const dismissExtensionUpdate = () => {
+    if (!extensionUpdateNotice) return;
+    chrome.storage.local.set({
+      [EXTENSION_UPDATE_DISMISSED_VERSION_KEY]: extensionUpdateNotice.latestVersion,
+    }).catch(() => undefined);
+    setExtensionUpdateNotice(null);
+  };
+
+  const activateExtensionUpdate = () => {
+    if (!extensionUpdateNotice) return;
+    if (extensionUpdateNotice.kind === "native") {
+      chrome.runtime.reload();
+      return;
+    }
+    Promise.resolve(chrome.tabs.create({ url: extensionUpdateNotice.downloadUrl, active: true })).catch(() => undefined);
+  };
+
   return (
     <div className="app">
       <div className="row">
         <div>
-          <strong>SmartAIHub Capture</strong>
+          <strong>SmartAIHub Companion</strong>
           <div className="muted" aria-live="polite" role="status">{status}</div>
           <div className="muted">Extension v{EXTENSION_VERSION} | build {EXTENSION_BUILD_LABEL}</div>
         </div>
         <button className="button" onClick={() => run(detect)}>Detect</button>
       </div>
+
+      {extensionUpdateNotice ? (
+        <section className={`extension-update-banner ${extensionUpdateNotice.kind}`} aria-label="Chrome extension update">
+          <div className="extension-update-copy" role="status" aria-live="polite">
+            <strong>{extensionUpdateNotice.kind === "native" ? "มีอัปเดตพร้อมติดตั้ง" : "มี Chrome extension เวอร์ชันใหม่"}</strong>
+            <span>
+              เวอร์ชัน {extensionUpdateNotice.currentVersion} → {extensionUpdateNotice.latestVersion}
+              {extensionUpdateNotice.kind === "native"
+                ? " · Chrome ดาวน์โหลดอัปเดตไว้แล้ว"
+                : " · ดาวน์โหลดจาก Dashboard เพื่ออัปเดต"}
+            </span>
+          </div>
+          <div className="extension-update-actions">
+            <button className="button primary" type="button" onClick={activateExtensionUpdate}>
+              {extensionUpdateNotice.kind === "native" ? "รีสตาร์ตเพื่อติดตั้ง" : "ดาวน์โหลดอัปเดต"}
+            </button>
+            <button className="button" type="button" onClick={dismissExtensionUpdate}>ไว้ภายหลัง</button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="tab-list" role="tablist" aria-label="SmartAIHub panel sections">
         <button
@@ -5554,7 +5759,12 @@ export default function App() {
                 onClick={() => run(() => loadDramaEpisodes(project))}
               >
                 {project.thumbnailUrl ? (
-                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" />
+                  authenticatedPreviewImage({
+                    url: project.thumbnailUrl,
+                    alt: "",
+                    title: `drama-series-${project.id}`,
+                    className: "production-project-thumb",
+                  })
                 ) : (
                   <div className="production-project-thumb empty" />
                 )}
@@ -5607,7 +5817,12 @@ export default function App() {
                 onClick={() => run(() => loadDramaEpisode(episode))}
               >
                 {episode.thumbnailUrl ? (
-                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, episode.thumbnailUrl)} alt="" />
+                  authenticatedPreviewImage({
+                    url: episode.thumbnailUrl,
+                    alt: "",
+                    title: `drama-episode-${episode.id}`,
+                    className: "production-project-thumb",
+                  })
                 ) : (
                   <div className="production-project-thumb empty" />
                 )}
@@ -5673,7 +5888,7 @@ export default function App() {
                       <div className="production-shot-assets">
                         {productionMediaCard({
                           label: "Main image",
-                          urls: [shot.mainImageUrl, shot.mainImageThumbnailUrl],
+                          urls: [shot.mainImageThumbnailUrl, shot.mainImageUrl],
                           url: shot.mainImageUrl,
                           title: `drama-shot-${shot.shotNumber}-main`,
                         })}
@@ -5745,7 +5960,11 @@ export default function App() {
                                     }}
                                     key={`${shot.shotNumber}-frame-${frame.index}`}
                                   >
-                                    <img src={resolveServerUrl(serverBaseUrl, frame.thumbnailUrl || frame.url)} alt={`#${frame.index + 1}`} draggable={false} />
+                                    {authenticatedPreviewImage({
+                                      url: frame.thumbnailUrl || frame.url,
+                                      alt: `#${frame.index + 1}`,
+                                      title: `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}`,
+                                    })}
                                     <span>#{frame.index + 1}{fileEntry?.status === "ready" ? " · file" : ""}</span>
                                   </div>
                                 );
@@ -5787,16 +6006,11 @@ export default function App() {
                         </div>
                       ) : null}
                       {(() => {
-                        // Phase 6 (`planning/vd-start-frame-reference-mapping/plan.md`) —
-                        // user-created supplementary reference frames arrive in the
-                        // same `referenceImages` array as the character/product refs
-                        // but carry `source === "reference_frame"`. Split them into
-                        // their own labelled, drag-to-Grok strip below the standard
-                        // reference strip so they read as a distinct "extra reference
-                        // frames" set (the server already streams them through — no
-                        // payload change needed).
+                        // The extension episode contract is intentionally limited to
+                        // this shot's character portraits and user-created reference
+                        // frames. Keep the two categories visually distinct.
                         const referenceFrameImages = shot.referenceImages.filter((image) => image.source === "reference_frame");
-                        const standardReferenceImages = shot.referenceImages.filter((image) => image.source !== "reference_frame");
+                        const standardReferenceImages = shot.referenceImages.filter((image) => image.source === "character");
                         const renderDramaReferenceCard = (image: DramaShotReferenceImage, dragTitle: string, displayLabel: string) => {
                           const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
                           const fileEntry = productionMediaFiles[imageUrl];
@@ -5824,7 +6038,11 @@ export default function App() {
                               }}
                               key={`${shot.shotNumber}-${image.id}`}
                             >
-                              <img src={resolveServerUrl(serverBaseUrl, image.thumbnailUrl || image.url)} alt={displayLabel} draggable={false} />
+                              {authenticatedPreviewImage({
+                                url: image.thumbnailUrl || image.url,
+                                alt: displayLabel,
+                                title: dragTitle,
+                              })}
                               <span>{displayLabel}{fileEntry?.status === "ready" ? " · file" : ""}</span>
                             </div>
                           );

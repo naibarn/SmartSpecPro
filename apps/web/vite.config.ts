@@ -71,8 +71,8 @@ export default defineConfig(({ command, mode }) => {
     publicDir: path.resolve(import.meta.dirname, "client", "public"),
     build: {
       // SSP_BUILD_OUT_DIR lets scripts/build-atomic.sh redirect the build into a
-      // staging directory for a zero-downtime atomic swap. Unset in normal
-      // `npm run build` usage, which keeps writing straight to dist/public.
+      // staging directory for a zero-downtime atomic swap. Unset only for the
+      // explicit direct-Vite/local `build:unsafe` path.
       outDir: process.env.SSP_BUILD_OUT_DIR
         ? path.resolve(process.env.SSP_BUILD_OUT_DIR)
         : path.resolve(import.meta.dirname, "dist/public"),

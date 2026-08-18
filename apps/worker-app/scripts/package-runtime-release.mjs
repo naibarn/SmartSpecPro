@@ -73,6 +73,21 @@ function assertWindowsExecutable(path, label) {
   }
 }
 
+function assertMacArm64Executable(path, label) {
+  let description;
+  try {
+    description = execFileSync("file", [path], { encoding: "utf8" }).toLowerCase();
+  } catch (error) {
+    throw new Error(`${label} could not be inspected with file(1): ${path} (${error})`);
+  }
+  if (!description.includes("mach-o")) {
+    throw new Error(`${label} must be a native Mach-O executable for macOS: ${path}`);
+  }
+  if (!description.includes("arm64") && !description.includes("aarch64")) {
+    throw new Error(`${label} must contain an arm64 slice for Apple Silicon: ${description.trim()}`);
+  }
+}
+
 function requirePackageVersion(packageJsonPath, expectedName) {
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
   if (packageJson.name !== expectedName) {
@@ -218,6 +233,35 @@ function assertWsl2SharpRuntime(root) {
   }
 }
 
+function assertMacSharpRuntime(root) {
+  const requiredPackages = [
+    "sharp",
+    "@img/sharp-darwin-arm64",
+    "@img/sharp-libvips-darwin-arm64",
+  ];
+  const missingPackages = requiredPackages.filter(
+    (packageName) => !existsSync(join(root, "node_modules", packageName, "package.json")),
+  );
+  const sharpBinding = findFileName(
+    join(root, "node_modules/@img/sharp-darwin-arm64/lib"),
+    (name) => name.startsWith("sharp-darwin-arm64") && name.endsWith(".node"),
+  );
+  const libvipsBinary = findFileName(
+    join(root, "node_modules/@img/sharp-libvips-darwin-arm64/lib"),
+    (name) => name.startsWith("libvips-cpp.") && (name.endsWith(".dylib") || name.includes(".dylib.")),
+  );
+  if (missingPackages.length > 0 || !sharpBinding || !libvipsBinary) {
+    throw new Error(
+      [
+        "macOS arm64 runtime pack is missing native sharp dependencies.",
+        ...missingPackages.map((packageName) => `- missing package: ${packageName}`),
+        ...(!sharpBinding ? ["- missing native binary: node_modules/@img/sharp-darwin-arm64/lib/sharp-darwin-arm64*.node"] : []),
+        ...(!libvipsBinary ? ["- missing native binary: node_modules/@img/sharp-libvips-darwin-arm64/lib/libvips-cpp*.dylib"] : []),
+      ].join("\n"),
+    );
+  }
+}
+
 const BROWSER_SHARED_LIBRARY_EXCLUDE = new Set([
   "ld-linux-x86-64.so.2",
   "libc.so.6",
@@ -313,22 +357,59 @@ function createZipArchive(archivePath, sourceRoot) {
   });
 }
 
+if (process.argv.includes("--help")) {
+  console.log(`Worker App runtime packager
+
+Required arguments:
+  --runtime-version VERSION
+  --target-runtime hyperframes-wsl2|hyperframes-windows-x64|hyperframes-macos-arm64
+  --hyperframes-sidecar PATH
+  --node-dir PATH
+  --hyperframes-dir PATH
+  --hyperframes-sidecar-script PATH
+  --browser-dir PATH
+  --ffmpeg PATH
+  --ffprobe PATH
+  --thai-fonts-dir PATH
+  --notices PATH
+  --signature-file PATH
+
+Mac full-render arguments:
+  --remotion-sidecar-script PATH
+  --remotion-sidecar-dir PATH`);
+  process.exit(0);
+}
+
 const runtimeVersion = argValue("--runtime-version");
 if (!runtimeVersion) throw new Error("--runtime-version is required, e.g. 2026.06.23.1");
 const targetRuntime = argValue("--target-runtime") || "hyperframes-wsl2";
-if (!["hyperframes-wsl2", "hyperframes-windows-x64"].includes(targetRuntime)) {
+if (!["hyperframes-wsl2", "hyperframes-windows-x64", "hyperframes-macos-arm64"].includes(targetRuntime)) {
   throw new Error(`Unsupported --target-runtime: ${targetRuntime}`);
 }
 const isWsl2Runtime = targetRuntime === "hyperframes-wsl2";
+const isMacRuntime = targetRuntime === "hyperframes-macos-arm64";
+if (isMacRuntime && (process.platform !== "darwin" || process.arch !== "arm64")) {
+  throw new Error("hyperframes-macos-arm64 runtime packaging must run on an Apple Silicon macOS host");
+}
+if (isMacRuntime && (!argValue("--remotion-sidecar-script") || !argValue("--remotion-sidecar-dir"))) {
+  throw new Error(
+    "hyperframes-macos-arm64 runtime packaging requires the native Remotion sidecar script and installed dependency tree",
+  );
+}
 
 const hyperframesSidecar = requiredPath("--hyperframes-sidecar");
 assertNotMockSidecar(hyperframesSidecar);
-assertWindowsExecutable(hyperframesSidecar, "HyperFrames launcher sidecar");
+if (isMacRuntime) {
+  assertMacArm64Executable(hyperframesSidecar, "HyperFrames launcher sidecar");
+} else if (!isWsl2Runtime) {
+  assertWindowsExecutable(hyperframesSidecar, "HyperFrames launcher sidecar");
+}
 
 const nodeDir = requiredPath("--node-dir");
-const nodeBinary = isWsl2Runtime ? join(nodeDir, "bin/node") : join(nodeDir, "node.exe");
-if (!existsSync(nodeBinary)) throw new Error(`--node-dir must contain ${isWsl2Runtime ? "bin/node" : "node.exe"}: ${nodeBinary}`);
-if (!isWsl2Runtime) assertWindowsExecutable(nodeBinary, "Bundled Node runtime");
+const nodeBinary = isWsl2Runtime || isMacRuntime ? join(nodeDir, "bin/node") : join(nodeDir, "node.exe");
+if (!existsSync(nodeBinary)) throw new Error(`--node-dir must contain ${isWsl2Runtime || isMacRuntime ? "bin/node" : "node.exe"}: ${nodeBinary}`);
+if (isMacRuntime) assertMacArm64Executable(nodeBinary, "Bundled Node runtime");
+if (!isWsl2Runtime && !isMacRuntime) assertWindowsExecutable(nodeBinary, "Bundled Node runtime");
 const hyperframesDir = requiredPath("--hyperframes-dir");
 const hyperframesCli = join(hyperframesDir, "node_modules/hyperframes/dist/cli.js");
 const hyperframesPackagePath = join(hyperframesDir, "node_modules/hyperframes/package.json");
@@ -369,19 +450,23 @@ const remotionSidecarContract = remotionSidecarDir
 const browserDir = requiredPath("--browser-dir");
 const browserExe = findFile(browserDir, (name) => {
   const lower = name.toLowerCase();
-  return isWsl2Runtime
-    ? ["chrome", "headless_shell", "chrome-headless-shell"].includes(lower)
-    : ["chrome.exe", "headless_shell.exe"].includes(lower);
+  if (isWsl2Runtime) return ["chrome", "headless_shell", "chrome-headless-shell"].includes(lower);
+  if (isMacRuntime) return ["chrome", "headless_shell", "chrome-headless-shell", "google chrome for testing"].includes(lower);
+  return ["chrome.exe", "headless_shell.exe"].includes(lower);
 });
 if (!browserExe) {
   throw new Error(
     `--browser-dir must contain ${isWsl2Runtime ? "Linux chrome/headless_shell" : "Chrome for Testing win64 chrome.exe or headless_shell.exe"}: ${browserDir}`,
   );
 }
-if (!isWsl2Runtime) assertWindowsExecutable(browserExe, "Chrome browser runtime");
+if (isMacRuntime) assertMacArm64Executable(browserExe, "Chrome browser runtime");
+if (!isWsl2Runtime && !isMacRuntime) assertWindowsExecutable(browserExe, "Chrome browser runtime");
 const ffmpeg = requiredPath("--ffmpeg");
 const ffprobe = requiredPath("--ffprobe");
-if (!isWsl2Runtime) {
+if (isMacRuntime) {
+  assertMacArm64Executable(ffmpeg, "FFmpeg");
+  assertMacArm64Executable(ffprobe, "ffprobe");
+} else if (!isWsl2Runtime) {
   assertWindowsExecutable(ffmpeg, "FFmpeg");
   assertWindowsExecutable(ffprobe, "ffprobe");
 }
@@ -409,7 +494,7 @@ mkdirSync(join(stagingRoot, "runtime-pack/node"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/hyperframes"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/hyperframes-sidecar"), { recursive: true });
 
-copyFileInto(hyperframesSidecar, join(stagingRoot, "sidecars"), "hyperframes-render.exe");
+copyFileInto(hyperframesSidecar, join(stagingRoot, "sidecars"), isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe");
 cpSync(nodeDir, join(stagingRoot, "runtime-pack/node"), { recursive: true });
 cpSync(hyperframesDir, join(stagingRoot, "runtime-pack/hyperframes"), { recursive: true });
 rmSync(join(stagingRoot, "runtime-pack/hyperframes/node_modules/.bin"), { recursive: true, force: true });
@@ -437,6 +522,8 @@ if (isWsl2Runtime) {
     stdio: "inherit",
   });
   assertWsl2SharpRuntime(join(stagingRoot, "runtime-pack/hyperframes"));
+} else if (isMacRuntime) {
+  assertMacSharpRuntime(join(stagingRoot, "runtime-pack/hyperframes"));
 }
 copyFileInto(hyperframesSidecarScript, join(stagingRoot, "runtime-pack/hyperframes-sidecar"), "render.mjs");
 if (remotionSidecarScript) {
@@ -464,13 +551,15 @@ cpSync(browserDir, join(stagingRoot, "runtime-pack/browser"), { recursive: true 
 if (isWsl2Runtime) {
   bundleBrowserSharedLibraries(browserExe, join(stagingRoot, "runtime-pack/browser-libs"));
 }
-copyFileInto(ffmpeg, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime ? "ffmpeg" : "ffmpeg.exe");
-copyFileInto(ffprobe, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime ? "ffprobe" : "ffprobe.exe");
+copyFileInto(ffmpeg, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime || isMacRuntime ? "ffmpeg" : "ffmpeg.exe");
+copyFileInto(ffprobe, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime || isMacRuntime ? "ffprobe" : "ffprobe.exe");
 cpSync(thaiFontsDir, join(stagingRoot, "runtime-pack/fonts"), { recursive: true });
 copyFileInto(notices, join(stagingRoot, "runtime-pack"), "THIRD_PARTY_NOTICES.txt");
 copyFileInto(signatureFile, join(stagingRoot, "runtime-pack"), "SHA256SUMS.sig");
 
-const sidecarSha256 = sha256File(join(stagingRoot, "sidecars/hyperframes-render.exe"));
+const sidecarSha256 = sha256File(
+  join(stagingRoot, "sidecars", isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe"),
+);
 const checksumLines = walkFiles(stagingRoot)
   .filter((file) => file !== "runtime-pack/SHA256SUMS")
   .map((file) => `${sha256File(join(stagingRoot, file))}  ${file}`)
@@ -488,13 +577,14 @@ const manifest = {
   ffmpegVersion,
   ffprobeVersion,
   thaiFontFamily,
-  sidecarPath: "hyperframes-render.exe",
+  sidecarPath: isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe",
   sidecarSha256,
   checksumFile: "SHA256SUMS",
   signatureFile: "SHA256SUMS.sig",
   licenseNotices: ["THIRD_PARTY_NOTICES.txt"],
-  runtimePlatform: isWsl2Runtime ? "wsl2-linux-x64" : "windows-x64",
-  nodeVersion: isWsl2Runtime ? "bundled-node-linux-x64" : "bundled-node-win-x64",
+  runtimePlatform: isWsl2Runtime ? "wsl2-linux-x64" : isMacRuntime ? "macos-arm64" : "windows-x64",
+  architecture: isMacRuntime ? "arm64" : "x64",
+  nodeVersion: isWsl2Runtime ? "bundled-node-linux-x64" : isMacRuntime ? "bundled-node-darwin-arm64" : "bundled-node-win-x64",
   rendererKind: "hyperframes_cli_official",
   sidecarLauncher: "smart-ai-hub-hyperframes-node-launcher",
   sidecarScriptPath: "hyperframes-sidecar/render.mjs",

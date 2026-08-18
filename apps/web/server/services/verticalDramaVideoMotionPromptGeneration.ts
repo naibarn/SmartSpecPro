@@ -939,6 +939,9 @@ function buildUserPrompt(
       const characters = s.characterKeys?.length
         ? ` | established characters: ${s.characterKeys.join(", ")}`
         : "";
+      const supportingPresence = s.supportingPresence?.length
+        ? ` | declared supporting presence: ${s.supportingPresence.map(p => `${p.role} x${p.countMin === p.countMax ? p.countMin : `${p.countMin}-${p.countMax}`}`).join(", ")}`
+        : "";
       const spokenCallerPolicy = deriveVerticalDramaSpokenCallerVirtualScreens({
         physicalSceneCharacterRefs: s.characterKeys ?? [],
         screenCallerCharacterRefs: s.screenCallerCharacterKeys ?? [],
@@ -959,7 +962,7 @@ function buildUserPrompt(
         .filter(Boolean)
         .join(", ");
       const retentionMarkersSuffix = retentionMarkers ? ` | ${retentionMarkers}` : "";
-      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${characters}${dialogue}${retentionMarkersSuffix}${spokenCallerVirtualScreenBlock ? ` | ${spokenCallerVirtualScreenBlock}` : ""}`;
+      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${characters}${supportingPresence}${dialogue}${retentionMarkersSuffix}${spokenCallerVirtualScreenBlock ? ` | ${spokenCallerVirtualScreenBlock}` : ""}`;
     })
     .join("\n");
 
@@ -1146,6 +1149,7 @@ export async function generateVideoMotionPromptPack(
         // + speaker anchoring per clip" section instead — so this generator
         // never requests the per-shot-only structured field.
         frameAnalysisRequested: false,
+        genre: params.genre,
       })
     : null;
   const nativeAudioDirectionEnabled =
@@ -4684,6 +4688,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       motionProfile: motionResolution.motionProfile,
     });
     if (assurance.blocking.some(isVideoPromptSourceBlockingFinding)) {
+      throw new VdVisionRequiredError(
+        `Shot ${params.shotNumber}: reference frame faces are ambiguous or not readable; replace/repair the Video-Safe reference frame before rendering`,
+      );
+    }
   }
   const assuranceWarnings = assurance.warnings.map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
@@ -4808,7 +4816,8 @@ function appendWarnings(existing: string[] | undefined, extra: string[]): string
 /**
  * Deterministic per-candidate FACT SHEET (`plan.md` Phase 2 design) — facts
  * only, computed by code, never a creative judgment. Reuses
- * `findPositionAnchorIssues` (item C) and `VD_VIDEO_PROMPT_MAX` (item E) so
+ * `findPositionAnchorIssues` (item C) and the provider-aware video prompt
+ * budget (item E) so
  * the judge's facts and the generator's own compliance checks can never
  * silently disagree with each other. Takes the caller's own
  * `hasEstablishedCharacters` signal and threads it straight into

@@ -61,7 +61,7 @@ export type DesktopReleaseCatalogResponse = z.infer<
   typeof desktopReleaseCatalogResponseSchema
 >;
 
-export const desktopReleasePublicBlockedVersions = ["0.1.4"] as const;
+export const desktopReleasePublicBlockedVersions = ["0.1.3", "0.1.4"] as const;
 
 export function isDesktopReleaseVersionBlockedFromPublic(version: string): boolean {
   return desktopReleasePublicBlockedVersions.includes(

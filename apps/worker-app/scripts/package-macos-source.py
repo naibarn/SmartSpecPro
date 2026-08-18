@@ -18,6 +18,13 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 APP_ROOT = REPO_ROOT / "apps" / "worker-app"
 SOURCE_RELEASES_DIR = REPO_ROOT / "apps" / "web" / "client" / "public" / "releases"
 LIVE_RELEASES_DIR = REPO_ROOT / "apps" / "web" / "dist" / "public" / "releases"
+SOURCE_ROOTS = (
+    Path("package.json"),
+    Path("package-lock.json"),
+    Path("scripts/check-node-version.mjs"),
+    Path("apps/worker-app"),
+    Path("packages/remotion-render"),
+)
 
 EXCLUDED_PARTS = {
     ".git",
@@ -67,6 +74,8 @@ def git_source_files() -> list[Path]:
         if not raw_path:
             continue
         relative = Path(raw_path.decode("utf-8"))
+        if not any(relative == root or root in relative.parents for root in SOURCE_ROOTS):
+            continue
         if should_exclude(relative):
             continue
         absolute = REPO_ROOT / relative
@@ -155,6 +164,9 @@ def validate_archive(path: Path, version: str) -> None:
             f"{root}package-lock.json",
             f"{root}apps/worker-app/package.json",
             f"{root}apps/worker-app/MAC_BUILD.md",
+            f"{root}apps/worker-app/MAC_RUNTIME_BUILD.md",
+            f"{root}apps/worker-app/scripts/package-macos-runtime.mjs",
+            f"{root}apps/worker-app/src-tauri/entitlements.plist",
             f"{root}SOURCE_BUNDLE_MANIFEST.json",
         }
         missing = sorted(required - set(names))
@@ -182,7 +194,7 @@ def main() -> int:
     package = json.loads((APP_ROOT / "package.json").read_text(encoding="utf-8"))
     version = str(package["version"])
     files = git_source_files()
-    if len(files) < 100:
+    if len(files) < 50:
         raise RuntimeError(f"source file selection unexpectedly small: {len(files)} files")
 
     archive_name = f"smart-ai-hub-worker-app-macos-source-{version}.zip"

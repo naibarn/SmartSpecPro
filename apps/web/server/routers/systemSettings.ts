@@ -10,7 +10,10 @@ import { getDb } from "../db";
 import { systemSettings, invoiceConfig, tenants } from "../../drizzle/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
-import { validateGoogleOAuthFormat } from "../services/googleOAuthValidation";
+import {
+  isValidGoogleRedirectUri,
+  validateGoogleOAuthFormat,
+} from "../services/googleOAuthValidation";
 import { signBearerToken } from "../_core/tokens";
 import { loadTenantAutomationPolicyStatus, updateTenantAutomationPolicySettings } from "../services/browserPolicySettingsBridge";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
@@ -1438,8 +1441,14 @@ export const systemSettingsRouter = router({
     .input(z.object({
       googleClientId: z.string().optional(),
       googleClientSecret: z.string().optional(),
-      googleRedirectUri: z.string().optional(),
-      googleDriveRedirectUri: z.string().optional(),
+      googleRedirectUri: z.string().refine(
+        value => isValidGoogleRedirectUri(value, "/auth/callback/google"),
+        "Google login redirect URI must use /auth/callback/google",
+      ).optional(),
+      googleDriveRedirectUri: z.string().refine(
+        value => isValidGoogleRedirectUri(value, "/auth/callback/google-drive"),
+        "Google Drive redirect URI must use /auth/callback/google-drive",
+      ).optional(),
       githubClientId: z.string().optional(),
       githubClientSecret: z.string().optional(),
       githubRedirectUri: z.string().optional(),
@@ -1751,7 +1760,7 @@ export const systemSettingsRouter = router({
       userInviteEnabled: false,
       userReferralBonusCredits: 50,
       allowedAuthMethods: ["email", "google", "github"] as string[],
-      inviteInactiveDaysLimit: 0,
+      inviteInactiveDaysLimit: 15,
       maxRegistrationsPerDevice: 2,
     };
 
@@ -1778,7 +1787,7 @@ export const systemSettingsRouter = router({
       userInviteEnabled: result.user_invite_enabled === "true",
       userReferralBonusCredits: parseInt(result.user_referral_bonus_credits || "50", 10),
       allowedAuthMethods,
-      inviteInactiveDaysLimit: parseInt(result.invite_inactive_days_limit || "0", 10),
+      inviteInactiveDaysLimit: parseInt(result.invite_inactive_days_limit || "15", 10),
       maxRegistrationsPerDevice: parseInt(result.max_registrations_per_device || "2", 10),
     };
   }),

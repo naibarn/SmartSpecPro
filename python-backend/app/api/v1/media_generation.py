@@ -39,6 +39,7 @@ from app.services.media_task_service import MediaTaskService
 # Import Celery tasks
 try:
     from app.tasks.media_tasks import (
+        _dispatch_pending_image_tasks_async,
         _generate_audio_async,
         _generate_image_async,
         _generate_video_async,
@@ -50,6 +51,7 @@ try:
 except ImportError:
     CELERY_ENABLED = False
     _generate_audio_async = None
+    _dispatch_pending_image_tasks_async = None
     _generate_image_async = None
     _generate_video_async = None
     logger = structlog.get_logger()
@@ -949,6 +951,13 @@ async def cancel_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Task {task_id} not found or cannot be cancelled"
         )
+
+    if (
+        CELERY_ENABLED
+        and _dispatch_pending_image_tasks_async is not None
+        and task.media_type == MediaType.IMAGE.value
+    ):
+        await _dispatch_pending_image_tasks_async(current_user.id)
 
     return {"success": True, "message": f"Task {task_id} cancelled", "task": TaskResponse(**task.to_dict())}
 
@@ -1896,14 +1905,15 @@ async def generate_image_async(
     should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
 
     if should_use_celery:
-        # Submit to Celery
-        celery_task = generate_image_task.delay(task.id, current_user.id, request_payload)
-
-        # Store Celery task ID for tracking/monitoring
-        task.celery_task_id = celery_task.id
-        await db.commit()
-
-        logger.info("async_image_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+        dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
+        await db.refresh(task)
+        logger.info(
+            "async_image_task_admitted",
+            task_id=task.id,
+            celery_task_id=task.celery_task_id,
+            user_id=current_user.id,
+            dispatched=task.id in dispatch_result["dispatched_task_ids"],
+        )
     elif _is_inline_media_fallback_enabled() and _generate_image_async is not None:
         await db.commit()
         background_tasks.add_task(_generate_image_async, task.id, current_user.id, request_payload)

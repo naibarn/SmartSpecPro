@@ -48,6 +48,18 @@ export interface TenantFeatureFlags {
   mcpServerRegistry: boolean; // F40 — MCP Server Registry (centralized management)
   mcpStdio: boolean; // F41 — MCP stdio transport (subprocess-based servers)
   mcpOAuth: boolean; // F42 — MCP OAuth 2.1 authentication
+  mcpModernProtocolEnabled: boolean; // F146 — modern MCP 2026-07-28 transport
+  mcpLegacyCompatibilityEnabled: boolean; // F146 — legacy MCP compatibility transport
+  mcpResourcesEnabled: boolean; // F146 — documentation resources/list/read
+  mcpGuideToolAliasesEnabled: boolean; // F146 — guide aliases over canonical tools
+  mcpOAuthProtectedResourceEnabled: boolean; // F146 — inbound OAuth PRM/challenge metadata
+  mcpOAuthAuthorizationServerEnabled: boolean; // F147 — first-party MCP OAuth authorization server
+  mcpOAuthDynamicRegistrationEnabled: boolean; // F147 — RFC 7591 client registration
+  mcpOAuthCimdEnabled: boolean; // F147 — client ID metadata documents (kept separate from DCR)
+  mcpModernStatelessLegacyFallbackEnabled: boolean; // F146 — explicit modern fallback policy
+  mcpTasksEnabled: boolean; // F146 — future task vocabulary (not Phase 1)
+  mcpSubscriptionsEnabled: boolean; // F146 — future subscription transport (not Phase 1)
+  mcpLegacyBroadScopeCompatibilityEnabled: boolean; // F146 — temporary audited legacy scope bridge
   UPLOAD_POST_GATEWAY_ENABLED: boolean; // F43 — Upload-Post Universal Gateway
   chatAutoModelSelection: boolean; // F44 — Chat Auto/Provider-Auto model selection
   localClientLlmMode: boolean; // F45 — Local / Client LLM mode
@@ -57,6 +69,7 @@ export interface TenantFeatureFlags {
   hiClawClusterRuntime: boolean; // F49 — HiClaw collaborative cluster runtime
   hermesAgentRuntime: boolean; // F50 — Hermes bridge-backed external runtime foundation
   hermesMediaWorker: boolean; // F135 — Hermes Grok media worker; unrelated to hermesAgentRuntime
+  remotionDedicatedExecutorEnabled: boolean; // F145 — standalone Hermes/Remotion executor rollout gate
   marketplaceSequentialStoryboard: boolean; // F136 — sequential 9-image storyboard strategy for Marketplace Auto Review
   marketplaceReviewEvidenceGuard: boolean; // F136 — shared evidence guards (assembly/guardian/claims) for BOTH review modes
   marketplaceStagedSequentialStoryboardV2: boolean; // F141 — staged two-skill storyboard pipeline with mandatory human checkpoints
@@ -269,6 +282,18 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "mcpServerRegistry",
   "mcpStdio",
   "mcpOAuth",
+  "mcpModernProtocolEnabled",
+  "mcpLegacyCompatibilityEnabled",
+  "mcpResourcesEnabled",
+  "mcpGuideToolAliasesEnabled",
+  "mcpOAuthProtectedResourceEnabled",
+  "mcpOAuthAuthorizationServerEnabled",
+  "mcpOAuthDynamicRegistrationEnabled",
+  "mcpOAuthCimdEnabled",
+  "mcpModernStatelessLegacyFallbackEnabled",
+  "mcpTasksEnabled",
+  "mcpSubscriptionsEnabled",
+  "mcpLegacyBroadScopeCompatibilityEnabled",
   "UPLOAD_POST_GATEWAY_ENABLED",
   "chatAutoModelSelection",
   "localClientLlmMode",
@@ -278,6 +303,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "hiClawClusterRuntime",
   "hermesAgentRuntime",
   "hermesMediaWorker",
+  "remotionDedicatedExecutorEnabled",
   "marketplaceSequentialStoryboard",
   "marketplaceReviewEvidenceGuard",
   "marketplaceStagedSequentialStoryboardV2",
@@ -489,6 +515,18 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   mcpServerRegistry: true,
   mcpStdio: false,  // Requires OpenSandbox — keep disabled by default
   mcpOAuth: false,  // Requires Express callback route — keep disabled until wired
+  mcpModernProtocolEnabled: false, // F146 — enable only after modern protocol/security gates
+  mcpLegacyCompatibilityEnabled: true, // F146 — preserve deployed clients during migration
+  mcpResourcesEnabled: false, // F146 — docs resources require explicit tenant rollout
+  mcpGuideToolAliasesEnabled: false, // F146 — aliases require explicit tenant rollout
+  mcpOAuthProtectedResourceEnabled: false, // F146 — requires real issuer/JWKS deployment config
+  mcpOAuthAuthorizationServerEnabled: false, // F147 — requires asymmetric signing keys and consent routes
+  mcpOAuthDynamicRegistrationEnabled: false, // F147 — enable only after redirect validation is deployed
+  mcpOAuthCimdEnabled: false, // F147 — optional CIMD is disabled until separately reviewed
+  mcpModernStatelessLegacyFallbackEnabled: false, // F146 — no implicit protocol fallback
+  mcpTasksEnabled: false, // F146 — tasks are not implemented in Phase 1
+  mcpSubscriptionsEnabled: false, // F146 — subscriptions are not implemented in Phase 1
+  mcpLegacyBroadScopeCompatibilityEnabled: true, // F146 — temporary compatibility, audit every use
   UPLOAD_POST_GATEWAY_ENABLED: false, // Requires Upload-Post connection + consent flow
   chatAutoModelSelection: true, // Enabled by default; admin can still disable per tenant if needed
   localClientLlmMode: false, // Rollout-gated until local runtime paths are explicitly enabled per tenant
@@ -498,6 +536,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   hiClawClusterRuntime: false, // Collaborative cluster runtime is explicitly admin-gated
   hermesAgentRuntime: false, // Hermes bridge-backed runtime stays disabled until rollout and policy surfaces are ready
   hermesMediaWorker: false, // F135 — Hermes Grok media worker stays disabled until rollout is ready (unrelated to hermesAgentRuntime)
+  remotionDedicatedExecutorEnabled: false, // F145 — dedicated executor remains dark until native/security proof passes
   marketplaceSequentialStoryboard: false, // F136 — sequential 9-image storyboard strategy stays dark until section rollout completes
   marketplaceReviewEvidenceGuard: false, // F136 — shared evidence guards (assembly/guardian/claims) stay dark until section rollout completes
   marketplaceStagedSequentialStoryboardV2: false, // F141 — staged checkpoint pipeline stays dark until no-spend/live-smoke proof completes

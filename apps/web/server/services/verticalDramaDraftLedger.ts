@@ -363,6 +363,130 @@ export async function getVerticalDramaDraftLedgerBySession(
   return row ?? null;
 }
 
+/** Durable lookup used when the short-lived Redis QC record has expired. */
+export async function getVerticalDramaDraftLedgerByQcRunId(
+  qcRunId: string,
+  owner: VerticalDramaDraftLedgerOwner
+) {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(verticalDramaDraftLedgers)
+    .where(
+      and(
+        eq(verticalDramaDraftLedgers.qcRunId, qcRunId),
+        eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
+        eq(verticalDramaDraftLedgers.userId, owner.userId)
+      )
+    )
+    .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * QC results are immutable Draft-version snapshots. Redis only carries live
+ * queue state, so these lookups remain available after Redis TTL expiry or a
+ * worker restart.
+ */
+export async function getVerticalDramaDraftQcSnapshotsByRunId(
+  runId: string,
+  owner: VerticalDramaDraftLedgerOwner,
+  limit = 1
+) {
+  const db = await getDb();
+  return db
+    .select({
+      draftId: verticalDramaDraftVersions.draftId,
+      runId: verticalDramaDraftVersions.runId,
+      contentJson: verticalDramaDraftVersions.contentJson,
+      metadata: verticalDramaDraftVersions.metadata,
+      createdAt: verticalDramaDraftVersions.createdAt,
+    })
+    .from(verticalDramaDraftVersions)
+    .innerJoin(
+      verticalDramaDraftLedgers,
+      eq(verticalDramaDraftVersions.draftId, verticalDramaDraftLedgers.id)
+    )
+    .where(
+      and(
+        eq(verticalDramaDraftVersions.runId, runId),
+        eq(verticalDramaDraftVersions.stage, "qc-final"),
+        eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
+        eq(verticalDramaDraftLedgers.userId, owner.userId)
+      )
+    )
+    .orderBy(desc(verticalDramaDraftVersions.createdAt))
+    .limit(Math.max(1, Math.min(limit, 20)));
+}
+
+export async function getVerticalDramaDraftQcSnapshotsByDraftId(
+  draftId: string,
+  owner: VerticalDramaDraftLedgerOwner,
+  limit = 10
+) {
+  const db = await getDb();
+  return db
+    .select({
+      draftId: verticalDramaDraftVersions.draftId,
+      runId: verticalDramaDraftVersions.runId,
+      contentJson: verticalDramaDraftVersions.contentJson,
+      metadata: verticalDramaDraftVersions.metadata,
+      createdAt: verticalDramaDraftVersions.createdAt,
+    })
+    .from(verticalDramaDraftVersions)
+    .innerJoin(
+      verticalDramaDraftLedgers,
+      eq(verticalDramaDraftVersions.draftId, verticalDramaDraftLedgers.id)
+    )
+    .where(
+      and(
+        eq(verticalDramaDraftVersions.draftId, draftId),
+        eq(verticalDramaDraftVersions.stage, "qc-final"),
+        eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
+        eq(verticalDramaDraftLedgers.userId, owner.userId)
+      )
+    )
+    .orderBy(desc(verticalDramaDraftVersions.createdAt))
+    .limit(Math.max(1, Math.min(limit, 20)));
+}
+
+/** Load one immutable Draft candidate with owner scoping for QC selection. */
+export async function getVerticalDramaDraftVersion(
+  draftId: string,
+  version: number,
+  owner: VerticalDramaDraftLedgerOwner
+) {
+  const db = await getDb();
+  const [row] = await db
+    .select({
+      id: verticalDramaDraftVersions.id,
+      draftId: verticalDramaDraftVersions.draftId,
+      version: verticalDramaDraftVersions.version,
+      stage: verticalDramaDraftVersions.stage,
+      contentJson: verticalDramaDraftVersions.contentJson,
+      contentHash: verticalDramaDraftVersions.contentHash,
+      runId: verticalDramaDraftVersions.runId,
+      metadata: verticalDramaDraftVersions.metadata,
+      createdAt: verticalDramaDraftVersions.createdAt,
+    })
+    .from(verticalDramaDraftVersions)
+    .innerJoin(
+      verticalDramaDraftLedgers,
+      eq(verticalDramaDraftVersions.draftId, verticalDramaDraftLedgers.id)
+    )
+    .where(
+      and(
+        eq(verticalDramaDraftVersions.draftId, draftId),
+        eq(verticalDramaDraftVersions.version, version),
+        eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
+        eq(verticalDramaDraftLedgers.userId, owner.userId)
+      )
+    )
+    .limit(1);
+  return row ?? null;
+}
+
 /** Lightweight server-owned recovery index; the full draft is loaded only after selection. */
 export async function listVerticalDramaDraftLedgers(
   owner: VerticalDramaDraftLedgerOwner,
@@ -376,7 +500,6 @@ export async function listVerticalDramaDraftLedgers(
       jobCode: verticalDramaDraftLedgers.jobCode,
       draftSessionId: verticalDramaDraftLedgers.draftSessionId,
       jobStatus: verticalDramaDraftLedgers.jobStatus,
-      requestJson: verticalDramaDraftLedgers.requestJson,
       compositionJobId: verticalDramaDraftLedgers.compositionJobId,
       qcRunId: verticalDramaDraftLedgers.qcRunId,
       lastError: verticalDramaDraftLedgers.lastError,
@@ -384,7 +507,14 @@ export async function listVerticalDramaDraftLedgers(
       lastQcPassed: verticalDramaDraftLedgers.lastQcPassed,
       currentVersion: verticalDramaDraftLedgers.currentVersion,
       currentStage: verticalDramaDraftLedgers.currentStage,
-      currentJson: verticalDramaDraftLedgers.currentJson,
+      // Keep the recovery index metadata-only. The full request/current Draft
+      // snapshots are loaded by getDraftJob after the user selects a row.
+      title: sql<
+        string | null
+      >`${verticalDramaDraftLedgers.currentJson}->>'title'`,
+      logline: sql<
+        string | null
+      >`${verticalDramaDraftLedgers.currentJson}->>'logline'`,
       updatedAt: verticalDramaDraftLedgers.updatedAt,
       archivedAt: verticalDramaDraftLedgers.archivedAt,
     })
@@ -393,20 +523,20 @@ export async function listVerticalDramaDraftLedgers(
       and(
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
         eq(verticalDramaDraftLedgers.userId, owner.userId),
-        ...(includeArchived ? [] : [isNull(verticalDramaDraftLedgers.archivedAt)])
+        ...(includeArchived
+          ? []
+          : [isNull(verticalDramaDraftLedgers.archivedAt)])
       )
     )
     .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
     .limit(Math.max(1, Math.min(limit, 50)));
 
   return rows.map(row => {
-    const draft = (row.currentJson ?? {}) as Record<string, unknown>;
     return {
       id: row.id,
       jobCode: row.jobCode,
       draftSessionId: row.draftSessionId,
       jobStatus: row.jobStatus,
-      requestJson: row.requestJson,
       compositionJobId: row.compositionJobId,
       qcRunId: row.qcRunId,
       lastError: row.lastError,
@@ -414,8 +544,8 @@ export async function listVerticalDramaDraftLedgers(
       lastQcPassed: row.lastQcPassed,
       currentVersion: row.currentVersion,
       currentStage: row.currentStage,
-      title: typeof draft.title === "string" ? draft.title : null,
-      logline: typeof draft.logline === "string" ? draft.logline : null,
+      title: row.title,
+      logline: row.logline,
       updatedAt: row.updatedAt,
       archivedAt: row.archivedAt,
     };

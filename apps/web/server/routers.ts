@@ -1,6 +1,10 @@
 import crypto from "crypto";
 import { COOKIE_NAME, THIRTY_DAYS_MS, TWENTY_FOUR_HOURS_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import {
+  clearOAuthInviteCookie,
+  getOAuthInviteCode,
+} from "./services/oauthRegistration";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, adminProcedure, router, loginProcedure, registerProcedure, verifyEmailProcedure, resetPasswordProcedure, verifyResetCodeProcedure } from "./_core/trpc";
@@ -121,6 +125,7 @@ import { monitoringRouter } from "./routers/monitoring";
 import { mcpServersRouter } from "./routers/mcpServers";
 import { mcpConnectionsRouter } from "./routers/mcpConnections";
 import { hermesConnectionsRouter } from "./routers/hermesConnections";
+import { connectedDevicesRouter } from "./routers/connectedDevices";
 import { hybridOrchestrationRouter } from "./routers/hybridOrchestration";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
@@ -259,7 +264,18 @@ const aiRouter = router({
       }
 
       const id = nanoid(10);
-      const key = `chat/uploads/${ctx.user?.id || "anon"}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
+      const userId = ctx.user?.id;
+      if (!userId) {
+        throw new Error("Authenticated user required");
+      }
+      // New uploads carry both tenant and user ownership in the storage key.
+      // The authorization service still accepts the legacy user-only shape so
+      // existing Media Studio references remain recoverable.
+      const tenantId = String(
+        ctx.tenantId ?? ctx.user.currentTenantId ?? "",
+      ).trim();
+      const ownerPath = tenantId ? `${tenantId}/${userId}` : String(userId);
+      const key = `chat/uploads/${ownerPath}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
 
       const { url } = await storagePut(key, buf, input.fileType);
       return { key, url, fileType: input.fileType };
@@ -526,7 +542,7 @@ const galleryRouter = router({
 
 
 const authRouter = router({
-  me: publicProcedure.query(opts => {
+  me: publicProcedure.query(async opts => {
     // If no user is authenticated, return null (expected for public procedure)
     if (!opts.ctx.user) {
       if (process.env.NODE_ENV !== "production") {
@@ -544,6 +560,13 @@ const authRouter = router({
       });
     }
 
+    const { enforceFreeCreditPolicyForUser } = await import("./services/freeCreditInactivityService");
+    const lifecycle = await enforceFreeCreditPolicyForUser({
+      userId: user.id,
+      claimNotice: true,
+    });
+    if (lifecycle.disabled) return null;
+
     return {
       id: user.id,
       email: user.email || '',
@@ -556,6 +579,7 @@ const authRouter = router({
         user.currentTenantId !== null && user.currentTenantId !== undefined
           ? String(user.currentTenantId)
           : null,
+      freeCreditStatus: lifecycle.status,
     };
   }),
   /** Check which OAuth providers are configured (public — no auth required) */
@@ -569,12 +593,19 @@ const authRouter = router({
     try {
       const db = await getDb();
       if (db) {
-        const rows = await db.select({ key: systemSettings.key, value: systemSettings.value })
+        const { decrypt } = await import("./services/crypto");
+        const rows = await db.select({
+          key: systemSettings.key,
+          value: systemSettings.value,
+          isSensitive: systemSettings.isSensitive,
+        })
           .from(systemSettings)
           .where(eq(systemSettings.category, "oauth"));
 
         for (const row of rows) {
-          values[row.key] = row.value;
+          values[row.key] = row.isSensitive && row.value && row.key.endsWith("Secret")
+            ? decrypt(row.value)
+            : row.value;
         }
       }
     } catch {
@@ -706,9 +737,16 @@ const authRouter = router({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
       }
 
-      // Check if email is verified
-      if (user.isDisabled && user.loginMethod === 'email') {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Please verify your email before logging in" });
+      // Check account state after password verification. A disabled account
+      // must not receive a new session; pending email verification keeps its
+      // existing user-facing message.
+      if (user.isDisabled) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: user.disabledReason === "inactive"
+            ? "Account disabled due to free-credit inactivity"
+            : "Please verify your email before logging in",
+        });
       }
 
       // Check if this email should be granted admin role
@@ -735,6 +773,18 @@ const authRouter = router({
         };
       }
 
+      const { enforceFreeCreditPolicyForUser } = await import("./services/freeCreditInactivityService");
+      const lifecycle = await enforceFreeCreditPolicyForUser({
+        userId: user.id,
+        claimNotice: true,
+      });
+      if (lifecycle.disabled) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Account disabled due to free-credit inactivity",
+        });
+      }
+
       // Create session token
       const token = await sdk.createSessionToken(user.openId, {
         name: user.name || user.email || '',
@@ -754,6 +804,7 @@ const authRouter = router({
             user.currentTenantId !== null && user.currentTenantId !== undefined
               ? String(user.currentTenantId)
               : null,
+          freeCreditStatus: lifecycle.status,
         },
       };
     }),
@@ -774,6 +825,7 @@ const authRouter = router({
       const { users, emailVerificationTokens, systemSettings, tenants } = await import("../drizzle/schema");
       const { eq, and } = await import("drizzle-orm");
       const { checkRegistrationAllowed, checkDeviceFraudLimit, processInviteCodeUsage, giveInviteCodeBonuses, getAuthMethodsConfig } = await import("./services/inviteCodeService");
+      const { giveSignupBonus } = await import("./services/creditService");
 
       // Check if email auth method is allowed
       const authMethods = await getAuthMethodsConfig();
@@ -815,7 +867,12 @@ const authRouter = router({
         const [bonusSetting] = await db.select().from(systemSettings)
           .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
           .limit(1);
-        if (bonusSetting?.value) signupBonus = parseInt(bonusSetting.value, 10) || 100;
+        if (bonusSetting?.value) {
+          const configuredBonus = parseInt(bonusSetting.value, 10);
+          if (Number.isFinite(configuredBonus) && configuredBonus >= 0) {
+            signupBonus = configuredBonus;
+          }
+        }
       } catch { /* use default */ }
 
       // Get hostname for registeredDomain
@@ -853,7 +910,7 @@ const authRouter = router({
           loginMethod: 'email',
           role: 'user',
           plan: input.plan,
-          credits: signupBonus,
+          credits: 0,
           isDisabled: true,
           registeredDomain: hostname,
           ...(tenantId ? { currentTenantId: tenantId } : {}),
@@ -863,6 +920,16 @@ const authRouter = router({
 
       const user = await getUserByEmail(input.email);
       if (!user) throw new Error('Failed to create account');
+
+      // Route all signup grants through the credit ledger so free-credit
+      // inactivity eligibility is recorded consistently with OAuth signup.
+      if (!existing && signupBonus > 0) {
+        try {
+          await giveSignupBonus(user.id, signupBonus);
+        } catch (err) {
+          console.error("[Register] Failed to give signup bonus:", err);
+        }
+      }
 
       // Record device fingerprint for fraud detection (matching OAuth path)
       if (fingerprintHash) {
@@ -880,6 +947,12 @@ const authRouter = router({
           const usageResult = await processInviteCodeUsage(regCheck.codeId, user.id);
           if (usageResult.success) {
             await giveInviteCodeBonuses(regCheck.codeId, user.id);
+          } else {
+            console.error("[Register] Invite code was not consumed:", {
+              codeId: regCheck.codeId,
+              userId: user.id,
+              reason: usageResult.error,
+            });
           }
         } catch (err) {
           console.error("[Register] Failed to process invite code:", err);
@@ -947,6 +1020,18 @@ const authRouter = router({
       const user = await getUserByEmail(input.email);
       if (!user) throw new Error('User not found');
 
+      const { enforceFreeCreditPolicyForUser } = await import("./services/freeCreditInactivityService");
+      const lifecycle = await enforceFreeCreditPolicyForUser({
+        userId: user.id,
+        claimNotice: true,
+      });
+      if (lifecycle.disabled) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Account disabled due to free-credit inactivity",
+        });
+      }
+
       // Create session
       const sessionToken = await sdk.createSessionToken(user.openId, {
         name: user.name || user.email || '',
@@ -965,6 +1050,7 @@ const authRouter = router({
             user.currentTenantId !== null && user.currentTenantId !== undefined
               ? String(user.currentTenantId)
               : null,
+          freeCreditStatus: lifecycle.status,
         },
       };
     }),
@@ -1772,6 +1858,7 @@ const authRouter = router({
     .input(z.object({
       accessToken: z.string().min(1),
       provider: z.enum(['google', 'github']),
+      isNewUser: z.boolean().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail } = await import("./db");
@@ -1784,7 +1871,14 @@ const authRouter = router({
       // 1. Verify the Python OAuth token by calling Python backend
       const runtime = await getAppRuntimeConfig();
       const PYTHON_BACKEND = runtime.pythonBackendUrl;
-      let pythonUser: { id: string; email: string; full_name: string | null; is_admin: boolean; email_verified: boolean };
+      let pythonUser: {
+        id: string;
+        email: string;
+        full_name: string | null;
+        is_admin: boolean;
+        email_verified: boolean;
+        is_new_user?: boolean;
+      };
 
       try {
         const verifyRes = await fetch(`${PYTHON_BACKEND}/api/auth/me`, {
@@ -1809,14 +1903,140 @@ const authRouter = router({
 
       // 2. Check if user already exists in Node.js DB
       const existing = await getUserByEmail(normalizedEmail);
+      const oauthInviteCode = getOAuthInviteCode(ctx.req);
 
       if (existing) {
-        // Existing user — block if disabled and email-registered (need email verification)
-        if (existing.isDisabled && existing.loginMethod === 'email') {
-          throw new Error('Please verify your email before logging in');
+        // Existing user — do not issue an OAuth session for a disabled account.
+        if (existing.isDisabled) {
+          throw new Error(
+            existing.disabledReason === "inactive"
+              ? "Account disabled due to free-credit inactivity"
+              : "Please verify your email before logging in",
+          );
+        }
+
+        // Python creates the shared user row before this Node session
+        // exchange. A signed claim from Python tells us whether this is the
+        // first callback for that account, so the normal signup and invite
+        // onboarding is not skipped by the existing-user branch.
+        const isNewOAuthSignup =
+          input.isNewUser === true && pythonUser.is_new_user === true;
+        if (isNewOAuthSignup) {
+          const {
+            checkRegistrationAllowed,
+            checkDeviceFraudLimit,
+            processInviteCodeUsage,
+            giveInviteCodeBonuses,
+          } = await import("./services/inviteCodeService");
+          const { addCredits } = await import("./services/creditService");
+
+          const registrationCheck = await checkRegistrationAllowed(
+            oauthInviteCode,
+            ctx.tenantId,
+          );
+          if (!registrationCheck.allowed) {
+            clearOAuthInviteCookie(ctx.res);
+            throw new Error(registrationCheck.error || "Registration not allowed");
+          }
+
+          const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
+          const ipAddress =
+            (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+            ctx.req.ip ||
+            "unknown";
+          const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
+          if (!fraudCheck.allowed) {
+            clearOAuthInviteCookie(ctx.res);
+            throw new Error(fraudCheck.reason || "Registration blocked");
+          }
+
+          let signupBonus = 100;
+          try {
+            const [bonusSetting] = await db.select().from(systemSettings)
+              .where(and(
+                eq(systemSettings.category, "registration"),
+                eq(systemSettings.key, "signup_bonus_credits"),
+              ))
+              .limit(1);
+            if (bonusSetting?.value) {
+              const configuredBonus = parseInt(bonusSetting.value, 10);
+              if (Number.isFinite(configuredBonus) && configuredBonus >= 0) {
+                signupBonus = configuredBonus;
+              }
+            }
+          } catch { /* use default */ }
+
+          const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
+          let tenantId: number | null = null;
+          try {
+            const [autoSetting] = await db.select().from(systemSettings)
+              .where(and(
+                eq(systemSettings.category, "registration"),
+                eq(systemSettings.key, "auto_assign_tenant"),
+              ))
+              .limit(1);
+            if (autoSetting?.value !== "false") {
+              const [tenant] = await db.select().from(tenants)
+                .where(eq(tenants.primaryDomain, hostname))
+                .limit(1);
+              if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+            }
+          } catch { /* skip tenant assignment */ }
+
+          const onboardingUpdate: Record<string, any> = {
+            registeredDomain: hostname,
+            registrationIp: ipAddress,
+            lastSignedIn: new Date(),
+          };
+          if ((existing.currentTenantId === null || existing.currentTenantId === undefined) && tenantId) {
+            onboardingUpdate.currentTenantId = tenantId;
+          }
+          await db.update(users)
+            .set(onboardingUpdate)
+            .where(eq(users.id, existing.id));
+
+          // The idempotency key makes a replayed OAuth callback safe while
+          // still recording the configured signup bonus in credit history.
+          if (signupBonus > 0) {
+            await addCredits({
+              userId: existing.id,
+              amount: signupBonus,
+              type: "bonus",
+              description: "Welcome bonus credits",
+              metadata: { reason: "signup", provider: input.provider },
+              idempotencyKey: `oauth-signup-${existing.id}`,
+              freeCreditGrant: true,
+            });
+          }
+
+          if (registrationCheck.codeId) {
+            const usageResult = await processInviteCodeUsage(
+              registrationCheck.codeId,
+              existing.id,
+            );
+            if (usageResult.success) {
+              await giveInviteCodeBonuses(registrationCheck.codeId, existing.id);
+            } else {
+              console.error("[OAuthRegister] Invite code was not consumed:", {
+                codeId: registrationCheck.codeId,
+                userId: existing.id,
+                reason: usageResult.error,
+              });
+            }
+          }
+
+          if (fingerprintHash) {
+            try {
+              const { recordDeviceFingerprint } = await import("./services/trustScoring");
+              await recordDeviceFingerprint(existing.id, fingerprintHash);
+            } catch (error) {
+              console.error("[OAuthRegister] Failed to record device fingerprint:", error);
+            }
+          }
         }
 
         if (existing.twoFactorEnabled) {
+          clearOAuthInviteCookie(ctx.res);
           await setPendingTwoFactorCookie(ctx.req, ctx.res, {
             email: existing.email || normalizedEmail,
             openId: existing.openId,
@@ -1833,11 +2053,25 @@ const authRouter = router({
           };
         }
 
+        // Python OAuth creates the shared user row before this Node session
+        // exchange. Repair legacy rows that were created without openId so
+        // the session payload always has the identifier required by the SDK.
+        let sessionOpenId = existing.openId;
+        if (!sessionOpenId) {
+          sessionOpenId = `oauth_${input.provider}_${pythonUser.id}`;
+          await db.update(users).set({
+            openId: sessionOpenId,
+            loginMethod: input.provider,
+          }).where(eq(users.id, existing.id));
+        }
+        if (!sessionOpenId) throw new Error("OAuth user is missing an openId");
+
         // Create session for existing user
-        const token = await sdk.createSessionToken(existing.openId, {
+        const token = await sdk.createSessionToken(sessionOpenId, {
           name: existing.name || existing.email || '',
         });
         const cookieOptions = getSessionCookieOptions(ctx.req);
+        clearOAuthInviteCookie(ctx.res);
         clearPendingTwoFactorCookie(ctx.req, ctx.res);
         ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
@@ -1858,6 +2092,33 @@ const authRouter = router({
 
       // 3. New user — insert into Node.js users table
       const openId = `oauth_${input.provider}_${pythonUser.id}`;
+      const {
+        checkRegistrationAllowed,
+        checkDeviceFraudLimit,
+        processInviteCodeUsage,
+        giveInviteCodeBonuses,
+      } = await import("./services/inviteCodeService");
+      const { addCredits } = await import("./services/creditService");
+
+      const registrationCheck = await checkRegistrationAllowed(
+        oauthInviteCode,
+        ctx.tenantId,
+      );
+      if (!registrationCheck.allowed) {
+        clearOAuthInviteCookie(ctx.res);
+        throw new Error(registrationCheck.error || "Registration not allowed");
+      }
+
+      const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
+      const ipAddress =
+        (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        ctx.req.ip ||
+        "unknown";
+      const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
+      if (!fraudCheck.allowed) {
+        clearOAuthInviteCookie(ctx.res);
+        throw new Error(fraudCheck.reason || "Registration blocked");
+      }
 
       // Read signup bonus from system settings (same as register)
       let signupBonus = 100;
@@ -1865,12 +2126,17 @@ const authRouter = router({
         const [bonusSetting] = await db.select().from(systemSettings)
           .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
           .limit(1);
-        if (bonusSetting?.value) signupBonus = parseInt(bonusSetting.value, 10) || 100;
+        if (bonusSetting?.value) {
+          const configuredBonus = parseInt(bonusSetting.value, 10);
+          if (Number.isFinite(configuredBonus) && configuredBonus >= 0) {
+            signupBonus = configuredBonus;
+          }
+        }
       } catch { /* use default */ }
 
       // Auto-assign tenant by domain (same as register)
       const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
-      let tenantId: number | null = null;
+      let tenantId: string | null = null;
       try {
         const [autoSetting] = await db.select().from(systemSettings)
           .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "auto_assign_tenant")))
@@ -1880,7 +2146,7 @@ const authRouter = router({
           const [tenant] = await db.select().from(tenants)
             .where(eq(tenants.primaryDomain, hostname))
             .limit(1);
-          if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+          if (tenant) tenantId = tenant.id;
         }
       } catch { /* skip tenant assignment */ }
 
@@ -1891,25 +2157,70 @@ const authRouter = router({
         loginMethod: input.provider,
         role: 'user',
         plan: 'free',
-        credits: signupBonus,
+        credits: 0,
         isDisabled: false,
         registeredDomain: hostname,
         ...(tenantId ? { currentTenantId: tenantId } : {}),
         lastSignedIn: new Date(),
       });
 
+      const createdUser = await getUserByEmail(normalizedEmail);
+      if (!createdUser) throw new Error("Failed to create OAuth user");
+
+      if (signupBonus > 0) {
+        await addCredits({
+          userId: createdUser.id,
+          amount: signupBonus,
+          type: "bonus",
+          description: "Welcome bonus credits",
+          metadata: { reason: "signup", provider: input.provider },
+          idempotencyKey: `oauth-signup-${createdUser.id}`,
+          freeCreditGrant: true,
+        });
+      }
+
+      if (registrationCheck.codeId) {
+        try {
+          const usageResult = await processInviteCodeUsage(
+            registrationCheck.codeId,
+            createdUser.id,
+          );
+          if (usageResult.success) {
+            await giveInviteCodeBonuses(registrationCheck.codeId, createdUser.id);
+          } else {
+            console.error("[OAuthRegister] Invite code was not consumed:", {
+              codeId: registrationCheck.codeId,
+              userId: createdUser.id,
+              reason: usageResult.error,
+            });
+          }
+        } catch (error) {
+          console.error("[OAuthRegister] Failed to process invite code:", error);
+        }
+      }
+
+      if (fingerprintHash) {
+        try {
+          const { recordDeviceFingerprint } = await import("./services/trustScoring");
+          await recordDeviceFingerprint(createdUser.id, fingerprintHash);
+        } catch (error) {
+          console.error("[OAuthRegister] Failed to record device fingerprint:", error);
+        }
+      }
+
       // 4. Create session
       const token = await sdk.createSessionToken(openId, {
         name: pythonUser.full_name || normalizedEmail.split('@')[0],
       });
       const cookieOptions = getSessionCookieOptions(ctx.req);
+      clearOAuthInviteCookie(ctx.res);
       clearPendingTwoFactorCookie(ctx.req, ctx.res);
       ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: THIRTY_DAYS_MS });
 
       return {
         success: true,
         user: {
-          id: 0,
+          id: createdUser.id,
           email: normalizedEmail,
           name: pythonUser.full_name,
           currentTenantId:
@@ -2031,6 +2342,7 @@ type AppRouterShape = {
   mcpServers: typeof mcpServersRouter;
   mcpConnections: typeof mcpConnectionsRouter;
   hermesConnections: typeof hermesConnectionsRouter;
+  connectedDevices: typeof connectedDevicesRouter;
   hybridOrchestration: typeof hybridOrchestrationRouter;
   help: typeof helpRouter;
 };
@@ -2223,6 +2535,7 @@ const appRouterInternal = router<AppRouterShape>({
   mcpServers: mcpServersRouter,
   mcpConnections: mcpConnectionsRouter,
   hermesConnections: hermesConnectionsRouter,
+  connectedDevices: connectedDevicesRouter,
   hybridOrchestration: hybridOrchestrationRouter,
   help: helpRouter,
 

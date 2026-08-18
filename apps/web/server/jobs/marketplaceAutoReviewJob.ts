@@ -11,6 +11,7 @@ import {
   advanceMarketplaceAutoReviewRun,
   failMarketplaceAutoReviewInitialization,
   initializeMarketplaceAutoReviewRun,
+  processMarketplaceAutoReviewDraftQualityQc,
   type MarketplaceAutoReviewStatus,
 } from "../services/marketplaceAutoReviewService";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
@@ -43,6 +44,7 @@ export const MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES = [
   "initialize_run",
   "advance_run",
   "provider_reconciliation_recovery",
+  "draft_quality_qc",
 ] as const;
 const SCHEDULER_MODES = ["auto", "interval", "external"] as const;
 
@@ -296,7 +298,15 @@ export async function runMarketplaceAutoReviewJob(
           automationWorkerId: `marketplace-auto-review-outbox:${process.pid}`,
           schedulerSource: `outbox:${job.jobType}`,
         };
-        if (job.jobType === "initialize_run") {
+        if (job.jobType === "draft_quality_qc") {
+          await processMarketplaceAutoReviewDraftQualityQc(
+            run.id,
+            {
+              userId: run.userId,
+              tenantId,
+            }
+          );
+        } else if (job.jobType === "initialize_run") {
           await initializeMarketplaceAutoReviewRun(
             run.id,
             {

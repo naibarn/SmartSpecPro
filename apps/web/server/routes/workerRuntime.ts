@@ -17,6 +17,7 @@ import {
   workerHeartbeatPayloadSchema,
   workerJobEventPayloadSchema,
   workerRegistrationPayloadSchema,
+  remotionExecutorRuntimePackManifestSchema,
 } from "../../shared/workerRuntime";
 import {
   defaultHermesMediaAdapterRepo,
@@ -42,6 +43,7 @@ import {
   type VerifyWorkerAccessTokenOptions,
   verifyWorkerAccessToken,
   verifyWorkerRegistrationToken,
+  issueWorkerAccessTokens,
 } from "../services/workerAuthService";
 import { authorizeRequest } from "../_core/authz";
 import {
@@ -64,11 +66,19 @@ import {
   registerWorker,
 } from "../services/workerRegistryService";
 import { getWorkerPolicySnapshot } from "../services/workerPolicyService";
-import { getRedisClient } from "../services/redis";
+import {
+  getEphemeralJson,
+  getEphemeralText,
+  setEphemeralJson,
+  setEphemeralText,
+  RedisEphemeralKeyRegistryError,
+} from "../services/redisEphemeralKeyRegistry";
 import { getWorkerAccessPermissionScopesForPreset } from "../../shared/workerAccessKeys";
 import { getDb, getUserById } from "../db";
 import { tenants, type WorkerArtifact, type WorkerJob } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { verifyBearerToken } from "../_core/tokens";
+import { isConnectedDeviceRevoked, upsertConnectedDevice, updateConnectedDeviceTokenMetadata } from "../services/connectedDeviceService";
 
 interface WorkerRuntimeRouteDeps {
   runtimePacks?: {
@@ -95,28 +105,42 @@ interface WorkerRuntimeRouteDeps {
   };
 }
 
-const WORKER_CONNECT_TTL_SECONDS = 7 * 24 * 60 * 60;
+const WORKER_CONNECT_TTL_SECONDS = 15 * 60;
+const WORKER_CONNECT_APPROVED_TTL_SECONDS = 2 * 60;
 const WORKER_CONNECT_POLL_INTERVAL_SECONDS = 3;
 const DEFAULT_WORKER_RUNTIME_PACK_ID = "hyperframes-wsl2";
-const SUPPORTED_WORKER_RUNTIME_PACK_IDS = new Set(["hyperframes-wsl2", "hyperframes-windows-x64"]);
-const WORKER_RUNTIME_PACK_FILE_PATTERN = /^smart-ai-hub-worker-runtime-(hyperframes-(?:wsl2|windows-x64))-(.+)\.zip$/i;
+const SUPPORTED_WORKER_RUNTIME_PACK_IDS = new Set([
+  "hyperframes-wsl2",
+  "hyperframes-windows-x64",
+  "hyperframes-macos-arm64",
+]);
+const WORKER_RUNTIME_PACK_FILE_PATTERN = /^smart-ai-hub-worker-runtime-(hyperframes-(?:wsl2|windows-x64|macos-arm64))-(.+)\.zip$/i;
 // Feature 135 §11 — Hermes runtime pack ids, additive and independent of the
 // HyperFrames pack family above (own file-name pattern, own manifest shape,
-// own allow-gate). Windows ships first (spec §1); the macOS id is
-// "registered" here (resolvable via the manifest endpoint) even before its
-// pack is built — see `findLatestHermesRuntimePack`/`defaultHermesManifestEntry`.
+// own allow-gate). Windows and macOS Apple Silicon are separate runtime packs;
+// the macOS id is arm64-only and never selects or mutates the Windows pack.
 const HERMES_RUNTIME_PACK_IDS = new Set(["hermes-windows-x64", "hermes-macos-arm64"]);
 const HERMES_RUNTIME_PACK_FILE_PATTERN =
   /^smart-ai-hub-hermes-runtime-(hermes-(?:windows-x64|macos-arm64))-(.+)\.zip$/i;
+const REMOTION_EXECUTOR_PACK_IDS = new Set([
+  "remotion-executor-windows-x64",
+  "remotion-executor-macos-arm64",
+  "remotion-executor-macos-x64",
+]);
+const REMOTION_EXECUTOR_PACK_FILE_PATTERN =
+  /^smart-ai-hub-remotion-executor-(remotion-executor-(?:windows-x64|macos-arm64|macos-x64))-(.+)\.zip$/i;
+const HERMES_MACOS_SUPPORTED_MODELS = [
+  "Apple Silicon Mac with M1",
+  "Apple Silicon Mac with M2",
+  "Apple Silicon Mac with M3",
+  "Apple Silicon Mac with M4",
+] as const;
 const DENIED_RUNTIME_SIDECAR_SHA256 = new Set([
   // Placeholder sidecar from early runtime pack scaffolding.
   "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
   // FFmpeg diagnostic smoke renderer: uses lavfi/testsrc2 color bars, not real HyperFrames composition.
   "4a73439229e3c18034ada679a32f005e7e126376631405062f05e88a5562920e",
 ]);
-const workerConnectSessions = new Map<string, WorkerConnectSession>();
-const workerConnectUserCodeIndex = new Map<string, string>();
-
 const workerConnectStartSchema = z.object({
   payload: workerRegistrationPayloadSchema,
 });
@@ -146,7 +170,7 @@ interface WorkerConnectSession {
   approvedByUserId?: number | null;
   tenantId?: string | null;
   errorMessage?: string;
-  result?: Awaited<ReturnType<typeof registerWorker>>;
+  result?: { worker: Awaited<ReturnType<typeof registerWorker>>["worker"] };
 }
 
 function randomCode(bytes = 24): string {
@@ -280,54 +304,26 @@ function redisKeysForConnect(deviceCode: string, userCode?: string) {
 }
 
 async function saveWorkerConnectSession(session: WorkerConnectSession): Promise<void> {
-  workerConnectSessions.set(session.deviceCode, session);
-  workerConnectUserCodeIndex.set(session.userCode, session.deviceCode);
-  try {
-    const redis = getRedisClient();
-    if (!redis) return;
-    const keys = redisKeysForConnect(session.deviceCode, session.userCode);
-    await redis.setex(keys.device, WORKER_CONNECT_TTL_SECONDS, JSON.stringify(session));
-    if (keys.user) {
-      await redis.setex(keys.user, WORKER_CONNECT_TTL_SECONDS, session.deviceCode);
-    }
-  } catch {
-    // In-memory fallback keeps local development and single-node installs working.
-  }
+  const keys = redisKeysForConnect(session.deviceCode, session.userCode);
+  const ttl = session.status === "approved" ? WORKER_CONNECT_APPROVED_TTL_SECONDS : WORKER_CONNECT_TTL_SECONDS;
+  await setEphemeralJson(keys.device, session, ttl);
+  if (keys.user) await setEphemeralText(keys.user, session.deviceCode, ttl);
 }
 
 async function getWorkerConnectSessionByDevice(deviceCode: string): Promise<WorkerConnectSession | null> {
-  const memory = workerConnectSessions.get(deviceCode);
-  if (memory) return memory;
-  try {
-    const redis = getRedisClient();
-    if (!redis) return null;
-    const raw = await redis.get(redisKeysForConnect(deviceCode).device);
-    if (!raw) return null;
-    const session = JSON.parse(raw) as WorkerConnectSession;
-    workerConnectSessions.set(session.deviceCode, session);
-    workerConnectUserCodeIndex.set(session.userCode, session.deviceCode);
-    return session;
-  } catch {
-    return null;
-  }
+  return getEphemeralJson<WorkerConnectSession>(redisKeysForConnect(deviceCode).device);
 }
 
 async function getWorkerConnectSessionByUserCode(userCode: string): Promise<WorkerConnectSession | null> {
-  const indexedDeviceCode = workerConnectUserCodeIndex.get(userCode);
-  if (indexedDeviceCode) {
-    return getWorkerConnectSessionByDevice(indexedDeviceCode);
-  }
-  try {
-    const redis = getRedisClient();
-    if (!redis) return null;
-    const deviceCode = await redis.get(redisKeysForConnect("", userCode).user ?? "");
-    return deviceCode ? getWorkerConnectSessionByDevice(deviceCode) : null;
-  } catch {
-    return null;
-  }
+  const deviceCode = await getEphemeralText(redisKeysForConnect("", userCode).user ?? "");
+  return deviceCode ? getWorkerConnectSessionByDevice(deviceCode) : null;
 }
 
 function handleWorkerRouteError(error: unknown, res: Response): void {
+  if (error instanceof RedisEphemeralKeyRegistryError) {
+    sendApiError(res, 503, error.code, "Worker connection state is temporarily unavailable; try again shortly", "transient_error");
+    return;
+  }
   if (
     error instanceof WorkerAuthError
     || error instanceof WorkerRuntimeServiceError
@@ -478,7 +474,6 @@ function requiredRuntimeArchiveFiles(runtimeId: string): string[] {
     "runtime-pack/hyperframes-sidecar/render.mjs",
     "runtime-pack/SHA256SUMS",
     "runtime-pack/SHA256SUMS.sig",
-    "sidecars/hyperframes-render.exe",
   ];
   if (runtimeId === "hyperframes-wsl2") {
     return [
@@ -492,6 +487,21 @@ function requiredRuntimeArchiveFiles(runtimeId: string): string[] {
       "runtime-pack/browser-libs/libsmime3.so*",
       "runtime-pack/hyperframes/node_modules/@img/sharp-linux-x64/lib/sharp-linux-x64*",
       "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.*",
+      "sidecars/hyperframes-render.exe",
+    ];
+  }
+  if (runtimeId === "hyperframes-macos-arm64") {
+    return [
+      ...common,
+      "runtime-pack/node/bin/node",
+      "runtime-pack/bin/ffmpeg",
+      "runtime-pack/bin/ffprobe",
+      "runtime-pack/browser/*",
+      "runtime-pack/hyperframes/node_modules/@img/sharp-darwin-arm64/lib/sharp-darwin-arm64*",
+      "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-darwin-arm64/lib/libvips-cpp*",
+      "runtime-pack/remotion-sidecar/render.mjs",
+      "runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/dist/index.js",
+      "sidecars/hyperframes-render",
     ];
   }
   return [
@@ -499,6 +509,7 @@ function requiredRuntimeArchiveFiles(runtimeId: string): string[] {
     "runtime-pack/node/node.exe",
     "runtime-pack/bin/ffmpeg.exe",
     "runtime-pack/bin/ffprobe.exe",
+    "sidecars/hyperframes-render.exe",
   ];
 }
 
@@ -525,6 +536,9 @@ function isOfficialRuntimePackManifest(
   if (sidecarScriptPath !== "hyperframes-sidecar/render.mjs") return false;
   if (runtimeId === "hyperframes-wsl2" && !/wsl2|linux/.test(runtimePlatform)) return false;
   if (runtimeId === "hyperframes-windows-x64" && !/windows|win/.test(runtimePlatform || runtimeId)) return false;
+  if (runtimeId === "hyperframes-macos-arm64" && !/macos|darwin/.test(runtimePlatform)) return false;
+  const architecture = stringField(manifest.architecture).toLowerCase();
+  if (runtimeId === "hyperframes-macos-arm64" && !architecture.includes("arm64")) return false;
   const blockedText = [denyReason, hyperframesVersion, runtimeKind, sidecarKind, runtimePlatform].join(" ");
   if ([
     "mock",
@@ -613,10 +627,39 @@ function findLatestHermesRuntimePack(releaseDirs: string[], runtimeId: string) {
   })[0] ?? null;
 }
 
-/** Synthesized manifest for a "registered but not yet built" Hermes pack
- *  (spec §1 — the macOS id exists with `allowed: false` until its pack
- *  ships). Includes every field `HermesRuntimeManifest` requires in Rust so
- *  `fetch_runtime_manifest` still parses successfully. */
+function findLatestRemotionExecutorPack(releaseDirs: string[], runtimeId: string) {
+  const candidates: Array<NonNullable<ReturnType<typeof findLatestRuntimePack>>> = [];
+  for (const releaseDir of releaseDirs) {
+    if (!fs.existsSync(releaseDir)) continue;
+    for (const fileName of fs.readdirSync(releaseDir)) {
+      const match = fileName.match(REMOTION_EXECUTOR_PACK_FILE_PATTERN);
+      if (!match?.[1] || !match?.[2] || match[1] !== runtimeId) continue;
+      const filePath = path.join(releaseDir, fileName);
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) continue;
+      const manifest = readRuntimePackManifest(filePath);
+      if (!remotionExecutorRuntimePackManifestSchema.safeParse(manifest).success) continue;
+      const manifestRuntimeId = stringField(manifest?.runtimeId);
+      const runtimeKind = stringField(manifest?.runtimeKind);
+      const platform = stringField(manifest?.runtimePlatform).toLowerCase();
+      if (manifest?.allowed !== true || (manifestRuntimeId && manifestRuntimeId !== runtimeId)) continue;
+      if (runtimeKind !== "standalone_remotion_executor") continue;
+      if (runtimeId.includes("windows") && !platform.includes("windows")) continue;
+      if (runtimeId.includes("macos") && !platform.includes("macos")) continue;
+      const architecture = stringField(manifest?.architecture).toLowerCase();
+      if (runtimeId.includes("arm64") && !architecture.includes("arm64")) continue;
+      if (runtimeId.includes("macos-x64") && !architecture.includes("x86_64") && !architecture.includes("x64")) continue;
+      if (!runtimeArchiveContainsFiles(filePath, manifest, ["runtime-pack/remotion-sidecar/render.mjs"])) continue;
+      candidates.push({ fileName, filePath, runtimeId: match[1], version: match[2], updatedAt: stat.mtime.toISOString(), sizeBytes: stat.size });
+    }
+  }
+  return candidates.sort((left, right) => right.version.localeCompare(left.version, undefined, { numeric: true, sensitivity: "base" }) || right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
+}
+
+/** Synthesized manifest for a registered Hermes pack that is not published.
+ * Includes every field `HermesRuntimeManifest` requires in Rust so
+ * `fetch_runtime_manifest` still parses successfully, plus public hardware
+ * metadata used by the Dashboard. */
 function defaultHermesManifestEntry(runtimeId: string): Record<string, unknown> {
   return {
     runtimeId,
@@ -628,6 +671,10 @@ function defaultHermesManifestEntry(runtimeId: string): Record<string, unknown> 
     signatureFile: "SHA256SUMS.sig",
     allowed: false,
     denyReason: `${runtimeId} runtime pack has not been published yet`,
+    platform: runtimeId === "hermes-macos-arm64" ? "macos" : "windows",
+    architecture: runtimeId === "hermes-macos-arm64" ? "arm64" : "x86_64",
+    supportedMacModels: runtimeId === "hermes-macos-arm64" ? HERMES_MACOS_SUPPORTED_MODELS : [],
+    unsupportedMacArchitectures: runtimeId === "hermes-macos-arm64" ? ["x86_64 (Intel)"] : [],
   };
 }
 
@@ -644,10 +691,18 @@ async function verifyWorkerRouteAccessToken(
   token: string,
   opts: VerifyWorkerAccessTokenOptions = {},
 ) {
-  return await verifyWorkerAccessToken(token, {
+  const claims = await verifyWorkerAccessToken(token, {
     ...opts,
     requestProof: extractWorkerDeviceProofFromRequest(req),
   });
+  if (await isConnectedDeviceRevoked({
+    tenantId: String(claims.tenantId ?? ""),
+    workerConnectionId: claims.workerConnectionId ? String(claims.workerConnectionId) : null,
+    authKind: "worker_executor",
+  })) {
+    throw new WorkerAuthError("worker_connection_blocked", 401, "Worker connection is revoked and must be paired again");
+  }
+  return claims;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -809,6 +864,25 @@ export function registerWorkerRuntimeRoutes(
           return;
         }
 
+        if (REMOTION_EXECUTOR_PACK_IDS.has(runtimeId)) {
+          const executorPack = findLatestRemotionExecutorPack(runtimePackReleaseDirs, runtimeId);
+          if (!executorPack) {
+            sendApiError(res, 404, "runtime_pack_not_published", "The standalone Remotion executor pack has not been published yet.", "not_found_error");
+            return;
+          }
+          const executorManifest = readRuntimePackManifest(executorPack.filePath);
+          const archiveSha256 = /^[a-f0-9]{64}$/.test(stringField(executorManifest?.archiveSha256).toLowerCase())
+            ? stringField(executorManifest?.archiveSha256).toLowerCase()
+            : sha256File(executorPack.filePath);
+          res.json({
+            ...(executorManifest ?? {}), runtimeId, version: executorManifest?.version ?? executorPack.version,
+            archiveFileName: executorPack.fileName, archiveSha256, archiveSizeBytes: executorPack.sizeBytes,
+            archiveUrl: `/api/workers/runtime-pack/download/${encodeURIComponent(executorPack.fileName)}`,
+            updatedAt: executorPack.updatedAt,
+          });
+          return;
+        }
+
         if (!SUPPORTED_WORKER_RUNTIME_PACK_IDS.has(runtimeId)) {
           sendApiError(res, 404, "runtime_pack_not_found", `Runtime pack is not available for ${runtimeId}`, "not_found_error");
           return;
@@ -882,6 +956,20 @@ export function registerWorkerRuntimeRoutes(
           res.setHeader("Content-Length", String(hermesPack.sizeBytes));
           res.setHeader("Content-Disposition", `attachment; filename="${hermesPack.fileName.replace(/"/g, "")}"`);
           fs.createReadStream(hermesPack.filePath).pipe(res);
+          return;
+        }
+
+        const executorMatch = fileName.match(REMOTION_EXECUTOR_PACK_FILE_PATTERN);
+        if (executorMatch?.[1] && REMOTION_EXECUTOR_PACK_IDS.has(executorMatch[1])) {
+          const executorPack = findLatestRemotionExecutorPack(runtimePackReleaseDirs, executorMatch[1]);
+          if (!executorPack || executorPack.fileName !== fileName) {
+            sendApiError(res, 404, "runtime_pack_not_found", "Standalone Remotion executor pack was not found", "not_found_error");
+            return;
+          }
+          res.setHeader("Content-Type", "application/zip");
+          res.setHeader("Content-Length", String(executorPack.sizeBytes));
+          res.setHeader("Content-Disposition", `attachment; filename="${executorPack.fileName.replace(/"/g, "")}"`);
+          fs.createReadStream(executorPack.filePath).pipe(res);
           return;
         }
 
@@ -1026,12 +1114,33 @@ export function registerWorkerRuntimeRoutes(
           auth: registrationAuth,
           payload: session.payload,
         });
+        if (auth.userId && session.payload.deviceBinding) {
+          await upsertConnectedDevice({
+            tenantId,
+            ownerUserId: auth.userId,
+            workerId: result.worker.id,
+            deviceId: session.payload.deviceBinding.deviceId,
+            displayName: result.worker.displayName,
+            runtimeType: result.worker.runtimeType,
+            authKind: "worker_executor",
+            connectionMethod: "worker_connect",
+            platform: typeof session.payload.hardwareJson?.platform === "string" ? session.payload.hardwareJson.platform : null,
+            architecture: typeof session.payload.hardwareJson?.architecture === "string" ? session.payload.hardwareJson.architecture : null,
+            scopes: ["workers:heartbeat", "workers:claim", "workers:report", "workers:diagnostics"],
+            approvedAt: new Date(),
+            metadataJson: { source: "worker_connect", externalReference: result.worker.externalReference },
+          }).catch((error) => {
+            console.warn("[workerRuntime] connected device metadata unavailable", error instanceof Error ? error.message : String(error));
+          });
+        }
         session.errorMessage = undefined;
         session.status = "approved";
         session.approvedAt = new Date().toISOString();
         session.approvedByUserId = auth.userId ?? null;
         session.tenantId = tenantId;
-        session.result = result;
+        // Never serialize access/upload/refresh tokens into the device-code
+        // record. They are minted only when the device redeems approval.
+        session.result = { worker: result.worker };
         await saveWorkerConnectSession(session);
         res.json({ session: browserSessionPayload(session) });
       } catch (error) {
@@ -1075,6 +1184,45 @@ export function registerWorkerRuntimeRoutes(
           });
           return;
         }
+        if (session.payload.deviceBinding?.deviceId && await isConnectedDeviceRevoked({
+          tenantId: session.tenantId ?? session.result.worker.tenantId,
+          deviceId: session.payload.deviceBinding.deviceId,
+          authKind: "worker_executor",
+        })) {
+          sendApiError(res, 401, "worker_connection_revoked", "Worker connection was revoked and must be approved again", "authorization_error");
+          return;
+        }
+        const tokens = issueWorkerAccessTokens({
+          tenantId: session.tenantId ?? session.result.worker.tenantId,
+          workerId: session.result.worker.id,
+          runtimeType: session.result.worker.runtimeType,
+          teamId: session.result.worker.teamId ?? null,
+          deviceBinding: session.payload.deviceBinding ?? undefined,
+        });
+        await verifyBearerToken(tokens.executionToken).then(async (claims) => {
+          await updateConnectedDeviceTokenMetadata({
+            tenantId: String(claims.tenantId ?? session.tenantId ?? session.result?.worker.tenantId ?? ""),
+            workerId: String(claims.workerId ?? ""),
+            workerConnectionId: String(claims.workerConnectionId ?? ""),
+            deviceId: typeof claims.deviceId === "string" ? claims.deviceId : null,
+            authKind: "worker_executor",
+            accessTokenExpiresAt: claims.exp ? new Date(claims.exp * 1000) : null,
+          });
+        }).catch((error) => {
+          console.warn("[workerRuntime] connected device token metadata unavailable", error instanceof Error ? error.message : String(error));
+        });
+        await verifyBearerToken(tokens.refreshToken).then(async (claims) => {
+          await updateConnectedDeviceTokenMetadata({
+            tenantId: String(claims.tenantId ?? session.tenantId ?? session.result?.worker.tenantId ?? ""),
+            workerId: String(claims.workerId ?? ""),
+            workerConnectionId: String(claims.workerConnectionId ?? ""),
+            deviceId: typeof claims.deviceId === "string" ? claims.deviceId : null,
+            authKind: "worker_executor",
+            refreshTokenExpiresAt: claims.exp ? new Date(claims.exp * 1000) : null,
+          });
+        }).catch((error) => {
+          console.warn("[workerRuntime] connected device token metadata unavailable", error instanceof Error ? error.message : String(error));
+        });
         res.json({
           status: "approved",
           interval: WORKER_CONNECT_POLL_INTERVAL_SECONDS,
@@ -1084,7 +1232,7 @@ export function registerWorkerRuntimeRoutes(
             runtimeType: session.result.worker.runtimeType,
             machineName: session.result.worker.machineName ?? null,
           },
-          tokens: session.result.tokens,
+          tokens,
         });
       } catch (error) {
         handleWorkerRouteError(error, res);
@@ -1101,6 +1249,19 @@ export function registerWorkerRuntimeRoutes(
         const token = requireBearerToken(req);
         const tokens = await refreshWorkerAccessTokens(token, {
           requestProof: extractWorkerDeviceProofFromRequest(req),
+        });
+        const executionClaims = await verifyBearerToken(tokens.executionToken);
+        const refreshClaims = await verifyBearerToken(tokens.refreshToken);
+        await updateConnectedDeviceTokenMetadata({
+          tenantId: String(refreshClaims.tenantId ?? ""),
+          workerId: String(refreshClaims.workerId ?? ""),
+          workerConnectionId: String(refreshClaims.workerConnectionId ?? ""),
+          deviceId: typeof refreshClaims.deviceId === "string" ? refreshClaims.deviceId : null,
+          authKind: "worker_executor",
+          accessTokenExpiresAt: executionClaims.exp ? new Date(executionClaims.exp * 1000) : null,
+          refreshTokenExpiresAt: refreshClaims.exp ? new Date(refreshClaims.exp * 1000) : null,
+        }).catch((error) => {
+          console.warn("[workerRuntime] connected device token metadata unavailable", error instanceof Error ? error.message : String(error));
         });
         res.json({ tokens });
       } catch (error) {
@@ -1146,6 +1307,13 @@ export function registerWorkerRuntimeRoutes(
           auth,
           payload: parsed,
           workerId: req.params.workerId,
+        });
+        await updateConnectedDeviceTokenMetadata({
+          tenantId: worker.tenantId,
+          workerId: worker.id,
+          authKind: "worker_executor",
+        }).catch((error) => {
+          console.warn("[workerRuntime] connected device heartbeat metadata unavailable", error instanceof Error ? error.message : String(error));
         });
         res.json({
           status: worker.status,

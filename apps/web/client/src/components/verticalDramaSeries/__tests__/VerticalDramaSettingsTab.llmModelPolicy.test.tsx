@@ -12,6 +12,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUpdateSeriesMutate = vi.fn();
 const mockSetLlmModelPolicyMutate = vi.fn();
+const mockSetDurationProfileMutate = vi.fn();
+const mockSetDialogueLanguageProfileMutate = vi.fn();
 const mockSetSeriesLookLockMutate = vi.fn();
 
 const PLANNING_MODELS = [
@@ -37,6 +39,15 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      setSeriesDialogueLanguageProfile: {
+        useMutation: () => ({
+          mutateAsync: (input: unknown) => {
+            mockSetDialogueLanguageProfileMutate(input);
+            return Promise.resolve({});
+          },
+          isPending: false,
+        }),
+      },
       listQualityPlanningModels: {
         useQuery: () => ({ data: PLANNING_MODELS, isPending: false }),
       },
@@ -44,6 +55,15 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => ({
           mutateAsync: (input: unknown) => {
             mockSetLlmModelPolicyMutate(input);
+            return Promise.resolve({});
+          },
+          isPending: false,
+        }),
+      },
+      setSeriesDurationProfile: {
+        useMutation: () => ({
+          mutateAsync: (input: unknown) => {
+            mockSetDurationProfileMutate(input);
             return Promise.resolve({});
           },
           isPending: false,
@@ -95,6 +115,8 @@ vi.mock("@/components/ui/select", () => ({
   },
   SelectTrigger: ({ children }: any) => <>{children}</>,
   SelectValue: () => null,
+  SelectGroup: ({ children }: any) => <>{children}</>,
+  SelectLabel: ({ children }: any) => <optgroup label={children}>{children}</optgroup>,
   SelectContent: ({ children }: any) => <>{children}</>,
   SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
 }));

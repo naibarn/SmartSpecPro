@@ -15,11 +15,7 @@ import {
   type VerticalDramaStoryArchitectureContract,
 } from "@shared/verticalDramaSeries/storyArchitecture";
 import { verticalDramaDraftStoryDesignSchema } from "@shared/verticalDramaSeries/draftStoryDesign";
-import {
-  buildVerticalDramaDraftStoryDesignFromArchitecture,
-  readVerticalDramaDraftStoryDesign,
-} from "@shared/verticalDramaSeries/draftStoryDesign";
-import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
+import { repairVerticalDramaDraftStoryDesign } from "@shared/verticalDramaSeries/draftStoryDesign";
 import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
@@ -166,6 +162,8 @@ function buildRepairPrompt(params: {
     "Do not infer nationality, ethnicity, or origin from UI language, spoken language, or target market alone. Make a story-world choice and mark every such generated fact source as ai_inferred with rationale.",
     "Preserve the existing storyContract destination, primary engine, required arcs, and payoff whenever they are present. Repair only the listed paths and any directly dependent references.",
     "Keep canonical character names stable. Remove dangling IDs and keep all episode windows within the planned episode count.",
+    "For a long-form romance, use the canonical season windows: friction in episodes 1-16%, trust shift through about 68%, rupture/reconciliation in the late-middle, and commitment in the final 14% through the terminal episode. For a 50-episode season this is 1-8, 9-34, 35-42, and 43-50.",
+    "The final structural-innovation deployment or large-project success belongs only to the terminal destination window; earlier advantage beats must be setup, testing, failure, prototype, or small-scale proof. Legacy fields marked superseded are archival only and must not be treated as active contradictions.",
     `Narrative locale: ${params.context.locale}. Target episode count: ${params.context.targetEpisodeCount ?? "use the request"}. Genre: ${params.context.genre ?? "choose a fitting genre"}. User premise: ${params.context.userPremise ?? "none; invent a strong original premise"}.`,
     `MISSING PATHS: ${JSON.stringify(params.missingPaths)}`,
     `CONTRADICTION PATHS: ${JSON.stringify(params.contradictionPaths)}`,
@@ -200,35 +198,75 @@ function mergeDraftAdditively(
   base: Record<string, unknown>,
   patch: Record<string, unknown>
 ): Record<string, unknown> {
-  const merged = { ...base };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value !== undefined) merged[key] = value;
-  }
-  return merged;
-}
-
-function hasUsableStoryDesign(params: {
-  draft: Record<string, unknown>;
-  characterNames: string[];
-  targetEpisodeCount?: number;
-}): boolean {
-  const design = readVerticalDramaDraftStoryDesign(params.draft.storyDesign);
-  if (
-    !design ||
-    design.pressureThreads.length === 0 ||
-    design.advantageBeats.length === 0 ||
-    design.conflictGuardrails.length === 0
-  ) {
-    return false;
-  }
-  const seed = readVerticalDramaStoryControlSeed(design.storyControlSeed, {
-    totalEpisodeCount: params.targetEpisodeCount,
-  });
-  if (!seed) return false;
-  const names = new Set(
-    params.characterNames.map(name => name.trim()).filter(Boolean)
-  );
-  return seed.canonicalCharacterKeys.every(name => names.has(name));
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  const arrayKey = (value: Record<string, unknown>): string | null => {
+    for (const key of [
+      "id",
+      "key",
+      "name",
+      "title",
+      "threadId",
+      "criterionId",
+      "episodeNumber",
+    ]) {
+      const candidate = value[key];
+      if (typeof candidate === "string" && candidate.trim())
+        return `${key}:${candidate}`;
+      if (typeof candidate === "number" && Number.isFinite(candidate))
+        return `${key}:${candidate}`;
+    }
+    return null;
+  };
+  const stable = (value: unknown): string => {
+    if (value === null || typeof value !== "object") return JSON.stringify(value);
+    if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${stable(record[key])}`).join(",")}}`;
+  };
+  const merge = (baseValue: unknown, patchValue: unknown): unknown => {
+    if (patchValue === undefined || patchValue === null) return baseValue;
+    if (isRecord(baseValue) && isRecord(patchValue)) {
+      const merged: Record<string, unknown> = { ...baseValue };
+      for (const [key, value] of Object.entries(patchValue)) {
+        merged[key] = merge(baseValue[key], value);
+      }
+      return merged;
+    }
+    if (Array.isArray(baseValue) && Array.isArray(patchValue)) {
+      if (patchValue.length === 0 && baseValue.length > 0) return baseValue;
+      const baseByKey = new Map<string, unknown>();
+      for (const item of baseValue) {
+        if (isRecord(item)) {
+          const key = arrayKey(item);
+          if (key) baseByKey.set(key, item);
+        }
+      }
+      const merged = patchValue.map(item => {
+        if (!isRecord(item)) return item;
+        const key = arrayKey(item);
+        return key && baseByKey.has(key) ? merge(baseByKey.get(key), item) : item;
+      });
+      if (baseByKey.size > 0) {
+        for (const item of baseValue) {
+          if (!isRecord(item)) continue;
+          const key = arrayKey(item);
+          if (key && !patchValue.some(candidate => isRecord(candidate) && arrayKey(candidate) === key)) {
+            merged.push(item);
+          }
+        }
+      }
+      const seen = new Set<string>();
+      return merged.filter(item => {
+        const fingerprint = stable(item);
+        if (seen.has(fingerprint)) return false;
+        seen.add(fingerprint);
+        return true;
+      });
+    }
+    return patchValue;
+  };
+  return merge(base, patch) as Record<string, unknown>;
 }
 
 export async function completeVerticalDramaDraft(params: {
@@ -298,42 +336,25 @@ export async function completeVerticalDramaDraft(params: {
     draft: mergeDraftAdditively(foundationDraft, data.draft),
     storyArchitecture: params.context.storyArchitecture,
   });
-  if (
-    params.context.storyArchitecture &&
-    !hasUsableStoryDesign({
-      draft: completedDraft,
-      characterNames: Array.isArray(completedDraft.characters)
-        ? completedDraft.characters.map(character =>
-            typeof character === "object" &&
-            character !== null &&
-            "name" in character
-              ? String((character as { name?: unknown }).name ?? "")
-              : ""
-          )
-        : [],
-      targetEpisodeCount: params.context.targetEpisodeCount,
-    })
-  ) {
-    const generatedStoryDesign =
-      buildVerticalDramaDraftStoryDesignFromArchitecture({
-        storyArchitecture: params.context.storyArchitecture,
-        characterNames: Array.isArray(completedDraft.characters)
-          ? completedDraft.characters.map(character =>
-              typeof character === "object" &&
-              character !== null &&
-              "name" in character
-                ? String((character as { name?: unknown }).name ?? "")
-                : ""
-            )
-          : [],
-        targetEpisodeCount: params.context.targetEpisodeCount,
-      });
-    if (generatedStoryDesign) {
-      completedDraft = {
-        ...completedDraft,
-        storyDesign: generatedStoryDesign,
-      };
-    }
+  const repairedStoryDesign = repairVerticalDramaDraftStoryDesign({
+    storyDesign: completedDraft.storyDesign,
+    storyArchitecture: params.context.storyArchitecture,
+    targetEpisodeCount: params.context.targetEpisodeCount,
+    characterNames: Array.isArray(completedDraft.characters)
+      ? completedDraft.characters.map(character =>
+          typeof character === "object" &&
+          character !== null &&
+          "name" in character
+            ? String((character as { name?: unknown }).name ?? "")
+            : ""
+        )
+      : [],
+  });
+  if (repairedStoryDesign) {
+    completedDraft = {
+      ...completedDraft,
+      storyDesign: repairedStoryDesign,
+    };
   }
   const finalInspection = inspectVerticalDramaDraftCompleteness({
     draft: completedDraft,
@@ -351,6 +372,115 @@ export async function completeVerticalDramaDraft(params: {
     creditsUsed,
     model,
   };
+}
+
+export interface VerticalDramaPreQcRepairResult {
+  draft: Record<string, unknown>;
+  report: VerticalDramaDraftCompletionReport;
+  creditsUsed: number;
+  model: string;
+  repaired: boolean;
+}
+
+/**
+ * Repairs legacy or partially persisted drafts immediately before QC. The
+ * deterministic pass handles bounded control-plane fields without spending a
+ * call; the LLM pass is used only when narrative data is still incomplete.
+ */
+export async function repairVerticalDramaDraftBeforeQc(params: {
+  draft: Record<string, unknown>;
+  model: string;
+  context: DraftCompletionContext;
+  userId: number;
+  maxRepairRounds?: number;
+  onCreditsUsed?: (params: {
+    creditsUsed: number;
+    model: string;
+    repairRound: number;
+  }) => Promise<void>;
+}): Promise<VerticalDramaPreQcRepairResult> {
+  let draft = { ...params.draft };
+  let creditsUsed = 0;
+  let repaired = false;
+  const maxRepairRounds = Math.max(0, Math.min(2, params.maxRepairRounds ?? 2));
+
+  for (let repairRound = 0; repairRound <= maxRepairRounds; repairRound++) {
+    const beforeRepair = inspectVerticalDramaDraftCompleteness({
+      draft,
+      targetEpisodeCount: params.context.targetEpisodeCount,
+      genre: params.context.genre,
+      userPremise: params.context.userPremise,
+    });
+    const storyDesign = repairVerticalDramaDraftStoryDesign({
+      storyDesign: draft.storyDesign,
+      storyArchitecture: draft.storyContract,
+      targetEpisodeCount: params.context.targetEpisodeCount,
+      characterNames: Array.isArray(draft.characters)
+        ? draft.characters.map(character =>
+            typeof character === "object" &&
+            character !== null &&
+            "name" in character
+              ? String((character as { name?: unknown }).name ?? "")
+              : ""
+          )
+        : [],
+    });
+    if (storyDesign) {
+      draft = { ...draft, storyDesign };
+      repaired = repaired || !beforeRepair.ready;
+    }
+
+    const inspection = inspectVerticalDramaDraftCompleteness({
+      draft,
+      targetEpisodeCount: params.context.targetEpisodeCount,
+      genre: params.context.genre,
+      userPremise: params.context.userPremise,
+    });
+    if (inspection.ready) {
+      return {
+        draft,
+        report: {
+          ...inspection.report,
+          repairRound,
+        },
+        creditsUsed,
+        model:
+          repairRound === 0 && creditsUsed === 0
+            ? "deterministic"
+            : params.model,
+        repaired,
+      };
+    }
+    if (repairRound === maxRepairRounds) {
+      return {
+        draft,
+        report: { ...inspection.report, repairRound },
+        creditsUsed,
+        model: params.model,
+        repaired,
+      };
+    }
+
+    const completed = await completeVerticalDramaDraft({
+      draft: draft as SynthesizedGenrePresetDraft,
+      model: params.model,
+      context: params.context,
+      repairRound: repairRound + 1,
+      userId: params.userId,
+    });
+    creditsUsed += completed.creditsUsed;
+    if (completed.creditsUsed > 0) {
+      await params.onCreditsUsed?.({
+        creditsUsed: completed.creditsUsed,
+        model: completed.model,
+        repairRound: repairRound + 1,
+      });
+    }
+    draft = completed.draft as Record<string, unknown>;
+    repaired = true;
+  }
+
+  throw new Error("Draft repair loop exited unexpectedly");
 }
 
 export async function deductVerticalDramaDraftCompletionCredits(params: {

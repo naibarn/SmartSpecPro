@@ -111,6 +111,22 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("frame.imageTask?.pendingTaskId");
   });
 
+  it("keeps prompt success and image failure independently actionable", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+
+    expect(source).toContain("failureStage: \"admission\"");
+    expect(source).toContain("failureStage: \"provider\"");
+    expect(source).toContain("failureStage: \"sync\"");
+    expect(source).toContain("onRetryStartFrameImage");
+    expect(source).toContain("onRetryStartFrameSync");
+    expect(source).toContain("void handleGeneratePromptAndImage(shotNumber, \"single\", false)");
+    expect(source).toContain("async function handleRetryStartFrameSync(");
+    expect(source).toContain("utils.media.getTask.fetch({ taskId })");
+  });
+
   it("refetches the episode detail after the whole-episode video prompt stage succeeds", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),

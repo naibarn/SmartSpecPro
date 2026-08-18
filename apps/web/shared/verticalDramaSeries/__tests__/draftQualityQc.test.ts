@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DRAFT_QC_CRITERIA,
   DRAFT_QC_PASS_THRESHOLD,
+  buildDraftQualityQcRepairPlan,
   compareDraftQualityQcCandidates,
   computeDraftQualityQcReport,
   estimateDraftQualityQcCredits,
@@ -39,6 +40,21 @@ describe("draft quality QC contract", () => {
     });
     expect(report.pass).toBe(false);
     expect(report.status).toBe("blocked");
+  });
+
+  it("builds a bounded repair plan from weak criteria without changing scores", () => {
+    const report = computeDraftQualityQcReport({
+      ...judge(4),
+      recommendations: ["Strengthen the repeatable episode engine"],
+    });
+    const repairPlan = buildDraftQualityQcRepairPlan(report);
+
+    expect(report.overallScore).toBe(8);
+    expect(report.pass).toBe(false);
+    expect(repairPlan.available).toBe(true);
+    expect(repairPlan.actions.length).toBeGreaterThan(0);
+    expect(repairPlan.actions.length).toBeLessThanOrEqual(6);
+    expect(repairPlan.actions.every(action => action.autoRunnable)).toBe(true);
   });
 
   it("uses deterministic candidate comparison and bounded round choices", () => {

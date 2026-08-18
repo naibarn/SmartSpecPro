@@ -210,6 +210,24 @@ describe("generateStoryboardShotgrid", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
+  it("injects the shared spoken-English profile for dialogue excerpts and subtitles", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStoryboardShotgrid(
+      baseParams({
+        dialogueLanguageProfile: { version: 1, marketMode: "auto" },
+      }),
+    );
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user",
+    ).content;
+    expect(userMessage).toContain(
+      "Natural contemporary American English, spoken dialogue, not translated English.",
+    );
+  });
+
   it("sends only the compact active look register and never raw provider fragments", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));

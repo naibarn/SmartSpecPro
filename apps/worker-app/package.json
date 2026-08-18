@@ -1,6 +1,6 @@
 {
   "name": "@smartspec/worker-app",
-  "version": "0.1.179",
+  "version": "0.1.182",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "tauri:build": "tauri build",
     "runtime:pack": "node scripts/prepare-runtime-pack.mjs",
     "runtime:release": "node scripts/package-runtime-release.mjs",
+    "runtime:release:mac": "node scripts/package-macos-runtime.mjs",
     "source:mac": "python3 scripts/package-macos-source.py",
     "release:windows": "node scripts/package-windows-release.mjs"
   },

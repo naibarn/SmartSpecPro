@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { VdSeriesMemory } from "@shared/verticalDramaSeries/seriesMemoryState";
+import { createUniformVerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
 
 const mockGetSeriesMemoryQuery = vi.fn();
 const mockUpdateMutate = vi.fn();
@@ -42,7 +43,10 @@ vi.mock("sonner", () => ({
 // exercised in these tests, but jsdom doesn't implement it.
 window.confirm = vi.fn(() => true);
 
-import { VerticalDramaSeriesMemoryStateTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
+import {
+  deriveResolvedThreadHistory,
+  VerticalDramaSeriesMemoryStateTab,
+} from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
 
 function emptyMemory(): VdSeriesMemory {
   return {
@@ -69,10 +73,11 @@ function renderTab(
     episodesWithMemoryAndRealScript: number;
     provenanceDistinguishable: false;
   },
-  readOnly = false
+  readOnly = false,
+  extra: { storyControlSeed?: unknown; storyControlAudit?: unknown; durationPlan?: unknown } = {},
 ) {
   mockGetSeriesMemoryQuery.mockReturnValue({
-    data: { memory, coverage },
+    data: { memory, coverage, ...extra },
     isLoading: false,
     isError: false,
   });
@@ -100,6 +105,51 @@ describe("VerticalDramaSeriesMemoryStateTab — empty state (the common case tod
     expect(screen.getByTestId("vd-series-memory-tab")).toBeInTheDocument();
     expect(screen.getByTestId("vd-memory-empty-state")).toBeInTheDocument();
     expect(screen.queryByTestId("vd-memory-user-edited-badge")).not.toBeInTheDocument();
+  });
+
+  it("keeps legacy audit IDs visible even when no validated seed is available", () => {
+    renderTab(emptyMemory(), {
+      targetEpisodeCount: 25,
+      episodeRowCount: 25,
+      episodesWithRealScript: 25,
+      episodesWithMemory: 0,
+      episodesWithMemoryAndRealScript: 0,
+      provenanceDistinguishable: false,
+    }, false, {
+      storyControlAudit: {
+        currentEpisode: 25,
+        threads: [{
+          threadId: "legacy-hook",
+          label: "ปมเก่าจาก memory",
+          status: "legacy_unknown",
+          seedStatus: null,
+          scope: "legacy_unknown",
+          ownerCharacters: [],
+          plantEpisode: null,
+          payoffWindow: null,
+          expectedEvidence: [],
+          resolutionCost: null,
+          openedEpisode: 20,
+          resolvedEpisode: null,
+          reason: "Memory contains a thread ID that is not registered in the current story-control seed.",
+        }],
+        counts: {
+          registered: 0,
+          open: 0,
+          overdue: 0,
+          resolved: 0,
+          needs_review: 0,
+          legacy_unknown: 1,
+          missing_opening: 0,
+        },
+      },
+    });
+
+    expect(screen.getByTestId("vd-memory-story-control-audit-summary")).toHaveTextContent(
+      "ข้อมูลเก่า/ไม่อยู่ใน seed: 1"
+    );
+    expect(screen.getByTestId("vd-memory-story-control-audit-thread-legacy-hook"))
+      .toHaveTextContent("legacy-hook");
   });
 
   it("shows a loading skeleton while the query is pending", () => {
@@ -143,6 +193,36 @@ describe("VerticalDramaSeriesMemoryStateTab — coverage warning", () => {
   });
 });
 
+describe("VerticalDramaSeriesMemoryStateTab — duration profile disclosure", () => {
+  it("shows the canonical nine-shot calculation and does not fall back to an old episode input", () => {
+    mockGetSeriesMemoryQuery.mockReturnValue({
+      data: {
+        memory: emptyMemory(),
+        durationPlan: createUniformVerticalDramaDurationPlan(15),
+        coverage: {
+          targetEpisodeCount: 10,
+          episodeRowCount: 10,
+          episodesWithRealScript: 10,
+          episodesWithMemory: 0,
+          episodesWithMemoryAndRealScript: 0,
+          provenanceDistinguishable: false,
+        },
+      },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<VerticalDramaSeriesMemoryStateTab lang="th" seriesId="17" readOnly />);
+
+    expect(screen.getByTestId("vd-memory-duration-plan-value")).toHaveTextContent(
+      "9 ช็อต × 15 วินาที = 135 วินาที"
+    );
+    expect(screen.getByTestId("vd-memory-duration-plan")).toHaveTextContent(
+      "ไม่รับค่าความยาวต่อตอนแบบเดิม"
+    );
+  });
+});
+
 describe("VerticalDramaSeriesMemoryStateTab — disclosure is visually unmistakable", () => {
   it("renders all four disclosure variants distinguishably", () => {
     const memory: VdSeriesMemory = {
@@ -183,6 +263,209 @@ describe("VerticalDramaSeriesMemoryStateTab — disclosure is visually unmistaka
     expect(publicBadge.className).toMatch(/emerald/);
     expect(knownBadge.className).toMatch(/amber/);
     expect(undeclaredBadge.className).toMatch(/slate/);
+  });
+});
+
+describe("VerticalDramaSeriesMemoryStateTab — open-thread identity", () => {
+  it("shows the stable thread ID and planned resolution target on the open-thread card", () => {
+    const thread = {
+      threadId: "mystery-witness-captured",
+      description: "คนส่งคลิปปริศนายังถูกควบคุมตัวอยู่",
+      threadClass: "plot" as const,
+      openedEpisode: 20,
+      expectedResolution: "future_episode" as const,
+      expectedResolutionEpisode: 26,
+    };
+    const memory: VdSeriesMemory = {
+      ...emptyMemory(),
+      currentState: {
+        ...emptyMemory().currentState,
+        openThreads: [thread],
+      },
+    };
+
+    renderTab(memory, {
+      targetEpisodeCount: 30,
+      episodeRowCount: 25,
+      episodesWithRealScript: 25,
+      episodesWithMemory: 25,
+      episodesWithMemoryAndRealScript: 25,
+      provenanceDistinguishable: false,
+    });
+
+    const card = screen.getByTestId(
+      "vd-memory-thread-mystery-witness-captured"
+    );
+    expect(
+      within(card).getByTestId("vd-memory-thread-id-mystery-witness-captured")
+    ).toHaveTextContent("mystery-witness-captured");
+    expect(
+      within(card).getByTestId(
+        "vd-memory-thread-resolution-mystery-witness-captured"
+      )
+    ).toHaveTextContent("ตอนที่ 26");
+  });
+
+  it("shows the live memory status beside the seed status", () => {
+    const thread = {
+      threadId: "mystery-witness-captured",
+      label: "คนส่งคลิปปริศนา",
+      scope: "arc_thread" as const,
+      ownerCharacters: ["krit"],
+      plantEpisode: 20,
+      payoffWindow: { startEpisode: 23, endEpisode: 25 },
+      expectedEvidence: ["สร้อยกุญแจ"],
+      resolutionCost: "เปิดเผยความลับ",
+      status: "active" as const,
+    };
+    const memory: VdSeriesMemory = {
+      ...emptyMemory(),
+      episodes: [
+        {
+          episodeNumber: 20,
+          recap: "เปิดปม",
+          canonicalFacts: [],
+          threadsOpened: [{
+            threadId: thread.threadId,
+            description: thread.label,
+            threadClass: "plot" as const,
+            openedEpisode: 20,
+          }],
+          threadsResolved: [],
+          relationshipChanges: [],
+          knowledgeChanges: [],
+        },
+        {
+          episodeNumber: 25,
+          recap: "ปิดปม",
+          canonicalFacts: [],
+          threadsOpened: [],
+          threadsResolved: [thread.threadId],
+          relationshipChanges: [],
+          knowledgeChanges: [],
+        },
+      ],
+    };
+
+    renderTab(memory, {
+      targetEpisodeCount: 25,
+      episodeRowCount: 25,
+      episodesWithRealScript: 25,
+      episodesWithMemory: 2,
+      episodesWithMemoryAndRealScript: 2,
+      provenanceDistinguishable: false,
+    }, false, {
+      storyControlSeed: {
+        contractVersion: 1,
+        premiseAnchor: "แกนเรื่อง",
+        canonicalCharacterKeys: ["krit"],
+        threadCandidates: [thread],
+        romancePhaseSkeleton: [],
+        advantageIntent: [],
+      },
+      storyControlAudit: {
+        currentEpisode: 25,
+        threads: [{
+          threadId: thread.threadId,
+          label: thread.label,
+          status: "resolved",
+          seedStatus: "active",
+          scope: thread.scope,
+          ownerCharacters: thread.ownerCharacters,
+          plantEpisode: thread.plantEpisode,
+          payoffWindow: thread.payoffWindow,
+          expectedEvidence: thread.expectedEvidence,
+          resolutionCost: thread.resolutionCost,
+          openedEpisode: 20,
+          resolvedEpisode: 25,
+          reason: "The registered thread has a matched opening and resolution episode.",
+        }],
+        counts: {
+          registered: 0,
+          open: 0,
+          overdue: 0,
+          resolved: 1,
+          needs_review: 0,
+          legacy_unknown: 0,
+          missing_opening: 0,
+        },
+      },
+    });
+
+    expect(screen.getByTestId("vd-memory-control-thread-status-mystery-witness-captured"))
+      .toHaveTextContent("ปิดแล้วจาก memory");
+    expect(screen.getByTestId("vd-memory-control-thread-resolved-episode-mystery-witness-captured"))
+      .toHaveTextContent("คลี่คลายในตอน 25");
+  });
+
+  it("shows the resolved episode in an auditable resolved-thread history", () => {
+    const thread = {
+      threadId: "mystery-witness-captured",
+      description: "พยานลับถูกมัดอยู่ในห้องมืด",
+      threadClass: "plot" as const,
+      openedEpisode: 20,
+    };
+    const memory: VdSeriesMemory = {
+      ...emptyMemory(),
+      episodes: [
+        {
+          episodeNumber: 20,
+          recap: "เปิดปมพยานลับ",
+          canonicalFacts: [],
+          threadsOpened: [thread],
+          threadsResolved: [],
+          relationshipChanges: [],
+          knowledgeChanges: [],
+        },
+        {
+          episodeNumber: 25,
+          recap: "พยานให้การต่อทีม",
+          canonicalFacts: [],
+          threadsOpened: [],
+          threadsResolved: [thread.threadId],
+          relationshipChanges: [],
+          knowledgeChanges: [],
+        },
+      ],
+    };
+
+    renderTab(memory, {
+      targetEpisodeCount: 25,
+      episodeRowCount: 25,
+      episodesWithRealScript: 25,
+      episodesWithMemory: 2,
+      episodesWithMemoryAndRealScript: 2,
+      provenanceDistinguishable: false,
+    });
+
+    const history = screen.getByTestId("vd-memory-resolved-thread-history");
+    expect(within(history).getByText("mystery-witness-captured")).toBeInTheDocument();
+    expect(within(history).getByText(/เปิดตั้งแต่ตอน 20 · คลี่คลายในตอน 25/)).toBeInTheDocument();
+  });
+});
+
+describe("deriveResolvedThreadHistory", () => {
+  it("flags a resolution whose opening record is missing instead of hiding it", () => {
+    expect(
+      deriveResolvedThreadHistory([
+        {
+          episodeNumber: 25,
+          recap: "",
+          canonicalFacts: [],
+          threadsOpened: [],
+          threadsResolved: ["orphan-thread"],
+          relationshipChanges: [],
+          knowledgeChanges: [],
+        },
+      ])
+    ).toMatchObject([
+      {
+        threadId: "orphan-thread",
+        openedEpisode: null,
+        resolvedEpisode: 25,
+        source: "missing_opening",
+      },
+    ]);
   });
 });
 

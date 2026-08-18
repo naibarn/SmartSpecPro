@@ -35,6 +35,10 @@ import {
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import {
+  buildVerticalDramaDialogueLanguageProfilePrompt,
+  type VerticalDramaDialogueLanguageProfile,
+} from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import {
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -64,6 +68,11 @@ import {
 import { resolveStoryboardModel } from "./verticalDramaImproveScript";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 import { resolveVerticalDramaSupportingPresenceForShot } from "@shared/verticalDramaSeries/supportingPresence";
+import {
+  deriveVerticalDramaEpisodeRuntimeSeconds,
+  getActiveVerticalDramaShotDurations,
+  type VerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -394,7 +403,11 @@ export interface GenerateStoryboardShotgridParams {
   episodeTitle: string;
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
+  /** Shared series-level spoken-language/market contract for dialogue excerpts and subtitles. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   durationSeconds: number;
+  /** Optional authoritative vector for the 9 logical storyboard shots. */
+  durationPlan?: VerticalDramaDurationPlan;
   /** Flag-authorized compact look facts; raw provider fragments never enter storyboard authoring. */
   seriesLookRegister?: {
     styleName: string;
@@ -650,6 +663,11 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     params.locale === "th"
       ? "Write all human-readable string values (summaries, narrative_purpose, visual_description, dialogue_excerpt, subtitle_text, plain_text_storyboard) in natural Thai."
       : `Write all human-readable string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
+  const dialogueLanguageProfilePrompt =
+    buildVerticalDramaDialogueLanguageProfilePrompt({
+      locale: params.locale,
+      profile: params.dialogueLanguageProfile,
+    });
 
   const { storySource } = params;
   const charactersWithRef = params.characters.filter(c => c.referenceImageUrl);
@@ -806,6 +824,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     `Episode number: ${params.episodeNumber}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     langInstruction,
+    dialogueLanguageProfilePrompt,
     genreSection,
     seriesLookRegisterSection,
     storySource.workingTitle
@@ -838,7 +857,14 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
       "If the text explicitly says to intercut, switch views, show both environments, or places speakers on opposite sides/in different locations, detect it even when the words 'dual view' are absent.",
     ].join("\n"),
     twinPairInstruction,
-    `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
+    params.durationPlan &&
+    getActiveVerticalDramaShotDurations(params.durationPlan)
+      ? `Produce exactly 9 shots. The authoritative logical-shot duration vector is ${JSON.stringify(
+          getActiveVerticalDramaShotDurations(params.durationPlan),
+        )} seconds in shot order. Copy those values exactly into shots[].duration_seconds; their derived runtime is ${deriveVerticalDramaEpisodeRuntimeSeconds(
+          params.durationPlan,
+        )} seconds. Do not redistribute or invent durations.`
+      : `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
     sceneContractSection,
     identitySafeShotBoundariesSection,
@@ -911,6 +937,19 @@ export async function generateStoryboardShotgrid(
       schema: storyboardShotgridOutputSchema,
       label: "Storyboard shotgrid",
     });
+
+  // The selected profile is the production source of truth. Let the skill
+  // decide story meaning and shot content, but do not let a harmless numeric
+  // drift in one LLM field change the render contract. Legacy callers omit
+  // durationPlan and retain the historical sum-only behavior.
+  const authoritativeShotDurations = params.durationPlan
+    ? getActiveVerticalDramaShotDurations(params.durationPlan)
+    : null;
+  if (authoritativeShotDurations) {
+    storyboardData.shots.forEach((shot, index) => {
+      shot.duration_seconds = authoritativeShotDurations[index]!;
+    });
+  }
 
   // Normalize `characters` / `required_character_refs` / `screen_caller_refs` per shot — the LLM is
   // told to reference the exact `characterId`s listed in the prompt (see

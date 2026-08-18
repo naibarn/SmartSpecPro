@@ -15,6 +15,34 @@
     "story_context": {
       "type": "string"
     },
+    "casting_preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "region_mode": { "type": "string", "enum": ["auto", "preset"] },
+        "region_choice": { "type": "string" },
+        "look_mode": { "type": "string", "enum": ["auto", "preset"] },
+        "look_choice": { "type": "string" },
+        "additional_details": { "type": "string", "maxLength": 800 },
+        "precedence": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "story_market_context": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "content_locale": { "type": "string" },
+        "target_audience": { "type": "string" },
+        "story_setting_and_world": { "type": "string" },
+        "dialogue_language": { "type": "string" },
+        "visual_culture": { "type": "string" },
+        "genre": { "type": "string" },
+        "tone": { "type": "string" }
+      }
+    },
     "characters": {
       "type": "array",
       "minItems": 1,

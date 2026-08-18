@@ -13,6 +13,10 @@
  */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  computeDraftQualityQcReport,
+  fingerprintDraftQualityQcCandidate,
+} from "@shared/verticalDramaSeries/draftQualityQc";
 
 import { resolveCarryOverCharacters } from "@/components/verticalDramaSeries/CreateSeriesWizard";
 import {
@@ -33,6 +37,69 @@ const mockPlanningModelsQuery = vi.fn();
 const mockCarryOverMutate = vi.fn();
 const mockSpecialEditionMutate = vi.fn();
 const mockUploadMutate = vi.fn();
+const mockDraftQcEstimateQuery = vi.fn();
+const mockDraftQcStatusQuery = vi.fn();
+const mockDraftQcStartMutate = vi.fn();
+let mockDraftQcStatus: { data?: unknown } = { data: undefined };
+
+function makePassingDraftQcResult(draft: Record<string, unknown>) {
+  const report = computeDraftQualityQcReport(
+    {
+      criteria: [
+        "hook_strength",
+        "premise_core_conflict",
+        "vertical_drama_engine",
+        "escalation_twist_potential",
+        "character_emotional_engine",
+        "target_audience_market_fit",
+        "originality_differentiation",
+        "long_form_sustainability",
+      ].map(criterionId => ({
+        criterionId,
+        rawScore: 5,
+        evidence: "test evidence",
+      })) as never,
+      criticalFails: [],
+      strengths: ["clear hook"],
+      weaknesses: [],
+      recommendations: [],
+    },
+    "2026-08-12T00:00:00.000Z"
+  );
+  return {
+    best: {
+      draft,
+      report,
+      round: 0,
+      fingerprint: fingerprintDraftQualityQcCandidate(draft),
+    },
+    history: [
+      {
+        round: 0,
+        score: report.overallScore,
+        status: report.status,
+        kept: true,
+        reason: "passed",
+      },
+    ],
+    creditEstimate: {
+      baselineCalls: 1,
+      maxImprovementRounds: 3,
+      maxCalls: 7,
+      estimatedCredits: 7,
+      actualCredits: 1,
+    },
+    stopReason: "passed",
+    model: "test-model",
+  };
+}
+
+let mockSynthesizeMutationState: {
+  data: unknown;
+  isPending: boolean;
+  error?: { message?: string };
+} = { data: undefined, isPending: false };
+let mockDraftCompositionStatus: { data: any } = { data: undefined };
 
 let mockCarryOverMutationState: {
   data: unknown;
@@ -54,6 +121,128 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
+      getDraftCompositionStatus: {
+        useQuery: () =>
+          mockDraftCompositionStatus.data
+            ? mockDraftCompositionStatus
+            : mockSynthesizeMutationState.data
+              ? {
+                  data: {
+                    status: "ready_for_qc",
+                    result: mockSynthesizeMutationState.data,
+                  },
+                }
+              : mockDraftCompositionStatus,
+      },
+      getDraftWorkspaceStatus: { useQuery: () => ({ data: null }) },
+      startDraftComposition: {
+        useMutation: (opts: { onSuccess?: (data: unknown) => void }) => ({
+          mutate: (input: unknown) => {
+            mockSynthesizeMutate(input);
+            if (!mockSynthesizeMutationState.data) {
+              mockSynthesizeMutationState.data = {
+                draft: {
+                  contract_version: 1,
+                  title: "Generated Lineage Draft",
+                  titleOptions: [
+                    "Generated Lineage Draft",
+                    "Summer Promise",
+                    "The Returning Season",
+                    "Between Two Seasons",
+                  ],
+                  category: "drama_romance",
+                  logline: "generated lineage logline",
+                  mainPlot: "generated lineage main plot",
+                  seasonArc: "generated lineage season arc",
+                  tone: "generated lineage tone",
+                  cliffhangerStyle: "generated lineage cliffhanger",
+                  creatorSummary: {
+                    whatItIsAbout: "about",
+                    protagonistAndGoal: "goal",
+                    conflictAndDiscovery: "conflict",
+                    centralMystery: "mystery",
+                    decisionNotes: ["note"],
+                  },
+                  characters: [
+                    {
+                      name: "A",
+                      role: "Lead",
+                      description: "desc",
+                      narrativeRole: "protagonist",
+                      roleTier: "lead_female",
+                      occupation: "student",
+                    },
+                    {
+                      name: "B",
+                      role: "Support",
+                      description: "desc",
+                      narrativeRole: "supporting",
+                      roleTier: "support_memorable",
+                      occupation: "friend",
+                    },
+                    {
+                      name: "C",
+                      role: "Rival",
+                      description: "desc",
+                      narrativeRole: "antagonist",
+                      roleTier: "rival_male",
+                      occupation: "rival",
+                    },
+                  ],
+                  locations: [
+                    { name: "Campus", description: "campus" },
+                    { name: "Cafe", description: "cafe" },
+                    { name: "Home", description: "home" },
+                  ],
+                  visualBible: "generated lineage visual bible",
+                  warnings: [],
+                },
+              };
+            }
+            mockDraftCompositionStatus = {
+              data: {
+                status: "ready_for_qc",
+                result: mockSynthesizeMutationState.data,
+              },
+            };
+            opts.onSuccess?.({
+              jobId: "00000000-0000-4000-8000-000000000003",
+              deduped: false,
+            });
+          },
+          isPending: false,
+          reset: vi.fn(),
+          error: undefined,
+        }),
+      },
+      getDraftQualityQcEstimate: { useQuery: () => mockDraftQcEstimateQuery() },
+      getDraftQualityQcStatus: { useQuery: () => mockDraftQcStatusQuery() },
+      startDraftQualityQc: {
+        useMutation: (opts: { onSuccess?: (data: unknown) => void }) => ({
+          mutate: (input: unknown) => {
+            mockDraftQcStartMutate(input);
+            const draft = (input as { draft: Record<string, unknown> }).draft;
+            mockDraftQcStatus = {
+              data: {
+                status: "succeeded",
+                result: makePassingDraftQcResult(draft),
+              },
+            };
+            opts.onSuccess?.({
+              runId: "00000000-0000-4000-8000-000000000001",
+              deduped: false,
+              candidateFingerprint: fingerprintDraftQualityQcCandidate(draft),
+            });
+          },
+          isPending: false,
+        }),
+      },
+      cancelDraftQualityQc: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      selectDraftQualityQcCandidate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
       list: { useQuery: () => mockSeriesListQuery() },
       get: { useQuery: () => mockGetSeriesQuery() },
       getSeriesMemory: { useQuery: () => mockGetSeriesMemoryQuery() },
@@ -114,10 +303,49 @@ vi.mock("@/lib/trpc", () => ({
         }) => ({
           mutate: (input: unknown) => {
             mockSynthesizeMutate(input);
+            if (
+              !mockSynthesizeMutationState.data &&
+              !mockSynthesizeMutationState.error
+            ) {
+              mockSynthesizeMutationState.data = {
+                draft: {
+                  contract_version: 1,
+                  title: "Generated Lineage Draft",
+                  titleOptions: [
+                    "Generated Lineage Draft",
+                    "Summer Promise",
+                    "The Returning Season",
+                    "Between Two Seasons",
+                  ],
+                  category: "drama_romance",
+                  logline: "generated lineage logline",
+                  mainPlot: "generated lineage main plot",
+                  seasonArc: "generated lineage season arc",
+                  tone: "generated lineage tone",
+                  cliffhangerStyle: "generated lineage cliffhanger",
+                  characters: [
+                    { name: "A", role: "Lead", description: "desc" },
+                    { name: "B", role: "Support", description: "desc" },
+                    { name: "C", role: "Rival", description: "desc" },
+                  ],
+                  visualBible: "generated lineage visual bible",
+                  warnings: [],
+                },
+                creditsUsed: 1,
+                model: "test-model",
+              };
+            }
+            opts?.onSuccess?.(mockSynthesizeMutationState.data);
           },
-          data: undefined,
-          isPending: false,
-          error: undefined,
+          get data() {
+            return mockSynthesizeMutationState.data;
+          },
+          get isPending() {
+            return mockSynthesizeMutationState.isPending;
+          },
+          get error() {
+            return mockSynthesizeMutationState.error;
+          },
           reset: vi.fn(),
         }),
       },
@@ -158,8 +386,36 @@ import { CreateSeriesWizard } from "@/components/verticalDramaSeries/CreateSerie
 
 function renderWizard() {
   return render(
-    <CreateSeriesWizard open lang="th" onOpenChange={() => {}} onCreated={() => {}} />
+    <CreateSeriesWizard
+      open
+      lang="th"
+      onOpenChange={() => {}}
+      onCreated={() => {}}
+    />
   );
+}
+
+function satisfyDraftGate(title = "Lineage Test Series") {
+  if (!screen.queryByText(/^ชื่อซีรีย์/)) {
+    fireEvent.click(screen.getByRole("button", { name: /1\. ตั้งค่าพื้นฐาน/ }));
+  }
+  const titleInput = screen
+    .getByText(/^ชื่อซีรีย์/)
+    .closest("div")
+    ?.querySelector("input") as HTMLInputElement;
+  if (!titleInput.value) {
+    fireEvent.change(titleInput, { target: { value: title } });
+  }
+  fireEvent.click(screen.getByRole("button", { name: /ให้ AI สร้าง/ }));
+  const qcButton = screen.queryByRole("button", { name: "เริ่มตรวจ QC" });
+  if (qcButton && !qcButton.hasAttribute("disabled")) {
+    fireEvent.click(qcButton);
+    const confirmQcButton = screen.queryByRole("button", {
+      name: "ยืนยันและเริ่ม",
+    });
+    if (confirmQcButton) fireEvent.click(confirmQcButton);
+  }
+  fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
 }
 
 const parentSeriesRow = {
@@ -204,16 +460,47 @@ const carryOverDraft = {
 };
 
 beforeEach(() => {
+  sessionStorage.clear();
   vi.clearAllMocks();
   mockUseTenantFeatureFlag.mockReturnValue(true);
-  mockListGenrePresetsQuery.mockReturnValue({ data: { presets: [] }, isLoading: false });
-  mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
-  mockSeriesListQuery.mockReturnValue({
-    data: { series: [{ id: "16", title: parentSeriesRow.title, status: "active", targetEpisodeCount: 30 }] },
+  mockListGenrePresetsQuery.mockReturnValue({
+    data: { presets: [] },
     isLoading: false,
   });
-  mockGetSeriesQuery.mockReturnValue({ data: { series: parentSeriesRow }, isLoading: false });
+  mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+  mockDraftQcEstimateQuery.mockReturnValue({
+    data: {
+      model: "test-model",
+      baselineCalls: 1,
+      maxImprovementRounds: 3,
+      maxCalls: 7,
+      estimatedCredits: 7,
+      actualCredits: 0,
+    },
+    isLoading: false,
+  });
+  mockDraftQcStatus = { data: undefined };
+  mockDraftQcStatusQuery.mockImplementation(() => mockDraftQcStatus);
+  mockSeriesListQuery.mockReturnValue({
+    data: {
+      series: [
+        {
+          id: "16",
+          title: parentSeriesRow.title,
+          status: "active",
+          targetEpisodeCount: 30,
+        },
+      ],
+    },
+    isLoading: false,
+  });
+  mockGetSeriesQuery.mockReturnValue({
+    data: { series: parentSeriesRow },
+    isLoading: false,
+  });
   mockPlanningModelsQuery.mockReturnValue({ data: [], isLoading: false });
+  mockSynthesizeMutationState = { data: undefined, isPending: false };
+  mockDraftCompositionStatus = { data: undefined };
   mockGetSeriesMemoryQuery.mockReturnValue({
     data: {
       memory: { episodes: [] },
@@ -229,7 +516,10 @@ beforeEach(() => {
   });
   mockCarryOverMutationState = { data: undefined, isPending: false };
   mockSpecialEditionMutationState = { data: undefined, isPending: false };
-  mockUploadMutate.mockResolvedValue({ url: "https://x.test/a.jpg", fileType: "image/jpeg" });
+  mockUploadMutate.mockResolvedValue({
+    url: "https://x.test/a.jpg",
+    fileType: "image/jpeg",
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -280,7 +570,12 @@ describe("resolveCarryOverCharacters", () => {
           availability: "returns",
         },
       ],
-      { a: { availability: "returns_with_explanation", returnJustification: "earned release" } }
+      {
+        a: {
+          availability: "returns_with_explanation",
+          returnJustification: "earned release",
+        },
+      }
     );
     expect(result[0]).toEqual({
       characterKey: "a",
@@ -303,16 +598,17 @@ describe("CreateSeriesWizard — original mode stays byte-identical with the lin
     // The toggle itself is the only additive thing — assert it renders...
     expect(screen.getByText("ภาค 2 / ภาคถัดไป")).toBeInTheDocument();
     // ...but every existing basic-step field is present and untouched.
-    expect(screen.getByText("ชื่อซีรีย์ *")).toBeInTheDocument();
+    expect(screen.getByText(/^ชื่อซีรีย์/)).toBeInTheDocument();
     expect(
       screen.getByText("จำนวนตอนย่อย (Sub-episode) ในโครงสร้างเรื่อง")
     ).toBeInTheDocument();
 
     const titleInput = screen
-      .getByText("ชื่อซีรีย์ *")
+      .getByText(/^ชื่อซีรีย์/)
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Untouched Series" } });
+    satisfyDraftGate();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -345,7 +641,9 @@ describe("CreateSeriesWizard — original mode stays byte-identical with the lin
 describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
   function switchToSequelAndPickParent() {
     fireEvent.click(screen.getByRole("button", { name: "ภาค 2 / ภาคถัดไป" }));
-    fireEvent.click(screen.getByRole("combobox", { name: "เลือกซีรีส์ต้นฉบับ" }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "เลือกซีรีส์ต้นฉบับ" })
+    );
     fireEvent.click(screen.getByText(parentSeriesRow.title));
   }
 
@@ -354,10 +652,11 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     fireEvent.click(screen.getByRole("button", { name: "ภาค 2 / ภาคถัดไป" }));
 
     const titleInput = screen
-      .getByText("ชื่อซีรีย์ *")
+      .getByText(/^ชื่อซีรีย์/)
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Season 2" } });
+    satisfyDraftGate();
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     const createButton = screen.getByRole("button", {
@@ -400,7 +699,7 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
           createMode: "sequel",
           priorSeasonSummary: parentSeriesRow.memory.compactSummary,
         }),
-      }),
+      })
     );
   });
 
@@ -408,20 +707,17 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     renderWizard();
     switchToSequelAndPickParent();
 
-    fireEvent.change(
-      screen.getByPlaceholderText(
-        /อยากได้เรื่องเกี่ยวกับอะไร แนวไหน เกิดที่ไหน/,
-      ),
-      {
-        target: {
-          value: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
-        },
-      },
-    );
+    const premiseLabel = screen.getByText(/^โจทย์ภาคใหม่ที่อยากได้/);
+    const premiseTextarea = premiseLabel
+      .closest("div")
+      ?.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(premiseTextarea, {
+      target: { value: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน" },
+    });
     fireEvent.click(
       screen.getByRole("button", {
         name: /ให้ AI สร้างภาคต่อจากเรื่องเดิม \+ โจทย์/,
-      }),
+      })
     );
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
@@ -433,13 +729,14 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
           createMode: "sequel",
           priorSeasonSummary: parentSeriesRow.memory.compactSummary,
         }),
-      }),
+      })
     );
   });
 
   it("clicking the propose CTA calls `proposeSeasonCarryOver` with the chosen parent", () => {
     renderWizard();
     switchToSequelAndPickParent();
+    satisfyDraftGate();
 
     fireEvent.click(screen.getByRole("button", { name: /ตัวละคร/ }));
     fireEvent.click(
@@ -464,15 +761,20 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     };
     renderWizard();
     switchToSequelAndPickParent();
+    satisfyDraftGate();
     fireEvent.click(screen.getByRole("button", { name: /ตัวละคร/ }));
 
     expect(
       screen.getByTestId("vd-carryover-character-char_wain")
     ).toBeInTheDocument();
-    expect(screen.getByTestId("vd-memory-disclosure-public")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-memory-disclosure-public")
+    ).toBeInTheDocument();
     expect(screen.getByText("รีโนเวทบ้านยังไม่เสร็จ")).toBeInTheDocument();
     // Regenerate CTA (not the first-time propose label) once a draft exists.
-    expect(screen.getByRole("button", { name: "เสนอใหม่" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "เสนอใหม่" })
+    ).toBeInTheDocument();
   });
 
   it("editing a character's availability flows into the create `lineage.carryOver.characters`", () => {
@@ -491,10 +793,11 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     switchToSequelAndPickParent();
 
     const titleInput = screen
-      .getByText("ชื่อซีรีย์ *")
+      .getByText(/^ชื่อซีรีย์/)
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Season 2" } });
+    satisfyDraftGate();
 
     fireEvent.click(screen.getByRole("button", { name: /ตัวละคร/ }));
 
@@ -526,7 +829,9 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
 describe("CreateSeriesWizard — special edition (ภาคพิเศษ)", () => {
   function switchToSpecialAndPickParent() {
     fireEvent.click(screen.getByRole("button", { name: "ภาคพิเศษ" }));
-    fireEvent.click(screen.getByRole("combobox", { name: "เลือกซีรีส์ต้นฉบับ" }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "เลือกซีรีส์ต้นฉบับ" })
+    );
     fireEvent.click(screen.getByText(parentSeriesRow.title));
   }
 
@@ -544,13 +849,16 @@ describe("CreateSeriesWizard — special edition (ภาคพิเศษ)", ()
   it("shows the marketplace picker (query enabled) + upload + story-function sources", () => {
     renderWizard();
     switchToSpecialAndPickParent();
+    satisfyDraftGate();
 
     // Source 3 — story function, on the Story step.
     fireEvent.click(screen.getByRole("button", { name: /โครงเรื่อง|จะรีวิว/ }));
     expect(screen.getByText("รีวิวตรงไปตรงมา")).toBeInTheDocument();
 
     // Sources 1+2 — Product step.
-    fireEvent.click(screen.getByRole("button", { name: /สินค้าผูกเรื่อง|แหล่งข้อมูล/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สินค้าผูกเรื่อง|แหล่งข้อมูล/ })
+    );
     expect(mockListProductsQuery).toHaveBeenCalled();
     expect(screen.getByText("2. อัปโหลดรูป + สรุป")).toBeInTheDocument();
   });
@@ -578,10 +886,11 @@ describe("CreateSeriesWizard — special edition (ภาคพิเศษ)", ()
     switchToSpecialAndPickParent();
 
     const titleInput = screen
-      .getByText("ชื่อซีรีย์ *")
+      .getByText(/^ชื่อซีรีย์/)
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Special 1" } });
+    satisfyDraftGate();
 
     fireEvent.click(screen.getByRole("button", { name: /โครงเรื่อง|จะรีวิว/ }));
     fireEvent.click(screen.getByRole("radio", { name: "รีวิวตรงไปตรงมา" }));
@@ -591,15 +900,24 @@ describe("CreateSeriesWizard — special edition (ภาคพิเศษ)", ()
     fireEvent.click(screen.getByRole("button", { name: "ร่างใหม่" }));
 
     expect(mockSpecialEditionMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ parentSeriesId: "16", storyFunctionChoice: "review" })
+      expect.objectContaining({
+        parentSeriesId: "16",
+        storyFunctionChoice: "review",
+      })
     );
 
-    const premiseTextarea = screen.getByText("โจทย์ที่ AI ร่างให้ (แก้ไขได้ก่อนสร้าง)")
+    const premiseTextarea = screen
+      .getByText("โจทย์ที่ AI ร่างให้ (แก้ไขได้ก่อนสร้าง)")
       .closest("div")
       ?.querySelector("textarea") as HTMLTextAreaElement;
     expect(premiseTextarea.value).toBe("ร้านกาแฟใหม่ในซอย — รีวิวสั้น ๆ");
 
-    fireEvent.change(premiseTextarea, { target: { value: "แก้ไขโดยผู้ใช้เอง" } });
+    fireEvent.change(premiseTextarea, {
+      target: { value: "แก้ไขโดยผู้ใช้เอง" },
+    });
+    // Editing any source field invalidates the applied draft; regenerate and
+    // re-apply before using the forward/review flow.
+    satisfyDraftGate("Special 1");
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -616,10 +934,11 @@ describe("CreateSeriesWizard — special edition (ภาคพิเศษ)", ()
     switchToSpecialAndPickParent();
 
     const titleInput = screen
-      .getByText("ชื่อซีรีย์ *")
+      .getByText(/^ชื่อซีรีย์/)
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Special upload test" } });
+    satisfyDraftGate();
 
     // Source 2 — upload a reference image on the Product step.
     fireEvent.click(
@@ -634,9 +953,7 @@ describe("CreateSeriesWizard — special edition (ภาคพิเศษ)", ()
     await screen.findByText("photo.png");
 
     // Source 3 — story-function choice on the Story step.
-    fireEvent.click(
-      screen.getByRole("button", { name: /โครงเรื่อง|จะรีวิว/ })
-    );
+    fireEvent.click(screen.getByRole("button", { name: /โครงเรื่อง|จะรีวิว/ }));
     fireEvent.click(
       screen.getByRole("radio", { name: "ผูกเป็นทางออกในเนื้อเรื่อง" })
     );
@@ -652,7 +969,11 @@ describe("CreateSeriesWizard — special edition (ภาคพิเศษ)", ()
     // `rawProductTieIn.storyFunctionChoice` inside `verticalDramaSeries.ts`'s
     // `create` handler (fed into `buildSpecialEditionProductTieInConfig`).
     expect(call.productTieIn.uploadedReferences).toEqual([
-      { url: "https://x.test/a.jpg", mimeType: "image/jpeg", fileName: "photo.png" },
+      {
+        url: "https://x.test/a.jpg",
+        mimeType: "image/jpeg",
+        fileName: "photo.png",
+      },
     ]);
     expect(call.productTieIn.storyFunctionChoice).toBe("tie_in_solution");
     expect(call.productTieIn.enabled).toBe(true);

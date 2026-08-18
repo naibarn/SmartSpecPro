@@ -136,6 +136,10 @@ import { trpc } from "@/lib/trpc";
 import { VERTICAL_DRAMA_SILENCE_INTENTS } from "@shared/verticalDramaSeries/contentBudget";
 import { VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK } from "@shared/verticalDramaSeries/assembly";
 import {
+  getActiveVerticalDramaShotDurations,
+  type VerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
+import {
   analyzeVerticalDramaLineSpeakability,
   estimateVerticalDramaSpeechSeconds,
   targetVerticalDramaSpeechSeconds,
@@ -608,8 +612,13 @@ export function readDeepDraftManualSummaryEditShotNumbers(item: unknown): number
  * duration model — this IS the one the badge's own numbers already trace
  * back to.
  */
-export function resolveManualDialogueEditShotDurationSeconds(shotNumber: number): number {
-  const durations = VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK.shotDurationsSeconds;
+export function resolveManualDialogueEditShotDurationSeconds(
+  shotNumber: number,
+  durationPlan?: VerticalDramaDurationPlan,
+): number {
+  const durations =
+    getActiveVerticalDramaShotDurations(durationPlan) ??
+    VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK.shotDurationsSeconds;
   const index = Math.min(Math.max(shotNumber - 1, 0), durations.length - 1);
   return durations[index] ?? 0;
 }
@@ -1673,6 +1682,7 @@ function ManualDialogueEditShotForm({
   lang,
   episodeNumber,
   shotNumber,
+  durationPlan,
   summaryValue,
   originalSummary,
   lines,
@@ -1690,6 +1700,7 @@ function ManualDialogueEditShotForm({
   lang: VerticalDramaLang;
   episodeNumber: number;
   shotNumber: number;
+  durationPlan?: VerticalDramaDurationPlan;
   summaryValue: string;
   originalSummary: string;
   lines: ManualDialogueEditDraftLine[];
@@ -1705,7 +1716,7 @@ function ManualDialogueEditShotForm({
   onSave: () => void;
 }) {
   const targetSeconds = targetVerticalDramaSpeechSeconds(
-    resolveManualDialogueEditShotDurationSeconds(shotNumber),
+    resolveManualDialogueEditShotDurationSeconds(shotNumber, durationPlan),
   );
   const liveSeconds = lines.reduce((sum, row) => sum + estimateVerticalDramaSpeechSeconds(row.line), 0);
   const liveStatus = classifyManualDialogueEditLiveSpeechCoverage(liveSeconds, targetSeconds);
@@ -1926,6 +1937,8 @@ export interface VerticalDramaDeepStoryDraftEpisodeDetailProps {
    * source the Overview card's existing "ดูตอนจริงที่สร้างแล้ว..." link uses.
    */
   episodeAlreadyCreated?: boolean;
+  /** Selected nine-shot duration profile; legacy callers use the safe fallback. */
+  durationPlan?: VerticalDramaDurationPlan;
 }
 
 /**
@@ -1955,6 +1968,7 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
   item,
   readOnly = false,
   episodeAlreadyCreated = false,
+  durationPlan,
 }: VerticalDramaDeepStoryDraftEpisodeDetailProps) {
   const utils = trpc.useUtils();
   const [editingShotNumber, setEditingShotNumber] = useState<number | null>(null);
@@ -2222,6 +2236,7 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
                     lang={lang}
                     episodeNumber={episodeNumber}
                     shotNumber={shot.shot_number}
+                    durationPlan={durationPlan}
                     summaryValue={summaryDraft}
                     originalSummary={shot.summary}
                     lines={draftLines}

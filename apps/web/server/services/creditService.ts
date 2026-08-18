@@ -124,11 +124,97 @@ export interface AddCreditsParams {
   conversationId?: number;
   skillSlug?: string;
   sourceType?: CreditSourceType;
+  /** Marks a positive signup/invite grant as eligible for inactivity policy. */
+  freeCreditGrant?: boolean;
 }
 
 export interface CreditBalance {
   credits: number;
   plan: string;
+}
+
+/**
+ * Transaction-scoped credit grant used by billing approval flows that must
+ * commit the balance, ledger, and business-effect state atomically.
+ */
+export async function addCreditsWithinTransaction(
+  tx: any,
+  params: AddCreditsParams,
+) {
+  const { userId, amount, type, description, referenceId, metadata, idempotencyKey } = params;
+  if (amount <= 0) {
+    throw new Error("Amount must be positive");
+  }
+
+  // Lock the balance row before checking idempotency. This prevents two
+  // concurrent grants from both incrementing the balance before one of their
+  // ledger inserts discovers the unique idempotency key.
+  const [lockedUser] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, userId))
+    .for("update");
+  if (!lockedUser) {
+    throw new Error("User not found");
+  }
+
+  if (idempotencyKey) {
+    const [existing] = await tx
+      .select({ id: creditTransactions.id, amount: creditTransactions.amount, balanceAfter: creditTransactions.balanceAfter })
+      .from(creditTransactions)
+      .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
+      .limit(1);
+    if (existing) {
+      return {
+        success: true,
+        creditsAdded: Math.abs(existing.amount),
+        newBalance: existing.balanceAfter,
+        transactionId: existing.id,
+        duplicate: true,
+      };
+    }
+  }
+
+  const [result] = await tx
+    .update(users)
+    .set({
+      credits: sql`${users.credits} + ${amount}`,
+      ...(params.freeCreditGrant
+        ? { freeCreditGrantedAt: sql`COALESCE(${users.freeCreditGrantedAt}, ${new Date()})` }
+        : {}),
+      ...(type === "purchase"
+        ? { freeCreditPolicyCancelledAt: sql`COALESCE(${users.freeCreditPolicyCancelledAt}, ${new Date()})` }
+        : {}),
+    })
+    .where(eq(users.id, userId))
+    .returning({ newBalance: users.credits });
+
+  if (!result) {
+    throw new Error("User not found");
+  }
+
+  const [txRecord] = await tx.insert(creditTransactions).values({
+    userId,
+    amount,
+    type,
+    description,
+    metadata,
+    balanceAfter: result.newBalance,
+    referenceId,
+    idempotencyKey: idempotencyKey ?? null,
+    traceId: clampCreditTraceId(getTraceId() ?? null),
+    conversationId: params.conversationId ?? null,
+    skillSlug: params.skillSlug ?? null,
+    sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
+  }).returning({ id: creditTransactions.id });
+
+  return {
+    success: true,
+    creditsAdded: amount,
+    newBalance: result.newBalance,
+    transactionId: txRecord?.id ?? 0,
+    duplicate: false,
+  };
 }
 
 const OCR_SERVICE_KEYS = ["library.ocr", "finance.ocr", "chat.ocr"] as const;
@@ -501,7 +587,11 @@ export async function deductCredits(params: DeductCreditsParams) {
           credits: sql`${users.credits} - ${amount}`,
           lastCreditUsedAt: new Date(),
         })
-        .where(and(eq(users.id, userId), gte(users.credits, amount)))
+        .where(and(
+          eq(users.id, userId),
+          eq(users.isDisabled, false),
+          gte(users.credits, amount),
+        ))
         .returning({ newBalance: users.credits });
 
       if (!result) {
@@ -512,7 +602,10 @@ export async function deductCredits(params: DeductCreditsParams) {
           .where(eq(users.id, userId))
           .limit(1);
         if (!user) throw new Error("User not found");
-        throw new Error("Insufficient credits");
+        // Preserve the authoritative requested amount so the central
+        // feedback policy can distinguish an ordinary user shortfall from an
+        // anomalously large deduction after router wrappers normalize errors.
+        throw new Error(`Insufficient credits. Required: ${amount}`);
       }
 
       newBalance = result.newBalance;
@@ -626,35 +719,9 @@ export async function addCredits(params: AddCreditsParams) {
 
   try {
     await db.transaction(async (tx) => {
-      // Atomic addition
-      const [result] = await tx
-        .update(users)
-        .set({ credits: sql`${users.credits} + ${amount}` })
-        .where(eq(users.id, userId))
-        .returning({ newBalance: users.credits });
-
-      if (!result) {
-        throw new Error("User not found");
-      }
-
-      newBalance = result.newBalance;
-
-      const [txRecord] = await tx.insert(creditTransactions).values({
-        userId,
-        amount, // Positive for additions
-        type,
-        description,
-        metadata,
-        balanceAfter: newBalance,
-        referenceId,
-        idempotencyKey: idempotencyKey ?? null,
-        traceId: clampCreditTraceId(getTraceId() ?? null),
-        conversationId: params.conversationId ?? null,
-        skillSlug: params.skillSlug ?? null,
-        sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
-      }).returning({ id: creditTransactions.id });
-
-      transactionId = txRecord?.id || 0;
+      const granted = await addCreditsWithinTransaction(tx, params);
+      newBalance = granted.newBalance;
+      transactionId = granted.transactionId;
     });
   } catch (err: any) {
     if (idempotencyKey && isIdempotencyKeyUniqueViolation(err)) {
@@ -1202,12 +1269,16 @@ export async function getUsageStats(userId: number, days: number = 30) {
  * Give signup bonus credits to new user
  */
 export async function giveSignupBonus(userId: number, bonusAmount: number = 100) {
+  if (bonusAmount <= 0) {
+    return { success: true, creditsAdded: 0, newBalance: 0, transactionId: 0 };
+  }
   return addCredits({
     userId,
     amount: bonusAmount,
     type: "bonus",
     description: "Welcome bonus credits",
     metadata: { reason: "signup" },
+    freeCreditGrant: true,
   });
 }
 

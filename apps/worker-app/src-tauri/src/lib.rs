@@ -1,3 +1,4 @@
+pub mod comfy_executor;
 pub mod commands;
 pub mod control_plane;
 pub mod credentials;
@@ -82,10 +83,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir().ok();
-            let settings = data_dir
-                .as_deref()
-                .map(load_settings)
-                .unwrap_or_default();
+            let settings = data_dir.as_deref().map(load_settings).unwrap_or_default();
             // The first line of every run. Answers, without asking the user to
             // reproduce anything: did the app start at all, was it started by
             // Windows sign-in (the Run key is set) or by hand, from which
@@ -172,6 +170,7 @@ pub fn run() {
             commands::worker_app_configure_startup,
             commands::worker_app_get_diagnostics_log,
             commands::worker_app_open_file,
+            commands::worker_app_install_update,
             commands::worker_app_open_url,
             commands::worker_app_run_manual_command,
         ])

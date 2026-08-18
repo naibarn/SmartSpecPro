@@ -138,4 +138,68 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
     expect(onSetShotLocationVariant).toHaveBeenCalledWith(1, "701");
     expect(onSetShotLocation).not.toHaveBeenCalled();
   });
+
+  it("explains prompt success separately from image failure and exposes retry actions", () => {
+    const onRetryStartFrameImage = vi.fn();
+    const onRetryStartFrameSync = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        startFramePlan={{
+          ...baseProps.startFramePlan,
+          frames: [
+            {
+              ...baseProps.startFramePlan.frames[0],
+              imageTask: {
+                status: "failed",
+                failureStage: "provider",
+                lastTaskId: "task-1",
+                error: "Provider timeout",
+              },
+            },
+          ],
+        }}
+        onRetryStartFrameImage={onRetryStartFrameImage}
+        onRetryStartFrameSync={onRetryStartFrameSync}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-image-status-1")
+    ).toHaveTextContent("สร้าง prompt แล้ว แต่สร้างภาพไม่สำเร็จ");
+    fireEvent.click(screen.getByRole("button", { name: "สร้างภาพใหม่" }));
+    expect(onRetryStartFrameImage).toHaveBeenCalledWith(1);
+    expect(
+      screen.queryByRole("button", { name: "ลองเชื่อมภาพอีกครั้ง" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers a no-credit sync retry for a completed provider task", () => {
+    const onRetryStartFrameSync = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        startFramePlan={{
+          ...baseProps.startFramePlan,
+          frames: [
+            {
+              ...baseProps.startFramePlan.frames[0],
+              imageTask: {
+                status: "failed",
+                failureStage: "sync",
+                lastTaskId: "task-2",
+                error: "Asset import failed",
+              },
+            },
+          ],
+        }}
+        onRetryStartFrameSync={onRetryStartFrameSync}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "ลองเชื่อมภาพอีกครั้ง" })
+    );
+    expect(onRetryStartFrameSync).toHaveBeenCalledWith(1);
+  });
 });

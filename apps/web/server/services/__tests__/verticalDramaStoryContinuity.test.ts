@@ -29,14 +29,18 @@ describe("validateVerticalDramaContinuity", () => {
   it("quarantines orphan resolutions without changing valid lifecycle records", () => {
     const result = normalizeVerticalDramaContinuityTimeline([
       memory(11, [], ["orphan"]),
-      memory(12, [
-        {
-          threadId: "real-thread",
-          description: "A real payoff",
-          threadClass: "plot",
-          openedEpisode: 12,
-        },
-      ], ["real-thread"]),
+      memory(
+        12,
+        [
+          {
+            threadId: "real-thread",
+            description: "A real payoff",
+            threadClass: "plot",
+            openedEpisode: 12,
+          },
+        ],
+        ["real-thread"]
+      ),
     ]);
 
     expect(result.episodes[0]?.threadsResolved).toEqual([]);
@@ -49,20 +53,24 @@ describe("validateVerticalDramaContinuity", () => {
       }),
     ]);
     expect(
-      validateVerticalDramaContinuity({ episodes: result.episodes }).ok,
+      validateVerticalDramaContinuity({ episodes: result.episodes }).ok
     ).toBe(true);
   });
 
   it("allows an opening and its resolution in the same episode", () => {
     const result = normalizeVerticalDramaContinuityTimeline([
-      memory(4, [
-        {
-          threadId: "same-episode",
-          description: "A short-lived problem",
-          threadClass: "plot",
-          openedEpisode: 4,
-        },
-      ], ["same-episode"]),
+      memory(
+        4,
+        [
+          {
+            threadId: "same-episode",
+            description: "A short-lived problem",
+            threadClass: "plot",
+            openedEpisode: 4,
+          },
+        ],
+        ["same-episode"]
+      ),
     ]);
 
     expect(result.quarantinedResolutions).toEqual([]);
@@ -98,15 +106,48 @@ describe("validateVerticalDramaContinuity", () => {
         reason: "duplicate_opening",
       }),
     ]);
-    expect(validateVerticalDramaContinuity({ episodes: result.episodes }).ok).toBe(
-      true,
-    );
+    expect(
+      validateVerticalDramaContinuity({ episodes: result.episodes }).ok
+    ).toBe(true);
+  });
+
+  it("promotes an exact repeated season declaration to the original opening", () => {
+    const result = normalizeVerticalDramaContinuityTimeline([
+      memory(1, [
+        {
+          threadId: "will-conditions",
+          description: "The original will condition",
+          threadClass: "career",
+        },
+      ]),
+      memory(10, [
+        {
+          threadId: "will-conditions",
+          description: "The same canonical thread continues next season",
+          threadClass: "career",
+          expectedResolution: "season",
+        },
+      ]),
+    ]);
+
+    expect(result.quarantinedOpenings).toEqual([]);
+    expect(result.episodes[0]?.threadsOpened[0]).toMatchObject({
+      threadId: "will-conditions",
+      expectedResolution: "season",
+    });
+    expect(result.episodes[1]?.threadsOpened).toEqual([]);
+    expect(
+      validateVerticalDramaContinuity({
+        episodes: result.episodes,
+        seasonEndEpisode: 10,
+      }).ok
+    ).toBe(true);
   });
 
   it("does not include future episode memories in the current episode timeline", () => {
     const timeline = selectPriorVerticalDramaMemories(
       [memory(4), memory(5), memory(6)],
-      5,
+      5
     );
 
     expect(timeline.map(episode => episode.episodeNumber)).toEqual([4]);
@@ -132,6 +173,34 @@ describe("validateVerticalDramaContinuity", () => {
     expect(result.ok).toBe(true);
     expect(result.openThreads.map(thread => thread.threadId)).toEqual([
       "mystery-witness-captured",
+    ]);
+  });
+
+  it("flags a non-season thread once its declared payoff episode is due", () => {
+    const result = validateVerticalDramaContinuity({
+      episodes: [
+        memory(3, [
+          {
+            threadId: "customer-fit-reset",
+            description: "The customer-fit decision must pay off",
+            threadClass: "plot",
+            openedEpisode: 3,
+            expectedResolution: "future_episode",
+            expectedResolutionEpisode: 4,
+          },
+        ]),
+        memory(4),
+      ],
+      currentEpisodeNumber: 4,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        code: "thread_due_unresolved",
+        threadId: "customer-fit-reset",
+        episodeNumber: 4,
+      }),
     ]);
   });
 
@@ -268,7 +337,9 @@ describe("auditVerticalDramaStoryControl", () => {
       ],
     });
 
-    expect(result.threads.map(thread => [thread.threadId, thread.status])).toEqual([
+    expect(
+      result.threads.map(thread => [thread.threadId, thread.status])
+    ).toEqual([
       ["sender", "resolved"],
       ["mystery-open", "overdue"],
       ["legacy-hook", "legacy_unknown"],

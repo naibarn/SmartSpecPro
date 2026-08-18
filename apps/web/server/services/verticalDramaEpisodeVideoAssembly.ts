@@ -44,10 +44,12 @@ import fs from "fs";
 import fsp from "fs/promises";
 import os from "os";
 import path from "path";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaEpisodes } from "../../drizzle/schema";
-import { storagePutFromPath } from "../storage";
+import { storagePutFromPath, storageStreamFile } from "../storage";
 import type { VerticalDramaMotionPromptPack } from "@shared/verticalDramaSeries";
 import { resolveCanonicalShotAssembly } from "@shared/verticalDramaSeries/assemblyReadiness";
 import type { VdAdBannerPlacementId } from "@shared/verticalDramaSeries/adBannerPresets";
@@ -598,6 +600,39 @@ export async function downloadClipToFile(
   destPath: string,
   internalBaseUrl: string
 ): Promise<void> {
+  const managedStorageKey = extractVerticalDramaManagedStorageKey(videoUrl);
+  // Some lightweight consumers mock the storage module without the streaming
+  // export; keep the existing HTTP fallback for those environments.
+  let readManagedStorage: typeof storageStreamFile | undefined;
+  try {
+    readManagedStorage = storageStreamFile;
+  } catch {
+    readManagedStorage = undefined;
+  }
+  if (
+    managedStorageKey &&
+    typeof readManagedStorage === "function" &&
+    !managedStorageKey.startsWith("auto-team-media/")
+  ) {
+    // The storage proxy intentionally requires an authenticated browser or
+    // service request. Render workers have neither, so read the managed object
+    // through the trusted server-side storage layer instead of making an
+    // unauthenticated HTTP request that returns 404. Callers validate episode
+    // ownership before entering this render path.
+    const stored = await readManagedStorage(managedStorageKey);
+    if (stored) {
+      const output = fs.createWriteStream(destPath);
+      const stream = stored.stream as any;
+      await pipeline(
+        typeof stream?.pipe === "function"
+          ? stream
+          : Readable.fromWeb(stream),
+        output
+      );
+      return;
+    }
+  }
+
   const absoluteUrl = /^https?:\/\//i.test(videoUrl)
     ? videoUrl
     : new URL(videoUrl, internalBaseUrl).toString();
@@ -624,6 +659,9 @@ export function normalizeVerticalDramaStoredAssetUrl(videoUrl: string | null | u
   }
   try {
     const parsed = new URL(value);
+    if (parsed.pathname.startsWith("/api/storage/files/")) {
+      return parsed.pathname;
+    }
     const marker = "/worker-artifacts/";
     const markerIndex = parsed.pathname.indexOf(marker);
     if (markerIndex >= 0) {
@@ -659,6 +697,11 @@ export function extractVerticalDramaManagedStorageKey(
   }
   try {
     const parsed = new URL(value);
+    const proxyMarker = "/api/storage/files/";
+    if (parsed.pathname.startsWith(proxyMarker)) {
+      const key = parsed.pathname.slice(proxyMarker.length);
+      return key ? decodeURIComponent(key) : null;
+    }
     const marker = "/worker-artifacts/";
     const markerIndex = parsed.pathname.indexOf(marker);
     if (markerIndex < 0) return null;

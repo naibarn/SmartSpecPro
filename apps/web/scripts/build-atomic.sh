@@ -17,12 +17,13 @@
 # not invalidate open fds). New requests either see the fully-old tree or the
 # fully-new tree — never a half-built one.
 #
-# This script does NOT touch the default `npm run build` / `vite.config.ts`
-# semantics. It is an alternative entry point for deploys.
+# This script is the default `npm run build` entry point. The direct Vite
+# command remains available as `npm run build:unsafe` for local-only work where
+# no server is serving dist/public.
 #
 # Usage:
 #   apps/web/scripts/build-atomic.sh
-#   (or) npm run build:deploy   (from apps/web)
+#   (or) npm run build / npm run build:deploy   (from apps/web)
 #
 # After it completes, restart the service to load new server-side code:
 #   sudo systemctl restart smartspec-web.service
@@ -35,13 +36,31 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."   # apps/web
 WEB_DIR="$(pwd)"
 
-STAGING_DIR="${WEB_DIR}/dist-staging"
+# Do not allow two deploy builds to remove/recreate the same staging tree or
+# race while swapping the live tree. `flock` is provided by util-linux on the
+# supported Linux hosts; fail clearly if the host is missing it.
+if ! command -v flock >/dev/null 2>&1; then
+  echo "[build-atomic] ERROR: flock is required to serialize production builds." >&2
+  exit 1
+fi
+LOCK_FILE="${WEB_DIR}/.build-atomic.lock"
+exec 9>"${LOCK_FILE}"
+if ! flock -n 9; then
+  echo "[build-atomic] ERROR: another production build is already running." >&2
+  exit 1
+fi
+
+TIMESTAMP="$(date +%s)-$$"
+STAGING_DIR="${WEB_DIR}/dist-staging-${TIMESTAMP}"
 LIVE_DIR="${WEB_DIR}/dist"
-TIMESTAMP="$(date +%s)"
 PREV_DIR="${WEB_DIR}/dist-prev-${TIMESTAMP}"
 
+cleanup() {
+  rm -rf "${STAGING_DIR}"
+}
+trap cleanup EXIT
+
 echo "[build-atomic] Building into staging dir: ${STAGING_DIR}"
-rm -rf "${STAGING_DIR}"
 
 # SSP_BUILD_OUT_DIR is read by vite.config.ts / vite.config.widget.ts to
 # redirect outDir into the staging tree instead of dist/public. Falls back to

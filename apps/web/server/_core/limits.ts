@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import crypto from "node:crypto";
 
 type Bucket = { ts: number[] };
 
@@ -23,10 +24,15 @@ function now() {
 }
 
 function keyFor(req: Request, namespace: string) {
-  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+  // Express has already applied the configured trusted-proxy policy to req.ip.
+  // Do not parse X-Forwarded-For here: a client can prepend an arbitrary value
+  // and otherwise rotate the limiter key on every request.
+  const ip = req.ip || "unknown";
   const token = (req.headers["authorization"] as string) || "";
   // include token prefix so shared NAT doesn't penalize everyone too much
-  const tokenHint = token ? token.slice(0, 24) : "";
+  const tokenHint = token
+    ? crypto.createHash("sha256").update(token).digest("hex").slice(0, 16)
+    : "";
   return `${namespace}:${ip}:${tokenHint}`;
 }
 

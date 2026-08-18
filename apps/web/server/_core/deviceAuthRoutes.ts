@@ -439,7 +439,23 @@ export function registerDeviceAuthRoutes(app: Express) {
       : ["llm:chat", "mcp:read"];
 
     // Filter to allowed scopes
-    const allowedScopes = new Set(["llm:chat", "mcp:read", "mcp:write"]);
+    const allowedScopes = new Set([
+      "llm:chat",
+      "mcp:read",
+      "mcp:write",
+      "hermes:connect",
+      "hermes:read",
+      "hermes:write",
+      "hermes:disconnect",
+      "hermes:generate",
+      "remotion:submit",
+      "remotion:read",
+      "remotion:cancel",
+      "library:read",
+      "library:download",
+      "media:read",
+      "media:download",
+    ]);
     const scopes = requestedScopes.filter((s: string) => allowedScopes.has(s));
 
     // Store device code in Redis (with memory fallback)

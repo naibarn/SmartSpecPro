@@ -18,11 +18,45 @@
  * doc comment.
  */
 
+import type { VerticalDramaStoryControlAuditStatus } from "@shared/verticalDramaSeries/storyContinuity";
+
 export type VdSeriesMemoryLang = "th" | "en";
 
 /** Pick a bilingual string for the active language — mirrors `verticalDramaCopy.ts`'s `pickCopy` exactly, kept as a local copy so this file has no import dependency on that (concurrently-owned) file. */
 export function pickCopy<T>(lang: VdSeriesMemoryLang, value: { th: T; en: T }): T {
   return lang === "th" ? value.th : value.en;
+}
+
+export function storyControlAuditStatusText(
+  lang: VdSeriesMemoryLang,
+  status: VerticalDramaStoryControlAuditStatus,
+): string {
+  const labels: Record<VerticalDramaStoryControlAuditStatus, { th: string; en: string }> = {
+    registered: { th: "ลงทะเบียนแล้ว แต่ยังไม่พบ opening", en: "Registered, no opening matched" },
+    open: { th: "เปิดอยู่", en: "Open" },
+    overdue: { th: "เลยช่วงเฉลย", en: "Overdue" },
+    resolved: { th: "ปิดแล้วจาก memory", en: "Resolved in memory" },
+    needs_review: { th: "ต้องตรวจสอบ", en: "Needs review" },
+    legacy_unknown: { th: "ข้อมูลเก่า/ไม่อยู่ใน seed", en: "Legacy unknown" },
+    missing_opening: { th: "ปิดแต่ไม่พบ opening", en: "Resolved without opening" },
+  };
+  return pickCopy(lang, labels[status]);
+}
+
+export function storyControlAuditReasonText(
+  lang: VdSeriesMemoryLang,
+  status: VerticalDramaStoryControlAuditStatus,
+): string {
+  const reasons: Record<VerticalDramaStoryControlAuditStatus, { th: string; en: string }> = {
+    registered: { th: "ยังไม่พบ opening ใน memory", en: "No opening matched in memory yet" },
+    open: { th: "มี opening แล้ว แต่ยังไม่พบการปิดปม", en: "An opening exists, but no resolution is recorded yet" },
+    overdue: { th: "ยังไม่ปิดหลังพ้นช่วงเฉลยที่ลงทะเบียนไว้", en: "Still open after the registered payoff window" },
+    resolved: { th: "พบ opening และการปิดปมที่จับคู่กันได้", en: "A matched opening and resolution were found" },
+    needs_review: { th: "พบ lifecycle ซ้ำ หรือ seed ระบุให้ตรวจสอบ", en: "Duplicate lifecycle records or seed review flag" },
+    legacy_unknown: { th: "พบรหัสใน memory แต่ไม่อยู่ใน seed ปัจจุบัน", en: "Found in memory but not in the current seed" },
+    missing_opening: { th: "พบการปิดปม แต่ไม่พบ opening ที่ตรงกัน", en: "A resolution exists without a matching opening" },
+  };
+  return pickCopy(lang, reasons[status]);
 }
 
 /** New tab's own label — deliberately NOT reusing the pre-existing "memory"
@@ -34,6 +68,35 @@ export function pickCopy<T>(lang: VdSeriesMemoryLang, value: { th: T; en: T }): 
 export const seriesMemoryTabLabel = { th: "ความจำซีรีย์", en: "Series Memory" };
 
 export const verticalDramaSeriesMemoryCopy = {
+  controlPlaneTitle: { th: "แกนควบคุมเนื้อเรื่อง", en: "Story control plane" },
+  controlPlaneEmpty: {
+    th: "ยังไม่มีแผนควบคุมเนื้อเรื่องที่ผ่านการตรวจ — เนื้อหาเก่ายังคงอ่านได้ตามเดิม",
+    en: "No validated story-control seed yet — legacy story data remains readable as-is.",
+  },
+  controlPlanePremise: { th: "แกนเรื่อง", en: "Premise anchor" },
+  controlPlaneCast: { th: "ตัวละครหลักที่ล็อกชื่อแล้ว", en: "Canonical cast" },
+  controlPlaneThreadIds: { th: "รหัสปมที่วางไว้", en: "Registered thread IDs" },
+  controlPlaneThreadWindow: { th: "ช่วงเปิด/เฉลย", en: "Plant/payoff window" },
+  controlPlaneThreadStatus: { th: "สถานะปม", en: "Thread status" },
+  controlPlaneThreadLedgerStatus: { th: "สถานะตาม memory", en: "Memory status" },
+  controlPlaneThreadNotResolved: {
+    th: "ยังไม่พบหลักฐานว่าปิดปมใน memory",
+    en: "No resolution recorded in memory yet",
+  },
+  controlPlaneAuditStatus: { th: "ผลตรวจสอบ", en: "Audit status" },
+  controlPlaneAuditReason: { th: "เหตุผล", en: "Reason" },
+  controlPlaneAuditUnregistered: {
+    th: "รหัสปมใน memory ที่ยังไม่อยู่ใน seed",
+    en: "Memory thread IDs not registered in the seed",
+  },
+  controlPlaneThreadOwners: { th: "ตัวละครที่เกี่ยวข้อง", en: "Thread owners" },
+  controlPlaneThreadEvidence: { th: "หลักฐานที่ต้องเห็น", en: "Expected evidence" },
+  controlPlaneThreadCost: { th: "ต้นทุนตอนเฉลย", en: "Resolution cost" },
+  controlPlaneRomance: { th: "จังหวะความสัมพันธ์", en: "Romance rhythm" },
+  controlPlaneRomancePurpose: { th: "เป้าหมายจังหวะ", en: "Beat purpose" },
+  controlPlaneAdvantage: { th: "เส้นความได้เปรียบ", en: "Advantage curve" },
+  controlPlaneCost: { th: "ต้นทุน/การตอบโต้", en: "Cost/response" },
+  controlPlaneOpponentResponse: { th: "การตอบโต้ของฝ่ายตรงข้าม", en: "Opponent response" },
   compactSummaryTitle: { th: "สรุปเนื้อเรื่องสะสม", en: "Story so far" },
   compactSummaryEmpty: {
     th: "ยังไม่มีสรุปเนื้อเรื่องสะสม",
@@ -50,12 +113,30 @@ export const verticalDramaSeriesMemoryCopy = {
   editRelationship: { th: "แก้ไข", en: "Edit" },
 
   openThreadsTitle: { th: "ปมค้างที่ยังไม่คลี่คลาย", en: "Open threads" },
+  openThreadsCount: { th: "ปมที่ยังเปิด", en: "open" },
   openThreadsEmpty: {
     th: "ไม่มีปมค้างที่ยังเปิดอยู่ในตอนนี้",
     en: "No open threads right now.",
   },
+  resolvedThreadsTitle: { th: "ประวัติปมที่คลี่คลายแล้ว", en: "Resolved thread history" },
+  resolvedThreadsCount: { th: "ปมที่คลี่คลายแล้ว", en: "resolved" },
+  resolvedThreadsEmpty: {
+    th: "ยังไม่มีประวัติปมที่คลี่คลายแล้ว",
+    en: "No resolved threads recorded yet.",
+  },
+  threadResolvedAtLabel: { th: "คลี่คลายในตอน", en: "Resolved in episode" },
+  threadResolutionSourceMissing: {
+    th: "ตรวจพบการคลี่คลาย แต่ไม่พบข้อมูลตอนที่เปิดปม",
+    en: "Resolution recorded, but the opening episode is missing",
+  },
   threadClassFilterAll: { th: "ทุกประเภท", en: "All types" },
   threadOpenedAtLabel: { th: "เปิดตั้งแต่ตอน", en: "Opened at episode" },
+  threadIdDisplayLabel: { th: "รหัสปม", en: "Thread ID" },
+  threadResolutionTargetLabel: {
+    th: "เป้าหมายการคลี่คลาย",
+    en: "Planned resolution",
+  },
+  threadResolutionEpisodeLabel: { th: "ตอนที่", en: "episode" },
   markResolved: { th: "ทำเครื่องหมายว่าคลี่คลายแล้ว", en: "Mark resolved" },
   editThread: { th: "แก้ไข", en: "Edit" },
 

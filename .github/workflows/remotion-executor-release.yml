@@ -1,0 +1,59 @@
+name: Remotion Executor Release Gates
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "apps/remotion-executor/**"
+      - "packages/remotion-render/**"
+      - "docs/platform-*.md"
+
+permissions:
+  contents: read
+
+jobs:
+  contract-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm --workspace packages/remotion-render run typecheck
+      - run: npm --workspace packages/remotion-render run test
+      - run: npm --workspace apps/remotion-executor run typecheck
+      - run: npm --workspace apps/remotion-executor run test
+
+  native-release-evidence:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            runtime_id: remotion-executor-windows-x64
+          - os: macos-14
+            runtime_id: remotion-executor-macos-arm64
+          - os: macos-13
+            runtime_id: remotion-executor-macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm --workspace apps/remotion-executor run platform:smoke
+        env:
+          REMOTION_EXECUTOR_RUNTIME_ID: ${{ matrix.runtime_id }}
+      # Packaging intentionally fails closed when the approved runtime-pack
+      # input or signing secret is absent. It must not publish a diagnostic or
+      # unsigned archive.
+      - run: npm --workspace apps/remotion-executor run release:pack
+        env:
+          REMOTION_EXECUTOR_RUNTIME_ID: ${{ matrix.runtime_id }}
+          REMOTION_EXECUTOR_VERSION: ${{ github.sha }}
+          SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY }}

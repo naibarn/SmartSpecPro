@@ -9,6 +9,7 @@ type ProviderConfig = {
 type ProviderStatus = {
   ready: boolean;
   missing: Array<"clientId" | "clientSecret" | "redirectUri">;
+  invalid: Array<"redirectUri">;
 };
 
 type OAuthProviderAvailability = {
@@ -32,8 +33,28 @@ function hasValue(value: SettingValue) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function buildProviderStatus(config: ProviderConfig): ProviderStatus {
+function isValidRedirectUri(value: SettingValue, expectedPath?: string) {
+  if (!hasValue(value)) return true;
+
+  try {
+    const uri = new URL(value!.trim());
+    return (
+      (uri.protocol === "https:" || uri.protocol === "http:") &&
+      (!expectedPath || uri.pathname === expectedPath) &&
+      !uri.search &&
+      !uri.hash
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildProviderStatus(
+  config: ProviderConfig,
+  expectedRedirectPath?: string
+): ProviderStatus {
   const missing: ProviderStatus["missing"] = [];
+  const invalid: ProviderStatus["invalid"] = [];
 
   if (!hasValue(config.clientId)) {
     missing.push("clientId");
@@ -45,25 +66,32 @@ function buildProviderStatus(config: ProviderConfig): ProviderStatus {
 
   if (!hasValue(config.redirectUri)) {
     missing.push("redirectUri");
+  } else if (!isValidRedirectUri(config.redirectUri, expectedRedirectPath)) {
+    invalid.push("redirectUri");
   }
 
   return {
-    ready: missing.length === 0,
+    ready: missing.length === 0 && invalid.length === 0,
     missing,
+    invalid,
   };
 }
 
 export function buildOAuthProviderAvailability(
-  values: Record<string, SettingValue>,
+  values: Record<string, SettingValue>
 ): OAuthProviderAvailability {
-  const google = buildProviderStatus({
-    clientId: values.googleClientId ?? process.env.GOOGLE_CLIENT_ID,
-    clientSecret: values.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET,
-    redirectUri:
-      values.googleRedirectUri ??
-      process.env.GOOGLE_REDIRECT_URI ??
-      DEFAULT_REDIRECTS.google,
-  });
+  const google = buildProviderStatus(
+    {
+      clientId: values.googleClientId ?? process.env.GOOGLE_CLIENT_ID,
+      clientSecret:
+        values.googleClientSecret ?? process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri:
+        values.googleRedirectUri ??
+        process.env.GOOGLE_REDIRECT_URI ??
+        DEFAULT_REDIRECTS.google,
+    },
+    "/auth/callback/google"
+  );
 
   const github = buildProviderStatus({
     clientId: values.githubClientId ?? process.env.GITHUB_CLIENT_ID,

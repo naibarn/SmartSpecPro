@@ -35,6 +35,68 @@ const { mockExecuteWithFallback } = vi.hoisted(() => ({
   mockExecuteWithFallback: vi.fn(),
 }));
 
+const { mockPlanVerticalDramaStoryArchitecture } = vi.hoisted(() => ({
+  mockPlanVerticalDramaStoryArchitecture: vi.fn(async () => ({
+    contract: {
+      contractVersion: 1,
+      premiseAnchor: "A creator develops one coherent short-form story.",
+      requiredArcTypes: ["other"],
+      audiencePromise: {
+        genrePromise: "A focused vertical drama.",
+        emotionalPromise: "The creator sees a meaningful transformation.",
+        coreQuestion: "Can the protagonist change?",
+      },
+      protagonistArc: {
+        startingState: "The protagonist is overlooked.",
+        shortTermGoal: "The protagonist must solve the immediate problem.",
+        internalNeed: "The protagonist must accept help.",
+        longTermDestination: "The protagonist becomes capable and trusted.",
+        transformationStages: [
+          { phase: "start", beliefBefore: "I must do it alone.", change: "I accept a challenge.", evidence: "I take the first step." },
+          { phase: "middle", beliefBefore: "Help is weakness.", change: "I collaborate.", evidence: "The plan improves." },
+          { phase: "end", beliefBefore: "Winning is enough.", change: "I choose a meaningful outcome.", evidence: "The goal is completed." },
+        ],
+        endState: "The protagonist owns the change.",
+      },
+      primaryEngine: {
+        statement: "Each episode creates a new pressure test.",
+        repeatableEpisodeMechanism: "A goal meets a complication and forces a choice.",
+        escalationLadder: [
+          { phase: "one", pressure: "A small problem appears.", cost: "Time is lost.", turningPoint: "The protagonist commits." },
+          { phase: "two", pressure: "The cost grows.", cost: "Trust is damaged.", turningPoint: "The protagonist changes tactics." },
+          { phase: "three", pressure: "The final choice is unavoidable.", cost: "The old life cannot return.", turningPoint: "The protagonist acts." },
+        ],
+      },
+      arcBundles: [
+        { id: "other", label: "Core change", required: true, startingState: "The problem is unresolved.", turningPoints: ["Challenge", "Choice"], failureOrCost: "The old approach fails.", payoff: "The new approach works.", endState: "The story promise is fulfilled." },
+      ],
+      realityFailureModel: {
+        realWorldConstraints: ["Time and trust"],
+        failedAttempts: ["The first plan fails."],
+        lessonsLearned: ["The protagonist adapts."],
+      },
+      destination: {
+        seasonEndpoint: "The immediate story problem is resolved.",
+        longTermEndpoint: "The protagonist carries the lesson forward.",
+        horizon: "season",
+        finalImage: "The protagonist chooses a new path.",
+        meaning: "Change is earned through action.",
+      },
+      promisePayoffMap: [{ promiseId: "core", setup: "A problem is introduced.", payoff: "The problem is resolved." }],
+      storyGuardrails: ["Keep one coherent primary engine."],
+    },
+    diagnostics: [],
+    repairRounds: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    model: "gpt-x",
+  })),
+}));
+
+vi.mock("../verticalDramaStoryArchitecturePlanner", () => ({
+  planVerticalDramaStoryArchitecture: mockPlanVerticalDramaStoryArchitecture,
+}));
+
 vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
@@ -48,6 +110,10 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(async () => "gpt-x"),
   };
 });
+
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaRecommendedDraftModel: vi.fn(async () => "gpt-x"),
+}));
 
 vi.mock("../../_core/logger", () => ({
   debugError: vi.fn(),
@@ -256,9 +322,25 @@ describe("synthesizeVerticalDramaPreset", () => {
     );
   });
 
+  it("re-binds the server-approved Story Architecture when the synthesizer omits it", async () => {
+    const foundation = (await mockPlanVerticalDramaStoryArchitecture()).contract;
+    const result = await synthesizeVerticalDramaPreset({
+      ...baseParams(),
+      userPremise: "Proof of Us: a rural mathematics prodigy turns equations into buildable structures.",
+      storyArchitecture: foundation,
+    });
+
+    expect(result.draft.storyContract).toEqual(foundation);
+  });
+
   it("uses the preset-synthesizer skill as the system contract and requests creator-readable copy", async () => {
     await synthesizeVerticalDramaPreset(baseParams());
 
+    // The interactive wizard must stay within one request/response boundary.
+    // Story Architecture is generated in the same structured response as the
+    // readable draft; a separate planner call can exceed the Cloudflare
+    // request window before the wizard receives its draft.
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
     const call = mockExecuteWithFallback.mock.calls[0][0];
     expect(call.messages[0].role).toBe("system");
     expect(call.messages[0].content).toContain("creatorSummary");
@@ -268,6 +350,31 @@ describe("synthesizeVerticalDramaPreset", () => {
     const userPrompt = call.messages[1].content as string;
     expect(userPrompt).toContain('"creatorSummary"');
     expect(userPrompt).toContain('"narrativeRole"');
+    expect(userPrompt).toContain("Generate a complete Story Architecture Contract in this same response");
+  });
+
+  it("single-preset requests use a distinct skill variation contract and a fresh nonce per attempt", async () => {
+    const singlePresetParams = {
+      ...baseParams(),
+      selectedCategories: [],
+      targetEpisodeCount: 10,
+    };
+
+    await synthesizeVerticalDramaPreset(singlePresetParams);
+    const firstPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1]
+      .content as string;
+    expect(firstPrompt).toContain("SINGLE-PRESET VARIATION MODE:");
+    expect(firstPrompt).toContain("never as a template to copy");
+    const firstNonce = firstPrompt.match(/Variation nonce: ([0-9a-f-]+)/)?.[1];
+    expect(firstNonce).toBeTruthy();
+
+    mockExecuteWithFallback.mockClear();
+    await synthesizeVerticalDramaPreset(singlePresetParams);
+    const secondPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1]
+      .content as string;
+    const secondNonce = secondPrompt.match(/Variation nonce: ([0-9a-f-]+)/)?.[1];
+    expect(secondNonce).toBeTruthy();
+    expect(secondNonce).not.toBe(firstNonce);
   });
 
   it("rejects a technical blend recipe when it leaks into creatorSummary", async () => {
@@ -1029,6 +1136,58 @@ describe("buildUserPrompt (via synthesizeVerticalDramaPreset) — premise-primar
     expect(capturedUserPrompt()).not.toContain("USER PREMISE");
   });
 
+  it("always tells the skill how to complete omitted optional inputs", async () => {
+    await synthesizeVerticalDramaPreset({
+      ...baseParams(),
+      selectedCategories: [],
+      selectedPresets: [],
+      genreHint: undefined,
+      toneHint: undefined,
+      seriesTitleHint: undefined,
+      userPremise: undefined,
+      targetEpisodeCount: 10,
+    });
+
+    const prompt = capturedUserPrompt();
+    expect(prompt).toContain("PARTIAL INPUT COMPLETION:");
+    expect(prompt).toContain("Every creator-facing input is optional");
+    expect(prompt).toContain("do not ask the creator to fill it in");
+    expect(prompt).toContain("No creator title was supplied");
+  });
+
+  it("separates Thai narrative prose from English title language when English speech is selected", async () => {
+    await synthesizeVerticalDramaPreset({
+      ...baseParams(),
+      locale: "th",
+      dialogueLanguageProfile: { version: 2, spokenLocale: "en-US" },
+    });
+
+    const prompt = capturedUserPrompt();
+    expect(prompt).toContain("DRAFT LANGUAGE CONTRACT (HARD CONTRACT)");
+    expect(prompt).toContain("Narrative/content language: Thai");
+    expect(prompt).toContain("Title language: English");
+    expect(prompt).toContain("Do not use the spoken dialogue language to write the logline");
+    expect(prompt).toContain("Natural contemporary American English, spoken dialogue");
+  });
+
+  it("asks the skill for separated story identity and bounded story design", async () => {
+    await synthesizeVerticalDramaPreset({
+      ...baseParams(),
+      locale: "th",
+      dialogueLanguageProfile: { version: 2, spokenLocale: "en-US" },
+      userPremise: "An Asian international student falls for her academic rival on a US campus.",
+      targetEpisodeCount: 25,
+    });
+
+    const prompt = capturedUserPrompt();
+    expect(prompt).toContain("STORY IDENTITY CONTEXT CONTRACT");
+    expect(prompt).toContain("targetMarket, storySetting, leadBackground, leadOrigin");
+    expect(prompt).toContain("STORY DESIGN CONTROL CONTRACT");
+    expect(prompt).toContain("Use the exact generated character names as storyControlSeed.canonicalCharacterKeys");
+    expect(prompt).toContain('"storyContext":object');
+    expect(prompt).toContain('"storyDesign":object');
+  });
+
   it("with userPremise: prompt contains the USER PREMISE (PRIMARY SPINE) header and the premise text verbatim, ahead of the payload JSON", async () => {
     const premise = "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาลกลางดึก";
     await synthesizeVerticalDramaPreset({ ...baseParams(), userPremise: premise });
@@ -1295,9 +1454,29 @@ describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-pr
     return call.messages[1].content as string;
   }
 
+  it("single-preset v2 requests also receive the distinct variation contract", async () => {
+    const onePresetParams = baseV2ParamsMin({
+      selections: [{ presetId: "101", weight: 3 }],
+      selectedPresetIds: ["101"],
+      selectedPresets: [presetInputV2({ id: "101", title: "Primary Preset" })],
+      primarySelectionId: "101",
+      targetEpisodeCount: 10,
+    });
+    await synthesizeVerticalDramaPresetV2(onePresetParams);
+    expect(capturedUserPromptV2()).toContain("SINGLE-PRESET VARIATION MODE:");
+    expect(capturedUserPromptV2()).toContain("never as a template to copy");
+  });
+
   it("without userPremise: prompt contains no USER PREMISE section", async () => {
     await synthesizeVerticalDramaPresetV2(baseV2ParamsMin());
     expect(capturedUserPromptV2()).not.toContain("USER PREMISE");
+  });
+
+  it("v2 also tells the skill to complete every omitted optional input", async () => {
+    await synthesizeVerticalDramaPresetV2(baseV2ParamsMin({ targetEpisodeCount: 10 }));
+    const prompt = capturedUserPromptV2();
+    expect(prompt).toContain("PARTIAL INPUT COMPLETION:");
+    expect(prompt).toContain("A blank, omitted, or default-only field is permission");
   });
 
   it("with userPremise: prompt contains the USER PREMISE (PRIMARY SPINE) header and the premise text verbatim, ahead of the payload JSON", async () => {
@@ -1969,4 +2148,3 @@ describe("synthesizeVerticalDramaPresetV2 — titleOptions + locations (superset
     ]);
   });
 });
-

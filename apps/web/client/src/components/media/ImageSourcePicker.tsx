@@ -22,6 +22,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 export interface ImageSourcePickerProps {
   /** Current image URLs */
@@ -100,7 +101,7 @@ type MediaHistoryTaskLike = {
 const RECENT_UPLOADS_STORAGE_KEY = "smartspec:image-source-picker:recent-uploads";
 const MAX_RECENT_UPLOADS = 60;
 
-function isUsableImageUrl(value: unknown): value is string {
+export function isUsableImageUrl(value: unknown): value is string {
   if (typeof value !== "string") {
     return false;
   }
@@ -639,7 +640,8 @@ export function ImageSourcePicker({
     const isValid =
       trimmed.startsWith("https://") ||
       trimmed.startsWith("http://") ||
-      trimmed.startsWith("/uploads/");
+      trimmed.startsWith("/uploads/") ||
+      trimmed.startsWith("/api/storage/files/");
     if (!isValid) return;
 
     if (canAddMore && (isReplaceMode || !value.includes(trimmed))) {
@@ -677,10 +679,12 @@ export function ImageSourcePicker({
       <div className="flex flex-wrap gap-2">
         {value.map((url, idx) => (
           <div key={`${url}-${idx}`} className="relative group">
-            <img
+            <AuthenticatedMediaImage
               src={url}
               alt={`Image ${idx + 1}`}
               className="h-16 w-16 rounded-lg object-cover border"
+              loadingLabel={isTh ? "กำลังโหลดภาพ..." : "Loading image..."}
+              errorLabel={isTh ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
               loading="lazy"
             />
             <button
@@ -820,10 +824,12 @@ export function ImageSourcePicker({
                                 }
                               }}
                             >
-                              <img
+                              <AuthenticatedMediaImage
                                 src={item.thumbnailUrl || item.url}
                                 alt={String(item.title || "Uploaded image")}
                                 className="h-full w-full object-cover"
+                                loadingLabel={isTh ? "กำลังโหลดภาพ..." : "Loading image..."}
+                                errorLabel={isTh ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
                                 loading="lazy"
                               />
                               {alreadyAdded && (
@@ -916,10 +922,12 @@ export function ImageSourcePicker({
                               }
                             }}
                           >
-                            <img
+                            <AuthenticatedMediaImage
                               src={url}
                               alt={String(item.title || "Library image")}
                               className="h-full w-full object-cover"
+                              loadingLabel={isTh ? "กำลังโหลดภาพ..." : "Loading image..."}
+                              errorLabel={isTh ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
                               loading="lazy"
                             />
                             {alreadyAdded && (
@@ -989,10 +997,12 @@ export function ImageSourcePicker({
                               }
                             }}
                           >
-                            <img
+                            <AuthenticatedMediaImage
                               src={item.thumbnailUrl || item.url}
                               alt={String(item.title || "History image")}
                               className="h-full w-full object-cover"
+                              loadingLabel={isTh ? "กำลังโหลดภาพ..." : "Loading image..."}
+                              errorLabel={isTh ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
                               loading="lazy"
                             />
                             {alreadyAdded && (
@@ -1020,8 +1030,8 @@ export function ImageSourcePicker({
                 <TabsContent value="url" className="p-3 space-y-2">
                   <p className="text-xs text-muted-foreground">
                     {isTh
-                      ? "วาง URL ของรูปภาพ (https:// หรือ /uploads/...)"
-                      : "Paste an image URL (https:// or /uploads/...)"}
+                      ? "วาง URL ของรูปภาพ (https://, /uploads/... หรือ /api/storage/files/...)"
+                      : "Paste an image URL (https://, /uploads/... or /api/storage/files/...)"}
                   </p>
                   <div className="flex gap-2">
                     <Input

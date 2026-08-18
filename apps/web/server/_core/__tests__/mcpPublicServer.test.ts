@@ -124,8 +124,8 @@ const {
   mockAuditLog: vi.fn(),
 }));
 
-vi.mock("../../services/redis", () => ({
-  getRedisClient: () => ({
+vi.mock("../../services/redisClients", () => ({
+  getCacheClient: () => ({
     get: vi.fn(async (key: string) => mockRedisData[key] ?? null),
     set: vi.fn(async (key: string, value: string, _ex: string, _ttl: number) => {
       mockRedisData[key] = value;
@@ -138,6 +138,22 @@ vi.mock("../../services/redis", () => ({
     }),
   }),
 }));
+
+vi.mock("../../services/tenantFeatureFlagService", async () => {
+  const actual = await vi.importActual<typeof import("../../services/tenantFeatureFlagService")>("../../services/tenantFeatureFlagService");
+  const flags = await vi.importActual<typeof import("../../../shared/featureFlags")>("../../../shared/featureFlags");
+  return {
+    ...actual,
+    getTenantFeatureFlags: vi.fn(async () => ({
+      ...flags.FEATURE_FLAG_DEFAULTS,
+      mcpModernProtocolEnabled: true,
+      mcpLegacyCompatibilityEnabled: true,
+      mcpResourcesEnabled: true,
+      mcpGuideToolAliasesEnabled: true,
+      mcpOAuthProtectedResourceEnabled: true,
+    })),
+  };
+});
 
 vi.mock("../../services/auditLogger", () => ({
   auditLogger: {
@@ -572,6 +588,10 @@ describe("POST /v1/mcp — protocol", () => {
     expect(res.body.result.serverInfo.name).toBe("SmartAIHub");
     expect(res.body.result.protocolVersion).toBe("2025-03-26");
     expect(res.body.result.capabilities.tools).toBeDefined();
+    expect(res.body.result.capabilities.resources).toEqual({ subscribe: false, listChanged: false });
+    expect(res.body.result.capabilities).not.toHaveProperty("prompts");
+    expect(res.body.result.capabilities).not.toHaveProperty("tasks");
+    expect(res.body.result.capabilities).not.toHaveProperty("subscriptions");
     expect(res.headers["mcp-session-id"]).toBeDefined();
   });
 
@@ -642,12 +662,17 @@ describe("POST /v1/mcp — protocol", () => {
     const app = makeApp();
     const sessionId = await initializeSession(app);
 
-    const res = await request(app)
-      .post("/v1/mcp")
-      .set("Mcp-Session-Id", sessionId)
-      .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 9 });
+    const toolNames: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const res = await request(app)
+        .post("/v1/mcp")
+        .set("Mcp-Session-Id", sessionId)
+        .send({ jsonrpc: "2.0", method: "tools/list", params: cursor ? { cursor } : {}, id: 9 });
+      toolNames.push(...res.body.result.tools.map((tool: any) => tool.name));
+      cursor = res.body.result.nextCursor;
+    } while (cursor);
 
-    const toolNames = res.body.result.tools.map((tool: any) => tool.name);
     expect(toolNames).toContain("smartspec.orchestrator.promote_message_to_work_item");
     expect(toolNames).toContain("smartspec.orchestrator.advance_work_item");
     expect(toolNames).toContain("smartspec.orchestrator.approve_work_item");
@@ -940,7 +965,103 @@ describe("GET /.well-known/mcp.json", () => {
     expect(res.body.url).toBe("https://smartaihub.app/v1/mcp");
     expect(res.body.auth.type).toBe("bearer");
     expect(res.body.capabilities.tools).toBe(true);
+    expect(res.body.capabilities.resources).toBe(false);
     expect(res.body.docs).toBeDefined();
+  });
+
+  it("advertises the protected-resource metadata URL in production", async () => {
+    const previous = {
+      nodeEnv: process.env.NODE_ENV,
+      baseUrl: process.env.MCP_PUBLIC_BASE_URL,
+      inbound: process.env.MCP_OAUTH_INBOUND_ENABLED,
+      protectedResource: process.env.MCP_OAUTH_PROTECTED_RESOURCE_ENABLED,
+      resource: process.env.MCP_OAUTH_RESOURCE,
+      issuer: process.env.MCP_OAUTH_ISSUER,
+      jwks: process.env.MCP_OAUTH_JWKS_URI,
+      audience: process.env.MCP_OAUTH_AUDIENCE,
+    };
+    try {
+      process.env.NODE_ENV = "production";
+      delete process.env.MCP_PUBLIC_BASE_URL;
+      process.env.MCP_OAUTH_INBOUND_ENABLED = "true";
+      process.env.MCP_OAUTH_PROTECTED_RESOURCE_ENABLED = "true";
+      process.env.MCP_OAUTH_RESOURCE = "https://smartaihub.app/v1/mcp";
+      process.env.MCP_OAUTH_ISSUER = "https://smartaihub.app";
+      process.env.MCP_OAUTH_JWKS_URI = "https://smartaihub.app/.well-known/jwks.json";
+      process.env.MCP_OAUTH_AUDIENCE = "smartaihub-mcp";
+      const res = await request(makeApp()).get("/.well-known/mcp.json");
+      expect(res.body.authorization.protectedResourceMetadata).toBe(
+        "https://smartaihub.app/.well-known/oauth-protected-resource",
+      );
+    } finally {
+      if (previous.nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous.nodeEnv;
+      for (const [key, value] of Object.entries({
+        MCP_PUBLIC_BASE_URL: previous.baseUrl,
+        MCP_OAUTH_INBOUND_ENABLED: previous.inbound,
+        MCP_OAUTH_PROTECTED_RESOURCE_ENABLED: previous.protectedResource,
+        MCP_OAUTH_RESOURCE: previous.resource,
+        MCP_OAUTH_ISSUER: previous.issuer,
+        MCP_OAUTH_JWKS_URI: previous.jwks,
+        MCP_OAUTH_AUDIENCE: previous.audience,
+      })) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+});
+
+describe("Modern discovery and HTTP contract", () => {
+  it("returns the complete discovery envelope and modern result metadata", async () => {
+    const previous = process.env.MCP_MODERN_PROTOCOL_ENABLED;
+    process.env.MCP_MODERN_PROTOCOL_ENABLED = "true";
+    try {
+      const res = await request(makeApp())
+        .post("/v1/mcp")
+        .set("MCP-Protocol-Version", "2026-07-28")
+        .set("Mcp-Method", "server/discover")
+        .send({ jsonrpc: "2.0", method: "server/discover", params: {}, id: 10 });
+      expect(res.status).toBe(200);
+      expect(res.body.result.endpoint).toBe("https://smartaihub.app/v1/mcp");
+      expect(res.body.result.eras).toEqual({ modern: true, legacy: true });
+      expect(res.body.result.capabilities).not.toHaveProperty("tasks");
+      expect(res.body.result.capabilities).not.toHaveProperty("subscriptions");
+      expect(res.body.result.ttlMs).toBe(60_000);
+      expect(res.body.result.cacheScope).toBe("public");
+
+      const call = await request(makeApp())
+        .post("/v1/mcp")
+        .set("MCP-Protocol-Version", "2026-07-28")
+        .set("Mcp-Method", "tools/call")
+        .set("Mcp-Name", "models.list")
+        .send({
+          jsonrpc: "2.0",
+          method: "tools/call",
+          params: { name: "models.list", arguments: {} },
+          id: 11,
+        });
+      expect(call.status).toBe(200);
+      expect(call.body.result.ttlMs).toBeGreaterThan(0);
+      expect(call.body.result.cacheScope).toBe("private");
+    } finally {
+      if (previous === undefined) delete process.env.MCP_MODERN_PROTOCOL_ENABLED;
+      else process.env.MCP_MODERN_PROTOCOL_ENABLED = previous;
+    }
+  });
+
+  it("rejects non-JSON or non-JSON response negotiation before auth/tool execution", async () => {
+    const unsupported = await request(makeApp())
+      .post("/v1/mcp")
+      .set("Content-Type", "text/plain")
+      .send("not-json");
+    expect(unsupported.status).toBe(415);
+
+    const unacceptable = await request(makeApp())
+      .post("/v1/mcp")
+      .set("Accept", "text/event-stream")
+      .send({ jsonrpc: "2.0", method: "ping", id: 12 });
+    expect(unacceptable.status).toBe(406);
   });
 });
 
@@ -953,7 +1074,7 @@ describe("GET /v1/mcp/catalog", () => {
     expect(res.body.capabilities).toEqual(expect.objectContaining({
       tools: true,
       prompts: false,
-      resources: false,
+      resources: true,
       toolsListChanged: false,
     }));
     expect(Array.isArray(res.body.tools)).toBe(true);
@@ -1165,6 +1286,19 @@ describe("MCP Spec Compliance — additional edge cases", () => {
     expect(res.status).toBe(204);
   });
 
+  it("modern DELETE never deletes a legacy session even if a session header is present", async () => {
+    const app = makeApp();
+    const sessionId = await initializeSession(app);
+    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeDefined();
+
+    const res = await request(app)
+      .delete("/v1/mcp")
+      .set("MCP-Protocol-Version", "2026-07-28")
+      .set("Mcp-Session-Id", sessionId);
+    expect(res.status).toBe(204);
+    expect(mockRedisData[`mcp:session:${sessionId}`]).toBeDefined();
+  });
+
   it("batch with notification excluded from response array", async () => {
     const app = makeApp();
     const sessionId = await initializeSession(app);
@@ -1205,5 +1339,149 @@ describe("MCP Spec Compliance — additional edge cases", () => {
 
     expect(res.status).toBe(204);
     // The crafted key should NOT have been deleted from Redis
+  });
+});
+
+describe("MCP 2026-07-28 compatibility adapter", () => {
+  it("serves server/discover without creating a legacy Redis session", async () => {
+    const previous = process.env.MCP_MODERN_PROTOCOL_ENABLED;
+    process.env.MCP_MODERN_PROTOCOL_ENABLED = "true";
+    try {
+      const res = await request(makeApp())
+        .post("/v1/mcp")
+        .set("MCP-Protocol-Version", "2026-07-28")
+        .set("Mcp-Method", "server/discover")
+        .send({ jsonrpc: "2.0", method: "server/discover", params: {}, id: "discover-1" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.result.protocolVersions).toContain("2026-07-28");
+      expect(res.body.result.serverInfo.name).toBe("SmartAIHub");
+      expect(res.headers["mcp-session-id"]).toBeUndefined();
+      expect(Object.keys(mockRedisData)).toHaveLength(0);
+    } finally {
+      if (previous === undefined) delete process.env.MCP_MODERN_PROTOCOL_ENABLED;
+      else process.env.MCP_MODERN_PROTOCOL_ENABLED = previous;
+    }
+  });
+
+  it("serves sessionless modern tools/list with cache metadata", async () => {
+    const previous = process.env.MCP_MODERN_PROTOCOL_ENABLED;
+    process.env.MCP_MODERN_PROTOCOL_ENABLED = "true";
+    try {
+      const res = await request(makeApp())
+        .post("/v1/mcp")
+        .set("MCP-Protocol-Version", "2026-07-28")
+        .set("Mcp-Method", "tools/list")
+        .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 2 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.result.tools).toBeInstanceOf(Array);
+      expect(res.body.result.ttlMs).toBeGreaterThan(0);
+      expect(res.body.result.cacheScope).toBe("private");
+      expect(res.headers["mcp-session-id"]).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.MCP_MODERN_PROTOCOL_ENABLED;
+      else process.env.MCP_MODERN_PROTOCOL_ENABLED = previous;
+    }
+  });
+
+  it("rejects modern header/body method mismatches before registry execution", async () => {
+    const previous = process.env.MCP_MODERN_PROTOCOL_ENABLED;
+    process.env.MCP_MODERN_PROTOCOL_ENABLED = "true";
+    try {
+      const res = await request(makeApp())
+        .post("/v1/mcp")
+        .set("MCP-Protocol-Version", "2026-07-28")
+        .set("Mcp-Method", "tools/list")
+        .send({ jsonrpc: "2.0", method: "tools/call", params: { name: "unknown" }, id: 3 });
+
+      expect(res.body.error.code).toBe(-32600);
+      expect(res.body.error.message).toContain("Mcp-Method");
+    } finally {
+      if (previous === undefined) delete process.env.MCP_MODERN_PROTOCOL_ENABLED;
+      else process.env.MCP_MODERN_PROTOCOL_ENABLED = previous;
+    }
+  });
+
+  it("serves allowlisted documentation resources without a legacy session", async () => {
+    const previous = process.env.MCP_MODERN_PROTOCOL_ENABLED;
+    process.env.MCP_MODERN_PROTOCOL_ENABLED = "true";
+    try {
+      const list = await request(makeApp())
+        .post("/v1/mcp")
+        .set("MCP-Protocol-Version", "2026-07-28")
+        .set("Mcp-Method", "resources/list")
+        .send({ jsonrpc: "2.0", method: "resources/list", params: {}, id: 4 });
+      expect(list.status).toBe(200);
+      expect(list.body.result.resources.some((resource: any) => resource.uri.endsWith("/overview"))).toBe(true);
+
+      const read = await request(makeApp())
+        .post("/v1/mcp")
+        .set("MCP-Protocol-Version", "2026-07-28")
+        .set("Mcp-Method", "resources/read")
+        .send({
+          jsonrpc: "2.0",
+          method: "resources/read",
+          params: { uri: "smartaihub://docs/mcp/overview" },
+          id: 5,
+        });
+      expect(read.status).toBe(200);
+      expect(read.body.result.contents[0].text).toContain("canonical endpoint");
+      expect(read.headers["mcp-session-id"]).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.MCP_MODERN_PROTOCOL_ENABLED;
+      else process.env.MCP_MODERN_PROTOCOL_ENABLED = previous;
+    }
+  });
+
+  it("publishes protected-resource metadata only when a real OAuth issuer is configured", async () => {
+    const previousResource = process.env.MCP_OAUTH_RESOURCE;
+    const previousIssuer = process.env.MCP_OAUTH_ISSUER;
+    const previousEnabled = process.env.MCP_OAUTH_PROTECTED_RESOURCE_ENABLED;
+    const previousInboundEnabled = process.env.MCP_OAUTH_INBOUND_ENABLED;
+    const previousJwksUri = process.env.MCP_OAUTH_JWKS_URI;
+    const previousAudience = process.env.MCP_OAUTH_AUDIENCE;
+    try {
+      delete process.env.MCP_OAUTH_RESOURCE;
+      delete process.env.MCP_OAUTH_ISSUER;
+      delete process.env.MCP_OAUTH_PROTECTED_RESOURCE_ENABLED;
+      delete process.env.MCP_OAUTH_INBOUND_ENABLED;
+      delete process.env.MCP_OAUTH_JWKS_URI;
+      delete process.env.MCP_OAUTH_AUDIENCE;
+      const disabled = await request(makeApp()).get("/.well-known/oauth-protected-resource");
+      expect(disabled.status).toBe(404);
+
+      process.env.MCP_OAUTH_RESOURCE = "https://smartaihub.app/v1/mcp";
+      process.env.MCP_OAUTH_ISSUER = "https://login.example.test";
+      process.env.MCP_OAUTH_PROTECTED_RESOURCE_ENABLED = "true";
+      process.env.MCP_OAUTH_INBOUND_ENABLED = "true";
+      process.env.MCP_OAUTH_JWKS_URI = "https://login.example.test/.well-known/jwks.json";
+      process.env.MCP_OAUTH_AUDIENCE = "smartaihub-mcp";
+      const enabled = await request(makeApp()).get("/.well-known/oauth-protected-resource");
+      expect(enabled.status).toBe(200);
+      expect(enabled.body.resource).toBe("https://smartaihub.app/v1/mcp");
+      expect(enabled.body.authorization_servers).toEqual(["https://login.example.test"]);
+      expect(enabled.body.bearer_methods_supported).toEqual(["header"]);
+    } finally {
+      if (previousResource === undefined) delete process.env.MCP_OAUTH_RESOURCE;
+      else process.env.MCP_OAUTH_RESOURCE = previousResource;
+      if (previousIssuer === undefined) delete process.env.MCP_OAUTH_ISSUER;
+      else process.env.MCP_OAUTH_ISSUER = previousIssuer;
+      if (previousEnabled === undefined) delete process.env.MCP_OAUTH_PROTECTED_RESOURCE_ENABLED;
+      else process.env.MCP_OAUTH_PROTECTED_RESOURCE_ENABLED = previousEnabled;
+      if (previousInboundEnabled === undefined) delete process.env.MCP_OAUTH_INBOUND_ENABLED;
+      else process.env.MCP_OAUTH_INBOUND_ENABLED = previousInboundEnabled;
+      if (previousJwksUri === undefined) delete process.env.MCP_OAUTH_JWKS_URI;
+      else process.env.MCP_OAUTH_JWKS_URI = previousJwksUri;
+      if (previousAudience === undefined) delete process.env.MCP_OAUTH_AUDIENCE;
+      else process.env.MCP_OAUTH_AUDIENCE = previousAudience;
+    }
+  });
+
+  it("does not expose a GET stream and keeps the endpoint method explicit", async () => {
+    const res = await request(makeApp()).get("/v1/mcp");
+    expect(res.status).toBe(405);
+    expect(res.headers.allow).toContain("POST");
+    expect(res.body.error.code).toBe("method_not_allowed");
   });
 });

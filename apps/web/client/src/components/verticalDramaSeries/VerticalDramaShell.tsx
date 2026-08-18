@@ -7,6 +7,8 @@
  * listing every series ("project") with search — styled after Storyboard
  * Review's project panel. Also owns the Create-Series Wizard so "New" works
  * from any of the three pages via `useVerticalDramaShell().openCreateWizard()`.
+ * The Draft Job Inbox is intentionally limited to the series index route;
+ * detail/episode routes must not fetch or render it.
  *
  * This shell intentionally does NOT render a page title, breadcrumb, or
  * page-level actions — each page owns exactly one header via `AppPage`
@@ -47,6 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   CreateSeriesWizard,
@@ -55,7 +58,6 @@ import {
 } from "./CreateSeriesWizard";
 import {
   VerticalDramaStaleDraftCleanupDialog,
-  isVerticalDramaSeriesIndexPath,
   useVerticalDramaStaleDraftCleanupOffer,
   useVerticalDramaStaleDraftCleanupMutation,
   type VerticalDramaStaleDraftCounts,
@@ -289,6 +291,12 @@ function statusDotClass(status: string): string {
   }
 }
 
+/** Draft recovery is an index-page concern; keep detail/episode routes cold. */
+export function isVerticalDramaSeriesIndexPath(path: string): boolean {
+  const pathname = path.split(/[?#]/, 1)[0].replace(/\/+$/, "");
+  return pathname === "/drama-series";
+}
+
 export function VerticalDramaShell({
   currentSeriesId,
   children,
@@ -331,9 +339,14 @@ export function VerticalDramaShell({
       enabled: isSeriesIndexPage && !authLoading && isAuthenticated,
       staleTime: 15_000,
       retry: 1,
+      // Reuse the short-lived metadata cache when moving between the three
+      // Vertical Drama pages. Active jobs still refresh every two seconds
+      // below, and the user can explicitly refresh the inbox at any time.
       refetchOnMount: true,
       refetchInterval: query => {
-        const jobs = query.state.data?.jobs ?? [];
+        const jobs = Array.isArray(query.state.data?.jobs)
+          ? query.state.data.jobs
+          : [];
         return jobs.some(job =>
           ["queued", "composing", "qc_running"].includes(job.jobStatus)
         )
@@ -342,7 +355,9 @@ export function VerticalDramaShell({
       },
     }
   );
-  const recoverableDrafts = draftJobsQuery.data?.jobs ?? [];
+  const recoverableDrafts = Array.isArray(draftJobsQuery.data?.jobs)
+    ? draftJobsQuery.data.jobs
+    : [];
   const staleDraftCounts: VerticalDramaStaleDraftCounts = {
     5: Number(draftJobsQuery.data?.cleanup?.counts?.[5] ?? 0),
     7: Number(draftJobsQuery.data?.cleanup?.counts?.[7] ?? 0),
@@ -432,7 +447,9 @@ export function VerticalDramaShell({
     { search: search.trim() || undefined },
     { staleTime: 30_000 }
   );
-  const series = (listQuery.data?.series ?? []) as SidebarSeriesItem[];
+  const series = (Array.isArray(listQuery.data?.series)
+    ? listQuery.data.series
+    : []) as SidebarSeriesItem[];
   const isSearchActive = search.trim().length > 0;
   const sidebarView = resolveSidebarSeriesView(
     series,
@@ -542,7 +559,7 @@ export function VerticalDramaShell({
         )}
       >
         {item.thumbnailUrl ? (
-          <img
+          <AuthenticatedMediaImage
             src={item.thumbnailUrl}
             alt=""
             aria-hidden="true"
@@ -960,7 +977,7 @@ export function VerticalDramaShell({
               {pickCopy(lang, verticalDramaCopy.draftRecoveryChecking)}
             </div>
           )}
-          {hasRecoverableDraftWorkspace && !wizardOpen && (
+          {isSeriesIndexPage && hasRecoverableDraftWorkspace && !wizardOpen && (
             <div
               role="status"
               className="mb-4 flex flex-col gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 sm:flex-row sm:items-center sm:justify-between"

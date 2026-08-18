@@ -311,6 +311,19 @@ async function s3StorageExists(
   }
 }
 
+function getLocalStorageContentType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  return ext === ".jpg" || ext === ".jpeg"
+    ? "image/jpeg"
+    : ext === ".webp"
+      ? "image/webp"
+      : ext === ".png"
+        ? "image/png"
+        : ext === ".mp4"
+          ? "video/mp4"
+          : "application/octet-stream";
+}
+
 // ─── Forge storage operations (legacy) ───────────────────────────────────────
 
 function ensureTrailingSlash(value: string): string {
@@ -668,6 +681,96 @@ export async function storageReadText(relKey: string): Promise<string | null> {
 }
 
 /**
+ * Read a managed storage object inside the trusted server boundary.
+ *
+ * Callers that need file bytes must not fetch `storageGet(...).url` when the
+ * active provider is R2/S3: that URL is intentionally the tenant-protected
+ * `/api/storage/files/*` proxy. This helper reads through the storage adapter
+ * directly and therefore works for local, R2/S3, and Forge storage.
+ */
+export async function storageReadBuffer(relKey: string): Promise<Buffer | null> {
+  const config = await getActiveStorageConfig();
+  if (config.provider === "forge") {
+    const resolved = await forgeStorageGet(config, relKey);
+    const response = await fetch(resolved.url);
+    if (!response.ok) return null;
+    return Buffer.from(await response.arrayBuffer());
+  }
+
+  const result = await storageStreamFile(relKey);
+  if (!result) return null;
+
+  const stream = result.stream as any;
+  if (typeof stream.transformToByteArray === "function") {
+    return Buffer.from(await stream.transformToByteArray());
+  }
+  if (typeof stream.getReader === "function") {
+    const reader = stream.getReader();
+    const chunks: Buffer[] = [];
+    try {
+      while (true) {
+        const next = await reader.read();
+        if (next.done) break;
+        chunks.push(Buffer.from(next.value));
+      }
+    } finally {
+      reader.releaseLock?.();
+    }
+    return Buffer.concat(chunks);
+  }
+
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream as AsyncIterable<Buffer | Uint8Array | string>) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+/** Read object metadata without opening a body stream for conditional requests. */
+export async function storageHeadFile(
+  relKey: string,
+): Promise<{
+  contentType?: string;
+  contentLength?: number;
+  etag?: string;
+  lastModified?: Date;
+} | null> {
+  const config = await getActiveStorageConfig();
+  const key = normalizeKey(relKey);
+
+  if (config.provider === "local") {
+    const filePath = path.join(getUploadsDir(), key);
+    if (!fs.existsSync(filePath)) return null;
+    const stat = fs.statSync(filePath);
+    return {
+      contentType: getLocalStorageContentType(filePath),
+      contentLength: stat.size,
+      etag: `W/"${stat.size}-${Math.trunc(stat.mtimeMs)}"`,
+      lastModified: stat.mtime,
+    };
+  }
+
+  if (config.provider !== "s3") return null;
+
+  try {
+    const response = await config.client.send(
+      new HeadObjectCommand({ Bucket: config.bucket, Key: key }),
+    );
+    return {
+      contentType: response.ContentType,
+      contentLength: response.ContentLength,
+      etag: response.ETag,
+      lastModified: response.LastModified,
+    };
+  } catch (error: any) {
+    if (error?.name === "NotFound" || error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
  * Stream a file from S3/R2 storage. Returns null if not using S3 provider.
  * Used by the storage proxy endpoint. Supports range requests for video seeking.
  */
@@ -679,6 +782,8 @@ export async function storageStreamFile(
   contentType: string;
   contentLength?: number;
   totalLength?: number;
+  etag?: string;
+  lastModified?: Date;
   rangeStart?: number;
   rangeEnd?: number;
   isPartial: boolean;
@@ -690,22 +795,14 @@ export async function storageStreamFile(
     const filePath = path.join(getUploadsDir(), key);
     if (!fs.existsSync(filePath)) return null;
     const stat = fs.statSync(filePath);
-    const ext = path.extname(filePath).toLowerCase();
-    const contentType =
-      ext === ".jpg" || ext === ".jpeg"
-        ? "image/jpeg"
-        : ext === ".webp"
-        ? "image/webp"
-        : ext === ".png"
-        ? "image/png"
-        : ext === ".mp4"
-        ? "video/mp4"
-        : "application/octet-stream";
+    const contentType = getLocalStorageContentType(filePath);
     return {
       stream: fs.createReadStream(filePath),
       contentType,
       contentLength: stat.size,
       totalLength: stat.size,
+      etag: `W/"${stat.size}-${Math.trunc(stat.mtimeMs)}"`,
+      lastModified: stat.mtime,
       isPartial: false,
     };
   }
@@ -752,6 +849,8 @@ export async function storageStreamFile(
     stream: response.Body as NodeJS.ReadableStream,
     contentType: response.ContentType || "application/octet-stream",
     contentLength: response.ContentLength,
+    etag: response.ETag,
+    lastModified: response.LastModified,
     totalLength,
     rangeStart,
     rangeEnd,

@@ -40,6 +40,7 @@ vi.mock("../verticalDramaLlmModelPolicy", () => ({
 import {
   completeVerticalDramaDraft,
   materializeVerticalDramaDraftFoundation,
+  repairVerticalDramaDraftBeforeQc,
   verticalDramaDraftCompletionResponseSchema,
 } from "../verticalDramaDraftCompletion";
 import { inspectVerticalDramaDraftCompleteness } from "@shared/verticalDramaSeries/draftCompletion";
@@ -244,6 +245,7 @@ const STORY_ARCHITECTURE = {
 
 const STORY_DESIGN = {
   contractVersion: 1 as const,
+  totalEpisodeCount: 10,
   primaryEngine: STORY_ARCHITECTURE.primaryEngine.statement,
   secondaryEngines: [
     "Rivalry-to-romance progression",
@@ -314,6 +316,13 @@ const STORY_DESIGN = {
       advantagedSide: "shared" as const,
       cost: "Validation requires compromise.",
       opponentResponse: "The real project accepts the tested method.",
+    },
+    {
+      episodeNumber: 10,
+      advantagedSide: "shared" as const,
+      cost: "The method must survive the cost of real-world validation.",
+      opponentResponse: STORY_ARCHITECTURE.destination.seasonEndpoint,
+      purpose: STORY_ARCHITECTURE.destination.longTermEndpoint,
     },
   ],
   conflictGuardrails: [
@@ -502,7 +511,31 @@ describe("Proof of Us draft completion regression", () => {
     expect(result.draft.title).toBe("Proof of Us");
     expect(result.draft.mainPlot).toContain("mathematics prodigy");
     expect(result.draft.storyContract).toEqual(STORY_ARCHITECTURE);
-    expect(result.draft.storyDesign).toEqual(STORY_DESIGN);
+    expect(result.draft.storyDesign).toMatchObject({
+      contractVersion: STORY_DESIGN.contractVersion,
+      primaryEngine: STORY_DESIGN.primaryEngine,
+      secondaryEngines: STORY_DESIGN.secondaryEngines,
+      pressureThreads: STORY_DESIGN.pressureThreads,
+      earlyPayoff: STORY_DESIGN.earlyPayoff,
+      conflictGuardrails: STORY_DESIGN.conflictGuardrails,
+    });
+    expect(result.draft.storyDesign.romanceProgression).toEqual(
+      expect.arrayContaining(
+        STORY_DESIGN.romanceProgression.map(phase =>
+          expect.objectContaining({
+            phase: phase.phase,
+            purpose: phase.purpose,
+            pair: phase.pair,
+          }),
+        ),
+      ),
+    );
+    expect(result.draft.storyDesign.storyControlSeed?.threadCandidates.length).toBe(
+      result.draft.storyDesign.pressureThreads.length,
+    );
+    expect(result.draft.storyDesign.storyControlSeed?.romancePhaseSkeleton.length).toBe(
+      result.draft.storyDesign.romanceProgression.length,
+    );
     expect(mocks.execute).toHaveBeenCalledTimes(1);
     const completionCall = mocks.execute.mock.calls[0][0];
     expect(completionCall.userPrompt).toContain("APPROVED STORY ARCHITECTURE");
@@ -558,6 +591,55 @@ describe("Proof of Us draft completion regression", () => {
       userPremise: PROOF_OF_US_PREMISE,
     });
     expect(finalCheck.ready).toBe(true);
+  });
+
+  it("repairs a legacy draft's missing terminal destinations before QC without an LLM call", async () => {
+    mocks.execute.mockReset();
+    const legacyStoryDesign = {
+      ...STORY_DESIGN,
+      pressureThreads: STORY_DESIGN.pressureThreads.map(thread => ({
+        ...thread,
+        episodeWindow: { ...thread.episodeWindow, endEpisode: 9 },
+      })),
+      advantageBeats: STORY_DESIGN.advantageBeats.filter(
+        beat => beat.episodeNumber !== 10
+      ),
+    };
+    const result = await repairVerticalDramaDraftBeforeQc({
+      draft: {
+        ...INCOMPLETE_PROOF_OF_US_DRAFT,
+        storyContract: STORY_ARCHITECTURE,
+        storyDesign: legacyStoryDesign,
+      },
+      model: "openai/gpt-5.6-luna",
+      context: {
+        locale: "en",
+        targetEpisodeCount: 10,
+        genre:
+          "Young Adult Campus Romance Academic Rivalry Science Engineering Drama",
+        userPremise: PROOF_OF_US_PREMISE,
+        storyArchitecture: STORY_ARCHITECTURE,
+      },
+      userId: 7,
+    });
+
+    expect(result.repaired).toBe(true);
+    expect(result.report.status).toBe("ready_for_qc");
+    expect(result.report.missingPaths).toEqual([]);
+    expect(result.draft.storyDesign).toMatchObject({
+      totalEpisodeCount: 10,
+    });
+    expect(
+      (result.draft.storyDesign as typeof STORY_DESIGN).pressureThreads.some(
+        thread => thread.episodeWindow.endEpisode === 10
+      )
+    ).toBe(true);
+    expect(
+      (result.draft.storyDesign as typeof STORY_DESIGN).advantageBeats.some(
+        beat => beat.episodeNumber === 10
+      )
+    ).toBe(true);
+    expect(mocks.execute).not.toHaveBeenCalled();
   });
 
   it("binds the approved contract even when the incoming draft has neither contract nor design", () => {

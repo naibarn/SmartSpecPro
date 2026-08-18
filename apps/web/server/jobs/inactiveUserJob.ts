@@ -1,8 +1,9 @@
 /**
  * Inactive User Check Background Job
  *
- * Checks for users registered via admin invite codes who haven't used
- * any credits within the configured inactivity window, and disables them.
+ * Checks users with tracked signup/invite free credits who haven't used
+ * credits within the configured inactivity window, then resets and disables
+ * them. The same lifecycle service is enforced during authentication.
  * Runs every 24 hours.
  */
 

@@ -399,6 +399,94 @@ export interface DramaShot {
   referenceImages: DramaShotReferenceImage[];
 }
 
+interface ExtensionShotReferenceRow {
+  id: number;
+  mediaAssetId: number;
+  role: string;
+  source: string;
+  assetOriginalUrl: string | null;
+  assetThumbnailUrl: string | null;
+}
+
+interface ExtensionCharacterAsset {
+  assetRowId: number;
+  mediaAssetId: number;
+  role: string | null;
+  characterName: string;
+}
+
+/**
+ * Keep the extension's shot payload aligned with the storyboard card: only
+ * user-created reference frames plus one approved portrait for each character
+ * that belongs to this shot. Grid cuts, generation history, product images,
+ * unused cast, and additional looks remain server-side.
+ */
+export function projectDramaShotReferenceImagesForExtension(input: {
+  shotReferenceRows: ExtensionShotReferenceRow[];
+  requiredCharacterRefs: string[];
+  characterAssetsByCharacterKey: ReadonlyMap<string, ExtensionCharacterAsset[]>;
+  assetById: ReadonlyMap<number, { originalUrl: string | null; thumbnailUrl: string | null }>;
+}): DramaShotReferenceImage[] {
+  const images: DramaShotReferenceImage[] = [];
+  const includedMediaAssetIds = new Set<number>();
+
+  for (const row of input.shotReferenceRows) {
+    if (row.source !== "reference_frame") continue;
+    const url = row.assetOriginalUrl ?? row.assetThumbnailUrl;
+    if (!url || includedMediaAssetIds.has(row.mediaAssetId)) continue;
+    images.push({
+      id: String(row.id),
+      url,
+      thumbnailUrl: row.assetThumbnailUrl,
+      role: row.role,
+      source: row.source,
+    });
+    includedMediaAssetIds.add(row.mediaAssetId);
+  }
+
+  for (const rawCharacterKey of input.requiredCharacterRefs) {
+    const characterKey = rawCharacterKey.trim();
+    if (!characterKey) continue;
+    const characterAssets = input.characterAssetsByCharacterKey.get(characterKey)
+      ?? input.characterAssetsByCharacterKey.get(normalizeStoryCharacterName(characterKey))
+      ?? [];
+    const characterAsset = characterAssets.find((candidate) => {
+      if (includedMediaAssetIds.has(candidate.mediaAssetId)) return false;
+      const asset = input.assetById.get(candidate.mediaAssetId);
+      return Boolean(asset?.originalUrl ?? asset?.thumbnailUrl);
+    });
+    if (!characterAsset) continue;
+    const asset = input.assetById.get(characterAsset.mediaAssetId)!;
+    const url = asset.originalUrl ?? asset.thumbnailUrl;
+    if (!url) continue;
+    images.push({
+      id: `char-${characterAsset.assetRowId}`,
+      url,
+      thumbnailUrl: asset.thumbnailUrl,
+      role: characterAsset.role ?? "character_reference",
+      source: "character",
+      title: characterAsset.characterName,
+    });
+    includedMediaAssetIds.add(characterAsset.mediaAssetId);
+  }
+
+  return images;
+}
+
+export function resolveDramaShotCharacterRefsForExtension(
+  frameRequiredCharacterRefs: unknown,
+  storyboardCharacterIds: unknown,
+): string[] {
+  const selected = Array.isArray(frameRequiredCharacterRefs)
+    ? frameRequiredCharacterRefs
+    : Array.isArray(storyboardCharacterIds)
+      ? storyboardCharacterIds
+      : [];
+  return selected.filter(
+    (value): value is string => typeof value === "string" && Boolean(value.trim()),
+  );
+}
+
 export interface DramaSeriesEpisodeDetail {
   id: string;
   seriesId: string;
@@ -408,6 +496,51 @@ export interface DramaSeriesEpisodeDetail {
   status: string;
   updatedAt: string | null;
   shots: DramaShot[];
+}
+
+const OPAQUE_CHARACTER_SPEAKER_PATTERN =
+  /^(?:(?:character|char)(?:$|[-_\s].+|\d.*)|c-[a-f0-9]{8,})$/i;
+
+function asTrimmedString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function resolveDramaSpeakerNameForExtension(input: {
+  line?: Record<string, unknown>;
+  clipLine?: Record<string, unknown>;
+  characterNameByKey?: ReadonlyMap<string, string>;
+}): string {
+  if (input.line?.isNarration === true) return "ผู้บรรยาย";
+
+  const identityCandidates = [
+    asTrimmedString(input.line?.speakerCharacterId),
+    asTrimmedString(input.clipLine?.characterKey),
+    asTrimmedString(input.line?.characterKey),
+    asTrimmedString(input.line?.speakerName),
+  ];
+  for (const candidate of identityCandidates) {
+    if (!candidate) continue;
+    const canonicalName =
+      input.characterNameByKey?.get(candidate) ??
+      input.characterNameByKey?.get(normalizeStoryCharacterName(candidate));
+    if (canonicalName?.trim()) return canonicalName.trim();
+  }
+
+  const legacySpeakerName = asTrimmedString(input.line?.speakerName);
+  if (
+    legacySpeakerName &&
+    !OPAQUE_CHARACTER_SPEAKER_PATTERN.test(legacySpeakerName)
+  ) {
+    return legacySpeakerName;
+  }
+  const legacyClipSpeaker = asTrimmedString(input.clipLine?.characterKey);
+  if (
+    legacyClipSpeaker &&
+    !OPAQUE_CHARACTER_SPEAKER_PATTERN.test(legacyClipSpeaker)
+  ) {
+    return legacyClipSpeaker;
+  }
+  return "ไม่ระบุผู้พูด";
 }
 
 /**
@@ -422,6 +555,7 @@ export function projectDramaShotDialogueLinesForExtension(input: {
   dialogueAudioPlan: unknown;
   clipDialogue: unknown;
   shotNumber: number;
+  characterNameByKey?: ReadonlyMap<string, string>;
 }): DramaShotDialogueLine[] {
   const clipLines = Array.isArray(input.clipDialogue)
     ? input.clipDialogue
@@ -443,11 +577,11 @@ export function projectDramaShotDialogueLinesForExtension(input: {
         ? line.end - line.start
         : null;
     return [{
-      speaker: typeof line.speakerName === "string" && line.speakerName.trim()
-        ? line.speakerName.trim()
-        : typeof clipLine?.characterKey === "string" && clipLine.characterKey.trim()
-          ? clipLine.characterKey.trim()
-          : line.isNarration === true ? "ผู้บรรยาย" : "ไม่ระบุผู้พูด",
+      speaker: resolveDramaSpeakerNameForExtension({
+        line,
+        clipLine,
+        characterNameByKey: input.characterNameByKey,
+      }),
       emotion: typeof line.emotion === "string" && line.emotion.trim()
         ? line.emotion.trim()
         : typeof clipLine?.emotion === "string" && clipLine.emotion.trim()
@@ -463,9 +597,10 @@ export function projectDramaShotDialogueLinesForExtension(input: {
     const text = typeof line.lineTh === "string" ? line.lineTh.trim() : "";
     if (!text) return [];
     return [{
-      speaker: typeof line.characterKey === "string" && line.characterKey.trim()
-        ? line.characterKey.trim()
-        : "ไม่ระบุผู้พูด",
+      speaker: resolveDramaSpeakerNameForExtension({
+        clipLine: line,
+        characterNameByKey: input.characterNameByKey,
+      }),
       emotion: typeof line.emotion === "string" && line.emotion.trim() ? line.emotion.trim() : null,
       text,
       durationSeconds: estimateVerticalDramaSpeechSeconds(text),
@@ -558,6 +693,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       eq(verticalDramaShotReferences.userId, auth.userId),
       eq(verticalDramaShotReferences.seriesId, seriesId),
       eq(verticalDramaShotReferences.episodeId, episodeId),
+      eq(verticalDramaShotReferences.source, "reference_frame"),
     ))
     .orderBy(
       asc(verticalDramaShotReferences.shotNumber),
@@ -600,11 +736,43 @@ export async function getDramaSeriesEpisodeDetailForExtension(
     ));
 
   const characterById = new Map<number, { characterKey: string; name: string }>();
+  const characterNameByKey = new Map<string, string>();
   for (const row of characterRows) {
     characterById.set(row.id, { characterKey: row.characterKey, name: row.name });
+    const characterKey = row.characterKey.trim();
+    const characterName = row.name.trim();
+    if (characterKey && characterName) {
+      characterNameByKey.set(characterKey, characterName);
+      characterNameByKey.set(
+        normalizeStoryCharacterName(characterKey),
+        characterName
+      );
+    }
   }
 
-  const characterAssetRows = characterRows.length > 0
+  const requiredCharacterRefsByShot = new Map<number, string[]>();
+  for (const shotNumber of shotNumbers) {
+    const frame = frames.find((candidate) => candidate.shotNumber === shotNumber);
+    const storyboardShot = storyboardShots.find((candidate) => candidate.shotNumber === shotNumber);
+    requiredCharacterRefsByShot.set(
+      shotNumber,
+      resolveDramaShotCharacterRefsForExtension(
+        frame?.requiredCharacterRefs,
+        storyboardShot?.characterIds,
+      ),
+    );
+  }
+  const requiredCharacterKeys = new Set(
+    Array.from(requiredCharacterRefsByShot.values()).flatMap((refs) =>
+      refs.flatMap((key) => [key, normalizeStoryCharacterName(key)]),
+    ),
+  );
+  const requiredCharacterIds = characterRows
+    .filter((row) => requiredCharacterKeys.has(row.characterKey)
+      || requiredCharacterKeys.has(normalizeStoryCharacterName(row.characterKey)))
+    .map((row) => row.id);
+
+  const characterAssetRows = requiredCharacterIds.length > 0
     ? await db
         .select({
           id: verticalDramaCharacterAssets.id,
@@ -617,6 +785,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
           eq(verticalDramaCharacterAssets.tenantId, tenantId),
           eq(verticalDramaCharacterAssets.seriesId, seriesId),
           eq(verticalDramaCharacterAssets.approved, true),
+          inArray(verticalDramaCharacterAssets.characterId, requiredCharacterIds),
         ))
     : [];
 
@@ -648,24 +817,22 @@ export async function getDramaSeriesEpisodeDetailForExtension(
     });
   }
 
+  for (const [characterKey, bucket] of Array.from(characterAssetsByCharacterKey.entries())) {
+    const normalizedKey = normalizeStoryCharacterName(characterKey);
+    if (normalizedKey && !characterAssetsByCharacterKey.has(normalizedKey)) {
+      characterAssetsByCharacterKey.set(normalizedKey, bucket);
+    }
+  }
+
   const characterMediaAssetIds = characterAssetRows
     .map((row) => row.mediaAssetId)
-    .filter((id): id is number => id !== null);
-
-  // Product refs: frames[].productReferenceAssetIds (string[] of mediaAsset ids).
-  const productAssetIds = frames
-    .flatMap((frame) => (Array.isArray(frame.productReferenceAssetIds) ? frame.productReferenceAssetIds : []))
-    .map((raw) => {
-      const numeric = Number(raw);
-      return Number.isFinite(numeric) ? numeric : null;
-    })
     .filter((id): id is number => id !== null);
 
   const referenceAssetById = await loadMediaAssetUrlsById(
     db,
     tenantId,
     auth.userId,
-    [...characterMediaAssetIds, ...productAssetIds],
+    characterMediaAssetIds,
   );
 
   const shots: DramaShot[] = Array.from(shotNumbers)
@@ -679,6 +846,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         dialogueAudioPlan: episodeRow.dialogueAudioPlan,
         clipDialogue: clip?.dialogue,
         shotNumber,
+        characterNameByKey,
       });
       const dialogue = dialogueLines.map((line) => `${line.speaker}: ${line.text}`).join("\n");
 
@@ -697,75 +865,12 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       }
 
       const shotReferenceRows = referencesByShot.get(shotNumber) ?? [];
-      const gridCutRows = shotReferenceRows.filter((row) => row.source === "grid_cut");
-      const otherRows = shotReferenceRows.filter((row) => row.source !== "grid_cut");
-
-      const gridFrames: DramaShotGridFrame[] = [];
-      for (const row of gridCutRows) {
-        if (!row.assetOriginalUrl) continue;
-        gridFrames.push({
-          index: gridFrames.length,
-          url: row.assetOriginalUrl,
-          thumbnailUrl: row.assetThumbnailUrl ?? null,
-        });
-      }
-
-      const referenceImages: DramaShotReferenceImage[] = [];
-      const referenceImageMediaAssetIds = new Set<number>();
-      for (const row of otherRows) {
-        const url = row.assetOriginalUrl ?? row.assetThumbnailUrl ?? null;
-        if (!url) continue;
-        referenceImages.push({
-          id: String(row.id),
-          url,
-          thumbnailUrl: row.assetThumbnailUrl ?? null,
-          role: row.role,
-          source: row.source,
-        });
-        referenceImageMediaAssetIds.add(row.mediaAssetId);
-      }
-
-      // Character identity refs for this shot's required character keys.
-      const requiredCharacterRefs = Array.isArray(frame?.requiredCharacterRefs) ? frame!.requiredCharacterRefs : [];
-      for (const characterKey of requiredCharacterRefs) {
-        const characterAssets = characterAssetsByCharacterKey.get(characterKey) ?? [];
-        let addedForCharacter = 0;
-        for (const characterAsset of characterAssets) {
-          if (addedForCharacter >= 3) break;
-          if (referenceImageMediaAssetIds.has(characterAsset.mediaAssetId)) continue;
-          const asset = referenceAssetById.get(characterAsset.mediaAssetId);
-          if (!asset?.originalUrl) continue;
-          referenceImages.push({
-            id: `char-${characterAsset.assetRowId}`,
-            url: asset.originalUrl,
-            thumbnailUrl: asset.thumbnailUrl,
-            role: characterAsset.role ?? "character_reference",
-            source: "character",
-            title: characterAsset.characterName,
-          });
-          referenceImageMediaAssetIds.add(characterAsset.mediaAssetId);
-          addedForCharacter += 1;
-        }
-      }
-
-      // Product refs for this shot.
-      const shotProductAssetIds = Array.isArray(frame?.productReferenceAssetIds) ? frame!.productReferenceAssetIds : [];
-      for (const rawProductAssetId of shotProductAssetIds) {
-        const numeric = Number(rawProductAssetId);
-        if (!Number.isFinite(numeric)) continue;
-        if (referenceImageMediaAssetIds.has(numeric)) continue;
-        const asset = referenceAssetById.get(numeric);
-        if (!asset?.originalUrl) continue;
-        referenceImages.push({
-          id: `product-${numeric}`,
-          url: asset.originalUrl,
-          thumbnailUrl: asset.thumbnailUrl,
-          role: "product",
-          source: "product",
-          title: "product",
-        });
-        referenceImageMediaAssetIds.add(numeric);
-      }
+      const referenceImages = projectDramaShotReferenceImagesForExtension({
+        shotReferenceRows,
+        requiredCharacterRefs: requiredCharacterRefsByShot.get(shotNumber) ?? [],
+        characterAssetsByCharacterKey,
+        assetById: referenceAssetById,
+      });
 
       return {
         shotNumber,
@@ -780,8 +885,8 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         dialogueLines,
         mainImageUrl,
         mainImageThumbnailUrl,
-        gridImageUrl: frame?.angleGrid?.imageUrl ?? null,
-        gridFrames,
+        gridImageUrl: null,
+        gridFrames: [],
         referenceImages,
       } satisfies DramaShot;
     });

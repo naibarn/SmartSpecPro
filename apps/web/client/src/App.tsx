@@ -8,6 +8,8 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   type AnchorHTMLAttributes,
   type MouseEvent,
@@ -16,7 +18,7 @@ import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
 import { LinkProvider } from "@astryxdesign/core/Link";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getPostHog } from "@/lib/posthog";
-import { ThemeProvider } from "./contexts/ThemeContext";
+import { ThemeProvider, useTheme as useAppTheme } from "./contexts/ThemeContext";
 import {
   AstryxPaletteProvider,
   useAstryxPalette,
@@ -40,13 +42,16 @@ import { useNamespacePreloader } from "@/i18n/useNamespacePreloader";
 import {
   RouteLoadingError,
   RouteLoadingSkeleton,
+  RouteServiceRecovery,
 } from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 import { trpc } from "@/lib/trpc";
 import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
+import { useTenantServiceRecovery } from "@/hooks/useTenantServiceRecovery";
 import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
+import { resolveAstryxColorTokens } from "@/lib/astryxThemeCompatibility";
 
 function AstryxWouterLink({
   href,
@@ -95,6 +100,7 @@ const Home = lazy(() => import("./pages/Home"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Features = lazy(() => import("./pages/Features"));
 const Docs = lazy(() => import("./pages/Docs"));
+const WorkerAppMacBuildGuide = lazy(() => import("./pages/WorkerAppMacBuildGuide"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Blog = lazy(() => import("./pages/Blog"));
 const Login = lazy(() => import("./pages/Login"));
@@ -121,6 +127,7 @@ const MarketplaceConnectorLab = lazy(
   () => import("./pages/MarketplaceConnectorLab")
 );
 const WorkerAppConnect = lazy(() => import("./pages/WorkerAppConnect"));
+const McpAgentPairingApprove = lazy(() => import("./pages/McpAgentPairingApprove"));
 const MarketplaceCapturePreview = lazy(
   () => import("./pages/MarketplaceCapturePreview")
 );
@@ -399,10 +406,23 @@ function RequireVerticalDramaSeries({
 }: {
   children: React.ReactNode;
 }) {
-  const { enabled, isResolved, isError, retry } = useTenantFeatureFlagStatus(
-    "verticalDramaSeries"
-  );
+  const {
+    enabled,
+    isResolved,
+    isError,
+    isTransientError,
+    retry,
+  } = useTenantFeatureFlagStatus("verticalDramaSeries");
+  const autoRefreshPending = useTenantServiceRecovery(isTransientError);
   if (isError) {
+    if (isTransientError) {
+      return (
+        <RouteServiceRecovery
+          autoRefreshPending={autoRefreshPending}
+          onRetry={() => void retry()}
+        />
+      );
+    }
     return (
       <RouteLoadingError
         description="Tenant settings could not be loaded. Please try again."
@@ -451,10 +471,23 @@ function RequireVerticalDramaSeries({
  * of flashing a false "not available" denial.
  */
 function RequireVideoIntelligence({ children }: { children: React.ReactNode }) {
-  const { enabled, isResolved, isError, retry } = useTenantFeatureFlagStatus(
-    "videoIntelligencePlatformEnabled"
-  );
+  const {
+    enabled,
+    isResolved,
+    isError,
+    isTransientError,
+    retry,
+  } = useTenantFeatureFlagStatus("videoIntelligencePlatformEnabled");
+  const autoRefreshPending = useTenantServiceRecovery(isTransientError);
   if (isError) {
+    if (isTransientError) {
+      return (
+        <RouteServiceRecovery
+          autoRefreshPending={autoRefreshPending}
+          onRetry={() => void retry()}
+        />
+      );
+    }
     return (
       <RouteLoadingError
         description="Tenant settings could not be loaded. Please try again."
@@ -546,7 +579,50 @@ function LanguageSyncBridge() {
  */
 function AstryxPaletteApplier({ children }: { children: React.ReactNode }) {
   const { activePalette } = useAstryxPalette();
-  return <AstryxTheme theme={activePalette.theme}>{children}</AstryxTheme>;
+  const { theme: appTheme } = useAppTheme();
+  const colorTokens = useMemo(
+    () => resolveAstryxColorTokens(activePalette.theme, appTheme),
+    [activePalette.theme, appTheme],
+  );
+
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const themeRoot = document.documentElement.querySelector<HTMLElement>(
+      "[data-astryx-theme]",
+    );
+    const targets = [document.documentElement, themeRoot].filter(
+      (target, index, all): target is HTMLElement =>
+        target !== null && all.indexOf(target) === index,
+    );
+    const previousValues = targets.map((target) => ({
+      target,
+      values: new Map(
+        Object.keys(colorTokens).map((name) => [name, target.style.getPropertyValue(name)]),
+      ),
+    }));
+
+    for (const target of targets) {
+      for (const [name, value] of Object.entries(colorTokens)) {
+        target.style.setProperty(name, value);
+      }
+    }
+
+    return () => {
+      for (const { target, values } of previousValues) {
+        for (const [name, value] of values) {
+          if (value) target.style.setProperty(name, value);
+          else target.style.removeProperty(name);
+        }
+      }
+    };
+  }, [colorTokens]);
+
+  return (
+    <AstryxTheme theme={activePalette.theme} mode={appTheme}>
+      {children}
+    </AstryxTheme>
+  );
 }
 
 function Router() {
@@ -561,6 +637,7 @@ function Router() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/features" component={Features} />
           <Route path="/docs" component={Docs} />
+          <Route path="/docs/worker-app-macos-build" component={WorkerAppMacBuildGuide} />
           <Route path="/docs/:slug+" component={DocPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/help/:slug+" component={HelpTopicPage} />
@@ -1331,6 +1408,11 @@ function Router() {
               <WorkerAppConnect />
             </RequireAuth>
           </Route>
+          <Route path="/mcp/pairing/approve">
+            <RequireAuth>
+              <McpAgentPairingApprove />
+            </RequireAuth>
+          </Route>
           <Route path="/auth/device" component={DeviceAuth} />
           <Route path="/factory">
             <RequireAuth>
@@ -1375,9 +1457,9 @@ function App() {
       <HelmetProvider>
         <I18nextProvider i18n={i18n}>
           <AstryxPaletteProvider>
-            <AstryxPaletteApplier>
-              <LinkProvider component={AstryxWouterLink}>
-                <ThemeProvider defaultTheme="light" switchable>
+            <ThemeProvider defaultTheme="light" switchable>
+              <AstryxPaletteApplier>
+                <LinkProvider component={AstryxWouterLink}>
                   <AuthProvider>
                     <TenantProvider>
                       <TooltipProvider>
@@ -1394,9 +1476,9 @@ function App() {
                       </TooltipProvider>
                     </TenantProvider>
                   </AuthProvider>
-                </ThemeProvider>
-              </LinkProvider>
-            </AstryxPaletteApplier>
+                </LinkProvider>
+              </AstryxPaletteApplier>
+            </ThemeProvider>
           </AstryxPaletteProvider>
         </I18nextProvider>
       </HelmetProvider>

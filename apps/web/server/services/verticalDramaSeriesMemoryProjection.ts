@@ -120,6 +120,10 @@ const vdOpenThreadBlockSchema = z
     thread_id: z.string().min(1),
     description: z.string().min(1),
     thread_class: vdThreadClassSchema,
+    expected_resolution: z
+      .enum(["this_episode", "future_episode", "season"])
+      .optional(),
+    expected_resolution_episode: z.number().int().positive().optional(),
   })
   .passthrough();
 
@@ -186,6 +190,12 @@ function toVdEpisodeMemory(
     description: thread.description,
     threadClass: thread.thread_class,
     openedEpisode: episodeNumber,
+    ...(thread.expected_resolution
+      ? { expectedResolution: thread.expected_resolution }
+      : {}),
+    ...(thread.expected_resolution_episode
+      ? { expectedResolutionEpisode: thread.expected_resolution_episode }
+      : {}),
   }));
   const relationshipChanges: VdRelationshipState[] =
     parsed.relationship_changes.map(relationship => ({

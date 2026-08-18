@@ -53,6 +53,18 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      setSeriesDurationProfile: {
+        useMutation: () => ({
+          mutateAsync: vi.fn(),
+          isPending: false,
+        }),
+      },
+      setSeriesDialogueLanguageProfile: {
+        useMutation: () => ({
+          mutateAsync: vi.fn(),
+          isPending: false,
+        }),
+      },
       setSeriesLookLock: {
         useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
       },
@@ -112,6 +124,8 @@ vi.mock("@/components/ui/select", () => ({
   SelectTrigger: ({ children }: any) => <>{children}</>,
   SelectValue: () => null,
   SelectContent: ({ children }: any) => <>{children}</>,
+  SelectGroup: ({ children }: any) => <>{children}</>,
+  SelectLabel: ({ children }: any) => <>{children}</>,
   SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
 }));
 

@@ -1,0 +1,26 @@
+{
+  "name": "@smartspec/remotion-executor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": { "smartaihub-remotion-executor": "./dist/cli.js" },
+  "engines": { "node": ">=22.22.0 <23" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test --import tsx test/**/*.test.ts",
+    "doctor": "tsx src/cli.ts doctor",
+    "connect": "tsx src/cli.ts connect",
+    "setup": "tsx src/cli.ts setup",
+    "start": "tsx src/cli.ts start"
+    ,"release:pack": "node scripts/build-platform-pack.mjs"
+    ,"release:verify": "node scripts/verify-platform-pack.mjs"
+    ,"release:promote": "node scripts/promote-platform-pack.mjs"
+    ,"release:rollback": "node scripts/rollback-platform-pack.mjs"
+    ,"platform:smoke": "tsx src/cli.ts doctor"
+  },
+  "dependencies": {
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.3"
+  }
+}

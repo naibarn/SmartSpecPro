@@ -515,7 +515,7 @@ export const users = pgTable("users", {
   registeredDomain: varchar("registeredDomain", { length: 255 }),
 
   /** Current tenant ID (for quick access) */
-  currentTenantId: integer("currentTenantId").references(
+  currentTenantId: varchar("currentTenantId", { length: 36 }).references(
     (): AnyPgColumn => tenants.id
   ),
 
@@ -637,6 +637,15 @@ export const users = pgTable("users", {
   /** Last time user consumed credits (for inactivity detection) */
   lastCreditUsedAt: timestamp("lastCreditUsedAt", { withTimezone: true }),
 
+  /** First positive signup/invite free-credit grant timestamp */
+  freeCreditGrantedAt: timestamp("freeCreditGrantedAt", { withTimezone: true }),
+
+  /** First paid credit purchase timestamp; permanently cancels free-credit inactivity */
+  freeCreditPolicyCancelledAt: timestamp("freeCreditPolicyCancelledAt", { withTimezone: true }),
+
+  /** Last daily free-credit inactivity warning claim timestamp */
+  freeCreditNoticeSentAt: timestamp("freeCreditNoticeSentAt", { withTimezone: true }),
+
   createdAt: timestamp("createdAt", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -651,6 +660,11 @@ export const users = pgTable("users", {
   uniqueIndex("users_email_lower_trim_unique")
     .on(sql`lower(btrim(${t.email}))`)
     .where(sql`${t.email} IS NOT NULL`),
+  index("users_free_credit_policy_idx").on(
+    t.freeCreditGrantedAt,
+    t.freeCreditPolicyCancelledAt,
+    t.isDisabled,
+  ),
 ]);
 
 export type User = typeof users.$inferSelect;
@@ -6989,7 +7003,23 @@ export const renderedByTypeEnum = pgEnum("rendered_by_type", [
   "admin",
   "user",
 ]);
-export const paymentProviderEnum = pgEnum("payment_provider", ["beam"]);
+export const paymentProviderEnum = pgEnum("payment_provider", ["beam", "internal_manual"]);
+export const paymentChannelEnum = pgEnum("payment_channel", [
+  "beam_promptpay",
+  "beam_card",
+  "promptpay_direct_manual",
+]);
+export const paymentSlipStatusEnum = pgEnum("payment_slip_status", [
+  "submitted",
+  "rejected",
+  "accepted",
+  "superseded",
+]);
+export const promptpayReservationStateEnum = pgEnum("promptpay_reservation_state", [
+  "reserved",
+  "consumed",
+  "released",
+]);
 export const providerPaymentTypeEnum = pgEnum("provider_payment_type", [
   "charge",
   "payment_link",
@@ -7762,6 +7792,9 @@ export const payments = pgTable(
       { onDelete: "set null" }
     ),
     provider: paymentProviderEnum("provider").notNull().default("beam"),
+    paymentChannel: paymentChannelEnum("paymentChannel")
+      .notNull()
+      .default("beam_promptpay"),
     providerPaymentType: providerPaymentTypeEnum("providerPaymentType")
       .notNull()
       .default("charge"),
@@ -7779,6 +7812,19 @@ export const payments = pgTable(
     declineCategory: declineCategoryEnum("declineCategory"),
     expectedAmount: numeric("expectedAmount", { precision: 12, scale: 2 }),
     expectedCurrency: varchar("expectedCurrency", { length: 16 }),
+    sourceAmountUsd: numeric("sourceAmountUsd", { precision: 12, scale: 2 }),
+    sourceCurrency: varchar("sourceCurrency", { length: 16 }),
+    fxRate: numeric("fxRate", { precision: 20, scale: 10 }),
+    fxProvider: varchar("fxProvider", { length: 64 }),
+    fxRateDate: timestamp("fxRateDate", { withTimezone: true }),
+    fxFetchedAt: timestamp("fxFetchedAt", { withTimezone: true }),
+    fxSellSpreadBps: integer("fxSellSpreadBps"),
+    fxRiskBufferBps: integer("fxRiskBufferBps"),
+    fxEffectiveRate: numeric("fxEffectiveRate", { precision: 20, scale: 10 }),
+    roundedBaseAmountThb: numeric("roundedBaseAmountThb", { precision: 12, scale: 2 }),
+    randomSatang: integer("randomSatang"),
+    promptpayAmountThb: numeric("promptpayAmountThb", { precision: 12, scale: 2 }),
+    promptpayRecipientSnapshotJson: json("promptpayRecipientSnapshotJson").$type<Record<string, any>>(),
     settledAmount: numeric("settledAmount", { precision: 12, scale: 2 }),
     settledCurrency: varchar("settledCurrency", { length: 16 }),
     amountMatchStatus: amountMatchStatusEnum("amountMatchStatus")
@@ -7830,6 +7876,77 @@ export const payments = pgTable(
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = typeof payments.$inferInsert;
+
+export const paymentSlips = pgTable(
+  "payment_slips",
+  {
+    id: serial("id").primaryKey(),
+    paymentId: integer("paymentId")
+      .notNull()
+      .references(() => payments.id, { onDelete: "cascade" }),
+    invoiceId: integer("invoiceId")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
+    storageKey: varchar("storageKey", { length: 1024 }).notNull(),
+    originalFileName: varchar("originalFileName", { length: 255 }).notNull(),
+    mimeType: varchar("mimeType", { length: 128 }).notNull(),
+    fileSizeBytes: integer("fileSizeBytes").notNull(),
+    checksumSha256: varchar("checksumSha256", { length: 64 }).notNull(),
+    status: paymentSlipStatusEnum("status").notNull().default("submitted"),
+    customerNote: text("customerNote"),
+    rejectionReason: text("rejectionReason"),
+    uploadedAt: timestamp("uploadedAt", { withTimezone: true }).defaultNow().notNull(),
+    reviewedAt: timestamp("reviewedAt", { withTimezone: true }),
+    reviewedBy: integer("reviewedBy").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("payment_slips_payment_uploaded_idx").on(t.paymentId, t.uploadedAt),
+    index("payment_slips_status_uploaded_idx").on(t.status, t.uploadedAt),
+    index("payment_slips_checksum_idx").on(t.checksumSha256),
+  ],
+);
+
+export type PaymentSlip = typeof paymentSlips.$inferSelect;
+export type InsertPaymentSlip = typeof paymentSlips.$inferInsert;
+
+export const promptpayAmountReservations = pgTable(
+  "promptpay_amount_reservations",
+  {
+    id: serial("id").primaryKey(),
+    paymentId: integer("paymentId")
+      .notNull()
+      .unique()
+      .references(() => payments.id, { onDelete: "cascade" }),
+    businessDateBangkok: varchar("businessDateBangkok", { length: 10 }).notNull(),
+    randomSatang: integer("randomSatang").notNull(),
+    state: promptpayReservationStateEnum("state").notNull().default("reserved"),
+    reservedAt: timestamp("reservedAt", { withTimezone: true }).defaultNow().notNull(),
+    consumedAt: timestamp("consumedAt", { withTimezone: true }),
+    releasedAt: timestamp("releasedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("promptpay_reservations_business_date_idx").on(t.businessDateBangkok, t.randomSatang),
+    uniqueIndex("promptpay_reservations_same_day_unique")
+      .on(t.businessDateBangkok, t.randomSatang)
+      .where(sql`"state" IN ('reserved', 'consumed')`),
+    uniqueIndex("promptpay_reservations_active_satang_unique")
+      .on(t.randomSatang)
+      .where(sql`"state" = 'reserved'`),
+  ],
+);
+
+export type PromptpayAmountReservation = typeof promptpayAmountReservations.$inferSelect;
+export type InsertPromptpayAmountReservation = typeof promptpayAmountReservations.$inferInsert;
 
 export const paymentAttempts = pgTable(
   "payment_attempts",
@@ -13799,6 +13916,7 @@ export const workerRuntimeTypeEnum = pgEnum("worker_runtime_type", [
   "nemoclaw_sandbox",
   "hiclaw_cluster",
   "hermes_agent_gateway",
+  "remotion_executor",
 ]);
 
 export const workerStatusEnum = pgEnum("worker_status", [
@@ -13994,6 +14112,155 @@ export const workers = pgTable(
 
 export type Worker = typeof workers.$inferSelect;
 export type InsertWorker = typeof workers.$inferInsert;
+
+export const connectedDevices = pgTable(
+  "connected_devices",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    ownerUserId: integer("ownerUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workerId: varchar("workerId", { length: 36 }).references(() => workers.id, {
+      onDelete: "set null",
+    }),
+    deviceIdHash: varchar("deviceIdHash", { length: 64 }).notNull(),
+    deviceFingerprint: varchar("deviceFingerprint", { length: 16 }),
+    workerConnectionId: varchar("workerConnectionId", { length: 128 }),
+    consentId: varchar("consentId", { length: 128 }),
+    displayName: varchar("displayName", { length: 255 }).notNull(),
+    runtimeType: varchar("runtimeType", { length: 80 }).notNull(),
+    authKind: varchar("authKind", { length: 40 }).notNull(),
+    connectionMethod: varchar("connectionMethod", { length: 40 }).notNull(),
+    platform: varchar("platform", { length: 40 }),
+    architecture: varchar("architecture", { length: 40 }),
+    scopesJson: jsonb("scopesJson").$type<string[]>().notNull().default([]),
+    metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    approvedAt: timestamp("approvedAt", { withTimezone: true }),
+    lastSeenAt: timestamp("lastSeenAt", { withTimezone: true }),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", { withTimezone: true }),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    revokedByUserId: integer("revokedByUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    revocationReason: varchar("revocationReason", { length: 255 }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("connected_devices_owner_binding_unique").on(
+      t.tenantId,
+      t.ownerUserId,
+      t.deviceIdHash,
+      t.authKind,
+    ),
+    index("connected_devices_owner_status_idx").on(t.tenantId, t.ownerUserId, t.status),
+    index("connected_devices_worker_idx").on(t.workerId),
+    index("connected_devices_refresh_expiry_idx").on(t.refreshTokenExpiresAt),
+  ],
+);
+
+export type ConnectedDevice = typeof connectedDevices.$inferSelect;
+export type InsertConnectedDevice = typeof connectedDevices.$inferInsert;
+
+/** First-party MCP OAuth 2.1 authorization-server state. Secrets are stored hashed. */
+export const mcpOAuthClients = pgTable(
+  "mcp_oauth_clients",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    clientId: varchar("clientId", { length: 256 }).notNull().unique(),
+    clientName: varchar("clientName", { length: 255 }).notNull(),
+    clientUri: varchar("clientUri", { length: 1024 }),
+    logoUri: varchar("logoUri", { length: 1024 }),
+    redirectUris: jsonb("redirectUris").$type<string[]>().notNull(),
+    grantTypes: jsonb("grantTypes").$type<string[]>().notNull().default(["authorization_code", "refresh_token"]),
+    responseTypes: jsonb("responseTypes").$type<string[]>().notNull().default(["code"]),
+    tokenEndpointAuthMethod: varchar("tokenEndpointAuthMethod", { length: 32 }).notNull().default("none"),
+    metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [index("mcp_oauth_clients_status_idx").on(t.status)],
+);
+
+export const mcpOAuthTransactions = pgTable(
+  "mcp_oauth_transactions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    clientId: varchar("clientId", { length: 256 }).notNull(),
+    redirectUri: varchar("redirectUri", { length: 1024 }).notNull(),
+    resource: varchar("resource", { length: 1024 }).notNull(),
+    state: varchar("state", { length: 2048 }),
+    codeChallenge: varchar("codeChallenge", { length: 128 }).notNull(),
+    codeChallengeMethod: varchar("codeChallengeMethod", { length: 8 }).notNull().default("S256"),
+    requestedScopes: jsonb("requestedScopes").$type<string[]>().notNull(),
+    approvedScopes: jsonb("approvedScopes").$type<string[]>(),
+    userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+    authorizationCodeHash: varchar("authorizationCodeHash", { length: 128 }).unique(),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    approvedAt: timestamp("approvedAt", { withTimezone: true }),
+    consumedAt: timestamp("consumedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("mcp_oauth_transactions_client_idx").on(t.clientId, t.status),
+    index("mcp_oauth_transactions_expiry_idx").on(t.expiresAt),
+  ],
+);
+
+export const mcpOAuthGrants = pgTable(
+  "mcp_oauth_grants",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    clientId: varchar("clientId", { length: 256 }).notNull(),
+    redirectUri: varchar("redirectUri", { length: 1024 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    deviceIdHash: varchar("deviceIdHash", { length: 64 }),
+    scopesJson: jsonb("scopesJson").$type<string[]>().notNull(),
+    refreshFamilyId: varchar("refreshFamilyId", { length: 128 }).notNull().unique(),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", { withTimezone: true }),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    revokedByUserId: integer("revokedByUserId").references(() => users.id, { onDelete: "set null" }),
+    revocationReason: varchar("revocationReason", { length: 255 }),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("mcp_oauth_grants_owner_idx").on(t.tenantId, t.userId, t.status),
+    index("mcp_oauth_grants_client_idx").on(t.clientId, t.status),
+    index("mcp_oauth_grants_expiry_idx").on(t.refreshTokenExpiresAt),
+  ],
+);
+
+export const mcpOAuthRefreshTokens = pgTable(
+  "mcp_oauth_refresh_tokens",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    grantId: varchar("grantId", { length: 36 }).notNull().references(() => mcpOAuthGrants.id, { onDelete: "cascade" }),
+    familyId: varchar("familyId", { length: 128 }).notNull(),
+    tokenHash: varchar("tokenHash", { length: 128 }).notNull().unique(),
+    parentTokenHash: varchar("parentTokenHash", { length: 128 }),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    usedAt: timestamp("usedAt", { withTimezone: true }),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [index("mcp_oauth_refresh_tokens_grant_idx").on(t.grantId), index("mcp_oauth_refresh_tokens_family_idx").on(t.familyId)],
+);
 
 export const workerHeartbeats = pgTable(
   "worker_heartbeats",

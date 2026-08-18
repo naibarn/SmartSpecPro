@@ -8,6 +8,7 @@ import {
 import { readVerticalDramaDraftStoryDesign } from "./draftStoryDesign";
 import { evaluateVerticalDramaStoryArchitecture } from "./storyArchitecture";
 import { validateVerticalDramaStoryControlSeed } from "./storyControl";
+import { inspectVerticalDramaStoryControlConsistency } from "./storyControlConsistency";
 
 export const verticalDramaDraftCompletionStatusSchema = z.enum([
   "incomplete",
@@ -191,6 +192,12 @@ export function inspectVerticalDramaDraftCompleteness(params: {
   const design = readVerticalDramaDraftStoryDesign(draft.storyDesign);
   if (!design) missing.push("storyDesign");
   else {
+    if (
+      params.targetEpisodeCount != null &&
+      design.totalEpisodeCount !== params.targetEpisodeCount
+    ) {
+      missing.push("storyDesign.totalEpisodeCount");
+    }
     if (design.pressureThreads.length === 0)
       missing.push("storyDesign.pressureThreads");
     if (design.conflictGuardrails.length === 0)
@@ -213,13 +220,13 @@ export function inspectVerticalDramaDraftCompleteness(params: {
     }
     const seedValidation = validateVerticalDramaStoryControlSeed(
       design.storyControlSeed,
-      { totalEpisodeCount: params.targetEpisodeCount },
+      { totalEpisodeCount: params.targetEpisodeCount }
     );
     if (!seedValidation.ok) {
       missing.push(
-        ...seedValidation.issues.map(issue =>
-          `storyDesign.storyControlSeed.${issue.path}`,
-        ),
+        ...seedValidation.issues.map(
+          issue => `storyDesign.storyControlSeed.${issue.path}`
+        )
       );
     }
   }
@@ -230,9 +237,48 @@ export function inspectVerticalDramaDraftCompleteness(params: {
     }
     design.pressureThreads.forEach((thread, index) => {
       if (thread.episodeWindow.endEpisode > totalEpisodeCount) {
-        contradictions.push(`storyDesign.pressureThreads[${index}].episodeWindow`);
+        contradictions.push(
+          `storyDesign.pressureThreads[${index}].episodeWindow`
+        );
       }
     });
+    if (
+      !design.pressureThreads.some(
+        thread => thread.episodeWindow.endEpisode === totalEpisodeCount
+      )
+    ) {
+      missing.push("storyDesign.pressureThreads.terminalDestination");
+    }
+    if (
+      !design.advantageBeats.some(
+        beat => beat.episodeNumber === totalEpisodeCount
+      )
+    ) {
+      missing.push("storyDesign.advantageBeats.terminalDestination");
+    }
+  }
+  if (design) {
+    const controlConsistency = inspectVerticalDramaStoryControlConsistency({
+      storyDesign: design,
+      storyArchitecture: draft.storyContract,
+      targetEpisodeCount: params.targetEpisodeCount,
+    });
+    for (const issue of controlConsistency.issues) {
+      const issuePath = `storyDesign.${issue.path}`;
+      if (issue.code === "placeholder_control_text" || issue.code === "duplicate_pressure_thread" || issue.code === "duplicate_advantage_beat") {
+        missing.push(issuePath);
+      } else {
+        contradictions.push(issuePath);
+      }
+      diagnostics.push({
+        code: `story_control_${issue.code}`,
+        severity: "blocking",
+        message: issue.message,
+        messageEn: issue.message,
+        paths: [issuePath],
+        repairable: issue.repairable,
+      });
+    }
   }
 
   for (const diagnostic of readVerticalDramaDraftDiagnostics(

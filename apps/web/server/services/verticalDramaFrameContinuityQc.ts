@@ -136,6 +136,7 @@ export function buildFrameContinuityQcUserPrompt(input: {
 export type RunFrameContinuityQcInput = {
   userId: number;
   tenantId: string;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   shotNumber: number;
@@ -192,6 +193,8 @@ export async function runFrameContinuityQc(
     hasVision: true,
     images,
     userId: input.userId,
+    tenantId: input.tenantId,
+    publicUrl: input.publicUrl,
     schema: frameQcOutputSchema,
     firstAttemptMaxTokens: 1800,
     retryMaxTokens: 2400,

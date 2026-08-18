@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sparkles, ImageIcon, CheckCircle2 } from "lucide-react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { type VdLocale } from "./verticalDramaWorkspaceCopy";
 
 /* ---- Copy text ------------------------------------------------------------ */
@@ -261,7 +262,7 @@ export function ImagePromptAiEditDialog({
                     !attachShotImage ? "opacity-40" : ""
                   }`}
                 >
-                  <img
+                  <AuthenticatedMediaImage
                     src={shotImageUrl}
                     alt=""
                     className="h-14 w-14 rounded object-cover"

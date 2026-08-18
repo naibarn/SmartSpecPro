@@ -71,14 +71,14 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(reserveCredits).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: 7,
         tenantId: "tenant-1",
-      }),
+      })
     );
     expect(repo.insertJob).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -93,7 +93,7 @@ describe("workerSchedulerService", () => {
             reservationId: "res-1",
           }),
         }),
-      }),
+      })
     );
     expect(result.created).toBe(true);
   });
@@ -116,7 +116,7 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result).toEqual({
@@ -141,8 +141,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "unsupported_resource_profile",
     });
@@ -164,8 +164,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "unsupported_capability_family",
     });
@@ -191,8 +191,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "feature_disabled",
       statusCode: 403,
@@ -216,8 +216,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "dispatch_disabled",
       statusCode: 503,
@@ -265,21 +265,23 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "hermes_agent_gateway",
-      jobType: "external_agent_task",
-      resourceProfile: "network_heavy",
-      capabilityRequirementsJson: expect.objectContaining({
-        capabilityFamilies: ["artifact-producing-session"],
-        preferredWorkerId: "worker-hermes-1",
-      }),
-      instructionsJson: expect.objectContaining({
-        intent: "external_connector_follow_up",
-      }),
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "hermes_agent_gateway",
+        jobType: "external_agent_task",
+        resourceProfile: "network_heavy",
+        capabilityRequirementsJson: expect.objectContaining({
+          capabilityFamilies: ["artifact-producing-session"],
+          preferredWorkerId: "worker-hermes-1",
+        }),
+        instructionsJson: expect.objectContaining({
+          intent: "external_connector_follow_up",
+        }),
+      })
+    );
     expect(result.created).toBe(true);
   });
 
@@ -299,11 +301,104 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "unsupported_capability_family",
       statusCode: 400,
+    });
+  });
+
+  it("persists bounded Hermes correlation metadata without creating a second queue", async () => {
+    repo.findWorkerById.mockResolvedValue({
+      id: "worker-hermes-correlation",
+      runtimeType: "hermes_agent_gateway",
+      status: "online",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          hermesVersion: "1.2.3",
+          profileName: "personal-default",
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://127.0.0.1:4100",
+          terminalBackend: "pty",
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: true,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          hostPlatform: "macos",
+          hostExecutionMode: "foreground",
+          gatewayPlatforms: ["telegram"],
+        },
+      },
+    });
+
+    await queueHermesWorkerJob(
+      {
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        jobType: "external_agent_task",
+        capabilityFamilies: ["artifact-producing-session"],
+        preferredWorkerId: "worker-hermes-correlation",
+        correlation: {
+          schemaVersion: "2026-08-18.1",
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          conversationId: "room-1",
+          messageId: "message-1",
+          targetDeviceId: "worker-hermes-correlation",
+          operation: "external_agent_task",
+          approvalState: "not_required",
+          reservationId: null,
+          parentJobId: null,
+          childJobIds: [],
+          state: "queued",
+          idempotencyKey: "run:1:work-item:1:worker:1",
+          expiresAt: "2026-08-18T00:00:00.000Z",
+          safeSummary: "Approved Hermes task",
+        },
+      },
+      { repo: repo as any, reserveCredits, getFeatureFlags }
+    );
+
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instructionsJson: expect.objectContaining({
+          correlation: expect.objectContaining({
+            schemaVersion: "2026-08-18.1",
+            tenantId: "tenant-1",
+            childJobIds: [],
+          }),
+        }),
+      })
+    );
+  });
+
+  it("rejects Hermes correlation metadata from another tenant", async () => {
+    await expect(
+      queueHermesWorkerJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          jobType: "external_agent_task",
+          capabilityFamilies: ["artifact-producing-session"],
+          correlation: {
+            schemaVersion: "2026-08-18.1",
+            tenantId: "tenant-2",
+            requestedByUserId: 7,
+            conversationId: "room-1",
+            operation: "external_agent_task",
+            approvalState: "not_required",
+            state: "queued",
+            idempotencyKey: "run:1:work-item:1:worker:1",
+            expiresAt: "2026-08-18T00:00:00.000Z",
+            safeSummary: "Task",
+          },
+        },
+        { repo: repo as any, reserveCredits, getFeatureFlags }
+      )
+    ).rejects.toMatchObject({
+      code: "correlation_tenant_mismatch",
+      statusCode: 403,
     });
   });
 
@@ -329,8 +424,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "feature_disabled",
       statusCode: 403,
@@ -373,8 +468,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "rollout_stage_blocked",
       statusCode: 409,
@@ -417,15 +512,17 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "hermes_agent_gateway",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: "worker-hermes-2",
-      }),
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "hermes_agent_gateway",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: "worker-hermes-2",
+        }),
+      })
+    );
   });
 
   it("matches job claims against preferred workers and capability hints", () => {
@@ -438,8 +535,8 @@ describe("workerSchedulerService", () => {
           },
         },
         "worker-1",
-        ["browser-automation"],
-      ),
+        ["browser-automation"]
+      )
     ).toBe(true);
 
     expect(
@@ -451,8 +548,8 @@ describe("workerSchedulerService", () => {
           },
         },
         "worker-1",
-        ["browser-automation"],
-      ),
+        ["browser-automation"]
+      )
     ).toBe(false);
 
     expect(
@@ -463,8 +560,8 @@ describe("workerSchedulerService", () => {
           },
         },
         "worker-1",
-        ["browser-automation"],
-      ),
+        ["browser-automation"]
+      )
     ).toBe(false);
   });
 
@@ -478,19 +575,13 @@ describe("workerSchedulerService", () => {
     };
 
     expect(
-      workerJobMatchesSelection(
-        hermesJob,
-        "worker-hermes-1",
-        ["hermes_media"],
-      ),
+      workerJobMatchesSelection(hermesJob, "worker-hermes-1", ["hermes_media"])
     ).toBe(true);
 
     expect(
-      workerJobMatchesSelection(
-        hermesJob,
-        "worker-hermes-1",
-        ["hermes-media-generation"],
-      ),
+      workerJobMatchesSelection(hermesJob, "worker-hermes-1", [
+        "hermes-media-generation",
+      ])
     ).toBe(false);
   });
 
@@ -558,25 +649,30 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "video_assembly",
-      resourceProfile: "gpu_required",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: "desktop-worker-1",
-        capabilityFamilies: expect.arrayContaining(["video-edit", "file-access"]),
-      }),
-      inputJson: expect.objectContaining({
-        inputRefs: expect.any(Array),
-        workspacePolicy: expect.objectContaining({
-          allowedSourceRoots: ["C:\\Media\\job"],
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "video_assembly",
+        resourceProfile: "gpu_required",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: "desktop-worker-1",
+          capabilityFamilies: expect.arrayContaining([
+            "video-edit",
+            "file-access",
+          ]),
         }),
-      }),
-    }));
+        inputJson: expect.objectContaining({
+          inputRefs: expect.any(Array),
+          workspacePolicy: expect.objectContaining({
+            allowedSourceRoots: ["C:\\Media\\job"],
+          }),
+        }),
+      })
+    );
   });
 
   it("queues HyperFrames final composite jobs through the desktop worker lane without a product binding", async () => {
@@ -640,42 +736,44 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "hyperframes_final_composite",
-      status: "queued",
-      resourceProfile: "cpu_heavy",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: null,
-        capabilityFamilies: expect.arrayContaining([
-          "hyperframes-final-composite",
-          "official-hyperframes-runtime",
-          "browser-render",
-          "thai-fonts",
-          "ffmpeg-probe",
-        ]),
-      }),
-      inputJson: expect.objectContaining({
-        renderIntent: "hyperframes_final_composite",
-        finalCompositeConfigHash: "hf_config_123",
-        source: expect.objectContaining({
-          productId: null,
-          manualProjectName: "Manual Storyboard Project",
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "hyperframes_final_composite",
+        status: "queued",
+        resourceProfile: "cpu_heavy",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: null,
+          capabilityFamilies: expect.arrayContaining([
+            "hyperframes-final-composite",
+            "official-hyperframes-runtime",
+            "browser-render",
+            "thai-fonts",
+            "ffmpeg-probe",
+          ]),
         }),
-      }),
-      instructionsJson: expect.objectContaining({
-        intent: "hyperframes_final_composite",
-        outputPolicy: expect.objectContaining({
-          rejectFallbackRender: true,
-          requireCssBrowserRuntime: true,
-          requireServerVerification: true,
+        inputJson: expect.objectContaining({
+          renderIntent: "hyperframes_final_composite",
+          finalCompositeConfigHash: "hf_config_123",
+          source: expect.objectContaining({
+            productId: null,
+            manualProjectName: "Manual Storyboard Project",
+          }),
         }),
-      }),
-    }));
+        instructionsJson: expect.objectContaining({
+          intent: "hyperframes_final_composite",
+          outputPolicy: expect.objectContaining({
+            rejectFallbackRender: true,
+            requireCssBrowserRuntime: true,
+            requireServerVerification: true,
+          }),
+        }),
+      })
+    );
   });
 
   it("reuses only the same active HyperFrames final composite idempotency key", async () => {
@@ -732,7 +830,7 @@ describe("workerSchedulerService", () => {
         ...commonInput,
         idempotencyKey: "hf-final:hf_config_123",
       },
-      { repo: repo as any, reserveCredits },
+      { repo: repo as any, reserveCredits }
     );
 
     expect(first.created).toBe(false);
@@ -745,13 +843,15 @@ describe("workerSchedulerService", () => {
         finalCompositeConfigHash: "hf_config_regenerated_456",
         idempotencyKey: "hf-final:hf_config_regenerated_456",
       },
-      { repo: repo as any, reserveCredits },
+      { repo: repo as any, reserveCredits }
     );
 
     expect(second.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      idempotencyKey: "hf-final:hf_config_regenerated_456",
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: "hf-final:hf_config_regenerated_456",
+      })
+    );
   });
 
   it("queues HyperFrames final composite without tenant flags but still rejects draining preferred workers", async () => {
@@ -798,17 +898,19 @@ describe("workerSchedulerService", () => {
       },
     };
 
-    const queued = await queueDesktopHyperframesFinalCompositeJob(
-      input,
-      { repo: repo as any, reserveCredits },
-    );
+    const queued = await queueDesktopHyperframesFinalCompositeJob(input, {
+      repo: repo as any,
+      reserveCredits,
+    });
 
     expect(queued.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "hyperframes_final_composite",
-      status: "queued",
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "hyperframes_final_composite",
+        status: "queued",
+      })
+    );
 
     getFeatureFlags.mockResolvedValue({
       openClawExternalRuntime: true,
@@ -824,13 +926,15 @@ describe("workerSchedulerService", () => {
       status: "draining",
     });
 
-    await expect(queueDesktopHyperframesFinalCompositeJob(
-      {
-        ...input,
-        preferredWorkerId: "desktop-worker-1",
-      },
-      { repo: repo as any, reserveCredits },
-    )).rejects.toMatchObject({
+    await expect(
+      queueDesktopHyperframesFinalCompositeJob(
+        {
+          ...input,
+          preferredWorkerId: "desktop-worker-1",
+        },
+        { repo: repo as any, reserveCredits }
+      )
+    ).rejects.toMatchObject({
       code: "worker_state_invalid",
       statusCode: 409,
     });
@@ -894,8 +998,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "unauthorized_path",
       statusCode: 403,
@@ -961,8 +1065,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       issues: expect.arrayContaining([
         expect.objectContaining({
@@ -1022,22 +1126,27 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "local_folder_ingest",
-      resourceProfile: "cpu_heavy",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: "desktop-worker-1",
-        capabilityFamilies: expect.arrayContaining(["file-access", "doc-indexing"]),
-      }),
-      instructionsJson: expect.objectContaining({
-        intent: "local_folder_ingest",
-      }),
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "local_folder_ingest",
+        resourceProfile: "cpu_heavy",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: "desktop-worker-1",
+          capabilityFamilies: expect.arrayContaining([
+            "file-access",
+            "doc-indexing",
+          ]),
+        }),
+        instructionsJson: expect.objectContaining({
+          intent: "local_folder_ingest",
+        }),
+      })
+    );
   });
 
   it("rejects local_folder_ingest roots that fall outside the approved workspace roots", async () => {
@@ -1081,8 +1190,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "unauthorized_path",
       statusCode: 403,
@@ -1131,22 +1240,27 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "comfy_image_generation",
-      resourceProfile: "gpu_required",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: "desktop-worker-1",
-        capabilityFamilies: expect.arrayContaining(["comfyui-image-generate", "gpu-nvidia"]),
-      }),
-      instructionsJson: expect.objectContaining({
-        intent: "comfy_image_generation",
-      }),
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "comfy_image_generation",
+        resourceProfile: "gpu_required",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: "desktop-worker-1",
+          capabilityFamilies: expect.arrayContaining([
+            "comfyui-image-generate",
+            "gpu-nvidia",
+          ]),
+        }),
+        instructionsJson: expect.objectContaining({
+          intent: "comfy_image_generation",
+        }),
+      })
+    );
   });
 
   it("rejects comfy_image_generation jobs that point to non-loopback services", async () => {
@@ -1186,8 +1300,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       issues: expect.arrayContaining([
         expect.objectContaining({
@@ -1222,7 +1336,10 @@ describe("workerSchedulerService", () => {
           viewPath: "/view",
         },
         workflowJson: {
-          "10": { class_type: "SaveImage", inputs: { filename_prefix: "smartspec" } },
+          "10": {
+            class_type: "SaveImage",
+            inputs: { filename_prefix: "smartspec" },
+          },
         },
         executionPolicy: {
           expectedOutputTypes: ["images", "files"],
@@ -1240,22 +1357,24 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "comfy_workflow_run",
-      resourceProfile: "cpu_heavy",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: "desktop-worker-1",
-        capabilityFamilies: expect.arrayContaining(["comfyui-workflow-run"]),
-      }),
-      instructionsJson: expect.objectContaining({
-        intent: "comfy_workflow_run",
-      }),
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "comfy_workflow_run",
+        resourceProfile: "cpu_heavy",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: "desktop-worker-1",
+          capabilityFamilies: expect.arrayContaining(["comfyui-workflow-run"]),
+        }),
+        instructionsJson: expect.objectContaining({
+          intent: "comfy_workflow_run",
+        }),
+      })
+    );
   });
 
   it("queues NemoClaw jobs through the secure runtime lane", async () => {
@@ -1283,19 +1402,21 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "nemoclaw_sandbox",
-      jobType: "secure_browser_task",
-      resourceProfile: "sandbox_required",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: "nemo-worker-1",
-        capabilityFamilies: ["secure-sandbox-exec"],
-      }),
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "nemoclaw_sandbox",
+        jobType: "secure_browser_task",
+        resourceProfile: "sandbox_required",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: "nemo-worker-1",
+          capabilityFamilies: ["secure-sandbox-exec"],
+        }),
+      })
+    );
   });
 
   it("queues HiClaw jobs through the collaborative cluster lane", async () => {
@@ -1323,19 +1444,21 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "hiclaw_cluster",
-      jobType: "collaborative_agent_task",
-      resourceProfile: "human_observable",
-      capabilityRequirementsJson: expect.objectContaining({
-        preferredWorkerId: "hiclaw-worker-1",
-        capabilityFamilies: ["multi-agent-cluster"],
-      }),
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "hiclaw_cluster",
+        jobType: "collaborative_agent_task",
+        resourceProfile: "human_observable",
+        capabilityRequirementsJson: expect.objectContaining({
+          preferredWorkerId: "hiclaw-worker-1",
+          capabilityFamilies: ["multi-agent-cluster"],
+        }),
+      })
+    );
   });
 
   it("rejects nested local Windows paths for NemoClaw jobs", async () => {
@@ -1353,17 +1476,19 @@ describe("workerSchedulerService", () => {
           requestedByUserId: 7,
           jobType: "secure_browser_task",
           inputJson: {
-            artifacts: [{
-              sourcePath: "C:\\Media\\private\\notes.txt",
-            }],
+            artifacts: [
+              {
+                sourcePath: "C:\\Media\\private\\notes.txt",
+              },
+            ],
           },
         },
         {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "unsupported_job_scope",
       statusCode: 400,
@@ -1396,8 +1521,8 @@ describe("workerSchedulerService", () => {
           repo: repo as any,
           reserveCredits,
           getFeatureFlags,
-        },
-      ),
+        }
+      )
     ).rejects.toMatchObject({
       code: "unsupported_job_scope",
       statusCode: 400,
@@ -1471,14 +1596,16 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "video_assembly",
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "video_assembly",
+      })
+    );
   });
 
   it("routes local_folder_ingest queue requests through the desktop runtime family", async () => {
@@ -1530,14 +1657,16 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "local_folder_ingest",
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "local_folder_ingest",
+      })
+    );
   });
 
   it("routes comfy_image_generation queue requests through the desktop runtime family", async () => {
@@ -1584,13 +1713,15 @@ describe("workerSchedulerService", () => {
         repo: repo as any,
         reserveCredits,
         getFeatureFlags,
-      },
+      }
     );
 
     expect(result.created).toBe(true);
-    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
-      runtimeType: "desktop_zeroclaw_managed",
-      jobType: "comfy_image_generation",
-    }));
+    expect(repo.insertJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "comfy_image_generation",
+      })
+    );
   });
 });

@@ -457,7 +457,13 @@ mod tests {
     #[test]
     fn finishing_the_last_job_clears_the_current_slot() {
         let mut state = ExecutorState::default();
-        state.start_job("only-1".into(), "Render".into(), "render".into(), None, None);
+        state.start_job(
+            "only-1".into(),
+            "Render".into(),
+            "render".into(),
+            None,
+            None,
+        );
         state.finish_job("only-1");
         assert!(state.active_jobs.is_empty());
         assert!(state.current_job_id.is_none());
@@ -529,6 +535,9 @@ mod tests {
         assert_eq!(hermes.hermes_version.as_deref(), Some("0.18.2"));
         // The doctor update must not have cleared the previously-set warning.
         assert!(hermes.update_required);
-        assert_eq!(hermes.update_required_reason.as_deref(), Some("below minimum"));
+        assert_eq!(
+            hermes.update_required_reason.as_deref(),
+            Some("below minimum")
+        );
     }
 }

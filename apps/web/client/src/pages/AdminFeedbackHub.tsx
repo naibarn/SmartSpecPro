@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
+import {
+  AuthenticatedAttachmentImage,
+  getAuthenticatedAttachmentUrl,
+  openAuthenticatedAttachment,
+} from "@/components/feedback/AuthenticatedAttachmentImage";
 import { trpc } from "@/lib/trpc";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
@@ -73,6 +78,11 @@ export default function AdminFeedbackHub() {
       if (!isNaN(id)) setSelectedTicketId(id);
     }
   }, [search]);
+
+  const selectTicket = (ticketId: number) => {
+    setSelectedTicketId(ticketId);
+    setLocation(`/admin/feedback-hub?ticketId=${ticketId}`);
+  };
   const [commentText, setCommentText] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -125,6 +135,12 @@ export default function AdminFeedbackHub() {
   const detailError = ticketDetailQuery.error;
 
   const attachmentsList = ((detail as any)?.attachments ?? []) as any[];
+  const affectedUsers = (
+    ((detail as any)?.affectedUsers ?? []) as Array<{
+      id: number;
+      email: string | null;
+    }>
+  );
   const imageAttachments = attachmentsList.filter((att: any) =>
     att.mimeType?.startsWith("image/")
   );
@@ -490,7 +506,7 @@ export default function AdminFeedbackHub() {
                         ? "bg-blue-50 border border-blue-200"
                         : "hover:bg-gray-50 border border-transparent"
                     }`}
-                    onClick={() => setSelectedTicketId(ticket.id)}
+                    onClick={() => selectTicket(ticket.id)}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
                       <Badge
@@ -598,6 +614,9 @@ export default function AdminFeedbackHub() {
                       </Badge>
                       <span className="text-xs text-muted-foreground">
                         #{detail.id}
+                      </span>
+                      <span className="text-[10px] font-mono text-muted-foreground border rounded px-1.5 py-0.5">
+                        Ticket ID: {detail.id}
                       </span>
                     </div>
                     <h2 className="text-lg font-semibold">{detail.title}</h2>
@@ -916,10 +935,27 @@ export default function AdminFeedbackHub() {
                           {autoReportDiagnostics.affectedUserIds && (
                             <>
                               <dt className="text-muted-foreground">
-                                affectedUserIds
+                                affected users
                               </dt>
-                              <dd className="truncate">
-                                {autoReportDiagnostics.affectedUserIds}
+                              <dd className="min-w-0">
+                                {affectedUsers.length > 0 ? (
+                                  <div className="space-y-0.5">
+                                    {affectedUsers.map((affectedUser) => (
+                                      <div key={affectedUser.id} className="break-all">
+                                        {affectedUser.email ?? `user #${affectedUser.id}`}
+                                        {affectedUser.email && (
+                                          <span className="text-muted-foreground">
+                                            {` (user #${affectedUser.id})`}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="truncate">
+                                    {autoReportDiagnostics.affectedUserIds}
+                                  </span>
+                                )}
                               </dd>
                             </>
                           )}
@@ -974,8 +1010,8 @@ export default function AdminFeedbackHub() {
                                   className="flex items-center gap-2 flex-1 min-w-0 text-left"
                                 >
                                   <div className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0">
-                                    <img
-                                      src={att.resolvedUrl}
+                                    <AuthenticatedAttachmentImage
+                                      src={att.resolvedUrl ?? att.fileUrl}
                                       alt={att.fileName}
                                       className="w-full h-full object-cover"
                                     />
@@ -994,9 +1030,13 @@ export default function AdminFeedbackHub() {
                                 </button>
                               ) : (
                                 <a
-                                  href={att.resolvedUrl}
+                                  href={getAuthenticatedAttachmentUrl(att.resolvedUrl ?? att.fileUrl) ?? "#"}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={event => {
+                                    event.preventDefault();
+                                    void openAuthenticatedAttachment(att.resolvedUrl ?? att.fileUrl).catch(() => undefined);
+                                  }}
                                   className="flex items-center gap-2 flex-1 min-w-0"
                                 >
                                   <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
@@ -1162,9 +1202,12 @@ export default function AdminFeedbackHub() {
                             </Button>
                           </>
                         )}
-                        <img
+                        <AuthenticatedAttachmentImage
                           key={imageAttachments[lightboxIndex].id}
-                          src={imageAttachments[lightboxIndex].resolvedUrl}
+                          src={
+                            imageAttachments[lightboxIndex].resolvedUrl ??
+                            imageAttachments[lightboxIndex].fileUrl
+                          }
                           alt={imageAttachments[lightboxIndex].fileName}
                           className="w-full h-full object-contain"
                         />
@@ -1181,9 +1224,21 @@ export default function AdminFeedbackHub() {
                           )}
                         </div>
                         <a
-                          href={imageAttachments[lightboxIndex].resolvedUrl}
+                          href={
+                            getAuthenticatedAttachmentUrl(
+                              imageAttachments[lightboxIndex].resolvedUrl ??
+                                imageAttachments[lightboxIndex].fileUrl,
+                            ) ?? "#"
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={event => {
+                            event.preventDefault();
+                            void openAuthenticatedAttachment(
+                              imageAttachments[lightboxIndex].resolvedUrl ??
+                                imageAttachments[lightboxIndex].fileUrl,
+                            ).catch(() => undefined);
+                          }}
                           className="text-xs text-blue-600 hover:underline shrink-0"
                         >
                           เปิดในแท็บใหม่

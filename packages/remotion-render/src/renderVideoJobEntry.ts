@@ -35,6 +35,16 @@ export {
   REMOTION_RENDER_VIDEO_QUEUED_TTL_MS,
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+  REMOTION_EXECUTOR_SUPPORTED_HOST_PLATFORMS,
+  REMOTION_EXECUTOR_SUPPORTED_RUNTIME_PLATFORMS,
+  REMOTION_EXECUTOR_SUPPORTED_ARCHITECTURES,
+  REMOTION_EXECUTOR_INSTALLATION_MODES,
+  REMOTION_EXECUTOR_READINESS_STATUSES,
+  REMOTION_EXECUTOR_BLOCKING_REASON_CODES,
+  REMOTION_EXECUTOR_MAX_CONCURRENCY,
+  remotionExecutorRuntimeMetadataSchema,
+  remotionExecutorCapabilityProfileSchema,
+  remotionExecutorReadinessSchema,
   remotionRenderVideoProgressStageSchema,
   remotionRenderVideoFailureCodeSchema,
   remotionRenderVideoCapabilityFamilySchema,
@@ -46,6 +56,9 @@ export type {
   RemotionRenderVideoFailureCode,
   RemotionRenderVideoCapabilityFamily,
   RemotionRenderVideoWorkerInput,
+  RemotionExecutorRuntimeMetadata,
+  RemotionExecutorCapabilityProfile,
+  RemotionExecutorReadiness,
 } from "./remotionRenderVideoSchema";
 
 export {

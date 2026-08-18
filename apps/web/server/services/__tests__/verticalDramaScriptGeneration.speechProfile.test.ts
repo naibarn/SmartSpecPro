@@ -207,3 +207,21 @@ describe("generateEpisodeScript — opts.dialogueRulesV2Enabled (spec §11, F132
     expect(content).toContain("Clue budget");
   });
 });
+
+describe("generateEpisodeScript — dialogue language profile", () => {
+  it("injects the exact contemporary spoken-English contract for an Auto English series", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        locale: "en",
+        dialogueLanguageProfile: { version: 1, marketMode: "auto" },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain(
+      "Natural contemporary American English, spoken dialogue, not translated English.",
+    );
+    expect(content).toContain("dialogue_language_profile");
+    expect(content).toContain("United States / General American English");
+  });
+});

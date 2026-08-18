@@ -17,6 +17,7 @@ import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentMan
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { AlertTriangle, Check, Copy, Download, ExternalLink, Loader2, Maximize2, Minimize2, Minus, Pencil, Plus, Upload, X } from "lucide-react";
 // Heavy viewer components — lazy-loaded so they don't bloat the initial DocumentManagement chunk
 // ROLLBACK: To revert to old editor, replace UnifiedDocumentSurface with:
@@ -626,7 +627,7 @@ export default function DocumentPreviewPanel({
         >
           <div className="flex h-full min-h-0 flex-col gap-3 p-1.5">
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/80 bg-white/90 p-2 shadow-sm">
-              <img
+              <AuthenticatedMediaImage
                 src={sourceUrl}
                 alt={item.title}
                 className="max-h-full w-auto max-w-full rounded-md object-contain"

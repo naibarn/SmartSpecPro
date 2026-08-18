@@ -65,6 +65,9 @@ import {
   startMarketplaceAutoReviewRun,
   deleteMarketplaceAutoReviewRun,
   updateMarketplaceAutoReviewPlanShotDialogue,
+  startMarketplaceAutoReviewDraftQualityQc,
+  startMarketplaceAutoReviewDraftQualityQcRepair,
+  selectMarketplaceAutoReviewDraftQualityQcRepair,
 } from "../services/marketplaceAutoReviewService";
 import {
   acceptStagedAutoReviewImage,
@@ -1547,6 +1550,38 @@ export const marketplaceCaptureRouter = router({
         input,
         authFromCtx(ctx),
         autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
+
+  startAutoReviewDraftQualityQc: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        maxImprovementRounds: z.number().int().min(0).max(5).optional(),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      startMarketplaceAutoReviewDraftQualityQc(input, authFromCtx(ctx))
+    ),
+
+  startAutoReviewDraftQualityQcRepair: protectedProcedure
+    .input(z.object({ runId: z.string().min(1).max(64) }))
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      startMarketplaceAutoReviewDraftQualityQcRepair(
+        input,
+        authFromCtx(ctx),
+      )
+    ),
+
+  selectAutoReviewDraftQualityQcRepair: protectedProcedure
+    .input(z.object({ runId: z.string().min(1).max(64) }))
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      selectMarketplaceAutoReviewDraftQualityQcRepair(
+        input,
+        authFromCtx(ctx),
       )
     ),
 

@@ -131,6 +131,89 @@
         }
       }
     },
+    "thread_actions": {
+      "description": "Optional story-control annotations; references registered thread IDs and never silently closes a thread.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "action": { "type": "string", "enum": ["open", "advance", "reframe", "resolve", "defer", "park"] },
+          "threadId": { "type": "string" },
+          "proposedThreadId": { "type": "string" },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["episodeNumber"]
+            }
+          },
+          "note": { "type": "string" }
+        },
+        "required": ["action"]
+      }
+    },
+    "romance_beat": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+          "phase": {
+            "type": "string",
+            "enum": ["none", "friction", "flirt", "vulnerability", "trust_shift", "sweet", "rupture", "reconciliation", "confession", "commitment", "pause"]
+          },
+        "pair": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "string" } },
+        "purpose": { "type": "string" },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["episodeNumber"]
+          }
+        }
+      },
+      "required": ["phase", "purpose"]
+    },
+    "advantage_beat": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "advantaged_side": {
+          "type": "string",
+          "enum": ["protagonist", "antagonist", "shared", "unclear"]
+        },
+        "cost": { "type": "string" },
+        "opponent_response": { "type": "string" },
+        "purpose": { "type": "string" },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["episodeNumber"]
+          }
+        }
+      },
+      "required": ["advantaged_side", "cost", "opponent_response"]
+    },
+    "character_role_bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["character_key", "role"],
+        "properties": { "character_key": { "type": "string" }, "role": { "type": "string" } }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["episodeNumber"]
+      }
+    },
     "scene_dialogue_summary": {
       "type": "array",
       "items": {
@@ -259,6 +342,18 @@
                   "health",
                   "relationship"
                 ]
+              },
+              "expected_resolution": {
+                "type": "string",
+                "enum": [
+                  "this_episode",
+                  "future_episode",
+                  "season"
+                ]
+              },
+              "expected_resolution_episode": {
+                "type": "integer",
+                "minimum": 1
               }
             }
           }

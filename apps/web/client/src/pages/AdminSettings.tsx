@@ -121,7 +121,7 @@ interface BeamProviderForm {
 }
 
 interface PaymentProviderForm {
-  BILLING_ACTIVE_PROVIDER: "stripe" | "beam";
+  BILLING_ACTIVE_PROVIDER: "stripe" | "beam" | "promptpay_direct";
   BILLING_STRIPE_ENABLED: boolean;
   BILLING_BEAM_ENABLED: boolean;
   BEAM_PAYMENT_LINK_FALLBACK: boolean;
@@ -162,6 +162,25 @@ interface BeamRuntimeForm {
   BILLING_SUBSCRIPTION_CUTOVER_READY: boolean;
   BILLING_PUBLIC_URL: string;
   BILLING_PHASE2_STEP_UP_SECRET: string;
+}
+
+interface PromptPayDirectRuntimeForm {
+  PROMPTPAY_DIRECT_ENABLED: boolean;
+  PROMPTPAY_DIRECT_RECIPIENT_ID: string;
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: "phone" | "national_id" | "tax_id" | "ewallet";
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: string;
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: string;
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: string;
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: string;
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: string;
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: string;
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: string;
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: string;
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: string;
+}
+
+function readBooleanSetting(value: unknown): boolean {
+  return value === true || value === "true";
 }
 
 const EMPTY_BEAM_PROVIDER_FORM: BeamProviderForm = {
@@ -216,6 +235,21 @@ const EMPTY_BEAM_RUNTIME_FORM: BeamRuntimeForm = {
   BILLING_SUBSCRIPTION_CUTOVER_READY: false,
   BILLING_PUBLIC_URL: "https://smartaihub.app",
   BILLING_PHASE2_STEP_UP_SECRET: "",
+};
+
+const EMPTY_PROMPTPAY_DIRECT_RUNTIME_FORM: PromptPayDirectRuntimeForm = {
+  PROMPTPAY_DIRECT_ENABLED: false,
+  PROMPTPAY_DIRECT_RECIPIENT_ID: "",
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: "phone",
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: "",
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: "60",
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: "72",
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: "200",
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: "300",
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: "20",
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: "60",
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: "10485760",
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: "application/pdf,image/png,image/jpeg,image/webp",
 };
 
 const BEAM_LIGHTHOUSE_URL = "https://my.beamcheckout.com";
@@ -479,7 +513,7 @@ export default function AdminSettings() {
     billingConsole: isThai ? "คอนโซลบิลลิ่ง" : "Billing Console",
     providerSwitch: {
       title: isThai ? "เกตเวย์การชำระเงิน" : "Payment Gateways",
-      description: isThai ? "เลือกผู้ให้บริการ checkout หลัก และจัดการ Stripe กับ Beam ในที่เดียว" : "Choose the active checkout provider and manage Stripe and Beam in one place.",
+      description: isThai ? "เลือกผู้ให้บริการชำระเงินหลัก และจัดการ Stripe, Beam และ PromptPay Direct ในที่เดียว" : "Choose the active payment provider and manage Stripe, Beam, and PromptPay Direct in one place.",
       activePaymentProvider: isThai ? "ผู้ให้บริการชำระเงินหลัก" : "Active payment provider",
       save: isThai ? "บันทึกการสลับผู้ให้บริการ" : "Save Provider Switch",
       summaryTitle: isThai ? "สรุปการตั้งค่าใช้งานปัจจุบัน" : "Current runtime summary",
@@ -492,7 +526,7 @@ export default function AdminSettings() {
       beamDesc: isThai ? "เปิดใช้ Beam checkout, PromptPay QR และระบบบิลลิ่งของ Beam" : "Enable Beam checkout, QR PromptPay, and Beam billing runtime.",
       beamFallback: isThai ? "ใช้ Beam payment link เป็น fallback" : "Beam payment link fallback",
       beamFallbackDesc: isThai ? "ให้ใช้ Beam payment link ได้เมื่อ charge flow ปกติใช้งานไม่ได้" : "Allow Beam payment links as fallback when charge flow is unavailable.",
-      runtimeNote: isThai ? "การตั้งค่า Beam billing runtime, checkout QR, payment links, webhook verification และ card setup อยู่ด้านล่าง" : "Beam billing runtime, checkout QR, payment links, webhook verification, and card-setup config are managed below.",
+      runtimeNote: isThai ? "การตั้งค่าแต่ละช่องทางอยู่ในแท็บของตัวเองด้านล่าง" : "Each payment method has its own settings tab below.",
       stripeLabel: isThai ? "Stripe" : "Stripe",
       beamLabel: isThai ? "Beam" : "Beam",
     },
@@ -737,7 +771,7 @@ export default function AdminSettings() {
       saveRuntime: isThai ? "บันทึก Beam Runtime" : "Save Beam Runtime",
     },
     nav: {
-      payments: { label: isThai ? "การชำระเงิน" : "Payments", sublabel: isThai ? "Stripe / Beam" : "Stripe / Beam" },
+      payments: { label: isThai ? "การชำระเงิน" : "Payments", sublabel: isThai ? "Stripe / Beam / PromptPay Direct" : "Stripe / Beam / PromptPay Direct" },
       oauth: { label: "OAuth", sublabel: isThai ? "เข้าสู่ระบบโซเชียล" : "Social Login" },
       registration: { label: isThai ? "การสมัครสมาชิก" : "Registration", sublabel: isThai ? "สมัครใช้งาน / เครดิต" : "Signup & Credits" },
       smtp: { label: isThai ? "อีเมล" : "Email", sublabel: isThai ? "ตั้งค่า SMTP" : "SMTP Settings" },
@@ -761,7 +795,10 @@ export default function AdminSettings() {
   const [stripeForm, setStripeForm] = useState<StripeSettings>({
     currency: "usd",
   });
-  const [paymentsSubTab, setPaymentsSubTab] = useState("provider");
+  // Beam contains the billing runtime controls, including PromptPay Direct.
+  // Open it by default so the settings below the provider gateway are visible
+  // instead of rendering an empty state for the obsolete "provider" value.
+  const [paymentsSubTab, setPaymentsSubTab] = useState<"stripe" | "beam" | "promptpay_direct">("beam");
   const [beamProviderForm, setBeamProviderForm] = useState<BeamProviderForm>(EMPTY_BEAM_PROVIDER_FORM);
   const [paymentProviderForm, setPaymentProviderForm] = useState<PaymentProviderForm>({
     BILLING_ACTIVE_PROVIDER: "beam",
@@ -770,6 +807,7 @@ export default function AdminSettings() {
     BEAM_PAYMENT_LINK_FALLBACK: true,
   });
   const [beamRuntimeForm, setBeamRuntimeForm] = useState<BeamRuntimeForm>(EMPTY_BEAM_RUNTIME_FORM);
+  const [promptPayDirectRuntimeForm, setPromptPayDirectRuntimeForm] = useState<PromptPayDirectRuntimeForm>(EMPTY_PROMPTPAY_DIRECT_RUNTIME_FORM);
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
   const [showBeamSecrets, setShowBeamSecrets] = useState(false);
@@ -783,7 +821,7 @@ export default function AdminSettings() {
     userInviteEnabled: false,
     userReferralBonusCredits: 50,
     allowedAuthMethods: ["email", "google", "github"] as Array<"email" | "google" | "github">,
-    inviteInactiveDaysLimit: 0,
+    inviteInactiveDaysLimit: 15,
     maxRegistrationsPerDevice: 2,
   });
 
@@ -872,7 +910,12 @@ export default function AdminSettings() {
       billingRuntimeSettingsQuery.refetch();
     },
     onError: (err) => {
-      toast.error(`Failed to save provider settings: ${err.message}`);
+      const message = err.message.includes("PROMPTPAY_DIRECT_ENABLED")
+        ? (isThai ? "กรุณาเปิดใช้งาน PromptPay Direct ในแท็บ PromptPay Direct ก่อนตั้งเป็นผู้ให้บริการหลัก" : "Enable PromptPay Direct in its tab before selecting it as the active provider.")
+        : err.message.includes("PROMPTPAY_DIRECT_RECIPIENT_ID_NOT_CONFIGURED")
+          ? (isThai ? "กรุณาตั้งค่าบัญชีรับเงิน PromptPay Direct ก่อนเปิดใช้งาน" : "Configure the PromptPay Direct receiving account before enabling it.")
+          : `Failed to save provider settings: ${err.message}`;
+      toast.error(message);
     },
   });
 
@@ -974,7 +1017,7 @@ export default function AdminSettings() {
         userInviteEnabled: regSettings.userInviteEnabled ?? false,
         userReferralBonusCredits: regSettings.userReferralBonusCredits ?? 50,
         allowedAuthMethods: (regSettings.allowedAuthMethods ?? ["email", "google", "github"]) as Array<"email" | "google" | "github">,
-        inviteInactiveDaysLimit: regSettings.inviteInactiveDaysLimit ?? 0,
+        inviteInactiveDaysLimit: regSettings.inviteInactiveDaysLimit ?? 15,
         maxRegistrationsPerDevice: regSettings.maxRegistrationsPerDevice ?? 2,
       });
     }
@@ -1418,30 +1461,34 @@ export default function AdminSettings() {
 
   useEffect(() => {
     if (!billingRuntimeSettingsQuery.data) return;
+    const activeProvider = billingRuntimeSettingsQuery.data.BILLING_ACTIVE_PROVIDER === "stripe"
+      ? "stripe"
+      : billingRuntimeSettingsQuery.data.BILLING_ACTIVE_PROVIDER === "promptpay_direct"
+        ? "promptpay_direct"
+        : "beam";
     setPaymentProviderForm({
-      BILLING_ACTIVE_PROVIDER:
-        billingRuntimeSettingsQuery.data.BILLING_ACTIVE_PROVIDER === "stripe" ? "stripe" : "beam",
-      BILLING_STRIPE_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_STRIPE_ENABLED),
-      BILLING_BEAM_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_BEAM_ENABLED),
-      BEAM_PAYMENT_LINK_FALLBACK: Boolean(billingRuntimeSettingsQuery.data.BEAM_PAYMENT_LINK_FALLBACK),
+      BILLING_ACTIVE_PROVIDER: activeProvider,
+      BILLING_STRIPE_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_STRIPE_ENABLED),
+      BILLING_BEAM_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_BEAM_ENABLED),
+      BEAM_PAYMENT_LINK_FALLBACK: readBooleanSetting(billingRuntimeSettingsQuery.data.BEAM_PAYMENT_LINK_FALLBACK),
     });
     setBeamRuntimeForm({
-      PAYMENT_RECONCILIATION_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PAYMENT_RECONCILIATION_ENABLED),
-      FINAL_RECONCILIATION_BEFORE_DOWNGRADE: Boolean(billingRuntimeSettingsQuery.data.FINAL_RECONCILIATION_BEFORE_DOWNGRADE),
-      ADMIN_MANUAL_MARK_PAID_ENABLED: Boolean(billingRuntimeSettingsQuery.data.ADMIN_MANUAL_MARK_PAID_ENABLED),
-      ADMIN_DOWNGRADE_REVERSAL_ENABLED: Boolean(billingRuntimeSettingsQuery.data.ADMIN_DOWNGRADE_REVERSAL_ENABLED),
-      SUPPORT_RECOVERY_CASES_ENABLED: Boolean(billingRuntimeSettingsQuery.data.SUPPORT_RECOVERY_CASES_ENABLED),
-      DOCUMENT_RECOVERY_ENABLED: Boolean(billingRuntimeSettingsQuery.data.DOCUMENT_RECOVERY_ENABLED),
-      INVOICE_HEADER_SYNC_ENABLED: Boolean(billingRuntimeSettingsQuery.data.INVOICE_HEADER_SYNC_ENABLED),
-      PAID_INVOICE_REISSUE_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PAID_INVOICE_REISSUE_ENABLED),
-      AUTO_DOWNGRADE_AFTER_7_DAYS: Boolean(billingRuntimeSettingsQuery.data.AUTO_DOWNGRADE_AFTER_7_DAYS),
-      BILLING_PHASE2_SAVED_CARDS_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_SAVED_CARDS_ENABLED),
-      BILLING_PHASE2_AUTO_RENEW_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_AUTO_RENEW_ENABLED),
-      BILLING_PHASE2_DUNNING_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_DUNNING_ENABLED),
-      BILLING_PHASE2_CARD_SETUP_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_CARD_SETUP_ENABLED),
-      BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED),
-      BILLING_EMAIL_NOTIFICATIONS_ENABLED: Boolean(billingRuntimeSettingsQuery.data.BILLING_EMAIL_NOTIFICATIONS_ENABLED),
-      BILLING_PHASE2_REQUIRE_STEP_UP: Boolean(billingRuntimeSettingsQuery.data.BILLING_PHASE2_REQUIRE_STEP_UP),
+      PAYMENT_RECONCILIATION_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.PAYMENT_RECONCILIATION_ENABLED),
+      FINAL_RECONCILIATION_BEFORE_DOWNGRADE: readBooleanSetting(billingRuntimeSettingsQuery.data.FINAL_RECONCILIATION_BEFORE_DOWNGRADE),
+      ADMIN_MANUAL_MARK_PAID_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.ADMIN_MANUAL_MARK_PAID_ENABLED),
+      ADMIN_DOWNGRADE_REVERSAL_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.ADMIN_DOWNGRADE_REVERSAL_ENABLED),
+      SUPPORT_RECOVERY_CASES_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.SUPPORT_RECOVERY_CASES_ENABLED),
+      DOCUMENT_RECOVERY_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.DOCUMENT_RECOVERY_ENABLED),
+      INVOICE_HEADER_SYNC_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.INVOICE_HEADER_SYNC_ENABLED),
+      PAID_INVOICE_REISSUE_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.PAID_INVOICE_REISSUE_ENABLED),
+      AUTO_DOWNGRADE_AFTER_7_DAYS: readBooleanSetting(billingRuntimeSettingsQuery.data.AUTO_DOWNGRADE_AFTER_7_DAYS),
+      BILLING_PHASE2_SAVED_CARDS_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_PHASE2_SAVED_CARDS_ENABLED),
+      BILLING_PHASE2_AUTO_RENEW_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_PHASE2_AUTO_RENEW_ENABLED),
+      BILLING_PHASE2_DUNNING_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_PHASE2_DUNNING_ENABLED),
+      BILLING_PHASE2_CARD_SETUP_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_PHASE2_CARD_SETUP_ENABLED),
+      BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_PHASE2_FORCE_MANUAL_FALLBACK_ENABLED),
+      BILLING_EMAIL_NOTIFICATIONS_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_EMAIL_NOTIFICATIONS_ENABLED),
+      BILLING_PHASE2_REQUIRE_STEP_UP: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_PHASE2_REQUIRE_STEP_UP),
       BILLING_PHASE2_ALLOWED_COHORTS: billingRuntimeSettingsQuery.data.BILLING_PHASE2_ALLOWED_COHORTS ?? "",
       BILLING_PHASE2_DEFAULT_COHORT: billingRuntimeSettingsQuery.data.BILLING_PHASE2_DEFAULT_COHORT ?? "",
       BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS: billingRuntimeSettingsQuery.data.BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS ?? "300",
@@ -1457,9 +1504,24 @@ export default function AdminSettings() {
       BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS ?? "12",
       BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_SUCCESS_HOURS ?? "24",
       BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_DEFAULT_HOURS ?? "1",
-      BILLING_SUBSCRIPTION_CUTOVER_READY: Boolean(billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_CUTOVER_READY),
+      BILLING_SUBSCRIPTION_CUTOVER_READY: readBooleanSetting(billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_CUTOVER_READY),
       BILLING_PUBLIC_URL: billingRuntimeSettingsQuery.data.BILLING_PUBLIC_URL ?? "",
       BILLING_PHASE2_STEP_UP_SECRET: "",
+    });
+    setPaymentsSubTab(activeProvider);
+    setPromptPayDirectRuntimeForm({
+      PROMPTPAY_DIRECT_ENABLED: readBooleanSetting(billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ENABLED),
+      PROMPTPAY_DIRECT_RECIPIENT_ID: "",
+      PROMPTPAY_DIRECT_RECIPIENT_TYPE: (billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_RECIPIENT_TYPE ?? "phone") as PromptPayDirectRuntimeForm["PROMPTPAY_DIRECT_RECIPIENT_TYPE"],
+      PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME ?? "",
+      PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES ?? "60",
+      PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS ?? "72",
+      PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS ?? "200",
+      PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS ?? "300",
+      PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE ?? "20",
+      PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE ?? "60",
+      PROMPTPAY_DIRECT_SLIP_MAX_BYTES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_SLIP_MAX_BYTES ?? "10485760",
+      PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES ?? "application/pdf,image/png,image/jpeg,image/webp",
     });
   }, [billingRuntimeSettingsQuery.data]);
 
@@ -1516,13 +1578,23 @@ export default function AdminSettings() {
   };
 
   const handleSavePaymentProvider = () => {
-    updateBillingProviderMutation.mutate(paymentProviderForm);
+    updateBillingProviderMutation.mutate({
+      ...paymentProviderForm,
+      ...promptPayDirectRuntimeForm,
+    });
   };
 
   const handleSaveBeamRuntime = () => {
     updateBillingProviderMutation.mutate({
       ...paymentProviderForm,
       ...beamRuntimeForm,
+    });
+  };
+
+  const handleSavePromptPayDirectRuntime = () => {
+    updateBillingProviderMutation.mutate({
+      ...paymentProviderForm,
+      ...promptPayDirectRuntimeForm,
     });
   };
 
@@ -1671,12 +1743,11 @@ export default function AdminSettings() {
                     <div className="mt-2">
                       <Select
                         value={paymentProviderForm.BILLING_ACTIVE_PROVIDER}
-                        onValueChange={(value) =>
-                          setPaymentProviderForm((prev) => ({
-                            ...prev,
-                            BILLING_ACTIVE_PROVIDER: value as "stripe" | "beam",
-                          }))
-                        }
+                        onValueChange={(value) => {
+                          const provider = value as PaymentProviderForm["BILLING_ACTIVE_PROVIDER"];
+                          setPaymentProviderForm((prev) => ({ ...prev, BILLING_ACTIVE_PROVIDER: provider }));
+                          setPaymentsSubTab(provider);
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1684,6 +1755,7 @@ export default function AdminSettings() {
                         <SelectContent>
                           <SelectItem value="stripe">Stripe</SelectItem>
                           <SelectItem value="beam">Beam</SelectItem>
+                          <SelectItem value="promptpay_direct">PromptPay Direct</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1744,9 +1816,10 @@ export default function AdminSettings() {
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                     <div className="font-medium text-slate-900">{copy.providerSwitch.summaryTitle}</div>
-                    <div className="mt-2">{copy.providerSwitch.activeProvider}: <span className="font-medium uppercase">{paymentProviderForm.BILLING_ACTIVE_PROVIDER}</span></div>
+                    <div className="mt-2">{copy.providerSwitch.activeProvider}: <span className="font-medium">{paymentProviderForm.BILLING_ACTIVE_PROVIDER === "promptpay_direct" ? "PromptPay Direct" : paymentProviderForm.BILLING_ACTIVE_PROVIDER.toUpperCase()}</span></div>
                     <div>Stripe: {paymentProviderForm.BILLING_STRIPE_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
                     <div>Beam: {paymentProviderForm.BILLING_BEAM_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                    <div>PromptPay Direct: {promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
                     <div>Beam fallback: {paymentProviderForm.BEAM_PAYMENT_LINK_FALLBACK ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
                     <div className="mt-3 text-xs text-slate-500">
                       {copy.providerSwitch.runtimeNote}
@@ -1755,10 +1828,11 @@ export default function AdminSettings() {
                 </div>
               </DashboardCard>
 
-              <Tabs value={paymentsSubTab} onValueChange={setPaymentsSubTab}>
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs value={paymentsSubTab} onValueChange={(value) => setPaymentsSubTab(value as "stripe" | "beam" | "promptpay_direct")}>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="stripe">{copy.providerSwitch.stripeLabel}</TabsTrigger>
                   <TabsTrigger value="beam">{copy.providerSwitch.beamLabel}</TabsTrigger>
+                  <TabsTrigger value="promptpay_direct">PromptPay Direct</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="stripe">
@@ -1992,7 +2066,7 @@ export default function AdminSettings() {
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                           <div className="font-medium text-slate-900">{copy.beam.runtimeHealth}</div>
                           <div className="mt-2">Beam enabled: {paymentProviderForm.BILLING_BEAM_ENABLED ? copy.beam.yes : copy.beam.no}</div>
-                          <div>{copy.providerSwitch.activeProvider}: {paymentProviderForm.BILLING_ACTIVE_PROVIDER.toUpperCase()}</div>
+                          <div>{copy.providerSwitch.activeProvider}: {paymentProviderForm.BILLING_ACTIVE_PROVIDER === "promptpay_direct" ? "PromptPay Direct" : paymentProviderForm.BILLING_ACTIVE_PROVIDER.toUpperCase()}</div>
                           <div>API configured: {beamProviderHealthQuery.data?.configured ? copy.beam.yes : copy.beam.no}</div>
                           <div>Webhook configured: {beamProviderHealthQuery.data?.webhookConfigured ? copy.beam.yes : copy.beam.no}</div>
                           <div>Hosted setup configured: {beamProviderHealthQuery.data?.setupHostedConfigured ? copy.beam.yes : copy.beam.no}</div>
@@ -2268,6 +2342,109 @@ export default function AdminSettings() {
                       </div>
                     </DashboardCard>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="promptpay_direct">
+                  <DashboardCard
+                    className="overflow-hidden"
+                    leading={<Zap className="w-5 h-5 text-emerald-600" />}
+                    title={isThai ? "ตั้งค่า PromptPay Direct" : "PromptPay Direct Settings"}
+                    description={isThai ? "ตั้งค่าบัญชีรับเงิน อัตราแลกเปลี่ยน และการตรวจสอบสลิปแยกจาก Beam" : "Configure the receiving account, FX pricing, and manual slip approval separately from Beam."}
+                    bodyClassName="space-y-6"
+                  >
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="font-medium text-slate-900">{isThai ? "เปิดใช้งาน PromptPay Direct + อนุมัติสลิปด้วยแอดมิน" : "Enable PromptPay Direct + manual slip approval"}</div>
+                          <div className="mt-1 text-xs text-slate-600">{isThai ? "เป็นช่องทางแยกจาก Stripe และ Beam เครดิตจะเข้าเมื่อแอดมินอนุมัติสลิปเท่านั้น" : "A separate payment method from Stripe and Beam. Credits are added only after admin approval."}</div>
+                        </div>
+                        <Switch
+                          checked={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_ENABLED}
+                          onCheckedChange={(checked) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ENABLED: checked }))}
+                        />
+                      </div>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <Label>{isThai ? "บัญชี/PromptPay ID ผู้รับเงิน" : "PromptPay recipient ID"}</Label>
+                          <Input
+                            type="password"
+                            value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_RECIPIENT_ID}
+                            onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_RECIPIENT_ID: e.target.value }))}
+                            placeholder={billingRuntimeSettingsQuery.data?.PROMPTPAY_DIRECT_RECIPIENT_IDConfigured ? (isThai ? "เว้นว่างเพื่อใช้ค่าที่บันทึกไว้" : "Leave blank to keep existing") : (isThai ? "เบอร์ 10 หลัก หรือ ID 13 หลัก" : "10-digit phone or 13-digit ID")}
+                          />
+                          {billingRuntimeSettingsQuery.data?.PROMPTPAY_DIRECT_RECIPIENT_IDConfigured ? <p className="mt-1 text-xs text-slate-500">{isThai ? "มีการบันทึกค่าไว้แล้ว ระบบจะไม่แสดงค่าเต็ม" : "A value is already configured and is never revealed."}</p> : null}
+                        </div>
+                        <div>
+                          <Label>{isThai ? "ประเภทผู้รับเงิน" : "Recipient type"}</Label>
+                          <Select value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_RECIPIENT_TYPE} onValueChange={(value) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_RECIPIENT_TYPE: value as PromptPayDirectRuntimeForm["PROMPTPAY_DIRECT_RECIPIENT_TYPE"] }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="phone">{isThai ? "เบอร์โทรศัพท์ไทย" : "Thai phone"}</SelectItem>
+                              <SelectItem value="national_id">{isThai ? "เลขบัตรประชาชน" : "National ID"}</SelectItem>
+                              <SelectItem value="tax_id">{isThai ? "เลขประจำตัวผู้เสียภาษี" : "Tax ID"}</SelectItem>
+                              <SelectItem value="ewallet">{isThai ? "E-Wallet ID" : "E-Wallet ID"}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>{isThai ? "ชื่อบัญชีที่แสดงให้ลูกค้า" : "Account display name"}</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: e.target.value }))} placeholder="SmartAIHub" />
+                        </div>
+                        <div>
+                          <Label>{isThai ? "อายุรายการ (นาที)" : "Order expiry (minutes)"}</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{isThai ? "อายุอัตรา FX สูงสุด (ชั่วโมง)" : "Max FX rate age (hours)"}</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>Sell spread (bps)</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>FX risk buffer (bps)</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{isThai ? "อัตรา sanity ต่ำสุด" : "Minimum sanity rate"}</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{isThai ? "อัตรา sanity สูงสุด" : "Maximum sanity rate"}</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: e.target.value }))} />
+                        </div>
+                        <div>
+                          <Label>{isThai ? "ขนาดสลิปสูงสุด (bytes)" : "Max slip size (bytes)"}</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_SLIP_MAX_BYTES} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_SLIP_MAX_BYTES: e.target.value }))} />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>{isThai ? "ชนิดไฟล์สลิปที่อนุญาต" : "Allowed slip MIME types"}</Label>
+                          <Input value={promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES} onChange={(e) => setPromptPayDirectRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: e.target.value }))} />
+                        </div>
+                      </div>
+                      <div className="mt-3 text-xs text-slate-600">
+                        {isThai ? "FX source: Frankfurter daily USD/THB · ปัดเป็น 1 THB แล้วสุ่มสตางค์ 00–99 ไม่ซ้ำ" : "FX source: Frankfurter daily USD/THB · round to 1 THB then assign a unique random satang 00–99."}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm text-slate-700">
+                      <div className="font-medium text-slate-900">{isThai ? "สถานะ PromptPay Direct" : "PromptPay Direct status"}</div>
+                      <div className="mt-2">{isThai ? "เปิดใช้งาน" : "Enabled"}: {promptPayDirectRuntimeForm.PROMPTPAY_DIRECT_ENABLED ? copy.providerSwitch.enabled : copy.providerSwitch.disabled}</div>
+                      <div>{isThai ? "บัญชีรับเงิน" : "Receiving account"}: {billingRuntimeSettingsQuery.data?.PROMPTPAY_DIRECT_RECIPIENT_IDConfigured ? (isThai ? "ตั้งค่าแล้ว" : "Configured") : (isThai ? "ยังไม่ได้ตั้งค่า" : "Not configured")}</div>
+                      <div>{isThai ? "อัตราแลกเปลี่ยน" : "FX provider"}: Frankfurter USD/THB</div>
+                    </div>
+
+                    <div className="flex gap-3 pt-4 border-t">
+                      <Button onClick={handleSavePromptPayDirectRuntime} disabled={updateBillingProviderMutation.isPending}>
+                        {updateBillingProviderMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                        {isThai ? "บันทึก PromptPay Direct" : "Save PromptPay Direct"}
+                      </Button>
+                      <Button variant="outline" onClick={() => setLocation("/admin/billing")}>
+                        {copy.beam.openBillingConsole}
+                      </Button>
+                    </div>
+                  </DashboardCard>
                 </TabsContent>
               </Tabs>
             </div>
@@ -3387,10 +3564,10 @@ export default function AdminSettings() {
 
                   {/* Section 5: Inactive User Policy */}
                   <div>
-                    <h4 className="font-semibold text-sm text-gray-900 mb-3">Inactive User Policy</h4>
+                    <h4 className="font-semibold text-sm text-gray-900 mb-3">Free-credit inactivity policy</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <Label htmlFor="inactiveDays">Auto-disable after days of no credit usage</Label>
+                        <Label htmlFor="inactiveDays">Reset free credits and disable after days of no usage</Label>
                         <Input
                           id="inactiveDays"
                           type="number"
@@ -3400,7 +3577,7 @@ export default function AdminSettings() {
                           onChange={(e) => setRegForm((prev) => ({ ...prev, inviteInactiveDaysLimit: parseInt(e.target.value) || 0 }))}
                           className="mt-1 max-w-[200px]"
                         />
-                        <p className="text-xs text-gray-500 mt-1">0 = disabled. Only applies to users registered via admin invite codes.</p>
+                        <p className="text-xs text-gray-500 mt-1">Default is 15 days. Applies to users who received signup or invite free credits; purchasing credits cancels the policy.</p>
                       </div>
                       <div>
                         <Label htmlFor="maxDeviceReg">Max registrations per device</Label>

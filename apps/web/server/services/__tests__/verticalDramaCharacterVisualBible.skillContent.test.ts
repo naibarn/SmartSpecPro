@@ -76,6 +76,22 @@ describe("vertical-drama-character-visual-bible/skill.md — Feature 144 Human R
   });
 });
 
+describe("vertical-drama-character-visual-bible — casting preferences contract", () => {
+  const body = readSkillMdBody();
+
+  it("documents Auto as reasoned story-market casting rather than random selection", () => {
+    expect(body).toMatch(/Casting preferences and story-market fit/i);
+    expect(body).toMatch(/Auto is NOT random/i);
+    expect(body).toMatch(/story setting\/world as the strongest market signal/i);
+  });
+
+  it("documents additional details as the highest-priority casting preference", () => {
+    expect(body).toMatch(/additional_details.*highest\s+priority among the casting controls/is);
+    expect(body).toMatch(/Korean-drama casting but an American character/i);
+    expect(body).toMatch(/casting style is not the same as nationality/i);
+  });
+});
+
 function extractOutputSkeletonCharacter(body: string): Record<string, unknown> {
   // Anchored specifically to the "Output skeleton:" heading's own ```json
   // block — NOT just the first ```json block in the file. The "Face

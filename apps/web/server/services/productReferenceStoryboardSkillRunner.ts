@@ -29,6 +29,7 @@ import {
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectLlmModelCandidates } from "./intelligentModelSelector";
+import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 
 export const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID =
   "product-reference-storyboard";
@@ -2087,6 +2088,11 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     ...inputStringArray(mergedUserInputs.reference_character_images),
     ...inputStringArray(mergedUserInputs.reference_environment_images),
   ]);
+  const providerReferenceImages = await resolveExternalMediaReferenceUrls(
+    referenceImages,
+    { userId: input.userId, tenantId: input.tenantId },
+    input.publicUrl,
+  ) ?? [];
   const inputSchema = loadSkillInputSchema(skill);
   const schemaAudit = buildSkillInputSchemaAudit({
     schema: inputSchema,
@@ -2320,7 +2326,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
           visionMessages: buildVisionMessages({
             systemPrompt,
             userPrompt,
-            referenceImages,
+            referenceImages: providerReferenceImages,
           }),
           buildTextOnlyMessages: () =>
             buildTextOnlyVisionFallbackMessages({

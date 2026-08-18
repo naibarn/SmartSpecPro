@@ -287,4 +287,19 @@ describe("generateEpisodeDialogueAudioPlan", () => {
     const content = userMessageContent();
     expect(content).toContain("audio_strategy: separate_tts_voiceover");
   });
+
+  it("injects the shared spoken-English profile for generated audio text", async () => {
+    await generateEpisodeDialogueAudioPlan(
+      baseParams({
+        locale: "en",
+        dialogueLanguageProfile: { version: 1, marketMode: "auto" },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain(
+      "Natural contemporary American English, spoken dialogue, not translated English.",
+    );
+    expect(content).toContain('dialogue_language_profile: {"version":1,"marketMode":"auto"}');
+  });
 });

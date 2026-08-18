@@ -4235,6 +4235,12 @@ export const videoProjectsRouter = router({
         tenantId: auth.tenantId,
         requestedByUserId: auth.userId,
         isAdminRequester: ctx.user?.role === "admin",
+        executionTarget:
+          (ctx.req as typeof ctx.req & { smartaihubMcpRemotionExecutor?: boolean }).smartaihubMcpRemotionExecutor
+            ? "remotion_executor"
+            : "desktop_worker",
+        preferredWorkerId:
+          (ctx.req as typeof ctx.req & { smartaihubRemotionWorkerId?: string }).smartaihubRemotionWorkerId ?? null,
       });
 
       // Tracks whether the `renderJobId`/`previewJobId` backlink write below

@@ -51,6 +51,7 @@ import {
   type VerticalDramaFinalRenderResultView,
   type VerticalDramaTextOverlayPlanView,
 } from "@/components/verticalDramaSeries/VerticalDramaEpisodeWorkspace";
+import { reconcileShotVideoPromptJobUiState } from "@/components/verticalDramaSeries/shotVideoPromptJobState";
 import { VerticalDramaEpisodePreviewPanel } from "@/components/verticalDramaSeries/VerticalDramaEpisodePreviewPanel";
 import {
   VerticalDramaRepairDialog,
@@ -182,9 +183,7 @@ export function shouldResumeAngleGridPoll(
  * still queued or processing.
  */
 export function shouldResumeStartFramePoll(
-  imageTask:
-    | { pendingTaskId?: string; status?: string }
-    | undefined,
+  imageTask: { pendingTaskId?: string; status?: string } | undefined,
   shotNumber: number,
   alreadyResumedShots: ReadonlySet<number>,
   currentlyPollingShots: ReadonlySet<number>
@@ -522,6 +521,38 @@ export function describeQualityImproveLoopOutcome(
   return { tone: "success", message: fallbackMessage };
 }
 
+/**
+ * Keep the repair dialog tied to the stage's terminal result, not merely to
+ * the presence of a newly-written artifact. A failed repair can still have a
+ * diagnostic artifact, but it is not a usable repair.
+ */
+export function describeRepairStageOutcome(
+  result:
+    | {
+        status?: string;
+        artifactIds?: string[];
+        errors?: Array<{ message?: string }>;
+      }
+    | null
+    | undefined,
+  failedFallback: string
+): {
+  status: "succeeded" | "failed";
+  artifactId?: string;
+  error?: string;
+} {
+  if (result?.status === "failed") {
+    return {
+      status: "failed",
+      error: result.errors?.[0]?.message ?? failedFallback,
+    };
+  }
+  return {
+    status: "succeeded",
+    artifactId: result?.artifactIds?.[0],
+  };
+}
+
 /** Per-series last-picked image/video model (Phase 1.3) — used only as the
  *  DEFAULT for a new episode's model selection; an episode with its own
  *  `startFramePlan.selectedImageModelId` / `motionPromptPack.selectedVideoModelId`
@@ -674,6 +705,16 @@ export function shouldHydrateRememberedVdModel(params: {
   }).transport;
   if (transport !== "hermes_worker") return true;
   return params.hasAuthorizedHermesConnection;
+}
+
+/** The cover-generation controls are useful as soon as episode detail exists;
+ * rendered video readiness only controls whether the preview render action is
+ * enabled inside the panel. */
+export function shouldRenderEpisodePreviewPanel(params: {
+  episodeDetailLoaded: boolean;
+  readyShotCount: number;
+}): boolean {
+  return params.episodeDetailLoaded;
 }
 
 /**
@@ -1300,10 +1341,10 @@ function EpisodeWorkspaceShell({
                     ? "การสร้างสตอรีบอร์ดใช้เวลานานกว่าปกติ ระบบยังทำงานอยู่เบื้องหลัง — กลับมาตรวจสอบภายหลัง"
                     : "Storyboard generation is taking longer than usual and is still running in the background — check back shortly."
                   : lang === "th"
-                    ? storyboardShotgridFailureMessageRef.current ??
-                      'สร้างสตอรีบอร์ดล้มเหลว — ลองใหม่หรือกด "ซ่อม"'
-                    : storyboardShotgridFailureMessageRef.current ??
-                      "Storyboard generation failed — try again or use Repair.",
+                    ? (storyboardShotgridFailureMessageRef.current ??
+                      'สร้างสตอรีบอร์ดล้มเหลว — ลองใหม่หรือกด "ซ่อม"')
+                    : (storyboardShotgridFailureMessageRef.current ??
+                      "Storyboard generation failed — try again or use Repair."),
             });
             setGeneratingEpisodeStage(null);
             return;
@@ -1352,8 +1393,13 @@ function EpisodeWorkspaceShell({
   const repairMutation =
     trpc.verticalDramaEpisodes.repairStageOutput.useMutation({
       onSuccess: data => {
-        setRepairJobStatus("succeeded");
-        setRepairResultArtifactId(data?.result?.artifactIds?.[0]);
+        const outcome = describeRepairStageOutcome(
+          data?.result,
+          lang === "th" ? "การซ่อมไม่สำเร็จ" : "Repair failed"
+        );
+        setRepairJobStatus(outcome.status);
+        setRepairResultArtifactId(outcome.artifactId);
+        setRepairError(outcome.error);
         invalidateRuns();
       },
       onError: err => {
@@ -1490,6 +1536,9 @@ function EpisodeWorkspaceShell({
   const [pollingStartFrameShots, setPollingStartFrameShots] = useState<
     Set<number>
   >(new Set());
+  const [imageGenerationErrorByShot, setImageGenerationErrorByShot] = useState<
+    Record<number, string>
+  >({});
   const startFramePollInFlightRef = useRef<Set<number>>(new Set());
   const resumedStartFrameShotsRef = useRef<Set<number>>(new Set());
   const awaitStartFramePollKeysRef = useRef<Set<string>>(new Set());
@@ -1502,7 +1551,7 @@ function EpisodeWorkspaceShell({
   async function persistStartFrameTask(
     shotNumber: number,
     imageTask: {
-      taskId: string;
+      taskId?: string;
       status:
         | "submitted"
         | "queued"
@@ -1510,6 +1559,7 @@ function EpisodeWorkspaceShell({
         | "completed"
         | "failed"
         | "expired";
+      failureStage?: "provider" | "sync" | "admission";
       error?: string;
     }
   ) {
@@ -1531,6 +1581,44 @@ function EpisodeWorkspaceShell({
       episodeId,
     });
     return result.persisted;
+  }
+
+  function clearImageGenerationError(shotNumber: number) {
+    setImageGenerationErrorByShot(prev => {
+      if (!(shotNumber in prev)) return prev;
+      const next = { ...prev };
+      delete next[shotNumber];
+      return next;
+    });
+  }
+
+  function setImageGenerationError(shotNumber: number, message: string) {
+    setImageGenerationErrorByShot(prev => ({ ...prev, [shotNumber]: message }));
+  }
+
+  async function persistTerminalImageFailure(input: {
+    shotNumber: number;
+    taskId?: string;
+    failureStage: "provider" | "sync" | "admission";
+    error: string;
+  }) {
+    try {
+      const persisted = await persistStartFrameTask(input.shotNumber, {
+        taskId: input.taskId,
+        status: "failed",
+        failureStage: input.failureStage,
+        error: input.error,
+      });
+      // A false result means a newer task won the server-side row-lock guard;
+      // never let an older browser callback paint that newer task as failed.
+      if (!persisted && !input.taskId) {
+        setImageGenerationError(input.shotNumber, input.error);
+      }
+    } catch {
+      // The prompt/result error is still actionable even if the status write
+      // itself is unavailable. Keep it visible locally until the next reload.
+      setImageGenerationError(input.shotNumber, input.error);
+    }
   }
 
   /**
@@ -1576,7 +1664,7 @@ function EpisodeWorkspaceShell({
       if (job.status === "failed") {
         throw new Error(
           job.error ||
-            (lang === "th"
+            (lang.toLowerCase() === "th"
               ? "สร้างพรอมต์ภาพไม่สำเร็จ กรุณาลองใหม่"
               : "Failed to generate the image prompt — try again.")
         );
@@ -1586,7 +1674,7 @@ function EpisodeWorkspaceShell({
       );
     }
     throw new Error(
-      lang === "th"
+      lang.toLowerCase() === "th"
         ? "สร้างพรอมต์ภาพใช้เวลานานเกินไป งานอาจยังทำต่ออยู่ กรุณาลองตรวจสอบอีกครั้ง"
         : "Prompt generation is taking too long. The job may still be running; check again shortly."
     );
@@ -1614,13 +1702,15 @@ function EpisodeWorkspaceShell({
         if (status === "completed") {
           const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
           if (!resultUrl) {
-            await persistStartFrameTask(shotNumber, {
+            const error =
+              lang === "th"
+                ? "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์"
+                : "Generation completed without a result URL.";
+            await persistTerminalImageFailure({
+              shotNumber,
               taskId,
-              status: "failed",
-              error:
-                lang === "th"
-                  ? "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์"
-                  : "Generation completed without a result URL.",
+              failureStage: "provider",
+              error,
             });
             toast.error(
               lang === "th"
@@ -1647,11 +1737,22 @@ function EpisodeWorkspaceShell({
               taskId,
               status: "completed",
             });
+            clearImageGenerationError(shotNumber);
           } catch (err) {
+            const syncError =
+              lang === "th"
+                ? `สร้างภาพเสร็จแล้ว แต่ซิงก์เข้า shot ไม่สำเร็จ${err instanceof Error ? `: ${err.message}` : ""}`
+                : `Image generation finished, but syncing it to the shot failed${err instanceof Error ? `: ${err.message}` : ""}.`;
+            await persistTerminalImageFailure({
+              shotNumber,
+              taskId,
+              failureStage: "sync",
+              error: syncError,
+            });
             toast.error(
               lang === "th"
-                ? `สร้างภาพเสร็จแล้ว แต่ซิงก์เข้า shot ไม่สำเร็จ${err instanceof Error ? `: ${err.message}` : ""} ตรวจสอบ Media History แล้วลองใหม่`
-                : `Image generation finished, but syncing it to the shot failed${err instanceof Error ? `: ${err.message}` : ""}. Check Media History and retry.`
+                ? `${syncError} ตรวจสอบ Media History แล้วลองใหม่`
+                : `${syncError} Check Media History and retry.`
             );
             return;
           }
@@ -1668,7 +1769,9 @@ function EpisodeWorkspaceShell({
             errorMessage?: string;
             errorCode?: string;
           } | null;
-          const errorMessage = failedTask?.errorMessage;
+          const errorMessage =
+            failedTask?.errorMessage ||
+            (lang === "th" ? "ผู้ให้บริการสร้างภาพล้มเหลว" : "Image provider failed.");
           // Character-lock auto-soften (2026-07-06 prompt-safety upgrade) —
           // on a policy/content/safety-category provider failure, resubmit
           // the SAME mutation with `softenLevel + 1` (fresh idempotency key)
@@ -1693,9 +1796,10 @@ function EpisodeWorkspaceShell({
             });
             return;
           }
-          await persistStartFrameTask(shotNumber, {
+          await persistTerminalImageFailure({
+            shotNumber,
             taskId,
-            status: "failed",
+            failureStage: "provider",
             error: errorMessage,
           });
           toast.error(
@@ -1722,6 +1826,93 @@ function EpisodeWorkspaceShell({
         next.delete(shotNumber);
         return next;
       });
+    }
+  }
+
+  /** Retry the non-paid result-linking step first. A completed provider task
+   * is checked again before offering a new paid render, so a transient asset
+   * import/episode-write failure does not charge the user twice. */
+  async function handleRetryStartFrameSync(shotNumber: number) {
+    const frame = episodeDetailQuery.data?.startFramePlan?.frames?.find(
+      current => current.shotNumber === shotNumber
+    );
+    const taskId = frame?.imageTask?.lastTaskId;
+    if (!taskId) {
+      void handleGeneratePromptAndImage(shotNumber, "single", false);
+      return;
+    }
+    clearImageGenerationError(shotNumber);
+    try {
+      const task = await utils.media.getTask.fetch({ taskId });
+      const status = (task as { status?: string } | null)?.status;
+      const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
+      if (status === "completed" && resultUrl) {
+        const resolved =
+          await resolveMediaAssetForImportMutation.mutateAsync({
+            seriesId,
+            source: "url",
+            url: resultUrl,
+            mimeType: "image/png",
+          });
+        await setApprovedStartFrameAssetMutation.mutateAsync({
+          seriesId,
+          episodeId,
+          shotNumber,
+          mediaAssetId: resolved.mediaAssetId,
+        });
+        await persistStartFrameTask(shotNumber, {
+          taskId,
+          status: "completed",
+        });
+        clearImageGenerationError(shotNumber);
+        toast.success(
+          lang === "th"
+            ? "เชื่อมภาพเข้าช็อตสำเร็จแล้ว"
+            : "The completed image was linked to the shot."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        return;
+      }
+      if (status === "failed" || status === "expired") {
+        const taskError =
+          (task as { errorMessage?: string } | null)?.errorMessage ||
+          (lang === "th" ? "งานสร้างภาพล้มเหลว" : "The image task failed.");
+        await persistTerminalImageFailure({
+          shotNumber,
+          taskId,
+          failureStage: "provider",
+          error: taskError,
+        });
+        toast.error(taskError);
+        return;
+      }
+      await persistStartFrameTask(shotNumber, {
+        taskId,
+        status:
+          status === "queued" || status === "processing" || status === "submitted"
+            ? status
+            : "processing",
+      });
+      toast.info(
+        lang === "th"
+          ? "งานสร้างภาพยังไม่เสร็จ ระบบจะติดตามต่อให้"
+          : "The image task is still running; tracking has resumed."
+      );
+      await pollStartFrameTask(taskId, shotNumber);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : lang === "th"
+            ? "เชื่อมภาพเข้าช็อตไม่สำเร็จ"
+            : "Could not link the image to the shot.";
+      await persistTerminalImageFailure({
+        shotNumber,
+        taskId,
+        failureStage: "sync",
+        error: message,
+      });
+      toast.error(message);
     }
   }
 
@@ -1800,6 +1991,7 @@ function EpisodeWorkspaceShell({
         // before polling so a reload/navigation cannot orphan a task that is
         // still queued at Kie.ai.
         resumedStartFrameShotsRef.current.delete(variables.shotNumber);
+        clearImageGenerationError(variables.shotNumber);
         void (async () => {
           try {
             await persistStartFrameTask(variables.shotNumber, {
@@ -1808,7 +2000,9 @@ function EpisodeWorkspaceShell({
             });
             if (
               typeof variables.idempotencyKey === "string" &&
-              awaitStartFramePollKeysRef.current.delete(variables.idempotencyKey)
+              awaitStartFramePollKeysRef.current.delete(
+                variables.idempotencyKey
+              )
             ) {
               return;
             }
@@ -1837,6 +2031,11 @@ function EpisodeWorkspaceShell({
         if (typeof variables.idempotencyKey === "string") {
           awaitStartFramePollKeysRef.current.delete(variables.idempotencyKey);
         }
+        void persistTerminalImageFailure({
+          shotNumber: variables.shotNumber,
+          failureStage: "admission",
+          error: err.message,
+        });
         // Stale reference-mapping guard (character set changed after the prompt
         // was authored) — give the user a one-click "regenerate prompt" action
         // instead of just a wall of text. Detected by the stable phrase the
@@ -2350,9 +2549,23 @@ function EpisodeWorkspaceShell({
     target?: VerticalDramaRepairTarget,
     template?: string
   ) {
-    setRepairStage(stage);
+    const continuityGateFailed =
+      stage === "storyboard_shotgrid" &&
+      stageStates[stage]?.errors?.some(
+        error => error.code === "VD_CONTINUITY_GATE_FAILED"
+      );
+    const shouldRepairContinuityScript = continuityGateFailed;
+    const resolvedStage = shouldRepairContinuityScript
+      ? "plan_episode_script"
+      : stage;
+    const resolvedTemplate = shouldRepairContinuityScript
+      ? lang === "th"
+        ? "ซ่อมสคริปต์ตอนนี้โดยตรวจสอบ episode_memory และ continuity ledger ให้ทุก thread ที่เปิดใหม่มี expected_resolution และแก้การค้างของ thread ให้สอดคล้องกับตอนจบซีซัน จากนั้นคง canonical thread_id เดิมและส่งออก JSON ที่พร้อมไปต่อขั้น storyboard"
+        : "Repair this episode script's episode_memory against the continuity ledger. Every newly opened thread must declare expected_resolution; resolve payoffs with the exact canonical thread_id, and classify intentional post-season carry-over as season. Return valid JSON ready for the storyboard stage."
+      : template;
+    setRepairStage(resolvedStage);
     setRepairTarget(target);
-    setRepairTemplate(template);
+    setRepairTemplate(resolvedTemplate);
     setRepairJobStatus("idle");
     setRepairResultArtifactId(undefined);
     setRepairError(undefined);
@@ -2403,10 +2616,7 @@ function EpisodeWorkspaceShell({
       }
     }
     return active;
-  }, [
-    episodeDetailQuery.data?.startFramePlan?.frames,
-    pollingStartFrameShots,
-  ]);
+  }, [episodeDetailQuery.data?.startFramePlan?.frames, pollingStartFrameShots]);
 
   /** Resume main start-frame image tasks after navigation/reload. The
    * persisted marker remains until the result is linked to the shot, so a
@@ -2956,7 +3166,7 @@ function EpisodeWorkspaceShell({
         toast.success(
           lang === "th"
             ? "ยืนยันลำดับตัวละครซ้าย→ขวาแล้ว"
-            : "Left-to-right cast order confirmed.",
+            : "Left-to-right cast order confirmed."
         );
         void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
           seriesId,
@@ -2968,7 +3178,7 @@ function EpisodeWorkspaceShell({
 
   function handleSetShotCastPositionLock(
     shotNumber: number,
-    orderedCharacterRefs: string[],
+    orderedCharacterRefs: string[]
   ) {
     setShotCastPositionLockMutation.mutate({
       seriesId,
@@ -2979,24 +3189,26 @@ function EpisodeWorkspaceShell({
   }
 
   const setShotCharacterDescriptionOverridesMutation =
-    trpc.verticalDramaEpisodes.setShotCharacterDescriptionOverrides.useMutation({
-      onSuccess: () => {
-        toast.success(
-          lang === "th"
-            ? "บันทึกรายละเอียดระบุตัวละครของช็อตนี้แล้ว"
-            : "Shot-specific character details saved.",
-        );
-        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
-          seriesId,
-          episodeId,
-        });
-      },
-      onError: err => toast.error(err.message),
-    });
+    trpc.verticalDramaEpisodes.setShotCharacterDescriptionOverrides.useMutation(
+      {
+        onSuccess: () => {
+          toast.success(
+            lang === "th"
+              ? "บันทึกรายละเอียดระบุตัวละครของช็อตนี้แล้ว"
+              : "Shot-specific character details saved."
+          );
+          void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+            seriesId,
+            episodeId,
+          });
+        },
+        onError: err => toast.error(err.message),
+      }
+    );
 
   function handleSetShotCharacterDescriptionOverrides(
     shotNumber: number,
-    overrides: Record<string, string>,
+    overrides: Record<string, string>
   ) {
     setShotCharacterDescriptionOverridesMutation.mutate({
       seriesId,
@@ -3006,8 +3218,10 @@ function EpisodeWorkspaceShell({
     });
   }
 
-  const [savingShotSupportingPresenceForShot, setSavingShotSupportingPresenceForShot] =
-    useState<number | null>(null);
+  const [
+    savingShotSupportingPresenceForShot,
+    setSavingShotSupportingPresenceForShot,
+  ] = useState<number | null>(null);
   const setShotSupportingPresenceMutation =
     trpc.verticalDramaEpisodes.setShotSupportingPresence.useMutation({
       onSuccess: () => {
@@ -3031,7 +3245,9 @@ function EpisodeWorkspaceShell({
         seriesId,
         episodeId,
         shotNumber,
-        supportingPresence: entries as unknown as Array<Record<string, unknown>>,
+        supportingPresence: entries as unknown as Array<
+          Record<string, unknown>
+        >,
         customized: true,
       },
       { onSettled: () => setSavingShotSupportingPresenceForShot(null) }
@@ -4323,6 +4539,7 @@ function EpisodeWorkspaceShell({
     if (!requireModelSelectedOrToast("image")) return;
     if (!requireMcpConnectionOrToast("image")) return;
     if (!requireHermesConnectionOrToast("image")) return;
+    clearImageGenerationError(shotNumber);
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
     try {
       const plan = episodeDetailQuery.data?.startFramePlan as
@@ -4446,20 +4663,20 @@ function EpisodeWorkspaceShell({
           resolution: selectedImageResolution || undefined,
         };
         if (awaitCompletion) {
-            awaitStartFramePollKeysRef.current.add(idempotencyKey);
-            try {
-              const data =
-                await generateStartFrameImageMutation.mutateAsync(request);
-              // Keep the scene-ordered path safe even if React Query returns
-              // before the asynchronous onSuccess persistence callback has
-              // finished. The write is idempotent and is guarded server-side
-              // by the task id.
-              await persistStartFrameTask(shotNumber, {
-                taskId: data.taskId,
-                status: "submitted",
-              });
-              await pollStartFrameTask(data.taskId, shotNumber);
-            } finally {
+          awaitStartFramePollKeysRef.current.add(idempotencyKey);
+          try {
+            const data =
+              await generateStartFrameImageMutation.mutateAsync(request);
+            // Keep the scene-ordered path safe even if React Query returns
+            // before the asynchronous onSuccess persistence callback has
+            // finished. The write is idempotent and is guarded server-side
+            // by the task id.
+            await persistStartFrameTask(shotNumber, {
+              taskId: data.taskId,
+              status: "submitted",
+            });
+            await pollStartFrameTask(data.taskId, shotNumber);
+          } finally {
             awaitStartFramePollKeysRef.current.delete(idempotencyKey);
           }
         } else {
@@ -6264,6 +6481,10 @@ function EpisodeWorkspaceShell({
   const [videoPromptJobStatusByShot, setVideoPromptJobStatusByShot] = useState<
     Record<number, "queued" | "running">
   >({});
+  const [videoPromptJobErrorByShot, setVideoPromptJobErrorByShot] = useState<
+    Record<number, string>
+  >({});
+  const locallyPollingShotVideoPromptJobsRef = useRef<Set<number>>(new Set());
   const [usedVisionByShot, setUsedVisionByShot] = useState<
     Record<number, boolean>
   >({});
@@ -6291,99 +6512,123 @@ function EpisodeWorkspaceShell({
 
   useEffect(() => {
     const jobs = activeShotVideoPromptJobsQuery.data ?? [];
-    if (!jobs.length) return;
     setVideoPromptJobStatusByShot(prev => {
-      const next = { ...prev };
-      for (const job of jobs) {
-        if (job.status !== "queued" && job.status !== "running") continue;
-        next[job.shotNumber] = job.status === "running" ? "running" : "queued";
-      }
-      return next;
+      return reconcileShotVideoPromptJobUiState({
+        jobs,
+        locallyPollingShots: locallyPollingShotVideoPromptJobsRef.current,
+        previousStatusByShot: prev,
+      }).statusByShot;
     });
-    setGeneratingShotVideoPromptForShot(prev => {
-      const next = new Set(prev);
-      for (const job of jobs) next.add(job.shotNumber);
-      return next;
-    });
+    setGeneratingShotVideoPromptForShot(
+      reconcileShotVideoPromptJobUiState({
+        jobs,
+        locallyPollingShots: locallyPollingShotVideoPromptJobsRef.current,
+        previousStatusByShot: {},
+      }).generatingShots
+    );
   }, [activeShotVideoPromptJobsQuery.data]);
 
-  async function submitAndWaitForShotVideoPrompt(input: {
-    seriesId: string;
-    episodeId: string;
-    shotNumber: number;
-    nativeAudioEnabled?: boolean;
-    instruction?: string;
-    attachShotImage?: boolean;
-    idempotencyKey: string;
-  },
-  onStatus?: (status: "queued" | "running") => void
+  function clearShotVideoPromptJobUiState(shotNumber: number) {
+    locallyPollingShotVideoPromptJobsRef.current.delete(shotNumber);
+    setGeneratingShotVideoPromptForShot(prev => {
+      const next = new Set(prev);
+      next.delete(shotNumber);
+      return next;
+    });
+    setVideoPromptJobStatusByShot(prev => {
+      const next = { ...prev };
+      delete next[shotNumber];
+      return next;
+    });
+  }
+
+  async function submitAndWaitForShotVideoPrompt(
+    input: {
+      seriesId: string;
+      episodeId: string;
+      shotNumber: number;
+      nativeAudioEnabled?: boolean;
+      instruction?: string;
+      attachShotImage?: boolean;
+      qualityLoop?: boolean;
+      idempotencyKey: string;
+    },
+    onStatus?: (status: "queued" | "running") => void
   ) {
-    const submitted = await generateShotVideoPromptMutation.mutateAsync(input);
-    const submittedStatus =
-      submitted.status === "running" ? "running" : "queued";
-    onStatus?.(submittedStatus);
-    setVideoPromptJobStatusByShot(prev => ({
-      ...prev,
-      [input.shotNumber]: submittedStatus,
-    }));
+    setVideoPromptJobErrorByShot(prev => {
+      const next = { ...prev };
+      delete next[input.shotNumber];
+      return next;
+    });
+    locallyPollingShotVideoPromptJobsRef.current.add(input.shotNumber);
     setGeneratingShotVideoPromptForShot(prev =>
       new Set(prev).add(input.shotNumber)
     );
+    try {
+      const submitted = await generateShotVideoPromptMutation.mutateAsync(input);
+      const submittedStatus =
+        submitted.status === "running" ? "running" : "queued";
+      onStatus?.(submittedStatus);
+      setVideoPromptJobStatusByShot(prev => ({
+        ...prev,
+        [input.shotNumber]: submittedStatus,
+      }));
+      setGeneratingShotVideoPromptForShot(prev =>
+        new Set(prev).add(input.shotNumber)
+      );
 
-    for (let attempt = 0; attempt < 720; attempt += 1) {
-      const job = await utils.verticalDramaEpisodes.getShotVideoPromptJob.fetch({
-        jobId: submitted.jobId,
-        seriesId: input.seriesId,
-        episodeId: input.episodeId,
-        shotNumber: input.shotNumber,
-      });
-      if (job.status === "queued" || job.status === "running") {
-        const activeStatus: "queued" | "running" =
-          job.status === "running" ? "running" : "queued";
-        onStatus?.(activeStatus);
-        setVideoPromptJobStatusByShot(prev => ({
-          ...prev,
-          [input.shotNumber]: activeStatus,
-        }));
-      }
-      if (job.status === "succeeded" && job.result) {
-        setUsedVisionByShot(prev => ({
-          ...prev,
-          [input.shotNumber]: job.result?.usedVision ?? false,
-        }));
-        setGeneratingShotVideoPromptForShot(prev => {
-          const next = new Set(prev);
-          next.delete(input.shotNumber);
-          return next;
-        });
-        setVideoPromptJobStatusByShot(prev => {
-          const next = { ...prev };
-          delete next[input.shotNumber];
-          return next;
-        });
-        void refreshEpisodeDetailAfterPromptMutation();
-        return job.result;
-      }
-      if (job.status === "failed") {
-        setGeneratingShotVideoPromptForShot(prev => {
-          const next = new Set(prev);
-          next.delete(input.shotNumber);
-          return next;
-        });
-        throw new Error(
-          job.error ||
-            (lang.toLowerCase() === "th"
-              ? "สร้างพรอมต์วิดีโอไม่สำเร็จ กรุณาลองใหม่"
-              : "Failed to generate the video prompt — try again.")
+      for (let attempt = 0; attempt < 720; attempt += 1) {
+        const job = await utils.verticalDramaEpisodes.getShotVideoPromptJob.fetch(
+          {
+            jobId: submitted.jobId,
+            seriesId: input.seriesId,
+            episodeId: input.episodeId,
+            shotNumber: input.shotNumber,
+          }
         );
+        if (job.status === "queued" || job.status === "running") {
+          const activeStatus: "queued" | "running" =
+            job.status === "running" ? "running" : "queued";
+          onStatus?.(activeStatus);
+          setVideoPromptJobStatusByShot(prev => ({
+            ...prev,
+            [input.shotNumber]: activeStatus,
+          }));
+        }
+        if (job.status === "succeeded" && job.result) {
+          setUsedVisionByShot(prev => ({
+            ...prev,
+            [input.shotNumber]: job.result?.usedVision ?? false,
+          }));
+          void refreshEpisodeDetailAfterPromptMutation();
+          return job.result;
+        }
+        if (job.status === "failed") {
+          throw new Error(
+            job.error ||
+              (lang.toLowerCase() === "th"
+                ? "สร้างพรอมต์วิดีโอไม่สำเร็จ กรุณาลองใหม่"
+                : "Failed to generate the video prompt — try again.")
+          );
+        }
+        await new Promise(resolve => setTimeout(resolve, 2500));
       }
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      throw new Error(
+        lang.toLowerCase() === "th"
+          ? "ส่งงานแล้ว แต่ใช้เวลานานกว่าปกติ งานยังอยู่ในคิวและจะทำต่อแม้ปิดหน้านี้"
+          : "The job was submitted but is taking longer than usual. It remains queued and will continue after you leave this page."
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setVideoPromptJobErrorByShot(prev => ({
+        ...prev,
+        [input.shotNumber]: message,
+      }));
+      throw error;
+    } finally {
+      clearShotVideoPromptJobUiState(input.shotNumber);
+      void activeShotVideoPromptJobsQuery.refetch();
     }
-    throw new Error(
-      lang.toLowerCase() === "th"
-        ? "ส่งงานแล้ว แต่ใช้เวลานานกว่าปกติ งานยังอยู่ในคิวและจะทำต่อแม้ปิดหน้านี้"
-        : "The job was submitted but is taking longer than usual. It remains queued and will continue after you leave this page."
-    );
   }
 
   function handleGenerateShotVideoPrompt(shotNumber: number) {
@@ -6391,24 +6636,18 @@ function EpisodeWorkspaceShell({
     // refreshEpisodeDetailAfterPromptMutation before the button is released.
     if (!requireModelSelectedOrToast("video")) return;
     setGeneratingShotVideoPromptForShot(prev => new Set(prev).add(shotNumber));
-    void submitAndWaitForShotVideoPrompt(
-      {
-        seriesId,
-        episodeId,
-        shotNumber,
-        idempotencyKey: crypto.randomUUID(),
-        // Task #36 — rides the current toggle state into the generate
-        // call; the server re-gates this against the F131AC rollout flag
-        // + the selected model's `supportsNativeAudio` capability, so this
-        // is safe to always send.
-        nativeAudioEnabled,
-      }
-    ).catch(error => {
-      setGeneratingShotVideoPromptForShot(prev => {
-        const next = new Set(prev);
-        next.delete(shotNumber);
-        return next;
-      });
+    void submitAndWaitForShotVideoPrompt({
+      seriesId,
+      episodeId,
+      shotNumber,
+      idempotencyKey: crypto.randomUUID(),
+      // Task #36 — rides the current toggle state into the generate
+      // call; the server re-gates this against the F131AC rollout flag
+      // + the selected model's `supportsNativeAudio` capability, so this
+      // is safe to always send.
+      nativeAudioEnabled,
+      qualityLoop: false,
+    }).catch(error => {
       toast.error(error instanceof Error ? error.message : String(error));
     });
   }
@@ -6821,6 +7060,10 @@ function EpisodeWorkspaceShell({
             },
             onChangeStartFrame: shotNumber =>
               setImageSwapTarget({ type: "startFrame", shotNumber }),
+            imageGenerationErrorByShot,
+            onRetryStartFrameImage: shotNumber =>
+              void handleGeneratePromptAndImage(shotNumber, "single", false),
+            onRetryStartFrameSync: handleRetryStartFrameSync,
             onGenerateStartFramePlan: () =>
               runStageMutation.mutate({
                 seriesId,
@@ -6953,6 +7196,13 @@ function EpisodeWorkspaceShell({
             onDropCharacterReference: handleDropCharacterReference,
             onSetShotCharacterReferences: handleSetShotCharacterReferences,
             onSetShotCastPositionLock: handleSetShotCastPositionLock,
+            onSetShotCharacterDescriptionOverrides:
+              handleSetShotCharacterDescriptionOverrides,
+            savingCharacterDescriptionOverridesForShot:
+              setShotCharacterDescriptionOverridesMutation.isPending
+                ? (setShotCharacterDescriptionOverridesMutation.variables
+                    ?.shotNumber ?? null)
+                : null,
             onSetShotScreenCallerReferences:
               handleSetShotScreenCallerReferences,
             onSetShotSupportingPresence: handleSetShotSupportingPresence,
@@ -7125,6 +7375,7 @@ function EpisodeWorkspaceShell({
             onGenerateShotVideoPrompt: handleGenerateShotVideoPrompt,
             generatingShotVideoPromptForShot,
             videoPromptJobStatusByShot,
+            videoPromptJobErrorByShot,
             usedVisionByShot,
             compiledVideo,
             onAssembleCompiledVideo: handleAssembleCompiledVideo,
@@ -7211,8 +7462,11 @@ function EpisodeWorkspaceShell({
             })(),
           }}
           episodePreviewPanel={
-            previewShotOptions.some(option => option.ready) &&
-            episodeDetailQuery.data ? (
+            shouldRenderEpisodePreviewPanel({
+              episodeDetailLoaded: Boolean(episodeDetailQuery.data),
+              readyShotCount: previewShotOptions.filter(option => option.ready)
+                .length,
+            }) && episodeDetailQuery.data ? (
               <VerticalDramaEpisodePreviewPanel
                 lang={lang}
                 seriesId={seriesId}
@@ -7326,6 +7580,9 @@ function EpisodeWorkspaceShell({
                 shotNumber: target.shotNumber,
                 instruction,
                 attachShotImage,
+                // The AI-adjust dialog is the deliberate quality/cost tradeoff
+                // entry point; keep the ordinary Generate button single-pass.
+                qualityLoop: true,
                 idempotencyKey: crypto.randomUUID(),
               },
               status => setVideoPromptAiEditJobStatus(status)
@@ -7468,15 +7725,16 @@ function EpisodeWorkspaceShell({
               // state on top (React Query runs hook-level callbacks first,
               // then these), the same per-call layering
               // `handleGenerateShotVideoPrompt` above already relies on.
-              void submitAndWaitForShotVideoPrompt(
-                {
-                  seriesId,
-                  episodeId,
-                  shotNumber,
-                  instruction,
-                  idempotencyKey: crypto.randomUUID(),
-                }
-              )
+              void submitAndWaitForShotVideoPrompt({
+                seriesId,
+                episodeId,
+                shotNumber,
+                instruction,
+                // AI-adjust is an explicit quality pass; the plain generate
+                // button stays single-pass so prompt authoring remains fast.
+                qualityLoop: true,
+                idempotencyKey: crypto.randomUUID(),
+              })
                 .then(() => {
                   setRepairJobStatus("succeeded");
                 })
@@ -7586,6 +7844,9 @@ function EpisodeWorkspaceShell({
                     : undefined
               }
               defaultTab="history"
+              mediaLoadingEnabled={
+                episodeDetailQuery.isSuccess || imageSwapTarget != null
+              }
               isLinking={
                 setApprovedStartFrameAssetMutation.isPending ||
                 linkCharacterPortraitMutation.isPending

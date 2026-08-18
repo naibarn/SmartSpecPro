@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MarketplaceDraftQualityQcPanel } from "./MarketplaceDraftQualityQcPanel";
+import type { MarketplaceDraftQcState } from "@shared/marketplaceAutoReview/draftQualityQc";
 import {
   AUTO_STORYBOARD_QUALITY_MODE_ROUNDS,
   type AutoStoryboardQualityMode,
@@ -886,6 +888,14 @@ export interface AutoReviewPlanReviewPanelProps {
    *  `savingShotId`). */
   dialogueSavingShotId?: number | null;
   dialogueSaveError?: AutoReviewPlanReviewShotDialogueError | null;
+  creativeQc?: MarketplaceDraftQcState | null;
+  onStartCreativeQc?: (maxImprovementRounds: number) => void;
+  creativeQcStarting?: boolean;
+  creativeQcError?: string | null;
+  onRepairCreativeQc?: () => void;
+  onSelectCreativeQcRepair?: () => void;
+  creativeQcRepairing?: boolean;
+  creativeQcRepairError?: string | null;
   locale?: MarketplaceHyperframesUiLocale | string;
 }
 
@@ -1339,6 +1349,14 @@ export function AutoReviewPlanReviewPanel({
   onSaveShotDialogue,
   dialogueSavingShotId,
   dialogueSaveError,
+  creativeQc,
+  onStartCreativeQc,
+  creativeQcStarting,
+  creativeQcError,
+  onRepairCreativeQc,
+  onSelectCreativeQcRepair,
+  creativeQcRepairing,
+  creativeQcRepairError,
   locale,
 }: AutoReviewPlanReviewPanelProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
@@ -1384,7 +1402,10 @@ export function AutoReviewPlanReviewPanel({
     planReview?.required === true && planReview?.status === "awaiting";
   if (!isAwaiting) return null;
 
-  const busy = Boolean(approving) || Boolean(redrafting);
+  const busy = Boolean(approving) || Boolean(redrafting) || Boolean(creativeQcStarting);
+  const creativeQcReady =
+    !creativeQc?.required ||
+    (creativeQc.status === "succeeded" && creativeQc.report?.pass === true);
   // 2026-07-24 user report ("degraded pack ที่ไม่มีบทพูด ควรเอาออกไปเลย...
   // แล้วแจ้ง message user ว่าสาเหตุอะไร") — see
   // `isAutoReviewPlanReviewDraftFailed`'s doc comment. `hasSequentialShots`
@@ -1413,7 +1434,8 @@ export function AutoReviewPlanReviewPanel({
   // 2026-07-24 user report — see `isAutoReviewPlanReviewApprovalBlocked`'s
   // doc comment for the exact blocked condition (draft failed outright, or
   // every shot's dialogue is blank on a non-silent-audio run).
-  const approvalBlocked = isAutoReviewPlanReviewApprovalBlocked(plan);
+  const approvalBlocked =
+    isAutoReviewPlanReviewApprovalBlocked(plan) || !creativeQcReady;
   // The reason card (below) already names the real cause when the draft
   // failed outright — the generic "no dialogue in any shot" notice would be
   // actively misleading there (there is no shot list to point at, and the
@@ -1468,6 +1490,19 @@ export function AutoReviewPlanReviewPanel({
           </span>
         ) : null}
       </div>
+
+      {creativeQc && onStartCreativeQc ? (
+        <MarketplaceDraftQualityQcPanel
+          state={creativeQc}
+          onStart={onStartCreativeQc}
+          onRepair={onRepairCreativeQc}
+          onSelectRepair={onSelectCreativeQcRepair}
+          starting={creativeQcStarting}
+          repairing={creativeQcRepairing}
+          error={creativeQcError ?? creativeQcRepairError}
+          locale={locale}
+        />
+      ) : null}
 
       {draftFailed ? (
         <div
@@ -1686,7 +1721,11 @@ export function AutoReviewPlanReviewPanel({
           className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
         >
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-          <p>{copy.planReviewApprovalBlockedReason}</p>
+          <p>
+            {!creativeQcReady
+              ? "ต้องเริ่มตรวจ Creative QC และรอผลผ่านก่อนยืนยัน เพื่อป้องกัน Draft ที่ยังมีจุดตกหล่นเข้าสู่การสร้างสื่อ"
+              : copy.planReviewApprovalBlockedReason}
+          </p>
         </div>
       ) : null}
 

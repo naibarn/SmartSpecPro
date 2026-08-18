@@ -127,6 +127,27 @@ function assertReleaseRuntimePack() {
       blockedReasons.push(`Remotion sidecar dependency is missing: ${requiredRemotionModule}`);
     }
   }
+  const remotionPackageManifestPath = join(
+    appDir,
+    "runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/package.json",
+  );
+  const sourceRemotionPackagePath = resolve(repoRoot, "packages/remotion-render/package.json");
+  if (!existsSync(remotionPackageManifestPath)) {
+    blockedReasons.push("Remotion sidecar package manifest is missing");
+  } else {
+    const installedRemotionVersion = readJson(remotionPackageManifestPath).version;
+    const sourceRemotionVersion = readJson(sourceRemotionPackagePath).version;
+    if (manifest.remotionRenderPackageVersion !== installedRemotionVersion) {
+      blockedReasons.push(
+        `runtime manifest Remotion version ${manifest.remotionRenderPackageVersion || "(missing)"} does not match installed sidecar ${installedRemotionVersion}`,
+      );
+    }
+    if (installedRemotionVersion !== sourceRemotionVersion) {
+      blockedReasons.push(
+        `installed Remotion sidecar ${installedRemotionVersion} does not match source package ${sourceRemotionVersion}`,
+      );
+    }
+  }
   if (isWsl2Runtime) {
     if (!existsSync(join(appDir, "runtime-pack/node/bin/node"))) blockedReasons.push("bundled WSL2 Linux node binary is missing");
     if (!existsSync(join(appDir, "runtime-pack/bin/ffmpeg"))) blockedReasons.push("bundled WSL2 Linux ffmpeg is missing");

@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  AuthenticatedAttachmentImage,
+  getAuthenticatedAttachmentUrl,
+  openAuthenticatedAttachment,
+} from "@/components/feedback/AuthenticatedAttachmentImage";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
 import { Button } from "@smartspec/ui/src/components/ui/button";
@@ -37,6 +42,11 @@ export default function MyFeedback() {
       if (!isNaN(id)) setSelectedTicketId(id);
     }
   }, [search]);
+
+  const selectTicket = (ticketId: number) => {
+    setSelectedTicketId(ticketId);
+    setLocation(`/my-feedback?ticketId=${ticketId}`);
+  };
 
   const ticketsQuery = trpc.feedback.myTickets.useQuery({
     limit: 50,
@@ -177,7 +187,7 @@ export default function MyFeedback() {
                       ? "bg-blue-50 border border-blue-200"
                       : "hover:bg-gray-50 border border-transparent"
                   }`}
-                  onClick={() => setSelectedTicketId(ticket.id)}
+                  onClick={() => selectTicket(ticket.id)}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Badge
@@ -244,6 +254,9 @@ export default function MyFeedback() {
                     <span className="text-xs text-muted-foreground">
                       #{detail.id}
                     </span>
+                    <span className="text-[10px] font-mono text-muted-foreground border rounded px-1.5 py-0.5">
+                      Ticket ID: {detail.id}
+                    </span>
                   </div>
                   <h2 className="text-xl font-semibold">{detail.title}</h2>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -286,15 +299,19 @@ export default function MyFeedback() {
                         return (
                           <a
                             key={att.id}
-                            href={att.resolvedUrl}
+                            href={getAuthenticatedAttachmentUrl(att.resolvedUrl ?? att.fileUrl) ?? "#"}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={event => {
+                              event.preventDefault();
+                              void openAuthenticatedAttachment(att.resolvedUrl ?? att.fileUrl).catch(() => undefined);
+                            }}
                             className="flex items-center gap-2 p-2 rounded-lg border hover:bg-muted/50 transition-colors group"
                           >
                             {isImage ? (
                               <div className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0">
-                                <img
-                                  src={att.resolvedUrl}
+                                <AuthenticatedAttachmentImage
+                                  src={att.resolvedUrl ?? att.fileUrl}
                                   alt={att.fileName}
                                   className="w-full h-full object-cover"
                                 />

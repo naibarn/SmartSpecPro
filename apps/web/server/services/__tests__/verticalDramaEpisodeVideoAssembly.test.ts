@@ -13,6 +13,10 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import fsp from "fs/promises";
+import path from "path";
+import { Readable } from "stream";
+
+const storageStreamFileMock = vi.hoisted(() => vi.fn());
 
 const dbState = {
   episode: {
@@ -49,6 +53,7 @@ vi.mock("../../storage", () => ({
     key,
     url: `/api/storage/files/${key}`,
   })),
+  storageStreamFile: storageStreamFileMock,
 }));
 
 // Avoid a real network fetch in `downloadClipToFile` during `runAssemblyJob`.
@@ -68,6 +73,7 @@ import {
   extractClipSourcesFromMotionPromptPack,
   extractVerticalDramaManagedStorageKey,
   buildVerticalDramaStorageProxyUrl,
+  downloadClipToFile,
   repairVerticalDramaVideoAssetUrls,
   normalizeVerticalDramaStoredAssetUrl,
   findMissingClips,
@@ -89,6 +95,7 @@ import type { VdDialogueTimelineClip } from "@shared/verticalDramaSeries/dialogu
 beforeEach(() => {
   dbState.episode.assemblyManifest = null;
   vi.clearAllMocks();
+  storageStreamFileMock.mockResolvedValue(null);
 });
 
 /**
@@ -425,6 +432,14 @@ describe("normalizeVerticalDramaStoredAssetUrl", () => {
     );
   });
 
+  it("normalizes an absolute app storage-proxy URL to its durable relative path", () => {
+    expect(
+      normalizeVerticalDramaStoredAssetUrl(
+        "https://smartaihub.app/api/storage/files/worker-artifacts/clip.mp4?download=1"
+      )
+    ).toBe("/api/storage/files/worker-artifacts/clip.mp4");
+  });
+
   it("extracts only the durable managed key and ignores signed query parameters", () => {
     const url =
       "https://r2.example.test/smartspec/worker-artifacts/tenant/job/clip.mp4?X-Amz-Signature=secret";
@@ -462,6 +477,36 @@ describe("normalizeVerticalDramaStoredAssetUrl", () => {
     });
     expect(repaired?.clips[1]).toEqual(pack.clips[1]);
     expect(repairVerticalDramaVideoAssetUrls(repaired, resolutions)).toBe(repaired);
+  });
+});
+
+describe("downloadClipToFile", () => {
+  it("reads managed storage through the server storage layer", async () => {
+    storageStreamFileMock.mockResolvedValue({
+      stream: Readable.from([Buffer.from("managed-clip")]),
+      contentType: "video/mp4",
+      isPartial: false,
+    });
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockClear();
+    const tempDir = await fsp.mkdtemp("vd-download-");
+    const destPath = path.join(tempDir, "clip.mp4");
+
+    try {
+      await downloadClipToFile(
+        "https://smartaihub.app/api/storage/files/worker-artifacts/clip.mp4?download=1",
+        destPath,
+        "http://localhost:3000"
+      );
+
+      expect(storageStreamFileMock).toHaveBeenCalledWith(
+        "worker-artifacts/clip.mp4"
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+      await expect(fsp.readFile(destPath, "utf8")).resolves.toBe("managed-clip");
+    } finally {
+      await fsp.rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -1,0 +1,79 @@
+name: MCP v2 Compatibility Gates
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/server/_core/mcp*.ts"
+      - "apps/web/server/_core/authz.ts"
+      - "apps/web/server/services/mcpDownloadBrokerService.ts"
+      - "apps/web/server/services/tenantFeatureFlagService.ts"
+      - "apps/web/shared/featureFlags.ts"
+      - "apps/web/scripts/mcp-*.mjs"
+      - "apps/web/server/**/__tests__/mcp*.test.ts"
+      - "apps/web/server/**/__tests__/authz.mcpOAuth.test.ts"
+      - "apps/web/server/services/__tests__/mcpDownloadBrokerService.test.ts"
+      - "load-tests/scenario-mcp-v2.js"
+      - ".github/workflows/mcp-v2-gates.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: MCP focused tests
+        run: >-
+          JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890
+          npm --workspace apps/web run test -- --run
+          server/_core/__tests__/mcpResources.test.ts
+          server/_core/__tests__/mcpV2Protocol.test.ts
+          server/_core/__tests__/mcpRegistry.v2.test.ts
+          server/_core/__tests__/mcpOAuthMetadata.test.ts
+          server/_core/__tests__/mcpOAuthJwks.test.ts
+          server/_core/__tests__/authz.mcpOAuth.test.ts
+          server/_core/__tests__/mcpRolloutPolicy.test.ts
+          server/_core/__tests__/mcpPublicServer.test.ts
+          server/_core/__tests__/mcpPublicServerSecurity.test.ts
+          server/services/__tests__/mcpDownloadBrokerService.test.ts
+          server/middleware/__tests__/publicApiCors.test.ts
+      - run: npm run check:mcp146
+      - run: npm run security:mcp146
+      - run: npm audit --omit=dev --audit-level=high
+
+  live-contract-evidence:
+    runs-on: ubuntu-latest
+    env:
+      MCP_SMOKE_URL: ${{ secrets.MCP_SMOKE_URL }}
+      MCP_SMOKE_TOKEN: ${{ secrets.MCP_SMOKE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+      - name: MCP Inspector-style protocol smoke
+        env:
+          MCP_SMOKE_TOOL: ${{ vars.MCP_SMOKE_TOOL }}
+          MCP_SMOKE_TOOL_ARGS: ${{ vars.MCP_SMOKE_TOOL_ARGS }}
+        run: node apps/web/scripts/mcp-v2-protocol-smoke.mjs
+      - name: Official MCP Inspector CLI (pinned)
+        env:
+          MCP_SMOKE_URL: ${{ secrets.MCP_SMOKE_URL }}
+          MCP_SMOKE_TOKEN: ${{ secrets.MCP_SMOKE_TOKEN }}
+        run: >-
+          npx --yes @modelcontextprotocol/inspector@2.2.0 --cli --format json
+          --server-url "$MCP_SMOKE_URL/v1/mcp" --transport http
+          --header "Authorization: Bearer $MCP_SMOKE_TOKEN"
+          --method tools/list
+      - name: MCP failure-mode harness
+        env:
+          MCP_SMOKE_URL: ${{ secrets.MCP_SMOKE_URL }}
+          MCP_SMOKE_TOKEN: ${{ secrets.MCP_SMOKE_TOKEN }}
+        run: node apps/web/scripts/mcp-v2-failure-harness.mjs

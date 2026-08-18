@@ -32,6 +32,10 @@ vi.mock("../promptEnhancementService", () => ({
   buildUserPrompt: vi.fn(),
 }));
 
+vi.mock("../mediaGenerationService", () => ({
+  resolveExternalMediaReferenceUrls: vi.fn(async (urls: string[]) => urls),
+}));
+
 import {
   buildChatContext,
   buildTeamContext,

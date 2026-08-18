@@ -8,6 +8,7 @@ export type VerticalDramaContinuityIssueCode =
   | "duplicate_thread_open"
   | "unregistered_thread_resolution"
   | "thread_resolved_twice"
+  | "thread_due_unresolved"
   | "season_thread_unresolved";
 
 export type VerticalDramaContinuityIssue = {
@@ -49,10 +50,10 @@ export type VerticalDramaContinuityNormalization = {
  */
 export function selectPriorVerticalDramaMemories(
   episodes: ReadonlyArray<VdEpisodeMemory>,
-  currentEpisodeNumber: number,
+  currentEpisodeNumber: number
 ): VdEpisodeMemory[] {
   return episodes.filter(
-    episode => episode.episodeNumber < currentEpisodeNumber,
+    episode => episode.episodeNumber < currentEpisodeNumber
   );
 }
 
@@ -66,46 +67,81 @@ export function selectPriorVerticalDramaMemories(
  * valid openings/resolutions intact, allows an opening and resolution in the
  * same episode, and quarantines only untrusted lifecycle markers. A repeated
  * opening is treated as an idempotent continuation marker (the first opening
- * remains authoritative), not as a new lifecycle event. It never guesses an
- * alias or matches by description.
+ * remains authoritative), not as a new lifecycle event. The one explicit
+ * metadata correction allowed here is a repeated canonical ID with
+ * expectedResolution="season": it reclassifies the original opening as a
+ * season carry-over, because the current episode is the only place a repair
+ * can authoritatively declare that an old thread continues beyond the season.
+ * It never guesses an alias or matches by description.
  */
 export function normalizeVerticalDramaContinuityTimeline(
-  episodes: ReadonlyArray<VdEpisodeMemory>,
+  episodes: ReadonlyArray<VdEpisodeMemory>
 ): VerticalDramaContinuityNormalization {
   const sorted = episodes
     .map((episode, index) => ({ episode, index }))
     .filter(
       ({ episode }) =>
-        episode != null && typeof episode.episodeNumber === "number",
+        episode != null && typeof episode.episodeNumber === "number"
     )
     .sort(
       (a, b) =>
-        a.episode.episodeNumber - b.episode.episodeNumber ||
-        a.index - b.index,
+        a.episode.episodeNumber - b.episode.episodeNumber || a.index - b.index
     )
     .map(({ episode }) => episode);
 
   const opened = new Set<string>();
+  const authoritativeOpeningLocation = new Map<
+    string,
+    { episodeIndex: number; threadIndex: number }
+  >();
   const resolved = new Set<string>();
   const quarantinedResolutions: VerticalDramaContinuityQuarantine[] = [];
   const quarantinedOpenings: VerticalDramaContinuityQuarantine[] = [];
-  const normalizedEpisodes = sorted.map(episode => {
-    const candidateThreadsOpened = (Array.isArray(episode.threadsOpened)
-      ? episode.threadsOpened
-      : []
-    ).filter(
-      (thread): thread is VdOpenThread =>
-        !!thread &&
-        typeof thread === "object" &&
-        typeof thread.threadId === "string" &&
-        thread.threadId.trim().length > 0,
-    ).map(thread => ({
-      ...thread,
-      threadId: thread.threadId.trim(),
-    }));
+  const normalizedEpisodes: VdEpisodeMemory[] = [];
+  for (const episode of sorted) {
+    const candidateThreadsOpened = (
+      Array.isArray(episode.threadsOpened) ? episode.threadsOpened : []
+    )
+      .filter(
+        (thread): thread is VdOpenThread =>
+          !!thread &&
+          typeof thread === "object" &&
+          typeof thread.threadId === "string" &&
+          thread.threadId.trim().length > 0
+      )
+      .map(thread => ({
+        ...thread,
+        threadId: thread.threadId.trim(),
+      }));
     const threadsOpened: VdOpenThread[] = [];
     for (const thread of candidateThreadsOpened) {
       if (opened.has(thread.threadId)) {
+        const priorLocation = authoritativeOpeningLocation.get(thread.threadId);
+        if (
+          !resolved.has(thread.threadId) &&
+          thread.expectedResolution === "season" &&
+          priorLocation
+        ) {
+          const priorEpisode = normalizedEpisodes[priorLocation.episodeIndex];
+          const priorThread =
+            priorEpisode?.threadsOpened?.[priorLocation.threadIndex];
+          if (priorEpisode && priorThread) {
+            const {
+              expectedResolutionEpisode: _priorExpectedResolutionEpisode,
+              ...priorThreadWithoutEpisode
+            } = priorThread;
+            const nextThreadsOpened = [...priorEpisode.threadsOpened];
+            nextThreadsOpened[priorLocation.threadIndex] = {
+              ...priorThreadWithoutEpisode,
+              expectedResolution: "season",
+            };
+            normalizedEpisodes[priorLocation.episodeIndex] = {
+              ...priorEpisode,
+              threadsOpened: nextThreadsOpened,
+            };
+          }
+          continue;
+        }
         quarantinedOpenings.push({
           episodeNumber: episode.episodeNumber,
           threadId: thread.threadId,
@@ -115,6 +151,10 @@ export function normalizeVerticalDramaContinuityTimeline(
         continue;
       }
       opened.add(thread.threadId);
+      authoritativeOpeningLocation.set(thread.threadId, {
+        episodeIndex: normalizedEpisodes.length,
+        threadIndex: threadsOpened.length,
+      });
       threadsOpened.push(thread);
     }
 
@@ -122,7 +162,8 @@ export function normalizeVerticalDramaContinuityTimeline(
     for (const rawThreadId of Array.isArray(episode.threadsResolved)
       ? episode.threadsResolved
       : []) {
-      const threadId = typeof rawThreadId === "string" ? rawThreadId.trim() : "";
+      const threadId =
+        typeof rawThreadId === "string" ? rawThreadId.trim() : "";
       if (!threadId) continue;
       if (!opened.has(threadId)) {
         quarantinedResolutions.push({
@@ -146,12 +187,12 @@ export function normalizeVerticalDramaContinuityTimeline(
       resolved.add(threadId);
     }
 
-    return {
+    normalizedEpisodes.push({
       ...episode,
       threadsOpened,
       threadsResolved,
-    };
-  });
+    });
+  }
 
   return {
     episodes: normalizedEpisodes,
@@ -203,14 +244,16 @@ export function auditVerticalDramaStoryControl(input: {
   currentEpisode?: number;
 }): VerticalDramaStoryControlAudit {
   const episodes = [...input.episodes].sort(
-    (a, b) => a.episodeNumber - b.episodeNumber,
+    (a, b) => a.episodeNumber - b.episodeNumber
   );
   const currentEpisode =
     input.currentEpisode ??
     episodes.at(-1)?.episodeNumber ??
     Math.max(
       0,
-      ...(input.seed?.threadCandidates.map(thread => thread.payoffWindow.endEpisode) ?? []),
+      ...(input.seed?.threadCandidates.map(
+        thread => thread.payoffWindow.endEpisode
+      ) ?? [])
     );
   const openings = new Map<string, { thread: VdOpenThread; episode: number }>();
   const duplicateOpenings = new Set<string>();
@@ -223,7 +266,10 @@ export function auditVerticalDramaStoryControl(input: {
       if (openings.has(thread.threadId)) {
         duplicateOpenings.add(thread.threadId);
       } else {
-        openings.set(thread.threadId, { thread, episode: episode.episodeNumber });
+        openings.set(thread.threadId, {
+          thread,
+          episode: episode.episodeNumber,
+        });
       }
     }
     for (const threadId of episode.threadsResolved ?? []) {
@@ -237,16 +283,17 @@ export function auditVerticalDramaStoryControl(input: {
   }
 
   const seedById = new Map(
-    input.seed?.threadCandidates.map(thread => [thread.threadId, thread]) ?? [],
+    input.seed?.threadCandidates.map(thread => [thread.threadId, thread]) ?? []
   );
   const rows: VerticalDramaStoryControlAuditThread[] = [];
   const pushRow = (
     seedThread: VerticalDramaStoryControlThread | undefined,
-    threadId: string,
+    threadId: string
   ) => {
     const opening = openings.get(threadId);
     const resolvedEpisode = resolutions.get(threadId) ?? null;
-    const duplicate = duplicateOpenings.has(threadId) || duplicateResolutions.has(threadId);
+    const duplicate =
+      duplicateOpenings.has(threadId) || duplicateResolutions.has(threadId);
     const seedStatus = seedThread?.status ?? null;
     let status: VerticalDramaStoryControlAuditStatus;
     let reason: string;
@@ -258,7 +305,8 @@ export function auditVerticalDramaStoryControl(input: {
         : "A resolution exists without a matching opening record.";
     } else if (duplicate) {
       status = "needs_review";
-      reason = "The same thread ID has duplicate opening or resolution lifecycle records.";
+      reason =
+        "The same thread ID has duplicate opening or resolution lifecycle records.";
     } else if (seedStatus === "needs_review") {
       status = "needs_review";
       reason = "The authoring seed itself marked this thread for review.";
@@ -267,22 +315,27 @@ export function auditVerticalDramaStoryControl(input: {
       reason = "The authoring seed marked this thread as legacy/unknown.";
     } else if (resolvedEpisode != null && opening) {
       status = "resolved";
-      reason = "The registered thread has a matched opening and resolution episode.";
+      reason =
+        "The registered thread has a matched opening and resolution episode.";
     } else if (resolvedEpisode != null && !opening) {
       status = "missing_opening";
-      reason = "The registered thread has a resolution record but no matching opening record.";
+      reason =
+        "The registered thread has a resolution record but no matching opening record.";
     } else if (seedStatus === "resolved") {
       status = "needs_review";
-      reason = "The seed marks the thread resolved, but episode memory has no matching resolution.";
+      reason =
+        "The seed marks the thread resolved, but episode memory has no matching resolution.";
     } else if (!opening) {
       status = "registered";
-      reason = "The thread is registered in the seed but has no matched episode-memory opening yet.";
+      reason =
+        "The thread is registered in the seed but has no matched episode-memory opening yet.";
     } else if (currentEpisode > seedThread.payoffWindow.endEpisode) {
       status = "overdue";
       reason = "The thread is open beyond its registered payoff window.";
     } else {
       status = "open";
-      reason = "The thread has an opening record and remains unresolved within its payoff window.";
+      reason =
+        "The thread has an opening record and remains unresolved within its payoff window.";
     }
 
     rows.push({
@@ -329,6 +382,12 @@ export function auditVerticalDramaStoryControl(input: {
  */
 export function validateVerticalDramaContinuity(input: {
   episodes: ReadonlyArray<VdEpisodeMemory>;
+  /**
+   * When supplied, report non-season threads whose declared payoff deadline
+   * has already passed. Omitting this preserves the media-gate behaviour for
+   * an in-progress season.
+   */
+  currentEpisodeNumber?: number;
   seasonEndEpisode?: number;
 }): VerticalDramaContinuityValidation {
   const episodes = [...input.episodes].sort(
@@ -384,9 +443,34 @@ export function validateVerticalDramaContinuity(input: {
     .filter(thread => !resolved.has(thread.threadId))
     .sort((a, b) => a.openedEpisode - b.openedEpisode);
 
+  const dueThreadIds = new Set<string>();
+  if (input.currentEpisodeNumber != null) {
+    for (const thread of openThreads) {
+      if (
+        thread.expectedResolution === "season" ||
+        !Number.isInteger(thread.expectedResolutionEpisode) ||
+        thread.expectedResolutionEpisode > input.currentEpisodeNumber
+      ) {
+        continue;
+      }
+      dueThreadIds.add(thread.threadId);
+      issues.push({
+        code: "thread_due_unresolved",
+        episodeNumber: input.currentEpisodeNumber,
+        threadId: thread.threadId,
+        message: `Thread ${thread.threadId} was expected to resolve by episode ${thread.expectedResolutionEpisode} but remains open at episode ${input.currentEpisodeNumber}.`,
+      });
+    }
+  }
+
   if (input.seasonEndEpisode != null) {
     for (const thread of openThreads) {
-      if (thread.expectedResolution === "season") continue;
+      if (
+        thread.expectedResolution === "season" ||
+        dueThreadIds.has(thread.threadId)
+      ) {
+        continue;
+      }
       issues.push({
         code: "season_thread_unresolved",
         episodeNumber: input.seasonEndEpisode,

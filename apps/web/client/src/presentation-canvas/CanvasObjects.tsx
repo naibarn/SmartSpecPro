@@ -4,6 +4,10 @@ import DOMPurify from "dompurify";
 
 import type { PresentationElement, PresentationElementPatch } from "@/lib/presentationEditorState";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaVideo,
+} from "@/components/media/AuthenticatedMediaImage";
 import { computeMediaMotionTimelineFrame } from "@shared/presentation/mediaMotion";
 import type { PresentationMediaMotion } from "@shared/presentation/contracts";
 import { buildPresentationMediaShapeStyleForElement } from "@shared/presentation/mediaShape";
@@ -298,7 +302,7 @@ function renderElementBody(
         style={mediaShapeStyle}
       >
         {hasSource ? (
-          <img
+          <AuthenticatedMediaImage
             data-testid={`canvas-image-${element.id}`}
             src={resolvedSource}
             alt={element.alt || "Image"}
@@ -347,7 +351,7 @@ function renderElementBody(
     return (
       <div className="relative h-full w-full overflow-hidden bg-black/85" style={mediaShapeStyle}>
         {hasSource ? (
-          <video
+          <AuthenticatedMediaVideo
             ref={(node) => {
               options.setVideoRef(element.id, node);
             }}

@@ -2,6 +2,7 @@ import type { CSSProperties, ReactElement } from "react";
 import DOMPurify from "dompurify";
 
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import type {
   PresentationCanvasSize,
   PresentationElement,
@@ -126,7 +127,7 @@ function renderPreviewElement(
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(coloredSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
           />
         ) : source ? (
-          <img
+          <AuthenticatedMediaImage
             src={source}
             alt={element.alt || "Image"}
             className="h-full w-full"
@@ -163,7 +164,7 @@ function renderPreviewElement(
         style={{ ...commonStyle, ...mediaShapeStyle }}
       >
         {poster ? (
-          <img
+          <AuthenticatedMediaImage
             src={poster}
             alt={element.title || "Video preview"}
             className="h-full w-full"
@@ -243,14 +244,13 @@ export function SlideElementPreview({
           }}
         >
           {background?.type === "image" ? (
-            <div
+            <AuthenticatedMediaImage
               className="absolute inset-0"
-              style={{
-                backgroundImage: `url(${background.url})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-              }}
+              src={background.url}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              style={{ objectFit: "cover", objectPosition: "center" }}
             />
           ) : null}
           <div

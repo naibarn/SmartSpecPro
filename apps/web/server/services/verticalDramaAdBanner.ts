@@ -62,6 +62,8 @@ import {
   resolveProductReferenceImageUrls,
 } from "./verticalDramaProductTieIn";
 import { mediaGenerationService } from "./mediaGenerationService";
+import { createManagedStorageDownloadRef } from "./mcpDownloadBrokerService";
+import { getCachedPublicAppUrl } from "./appRuntimeConfig";
 import { resolveVerticalDramaCapabilities } from "./modelRegistry";
 import { calculateCreditCost } from "./pricingCalculator";
 import { db } from "../db";
@@ -291,6 +293,7 @@ const adBannerPromptOutputSchema = z.object({
 export interface GenerateAdBannerPromptParams {
   userId: number;
   tenantId: string;
+  publicUrl?: string | null;
   seriesId: number;
   bannerId: string;
   product: {
@@ -304,6 +307,34 @@ export interface GenerateAdBannerPromptParams {
   sideAlign?: "left" | "right";
   /** Already resolved + deduped + capped (see `resolveAdBannerProductReferenceImageUrls`). */
   referenceImageUrls: string[];
+}
+
+async function resolveAdBannerVisionReferenceUrls(
+  urls: string[],
+  viewer: { userId: number; tenantId: string },
+  publicUrl?: string | null,
+): Promise<string[]> {
+  const base = (publicUrl || getCachedPublicAppUrl() || "").replace(/\/+$/, "");
+  return Promise.all(urls.map(async url => {
+    const absolute = /^https?:\/\//i.test(url)
+      ? url
+      : `${base}${url.startsWith("/") ? url : `/${url}`}`;
+    let parsed: URL;
+    try {
+      parsed = new URL(absolute);
+    } catch {
+      return url;
+    }
+    const prefix = parsed.pathname.startsWith("/api/storage/files/")
+      ? "/api/storage/files/"
+      : parsed.pathname.startsWith("/uploads/")
+        ? "/uploads/"
+        : null;
+    if (!prefix || !base || process.env.NODE_ENV === "test") return absolute;
+    const storageKey = decodeURIComponent(parsed.pathname.slice(prefix.length));
+    const ref = await createManagedStorageDownloadRef(storageKey, viewer);
+    return `${base}/api/mcp/downloads/${encodeURIComponent(ref.downloadRef)}/${encodeURIComponent(ref.fileName)}`;
+  }));
 }
 
 export interface GenerateAdBannerPromptResult {
@@ -381,12 +412,19 @@ export async function generateAdBannerPrompt(
     params.seriesId
   );
   const systemPrompt = loadAdBannerPromptSystemPrompt();
+  const resolvedReferenceImageUrls = hasVision
+    ? await resolveAdBannerVisionReferenceUrls(
+        params.referenceImageUrls,
+        { userId: params.userId, tenantId: params.tenantId },
+        params.publicUrl,
+      )
+    : [];
   const userPromptText = buildAdBannerPromptUserPrompt(params, hasVision);
 
   const userContent = hasVision
     ? [
         { type: "text" as const, text: userPromptText },
-        ...params.referenceImageUrls.map(url => ({
+        ...resolvedReferenceImageUrls.map(url => ({
           type: "image_url" as const,
           image_url: { url, detail: "high" as const },
         })),
@@ -436,7 +474,7 @@ export async function generateAdBannerPrompt(
     const retryContent = hasVision
       ? [
           { type: "text" as const, text: retryText },
-          ...params.referenceImageUrls.map(url => ({
+          ...resolvedReferenceImageUrls.map(url => ({
             type: "image_url" as const,
             image_url: { url, detail: "high" as const },
           })),
@@ -554,6 +592,7 @@ export async function resolveAdBannerImageModelPricing(
 
 export interface SubmitAdBannerImageGenerationParams {
   userId: number;
+  tenantId: string;
   seriesId: number;
   bannerId: string;
   prompt: string;
@@ -618,6 +657,7 @@ export async function submitAdBannerImageGeneration(
       ...(params.transportMetadata ? { transportMetadata: params.transportMetadata } : {}),
       auditContext: {
         userId: params.userId,
+        tenantId: params.tenantId,
         traceId: crypto.randomUUID(),
         source: "trpc.verticalDramaSeries.generateAdBannerImage",
         stage: "submission",

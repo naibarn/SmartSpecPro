@@ -5,6 +5,7 @@ const {
   mockGetTask,
   mockCreateLibraryItem,
   mockSafeEnqueueLibraryIndexJob,
+  mockStoragePut,
   mockDb,
   mockEq,
 } = vi.hoisted(() => {
@@ -16,6 +17,7 @@ const {
     mockGetTask: vi.fn(),
     mockCreateLibraryItem: vi.fn(),
     mockSafeEnqueueLibraryIndexJob: vi.fn(),
+    mockStoragePut: vi.fn(),
     mockEq: vi.fn(),
   };
 });
@@ -36,6 +38,10 @@ vi.mock("./mediaGenerationService", () => ({
 vi.mock("./libraryService", () => ({
   createLibraryItem: mockCreateLibraryItem,
   safeEnqueueLibraryIndexJob: mockSafeEnqueueLibraryIndexJob,
+}));
+
+vi.mock("../storage", () => ({
+  storagePut: mockStoragePut,
 }));
 
 vi.mock("../../drizzle/schema", () => ({
@@ -61,6 +67,18 @@ const ORIGINAL_AUTO_ADD = process.env.MEDIA_LIBRARY_AUTO_ADD_ENABLED;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const url = String(input);
+    const contentType = /\.(mp4|webm)(?:\?|$)/i.test(url) ? "video/mp4" : "image/png";
+    return new Response(new Blob(["media"]), {
+      status: 200,
+      headers: { "content-type": contentType },
+    });
+  });
+  mockStoragePut.mockImplementation(async (key: string) => ({
+    key,
+    url: `/api/storage/files/${key}`,
+  }));
   mockGetDb.mockResolvedValue(mockDb);
   mockDb.select.mockReturnValue({
     from: vi.fn().mockReturnValue({

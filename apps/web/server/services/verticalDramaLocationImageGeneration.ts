@@ -235,6 +235,47 @@ export function buildLocationVisualPromptsUserPrompt(params: GenerateLocationVis
   ].join("\n\n");
 }
 
+export interface BuildLocationImageEditPromptParams {
+  locationName: string;
+  description: string;
+  editInstruction: string;
+  cameraView?: VerticalDramaLocationCameraView;
+}
+
+/**
+ * Build the provider-facing image-to-image instruction without asking a
+ * second LLM to paraphrase the creator's request.  The source image is the
+ * identity authority; the creator instruction is the only requested change;
+ * everything else is explicitly preserved.  This deterministic wrapper is
+ * important because a free-form edit request must not disappear between the
+ * location form and the paid image provider call.
+ */
+export function buildLocationImageEditPrompt(
+  params: BuildLocationImageEditPromptParams,
+): string {
+  const editInstruction = params.editInstruction.trim();
+  const description = params.description.trim();
+  const cameraView = params.cameraView
+    ? [
+        params.cameraView.label,
+        params.cameraView.directive ? `Directive: ${params.cameraView.directive}` : null,
+      ]
+        .filter(Boolean)
+        .join(" — ")
+    : "Preserve the source image viewpoint unless the edit instruction explicitly changes it.";
+
+  return [
+    "IMAGE-TO-IMAGE EDIT — EDIT THE ATTACHED LOCATION IMAGE, DO NOT GENERATE AN UNRELATED SCENE.",
+    `Location: ${params.locationName.trim()}`,
+    `Existing location description (identity context): ${description || params.locationName.trim()}`,
+    `Creator's required edit (highest priority): ${editInstruction}`,
+    `Camera/view instruction: ${cameraView}`,
+    "Preserve the source image's architecture, spatial layout, fixed fixtures, permanent materials, lighting direction, and established visual identity unless the creator explicitly asks to change one of them.",
+    "Apply the requested edit precisely and locally. Preserve every unspecified object, texture, proportion, and background detail.",
+    "Do not add people, text, logos, watermarks, unrelated objects, or a new location. Keep the result coherent, photorealistic, and consistent with the source image.",
+  ].join("\n");
+}
+
 /* -------------------------------------------------------------------------- */
 /* Model resolution — reuses the same quality large-context resolver tier as  */
 /* the character visual bible, routed through the centralized per-series      */

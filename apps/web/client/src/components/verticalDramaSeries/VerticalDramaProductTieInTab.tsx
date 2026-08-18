@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { pickCopy, verticalDramaCopy } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import {
   VERTICAL_DRAMA_PRODUCT_CATEGORIES,
@@ -204,7 +205,7 @@ export function VerticalDramaProductTieInTab({
           <>
             {productTieIn?.productImageUrl && (
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                <img
+                <AuthenticatedMediaImage
                   src={productTieIn.productImageUrl}
                   alt={productName || "Product"}
                   className="h-full w-full object-cover"
@@ -323,7 +324,7 @@ export function VerticalDramaProductTieInTab({
                               key={`${img.url}-${idx}`}
                               className="flex aspect-square items-center justify-center overflow-hidden rounded border bg-muted"
                             >
-                              <img
+                              <AuthenticatedMediaImage
                                 src={img.url}
                                 alt={img.role || "Product"}
                                 className="h-full w-full object-cover"

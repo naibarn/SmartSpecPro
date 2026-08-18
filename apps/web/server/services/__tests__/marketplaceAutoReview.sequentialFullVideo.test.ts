@@ -696,7 +696,7 @@ describe("Feature 136 section 09 T4 — resolveMarketplaceAutoReviewSequentialVi
     ).toBe(false);
   });
 
-  it("cap 1 (grok): referenceImageUrls has length 1 and equals the start frame; everything else is trimmed; nothing else attached", () => {
+  it("cap 7 (grok): keeps the start frame and available product references within the expanded API limit", () => {
     const plan = buildSequentialPlanFixture();
     const metadata = buildSequentialVideoMetadataFixture();
     const unit = buildSequentialVideoUnitFixture(3);
@@ -711,11 +711,14 @@ describe("Feature 136 section 09 T4 — resolveMarketplaceAutoReviewSequentialVi
       }
     );
 
-    expect(result.modelCap).toBe(1);
+    expect(result.modelCap).toBe(7);
     expect(result.referenceImageUrls).toEqual([
       "https://cdn.example.test/final-shot-3.png",
+      "https://example.com/product.png",
+      "https://cdn.example.test/product-front.png",
+      "https://cdn.example.test/product-back.png",
     ]);
-    expect(result.manifest).toHaveLength(1);
+    expect(result.manifest).toHaveLength(4);
     expect(result.manifest[0].role).toBe("shot_start_frame");
   });
 
@@ -922,16 +925,16 @@ describe("Feature 136 section 09 T5 — resolveMarketplaceAutoReviewSequentialSh
     expect(result.supportedDurations).toEqual([8]);
   });
 
-  it("grok-imagine-video-1-5-preview (durations: [6,10,15]) ⇒ requested 4 becomes 6; requested 10 stays 10, fitted false", () => {
-    const roundedUp = resolveMarketplaceAutoReviewSequentialShotVideoDurationForTest(
+  it("grok-imagine-video-1-5-preview (durations: [1..15]) ⇒ requested 4 stays 4; requested 10 stays 10, fitted false", () => {
+    const exactShort = resolveMarketplaceAutoReviewSequentialShotVideoDurationForTest(
       {
         requestedSeconds: 4,
         fallbackSeconds: 5,
         videoModel: "grok-imagine-video-1-5-preview",
       }
     );
-    expect(roundedUp.durationSeconds).toBe(6);
-    expect(roundedUp.fitted).toBe(true);
+    expect(exactShort.durationSeconds).toBe(4);
+    expect(exactShort.fitted).toBe(false);
 
     const exact = resolveMarketplaceAutoReviewSequentialShotVideoDurationForTest(
       {

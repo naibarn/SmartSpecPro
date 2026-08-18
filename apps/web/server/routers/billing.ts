@@ -10,7 +10,14 @@ import {
   listSupportRecoveryCasesForUser,
   upsertBillingProfileForUser,
 } from "../services/billing/profiles";
-import { createTopupCheckout } from "../services/billing/topupService";
+import { createTopupCheckout, getTopupPaymentOptions } from "../services/billing/topupService";
+import {
+  createPromptPayDirectTopup,
+  getPromptPayDirectAvailability,
+  getPromptPayDirectPaymentForUser,
+  resolvePromptPaySlipAccess,
+  uploadPromptPaySlip,
+} from "../services/billing/promptpayDirectService";
 import { listInvoiceDocuments, resolveInvoiceDocumentAccess } from "../services/billing/documentAccess";
 import { requestInvoiceReconciliation } from "../services/billing/recovery";
 import { getCurrentBillingSubscriptionForUser } from "../services/billing/orchestration";
@@ -77,6 +84,10 @@ const paymentMethodConfirmSchema = z.object({
 });
 
 export const billingRouter = router({
+  getPromptPayDirectAvailability: protectedProcedure.query(async () => getPromptPayDirectAvailability()),
+
+  getTopupPaymentOptions: protectedProcedure.query(async () => getTopupPaymentOptions()),
+
   getProfile: protectedProcedure.query(async ({ ctx }) => {
     assertBillingActionAuthorized(
       { id: ctx.user.id, role: ctx.user.role, currentTenantId: ctx.user.currentTenantId, registeredDomain: ctx.user.registeredDomain },
@@ -332,12 +343,8 @@ export const billingRouter = router({
 
   createTopupCheckout: protectedProcedure
     .input(z.object({
-      credits: z.number().int().positive().max(1_000_000),
-      basePrice: z.number().positive().max(1_000_000),
-      currency: z.string().trim().min(3).max(16).optional(),
-      packageCode: z.string().trim().max(128).optional().nullable(),
-      description: z.string().trim().max(500).optional().nullable(),
-      paymentMethod: z.enum(["promptpay", "card"]).optional(),
+      packageId: z.number().int().positive(),
+      paymentChannel: z.enum(["beam_promptpay", "beam_card", "promptpay_direct_manual"]),
     }))
     .mutation(async ({ ctx, input }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
@@ -347,17 +354,56 @@ export const billingRouter = router({
         { ownerUserId: ctx.user.id, tenantId },
       );
 
+      const paymentOptions = await getTopupPaymentOptions();
+      if (!paymentOptions.availableChannels.includes(input.paymentChannel)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "วิธีชำระเงินนี้ยังไม่เปิดใช้งานหรือยังตั้งค่าไม่ครบ",
+        });
+      }
+
+      if (input.paymentChannel === "promptpay_direct_manual") {
+        return createPromptPayDirectTopup({
+          tenantId,
+          userId: ctx.user.id,
+          actorUserId: ctx.user.id,
+          packageId: input.packageId,
+        });
+      }
+
       return createTopupCheckout({
         tenantId,
         userId: ctx.user.id,
         actorUserId: ctx.user.id,
-        packageCode: input.packageCode ?? null,
-        credits: input.credits,
-        basePrice: input.basePrice,
-        currency: input.currency,
-        description: input.description ?? null,
-        paymentMethod: input.paymentMethod ?? "promptpay",
+        packageId: input.packageId,
+        paymentMethod: input.paymentChannel === "beam_card" ? "card" : "promptpay",
       });
+    }),
+
+  getPromptPayDirectPayment: protectedProcedure
+    .input(z.object({ paymentId: z.number().int().positive().optional(), invoiceId: z.number().int().positive().optional() }).refine((value) => Boolean(value.paymentId || value.invoiceId), "paymentId or invoiceId is required"))
+    .query(async ({ ctx, input }) => {
+      const payment = await getPromptPayDirectPaymentForUser({ ...input, userId: ctx.user.id });
+      if (!payment) throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found" });
+      return payment;
+    }),
+
+  uploadPromptPaySlip: protectedProcedure
+    .input(z.object({
+      paymentId: z.number().int().positive(),
+      fileName: z.string().trim().min(1).max(255),
+      contentType: z.string().trim().min(1).max(128),
+      base64Content: z.string().min(1).max(15_000_000),
+      note: z.string().trim().max(1000).optional().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => uploadPromptPaySlip({ ...input, userId: ctx.user.id })),
+
+  getPromptPaySlipAccess: protectedProcedure
+    .input(z.object({ slipId: z.number().int().positive(), ttlSeconds: z.number().int().min(60).max(3600).optional() }))
+    .query(async ({ ctx, input }) => {
+      const access = await resolvePromptPaySlipAccess({ slipId: input.slipId, actorUserId: ctx.user.id, isAdmin: false, ttlSeconds: input.ttlSeconds });
+      if (!access) throw new TRPCError({ code: "NOT_FOUND", message: "Slip not found" });
+      return access;
     }),
 
   listDocuments: protectedProcedure

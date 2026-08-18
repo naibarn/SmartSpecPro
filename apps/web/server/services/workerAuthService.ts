@@ -5,6 +5,7 @@ import type { Request } from "express";
 import type { TokenClaims } from "../_core/tokens";
 import { hasScope, signBearerToken, verifyBearerToken } from "../_core/tokens";
 import { isJtiRevoked, revokeJti } from "../_core/revocation";
+import { isConnectedDeviceRevoked } from "./connectedDeviceService";
 import {
   getWorkerRuntimeDefinition,
   type WorkerRuntimeType,
@@ -17,6 +18,7 @@ import {
   type WorkerAccessPermissionScope,
 } from "../../shared/workerAccessKeys";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { getCacheClient } from "./redisClients";
 
 export const WORKER_REGISTRATION_AUDIENCE = "smartspec-worker-registration";
 export const WORKER_CONTROL_PLANE_AUDIENCE = "smartspec-worker-control-plane";
@@ -157,6 +159,7 @@ const WORKER_CONNECTION_BLOCK_TTL_MS = 30 * 24 * 60 * 60 * 1000;
  * must still satisfy the device proof bound to the token.
  */
 const WORKER_REFRESH_GRACE_MS = 60 * 1000;
+const WORKER_REFRESH_GRACE_REDIS_PREFIX = "worker:refresh-grace:";
 
 interface WorkerRefreshGraceEntry {
   expiresAtMs: number;
@@ -170,6 +173,66 @@ function pruneWorkerRefreshGrace(now: number): void {
     if (entry.expiresAtMs <= now) {
       workerRefreshGrace.delete(jti);
     }
+  }
+}
+
+function hasWorkerRefreshGraceRedis(): boolean {
+  return Boolean(
+    process.env.REDIS_UPSTASH_URL
+      || process.env.REDIS_CLOUD_URL
+      || process.env.REDIS_URL,
+  );
+}
+
+function workerRefreshGraceKey(jti: string): string {
+  return `${WORKER_REFRESH_GRACE_REDIS_PREFIX}${crypto.createHash("sha256").update(jti).digest("hex")}`;
+}
+
+async function readDistributedWorkerRefreshGrace(
+  jti: string,
+): Promise<WorkerRefreshGraceEntry["tokens"] | null> {
+  if (!jti || !hasWorkerRefreshGraceRedis()) return null;
+  try {
+    const raw = await getCacheClient().get(workerRefreshGraceKey(jti));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<WorkerRefreshGraceEntry["tokens"]>;
+    if (
+      typeof parsed.executionToken !== "string"
+      || typeof parsed.refreshToken !== "string"
+      || typeof parsed.uploadToken !== "string"
+    ) {
+      return null;
+    }
+    return {
+      executionToken: parsed.executionToken,
+      refreshToken: parsed.refreshToken,
+      uploadToken: parsed.uploadToken,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function persistDistributedWorkerRefreshGrace(
+  jti: string,
+  tokens: WorkerRefreshGraceEntry["tokens"],
+): Promise<WorkerRefreshGraceEntry["tokens"]> {
+  if (!jti || !hasWorkerRefreshGraceRedis()) return tokens;
+  try {
+    const redis = getCacheClient();
+    const stored = await redis.set(
+      workerRefreshGraceKey(jti),
+      JSON.stringify(tokens),
+      "EX",
+      Math.ceil(WORKER_REFRESH_GRACE_MS / 1000),
+      "NX",
+    );
+    if (stored === "OK") return tokens;
+    // Another replica won the rotation race. Return its token set so both
+    // callers converge on one replacement instead of creating two chains.
+    return await readDistributedWorkerRefreshGrace(jti) ?? tokens;
+  } catch {
+    return tokens;
   }
 }
 
@@ -434,11 +497,6 @@ async function assertDeviceProof(claims: TokenClaims, proof: WorkerDeviceRequest
   }
   const jti = String(claims.jti || "");
   const nonceKey = `${String(claims.workerConnectionId || jti)}:${jti}:${proof.nonce}`;
-  cleanupProofNonces();
-  if (workerProofNonces.has(nonceKey)) {
-    await blockWorkerConnection(claims, "replayed_device_proof");
-    throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof was replayed");
-  }
 
   const payload = canonicalWorkerProofPayload({
     bodyHash: proof.bodyHash || hashRequestBody({}),
@@ -452,7 +510,41 @@ async function assertDeviceProof(claims: TokenClaims, proof: WorkerDeviceRequest
     await blockWorkerConnection(claims, "invalid_device_signature");
     throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof signature is invalid");
   }
-  workerProofNonces.set(nonceKey, Date.now() + WORKER_PROOF_MAX_SKEW_MS);
+
+  // Proof nonces must be consumed atomically across all web replicas. Keep the
+  // in-memory path only for unit tests; production fails closed if the shared
+  // cache is unavailable instead of silently re-enabling replay across nodes.
+  if (process.env.NODE_ENV === "test") {
+    cleanupProofNonces();
+    if (workerProofNonces.has(nonceKey)) {
+      await blockWorkerConnection(claims, "replayed_device_proof");
+      throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof was replayed");
+    }
+    workerProofNonces.set(nonceKey, Date.now() + WORKER_PROOF_MAX_SKEW_MS);
+    return;
+  }
+  try {
+    const nonceHash = sha256Hex(nonceKey);
+    const consumed = await getCacheClient().set(
+      `worker:device-proof:nonce:${nonceHash}`,
+      "1",
+      "EX",
+      Math.ceil(WORKER_PROOF_MAX_SKEW_MS / 1000),
+      "NX",
+    );
+    if (consumed !== "OK") {
+      await blockWorkerConnection(claims, "replayed_device_proof");
+      throw new WorkerAuthError("worker_device_mismatch", 401, "Worker device proof was replayed");
+    }
+  } catch (error) {
+    if (error instanceof WorkerAuthError) throw error;
+    throw new WorkerAuthError(
+      "worker_proof_unavailable",
+      503,
+      "Worker proof replay protection is temporarily unavailable",
+      "service_unavailable",
+    );
+  }
 }
 
 export function extractWorkerDeviceProofFromRequest(
@@ -672,12 +764,21 @@ export async function refreshWorkerAccessTokens(
 ): Promise<{ executionToken: string; uploadToken: string; refreshToken: string }> {
   const now = Date.now();
   pruneWorkerRefreshGrace(now);
+  let presentedJtiForGrace = "";
+  try {
+    presentedJtiForGrace = String((await verifyBearerToken(refreshToken)).jti || "");
+  } catch {
+    // verifyBaseWorkerToken below owns the canonical invalid-token error.
+  }
+  const distributedGrace = await readDistributedWorkerRefreshGrace(presentedJtiForGrace);
   // Signature/expiry are verified here, but a jti sitting in the grace window
   // is NOT yet treated as revoked — the replay still has to pass every other
   // check below (audience, connection block, token use, device proof) before
   // the previously-issued set is handed back.
   const graceCandidate = await verifyBaseWorkerToken(refreshToken, {
-    allowRevokedJti: (jti) => workerRefreshGrace.has(jti),
+    allowRevokedJti: (jti) => workerRefreshGrace.has(jti) || Boolean(
+      distributedGrace && jti === presentedJtiForGrace,
+    ),
   });
   const claims = graceCandidate;
   assertAudience(claims, WORKER_CONTROL_PLANE_AUDIENCE);
@@ -692,6 +793,13 @@ export async function refreshWorkerAccessTokens(
   if (!tenantId || !workerId || !runtimeType) {
     throw new WorkerAuthError("worker_auth_invalid", 401, "Worker refresh token is missing worker binding");
   }
+  if (await isConnectedDeviceRevoked({
+    tenantId,
+    workerConnectionId: String(claims.workerConnectionId || ""),
+    authKind: "worker_executor",
+  })) {
+    throw new WorkerAuthError("worker_connection_blocked", 401, "Worker connection is revoked and must be paired again");
+  }
 
   const presentedJti = String(claims.jti || "");
   const graced = presentedJti ? workerRefreshGrace.get(presentedJti) : undefined;
@@ -701,6 +809,13 @@ export async function refreshWorkerAccessTokens(
     // whichever of the two responses arrived last — the same lockout this
     // window exists to prevent.
     return graced.tokens;
+  }
+  if (distributedGrace) {
+    workerRefreshGrace.set(presentedJti, {
+      expiresAtMs: now + WORKER_REFRESH_GRACE_MS,
+      tokens: distributedGrace,
+    });
+    return distributedGrace;
   }
 
   await revokeJti(presentedJti, tokenExpiryMs(claims));
@@ -722,10 +837,12 @@ export async function refreshWorkerAccessTokens(
     workerId,
   });
   if (presentedJti) {
+    const convergedTokens = await persistDistributedWorkerRefreshGrace(presentedJti, issued);
     workerRefreshGrace.set(presentedJti, {
       expiresAtMs: now + WORKER_REFRESH_GRACE_MS,
-      tokens: issued,
+      tokens: convergedTokens,
     });
+    return convergedTokens;
   }
   return issued;
 }

@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/146-smartaihub-mcp-server-v2-compatibility/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/146-smartaihub-mcp-server-v2-compatibility/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-transport-discovery",
+    "section-02-registry-results",
+    "section-03-resources-files",
+    "section-04-auth-oauth-security",
+    "section-05-jobs-credits-workers",
+    "section-06-observability-rollout",
+    "section-07-test-matrix",
+    "section-08-implementation-gates"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-17T02:44:06.643276+00:00"
+}

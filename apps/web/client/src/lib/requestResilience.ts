@@ -37,6 +37,7 @@
  * wiring.
  */
 import { classifyError, isNetworkFailure } from "@/lib/systemErrorMonitor";
+import { isTransientTenantServiceError } from "@/lib/tenantServiceRecovery";
 
 /** Max number of RETRY attempts (on top of the initial call) for queries. */
 export const RETRYABLE_QUERY_MAX_ATTEMPTS = 14;
@@ -80,7 +81,7 @@ export function shouldRetryQuery(
   error: unknown,
 ): boolean {
   return (
-    classifyError(error) === "system"
+    (classifyError(error) === "system" || isTransientTenantServiceError(error))
     && failureCount < RETRYABLE_QUERY_MAX_ATTEMPTS
   );
 }

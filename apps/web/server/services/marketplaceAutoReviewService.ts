@@ -2,7 +2,12 @@ import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { getDb } from "../db";
-import { storageExists, storagePut, storageResolveUrl } from "../storage";
+import {
+  storageExists,
+  storagePut,
+  storageReadText,
+  storageResolveUrl,
+} from "../storage";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectLlmModelCandidates } from "./intelligentModelSelector";
@@ -29,6 +34,15 @@ import {
   MarketplaceAutoReviewStageCompletionEvidenceSchema,
   type MarketplaceAutoReviewStageCompletionEvidence,
 } from "@shared/marketplaceAutoReview/contracts";
+import {
+  createMarketplaceDraftQcState,
+  fingerprintMarketplaceDraftQcCandidate,
+  MARKETPLACE_DRAFT_QC_PASS_THRESHOLD,
+  marketplaceDraftQcStateSchema,
+  marketplaceDraftQcReportSchema,
+  normalizeMarketplaceDraftQcRoundBudget,
+  type MarketplaceDraftQcState,
+} from "@shared/marketplaceAutoReview/draftQualityQc";
 import {
   type AgentsGatewayInvocationMetadata,
   type AgentCapabilityManifest,
@@ -190,6 +204,16 @@ import {
   initializeStagedMarketplaceAutoReviewRun,
   redraftStagedMarketplaceAutoReviewRun,
 } from "./marketplaceAutoReviewStagedPipelineService";
+import {
+  buildStagedCheckpoint,
+  buildStagedPlanView,
+} from "./marketplaceAutoReviewStoryArcPlanner";
+import {
+  runMarketplaceAutoReviewDraftQualityQc,
+  runMarketplaceAutoReviewDraftQualityQcRepair,
+  type MarketplaceDraftQcDraft,
+  type MarketplaceDraftQcImmutableConstraints,
+} from "./marketplaceAutoReviewDraftQualityQc";
 import {
   buildRuntimeModelConfig,
   executeSharedSkillTextRuntime,
@@ -1128,6 +1152,8 @@ type RunMetadata = Record<string, any> & {
   startFrameUrls?: string[];
   stopFrameUrls?: string[];
   requestedShotCount?: number;
+  /** Additive Creative QC state for the pre-media product-story approval gate. */
+  creativeQc?: MarketplaceDraftQcState;
   videoClipUrls?: string[];
   videoUnitIds?: string[];
   libraryFrameItemIds?: number[];
@@ -18965,6 +18991,716 @@ async function upsertMarketplaceAutoReviewOutboxJob(params: {
   });
 }
 
+function isMarketplaceAutoReviewStagedMetadata(metadata: RunMetadata): boolean {
+  return cleanText(metadata.planningArchitecture) === "staged_two_skill_v2";
+}
+
+function buildMarketplaceDraftQcCandidate(
+  run: MarketplaceAutoReviewRun,
+  metadata: RunMetadata
+): {
+  draft: MarketplaceDraftQcDraft;
+  immutableConstraints: MarketplaceDraftQcImmutableConstraints;
+} {
+  const staged = isMarketplaceAutoReviewStagedMetadata(metadata);
+  const pipeline = asRecord(metadata.stagedPipeline);
+  const plan = (staged ? pipeline.plan : metadata.concept) as Record<string, unknown>;
+  if (!plan || typeof plan !== "object") {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "creative_qc_draft_missing",
+    });
+  }
+  const shots = Array.isArray(plan.shots) ? plan.shots : [];
+  const referenceManifestHash =
+    cleanText(plan.referenceManifestHash) ||
+    cleanText(metadata.referenceManifestHash) ||
+    cleanText(asRecord(metadata.referenceAnchors).manifestHash) ||
+    "none";
+  const uiLocale =
+    cleanText(metadata.narrativeLocale) ||
+    cleanText(metadata.summaryLanguage) ||
+    (cleanText(metadata.language) || "th");
+  const spokenLanguageProfile =
+    metadata.speechLanguage ?? metadata.dialogueLanguage ?? null;
+  const productTruth =
+    (plan.productTruth as Record<string, unknown> | undefined) ||
+    (plan.product as Record<string, unknown> | undefined) ||
+    (metadata.productTruth as Record<string, unknown> | undefined) ||
+    null;
+  const shotContract = {
+    count: shots.length,
+    durations: shots.map(shot => Number(asRecord(shot).durationSeconds) || null),
+  };
+  const draft: MarketplaceDraftQcDraft = {
+    mode: staged ? "staged" : "legacy",
+    productId: run.productId,
+    productTruth,
+    referenceManifestHash,
+    uiLocale,
+    spokenLanguageProfile,
+    shotContract,
+    userBrief:
+      cleanText(metadata.creativeBrief) ||
+      cleanText(asRecord(metadata.userInputs).userRequirements) ||
+      null,
+    plan,
+    ...(staged
+      ? {}
+      : { sequentialStoryboard: metadata.sequentialStoryboard ?? null }),
+  };
+  const immutableFields: Record<string, unknown> = {
+    mode: draft.mode,
+    productId: draft.productId,
+    productTruth: draft.productTruth,
+    referenceManifestHash: draft.referenceManifestHash,
+    uiLocale: draft.uiLocale,
+    spokenLanguageProfile: draft.spokenLanguageProfile,
+    shotContract: draft.shotContract,
+  };
+  if (asRecord(plan).productTruth) {
+    immutableFields["plan.productTruth"] = asRecord(plan).productTruth;
+  }
+  if (asRecord(plan).product) {
+    immutableFields["plan.product"] = asRecord(plan).product;
+  }
+  if (cleanText(plan.referenceManifestHash)) {
+    immutableFields["plan.referenceManifestHash"] = plan.referenceManifestHash;
+  }
+  return {
+    draft,
+    immutableConstraints: {
+      fields: immutableFields,
+      preservedPaths: Object.keys(immutableFields),
+      uiLocale,
+      spokenLanguageProfile,
+      targetMarket: cleanText(metadata.targetMarket) || undefined,
+      productId: run.productId,
+      referenceManifestHash,
+      requestedShotCount: shots.length,
+      userBrief: draft.userBrief as string | undefined,
+    },
+  };
+}
+
+function applyMarketplaceDraftQcCandidate(
+  run: MarketplaceAutoReviewRun,
+  metadata: RunMetadata,
+  candidate: MarketplaceDraftQcDraft
+): RunMetadata {
+  const plan = asRecord(candidate.plan);
+  if (!Array.isArray(plan.shots) || plan.shots.length === 0) {
+    throw new Error("creative_qc_revised_plan_missing_shots");
+  }
+  const shotContract = asRecord(candidate.shotContract);
+  const expectedCount = Number(shotContract.count);
+  const expectedDurations = Array.isArray(shotContract.durations)
+    ? shotContract.durations
+    : [];
+  if (
+    !Number.isInteger(expectedCount) ||
+    expectedCount !== plan.shots.length ||
+    expectedDurations.length !== plan.shots.length ||
+    plan.shots.some(
+      (item, index) =>
+        Number(asRecord(item).durationSeconds) !== Number(expectedDurations[index])
+    )
+  ) {
+    throw new Error("creative_qc_revised_shot_contract_changed");
+  }
+  if (!isMarketplaceAutoReviewStagedMetadata(metadata)) {
+    if (
+      !cleanText(plan.conceptId) ||
+      !cleanText(plan.title) ||
+      Object.keys(asRecord(plan.productTruth)).length === 0 ||
+      !cleanText(plan.storyboardGuide) ||
+      !cleanText(plan.voiceoverScript) ||
+      !cleanText(plan.productDetail)
+    ) {
+      throw new Error("creative_qc_revised_legacy_plan_incomplete");
+    }
+    const nextSequential = asRecord(metadata.sequentialStoryboard);
+    const existingShots = Array.isArray(nextSequential.shots)
+      ? nextSequential.shots.map(item => asRecord(item))
+      : [];
+    const nextShots = plan.shots.map((item, index) => {
+      const shot = asRecord(item);
+      return {
+        ...(existingShots[index] ?? {}),
+        ...shot,
+        shotId: Number(shot.shotId ?? index + 1) || index + 1,
+      };
+    });
+    return {
+      ...metadata,
+      concept: plan as AutoReviewPlan,
+      ...(existingShots.length > 0
+        ? { sequentialStoryboard: { ...nextSequential, shots: nextShots } }
+        : {}),
+    };
+  }
+
+  const pipeline = asRecord(metadata.stagedPipeline);
+  const currentStaged = asRecord(metadata.stagedSequentialStoryboard);
+  const currentPlanRevision = Number(currentStaged.planRevision) || 1;
+  const nextPlanRevision = currentPlanRevision + 1;
+  const nextPlan: Record<string, any> = {
+    ...plan,
+    planRevision: nextPlanRevision,
+    storyPlanHash: buildProductionStableHash({
+      runId: run.id,
+      planRevision: nextPlanRevision,
+      title: plan.title,
+      storySummary: plan.storySummary,
+      product: plan.product,
+      shots: plan.shots,
+      referenceManifestHash: plan.referenceManifestHash,
+    }),
+  };
+  const previousShots = Array.isArray(currentStaged.shots)
+    ? currentStaged.shots.map(item => asRecord(item))
+    : [];
+  const nextShots = (nextPlan.shots as unknown[]).map((item, index) => {
+    const shot = asRecord(item);
+    return {
+      ...(previousShots[index] ?? {}),
+      shotId: Number(shot.shotId ?? index + 1) || index + 1,
+      revision: nextPlanRevision,
+      state: "story_awaiting",
+      storySummary: cleanText(shot.storySummary),
+      dialogue: cleanText(shot.dialogue),
+      title: cleanText(shot.title),
+      visualSummary: cleanText(shot.visualSummary),
+      imagePrompt: null,
+      imagePromptHash: null,
+      imageArtifactHash: null,
+      imageArtifactUrl: null,
+      videoPrompt: null,
+      videoPromptHash: null,
+      videoArtifactHash: null,
+      videoArtifactUrl: null,
+    };
+  });
+  const storyCheckpoint = buildStagedCheckpoint({
+    checkpointId: `story-plan:${run.id}:r${nextPlanRevision}:creative-qc`,
+    kind: "story_plan",
+    revision: nextPlanRevision,
+    contentHash: String(nextPlan.storyPlanHash),
+    model: "creative-qc",
+    provider: "internal",
+    estimatedCredits: 0,
+    referenceManifestHash: String(nextPlan.referenceManifestHash ?? "none"),
+  });
+  return {
+    ...metadata,
+    concept: {
+      ...(asRecord(metadata.concept) ?? {}),
+      ...nextPlan,
+    } as AutoReviewPlan,
+    stagedPipeline: {
+      ...pipeline,
+      plan: nextPlan,
+      planView: buildStagedPlanView(nextPlan as any),
+      tasks: {},
+      audioPlan: null,
+      audioUrl: null,
+      finalAssembly: null,
+    },
+    stagedSequentialStoryboard: {
+      ...currentStaged,
+      storyPlanStatus: "awaiting",
+      planRevision: nextPlanRevision,
+      storyPlanHash: nextPlan.storyPlanHash,
+      shots: nextShots,
+      reviewCheckpoints: [storyCheckpoint],
+    },
+  };
+}
+
+export function assertMarketplaceAutoReviewCreativeQcApproved(
+  metadata: RunMetadata | Record<string, unknown>
+): void {
+  const raw = (metadata as Record<string, unknown>).creativeQc;
+  // Existing runs created before this additive gate remain approvable. New
+  // runs always persist `creativeQc`, so this compatibility branch cannot
+  // bypass QC for a newly-created run.
+  if (!raw) return;
+  const state = marketplaceDraftQcStateSchema.safeParse(raw);
+  if (!state.success || state.data.status !== "succeeded" || !state.data.report?.pass) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        state.success && state.data.report
+          ? `creative_qc_not_passed:${state.data.report.overallScore}`
+          : "creative_qc_required",
+    });
+  }
+}
+
+export async function startMarketplaceAutoReviewDraftQualityQc(
+  input: { runId: string; maxImprovementRounds?: number },
+  auth: AuthContext
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  const run = await reloadRun(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  if (isMarketplaceAutoReviewStagedMetadata(metadata)) {
+    if (cleanText(asRecord(metadata.planReview).status) !== "awaiting") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "creative_qc_not_awaiting_story_plan" });
+    }
+  } else {
+    await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
+  }
+  const candidate = buildMarketplaceDraftQcCandidate(run, metadata);
+  const maxImprovementRounds = normalizeMarketplaceDraftQcRoundBudget(
+    input.maxImprovementRounds
+  );
+  const current = metadata.creativeQc
+    ? marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc)
+    : null;
+  if (current?.success && ["queued", "running"].includes(current.data.status)) {
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  }
+  const nextState: MarketplaceDraftQcState = {
+    ...createMarketplaceDraftQcState(maxImprovementRounds),
+    status: "queued",
+    candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(candidate.draft),
+    startedAt: new Date().toISOString(),
+  };
+  const nextMetadata: RunMetadata = { ...metadata, creativeQc: nextState };
+  await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
+  await upsertMarketplaceAutoReviewOutboxJob({
+    db,
+    run,
+    auth,
+    jobType: "draft_quality_qc",
+    idempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:${nextState.candidateFingerprint}:${maxImprovementRounds}`,
+    priority: 30,
+    maxAttempts: 2,
+    payload: {
+      runId: run.id,
+      candidateFingerprint: nextState.candidateFingerprint,
+      maxImprovementRounds,
+    },
+  });
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
+export async function startMarketplaceAutoReviewDraftQualityQcRepair(
+  input: { runId: string },
+  auth: AuthContext,
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await reloadRun(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  if (isMarketplaceAutoReviewStagedMetadata(metadata)) {
+    if (cleanText(asRecord(metadata.planReview).status) !== "awaiting") {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "creative_qc_not_awaiting_story_plan",
+      });
+    }
+  } else {
+    await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
+  }
+  const current = marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc);
+  if (!current.success || current.data.status !== "succeeded" || !current.data.report) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "creative_qc_repair_requires_completed_qc",
+    });
+  }
+  if (current.data.repairStatus === "queued" || current.data.repairStatus === "running") {
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  }
+  if (current.data.report.pass || !current.data.report.repairPlan?.available) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "creative_qc_no_safe_repair_plan",
+    });
+  }
+  const candidate = buildMarketplaceDraftQcCandidate(run, metadata);
+  const sourceFingerprint = fingerprintMarketplaceDraftQcCandidate(candidate.draft);
+  if (
+    current.data.candidateFingerprint &&
+    current.data.candidateFingerprint !== sourceFingerprint
+  ) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "creative_qc_repair_candidate_stale",
+    });
+  }
+  const sourceArtifact = await persistMarketplaceAutoReviewArtifactJson({
+    db,
+    run,
+    stageKey: "prompt_plan",
+    artifactKind: "creative_qc_source_candidate",
+    content: {
+      schemaVersion: 1,
+      operation: "repair_source",
+      candidateFingerprint: sourceFingerprint,
+      draft: candidate.draft,
+      report: current.data.report,
+    },
+  });
+  const nextState: MarketplaceDraftQcState = {
+    ...current.data,
+    repairStatus: "queued",
+    repairAttempted: true,
+    repairSourceFingerprint: sourceFingerprint,
+    repairSourceArtifactId: String(sourceArtifact.artifactId),
+    repairCandidateFingerprint: null,
+    repairCandidateArtifactId: null,
+    repairReport: null,
+    repairComparison: null,
+    error: null,
+  };
+  await updateRun({
+    db,
+    runId: run.id,
+    metadataJson: { ...metadata, creativeQc: nextState },
+  });
+  await upsertMarketplaceAutoReviewOutboxJob({
+    db,
+    run,
+    auth,
+    jobType: "draft_quality_qc",
+    idempotencyKey: `marketplace-auto-review:${run.id}:creative-qc:repair:${sourceFingerprint}`,
+    priority: 30,
+    maxAttempts: 2,
+    payload: {
+      runId: run.id,
+      operation: "repair",
+      sourceFingerprint,
+    },
+  });
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
+export async function processMarketplaceAutoReviewDraftQualityQc(
+  runId: string,
+  auth: AuthContext
+) {
+  const db = await getDb();
+  if (!db)
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  const run = await reloadRun(db, runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const rawState = marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc);
+  if (!rawState.success) return getMarketplaceAutoReviewRun(run.id, auth);
+  const state = rawState.data;
+  const repairMode = state.repairStatus === "queued" || state.repairStatus === "running";
+  if (!repairMode && state.status !== "queued" && state.status !== "running") {
+    // A prior story edit/redraft invalidates the queued candidate. The old
+    // outbox row may still be delivered once; it must not run QC against the
+    // replacement draft or consume a second reservation.
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  }
+  const candidate = buildMarketplaceDraftQcCandidate(run, metadata);
+  const currentFingerprint = fingerprintMarketplaceDraftQcCandidate(candidate.draft);
+  const expectedFingerprint = repairMode
+    ? state.repairSourceFingerprint
+    : state.candidateFingerprint;
+  if (expectedFingerprint && expectedFingerprint !== currentFingerprint) {
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: {
+        ...metadata,
+        creativeQc: {
+          ...state,
+          ...(repairMode ? { repairStatus: "failed" as const } : { status: "failed" as const }),
+          error: "creative_qc_candidate_stale",
+          completedAt: new Date().toISOString(),
+        },
+      },
+    });
+    throw new TRPCError({ code: "CONFLICT", message: "creative_qc_candidate_stale" });
+  }
+  const runningMetadata: RunMetadata = {
+    ...metadata,
+    creativeQc: repairMode
+      ? { ...state, repairStatus: "running", error: null }
+      : { ...state, status: "running", error: null },
+  };
+  await updateRun({ db, runId: run.id, metadataJson: runningMetadata });
+  let lastProgress: MarketplaceDraftQcState["progress"] = state.progress;
+  try {
+    if (repairMode) {
+      if (!state.report || !state.repairSourceFingerprint) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "creative_qc_repair_source_missing",
+        });
+      }
+      const result = await runMarketplaceAutoReviewDraftQualityQcRepair(
+        {
+          draft: candidate.draft,
+          sourceReport: state.report,
+          sourceFingerprint: state.repairSourceFingerprint,
+          immutableConstraints: candidate.immutableConstraints,
+          userId: run.userId,
+          tenantId: run.tenantId ?? auth.tenantId ?? undefined,
+          onProgress: event => {
+            lastProgress = event;
+          },
+        },
+        {},
+      );
+      const repairArtifact = await persistMarketplaceAutoReviewArtifactJson({
+        db,
+        run,
+        stageKey: "prompt_plan",
+        artifactKind: "creative_qc_repair_candidate",
+        content: {
+          schemaVersion: 1,
+          operation: "user_confirmed_repair",
+          sourceFingerprint: state.repairSourceFingerprint,
+          candidateFingerprint: result.repaired.fingerprint,
+          draft: result.repaired.draft,
+          report: result.repaired.report,
+          improved: result.improved,
+        },
+      });
+      const nextRepairState: MarketplaceDraftQcState = {
+        ...state,
+        status: "succeeded",
+        repairStatus: result.improved ? "succeeded" : "not_better",
+        repairCandidateFingerprint: result.repaired.fingerprint,
+        repairCandidateArtifactId: String(repairArtifact.artifactId),
+        repairReport: result.repaired.report,
+        repairComparison: {
+          sourceScore: state.report.overallScore,
+          repairedScore: result.repaired.report.overallScore,
+          improved: result.improved,
+          passed: result.repaired.report.pass,
+        },
+        history: [
+          ...state.history,
+          {
+            round:
+              Math.max(
+                1,
+                state.history.reduce(
+                  (max, item) => Math.max(max, item.round),
+                  0,
+                ) + 1,
+              ),
+            score: result.repaired.report.overallScore,
+            status: result.repaired.report.status,
+            kept: result.improved,
+            reason: result.improved ? "improved" : "not_better",
+            candidateFingerprint: result.repaired.fingerprint,
+            candidateArtifactId: String(repairArtifact.artifactId),
+          },
+        ],
+        progress: lastProgress,
+        creditEstimate: result.creditEstimate,
+        error: null,
+        completedAt: new Date().toISOString(),
+      };
+      await updateRun({
+        db,
+        runId: run.id,
+        metadataJson: { ...metadata, creativeQc: nextRepairState },
+      });
+      return getMarketplaceAutoReviewRun(run.id, auth);
+    }
+    const result = await runMarketplaceAutoReviewDraftQualityQc(
+      {
+        draft: candidate.draft,
+        immutableConstraints: candidate.immutableConstraints,
+        maxImprovementRounds: state.maxImprovementRounds,
+        userId: run.userId,
+        tenantId: run.tenantId ?? auth.tenantId ?? undefined,
+        onProgress: event => {
+          lastProgress = event;
+        },
+      },
+      {}
+    );
+    const appliedMetadata = applyMarketplaceDraftQcCandidate(
+      run,
+      metadata,
+      result.best.draft
+    );
+    const appliedCandidate = buildMarketplaceDraftQcCandidate(run, appliedMetadata);
+    const sourceArtifact = await persistMarketplaceAutoReviewArtifactJson({
+      db,
+      run,
+      stageKey: "prompt_plan",
+      artifactKind: "creative_qc_source_candidate",
+      content: {
+        schemaVersion: 1,
+        operation: "initial_qc_source",
+        candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(
+          appliedCandidate.draft
+        ),
+        draft: appliedCandidate.draft,
+        report: result.best.report,
+      },
+    });
+    const nextQcState: MarketplaceDraftQcState = {
+      ...state,
+      status: "succeeded",
+      candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(appliedCandidate.draft),
+      report: result.best.report,
+      history: result.history,
+      progress: lastProgress,
+      creditEstimate: result.creditEstimate,
+      bestRound: result.best.round,
+      repairStatus: "idle",
+      repairAttempted: false,
+      repairSourceFingerprint: null,
+      repairSourceArtifactId: String(sourceArtifact.artifactId),
+      repairCandidateFingerprint: null,
+      repairCandidateArtifactId: null,
+      repairReport: null,
+      repairComparison: null,
+      completedAt: new Date().toISOString(),
+      error: null,
+    };
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: { ...appliedMetadata, creativeQc: nextQcState },
+    });
+    return getMarketplaceAutoReviewRun(run.id, auth);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: {
+        ...metadata,
+        creativeQc: {
+          ...state,
+          ...(repairMode
+            ? { repairStatus: "failed" as const }
+            : { status: "failed" as const }),
+          progress: lastProgress,
+          error: message.slice(0, 1000),
+          completedAt: new Date().toISOString(),
+        },
+      },
+    });
+    throw error;
+  }
+}
+
+export async function selectMarketplaceAutoReviewDraftQualityQcRepair(
+  input: { runId: string },
+  auth: AuthContext,
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+  const run = await reloadRun(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const parsedState = marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc);
+  if (!parsedState.success) {
+    throw new TRPCError({ code: "CONFLICT", message: "creative_qc_state_invalid" });
+  }
+  const state = parsedState.data;
+  if (
+    state.repairStatus !== "succeeded" ||
+    !state.repairCandidateArtifactId ||
+    !state.repairCandidateFingerprint ||
+    !state.repairReport?.pass
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "creative_qc_repair_candidate_not_passed",
+    });
+  }
+  const current = buildMarketplaceDraftQcCandidate(run, metadata);
+  if (
+    state.repairSourceFingerprint &&
+    state.repairSourceFingerprint !==
+      fingerprintMarketplaceDraftQcCandidate(current.draft)
+  ) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "creative_qc_repair_candidate_stale",
+    });
+  }
+  const [artifact] = await db
+    .select()
+    .from(marketplaceAutoReviewArtifacts)
+    .where(
+      and(
+        eq(marketplaceAutoReviewArtifacts.id, state.repairCandidateArtifactId),
+        eq(marketplaceAutoReviewArtifacts.runId, run.id),
+      ),
+    )
+    .limit(1);
+  if (!artifact) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "creative_qc_repair_artifact_missing" });
+  }
+  const raw = await storageReadText(artifact.storageKey);
+  let payload: Record<string, unknown>;
+  try {
+    payload = raw ? asRecord(JSON.parse(raw)) : {};
+  } catch {
+    payload = {};
+  }
+  const draft = asRecord(payload.draft);
+  const fingerprint = fingerprintMarketplaceDraftQcCandidate(draft);
+  if (
+    fingerprint !== state.repairCandidateFingerprint ||
+    cleanText(payload.candidateFingerprint) !== fingerprint
+  ) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "creative_qc_repair_artifact_fingerprint_mismatch",
+    });
+  }
+  const report = marketplaceDraftQcReportSchema.parse(payload.report);
+  if (!report.pass) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "creative_qc_repair_candidate_not_passed",
+    });
+  }
+  const appliedMetadata = applyMarketplaceDraftQcCandidate(run, metadata, draft);
+  const appliedCandidate = buildMarketplaceDraftQcCandidate(run, appliedMetadata);
+  const history = state.history.map(item =>
+    item.candidateFingerprint === fingerprint
+      ? {
+          ...item,
+          candidateArtifactId: state.repairCandidateArtifactId ?? undefined,
+        }
+      : item,
+  );
+  const nextState: MarketplaceDraftQcState = {
+    ...state,
+    status: "succeeded",
+    candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(appliedCandidate.draft),
+    report,
+    history,
+    bestRound: state.bestRound,
+    error: null,
+  };
+  await updateRun({
+    db,
+    runId: run.id,
+    metadataJson: { ...appliedMetadata, creativeQc: nextState },
+  });
+  return getMarketplaceAutoReviewRun(run.id, auth);
+}
+
 async function persistMarketplaceAutoReviewLeaseRow(params: {
   db: Db;
   run: MarketplaceAutoReviewRun;
@@ -19911,6 +20647,7 @@ function serializeRun(
         // branch too (list views) even though it's small, so a run needing
         // user action is distinguishable without fetching heavy metadata.
         planReview: metadata.planReview ?? null,
+        creativeQc: metadata.creativeQc ?? null,
         stagedSequentialStoryboard: metadata.stagedSequentialStoryboard
           ? {
               storyPlanStatus:
@@ -23587,6 +24324,7 @@ export async function startMarketplaceAutoReviewRun(
       redraftCount: 0,
       lastNotes: null,
     },
+    creativeQc: createMarketplaceDraftQcState(),
   };
   await holdMarketplaceAutoReviewRunAtImageGeneration({ db, runId, stages });
   await updateRun({
@@ -23827,6 +24565,7 @@ export async function approveMarketplaceAutoReviewPlanReview(
   const run = await reloadRun(db, input.runId, auth);
   await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
+  assertMarketplaceAutoReviewCreativeQcApproved(metadata);
   // Content gate BEFORE any stage/metadata write — approve must be a no-op
   // on rejection (no partial state, no queued image_generation stage).
   const approvalBlocker =
@@ -24079,6 +24818,7 @@ export async function requestMarketplaceAutoReviewPlanRedraft(
       redraftCount,
       lastNotes: notes || null,
     },
+    creativeQc: createMarketplaceDraftQcState(),
   });
   await updateRun({
     db,
@@ -24330,6 +25070,7 @@ export async function updateMarketplaceAutoReviewPlanShotDialogue(
         [String(input.shotId)]: { editedAt },
       },
     },
+    creativeQc: createMarketplaceDraftQcState(),
   };
   await updateRun({ db, runId: run.id, metadataJson: nextMetadata });
   console.warn("[marketplaceAutoReview] plan_review_shot_dialogue_edited", {
@@ -30783,6 +31524,7 @@ async function ensureAudioForVideo(params: {
     userToken,
     {
       userId: params.auth.userId,
+      tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
       traceId: `marketplace-auto-review-audio-status:${params.run.id}`,
       source: "marketplace_auto_review",
       stage: "audio_generation_status",

@@ -97,6 +97,7 @@ export default function Credits() {
   const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
   const { data: ocrUsage, isLoading: ocrLoading } = trpc.credits.ocrUsageSummary.useQuery({ days: 30 });
   const { data: packages, isLoading: packagesLoading } = trpc.packages.list.useQuery();
+  const { data: topupPaymentOptions, isLoading: topupPaymentOptionsLoading } = trpc.billing.getTopupPaymentOptions.useQuery(undefined, { enabled: !!user });
   const topupMutation = trpc.billing.createTopupCheckout.useMutation({
     onError: (error) => {
       toast.error(error.message || "ไม่สามารถสร้างรายการชำระเงินได้");
@@ -255,23 +256,30 @@ export default function Credits() {
     setPendingCheckoutPackage(pkg);
   };
 
-  const handleConfirmTopupCheckout = (pkg: any, paymentMethod: "promptpay" | "card") => {
+  const enabledPaymentChannels = useMemo(() => {
+    const channels = topupPaymentOptions?.availableChannels ?? [];
+    const defaultChannel = topupPaymentOptions?.defaultPaymentChannel;
+    return [...channels].sort((left, right) => {
+      if (left === defaultChannel) return -1;
+      if (right === defaultChannel) return 1;
+      return 0;
+    });
+  }, [topupPaymentOptions]);
+
+  const handleConfirmTopupCheckout = (pkg: any, paymentChannel: "beam_promptpay" | "beam_card" | "promptpay_direct_manual") => {
     const payload = {
-      credits: Number(pkg.credits),
-      basePrice: Number(pkg.priceUsd),
-      currency: "THB",
-      packageCode: `credit-package-${pkg.id}`,
-      description: pkg.name || `Credit top-up (${pkg.credits} credits)`,
-      paymentMethod,
+      packageId: Number(pkg.id),
+      paymentChannel,
     };
     const topupQuery = new URLSearchParams({
       view: "topup",
-      credits: String(payload.credits),
-      basePrice: String(payload.basePrice),
-      packageCode: payload.packageCode,
-      description: payload.description,
+      packageId: String(payload.packageId),
+      credits: String(pkg.credits),
+      basePrice: String(pkg.priceUsd),
+      packageCode: `credit-package-${pkg.id}`,
+      description: pkg.name || `Credit top-up (${pkg.credits} credits)`,
       packageLabel: pkg.name || `${pkg.credits} credits`,
-      paymentMethod,
+      paymentChannel,
     }).toString();
 
     topupMutation.mutate(payload, {
@@ -991,7 +999,7 @@ export default function Credits() {
           <DialogHeader>
             <DialogTitle>เลือกวิธีชำระเงิน</DialogTitle>
             <DialogDescription>
-              เลือกช่องทางชำระสำหรับแพ็กเกจเครดิตที่คุณเลือก ระบบจะสร้างรายการชำระของ Beam ตามวิธีที่เลือก
+              เลือกช่องทางที่เปิดใช้งานสำหรับแพ็กเกจเครดิตที่คุณเลือก โดยช่องทางเริ่มต้นจะแสดงเป็นรายการแรก
             </DialogDescription>
           </DialogHeader>
           {pendingCheckoutPackage ? (
@@ -1006,47 +1014,60 @@ export default function Credits() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <button
-                  type="button"
-                  className="rounded-2xl border-2 border-cyan-300 bg-cyan-50 p-5 text-left transition hover:border-cyan-400 hover:bg-cyan-100/70"
-                  onClick={() => handleConfirmTopupCheckout(pendingCheckoutPackage, "promptpay")}
-                  disabled={topupMutation.isPending}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-cyan-500 p-3 text-white">
-                      <Zap className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-slate-900">PromptPay QR</div>
-                      <div className="text-sm text-slate-600">แนะนำสำหรับการโอนครั้งเดียว</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm text-slate-600">
-                    ระบบจะสร้าง QR Code ของ Beam ให้คุณสแกนจ่ายได้ทันทีบนหน้าถัดไป
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  className="rounded-2xl border-2 border-slate-200 bg-white p-5 text-left transition hover:border-slate-300 hover:bg-slate-50"
-                  onClick={() => handleConfirmTopupCheckout(pendingCheckoutPackage, "card")}
-                  disabled={topupMutation.isPending}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-slate-900 p-3 text-white">
-                      <CreditCard className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-slate-900">บัตรเครดิต / เดบิต</div>
-                      <div className="text-sm text-slate-600">ไปที่หน้า Beam checkout</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 text-sm text-slate-600">
-                    ระบบจะพาคุณไปหน้า Beam เพื่อกรอกข้อมูลบัตรและชำระเงินให้เสร็จ
-                  </div>
-                </button>
-              </div>
+              {topupPaymentOptionsLoading ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                  กำลังโหลดช่องทางชำระเงิน...
+                </div>
+              ) : enabledPaymentChannels.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {enabledPaymentChannels.map((channel) => {
+                    const isDefault = channel === topupPaymentOptions?.defaultPaymentChannel;
+                    const direct = channel === "promptpay_direct_manual";
+                    const card = channel === "beam_card";
+                    return (
+                      <button
+                        key={channel}
+                        type="button"
+                        className={`rounded-2xl border-2 p-5 text-left transition ${direct ? "md:col-span-2" : ""} ${
+                          isDefault
+                            ? direct
+                              ? "border-emerald-300 bg-emerald-50 hover:border-emerald-400 hover:bg-emerald-100/70"
+                              : "border-cyan-300 bg-cyan-50 hover:border-cyan-400 hover:bg-cyan-100/70"
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                        onClick={() => handleConfirmTopupCheckout(pendingCheckoutPackage, channel)}
+                        disabled={topupMutation.isPending}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`rounded-xl p-3 text-white ${direct ? "bg-emerald-600" : card ? "bg-slate-900" : "bg-cyan-500"}`}>
+                            {card ? <CreditCard className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 font-semibold text-slate-900">
+                              {direct ? "PromptPay โอนตรง + ส่งสลิป" : card ? "บัตรเครดิต / เดบิต" : "PromptPay QR"}
+                              {isDefault ? <span className="rounded-full bg-slate-900/10 px-2 py-0.5 text-xs font-medium text-slate-700">ค่าเริ่มต้น</span> : null}
+                            </div>
+                            <div className="text-sm text-slate-600">
+                              {direct ? "ตรวจสอบโดยทีมงานและเติมเครดิตหลังอนุมัติ" : card ? "ไปที่หน้า Beam checkout" : "แนะนำสำหรับการโอนครั้งเดียว"}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 text-sm text-slate-600">
+                          {direct
+                            ? "ระบบจะแสดงยอด THB ที่คำนวณจากอัตรารายวัน พร้อมเลขสตางค์เฉพาะรายการ"
+                            : card
+                              ? "ระบบจะพาคุณไปหน้า Beam เพื่อกรอกข้อมูลบัตรและชำระเงินให้เสร็จ"
+                              : "ระบบจะสร้าง QR Code ของ Beam ให้คุณสแกนจ่ายได้ทันทีบนหน้าถัดไป"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800">
+                  ขณะนี้ยังไม่มีช่องทางชำระเงินที่เปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ
+                </div>
+              )}
 
               <div className="flex justify-end">
                 <Button

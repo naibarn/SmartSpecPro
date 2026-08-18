@@ -284,4 +284,47 @@ describe("updateEpisodeDraft — contract preservation regression (F132C)", () =
     expect(setCallArgs.storyboard).toBeUndefined();
     expect(setCallArgs.script).toBeUndefined();
   });
+
+  it("does not let a stale whole-plan snapshot erase a prompt for an approved image", async () => {
+    const existingPlan = {
+      mode: "single_frame_per_shot",
+      frames: [
+        {
+          shotNumber: 4,
+          imagePrompt: "authoritative generated prompt",
+          negativePrompt: "no duplicate devices",
+          approvedMediaAssetId: "1840",
+        },
+      ],
+    };
+    const stalePlan = {
+      ...existingPlan,
+      frames: [
+        {
+          shotNumber: 4,
+          imagePrompt: "",
+          negativePrompt: "",
+          approvedMediaAssetId: "1840",
+        },
+      ],
+    };
+    const episode = { ...EPISODE_ROW, startFramePlan: existingPlan };
+    mockDb.select.mockReturnValueOnce(selectChain([episode]));
+    mockDb.update.mockReturnValueOnce(updateChain([episode]));
+
+    await router.updateEpisodeDraft({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        startFramePlan: stalePlan,
+      },
+    });
+
+    const setCallArgs = mockDb.update.mock.results[0].value.set.mock.calls[0][0];
+    expect(setCallArgs.startFramePlan.frames[0]).toMatchObject({
+      imagePrompt: "authoritative generated prompt",
+      approvedMediaAssetId: "1840",
+    });
+  });
 });

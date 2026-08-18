@@ -52,6 +52,26 @@ describe("buildHermesRuntimeManifestEntry", () => {
     expect(entry.denyReason).toMatch(/has not been built yet/);
   });
 
+  it("allows the macos arm64 entry only when the assembler marks a real pack ready", () => {
+    const entry = buildHermesRuntimeManifestEntry({
+      ...baseInput,
+      os: "macos",
+      pythonRelativePath: "python/bin/python3",
+      hermesRelativePath: "python/bin/hermes",
+      allowed: true,
+      platform: "macos",
+      architecture: "arm64",
+      supportedMacModels: ["Apple Silicon Mac with M1"],
+      unsupportedMacArchitectures: ["x86_64 (Intel)"],
+    });
+
+    expect(entry.allowed).toBe(true);
+    expect(entry.denyReason).toBeUndefined();
+    expect(entry.platform).toBe("macos");
+    expect(entry.architecture).toBe("arm64");
+    expect(entry.unsupportedMacArchitectures).toEqual(["x86_64 (Intel)"]);
+  });
+
   it("lets a caller explicitly override `allowed`", () => {
     const entry = buildHermesRuntimeManifestEntry({ ...baseInput, os: "windows", allowed: false, denyReason: "rollback" });
     expect(entry.allowed).toBe(false);

@@ -106,7 +106,9 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
     { staleTime: 30_000 }
   );
 
-  const series = listQuery.data?.series ?? [];
+  const series = Array.isArray(listQuery.data?.series)
+    ? listQuery.data.series
+    : [];
 
   const pageState: AppPageState = listQuery.isLoading
     ? "loading"

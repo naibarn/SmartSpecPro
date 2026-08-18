@@ -12,6 +12,28 @@ use crate::runtime_manifest::DoctorSummary;
 
 pub const HYPERFRAMES_JOB_TYPE: &str = "hyperframes_final_composite";
 pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
+pub const COMFY_IMAGE_GENERATION_JOB_TYPE: &str = "comfy_image_generation";
+pub const COMFY_WORKFLOW_RUN_JOB_TYPE: &str = "comfy_workflow_run";
+pub const COMFY_CAPABILITY_FAMILIES: [&str; 2] = ["comfyui-image-generate", "comfyui-workflow-run"];
+pub const COMFY_PROGRESS_STAGES: [&str; 7] = [
+    "validate_service",
+    "submit_workflow",
+    "poll_execution",
+    "collect_outputs",
+    "upload_artifacts",
+    "publish_artifacts",
+    "trigger_indexing",
+];
+pub const COMFY_FAILURE_CODES: [&str; 8] = [
+    "service_unreachable",
+    "workflow_rejected",
+    "execution_timeout",
+    "artifact_upload_failed",
+    "index_enqueue_failed",
+    "adapter_contract_violation",
+    "artifact_publish_failed",
+    "unsupported_output",
+];
 
 /// `planning/worker-app-remotion-render-video/plan.md` P2 — the
 /// `remotion_render_video` worker job type (Lane B). Matches
@@ -85,6 +107,67 @@ pub fn is_known_remotion_render_video_failure_code(code: &str) -> bool {
     REMOTION_RENDER_VIDEO_FAILURE_CODES.contains(&code)
 }
 
+pub fn build_comfy_progress_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    stage: &str,
+    percent: u8,
+    message: Option<&str>,
+) -> Option<WorkerEventPlan> {
+    if !COMFY_PROGRESS_STAGES.contains(&stage) {
+        return None;
+    }
+    Some(WorkerEventPlan {
+        event_type: "job.progress".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "stage": stage,
+            "percent": percent.min(100),
+            "message": message.unwrap_or(""),
+        }),
+    })
+}
+
+pub fn build_comfy_failure_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    failure_code: &str,
+    message: &str,
+) -> WorkerEventPlan {
+    let safe_code = if COMFY_FAILURE_CODES.contains(&failure_code) {
+        failure_code
+    } else {
+        "adapter_contract_violation"
+    };
+    WorkerEventPlan {
+        event_type: "job.failed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({
+            "failureCode": safe_code,
+            "message": message,
+            "recoverable": true,
+        }),
+    }
+}
+
+pub fn build_comfy_completed_event(
+    job: &ClaimedWorkerJob,
+    sequence_number: u32,
+    output_json: Value,
+) -> WorkerEventPlan {
+    WorkerEventPlan {
+        event_type: "job.completed".into(),
+        sequence_number,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: output_json,
+    }
+}
+
 /// Feature 135 §11 — dispatch classification. `worker_loop.rs`/`commands.rs`
 /// use this to route a claimed job to either the (existing) HyperFrames
 /// render flow or the (new) Hermes media/connection-control flow. Unknown
@@ -94,6 +177,8 @@ pub fn is_known_remotion_render_video_failure_code(code: &str) -> bool {
 pub enum WorkerJobKind {
     Hyperframes,
     RemotionRenderVideo,
+    ComfyImageGeneration,
+    ComfyWorkflowRun,
     HermesMediaImage,
     HermesMediaVideo,
     HermesConnectionAuthorize,
@@ -106,6 +191,8 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
     match job_type {
         HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
         REMOTION_RENDER_VIDEO_JOB_TYPE => WorkerJobKind::RemotionRenderVideo,
+        COMFY_IMAGE_GENERATION_JOB_TYPE => WorkerJobKind::ComfyImageGeneration,
+        COMFY_WORKFLOW_RUN_JOB_TYPE => WorkerJobKind::ComfyWorkflowRun,
         HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
         HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
         HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
@@ -977,9 +1064,7 @@ fn build_sidecar_command_for_kind(
         let executable = PathBuf::from("wsl.exe");
         let runtime_pack_root = runtime_root.join("runtime-pack");
         let node_binary = runtime_pack_root.join("node").join("bin").join("node");
-        let render_script = runtime_pack_root
-            .join(script_dir_name)
-            .join("render.mjs");
+        let render_script = runtime_pack_root.join(script_dir_name).join("render.mjs");
         let ffmpeg_path = runtime_pack_root.join("bin").join("ffmpeg");
         let ffprobe_path = runtime_pack_root.join("bin").join("ffprobe");
         let browser_path = runtime_pack_root.join("browser").join("chrome");
@@ -1333,7 +1418,10 @@ pub fn parse_remotion_sidecar_event(line: &str) -> Option<RemotionSidecarEvent> 
         }
         "completed" => {
             let output_path = value.get("outputPath").and_then(Value::as_str)?.to_string();
-            let duration_sec = value.get("durationSec").and_then(Value::as_f64).unwrap_or(0.0);
+            let duration_sec = value
+                .get("durationSec")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0);
             let sha256 = value.get("sha256").and_then(Value::as_str)?.to_string();
             let width_px = value.get("widthPx").and_then(Value::as_u64).unwrap_or(0) as u32;
             let height_px = value.get("heightPx").and_then(Value::as_u64).unwrap_or(0) as u32;

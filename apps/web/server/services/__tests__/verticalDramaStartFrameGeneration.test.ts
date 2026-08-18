@@ -363,7 +363,7 @@ describe("generateStartFrameRenderPlan", () => {
     };
     const userMessage = callArgs.messages.find(m => m.role === "user")!.content;
     expect(userMessage).toContain("screen_callers: char-krit");
-    expect(userMessage).toContain("do not attach the caller portrait as a physical-scene reference");
+    expect(userMessage).toContain("attach each approved caller portrait immediately after the physical-scene portraits");
     expect(userMessage).toContain("show only inside a clearly visible phone/video call screen");
     expect(userMessage).toContain("required_characters: 2");
   });
@@ -385,6 +385,34 @@ describe("projectStartFramePlan — plan-level image prompt language", () => {
 });
 
 describe("projectStartFramePlan", () => {
+  it("persists the virtual-screen contract when a batch frame has a caller", () => {
+    const raw = {
+      render_plan_summary: {},
+      start_frame_requests: [validRequest(3)],
+      plain_text_render_plan: "text",
+      downstream_video_input_manifest: {},
+    };
+    const plan = projectStartFramePlan(
+      raw as any,
+      "fallback-model",
+      new Map([[3, ["char-1"]]]),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      new Map([[3, ["char-krit"]]])
+    );
+
+    expect(plan.frames[0]?.imagePrompt).toContain(
+      "SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)"
+    );
+    expect(plan.frames[0]?.imagePrompt).toContain("screen_1=char-krit");
+    expect(plan.frames[0]?.imagePrompt).toContain("Image 2 = char-krit");
+    expect(plan.frames[0]?.imagePrompt).toContain(
+      "CALLER FACE IDENTITY LOCK (MANDATORY)"
+    );
+  });
+
   it("persists the canonical Overview shot summary on the projected frame", () => {
     const raw = {
       render_plan_summary: {},

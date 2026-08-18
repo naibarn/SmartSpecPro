@@ -78,6 +78,26 @@ def test_provider_file_type_validation_errors_are_non_retryable():
     assert _is_non_retryable_media_error(error) is True
 
 
+def test_provider_reference_image_fetch_errors_are_non_retryable():
+    error = RuntimeError(
+        "500: Image generation failed: Task failed: Image fetch failed. "
+        "Check access settings or use our File Upload API instead."
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+
+
+def test_openai_policy_errors_are_separated_from_other_permanent_failures():
+    policy_error = RuntimeError(
+        "500: Image generation failed: Task failed: Sorry, but the image we created "
+        "may violate OpenAI's content policies."
+    )
+    credit_error = RuntimeError("Kie.ai task submission failed: insufficient credits")
+
+    assert _is_openai_policy_media_error(policy_error) is True
+    assert _is_openai_policy_media_error(credit_error) is False
+
+
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
 
@@ -172,7 +192,7 @@ async def test_generate_image_async_keeps_task_non_terminal_on_exception():
     task.error_message = None
 
     user = SimpleNamespace(id="user-1")
-    session = _mock_session_with_execute_sequence(task, user)
+    session = _mock_session_with_execute_sequence(None, task, user)
     gateway = MagicMock()
     gateway.generate_image = AsyncMock(side_effect=RuntimeError("transient provider error"))
 
@@ -211,7 +231,7 @@ async def test_generate_image_async_persists_provider_task_id_without_final_url(
     task.result_url = None
 
     user = SimpleNamespace(id="user-1")
-    session = _mock_session_with_execute_sequence(task, user)
+    session = _mock_session_with_execute_sequence(None, task, user)
     gateway = MagicMock()
     gateway.generate_image = AsyncMock(return_value=SimpleNamespace(
         id="provider-image-123",

@@ -19,6 +19,9 @@ describe("Vertical Drama start-frame task durability wiring", () => {
 
     expect(mutation).toContain('.for("update")');
     expect(mutation).toContain("pendingTaskId");
+    expect(mutation).toContain("failureStage");
+    expect(mutation).toContain("failureStage !== \"admission\"");
+    expect(mutation).toContain("taskId: z.string().min(1).optional()");
     expect(mutation).toContain("currentTask?.pendingTaskId !== input.imageTask.taskId");
     expect(mutation).toContain('input.imageTask.status === "failed"');
     expect(mutation).toContain('input.imageTask.status === "completed"');

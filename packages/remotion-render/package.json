@@ -1,6 +1,6 @@
 {
   "name": "@smartspec/remotion-render",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,6 +16,10 @@
     "./render-video-schema": {
       "types": "./dist/remotionRenderVideoSchema.d.ts",
       "default": "./dist/remotionRenderVideoSchema.js"
+    },
+    "./runtime-pack-schema": {
+      "types": "./dist/remotionExecutorRuntimePackSchema.d.ts",
+      "default": "./dist/remotionExecutorRuntimePackSchema.js"
     }
   },
   "//files": "Explicit allowlist. Without it `npm pack` falls back to the repo .gitignore, which ignores dist/ \u2014 producing a tarball whose `main`/`exports` point at files that aren't in it. The worker-app Remotion sidecar vendors this package as a packed tarball (runtime-pack/remotion-sidecar), so a dist-less tarball is a silent, install-time-clean, run-time-fatal break.",
@@ -26,7 +30,8 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "test": "node --test --import tsx src/remotionExecutorRuntimePackSchema.test.ts"
   },
   "dependencies": {
     "@react-three/fiber": "^9.6.1",
@@ -41,6 +46,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "esbuild": "0.28.1",
     "@types/node": "^24.7.0",
     "@types/react": "^19.2.1",
     "@types/three": "^0.185.1",

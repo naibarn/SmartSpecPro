@@ -47,6 +47,12 @@ interface InputField {
   };
   syncWith?: "none" | "reference_images" | "reference_videos" | "prompt" | "aspect_ratio";
   itemTemplate?: Record<string, unknown>;
+  itemFields?: InputField[];
+  description?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  includeInPayload?: boolean;
   hidden?: boolean;
   advancedOnly?: boolean;
   managedBySuite?: boolean;
@@ -63,7 +69,7 @@ interface ModelDefinition {
   veo4kEndpoint?: string;
   apiPayloadFormat: "market" | "veo" | "veo_extend" | "runway" | "suno" | "elevenlabs" | "custom";
   kieModelId: string | null;
-  apiConfig?: Record<string, string | number | boolean>;
+  apiConfig?: Record<string, any>;
   inputFields: InputField[];
   pricingTiers?: Record<string, number>;
   pricingFormula: "flat" | "per_duration" | "matrix" | "per_unit";
@@ -201,10 +207,14 @@ const GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS = [
   { value: "1:1", label: "1:1" },
   { value: "16:9", label: "16:9" },
   { value: "9:16", label: "9:16" },
-  { value: "4:3", label: "4:3" },
-  { value: "3:4", label: "3:4" },
   { value: "3:2", label: "3:2" },
   { value: "2:3", label: "2:3" },
+];
+
+const GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS = [
+  { value: "480p", label: "480p" },
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
 ];
 
 const GROK_IMAGINE_VIDEO_15_DURATION_OPTIONS = Array.from({ length: 15 }, (_, index) => {
@@ -1344,19 +1354,19 @@ const VIDEO_MODELS = [
       generateType: "image-to-video",
       hasAudio: true,
       maxDuration: 15,
-      maxReferenceImages: 1,
+      maxReferenceImages: 7,
       supportedAspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
-      supportedResolutions: ["480p", "720p"],
+      supportedResolutions: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS.map((option) => option.value),
       supportedDurations: Array.from({ length: 15 }, (_, index) => index + 1),
       storyboardClipDurationSeconds: 8,
       inputFields: [
         {
           key: "image_urls",
-          label: "Source Image",
+          label: "Reference Images",
           type: "image_urls",
           required: true,
           syncWith: "reference_images",
-          maxItems: 1,
+          maxItems: 7,
         },
         {
           key: "aspect_ratio",
@@ -1370,10 +1380,7 @@ const VIDEO_MODELS = [
           key: "resolution",
           label: "Resolution",
           type: "select",
-          options: [
-            { value: "480p", label: "480p" },
-            { value: "720p", label: "720p" },
-          ],
+          options: GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS,
           default: "480p",
         },
         {
@@ -1573,6 +1580,13 @@ const IMAGE_MODELS = [
       documentationUrl: "https://docs.kie.ai/market/gpt/gpt-image-2-text-to-image",
       generateType: "text-to-image",
       supportsReferenceImages: true,
+      supportsTransparentBackground: true,
+      transparentBackground: {
+        inputKey: "background",
+        enabledValue: "transparent",
+        disabledValue: "auto",
+        outputFormat: "png",
+      },
       maxPromptLength: 20000,
       verticalDramaCharacterPromptContract: {
         family: "gpt_image_2",
@@ -1985,6 +1999,95 @@ const IMAGE_MODELS = [
   },
 
   // === Grok Imagine ===
+  {
+    modelId: "grok-imagine-image-2",
+    name: "Grok Imagine Image 2",
+    description: "xAI Grok Imagine Image 2 - Text-to-image generation and editing of a completed Grok image task.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: ["grok image 2", "grok-imagine-image-2", "grok imagine image 2", "grok-image-2"],
+    creditCost: 20,
+    priority: 8,
+    sortOrder: 8,
+    aspectRatios: ["1:1", "2:3", "3:2", "16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      maxReferenceImages: 1,
+      supportsReferenceImages: true,
+      operationModes: ["text-to-image", "image-edit"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/text-to-image",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        operations: {
+          "text-to-image": {
+            kie_model_id: "grok-imagine-image-2-0/text-to-image",
+          },
+          "image-edit": {
+            kie_model_id: "grok-imagine-image-2-0/image-edit",
+            drop_params: ["aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+          },
+        },
+      },
+      inputFields: [
+        {
+          key: "aspect_ratio",
+          label: "Aspect Ratio",
+          type: "select",
+          options: [
+            { value: "1:1", label: "1:1" },
+            { value: "2:3", label: "2:3" },
+            { value: "3:2", label: "3:2" },
+            { value: "16:9", label: "16:9" },
+            { value: "9:16", label: "9:16" },
+          ],
+          default: "1:1",
+          syncWith: "aspect_ratio",
+        },
+        {
+          key: "mask_indexs",
+          label: "Mask Indexes (optional)",
+          type: "array",
+          maxItems: 64,
+          itemFields: [
+            { key: "value", label: "Mask Index", type: "number", min: 0, max: 64, step: 1 },
+          ],
+          description: "Optional mask indexes returned by Segment Map.",
+        },
+      ],
+    } as ModelDefinition,
+  },
+  {
+    modelId: "grok-imagine-image-2/segment-map",
+    name: "Grok Imagine Image 2 Segment Map",
+    description: "Create a segment map from a completed Grok Imagine Image 2 task.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: ["grok image 2 segment map", "grok-segment-map"],
+    creditCost: 0,
+    priority: 9,
+    sortOrder: 9,
+    aspectRatios: [],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "grok-imagine-image-2-0/segment-map",
+      generateType: "segment-map",
+      operationOnly: true,
+      maxPromptLength: 0,
+      maxReferenceImages: 1,
+      supportsReferenceImages: true,
+      operationModes: ["segment-map"],
+      documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/segment-map",
+      apiConfig: {
+        grok_imagine_image_2_family: true,
+        drop_params: ["prompt", "aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+      },
+    } as ModelDefinition,
+  },
   {
     modelId: "grok-imagine/text-to-image",
     name: "Grok Imagine",

@@ -377,8 +377,8 @@ const TASK_POLL_INTERVAL_MS = 2000;
 const TASK_POLL_MAX_ATTEMPTS = 900;
 const VIDEO_TASK_POLL_INTERVAL_MS = 5000;
 const VIDEO_TASK_POLL_MAX_ATTEMPTS = 180;
-const SLOT_VIDEO_GENERATION_CONCURRENCY = 3;
-const IMAGE_GENERATION_BATCH_CONCURRENCY = 3;
+const SLOT_VIDEO_GENERATION_CONCURRENCY = 1;
+const IMAGE_GENERATION_BATCH_CONCURRENCY = 1;
 const AUDIO_TEXT_BYTE_LIMIT = 8000;
 const DEFAULT_SLIDE_VISUAL_MODE: SlideVisualMode = "full-slide-image";
 const AUTO_FULL_SLIDE_STYLE_ID = "auto";
@@ -2531,6 +2531,15 @@ export function PresentationArticleGeneratorDialog({
   const { user } = useAuth();
   const tenantFeatureFlags = useTenantFeatureFlags();
   const trpcUtils = trpc.useUtils();
+  const fetchPresentationMediaTask = useCallback(
+    (taskId: string, mediaType: "image" | "video", slotId?: string) => trpcUtils.presentation.getMediaTask.fetch({
+      deckId,
+      taskId,
+      mediaType,
+      ...(slotId ? { slotId } : {}),
+    }),
+    [deckId, trpcUtils],
+  );
   const wasOpenRef = useRef(false);
   const autoFetchedImageTaskIdsRef = useRef<Set<string>>(new Set());
   const workflowStepRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -4049,7 +4058,7 @@ export function PresentationArticleGeneratorDialog({
     for (const asset of recoverableAssets) {
       const taskId = String(asset.taskId || "").trim();
       autoFetchedImageTaskIdsRef.current.add(taskId);
-      void fetchTaskResultMutation.mutateAsync({ taskId })
+      void fetchPresentationMediaTask(taskId, "image", asset.id)
         .then((fetched) => {
           if (cancelled) {
             return;
@@ -4105,7 +4114,7 @@ export function PresentationArticleGeneratorDialog({
   }, [
     activeImagePrompts,
     canvasRatio,
-    fetchTaskResultMutation,
+    fetchPresentationMediaTask,
     generatedImages,
     open,
     preparedBundle,
@@ -5076,7 +5085,7 @@ export function PresentationArticleGeneratorDialog({
         await sleepMs((retryAfterSeconds + 1) * 1000);
         taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
       }
-      let resultUrl = extractTaskResultUrl(taskResult);
+      let resultUrl: string | null = null;
       let taskId = extractTaskId(taskResult);
       if (!resultUrl) {
         if (!taskId) {
@@ -5085,7 +5094,7 @@ export function PresentationArticleGeneratorDialog({
         try {
           const terminalTask = await pollTaskUntilTerminal(
             taskId,
-            async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+            async (id) => fetchPresentationMediaTask(id, "image", prompt.id),
             { mediaLabel: "Image" },
           );
           resultUrl = extractTaskResultUrl(terminalTask);
@@ -5517,7 +5526,7 @@ export function PresentationArticleGeneratorDialog({
           await sleepMs((retryAfterSeconds + 1) * 1000);
           taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
         }
-        let resultUrl = extractTaskResultUrl(taskResult);
+        let resultUrl: string | null = null;
         let taskId = extractTaskId(taskResult);
         if (!resultUrl) {
           if (!taskId) {
@@ -5526,7 +5535,7 @@ export function PresentationArticleGeneratorDialog({
           try {
             const terminalTask = await pollTaskUntilTerminal(
               taskId,
-              async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+              async (id) => fetchPresentationMediaTask(id, "image", promptPlan.id),
               { mediaLabel: "Image" },
             );
             resultUrl = extractTaskResultUrl(terminalTask);
@@ -5931,7 +5940,7 @@ export function PresentationArticleGeneratorDialog({
           taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
         }
 
-        let resultUrl = extractTaskResultUrl(taskResult);
+        let resultUrl: string | null = null;
         let taskId = extractTaskId(taskResult);
         if (!resultUrl) {
           if (!taskId) {
@@ -5940,7 +5949,7 @@ export function PresentationArticleGeneratorDialog({
           try {
             const terminalTask = await pollTaskUntilTerminal(
               taskId,
-              async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+              async (id) => fetchPresentationMediaTask(id, "image", promptPlan.id),
               { mediaLabel: "Image" },
             );
             resultUrl = extractTaskResultUrl(terminalTask);
@@ -6081,7 +6090,7 @@ export function PresentationArticleGeneratorDialog({
     const slotKey = getPreparedImageSlotKey(asset);
     setRegeneratingSlotKey(slotKey);
     try {
-      const fetched = await fetchTaskResultMutation.mutateAsync({ taskId: asset.taskId });
+      const fetched = await fetchPresentationMediaTask(asset.taskId, "image", getPreparedImageSlotKey(asset));
       const taskPayload = (fetched as { task?: unknown } | undefined)?.task ?? fetched;
       const taskStatus = normalizeTaskStatus(taskPayload);
       const nextUrl = extractTaskResultUrl(fetched);
@@ -6494,7 +6503,7 @@ export function PresentationArticleGeneratorDialog({
         ...(extraParams ? { extraParams } : {}),
       });
     }
-    let resultUrl = extractTaskResultUrl(taskResult);
+    let resultUrl: string | null = null;
     let taskId = extractTaskId(taskResult);
     if (!resultUrl) {
       if (!taskId) {
@@ -6503,7 +6512,7 @@ export function PresentationArticleGeneratorDialog({
       try {
         const terminalTask = await pollTaskUntilTerminal(
           taskId,
-          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+          async (id) => fetchPresentationMediaTask(id, "video", slot.id),
           {
             mediaLabel: "Video",
             intervalMs: VIDEO_TASK_POLL_INTERVAL_MS,
@@ -6565,7 +6574,7 @@ export function PresentationArticleGeneratorDialog({
     const imageAsset = generatedImageByPage.get(asset.pageNumber);
     markExternalSlotVideoActive(asset.id);
     try {
-      const fetched = await fetchTaskResultMutation.mutateAsync({ taskId: asset.taskId });
+      const fetched = await fetchPresentationMediaTask(asset.taskId, "video", asset.id);
       const taskPayload = (fetched as { task?: unknown } | undefined)?.task ?? fetched;
       const taskStatus = normalizeTaskStatus(taskPayload);
       const nextUrl = extractTaskResultUrl(fetched);

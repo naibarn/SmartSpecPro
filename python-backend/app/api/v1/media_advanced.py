@@ -96,7 +96,7 @@ async def bulk_operation(
 
     for task_id in request.task_ids:
         try:
-            task = await MediaTaskService.get_task(db, task_id, current_user.id)
+            task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
 
             if not task:
                 results.append({"task_id": task_id, "status": "not_found"})
@@ -156,7 +156,10 @@ async def search_tasks(
     Full-text search with optional filters.
     """
     # Build base query
-    query_obj = select(MediaTask).where(MediaTask.user_id == current_user.id)
+    query_obj = select(MediaTask).where(
+        MediaTask.user_id == current_user.id,
+        MediaTask.tenant_id == current_user.currentTenantId,
+    )
 
     # Apply search filter
     if query:

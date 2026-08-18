@@ -125,7 +125,10 @@ function nineShotDrafts(): VdDeepDraftShotDraft[] {
 function candidateChunkPayload(
   tag: string,
   episodeNumbers: number[],
-  opts: { shotDraftsFor?: (ep: number) => unknown[] } = {},
+  opts: {
+    shotDraftsFor?: (ep: number) => unknown[];
+    episodeMemoryFor?: (ep: number) => unknown;
+  } = {},
 ) {
   return {
     episodeBreakdown: episodeNumbers.map((ep) => ({
@@ -135,6 +138,7 @@ function candidateChunkPayload(
       keyBeats: ["Beat A"],
       shotDrafts: opts.shotDraftsFor ? opts.shotDraftsFor(ep) : nineShotDrafts(),
       cliffhanger_line: `${tag} cliffhanger for episode ${ep}`,
+      ...(opts.episodeMemoryFor ? { episode_memory: opts.episodeMemoryFor(ep) } : {}),
     })),
     open_threads: [`${tag}-thread`],
   };
@@ -426,6 +430,66 @@ describe("premium — fan-out", () => {
 
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3); // no judge/sweep call — chunk failed before that
     expect(mockDeductCredits).not.toHaveBeenCalled(); // no persisted/usable chunk, so no partial fan-out charge
+  });
+
+  it("carries exact open thread IDs from one premium chunk into the next chunk", async () => {
+    const episodes = [existingItem(1), existingItem(2), existingItem(3)];
+    const episodeMemoryFor = (episodeNumber: number) => ({
+      episodeNumber,
+      recap: `Episode ${episodeNumber} recap`,
+      canonical_facts: [],
+      threads_opened:
+        episodeNumber === 1
+          ? [
+              {
+                thread_id: "customer-fit-reset",
+                description: "The customer-fit decision must pay off",
+                thread_class: "plot",
+                expected_resolution: "future_episode",
+                expected_resolution_episode: 3,
+              },
+            ]
+          : [],
+      threads_resolved: episodeNumber === 3 ? ["customer-fit-reset"] : [],
+      relationship_changes: [],
+      knowledge_changes: [],
+    });
+
+    for (const tag of ["c0", "c1", "c2"]) {
+      mockLlmResponseOnce(
+        candidateChunkPayload(tag, [1, 2], { episodeMemoryFor }),
+      );
+    }
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 0, episodeNumber: 2 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 2 },
+        { candidateIndex: 2, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 2 },
+      ]),
+    );
+    for (const tag of ["c0", "c1", "c2"]) {
+      mockLlmResponseOnce(
+        candidateChunkPayload(tag, [3], { episodeMemoryFor }),
+      );
+    }
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 3 },
+        { candidateIndex: 1, episodeNumber: 3 },
+        { candidateIndex: 2, episodeNumber: 3 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({ episodes }),
+    );
+
+    expect(userPromptOf(4)).toContain("customer-fit-reset");
+    expect(result.continuityIssues).toEqual([]);
   });
 });
 

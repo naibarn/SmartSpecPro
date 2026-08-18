@@ -19,6 +19,7 @@ vi.mock("../verticalDramaStoryBible", async () => {
 });
 
 import { generateNextEpisodesViaLlm } from "../verticalDramaEpisodeContinuation";
+import { createUniformVerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import {
@@ -106,6 +107,31 @@ describe("generateNextEpisodesViaLlm", () => {
         metadata: expect.objectContaining({ seriesId: 42, feature: "vertical_drama_series" }),
       }),
     );
+  });
+
+  it("threads the bounded story-control seed and nine-shot profile into continuation prompts", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse([validEpisode(2), validEpisode(3)]));
+
+    await generateNextEpisodesViaLlm(
+      baseParams({
+        storyControlSeed: {
+          contractVersion: 1,
+          premiseAnchor: "A mystery paid for with trust",
+          canonicalCharacterKeys: ["aria"],
+          threadCandidates: [],
+          romancePhaseSkeleton: [],
+          advantageIntent: [],
+        },
+        durationPlan: createUniformVerticalDramaDurationPlan(10),
+      }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0];
+    const userMessage = callArgs.messages.find((message: { role: string }) => message.role === "user");
+    expect(userMessage.content).toContain("mystery paid for with trust");
+    expect(userMessage.content).toContain("durations 10, 10, 10");
+    expect(userMessage.content).toContain("derived runtime 90 seconds");
   });
 
   it("throws InsufficientCreditsError and never calls the LLM when credits are insufficient", async () => {

@@ -69,6 +69,7 @@ import {
   Cpu,
   MonitorPlay,
   Store,
+  Plug,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
@@ -85,6 +86,7 @@ import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
 import { WorkerAccessKeysPanel } from '@/components/settings/WorkerAccessKeysPanel';
+import { ConnectedDevicesPanel } from '@/components/settings/ConnectedDevicesPanel';
 import { LocalAiSettingsSection } from '@/features/local-ai/components/LocalAiSettingsSection';
 import { DesktopHostSettingsPanel } from '@/features/desktop-host/DesktopHostSettingsPanel';
 import { useDesktopHostStatus } from '@/features/desktop-host/useDesktopHostStatus';
@@ -96,11 +98,11 @@ import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
 import { useTenant } from '@/contexts/TenantContext';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'marketplaceSharing' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'marketplaceSharing' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'mcpDevices' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
-const SETTINGS_TABS: SettingsTab[] = ['profile', 'account', 'security', 'privateVault', 'preferences', 'marketplaceSharing', 'localAi', 'desktopHost', 'notifications', 'automation', 'workers', 'api', 'billing', 'integrations', 'personas'];
+const SETTINGS_TABS: SettingsTab[] = ['profile', 'account', 'security', 'privateVault', 'preferences', 'marketplaceSharing', 'localAi', 'desktopHost', 'notifications', 'automation', 'mcpDevices', 'workers', 'api', 'billing', 'integrations', 'personas'];
 const SAFETY_PROFILE_COUNTRIES = [
   { code: 'TH', en: 'Thailand', th: 'ไทย' },
   { code: 'US', en: 'United States', th: 'สหรัฐอเมริกา' },
@@ -1066,6 +1068,7 @@ export default function Settings() {
       : []),
     { id: 'notifications', label: t('settings.tabs.notifications'), icon: Bell },
     { id: 'automation', label: t('settings.tabs.automation'), icon: Bot },
+    { id: 'mcpDevices', label: t('settings.tabs.mcpDevices'), icon: Plug },
     { id: 'workers', label: t('settings.tabs.workers'), icon: Key },
     { id: 'api', label: t('settings.tabs.apiKeys'), icon: Key },
     { id: 'billing', label: t('settings.tabs.billing'), icon: CreditCard },
@@ -2370,6 +2373,12 @@ export default function Settings() {
                 </div>
               )}
 
+              {activeTab === 'mcpDevices' && (
+                <div className="space-y-6">
+                  <ConnectedDevicesPanel />
+                </div>
+              )}
+
               {/* API Keys Tab */}
               {activeTab === 'api' && (
                 <div className="space-y-6">
@@ -2526,6 +2535,15 @@ export default function Settings() {
                     title={t('settings.integrations.title')}
                     description={t('settings.integrations.description')}
                   />
+                  <div className="rounded-xl border border-violet-100 bg-violet-50/70 p-4">
+                    <div className="flex items-start gap-3">
+                      <Plug className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
+                      <div>
+                        <div className="font-medium text-slate-950">{t('settings.integrations.mcpBoundaryTitle')}</div>
+                        <p className="mt-1 text-sm text-slate-600">{t('settings.integrations.mcpBoundaryDescription')}</p>
+                      </div>
+                    </div>
+                  </div>
                   <UploadPostGatewayPanel tenantId={user.currentTenantId ?? null} />
                   <MarketplaceConnectorSettingsPanel />
                   <McpConnectPanel />

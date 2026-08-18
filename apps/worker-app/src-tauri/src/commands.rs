@@ -19,6 +19,8 @@ use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::time::{Duration, Instant};
+#[cfg(target_os = "windows")]
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
@@ -359,11 +361,7 @@ pub async fn worker_app_check_runtime_update(
         .resource_dir()
         .map_err(|error| format!("resource directory unavailable: {error}"))?;
     let effective_runtime_dir = get_effective_runtime_dir(&app)?;
-    let runtime_id = if settings.uses_wsl2_runtime() {
-        "hyperframes-wsl2"
-    } else {
-        "hyperframes-windows-x64"
-    };
+    let runtime_id = settings.hyperframes_runtime_id();
     let channel = settings.runtime_channel.as_query_value();
     let current_version = if settings.runtime_environment.is_managed_wsl() {
         read_managed_wsl_runtime_version(&settings.managed_wsl_root)?
@@ -1085,6 +1083,29 @@ pub(crate) fn annotate_runtime_doctor_for_settings(
                 );
             }
         }
+    } else if cfg!(target_os = "macos") {
+        let native_mac_runtime = runtime_id == "hyperframes-macos-arm64"
+            && runtime_platform_normalized.contains("macos");
+        doctor.checks.push(DoctorCheck {
+            id: "macos_runtime_profile".into(),
+            status: if native_mac_runtime { "ok" } else { "error" }.into(),
+            message: if native_mac_runtime {
+                "Worker App is locked to the native macOS arm64 HyperFrames runtime.".into()
+            } else {
+                "macOS Worker App refuses WSL2 and Windows runtime profiles.".into()
+            },
+            details_json: json!({
+                "runtimeId": runtime_id,
+                "runtimePlatform": runtime_platform,
+                "requiredRuntimeId": "hyperframes-macos-arm64",
+            }),
+        });
+        if !native_mac_runtime {
+            push_unique_action(
+                &mut doctor.recommended_actions,
+                "Install hyperframes-macos-arm64. Do not use WSL2 or Windows runtime archives on macOS.",
+            );
+        }
     } else {
         doctor.checks.push(DoctorCheck {
             id: "wsl2_runtime_profile".into(),
@@ -1112,6 +1133,7 @@ pub(crate) fn annotate_runtime_doctor_for_settings(
 
     let required_runtime_checks = [
         "runtime_manifest",
+        "runtime_host_platform",
         "runtime_bundle",
         "official_hyperframes_renderer",
         "hyperframes_native_dependencies",
@@ -1147,8 +1169,11 @@ pub(crate) fn annotate_runtime_doctor_for_settings(
         id: "installer_set".into(),
         status: if installer_complete { "ok" } else { "error" }.into(),
         message: if installer_complete {
-            "WSL2 readiness, runtime pack, sidecar, media tools, browser runtime, checksum, signature, and Thai font metadata are complete."
-                .into()
+            if cfg!(target_os = "macos") {
+                "Native macOS arm64 runtime, sidecar, media tools, browser runtime, checksum, signature, and Thai font metadata are complete.".into()
+            } else {
+                "WSL2 readiness, runtime pack, sidecar, media tools, browser runtime, checksum, signature, and Thai font metadata are complete.".into()
+            }
         } else {
             "The Worker App installation is not complete enough to safely claim HyperFrames render jobs."
                 .into()
@@ -1161,7 +1186,11 @@ pub(crate) fn annotate_runtime_doctor_for_settings(
     if !installer_complete {
         push_unique_action(
             &mut doctor.recommended_actions,
-            "Run Download render runtime, then run checks again. If WSL2 host is blocked, install or repair WSL2 before accepting render jobs.",
+            if cfg!(target_os = "macos") {
+                "Install the native hyperframes-macos-arm64 runtime, then run checks again. WSL2 and Windows runtimes are not valid on macOS."
+            } else {
+                "Run Download render runtime, then run checks again. If WSL2 host is blocked, install or repair WSL2 before accepting render jobs."
+            },
         );
     }
 
@@ -1646,11 +1675,7 @@ pub async fn worker_app_install_runtime_pack(
         .path()
         .resource_dir()
         .map_err(|error| format!("resource directory unavailable: {error}"))?;
-    let runtime_id = if settings.uses_wsl2_runtime() {
-        "hyperframes-wsl2"
-    } else {
-        "hyperframes-windows-x64"
-    };
+    let runtime_id = settings.hyperframes_runtime_id();
     let manifest = fetch_runtime_manifest(
         &settings.normalized_server_url(),
         runtime_id,
@@ -1768,7 +1793,9 @@ pub(crate) fn query_hermes_version(hermes_executable: &Path) -> Result<String, S
 /// standalone `worker_app_hermes_doctor` command AND the real registration
 /// call site (`worker_app_start_connect_session`) so registration always
 /// carries real hermes readiness instead of `HermesRegistrationInfo::not_installed()`.
-pub(crate) fn compute_hermes_doctor_and_version(app_data_dir: &Path) -> (DoctorSummary, Option<String>) {
+pub(crate) fn compute_hermes_doctor_and_version(
+    app_data_dir: &Path,
+) -> (DoctorSummary, Option<String>) {
     let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(app_data_dir);
     let profile_root = hermes_profile_root(app_data_dir);
     let doctor = crate::hermes_runtime::hermes_doctor_from_manifest_path(
@@ -1872,8 +1899,9 @@ pub async fn worker_app_install_hermes_runtime(
         .path()
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
-    // Windows ships first (spec §1); the macOS runtime id is registered but
-    // may still report `allowed: false` until its pack is built.
+    // Keep the Hermes runtime family platform-specific: macOS selects the
+    // native Apple Silicon pack while Windows continues selecting its own
+    // x64 pack and is never affected by a Mac runtime release.
     let runtime_id = if cfg!(target_os = "macos") {
         crate::hermes_runtime::HERMES_RUNTIME_ID_MACOS
     } else {
@@ -1920,7 +1948,12 @@ pub async fn worker_app_install_hermes_runtime(
         sanitize_file_segment(&manifest.runtime_id),
         sanitize_file_segment(&manifest.version)
     ));
-    download_runtime_archive(&absolute_archive_url, &archive_path, manifest.archive_size_bytes).await?;
+    download_runtime_archive(
+        &absolute_archive_url,
+        &archive_path,
+        manifest.archive_size_bytes,
+    )
+    .await?;
     let digest = file_sha256(&archive_path)?;
     if !digest.eq_ignore_ascii_case(&archive_sha256) {
         return Err(format!(
@@ -1938,7 +1971,11 @@ pub async fn worker_app_install_hermes_runtime(
     if let Ok(mut executor) = state.executor.lock() {
         executor.set_hermes_doctor(doctor.status.clone(), Some(manifest.hermes_version.clone()));
     }
-    let status = if doctor.status == "ready" { "installed" } else { "blocked" };
+    let status = if doctor.status == "ready" {
+        "installed"
+    } else {
+        "blocked"
+    };
     Ok(HermesRuntimeInstallResult {
         status: status.into(),
         message: format!("Hermes runtime pack {} installed.", manifest.version),
@@ -2413,10 +2450,7 @@ pub async fn worker_app_refresh_saved_connection(
                 "remainingTokenSeconds": remaining_token_seconds(&stored),
             }),
         );
-        set_active_connected_device_proof(
-            &state,
-            load_connection_device_proof(&app_data_dir)?,
-        )?;
+        set_active_connected_device_proof(&state, load_connection_device_proof(&app_data_dir)?)?;
         update_running_loop_connection(&state, &stored, &app_data_dir)?;
         return Ok(stored);
     }
@@ -2733,7 +2767,9 @@ pub async fn worker_app_get_diagnostics_log(
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
     Ok(DiagnosticsLogLocation {
-        log_path: diagnostic_log_path(&app_data_dir).to_string_lossy().to_string(),
+        log_path: diagnostic_log_path(&app_data_dir)
+            .to_string_lossy()
+            .to_string(),
         app_data_dir: app_data_dir.to_string_lossy().to_string(),
         files: crate::diagnostics::diagnostic_log_paths(&app_data_dir)
             .into_iter()
@@ -2841,7 +2877,8 @@ pub async fn worker_app_open_hermes_tui(
     // directory as a file fails with "Access is denied. (os error 5)" on
     // Windows — reported as "Hermes runtime is not installed yet" even though
     // the pack was installed and the doctor read it fine (2026-07-31).
-    let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+    let (manifest_path, pack_root) =
+        crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
     let manifest = crate::hermes_runtime::read_hermes_runtime_manifest(&manifest_path)
         .map_err(|error| format!("Hermes runtime is not installed yet: {error}"))?;
     let hermes = pack_root.join(&manifest.hermes_relative_path);
@@ -2942,7 +2979,8 @@ pub async fn worker_app_hermes_signin_xai(
         .path()
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
-    let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+    let (manifest_path, pack_root) =
+        crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
     let manifest = crate::hermes_runtime::read_hermes_runtime_manifest(&manifest_path)
         .map_err(|error| format!("Hermes runtime is not installed yet: {error}"))?;
     let hermes = pack_root.join(&manifest.hermes_relative_path);
@@ -2993,8 +3031,14 @@ pub async fn worker_app_hermes_signin_xai(
     let (tx, rx) = std::sync::mpsc::channel::<String>();
     // Both streams feed the SAME channel — whichever carries the code wins.
     for stream in [
-        child.stdout.take().map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
-        child.stderr.take().map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+        child
+            .stdout
+            .take()
+            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
+        child
+            .stderr
+            .take()
+            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
     ]
     .into_iter()
     .flatten()
@@ -3083,7 +3127,8 @@ pub async fn worker_app_hermes_auth_summary(
     // directory as a file fails with "Access is denied. (os error 5)" on
     // Windows — reported as "Hermes runtime is not installed yet" even though
     // the pack was installed and the doctor read it fine (2026-07-31).
-    let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+    let (manifest_path, pack_root) =
+        crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
     let Ok(manifest) = crate::hermes_runtime::read_hermes_runtime_manifest(&manifest_path) else {
         return Ok(HermesAuthSummary {
             available: false,
@@ -3419,7 +3464,11 @@ async fn fetch_runtime_manifest(
         channel.trim()
     );
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(10))
+        // The published manifest includes a complete archive entry list for
+        // verification and is several megabytes. Keep startup checks
+        // reliable on slower worker connections instead of failing silently
+        // before the UI can show the runtime update warning.
+        .timeout(Duration::from_secs(30))
         .build()
         .map_err(|error| format!("unable to create runtime manifest client: {error}"))?;
     let response = client
@@ -3541,9 +3590,9 @@ PY"#
         .output()
         .map_err(|error| format!("unable to inspect Managed WSL runtime manifest: {error}"))?;
     if output.status.success() {
-        return Ok(parse_managed_wsl_runtime_version(
-            &String::from_utf8_lossy(&output.stdout),
-        ));
+        return Ok(parse_managed_wsl_runtime_version(&String::from_utf8_lossy(
+            &output.stdout,
+        )));
     }
 
     Ok(None)
@@ -4132,6 +4181,205 @@ pub async fn worker_app_open_file(app: tauri::AppHandle, path: String) -> Result
         .map_err(|e| e.to_string())
 }
 
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn is_windows_installer_payload(bytes: &[u8]) -> bool {
+    bytes.len() >= 2 && bytes[0] == b'M' && bytes[1] == b'Z'
+}
+
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn validate_windows_installer(path: &Path) -> Result<u64, String> {
+    let metadata = fs::metadata(path)
+        .map_err(|error| format!("downloaded Worker App installer is unavailable: {error}"))?;
+    if metadata.len() < 2 {
+        return Err("downloaded Worker App installer is empty or truncated.".into());
+    }
+
+    let mut file = File::open(path)
+        .map_err(|error| format!("downloaded Worker App installer cannot be opened: {error}"))?;
+    let mut signature = [0_u8; 2];
+    file.read_exact(&mut signature)
+        .map_err(|error| format!("downloaded Worker App installer cannot be read: {error}"))?;
+    if !is_windows_installer_payload(&signature) {
+        return Err(
+            "downloaded Worker App update is not a Windows installer (missing MZ signature)."
+                .into(),
+        );
+    }
+    Ok(metadata.len())
+}
+
+#[cfg(target_os = "windows")]
+fn launch_windows_installer(installer_path: &Path) -> Result<(), String> {
+    let mut last_sharing_error = None;
+    for attempt in 0..5_u64 {
+        match std::process::Command::new(installer_path).spawn() {
+            Ok(_) => return Ok(()),
+            Err(error) if error.raw_os_error() == Some(32) => {
+                last_sharing_error = Some(error.to_string());
+                std::thread::sleep(Duration::from_millis(400 * (attempt + 1)));
+            }
+            Err(error) => {
+                return Err(format!("failed to open Worker App installer: {error}"));
+            }
+        }
+    }
+
+    // Antivirus/indexer software can keep a newly downloaded PE file open
+    // longer than the short retry window above. Hand off to a detached
+    // PowerShell process that waits for a readable handle before launching
+    // the installer; this process survives the current Worker App exiting.
+    let wait_and_launch_script = r#"
+$path = $args[0]
+for ($attempt = 0; $attempt -lt 60; $attempt++) {
+  try {
+    $stream = [System.IO.File]::Open($path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+    $stream.Dispose()
+    Start-Process -FilePath $path
+    exit 0
+  } catch {
+    Start-Sleep -Milliseconds 500
+  }
+}
+exit 1
+"#;
+    std::process::Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-WindowStyle",
+            "Hidden",
+            "-Command",
+            wait_and_launch_script,
+        ])
+        .arg(installer_path)
+        .spawn()
+        .map_err(|fallback_error| {
+            format!(
+                "failed to open Worker App installer after sharing violation ({}) and fallback launch also failed: {fallback_error}",
+                last_sharing_error.unwrap_or_else(|| "unknown sharing violation".into()),
+            )
+        })?;
+    Ok(())
+}
+
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn is_worker_app_update_url(server_url: &str, candidate_url: &str) -> bool {
+    if !(candidate_url.starts_with("https://") || candidate_url.starts_with("http://localhost"))
+        || !same_url_origin(server_url, candidate_url)
+    {
+        return false;
+    }
+    reqwest::Url::parse(candidate_url)
+        .map(|url| url.path() == "/api/desktop-releases/worker-app/download")
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+pub async fn worker_app_install_update(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    url: String,
+    version: String,
+) -> Result<String, String> {
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (&app, &state, &url, &version);
+        return Err("Worker App self-update is only supported on Windows.".into());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let url = url.trim();
+        let version = version.trim();
+        if version.is_empty() {
+            return Err("Worker App update version is missing.".into());
+        }
+        let server_url = state
+            .settings
+            .lock()
+            .map(|settings| settings.normalized_server_url())
+            .map_err(|_| "settings lock poisoned".to_string())?;
+        if !is_worker_app_update_url(&server_url, url) {
+            return Err("Update URL must use the configured Smart AI Hub server origin.".into());
+        }
+
+        let update_dir = std::env::temp_dir().join("smartaihub-worker-app-updates");
+        fs::create_dir_all(&update_dir)
+            .map_err(|error| format!("failed to create Worker App update directory: {error}"))?;
+        let safe_version = sanitize_file_segment(version);
+        if safe_version.is_empty() {
+            return Err("Worker App update version is invalid.".into());
+        }
+        let update_nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_millis())
+            .unwrap_or_default();
+        let installer_path = update_dir.join(format!(
+            "smart-ai-hub-worker-app-update-{safe_version}-{update_nonce}.exe"
+        ));
+        let partial_path = update_dir.join(format!(
+            "smart-ai-hub-worker-app-update-{safe_version}-{update_nonce}.exe.download"
+        ));
+
+        let response = reqwest::Client::builder()
+            .timeout(Duration::from_secs(120))
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|error| format!("unable to create Worker App update client: {error}"))?
+            .get(url)
+            .send()
+            .await
+            .map_err(|error| format!("unable to download Worker App update: {error}"))?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Worker App update download failed with {}.",
+                response.status()
+            ));
+        }
+        let expected_size = response.content_length();
+        let mut response = response;
+        let mut file = File::create(&partial_path)
+            .map_err(|error| format!("failed to create Worker App update file: {error}"))?;
+        let mut downloaded = 0_u64;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| format!("failed while downloading Worker App update: {error}"))?
+        {
+            downloaded = downloaded.saturating_add(chunk.len() as u64);
+            file.write_all(&chunk)
+                .map_err(|error| format!("failed to save Worker App update: {error}"))?;
+        }
+        file.flush()
+            .map_err(|error| format!("failed to flush Worker App update: {error}"))?;
+        // Windows keeps the file handle open until `file` leaves scope. Close
+        // it before validation, rename, and especially before spawning the
+        // installer; otherwise CreateProcess returns ERROR_SHARING_VIOLATION
+        // (os error 32) even when no other process is holding the file.
+        drop(file);
+        if let Some(expected) = expected_size {
+            if expected != downloaded {
+                return Err(format!(
+                    "Worker App update size mismatch. Expected {expected} bytes, got {downloaded} bytes."
+                ));
+            }
+        }
+        validate_windows_installer(&partial_path)?;
+        fs::rename(&partial_path, &installer_path)
+            .map_err(|error| format!("failed to prepare Worker App installer: {error}"))?;
+
+        stop_worker_loop_state(&state).await?;
+        launch_windows_installer(&installer_path)?;
+        // Let the invoke call resolve so the UI can show that the installer
+        // started before the current executable exits and NSIS replaces it.
+        tauri::async_runtime::spawn_blocking(move || {
+            std::thread::sleep(Duration::from_millis(750));
+            app.exit(0);
+        });
+        Ok(format!("Worker App update {version} installer started."))
+    }
+}
+
 #[tauri::command]
 pub async fn worker_app_open_url(
     app: tauri::AppHandle,
@@ -4226,7 +4474,10 @@ mod refresh_coalescing_tests {
         format!("header.{b64}.signature")
     }
 
-    fn connection(refreshed_seconds_ago: Option<i64>, token_life_seconds: i64) -> StoredWorkerConnection {
+    fn connection(
+        refreshed_seconds_ago: Option<i64>,
+        token_life_seconds: i64,
+    ) -> StoredWorkerConnection {
         StoredWorkerConnection {
             server_url: "https://smartaihub.app".into(),
             worker: WorkerConnectWorker {
@@ -4314,15 +4565,17 @@ mod refresh_coalescing_tests {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_start_connect_registration_payload, normalize_machine_fingerprint_hash,
+        build_start_connect_registration_payload, is_windows_installer_payload,
+        is_worker_app_update_url, normalize_machine_fingerprint_hash,
         parse_managed_wsl_runtime_version, runtime_update_available, same_url_origin,
-        summarize_local_device_proof,
-        token_device_binding_mismatches, worker_connect_url, WorkerTokenBindingSummary,
+        summarize_local_device_proof, token_device_binding_mismatches, validate_windows_installer,
+        worker_connect_url, WorkerTokenBindingSummary,
     };
     use crate::credentials::{WorkerDeviceBinding, WorkerDeviceProofMaterial};
     use crate::runtime_manifest::DoctorSummary;
     use crate::settings::WorkerAppSettings;
     use base64::Engine;
+    use std::fs;
 
     #[test]
     fn worker_connect_url_uses_configured_server_without_double_slashes() {
@@ -4370,7 +4623,10 @@ mod tests {
             ),
             Some("2026.08.04.5".into())
         );
-        assert_eq!(parse_managed_wsl_runtime_version("runtime is not installed"), None);
+        assert_eq!(
+            parse_managed_wsl_runtime_version("runtime is not installed"),
+            None
+        );
     }
 
     #[test]
@@ -4391,6 +4647,43 @@ mod tests {
             "https://smartaihub.app",
             "http://smartaihub.app/api/desktop-releases/worker-app/download"
         ));
+    }
+
+    #[test]
+    fn worker_app_update_accepts_only_the_dashboard_installer_endpoint() {
+        assert!(is_worker_app_update_url(
+            "https://smartaihub.app",
+            "https://smartaihub.app/api/desktop-releases/worker-app/download"
+        ));
+        assert!(!is_worker_app_update_url(
+            "https://smartaihub.app",
+            "https://smartaihub.app/api/desktop-releases/worker-app/latest"
+        ));
+        assert!(!is_worker_app_update_url(
+            "https://smartaihub.app",
+            "https://evil.example/api/desktop-releases/worker-app/download"
+        ));
+    }
+
+    #[test]
+    fn worker_app_update_accepts_only_windows_executable_payloads() {
+        assert!(is_windows_installer_payload(b"MZ\x90\x00"));
+        assert!(!is_windows_installer_payload(b"PK\x03\x04"));
+        assert!(!is_windows_installer_payload(b""));
+    }
+
+    #[test]
+    fn worker_app_update_rejects_truncated_or_non_executable_downloads() {
+        let temp = tempfile::tempdir().unwrap();
+        let invalid_path = temp.path().join("invalid.exe");
+        fs::write(&invalid_path, b"<!doctype html>").unwrap();
+        assert!(validate_windows_installer(&invalid_path)
+            .unwrap_err()
+            .contains("missing MZ signature"));
+
+        let valid_path = temp.path().join("valid.exe");
+        fs::write(&valid_path, b"MZfake-installer").unwrap();
+        assert_eq!(validate_windows_installer(&valid_path).unwrap(), 16);
     }
 
     #[test]
@@ -4440,12 +4733,18 @@ mod tests {
             device_binding,
         );
 
-        assert_eq!(ready_payload.capabilities_json["hermesMedia"]["advertised"], true);
+        assert_eq!(
+            ready_payload.capabilities_json["hermesMedia"]["advertised"],
+            true
+        );
         assert_eq!(
             ready_payload.capabilities_json["hermesMedia"]["hermesVersion"],
             "hermes-cli 0.18.2"
         );
-        assert_eq!(blocked_payload.capabilities_json["hermesMedia"]["advertised"], false);
+        assert_eq!(
+            blocked_payload.capabilities_json["hermesMedia"]["advertised"],
+            false
+        );
     }
 
     #[test]

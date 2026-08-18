@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
 
@@ -8,8 +8,8 @@ import request from "supertest";
 
 let mockRedisData: Record<string, string> = {};
 
-vi.mock("../../services/redis", () => ({
-  getRedisClient: () => ({
+vi.mock("../../services/redisClients", () => ({
+  getCacheClient: () => ({
     get: vi.fn(async (key: string) => mockRedisData[key] ?? null),
     set: vi.fn(async (key: string, value: string, _ex: string, _ttl: number) => {
       mockRedisData[key] = value;
@@ -61,6 +61,22 @@ vi.mock("../../services/orchestratorRoomActionsService", () => ({
 vi.mock("../../services/featureFlags", () => ({
   getTenantFeatureFlag: vi.fn(async () => true),
 }));
+
+vi.mock("../../services/tenantFeatureFlagService", async () => {
+  const actual = await vi.importActual<typeof import("../../services/tenantFeatureFlagService")>("../../services/tenantFeatureFlagService");
+  const flags = await vi.importActual<typeof import("../../../shared/featureFlags")>("../../../shared/featureFlags");
+  return {
+    ...actual,
+    getTenantFeatureFlags: vi.fn(async () => ({
+      ...flags.FEATURE_FLAG_DEFAULTS,
+      mcpModernProtocolEnabled: true,
+      mcpLegacyCompatibilityEnabled: true,
+      mcpResourcesEnabled: true,
+      mcpGuideToolAliasesEnabled: true,
+      mcpOAuthProtectedResourceEnabled: true,
+    })),
+  };
+});
 
 vi.mock("../../services/appRuntimeConfig", async () => {
   const actual = await vi.importActual<typeof import("../../services/appRuntimeConfig")>(
@@ -122,6 +138,13 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+// Warm the large MCP registry import before the first 5-second test timeout.
+// Without this, running this file alone makes the first initialize request
+// appear to hang even though the same request is deterministic once imported.
+beforeAll(async () => {
+  await import("../mcpPublicServer");
+});
+
 // ---------------------------------------------------------------------------
 // Section 04 Security Tests
 // ---------------------------------------------------------------------------
@@ -175,7 +198,7 @@ describe("M28: JSON-RPC error does not reflect method name", () => {
 });
 
 describe("M14: Session TTL configurable", () => {
-  it("default session TTL is 900 (not 1800 or 3600)", async () => {
+  it("default session TTL is 1800 seconds", async () => {
     // Verify the code reads MCP_SESSION_TTL_SECONDS env var
     // By default (no env var), should be 900
     const app = await makeApp();

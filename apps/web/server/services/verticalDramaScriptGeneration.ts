@@ -36,6 +36,21 @@ import {
   VERTICAL_DRAMA_DURATION_PROFILE_DEFAULT,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+import {
+  buildVerticalDramaDialogueLanguageProfilePrompt,
+  type VerticalDramaDialogueLanguageProfile,
+} from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import {
+  deriveVerticalDramaEpisodeRuntimeSeconds,
+  type VerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
+import {
+  storyControlEvidenceRefSchema,
+  storyControlScriptOutputSchema,
+  storyControlThreadActionSchema,
+  validateVerticalDramaStoryControlEpisodeOutput,
+  type VerticalDramaStoryControlSeed,
+} from "@shared/verticalDramaSeries/storyControl";
 // Story-density reform (spec §7.7, section-13, added 2026-07-07) — imported
 // DIRECTLY from the submodule (not the shared barrel), per section-13: these
 // are the ONE canonical content-budget contracts and the ONE canonical
@@ -276,6 +291,13 @@ export const scriptBuilderOutputSchema = z
     repair_queue: z.array(scriptNoteItemSchema),
     /** Optional narrative-quality superset — see skill.md §Narrative grammar. */
     character_emotional_arcs: z.array(characterEmotionalArcSchema).optional(),
+    /** Optional story-control annotations; legacy scripts remain valid. */
+    thread_actions: storyControlScriptOutputSchema.shape.thread_actions,
+    romance_beat: storyControlScriptOutputSchema.shape.romance_beat,
+    advantage_beat: storyControlScriptOutputSchema.shape.advantage_beat,
+    character_role_bindings:
+      storyControlScriptOutputSchema.shape.character_role_bindings,
+    evidence_refs: storyControlScriptOutputSchema.shape.evidence_refs,
     /**
      * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W2)
      * — optional superset, see `scriptOpenLoopSchema`/
@@ -304,6 +326,325 @@ export const scriptBuilderOutputSchema = z
   .passthrough();
 
 export type ScriptBuilderOutput = z.infer<typeof scriptBuilderOutputSchema>;
+
+const STORY_CONTROL_NORMALIZATION_WARNING_CODE =
+  "VD_STORY_CONTROL_METADATA_NORMALIZED";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+type StoryControlNormalizationResult = {
+  value: unknown;
+  changed: boolean;
+  warnings: string[];
+};
+
+/**
+ * Repairs only transport-shape drift in optional story-control annotations.
+ * The script itself and semantic story-control checks remain strict. In
+ * particular, this never invents a purpose, thread id, episode number, or
+ * evidence object; it drops metadata that cannot be trusted and records why.
+ */
+function normalizeStoryControlOutputForGeneration(
+  raw: unknown
+): StoryControlNormalizationResult {
+  if (!isRecord(raw)) {
+    return { value: raw, changed: false, warnings: [] };
+  }
+
+  const value: Record<string, unknown> = { ...raw };
+  const warnings: string[] = [];
+  let changed = false;
+
+  const warn = (path: string, reason: string) => {
+    warnings.push(`${path}: ${reason}`);
+  };
+
+  const normalizeEvidenceRefs = (
+    container: Record<string, unknown>,
+    key: "evidence_refs" | "evidenceRefs",
+    path: string
+  ) => {
+    if (!(key in container)) return;
+    const refs = container[key];
+    if (!Array.isArray(refs)) {
+      delete container[key];
+      changed = true;
+      warn(path, "invalid evidence references were omitted");
+      return;
+    }
+
+    const validRefs = refs.filter(
+      ref => storyControlEvidenceRefSchema.safeParse(ref).success
+    );
+    if (validRefs.length !== refs.length) {
+      changed = true;
+      warn(path, "invalid evidence references were omitted");
+    }
+    container[key] = validRefs;
+  };
+
+  const normalizeAnnotation = (
+    rawAnnotation: unknown,
+    path: string,
+    schema: { safeParse: (input: unknown) => { success: boolean } }
+  ): Record<string, unknown> | undefined => {
+    if (!isRecord(rawAnnotation)) {
+      changed = true;
+      warn(path, "annotation was omitted because it is not an object");
+      return undefined;
+    }
+
+    const annotation: Record<string, unknown> = { ...rawAnnotation };
+    if (!("evidence_refs" in annotation) && "evidenceRefs" in annotation) {
+      annotation.evidence_refs = annotation.evidenceRefs;
+      delete annotation.evidenceRefs;
+      changed = true;
+      warn(`${path}.evidenceRefs`, "renamed to evidence_refs");
+    }
+    normalizeEvidenceRefs(annotation, "evidence_refs", `${path}.evidence_refs`);
+
+    if (!schema.safeParse(annotation).success) {
+      changed = true;
+      warn(path, "annotation was omitted because required fields are invalid");
+      return undefined;
+    }
+    return annotation;
+  };
+
+  if ("romance_beat" in value) {
+    const normalized = normalizeAnnotation(
+      value.romance_beat,
+      "script.romance_beat",
+      storyControlScriptOutputSchema.shape.romance_beat
+    );
+    if (normalized) value.romance_beat = normalized;
+    else delete value.romance_beat;
+  }
+
+  if ("advantage_beat" in value) {
+    const normalized = normalizeAnnotation(
+      value.advantage_beat,
+      "script.advantage_beat",
+      storyControlScriptOutputSchema.shape.advantage_beat
+    );
+    if (normalized) value.advantage_beat = normalized;
+    else delete value.advantage_beat;
+  }
+
+  if ("thread_actions" in value) {
+    if (!Array.isArray(value.thread_actions)) {
+      delete value.thread_actions;
+      changed = true;
+      warn("script.thread_actions", "invalid annotations were omitted");
+    } else {
+      const normalizedActions: Record<string, unknown>[] = [];
+      for (const [index, rawAction] of value.thread_actions.entries()) {
+        if (!isRecord(rawAction)) {
+          changed = true;
+          warn(`script.thread_actions[${index}]`, "invalid action was omitted");
+          continue;
+        }
+        const action: Record<string, unknown> = { ...rawAction };
+        if (!("evidenceRefs" in action) && "evidence_refs" in action) {
+          action.evidenceRefs = action.evidence_refs;
+          delete action.evidence_refs;
+          changed = true;
+          warn(
+            `script.thread_actions[${index}].evidence_refs`,
+            "renamed to evidenceRefs"
+          );
+        }
+        normalizeEvidenceRefs(
+          action,
+          "evidenceRefs",
+          `script.thread_actions[${index}].evidenceRefs`
+        );
+        if (!storyControlThreadActionSchema.safeParse(action).success) {
+          changed = true;
+          warn(`script.thread_actions[${index}]`, "invalid action was omitted");
+          continue;
+        }
+        normalizedActions.push(action);
+      }
+      value.thread_actions = normalizedActions;
+    }
+  }
+
+  if ("character_role_bindings" in value) {
+    if (!Array.isArray(value.character_role_bindings)) {
+      delete value.character_role_bindings;
+      changed = true;
+      warn("script.character_role_bindings", "invalid bindings were omitted");
+    } else {
+      const validBindings = value.character_role_bindings.filter(
+        binding =>
+          storyControlScriptOutputSchema.shape.character_role_bindings.safeParse(
+            [binding]
+          ).success
+      );
+      if (validBindings.length !== value.character_role_bindings.length) {
+        changed = true;
+        warn("script.character_role_bindings", "invalid bindings were omitted");
+      }
+      value.character_role_bindings = validBindings;
+    }
+  }
+
+  if ("evidence_refs" in value) {
+    normalizeEvidenceRefs(value, "evidence_refs", "script.evidence_refs");
+  }
+
+  if (changed && Array.isArray(value.warnings)) {
+    value.warnings = [
+      ...value.warnings,
+      ...warnings.map(message => ({
+        code: STORY_CONTROL_NORMALIZATION_WARNING_CODE,
+        message,
+      })),
+    ];
+  }
+
+  return { value, changed, warnings };
+}
+
+/**
+ * Public for focused contract tests. Strict persisted-schema consumers should
+ * continue using `scriptBuilderOutputSchema`; this helper is only the LLM
+ * transport boundary used during fresh generation.
+ */
+export function normalizeScriptBuilderOutputForGeneration(
+  raw: unknown
+): unknown {
+  return normalizeStoryControlOutputForGeneration(raw).value;
+}
+
+const scriptBuilderGenerationSchema = {
+  safeParse(value: unknown) {
+    const strictResult = scriptBuilderOutputSchema.safeParse(value);
+    if (strictResult.success) return strictResult;
+
+    const normalized = normalizeStoryControlOutputForGeneration(value);
+    if (!normalized.changed) return strictResult;
+    return scriptBuilderOutputSchema.safeParse(normalized.value);
+  },
+};
+
+/**
+ * Removes semantically unusable optional annotations after the transport
+ * schema has passed. An invalid `open`/unknown reference cannot safely be
+ * persisted, so dropping that annotation is safer than blocking the whole
+ * episode. A known `resolve` without current-episode evidence is deliberately
+ * retained so the semantic gate still fails closed instead of silently
+ * closing continuity.
+ */
+function normalizeStoryControlSemanticsForGeneration(
+  script: ScriptBuilderOutput,
+  options: {
+    seed: VerticalDramaStoryControlSeed;
+    episodeNumber: number;
+  },
+): ScriptBuilderOutput {
+  const warnings: string[] = [];
+  const value: ScriptBuilderOutput = { ...script };
+  const threadIds = new Set(options.seed.threadCandidates.map(thread => thread.threadId));
+  const proposedThreadIds = new Set(threadIds);
+  const characterKeys = new Set(options.seed.canonicalCharacterKeys);
+
+  const warn = (path: string, reason: string) => {
+    warnings.push(`${path}: ${reason}`);
+  };
+
+  const currentEpisodeEvidence = <T extends { episodeNumber: number }>(
+    refs: T[],
+    path: string,
+  ): T[] => {
+    const validRefs = refs.filter(ref => ref.episodeNumber === options.episodeNumber);
+    if (validRefs.length !== refs.length) {
+      warn(path, "evidence for another episode was omitted");
+    }
+    return validRefs;
+  };
+
+  if (value.thread_actions) {
+    const actions: typeof value.thread_actions = [];
+    for (const [index, action] of value.thread_actions.entries()) {
+      const path = `script.thread_actions[${index}]`;
+      if (action.action === "open") {
+        const proposedThreadId = action.proposedThreadId?.trim();
+        if (!proposedThreadId) {
+          warn(path, "open action without proposedThreadId was omitted");
+          continue;
+        }
+        if (proposedThreadIds.has(proposedThreadId)) {
+          warn(path, "duplicate proposedThreadId was omitted");
+          continue;
+        }
+        proposedThreadIds.add(proposedThreadId);
+      } else if (!action.threadId || !threadIds.has(action.threadId)) {
+        warn(path, "action for an unknown thread was omitted");
+        continue;
+      }
+
+      actions.push({
+        ...action,
+        evidenceRefs: currentEpisodeEvidence(
+          action.evidenceRefs,
+          `${path}.evidenceRefs`,
+        ),
+      });
+    }
+    value.thread_actions = actions;
+  }
+
+  if (value.character_role_bindings) {
+    value.character_role_bindings = value.character_role_bindings.filter(binding => {
+      if (characterKeys.has(binding.character_key)) return true;
+      warn(
+        `script.character_role_bindings.${binding.character_key}`,
+        "binding for an unknown canonical character was omitted",
+      );
+      return false;
+    });
+  }
+
+  if (value.romance_beat) {
+    value.romance_beat = {
+      ...value.romance_beat,
+      evidence_refs: currentEpisodeEvidence(
+        value.romance_beat.evidence_refs,
+        "script.romance_beat.evidence_refs",
+      ),
+    };
+  }
+  if (value.advantage_beat) {
+    value.advantage_beat = {
+      ...value.advantage_beat,
+      evidence_refs: currentEpisodeEvidence(
+        value.advantage_beat.evidence_refs,
+        "script.advantage_beat.evidence_refs",
+      ),
+    };
+  }
+  if (value.evidence_refs) {
+    value.evidence_refs = currentEpisodeEvidence(
+      value.evidence_refs,
+      "script.evidence_refs",
+    );
+  }
+
+  if (warnings.length > 0) {
+    value.warnings = [
+      ...value.warnings,
+      ...warnings.map(message => ({
+        code: STORY_CONTROL_NORMALIZATION_WARNING_CODE,
+        message,
+      })),
+    ];
+  }
+  return value;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Series memory (Producer B) — episode_memory resolution                    */
@@ -363,7 +704,7 @@ export function resolveScriptEpisodeMemory(
 
   if (parsedRawBlock?.success) {
     // The LLM authored a trustworthy block directly — nothing to enrich.
-    return resolved;
+    return mergeStoryControlMemory(resolved, script, episodeNumber);
   }
 
   const continuityFacts = script.continuity_notes.filter(
@@ -381,15 +722,64 @@ export function resolveScriptEpisodeMemory(
         description,
         threadClass: "plot",
         openedEpisode: episodeNumber,
+        ...(loop.expected_resolution
+          ? { expectedResolution: loop.expected_resolution }
+          : {}),
       };
     })
     .filter((thread): thread is VdOpenThread => thread !== null);
 
-  return {
+  return mergeStoryControlMemory({
     ...resolved,
     canonicalFacts: [...resolved.canonicalFacts, ...continuityFacts],
     threadsOpened: [...resolved.threadsOpened, ...threadsFromOpenLoops],
-  };
+  }, script, episodeNumber);
+}
+
+/**
+ * Story-control annotations and `episode_memory` are intentionally separate
+ * authoring surfaces, but they must converge before memory is persisted.
+ * Otherwise a valid `resolve` annotation could be visible to the script
+ * validator while the continuity projection still considered the thread open.
+ * This merge is additive, idempotent, and only applies to the explicit
+ * structural actions; creative payoff quality remains owned by the skill.
+ */
+function mergeStoryControlMemory(
+  memory: VdEpisodeMemory,
+  script: ScriptBuilderOutput,
+  episodeNumber: number,
+): VdEpisodeMemory {
+  const actions = script.thread_actions ?? [];
+  if (actions.length === 0) return memory;
+
+  const threadsOpened = [...memory.threadsOpened];
+  const openedIds = new Set(threadsOpened.map(thread => thread.threadId));
+  for (const action of actions) {
+    if (action.action !== "open" || !action.proposedThreadId) continue;
+    const threadId = action.proposedThreadId.trim();
+    if (!threadId || openedIds.has(threadId)) continue;
+    threadsOpened.push({
+      threadId,
+      description:
+        action.note?.trim() || `Story-control thread opened in episode ${episodeNumber}`,
+      threadClass: "plot",
+      openedEpisode: episodeNumber,
+      expectedResolution: "future_episode",
+    });
+    openedIds.add(threadId);
+  }
+
+  const threadsResolved = [...memory.threadsResolved];
+  const resolvedIds = new Set(threadsResolved);
+  for (const action of actions) {
+    if (action.action !== "resolve" || !action.threadId) continue;
+    const threadId = action.threadId.trim();
+    if (!threadId || resolvedIds.has(threadId)) continue;
+    threadsResolved.push(threadId);
+    resolvedIds.add(threadId);
+  }
+
+  return { ...memory, threadsOpened, threadsResolved };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -404,13 +794,29 @@ export interface GenerateEpisodeScriptParams {
   episodeTitle: string;
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
+  /** Additive season-position context used to make final-episode continuity explicit. */
+  seasonContext?: {
+    totalEpisodeCount?: number;
+  };
+  /** Shared series-level spoken-language/market contract. Legacy callers omit it and resolve to Auto. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   durationSeconds: number;
+  /**
+   * Additive production contract for newly planned episodes. The script skill
+   * sees the nine logical shot durations directly; legacy callers omit this
+   * field and retain their existing prompt/runtime behavior.
+   */
+  durationPlan?: VerticalDramaDurationPlan;
   storySource: {
     logline?: string;
     keyBeats?: string[];
+    cliffhangerLine?: string;
+    continuityPlan?: unknown;
     mainPlot?: string;
     seasonArc?: string;
     tone?: string;
+    /** Bounded full-story seed; never the entire season ledger. */
+    storyControlSeed?: VerticalDramaStoryControlSeed;
   };
   characters: Array<{
     characterId: string;
@@ -719,6 +1125,11 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     params.locale === "th"
       ? "Write all human-readable string values (hook, scene summaries, dialogue lines, cliffhanger, continuity_notes) in natural Thai."
       : `Write all human-readable string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
+  const dialogueLanguageProfilePrompt =
+    buildVerticalDramaDialogueLanguageProfilePrompt({
+      locale: params.locale,
+      profile: params.dialogueLanguageProfile,
+    });
 
   const { storySource } = params;
   const characterLines = params.characters.length
@@ -786,6 +1197,12 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,
     storySource.seasonArc ? `Season arc: ${storySource.seasonArc}` : null,
     storySource.tone ? `Tone: ${storySource.tone}` : null,
+    storySource.cliffhangerLine
+      ? `Planned cliffhanger / continuity obligation: ${storySource.cliffhangerLine}`
+      : null,
+    storySource.continuityPlan
+      ? `Continuity plan (canonical facts; do not silently drop or resolve without payoff): ${JSON.stringify(storySource.continuityPlan)}`
+      : null,
     storySource.keyBeats?.length
       ? `Key beats:\n${storySource.keyBeats.map(b => `- ${b}`).join("\n")}`
       : null,
@@ -800,6 +1217,28 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   // field) so the prompt shape is unchanged for those cases.
   const memorySection = params.memoryBundle
     ? `memory_state (series long-memory retrieval bundle — canonical facts, recent episode summaries, open/resolved hooks, continuity warnings, product tie-in fatigue; respect it for continuity and do not repeat resolved hooks or fatigued tie-ins):\n${JSON.stringify(params.memoryBundle)}`
+    : null;
+
+  const storyControlSection = storySource.storyControlSeed
+    ? [
+        `story_control_seed (registered IDs and bounded season intent; keep creative judgment with the writer skill and do not invent or silently close threads):\n${JSON.stringify(
+          storySource.storyControlSeed,
+        )}`,
+        `For episode ${params.episodeNumber}, return optional episode-level annotations alongside the normal script: thread_actions (open/advance/reframe/resolve/defer/park using registered threadId; use evidenceRefs in this array and a resolve action MUST include object evidenceRefs for the current episode), romance_beat (omit when there is no earned movement; when present it MUST include phase and purpose plus optional object evidence_refs), advantage_beat (protagonist/antagonist/shared/unclear plus cost and opponent_response plus optional object evidence_refs), character_role_bindings using only canonical character keys, and top-level evidence_refs with object entries only. These are annotations for reconciliation, not extra scenes. Do not force romance or a power switch when the story does not earn it.`,
+      ].join("\n")
+    : null;
+
+  const totalEpisodeCount = params.seasonContext?.totalEpisodeCount;
+  const isFinalEpisode =
+    totalEpisodeCount != null && params.episodeNumber >= totalEpisodeCount;
+  const seasonContinuitySection = totalEpisodeCount
+    ? [
+        `episode_continuity_context: episode ${params.episodeNumber} of ${totalEpisodeCount}${isFinalEpisode ? " (FINAL EPISODE)" : ""}`,
+        "Every episode_memory.threads_opened entry MUST include expected_resolution as this_episode, future_episode, or season; include expected_resolution_episode when the payoff episode is known.",
+        isFinalEpisode
+          ? "FINAL-EPISODE CONTINUITY CONTRACT: resolve every prior thread that pays off in this episode using its exact canonical thread_id in threads_resolved. Any intentional carry-over beyond this season must be explicitly classified as expected_resolution=season in the original opening record and in the current open_loops entry. Do not emit future_episode at the season boundary. Do not leave an unclassified thread open."
+          : "For a non-final episode, resolve only threads with an earned payoff in this episode; carry-forward threads must declare future_episode or season rather than being left unclassified.",
+      ].join("\n")
     : null;
 
   // Product tie-in policy (spec §13) — only sent when the series has tie-in
@@ -878,6 +1317,21 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
       ? `content_budget: ${JSON.stringify(params.speechBudget.contentBudget)}`
       : null;
 
+  const durationProfileSection =
+    params.durationPlan?.status === "active"
+      ? [
+          `duration_profile: ${JSON.stringify({
+            profile_id: params.durationPlan.profileId,
+            logical_shot_count: params.durationPlan.logicalShotCount,
+            shot_durations_seconds: params.durationPlan.shotDurationsSeconds,
+            derived_runtime_seconds: deriveVerticalDramaEpisodeRuntimeSeconds(
+              params.durationPlan
+            ),
+          })}`,
+          "The episode has exactly 9 logical storyboard shots. Keep shot numbers 1-9 and allocate each shot's action/dialogue to its listed duration. The runtime is derived from the shot vector; do not invent a separate per-episode duration.",
+        ].join("\n")
+      : null;
+
   // Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
   // 2026-07-08) — additive; only sent when `verticalDramaSeriesDeepStoryDrafts`
   // is enabled AND an `episodeDraft` was actually resolved for this episode,
@@ -931,14 +1385,19 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     `episode_number: ${params.episodeNumber}`,
     `duration_seconds: ${params.durationSeconds}`,
     langInstruction,
+    dialogueLanguageProfilePrompt,
+    `dialogue_language_profile: ${JSON.stringify(params.dialogueLanguageProfile ?? { version: 2, spokenLocale: "auto" })}`,
     `characters:\n${characterLines}`,
     voiceCardsSection,
     genreSection,
     recentRetentionLoopTypesSection,
     memorySection,
+    storyControlSection,
+    seasonContinuitySection,
     tieInSection,
     speechBudgetSection,
     contentBudgetSection,
+    durationProfileSection,
     episodeDraftSection,
     sceneContractSection,
     repairSection,
@@ -947,6 +1406,67 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+function validateEpisodeMemoryAuthoringContract(
+  script: ScriptBuilderOutput,
+  episodeNumber: number,
+  seasonContext?: GenerateEpisodeScriptParams["seasonContext"],
+): Array<{ path: string; message: string }> {
+  const rawMemory = (script as { episode_memory?: unknown }).episode_memory;
+  if (!rawMemory || typeof rawMemory !== "object" || Array.isArray(rawMemory)) {
+    return [];
+  }
+
+  const memory = rawMemory as Record<string, unknown>;
+  const issues: Array<{ path: string; message: string }> = [];
+  const validExpectedResolutions = new Set([
+    "this_episode",
+    "future_episode",
+    "season",
+  ]);
+  const opened = Array.isArray(memory.threads_opened)
+    ? memory.threads_opened
+    : [];
+  const totalEpisodeCount = seasonContext?.totalEpisodeCount;
+  const isFinalEpisode =
+    totalEpisodeCount != null && episodeNumber >= totalEpisodeCount;
+  for (const [index, thread] of opened.entries()) {
+    if (!thread || typeof thread !== "object" || Array.isArray(thread)) continue;
+    const value = thread as Record<string, unknown>;
+    const expectedResolution = String(value.expected_resolution ?? "");
+    if (!validExpectedResolutions.has(expectedResolution)) {
+      issues.push({
+        path: `script.episode_memory.threads_opened[${index}].expected_resolution`,
+        message:
+          "Every newly opened continuity thread must declare expected_resolution.",
+      });
+    } else if (isFinalEpisode && expectedResolution === "future_episode") {
+      issues.push({
+        path: `script.episode_memory.threads_opened[${index}].expected_resolution`,
+        message:
+          "A final episode cannot open a future_episode thread; use season for an intentional next-season continuation.",
+      });
+    }
+  }
+
+  if (isFinalEpisode && Array.isArray(script.open_loops)) {
+    for (const [index, loop] of script.open_loops.entries()) {
+      if (
+        loop &&
+        typeof loop === "object" &&
+        !Array.isArray(loop) &&
+        (loop as Record<string, unknown>).expected_resolution === "future_episode"
+      ) {
+        issues.push({
+          path: `script.open_loops[${index}].expected_resolution`,
+          message:
+            "A final episode cannot leave an open loop classified as future_episode; use season for an intentional next-season continuation.",
+        });
+      }
+    }
+  }
+  return issues;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1291,16 +1811,59 @@ export async function generateEpisodeScript(
   // the sibling storyboard/start-frame/motion-prompt generators. The retry's
   // own doubling (`Math.max(maxTokens * 2, 16000)`) comfortably covers any
   // remaining outlier.
-  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt,
-    userPrompt,
-    temperature: 0.8,
-    userId: params.userId,
-    maxTokens: 12000,
-    schema: scriptBuilderOutputSchema,
-    label: "Episode script",
-  });
+  const { data: rawValidatedData, response } =
+    await executeJsonPlanningCallWithRetry<ScriptBuilderOutput>({
+      model,
+      systemPrompt,
+      userPrompt,
+      temperature: 0.8,
+      userId: params.userId,
+      maxTokens: 12000,
+      // Keep the persisted/output contract strict, but tolerate transport-shape
+      // drift in optional story-control annotations at the LLM boundary.
+      schema: scriptBuilderGenerationSchema,
+      label: "Episode script",
+    });
+
+  const validatedData = params.storySource.storyControlSeed
+    ? normalizeStoryControlSemanticsForGeneration(rawValidatedData, {
+        seed: params.storySource.storyControlSeed,
+        episodeNumber: params.episodeNumber,
+      })
+    : rawValidatedData;
+
+  const episodeMemoryIssues = validateEpisodeMemoryAuthoringContract(
+    validatedData,
+    params.episodeNumber,
+    params.seasonContext,
+  );
+  if (episodeMemoryIssues.length > 0) {
+    throw new VdSchemaValidationError(
+      "Episode continuity metadata failed the authoring contract",
+      { issues: episodeMemoryIssues },
+    );
+  }
+
+  // Structural story-control facts are checked before credits are deducted.
+  // The writer skill still owns whether a payoff/romance/power shift is
+  // dramatically good; code only rejects invented IDs and unproven closure.
+  if (params.storySource.storyControlSeed) {
+    const storyControlIssues = validateVerticalDramaStoryControlEpisodeOutput(
+      validatedData,
+      {
+        seed: params.storySource.storyControlSeed,
+        episodeNumber: params.episodeNumber,
+      },
+    );
+    if (storyControlIssues.length > 0) {
+      throw new VdSchemaValidationError(
+        `Episode story-control annotations failed structural validation: ${storyControlIssues
+          .map(issue => `${issue.code} at ${issue.path}`)
+          .join(", ")}`,
+        storyControlIssues,
+      );
+    }
+  }
 
   // Story-density reform (spec §7.7.2 Layer 2, section-13, added
   // 2026-07-07) — flag-gated post-generation coverage gate. Runs BEFORE

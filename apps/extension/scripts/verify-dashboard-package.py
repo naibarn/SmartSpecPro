@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 package = json.loads((ROOT / "package.json").read_text())
 version = package["version"]
-zip_path = ROOT.parent / "web/client/public/releases" / f"smartaihub-marketplace-capture-extension-{version}.zip"
+zip_path = ROOT.parent / "web/client/public/releases" / f"smartaihub-companion-extension-{version}.zip"
 required_files = {
     "manifest.json",
     "panel.html",
@@ -37,10 +37,21 @@ with zipfile.ZipFile(zip_path) as archive:
     manifest = json.loads(archive.read("manifest.json"))
     if manifest.get("version") != version:
         fail(f"manifest version {manifest.get('version')} does not match package version {version}")
+    if manifest.get("name") != "SmartAIHub Companion":
+        fail(f"unexpected manifest name: {manifest.get('name')}")
 
     panel_js = archive.read("assets/panel.js").decode("utf-8", errors="ignore")
+    bundled_js = "\n".join(
+        archive.read(name).decode("utf-8", errors="ignore")
+        for name in sorted(names)
+        if name.startswith("assets/") and name.endswith(".js")
+    )
     if version not in panel_js:
         fail(f"panel bundle does not contain version marker {version}")
+    if "SmartAIHub Companion" not in panel_js:
+        fail("panel bundle does not contain SmartAIHub Companion product name")
+    if "/api/desktop-releases/companion-extension/latest" not in bundled_js:
+        fail("extension bundle does not contain canonical Companion update route")
 
     drag_bridge_js = archive.read("assets/dragBridge.js").decode("utf-8", errors="ignore")
     for marker in [

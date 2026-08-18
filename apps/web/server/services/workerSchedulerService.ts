@@ -7,6 +7,7 @@ import type {
   ComfyImageGenerationJobContract,
   ComfyWorkflowRunJobContract,
   HyperframesFinalCompositeWorkerInput,
+  HermesTaskCorrelation,
   LocalFolderIngestJobContract,
   RemotionRenderVideoWorkerInput,
   VerticalDramaFfmpegAssemblyJobContract,
@@ -41,6 +42,12 @@ import {
   verticalDramaFfmpegAssemblyJobContractSchema,
   videoAssemblyJobContractSchema,
   workerHermesRuntimeMetadataSchema,
+  hermesTaskCorrelationSchema,
+  remotionExecutorCapabilityProfileSchema,
+  remotionExecutorReadinessSchema,
+  remotionExecutionTargetResolutionSchema,
+  type RemotionExecutionTarget,
+  type RemotionExecutionTargetResolution,
 } from "../../shared/workerRuntime";
 import { evaluateHermesRolloutReadiness } from "../../shared/featureFlags";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
@@ -49,14 +56,21 @@ import {
   type WorkerJobBillingEnvelope,
 } from "./workerBillingService";
 import { refundReservation } from "./creditService";
-import { createRateLimiter } from "./rateLimiter";
 import { isPlainObject } from "./workerPayloadSanitizer";
+import { getCacheClient } from "./redisClients";
 
 const OPENCLAW_RUNTIME_TYPE: WorkerRuntimeType = "openclaw_gateway";
 const DESKTOP_RUNTIME_TYPE: WorkerRuntimeType = "desktop_zeroclaw_managed";
 const NEMOCLAW_RUNTIME_TYPE: WorkerRuntimeType = "nemoclaw_sandbox";
 const HICLAW_RUNTIME_TYPE: WorkerRuntimeType = "hiclaw_cluster";
 const HERMES_RUNTIME_TYPE: WorkerRuntimeType = "hermes_agent_gateway";
+const REMOTION_EXECUTOR_RUNTIME_TYPE: WorkerRuntimeType = "remotion_executor";
+
+export const REMOTION_EXECUTOR_SUPPORTED_CAPABILITY_FAMILIES = [
+  "remotion-render",
+  "chromium-render",
+  "ffmpeg-probe",
+] as const;
 
 export const OPENCLAW_SUPPORTED_JOB_TYPES = [
   "external_agent_task",
@@ -73,9 +87,7 @@ export const OPENCLAW_SUPPORTED_CAPABILITY_FAMILIES = [
   "artifact-producing-session",
 ] as const;
 
-export const HERMES_SUPPORTED_JOB_TYPES = [
-  "external_agent_task",
-] as const;
+export const HERMES_SUPPORTED_JOB_TYPES = ["external_agent_task"] as const;
 
 export const HERMES_SUPPORTED_CAPABILITY_FAMILIES = [
   "artifact-producing-session",
@@ -138,11 +150,18 @@ export interface WorkerSchedulerFeatureFlags {
   nemoClawSecureWorkerPool: boolean;
   hiClawClusterRuntime: boolean;
   hermesAgentRuntime: boolean;
+  remotionDedicatedExecutorEnabled?: boolean;
 }
 
 export interface WorkerSchedulerRepository {
-  findJobByIdempotencyKey: (tenantId: string, idempotencyKey: string) => Promise<WorkerJobRecord | null>;
-  findWorkerById: (tenantId: string, workerId: string) => Promise<WorkerRecord | null>;
+  findJobByIdempotencyKey: (
+    tenantId: string,
+    idempotencyKey: string
+  ) => Promise<WorkerJobRecord | null>;
+  findWorkerById: (
+    tenantId: string,
+    workerId: string
+  ) => Promise<WorkerRecord | null>;
   insertJob: (values: Record<string, unknown>) => Promise<WorkerJobRecord>;
   /**
    * Feature 133 section-04 — narrow lookup backing `queueRemotionRenderVideoJob`'s
@@ -152,7 +171,7 @@ export interface WorkerSchedulerRepository {
    */
   findActiveRemotionPreviewJobForUser?: (
     tenantId: string,
-    userId: number,
+    userId: number
   ) => Promise<WorkerJobRecord | null>;
 }
 
@@ -169,17 +188,68 @@ export class WorkerSchedulerError extends Error {
 }
 
 // Feature 133 section-04 (spec §18.5): ≤6 remotion_render_video submissions
-// per user per minute; admin tier ×5 (30/min). Two fixed-size limiters
-// (rather than one parameterized limiter) keep `isAllowed` a simple
-// synchronous check with no per-call config plumbing.
-const remotionRenderSubmissionLimiter = createRateLimiter("remotion-render-video-submission", {
-  windowMs: 60_000,
-  maxRequests: 6,
-});
-const remotionRenderSubmissionLimiterAdmin = createRateLimiter("remotion-render-video-submission-admin", {
-  windowMs: 60_000,
-  maxRequests: 30,
-});
+// Production enforcement is an atomic Redis counter so multiple web instances
+// cannot each grant a full local window. Tests/local single-node development
+// retain a bounded fallback only when production is not enabled.
+const remotionRenderSubmissionLocal = new Map<
+  string,
+  { windowStart: number; count: number }
+>();
+async function consumeRemotionRenderSubmission(
+  tenantId: string,
+  userId: number | null,
+  admin: boolean
+): Promise<void> {
+  const limit = admin ? 30 : 6;
+  const subject = `${tenantId}:${userId ?? "anonymous"}`;
+  if (
+    process.env.NODE_ENV !== "production" &&
+    !process.env.REDIS_URL &&
+    !process.env.REDIS_CLOUD_URL &&
+    !process.env.REDIS_UPSTASH_URL
+  ) {
+    const now = Date.now();
+    const current = remotionRenderSubmissionLocal.get(subject);
+    if (!current || now - current.windowStart >= 60_000) {
+      remotionRenderSubmissionLocal.set(subject, {
+        windowStart: now,
+        count: 1,
+      });
+      return;
+    }
+    if (current.count >= limit)
+      throw new WorkerSchedulerError(
+        "rate_limited",
+        429,
+        `Too many remotion_render_video submissions; the limit is ${limit} per minute`
+      );
+    current.count += 1;
+    return;
+  }
+  const key = `ssp:f145:remotion-submit:${createHash("sha256").update(subject).digest("hex")}`;
+  try {
+    const count = Number(
+      await getCacheClient().eval(
+        "local value = redis.call('INCR', KEYS[1]); if value == 1 then redis.call('EXPIRE', KEYS[1], 60); end; return value",
+        1,
+        key
+      )
+    );
+    if (count > limit)
+      throw new WorkerSchedulerError(
+        "rate_limited",
+        429,
+        `Too many remotion_render_video submissions; the limit is ${limit} per minute`
+      );
+  } catch (error) {
+    if (error instanceof WorkerSchedulerError) throw error;
+    throw new WorkerSchedulerError(
+      "rate_limit_unavailable",
+      503,
+      "Remotion submission rate-limit enforcement is temporarily unavailable"
+    );
+  }
+}
 
 export function isOpenClawDispatchEnabled(): boolean {
   const raw = process.env.OPENCLAW_EXTERNAL_RUNTIME_DISPATCH_ENABLED;
@@ -191,13 +261,184 @@ export function isDesktopWorkerDispatchEnabled(): boolean {
   return raw !== "false";
 }
 
+export function isRemotionExecutorDispatchEnabled(): boolean {
+  return process.env.REMOTION_EXECUTOR_DISPATCH_ENABLED !== "false";
+}
+
+const REMOTION_EXECUTOR_HEARTBEAT_MAX_AGE_MS = 90_000;
+
+function pickExecutorCapabilityProfile(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(
+    [
+      "capabilityFamilies",
+      "claimCapability",
+      "containers",
+      "codecs",
+      "maxWidth",
+      "maxHeight",
+      "maxDurationInFrames",
+      "maxConcurrency",
+      "supportsChromiumRendering",
+      "supportsFfmpegProbe",
+      "supportsFfmpegPostPass",
+      "supportsFontMaterialization",
+    ]
+      .filter(key => key in record)
+      .map(key => [key, record[key]])
+  );
+}
+
+function pickExecutorReadiness(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(
+    ["status", "observedAt", "checks", "blockingReasons"]
+      .filter(key => key in record)
+      .map(key => [key, record[key]])
+  );
+}
+
+function isRemotionExecutorReady(
+  worker: WorkerRecord | null,
+  nowMs = Date.now()
+): boolean {
+  if (
+    !worker ||
+    worker.runtimeType !== REMOTION_EXECUTOR_RUNTIME_TYPE ||
+    worker.status !== "online"
+  )
+    return false;
+  const lastSeenAt =
+    worker.lastSeenAt instanceof Date
+      ? worker.lastSeenAt.getTime()
+      : typeof worker.lastSeenAt === "string" ||
+          typeof worker.lastSeenAt === "number"
+        ? new Date(worker.lastSeenAt).getTime()
+        : NaN;
+  if (
+    !Number.isFinite(lastSeenAt) ||
+    nowMs - lastSeenAt > REMOTION_EXECUTOR_HEARTBEAT_MAX_AGE_MS
+  )
+    return false;
+  const readiness = remotionExecutorReadinessSchema.safeParse(
+    pickExecutorReadiness(worker.healthSummaryJson)
+  );
+  if (!readiness.success || readiness.data.status !== "ready") return false;
+  const capabilities = remotionExecutorCapabilityProfileSchema.safeParse(
+    pickExecutorCapabilityProfile(worker.capabilitiesJson)
+  );
+  if (!capabilities.success || capabilities.data.maxConcurrency < 1)
+    return false;
+  const health = worker.healthSummaryJson as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const currentJobCount =
+    health && typeof health.currentJobCount === "number"
+      ? health.currentJobCount
+      : null;
+  if (
+    currentJobCount === null ||
+    currentJobCount >= capabilities.data.maxConcurrency
+  )
+    return false;
+  return true;
+}
+
+export function resolveRemotionExecutionTarget(input: {
+  requestedTarget: RemotionExecutionTarget;
+  preferredWorkerId?: string | null;
+  tenantExecutorEnabled: boolean;
+  operatorExecutorEnabled: boolean;
+  preferredWorker?: WorkerRecord | null;
+  nowMs?: number;
+}): RemotionExecutionTargetResolution {
+  const preferredWorkerId = input.preferredWorkerId?.trim() || null;
+  if (input.requestedTarget === "desktop_worker") {
+    return remotionExecutionTargetResolutionSchema.parse({
+      requestedTarget: input.requestedTarget,
+      resolvedTarget: "desktop_worker",
+      reason: "explicit_desktop_worker",
+      preferredWorkerId,
+      selectedWorkerId: null,
+      resolvedAt: new Date().toISOString(),
+    });
+  }
+  if (input.requestedTarget === "remotion_executor") {
+    if (
+      !input.tenantExecutorEnabled ||
+      !input.operatorExecutorEnabled ||
+      !isRemotionExecutorReady(input.preferredWorker ?? null, input.nowMs)
+    ) {
+      throw new WorkerSchedulerError(
+        "executor_unavailable",
+        409,
+        "The selected Remotion executor is not enabled, ready, online, fresh, or idle"
+      );
+    }
+    return remotionExecutionTargetResolutionSchema.parse({
+      requestedTarget: input.requestedTarget,
+      resolvedTarget: "remotion_executor",
+      reason: "explicit_remotion_executor",
+      preferredWorkerId,
+      selectedWorkerId: preferredWorkerId,
+      resolvedAt: new Date().toISOString(),
+    });
+  }
+  if (!input.operatorExecutorEnabled) {
+    return remotionExecutionTargetResolutionSchema.parse({
+      requestedTarget: input.requestedTarget,
+      resolvedTarget: "desktop_worker",
+      reason: "auto_operator_kill_switch",
+      preferredWorkerId,
+      selectedWorkerId: null,
+      resolvedAt: new Date().toISOString(),
+    });
+  }
+  if (!input.tenantExecutorEnabled) {
+    return remotionExecutionTargetResolutionSchema.parse({
+      requestedTarget: input.requestedTarget,
+      resolvedTarget: "desktop_worker",
+      reason: "auto_tenant_flag_disabled",
+      preferredWorkerId,
+      selectedWorkerId: null,
+      resolvedAt: new Date().toISOString(),
+    });
+  }
+  if (isRemotionExecutorReady(input.preferredWorker ?? null, input.nowMs)) {
+    return remotionExecutionTargetResolutionSchema.parse({
+      requestedTarget: input.requestedTarget,
+      resolvedTarget: "remotion_executor",
+      reason: "auto_dedicated_ready",
+      preferredWorkerId,
+      selectedWorkerId: preferredWorkerId,
+      resolvedAt: new Date().toISOString(),
+    });
+  }
+  return remotionExecutionTargetResolutionSchema.parse({
+    requestedTarget: input.requestedTarget,
+    resolvedTarget: "desktop_worker",
+    reason: "auto_no_eligible_executor",
+    preferredWorkerId,
+    selectedWorkerId: null,
+    resolvedAt: new Date().toISOString(),
+  });
+}
+
 const defaultRepo: WorkerSchedulerRepository = {
   async findJobByIdempotencyKey(tenantId, idempotencyKey) {
     const db = await getDb();
     const [job] = await db
       .select()
       .from(workerJobs)
-      .where(and(eq(workerJobs.tenantId, tenantId), eq(workerJobs.idempotencyKey, idempotencyKey)))
+      .where(
+        and(
+          eq(workerJobs.tenantId, tenantId),
+          eq(workerJobs.idempotencyKey, idempotencyKey)
+        )
+      )
       .limit(1);
     return job ?? null;
   },
@@ -212,7 +453,10 @@ const defaultRepo: WorkerSchedulerRepository = {
   },
   async insertJob(values) {
     const db = await getDb();
-    const [job] = await db.insert(workerJobs).values(values as any).returning();
+    const [job] = await db
+      .insert(workerJobs)
+      .values(values as any)
+      .returning();
     return job;
   },
   async findActiveRemotionPreviewJobForUser(tenantId, userId) {
@@ -226,8 +470,8 @@ const defaultRepo: WorkerSchedulerRepository = {
           eq(workerJobs.requestedByUserId, userId),
           eq(workerJobs.jobType, "remotion_render_video"),
           inArray(workerJobs.status, ["queued", "running"]),
-          sql`${workerJobs.capabilityRequirementsJson}->>'renderProfile' = 'preview'`,
-        ),
+          sql`${workerJobs.capabilityRequirementsJson}->>'renderProfile' = 'preview'`
+        )
       )
       .limit(1);
     return job ?? null;
@@ -239,18 +483,18 @@ function assertOpenClawEligible(input: QueueOpenClawWorkerJobInput): void {
     throw new WorkerSchedulerError(
       "unsupported_job_type",
       400,
-      `Job type ${input.jobType} is not supported by OpenClaw routing`,
+      `Job type ${input.jobType} is not supported by OpenClaw routing`
     );
   }
 
   if (
-    input.resourceProfile === "gpu_required"
-    || input.resourceProfile === "sandbox_required"
+    input.resourceProfile === "gpu_required" ||
+    input.resourceProfile === "sandbox_required"
   ) {
     throw new WorkerSchedulerError(
       "unsupported_resource_profile",
       400,
-      `Resource profile ${input.resourceProfile} is not supported by OpenClaw routing`,
+      `Resource profile ${input.resourceProfile} is not supported by OpenClaw routing`
     );
   }
 
@@ -259,24 +503,24 @@ function assertOpenClawEligible(input: QueueOpenClawWorkerJobInput): void {
     throw new WorkerSchedulerError(
       "unsupported_job_scope",
       400,
-      "Jobs that depend on local Windows file paths must not route to OpenClaw",
+      "Jobs that depend on local Windows file paths must not route to OpenClaw"
     );
   }
 
   const unsupportedFamily = input.capabilityFamilies.find(
-    (family) => !OPENCLAW_SUPPORTED_CAPABILITY_FAMILIES.includes(family),
+    family => !OPENCLAW_SUPPORTED_CAPABILITY_FAMILIES.includes(family)
   );
   if (unsupportedFamily) {
     throw new WorkerSchedulerError(
       "unsupported_capability_family",
       400,
-      `Capability family ${unsupportedFamily} is not supported by OpenClaw routing`,
+      `Capability family ${unsupportedFamily} is not supported by OpenClaw routing`
     );
   }
 }
 
 function buildWorkerBillingMetadata(
-  billing: WorkerJobBillingEnvelope | null,
+  billing: WorkerJobBillingEnvelope | null
 ): Record<string, unknown> | null {
   if (!billing) {
     return null;
@@ -292,12 +536,16 @@ function buildWorkerBillingMetadata(
 export function workerJobMatchesSelection(
   job: WorkerJobRecord,
   workerId: string,
-  capabilityHints: string[],
+  capabilityHints: string[]
 ): boolean {
-  const requirements = (job?.capabilityRequirementsJson ?? {}) as Record<string, unknown>;
-  const preferredWorkerId = typeof requirements.preferredWorkerId === "string"
-    ? requirements.preferredWorkerId
-    : "";
+  const requirements = (job?.capabilityRequirementsJson ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const preferredWorkerId =
+    typeof requirements.preferredWorkerId === "string"
+      ? requirements.preferredWorkerId
+      : "";
   if (preferredWorkerId && preferredWorkerId !== workerId) {
     return false;
   }
@@ -307,23 +555,27 @@ export function workerJobMatchesSelection(
   // When that explicit token is present it is the authoritative claim gate;
   // requiring the descriptive family strings as additional claim hints would
   // make conforming Hermes workers impossible to select.
-  const requiredClaimCapability = typeof requirements.requiredClaimCapability === "string"
-    ? requirements.requiredClaimCapability.trim()
-    : "";
+  const requiredClaimCapability =
+    typeof requirements.requiredClaimCapability === "string"
+      ? requirements.requiredClaimCapability.trim()
+      : "";
   // Existing queued jobs may predate `requiredClaimCapability`. Remotion
   // payloads are still versioned, so protect those rows too: an older worker
   // must not claim a job that its sidecar will reject, and a current worker
   // must not claim a payload from the retired contract either.
   if (job.jobType === "remotion_render_video") {
-    const payloadContractVersion = isPlainObject(job.inputJson)
-      && typeof job.inputJson.platformContractVersion === "string"
-      ? job.inputJson.platformContractVersion
-      : "";
-    if (payloadContractVersion !== REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION) {
+    const payloadContractVersion =
+      isPlainObject(job.inputJson) &&
+      typeof job.inputJson.platformContractVersion === "string"
+        ? job.inputJson.platformContractVersion
+        : "";
+    if (
+      payloadContractVersion !== REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION
+    ) {
       return false;
     }
     return capabilityHints.includes(
-      requiredClaimCapability || REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+      requiredClaimCapability || REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY
     );
   }
 
@@ -333,8 +585,9 @@ export function workerJobMatchesSelection(
 
   const requiredFamilies = Array.isArray(requirements.capabilityFamilies)
     ? requirements.capabilityFamilies.filter(
-      (value): value is string => typeof value === "string" && value.trim().length > 0,
-    )
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0
+      )
     : [];
   if (requiredFamilies.length === 0 || capabilityHints.length === 0) {
     return true;
@@ -355,7 +608,7 @@ export function workerJobMatchesSelection(
   // that gap; every existing single-family capabilityFamilies test in this
   // file is unaffected (single-element lists behave identically under
   // `.some()` and `.every()`).
-  return requiredFamilies.every((family) => capabilityHints.includes(family));
+  return requiredFamilies.every(family => capabilityHints.includes(family));
 }
 
 export async function queueOpenClawWorkerJob(
@@ -363,8 +616,10 @@ export async function queueOpenClawWorkerJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   assertOpenClawEligible(input);
   const repo = deps.repo ?? defaultRepo;
@@ -374,7 +629,7 @@ export async function queueOpenClawWorkerJob(
     throw new WorkerSchedulerError(
       "dispatch_disabled",
       503,
-      "OpenClaw external runtime dispatch is disabled by operator kill switch",
+      "OpenClaw external runtime dispatch is disabled by operator kill switch"
     );
   }
 
@@ -383,38 +638,44 @@ export async function queueOpenClawWorkerJob(
     throw new WorkerSchedulerError(
       "feature_disabled",
       403,
-      "OpenClaw external runtime dispatch is disabled for this tenant",
+      "OpenClaw external runtime dispatch is disabled for this tenant"
     );
   }
 
   if (input.idempotencyKey) {
-    const existing = await repo.findJobByIdempotencyKey(input.tenantId, input.idempotencyKey);
+    const existing = await repo.findJobByIdempotencyKey(
+      input.tenantId,
+      input.idempotencyKey
+    );
     if (existing) {
       return { created: false, job: existing };
     }
   }
 
   if (input.preferredWorkerId) {
-    const worker = await repo.findWorkerById(input.tenantId, input.preferredWorkerId);
+    const worker = await repo.findWorkerById(
+      input.tenantId,
+      input.preferredWorkerId
+    );
     if (!worker) {
       throw new WorkerSchedulerError(
         "worker_not_found",
         404,
-        `Preferred worker ${input.preferredWorkerId} was not found`,
+        `Preferred worker ${input.preferredWorkerId} was not found`
       );
     }
     if (worker.runtimeType !== OPENCLAW_RUNTIME_TYPE) {
       throw new WorkerSchedulerError(
         "worker_scope_mismatch",
         409,
-        "Preferred worker is not registered as an OpenClaw gateway worker",
+        "Preferred worker is not registered as an OpenClaw gateway worker"
       );
     }
     if (worker.status === "disabled") {
       throw new WorkerSchedulerError(
         "worker_state_invalid",
         409,
-        `Preferred worker ${worker.id} is disabled`,
+        `Preferred worker ${worker.id} is disabled`
       );
     }
   }
@@ -443,7 +704,8 @@ export async function queueOpenClawWorkerJob(
       workflowRunId: input.workflowRunId ?? null,
       requestedByUserId: input.requestedByUserId ?? null,
       requestedByPersonaId: input.requestedByPersonaId ?? null,
-      requestedBySystemComponent: input.requestedBySystemComponent ?? "worker_scheduler",
+      requestedBySystemComponent:
+        input.requestedBySystemComponent ?? "worker_scheduler",
       jobType: input.jobType,
       status: "queued",
       statusReason: input.description ?? null,
@@ -459,7 +721,10 @@ export async function queueOpenClawWorkerJob(
         description: input.description ?? null,
       },
       instructionsJson: {
-        intent: input.instructionsJson?.intent ?? input.capabilityFamilies[0] ?? "artifact-producing-session",
+        intent:
+          input.instructionsJson?.intent ??
+          input.capabilityFamilies[0] ??
+          "artifact-producing-session",
         ...(input.instructionsJson ?? {}),
         workerBilling: buildWorkerBillingMetadata(billing),
       },
@@ -539,8 +804,7 @@ export interface QueueDesktopComfyWorkflowRunJobInput extends ComfyWorkflowRunJo
   reservedCredits?: number | null;
 }
 
-export interface QueueDesktopHyperframesFinalCompositeJobInput
-  extends HyperframesFinalCompositeWorkerInput {
+export interface QueueDesktopHyperframesFinalCompositeJobInput extends HyperframesFinalCompositeWorkerInput {
   tenantId: string;
   teamId?: string | null;
   workflowRunId?: string | null;
@@ -594,6 +858,8 @@ export interface QueueHermesWorkerJobInput {
   idempotencyKey?: string | null;
   preferredWorkerId?: string | null;
   reservedCredits?: number | null;
+  /** Bounded parent/child lineage metadata; stored in existing instructionsJson. */
+  correlation?: HermesTaskCorrelation;
 }
 
 export interface QueueHiClawWorkerJobInput {
@@ -651,7 +917,9 @@ export type QueueWorkerJobByRuntimeInput =
       runtimeType: "hiclaw_cluster";
     } & QueueHiClawWorkerJobInput);
 
-function assertVideoAssemblyInputAuthorization(input: VideoAssemblyJobContract): void {
+function assertVideoAssemblyInputAuthorization(
+  input: VideoAssemblyJobContract
+): void {
   const allowedRoots = input.workspacePolicy.allowedSourceRoots;
   for (const inputRef of input.inputRefs) {
     if (inputRef.sourceKind !== "authorized_local_path" || !inputRef.path) {
@@ -661,7 +929,7 @@ function assertVideoAssemblyInputAuthorization(input: VideoAssemblyJobContract):
       throw new WorkerSchedulerError(
         "unauthorized_path",
         403,
-        `Path ${inputRef.path} is outside the approved workspace roots`,
+        `Path ${inputRef.path} is outside the approved workspace roots`
       );
     }
   }
@@ -674,7 +942,7 @@ function assertVideoAssemblyInputAuthorization(input: VideoAssemblyJobContract):
       throw new WorkerSchedulerError(
         "unauthorized_path",
         403,
-        `Clip source ${clip.sourceRef} is outside the approved workspace roots`,
+        `Clip source ${clip.sourceRef} is outside the approved workspace roots`
       );
     }
   }
@@ -690,15 +958,20 @@ function assertVideoAssemblyInputAuthorization(input: VideoAssemblyJobContract):
       throw new WorkerSchedulerError(
         "unauthorized_path",
         403,
-        `Subtitle source ${supplementalRef} is outside the approved workspace roots`,
+        `Subtitle source ${supplementalRef} is outside the approved workspace roots`
       );
     }
   }
 }
 
-function buildDesktopVideoCapabilityFamilies(input: VideoAssemblyJobContract): string[] {
+function buildDesktopVideoCapabilityFamilies(
+  input: VideoAssemblyJobContract
+): string[] {
   const families = new Set<string>(["video-edit", "file-access"]);
-  if (input.subtitlePlan.mode === "burn_in" || input.subtitlePlan.mode === "soft_mux") {
+  if (
+    input.subtitlePlan.mode === "burn_in" ||
+    input.subtitlePlan.mode === "soft_mux"
+  ) {
     families.add("subtitle-burn");
   }
   if (input.renderProfile.gpuRequired) {
@@ -707,34 +980,40 @@ function buildDesktopVideoCapabilityFamilies(input: VideoAssemblyJobContract): s
   return Array.from(families);
 }
 
-function assertLocalFolderIngestInputAuthorization(input: LocalFolderIngestJobContract): void {
+function assertLocalFolderIngestInputAuthorization(
+  input: LocalFolderIngestJobContract
+): void {
   const allowedRoots = input.workspacePolicy.allowedSourceRoots;
   for (const root of input.roots) {
     if (!isWorkerPathWithinAllowedRoots(root.path, allowedRoots)) {
       throw new WorkerSchedulerError(
         "unauthorized_path",
         403,
-        `Path ${root.path} is outside the approved workspace roots`,
+        `Path ${root.path} is outside the approved workspace roots`
       );
     }
   }
 }
 
-function assertPotentialLocalFolderIngestInputAuthorization(rawInput: unknown): void {
+function assertPotentialLocalFolderIngestInputAuthorization(
+  rawInput: unknown
+): void {
   if (!rawInput || typeof rawInput !== "object") {
     return;
   }
 
   const workspacePolicy = Reflect.get(rawInput, "workspacePolicy");
-  const allowedRoots = workspacePolicy && typeof workspacePolicy === "object"
-    ? Reflect.get(workspacePolicy, "allowedSourceRoots")
-    : null;
+  const allowedRoots =
+    workspacePolicy && typeof workspacePolicy === "object"
+      ? Reflect.get(workspacePolicy, "allowedSourceRoots")
+      : null;
   if (!Array.isArray(allowedRoots)) {
     return;
   }
 
   const normalizedAllowedRoots = allowedRoots.filter(
-    (value): value is string => typeof value === "string" && value.trim().length > 0,
+    (value): value is string =>
+      typeof value === "string" && value.trim().length > 0
   );
   if (normalizedAllowedRoots.length === 0) {
     return;
@@ -757,7 +1036,7 @@ function assertPotentialLocalFolderIngestInputAuthorization(rawInput: unknown): 
       throw new WorkerSchedulerError(
         "unauthorized_path",
         403,
-        `Path ${path} is outside the approved workspace roots`,
+        `Path ${path} is outside the approved workspace roots`
       );
     }
   }
@@ -772,13 +1051,13 @@ function assertLoopbackComfyService(baseUrl: string): void {
     throw new WorkerSchedulerError(
       "unsupported_job_scope",
       400,
-      "ComfyUI desktop jobs require a local-only loopback service endpoint",
+      "ComfyUI desktop jobs require a local-only loopback service endpoint"
     );
   }
 }
 
 function buildDesktopComfyImageGenerationCapabilityFamilies(
-  input: ComfyImageGenerationJobContract,
+  input: ComfyImageGenerationJobContract
 ): string[] {
   const families = new Set<string>(["comfyui-image-generate"]);
   if (input.generationSpec.gpuRequired) {
@@ -788,7 +1067,7 @@ function buildDesktopComfyImageGenerationCapabilityFamilies(
 }
 
 function buildDesktopComfyWorkflowRunCapabilityFamilies(
-  input: ComfyWorkflowRunJobContract,
+  input: ComfyWorkflowRunJobContract
 ): string[] {
   const families = new Set<string>(["comfyui-workflow-run"]);
   if (input.executionPolicy.expectedOutputTypes.includes("images")) {
@@ -804,7 +1083,9 @@ function buildDesktopHyperframesFinalCompositeCapabilityFamilies(): string[] {
   return [...HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES];
 }
 
-function normalizeWorkerWorkflowRunId(value: string | null | undefined): string | null {
+function normalizeWorkerWorkflowRunId(
+  value: string | null | undefined
+): string | null {
   const trimmed = typeof value === "string" ? value.trim() : "";
   if (!trimmed) {
     return null;
@@ -824,27 +1105,27 @@ function assertPreferredWorkerCompatible(
   worker: WorkerRecord | null,
   preferredWorkerId: string,
   runtimeType: WorkerRuntimeType,
-  runtimeLabel: string,
+  runtimeLabel: string
 ): void {
   if (!worker) {
     throw new WorkerSchedulerError(
       "worker_not_found",
       404,
-      `Preferred worker ${preferredWorkerId} was not found`,
+      `Preferred worker ${preferredWorkerId} was not found`
     );
   }
   if (worker.runtimeType !== runtimeType) {
     throw new WorkerSchedulerError(
       "worker_scope_mismatch",
       409,
-      `Preferred worker is not registered as ${runtimeLabel}`,
+      `Preferred worker is not registered as ${runtimeLabel}`
     );
   }
   if (worker.status === "disabled" || worker.status === "draining") {
     throw new WorkerSchedulerError(
       "worker_state_invalid",
       409,
-      `Preferred worker ${worker.id} is not accepting new work`,
+      `Preferred worker ${worker.id} is not accepting new work`
     );
   }
 }
@@ -856,15 +1137,20 @@ function isAbsoluteWindowsOrUncPath(value: string): boolean {
 
 function findNestedExternalLocalWindowsPath(
   value: unknown,
-  trail: string[] = [],
+  trail: string[] = []
 ): string | null {
   if (typeof value === "string") {
-    return isAbsoluteWindowsOrUncPath(value) ? trail.join(".") || "<root>" : null;
+    return isAbsoluteWindowsOrUncPath(value)
+      ? trail.join(".") || "<root>"
+      : null;
   }
 
   if (Array.isArray(value)) {
     for (const [index, item] of value.entries()) {
-      const match = findNestedExternalLocalWindowsPath(item, [...trail, String(index)]);
+      const match = findNestedExternalLocalWindowsPath(item, [
+        ...trail,
+        String(index),
+      ]);
       if (match) {
         return match;
       }
@@ -877,7 +1163,10 @@ function findNestedExternalLocalWindowsPath(
   }
 
   for (const [key, nestedValue] of Object.entries(value)) {
-    const match = findNestedExternalLocalWindowsPath(nestedValue, [...trail, key]);
+    const match = findNestedExternalLocalWindowsPath(nestedValue, [
+      ...trail,
+      key,
+    ]);
     if (match) {
       return match;
     }
@@ -888,7 +1177,7 @@ function findNestedExternalLocalWindowsPath(
 
 function assertNoExternalLocalWindowsPath(
   inputJson: Record<string, unknown> | undefined,
-  runtimeLabel: string,
+  runtimeLabel: string
 ): void {
   if (!inputJson) {
     return;
@@ -898,7 +1187,7 @@ function assertNoExternalLocalWindowsPath(
     throw new WorkerSchedulerError(
       "unsupported_job_scope",
       400,
-      `${runtimeLabel} jobs must not depend on local Windows file paths (${match})`,
+      `${runtimeLabel} jobs must not depend on local Windows file paths (${match})`
     );
   }
 }
@@ -908,8 +1197,10 @@ export async function queueDesktopVideoAssemblyJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   const input = videoAssemblyJobContractSchema.parse(rawInput);
   assertVideoAssemblyInputAuthorization(input);
@@ -920,7 +1211,7 @@ export async function queueDesktopVideoAssemblyJob(
     throw new WorkerSchedulerError(
       "dispatch_disabled",
       503,
-      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch",
+      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch"
     );
   }
 
@@ -929,38 +1220,44 @@ export async function queueDesktopVideoAssemblyJob(
     throw new WorkerSchedulerError(
       "feature_disabled",
       403,
-      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
+      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`
     );
   }
 
   if (rawInput.idempotencyKey) {
-    const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, rawInput.idempotencyKey);
+    const existing = await repo.findJobByIdempotencyKey(
+      rawInput.tenantId,
+      rawInput.idempotencyKey
+    );
     if (existing) {
       return { created: false, job: existing };
     }
   }
 
   if (rawInput.preferredWorkerId) {
-    const worker = await repo.findWorkerById(rawInput.tenantId, rawInput.preferredWorkerId);
+    const worker = await repo.findWorkerById(
+      rawInput.tenantId,
+      rawInput.preferredWorkerId
+    );
     if (!worker) {
       throw new WorkerSchedulerError(
         "worker_not_found",
         404,
-        `Preferred worker ${rawInput.preferredWorkerId} was not found`,
+        `Preferred worker ${rawInput.preferredWorkerId} was not found`
       );
     }
     if (worker.runtimeType !== DESKTOP_RUNTIME_TYPE) {
       throw new WorkerSchedulerError(
         "worker_scope_mismatch",
         409,
-        "Preferred worker is not registered as a Desktop + ZeroClaw worker",
+        "Preferred worker is not registered as a Desktop + ZeroClaw worker"
       );
     }
     if (worker.status === "disabled" || worker.status === "draining") {
       throw new WorkerSchedulerError(
         "worker_state_invalid",
         409,
-        `Preferred worker ${worker.id} is not accepting new work`,
+        `Preferred worker ${worker.id} is not accepting new work`
       );
     }
   }
@@ -989,12 +1286,15 @@ export async function queueDesktopVideoAssemblyJob(
       workflowRunId: rawInput.workflowRunId ?? null,
       requestedByUserId: rawInput.requestedByUserId ?? null,
       requestedByPersonaId: rawInput.requestedByPersonaId ?? null,
-      requestedBySystemComponent: rawInput.requestedBySystemComponent ?? "worker_scheduler",
+      requestedBySystemComponent:
+        rawInput.requestedBySystemComponent ?? "worker_scheduler",
       jobType: "video_assembly",
       status: "queued",
       statusReason: "desktop_video_assembly",
       priority: rawInput.priority ?? 25,
-      resourceProfile: rawInput.renderProfile.gpuRequired ? "gpu_required" : "cpu_heavy",
+      resourceProfile: rawInput.renderProfile.gpuRequired
+        ? "gpu_required"
+        : "cpu_heavy",
       capabilityRequirementsJson: {
         capabilityFamilies: buildDesktopVideoCapabilityFamilies(input),
         preferredWorkerId: rawInput.preferredWorkerId ?? null,
@@ -1041,8 +1341,7 @@ export async function queueDesktopVideoAssemblyJob(
  * pattern as `QueueRemotionRenderVideoJobInput` extending
  * `RemotionRenderVideoWorkerInput`.
  */
-export interface QueueVerticalDramaFfmpegAssemblyJobInput
-  extends VerticalDramaFfmpegAssemblyJobContract {
+export interface QueueVerticalDramaFfmpegAssemblyJobInput extends VerticalDramaFfmpegAssemblyJobContract {
   tenantId: string;
   requestedByUserId?: number | null;
   priority?: number;
@@ -1059,7 +1358,7 @@ const VERTICAL_DRAMA_FFMPEG_ASSEMBLY_TIMEOUT_SECONDS = 1800;
  * `buildRemotionRenderVideoIdempotencyKey` above.
  */
 function buildVerticalDramaFfmpegAssemblyIdempotencyKey(
-  input: VerticalDramaFfmpegAssemblyJobContract,
+  input: VerticalDramaFfmpegAssemblyJobContract
 ): string {
   const ownerKey = input.owner.episodeId ?? input.owner.seriesId;
   const groupSuffix = input.display?.groupIndex ?? "";
@@ -1102,7 +1401,7 @@ export async function queueVerticalDramaFfmpegAssemblyJob(
   rawInput: QueueVerticalDramaFfmpegAssemblyJobInput,
   deps: {
     repo?: WorkerSchedulerRepository;
-  } = {},
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   const {
     tenantId: _tenantId,
@@ -1115,14 +1414,20 @@ export async function queueVerticalDramaFfmpegAssemblyJob(
   const repo = deps.repo ?? defaultRepo;
 
   const idempotencyKey =
-    rawInput.idempotencyKey ?? buildVerticalDramaFfmpegAssemblyIdempotencyKey(input);
+    rawInput.idempotencyKey ??
+    buildVerticalDramaFfmpegAssemblyIdempotencyKey(input);
 
-  const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, idempotencyKey);
+  const existing = await repo.findJobByIdempotencyKey(
+    rawInput.tenantId,
+    idempotencyKey
+  );
   if (existing) {
     return { created: false, job: existing };
   }
 
-  const capabilityFamilies = [...VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES];
+  const capabilityFamilies = [
+    ...VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES,
+  ];
 
   const job = await repo.insertJob({
     tenantId: rawInput.tenantId,
@@ -1131,7 +1436,8 @@ export async function queueVerticalDramaFfmpegAssemblyJob(
     runtimeType: DESKTOP_RUNTIME_TYPE,
     workflowRunId: null,
     requestedByUserId: rawInput.requestedByUserId ?? null,
-    requestedBySystemComponent: "vertical_drama_ffmpeg_assembly_worker_scheduler",
+    requestedBySystemComponent:
+      "vertical_drama_ffmpeg_assembly_worker_scheduler",
     jobType: VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE,
     status: "queued",
     statusReason: "vertical_drama_ffmpeg_assembly_worker",
@@ -1171,8 +1477,10 @@ export async function queueDesktopLocalFolderIngestJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   assertPotentialLocalFolderIngestInputAuthorization(rawInput);
   const input = localFolderIngestJobContractSchema.parse(rawInput);
@@ -1184,7 +1492,7 @@ export async function queueDesktopLocalFolderIngestJob(
     throw new WorkerSchedulerError(
       "dispatch_disabled",
       503,
-      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch",
+      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch"
     );
   }
 
@@ -1193,38 +1501,44 @@ export async function queueDesktopLocalFolderIngestJob(
     throw new WorkerSchedulerError(
       "feature_disabled",
       403,
-      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
+      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`
     );
   }
 
   if (rawInput.idempotencyKey) {
-    const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, rawInput.idempotencyKey);
+    const existing = await repo.findJobByIdempotencyKey(
+      rawInput.tenantId,
+      rawInput.idempotencyKey
+    );
     if (existing) {
       return { created: false, job: existing };
     }
   }
 
   if (rawInput.preferredWorkerId) {
-    const worker = await repo.findWorkerById(rawInput.tenantId, rawInput.preferredWorkerId);
+    const worker = await repo.findWorkerById(
+      rawInput.tenantId,
+      rawInput.preferredWorkerId
+    );
     if (!worker) {
       throw new WorkerSchedulerError(
         "worker_not_found",
         404,
-        `Preferred worker ${rawInput.preferredWorkerId} was not found`,
+        `Preferred worker ${rawInput.preferredWorkerId} was not found`
       );
     }
     if (worker.runtimeType !== DESKTOP_RUNTIME_TYPE) {
       throw new WorkerSchedulerError(
         "worker_scope_mismatch",
         409,
-        "Preferred worker is not registered as a Desktop + ZeroClaw worker",
+        "Preferred worker is not registered as a Desktop + ZeroClaw worker"
       );
     }
     if (worker.status === "disabled" || worker.status === "draining") {
       throw new WorkerSchedulerError(
         "worker_state_invalid",
         409,
-        `Preferred worker ${worker.id} is not accepting new work`,
+        `Preferred worker ${worker.id} is not accepting new work`
       );
     }
   }
@@ -1254,7 +1568,8 @@ export async function queueDesktopLocalFolderIngestJob(
       workflowRunId: rawInput.workflowRunId ?? null,
       requestedByUserId: rawInput.requestedByUserId ?? null,
       requestedByPersonaId: rawInput.requestedByPersonaId ?? null,
-      requestedBySystemComponent: rawInput.requestedBySystemComponent ?? "worker_scheduler",
+      requestedBySystemComponent:
+        rawInput.requestedBySystemComponent ?? "worker_scheduler",
       jobType: "local_folder_ingest",
       status: "queued",
       statusReason: "desktop_local_folder_ingest",
@@ -1295,8 +1610,10 @@ export async function queueDesktopComfyImageGenerationJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   const input = comfyImageGenerationJobContractSchema.parse(rawInput);
   assertLoopbackComfyService(input.service.baseUrl);
@@ -1307,7 +1624,7 @@ export async function queueDesktopComfyImageGenerationJob(
     throw new WorkerSchedulerError(
       "dispatch_disabled",
       503,
-      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch",
+      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch"
     );
   }
 
@@ -1316,28 +1633,35 @@ export async function queueDesktopComfyImageGenerationJob(
     throw new WorkerSchedulerError(
       "feature_disabled",
       403,
-      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
+      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`
     );
   }
 
   if (rawInput.idempotencyKey) {
-    const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, rawInput.idempotencyKey);
+    const existing = await repo.findJobByIdempotencyKey(
+      rawInput.tenantId,
+      rawInput.idempotencyKey
+    );
     if (existing) {
       return { created: false, job: existing };
     }
   }
 
   if (rawInput.preferredWorkerId) {
-    const worker = await repo.findWorkerById(rawInput.tenantId, rawInput.preferredWorkerId);
+    const worker = await repo.findWorkerById(
+      rawInput.tenantId,
+      rawInput.preferredWorkerId
+    );
     assertPreferredWorkerCompatible(
       worker,
       rawInput.preferredWorkerId,
       DESKTOP_RUNTIME_TYPE,
-      "a Desktop + ZeroClaw worker",
+      "a Desktop + ZeroClaw worker"
     );
   }
 
-  const capabilityFamilies = buildDesktopComfyImageGenerationCapabilityFamilies(input);
+  const capabilityFamilies =
+    buildDesktopComfyImageGenerationCapabilityFamilies(input);
   const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
   const billing = rawInput.requestedByUserId
     ? await reserveCredits({
@@ -1362,12 +1686,15 @@ export async function queueDesktopComfyImageGenerationJob(
       workflowRunId: rawInput.workflowRunId ?? null,
       requestedByUserId: rawInput.requestedByUserId ?? null,
       requestedByPersonaId: rawInput.requestedByPersonaId ?? null,
-      requestedBySystemComponent: rawInput.requestedBySystemComponent ?? "worker_scheduler",
+      requestedBySystemComponent:
+        rawInput.requestedBySystemComponent ?? "worker_scheduler",
       jobType: "comfy_image_generation",
       status: "queued",
       statusReason: "desktop_comfy_image_generation",
       priority: rawInput.priority ?? 22,
-      resourceProfile: input.generationSpec.gpuRequired ? "gpu_required" : "cpu_heavy",
+      resourceProfile: input.generationSpec.gpuRequired
+        ? "gpu_required"
+        : "cpu_heavy",
       capabilityRequirementsJson: {
         capabilityFamilies,
         preferredWorkerId: rawInput.preferredWorkerId ?? null,
@@ -1378,7 +1705,8 @@ export async function queueDesktopComfyImageGenerationJob(
         workerBilling: buildWorkerBillingMetadata(billing),
         requiredProgressStages: [...COMFY_IMAGE_GENERATION_PROGRESS_STAGES],
       },
-      timeoutSeconds: rawInput.timeoutSeconds ?? Math.max(input.service.timeoutSeconds, 900),
+      timeoutSeconds:
+        rawInput.timeoutSeconds ?? Math.max(input.service.timeoutSeconds, 900),
       retryPolicyJson: {
         maxAttempts: 2,
         backoffSeconds: 90,
@@ -1400,8 +1728,10 @@ export async function queueDesktopComfyWorkflowRunJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   const input = comfyWorkflowRunJobContractSchema.parse(rawInput);
   assertLoopbackComfyService(input.service.baseUrl);
@@ -1412,7 +1742,7 @@ export async function queueDesktopComfyWorkflowRunJob(
     throw new WorkerSchedulerError(
       "dispatch_disabled",
       503,
-      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch",
+      "Desktop ZeroClaw worker dispatch is disabled by operator kill switch"
     );
   }
 
@@ -1421,28 +1751,35 @@ export async function queueDesktopComfyWorkflowRunJob(
     throw new WorkerSchedulerError(
       "feature_disabled",
       403,
-      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
+      `${getWorkerRuntimeDefinition(DESKTOP_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`
     );
   }
 
   if (rawInput.idempotencyKey) {
-    const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, rawInput.idempotencyKey);
+    const existing = await repo.findJobByIdempotencyKey(
+      rawInput.tenantId,
+      rawInput.idempotencyKey
+    );
     if (existing) {
       return { created: false, job: existing };
     }
   }
 
   if (rawInput.preferredWorkerId) {
-    const worker = await repo.findWorkerById(rawInput.tenantId, rawInput.preferredWorkerId);
+    const worker = await repo.findWorkerById(
+      rawInput.tenantId,
+      rawInput.preferredWorkerId
+    );
     assertPreferredWorkerCompatible(
       worker,
       rawInput.preferredWorkerId,
       DESKTOP_RUNTIME_TYPE,
-      "a Desktop + ZeroClaw worker",
+      "a Desktop + ZeroClaw worker"
     );
   }
 
-  const capabilityFamilies = buildDesktopComfyWorkflowRunCapabilityFamilies(input);
+  const capabilityFamilies =
+    buildDesktopComfyWorkflowRunCapabilityFamilies(input);
   const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
   const billing = rawInput.requestedByUserId
     ? await reserveCredits({
@@ -1467,12 +1804,15 @@ export async function queueDesktopComfyWorkflowRunJob(
       workflowRunId: rawInput.workflowRunId ?? null,
       requestedByUserId: rawInput.requestedByUserId ?? null,
       requestedByPersonaId: rawInput.requestedByPersonaId ?? null,
-      requestedBySystemComponent: rawInput.requestedBySystemComponent ?? "worker_scheduler",
+      requestedBySystemComponent:
+        rawInput.requestedBySystemComponent ?? "worker_scheduler",
       jobType: "comfy_workflow_run",
       status: "queued",
       statusReason: "desktop_comfy_workflow_run",
       priority: rawInput.priority ?? 21,
-      resourceProfile: input.executionPolicy.gpuRequired ? "gpu_required" : "cpu_heavy",
+      resourceProfile: input.executionPolicy.gpuRequired
+        ? "gpu_required"
+        : "cpu_heavy",
       capabilityRequirementsJson: {
         capabilityFamilies,
         preferredWorkerId: rawInput.preferredWorkerId ?? null,
@@ -1483,7 +1823,8 @@ export async function queueDesktopComfyWorkflowRunJob(
         workerBilling: buildWorkerBillingMetadata(billing),
         requiredProgressStages: [...COMFY_WORKFLOW_RUN_PROGRESS_STAGES],
       },
-      timeoutSeconds: rawInput.timeoutSeconds ?? Math.max(input.service.timeoutSeconds, 900),
+      timeoutSeconds:
+        rawInput.timeoutSeconds ?? Math.max(input.service.timeoutSeconds, 900),
       retryPolicyJson: {
         maxAttempts: 2,
         backoffSeconds: 90,
@@ -1535,48 +1876,77 @@ async function queueFeatureGatedExternalRuntimeJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   const repo = deps.repo ?? defaultRepo;
   const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
 
   if (!input.jobType.trim()) {
-    throw new WorkerSchedulerError("unsupported_job_type", 400, "jobType is required");
+    throw new WorkerSchedulerError(
+      "unsupported_job_type",
+      400,
+      "jobType is required"
+    );
   }
 
-  if (config.unsupportedResourceProfiles.includes(
-    (input.resourceProfile ?? config.defaultResourceProfile) as WorkerResourceProfile,
-  )) {
+  if (
+    config.unsupportedResourceProfiles.includes(
+      (input.resourceProfile ??
+        config.defaultResourceProfile) as WorkerResourceProfile
+    )
+  ) {
     throw new WorkerSchedulerError(
       "unsupported_resource_profile",
       400,
-      `Resource profile ${input.resourceProfile} is not supported by ${config.runtimeLabel} routing`,
+      `Resource profile ${input.resourceProfile} is not supported by ${config.runtimeLabel} routing`
     );
   }
 
   assertNoExternalLocalWindowsPath(input.inputJson, config.runtimeLabel);
 
-  const flagValue = process.env[`${input.runtimeType.toUpperCase()}_DISPATCH_ENABLED`];
+  const flagValue =
+    process.env[`${input.runtimeType.toUpperCase()}_DISPATCH_ENABLED`];
   if (flagValue === "false") {
-    throw new WorkerSchedulerError("dispatch_disabled", 503, config.dispatchDisabledMessage);
+    throw new WorkerSchedulerError(
+      "dispatch_disabled",
+      503,
+      config.dispatchDisabledMessage
+    );
   }
 
   const tenantFlags = await getFeatureFlags(input.tenantId);
   if (!tenantFlags[config.featureFlagKey]) {
-    throw new WorkerSchedulerError("feature_disabled", 403, config.featureDisabledMessage);
+    throw new WorkerSchedulerError(
+      "feature_disabled",
+      403,
+      config.featureDisabledMessage
+    );
   }
 
   if (input.idempotencyKey) {
-    const existing = await repo.findJobByIdempotencyKey(input.tenantId, input.idempotencyKey);
+    const existing = await repo.findJobByIdempotencyKey(
+      input.tenantId,
+      input.idempotencyKey
+    );
     if (existing) {
       return { created: false, job: existing };
     }
   }
 
   if (input.preferredWorkerId) {
-    const worker = await repo.findWorkerById(input.tenantId, input.preferredWorkerId);
-    assertPreferredWorkerCompatible(worker, input.preferredWorkerId, input.runtimeType, config.runtimeLabel);
+    const worker = await repo.findWorkerById(
+      input.tenantId,
+      input.preferredWorkerId
+    );
+    assertPreferredWorkerCompatible(
+      worker,
+      input.preferredWorkerId,
+      input.runtimeType,
+      config.runtimeLabel
+    );
   }
 
   const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
@@ -1603,7 +1973,8 @@ async function queueFeatureGatedExternalRuntimeJob(
       workflowRunId: input.workflowRunId ?? null,
       requestedByUserId: input.requestedByUserId ?? null,
       requestedByPersonaId: input.requestedByPersonaId ?? null,
-      requestedBySystemComponent: input.requestedBySystemComponent ?? "worker_scheduler",
+      requestedBySystemComponent:
+        input.requestedBySystemComponent ?? "worker_scheduler",
       jobType: input.jobType.trim(),
       status: "queued",
       statusReason: config.statusReason,
@@ -1645,7 +2016,7 @@ export async function queueDesktopHyperframesFinalCompositeJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-  } = {},
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   const input = hyperframesFinalCompositeWorkerInputSchema.parse(rawInput);
   const repo = deps.repo ?? defaultRepo;
@@ -1654,28 +2025,35 @@ export async function queueDesktopHyperframesFinalCompositeJob(
     throw new WorkerSchedulerError(
       "dispatch_disabled",
       503,
-      "Smart AI Hub Worker App dispatch is disabled by operator kill switch",
+      "Smart AI Hub Worker App dispatch is disabled by operator kill switch"
     );
   }
 
   if (rawInput.idempotencyKey) {
-    const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, rawInput.idempotencyKey);
+    const existing = await repo.findJobByIdempotencyKey(
+      rawInput.tenantId,
+      rawInput.idempotencyKey
+    );
     if (existing) {
       return { created: false, job: existing };
     }
   }
 
   if (rawInput.preferredWorkerId) {
-    const worker = await repo.findWorkerById(rawInput.tenantId, rawInput.preferredWorkerId);
+    const worker = await repo.findWorkerById(
+      rawInput.tenantId,
+      rawInput.preferredWorkerId
+    );
     assertPreferredWorkerCompatible(
       worker,
       rawInput.preferredWorkerId,
       DESKTOP_RUNTIME_TYPE,
-      "a Smart AI Hub Worker App desktop worker",
+      "a Smart AI Hub Worker App desktop worker"
     );
   }
 
-  const capabilityFamilies = buildDesktopHyperframesFinalCompositeCapabilityFamilies();
+  const capabilityFamilies =
+    buildDesktopHyperframesFinalCompositeCapabilityFamilies();
   const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
   const billing = rawInput.requestedByUserId
     ? await reserveCredits({
@@ -1701,10 +2079,13 @@ export async function queueDesktopHyperframesFinalCompositeJob(
       teamId: rawInput.teamId ?? null,
       workerId: null,
       runtimeType: DESKTOP_RUNTIME_TYPE,
-      workflowRunId: normalizeWorkerWorkflowRunId(rawInput.workflowRunId ?? input.source.runId),
+      workflowRunId: normalizeWorkerWorkflowRunId(
+        rawInput.workflowRunId ?? input.source.runId
+      ),
       requestedByUserId: rawInput.requestedByUserId ?? null,
       requestedByPersonaId: rawInput.requestedByPersonaId ?? null,
-      requestedBySystemComponent: rawInput.requestedBySystemComponent ?? "hyperframes_worker_scheduler",
+      requestedBySystemComponent:
+        rawInput.requestedBySystemComponent ?? "hyperframes_worker_scheduler",
       jobType: "hyperframes_final_composite",
       status: "queued",
       statusReason: "hyperframes_final_composite_worker",
@@ -1715,28 +2096,35 @@ export async function queueDesktopHyperframesFinalCompositeJob(
         preferredWorkerId: rawInput.preferredWorkerId ?? null,
         runtimeProfileId: input.runtimeProfileId,
         requireOfficialRuntime: input.outputRequirements.requireOfficialRuntime,
-        requireCssBrowserRuntime: input.outputRequirements.requireCssBrowserRuntime,
+        requireCssBrowserRuntime:
+          input.outputRequirements.requireCssBrowserRuntime,
         rejectFallbackRender: input.outputRequirements.rejectFallbackRender,
       },
       inputJson: input,
       instructionsJson: {
         intent: "hyperframes_final_composite",
         workerBilling: buildWorkerBillingMetadata(billing),
-        requiredProgressStages: [...HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES],
+        requiredProgressStages: [
+          ...HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
+        ],
         outputPolicy: {
           format: input.outputRequirements.format,
           aspectRatio: input.outputRequirements.aspectRatio,
           width: input.outputRequirements.width,
           height: input.outputRequirements.height,
           fps: input.outputRequirements.fps,
-          requireOfficialRuntime: input.outputRequirements.requireOfficialRuntime,
+          requireOfficialRuntime:
+            input.outputRequirements.requireOfficialRuntime,
           rejectFallbackRender: input.outputRequirements.rejectFallbackRender,
-          requireCssBrowserRuntime: input.outputRequirements.requireCssBrowserRuntime,
-          requireServerVerification: input.outputRequirements.requireServerVerification,
+          requireCssBrowserRuntime:
+            input.outputRequirements.requireCssBrowserRuntime,
+          requireServerVerification:
+            input.outputRequirements.requireServerVerification,
           publishToLibrary: input.outputRequirements.publishToLibrary,
         },
         verificationPolicy: {
-          serverVerifiedBeforePublish: input.outputRequirements.requireServerVerification,
+          serverVerifiedBeforePublish:
+            input.outputRequirements.requireServerVerification,
           expectedDurationSec: input.finalVideoLengthSec,
           compositionHash: input.compositionHash,
           timelineHash: input.timelineHash,
@@ -1786,6 +2174,8 @@ export interface QueueRemotionRenderVideoJobInput extends RemotionRenderVideoWor
    * user's role, not from client-supplied input.
    */
   isAdminRequester?: boolean;
+  executionTarget?: "auto" | "desktop_worker" | "remotion_executor";
+  preferredWorkerId?: string | null;
 }
 
 // The sidecar owns bounded transient retries: 3 x 10 minutes per attempt plus 20s/60s
@@ -1810,27 +2200,42 @@ function buildRemotionRenderVideoIdempotencyKey(input: {
  * product decision for a later pass; this only needs to scale sensibly with
  * the inputs already on the parsed job payload.
  */
-function estimateRemotionRenderVideoCredits(input: RemotionRenderVideoWorkerInput): number {
-  const durationSec = input.durationInFrames / Math.max(1, input.renderProfile.fps);
+function estimateRemotionRenderVideoCredits(
+  input: RemotionRenderVideoWorkerInput
+): number {
+  const durationSec =
+    input.durationInFrames / Math.max(1, input.renderProfile.fps);
   const pixelCount = input.renderProfile.width * input.renderProfile.height;
-  const resolutionClass = pixelCount <= 540 * 960 ? 1 : pixelCount <= 1080 * 1920 ? 2 : 3;
+  const resolutionClass =
+    pixelCount <= 540 * 960 ? 1 : pixelCount <= 1080 * 1920 ? 2 : 3;
   const costClass = input.renderProfile.profile === "final" ? 2 : 1;
   return Math.max(
     REMOTION_RENDER_VIDEO_DEFAULT_CREDITS,
-    Math.ceil(durationSec * resolutionClass * costClass),
+    Math.ceil(durationSec * resolutionClass * costClass)
   );
 }
 
-function computeRemotionRenderVideoTimeoutSeconds(input: RemotionRenderVideoWorkerInput): number {
-  const durationSec = input.durationInFrames / Math.max(1, input.renderProfile.fps);
+function computeRemotionRenderVideoTimeoutSeconds(
+  input: RemotionRenderVideoWorkerInput
+): number {
+  const durationSec =
+    input.durationInFrames / Math.max(1, input.renderProfile.fps);
   const sidecarRetryBudgetSeconds =
-    (REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS / 1000) * REMOTION_RENDER_VIDEO_MAX_ATTEMPTS +
-    REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS.reduce((sum, delayMs) => sum + delayMs / 1000, 0) +
+    (REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS / 1000) *
+      REMOTION_RENDER_VIDEO_MAX_ATTEMPTS +
+    REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS.reduce(
+      (sum, delayMs) => sum + delayMs / 1000,
+      0
+    ) +
     120;
   // Heuristic: real render + post-passes budget, ~4x realtime plus a fixed
   // overhead, floored at the bounded sidecar retry budget and one hour.
   const scaled = Math.ceil(durationSec * 4) + 120;
-  return Math.max(REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS, sidecarRetryBudgetSeconds, scaled);
+  return Math.max(
+    REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS,
+    sidecarRetryBudgetSeconds,
+    scaled
+  );
 }
 
 /**
@@ -1853,8 +2258,11 @@ export async function queueRemotionRenderVideoJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<{ remotionRenderVideoJobEnabled: boolean }>;
-  } = {},
+    getFeatureFlags?: (tenantId: string) => Promise<{
+      remotionRenderVideoJobEnabled: boolean;
+      remotionDedicatedExecutorEnabled?: boolean;
+    }>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   // `remotionRenderVideoWorkerInputSchema` is `.strict()` (section-03, spec
   // §6.2 drift guard) — it rejects the queue-only additive fields
@@ -1870,55 +2278,112 @@ export async function queueRemotionRenderVideoJob(
     idempotencyKey: _idempotencyKey,
     reservedCredits: _reservedCredits,
     isAdminRequester: _isAdminRequester,
+    executionTarget: _executionTarget,
+    preferredWorkerId: _preferredWorkerId,
     ...corePayload
   } = rawInput;
   const input = remotionRenderVideoWorkerInputSchema.parse(corePayload);
   const repo = deps.repo ?? defaultRepo;
   const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
 
-  const rateLimiter = rawInput.isAdminRequester
-    ? remotionRenderSubmissionLimiterAdmin
-    : remotionRenderSubmissionLimiter;
-  const rateLimitKey = `${rawInput.tenantId}:${rawInput.requestedByUserId ?? "anonymous"}`;
-  if (!rateLimiter.isAllowed(rateLimitKey)) {
-    throw new WorkerSchedulerError(
-      "rate_limited",
-      429,
-      "Too many remotion_render_video submissions; the limit is 6 per minute (30 per minute for admins)",
-    );
-  }
-
-  if (!isDesktopWorkerDispatchEnabled()) {
-    throw new WorkerSchedulerError(
-      "dispatch_disabled",
-      503,
-      "Smart AI Hub Worker App dispatch is disabled by operator kill switch",
-    );
-  }
+  await consumeRemotionRenderSubmission(
+    rawInput.tenantId,
+    rawInput.requestedByUserId ?? null,
+    Boolean(rawInput.isAdminRequester)
+  );
 
   const tenantFlags = await getFeatureFlags(rawInput.tenantId);
   if (!tenantFlags.remotionRenderVideoJobEnabled) {
     throw new WorkerSchedulerError(
       "feature_disabled",
       403,
-      "Remotion render video job dispatch (F133B) is disabled for this tenant",
+      "Remotion render video job dispatch (F133B) is disabled for this tenant"
+    );
+  }
+
+  // Resolve the execution target before idempotency, credit reservation, and
+  // insertion. Existing callers default to the legacy desktop lane. An
+  // explicit dedicated request is fail-closed; `auto` can adopt a preferred
+  // dedicated executor when it is already registered and ready, otherwise it
+  // preserves the legacy desktop fallback.
+  const requestedTarget = rawInput.executionTarget ?? "desktop_worker";
+  const preferredWorkerId = rawInput.preferredWorkerId?.trim() || null;
+  const preferredWorker = preferredWorkerId
+    ? await repo.findWorkerById(rawInput.tenantId, preferredWorkerId)
+    : null;
+  if (
+    requestedTarget === "remotion_executor" &&
+    !isRemotionExecutorDispatchEnabled()
+  ) {
+    throw new WorkerSchedulerError(
+      "dispatch_disabled",
+      503,
+      "Standalone Remotion executor dispatch is disabled by operator kill switch"
+    );
+  }
+  if (
+    requestedTarget === "remotion_executor" &&
+    !tenantFlags.remotionDedicatedExecutorEnabled
+  ) {
+    throw new WorkerSchedulerError(
+      "feature_disabled",
+      403,
+      "Standalone Remotion executor dispatch is disabled for this tenant"
+    );
+  }
+  if (requestedTarget === "remotion_executor") {
+    assertPreferredWorkerCompatible(
+      preferredWorker,
+      preferredWorkerId ?? "",
+      REMOTION_EXECUTOR_RUNTIME_TYPE,
+      "a standalone Remotion executor worker"
+    );
+  }
+  const targetResolution = resolveRemotionExecutionTarget({
+    requestedTarget,
+    preferredWorkerId,
+    tenantExecutorEnabled: Boolean(
+      tenantFlags.remotionDedicatedExecutorEnabled
+    ),
+    operatorExecutorEnabled: isRemotionExecutorDispatchEnabled(),
+    preferredWorker,
+  });
+  const resolvedRuntimeType: WorkerRuntimeType =
+    targetResolution.resolvedTarget === "remotion_executor"
+      ? REMOTION_EXECUTOR_RUNTIME_TYPE
+      : DESKTOP_RUNTIME_TYPE;
+
+  if (
+    resolvedRuntimeType === DESKTOP_RUNTIME_TYPE &&
+    !isDesktopWorkerDispatchEnabled()
+  ) {
+    throw new WorkerSchedulerError(
+      "dispatch_disabled",
+      503,
+      "Smart AI Hub Worker App dispatch is disabled by operator kill switch"
     );
   }
 
   const idempotencyKey =
-    rawInput.idempotencyKey
-    ?? buildRemotionRenderVideoIdempotencyKey({
+    rawInput.idempotencyKey ??
+    buildRemotionRenderVideoIdempotencyKey({
       videoProjectId: input.videoProjectId,
       projectRevision: input.projectRevision,
       profile: input.renderProfile.profile,
     });
 
-  const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, idempotencyKey);
+  const existing = await repo.findJobByIdempotencyKey(
+    rawInput.tenantId,
+    idempotencyKey
+  );
   if (existing) {
     return { created: false, job: existing };
   }
 
-  if (input.renderProfile.profile === "preview" && rawInput.requestedByUserId != null) {
+  if (
+    input.renderProfile.profile === "preview" &&
+    rawInput.requestedByUserId != null
+  ) {
     const findActivePreview = repo.findActiveRemotionPreviewJobForUser;
     const activePreview = findActivePreview
       ? await findActivePreview(rawInput.tenantId, rawInput.requestedByUserId)
@@ -1927,7 +2392,7 @@ export async function queueRemotionRenderVideoJob(
       throw new WorkerSchedulerError(
         "preview_concurrency_limit",
         409,
-        "Only one queued/running remotion_render_video preview job is allowed per user at a time",
+        "Only one queued/running remotion_render_video preview job is allowed per user at a time"
       );
     }
   }
@@ -1936,13 +2401,14 @@ export async function queueRemotionRenderVideoJob(
   const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
   const timeoutSeconds = Math.max(
     computeRemotionRenderVideoTimeoutSeconds(input),
-    rawInput.timeoutSeconds ?? 0,
+    rawInput.timeoutSeconds ?? 0
   );
   const billing = rawInput.requestedByUserId
     ? await reserveCredits({
         userId: rawInput.requestedByUserId,
         tenantId: rawInput.tenantId,
-        requestedCredits: rawInput.reservedCredits ?? estimateRemotionRenderVideoCredits(input),
+        requestedCredits:
+          rawInput.reservedCredits ?? estimateRemotionRenderVideoCredits(input),
         metadata: {
           teamId: rawInput.teamId ?? null,
           workflowRunId: rawInput.workflowRunId ?? null,
@@ -1961,19 +2427,23 @@ export async function queueRemotionRenderVideoJob(
       tenantId: rawInput.tenantId,
       teamId: rawInput.teamId ?? null,
       workerId: null,
-      runtimeType: DESKTOP_RUNTIME_TYPE,
+      runtimeType: resolvedRuntimeType,
       workflowRunId: rawInput.workflowRunId ?? null,
       requestedByUserId: rawInput.requestedByUserId ?? null,
       requestedBySystemComponent: "remotion_render_video_worker_scheduler",
       jobType: "remotion_render_video",
       status: "queued",
       statusReason: "remotion_render_video_worker",
-      priority: rawInput.priority ?? (input.renderProfile.profile === "final" ? 40 : 20),
+      priority:
+        rawInput.priority ??
+        (input.renderProfile.profile === "final" ? 40 : 20),
       resourceProfile: "cpu_heavy",
       capabilityRequirementsJson: {
         capabilityFamilies,
         requiredClaimCapability: REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
-        preferredWorkerId: null,
+        preferredWorkerId,
+        executionTarget: requestedTarget,
+        executionTargetResolution: targetResolution,
         // `requiredClaimCapability` is the authoritative admission gate. The
         // descriptive families remain for observability and legacy routing.
         // `renderProfile` is carried so `findActiveRemotionPreviewJobForUser`
@@ -1994,7 +2464,9 @@ export async function queueRemotionRenderVideoJob(
         maxAttempts: 1,
         backoffSeconds: 0,
         sidecarMaxAttempts: REMOTION_RENDER_VIDEO_MAX_ATTEMPTS,
-        sidecarBackoffSeconds: REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS.map(ms => ms / 1000),
+        sidecarBackoffSeconds: REMOTION_RENDER_VIDEO_RETRY_BACKOFF_MS.map(
+          ms => ms / 1000
+        ),
       },
       idempotencyKey,
     });
@@ -2013,8 +2485,10 @@ export async function queueNemoClawWorkerJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   return queueFeatureGatedExternalRuntimeJob(
     {
@@ -2027,7 +2501,8 @@ export async function queueNemoClawWorkerJob(
     },
     {
       featureFlagKey: "nemoClawSecureWorkerPool",
-      dispatchDisabledMessage: "NemoClaw secure worker dispatch is disabled by operator kill switch",
+      dispatchDisabledMessage:
+        "NemoClaw secure worker dispatch is disabled by operator kill switch",
       featureDisabledMessage: `${getWorkerRuntimeDefinition(NEMOCLAW_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
       unsupportedResourceProfiles: ["gpu_required", "human_observable"],
       defaultResourceProfile: "sandbox_required",
@@ -2035,7 +2510,7 @@ export async function queueNemoClawWorkerJob(
       statusReason: "nemoclaw_sandbox_job",
       runtimeLabel: "a NemoClaw sandbox worker",
     },
-    deps,
+    deps
   );
 }
 
@@ -2044,33 +2519,39 @@ function assertHermesEligible(input: QueueHermesWorkerJobInput): void {
     throw new WorkerSchedulerError(
       "unsupported_job_type",
       400,
-      `Job type ${input.jobType} is not supported by Hermes routing`,
+      `Job type ${input.jobType} is not supported by Hermes routing`
     );
   }
 
   const capabilityFamilies = input.capabilityFamilies ?? [];
   const unsupportedFamily = capabilityFamilies.find(
-    (family) => !HERMES_SUPPORTED_CAPABILITY_FAMILIES.includes(family),
+    family => !HERMES_SUPPORTED_CAPABILITY_FAMILIES.includes(family)
   );
   if (unsupportedFamily) {
     throw new WorkerSchedulerError(
       "unsupported_capability_family",
       400,
-      `Capability family ${unsupportedFamily} is not supported by Hermes routing`,
+      `Capability family ${unsupportedFamily} is not supported by Hermes routing`
     );
   }
 }
 
 function readHermesDispatchReadiness(
   tenantFlags: WorkerSchedulerFeatureFlags,
-  worker: WorkerRecord | null,
+  worker: WorkerRecord | null
 ): ReturnType<typeof evaluateHermesRolloutReadiness> {
-  const runtimeMetadataSource = worker && worker.capabilitiesJson && typeof worker.capabilitiesJson === "object"
-    ? (worker.capabilitiesJson as Record<string, unknown>).runtimeMetadata
-    : null;
-  const runtimeMetadata = runtimeMetadataSource && typeof runtimeMetadataSource === "object" && !Array.isArray(runtimeMetadataSource)
-    ? runtimeMetadataSource
-    : {};
+  const runtimeMetadataSource =
+    worker &&
+    worker.capabilitiesJson &&
+    typeof worker.capabilitiesJson === "object"
+      ? (worker.capabilitiesJson as Record<string, unknown>).runtimeMetadata
+      : null;
+  const runtimeMetadata =
+    runtimeMetadataSource &&
+    typeof runtimeMetadataSource === "object" &&
+    !Array.isArray(runtimeMetadataSource)
+      ? runtimeMetadataSource
+      : {};
   const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadata);
 
   return evaluateHermesRolloutReadiness({
@@ -2079,13 +2560,13 @@ function readHermesDispatchReadiness(
     },
     bridgeCapabilities: parsed.success
       ? {
-        apiServerEnabled: parsed.data.apiServerEnabled,
-        supportsDelegatedHttp: parsed.data.supportsDelegatedHttp,
-        supportsDelegatedMcp: parsed.data.supportsDelegatedMcp,
-        supportsBoundConnector: parsed.data.supportsBoundConnector,
-        supportsCallbacks: parsed.data.supportsCallbacks,
-        gatewayPlatforms: parsed.data.gatewayPlatforms,
-      }
+          apiServerEnabled: parsed.data.apiServerEnabled,
+          supportsDelegatedHttp: parsed.data.supportsDelegatedHttp,
+          supportsDelegatedMcp: parsed.data.supportsDelegatedMcp,
+          supportsBoundConnector: parsed.data.supportsBoundConnector,
+          supportsCallbacks: parsed.data.supportsCallbacks,
+          gatewayPlatforms: parsed.data.gatewayPlatforms,
+        }
       : {},
     remoteEndpointPolicyExceptionId: parsed.success
       ? parsed.data.remoteEndpointPolicyExceptionId
@@ -2098,19 +2579,42 @@ export async function queueHermesWorkerJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   assertHermesEligible(input);
   const repo = deps.repo ?? defaultRepo;
   const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
+  const correlation = input.correlation
+    ? hermesTaskCorrelationSchema.parse(input.correlation)
+    : undefined;
+  if (correlation && correlation.tenantId !== input.tenantId) {
+    throw new WorkerSchedulerError(
+      "correlation_tenant_mismatch",
+      403,
+      "Hermes task correlation belongs to a different tenant"
+    );
+  }
+  if (
+    correlation &&
+    input.requestedByUserId &&
+    correlation.requestedByUserId !== input.requestedByUserId
+  ) {
+    throw new WorkerSchedulerError(
+      "correlation_user_mismatch",
+      403,
+      "Hermes task correlation belongs to a different user"
+    );
+  }
   const tenantFlags = await getFeatureFlags(input.tenantId);
 
   if (!tenantFlags.hermesAgentRuntime) {
     throw new WorkerSchedulerError(
       "feature_disabled",
       403,
-      `${getWorkerRuntimeDefinition(HERMES_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
+      `${getWorkerRuntimeDefinition(HERMES_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`
     );
   }
 
@@ -2118,25 +2622,37 @@ export async function queueHermesWorkerJob(
     throw new WorkerSchedulerError(
       "preferred_worker_required",
       400,
-      "Hermes dispatch requires a preferred worker so owner-bound rollout stays explicit",
+      "Hermes dispatch requires a preferred worker so owner-bound rollout stays explicit"
     );
   }
 
-  const preferredWorker = await repo.findWorkerById(input.tenantId, input.preferredWorkerId.trim());
-  assertPreferredWorkerCompatible(preferredWorker, input.preferredWorkerId.trim(), HERMES_RUNTIME_TYPE, "a Hermes agent gateway worker");
+  const preferredWorker = await repo.findWorkerById(
+    input.tenantId,
+    input.preferredWorkerId.trim()
+  );
+  assertPreferredWorkerCompatible(
+    preferredWorker,
+    input.preferredWorkerId.trim(),
+    HERMES_RUNTIME_TYPE,
+    "a Hermes agent gateway worker"
+  );
 
   const readiness = readHermesDispatchReadiness(tenantFlags, preferredWorker);
   if (!readiness.surfaces.boundDispatch) {
     throw new WorkerSchedulerError(
       "rollout_stage_blocked",
       409,
-      "Hermes dispatch is not ready for this worker until delegated HTTP, bound-connector support, and API-server readiness are all reported",
+      "Hermes dispatch is not ready for this worker until delegated HTTP, bound-connector support, and API-server readiness are all reported"
     );
   }
 
   return queueFeatureGatedExternalRuntimeJob(
     {
       ...input,
+      instructionsJson: {
+        ...(input.instructionsJson ?? {}),
+        ...(correlation ? { correlation } : {}),
+      },
       runtimeType: HERMES_RUNTIME_TYPE,
       preferredWorkerId: input.preferredWorkerId.trim(),
       capabilityFamilies: input.capabilityFamilies?.length
@@ -2146,7 +2662,8 @@ export async function queueHermesWorkerJob(
     },
     {
       featureFlagKey: "hermesAgentRuntime",
-      dispatchDisabledMessage: "Hermes agent gateway dispatch is disabled by operator kill switch",
+      dispatchDisabledMessage:
+        "Hermes agent gateway dispatch is disabled by operator kill switch",
       featureDisabledMessage: `${getWorkerRuntimeDefinition(HERMES_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
       unsupportedResourceProfiles: ["gpu_required", "sandbox_required"],
       defaultResourceProfile: "network_heavy",
@@ -2158,7 +2675,7 @@ export async function queueHermesWorkerJob(
       ...deps,
       repo,
       getFeatureFlags,
-    },
+    }
   );
 }
 
@@ -2167,8 +2684,10 @@ export async function queueHiClawWorkerJob(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   return queueFeatureGatedExternalRuntimeJob(
     {
@@ -2181,7 +2700,8 @@ export async function queueHiClawWorkerJob(
     },
     {
       featureFlagKey: "hiClawClusterRuntime",
-      dispatchDisabledMessage: "HiClaw cluster dispatch is disabled by operator kill switch",
+      dispatchDisabledMessage:
+        "HiClaw cluster dispatch is disabled by operator kill switch",
       featureDisabledMessage: `${getWorkerRuntimeDefinition(HICLAW_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
       unsupportedResourceProfiles: ["gpu_required", "sandbox_required"],
       defaultResourceProfile: "human_observable",
@@ -2189,7 +2709,7 @@ export async function queueHiClawWorkerJob(
       statusReason: "hiclaw_cluster_job",
       runtimeLabel: "a HiClaw cluster worker",
     },
-    deps,
+    deps
   );
 }
 
@@ -2198,8 +2718,10 @@ export async function queueWorkerJobByRuntime(
   deps: {
     repo?: WorkerSchedulerRepository;
     reserveCredits?: typeof reserveWorkerJobCredits;
-    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
-  } = {},
+    getFeatureFlags?: (
+      tenantId: string
+    ) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {}
 ): Promise<{ created: boolean; job: WorkerJobRecord }> {
   if (input.runtimeType === "openclaw_gateway") {
     return queueOpenClawWorkerJob(input, deps);
@@ -2236,6 +2758,6 @@ export async function queueWorkerJobByRuntime(
   throw new WorkerSchedulerError(
     "unsupported_runtime_type",
     400,
-    `Runtime type ${(input as { runtimeType: string }).runtimeType} is not supported by the scheduler`,
+    `Runtime type ${(input as { runtimeType: string }).runtimeType} is not supported by the scheduler`
   );
 }

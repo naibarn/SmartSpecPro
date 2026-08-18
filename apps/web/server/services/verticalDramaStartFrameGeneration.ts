@@ -123,6 +123,11 @@ import {
   renderVerticalDramaShotCompositionLock,
   type VerticalDramaShotComposition,
 } from "@shared/verticalDramaSeries/shotComposition";
+import {
+  deriveVerticalDramaSpokenCallerVirtualScreens,
+  renderVerticalDramaSpokenCallerFaceIdentityLockPromptBlock,
+  renderVerticalDramaSpokenCallerVirtualScreenPromptBlock,
+} from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -334,7 +339,11 @@ export interface StartFrameRenderPlanProjection {
     productReferenceAssetIds: string[];
     canonicalShotSummary?: string;
     shotComposition?: VerticalDramaShotComposition;
-    imageStaleReason?: "prompt_changed";
+    imageStaleReason?:
+      | "prompt_changed"
+      | "character_references_changed"
+      | "supporting_presence_changed"
+      | "location_variant_changed";
     /** See `VerticalDramaStartFramePlan.frames[].productRefsCustomized` in `@shared/verticalDramaSeries`. */
     productRefsCustomized?: boolean;
     /**
@@ -352,6 +361,7 @@ export interface StartFrameRenderPlanProjection {
      */
     approvedMediaAssetId?: string;
     locationKey?: string;
+    locationVariantId?: string;
     angleGrid?: {
       pendingTaskId?: string;
       imageUrl?: string;
@@ -525,6 +535,7 @@ export function projectStartFramePlan(
    * durable link to the APPROVED rendered image — costs real money to redo),
    * `locationKey` (a manual
    * per-shot location override), `angleGrid`/`angleGridAssetIds` (durable
+   * `locationVariantId` (the approved camera view inside that location),
    * multi-angle picker state), `productReferenceAssetIds`,
    * `productRefsCustomized`, and `canonicalShotSummary` (needed to satisfy
    * the pipeline's OWN documented contract — `verticalDramaEpisodePipeline.ts`'s
@@ -639,11 +650,21 @@ export function projectStartFramePlan(
         const compositionLock = renderVerticalDramaShotCompositionLock(
           shotComposition
         );
-        const imagePrompt =
+        const composedImagePrompt =
           compositionLock &&
           !baseImagePrompt.includes("CURRENT SHOT COMPOSITION LOCK")
             ? `${baseImagePrompt}\n${compositionLock}`
             : baseImagePrompt;
+        const imagePrompt = ensureSpokenCallerVirtualScreenPrompt({
+          prompt: composedImagePrompt,
+          screenCallerCharacterRefs,
+          callerFaceReferenceImageIndexes: Object.fromEntries(
+            screenCallerCharacterRefs.map((characterRef, index) => [
+              characterRef,
+              requiredCharacterRefs.length + index + 1,
+            ])
+          ),
+        });
         const promptChanged =
           previous?.imagePrompt !== undefined &&
           previous.imagePrompt !== imagePrompt;
@@ -688,6 +709,9 @@ export function projectStartFramePlan(
           ...(previous?.locationKey !== undefined
             ? { locationKey: previous.locationKey }
             : {}),
+          ...(previous?.locationVariantId !== undefined
+            ? { locationVariantId: previous.locationVariantId }
+            : {}),
           ...(previous?.angleGrid !== undefined
             ? { angleGrid: previous.angleGrid }
             : {}),
@@ -711,6 +735,53 @@ export function projectStartFramePlan(
 /* Prompt building                                                            */
 /* -------------------------------------------------------------------------- */
 
+export const SPOKEN_CALLER_VIRTUAL_SCREEN_MARKER =
+  "SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)";
+
+/** Final-prompt invariant shared by batch, policy-safe, and legacy paths. */
+export function ensureSpokenCallerVirtualScreenPrompt(params: {
+  prompt: string;
+  screenCallerCharacterRefs?: readonly string[];
+  spokenCallerCharacterRefs?: readonly string[];
+  callerFaceReferenceImageIndexes?: Readonly<Record<string, number>>;
+}): string {
+  const prompt = params.prompt.trim();
+  const screenCallerCharacterRefs = Array.from(
+    new Set(
+      (params.screenCallerCharacterRefs ?? [])
+        .map(value => value.trim())
+        .filter(Boolean)
+    )
+  );
+  if (screenCallerCharacterRefs.length === 0) {
+    return prompt;
+  }
+  const policy = deriveVerticalDramaSpokenCallerVirtualScreens({
+    physicalSceneCharacterRefs: [],
+    screenCallerCharacterRefs,
+    dialogueSpeakerRefs: Array.from(
+      new Set(
+        (params.spokenCallerCharacterRefs ?? screenCallerCharacterRefs)
+          .map(value => value.trim())
+          .filter(Boolean)
+      )
+    ),
+    faceReferenceImageIndexByCharacterRef:
+      params.callerFaceReferenceImageIndexes,
+  });
+  if (policy.virtualScreens.length === 0) return prompt;
+  if (
+    prompt.includes(SPOKEN_CALLER_VIRTUAL_SCREEN_MARKER) &&
+    prompt.includes("CALLER FACE IDENTITY LOCK")
+  ) {
+    return prompt;
+  }
+  const block = prompt.includes(SPOKEN_CALLER_VIRTUAL_SCREEN_MARKER)
+    ? renderVerticalDramaSpokenCallerFaceIdentityLockPromptBlock(policy)
+    : renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(policy);
+  return block ? `${prompt}\n${block}` : prompt;
+}
+
 export interface GenerateStartFrameRenderPlanParams {
   userId: number;
   tenantId?: string;
@@ -728,6 +799,8 @@ export interface GenerateStartFrameRenderPlanParams {
     characterIds: string[];
     /** Reference ids shown only inside an on-screen phone/video call. */
     screenCallerCharacterIds?: string[];
+    /** Explicit spoken callers, resolved from the shot's dialogue source. */
+    spokenCallerCharacterRefs?: string[];
     /** Explicit physical conversation through a closed barrier. */
     barrierDialogue?: VerticalDramaBarrierDialogue;
     barrierMultiView?: VerticalDramaBarrierMultiView;
@@ -945,6 +1018,39 @@ export function buildStartFrameRenderPlanUserPrompt(
     VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const shotLines = params.storyboardShots
     .map(s => {
+      const spokenCallerPolicy = deriveVerticalDramaSpokenCallerVirtualScreens({
+        physicalSceneCharacterRefs: s.characterIds,
+        screenCallerCharacterRefs: s.screenCallerCharacterIds ?? [],
+        dialogueSpeakerRefs: s.speakingOrder ?? [],
+        characterAliases: Object.fromEntries(
+          (params.characters ?? []).map(character => [
+            character.characterKey,
+            character.name ? [character.name] : [],
+          ])
+        ),
+        faceReferenceImageIndexByCharacterRef: Object.fromEntries(
+          (s.screenCallerCharacterIds ?? []).map((characterRef, index) => [
+            characterRef,
+            s.characterIds.length + index + 1,
+          ])
+        ),
+      });
+      const spokenCallerVirtualScreenBlock =
+        renderVerticalDramaSpokenCallerVirtualScreenPromptBlock({
+          ...spokenCallerPolicy,
+          spokenScreenCallerCharacterRefs:
+        s.spokenCallerCharacterRefs ??
+        spokenCallerPolicy.spokenScreenCallerCharacterRefs,
+          virtualScreens:
+            s.spokenCallerCharacterRefs?.length
+              ? s.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
+                  callerCharacterRef,
+                  screenIndex: index + 1,
+                  orientation: "vertical" as const,
+                  visibleFaceRequired: true as const,
+                }))
+              : spokenCallerPolicy.virtualScreens,
+        });
       // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
       // bible) — additive; only appended when this shot carries a
       // `location` fact, so a shot with none produces the exact same line
@@ -974,7 +1080,7 @@ export function buildStartFrameRenderPlanUserPrompt(
         ? " | video_face_visibility_required: true"
         : "";
       const screenCallerSuffix = s.screenCallerCharacterIds?.length
-        ? ` | screen_callers: ${s.screenCallerCharacterIds.join(", ")} (screen-only role; do not attach the caller portrait as a physical-scene reference; if depicted, show only inside a clearly visible phone/video call screen, never physically in the room)`
+        ? ` | screen_callers: ${s.screenCallerCharacterIds.join(", ")} (screen-only role; attach each approved caller portrait immediately after the physical-scene portraits as a screen-only face identity reference; never use it as a physical-scene character; if depicted, show only inside a clearly visible phone/video call screen, never physically in the room)`
         : "";
       const barrierDialogue = normalizeVerticalDramaBarrierDialogue(
         s.barrierDialogue
@@ -1018,7 +1124,7 @@ export function buildStartFrameRenderPlanUserPrompt(
       );
       return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${remappedCameraSetup} | physical_scene_refs: ${
         s.characterIds.length ? s.characterIds.join(", ") : "(none)"
-      }${screenCallerSuffix}${characterSelectionSuffix}${supportingPresenceBlock ? `\n${supportingPresenceBlock}` : ""}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${compositionLock ? `\n${compositionLock}` : ""}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
+      }${screenCallerSuffix}${characterSelectionSuffix}${supportingPresenceBlock ? `\n${supportingPresenceBlock}` : ""}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${spokenCallerVirtualScreenBlock ? `\n${spokenCallerVirtualScreenBlock}` : ""}${compositionLock ? `\n${compositionLock}` : ""}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
     })
     .join("\n");
 
@@ -1189,7 +1295,7 @@ function buildBatchReferenceMappingReferences(
     Array<{ imageIndex: number; characterName: string }>
   >();
   for (const shot of storyboardShots) {
-    const references = shot.characterIds
+    const physicalReferences = shot.characterIds
       .map((characterKey, index) => {
         const characterName = nameByCharacterKey.get(characterKey);
         return characterName ? { imageIndex: index + 1, characterName } : null;
@@ -1197,6 +1303,22 @@ function buildBatchReferenceMappingReferences(
       .filter((r): r is { imageIndex: number; characterName: string } =>
         Boolean(r)
       );
+    const references = [
+      ...physicalReferences,
+      ...(shot.screenCallerCharacterIds ?? []).flatMap(
+        (characterKey, index) => {
+          const characterName = nameByCharacterKey.get(characterKey);
+          return characterName
+            ? [
+                {
+                  imageIndex: shot.characterIds.length + index + 1,
+                  characterName,
+                },
+              ]
+            : [];
+        }
+      ),
+    ];
     if (references.length > 0)
       referencesByShotNumber.set(shot.shotNumber, references);
   }
@@ -1889,6 +2011,10 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
   shotNumber?: number;
   characterReferenceManifest: GenerateStartFrameShotPromptCharacterManifestEntry[];
   screenCallerCharacterRefs?: string[];
+  /** Explicit spoken callers already resolved by the caller. When absent,
+   * explicit screen callers are still rendered as separate phone screens so
+   * a policy-safe rewrite can never erase the visual caller contract. */
+  spokenCallerCharacterRefs?: string[];
   locationReferenceImage?: { url: string; label: string };
   sceneContinuityLockBlock?: string;
   shotComposition?: VerticalDramaShotComposition;
@@ -1933,10 +2059,30 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
       ? `PHYSICAL CAST LOCK (MANDATORY): exactly ${physicalCharacters.length} physical scene character${physicalCharacters.length === 1 ? "" : "s"} — ${physicalCharacters.join(", ")}. Do not add any other named or unnamed person, background extra, staff member, reflection, or duplicate body.`
       : "PHYSICAL CAST LOCK (MANDATORY): exactly 0 physical scene characters. Do not add any person, background extra, staff member, reflection, or body."
     : undefined;
+  const spokenCallerVirtualScreenBlock =
+    renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(
+      deriveVerticalDramaSpokenCallerVirtualScreens({
+        physicalSceneCharacterRefs: physicalCharacters,
+        screenCallerCharacterRefs: params.screenCallerCharacterRefs ?? [],
+        dialogueSpeakerRefs:
+          params.spokenCallerCharacterRefs ??
+          params.screenCallerCharacterRefs ?? [],
+        faceReferenceImageIndexByCharacterRef: Object.fromEntries(
+          params.characterReferenceManifest
+            .filter(entry => entry.presence === "screen_caller")
+            .flatMap(entry =>
+              entry.characterId
+                ? [[entry.characterId, entry.index] as const]
+                : []
+            )
+        ),
+      })
+    );
   return guardStartFramePromptVisibleCast({
     prompt: [
       mapping,
       physicalCastLock,
+      spokenCallerVirtualScreenBlock,
       renderVerticalDramaShotCompositionLock(params.shotComposition),
       sanitizeSceneContinuityLockForShot(
         params.sceneContinuityLockBlock,
@@ -2074,6 +2220,7 @@ export interface GenerateStartFrameShotPromptCharacterManifestEntry {
 export interface GenerateStartFrameShotPromptParams {
   userId: number;
   tenantId?: string;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   shotNumber: number;
@@ -2109,6 +2256,8 @@ export interface GenerateStartFrameShotPromptParams {
   requiredCharacterRefs?: string[];
   /** Explicit screen-caller keys; caller portraits are not attached to the flat physical-scene reference payload. */
   screenCallerCharacterRefs?: string[];
+  /** Explicit spoken caller keys, when already resolved by the caller. */
+  spokenCallerCharacterRefs?: string[];
   /** Generic visible people/groups; never treated as portrait references. */
   supportingPresence?: VerticalDramaSupportingPresence[];
   /** Explicit physical conversation through a closed barrier; never a phone caller. */
@@ -2274,6 +2423,46 @@ export function buildStartFrameShotPromptUserPrompt(
     params.requiredCharacterRefs ?? [],
     params.characters ?? []
   );
+  const spokenCallerPolicy = deriveVerticalDramaSpokenCallerVirtualScreens({
+    physicalSceneCharacterRefs: params.requiredCharacterRefs ?? [],
+    screenCallerCharacterRefs: params.screenCallerCharacterRefs ?? [],
+    dialogueSpeakerRefs: params.speakingOrder ?? [],
+    characterAliases: Object.fromEntries(
+      (params.characters ?? []).map(character => [
+        character.characterKey,
+        character.name ? [character.name] : [],
+      ])
+    ),
+    faceReferenceImageIndexByCharacterRef: Object.fromEntries(
+      params.characterReferenceManifest
+        .filter(entry => entry.presence === "screen_caller")
+        .flatMap(entry =>
+          entry.characterId
+            ? [[entry.characterId, entry.index] as const]
+            : []
+        )
+    ),
+  });
+  const spokenCallerVirtualScreenBlock =
+    renderVerticalDramaSpokenCallerVirtualScreenPromptBlock({
+      ...spokenCallerPolicy,
+      spokenScreenCallerCharacterRefs:
+        params.spokenCallerCharacterRefs ??
+        spokenCallerPolicy.spokenScreenCallerCharacterRefs,
+      virtualScreens:
+          params.spokenCallerCharacterRefs?.length
+            ? params.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
+                callerCharacterRef,
+                screenIndex: index + 1,
+                orientation: "vertical" as const,
+                visibleFaceRequired: true as const,
+                faceReferenceImageIndex:
+                  params.characterReferenceManifest.find(
+                    entry => entry.characterId === callerCharacterRef
+                  )?.index,
+              }))
+            : spokenCallerPolicy.virtualScreens,
+    });
 
   const manifestLines = params.characterReferenceManifest
     .map(entry => {
@@ -2434,6 +2623,7 @@ export function buildStartFrameShotPromptUserPrompt(
     params.speakingOrder?.length
       ? `speaking_order: ${params.speakingOrder.join(" > ")} (first speaker leftmost)`
       : null,
+    spokenCallerVirtualScreenBlock,
     params.videoFaceVisibilityRequired
       ? "video_face_visibility_required: true (every required face must remain clearly readable for downstream video face matching and lip-sync)"
       : null,
@@ -2819,6 +3009,8 @@ export async function generateStartFrameShotPrompt(
         hasVision: false,
         images: [],
         userId: params.userId,
+        tenantId: params.tenantId,
+        publicUrl: params.publicUrl,
         schema: policySafeSynopsisOutputSchema,
         firstAttemptMaxTokens: 1400,
         retryMaxTokens: 1800,
@@ -2875,6 +3067,7 @@ export async function generateStartFrameShotPrompt(
       shotNumber: params.shotNumber,
       characterReferenceManifest: params.characterReferenceManifest,
       screenCallerCharacterRefs: params.screenCallerCharacterRefs,
+      spokenCallerCharacterRefs: params.spokenCallerCharacterRefs,
       locationReferenceImage: params.locationReferenceImage,
       sceneContinuityLockBlock: params.sceneContinuityLockBlock,
       shotComposition: params.shotComposition,
@@ -2980,6 +3173,8 @@ export async function generateStartFrameShotPrompt(
       hasVision,
       images,
       userId: params.userId,
+      tenantId: params.tenantId,
+      publicUrl: params.publicUrl,
       schema: startFrameShotPromptOutputSchema,
       firstAttemptMaxTokens: 3000,
       retryMaxTokens: 4000,
@@ -3092,6 +3287,8 @@ export async function generateStartFrameShotPrompt(
       hasVision,
       images,
       userId: params.userId,
+      tenantId: params.tenantId,
+      publicUrl: params.publicUrl,
       schema: startFrameShotPromptOutputSchema,
       firstAttemptMaxTokens: 3000,
       retryMaxTokens: 4000,
@@ -3168,6 +3365,20 @@ export async function generateStartFrameShotPrompt(
   ) {
     outputPrompt = `${outputPrompt}\n${shotCompositionLock}`;
   }
+  outputPrompt = ensureSpokenCallerVirtualScreenPrompt({
+    prompt: outputPrompt,
+    screenCallerCharacterRefs: params.screenCallerCharacterRefs,
+    spokenCallerCharacterRefs: params.spokenCallerCharacterRefs,
+    callerFaceReferenceImageIndexes: Object.fromEntries(
+      params.characterReferenceManifest
+        .filter(entry => entry.presence === "screen_caller")
+        .flatMap(entry =>
+          entry.characterId
+            ? [[entry.characterId, entry.index] as const]
+            : []
+        )
+    ),
+  });
 
   // Two-mode start-frame image prompt switch — `usedMode` mirrors
   // `params.imagePromptMode` UNLESS `referenceFrameMode` forced the legacy

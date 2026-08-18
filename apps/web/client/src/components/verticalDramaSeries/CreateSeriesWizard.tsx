@@ -29,6 +29,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
   Dialog,
@@ -799,7 +800,9 @@ export function CreateSeriesWizard({
   const presetsQuery = trpc.verticalDramaSeries.listGenrePresets.useQuery({
     locale: lang,
   });
-  const presets = presetsQuery.data?.presets ?? [];
+  const presets = Array.isArray(presetsQuery.data?.presets)
+    ? presetsQuery.data.presets
+    : [];
   const presetCategories = useMemo(
     () => Array.from(new Set(presets.map(p => p.category))),
     [presets]
@@ -815,7 +818,7 @@ export function CreateSeriesWizard({
         form.productTieInEnabled || form.createMode === "special_edition",
     }
   );
-  const products = productsQuery.data ?? [];
+  const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
 
   // Stage 2.6 — the whole lineage UI (mode toggle, picker, carry-over grid,
   // special-edition sources) is hidden behind this tenant flag; `createMode`
@@ -831,13 +834,17 @@ export function CreateSeriesWizard({
     { limit: 100 },
     { enabled: lineageEnabled && Boolean(form.createMode) }
   );
-  const parentSeriesOptions = seriesListQuery.data?.series ?? [];
+  const parentSeriesOptions = Array.isArray(seriesListQuery.data?.series)
+    ? seriesListQuery.data.series
+    : [];
 
   // Manual LLM model pin (mirrors `VerticalDramaSettingsTab`'s own query) —
   // mode-independent, so always enabled (no `enabled` gate).
   const planningModelsQuery =
     trpc.verticalDramaSeries.listQualityPlanningModels.useQuery();
-  const planningModels = planningModelsQuery.data ?? [];
+  const planningModels = Array.isArray(planningModelsQuery.data)
+    ? planningModelsQuery.data
+    : [];
 
   // Parent series full row (genre/tone/bible/memory snapshot) — used to
   // prefill+lock genre/tone and seed `visualBible`/`lineage.priorSeasonSummary`.
@@ -1197,14 +1204,42 @@ export function CreateSeriesWizard({
               : "Draft QC started"
         );
       },
-      onError: error =>
+      onError: (error: { message?: string }) =>
         toast.error(
           error.message ||
             (lang === "th"
               ? "เริ่มตรวจ QC ไม่สำเร็จ"
               : "Could not start Draft QC")
-        ),
+      ),
     });
+  const draftQcRepairProcedure = (trpc.verticalDramaSeries as any)
+    .repairDraftQualityQc;
+  const draftQcRepairMutation = draftQcRepairProcedure?.useMutation
+    ? draftQcRepairProcedure.useMutation({
+      onSuccess: (data: { runId: string }) => {
+        setDraftQcRunId(data.runId);
+        setDraftQcSourceSignature(currentSynthesisSourceSignature);
+        setDraftQcSelectedCandidateFingerprint(null);
+        setDraftQcSelectedCandidateDraft(null);
+        setDraftQcOverride(false);
+        toast.success(
+          lang === "th"
+            ? "สร้าง Draft ฉบับซ่อมแล้ว และกำลังตรวจ QC ใหม่"
+            : "Repaired Draft created; running fresh QC",
+        );
+      },
+      onError: (error: { message?: string }) =>
+        toast.error(
+          error.message ||
+            (lang === "th"
+              ? "เริ่มซ่อม Draft ไม่สำเร็จ"
+              : "Could not start Draft repair"),
+        ),
+    })
+    : {
+        isPending: false,
+        mutate: (_input: unknown) => undefined,
+      };
   const draftQcCandidateSelectMutation =
     trpc.verticalDramaSeries.selectDraftQualityQcCandidate.useMutation({
       onSuccess: data => {
@@ -1616,13 +1651,23 @@ export function CreateSeriesWizard({
   }
 
   function repairDraftQualityQc() {
-    if (!draftQcReport || draftQcReport.pass || draftQcStartMutation.isPending) {
+    if (
+      !draftQcReport ||
+      draftQcReport.pass ||
+      !draftQcRunId ||
+      draftQcStartMutation.isPending ||
+      draftQcRepairMutation.isPending
+    ) {
       return;
     }
-    // A repair is deliberately bounded to one Skill revision/evaluation
-    // round. The user already has a real scorecard and should never be sent
-    // into an unbounded credit loop.
-    startDraftQualityQc(1);
+    const candidateFingerprint =
+      draftQcSelectedCandidateFingerprint ??
+      draftQcResult?.best.fingerprint ??
+      fingerprintDraftQualityQcCandidate(draftToReview);
+    draftQcRepairMutation.mutate({
+      runId: draftQcRunId,
+      candidateFingerprint,
+    });
   }
 
   function cancelDraftQualityQc() {
@@ -2518,7 +2563,9 @@ export function CreateSeriesWizard({
             draftQualityQcEstimate={draftQcEstimateQuery.data}
             draftQualityQcMaxRounds={draftQcMaxRounds}
             draftQualityQcBusy={
-              draftQcStartMutation.isPending || draftQcCancelMutation.isPending
+              draftQcStartMutation.isPending ||
+              draftQcRepairMutation.isPending ||
+              draftQcCancelMutation.isPending
             }
             draftQualityQcOverrideSelected={draftQcOverride}
             draftQualityQcOverrideEligible={draftQcOverrideEligible}
@@ -2965,8 +3012,8 @@ function formatPresetSynthesisError(error: unknown, lang: "th" | "en"): string {
               : `${prefix} returned incomplete or structurally invalid Draft data, so it failed the quality gate${failure.qualityGate === "llm-recommended-draft-quality" ? " (the model passed LLM Recommend, but its output did not)" : ""}`
             : failure.code === "draft_completion_incomplete"
               ? lang === "th"
-                ? `${prefix} เติมข้อมูลไม่ครบภายในจำนวนรอบที่กำหนด จึงไม่ส่ง Draft เข้า QC`
-                : `${prefix} could not complete the Draft within the allowed repair rounds, so it was not sent to QC`
+                ? `${prefix} เติมข้อมูลไม่ครบภายในจำนวนรอบที่กำหนด แต่ยังส่ง Draft เข้า QC เพื่อวิเคราะห์จุดที่ขาดได้ — ผล QC ยังไม่อนุญาตให้สร้างเรื่องเต็ม`
+                : `${prefix} could not complete the Draft within the allowed repair rounds, but it can still be sent to QC for diagnosis — QC will not approve full-series creation yet`
               : lang === "th"
                 ? `${prefix} หยุดทำงานจากข้อผิดพลาดภายในระบบ`
                 : `${prefix} stopped because of an internal system error`;
@@ -4761,7 +4808,7 @@ function WizardStep({
                 <div className="flex items-center gap-3 rounded-md border bg-background p-2.5">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
                     {form.productImageUrl ? (
-                      <img
+                      <AuthenticatedMediaImage
                         src={form.productImageUrl}
                         alt={form.productName || "Product"}
                         className="h-full w-full object-cover"
@@ -4848,7 +4895,7 @@ function WizardStep({
                         >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
                             {product.imageUrl ? (
-                              <img
+                              <AuthenticatedMediaImage
                                 src={product.imageUrl}
                                 alt={product.productName}
                                 className="h-full w-full object-cover"
@@ -5011,7 +5058,7 @@ function WizardStep({
             </span>
             <span className="flex items-center gap-2 font-medium">
               {form.productTieInEnabled && form.productImageUrl && (
-                <img
+                <AuthenticatedMediaImage
                   src={form.productImageUrl}
                   alt={form.productName || "Product"}
                   className="h-6 w-6 shrink-0 rounded object-cover"

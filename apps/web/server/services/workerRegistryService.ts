@@ -41,7 +41,7 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   LOCAL_FOLDER_INGEST_FAILURE_CODES,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
-  REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+  REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
   REMOTION_RENDER_VIDEO_FAILURE_CODES,
   REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   VIDEO_ASSEMBLY_FAILURE_CODES,
@@ -50,6 +50,8 @@ import {
   evaluateWorkerCompatibility,
   getWorkerRuntimeDefinition,
   workerHermesRuntimeMetadataSchema,
+  remotionExecutorCapabilityProfileSchema,
+  remotionExecutorReadinessSchema,
 } from "../../shared/workerRuntime";
 import {
   getWorkerAccessPermissionScopesForPreset,
@@ -65,6 +67,7 @@ import type {
   WorkerRegistrationAuthContext,
 } from "./workerAuthService";
 import { issueWorkerAccessTokens } from "./workerAuthService";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { getDb } from "../db";
 import {
   groupMembers,
@@ -105,11 +108,11 @@ const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
  * `capabilityHints` array (see its own doc comment), which is exactly what
  * many existing tests/older worker builds do. This second, independent
  * check closes that specific bypass for `remotion_render_video` jobs: no
- * worker may claim one without explicitly advertising `"remotion-render"`,
+ * worker may claim one without explicitly advertising the versioned Remotion
+ * claim capability,
  * regardless of what `capabilityHints` contains overall.
  */
-const REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY: (typeof REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES)[number] =
-  "remotion-render";
+const REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY = REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY;
 
 /**
  * Feature 135 section-05 — same defense-in-depth precedent as the remotion
@@ -596,12 +599,18 @@ function buildWorkerHealthSummary(
   runtimeType: WorkerRuntimeType,
   compatibility: WorkerProtocolCompatibility,
   runtimeMetadataJson: Record<string, unknown> = {},
+  capacity: { currentJobCount: number; queueDepth: number } | null = null,
 ): Record<string, unknown> {
   const existingHealthSummary = sanitizeWorkerPayload(
     isPlainObject(existingHealthSummaryJson) ? existingHealthSummaryJson : {},
   ) as Record<string, unknown>;
   return {
     ...existingHealthSummary,
+    ...(capacity ? {
+      currentJobCount: capacity.currentJobCount,
+      queueDepth: capacity.queueDepth,
+      capacityObservedAt: new Date().toISOString(),
+    } : {}),
     controlPlane: buildWorkerControlPlaneState(
       runtimeType,
       compatibility,
@@ -1145,29 +1154,34 @@ const defaultRepo: WorkerRuntimeRepository = {
     const db = await getDb();
     return db.transaction(async (tx) => {
       const [current] = await tx
-        .select()
+        .select({ job: workerJobs })
         .from(workerJobs)
+        .innerJoin(workers, and(
+          eq(workers.id, workerId),
+          eq(workers.tenantId, workerJobs.tenantId),
+        ))
         .where(eq(workerJobs.id, jobId))
         .limit(1);
       if (!current) return null;
+      const currentJob = current.job;
 
-      const currentLeaseExpiresAt = current.leaseExpiresAt ? new Date(current.leaseExpiresAt) : null;
+      const currentLeaseExpiresAt = currentJob.leaseExpiresAt ? new Date(currentJob.leaseExpiresAt) : null;
       const isReclaimable =
-        RECLAIMABLE_JOB_STATUSES.includes(current.status)
+        RECLAIMABLE_JOB_STATUSES.includes(currentJob.status)
         && currentLeaseExpiresAt
         && currentLeaseExpiresAt.getTime() < Date.now();
-      if (current.status !== "queued" && !isReclaimable) {
+      if (currentJob.status !== "queued" && !isReclaimable) {
         return null;
       }
 
-      const whereConditions = [eq(workerJobs.id, jobId), eq(workerJobs.status, current.status)];
-      if (current.workerId) {
-        whereConditions.push(eq(workerJobs.workerId, current.workerId));
+      const whereConditions = [eq(workerJobs.id, jobId), eq(workerJobs.tenantId, currentJob.tenantId), eq(workerJobs.status, currentJob.status)];
+      if (currentJob.workerId) {
+        whereConditions.push(eq(workerJobs.workerId, currentJob.workerId));
       } else {
         whereConditions.push(isNull(workerJobs.workerId));
       }
-      if (current.leaseOwnerToken) {
-        whereConditions.push(eq(workerJobs.leaseOwnerToken, current.leaseOwnerToken));
+      if (currentJob.leaseOwnerToken) {
+        whereConditions.push(eq(workerJobs.leaseOwnerToken, currentJob.leaseOwnerToken));
       } else {
         whereConditions.push(isNull(workerJobs.leaseOwnerToken));
       }
@@ -1241,6 +1255,17 @@ export async function registerWorker(
 }> {
   const repo = deps.repo ?? defaultRepo;
   assertSupportedRuntimeType(input.payload.runtimeType);
+  if (input.payload.runtimeType === "remotion_executor") {
+    const flags = await getTenantFeatureFlags(input.auth.tenantId);
+    if (!flags.remotionDedicatedExecutorEnabled) {
+      throw new WorkerRuntimeServiceError(
+        "feature_disabled",
+        403,
+        "Standalone Remotion executor registration is disabled for this tenant",
+        "forbidden_error",
+      );
+    }
+  }
   assertWorkerProtocolCompatibility(input.payload.runtimeType, input.payload.compatibility);
 
   const incomingRuntimeMetadata = isPlainObject(input.payload.runtimeMetadataJson)
@@ -1443,6 +1468,16 @@ export async function recordWorkerHeartbeat(
   if (freshHermesMedia) {
     mergedHeartbeatCapabilitiesJson.hermesMedia = freshHermesMedia;
   }
+  // ComfyUI readiness is also emitted by the desktop Worker App on the
+  // regular heartbeat. Promote the sanitized live value to a stable
+  // top-level capability, just like hermesMedia, so scheduler/UI consumers
+  // do not need to know the nested runtimeMetadata storage shape.
+  const freshComfyUi = isPlainObject(incomingHeartbeatRuntimeMetadata.comfyUi)
+    ? (incomingHeartbeatRuntimeMetadata.comfyUi as Record<string, unknown>)
+    : null;
+  if (freshComfyUi) {
+    mergedHeartbeatCapabilitiesJson.comfyUi = freshComfyUi;
+  }
   // Feature 135 §11 — same rule as registration: a worker registered before
   // an admin raised `hermes_worker_min_version` gets demoted on its next
   // heartbeat (never exempted by runtimeType). The warning is surfaced on
@@ -1459,16 +1494,29 @@ export async function recordWorkerHeartbeat(
     hermesRuntimeEnforcement.warning,
     hermesEnforcement.warning,
   ].filter((warning): warning is string => Boolean(warning));
+  let nextCapabilitiesJson = hermesEnforcement.capabilitiesJson;
+  let nextHealthSummaryJson = buildWorkerHealthSummary(
+    worker.healthSummaryJson,
+    worker.runtimeType,
+    input.payload.compatibility,
+    input.payload.runtimeMetadataJson ?? {},
+    { currentJobCount: input.payload.currentJobCount, queueDepth: input.payload.queueDepth },
+  );
+  if (worker.runtimeType === "remotion_executor") {
+    const liveCapabilities = remotionExecutorCapabilityProfileSchema.safeParse(
+      input.payload.runtimeMetadataJson?.executorCapabilityProfileJson,
+    );
+    const liveReadiness = remotionExecutorReadinessSchema.safeParse(
+      input.payload.runtimeMetadataJson?.executorReadinessJson,
+    );
+    if (liveCapabilities.success) nextCapabilitiesJson = liveCapabilities.data;
+    if (liveReadiness.success) nextHealthSummaryJson = { ...nextHealthSummaryJson, ...liveReadiness.data };
+  }
   const updatedWorker = await repo.updateWorker(worker.id, {
     status: nextStatus,
     runtimeVersion: input.payload.compatibility.runtimeVersion,
-    capabilitiesJson: hermesEnforcement.capabilitiesJson,
-    healthSummaryJson: buildWorkerHealthSummary(
-      worker.healthSummaryJson,
-      worker.runtimeType,
-      input.payload.compatibility,
-      input.payload.runtimeMetadataJson ?? {},
-    ),
+    capabilitiesJson: nextCapabilitiesJson,
+    healthSummaryJson: nextHealthSummaryJson,
     warningFlagsJson: sanitizeWorkerWarningFlags(
       hermesWarnings.length > 0
         ? [...sanitizeWorkerWarningFlags(input.payload.warningsJson), ...hermesWarnings]

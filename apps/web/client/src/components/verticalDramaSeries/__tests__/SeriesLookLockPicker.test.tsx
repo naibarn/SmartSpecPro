@@ -36,4 +36,23 @@ describe("SeriesLookLockPicker", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Action / Epic" }));
     expect(onChange).toHaveBeenCalledWith({ mode: "genre", genreKey: "action_epic" });
   });
+
+  it("keeps story-facing use explicit and preserves the selected look", () => {
+    const onChange = vi.fn();
+    render(
+      <SeriesLookLockPicker
+        lang="en"
+        value={{ mode: "genre", genreKey: "drama_romance", visualNarrativeEnabled: false }}
+        hasInheritedLook={false}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Use for story direction and visuals" }));
+    expect(onChange).toHaveBeenCalledWith({
+      mode: "genre",
+      genreKey: "drama_romance",
+      visualNarrativeEnabled: true,
+    });
+  });
 });

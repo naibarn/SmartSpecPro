@@ -24,6 +24,7 @@ describe("agencyHybridAdk feature flags", () => {
       "nemoclaw_sandbox",
       "hiclaw_cluster",
       "hermes_agent_gateway",
+      "remotion_executor",
     ]);
   });
 

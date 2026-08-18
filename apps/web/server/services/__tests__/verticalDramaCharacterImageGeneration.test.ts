@@ -759,6 +759,22 @@ describe("findLeadPromptQualityIssues", () => {
     });
   });
 
+  it("regenerates an approved snapshot when durable casting preferences changed", () => {
+    expect(
+      decideCharacterPromptSnapshotReuse({
+        imagePromptCapability: targetNanoBananaCapability,
+        snapshotContractVersion: "vd_character_natural_human_v1",
+        snapshotPromptProfile: "rich",
+        snapshotCastingPreferencesFingerprint: "old-casting",
+        currentCastingPreferencesFingerprint: "new-casting",
+        hasCharacterFacts: true,
+      }),
+    ).toEqual({
+      action: "regenerate",
+      reason: "stale_casting_preferences_with_character_facts",
+    });
+  });
+
   it("flags an under-cast male lead even when the prompt says merely ruggedly handsome", () => {
     const character = validCharacter("char-1", "lead_male");
     character.primary_portrait_prompt =
@@ -2899,6 +2915,54 @@ describe("buildCharacterVisualPromptsUserPrompt — region_ethnicity payload fac
     );
     const withoutOverride = buildCharacterVisualPromptsUserPrompt(baseParams());
     expect(withNonExplicit).toBe(withoutOverride);
+  });
+});
+
+describe("buildCharacterVisualPromptsUserPrompt — casting preferences and market context", () => {
+  it("passes Auto, explicit choices, priority details, and locale/audience facts to the skill", () => {
+    const prompt = buildCharacterVisualPromptsUserPrompt(
+      baseParams({
+        storyContext: {
+          title: "Summer Promise",
+          genre: "young adult romance",
+          tone: "warm and bittersweet",
+          locale: "en",
+          targetAudience: "United States young adults",
+        },
+        castingPreferences: {
+          version: 1,
+          regionMode: "preset",
+          region: "american_canadian",
+          lookMode: "preset",
+          look: "natural_relatable",
+          additionalDetails: "Korean-drama casting but an American character",
+        },
+      }),
+    );
+    expect(prompt).toContain('"casting_preferences"');
+    expect(prompt).toContain('"region_choice": "american_canadian"');
+    expect(prompt).toContain('"look_choice": "natural_relatable"');
+    expect(prompt).toContain("Korean-drama casting but an American character");
+    expect(prompt).toContain('"story_market_context"');
+    expect(prompt).toContain("United States young adults");
+    expect(prompt).toMatch(/highest priority among casting preferences/i);
+    expect(prompt).toMatch(/never choose randomly/i);
+  });
+
+  it("sends Auto without inventing a region or look when no legacy values exist", () => {
+    const prompt = buildCharacterVisualPromptsUserPrompt(
+      baseParams({
+        castingPreferences: {
+          version: 1,
+          regionMode: "auto",
+          lookMode: "auto",
+        },
+      }),
+    );
+    expect(prompt).toContain('"region_mode": "auto"');
+    expect(prompt).toContain('"look_mode": "auto"');
+    expect(prompt).not.toContain('"region_choice"');
+    expect(prompt).not.toContain('"look_choice"');
   });
 });
 

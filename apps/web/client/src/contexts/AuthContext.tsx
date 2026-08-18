@@ -32,6 +32,15 @@ export interface User {
   credits?: number;
   role?: string;
   currentTenantId?: string | null;
+  freeCreditStatus?: {
+    eligible: boolean;
+    noticeDue: boolean;
+    daysRemaining: number | null;
+    deadlineAt: string | null;
+    grantedAt: string | null;
+    activityAt: string | null;
+    policyCancelled: boolean;
+  } | null;
 }
 
 interface AuthContextType {
@@ -98,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               userData.currentTenantId !== undefined
                 ? String(userData.currentTenantId)
                 : null,
+            freeCreditStatus: userData.freeCreditStatus ?? null,
           });
         } else {
           // No valid session
@@ -171,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             result.user.currentTenantId !== undefined
               ? String(result.user.currentTenantId)
               : null,
+          freeCreditStatus: result.user.freeCreditStatus ?? null,
         });
       } else {
         const errorMessage = result?.message || data.error?.json?.message || 'Login failed';

@@ -10,8 +10,10 @@ import {
   workerArtifacts,
   workerJobs,
   mcpMediaTasks,
+  verticalDramaSeries,
 } from "../../drizzle/schema";
 import { getLibraryItemById, type LibraryActor } from "./libraryService";
+import { normalizeManagedMediaKey } from "./managedMediaAccessService";
 
 export interface ManagedStorageViewer {
   tenantId: string;
@@ -52,6 +54,41 @@ export async function canReadManagedStorageKey(
     viewer.userId <= 0
   ) {
     return false;
+  }
+
+  const verticalDramaWatermarkMatch = normalizedKey.match(
+    /^vertical-drama\/(\d+)\/watermark\/[^/]+$/,
+  );
+  if (verticalDramaWatermarkMatch) {
+    const seriesId = Number(verticalDramaWatermarkMatch[1]);
+    const [series] = await db
+      .select({ watermark: verticalDramaSeries.watermark })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, seriesId),
+          eq(verticalDramaSeries.tenantId, viewer.tenantId),
+          eq(verticalDramaSeries.userId, viewer.userId),
+        ),
+      )
+      .limit(1);
+    if (!series) return false;
+
+    const watermark =
+      series.watermark && typeof series.watermark === "object"
+        ? (series.watermark as Record<string, unknown>)
+        : null;
+    const secondary =
+      watermark?.secondary && typeof watermark.secondary === "object"
+        ? (watermark.secondary as Record<string, unknown>)
+        : null;
+    const configuredUrls = [watermark?.imageUrl, secondary?.imageUrl];
+    return configuredUrls.some(value => {
+      if (typeof value !== "string") return false;
+      const prefix = "/api/storage/files/";
+      if (!value.startsWith(prefix)) return false;
+      return normalizeManagedMediaKey(value.slice(prefix.length)) === normalizedKey;
+    });
   }
 
   // `ai.upload` stores Media Studio/chat uploads under an owner-scoped key.

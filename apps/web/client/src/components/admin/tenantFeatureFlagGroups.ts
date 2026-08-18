@@ -111,6 +111,11 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "mcpServerRegistry", label: "MCP Server Registry", description: "Centralized MCP tool server management" },
       { key: "mcpStdio", label: "MCP stdio Transport", description: "MCP via OpenSandbox containers" },
       { key: "mcpOAuth", label: "MCP OAuth 2.1", description: "OAuth for MCP server connections" },
+      { key: "mcpModernProtocolEnabled", label: "Modern MCP protocol", description: "Enable the canonical Streamable HTTP MCP protocol surface" },
+      { key: "mcpResourcesEnabled", label: "MCP documentation resources", description: "Allow resources/list and resources/read for public MCP documentation" },
+      { key: "mcpOAuthProtectedResourceEnabled", label: "OAuth Protected Resource Metadata", description: "Publish PRM metadata and Bearer resource_metadata challenges" },
+      { key: "mcpOAuthAuthorizationServerEnabled", label: "MCP OAuth Authorization Server", description: "Enable first-party OAuth login, consent, token, and JWKS routes" },
+      { key: "mcpOAuthDynamicRegistrationEnabled", label: "OAuth dynamic registration", description: "Allow RFC 7591 client registration; keep off unless the client requires it" },
     ],
   },
   {

@@ -20,6 +20,8 @@ export type VdLookLockGovernance = "preset_mix" | "look_lock";
 export type VdLookLockControl = {
   mode: VdLookLockMode;
   genreKey?: VdLookLockGenre;
+  /** Additive opt-in for story-facing visual guidance during future planning. */
+  visualNarrativeEnabled?: boolean;
   inheritedIdentity?: VerticalDramaPresetVisualIdentity;
   inheritedSource?: VdLookLockInheritedSource;
   inheritedGovernance?: VdLookLockGovernance;
@@ -140,6 +142,10 @@ export function readSeriesLookLockControl(value: unknown): VdLookLockControl | u
   const inheritedGovernance = ["preset_mix", "look_lock"].includes(
     String(value.inheritedGovernance),
   ) ? value.inheritedGovernance as VdLookLockGovernance : undefined;
+  const visualNarrativeEnabled =
+    typeof value.visualNarrativeEnabled === "boolean"
+      ? value.visualNarrativeEnabled
+      : undefined;
   return {
     mode: value.mode as VdLookLockMode,
     revision,
@@ -148,6 +154,7 @@ export function readSeriesLookLockControl(value: unknown): VdLookLockControl | u
     ...(inheritedIdentity ? { inheritedIdentity } : {}),
     ...(inheritedSource ? { inheritedSource } : {}),
     ...(inheritedGovernance ? { inheritedGovernance } : {}),
+    ...(visualNarrativeEnabled !== undefined ? { visualNarrativeEnabled } : {}),
   };
 }
 
@@ -262,6 +269,7 @@ export function applySeriesLookLockTransition(params: {
   now: string;
   inheritedSource?: VdLookLockInheritedSource;
   inheritedGovernance?: VdLookLockGovernance;
+  visualNarrativeEnabled?: boolean;
 }): { bible: Record<string, unknown>; control: VdLookLockControl } {
   const bible = isRecord(params.bible) ? { ...params.bible } : {};
   const previousControl = readSeriesLookLockControl(bible.lookLockControl);
@@ -318,6 +326,9 @@ export function applySeriesLookLockTransition(params: {
     ...(inheritedIdentity ? { inheritedIdentity } : {}),
     ...(inheritedSource ? { inheritedSource } : {}),
     ...(inheritedGovernance ? { inheritedGovernance } : {}),
+    ...(params.visualNarrativeEnabled !== undefined
+      ? { visualNarrativeEnabled: params.visualNarrativeEnabled }
+      : {}),
   };
   bible.lookLockControl = control;
   if (effectiveIdentity) bible.presetVisualIdentity = effectiveIdentity;

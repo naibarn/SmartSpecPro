@@ -9,6 +9,7 @@ import {
   isFirstPortraitCandidateEligible,
   resolveDirectCharacterImageInstruction,
   resolvePortraitCandidateVisibility,
+  resolveCharacterRoleTierMismatchMessage,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 
@@ -260,6 +261,30 @@ describe("isFirstPortraitCandidateEligible", () => {
 });
 
 describe("resolveVdCharacterMutationErrorMessage", () => {
+  it("explains an authoritative child/support role mismatch in Thai", () => {
+    const message = resolveVdCharacterMutationErrorMessage(
+      {
+        message:
+          'Character portrait candidate batch response failed schema validation: portrait_candidate_batch.candidates.0.character_design_dna.role_tier: Reported role tier "support" does not match authoritative input tier "child".',
+      },
+      "th",
+    );
+
+    expect(message).toContain("บทบาทตัวละครไม่ตรงกัน");
+    expect(message).toContain("เด็ก (child)");
+    expect(message).toContain("ตัวประกอบ (support)");
+    expect(message).toContain("ตรวจสอบ Role/อายุของตัวละคร");
+    expect(message).not.toContain("schema validation");
+  });
+
+  it("keeps unrelated schema failures unchanged", () => {
+    const message = resolveCharacterRoleTierMismatchMessage(
+      { message: "Character visual bible response failed schema validation: characters is required" },
+      "en",
+    );
+    expect(message).toBeNull();
+  });
+
   it("passes the server's deleteCharacter PRECONDITION_FAILED Thai message straight through", () => {
     const message = resolveVdCharacterMutationErrorMessage(
       {

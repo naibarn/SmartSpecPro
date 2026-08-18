@@ -98,6 +98,7 @@ async def kie_webhook_handler(request: Request):
     result_url = _extract_first_kie_result_url(body)
 
     # 5. Look up job in DB
+    image_owner_to_advance = None
     async with AsyncSessionLocal() as db:
         task = await MediaTaskService.get_task_by_external_id(db, kie_job_id)
         if not task:
@@ -203,6 +204,17 @@ async def kie_webhook_handler(request: Request):
                 TaskStatus.FAILED,
                 error_message=error_msg,
             )
+
+        if (
+            task.media_type == "image"
+            and (normalized_state == "fail" or (normalized_state == "success" and result_url))
+        ):
+            image_owner_to_advance = task.user_id
+
+    if image_owner_to_advance is not None:
+        from app.tasks.media_tasks import _dispatch_pending_image_tasks_async
+
+        await _dispatch_pending_image_tasks_async(image_owner_to_advance)
 
     # 9. Store dedup key
     await dedup.mark_processed(kie_job_id)

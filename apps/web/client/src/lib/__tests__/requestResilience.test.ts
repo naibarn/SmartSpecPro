@@ -70,6 +70,15 @@ describe("requestResilience", () => {
       expect(shouldRetryQuery(RETRYABLE_QUERY_MAX_ATTEMPTS, error)).toBe(false);
     });
 
+    it("retries a tenant bootstrap gateway status without retrying ordinary 500s", () => {
+      expect(
+        shouldRetryQuery(0, Object.assign(new Error("tenant/current 503"), { status: 503 })),
+      ).toBe(true);
+      expect(
+        shouldRetryQuery(0, Object.assign(new Error("tenant/current 500"), { status: 500 })),
+      ).toBe(false);
+    });
+
     it("does not retry an UNAUTHORIZED TRPCClientError", () => {
       const error = makeTrpcClientError({ code: "UNAUTHORIZED", httpStatus: 401 });
       expect(shouldRetryQuery(0, error)).toBe(false);

@@ -17,6 +17,7 @@ Load testing suite using [k6](https://k6.io/) to validate SmartSpecPro can handl
 | API Load | `scenario-1-api-load.js` | 100 | 5 min | p95 < 500ms, <1% errors |
 | Job Burst | `scenario-2-job-burst.js` | 50 | 2 min | 500 jobs queued, 0 lost |
 | Sustained | `scenario-3-sustained-load.js` | 20-50 | 60 min | Stable memory, <100 queue depth |
+| MCP v2 protocol | `scenario-mcp-v2.js` | configurable | configurable | p95 < 800ms, <1% errors |
 
 ## Quick Start
 
@@ -58,6 +59,21 @@ kill $MONITOR_PID
 ./collect-metrics.sh "$START_TIME" "$END_TIME"
 ```
 
+### MCP v2 protocol load
+
+This scenario is intentionally separate from media generation load. It requires
+an explicit short-lived staging token with only the read scopes needed by the
+configured MCP principal:
+
+```bash
+export MCP_TOKEN=<short-lived-staging-token>
+k6 run --env BASE_URL="$BASE_URL" --env MCP_TOKEN="$MCP_TOKEN" scenario-mcp-v2.js
+```
+
+Do not use a production admin/static token. The workflow fails when
+`MCP_LOAD_TOKEN` is absent instead of running an unauthenticated test that
+would produce misleading latency evidence.
+
 ### 4. Cleanup
 
 ```bash
@@ -76,6 +92,7 @@ Fill in `REPORT.md` with actual metrics from test runs.
 | `scenario-1-api-load.js` | k6: API load test (100 concurrent users) |
 | `scenario-2-job-burst.js` | k6: Burst job submission (500 jobs) |
 | `scenario-3-sustained-load.js` | k6: Sustained load (1000 jobs/hour) |
+| `scenario-mcp-v2.js` | k6: stateless MCP discover/list/resources protocol load |
 | `setup-test-users.sh` | Create test user accounts |
 | `cleanup-test-users.sh` | Remove test users from database |
 | `collect-metrics.sh` | Collect Cloud Monitoring metrics |

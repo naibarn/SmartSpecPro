@@ -30,6 +30,42 @@ const commonHeaders = {
     description: "Unix timestamp (seconds) when the rate-limit window resets",
     schema: { type: "integer" },
   },
+  "X-Credit-Quota-5h-Limit": {
+    description: "Dedicated MCP CLI key credit budget for the current 5-hour bucket",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-5h-Used": {
+    description: "Credits used by the dedicated MCP CLI key in the current 5-hour bucket",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-5h-Remaining": {
+    description: "Credits remaining for the dedicated MCP CLI key in the current 5-hour bucket",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-1d-Limit": {
+    description: "Dedicated MCP CLI key credit budget for the current UTC day",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-1d-Used": {
+    description: "Credits used by the dedicated MCP CLI key in the current UTC day",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-1d-Remaining": {
+    description: "Credits remaining for the dedicated MCP CLI key in the current UTC day",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-7d-Limit": {
+    description: "Dedicated MCP CLI key credit budget for the current 7-day bucket",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-7d-Used": {
+    description: "Credits used by the dedicated MCP CLI key in the current 7-day bucket",
+    schema: { type: "integer" },
+  },
+  "X-Credit-Quota-7d-Remaining": {
+    description: "Credits remaining for the dedicated MCP CLI key in the current 7-day bucket",
+    schema: { type: "integer" },
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -54,6 +90,153 @@ const commonErrorResponses = {
   "429": errorResponse("Rate limit exceeded"),
 };
 
+const mcpGuideDescription = [
+  "## SmartAIHub MCP connection guide",
+  "",
+  "This Swagger page documents the Public REST API. It is not the MCP endpoint and it does not require an API key for documentation access.",
+  "For MCP clients, use the canonical endpoint **`POST https://smartaihub.app/v1/mcp`**.",
+  "",
+  "### Choose one setup path",
+  "",
+  "- **Hermes One (desktop UI):** use Settings → MCP & Devices → Connect in Hermes One. No terminal, API key, or manual token copy is required.",
+  "- **Hermes CLI / Hermes Agent:** use the terminal commands in the Hermes section below.",
+  "- **Claude / Claude Desktop:** use Settings → Connectors → Add custom connector. Do not put a remote server in `claude_desktop_config.json`.",
+  "- **Codex CLI / Codex Desktop:** use Codex MCP settings or the `codex mcp` commands below, then verify with `codex mcp list` and a new session.",
+  "- **Other MCP clients:** use Streamable HTTP + OAuth discovery (**OAuth / Sign in with browser**). If a tool supports only REST or static API keys, use the Public REST/OpenAPI path instead of guessing an MCP header configuration.",
+  "",
+  "When OAuth readiness is enabled, supported clients use the same SmartAIHub endpoint, OAuth authorization server, tenant ACL, and scope policy. If the readiness card is unavailable, use the documented browserless/API-key fallback instead of assuming OAuth is active. Each client owns its browser callback and secure credential store; never copy a token or credential file from one client to another.",
+  "",
+  "### Before you connect",
+  "",
+  "1. The server administrator must save the production MCP profile in **Admin → Infrastructure → MCP/OAuth**. Then, for each tenant, enable **MCP Server Registry → Modern MCP protocol**, **MCP documentation resources**, **OAuth Protected Resource Metadata**, and **MCP OAuth Authorization Server** in the tenant feature flags. Keep **dynamic client registration** enabled for first-time Hermes CLI, Claude Code CLI, and Codex CLI OAuth setup; the recommended production profile enables it with HTTPS/loopback redirect validation and rate limiting.",
+  "2. Confirm the MCP & Devices card reports **OAuth ready**. If it reports **OAuth not ready** or the discovery URLs return 404, the runtime or tenant gate is intentionally not enabled yet; do not copy a token from another client.",
+  "3. Use the exact endpoint `https://smartaihub.app/v1/mcp` (not `/v1/docs/`, `/v1/openapi.json`, or `/api/mcp/tools`).",
+  "4. Sign in through the SmartAIHub browser page and approve only the scopes and tenant/workspace you recognize.",
+  "5. After authorization, reload MCP tools. The first successful discovery should include `server/discover` or legacy `initialize`, followed by `tools/list`.",
+  "",
+  '<a id="hermes-one"></a>',
+  "### Hermes One — desktop UI",
+  "",
+  "1. Open SmartAIHub → Settings → MCP & Devices.",
+  "2. Wait until the card shows **OAuth automatic / ready**.",
+  "3. Click **Connect in Hermes One**, confirm the public server configuration in Hermes, then complete SmartAIHub browser login and consent.",
+  "4. Return to Hermes and reload its MCP tools.",
+  "",
+  "The generated `hermes://mcp/install` link contains only the public MCP URL and `auth: oauth`; it never contains an API key, access token, refresh token, worker credential, or tenant secret. If Hermes One is not installed or the link is unavailable, use Hermes CLI.",
+  "",
+  '<a id="hermes-cli"></a>',
+  "### Hermes CLI / Hermes Agent — terminal",
+  "",
+  "Run interactive commands from Windows PowerShell/Windows Terminal or macOS Terminal, not an embedded agent shell:",
+  "```text",
+  "hermes mcp add smartaihub --url https://smartaihub.app/v1/mcp --auth oauth",
+  "hermes mcp login smartaihub",
+  "hermes mcp test smartaihub",
+  "hermes mcp list",
+  "```",
+  "",
+  "Use `auth: oauth`. Do not use `hermes mcp add ... --auth header`.",
+  "That mode selects static header/API-key authentication, causes an API-key prompt, and is not the SmartAIHub OAuth flow. Hermes stores and refreshes its own OAuth credentials; do not copy them to Claude or Codex.",
+  "If this machine has no browser, Hermes can still use OAuth when its interactive terminal offers the authorize URL and paste-back redirect flow; open the URL on another trusted device and paste the final redirect back. If that flow is unavailable, create **Settings → API Keys → Create MCP CLI Key** first. Choose the scopes and credit budgets there; the raw key is shown once only. Then use Hermes' header mode and enter the key in its secure credential prompt. This is the only documented reason to use `--auth header`.",
+  "If Hermes reports `Invalid registration response`, inspect the OAuth authorization metadata and confirm it contains `registration_endpoint: https://smartaihub.app/oauth/register`. Save the recommended MCP/OAuth profile with dynamic registration enabled, then retry after restarting the MCP connection.",
+  "",
+  '<a id="claude"></a>',
+  "### Claude / Claude Desktop — remote Connector UI",
+  "",
+  "1. Open Claude or Claude Desktop → **Settings → Connectors**.",
+  "2. Choose **Add custom connector** and enter `https://smartaihub.app/v1/mcp`.",
+  "3. Click **Add**, then **Connect**. Complete SmartAIHub browser login and review permissions.",
+  "4. Enable only the tools needed for the conversation from Claude's Search and tools menu.",
+  "",
+  "Claude's Connector UI owns its OAuth callback and credentials. Do not manually add this remote URL to `claude_desktop_config.json`.",
+  "",
+  "For **Claude Code**, use the HTTP transport and authenticate from its `/mcp` menu:",
+  "```text",
+  "claude mcp add --transport http smartaihub https://smartaihub.app/v1/mcp",
+  "> /mcp",
+  "```",
+  "",
+  '<a id="codex"></a>',
+  "### Codex CLI / Codex Desktop",
+  "",
+  "For Codex CLI, add the remote Streamable HTTP server and complete browser login when requested:",
+  "```text",
+  "codex mcp add smartaihub --url https://smartaihub.app/v1/mcp",
+  "codex mcp login smartaihub",
+  "codex mcp list",
+  "```",
+  "",
+  "Codex releases may authenticate during `add`, during `login`, or expose fewer OAuth status fields. Treat `codex mcp list` plus actual tool discovery in a new session as the verification source. Do not use `--bearer-token-env-var` for the OAuth path.",
+  "For a machine without a browser, create a dedicated MCP CLI key in SmartAIHub first, store it as `SMARTAIHUB_MCP_KEY` in the OS secret store/environment, and use `codex mcp add smartaihub --url https://smartaihub.app/v1/mcp --bearer-token-env-var SMARTAIHUB_MCP_KEY`. Do not put the real key in shell history or a committed config file.",
+  "",
+  '<a id="other"></a>',
+  "### Other MCP clients — generic remote setup",
+  "",
+  "Choose **Streamable HTTP**, set the URL to `https://smartaihub.app/v1/mcp`, and select **OAuth 2.1 / browser login** when the server reports OAuth ready. A compatible client follows the `401` Bearer challenge, reads the metadata below, completes Authorization Code + PKCE, and retries with a short-lived Bearer access token.",
+  "",
+  "If the client cannot do MCP OAuth discovery, do not invent a static `Authorization` header or paste a browser token. Use the documented Hermes pairing/API-key compatibility fallback only when that client and SmartAIHub explicitly support it; otherwise use `https://smartaihub.app/v1/openapi.json` for REST/OpenAPI integration.",
+  "### No-browser CLI fallback — Claude Code and other HTTP clients",
+  "Create a dedicated MCP CLI key at **Settings → API Keys → Create MCP CLI Key**. The default safety budgets are 500 credits per 5-hour bucket, 1,500 credits per day, and 5,000 credits per 7-day bucket. You can lower them, raise them, or explicitly leave a window unlimited. The key remains tenant/user scoped and all MCP ACL checks still apply.",
+  "For Claude Code, store the key in `SMARTAIHUB_MCP_KEY` and add the remote HTTP server with a bearer header (syntax can vary by Claude Code release):",
+  "```text",
+  "claude mcp add --transport http smartaihub https://smartaihub.app/v1/mcp --header \"Authorization: Bearer $SMARTAIHUB_MCP_KEY\"",
+  "```",
+  "On macOS, load it from Keychain with `export SMARTAIHUB_MCP_KEY=\"$(security find-generic-password -s SmartAIHubMcpKey -w)\"`; on Windows PowerShell, load it from the configured SecretManagement vault with `$env:SMARTAIHUB_MCP_KEY = (Get-Secret SmartAIHubMcpKey -AsPlainText)`. Prefer the OS secret store over a plaintext profile or command-line argument.",
+  "For a generic MCP client, set `Authorization: Bearer <dedicated MCP CLI key>` through its secret/environment-variable facility. Never use an OAuth access or refresh token as a static header.",
+  "After setup, verify with `tools/list` and a harmless read-only tool. If the key is revoked, expired, or over quota, the client receives a clear 401/429 response and must not retry in a tight loop.",
+  "",
+  "OAuth discovery endpoints:",
+  "- Protected Resource Metadata: `https://smartaihub.app/.well-known/oauth-protected-resource`",
+  "- Authorization Server Metadata: `https://smartaihub.app/.well-known/oauth-authorization-server`",
+  "- Product discovery manifest: `https://smartaihub.app/.well-known/mcp.json`",
+  "- Static MCP catalog: `https://smartaihub.app/v1/mcp/catalog`",
+  "",
+  "### MCP protocol surface",
+  "",
+  "The current MCP server supports `server/discover`, `initialize`, `ping`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, and legacy session termination with `DELETE /v1/mcp`. Modern protocol version is `2026-07-28`; legacy versions `2025-11-25` and `2025-03-26` remain available for compatibility.",
+  "",
+  "`tools/list` is principal-scoped. The actual list depends on the authenticated tenant, user, device, OAuth scopes, feature flags, ACL, and runtime availability. Do not hard-code tool counts or assume that every registry tool is available to every connection.",
+  "",
+  "Current tool families include SmartAIHub gateway/chat, knowledge/library/RAG, skills, agencies, media generation/history/download, presentations, video projects, Hermes, Remotion, jobs, workspace, drive, orchestration, browser automation, and Marketplace Intelligence. Use `tools/list` for the exact canonical `smartspec.*` names and schemas for the current principal.",
+  "",
+  "`tasks`, `subscriptions`, resource subscriptions, and `tools/listChanged` are not generally enabled. MCP resources are documentation resources; user files in Library, R2, and Media History must be accessed through ACL-checked tools and short-lived download references.",
+  "",
+  "### Scopes and security",
+  "",
+  "Common scopes are `mcp:read`, `mcp:write`, `llm:chat`, `media:read`, `media:generate`, `media:download`, `library:search`, `library:read`, `library:download`, `library:upload`, `remotion:submit`, `remotion:read`, `remotion:cancel`, and Hermes connection/generation scopes. The server re-checks tenant, user, device, file, and job permissions for every call; OAuth scope does not bypass ACL.",
+  "",
+  "Some registry families also have specialized required scopes such as RAG, Skills, Agencies, Presentations, Video Projects, and Jobs. A tool that is absent from `tools/list` is not available to that connection. Do not broaden access with `mcp:write` just to make a hidden tool appear.",
+  "",
+  "### Remotion rendering",
+  "",
+  "MCP submits and monitors Remotion work; rendering on a user's Windows 11 or macOS machine is performed by the separate Remotion Executor. It uses a separate device-bound credential and uploads artifacts through the server's checksum-verified HTTPS flow.",
+  "",
+  "```text",
+  "smartaihub-remotion-executor doctor",
+  "smartaihub-remotion-executor setup",
+  "smartaihub-remotion-executor connect",
+  "smartaihub-remotion-executor start",
+  "```",
+  "",
+  "The standalone executor does not require building the Tauri Worker App or Xcode on macOS. Revoke MCP OAuth connections and Remotion Executor devices separately from Connected Devices.",
+  "",
+  "### Hermes chat warning",
+  "",
+  "`API Server Key not set — chat will fail` is a Hermes provider-chat credential warning, not an MCP OAuth error. MCP does not automatically change Hermes' chat provider. Use `smartspec.gateway.*` tools for SmartAIHub gateway chat, or configure Hermes' provider separately.",
+  "",
+  "### Common problems",
+  "",
+  "- **OAuth not ready / metadata 404:** MCP/OAuth runtime settings are not enabled/saved or the deployment is stale. Ask the administrator to run the readiness check; do not switch to a copied token.",
+  "- **Hermes `Invalid registration response` or an HTML response:** the client-registration endpoint was unavailable or dynamic registration was disabled while Hermes was trying to register. Confirm the authorization metadata contains `registration_endpoint: https://smartaihub.app/oauth/register`, then retry after saving the recommended profile and restarting the MCP connection.",
+  "- **401 after approval:** confirm the client uses `/v1/mcp`, refreshed its OAuth token, and is not using credentials from another account or client.",
+  "- **Tools are missing:** check granted scopes, tenant/workspace, feature flags, object ACL, and runtime readiness. `tools/list` is authoritative for that connection.",
+  "- **Remotion unavailable:** MCP login does not install/start the local executor; run doctor/setup/connect/start separately.",
+  "",
+  "### Compatibility",
+  "",
+  "The canonical integration is `/v1/mcp` with OAuth/PKCE. Legacy REST/API-key authentication, legacy MCP sessions, and pairing remain compatibility fallbacks while telemetry measures endpoint, client, and version usage. Do not remove legacy paths until migration evidence supports deprecation.",
+].join("\n");
+
 // ---------------------------------------------------------------------------
 // buildOpenApiSpec
 // ---------------------------------------------------------------------------
@@ -67,8 +250,10 @@ export function buildOpenApiSpec() {
       description: [
         "Programmatic access to SmartAIHub skills, agencies, media generation, presentations, and automation.",
         "",
-        "## Authentication",
-        "All endpoints (except `/v1/openapi.json` and `/v1/docs`) require an API key.",
+        mcpGuideDescription,
+        "",
+        "## Public REST/OpenAPI authentication",
+        "All Public REST/OpenAPI operations documented below require an API key unless their operation explicitly says otherwise. The `/v1/mcp` JSON-RPC endpoint is a separate integration: use OAuth/PKCE as described in the SmartAIHub MCP guide above, not a REST API key.",
         "Two equivalent methods are accepted:",
         "",
         "| Method | Header | Example |",
@@ -76,7 +261,7 @@ export function buildOpenApiSpec() {
         "| Bearer token | `Authorization: Bearer sk-ssp_...` | Standard OAuth2 / OpenAPI |",
         "| API key header | `X-Api-Key: sk-ssp_...` | n8n, Zapier, Make, gateways |",
         "",
-        "Generate keys at **Admin → API Keys**.",
+  "Create personal keys at **Settings → API Keys**. Admin Infrastructure settings only control the MCP server runtime; they never expose a user's key.",
         "",
         "## OpenAPI Gateway / Agent Integration",
         "Point your gateway or agent (n8n, Zapier, Make, LangChain, OpenAI Custom GPT, etc.) to:",
@@ -113,22 +298,22 @@ export function buildOpenApiSpec() {
       description: "SmartAIHub Developer Guide",
       url: "https://smartaihub.app/v1/docs",
     },
-    servers: [
-      { url: "https://smartaihub.app", description: "Production" },
-    ],
+    servers: [{ url: "https://smartaihub.app", description: "Production" }],
     security: [{ bearerAuth: [] }, { apiKeyHeader: [] }],
     components: {
       securitySchemes: {
         bearerAuth: {
           type: "http",
           scheme: "bearer",
-          description: "API key in sk-ssp_ format passed as Bearer token. `Authorization: Bearer sk-ssp_...`",
+          description:
+            "API key in sk-ssp_ format passed as Bearer token. `Authorization: Bearer sk-ssp_...`",
         },
         apiKeyHeader: {
           type: "apiKey",
           in: "header",
           name: "X-Api-Key",
-          description: "API key in sk-ssp_ format passed as X-Api-Key header. Compatible with n8n, Zapier, Make, and most OpenAPI gateways.",
+          description:
+            "API key in sk-ssp_ format passed as X-Api-Key header. Compatible with n8n, Zapier, Make, and most OpenAPI gateways.",
         },
       },
       headers: commonHeaders,
@@ -193,7 +378,10 @@ export function buildOpenApiSpec() {
             {
               type: "object",
               properties: {
-                input_schema: { type: "object", description: "JSON Schema for skill inputs" },
+                input_schema: {
+                  type: "object",
+                  description: "JSON Schema for skill inputs",
+                },
                 credit_multiplier: { type: "number" },
                 tags: { type: "array", items: { type: "string" } },
               },
@@ -214,12 +402,19 @@ export function buildOpenApiSpec() {
           type: "object",
           properties: {
             job_id: { type: "string" },
-            status: { type: "string", enum: ["pending", "running", "completed", "failed", "cancelled"] },
+            status: {
+              type: "string",
+              enum: ["pending", "running", "completed", "failed", "cancelled"],
+            },
             progress_pct: { type: "integer", minimum: 0, maximum: 100 },
             result: { type: "object", nullable: true },
             error: { type: "string", nullable: true },
             created_at: { type: "string", format: "date-time" },
-            completed_at: { type: "string", format: "date-time", nullable: true },
+            completed_at: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+            },
           },
         },
         WebhookEndpoint: {
@@ -231,7 +426,11 @@ export function buildOpenApiSpec() {
             retry_policy: { type: "string", enum: ["none", "exponential"] },
             is_active: { type: "boolean" },
             failure_count: { type: "integer" },
-            last_delivered_at: { type: "string", format: "date-time", nullable: true },
+            last_delivered_at: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+            },
             created_at: { type: "string", format: "date-time" },
           },
         },
@@ -239,12 +438,19 @@ export function buildOpenApiSpec() {
           type: "object",
           properties: {
             task_id: { type: "string" },
-            status: { type: "string", enum: ["pending", "processing", "completed", "failed"] },
+            status: {
+              type: "string",
+              enum: ["pending", "processing", "completed", "failed"],
+            },
             progress_pct: { type: "integer", minimum: 0, maximum: 100 },
             result_url: { type: "string", format: "uri", nullable: true },
             credits_used: { type: "integer", nullable: true },
             created_at: { type: "string", format: "date-time" },
-            completed_at: { type: "string", format: "date-time", nullable: true },
+            completed_at: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+            },
           },
         },
       },
@@ -258,11 +464,25 @@ export function buildOpenApiSpec() {
           operationId: "listSkills",
           tags: ["Skills"],
           summary: "List available skills",
-          description: "Returns all skills accessible to this API key. Requires scope: `skills:read`.",
+          description:
+            "Returns all skills accessible to this API key. Requires scope: `skills:read`.",
           parameters: [
-            { name: "category", in: "query", schema: { type: "string" }, description: "Filter by skill category" },
-            { name: "limit", in: "query", schema: { type: "integer", default: 50 } },
-            { name: "offset", in: "query", schema: { type: "integer", default: 0 } },
+            {
+              name: "category",
+              in: "query",
+              schema: { type: "string" },
+              description: "Filter by skill category",
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: { type: "integer", default: 50 },
+            },
+            {
+              name: "offset",
+              in: "query",
+              schema: { type: "integer", default: 0 },
+            },
           ],
           responses: {
             "200": {
@@ -272,7 +492,10 @@ export function buildOpenApiSpec() {
                   schema: {
                     type: "object",
                     properties: {
-                      skills: { type: "array", items: { $ref: "#/components/schemas/SkillSummary" } },
+                      skills: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/SkillSummary" },
+                      },
                       pagination: { $ref: "#/components/schemas/Pagination" },
                     },
                   },
@@ -288,9 +511,15 @@ export function buildOpenApiSpec() {
           operationId: "getSkill",
           tags: ["Skills"],
           summary: "Get skill details",
-          description: "Returns full skill details including input schema. Requires scope: `skills:read`.",
+          description:
+            "Returns full skill details including input schema. Requires scope: `skills:read`.",
           parameters: [
-            { name: "skillId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "skillId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -311,9 +540,15 @@ export function buildOpenApiSpec() {
           operationId: "executeSkill",
           tags: ["Skills"],
           summary: "Execute a skill",
-          description: "Runs a skill with provided inputs. Returns the LLM output. Requires scope: `skills:execute`.",
+          description:
+            "Runs a skill with provided inputs. Returns the LLM output. Requires scope: `skills:execute`.",
           parameters: [
-            { name: "skillId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "skillId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           requestBody: {
             required: true,
@@ -323,8 +558,15 @@ export function buildOpenApiSpec() {
                   type: "object",
                   required: ["inputs"],
                   properties: {
-                    inputs: { type: "object", description: "Skill-specific inputs per the skill's input schema" },
-                    model: { type: "string", description: "Override LLM model (optional)" },
+                    inputs: {
+                      type: "object",
+                      description:
+                        "Skill-specific inputs per the skill's input schema",
+                    },
+                    model: {
+                      type: "string",
+                      description: "Override LLM model (optional)",
+                    },
                   },
                 },
               },
@@ -355,7 +597,8 @@ export function buildOpenApiSpec() {
           operationId: "detectSkill",
           tags: ["Skills"],
           summary: "Detect skill from natural language",
-          description: "Determines which skill best matches user intent. Requires scope: `skills:read`.",
+          description:
+            "Determines which skill best matches user intent. Requires scope: `skills:read`.",
           requestBody: {
             required: true,
             content: {
@@ -397,7 +640,8 @@ export function buildOpenApiSpec() {
           operationId: "listAgencies",
           tags: ["Agencies"],
           summary: "List agencies",
-          description: "Returns active agencies for the tenant. Requires scope: `agencies:list`.",
+          description:
+            "Returns active agencies for the tenant. Requires scope: `agencies:list`.",
           responses: {
             "200": {
               description: "Agency list",
@@ -406,7 +650,10 @@ export function buildOpenApiSpec() {
                   schema: {
                     type: "object",
                     properties: {
-                      agencies: { type: "array", items: { $ref: "#/components/schemas/AgencySummary" } },
+                      agencies: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/AgencySummary" },
+                      },
                     },
                   },
                 },
@@ -421,9 +668,15 @@ export function buildOpenApiSpec() {
           operationId: "invokeAgency",
           tags: ["Agencies"],
           summary: "Invoke an agency",
-          description: "Starts an asynchronous agency run. Returns a run ID. Requires scope: `agencies:invoke`.",
+          description:
+            "Starts an asynchronous agency run. Returns a run ID. Requires scope: `agencies:invoke`.",
           parameters: [
-            { name: "agencyId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "agencyId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           requestBody: {
             required: true,
@@ -464,10 +717,21 @@ export function buildOpenApiSpec() {
           operationId: "getAgencyRun",
           tags: ["Agencies"],
           summary: "Get agency run status",
-          description: "Returns current status and result for a run. Requires scope: `agencies:list`.",
+          description:
+            "Returns current status and result for a run. Requires scope: `agencies:list`.",
           parameters: [
-            { name: "agencyId", in: "path", required: true, schema: { type: "string" } },
-            { name: "runId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "agencyId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "runId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -488,10 +752,21 @@ export function buildOpenApiSpec() {
           operationId: "streamAgencyRun",
           tags: ["Agencies"],
           summary: "Stream agency run events",
-          description: "Server-Sent Events stream for a run. Connect with `Accept: text/event-stream`. Requires scope: `agencies:list`.",
+          description:
+            "Server-Sent Events stream for a run. Connect with `Accept: text/event-stream`. Requires scope: `agencies:list`.",
           parameters: [
-            { name: "agencyId", in: "path", required: true, schema: { type: "string" } },
-            { name: "runId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "agencyId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
+            {
+              name: "runId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -514,7 +789,8 @@ export function buildOpenApiSpec() {
           operationId: "generatePresentation",
           tags: ["Presentations"],
           summary: "Generate a presentation",
-          description: "Starts async AI presentation generation. Requires scope: `presentations:generate`.",
+          description:
+            "Starts async AI presentation generation. Requires scope: `presentations:generate`.",
           requestBody: {
             required: true,
             content: {
@@ -555,9 +831,15 @@ export function buildOpenApiSpec() {
           operationId: "getPresentationProgress",
           tags: ["Presentations"],
           summary: "Get presentation generation progress",
-          description: "Polls generation task status. Requires scope: `presentations:read`.",
+          description:
+            "Polls generation task status. Requires scope: `presentations:read`.",
           parameters: [
-            { name: "taskId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "taskId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -578,9 +860,15 @@ export function buildOpenApiSpec() {
           operationId: "getPresentation",
           tags: ["Presentations"],
           summary: "Get presentation deck",
-          description: "Returns presentation data. Requires scope: `presentations:read`.",
+          description:
+            "Returns presentation data. Requires scope: `presentations:read`.",
           parameters: [
-            { name: "deckId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "deckId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -608,9 +896,15 @@ export function buildOpenApiSpec() {
           operationId: "exportPresentation",
           tags: ["Presentations"],
           summary: "Export presentation to file",
-          description: "Starts async export to PDF/PPTX. Requires scope: `presentations:export`.",
+          description:
+            "Starts async export to PDF/PPTX. Requires scope: `presentations:export`.",
           parameters: [
-            { name: "deckId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "deckId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           requestBody: {
             required: true,
@@ -619,7 +913,11 @@ export function buildOpenApiSpec() {
                 schema: {
                   type: "object",
                   properties: {
-                    format: { type: "string", enum: ["pdf", "pptx"], default: "pdf" },
+                    format: {
+                      type: "string",
+                      enum: ["pdf", "pptx"],
+                      default: "pdf",
+                    },
                   },
                 },
               },
@@ -646,18 +944,27 @@ export function buildOpenApiSpec() {
           operationId: "downloadPresentation",
           tags: ["Presentations"],
           summary: "Download exported presentation",
-          description: "Returns binary file for completed export. Requires scope: `presentations:export`.",
+          description:
+            "Returns binary file for completed export. Requires scope: `presentations:export`.",
           parameters: [
-            { name: "deckId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "deckId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
               description: "File download",
               content: {
-                "application/pdf": { schema: { type: "string", format: "binary" } },
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+                "application/pdf": {
                   schema: { type: "string", format: "binary" },
                 },
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+                  {
+                    schema: { type: "string", format: "binary" },
+                  },
               },
             },
             "404": errorResponse("Export not ready"),
@@ -673,7 +980,8 @@ export function buildOpenApiSpec() {
           operationId: "createVideoProject",
           tags: ["Video Projects"],
           summary: "Create a video project",
-          description: "Queues a video generation task. Requires scope: `media:generate`.",
+          description:
+            "Queues a video generation task. Requires scope: `media:generate`.",
           requestBody: {
             required: true,
             content: {
@@ -683,7 +991,11 @@ export function buildOpenApiSpec() {
                   required: ["prompt"],
                   properties: {
                     prompt: { type: "string" },
-                    duration_seconds: { type: "integer", minimum: 1, maximum: 300 },
+                    duration_seconds: {
+                      type: "integer",
+                      minimum: 1,
+                      maximum: 300,
+                    },
                     model: { type: "string" },
                   },
                 },
@@ -710,7 +1022,12 @@ export function buildOpenApiSpec() {
           summary: "Get video project status",
           description: "Requires scope: `media:generate`.",
           parameters: [
-            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -733,7 +1050,12 @@ export function buildOpenApiSpec() {
           summary: "Download completed video",
           description: "Requires scope: `media:generate`.",
           parameters: [
-            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -755,7 +1077,8 @@ export function buildOpenApiSpec() {
           operationId: "generateImage",
           tags: ["Media"],
           summary: "Generate an image",
-          description: "Submits an async image generation task. Requires scope: `media:generate`.",
+          description:
+            "Submits an async image generation task. Requires scope: `media:generate`.",
           requestBody: {
             required: true,
             content: {
@@ -866,9 +1189,15 @@ export function buildOpenApiSpec() {
           operationId: "getMediaTaskStatus",
           tags: ["Media"],
           summary: "Get media task status",
-          description: "Polls task progress and retrieves result URL when complete. Requires scope: `media:generate`.",
+          description:
+            "Polls task progress and retrieves result URL when complete. Requires scope: `media:generate`.",
           parameters: [
-            { name: "taskId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "taskId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -912,8 +1241,17 @@ export function buildOpenApiSpec() {
                         type: "object",
                         required: ["role", "content"],
                         properties: {
-                          role: { type: "string", enum: ["system", "user", "assistant", "tool"] },
-                          content: { oneOf: [{ type: "string" }, { type: "array" }, { type: "object" }] },
+                          role: {
+                            type: "string",
+                            enum: ["system", "user", "assistant", "tool"],
+                          },
+                          content: {
+                            oneOf: [
+                              { type: "string" },
+                              { type: "array" },
+                              { type: "object" },
+                            ],
+                          },
                         },
                       },
                     },
@@ -943,7 +1281,11 @@ export function buildOpenApiSpec() {
                   },
                 },
                 "text/event-stream": {
-                  schema: { type: "string", description: "Streaming chat completion events when `stream: true`." },
+                  schema: {
+                    type: "string",
+                    description:
+                      "Streaming chat completion events when `stream: true`.",
+                  },
                 },
               },
             },
@@ -970,11 +1312,19 @@ export function buildOpenApiSpec() {
                   required: ["model", "input"],
                   properties: {
                     model: { type: "string", example: "gpt-5.4" },
-                    input: { oneOf: [{ type: "string" }, { type: "array" }, { type: "object" }] },
+                    input: {
+                      oneOf: [
+                        { type: "string" },
+                        { type: "array" },
+                        { type: "object" },
+                      ],
+                    },
                     stream: { type: "boolean", default: false },
                     instructions: { type: "string" },
                     tools: { type: "array", items: { type: "object" } },
-                    tool_choice: { oneOf: [{ type: "string" }, { type: "object" }] },
+                    tool_choice: {
+                      oneOf: [{ type: "string" }, { type: "object" }],
+                    },
                     max_output_tokens: { type: "integer" },
                     temperature: { type: "number" },
                     metadata: { type: "object" },
@@ -1000,7 +1350,11 @@ export function buildOpenApiSpec() {
                   },
                 },
                 "text/event-stream": {
-                  schema: { type: "string", description: "Streaming response events when `stream: true`." },
+                  schema: {
+                    type: "string",
+                    description:
+                      "Streaming response events when `stream: true`.",
+                  },
                 },
               },
             },
@@ -1013,7 +1367,8 @@ export function buildOpenApiSpec() {
           operationId: "gatewayModels",
           tags: ["Gateway"],
           summary: "List gateway-available models",
-          description: "Returns models currently available through the public HTTP LLM gateway.",
+          description:
+            "Returns models currently available through the public HTTP LLM gateway.",
           responses: {
             "200": {
               description: "Gateway model catalog",
@@ -1038,7 +1393,8 @@ export function buildOpenApiSpec() {
           operationId: "gatewayCredits",
           tags: ["Gateway"],
           summary: "Get current credit balance",
-          description: "Returns the current credit balance visible to the authenticated tenant/user context.",
+          description:
+            "Returns the current credit balance visible to the authenticated tenant/user context.",
           responses: {
             "200": {
               description: "Credit balance",
@@ -1066,7 +1422,8 @@ export function buildOpenApiSpec() {
           operationId: "searchOwnerLibrary",
           tags: ["Knowledge"],
           summary: "Search the authenticated user's library",
-          description: "Searches the caller's own library scope. Requires scope: `library:search`.",
+          description:
+            "Searches the caller's own library scope. Requires scope: `library:search`.",
           requestBody: {
             required: true,
             content: {
@@ -1111,7 +1468,8 @@ export function buildOpenApiSpec() {
           operationId: "uploadOwnerLibraryFile",
           tags: ["Knowledge"],
           summary: "Upload a file into the authenticated user's library",
-          description: "Uploads an allowed file type into the caller's own library scope. Requires scope: `library:upload`.",
+          description:
+            "Uploads an allowed file type into the caller's own library scope. Requires scope: `library:upload`.",
           requestBody: {
             required: true,
             content: {
@@ -1122,9 +1480,15 @@ export function buildOpenApiSpec() {
                   properties: {
                     fileName: { type: "string" },
                     fileType: { type: "string" },
-                    fileBase64: { type: "string", description: "Base64-encoded file contents" },
+                    fileBase64: {
+                      type: "string",
+                      description: "Base64-encoded file contents",
+                    },
                     title: { type: "string" },
-                    visibility: { type: "string", enum: ["private", "team", "public"] },
+                    visibility: {
+                      type: "string",
+                      enum: ["private", "team", "public"],
+                    },
                     parentId: { type: "integer", nullable: true },
                     metadata: { type: "object", additionalProperties: true },
                   },
@@ -1157,8 +1521,10 @@ export function buildOpenApiSpec() {
         post: {
           operationId: "searchOwnerRag",
           tags: ["Knowledge"],
-          summary: "Run a RAG-style semantic search on the authenticated user's knowledge",
-          description: "Searches the caller's own indexed knowledge scope. Requires scope: `rag:search`.",
+          summary:
+            "Run a RAG-style semantic search on the authenticated user's knowledge",
+          description:
+            "Searches the caller's own indexed knowledge scope. Requires scope: `rag:search`.",
           requestBody: {
             required: true,
             content: {
@@ -1200,7 +1566,8 @@ export function buildOpenApiSpec() {
           operationId: "ingestOwnerKnowledge",
           tags: ["Knowledge"],
           summary: "Ingest owner content into indexed knowledge",
-          description: "Either upload a new owner-scoped file for indexing or re-enqueue indexing for an existing owner library item. Requires scope: `rag:ingest`.",
+          description:
+            "Either upload a new owner-scoped file for indexing or re-enqueue indexing for an existing owner library item. Requires scope: `rag:ingest`.",
           requestBody: {
             required: true,
             content: {
@@ -1209,16 +1576,30 @@ export function buildOpenApiSpec() {
                   oneOf: [
                     {
                       type: "object",
-                      required: ["sourceType", "fileName", "fileType", "fileBase64"],
+                      required: [
+                        "sourceType",
+                        "fileName",
+                        "fileType",
+                        "fileBase64",
+                      ],
                       properties: {
                         sourceType: { type: "string", enum: ["upload"] },
                         fileName: { type: "string" },
                         fileType: { type: "string" },
-                        fileBase64: { type: "string", description: "Base64-encoded file contents" },
+                        fileBase64: {
+                          type: "string",
+                          description: "Base64-encoded file contents",
+                        },
                         title: { type: "string" },
-                        visibility: { type: "string", enum: ["private", "team", "public"] },
+                        visibility: {
+                          type: "string",
+                          enum: ["private", "team", "public"],
+                        },
                         parentId: { type: "integer", nullable: true },
-                        metadata: { type: "object", additionalProperties: true },
+                        metadata: {
+                          type: "object",
+                          additionalProperties: true,
+                        },
                       },
                     },
                     {
@@ -1282,7 +1663,8 @@ export function buildOpenApiSpec() {
           operationId: "mcpEndpoint",
           tags: ["MCP"],
           summary: "MCP protocol endpoint",
-          description: "Handles Model Context Protocol tool calls. Requires scope: `mcp:read`. Delegated personal workers may use this endpoint only when their delegated manifest reports MCP as ready and the job grants the requested MCP namespaces.",
+          description:
+            "Handles Model Context Protocol tool calls. Requires scope: `mcp:read`. Delegated personal workers may use this endpoint only when their delegated manifest reports MCP as ready and the job grants the requested MCP namespaces.",
           requestBody: {
             required: true,
             content: {
@@ -1318,7 +1700,8 @@ export function buildOpenApiSpec() {
           operationId: "getMcpCatalog",
           tags: ["MCP"],
           summary: "Read the static MCP tool catalog",
-          description: "Returns the canonical SmartAIHub MCP tool catalog, including tool families, idempotency expectations, and execution modes. Use this for static discovery guidance; delegated workers must still honor their per-job delegated manifest.",
+          description:
+            "Returns the canonical SmartAIHub MCP tool catalog, including tool families, idempotency expectations, and execution modes. Use this for static discovery guidance; delegated workers must still honor their per-job delegated manifest.",
           responses: {
             "200": {
               description: "Static MCP catalog",
@@ -1348,7 +1731,8 @@ export function buildOpenApiSpec() {
           operationId: "createJob",
           tags: ["Jobs"],
           summary: "Create an automation job",
-          description: "Queues a background automation job. Requires scope: `jobs:create`.",
+          description:
+            "Queues a background automation job. Requires scope: `jobs:create`.",
           requestBody: {
             required: true,
             content: {
@@ -1357,9 +1741,16 @@ export function buildOpenApiSpec() {
                   type: "object",
                   required: ["type", "payload"],
                   properties: {
-                    type: { type: "string", description: "Job type identifier" },
+                    type: {
+                      type: "string",
+                      description: "Job type identifier",
+                    },
                     payload: { type: "object" },
-                    schedule_at: { type: "string", format: "date-time", nullable: true },
+                    schedule_at: {
+                      type: "string",
+                      format: "date-time",
+                      nullable: true,
+                    },
                   },
                 },
               },
@@ -1381,11 +1772,20 @@ export function buildOpenApiSpec() {
           operationId: "listJobs",
           tags: ["Jobs"],
           summary: "List automation jobs",
-          description: "Returns jobs for the current tenant. Requires scope: `jobs:read`.",
+          description:
+            "Returns jobs for the current tenant. Requires scope: `jobs:read`.",
           parameters: [
             { name: "status", in: "query", schema: { type: "string" } },
-            { name: "limit", in: "query", schema: { type: "integer", default: 20 } },
-            { name: "offset", in: "query", schema: { type: "integer", default: 0 } },
+            {
+              name: "limit",
+              in: "query",
+              schema: { type: "integer", default: 20 },
+            },
+            {
+              name: "offset",
+              in: "query",
+              schema: { type: "integer", default: 0 },
+            },
           ],
           responses: {
             "200": {
@@ -1395,7 +1795,10 @@ export function buildOpenApiSpec() {
                   schema: {
                     type: "object",
                     properties: {
-                      jobs: { type: "array", items: { $ref: "#/components/schemas/JobStatus" } },
+                      jobs: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/JobStatus" },
+                      },
                       pagination: { $ref: "#/components/schemas/Pagination" },
                     },
                   },
@@ -1413,7 +1816,12 @@ export function buildOpenApiSpec() {
           summary: "Get job details",
           description: "Requires scope: `jobs:read`.",
           parameters: [
-            { name: "jobId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "jobId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "200": {
@@ -1432,9 +1840,15 @@ export function buildOpenApiSpec() {
           operationId: "cancelJob",
           tags: ["Jobs"],
           summary: "Cancel or delete a job",
-          description: "Cancels a pending job or deletes a completed one. Requires scope: `jobs:create`.",
+          description:
+            "Cancels a pending job or deletes a completed one. Requires scope: `jobs:create`.",
           parameters: [
-            { name: "jobId", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "jobId",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "204": { description: "Job cancelled" },
@@ -1451,7 +1865,8 @@ export function buildOpenApiSpec() {
           operationId: "createWebhook",
           tags: ["Webhooks"],
           summary: "Register a webhook endpoint",
-          description: "Creates a new webhook subscription. Requires scope: `webhooks:manage`.",
+          description:
+            "Creates a new webhook subscription. Requires scope: `webhooks:manage`.",
           requestBody: {
             required: true,
             content: {
@@ -1460,13 +1875,21 @@ export function buildOpenApiSpec() {
                   type: "object",
                   required: ["url", "events"],
                   properties: {
-                    url: { type: "string", format: "uri", description: "HTTPS endpoint URL" },
+                    url: {
+                      type: "string",
+                      format: "uri",
+                      description: "HTTPS endpoint URL",
+                    },
                     events: {
                       type: "array",
                       items: { type: "string" },
                       description: "Event types to subscribe to",
                     },
-                    retry_policy: { type: "string", enum: ["none", "exponential"], default: "exponential" },
+                    retry_policy: {
+                      type: "string",
+                      enum: ["none", "exponential"],
+                      default: "exponential",
+                    },
                   },
                 },
               },
@@ -1483,7 +1906,10 @@ export function buildOpenApiSpec() {
                       {
                         type: "object",
                         properties: {
-                          secret: { type: "string", description: "Signing secret (shown once only)" },
+                          secret: {
+                            type: "string",
+                            description: "Signing secret (shown once only)",
+                          },
                         },
                       },
                     ],
@@ -1507,7 +1933,10 @@ export function buildOpenApiSpec() {
                   schema: {
                     type: "object",
                     properties: {
-                      webhooks: { type: "array", items: { $ref: "#/components/schemas/WebhookEndpoint" } },
+                      webhooks: {
+                        type: "array",
+                        items: { $ref: "#/components/schemas/WebhookEndpoint" },
+                      },
                     },
                   },
                 },
@@ -1522,9 +1951,15 @@ export function buildOpenApiSpec() {
           operationId: "updateWebhook",
           tags: ["Webhooks"],
           summary: "Update or re-enable a webhook endpoint",
-          description: "Updates events, retry policy, or re-enables a disabled endpoint. Requires scope: `webhooks:manage`.",
+          description:
+            "Updates events, retry policy, or re-enables a disabled endpoint. Requires scope: `webhooks:manage`.",
           parameters: [
-            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           requestBody: {
             required: true,
@@ -1534,8 +1969,15 @@ export function buildOpenApiSpec() {
                   type: "object",
                   properties: {
                     events: { type: "array", items: { type: "string" } },
-                    retry_policy: { type: "string", enum: ["none", "exponential"] },
-                    is_active: { type: "boolean", description: "Set to true to re-enable a disabled endpoint" },
+                    retry_policy: {
+                      type: "string",
+                      enum: ["none", "exponential"],
+                    },
+                    is_active: {
+                      type: "boolean",
+                      description:
+                        "Set to true to re-enable a disabled endpoint",
+                    },
                   },
                 },
               },
@@ -1544,7 +1986,11 @@ export function buildOpenApiSpec() {
           responses: {
             "200": {
               description: "Webhook updated",
-              content: { "application/json": { schema: { $ref: "#/components/schemas/WebhookEndpoint" } } },
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/WebhookEndpoint" },
+                },
+              },
             },
             "404": errorResponse("Webhook not found"),
             ...commonErrorResponses,
@@ -1556,7 +2002,12 @@ export function buildOpenApiSpec() {
           summary: "Delete a webhook endpoint",
           description: "Requires scope: `webhooks:manage`.",
           parameters: [
-            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string" },
+            },
           ],
           responses: {
             "204": { description: "Webhook deleted" },
@@ -1573,13 +2024,15 @@ export function buildOpenApiSpec() {
           operationId: "streamEvents",
           tags: ["Events"],
           summary: "Subscribe to real-time events via Server-Sent Events",
-          description: "Connect with `Accept: text/event-stream`. Each event is a JSON payload. Requires scope: `events:read`.",
+          description:
+            "Connect with `Accept: text/event-stream`. Each event is a JSON payload. Requires scope: `events:read`.",
           parameters: [
             {
               name: "types",
               in: "query",
               schema: { type: "string" },
-              description: "Comma-separated event types to filter (e.g. `job.completed,credits.low`)",
+              description:
+                "Comma-separated event types to filter (e.g. `job.completed,credits.low`)",
             },
           ],
           responses: {
@@ -1587,7 +2040,10 @@ export function buildOpenApiSpec() {
               description: "SSE stream",
               content: {
                 "text/event-stream": {
-                  schema: { type: "string", description: "Server-Sent Events stream" },
+                  schema: {
+                    type: "string",
+                    description: "Server-Sent Events stream",
+                  },
                 },
               },
             },
@@ -1622,6 +2078,6 @@ export function registerPublicDocsRoutes(app: Express): void {
         persistAuthorization: true,
         url: "/v1/openapi.json",
       },
-    }) as any,
+    }) as any
   );
 }

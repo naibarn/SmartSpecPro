@@ -40,6 +40,55 @@ You are the Vertical Drama episode scriptwriter. Given a series brief, season ar
 
 This skill does not auto-trigger. The Vertical Drama episode pipeline invokes it explicitly.
 
+When the input includes `story_control_seed`, return bounded episode-level
+annotations alongside the normal script: `thread_actions`, `romance_beat`,
+`advantage_beat`, `character_role_bindings`, and `evidence_refs`. Reference
+only registered thread IDs and canonical character keys. A `resolve` action
+requires current-episode/beat evidence; otherwise leave the thread open,
+deferred, or marked for review. The writer skill decides whether the payoff,
+romance chemistry, or power shift is meaningful. Do not force a romance beat in
+every episode and do not alternate protagonist/villain wins mechanically.
+These annotations are for reconciliation, not extra scene prose or an implicit
+cast mutation.
+
+Story-control transport contract (when `story_control_seed` is present):
+
+- Use `evidenceRefs` (camelCase) inside `thread_actions`, and use
+  `evidence_refs` (snake_case) inside `romance_beat`, `advantage_beat`, and the
+  top-level `evidence_refs` field.
+- Every evidence reference is an object with at least `episodeNumber`, for
+  example `{ "episodeNumber": 3, "beatId": "beat-2", "kind": "advance" }`.
+  Never emit evidence references as prose strings.
+- If there is no earned romance movement, omit `romance_beat` or return a
+  complete `{ "phase": "none", "purpose": "No earned romantic movement in this episode." }`.
+  A partial object such as `{ "phase": "none" }` is invalid.
+- When present, `romance_beat` must include `phase` and `purpose`; an
+  `advantage_beat` must include `advantaged_side`, `cost`, and
+  `opponent_response`. Do not guess missing required values.
+
+Example of the exact annotation shape:
+
+```json
+{
+  "thread_actions": [
+    {
+      "action": "advance",
+      "threadId": "clinic-collateral",
+      "evidenceRefs": [
+        { "episodeNumber": 3, "beatId": "beat-2", "kind": "advance" }
+      ]
+    }
+  ],
+  "romance_beat": {
+    "phase": "friction",
+    "purpose": "Their disagreement exposes a new vulnerability without resolving the relationship.",
+    "evidence_refs": [
+      { "episodeNumber": 3, "beatId": "beat-3", "kind": "advance" }
+    ]
+  }
+}
+```
+
 Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form prose is
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
@@ -193,6 +242,24 @@ listed under that character's "Forbidden style", and prefer that character's
 own "Signature phrases" where natural. A character with NO voice card in the
 prompt has no additional constraint beyond the dialogue rules above (legacy/
 non-profiled characters render exactly as before this addition).
+
+### Dialogue language profile — MANDATORY when provided
+
+When the caller includes a `DIALOGUE LANGUAGE PROFILE (HARD CONTRACT)` block,
+apply it to every `dialogue_lines[].line` and to dialogue text in
+`scene_dialogue_summary`. For English, an Auto profile defaults to the
+established story setting/market and otherwise uses natural contemporary
+American spoken English; an explicit market override must be followed. In all
+languages, write performable contemporary speech, not translated sentence
+structure, formal written prose, or an essay-like plot summary. Never alter
+the story's setting, character identity, relationship phase, or continuity to
+make the language fit. Missing legacy profile data means Auto.
+
+Keep the contracts separate: narrative fields (title, logline, plot, beat
+summaries, and character metadata) stay in the caller's UI/content language.
+The spoken profile applies only to dialogue lines, subtitle text that mirrors
+those lines, and audio/TTS instructions. A spoken English or regional Thai
+selection must never translate or rewrite the story metadata.
 
 ## Speech budget — MANDATORY WHEN PROVIDED (story-density reform)
 
@@ -481,9 +548,11 @@ Shape:
   "canonical_facts": string[],        // durable facts this episode establishes (names, jobs, backstory reveals, rules)
   "threads_opened": [
     { "thread_id": string, "description": string,
-      "thread_class": "plot" | "domestic" | "career" | "financial" | "health" | "relationship" }
+      "thread_class": "plot" | "domestic" | "career" | "financial" | "health" | "relationship",
+      "expected_resolution": "this_episode" | "future_episode" | "season",
+      "expected_resolution_episode": number (optional) }
   ],
-  "threads_resolved": string[],       // thread_id values (opened this episode OR an earlier one) that closed this episode
+  "threads_resolved": string[],       // exact thread_id values from the canonical thread ledger that closed this episode; never invent, translate, or paraphrase IDs
   "relationship_changes": [
     { "pair": [string, string],       // the two characters' ids/names, exactly as used elsewhere in this script
       "status": string,               // free text describing the relationship right now, e.g. "คบกันแบบเปิดเผย", "หย่าแล้ว", "พี่น้องห่างเหิน"
@@ -495,6 +564,12 @@ Shape:
   ]
 }
 ```
+
+Every new thread must declare `expected_resolution`; never leave a thread
+unclassified. When the input identifies the configured final episode, resolve
+all threads that pay off there by their exact canonical `thread_id`. A thread
+that intentionally continues beyond the season must be explicitly marked
+`season`; do not emit `future_episode` at the season boundary.
 
 **The `disclosure` axis — read this carefully, it changes how you write the
 scene.** Every relationship has a visibility state, independent of what the

@@ -45,6 +45,24 @@ describe("AuthenticatedMediaImage", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("defers image decoding and loading unless a caller opts into another policy", () => {
+    render(
+      <AuthenticatedMediaImage
+        src="library/uploads/tenant-1/1/image.png"
+        alt="Deferred image"
+      />
+    );
+
+    expect(screen.getByAltText("Deferred image")).toHaveAttribute(
+      "loading",
+      "lazy"
+    );
+    expect(screen.getByAltText("Deferred image")).toHaveAttribute(
+      "decoding",
+      "async"
+    );
+  });
+
   it("shows a readable fallback when protected media fails in the browser", () => {
     render(
       <AuthenticatedMediaImage

@@ -70,6 +70,7 @@ import {
 import { cn } from "@/lib/utils";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { ImageLightbox } from "./media/ImageLightbox";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { SafeMarkdown } from "./SafeMarkdown";
 import {
   LLMArtifactViewer,
@@ -3464,22 +3465,36 @@ export function ChatView({
         reader.readAsDataURL(f);
       });
 
-    const fileBase64 = await toBase64(file);
-    const res = await uploadMutation.mutateAsync({
-      fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      fileBase64,
-    });
-
-    setAttachments(prev => [
-      ...prev,
-      {
-        key: res.key,
-        url: res.url,
-        fileType: res.fileType,
+    try {
+      const fileBase64 = await toBase64(file);
+      const res = await uploadMutation.mutateAsync({
         fileName: file.name,
-      },
-    ]);
+        fileType: file.type || "application/octet-stream",
+        fileBase64,
+      });
+      if (!res.url) {
+        throw new Error("Upload response missing URL");
+      }
+
+      setAttachments(prev => [
+        ...prev,
+        {
+          key: res.key,
+          url: res.url,
+          fileType: res.fileType,
+          fileName: file.name,
+        },
+      ]);
+    } catch (error) {
+      console.error("Chat attachment upload failed:", error);
+      toast.error(
+        `Failed to upload ${file.name}: ${
+          error instanceof Error ? error.message : "Unknown upload error"
+        }. Please retry.`,
+      );
+    } finally {
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   const removeAttachment = (key: string) => {
@@ -5764,11 +5779,13 @@ export function ChatView({
         {imageAttachments.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {imageAttachments.map((a, i) => (
-              <img
+              <AuthenticatedMediaImage
                 key={i}
                 src={a.url}
                 alt={a.name || "attachment"}
                 className="max-h-48 rounded-md border cursor-pointer hover:opacity-90 transition-opacity"
+                loadingLabel="Loading attachment..."
+                errorLabel="Attachment unavailable"
                 onClick={() =>
                   openImageLightbox(
                     imageAttachments.map(img => ({
@@ -7094,10 +7111,12 @@ export function ChatView({
               {attachments.map(a => (
                 <div key={a.key} className="relative">
                   {a.fileType.startsWith("image/") ? (
-                    <img
+                    <AuthenticatedMediaImage
                       src={a.url}
                       alt={a.fileName}
                       className="h-16 w-16 rounded-md border object-cover"
+                      loadingLabel="Loading attachment..."
+                      errorLabel="Attachment unavailable"
                     />
                   ) : a.fileType.startsWith("video/") ? (
                     <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center">

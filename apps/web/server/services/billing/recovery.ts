@@ -20,6 +20,7 @@ import { storagePresignGet, storagePut, storageResolveUrl } from "../../storage"
 import { createBeamProvider, type BillingPaymentProvider } from "./beamProvider";
 import { isBillingFeatureEnabled } from "./featureFlags";
 import { getBillingRuntimeConfig } from "./runtimeConfig";
+import { releasePromptPayReservationForPayment } from "./promptpayDirectService";
 
 function sanitizeFileName(name: string) {
   return path.basename(name).replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 120) || "evidence.bin";
@@ -518,6 +519,10 @@ export async function cancelInvoiceForAdmin(params: {
     });
   });
 
+  if (payment?.paymentChannel === "promptpay_direct_manual") {
+    await releasePromptPayReservationForPayment(payment.id);
+  }
+
   return { canceled: true };
 }
 
@@ -567,6 +572,10 @@ export async function cancelStalePaymentAttempt(params: {
       afterJson: { paymentStatus: "canceled", attemptStatus: latestAttempt ? "canceled" : null },
     });
   });
+
+  if (payment.paymentChannel === "promptpay_direct_manual") {
+    await releasePromptPayReservationForPayment(payment.id);
+  }
 
   return { canceled: true };
 }

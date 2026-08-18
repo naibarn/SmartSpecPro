@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   vdCopy,
   vdCopyWithCount,
@@ -247,7 +248,7 @@ export function VerticalDramaReferenceFrameDialog({
                         onCheckedChange={() => toggleKey(opt.key)}
                       />
                       {opt.portraitUrl ? (
-                        <img
+                        <AuthenticatedMediaImage
                           src={opt.portraitUrl}
                           alt=""
                           className="h-5 w-5 shrink-0 rounded-full object-cover"

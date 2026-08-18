@@ -114,6 +114,10 @@ export type VdOpenThread = {
   openedEpisode: number;
   /** Present = resolved as of this episode number. Absent = still open. */
   resolvedEpisode?: number;
+  /** Optional authoring contract used by the continuity gate. */
+  expectedResolution?: "this_episode" | "future_episode" | "season";
+  /** Optional explicit target when the author knows the planned payoff episode. */
+  expectedResolutionEpisode?: number;
 };
 
 /**

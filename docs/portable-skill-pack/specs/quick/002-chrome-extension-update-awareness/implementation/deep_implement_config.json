@@ -1,0 +1,23 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/quick/002-chrome-extension-update-awareness/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/quick/002-chrome-extension-update-awareness/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/extension && npm run test:update",
+  "sections": [
+    "section-01-update-core",
+    "section-02-runtime-panel-release"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-18T02:46:57.238790+00:00"
+}

@@ -104,17 +104,21 @@ import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
 import { useVerticalDramaCreditConfirmation } from "./VerticalDramaCreditConfirmDialog";
 import {
+  resolveVerticalDramaShotImageDisplayState,
+  type VerticalDramaShotImageBrowserState,
+} from "./shotImageDisplayState";
+import {
   formatHermesErrorForToast,
   presentHermesError,
 } from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import { resolveVdImagePromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/imagePromptBudget";
+import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
   VERTICAL_DRAMA_THAI_ACCENTS,
   VERTICAL_DRAMA_THAI_ACCENT_LABELS,
-  VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
 import {
   VERTICAL_DRAMA_LOCATION_COVERAGE_ROLES,
@@ -614,6 +618,7 @@ export interface VerticalDramaImageTaskView {
     | "expired";
   submittedAt?: string;
   updatedAt?: string;
+  failureStage?: "provider" | "sync" | "admission";
   error?: string;
 }
 
@@ -1192,6 +1197,12 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
+  /** Error from an image admission/submission path that has not produced a task id. */
+  imageGenerationErrorByShot?: Record<number, string>;
+  /** Retry only the paid image render using the already persisted prompt. */
+  onRetryStartFrameImage?: (shotNumber: number) => void;
+  /** Retry linking a completed provider result without starting a new paid render. */
+  onRetryStartFrameSync?: (shotNumber: number) => void;
   /** Opens the Media History/Library picker scoped to a specific character's global portrait (updates that character everywhere, not just this shot). */
   onChangeCharacterReference?: (characterId: string) => void;
   /** Dragging an image (Library/History/grid-cutter tile, same unified drag contract used across the app) directly onto a shot's character chip replaces that character's reference image immediately — no need to open the swap panel first. */
@@ -1726,6 +1737,8 @@ interface VerticalDramaStoryboardPanelProps {
   onGenerateShotVideoPrompt?: (shotNumber: number) => void;
   generatingShotVideoPromptForShot?: ReadonlySet<number>;
   videoPromptJobStatusByShot?: Record<number, "queued" | "running">;
+  /** Durable error from the latest terminal/polling failure for this shot. */
+  videoPromptJobErrorByShot?: Record<number, string>;
   /** True once the most recent `generateShotVideoPrompt` response for this
    *  shot reported `usedVision: true` — shown as a small note next to the
    *  video prompt box. */
@@ -1927,6 +1940,9 @@ export function VerticalDramaStoryboardPanel({
   onGenerateReal,
   onEditVideoPrompt,
   onChangeStartFrame,
+  imageGenerationErrorByShot = {},
+  onRetryStartFrameImage,
+  onRetryStartFrameSync,
   onChangeCharacterReference,
   onDropCharacterReference,
   onSetShotCharacterReferences,
@@ -2074,6 +2090,7 @@ export function VerticalDramaStoryboardPanel({
   onGenerateShotVideoPrompt,
   generatingShotVideoPromptForShot = EMPTY_SHOT_NUMBER_SET,
   videoPromptJobStatusByShot = {},
+  videoPromptJobErrorByShot = {},
   usedVisionByShot = {},
   compiledVideo = null,
   onAssembleCompiledVideo,
@@ -2231,6 +2248,15 @@ export function VerticalDramaStoryboardPanel({
           : undefined,
     }
   );
+  const selectedVideoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel({
+    provider: selectedVideoModel?.provider,
+    configJson:
+      selectedVideoModel?.configJson &&
+      typeof selectedVideoModel.configJson === "object" &&
+      !Array.isArray(selectedVideoModel.configJson)
+        ? (selectedVideoModel.configJson as Record<string, unknown>)
+        : undefined,
+  });
   const selectedImageModelTransport = resolveMediaModelTransportConfig({
     provider: selectedImageModel?.provider,
     modelId: selectedImageModel?.modelId ?? selectedImageModelId,
@@ -2352,6 +2378,9 @@ export function VerticalDramaStoryboardPanel({
   const { requestConfirmation, creditConfirmDialog } =
     useVerticalDramaCreditConfirmation();
   const [lightboxShot, setLightboxShot] = useState<number | null>(null);
+  const [imageBrowserStateByShot, setImageBrowserStateByShot] = useState<
+    Record<number, { src: string; state: VerticalDramaShotImageBrowserState }>
+  >({});
   const [lightboxCharacterId, setLightboxCharacterId] = useState<string | null>(
     null
   );
@@ -3820,6 +3849,20 @@ export function VerticalDramaStoryboardPanel({
           > = clipsForShot.length > 0 ? clipsForShot : [undefined];
           const assetId = frame?.approvedMediaAssetId;
           const asset = assetId ? assetUrls[assetId] : undefined;
+          const startFrameImageSrc = asset?.thumbnailUrl ?? asset?.url;
+          const browserImageState = startFrameImageSrc
+            ? imageBrowserStateByShot[shotNumber]?.src === startFrameImageSrc
+              ? imageBrowserStateByShot[shotNumber].state
+              : "idle"
+            : "idle";
+          const imageDisplayState = resolveVerticalDramaShotImageDisplayState({
+            hasPrompt: Boolean(frame?.imagePrompt?.trim()),
+            hasAsset: Boolean(startFrameImageSrc),
+            imageTask: frame?.imageTask,
+            isGenerating: generatingStartFrameImageForShot.has(shotNumber),
+            browserState: browserImageState,
+            transientError: imageGenerationErrorByShot[shotNumber],
+          });
           const barrierMultiView = frame?.barrierMultiView;
           const barrierReferenceAssetId =
             barrierMultiView?.referenceView.referenceFrameAssetId;
@@ -4081,13 +4124,31 @@ export function VerticalDramaStoryboardPanel({
                     ) : asset?.thumbnailUrl || asset?.url ? (
                       <>
                         <AuthenticatedMediaImage
-                          src={asset.thumbnailUrl ?? asset.url}
+                          src={startFrameImageSrc!}
                           alt={t(
                             locale,
                             `เฟรมเริ่มต้น ช็อต ${shotNumber}`,
                             `Start frame, shot ${shotNumber}`
                           )}
                           className="h-full w-full object-cover"
+                          onLoad={() =>
+                            setImageBrowserStateByShot(prev => ({
+                              ...prev,
+                              [shotNumber]: {
+                                src: startFrameImageSrc!,
+                                state: "loaded",
+                              },
+                            }))
+                          }
+                          onError={() =>
+                            setImageBrowserStateByShot(prev => ({
+                              ...prev,
+                              [shotNumber]: {
+                                src: startFrameImageSrc!,
+                                state: "error",
+                              },
+                            }))
+                          }
                         />
                         {asset.url ? (
                           <button
@@ -4142,6 +4203,152 @@ export function VerticalDramaStoryboardPanel({
                         </span>
                       </div>
                     )}
+                    {imageDisplayState.kind !== "ready" &&
+                    imageDisplayState.kind !== "no_image" ? (
+                      <div
+                        className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/55 px-2 text-center text-white"
+                        data-testid={`vd-storyboard-image-status-${shotNumber}`}
+                        role={
+                          imageDisplayState.kind === "failed"
+                            ? "alert"
+                            : "status"
+                        }
+                        aria-busy={imageDisplayState.kind === "generating"}
+                        onClick={event => event.stopPropagation()}
+                      >
+                        {imageDisplayState.kind === "generating" ? (
+                          <>
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-5 w-5 animate-spin"
+                            />
+                            <span className="text-[11px] font-medium">
+                              {imageDisplayState.promptReady
+                                ? t(
+                                    locale,
+                                    "สร้าง prompt แล้ว กำลังสร้างภาพ…",
+                                    "Prompt ready, generating image…"
+                                  )
+                                : t(
+                                    locale,
+                                    "กำลังเตรียม prompt และสร้างภาพ…",
+                                    "Preparing prompt and generating image…"
+                                  )}
+                            </span>
+                          </>
+                        ) : imageDisplayState.kind === "failed" ? (
+                          <>
+                            <ImageOff aria-hidden="true" className="h-5 w-5" />
+                            <span className="text-[11px] font-medium">
+                              {imageDisplayState.failureStage === "sync"
+                                ? t(
+                                    locale,
+                                    "สร้างภาพแล้ว แต่เชื่อมเข้าช็อตไม่สำเร็จ",
+                                    "Image finished, but could not be linked to this shot"
+                                  )
+                                : t(
+                                    locale,
+                                    "สร้าง prompt แล้ว แต่สร้างภาพไม่สำเร็จ",
+                                    "Prompt ready, but image generation failed"
+                                  )}
+                            </span>
+                            {imageDisplayState.error ? (
+                              <span className="max-w-full break-words text-[10px] text-white/80">
+                                {imageDisplayState.error}
+                              </span>
+                            ) : null}
+                            <div className="flex flex-wrap justify-center gap-1">
+                              {imageDisplayState.failureStage === "sync" &&
+                              onRetryStartFrameSync ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2 text-[10px]"
+                                  onClick={() =>
+                                    onRetryStartFrameSync(shotNumber)
+                                  }
+                                >
+                                  {t(
+                                    locale,
+                                    "ลองเชื่อมภาพอีกครั้ง",
+                                    "Retry image linking"
+                                  )}
+                                </Button>
+                              ) : null}
+                              {onRetryStartFrameImage ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2 text-[10px]"
+                                  onClick={() =>
+                                    onRetryStartFrameImage(shotNumber)
+                                  }
+                                >
+                                  {t(
+                                    locale,
+                                    "สร้างภาพใหม่",
+                                    "Generate image again"
+                                  )}
+                                </Button>
+                              ) : null}
+                              {onChangeStartFrame ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2 text-[10px] text-white hover:bg-white/20 hover:text-white"
+                                  onClick={() => onChangeStartFrame(shotNumber)}
+                                >
+                                  {t(
+                                    locale,
+                                    "เปิด Media History",
+                                    "Open Media History"
+                                  )}
+                                </Button>
+                              ) : null}
+                            </div>
+                          </>
+                        ) : imageDisplayState.kind === "asset_load_failed" ? (
+                          <>
+                            <ImageOff aria-hidden="true" className="h-5 w-5" />
+                            <span className="text-[11px] font-medium">
+                              {t(
+                                locale,
+                                "โหลดภาพไม่สำเร็จ",
+                                "Could not load image"
+                              )}
+                            </span>
+                            {onChangeStartFrame ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 px-2 text-[10px]"
+                                onClick={() => onChangeStartFrame(shotNumber)}
+                              >
+                                {t(
+                                  locale,
+                                  "เปิด Media History",
+                                  "Open Media History"
+                                )}
+                              </Button>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-5 w-5 animate-spin"
+                            />
+                            <span className="text-[11px] font-medium">
+                              {t(locale, "กำลังโหลดภาพ…", "Loading image…")}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                   {onChangeStartFrame ? (
                     <Button
@@ -6764,7 +6971,7 @@ export function VerticalDramaStoryboardPanel({
                               : undefined
                           }
                           testIdPrefix={`vd-storyboard-video-prompt-${clipKey}`}
-                          maxChars={VD_VIDEO_PROMPT_MAX}
+                          maxChars={selectedVideoPromptMaxChars}
                         />
 
                         {/* Model-family mismatch warning
@@ -6913,7 +7120,14 @@ export function VerticalDramaStoryboardPanel({
                                     ? t2.generatingShotVideoPrompt
                                     : t2.generateShotVideoPrompt}
                             </Button>
-                            {!asset?.url ? (
+                            {videoPromptJobErrorByShot[shotNumber] ? (
+                              <span
+                                role="alert"
+                                className="max-w-xs text-[10px] text-destructive"
+                              >
+                                {videoPromptJobErrorByShot[shotNumber]}
+                              </span>
+                            ) : !asset?.url ? (
                               <span className="text-[10px] text-muted-foreground">
                                 {t2.generateShotVideoPromptNeedsImage}
                               </span>

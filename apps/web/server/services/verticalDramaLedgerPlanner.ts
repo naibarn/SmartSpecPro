@@ -72,6 +72,8 @@ import {
   worldRuleLedgerRowSchema,
   type VerticalDramaQualityLedgers,
 } from "@shared/verticalDramaSeries/qualityLedgers";
+import type { VerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
+import type { VerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -203,6 +205,10 @@ export interface RunVerticalDramaLedgerPlanningParams {
   /** The season's currently active breakdown (drafted AND not-yet-drafted episodes). */
   activeBreakdown: StoredEpisodeBreakdownItem[];
   totalEpisodeCount?: number;
+  /** Bounded author intent from the full-story architect; never a second ledger. */
+  storyControlSeed?: VerticalDramaStoryControlSeed;
+  /** Selected production profile; runtime remains derived from its vector. */
+  durationPlan?: VerticalDramaDurationPlan;
   /** Forwarded to `deductCredits` so a retried request doesn't double-charge. */
   idempotencyKey?: string;
   /**
@@ -242,6 +248,16 @@ function buildUserPrompt(params: RunVerticalDramaLedgerPlanningParams): string {
       ? `world_rules:\n${JSON.stringify(params.worldRules)}`
       : "world_rules: (none known yet)",
     `active_breakdown:\n${JSON.stringify(params.activeBreakdown)}`,
+    params.storyControlSeed
+      ? `story_control_seed (use as intent only; do not replace the approved breakdown):\n${JSON.stringify(params.storyControlSeed)}`
+      : undefined,
+    params.durationPlan?.status === "active"
+      ? `duration_profile (9 logical shots; derive runtime from this vector, never from a fixed episode duration):\n${JSON.stringify({
+          profileId: params.durationPlan.profileId,
+          logicalShotCount: params.durationPlan.logicalShotCount,
+          shotDurationsSeconds: params.durationPlan.shotDurationsSeconds,
+        })}`
+      : "duration_profile: duration_pending or legacy_compat; do not invent a new runtime",
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter((line): line is string => Boolean(line))

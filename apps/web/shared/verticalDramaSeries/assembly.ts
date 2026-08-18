@@ -108,7 +108,8 @@ export function validateDurationProfile(
 /** Assembly / export manifest handed to the render pipeline (spec §7.3). */
 export type VerticalDramaAssemblyManifest = {
   handoffType: "video_assembly_manifest";
-  targetDurationSeconds: 60;
+  /** Derived from the active profile; legacy manifests remain 60 seconds. */
+  targetDurationSeconds: number;
   clips: Array<{
     clipNumber: number;
     sourceShotNumbers: number[];

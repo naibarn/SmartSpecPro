@@ -46,11 +46,10 @@ import {
   ChevronDown,
   ChevronUp,
   ToggleLeft,
-  ToggleRight,
   Users,
-  Pencil,
   Link2,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 
 export default function InviteCodeManager() {
@@ -87,6 +86,7 @@ export default function InviteCodeManager() {
       toast.success("Invite code deactivated");
       utils.inviteCode.list.invalidate();
     },
+    onError: (err) => toast.error(err.message),
   });
 
   const reactivateUserMut = trpc.inviteCode.reactivateUser.useMutation({
@@ -252,7 +252,11 @@ export default function InviteCodeManager() {
                   onToggleActive={() =>
                     updateMut.mutate({ id: code.id, isActive: !code.isActive })
                   }
-                  onDeactivate={() => deleteMut.mutate({ id: code.id })}
+                  onDeactivate={() => {
+                    if (window.confirm(`Deactivate invite code "${code.code}"?`)) {
+                      deleteMut.mutate({ id: code.id });
+                    }
+                  }}
                   onReactivateUser={(userId) => reactivateUserMut.mutate({ userId })}
                 />
               ))}
@@ -354,17 +358,26 @@ function CodeRow({
             >
               <Link2 className="w-4 h-4" />
             </button>
-            <button
-              onClick={onToggleActive}
-              className="p-1 hover:bg-gray-100 rounded"
-              title={code.isActive ? "Deactivate" : "Activate"}
-            >
-              {code.isActive ? (
-                <ToggleRight className="w-4 h-4 text-green-600" />
-              ) : (
+            {!code.isActive && (
+              <button
+                onClick={onToggleActive}
+                className="p-1 hover:bg-gray-100 rounded"
+                title="Activate invite code"
+                aria-label="Activate invite code"
+              >
                 <ToggleLeft className="w-4 h-4 text-gray-400" />
-              )}
-            </button>
+              </button>
+            )}
+            {code.isActive && (
+              <button
+                onClick={onDeactivate}
+                className="p-1 hover:bg-red-50 rounded text-red-600"
+                title="Deactivate invite code"
+                aria-label="Deactivate invite code"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={onToggle}
               className="p-1 hover:bg-gray-100 rounded"

@@ -38,11 +38,13 @@
   "sidebar.library": "Library",
   "sidebar.mediaHistory": "Media History",
   "sidebar.render-jobs": "Render Jobs",
+  "sidebar.media": "Media Studio",
   "sidebar.mediaStudio": "Media Studio",
   "sidebar.marketplace-capture": "Marketplace Capture",
   "sidebar.marketplace-intelligence": "Marketplace Intelligence",
   "sidebar.admin-marketplace-capture": "Marketplace Capture Ops",
   "sidebar.storyboard-review": "Storyboard Review",
+  "sidebar.vertical-drama-series": "Vertical Drama Series",
   "sidebar.myFeedback": "My Feedback",
   "sidebar.myRequests": "My Requests",
   "sidebar.presentations": "Presentations",
@@ -66,6 +68,7 @@
   "sidebar.usageAnalytics": "Usage Analytics",
   "sidebar.videoEditor": "Video Editor",
   "sidebar.admin-work-os": "Work OS",
+  "sidebar.admin-billing": "Billing Review",
   "sidebar.webhookTriggers": "Webhook Triggers",
   "sidebar.workflows": "Workflows"
 }

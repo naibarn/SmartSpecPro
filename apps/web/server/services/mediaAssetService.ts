@@ -214,14 +214,26 @@ export async function createAssetFromAttachment(
 export async function fetchAsset(
   assetId: number,
   tenantId: string,
+  userId?: number,
 ): Promise<(typeof mediaAssets.$inferSelect & { signedUrl: string | null }) | null> {
+  const ownerUserId = Number.isInteger(userId) && (userId as number) > 0 ? userId as number : null;
+  // A tenant is not a sufficient download authority when this helper is used
+  // outside a trusted internal workflow. Preserve legacy test/internal calls,
+  // but fail closed in production unless the owner is explicit.
+  if (process.env.NODE_ENV === "production" && ownerUserId === null) {
+    return null;
+  }
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const conditions = [eq(mediaAssets.id, assetId), eq(mediaAssets.tenantId, tenantId)];
+  if (ownerUserId !== null) {
+    conditions.push(eq(mediaAssets.userId, ownerUserId));
+  }
   const rows = await db
     .select()
     .from(mediaAssets)
-    .where(and(eq(mediaAssets.id, assetId), eq(mediaAssets.tenantId, tenantId)));
+    .where(and(...conditions));
 
   if (rows.length === 0) return null;
 

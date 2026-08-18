@@ -20,6 +20,7 @@ export const verticalDramaEpisodePreviewSelectedShotsSchema = z
 
 export const verticalDramaEpisodePreviewStateSchema = z.object({
   slotId: verticalDramaEpisodePreviewSlotIdSchema,
+  coverSlotId: verticalDramaEpisodePreviewSlotIdSchema.optional(),
   selectedShotNumbers: verticalDramaEpisodePreviewSelectedShotsSchema,
   status: z.enum(["pending", "completed", "failed"]),
   pendingJobId: z.string().trim().min(1).optional(),

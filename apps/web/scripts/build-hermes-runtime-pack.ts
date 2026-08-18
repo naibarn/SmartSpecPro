@@ -10,8 +10,9 @@
  * `worker_app_install_hermes_runtime` Tauri command consumes
  * (`hermes_runtime.rs::HermesRuntimeManifest`).
  *
- * Windows ships first (spec §1 — phase-4 gate); the macOS entry can exist
- * with `allowed: false` until its pack is built, using the same code path.
+ * Windows and macOS Apple Silicon are assembled through separate branches.
+ * The macOS branch uses the native aarch64-apple-darwin Python distribution
+ * and Apple Silicon wheels; it never changes or rebuilds the Windows pack.
  *
  * Usage (operator-run, never invoked by the app or by tests):
  *   npx tsx scripts/build-hermes-runtime-pack.ts --os windows --version 0.1.0 \
@@ -40,6 +41,17 @@ const WINDOWS_PYTHON_BUILD = "3.11.14+20260127";
 const WINDOWS_PYTHON_ARCHIVE_URL =
   `https://github.com/astral-sh/python-build-standalone/releases/download/20260127/`
   + `cpython-${WINDOWS_PYTHON_BUILD.replace("+", "%2B")}-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`;
+const MACOS_ARM64_PYTHON_BUILD = "3.11.14+20260127";
+const MACOS_ARM64_PYTHON_ARCHIVE_URL =
+  `https://github.com/astral-sh/python-build-standalone/releases/download/20260127/`
+  + `cpython-${MACOS_ARM64_PYTHON_BUILD.replace("+", "%2B")}-aarch64-apple-darwin-install_only_stripped.tar.gz`;
+const MACOS_ARM64_PYTHON_PLATFORM = "aarch64-apple-darwin";
+const MACOS_SUPPORTED_MODELS = [
+  "Apple Silicon Mac with M1",
+  "Apple Silicon Mac with M2",
+  "Apple Silicon Mac with M3",
+  "Apple Silicon Mac with M4",
+] as const;
 const DISTLIB_BUILD_SPEC = "distlib==0.4.3";
 
 /** Runtime ids — frozen to match `hermes_runtime.rs`'s
@@ -78,11 +90,15 @@ export interface HermesRuntimeManifestEntryInput {
   hermesRelativePath: string;
   checksumFile?: string;
   signatureFile?: string;
-  /** Defaults to `true` for windows, `false` for macos (spec §1 — Windows
-   *  ships first; the macOS id is registered but not yet buildable). */
+  /** Defaults to `true` for windows, `false` for macos. The assembler passes
+   *  `allowed: true` only after a real native Mac pack has been assembled. */
   allowed?: boolean;
   denyReason?: string;
   archiveUrl?: string;
+  platform?: "windows" | "macos";
+  architecture?: "x86_64" | "arm64";
+  supportedMacModels?: readonly string[];
+  unsupportedMacArchitectures?: readonly string[];
 }
 
 export interface HermesRuntimeManifestEntry {
@@ -98,6 +114,10 @@ export interface HermesRuntimeManifestEntry {
   archiveSha256: string;
   archiveSizeBytes: number;
   archiveUrl?: string;
+  platform?: "windows" | "macos";
+  architecture?: "x86_64" | "arm64";
+  supportedMacModels?: readonly string[];
+  unsupportedMacArchitectures?: readonly string[];
 }
 
 /**
@@ -130,6 +150,18 @@ export function buildHermesRuntimeManifestEntry(
   }
   if (input.archiveUrl) {
     entry.archiveUrl = input.archiveUrl;
+  }
+  if (input.platform) {
+    entry.platform = input.platform;
+  }
+  if (input.architecture) {
+    entry.architecture = input.architecture;
+  }
+  if (input.supportedMacModels) {
+    entry.supportedMacModels = input.supportedMacModels;
+  }
+  if (input.unsupportedMacArchitectures) {
+    entry.unsupportedMacArchitectures = input.unsupportedMacArchitectures;
   }
   return entry;
 }
@@ -231,12 +263,53 @@ export async function assembleHermesRuntimePack(
       pythonRelativePath = "python/python.exe";
       hermesRelativePath = "python/hermes.exe";
     } else {
-      await runCommand("uv", ["venv", "--python", "3.11", path.join(stagingRoot, "python")], stagingRoot);
+      // A Linux host cannot create a runnable macOS venv with `uv`.
+      // Extract the official native Apple Silicon Python distribution, then
+      // resolve only aarch64-apple-darwin wheels. This keeps the archive
+      // genuinely runnable on M-series Macs instead of relabeling Linux files.
+      const pythonArchive = path.join(stagingRoot, ".python-macos-arm64.tar.gz");
+      await runCommand("curl", ["-L", "--fail", "--silent", "--show-error", "-o", pythonArchive, MACOS_ARM64_PYTHON_ARCHIVE_URL], stagingRoot);
+      await runCommand("tar", ["-xzf", pythonArchive, "-C", stagingRoot], stagingRoot);
+      await fs.rm(pythonArchive, { force: true });
+
+      const sitePackages = path.join(stagingRoot, "python", "lib", "python3.11", "site-packages");
+      await fs.mkdir(sitePackages, { recursive: true });
       await runCommand(
         "uv",
-        ["pip", "install", "--python", path.join(stagingRoot, "python"), HERMES_AGENT_PIP_SPEC],
+        [
+          "pip",
+          "install",
+          "--target",
+          sitePackages,
+          "--python-platform",
+          MACOS_ARM64_PYTHON_PLATFORM,
+          "--python-version",
+          "3.11",
+          "--only-binary",
+          ":all:",
+          "--link-mode",
+          "copy",
+          HERMES_AGENT_PIP_SPEC,
+        ],
         stagingRoot,
       );
+
+      // `uv pip --target` installs package modules but does not create a
+      // target-platform console script. Invoke Hermes by module through the
+      // bundled native interpreter so there is no Linux shebang in the pack.
+      const launcherPath = path.join(stagingRoot, "python", "bin", "hermes");
+      await fs.writeFile(
+        launcherPath,
+        [
+          "#!/bin/sh",
+          "set -eu",
+          'SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
+          'exec "$SCRIPT_DIR/python3" -m hermes_cli "$@"',
+          "",
+        ].join("\n"),
+      );
+      await fs.chmod(launcherPath, 0o755);
+      await runCommand("test", ["-x", path.join(stagingRoot, "python", "bin", "python3")], stagingRoot);
       pythonRelativePath = "python/bin/python3";
       hermesRelativePath = "python/bin/hermes";
     }
@@ -260,6 +333,15 @@ export async function assembleHermesRuntimePack(
       archiveSizeBytes: 0,
       pythonRelativePath,
       hermesRelativePath,
+      ...(os === "macos"
+        ? {
+            allowed: true,
+            platform: "macos" as const,
+            architecture: "arm64" as const,
+            supportedMacModels: MACOS_SUPPORTED_MODELS,
+            unsupportedMacArchitectures: ["x86_64 (Intel)"],
+          }
+        : {}),
     });
     const {
       archiveSha256: _archiveSha256,
@@ -294,6 +376,15 @@ export async function assembleHermesRuntimePack(
       archiveSizeBytes,
       pythonRelativePath,
       hermesRelativePath,
+      ...(os === "macos"
+        ? {
+            allowed: true,
+            platform: "macos" as const,
+            architecture: "arm64" as const,
+            supportedMacModels: MACOS_SUPPORTED_MODELS,
+            unsupportedMacArchitectures: ["x86_64 (Intel)"],
+          }
+        : {}),
     });
 
     const manifestPath = `${archivePath}.manifest.json`;

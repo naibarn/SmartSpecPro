@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 export function VerticalDramaEpisodeCoverSurface({
   lang,
@@ -89,7 +90,7 @@ export function VerticalDramaEpisodeCoverSurface({
         data-testid={`vd-episode-cover-surface-${episodeNumber}-${coverSlotId}`}
       >
         {visibleUrl ? (
-          <img
+          <AuthenticatedMediaImage
             src={visibleUrl}
             alt={alt}
             className="h-full w-full object-cover"

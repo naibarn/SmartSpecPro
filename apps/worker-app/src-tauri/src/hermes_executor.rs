@@ -321,7 +321,11 @@ fn build_direct_xai_media_argv(
     });
     let serialized = serde_json::to_string(&payload)
         .map_err(|error| format!("failed to serialize direct xAI media request: {error}"))?;
-    Ok(vec!["-c".to_string(), DIRECT_XAI_MEDIA_SCRIPT.to_string(), serialized])
+    Ok(vec![
+        "-c".to_string(),
+        DIRECT_XAI_MEDIA_SCRIPT.to_string(),
+        serialized,
+    ])
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -606,7 +610,11 @@ pub fn prepare_hermes_execution_plan(
     validate_workspace_path(workspace_root, &tmp_dir)?;
 
     let is_video = job.job_type == HERMES_MEDIA_VIDEO_JOB_TYPE;
-    let settings = job.input_json.get("settings").cloned().unwrap_or_else(|| json!({}));
+    let settings = job
+        .input_json
+        .get("settings")
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     let argv = build_direct_xai_media_argv(&contract, &[], &settings, &output_dir)?;
 
     let mut env = base_hermes_spawn_env();
@@ -633,11 +641,7 @@ pub fn prepare_hermes_execution_plan(
         settings,
         soft_timeout_ms: soft_ms,
         hard_timeout_ms: hard_ms,
-        inactivity_timeout_ms: if is_video {
-            15 * 60_000
-        } else {
-            3 * 60_000
-        },
+        inactivity_timeout_ms: if is_video { 15 * 60_000 } else { 3 * 60_000 },
         expected_kind: if is_video {
             "video".into()
         } else {
@@ -2150,13 +2154,9 @@ pub fn run_hermes_media_job(
 
     (deps.emit_stage)(HERMES_MEDIA_PROGRESS_STAGES[1]); // starting_hermes
     (deps.emit_stage)(HERMES_MEDIA_PROGRESS_STAGES[2]); // generating
-    let direct_argv = build_direct_xai_media_argv(
-        contract,
-        &reference_paths,
-        &plan.settings,
-        &plan.output_dir,
-    )
-        .map_err(|error| HermesFailure::new("HERMES_PROCESS_FAILED", error))?;
+    let direct_argv =
+        build_direct_xai_media_argv(contract, &reference_paths, &plan.settings, &plan.output_dir)
+            .map_err(|error| HermesFailure::new("HERMES_PROCESS_FAILED", error))?;
     let spawn_result = (deps.spawn)(
         &direct_argv,
         &plan.cwd,
@@ -2540,8 +2540,8 @@ fn validate_xai_media_url(url: &reqwest::Url) -> Result<(), String> {
 /// hosts so an agent-produced marker cannot turn the Worker into an SSRF
 /// client. The response is bounded before and after buffering.
 pub fn production_fetch_hermes_media(url: &str) -> Result<Vec<u8>, String> {
-    let parsed = reqwest::Url::parse(url)
-        .map_err(|error| format!("invalid Hermes media URL: {error}"))?;
+    let parsed =
+        reqwest::Url::parse(url).map_err(|error| format!("invalid Hermes media URL: {error}"))?;
     validate_xai_media_url(&parsed)?;
     tauri::async_runtime::block_on(async move {
         let client = reqwest::Client::builder()
@@ -4006,12 +4006,13 @@ mod tests {
         // Proves the spawn spy (i.e. `run_hermes_media_job`'s internals) was
         // actually invoked with the prepared plan's argv — not bypassed.
         assert_eq!(spawn_calls.borrow().len(), 1);
-        assert_eq!(spawn_calls.borrow()[0].first().map(String::as_str), Some("-c"));
-        assert!(
-            spawn_calls.borrow()[0]
-                .get(1)
-                .is_some_and(|script| script.contains("XAIImageGenProvider"))
+        assert_eq!(
+            spawn_calls.borrow()[0].first().map(String::as_str),
+            Some("-c")
         );
+        assert!(spawn_calls.borrow()[0]
+            .get(1)
+            .is_some_and(|script| script.contains("XAIImageGenProvider")));
         assert_eq!(collected.len(), 1);
         assert_eq!(stages.into_inner(), HERMES_MEDIA_PROGRESS_STAGES.to_vec());
         assert_eq!(uploaded.borrow().len(), 1);

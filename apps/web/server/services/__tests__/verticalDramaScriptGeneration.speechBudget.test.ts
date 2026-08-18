@@ -84,6 +84,7 @@ import {
   scriptBuilderOutputSchema,
   type ScriptBuilderOutput,
 } from "../verticalDramaScriptGeneration";
+import { createUniformVerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
 
 const VALID_SCRIPT_BASE = {
   contract_version: 1,
@@ -447,6 +448,24 @@ describe("evaluateScriptSpeechCoverage — legacy scene_dialogue_summary fallbac
 /* -------------------------------------------------------------------------- */
 
 describe("generateEpisodeScript — speech-budget prompt injection (flag-gated)", () => {
+  it("passes an active nine-shot duration vector without reintroducing fixed episode timing", async () => {
+    mockLlmResponse(wellFilledScript());
+
+    await generateEpisodeScript(
+      baseParams({
+        durationSeconds: 135,
+        durationPlan: createUniformVerticalDramaDurationPlan(15),
+      }),
+    );
+
+    const callArgs = mockExecuteWithFallback.mock.calls[0][0];
+    const userMessage = callArgs.messages.find((m: { role: string }) => m.role === "user");
+    expect(userMessage.content).toContain("duration_profile");
+    expect(userMessage.content).toContain("shot_durations_seconds");
+    expect(userMessage.content).toContain('"derived_runtime_seconds":135');
+    expect(userMessage.content).toContain("exactly 9 logical storyboard shots");
+  });
+
   it("injects speech_budget and content_budget when opts.speechBudgetEnabled is true", async () => {
     mockLlmResponse(wellFilledScript());
 

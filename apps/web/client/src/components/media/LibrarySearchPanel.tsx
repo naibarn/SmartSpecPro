@@ -8,6 +8,7 @@ import { FileImage, FileText, Film, Grid2X2, Loader2, Maximize2, Music, Plus, Se
 
 import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import type { ProductionReferenceInput } from "@shared/mediaProduction";
 
 type MediaLibraryItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
@@ -117,7 +118,7 @@ export default function LibrarySearchPanel({
 
     if (itemType === "image" && previewUrl) {
       return (
-        <img
+        <AuthenticatedMediaImage
           src={previewUrl}
           alt={item.title}
           className="h-full w-full object-cover"
@@ -130,7 +131,7 @@ export default function LibrarySearchPanel({
     if (itemType === "video") {
       if (thumbnailUrl) {
         return (
-          <img
+          <AuthenticatedMediaImage
             src={thumbnailUrl}
             alt={item.title}
             className="h-full w-full object-cover"

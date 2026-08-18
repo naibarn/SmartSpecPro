@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { ImageSourcePicker } from "./ImageSourcePicker";
 import {
   Select,
@@ -1119,7 +1120,13 @@ export default function DynamicSkillForm({
                           <div className="flex items-center gap-3">
                             {item[subField.id] ? (
                               <div className="relative group">
-                                <img src={item[subField.id]} alt="Uploaded" className="h-16 w-16 object-cover border rounded-md" />
+                                <AuthenticatedMediaImage
+                                  src={item[subField.id]}
+                                  alt="Uploaded"
+                                  className="h-16 w-16 object-cover border rounded-md"
+                                  loadingLabel={language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
+                                  errorLabel={language === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
+                                />
                                 <button
                                   onClick={() => updateSubValue("")}
                                   className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -1201,10 +1208,12 @@ export default function DynamicSkillForm({
             <div className="flex items-center gap-3">
               {value ? (
                 <div className="relative group">
-                  <img
+                  <AuthenticatedMediaImage
                     src={value}
                     alt="Uploaded"
                     className="h-20 w-20 rounded-lg object-cover border"
+                    loadingLabel={language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
+                    errorLabel={language === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
                   />
                   <button
                     onClick={() => updateValue(field.id, "")}
@@ -1306,10 +1315,12 @@ export default function DynamicSkillForm({
         <div className="flex flex-wrap gap-2">
           {referenceImages.map((img, idx) => (
             <div key={idx} className="relative group">
-              <img
+              <AuthenticatedMediaImage
                 src={img.url}
                 alt={img.name}
                 className="h-12 w-12 rounded-lg object-cover border"
+                loadingLabel={language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
+                errorLabel={language === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
               />
               {img.marketplaceProduct?.sourceUrl && (
                 <button

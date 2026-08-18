@@ -7,6 +7,7 @@ Falls back to environment variables if DB settings are not available.
 
 import os
 from typing import Dict, Optional
+from urllib.parse import urlsplit
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -17,6 +18,24 @@ logger = structlog.get_logger(__name__)
 
 # Keys that are encrypted in the DB
 _SENSITIVE_KEYS = {"googleClientSecret", "githubClientSecret", "microsoftClientSecret"}
+
+
+def is_valid_google_login_redirect_uri(value: str) -> bool:
+    """Return whether a URI targets the web login callback, not a Drive callback."""
+    try:
+        parsed = urlsplit(value.strip())
+    except ValueError:
+        return False
+
+    return (
+        parsed.scheme in {"http", "https"}
+        and bool(parsed.netloc)
+        and not parsed.username
+        and not parsed.password
+        and parsed.path == "/auth/callback/google"
+        and not parsed.query
+        and not parsed.fragment
+    )
 
 
 async def get_oauth_config(db: AsyncSession) -> Dict[str, str]:

@@ -779,7 +779,22 @@ export function buildFallbackApiUrl(
   }
   const normalizedBaseUrl = typeof baseUrl === "string" ? baseUrl.trim() : "";
   if (normalizedBaseUrl) {
-    return `${normalizedBaseUrl.replace(/\/+$/, "")}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+    const baseWithoutSlash = normalizedBaseUrl.replace(/\/+$/, "");
+    const normalizedEndpoint = endpoint.trim();
+    try {
+      const base = new URL(baseWithoutSlash);
+      const basePath = base.pathname.replace(/\/+$/, "");
+      if (
+        normalizedEndpoint.startsWith("/") &&
+        basePath &&
+        (normalizedEndpoint === basePath || normalizedEndpoint.startsWith(`${basePath}/`))
+      ) {
+        return `${base.origin}${normalizedEndpoint}`;
+      }
+    } catch {
+      // Fall back to the existing string join for non-URL test/custom values.
+    }
+    return `${baseWithoutSlash}${normalizedEndpoint.startsWith("/") ? "" : "/"}${normalizedEndpoint}`;
   }
   const normalizedProvider = String(providerHint || "")
     .trim()

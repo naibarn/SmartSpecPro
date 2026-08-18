@@ -48,6 +48,7 @@ import { executeWithFallback, getProviderForModel } from "../services/llmRouter"
 import { buildModelLookupCandidates } from "../services/modelLookup";
 import { getUploadsDir } from "../storage";
 import { getCachedPublicAppUrl } from "../services/appRuntimeConfig";
+import { resolveExternalMediaReferenceUrls } from "../services/mediaGenerationService";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -1084,6 +1085,7 @@ function isGenericStoryboardTransitionPrompt(content: string): boolean {
 
 async function repairStoryboardSlotVideoPrompt(input: {
   userId: number;
+  tenantId?: string;
   visionModel: string;
   slotIndex: number;
   currentPrompt: string;
@@ -1157,7 +1159,7 @@ async function repairStoryboardSlotVideoPrompt(input: {
     [input.startFrameUrl, input.endFrameUrl],
     input.visionModel,
     900,
-    { publicUrl: input.publicUrl ?? null },
+    { tenantId: input.tenantId, publicUrl: input.publicUrl ?? null },
   );
   const rawPrompt = result.content
     .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
@@ -1647,7 +1649,7 @@ async function callLLMWithVision(
   imageUrls: string[] = [],
   model?: string,
   maxTokens: number = 2000,
-  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string; publicUrl?: string | null },
+  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string; publicUrl?: string | null; tenantId?: string | null },
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; rawResponse?: any }> {
   const useModel = resolveVisionModelId(await getVisionModelOptions(), model);
   if (!useModel) {
@@ -1659,7 +1661,14 @@ async function callLLMWithVision(
 
   // Add images if provided (for vision analysis)
   // Convert relative URLs to base64 data URLs so LLM can access them
-  for (const imageUrl of imageUrls) {
+  const resolvedImageUrls = await resolveExternalMediaReferenceUrls(
+    imageUrls,
+    options?.tenantId
+      ? { userId, tenantId: options.tenantId }
+      : undefined,
+    options?.publicUrl,
+  ) ?? [];
+  for (const imageUrl of resolvedImageUrls) {
     const convertedUrl = await convertImageUrlForLLM(imageUrl, options?.publicUrl);
     userContent.push({ type: "image_url", image_url: { url: convertedUrl, detail: "high" } });
   }
@@ -3307,7 +3316,7 @@ export const skillsRouter = router({
           [input.startFrameUrl, input.endFrameUrl],
           visionModel,
           900,
-          { publicUrl: ctx.publicUrl ?? null },
+          { tenantId: ctx.tenantId, publicUrl: ctx.publicUrl ?? null },
         );
         let prompt = result.content
           .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
@@ -3508,7 +3517,7 @@ export const skillsRouter = router({
           referenceImages,
           visionModel,
           7000,
-          { publicUrl: ctx.publicUrl ?? null },
+          { tenantId: ctx.tenantId, publicUrl: ctx.publicUrl ?? null },
         );
         const parsed = parseLlmJsonObject(result.content);
         let totalPromptTokens = result.usage.promptTokens;
@@ -3618,6 +3627,7 @@ export const skillsRouter = router({
               durationSeconds: inputSlot.durationSeconds ?? null,
               model: inputSlot.model ?? null,
               productMetadata: input.productMetadata ?? null,
+              tenantId: ctx.tenantId,
               publicUrl: ctx.publicUrl ?? null,
             });
             return { slotId: slot.id, repaired };
@@ -4010,6 +4020,7 @@ export const skillsRouter = router({
               visionModel,
               promptLengthPlan.maxTokens,
               {
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               }
             );
@@ -4539,6 +4550,7 @@ export const skillsRouter = router({
               promptLengthPlan?.maxTokens ?? (isMultiPromptPackage ? 9000 : 4000),
               {
                 ...webSearchOptions,
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
@@ -4720,6 +4732,7 @@ export const skillsRouter = router({
               Math.max(6000, Math.min(16000, audioFirstRepair.expectedPromptCount * 900)),
               {
                 ...webSearchOptions,
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
@@ -4762,6 +4775,7 @@ export const skillsRouter = router({
               resolveElevenLabsProductVoiceoverDialogueRepairMaxTokens(mergedUserInputs),
               {
                 ...webSearchOptions,
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );

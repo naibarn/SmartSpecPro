@@ -8,6 +8,7 @@ import { resolveDocumentPreviewType } from "@/lib/documentManagementUi";
 import { cn } from "@/lib/utils";
 import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { type DocumentLibraryItem } from "@/lib/documentManagementUi";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   FileText,
   FileType2,
@@ -140,7 +141,7 @@ export default function DocumentGridList({
     if (previewType === "image" && imageLikeUrl) {
       return (
         <div className="h-20 w-24 overflow-hidden rounded-xl border bg-slate-100 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
-          <img
+          <AuthenticatedMediaImage
             src={imageLikeUrl}
             alt={item.title}
             loading="lazy"
@@ -154,7 +155,7 @@ export default function DocumentGridList({
       return (
         <div className="relative h-20 w-24 overflow-hidden rounded-xl border bg-slate-900 sm:h-24 sm:w-32 lg:h-28 lg:w-40">
           {item.thumbnail_url ? (
-            <img
+            <AuthenticatedMediaImage
               src={item.thumbnail_url}
               alt={item.title}
               loading="lazy"

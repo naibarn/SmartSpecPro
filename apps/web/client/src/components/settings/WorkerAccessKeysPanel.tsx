@@ -45,6 +45,7 @@ const WORKER_RUNTIME_LABELS: Record<WorkerRuntimeType, string> = {
   nemoclaw_sandbox: "NemoClaw",
   hiclaw_cluster: "HiClaw",
   hermes_agent_gateway: "Hermes",
+  remotion_executor: "Remotion Executor",
 };
 
 const WORKER_PERMISSION_GROUPS: Array<{
@@ -82,7 +83,10 @@ const WORKER_PERMISSION_GROUPS: Array<{
     descriptionKey: "settings.workers.permissions.groups.knowledge.description",
     scopes: [
       "library:read",
+      "library:download",
       "library:write",
+      "media:read",
+      "media:download",
       "rag:read",
       "rag:write",
     ],
@@ -118,7 +122,10 @@ const WORKER_PERMISSION_SCOPE_LABEL_KEYS: Record<WorkerAccessPermissionScope, st
   "delegate:mcp": "settings.workers.permissions.scopes.delegateMcp",
   "callbacks:publish": "settings.workers.permissions.scopes.callbacksPublish",
   "library:read": "settings.workers.permissions.scopes.libraryRead",
+  "library:download": "settings.workers.permissions.scopes.libraryDownload",
   "library:write": "settings.workers.permissions.scopes.libraryWrite",
+  "media:read": "settings.workers.permissions.scopes.mediaRead",
+  "media:download": "settings.workers.permissions.scopes.mediaDownload",
   "rag:read": "settings.workers.permissions.scopes.ragRead",
   "rag:write": "settings.workers.permissions.scopes.ragWrite",
   "skills:execute": "settings.workers.permissions.scopes.skillsExecute",

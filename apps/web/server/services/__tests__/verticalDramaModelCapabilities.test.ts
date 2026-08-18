@@ -131,15 +131,25 @@ describe("Phase 0.3 — new video models (verified callable)", () => {
     expect(model.provider).toBe("kie.ai");
     expect(model.isEnabled).toBe(true);
     expect(model.supportsStartFrame).toBe(true);
-    expect(model.maxReferenceImages).toBe(1);
+    expect(model.maxReferenceImages).toBe(7);
     // Grok Imagine v1.x generates native in-video audio incl. speech
     // (xAI synchronized audio, user-confirmed 2026-07-06).
     expect(model.nativeAudioDialogue).toBe(true);
     expect(model.verticalDramaReady).toBe(true);
     expect(model.aspectRatios).toContain("9:16");
+    expect(model.aspectRatios).toEqual(["auto", "1:1", "16:9", "9:16", "3:2", "2:3"]);
     expect(model.aliases).toContain("grok imagine 1.5");
     expect(model.configJson?.kieModelId).toBe("grok-imagine-video-1-5-preview");
     expect(model.configJson?.apiPayloadFormat).toBe("market");
+    expect(model.configJson?.supportedResolutions).toEqual(["480p", "720p", "1080p"]);
+    expect(model.configJson?.supportedDurations).toEqual(Array.from({ length: 15 }, (_, index) => index + 1));
+    expect(model.configJson?.inputFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "image_urls", maxItems: 7 }),
+      expect.objectContaining({
+        key: "resolution",
+        options: expect.arrayContaining([expect.objectContaining({ value: "1080p" })]),
+      }),
+    ]));
   });
 
   it("keeps WaveSpeed Seedance 2.0 image-to-video enabled with correct capability metadata", () => {

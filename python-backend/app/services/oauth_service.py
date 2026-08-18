@@ -5,15 +5,17 @@ Handles OAuth 2.0 authentication flow for Google and GitHub
 
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
+import hashlib
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 import httpx
 import json
 import uuid
 from itsdangerous import URLSafeTimedSerializer
 from app.core.config import settings
 
-from app.models.user import User
+from app.models.user import Role, User
 from app.models.oauth import OAuthConnection
 from app.core.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
@@ -21,11 +23,24 @@ from app.core.auth import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 # R11.1: Use a serializer for the state parameter to prevent CSRF
 state_serializer = URLSafeTimedSerializer(settings.SECRET_KEY, salt='oauth-state-salt')
 
+
+def _build_oauth_open_id(provider: str, provider_user_id: str) -> str:
+    """Build the shared users.openId value used by the Node session service."""
+    value = f"oauth_{provider}_{provider_user_id}"
+    if len(value) <= 64:
+        return value
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return f"oauth_{provider}_{digest[:48]}"
+
 class OAuthService:
     """OAuth service for handling social login"""
     
     def __init__(self, db: AsyncSession):
         self.db = db
+        # The OAuth callback creates the shared user before SmartSpecWeb
+        # exchanges the token for its session. Keep this request-scoped marker
+        # in the token so the Node side can still run new-user onboarding.
+        self._last_oauth_user_created = False
     
     async def handle_oauth_callback(
         self,
@@ -49,6 +64,8 @@ class OAuthService:
         Returns:
             Dict with access_token, user info
         """
+        self._last_oauth_user_created = False
+
         # R11.2: Validate the state parameter to prevent CSRF
         try:
             # State expires in 10 minutes
@@ -85,7 +102,11 @@ class OAuthService:
         
         # Create JWT access token
         jwt_token = create_access_token(
-            data={"user_id": str(user.id), "email": user.email},
+            data={
+                "user_id": str(user.id),
+                "email": user.email,
+                "oauth_new_user": self._last_oauth_user_created,
+            },
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         
@@ -100,7 +121,8 @@ class OAuthService:
                 "credits_balance": float(user.credits_balance),
                 "is_admin": user.is_admin,
                 "email_verified": user.email_verified
-            }
+            },
+            "is_new_user": self._last_oauth_user_created,
         }
     
     async def _exchange_code_for_token(
@@ -223,13 +245,15 @@ class OAuthService:
         expires_in: Optional[int]
     ) -> User:
         """Find existing user or create new one from OAuth profile"""
+
+        self._last_oauth_user_created = False
         
         provider_user_id = profile["id"]
         email = profile["email"]
         
         # Check if OAuth connection exists
         result = await self.db.execute(
-            select(OAuthConnection).where(
+            select(OAuthConnection).options(selectinload(OAuthConnection.user)).where(
                 OAuthConnection.provider == provider,
                 OAuthConnection.provider_user_id == provider_user_id
             )
@@ -237,6 +261,11 @@ class OAuthService:
         oauth_conn = result.scalar_one_or_none()
         
         if oauth_conn:
+            # The relationship is eagerly loaded above. Capture it before the
+            # commit so async SQLAlchemy never tries a lazy load while the
+            # callback is building the login response.
+            user = oauth_conn.user
+
             # Update existing connection
             oauth_conn.access_token = access_token
             oauth_conn.refresh_token = refresh_token
@@ -244,11 +273,12 @@ class OAuthService:
                 oauth_conn.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
             oauth_conn.profile_data = json.dumps(profile)
             oauth_conn.updated_at = datetime.utcnow()
-            
+
             await self.db.commit()
             await self.db.refresh(oauth_conn)
-            
-            return oauth_conn.user
+            await self.db.refresh(user)
+
+            return user
         
         # Check if user exists with this email
         result = await self.db.execute(
@@ -258,21 +288,23 @@ class OAuthService:
         
         if not user:
             # Create new user
+            self._last_oauth_user_created = True
             user = User(
+                openId=_build_oauth_open_id(provider, provider_user_id),
                 email=email,
-                password_hash="",  # No password for OAuth users
-                full_name=profile.get("name", ""),
-                credits_balance=0,
-                is_active=True,
-                is_admin=False,
-                email_verified=profile.get("verified_email", False)
+                password=None,  # OAuth users do not use password login
+                name=profile.get("name", ""),
+                loginMethod=provider,
+                role=Role.user,
+                credits=0,
+                isDisabled=False,
             )
             self.db.add(user)
             await self.db.flush()
         
         # Create OAuth connection
         oauth_connection = OAuthConnection(
-            user_id=str(user.id),
+            user_id=user.id,
             provider=provider,
             provider_user_id=provider_user_id,
             access_token=access_token,

@@ -12,6 +12,7 @@ import {
 import { validateMarketplaceShotMediaFile } from "@/lib/marketplaceShotMediaUpload";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceDramaCharacterPickerDialog } from "./MarketplaceDramaCharacterPickerDialog";
+import { MarketplaceDraftQualityQcPanel } from "./MarketplaceDraftQualityQcPanel";
 import {
   StagedShotCharacterRow,
   buildStagedShotLookOptions,
@@ -41,6 +42,7 @@ export type StagedCheckpoint = {
   approvedModel?: string | null;
   approvedProvider?: string | null;
   approvedSafetyVerdict?: string | null;
+  adherenceWarnings?: string[];
   consumedByOperationId?: string | null;
   approvedReferenceManifestHash?: string | null;
   // Story adherence QC (fail-open, informational only) — populated server-
@@ -107,6 +109,29 @@ export type StagedReviewState = {
   stateDigest: string;
   planRevision: number;
   planReview: { status: string; redraftCount?: number };
+  creativeQc?: {
+    required?: boolean;
+    status?: string;
+    report?: {
+      overallScore?: number;
+      pass?: boolean;
+      status?: string;
+      criticalFails?: Array<{ code?: string; explanation?: string }>;
+      criteria?: Array<{
+        criterionId?: string;
+        rawScore?: number;
+        weightedScore?: number;
+        evidence?: string;
+      }>;
+      strengths?: string[];
+      weaknesses?: string[];
+      recommendations?: string[];
+    } | null;
+    history?: Array<{ round?: number; score?: number; kept?: boolean }>;
+    progress?: { phase?: string; round?: number; maxRounds?: number } | null;
+    maxImprovementRounds?: number;
+    creditEstimate?: { estimatedCredits?: number; actualCredits?: number } | null;
+  } | null;
   languagePlan?: {
     summaryLanguage: "th" | "en";
     dialogueLanguage: "th" | "en";
@@ -597,6 +622,13 @@ export function StagedCheckpointReviewPanel(props: {
   pending?: boolean;
   pendingAction?: string | null;
   onRefresh: () => void;
+  onStartCreativeQc?: (maxImprovementRounds: number) => void;
+  creativeQcStarting?: boolean;
+  creativeQcError?: string | null;
+  onRepairCreativeQc?: () => void;
+  onSelectCreativeQcRepair?: () => void;
+  creativeQcRepairing?: boolean;
+  creativeQcRepairError?: string | null;
   onApprove: (input: {
     checkpoint: StagedCheckpoint;
     expected: ReturnType<typeof expected>;
@@ -1228,7 +1260,7 @@ export function StagedCheckpointReviewPanel(props: {
   }, [props.state?.checkpoints]);
   const runCheckpoint = (kind: string) =>
     activeCheckpointByKey.get(`${kind}:run`);
-  const storyCheckpoint = runCheckpoint("story_plan") ?? (
+  const storyCheckpoint: StagedCheckpoint | null = runCheckpoint("story_plan") ?? (
     props.state?.storyPlan ? {
       checkpointId: `story-plan:${props.runId || 'run'}:r${props.state.planRevision || 1}`,
       kind: "story_plan",
@@ -1515,6 +1547,10 @@ export function StagedCheckpointReviewPanel(props: {
       {isThisActionRunning(id) ? "กำลังดำเนินการ…" : label}
     </button>
   );
+  const creativeQcReady =
+    !props.state?.creativeQc?.required ||
+    (props.state.creativeQc.status === "succeeded" &&
+      props.state.creativeQc.report?.pass === true);
 
   return (
     <>
@@ -1585,6 +1621,18 @@ export function StagedCheckpointReviewPanel(props: {
         <p className="mt-3 text-sm text-red-700" role="alert">
           {props.error}
         </p>
+      ) : null}
+      {props.state?.creativeQc && props.onStartCreativeQc ? (
+        <MarketplaceDraftQualityQcPanel
+          state={props.state.creativeQc as any}
+          onStart={props.onStartCreativeQc}
+          onRepair={props.onRepairCreativeQc}
+          onSelectRepair={props.onSelectCreativeQcRepair}
+          starting={props.creativeQcStarting}
+          repairing={props.creativeQcRepairing}
+          error={props.creativeQcError ?? props.creativeQcRepairError}
+          locale={props.state.languagePlan?.summaryLanguage ?? "th"}
+        />
       ) : null}
       {props.state ? (
         <>
@@ -2779,7 +2827,13 @@ export function StagedCheckpointReviewPanel(props: {
                           checkpoint: storyCheckpoint,
                           expected: expected(storyCheckpoint),
                         }),
-                      "rounded-md bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 transition"
+                      "rounded-md bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-800 transition",
+                      {
+                        disabled: !creativeQcReady,
+                        title: !creativeQcReady
+                          ? "ต้องตรวจ Creative QC ให้ผ่านก่อนยืนยันเนื้อเรื่อง"
+                          : undefined,
+                      }
                     )}
                   </div>
                 </div>

@@ -11,7 +11,7 @@ import {
   mediaGenerationService,
   MEDIA_MODELS,
   DEFAULT_MODELS,
-  resolveReferenceUrl,
+  resolveExternalMediaReferenceUrls,
   type MediaType,
   type MediaTask,
   type AudioModel,
@@ -69,6 +69,16 @@ import {
   refreshModelCache,
   mapToApiModelId,
 } from "../services/modelRegistry";
+import {
+  resolveTransparentBackgroundRequest,
+  type TransparentBackgroundCapability,
+} from "../../shared/mediaModelCapabilities";
+import {
+  isGrokImagineImage2FamilyModel,
+  isGrokImagineImage2Model,
+  resolveGrokImagineImage2Operation,
+  type GrokImagineImage2Operation,
+} from "../../shared/grokImagineImage2";
 import { resolveModelMaxPromptLength } from "../services/modelPromptBudget";
 import {
   inferMediaModelHintFromText,
@@ -202,11 +212,12 @@ function optionalTrimmedText(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function resolveReferenceUrlsForProvider(urls: string[] | undefined, publicUrl?: string | null): string[] | undefined {
-  const resolved = (urls ?? [])
-    .map((url) => resolveReferenceUrl(url, publicUrl))
-    .filter((url) => url.trim().length > 0);
-  return resolved.length > 0 ? resolved : undefined;
+async function resolveReferenceUrlsForProvider(
+  urls: string[] | undefined,
+  viewer: { userId: number; tenantId: string },
+  publicUrl?: string | null,
+): Promise<string[] | undefined> {
+  return resolveExternalMediaReferenceUrls(urls, viewer, publicUrl);
 }
 
 function dateToIso(value: unknown): string {
@@ -497,9 +508,10 @@ function assertAudioModelExtraParamsValid(
 }
 
 // Helper to create secure token for Python backend (fallback)
-function createMediaToken(userId: number): string {
+function createMediaToken(userId: number, tenantId?: string | null): string {
   return signBearerToken({
     sub: String(userId),
+    ...(tenantId ? { tenantId } : {}),
     type: "access", // Required by Python backend for token validation
     scopes: ["media:generate"],
     jti: `media_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -507,8 +519,102 @@ function createMediaToken(userId: number): string {
 }
 
 // Get user token - prefer session token from context, fallback to creating new one
-function getUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
-  return ctx.userToken || createMediaToken(ctx.user.id);
+function getUserToken(ctx: { userToken: string | null; user: { id: number; currentTenantId?: unknown }; tenantId?: unknown }): string {
+  return ctx.userToken || createMediaToken(
+    ctx.user.id,
+    resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId),
+  );
+}
+
+type ResolvedGrokImagineImage2Request = {
+  operation: GrokImagineImage2Operation;
+  extraParams: Record<string, unknown>;
+  referenceImageUrls?: string[];
+};
+
+/**
+ * Resolve an internal source media task to Kie's provider task_id only after
+ * the authenticated Python task endpoint has enforced user/tenant access.
+ * The client never gets to submit an arbitrary provider task ID.
+ */
+async function resolveGrokImagineImage2Request(params: {
+  model: string;
+  extraParams?: Record<string, unknown>;
+  referenceImageUrls?: string[];
+  ctx: { userToken: string | null; tenantId: unknown; user: { id: number; currentTenantId?: unknown } };
+  source: string;
+}): Promise<ResolvedGrokImagineImage2Request | null> {
+  if (!isGrokImagineImage2Model(params.model)) return null;
+
+  const sourceMediaTaskId = String(params.extraParams?.sourceMediaTaskId ?? "").trim();
+  const operation = resolveGrokImagineImage2Operation({
+    modelId: params.model,
+    sourceMediaTaskId,
+  });
+  if (!operation) return null;
+
+  if (!sourceMediaTaskId) {
+    if (operation === "text-to-image" && (params.referenceImageUrls?.length ?? 0) > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Grok Imagine Image 2 image editing requires selecting a completed Grok image task from Media History.",
+      });
+    }
+    if (operation === "text-to-image") {
+      return {
+        operation,
+        extraParams: { ...(params.extraParams ?? {}) },
+        referenceImageUrls: params.referenceImageUrls,
+      };
+    }
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Select a completed Grok Imagine Image 2 task before running this operation.",
+    });
+  }
+
+  const tenantId = resolveTenantIdVarchar(params.ctx.tenantId, params.ctx.user.currentTenantId);
+  let sourceTask: MediaTask;
+  try {
+    sourceTask = await mediaGenerationService.getTask(
+      sourceMediaTaskId,
+      getUserToken(params.ctx),
+      {
+        userId: params.ctx.user.id,
+        tenantId: tenantId ?? undefined,
+        source: `${params.source}.source-task`,
+        stage: "authorization",
+      },
+    );
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "The selected source image task is unavailable or you do not have access to it.",
+    });
+  }
+
+  if (
+    sourceTask.status !== "completed" ||
+    sourceTask.mediaType !== "image" ||
+    !sourceTask.taskId ||
+    !isGrokImagineImage2FamilyModel(sourceTask.model)
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "The source task must be a completed Grok Imagine Image 2 image task.",
+    });
+  }
+
+  return {
+    operation,
+    extraParams: {
+      ...(params.extraParams ?? {}),
+      grokOperation: operation,
+      task_id: sourceTask.taskId,
+      sourceMediaTaskId,
+    },
+    referenceImageUrls: undefined,
+  };
 }
 
 async function resolveLibraryTenantIdForMedia(
@@ -1871,6 +1977,17 @@ function assertModelAwareImageRequest(params: {
   referenceImageUrls?: string[];
   extraParams?: Record<string, unknown>;
 }): void {
+  const transparentBackground = resolveTransparentBackgroundRequest(
+    params.configJson,
+    params.extraParams,
+  );
+  if (transparentBackground.requested && !transparentBackground.capability) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "The selected model does not support native transparent backgrounds.",
+    });
+  }
+
   const imageLimit = params.configJson
     ? getReferenceImageLimitForModel(params.modelId, params.configJson)
     : null;
@@ -1893,6 +2010,23 @@ function assertModelAwareImageRequest(params: {
 
   assertPublicOrTenantMediaUrls(params.referenceImageUrls ?? [], "Reference image URL");
   assertMagnificInputFieldsValid(params);
+}
+
+function resolveImageOutputFormatForRequest(params: {
+  configJson: Record<string, unknown> | null | undefined;
+  extraParams?: Record<string, unknown>;
+  outputFormat?: string;
+}): string | undefined {
+  const transparentBackground = resolveTransparentBackgroundRequest(
+    params.configJson,
+    params.extraParams,
+  );
+  if (transparentBackground.requested) {
+    return (
+      transparentBackground.capability as TransparentBackgroundCapability
+    ).outputFormat;
+  }
+  return params.outputFormat;
 }
 
 async function getDefaultModelId(type: MediaType, promptText?: string | null): Promise<string> {
@@ -2045,6 +2179,9 @@ const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 const taskStatusSchema = z.enum(["pending", "processing", "completed", "failed", "cancelled"]);
 const mediaModelIdSchema = z.string().min(1).max(120);
 const mediaPromptSchema = z.string().min(1);
+// Segment Map is a task operation and intentionally has no prompt. The route
+// validates that every other image operation still has a non-empty prompt.
+const imagePromptSchema = z.string().max(20_000).default("");
 const flexibleAspectRatioSchema = z.string().min(2).max(20);
 const referenceMediaUrlSchema = z
   .string()
@@ -2218,7 +2355,7 @@ export const mediaRouter = router({
   generateImage: protectedProcedure
     .input(
       z.object({
-        prompt: mediaPromptSchema,
+        prompt: imagePromptSchema,
         model: mediaModelIdSchema.optional(),
         size: z.string().optional(),
         aspectRatio: flexibleAspectRatioSchema.optional(),
@@ -2278,6 +2415,21 @@ export const mediaRouter = router({
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
+      const resolvedGrokRequest = await resolveGrokImagineImage2Request({
+        model,
+        extraParams: input.extraParams,
+        referenceImageUrls: input.referenceImageUrls,
+        ctx,
+        source: "trpc.media.generateImage",
+      });
+      if (input.prompt.trim().length === 0 && resolvedGrokRequest?.operation !== "segment-map") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A prompt is required for this image operation.",
+        });
+      }
+      const effectiveImageExtraParams = resolvedGrokRequest?.extraParams ?? input.extraParams;
+      const effectiveReferenceImageUrls = resolvedGrokRequest?.referenceImageUrls ?? input.referenceImageUrls;
       assertMediaPromptWithinModelLimit({
         value: input.prompt,
         modelId: model,
@@ -2291,7 +2443,12 @@ export const mediaRouter = router({
         prompt: input.prompt,
         aspectRatio: input.aspectRatio,
         resolution: input.resolution,
-        extraParams: input.extraParams,
+        extraParams: effectiveImageExtraParams,
+      });
+      const effectiveOutputFormat = resolveImageOutputFormatForRequest({
+        configJson: dbModel.configJson,
+        extraParams: effectiveImageExtraParams,
+        outputFormat: input.outputFormat,
       });
 
       // Check if media should route through sandbox
@@ -2325,7 +2482,7 @@ export const mediaRouter = router({
       }
 
       const creditCost = calculateCreditCost(dbModel, {
-        ...(input.extraParams ?? {}),
+        ...(effectiveImageExtraParams ?? {}),
         numImages: input.numImages,
         resolution: input.resolution,
       });
@@ -2357,12 +2514,14 @@ export const mediaRouter = router({
             negativePrompt: input.negativePrompt,
             numImages: input.numImages,
             resolution: input.resolution,
-            outputFormat: input.outputFormat,
+            outputFormat: effectiveOutputFormat,
+            referenceImageUrls: effectiveReferenceImageUrls,
             apiConfig: apiConfigWithProvider,
-            extraParams: input.extraParams,
+            extraParams: effectiveImageExtraParams,
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
+              tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
               traceId: debugTraceId,
               source: "trpc.media.generateImage",
               stage: "submission",
@@ -2372,21 +2531,24 @@ export const mediaRouter = router({
         );
 
         // Deduct credits on success — use backend-reported cost if available
-        await deductCredits({
-          userId: ctx.user.id,
-          amount: result.creditsUsed || creditCost,
-          description: `Image generation: ${modelMeta.name}`,
-          sourceType: "media_image",
-          metadata: {
-            model,
-            modelDisplayName: modelMeta.name,
-            provider: modelMeta.provider,
-            prompt: input.prompt.slice(0, 100),
-            endpoint: "generateImage",
-            creditCost,
-            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
-          },
-        });
+        const chargedAmount = result.creditsUsed || creditCost;
+        if (chargedAmount > 0) {
+          await deductCredits({
+            userId: ctx.user.id,
+            amount: chargedAmount,
+            description: `Image generation: ${modelMeta.name}`,
+            sourceType: "media_image",
+            metadata: {
+              model,
+              modelDisplayName: modelMeta.name,
+              provider: modelMeta.provider,
+              prompt: input.prompt.slice(0, 100),
+              endpoint: "generateImage",
+              creditCost,
+              ...(input.originSurface ? { originSurface: input.originSurface } : {}),
+            },
+          });
+        }
 
         return result;
       } catch (error) {
@@ -2540,6 +2702,7 @@ export const mediaRouter = router({
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
+              tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
               traceId: debugTraceId,
               source: "trpc.media.generateVideo",
               stage: "submission",
@@ -2922,7 +3085,7 @@ export const mediaRouter = router({
   generateImageAsync: protectedProcedure
     .input(
       z.object({
-        prompt: mediaPromptSchema,
+        prompt: imagePromptSchema,
         model: mediaModelIdSchema.optional(),
         size: z.string().optional(),
         aspectRatio: flexibleAspectRatioSchema.optional(),
@@ -2981,6 +3144,21 @@ export const mediaRouter = router({
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
+      const resolvedGrokRequest = await resolveGrokImagineImage2Request({
+        model,
+        extraParams: input.extraParams,
+        referenceImageUrls: input.referenceImageUrls,
+        ctx,
+        source: "trpc.media.generateImageAsync",
+      });
+      if (input.prompt.trim().length === 0 && resolvedGrokRequest?.operation !== "segment-map") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A prompt is required for this image operation.",
+        });
+      }
+      const effectiveImageExtraParams = resolvedGrokRequest?.extraParams ?? input.extraParams;
+      const effectiveReferenceImageUrls = resolvedGrokRequest?.referenceImageUrls ?? input.referenceImageUrls;
       assertMediaPromptWithinModelLimit({
         value: input.prompt,
         modelId: model,
@@ -2994,11 +3172,15 @@ export const mediaRouter = router({
         prompt: input.prompt,
         aspectRatio: input.aspectRatio,
         resolution: input.resolution,
-        referenceImageUrls: input.referenceImageUrls,
-        extraParams: input.extraParams,
+        extraParams: effectiveImageExtraParams,
+      });
+      const effectiveOutputFormat = resolveImageOutputFormatForRequest({
+        configJson: dbModel.configJson,
+        extraParams: effectiveImageExtraParams,
+        outputFormat: input.outputFormat,
       });
       const creditCost = calculateCreditCost(dbModel, {
-        ...(input.extraParams ?? {}),
+        ...(effectiveImageExtraParams ?? {}),
         numImages: input.numImages,
         resolution: input.resolution,
       });
@@ -3070,6 +3252,7 @@ export const mediaRouter = router({
             model: hermesProviderModelId,
             ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
             ...(input.resolution ? { resolution: input.resolution } : {}),
+            ...(effectiveOutputFormat ? { outputFormat: effectiveOutputFormat } : {}),
             outputCount: input.numImages ?? 1,
           },
           references,
@@ -3120,14 +3303,23 @@ export const mediaRouter = router({
             message: `MCP provider route metadata is missing for model "${model}". Re-select an MCP media model and try again.`,
           });
         }
-        const resolvedReferenceImageUrls = resolveReferenceUrlsForProvider(input.referenceImageUrls, ctx.publicUrl);
-        const resolvedReferenceStyleUrl = input.referenceStyleUrl
-          ? resolveReferenceUrl(input.referenceStyleUrl, ctx.publicUrl)
-          : undefined;
         const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
         if (!tenantId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required for MCP media generation" });
         }
+        const referenceViewer = { userId: ctx.user.id, tenantId };
+        const resolvedReferenceImageUrls = await resolveReferenceUrlsForProvider(
+          input.referenceImageUrls,
+          referenceViewer,
+          ctx.publicUrl,
+        );
+        const resolvedReferenceStyleUrl = input.referenceStyleUrl
+          ? (await resolveReferenceUrlsForProvider(
+              [input.referenceStyleUrl],
+              referenceViewer,
+              ctx.publicUrl,
+            ))?.[0]
+          : undefined;
         const transportMetadata = await resolveMediaTransport({
           tenantId,
           actorUserId: ctx.user.id,
@@ -3155,7 +3347,7 @@ export const mediaRouter = router({
             ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
             aspectRatio: input.aspectRatio,
             resolution: input.resolution,
-            outputFormat: input.outputFormat,
+            outputFormat: effectiveOutputFormat,
             numImages: input.numImages ?? 1,
             referenceImageUrls: resolvedReferenceImageUrls,
             referenceImageCount: resolvedReferenceImageUrls?.length ?? 0,
@@ -3175,22 +3367,24 @@ export const mediaRouter = router({
       }
 
       // Deduct credits BEFORE starting the task
-      await deductCredits({
-        userId: ctx.user.id,
-        amount: creditCost,
-        description: `Async image generation: ${modelMeta.name} (reserved)`,
-        sourceType: "media_image",
-        metadata: {
-          model,
-          modelDisplayName: modelMeta.name,
-          provider: modelMeta.provider,
-          prompt: input.prompt.slice(0, 100),
-          endpoint: "generateImageAsync",
-          type: "reservation",
-          creditCost,
-          ...(input.originSurface ? { originSurface: input.originSurface } : {}),
-        },
-      });
+      if (creditCost > 0) {
+        await deductCredits({
+          userId: ctx.user.id,
+          amount: creditCost,
+          description: `Async image generation: ${modelMeta.name} (reserved)`,
+          sourceType: "media_image",
+          metadata: {
+            model,
+            modelDisplayName: modelMeta.name,
+            provider: modelMeta.provider,
+            prompt: input.prompt.slice(0, 100),
+            endpoint: "generateImageAsync",
+            type: "reservation",
+            creditCost,
+            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
+          },
+        });
+      }
 
       try {
         const userToken = getUserToken(ctx);
@@ -3210,18 +3404,18 @@ export const mediaRouter = router({
             negativePrompt: input.negativePrompt,
             numImages: input.numImages,
             resolution: input.resolution,
-            outputFormat: input.outputFormat,
-	            referenceImageUrls: input.referenceImageUrls,
-	            referenceStyleUrl: input.referenceStyleUrl,
-	            apiConfig: apiConfigWithProvider,
-	            extraParams: {
-	              ...input.extraParams,
-	              __reserved_credits: creditCost,
-	              __reserved_resolution: input.resolution,
-	              ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
-	              ...(input.originSurface ? { __origin_surface: input.originSurface } : {}),
-	            },
-	            publicUrl: ctx.publicUrl ?? undefined,
+            outputFormat: effectiveOutputFormat,
+            referenceImageUrls: effectiveReferenceImageUrls,
+            referenceStyleUrl: input.referenceStyleUrl,
+            apiConfig: apiConfigWithProvider,
+            extraParams: {
+              ...effectiveImageExtraParams,
+              __reserved_credits: creditCost,
+              __reserved_resolution: input.resolution,
+              ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
+              ...(input.originSurface ? { __origin_surface: input.originSurface } : {}),
+            },
+            publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
               traceId: debugTraceId,
@@ -3237,7 +3431,8 @@ export const mediaRouter = router({
         // Refund credits on failure
         console.error("[Media] Image generation failed, refunding credits:", error);
         try {
-          await refundCredits({
+          if (creditCost > 0) {
+            await refundCredits({
             userId: ctx.user.id,
             amount: creditCost,
             description: `Refund: Image generation failed (${modelMeta.name})`,
@@ -3249,7 +3444,8 @@ export const mediaRouter = router({
               error: error instanceof Error ? error.message : "Unknown error",
               ...(input.originSurface ? { originSurface: input.originSurface } : {}),
             },
-          });
+            });
+          }
         } catch (refundError) {
           console.error("[Media] Failed to refund credits:", refundError);
         }
@@ -3490,15 +3686,20 @@ export const mediaRouter = router({
             message: `MCP provider route metadata is missing for model "${model}". Re-select an MCP media model and try again.`,
           });
         }
-        const resolvedReferenceImageUrls = resolveReferenceUrlsForProvider(input.referenceImageUrls, ctx.publicUrl);
-        const resolvedReferenceVideoUrls = resolveReferenceUrlsForProvider([
-          ...(input.referenceVideoUrls ?? []),
-          ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : []),
-        ], ctx.publicUrl);
         const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
         if (!tenantId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required for MCP media generation" });
         }
+        const referenceViewer = { userId: ctx.user.id, tenantId };
+        const resolvedReferenceImageUrls = await resolveReferenceUrlsForProvider(
+          input.referenceImageUrls,
+          referenceViewer,
+          ctx.publicUrl,
+        );
+        const resolvedReferenceVideoUrls = await resolveReferenceUrlsForProvider([
+          ...(input.referenceVideoUrls ?? []),
+          ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : []),
+        ], referenceViewer, ctx.publicUrl);
         const transportMetadata = await resolveMediaTransport({
           tenantId,
           actorUserId: ctx.user.id,
@@ -3689,6 +3890,7 @@ export const mediaRouter = router({
           tenantId,
           auditContext: {
             userId: ctx.user.id,
+            ...(tenantId ? { tenantId } : {}),
             source: "trpc.media.getTask",
             stage: "poll",
           },
@@ -3718,6 +3920,7 @@ export const mediaRouter = router({
       const userToken = getUserToken(ctx);
       const task = await mediaGenerationService.getTask(input.taskId, userToken, {
         userId: ctx.user.id,
+        tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
         source: "trpc.media.retryTaskLater",
         stage: "inspect_failed_task",
       });
@@ -3742,6 +3945,12 @@ export const mediaRouter = router({
         userToken,
         retryDelayMs,
         errorMessage: task.errorMessage || "Provider capacity limit",
+        auditContext: {
+          userId: ctx.user.id,
+          tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
+          source: "trpc.media.retryTaskLater",
+          stage: "scheduled_from_failed_task",
+        },
         request: {
           prompt: task.prompt,
           model: task.model,
@@ -3757,6 +3966,7 @@ export const mediaRouter = router({
           publicUrl: ctx.publicUrl ?? undefined,
           auditContext: {
             userId: ctx.user.id,
+            tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
             source: "trpc.media.retryTaskLater",
             stage: "scheduled_from_failed_task",
           },
@@ -3883,7 +4093,11 @@ export const mediaRouter = router({
           offset: input?.seriesId ? undefined : input?.offset,
           daysAgo: input?.daysAgo,
         });
-        const deferredTasks = await listDeferredMediaTasks(ctx.user.id, fetchLimit);
+        const deferredTasks = await listDeferredMediaTasks(
+          ctx.user.id,
+          fetchLimit,
+          resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
+        );
         const hyperframesTasks = await listHyperframesRenderHistoryTasks({
           userId: ctx.user.id,
           mediaType: input?.mediaType as MediaType | undefined,
@@ -3939,12 +4153,14 @@ export const mediaRouter = router({
         const nonDuplicateHyperframesTasks = hyperframesTasks.filter(task => !providerTaskIds.has(task.id));
         const mcpTasks = await listMcpMediaTasks({
           userId: ctx.user.id,
+          tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
           mediaType: input?.mediaType as MediaType | undefined,
           status: input?.status,
           limit: fetchLimit,
         });
         const hermesTasks = await listHermesMediaTasks({
           userId: ctx.user.id,
+          tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
           mediaType: input?.mediaType as MediaType | undefined,
           status: input?.status,
           limit: fetchLimit,
@@ -4044,11 +4260,12 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const deferredTask = await cancelDeferredMediaTask(input.taskId, ctx.user.id);
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        const deferredTask = await cancelDeferredMediaTask(input.taskId, ctx.user.id, tenantId);
         if (deferredTask) {
           return deferredTask;
         }
-        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id);
+        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id, tenantId ?? undefined);
         if (mcpTask) {
           return cancelMcpMediaGeneration(mcpTask);
         }
@@ -4069,7 +4286,8 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const deletedDeferredTask = await deleteDeferredMediaTask(input.taskId, ctx.user.id);
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        const deletedDeferredTask = await deleteDeferredMediaTask(input.taskId, ctx.user.id, tenantId);
         if (deletedDeferredTask) {
           return { success: true, taskId: input.taskId };
         }
@@ -4108,7 +4326,8 @@ export const mediaRouter = router({
         // Forwarding their IDs to Python can only produce a 404 because they
         // do not exist in Python's media_tasks table. Besides being incorrect,
         // repeated 404 retries can exhaust the shared backend rate limit.
-        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id);
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id, tenantId ?? undefined);
         if (mcpTask) {
           return {
             success: true,

@@ -102,6 +102,10 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaVideo,
+} from "@/components/media/AuthenticatedMediaImage";
 import { trpc } from "@/lib/trpc";
 import { useSkillExecution } from "@/components/chat/skill/hooks/useSkillExecution";
 import { useLocalSkillExecutionContext } from "@/features/local-ai/skills/useLocalSkillExecutionContext";
@@ -2645,7 +2649,7 @@ function renderReadonlySlideElement(
             SVG unavailable
           </div>
         ) : hasSource ? (
-          <img
+          <AuthenticatedMediaImage
             src={normalizedSource}
             alt={element.alt || "Image"}
             className="h-full w-full"
@@ -2674,7 +2678,7 @@ function renderReadonlySlideElement(
     const mediaShapeStyle = buildPresentationMediaShapeStyleForElement(element);
     return (
       <div key={element.id || `play-${index}`} className="absolute overflow-hidden bg-black" style={{ ...commonStyle, ...mediaShapeStyle }}>
-        <video
+        <AuthenticatedMediaVideo
           data-testid={`readonly-video-${element.id || index}`}
           src={normalizedSource}
           poster={normalizedPoster || undefined}
@@ -8945,13 +8949,7 @@ export default function PresentationEditor() {
           const slideBg = slideContentForPreview.background;
           const thumbnailBgStyle: React.CSSProperties = slideBg?.type === "color"
             ? { backgroundColor: slideBg.value }
-            : slideBg?.type === "image"
-              ? {
-                  backgroundImage: `url(${slideBg.url})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }
-              : {};
+            : {};
           return (
             <button
               key={slide.id}
@@ -8973,9 +8971,19 @@ export default function PresentationEditor() {
                 className="relative mb-2 aspect-[4/3] overflow-hidden rounded-md border border-slate-300 bg-slate-100"
                 style={thumbnailBgStyle}
               >
+                {slideBg?.type === "image" ? (
+                  <AuthenticatedMediaImage
+                    src={slideBg.url}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="lazy"
+                    draggable={false}
+                  />
+                ) : null}
                 {preview.mediaSrc && preview.mediaKind === "video" ? (
                   preview.mediaPosterSrc ? (
-                    <img
+                    <AuthenticatedMediaImage
                       src={preview.mediaPosterSrc}
                       alt={slide.title}
                       className="h-full w-full object-cover"
@@ -8984,7 +8992,7 @@ export default function PresentationEditor() {
                       data-testid={`slide-preview-media-video-poster-${slide.orderIndex + 1}`}
                     />
                   ) : (
-                    <video
+                    <AuthenticatedMediaVideo
                       src={preview.mediaSrc}
                       className="h-full w-full object-cover"
                       preload="metadata"
@@ -8994,7 +9002,7 @@ export default function PresentationEditor() {
                     />
                   )
                 ) : preview.mediaSrc ? (
-                  <img
+                  <AuthenticatedMediaImage
                     src={preview.mediaSrc}
                     alt={slide.title}
                     className="h-full w-full object-cover"
@@ -9220,7 +9228,7 @@ export default function PresentationEditor() {
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("versionsPanel.currentSlide")}</p>
                       <div className="relative aspect-[4/3] overflow-hidden rounded border border-slate-200 bg-slate-100">
                         {currentVersionPreview?.mediaSrc ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={currentVersionPreview.mediaPosterSrc || currentVersionPreview.mediaSrc}
                             alt={selectedSavedVersionSlide?.title || "Current slide"}
                             className="h-full w-full object-cover"
@@ -9238,7 +9246,7 @@ export default function PresentationEditor() {
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{t("versionsPanel.savedVersion")}</p>
                       <div className="relative aspect-[4/3] overflow-hidden rounded border border-slate-200 bg-slate-100">
                         {selectedVersionPreview?.mediaSrc ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={selectedVersionPreview.mediaPosterSrc || selectedVersionPreview.mediaSrc}
                             alt={selectedSavedVersion.snapshot?.slideTitle || t("versionsPanel.savedSlide")}
                             className="h-full w-full object-cover"
@@ -10128,6 +10136,7 @@ export default function PresentationEditor() {
       </div>
       {isMobileLayoutTier ? (
         <PropertyPanel
+          presentationDeckId={deck?.id ?? null}
           selectedElement={null}
           selectedElementCount={0}
           selectionHasMixedTypes={false}
@@ -10183,6 +10192,7 @@ export default function PresentationEditor() {
     <div className="space-y-3">
       {componentInspectorPanel}
       <PropertyPanel
+        presentationDeckId={deck?.id ?? null}
         selectedElement={selectedElement}
         selectedElementCount={selectedElementIds.length}
         selectionHasMixedTypes={selectionHasMixedTypes}
@@ -10956,17 +10966,15 @@ export default function PresentationEditor() {
                     : "#ffffff",
               }}
             >
-              {activePlaybackSlide.content.background?.type === "image" && (
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    backgroundImage: `url(${activePlaybackSlide.content.background.url})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                    backgroundRepeat: "no-repeat",
-                  }}
+              {activePlaybackSlide.content.background?.type === "image" ? (
+                <AuthenticatedMediaImage
+                  src={activePlaybackSlide.content.background.url}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  draggable={false}
                 />
-              )}
+              ) : null}
               {activePlaybackRenderableElements.map((element, index) =>
                 renderReadonlySlideElement(
                   element,
@@ -11209,13 +11217,7 @@ export default function PresentationEditor() {
                 const reorderBg = reorderContent.background;
                 const reorderBgStyle: React.CSSProperties = reorderBg?.type === "color"
                   ? { backgroundColor: reorderBg.value }
-                  : reorderBg?.type === "image"
-                    ? {
-                        backgroundImage: `url(${reorderBg.url})`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }
-                    : {};
+                  : {};
                 return (
                   <button
                     key={`reorder-overview-${slide.id}`}
@@ -11237,9 +11239,19 @@ export default function PresentationEditor() {
                       className="relative mb-1.5 aspect-[16/9] overflow-hidden rounded border border-slate-200 bg-slate-100"
                       style={reorderBgStyle}
                     >
+                      {reorderBg?.type === "image" ? (
+                        <AuthenticatedMediaImage
+                          src={reorderBg.url}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading="lazy"
+                          draggable={false}
+                        />
+                      ) : null}
                       {reorderPreview.mediaSrc && reorderPreview.mediaKind === "video" ? (
                         reorderPreview.mediaPosterSrc ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={reorderPreview.mediaPosterSrc}
                             alt={slide.title}
                             className="h-full w-full object-cover"
@@ -11247,7 +11259,7 @@ export default function PresentationEditor() {
                             draggable={false}
                           />
                         ) : (
-                          <video
+                          <AuthenticatedMediaVideo
                             src={reorderPreview.mediaSrc}
                             className="h-full w-full object-cover"
                             preload="metadata"
@@ -11256,7 +11268,7 @@ export default function PresentationEditor() {
                           />
                         )
                       ) : reorderPreview.mediaSrc ? (
-                        <img
+                        <AuthenticatedMediaImage
                           src={reorderPreview.mediaSrc}
                           alt={slide.title}
                           className="h-full w-full object-cover"
@@ -11552,7 +11564,7 @@ export default function PresentationEditor() {
                   </div>
                   {selectedAutoLayoutWatermarkOption ? (
                     <div className="flex items-center gap-2 rounded border border-slate-200 bg-white p-2">
-                      <img
+                      <AuthenticatedMediaImage
                         src={selectedAutoLayoutWatermarkOption.thumbnailUrl || selectedAutoLayoutWatermarkOption.sourceUrl}
                         alt={selectedAutoLayoutWatermarkOption.label}
                         className="h-10 w-16 rounded border border-slate-200 object-contain"

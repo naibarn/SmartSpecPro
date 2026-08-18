@@ -257,6 +257,23 @@ export async function processInviteCodeUsage(
         return { success: false, error: "Invite code is no longer valid" };
       }
 
+      // The code row is locked before checking usage so a retried OAuth/email
+      // callback cannot consume a second slot for the same user. This also
+      // makes the currentUses counter and usage ledger advance exactly once.
+      const [existingUsage] = await tx
+        .select({ id: inviteCodeUsage.id })
+        .from(inviteCodeUsage)
+        .where(
+          and(
+            eq(inviteCodeUsage.inviteCodeId, codeId),
+            eq(inviteCodeUsage.registeredUserId, newUserId),
+          ),
+        )
+        .limit(1);
+      if (existingUsage) {
+        return { success: true };
+      }
+
       // Self-referral prevention (checked BEFORE increment)
       if (code.ownerId === newUserId) {
         return { success: false, error: "Cannot use your own invite code" };
@@ -276,17 +293,10 @@ export async function processInviteCodeUsage(
       let creditsGivenToUser = 0;
       let creditsGivenToOwner = 0;
 
-      // Give bonus credits to new user
-      if (updated.bonusCreditsForNewUser > 0) {
-        creditsGivenToUser = updated.bonusCreditsForNewUser;
-      }
-
-      // Give referral bonus to code owner (for user-type codes)
-      if (updated.bonusCreditsForOwner > 0) {
-        creditsGivenToOwner = updated.bonusCreditsForOwner;
-      }
-
-      // Insert usage record
+      // Insert a pending usage record. These columns represent credits that
+      // were actually delivered, not the configured amount. The separate
+      // giveInviteCodeBonuses step claims rows with zero values and records
+      // the actual amounts after addCredits commits.
       await tx.insert(inviteCodeUsage).values({
         inviteCodeId: codeId,
         registeredUserId: newUserId,
@@ -403,6 +413,7 @@ export async function giveInviteCodeBonuses(
         sourceType: "admin",
         metadata: { inviteCodeId: codeId, inviteCode: code.code },
         referenceId: `invite-newuser-${codeId}-${newUserId}`,
+        freeCreditGrant: true,
       });
       actualUserCredits = code.bonusCreditsForNewUser;
     } catch (err) {

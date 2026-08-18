@@ -10,6 +10,7 @@ from app.llm_proxy.providers.kie_ai_provider import (
     get_model_resolution_stats,
     reset_model_resolution_stats,
     resolve_api_model,
+    resolve_grok_image_2_operation,
 )
 
 
@@ -106,6 +107,104 @@ def test_resolve_api_model_maps_grok_imagine_video_15_aliases_to_kie_model():
 
     stats = get_model_resolution_stats()
     assert stats["fallback_alias_map"] == 3
+
+
+def test_resolve_grok_image_2_operation_uses_one_logical_model_for_t2i_and_edit():
+    config = {
+        "kie_model_id": "grok-imagine-image-2-0/text-to-image",
+        "operations": {
+            "image-edit": {
+                "kie_model_id": "grok-imagine-image-2-0/image-edit",
+            },
+        },
+    }
+
+    _, text_model, text_operation = resolve_grok_image_2_operation(
+        "grok-imagine-image-2", config, {}
+    )
+    edit_config, edit_model, edit_operation = resolve_grok_image_2_operation(
+        "grok-imagine-image-2",
+        config,
+        {"grokOperation": "image-edit", "task_id": "provider-task-1"},
+    )
+
+    assert (text_model, text_operation) == (
+        "grok-imagine-image-2-0/text-to-image",
+        "text-to-image",
+    )
+    assert (edit_model, edit_operation) == (
+        "grok-imagine-image-2-0/image-edit",
+        "image-edit",
+    )
+    assert "aspect_ratio" in edit_config["drop_params"]
+
+
+@pytest.mark.asyncio
+async def test_grok_image_2_text_to_image_payload_is_exact():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+
+    await provider.generate_image(
+        model="grok-imagine-image-2",
+        prompt="A cinematic portrait",
+        callback_url="",
+        api_config={
+            "kie_model_id": "grok-imagine-image-2-0/text-to-image",
+            "operations": {"text-to-image": {"kie_model_id": "grok-imagine-image-2-0/text-to-image"}},
+        },
+    )
+
+    args, _ = provider.create_task.await_args
+    assert args[0] == "grok-imagine-image-2-0/text-to-image"
+    assert args[1]["prompt"] == "A cinematic portrait"
+    assert args[1]["aspect_ratio"] == "1:1"
+
+
+@pytest.mark.asyncio
+async def test_grok_image_2_image_edit_payload_uses_task_id_and_mask_indexes():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-2", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-2"}})
+
+    await provider.generate_image(
+        model="grok-imagine-image-2",
+        prompt="Change the background to a studio",
+        callback_url="",
+        api_config={"kie_model_id": "grok-imagine-image-2-0/text-to-image"},
+        extra_params={
+            "grokOperation": "image-edit",
+            "task_id": "provider-source-task",
+            "mask_indexs": [{"value": 2}, 3],
+        },
+    )
+
+    args, _ = provider.create_task.await_args
+    assert args[0] == "grok-imagine-image-2-0/image-edit"
+    assert args[1] == {
+        "prompt": "Change the background to a studio",
+        "task_id": "provider-source-task",
+        "mask_indexs": [2, 3],
+    }
+
+
+@pytest.mark.asyncio
+async def test_grok_image_2_segment_map_payload_has_no_prompt_or_image_defaults():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-3", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-3"}})
+
+    await provider.generate_image(
+        model="grok-imagine-image-2/segment-map",
+        prompt="",
+        callback_url="",
+        api_config={"kie_model_id": "grok-imagine-image-2-0/segment-map"},
+        extra_params={"task_id": "provider-source-task"},
+    )
+
+    args, _ = provider.create_task.await_args
+    assert args[0] == "grok-imagine-image-2-0/segment-map"
+    assert args[1] == {"task_id": "provider-source-task"}
 
 
 @pytest.mark.asyncio

@@ -20,6 +20,11 @@ import fs from "fs";
 import path from "path";
 import { authorizeRequest } from "../_core/authz";
 import { storagePut, storageResolveUrl, storageDelete } from "../storage";
+import {
+  extractAffectedUserIds,
+  resolveAffectedUsers,
+  type AffectedUser,
+} from "../services/feedbackAffectedUsers";
 
 type TenantRequest = Request & { tenantId?: string };
 
@@ -222,6 +227,24 @@ export const feedbackRouter = router({
 
       if (tickets.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
 
+      const ticket = tickets[0];
+      const affectedUserIds = extractAffectedUserIds(ticket.contextJson);
+      let affectedUsers: AffectedUser[] = affectedUserIds.map((id) => ({
+        id,
+        email: null,
+      }));
+      if (affectedUserIds.length > 0) {
+        try {
+          affectedUsers = await resolveAffectedUsers(
+            db,
+            affectedUserIds,
+            ticket.tenantId ?? ctx.tenantId,
+          );
+        } catch (err) {
+          console.error("[Feedback] Failed to resolve affected user emails:", err);
+        }
+      }
+
       const comments = await db
         .select()
         .from(feedbackTicketComments)
@@ -241,7 +264,7 @@ export const feedbackRouter = router({
         }),
       );
 
-      return { ...tickets[0], comments, attachments: resolvedAttachments };
+      return { ...ticket, affectedUsers, comments, attachments: resolvedAttachments };
     }),
 
   addComment: adminProcedure

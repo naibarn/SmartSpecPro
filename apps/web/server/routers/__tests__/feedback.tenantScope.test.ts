@@ -72,4 +72,44 @@ describe("feedback admin tenant scope", () => {
     expect(result.id).toBe(262);
     expect(result.submittedByType).toBe("system");
   });
+
+  it("resolves affected user emails for an admin ticket detail", async () => {
+    const ticket = {
+      id: 354,
+      tenantId: "tenant-ZCSKEM9s",
+      submittedByType: "system",
+      ticketType: "bug",
+      title: "[Auto][e4937deb] tRPC failure",
+      contextJson: { kind: "system_auto_report", affectedUserIds: [119] },
+    };
+    const ticketQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([ticket]),
+    };
+    const affectedUsersQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([{ id: 119, email: "user119@example.com" }]),
+    };
+    const commentsQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([]),
+    };
+    const attachmentsQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([]),
+    };
+    const queries = [ticketQuery, affectedUsersQuery, commentsQuery, attachmentsQuery];
+    mockGetDb.mockResolvedValue({
+      select: vi.fn(() => queries.shift()),
+    });
+
+    const result = await createCaller().getTicket({ id: 354 });
+
+    expect(result.affectedUsers).toEqual([
+      { id: 119, email: "user119@example.com" },
+    ]);
+  });
 });

@@ -138,6 +138,7 @@ export interface ClaimedPortraitCandidate {
   negativePrompt?: string;
   promptContractVersion?: string;
   promptProfile?: "rich" | "compact" | "legacy";
+  castingPreferencesFingerprint?: string;
   semanticRetryCount?: number;
 }
 
@@ -854,6 +855,8 @@ export class VerticalDramaCharacterStockService {
         negativePrompt: candidate.negativePrompt,
         promptContractVersion: candidate.visualBibleSnapshot.promptContractVersion,
         promptProfile: candidate.visualBibleSnapshot.promptProfile,
+        castingPreferencesFingerprint:
+          candidate.visualBibleSnapshot.castingPreferencesFingerprint,
         semanticRetryCount: candidate.visualBibleSnapshot.semanticRetryCount,
       }))
       .sort((left, right) => left.index - right.index);

@@ -24,7 +24,10 @@ export function getMarketplaceCaptureConfig() {
   const tokenTtl = process.env.MARKETPLACE_EXTENSION_TOKEN_TTL || "7d";
   return {
     enabled: process.env.MARKETPLACE_CAPTURE_ENABLED !== "false",
-    allowedOrigins: parseCsv(process.env.MARKETPLACE_EXTENSION_ALLOWED_ORIGINS),
+    allowedOrigins: parseCsv(
+      process.env.COMPANION_EXTENSION_ALLOWED_ORIGINS
+      || process.env.MARKETPLACE_EXTENSION_ALLOWED_ORIGINS,
+    ),
     tokenTtl,
     tokenTtlMs: parseDurationMs(tokenTtl, 7 * 24 * 60 * 60 * 1000),
     maxUploadBytes: Number.isFinite(maxUploadMb)

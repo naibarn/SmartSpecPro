@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockGetMcpMediaTask = vi.fn();
 const mockSubmitMcpMediaGeneration = vi.fn();
 const mockResolveMediaTransport = vi.fn();
+const mockCreateProviderManagedStorageDownloadRef = vi.fn();
 
 vi.mock("../mcpMediaAdapter", () => ({
   getMcpMediaTask: (...args: unknown[]) => mockGetMcpMediaTask(...args),
@@ -13,6 +14,11 @@ vi.mock("../mcpMediaAdapter", () => ({
 vi.mock("../mediaTransportResolver", () => ({
   resolveMediaTransport: (...args: unknown[]) =>
     mockResolveMediaTransport(...args),
+}));
+
+vi.mock("../mcpDownloadBrokerService", () => ({
+  createProviderManagedStorageDownloadRef: (...args: unknown[]) =>
+    mockCreateProviderManagedStorageDownloadRef(...args),
 }));
 
 vi.mock("../enabledMediaModelSelection", () => ({
@@ -56,6 +62,14 @@ import { MediaGenerationService } from "../mediaGenerationService";
 describe("MediaGenerationService MCP task polling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateProviderManagedStorageDownloadRef.mockImplementation(
+      async (storageKey: string) => ({
+        downloadRef: `broker-${storageKey}`,
+        expiresInSeconds: 3600,
+        fileName: storageKey.split("/").pop() || "reference.bin",
+        contentType: "image/png",
+      })
+    );
     global.fetch = vi.fn(
       async () => new Response("{}", { status: 404 })
     ) as typeof fetch;
@@ -100,7 +114,11 @@ describe("MediaGenerationService MCP task polling", () => {
     });
 
     expect(task.id).toBe("mcp_task_1");
-    expect(mockGetMcpMediaTask).toHaveBeenCalledWith("mcp_task_1", 109);
+    expect(mockGetMcpMediaTask).toHaveBeenCalledWith(
+      "mcp_task_1",
+      109,
+      undefined
+    );
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -263,8 +281,8 @@ describe("MediaGenerationService MCP task polling", () => {
       expect.objectContaining({
         parameters: expect.objectContaining({
           referenceImageUrls: [
-            "https://smartaihub.app/api/storage/files/product.webp",
-            "https://smartaihub.app/api/storage/files/character.png",
+            "https://smartaihub.app/api/mcp/downloads/broker-product.webp/product.webp",
+            "https://smartaihub.app/api/mcp/downloads/broker-character.png/character.png",
           ],
           referenceImageManifest: [
             expect.objectContaining({

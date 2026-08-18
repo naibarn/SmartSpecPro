@@ -18,6 +18,10 @@ from app.services.library_backfill_service import run_library_backfill_batch
 from app.services.media_thumbnail_backfill_service import run_missing_media_thumbnail_backfill_batch
 from app.services.media_debug_trace import write_media_debug_event
 from app.services.media_task_service import MediaTaskService
+from app.services.kie_submission_rate_limiter import (
+    KieSubmissionDeferred,
+    KieSubmissionRateLimiter,
+)
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
     ImageGenerationRequest,
@@ -27,8 +31,8 @@ from app.llm_proxy.models import (
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from enum import Enum
-from uuid import UUID
-from sqlalchemy import or_, select, text
+from uuid import UUID, uuid4
+from sqlalchemy import and_, func, or_, select, text
 from typing import Any, Optional
 import re
 import structlog
@@ -443,6 +447,12 @@ async def _mark_task_failed_async(task_id: str, error: Exception) -> None:
         await db.commit()
 
 
+async def _get_media_task_owner_id_async(task_id: str) -> int | str | None:
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(MediaTask.user_id).where(MediaTask.id == task_id))
+        return result.scalar_one_or_none()
+
+
 def _is_non_retryable_media_error(error: Exception) -> bool:
     """Return true for provider refusals that another Celery retry cannot fix."""
     message = str(error).lower()
@@ -832,6 +842,373 @@ def _enqueue_wavespeed_poll(task_id: str, delay_seconds: int) -> None:
 
 def _enqueue_magnific_poll(task_id: str, delay_seconds: int) -> None:
     poll_magnific_media_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
+
+
+KIE_IMAGE_MAX_IN_FLIGHT_PER_USER = max(
+    1,
+    int(os.getenv("KIE_IMAGE_MAX_IN_FLIGHT_PER_USER", "3")),
+)
+KIE_IMAGE_POLL_INITIAL_SECONDS = max(
+    1,
+    int(os.getenv("KIE_IMAGE_POLL_INITIAL_SECONDS", "2")),
+)
+KIE_IMAGE_POLL_MAX_SECONDS = max(
+    KIE_IMAGE_POLL_INITIAL_SECONDS,
+    int(os.getenv("KIE_IMAGE_POLL_MAX_SECONDS", "30")),
+)
+KIE_IMAGE_POLL_TIMEOUT_SECONDS = max(
+    60,
+    int(os.getenv("KIE_IMAGE_POLL_TIMEOUT_SECONDS", "600")),
+)
+_kie_image_poll_rate_limiter = KieSubmissionRateLimiter(
+    max_requests=int(os.getenv("KIE_IMAGE_POLLS_PER_WINDOW", "60")),
+    window_seconds=int(os.getenv("KIE_IMAGE_POLL_WINDOW_SECONDS", "10")),
+    key="rate_limit:kie_ai:image_polls",
+)
+
+
+def _enqueue_kie_image_poll(task_id: str, delay_seconds: int) -> None:
+    poll_kie_image_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
+
+
+def _image_request_from_task(task: MediaTask) -> dict[str, Any]:
+    parameters = _coerce_json_dict(task.parameters)
+    return _make_json_safe({"model": task.model, "prompt": task.prompt, **parameters})
+
+
+async def _dispatch_pending_image_tasks_async(user_id: int | str) -> dict[str, Any]:
+    """Claim and enqueue the oldest image tasks up to the per-user limit.
+
+    The PostgreSQL advisory lock serializes dispatchers for one user while
+    leaving different users independent. A pending row with a Celery ID is a
+    durable claim, so another API/worker process cannot over-admit it.
+    """
+    claimed: list[tuple[str, int | str, dict[str, Any], str]] = []
+    available_slots = 0
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"kie-image-user:{user_id}"},
+        )
+        occupied_result = await db.execute(
+            select(func.count(MediaTask.id)).where(
+                MediaTask.user_id == user_id,
+                MediaTask.media_type == MediaType.IMAGE.value,
+                or_(
+                    MediaTask.status == TaskStatus.PROCESSING.value,
+                    and_(
+                        MediaTask.status == TaskStatus.PENDING.value,
+                        MediaTask.celery_task_id.isnot(None),
+                    ),
+                ),
+            )
+        )
+        occupied = int(occupied_result.scalar() or 0)
+        available_slots = max(0, KIE_IMAGE_MAX_IN_FLIGHT_PER_USER - occupied)
+        if available_slots:
+            pending_result = await db.execute(
+                select(MediaTask)
+                .where(
+                    MediaTask.user_id == user_id,
+                    MediaTask.media_type == MediaType.IMAGE.value,
+                    MediaTask.status == TaskStatus.PENDING.value,
+                    MediaTask.task_id.is_(None),
+                    MediaTask.celery_task_id.is_(None),
+                )
+                .order_by(MediaTask.created_at.asc(), MediaTask.id.asc())
+                .limit(available_slots)
+                .with_for_update(skip_locked=True)
+            )
+            for task in pending_result.scalars().all():
+                celery_task_id = str(uuid4())
+                task.celery_task_id = celery_task_id
+                claimed.append(
+                    (task.id, task.user_id, _image_request_from_task(task), celery_task_id)
+                )
+        await db.commit()
+
+    dispatched: list[str] = []
+    for task_id, owner_id, request_data, celery_task_id in claimed:
+        try:
+            generate_image_task.apply_async(
+                args=[task_id, owner_id, request_data],
+                task_id=celery_task_id,
+            )
+            dispatched.append(task_id)
+            logger.info(
+                "kie_image_user_task_dispatched",
+                task_id=task_id,
+                user_id=owner_id,
+                celery_task_id=celery_task_id,
+            )
+        except Exception as exc:
+            logger.error(
+                "kie_image_user_task_dispatch_failed",
+                task_id=task_id,
+                user_id=owner_id,
+                error_type=type(exc).__name__,
+            )
+            async with AsyncSessionLocal() as db:
+                failed_claim_result = await db.execute(
+                    select(MediaTask).where(MediaTask.id == task_id).with_for_update()
+                )
+                failed_claim = failed_claim_result.scalar_one_or_none()
+                if (
+                    failed_claim is not None
+                    and failed_claim.status == TaskStatus.PENDING.value
+                    and failed_claim.celery_task_id == celery_task_id
+                ):
+                    failed_claim.celery_task_id = None
+                    failed_claim.error_message = "Local queue dispatch failed; recovery will retry."
+                    await db.commit()
+
+    return {
+        "user_id": user_id,
+        "available_slots": available_slots,
+        "dispatched_task_ids": dispatched,
+    }
+
+
+def _next_kie_image_poll_delay(previous_delay: int) -> int:
+    if previous_delay <= 0:
+        return KIE_IMAGE_POLL_INITIAL_SECONDS
+    return min(KIE_IMAGE_POLL_MAX_SECONDS, max(previous_delay + 1, previous_delay * 2))
+
+
+def _compact_kie_status(status_response: Any, state: str, raw_state: str) -> dict[str, Any]:
+    """Keep operational metadata without prompts, params, or signed result URLs."""
+    payload = status_response if isinstance(status_response, dict) else {}
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    return _make_json_safe(
+        {
+            "provider": "kie_ai",
+            "state": state,
+            "raw_state": raw_state,
+            "code": payload.get("code"),
+            "provider_task_id": data.get("taskId") or payload.get("taskId"),
+            "credits_consumed": data.get("creditsConsumed") or payload.get("creditsConsumed"),
+        }
+    )
+
+
+async def _kie_query_endpoint_for_task(db: Any, task: MediaTask) -> Optional[str]:
+    parameters = _coerce_json_dict(task.parameters)
+    api_config = parameters.get("api_config")
+    if isinstance(api_config, dict):
+        endpoint = (
+            api_config.get("query_endpoint")
+            or api_config.get("status_endpoint")
+            or api_config.get("api_query_endpoint")
+            or api_config.get("api_status_endpoint")
+            or api_config.get("apiQueryEndpoint")
+            or api_config.get("statusEndpoint")
+        )
+        if isinstance(endpoint, str) and endpoint.strip():
+            return endpoint.strip()
+
+    try:
+        model_result = await db.execute(
+            text('SELECT "configJson" FROM media_models WHERE "modelId" = :model_id LIMIT 1'),
+            {"model_id": task.model},
+        )
+        model_row = model_result.fetchone()
+        if model_row:
+            return _extract_model_query_endpoint(model_row[0])
+    except Exception as exc:
+        logger.warning(
+            "kie_image_query_endpoint_lookup_failed",
+            task_id=task.id,
+            error_type=type(exc).__name__,
+        )
+    return None
+
+
+async def _poll_kie_image_task_async(
+    task_id: str,
+    *,
+    schedule_next_poll: bool = True,
+) -> dict[str, Any]:
+    """Perform one Kie status check and release/admit the user's next slot."""
+    from app.llm_proxy.providers.kie_ai_provider import KieAIProvider
+    from app.services.media_provider_service import get_media_provider_key
+
+    owner_id: int | str | None = None
+    terminal = False
+    result_payload: dict[str, Any]
+    async with AsyncSessionLocal() as db:
+        task_result = await db.execute(select(MediaTask).where(MediaTask.id == task_id))
+        task = task_result.scalar_one_or_none()
+        if task is None:
+            return {"status": "missing", "task_id": task_id}
+
+        owner_id = task.user_id
+        persisted_state = _enum_value_or_str(task.status)
+        if persisted_state in {
+            TaskStatus.COMPLETED.value,
+            TaskStatus.FAILED.value,
+            TaskStatus.CANCELLED.value,
+        }:
+            return {"status": "terminal", "task_id": task_id, "state": persisted_state}
+        if not task.task_id:
+            return {"status": "skipped", "task_id": task_id, "reason": "missing_provider_task_id"}
+
+        now = datetime.now(timezone.utc)
+        started_at = task.started_at or task.created_at or now
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+        result_data = _coerce_json_dict(task.result_data)
+        polling = result_data.get("polling") if isinstance(result_data.get("polling"), dict) else {}
+        attempts = int(polling.get("attempts") or 0)
+        previous_delay = int(polling.get("next_delay_seconds") or 0)
+
+        if (now - started_at).total_seconds() >= KIE_IMAGE_POLL_TIMEOUT_SECONDS:
+            task.status = TaskStatus.FAILED.value
+            task.error_message = "Kie.ai image polling timed out"
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "kie_ai",
+                        "state": "timeout",
+                        "attempts": attempts,
+                        "last_polled_at": now.isoformat(),
+                    }
+                },
+            )
+            await db.commit()
+            terminal = True
+            result_payload = {"status": "failed", "task_id": task_id, "reason": "timeout"}
+        else:
+            poll_rate_state = await _kie_image_poll_rate_limiter.acquire(task_id=task_id)
+            if not poll_rate_state.allowed:
+                next_delay = max(
+                    _next_kie_image_poll_delay(previous_delay),
+                    poll_rate_state.retry_after_seconds,
+                )
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {
+                        "polling": {
+                            "provider": "kie_ai",
+                            "state": "rate_limited",
+                            "attempts": attempts,
+                            "last_polled_at": now.isoformat(),
+                            "next_delay_seconds": next_delay,
+                            "redis_available": poll_rate_state.redis_available,
+                        }
+                    },
+                    remove_keys=("failure",),
+                )
+                await db.commit()
+                if schedule_next_poll:
+                    _enqueue_kie_image_poll(task_id, next_delay)
+                return {
+                    "status": "processing",
+                    "task_id": task_id,
+                    "rate_limited": True,
+                    "next_delay_seconds": next_delay,
+                }
+
+            provider_config = await get_media_provider_key("kie_ai")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise RuntimeError("Kie.ai provider configuration unavailable during polling")
+            provider = KieAIProvider(
+                api_key=provider_config["apiKey"],
+                base_url=provider_config.get("baseUrl") or "https://api.kie.ai/api/v1",
+                callback_url=provider_config.get("callbackUrl"),
+            )
+            preferred_endpoint = await _kie_query_endpoint_for_task(db, task)
+            status_response = await provider.get_task_status(
+                task.task_id,
+                preferred_status_endpoint=preferred_endpoint,
+            )
+            state, raw_state = _normalize_kie_task_state(status_response)
+            compact_status = _compact_kie_status(status_response, state, raw_state)
+
+            if state == "success":
+                result_url = _extract_first_kie_result_url(status_response)
+                if not result_url:
+                    state = "processing"
+                else:
+                    task.status = TaskStatus.COMPLETED.value
+                    task.result_url = result_url
+                    task.error_message = None
+                    task.completed_at = now
+                    task.result_data = _merge_task_result_data(
+                        result_data,
+                        {
+                            "provider_status": compact_status,
+                            "polling": {
+                                "provider": "kie_ai",
+                                "state": "completed",
+                                "attempts": attempts + 1,
+                                "last_polled_at": now.isoformat(),
+                            },
+                        },
+                        remove_keys=("failure", "retry"),
+                    )
+                    await db.commit()
+                    terminal = True
+                    result_payload = {"status": "completed", "task_id": task_id}
+
+            if state == "fail":
+                task.status = TaskStatus.FAILED.value
+                task.error_message = f"Provider failed: {_extract_kie_failure_message(status_response)}"
+                task.completed_at = now
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {
+                        "provider_status": compact_status,
+                        "polling": {
+                            "provider": "kie_ai",
+                            "state": "failed",
+                            "attempts": attempts + 1,
+                            "last_polled_at": now.isoformat(),
+                        },
+                    },
+                    remove_keys=("retry",),
+                )
+                await db.commit()
+                terminal = True
+                result_payload = {"status": "failed", "task_id": task_id}
+            elif not terminal:
+                next_delay = _next_kie_image_poll_delay(previous_delay)
+                task.status = TaskStatus.PROCESSING.value
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {
+                        "provider_status": compact_status,
+                        "polling": {
+                            "provider": "kie_ai",
+                            "state": "processing",
+                            "attempts": attempts + 1,
+                            "last_polled_at": now.isoformat(),
+                            "last_delay_seconds": previous_delay,
+                            "next_delay_seconds": next_delay,
+                        },
+                    },
+                    remove_keys=("failure",),
+                )
+                await db.commit()
+                if schedule_next_poll:
+                    _enqueue_kie_image_poll(task_id, next_delay)
+                result_payload = {
+                    "status": "processing",
+                    "task_id": task_id,
+                    "next_delay_seconds": next_delay,
+                }
+
+    if terminal and owner_id is not None:
+        if result_payload.get("status") == "failed":
+            await _send_failure_notifications(
+                task_id,
+                owner_id,
+                "image",
+                task.error_message or "Kie.ai image generation failed",
+            )
+        await _dispatch_pending_image_tasks_async(owner_id)
+    return result_payload
 
 
 async def _poll_wavespeed_video_task_async(
@@ -1759,11 +2136,47 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                 "provider_hint": api_config.get("provider"),
                 "request_keys": sorted(list(request_data.keys())) if isinstance(request_data, dict) else [],
             })
-            # Get task and user from database
+            # Celery is at-least-once. Serialize duplicate deliveries so a
+            # re-published claim cannot create a second provider task.
+            await db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+                {"lock_key": f"kie-image-user:{user_id}"},
+            )
             result = await db.execute(
-                select(MediaTask).filter(MediaTask.id == task_id)
+                select(MediaTask).filter(MediaTask.id == task_id).with_for_update()
             )
             task = result.scalar_one_or_none()
+
+            if task is not None:
+                persisted_state = _enum_value_or_str(task.status)
+                if persisted_state in {
+                    TaskStatus.COMPLETED.value,
+                    TaskStatus.FAILED.value,
+                    TaskStatus.CANCELLED.value,
+                }:
+                    return {"status": "terminal", "task_id": task_id, "state": persisted_state}
+                existing_provider_task_id = (
+                    task.task_id.strip()
+                    if isinstance(task.task_id, str)
+                    else ""
+                )
+                if existing_provider_task_id:
+                    task.status = TaskStatus.PROCESSING.value
+                    await db.commit()
+                    _enqueue_kie_image_poll(task_id, KIE_IMAGE_POLL_INITIAL_SECONDS)
+                    return {
+                        "status": "submitted",
+                        "task_id": task_id,
+                        "external_task_id": existing_provider_task_id,
+                        "duplicate_delivery": True,
+                    }
+                if persisted_state == TaskStatus.PROCESSING.value and task.started_at is not None:
+                    await db.commit()
+                    return {
+                        "status": "processing",
+                        "task_id": task_id,
+                        "duplicate_delivery": True,
+                    }
 
             result = await db.execute(
                 select(User).filter(User.id == user_id)
@@ -1785,13 +2198,19 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
 
             # Call LLM Gateway
             gateway = LLMGateway(db)
-            response = await gateway.generate_image(request, user)
+            response = await gateway.generate_image(
+                request,
+                user,
+                wait_for_completion=False,
+            )
 
             provider_task_id = response.id or None
             if provider_task_id:
                 task.task_id = provider_task_id
 
             result_url = response.data[0].get("url") if response.data else None
+            if response.provider == "kie_ai" and not provider_task_id and not result_url:
+                raise RuntimeError("Kie.ai submission returned no provider task ID")
             task.result_url = result_url
             submission_record = None
             if response.provider == "magnific":
@@ -1829,13 +2248,14 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                 "trace_id": trace_id,
                 "task_id": task_id,
                 "provider_task_id": provider_task_id,
-                "result_url": task.result_url,
+                "has_result_url": bool(task.result_url),
                 "provider": response.provider,
                 "log_file": debug_log_file,
             })
 
             if result_url:
                 logger.info("generate_image_task_completed", task_id=task_id, provider_task_id=provider_task_id)
+                await _dispatch_pending_image_tasks_async(user_id)
                 return {
                     "status": "completed",
                     "task_id": task_id,
@@ -1845,6 +2265,8 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
 
             if response.provider == "magnific" and provider_task_id:
                 _enqueue_magnific_poll(task_id, _get_magnific_poll_policy(request.model)["initial"])
+            if response.provider == "kie_ai" and provider_task_id:
+                _enqueue_kie_image_poll(task_id, KIE_IMAGE_POLL_INITIAL_SECONDS)
 
             logger.info("generate_image_task_submitted", task_id=task_id, provider_task_id=provider_task_id)
             return {
@@ -1901,6 +2323,29 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
         result = _run_async(_generate_image_async(task_id, user_id, request_data))
         return result
 
+    except KieSubmissionDeferred as e:
+        logger.info(
+            "generate_image_task_rate_limited",
+            task_id=task_id,
+            user_id=user_id,
+            retry_after_seconds=e.retry_after_seconds,
+            redis_available=e.redis_available,
+        )
+        if self.request.retries < self.max_retries:
+            _run_async(
+                _mark_task_retrying_async(
+                    task_id,
+                    e,
+                    retry_after_seconds=e.retry_after_seconds,
+                )
+            )
+            raise self.retry(exc=e, countdown=e.retry_after_seconds)
+
+        _run_async(_mark_task_failed_async(task_id, e))
+        _run_async(_send_failure_notifications(task_id, user_id, "image", str(e)))
+        _run_async(_dispatch_pending_image_tasks_async(user_id))
+        return {"status": "failed", "task_id": task_id, "error": str(e)}
+
     except Exception as e:
         logger.error("generate_image_task_exception", task_id=task_id, error=str(e))
 
@@ -1910,6 +2355,7 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
             except Exception as fail_state_error:
                 logger.warning("generate_image_task_non_retryable_state_update_failed", task_id=task_id, error=str(fail_state_error))
             _run_async(_send_failure_notifications(task_id, user_id, "image", str(e)))
+            _run_async(_dispatch_pending_image_tasks_async(user_id))
             return {"status": "failed", "task_id": task_id, "error": str(e), "retryable": False}
 
         # Retry if max_retries not reached
@@ -1926,7 +2372,37 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
         except Exception as fail_state_error:
             logger.warning("generate_image_task_final_state_update_failed", task_id=task_id, error=str(fail_state_error))
         _run_async(_send_failure_notifications(task_id, user_id, "image", str(e)))
+        _run_async(_dispatch_pending_image_tasks_async(user_id))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
+
+
+@celery_app.task(bind=True, max_retries=3)
+def poll_kie_image_task(self, task_id: str):
+    """Perform a single Kie image status check without occupying a worker."""
+    logger.info("poll_kie_image_task_started", task_id=task_id)
+    try:
+        return _run_async(_poll_kie_image_task_async(task_id, schedule_next_poll=True))
+    except Exception as exc:
+        logger.warning(
+            "poll_kie_image_task_exception",
+            task_id=task_id,
+            error_type=type(exc).__name__,
+        )
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc, countdown=15)
+        try:
+            _run_async(_mark_task_failed_async(task_id, exc))
+            owner_id = _run_async(_get_media_task_owner_id_async(task_id))
+            if owner_id is not None:
+                _run_async(_send_failure_notifications(task_id, owner_id, "image", str(exc)))
+                _run_async(_dispatch_pending_image_tasks_async(owner_id))
+        except Exception as state_error:
+            logger.warning(
+                "poll_kie_image_task_final_state_update_failed",
+                task_id=task_id,
+                error_type=type(state_error).__name__,
+            )
+        return {"status": "failed", "task_id": task_id, "error": str(exc)}
 
 
 async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
@@ -2817,6 +3293,22 @@ async def _recover_stuck_tasks_async():
                             failed_count += 1
                         continue
 
+                    kie_polling = task_result_data.get("polling")
+                    if (
+                        task.media_type == MediaType.IMAGE.value
+                        and isinstance(kie_polling, dict)
+                        and kie_polling.get("provider") == "kie_ai"
+                    ):
+                        kie_result = await _poll_kie_image_task_async(
+                            task.id,
+                            schedule_next_poll=True,
+                        )
+                        if kie_result.get("status") == "completed":
+                            recovered_count += 1
+                        elif kie_result.get("status") == "failed":
+                            failed_count += 1
+                        continue
+
                     if task.model in BytePlusModelArkProvider.VIDEO_MODELS:
                         # --- BytePlus polling branch ---
                         from app.services.media_provider_service import get_media_provider_key
@@ -3254,7 +3746,6 @@ async def _recover_stuck_pending_tasks_async():
                     MediaTask.status == TaskStatus.PENDING,
                     MediaTask.created_at < cutoff,
                     MediaTask.celery_task_id.isnot(None),  # Was submitted to Celery
-                    MediaTask.started_at.is_(None),  # But never started
                 ).limit(10)
             )
             stuck_pending = result.scalars().all()
@@ -3294,6 +3785,8 @@ async def _recover_stuck_pending_tasks_async():
                         external_task_id=task.task_id,
                         age_minutes=age_minutes,
                     )
+                    if task.media_type == MediaType.IMAGE.value:
+                        _enqueue_kie_image_poll(task.id, KIE_IMAGE_POLL_INITIAL_SECONDS)
                     continue
 
                 # Check Celery task state to avoid duplicate execution
@@ -3341,6 +3834,27 @@ async def _recover_stuck_pending_tasks_async():
                         age_minutes=age_minutes,
                     )
 
+                elif (
+                    celery_state == "PENDING"
+                    and task.media_type == MediaType.IMAGE.value
+                    and age_minutes >= 5
+                ):
+                    # Redis cannot distinguish a queued task from a publish that
+                    # was lost after the DB claim. Re-publish the same Celery ID;
+                    # the row/advisory guard in _generate_image_async makes the
+                    # delivery idempotent if the original message still exists.
+                    generate_image_task.apply_async(
+                        args=[task.id, task.user_id, _image_request_from_task(task)],
+                        task_id=task.celery_task_id,
+                    )
+                    recovered += 1
+                    logger.warning(
+                        "recover_stuck_pending_image_republished",
+                        task_id=task.id,
+                        celery_task_id=task.celery_task_id,
+                        age_minutes=age_minutes,
+                    )
+
                 elif age_minutes >= 10:
                     # Very old pending task with non-terminal Celery state — give up
                     task.status = TaskStatus.FAILED
@@ -3379,6 +3893,31 @@ async def _recover_stuck_pending_tasks_async():
             raise
 
 
+async def _recover_unclaimed_pending_image_tasks_async() -> dict[str, Any]:
+    """Re-arm durable pending rows left before a Celery claim was published."""
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=10)
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(MediaTask.user_id)
+            .where(
+                MediaTask.media_type == MediaType.IMAGE.value,
+                MediaTask.status == TaskStatus.PENDING.value,
+                MediaTask.task_id.is_(None),
+                MediaTask.celery_task_id.is_(None),
+                MediaTask.created_at < cutoff,
+            )
+            .distinct()
+            .limit(50)
+        )
+        user_ids = list(result.scalars().all())
+
+    dispatched = 0
+    for user_id in user_ids:
+        dispatch_result = await _dispatch_pending_image_tasks_async(user_id)
+        dispatched += len(dispatch_result["dispatched_task_ids"])
+    return {"users_checked": len(user_ids), "dispatched": dispatched}
+
+
 @celery_app.task
 def recover_stuck_tasks():
     """
@@ -3398,6 +3937,12 @@ def recover_stuck_tasks():
             result["pending_recovered"] = pending_result.get("recovered", 0)
         except Exception as e:
             logger.error("recover_stuck_pending_exception", error=str(e))
+
+        try:
+            unclaimed_result = _run_async(_recover_unclaimed_pending_image_tasks_async())
+            result["pending_dispatched"] = unclaimed_result.get("dispatched", 0)
+        except Exception as e:
+            logger.error("recover_unclaimed_pending_images_exception", error=str(e))
 
         return result
 

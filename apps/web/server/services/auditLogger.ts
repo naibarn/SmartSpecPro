@@ -175,6 +175,7 @@ export type AuditEventType =
   | "worker_job_canceled"
   | "worker_job_requeued"
   | "worker_job_watchdog_dead_letter"
+  | "connected_device_revoked"
   | "worker_diagnostics_received"
   | "worker_artifact_published"
   | "worker_fleet_action"

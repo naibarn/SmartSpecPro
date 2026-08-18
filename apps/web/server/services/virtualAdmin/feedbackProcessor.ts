@@ -2,6 +2,12 @@ import { eq, and, isNull, sql, desc } from "drizzle-orm";
 import { getDb } from "../../db";
 import { feedbackTickets, virtualAdminIncidents, users } from "../../../drizzle/schema";
 import { createNotification } from "../notificationService";
+import {
+  extractAffectedUserIds,
+  formatAffectedUsersForText,
+  resolveAffectedUsers,
+  type AffectedUser,
+} from "../feedbackAffectedUsers";
 
 interface ProcessedTicket {
   autoCategory: string | null;
@@ -93,6 +99,33 @@ export function adminNotificationGroupKey(ticket: {
   return `feedback-auto:${ticket.title.slice(0, 50).toLowerCase()}`;
 }
 
+export function buildAdminNotificationContent(params: {
+  ticketType: string;
+  autoSummary: string | null;
+  title: string;
+  ticketId: number;
+  affectedUsers?: AffectedUser[];
+}): string {
+  const lines = [
+    `[${params.ticketType}] ${params.autoSummary ?? params.title}`,
+    `Ticket #${params.ticketId}`,
+  ];
+  if (params.affectedUsers && params.affectedUsers.length > 0) {
+    lines.push(`Affected user(s): ${formatAffectedUsersForText(params.affectedUsers)}`);
+  }
+  return lines.join("\n");
+}
+
+export function resolveAdminNotificationPriority(
+  ticketPriority: string | null | undefined,
+  autoPriority: string | null | undefined,
+): "low" | "normal" | "high" | "critical" {
+  if (ticketPriority === "critical") return "critical";
+  if (autoPriority === "high") return "high";
+  if (autoPriority === "low") return "low";
+  return "normal";
+}
+
 /**
  * Auto-process a newly submitted feedback ticket.
  * Updates the ticket with classification, dedup, and correlation results.
@@ -148,6 +181,19 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
 
   // Notify all admins about the new feedback ticket
   try {
+    const affectedUserIds = extractAffectedUserIds(ticket.contextJson);
+    let affectedUsers: AffectedUser[] = affectedUserIds.map((id) => ({
+      id,
+      email: null,
+    }));
+    if (affectedUserIds.length > 0) {
+      try {
+        affectedUsers = await resolveAffectedUsers(db, affectedUserIds, ticket.tenantId);
+      } catch (err) {
+        console.error("[Feedback] Failed to resolve affected user emails:", err);
+      }
+    }
+
     const adminConditions = [sql`${users.role} IN ('admin', 'domain_admin')`];
     if (ticket.tenantId) {
       adminConditions.push(sql`${users.currentTenantId}::text = ${ticket.tenantId}`);
@@ -157,11 +203,10 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
       .from(users)
       .where(and(...adminConditions));
 
-    const priorityMap: Record<string, "low" | "normal" | "high" | "critical"> = {
-      high: "high",
-      normal: "normal",
-      low: "low",
-    };
+    const notificationPriority = resolveAdminNotificationPriority(
+      ticket.priority,
+      result.autoPriority,
+    );
 
     for (const admin of adminRows) {
       if (admin.id === ticket.submittedBy) continue;
@@ -172,8 +217,14 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
         groupKey: adminNotificationGroupKey(ticket),
         type: "alert",
         title: `New Feedback: ${ticket.title.slice(0, 80)}`,
-        content: `[${ticket.ticketType}] ${result.autoSummary ?? ticket.title}\nTicket #${ticketId}`,
-        priority: priorityMap[result.autoPriority ?? "normal"] ?? "normal",
+        content: buildAdminNotificationContent({
+          ticketType: ticket.ticketType,
+          autoSummary: result.autoSummary,
+          title: ticket.title,
+          ticketId,
+          affectedUsers,
+        }),
+        priority: notificationPriority,
         relatedResourceType: hasIncident ? "incident" : "feedback",
         relatedResourceId: String(ticketId),
         actionUrl: hasIncident

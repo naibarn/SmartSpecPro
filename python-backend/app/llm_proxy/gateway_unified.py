@@ -5,6 +5,7 @@ import re
 import math
 import mimetypes
 import httpx
+from urllib.parse import urlparse
 from uuid import uuid4
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +16,10 @@ from app.llm_proxy.unified_client import get_unified_client, UnifiedLLMClient
 from app.llm_proxy.models import LLMRequest, LLMResponse, ImageGenerationRequest, ImageGenerationResponse, VideoGenerationRequest, VideoGenerationResponse, AudioGenerationRequest, AudioGenerationResponse
 from app.services.credit_service import CreditService, InsufficientCreditsError
 from app.services.media_debug_trace import write_media_debug_event
+from app.services.kie_submission_rate_limiter import (
+    KieSubmissionDeferred,
+    KieSubmissionRateLimiter,
+)
 from app.services.web_gateway_client import get_gateway_client
 from app.core.credits import usd_to_credits, credits_to_usd
 from app.models.user import User
@@ -897,7 +902,8 @@ class LLMGateway:
     async def generate_image(
         self,
         request: ImageGenerationRequest,
-        user: User
+        user: User,
+        wait_for_completion: bool = True,
     ) -> ImageGenerationResponse:
         """
         Generate image with credit checking.
@@ -1383,7 +1389,11 @@ class LLMGateway:
             resolved_style_url = request.reference_style_url
 
             if request.reference_image_urls or request.reference_style_url:
-                logger.info("r2_resolution_starting", urls=request.reference_image_urls)
+                logger.info(
+                    "r2_resolution_starting",
+                    reference_count=len(request.reference_image_urls or []),
+                    has_style_reference=bool(request.reference_style_url),
+                )
                 try:
                     if not R2_STORAGE_AVAILABLE:
                         raise ImportError("R2 storage not available (boto3 not installed)")
@@ -1397,8 +1407,12 @@ class LLMGateway:
                         )
                         logger.info(
                             "reference_urls_resolved",
-                            original=request.reference_image_urls,
-                            resolved=resolved_reference_urls
+                            reference_count=len(resolved_reference_urls or []),
+                            resolved_hosts=[
+                                urlparse(url).hostname
+                                for url in (resolved_reference_urls or [])
+                                if isinstance(url, str) and url.startswith(("http://", "https://"))
+                            ],
                         )
 
                     if request.reference_style_url:
@@ -1408,24 +1422,34 @@ class LLMGateway:
                         )
                         logger.info(
                             "style_url_resolved",
-                            original=request.reference_style_url,
-                            resolved=resolved_style_url
+                            has_resolved_style=bool(resolved_style_url),
                         )
                 except Exception as e:
                     logger.warning(
                         "reference_url_resolution_failed",
                         error=str(e),
-                        reference_urls=request.reference_image_urls
+                        reference_count=len(request.reference_image_urls or []),
                     )
                     # Continue with original URLs if R2 resolution fails
 
             # For synchronous generation, always use polling mode (not callback mode)
             # This ensures we wait for the result before returning to the client
             # Callback mode is only suitable for async endpoints (/async/image)
+            if not wait_for_completion:
+                rate_state = await KieSubmissionRateLimiter().acquire(
+                    task_id=trace_id or f"user-{user.id}",
+                )
+                if not rate_state.allowed:
+                    raise KieSubmissionDeferred(
+                        rate_state.retry_after_seconds,
+                        redis_available=rate_state.redis_available,
+                    )
+
             image_data = await self.unified_client.kie_ai_client.generate_image(
                 model=request.model,
                 prompt=request.prompt,
                 callback_url="",  # Force polling mode - empty string disables callback
+                wait_for_completion=wait_for_completion,
                 reference_image_urls=resolved_reference_urls,  # Pass resolved URLs to Kie.ai
                 reference_style_url=resolved_style_url,  # Pass resolved style URL to Kie.ai
                 **request.dict(exclude_unset=True, exclude={
@@ -1438,13 +1462,11 @@ class LLMGateway:
                 logger.error("kie_ai_returned_none", user_id=user.id, model=request.model)
                 raise ValueError("No response received from Kie.ai image generation API")
 
-            # Log full response for debugging
             logger.info(
                 "kie_ai_image_response",
                 user_id=user.id,
                 id=image_data.get("id"),
                 data_count=len(image_data.get("data", [])),
-                data=image_data.get("data", []),
                 raw_keys=list(image_data.keys()) if image_data else None,
                 has_reference_images=bool(request.reference_image_urls),
             )
@@ -1501,6 +1523,8 @@ class LLMGateway:
             response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
             return response
+        except KieSubmissionDeferred:
+            raise
         except Exception as e:
             logger.error("image_generation_failed", user_id=user.id, error=str(e))
             write_media_debug_event("image.generate.kie.error", {

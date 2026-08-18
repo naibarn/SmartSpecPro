@@ -7,6 +7,7 @@ import request from "supertest";
 import AdmZip from "adm-zip";
 
 process.env.JWT_SECRET ??= "worker-runtime-route-test-secret-0123456789";
+process.env.REDIS_URL ??= "redis://localhost:6379";
 
 const { mockGetTenantFeatureFlags, mockIsJtiRevoked, mockRevokeJti } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
@@ -303,7 +304,7 @@ describe("workerRuntime routes", () => {
       "runtime-pack/hyperframes-sidecar/render.mjs",
       "runtime-pack/SHA256SUMS",
       "runtime-pack/SHA256SUMS.sig",
-      "sidecars/hyperframes-render.exe",
+      runtimeId === "hyperframes-macos-arm64" ? "sidecars/hyperframes-render" : "sidecars/hyperframes-render.exe",
     ];
     const platformFiles = runtimeId === "hyperframes-wsl2"
       ? [
@@ -317,6 +318,17 @@ describe("workerRuntime routes", () => {
           "runtime-pack/hyperframes/node_modules/@img/sharp-linux-x64/lib/sharp-linux-x64.node",
           "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.17.3",
         ]
+      : runtimeId === "hyperframes-macos-arm64"
+        ? [
+            "runtime-pack/node/bin/node",
+            "runtime-pack/bin/ffmpeg",
+            "runtime-pack/bin/ffprobe",
+            "runtime-pack/browser/chrome",
+            "runtime-pack/hyperframes/node_modules/@img/sharp-darwin-arm64/lib/sharp-darwin-arm64.node",
+            "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-darwin-arm64/lib/libvips-cpp.1.dylib",
+            "runtime-pack/remotion-sidecar/render.mjs",
+            "runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/dist/index.js",
+          ]
       : ["runtime-pack/node/node.exe", "runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe"];
     for (const entry of [...common, ...platformFiles]) {
       zip.addFile(entry, Buffer.from(`fixture:${entry}`));
@@ -333,12 +345,13 @@ describe("workerRuntime routes", () => {
       ffmpegVersion: runtimeId === "hyperframes-wsl2" ? "linux ffmpeg static" : "gyan.dev win64",
       ffprobeVersion: runtimeId === "hyperframes-wsl2" ? "linux ffprobe static" : "gyan.dev win64",
       thaiFontFamily: "Noto Sans Thai",
-      sidecarPath: "hyperframes-render.exe",
+      sidecarPath: runtimeId === "hyperframes-macos-arm64" ? "hyperframes-render" : "hyperframes-render.exe",
       sidecarSha256: "abc",
       checksumFile: "SHA256SUMS",
       signatureFile: "SHA256SUMS.sig",
       licenseNotices: ["THIRD_PARTY_NOTICES.txt"],
-      runtimePlatform: runtimeId === "hyperframes-wsl2" ? "wsl2-linux-x64" : "windows-x64",
+      runtimePlatform: runtimeId === "hyperframes-wsl2" ? "wsl2-linux-x64" : runtimeId === "hyperframes-macos-arm64" ? "macos-arm64" : "windows-x64",
+      architecture: runtimeId === "hyperframes-macos-arm64" ? "arm64" : "x64",
       rendererKind: "hyperframes_cli_official",
       sidecarLauncher: "smart-ai-hub-hyperframes-node-launcher",
       sidecarScriptPath: "hyperframes-sidecar/render.mjs",
@@ -932,7 +945,9 @@ describe("workerRuntime routes", () => {
         tenantId: "tenant-from-url",
       }),
     }));
-    expect(mockGetDb).not.toHaveBeenCalled();
+    // Connected-device inventory is persisted during approval; tenant
+    // resolution itself still comes from the URL-resolved request context.
+    expect(mockGetDb).toHaveBeenCalled();
   });
 
   it("reports runtime pack as not published until an official pack exists", async () => {
@@ -1006,6 +1021,27 @@ describe("workerRuntime routes", () => {
     expect(Number(downloadRes.headers["content-length"])).toBe(fs.statSync(filePath).size);
   });
 
+  it("serves only a structurally complete native macOS arm64 HyperFrames pack", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-macos-ready-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-macos-arm64-2026.08.18.1.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-macos-arm64");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify(officialRuntimeManifest("hyperframes-macos-arm64")));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hyperframes-macos-arm64");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "hyperframes-macos-arm64",
+      runtimePlatform: "macos-arm64",
+      architecture: "arm64",
+      sidecarPath: "hyperframes-render",
+      archiveFileName: fileName,
+      allowed: true,
+    });
+  });
+
   it("serves the hermes runtime manifest and download for a built, allowed pack", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-"));
     const fileName = "smart-ai-hub-hermes-runtime-hermes-windows-x64-0.1.0.zip";
@@ -1038,7 +1074,7 @@ describe("workerRuntime routes", () => {
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
   });
 
-  it("registers the macOS hermes id as not-yet-built without erroring", async () => {
+  it("registers the macOS hermes id with Apple Silicon guidance when not yet built", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-macos-"));
     const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
 
@@ -1046,6 +1082,87 @@ describe("workerRuntime routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.allowed).toBe(false);
     expect(res.body.runtimeId).toBe("hermes-macos-arm64");
+    expect(res.body.platform).toBe("macos");
+    expect(res.body.architecture).toBe("arm64");
+    expect(res.body.supportedMacModels).toEqual(expect.arrayContaining([
+      "Apple Silicon Mac with M1",
+      "Apple Silicon Mac with M2",
+      "Apple Silicon Mac with M3",
+      "Apple Silicon Mac with M4",
+    ]));
+    expect(res.body.unsupportedMacArchitectures).toEqual(["x86_64 (Intel)"]);
+  });
+
+  it("serves a built Apple Silicon Hermes pack independently from Windows", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-macos-ready-"));
+    const fileName = "smart-ai-hub-hermes-runtime-hermes-macos-arm64-0.1.130.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "hermes-macos-arm64-pack-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "hermes-macos-arm64",
+      version: "0.1.130",
+      hermesVersion: "0.18.2",
+      pythonRelativePath: "python/bin/python3",
+      hermesRelativePath: "python/bin/hermes",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      allowed: true,
+      platform: "macos",
+      architecture: "arm64",
+      supportedMacModels: ["Apple Silicon Mac with M1"],
+      unsupportedMacArchitectures: ["x86_64 (Intel)"],
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hermes-macos-arm64");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "hermes-macos-arm64",
+      version: "0.1.130",
+      allowed: true,
+      platform: "macos",
+      architecture: "arm64",
+      archiveFileName: fileName,
+    });
+    expect(res.body.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+  });
+
+  it("serves a signed standalone Remotion executor pack per macOS architecture", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-executor-"));
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "remotion-executor-pack-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "remotion-executor-macos-x64",
+      version: "0.1.0",
+      runtimeKind: "standalone_remotion_executor",
+      runtimePlatform: "macos",
+      architecture: "x86_64",
+      allowed: true,
+      archiveSignature: "signed-hash-fixture",
+      archiveEntries: ["runtime-pack/remotion-sidecar/render.mjs"],
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "remotion-executor-macos-x64",
+      runtimeKind: "standalone_remotion_executor",
+      runtimePlatform: "macos",
+      architecture: "x86_64",
+      allowed: true,
+      archiveFileName: fileName,
+      archiveUrl: `/api/workers/runtime-pack/download/${fileName}`,
+    });
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
   });
 
   it("rejects a download of an unbuilt/denied hermes pack", async () => {

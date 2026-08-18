@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Puzzle,
   Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
@@ -66,9 +67,10 @@ type DesktopReleaseBuildSessionState = {
 
 const DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY = "smartaihub.desktop-release.build-session.v1";
 const DESKTOP_RELEASE_BUILD_STALE_AFTER_MS = 30 * 60 * 1000;
-const CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/marketplace-extension/download";
+const COMPANION_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/companion-extension/download";
 const WORKER_APP_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/download";
 const WORKER_APP_MAC_SOURCE_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/macos-source/download";
+const HERMES_MACOS_RUNTIME_MANIFEST_URL = "/api/workers/runtime-pack/manifest?runtimeId=hermes-macos-arm64";
 
 type PublicDashboardRelease = {
   version: string;
@@ -81,6 +83,30 @@ type PublicDashboardRelease = {
 
 type PublicDashboardReleaseState = {
   release: PublicDashboardRelease | null;
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => void;
+};
+
+type PublicDashboardRuntimeManifest = {
+  runtimeId: string;
+  version: string;
+  hermesVersion: string;
+  allowed: boolean;
+  denyReason?: string;
+  archiveFileName?: string;
+  archiveSha256?: string;
+  archiveSizeBytes?: number;
+  archiveUrl?: string;
+  updatedAt?: string;
+  platform?: string;
+  architecture?: string;
+  supportedMacModels?: string[];
+  unsupportedMacArchitectures?: string[];
+};
+
+type PublicDashboardRuntimeState = {
+  runtime: PublicDashboardRuntimeManifest | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => void;
@@ -149,6 +175,63 @@ function usePublicDashboardRelease(options: {
       controller.abort();
     };
   }, [enabled, latestUrl, refreshNonce, unavailableError]);
+
+  return {
+    ...state,
+    refresh: () => setRefreshNonce((value) => value + 1),
+  };
+}
+
+function usePublicDashboardRuntime(enabled: boolean): PublicDashboardRuntimeState {
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [state, setState] = useState<Omit<PublicDashboardRuntimeState, "refresh">>({
+    runtime: null,
+    isLoading: enabled,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      setState({ runtime: null, isLoading: false, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setState((previous) => ({ ...previous, isLoading: true, error: null }));
+
+    void fetch(HERMES_MACOS_RUNTIME_MANIFEST_URL, {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(typeof payload?.error === "string" ? payload.error : "worker_runtime_unavailable");
+        }
+        return payload as PublicDashboardRuntimeManifest;
+      })
+      .then((runtime) => {
+        if (!cancelled) {
+          setState({ runtime, isLoading: false, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled && error instanceof Error && error.name !== "AbortError") {
+          setState((previous) => ({
+            runtime: previous.runtime,
+            isLoading: false,
+            error: error.message || "worker_runtime_unavailable",
+          }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [enabled, refreshNonce]);
 
   return {
     ...state,
@@ -669,14 +752,14 @@ export function DesktopReleasePanel(props: {
     attempt: buildHistoryAttempt,
   } = useDesktopReleaseBuildHistory(variant === "admin" && enabled);
   const {
-    release: marketplaceExtensionRelease,
-    isLoading: marketplaceExtensionLoading,
-    error: marketplaceExtensionError,
-    refresh: refreshMarketplaceExtensionRelease,
+    release: companionExtensionRelease,
+    isLoading: companionExtensionLoading,
+    error: companionExtensionError,
+    refresh: refreshCompanionExtensionRelease,
   } = usePublicDashboardRelease({
     enabled: variant === "dashboard" && enabled,
-    latestUrl: "/api/desktop-releases/marketplace-extension/latest",
-    unavailableError: "marketplace_extension_release_unavailable",
+    latestUrl: "/api/desktop-releases/companion-extension/latest",
+    unavailableError: "companion_extension_release_unavailable",
   });
   const {
     release: workerAppRelease,
@@ -698,6 +781,12 @@ export function DesktopReleasePanel(props: {
     latestUrl: "/api/desktop-releases/worker-app/macos-source/latest",
     unavailableError: "worker_app_macos_source_release_unavailable",
   });
+  const {
+    runtime: hermesMacRuntime,
+    isLoading: hermesMacRuntimeLoading,
+    error: hermesMacRuntimeError,
+    refresh: refreshHermesMacRuntime,
+  } = usePublicDashboardRuntime(variant === "dashboard" && enabled);
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [buildSubmitting, setBuildSubmitting] = useState(false);
@@ -786,9 +875,10 @@ export function DesktopReleasePanel(props: {
   const handleRefreshAll = () => {
     triggerCatalogRefresh(true);
     triggerBuildHistoryRefresh(true);
-    refreshMarketplaceExtensionRelease();
+    refreshCompanionExtensionRelease();
     refreshWorkerAppRelease();
     refreshWorkerAppMacSourceRelease();
+    refreshHermesMacRuntime();
   };
 
   const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
@@ -1625,13 +1715,13 @@ export function DesktopReleasePanel(props: {
                   <p className={dashboardCardTitleClass}>
                     {t("dashboard:desktopReleases.chromeExtension.title")}
                   </p>
-                  {marketplaceExtensionRelease ? (
+                  {companionExtensionRelease ? (
                     <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                      {t("dashboard:desktopReleases.version", { version: marketplaceExtensionRelease.version })}
+                      {t("dashboard:desktopReleases.version", { version: companionExtensionRelease.version })}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
-                      {marketplaceExtensionLoading
+                      {companionExtensionLoading
                         ? t("dashboard:desktopReleases.loading")
                         : t("dashboard:desktopReleases.noRelease")}
                     </Badge>
@@ -1643,13 +1733,13 @@ export function DesktopReleasePanel(props: {
                 <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
                   {t("dashboard:desktopReleases.chromeExtension.description")}
                 </p>
-                {marketplaceExtensionRelease ? (
+                {companionExtensionRelease ? (
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    {marketplaceExtensionRelease.fileName} · {formatBytes(marketplaceExtensionRelease.fileSizeBytes)}
+                    {companionExtensionRelease.fileName} · {formatBytes(companionExtensionRelease.fileSizeBytes)}
                   </p>
-                ) : marketplaceExtensionError ? (
+                ) : companionExtensionError ? (
                   <p className="mt-1 text-xs leading-5 text-amber-700">
-                    {marketplaceExtensionError}
+                    {companionExtensionError}
                   </p>
                 ) : null}
                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -1658,16 +1748,16 @@ export function DesktopReleasePanel(props: {
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {marketplaceExtensionRelease ? (
+              {companionExtensionRelease ? (
                 <Button asChild className="bg-emerald-700 text-white hover:bg-emerald-800">
-                  <a href={marketplaceExtensionRelease.downloadUrl || CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL} download>
+                  <a href={companionExtensionRelease.downloadUrl || COMPANION_EXTENSION_FALLBACK_DOWNLOAD_URL} download>
                     <Download className="mr-2 h-4 w-4" />
                     {t("dashboard:desktopReleases.chromeExtension.download")}
                   </a>
                 </Button>
               ) : (
                 <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
-                  {marketplaceExtensionLoading ? (
+                  {companionExtensionLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="mr-2 h-4 w-4" />
@@ -1752,6 +1842,97 @@ export function DesktopReleasePanel(props: {
           </div>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-amber-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-100 bg-amber-50 text-amber-700">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.title")}
+                  </p>
+                  {hermesMacRuntimeLoading ? (
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      {t("dashboard:desktopReleases.loading")}
+                    </Badge>
+                  ) : hermesMacRuntime?.allowed ? (
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                      {t("dashboard:desktopReleases.workerAppMacRuntime.ready")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {t("dashboard:desktopReleases.workerAppMacRuntime.notReady")}
+                    </Badge>
+                  )}
+                  {hermesMacRuntime?.version && hermesMacRuntime.version !== "0.0.0" ? (
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      {t("dashboard:desktopReleases.version", { version: hermesMacRuntime.version })}
+                    </Badge>
+                  ) : null}
+                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.architectureBadge")}
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.workerAppMacRuntime.description")}
+                </p>
+                {hermesMacRuntimeError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {hermesMacRuntimeError}
+                  </p>
+                ) : null}
+                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-xs leading-5 text-slate-700">
+                  <p className="font-semibold text-amber-900">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.supportedTitle")}
+                  </p>
+                  <p className="mt-1 text-slate-700">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.supportedModels")}
+                  </p>
+                  <p className="mt-2 font-semibold text-rose-800">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.unsupportedTitle")}
+                  </p>
+                  <p className="mt-1 text-slate-700">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.unsupported")}
+                  </p>
+                  <p className="mt-2 text-slate-600">
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.scope")}
+                  </p>
+                </div>
+                {hermesMacRuntime?.archiveFileName && hermesMacRuntime.archiveSizeBytes ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {hermesMacRuntime.archiveFileName} · {formatBytes(hermesMacRuntime.archiveSizeBytes)}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.workerAppMacRuntime.installHint")}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {hermesMacRuntime?.allowed && hermesMacRuntime.archiveUrl ? (
+                <Button asChild className="bg-amber-700 text-white hover:bg-amber-800">
+                  <a href={hermesMacRuntime.archiveUrl} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.workerAppMacRuntime.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {hermesMacRuntimeLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.workerAppMacRuntime.download")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="mt-4 rounded-2xl border border-violet-100 bg-white/95 p-4 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 gap-3">
@@ -1793,6 +1974,15 @@ export function DesktopReleasePanel(props: {
                 <p className="mt-2 text-xs leading-5 text-slate-500">
                   {t("dashboard:desktopReleases.workerAppMacSource.installHint")}
                 </p>
+                <a
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-violet-700 underline-offset-4 hover:underline"
+                  href="/docs/worker-app-macos-build"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {t("dashboard:desktopReleases.workerAppMacSource.manual")}
+                </a>
                 <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/70 p-3 text-xs leading-5 text-slate-700">
                   <p className="font-semibold text-violet-900">
                     {t("dashboard:desktopReleases.workerAppMacSource.whatItIs")}
@@ -1800,7 +1990,9 @@ export function DesktopReleasePanel(props: {
                   <p className="mt-2 font-semibold text-slate-800">
                     {t("dashboard:desktopReleases.workerAppMacSource.requirementsTitle")}
                   </p>
-                  <p className="mt-1">{t("dashboard:desktopReleases.workerAppMacSource.requirements")}</p>
+                  <p className="mt-1 text-slate-700">
+                    {t("dashboard:desktopReleases.workerAppMacSource.requirements")}
+                  </p>
                   <p className="mt-2 font-semibold text-slate-800">
                     {t("dashboard:desktopReleases.workerAppMacSource.stepsTitle")}
                   </p>
@@ -1815,10 +2007,10 @@ export function DesktopReleasePanel(props: {
                     {t("dashboard:desktopReleases.workerAppMacSource.commandsTitle")}
                   </p>
                   <pre className="mt-1 overflow-x-auto rounded-lg bg-slate-950 p-3 font-mono text-[11px] leading-5 text-slate-100">
-                    <code>{`cd smart-ai-hub-worker-app-macos-source-${workerAppMacSourceRelease?.version ?? "VERSION"}\nnpm install --legacy-peer-deps\nnpm run typecheck --workspace @smartspec/worker-app\nnpm run test --workspace @smartspec/worker-app`}</code>
+                    <code>{`cd smart-ai-hub-worker-app-macos-source-${workerAppMacSourceRelease?.version ?? "VERSION"}\nnpm install --legacy-peer-deps\nnpm --workspace @smartspec/remotion-render run build\nnpm run typecheck --workspace @smartspec/worker-app\nnpm run test --workspace @smartspec/worker-app`}</code>
                   </pre>
                   <p className="mt-2 font-medium text-amber-800">
-                    {t("dashboard:desktopReleases.workerAppMacSource.nextBuild")}
+                  {t("dashboard:desktopReleases.workerAppMacSource.nextBuild")}
                   </p>
                 </div>
               </div>

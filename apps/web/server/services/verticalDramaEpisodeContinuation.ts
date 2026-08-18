@@ -26,6 +26,8 @@ import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+import type { VerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
+import type { VerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 
 // Re-exported so callers only need to import from this one module.
@@ -57,6 +59,10 @@ interface GenerateNextEpisodesViaLlmParams {
   nextEpisodeNumber: number;
   /** How many new episodes to generate (already capped at 5 by the router's Zod input). */
   count: number;
+  /** Bounded continuity intent; the continuation must not invent a second control ledger. */
+  storyControlSeed?: VerticalDramaStoryControlSeed;
+  /** Selected nine-shot production profile for future episode planning. */
+  durationPlan?: VerticalDramaDurationPlan;
 }
 
 interface GenerateNextEpisodesViaLlmResult {
@@ -117,6 +123,12 @@ function buildContinuationPrompts(
     seasonArc ? `Season arc: ${seasonArc}` : null,
     cliffhangerStyle ? `Cliffhanger style: ${cliffhangerStyle}` : null,
     `Characters: ${JSON.stringify(characters)}`,
+    params.storyControlSeed
+      ? `Story control seed (stable IDs and intent; preserve these IDs, do not resolve a thread without current-episode evidence, and do not add unrelated threads): ${JSON.stringify(params.storyControlSeed)}`
+      : null,
+    params.durationPlan?.status === "active"
+      ? `Production duration profile (authoritative): exactly ${params.durationPlan.logicalShotCount} logical shots with durations ${params.durationPlan.shotDurationsSeconds.join(", ")} seconds in order; derived runtime ${params.durationPlan.shotDurationsSeconds.reduce((sum, duration) => sum + duration, 0)} seconds. Do not use a manually entered per-episode duration.`
+      : "Production duration profile: legacy/pending; preserve the existing episode timing and do not invent a new profile.",
     `Existing episodes so far (for continuity — do not repeat these beats): ${JSON.stringify(params.existingEpisodes)}`,
     `Generate exactly ${params.count} new episodes starting at episode number ${params.nextEpisodeNumber}.`,
     `If there is an existing episode ${params.nextEpisodeNumber - 1}, revise only its final bridge beat/logline so it naturally leads into episode ${params.nextEpisodeNumber}; keep its core outcome intact.`,

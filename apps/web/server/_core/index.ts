@@ -6,6 +6,7 @@ import { initSentry, Sentry } from "../services/sentry";
 initSentry();
 
 import express from "express";
+import { stat } from "fs/promises";
 import { fileURLToPath } from "url";
 import path from "path";
 import { createServer, request as httpRequest } from "http";
@@ -18,6 +19,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMcpPublicRoutes } from "./mcpPublicServer";
+import { registerMcpOAuthServerRoutes } from "./mcpOAuthServer";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerFeedbackUploadRoutes } from "../routers/feedback";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
@@ -52,6 +54,7 @@ import {
   getAppRuntimeConfig,
   refreshAppRuntimeConfigCache,
 } from "../services/appRuntimeConfig";
+import { refreshMcpRuntimeConfigCache } from "../services/mcpRuntimeConfig";
 import { processBeamWebhookEvent } from "../services/billing/paymentProcessing";
 import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
 import { createWidgetInitRouter, handleWidgetUpgrade } from "../routes/widgetGateway";
@@ -73,6 +76,7 @@ import notificationStreamRouter from "../routes/notificationStream";
 import contentComposerStreamRouter from "../routes/contentComposerStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
+import { registerOAuthProxyRoutes } from "./oauthProxy";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
 import { registerBlogRoutes } from "../routers/blog";
@@ -83,9 +87,19 @@ import { isAllowedMarketplaceOrigin } from "../services/marketplaceCaptureConfig
 import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
 import { debugError } from "./logger";
+import { isCreditFailureMessage } from "../services/creditFailurePolicy";
 import { sdk } from "./sdk";
 import { signBearerToken } from "./tokens";
-import { getUploadsDir, storageStreamFile } from "../storage";
+import { authorizeRequest } from "./authz";
+import { storageHeadFile, storageStreamFile } from "../storage";
+import { resolveUploadsManagedPath } from "../services/managedMediaAccessService";
+import { canReadManagedStorageKey } from "../services/managedStorageAuthorizationService";
+import {
+  getProtectedMediaEtag,
+  matchesIfNoneMatch,
+  PROTECTED_MEDIA_CACHE_CONTROL,
+  PROTECTED_MEDIA_VARY,
+} from "../services/protectedMediaCache";
 import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
@@ -170,9 +184,21 @@ import {
   closeVerticalDramaStoryJobsQueue,
 } from "../services/verticalDramaStoryJobs";
 import {
+  initVerticalDramaDraftQualityQcQueue,
+  closeVerticalDramaDraftQualityQcQueue,
+} from "../services/verticalDramaDraftQualityQcJobs";
+import {
+  initVerticalDramaDraftCompositionQueue,
+  closeVerticalDramaDraftCompositionQueue,
+} from "../services/verticalDramaDraftCompositionJobs";
+import {
   initVerticalDramaShotPromptJobsQueue,
   closeVerticalDramaShotPromptJobsQueue,
 } from "../services/verticalDramaShotPromptJobs";
+import {
+  initVerticalDramaCharacterPromptJobsQueue,
+  closeVerticalDramaCharacterPromptJobsQueue,
+} from "../services/verticalDramaCharacterPromptJobs";
 import {
   initVerticalDramaShotVideoPromptJobsQueue,
   closeVerticalDramaShotVideoPromptJobsQueue,
@@ -195,7 +221,7 @@ import { createAgencyToolsApiRouter } from "../routes/agencyToolsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { assertHmacSecretConfigured } from "../services/apiKeyService";
 import { publicApiAuditMiddleware } from "../middleware/publicApiAudit";
-import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
+import { isMcpPreflightRequest, publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
 import { publicApiHeadersMiddleware } from "../middleware/publicApiHeaders";
 import { rateLimitMiddleware } from "../services/apiKeyRateLimiter";
@@ -211,6 +237,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.disable("x-powered-by");
 void refreshAppRuntimeConfigCache().catch(() => {});
+void refreshMcpRuntimeConfigCache().catch(() => {});
 
 // Sentry: expressIntegration() (registered in initSentry) handles request instrumentation automatically in v10+
 
@@ -224,12 +251,24 @@ app.set("trust proxy", 1);
 
 
 // Trusted origin check (shared between CORS and CSRF middleware)
-const ALLOWED_SUFFIXES = [
-  '.smartaihub.app',
-  '.smartspec.pro',
-  ...(process.env.NODE_ENV !== 'production' ? ['.smartspec.local', '.localhost'] : []),
+const configuredBrowserOrigins = [
+  ...(process.env.SMARTSPEC_ALLOWED_ORIGINS ?? "").split(","),
+  process.env.APP_URL ?? "",
+  process.env.PUBLIC_APP_URL ?? "",
+].map((origin) => origin.trim().replace(/\/+$/, "")).filter(Boolean);
+const ALLOWED_SUFFIXES = configuredBrowserOrigins.length > 0 && process.env.NODE_ENV === 'production'
+  ? []
+  : [
+      '.smartaihub.app',
+      '.smartspec.pro',
+      ...(process.env.NODE_ENV !== 'production' ? ['.smartspec.local', '.localhost'] : []),
+    ];
+const ALLOWED_EXACT = [
+  'tauri://localhost',
+  'http://tauri.localhost',
+  'https://tauri.localhost',
+  ...configuredBrowserOrigins,
 ];
-const ALLOWED_EXACT = ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost'];
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
@@ -251,13 +290,18 @@ app.use((req, res, next) => {
   const allowOrigin = isAllowedOrigin(origin) || (isMarketplaceCaptureRequest && isAllowedMarketplaceOrigin(origin));
   if (allowOrigin) {
     res.setHeader('Access-Control-Allow-Origin', origin!);
+    res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-private-vault-token, x-protected-surface-token, X-Marketplace-Device-Id, X-Marketplace-Extension-Origin');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Key, Idempotency-Key, Mcp-Session-Id, MCP-Protocol-Version, Mcp-Method, Mcp-Name, x-private-vault-token, x-protected-surface-token, X-Marketplace-Device-Id, X-Marketplace-Extension-Origin');
   }
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    // Let the MCP-specific middleware apply its allow-list and header policy.
+    // Returning the generic 200 here drops Access-Control-Allow-* headers and
+    // prevents hosted MCP clients from completing the preflight.
+    if (isMcpPreflightRequest(req)) return next();
     return res.sendStatus(200);
   }
 
@@ -495,6 +539,7 @@ const csrfCheck = (req: any, res: any, next: any) => {
 
 app.use("/trpc", csrfCheck);
 app.use("/api", csrfCheck);
+registerOAuthProxyRoutes(app);
 
 app.use("/trpc/chat.executeSkill", (req, res, next) => {
   const skillExecutionTimeoutMs = 600_000;
@@ -541,21 +586,69 @@ app.use("/trpc/chat.executeSkill", (req, res, next) => {
 });
 
 // Always mount local static handler — harmless when S3/R2 is active (no local files to serve)
-const uploadsDir = getUploadsDir();
 app.use("/uploads/auto-team-media", (_req, res) => {
   res.status(404).json({ error: "File not found" });
 });
-app.use('/uploads', express.static(uploadsDir, {
-  maxAge: '1d',
-  etag: true,
-  setHeaders: (res, filePath) => {
-    const extraHeaders = getUploadStaticHeaders(filePath);
-    for (const [key, value] of Object.entries(extraHeaders)) {
-      res.setHeader(key, value);
+// Legacy local upload URLs remain supported for the UI, but only after the
+// same tenant/user ownership check used by the MCP download broker.
+app.get("/uploads/*", async (req, res) => {
+  try {
+    const rawKey = normalizeManagedMediaKey((req.params as any)[0] || "");
+    if (!rawKey || isProtectedAutoTeamMediaKey(rawKey)) {
+      res.status(404).json({ error: "File not found" });
+      return;
     }
-  },
-}));
-
+    const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+    if (!auth.ok) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    const tenantId = String(
+      auth.tenantId ||
+        (auth as any).user?.currentTenantId ||
+        (req as any).tenantId ||
+        "",
+    ).trim();
+    const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
+    if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    if (!(await canReadManagedStorageKey(rawKey, {
+      tenantId,
+      userId,
+      role: (auth as any).user?.role,
+    }))) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    const filePath = resolveUploadsManagedPath(rawKey);
+    if (!filePath) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    const fileStat = await stat(filePath);
+    const etag = getProtectedMediaEtag({
+      contentLength: fileStat.size,
+      lastModified: fileStat.mtime,
+    });
+    const extraHeaders = getUploadStaticHeaders(filePath);
+    res.setHeader("Cache-Control", PROTECTED_MEDIA_CACHE_CONTROL);
+    res.setHeader("Vary", PROTECTED_MEDIA_VARY);
+    res.setHeader("ETag", etag);
+    res.setHeader("Last-Modified", fileStat.mtime.toUTCString());
+    for (const [key, value] of Object.entries(extraHeaders)) res.setHeader(key, value);
+    if (matchesIfNoneMatch(req.headers["if-none-match"], etag)) {
+      res.status(304).end();
+      return;
+    }
+    res.sendFile(filePath, (error) => {
+      if (error && !res.headersSent) res.status((error as { statusCode?: number }).statusCode || 404).json({ error: "File not found" });
+    });
+  } catch {
+    if (!res.headersSent) res.status(404).json({ error: "File not found" });
+  }
+});
 // Storage proxy: streams files from R2/S3 through the Node.js server.
 // This avoids broken R2 public URLs (SSL issues) and presigned URL expiration.
 // Supports HTTP Range requests for video seeking.
@@ -571,9 +664,57 @@ app.get("/api/storage/files/*", async (req, res) => {
       return;
     }
 
+    const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+    if (!auth.ok) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    const tenantId = String(
+      auth.tenantId ||
+        (auth as any).user?.currentTenantId ||
+        (req as any).tenantId ||
+        "",
+    ).trim();
+    const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
+    if (!tenantId || !Number.isInteger(userId) || userId <= 0 || !(await canReadManagedStorageKey(rawKey, {
+      tenantId,
+      userId,
+      role: (auth as any).user?.role,
+    }))) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+
     const range = req.headers.range;
     let key = rawKey;
     let isJpgConversion = false;
+    const requestedEtag = req.headers["if-none-match"];
+    if (!range && typeof requestedEtag === "string") {
+      try {
+        let headResult = await storageHeadFile(key);
+        if (!headResult && (key.endsWith(".jpg") || key.endsWith(".jpeg"))) {
+          const webpKey = key.replace(/\.jpe?g$/i, ".webp");
+          headResult = await storageHeadFile(webpKey);
+          if (headResult) isJpgConversion = true;
+        }
+        if (headResult) {
+          const headEtag = getProtectedMediaEtag(headResult);
+          res.setHeader("Cache-Control", PROTECTED_MEDIA_CACHE_CONTROL);
+          res.setHeader("Vary", PROTECTED_MEDIA_VARY);
+          res.setHeader("ETag", headEtag);
+          if (headResult.lastModified) {
+            res.setHeader("Last-Modified", headResult.lastModified.toUTCString());
+          }
+          if (matchesIfNoneMatch(requestedEtag, headEtag)) {
+            res.status(304).end();
+            return;
+          }
+        }
+      } catch {
+        // A metadata probe must never make a valid image unavailable. Fall
+        // back to the normal authorized stream if HEAD is temporarily down.
+      }
+    }
     let result = await storageStreamFile(key, range);
     if (!result && (key.endsWith(".jpg") || key.endsWith(".jpeg"))) {
       const webpKey = key.replace(/\.jpe?g$/i, ".webp");
@@ -588,11 +729,22 @@ app.get("/api/storage/files/*", async (req, res) => {
       return;
     }
 
+    const etag = getProtectedMediaEtag(result);
+    res.setHeader("Cache-Control", PROTECTED_MEDIA_CACHE_CONTROL);
+    res.setHeader("Vary", PROTECTED_MEDIA_VARY);
+    res.setHeader("ETag", etag);
+    if (result.lastModified) {
+      res.setHeader("Last-Modified", result.lastModified.toUTCString());
+    }
+    if (!result.isPartial && matchesIfNoneMatch(req.headers["if-none-match"], etag)) {
+      res.status(304).end();
+      return;
+    }
+
     if (isJpgConversion || (key.endsWith(".jpg") && result.contentType.includes("webp"))) {
       const sharp = (await import("sharp")).default;
       res.setHeader("Content-Type", "image/jpeg");
       res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Cache-Control", "public, max-age=86400");
       res.setHeader("X-Content-Type-Options", "nosniff");
       const nodeStream = result.stream as NodeJS.ReadableStream;
       const transformStream = sharp().jpeg({ quality: 90 });
@@ -606,7 +758,6 @@ app.get("/api/storage/files/*", async (req, res) => {
 
     res.setHeader("Content-Type", result.contentType);
     res.setHeader("Accept-Ranges", "bytes");
-    res.setHeader("Cache-Control", "public, max-age=86400");
     res.setHeader("X-Content-Type-Options", "nosniff");
 
     if (result.isPartial && result.rangeStart !== undefined && result.rangeEnd !== undefined) {
@@ -695,6 +846,12 @@ app.use(browserToolRouter);
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
 app.use("/_internal/tasks", createTasksRouter());
 
+// Public API documentation is intentionally registered before the authenticated
+// /v1 middleware chain. This keeps /v1/docs and /v1/openapi.json usable by the
+// zero-config MCP onboarding flow.
+registerPublicSitemapRoutes(app);
+registerPublicDocsRoutes(app);
+
 // Public API v1 — API key authenticated routes
 // All /v1/* routes share: CORS, request ID headers, API key auth, feature guard
 app.use(
@@ -718,13 +875,10 @@ app.use("/v1/webhooks", createPublicWebhooksRouter());
 app.use("/v1/events", createPublicEventsRouter());
 app.use("/v1/agency-tools", createAgencyToolsApiRouter());
 
-// Public API documentation (unauthenticated)
-registerPublicSitemapRoutes(app);
-registerPublicDocsRoutes(app);
-
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
+registerMcpOAuthServerRoutes(app);
 registerMcpPublicRoutes(app);
 registerMediaJobRoutes(app);
 registerFeedbackUploadRoutes(app);
@@ -1158,6 +1312,13 @@ app.post("/api/internal/feedback/auto-report", async (req, res) => {
       path: z.string().max(500).optional(),
       jobId: z.string().max(200).optional(),
       traceId: z.string().max(200).optional(),
+      creditContext: z.object({
+        source: z.enum(["user", "provider", "unknown"]).optional(),
+        modelKind: z.enum(["llm", "media", "unknown"]).optional(),
+        requestedCredits: z.number().finite().nonnegative().nullable().optional(),
+        provider: z.string().max(100).nullable().optional(),
+        reason: z.string().max(500).nullable().optional(),
+      }).optional(),
       extra: z.record(z.unknown()).optional(),
     });
 
@@ -1565,7 +1726,11 @@ app.use(
       // never surface to the user as a "please report this" prompt, so the
       // SYSTEM files the diagnostic ticket itself. Fire-and-forget: never
       // let a reporting failure affect the original tRPC error response.
-      if (error.code === "INTERNAL_SERVER_ERROR" || error.code === "TIMEOUT") {
+      if (
+        error.code === "INTERNAL_SERVER_ERROR" ||
+        error.code === "TIMEOUT" ||
+        isCreditFailureMessage(error.message)
+      ) {
         void (async () => {
           try {
             const { getTraceId } = await import("../services/traceContext");
@@ -1784,12 +1949,36 @@ async function main() {
     console.error("[Startup] Failed to initialize vertical drama story jobs queue:", error);
   }
 
+  // Pre-create Draft QC queue — skill-first premise quality checks before a
+  // series row exists. Kept separate from series-bound story jobs.
+  try {
+    await initVerticalDramaDraftQualityQcQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama draft QC queue:", error);
+  }
+
+  // Pre-create Draft Composition queue — completes all required story
+  // contracts before the Draft QC queue is allowed to run.
+  try {
+    await initVerticalDramaDraftCompositionQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama draft composition queue:", error);
+  }
+
   // Per-shot start-frame prompt jobs. These must be real background work so
   // Cloudflare request timeouts cannot interrupt prompt -> image admission.
   try {
     await initVerticalDramaShotPromptJobsQueue();
   } catch (error) {
     console.error("[Startup] Failed to initialize vertical drama shot prompt jobs queue:", error);
+  }
+
+  // Character prompt previews are also long-running LLM work. They must be
+  // dispatched before any browser request can wait on the provider.
+  try {
+    await initVerticalDramaCharacterPromptJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama character prompt jobs queue:", error);
   }
 
   // Per-shot video-prompt jobs. Admission is intentionally separate from the
@@ -2182,7 +2371,10 @@ process.on("SIGTERM", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVerticalDramaDraftQualityQcQueue().catch(() => {});
+  await closeVerticalDramaDraftCompositionQueue().catch(() => {});
   await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
+  await closeVerticalDramaCharacterPromptJobsQueue().catch(() => {});
   await closeVerticalDramaShotVideoPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});
@@ -2253,7 +2445,10 @@ process.on("SIGINT", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVerticalDramaDraftQualityQcQueue().catch(() => {});
+  await closeVerticalDramaDraftCompositionQueue().catch(() => {});
   await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
+  await closeVerticalDramaCharacterPromptJobsQueue().catch(() => {});
   await closeVerticalDramaShotVideoPromptJobsQueue().catch(() => {});
   await closeVideoIntelligenceJobsQueue().catch(() => {});
   await closeVerticalDramaEpisodeStageJobsQueue().catch(() => {});

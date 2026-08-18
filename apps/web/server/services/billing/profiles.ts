@@ -469,6 +469,19 @@ export async function getInvoiceForUser(params: { invoiceId: number; userId: num
       ? {
         id: payment.id,
         status: payment.status,
+        paymentChannel: payment.paymentChannel,
+        amount: payment.amount,
+        currency: payment.currency,
+        promptpayAmountThb: payment.promptpayAmountThb ?? null,
+        randomSatang: payment.randomSatang ?? null,
+        sourceAmountUsd: payment.sourceAmountUsd ?? null,
+        fxRate: payment.fxRate ?? null,
+        fxRateDate: payment.fxRateDate ?? null,
+        fxFetchedAt: payment.fxFetchedAt ?? null,
+        fxSellSpreadBps: payment.fxSellSpreadBps ?? null,
+        fxRiskBufferBps: payment.fxRiskBufferBps ?? null,
+        fxEffectiveRate: payment.fxEffectiveRate ?? null,
+        promptpayRecipientSnapshotJson: payment.promptpayRecipientSnapshotJson ?? null,
         providerPaymentType: payment.providerPaymentType,
         providerPaymentId: payment.providerPaymentId ?? null,
         providerReferenceId: payment.providerReferenceId ?? null,
@@ -480,6 +493,10 @@ export async function getInvoiceForUser(params: { invoiceId: number; userId: num
         qrCodeUrl:
           typeof payment.rawResponseJson?.qrCodeUrl === "string"
             ? payment.rawResponseJson.qrCodeUrl
+            : null,
+        qrPayload:
+          typeof payment.rawResponseJson?.qrPayload === "string"
+            ? payment.rawResponseJson.qrPayload
             : null,
       }
       : null,

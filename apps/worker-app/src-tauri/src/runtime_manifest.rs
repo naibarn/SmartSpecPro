@@ -36,6 +36,8 @@ pub struct RuntimePackManifest {
     pub sidecar_script_path: Option<String>,
     #[serde(default)]
     pub remotion_platform_contract_version: Option<String>,
+    #[serde(default)]
+    pub remotion_sidecar_script_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -194,6 +196,39 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         recommended_actions.push("Install an allowed runtime version".into());
     }
 
+    let host_platform_ok = if cfg!(target_os = "macos") {
+        cfg!(target_arch = "aarch64") && is_macos_runtime(&manifest)
+    } else if cfg!(target_os = "windows") {
+        !is_macos_runtime(&manifest)
+    } else {
+        true
+    };
+    checks.push(DoctorCheck {
+        id: "runtime_host_platform".into(),
+        status: if host_platform_ok { "ok" } else { "error" }.into(),
+        message: if host_platform_ok {
+            "Runtime platform matches this Worker App host.".into()
+        } else if cfg!(target_os = "macos") {
+            "This macOS Worker App requires the native Apple Silicon HyperFrames runtime; WSL2 and Windows runtime packs are blocked.".into()
+        } else {
+            "This runtime pack does not match the Worker App host platform.".into()
+        },
+        details_json: json!({
+            "hostOs": std::env::consts::OS,
+            "hostArch": std::env::consts::ARCH,
+            "runtimeId": manifest.runtime_id,
+            "runtimePlatform": runtime_platform(&manifest),
+        }),
+    });
+    if !host_platform_ok {
+        recommended_actions.push(if cfg!(target_os = "macos") {
+            "Install hyperframes-macos-arm64. Do not use the Windows or WSL2 runtime on macOS."
+                .into()
+        } else {
+            "Install the runtime pack built for this Worker App host.".into()
+        });
+    }
+
     checks.push(DoctorCheck {
         id: "runtime_bundle".into(),
         status: if runtime_bundled { "ok" } else { "error" }.into(),
@@ -216,7 +251,33 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     }
 
     let is_wsl2_runtime = is_wsl2_runtime(manifest);
-    let node_binary = if is_wsl2_runtime {
+    let is_macos = is_macos_runtime(&manifest);
+    if is_macos {
+        let remotion_sidecar = manifest
+            .remotion_sidecar_script_path
+            .as_deref()
+            .map(|path| safe_join(&runtime_pack_dir, path));
+        let remotion_sidecar_ok = remotion_sidecar.as_ref().is_some_and(|path| path.is_file());
+        checks.push(DoctorCheck {
+            id: "remotion_sidecar".into(),
+            status: if remotion_sidecar_ok { "ok" } else { "error" }.into(),
+            message: if remotion_sidecar_ok {
+                "Native macOS Remotion sidecar is present.".into()
+            } else {
+                "Native macOS Remotion sidecar is missing from the runtime pack.".into()
+            },
+            details_json: json!({
+                "path": remotion_sidecar.map(|path| path.to_string_lossy().to_string()),
+                "manifestPath": &manifest.remotion_sidecar_script_path,
+            }),
+        });
+        if !remotion_sidecar_ok {
+            recommended_actions.push(
+                "Install a complete hyperframes-macos-arm64 runtime pack with remotion-sidecar/render.mjs and its dependency tree.".into(),
+            );
+        }
+    }
+    let node_binary = if is_wsl2_runtime || is_macos {
         runtime_pack_dir.join("node").join("bin").join("node")
     } else {
         runtime_pack_dir.join("node").join("node.exe")
@@ -310,6 +371,43 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
             }),
         });
         ok
+    } else if is_macos {
+        let hyperframes_root = runtime_pack_dir.join("hyperframes");
+        let sharp_package = hyperframes_root.join("node_modules/sharp/package.json");
+        let sharp_mac_package =
+            hyperframes_root.join("node_modules/@img/sharp-darwin-arm64/package.json");
+        let sharp_mac_binding = hyperframes_root.join("node_modules/@img/sharp-darwin-arm64/lib");
+        let sharp_libvips_package =
+            hyperframes_root.join("node_modules/@img/sharp-libvips-darwin-arm64/package.json");
+        let sharp_libvips_binary =
+            hyperframes_root.join("node_modules/@img/sharp-libvips-darwin-arm64/lib");
+        let ok = sharp_package.is_file()
+            && sharp_mac_package.is_file()
+            && find_runtime_file_by_name(&sharp_mac_binding, |name| {
+                name.starts_with("sharp-darwin-arm64") && name.ends_with(".node")
+            })
+            && sharp_libvips_package.is_file()
+            && find_runtime_file_by_name(&sharp_libvips_binary, |name| {
+                name.starts_with("libvips-cpp.")
+                    && (name.ends_with(".dylib") || name.contains(".dylib."))
+            });
+        checks.push(DoctorCheck {
+            id: "hyperframes_native_dependencies".into(),
+            status: if ok { "ok" } else { "error" }.into(),
+            message: if ok {
+                "macOS arm64 native dependencies for HyperFrames are present.".into()
+            } else {
+                "macOS runtime is missing arm64 sharp/libvips native dependencies required by HyperFrames.".into()
+            },
+            details_json: json!({
+                "sharpPackage": sharp_package.to_string_lossy(),
+                "sharpMacPackage": sharp_mac_package.to_string_lossy(),
+                "sharpMacBindingDir": sharp_mac_binding.to_string_lossy(),
+                "sharpLibvipsPackage": sharp_libvips_package.to_string_lossy(),
+                "sharpLibvipsBinaryDir": sharp_libvips_binary.to_string_lossy(),
+            }),
+        });
+        ok
     } else {
         checks.push(DoctorCheck {
             id: "hyperframes_native_dependencies".into(),
@@ -323,13 +421,24 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         true
     };
     if !sharp_runtime_ok {
-        recommended_actions.push(
-            "Install the WSL2 HyperFrames runtime pack that includes @img/sharp-linux-x64 and @img/sharp-libvips-linux-x64.".into(),
-        );
+        recommended_actions.push(if is_macos {
+            "Install the hyperframes-macos-arm64 runtime pack that includes @img/sharp-darwin-arm64 and @img/sharp-libvips-darwin-arm64.".into()
+        } else if is_wsl2_runtime {
+            "Install the WSL2 HyperFrames runtime pack that includes @img/sharp-linux-x64 and @img/sharp-libvips-linux-x64.".into()
+        } else {
+            "Install the Windows HyperFrames runtime pack for the selected Worker App host.".into()
+        });
     }
 
     let browser_names: &[&str] = if is_wsl2_runtime {
         &["chrome", "headless_shell", "chrome-headless-shell"]
+    } else if is_macos {
+        &[
+            "chrome",
+            "headless_shell",
+            "chrome-headless-shell",
+            "Google Chrome for Testing",
+        ]
     } else {
         &["chrome.exe", "headless_shell.exe"]
     };
@@ -340,12 +449,16 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         message: if browser_ok {
             if is_wsl2_runtime {
                 "WSL2 Linux Chrome browser runtime is present.".into()
+            } else if is_macos {
+                "macOS Apple Silicon Chrome browser runtime is present.".into()
             } else {
                 "Windows Chrome browser runtime is present.".into()
             }
         } else {
             if is_wsl2_runtime {
                 "WSL2 Linux Chrome browser runtime is missing.".into()
+            } else if is_macos {
+                "macOS Apple Silicon Chrome browser runtime is missing.".into()
             } else {
                 "Windows Chrome browser runtime is missing.".into()
             }
@@ -355,21 +468,28 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     if !browser_ok {
         recommended_actions.push(if is_wsl2_runtime {
             "Install the WSL2 HyperFrames runtime pack with a Linux Chrome browser runtime.".into()
+        } else if is_macos {
+            "Install the hyperframes-macos-arm64 runtime pack with native Chrome for Testing."
+                .into()
         } else {
             "Install the Windows Chrome for Testing runtime pack.".into()
         });
     }
 
-    let ffmpeg_path = runtime_pack_dir.join("bin").join(if is_wsl2_runtime {
-        "ffmpeg"
-    } else {
-        "ffmpeg.exe"
-    });
-    let ffprobe_path = runtime_pack_dir.join("bin").join(if is_wsl2_runtime {
-        "ffprobe"
-    } else {
-        "ffprobe.exe"
-    });
+    let ffmpeg_path = runtime_pack_dir
+        .join("bin")
+        .join(if is_wsl2_runtime || is_macos {
+            "ffmpeg"
+        } else {
+            "ffmpeg.exe"
+        });
+    let ffprobe_path = runtime_pack_dir
+        .join("bin")
+        .join(if is_wsl2_runtime || is_macos {
+            "ffprobe"
+        } else {
+            "ffprobe.exe"
+        });
     let media_tools_ok = ffmpeg_path.is_file() && ffprobe_path.is_file();
     checks.push(DoctorCheck {
         id: "media_tools".into(),
@@ -624,6 +744,13 @@ fn runtime_platform(manifest: &RuntimePackManifest) -> &str {
 fn is_wsl2_runtime(manifest: &RuntimePackManifest) -> bool {
     let platform = runtime_platform(manifest).to_ascii_lowercase();
     platform.contains("wsl2") || platform.contains("linux")
+}
+
+fn is_macos_runtime(manifest: &RuntimePackManifest) -> bool {
+    let platform = runtime_platform(manifest).to_ascii_lowercase();
+    platform.contains("macos")
+        || platform.contains("darwin")
+        || manifest.runtime_id == "hyperframes-macos-arm64"
 }
 
 fn safe_join(root: &Path, relative: &str) -> PathBuf {

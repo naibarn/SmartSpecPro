@@ -1,6 +1,7 @@
-# SmartAIHub Marketplace Capture Extension
+# SmartAIHub Companion Extension
 
-Development build for user-assisted Shopee/TikTok Shop product capture.
+Chrome companion for SmartAIHub Marketplace capture, production assets,
+storyboards, Vertical Drama, local AI, and supported browser workflows.
 
 ## Build
 
@@ -56,5 +57,6 @@ Product page:
 - Nothing uploads until the user clicks Upload selected.
 - Live detection is read-only and does not create drafts, upload assets, or save products.
 - Cart, checkout, account, order, seller, chat, and message pages are blocked by the content adapter and backend source URL validation.
-- Production must set `MARKETPLACE_EXTENSION_ALLOWED_ORIGINS` to exact extension origins.
+- Production should set `COMPANION_EXTENSION_ALLOWED_ORIGINS` to exact extension origins.
+  `MARKETPLACE_EXTENSION_ALLOWED_ORIGINS` remains supported as a legacy fallback.
 - Keep remote hosted JavaScript out of the extension bundle.

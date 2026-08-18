@@ -1,0 +1,64 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/148-smartaihub-unified-agent-worker-platform/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/148-smartaihub-unified-agent-worker-platform/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-mcp-oauth-discovery",
+    "section-02-client-onboarding",
+    "section-03-hermes-task-correlation",
+    "section-04-comfyui-worker-adapter",
+    "section-05-runtime-readiness-process-safety",
+    "section-06-ui-docs-telemetry-rollout",
+    "section-07-verification-and-handoff"
+  ],
+  "sections_state": {
+    "section-01-mcp-oauth-discovery": {
+      "status": "implemented",
+      "commit_hash": null,
+      "review": "manual focused review; live issuer/JWKS gate remains"
+    },
+    "section-02-client-onboarding": {
+      "status": "implemented",
+      "commit_hash": null,
+      "review": "manual focused review; real-client/browserless proof remains"
+    },
+    "section-03-hermes-task-correlation": {
+      "status": "implemented",
+      "commit_hash": null,
+      "review": "manual focused review; relay projection gate remains"
+    },
+    "section-04-comfyui-worker-adapter": {
+      "status": "implemented",
+      "commit_hash": null,
+      "review": "manual focused review; real model/GPU image-video proof remains"
+    },
+    "section-05-runtime-readiness-process-safety": {
+      "status": "implemented",
+      "commit_hash": null,
+      "review": "manual focused review; signed platform release gate remains"
+    },
+    "section-06-ui-docs-telemetry-rollout": {
+      "status": "implemented",
+      "commit_hash": null,
+      "review": "manual focused review; browser telemetry and deprecation window remain"
+    },
+    "section-07-verification-and-handoff": {
+      "status": "implemented",
+      "commit_hash": null,
+      "review": "verification report written; external gates listed explicitly"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-17T18:02:34.369709+00:00"
+}

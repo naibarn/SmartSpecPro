@@ -10,13 +10,19 @@
  *   if (canvasEnabled) { ... }
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import {
   FEATURE_FLAG_DEFAULTS,
   type TenantFeatureFlagKey,
 } from "@shared/featureFlags.ts";
 import { fetchWithTimeout } from "@/lib/authBootstrap";
+import {
+  clearTenantServiceRecoveryState,
+  isTransientTenantServiceError,
+  removeTenantServiceRecoveryQueryParam,
+  TENANT_SERVICE_RECOVERY_QUERY_PARAM,
+} from "@/lib/tenantServiceRecovery";
 
 interface TenantCurrentResponse {
   tenant?: {
@@ -37,7 +43,11 @@ async function fetchTenantCurrent(): Promise<TenantCurrentResponse> {
     // FEATURE_FLAG_DEFAULTS, which is fail-closed for flags such as
     // verticalDramaSeries — incorrectly showing the "not available" denial
     // during a routine restart instead of recovering automatically.
-    throw new Error(`tenant/current ${res.status}`);
+    const error = new Error(`tenant/current ${res.status}`) as Error & {
+      status: number;
+    };
+    error.status = res.status;
+    throw error;
   }
   return res.json();
 }
@@ -45,17 +55,15 @@ async function fetchTenantCurrent(): Promise<TenantCurrentResponse> {
 /**
  * Shared react-query options for the `["tenant", "current"]` query, reused
  * by every hook below so they observe one cached query with identical
- * staleness/retry behavior. Retry twice with capped exponential backoff so a
- * short restart window can recover without leaving a route gate unresolved
- * indefinitely; after that, callers can show an explicit retry action.
+ * staleness behavior. Retry policy is inherited from the application's shared
+ * query client so transient service restarts get the full idempotent-query
+ * recovery budget without changing the policy in test clients.
  */
 const TENANT_CURRENT_QUERY_OPTIONS = queryOptions({
   queryKey: ["tenant", "current"],
   queryFn: fetchTenantCurrent,
   staleTime: 60_000, // 1 minute
   gcTime: 5 * 60_000,
-  retry: (failureCount: number) => failureCount < 2,
-  retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 5000),
 });
 
 /**
@@ -72,11 +80,33 @@ export function useTenantFeatureFlagStatus(flag: TenantFeatureFlagKey): {
   enabled: boolean;
   isResolved: boolean;
   isError: boolean;
+  error: unknown;
+  isTransientError: boolean;
   retry: () => Promise<unknown>;
 } {
-  const { data, isSuccess, isError, refetch } = useQuery(
+  const { data, isSuccess, isError, error, refetch } = useQuery(
     TENANT_CURRENT_QUERY_OPTIONS,
   );
+
+  useEffect(() => {
+    if (!isSuccess) return;
+    clearTenantServiceRecoveryState();
+
+    if (typeof window !== "undefined") {
+      try {
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.has(TENANT_SERVICE_RECOVERY_QUERY_PARAM)) {
+          window.history.replaceState(
+            window.history.state,
+            "",
+            removeTenantServiceRecoveryQueryParam(window.location.href),
+          );
+        }
+      } catch {
+        // URL cleanup is cosmetic; route rendering must continue if unavailable.
+      }
+    }
+  }, [isSuccess]);
 
   const storedFlags = data?.tenant?.featureFlags;
   const enabled =
@@ -84,7 +114,14 @@ export function useTenantFeatureFlagStatus(flag: TenantFeatureFlagKey): {
       ? FEATURE_FLAG_DEFAULTS[flag]
       : storedFlags[flag];
 
-  return { enabled, isResolved: isSuccess, isError, retry: refetch };
+  return {
+    enabled,
+    isResolved: isSuccess,
+    isError,
+    error,
+    isTransientError: isError && isTransientTenantServiceError(error),
+    retry: refetch,
+  };
 }
 
 /**

@@ -26,20 +26,22 @@ const release = (version: string, platform: "windows" | "macos" | "linux") => ({
 });
 
 describe("desktop release public visibility", () => {
-  it("blocks only the stale 0.1.4 version", () => {
+  it("blocks the stale 0.1.3 and 0.1.4 versions", () => {
+    expect(isDesktopReleaseVersionBlockedFromPublic("0.1.3")).toBe(true);
     expect(isDesktopReleaseVersionBlockedFromPublic("0.1.4")).toBe(true);
     expect(isDesktopReleaseVersionBlockedFromPublic("0.1.40")).toBe(false);
     expect(isDesktopReleaseVersionBlockedFromPublic("0.1.5")).toBe(false);
   });
 
   it("removes the stale version and recalculates the public latest release", () => {
-    const stale = release("0.1.4", "windows");
+    const staleZip = release("0.1.3", "windows");
+    const staleExe = release("0.1.4", "windows");
     const current = release("0.1.5", "windows");
     const filtered = filterDesktopReleaseCatalogForPublic({
       generatedAt: "2026-08-16T00:00:00.000Z",
-      releases: [stale, current],
+      releases: [staleZip, staleExe, current],
       latestByPlatform: {
-        windows: stale,
+        windows: staleExe,
         macos: null,
         linux: null,
       },

@@ -1,15 +1,7 @@
-# Risk register
+# Risk Register
 
-- No security findings; security gate not applicable.
-
-## 2026-08-17 — Vertical Drama stale Draft cleanup
-
-- Security gate: conditional pass; no open Critical, High, Medium, or Low findings.
-- Resolved: bounded the preview query at the five-day cutoff and return only the
-  aggregate archived-row count from the atomic update.
-- Resolved: the dialog shows a stable localized failure message instead of raw
-  server error details.
-- Runtime proof still required: two-tenant authorization/count test and PostgreSQL
-  `EXPLAIN (ANALYZE, BUFFERS)` on production-sized data.
-- Browser proof still required: authenticated 5/7/10 selection, cancel,
-  duplicate-submit prevention, and inbox refresh.
+- CRITICAL surface: tenant isolation and provider-visible managed references.
+- HIGH risk: background tokens/retries can lose tenant identity.
+- HIGH risk: tenant-bearing mutations may update multiple tenant rows for one user.
+- Mitigation: explicit actor contract, red tests, static guard, scoped mutations,
+  inline security review, and no schema/data mutation in this phase.

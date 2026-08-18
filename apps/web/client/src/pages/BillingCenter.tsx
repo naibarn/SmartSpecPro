@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 import {
   ArrowLeft,
   CreditCard,
@@ -11,6 +12,8 @@ import {
   Receipt,
   Save,
   Sparkles,
+  UploadCloud,
+  X,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -68,6 +71,15 @@ function formatCountdown(target: unknown) {
   return `${hours}h ${minutes}m remaining`;
 }
 
+const PROMPTPAY_SLIP_ACCEPT = "image/png,image/jpeg,image/webp,application/pdf";
+const PROMPTPAY_SLIP_TYPES = new Set(PROMPTPAY_SLIP_ACCEPT.split(","));
+const PROMPTPAY_SLIP_MAX_BYTES = 10 * 1024 * 1024;
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function BillingCenter() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -101,6 +113,10 @@ export default function BillingCenter() {
   });
   const [autoRenewConsentEnabled, setAutoRenewConsentEnabled] = useState(false);
   const [autoRenewMethodId, setAutoRenewMethodId] = useState<number | null>(null);
+  const [promptPaySlipFile, setPromptPaySlipFile] = useState<File | null>(null);
+  const [promptPaySlipPreviewUrl, setPromptPaySlipPreviewUrl] = useState<string | null>(null);
+  const [promptPaySlipDragActive, setPromptPaySlipDragActive] = useState(false);
+  const promptPaySlipInputRef = useRef<HTMLInputElement | null>(null);
 
   const utils = trpc.useUtils();
   const profileQuery = trpc.billing.getProfile.useQuery(undefined, { enabled: !!user });
@@ -224,6 +240,21 @@ export default function BillingCenter() {
     }
   }, [selectedInvoiceIdFromRoute]);
 
+  useEffect(() => {
+    if (!promptPaySlipFile) {
+      setPromptPaySlipPreviewUrl(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(promptPaySlipFile);
+    setPromptPaySlipPreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [promptPaySlipFile]);
+
+  useEffect(() => {
+    setPromptPaySlipFile(null);
+    setPromptPaySlipDragActive(false);
+  }, [selectedInvoiceId]);
+
   const selectedInvoice = selectedInvoiceQuery.data ?? null;
   const routeSearchParams = useMemo(
     () => (typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search)),
@@ -241,7 +272,7 @@ export default function BillingCenter() {
       packageCode: packageCode || null,
       description: description || null,
       packageLabel: packageLabel || null,
-      paymentMethod: routeSearchParams.get("paymentMethod") || "promptpay",
+      paymentChannel: routeSearchParams.get("paymentChannel") || (routeSearchParams.get("paymentMethod") === "card" ? "beam_card" : "beam_promptpay"),
       topupView: routeSearchParams.get("view") === "topup",
     };
   }, [routeSearchParams]);
@@ -291,6 +322,65 @@ export default function BillingCenter() {
   const selectedTopupPayment = selectedInvoice?.invoiceType === "topup"
     ? selectedInvoice.activePayment ?? null
     : null;
+  const isDirectTopup = selectedTopupPayment?.paymentChannel === "promptpay_direct_manual";
+  const directPaymentQuery = trpc.billing.getPromptPayDirectPayment.useQuery(
+    { invoiceId: selectedInvoiceId ?? 0 },
+    { enabled: !!selectedInvoiceId && pendingTopupContext.paymentChannel === "promptpay_direct_manual" },
+  );
+  const uploadPromptPaySlipMutation = trpc.billing.uploadPromptPaySlip.useMutation({
+    onSuccess: async () => {
+      toast.success("ส่งสลิปสำเร็จ รอทีมงานตรวจสอบ");
+      setPromptPaySlipFile(null);
+      setPromptPaySlipDragActive(false);
+      if (promptPaySlipInputRef.current) promptPaySlipInputRef.current.value = "";
+      await Promise.all([selectedInvoiceQuery.refetch(), directPaymentQuery.refetch(), invoicesQuery.refetch()]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const handlePromptPaySlipFileSelected = (file: File | undefined) => {
+    if (!file) return;
+    if (!PROMPTPAY_SLIP_TYPES.has(file.type)) {
+      toast.error("รองรับเฉพาะไฟล์ PNG, JPEG, WEBP หรือ PDF");
+      return;
+    }
+    if (file.size > PROMPTPAY_SLIP_MAX_BYTES) {
+      toast.error("ไฟล์สลิปต้องมีขนาดไม่เกิน 10 MB");
+      return;
+    }
+    setPromptPaySlipFile(file);
+  };
+
+  const handlePromptPaySlipUpload = async () => {
+    if (!promptPaySlipFile) {
+      toast.error("กรุณาเลือกไฟล์สลิปก่อน");
+      return;
+    }
+    const paymentId = directPaymentQuery.data?.payment.id ?? selectedTopupPayment?.id;
+    if (!paymentId) {
+      toast.error("ยังไม่พบรายการชำระเงินสำหรับอัปโหลดสลิป");
+      return;
+    }
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const value = String(reader.result ?? "");
+          resolve(value.includes(",") ? value.slice(value.indexOf(",") + 1) : value);
+        };
+        reader.onerror = () => reject(reader.error ?? new Error("Unable to read slip"));
+        reader.readAsDataURL(promptPaySlipFile);
+      });
+      uploadPromptPaySlipMutation.mutate({
+        paymentId,
+        fileName: promptPaySlipFile.name,
+        contentType: promptPaySlipFile.type,
+        base64Content: base64,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ไม่สามารถอ่านไฟล์สลิปได้");
+    }
+  };
   const stats = [
     { label: "Current plan", value: subscriptionQuery.data?.planCode ?? user.plan, icon: Sparkles },
     { label: "Subscription", value: subscriptionQuery.data?.status ?? "free", icon: CreditCard },
@@ -502,7 +592,7 @@ export default function BillingCenter() {
                   <div>
                     <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Base price</div>
                     <div className="mt-1 font-medium text-slate-900">
-                      {pendingTopupContext.basePrice != null ? formatMoney(pendingTopupContext.basePrice, "THB") : "-"}
+                      {pendingTopupContext.basePrice != null ? formatMoney(pendingTopupContext.basePrice, "USD") : "-"}
                     </div>
                   </div>
                   <div>
@@ -790,7 +880,9 @@ export default function BillingCenter() {
                         {selectedInvoice
                           ? formatMoney(selectedInvoice.totalAmount, selectedInvoice.currency)
                           : pendingTopupContext.basePrice != null
-                            ? formatMoney(pendingTopupContext.basePrice, "THB")
+                            ? pendingTopupContext.paymentChannel === "promptpay_direct_manual"
+                              ? "คำนวณยอด THB หลังสร้างรายการ"
+                              : formatMoney(pendingTopupContext.basePrice, "USD")
                             : "-"}
                       </div>
                     </div>
@@ -807,12 +899,18 @@ export default function BillingCenter() {
                     <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
                       <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Chosen payment method</div>
                       <div className="mt-2 text-lg font-semibold text-slate-900">
-                        {pendingTopupContext.paymentMethod === "card" ? "Card payment via Beam checkout" : "PromptPay QR"}
+                        {pendingTopupContext.paymentChannel === "beam_card"
+                          ? "Card payment via Beam checkout"
+                          : pendingTopupContext.paymentChannel === "promptpay_direct_manual"
+                            ? "PromptPay โอนตรง + ส่งสลิป"
+                            : "PromptPay QR"}
                       </div>
                       <div className="mt-1 text-sm text-slate-500">
-                        {pendingTopupContext.paymentMethod === "card"
+                        {pendingTopupContext.paymentChannel === "beam_card"
                           ? "You will be redirected to Beam checkout to complete card payment."
-                          : "A Beam PromptPay QR will be generated for this one-time payment."}
+                          : pendingTopupContext.paymentChannel === "promptpay_direct_manual"
+                            ? "โอนตามยอด THB ที่แสดง แล้วอัปโหลดสลิปเพื่อรอการตรวจสอบ"
+                            : "A Beam PromptPay QR will be generated for this one-time payment."}
                       </div>
                     </div>
                   </div>
@@ -834,7 +932,7 @@ export default function BillingCenter() {
                       <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
                         <div>Total: {formatMoney(selectedTopupInvoice.totalAmount, selectedTopupInvoice.currency)}</div>
                         <div>
-                          Payment method: {selectedTopupPayment?.providerPaymentType === "payment_link" ? "Card payment" : "PromptPay QR"}
+                          Payment method: {isDirectTopup ? "PromptPay Direct + manual slip" : selectedTopupPayment?.providerPaymentType === "payment_link" ? "Card payment" : "PromptPay QR"}
                         </div>
                         <div>Issued: {formatDateTime(selectedTopupInvoice.issuedAt)}</div>
                         <div>Due: {formatDateTime(selectedTopupInvoice.dueAt)}</div>
@@ -843,12 +941,151 @@ export default function BillingCenter() {
                       </div>
 
                       <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm text-slate-700">
-                        {selectedTopupPayment?.providerPaymentType === "payment_link"
+                        {isDirectTopup
+                          ? "โอนเงินตามยอดที่ระบุเท่านั้น ระบบจะเพิ่มเครดิตหลัง Admin ตรวจสอบและอนุมัติสลิป"
+                          : selectedTopupPayment?.providerPaymentType === "payment_link"
                           ? "You selected card payment. Click Pay now to continue on Beam checkout."
                           : "You selected PromptPay QR. Scan the QR below or open the Beam payment page to complete this one-time top-up."}
                       </div>
 
-                      {selectedTopupPayment?.status === "provider_pending_unknown" ? (
+                      {isDirectTopup ? (
+                        <div className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                          <div className="grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+                            <div><span className="font-medium">ราคาแพ็กเกจ USD:</span> {formatMoney(selectedTopupPayment?.sourceAmountUsd, "USD")}</div>
+                            <div><span className="font-medium">ยอดโอน:</span> {formatMoney(selectedTopupPayment?.promptpayAmountThb ?? selectedTopupInvoice.totalAmount, "THB")}</div>
+                            <div><span className="font-medium">เลขสตางค์:</span> {String(selectedTopupPayment?.randomSatang ?? 0).padStart(2, "0")}</div>
+                            <div><span className="font-medium">ผู้รับเงิน:</span> {String(selectedTopupPayment?.promptpayRecipientSnapshotJson?.displayName ?? "-")}</div>
+                            <div><span className="font-medium">อัตราอ้างอิง USD/THB:</span> {String(selectedTopupPayment?.fxRate ?? "-")} ({formatDateTime(selectedTopupPayment?.fxRateDate)})</div>
+                            <div><span className="font-medium">อัตราหลังปรับ:</span> {String(selectedTopupPayment?.fxEffectiveRate ?? "-")}</div>
+                            <div><span className="font-medium">Sell spread:</span> {selectedTopupPayment?.fxSellSpreadBps == null ? "-" : `${selectedTopupPayment.fxSellSpreadBps} bps`}</div>
+                            <div><span className="font-medium">FX risk buffer:</span> {selectedTopupPayment?.fxRiskBufferBps == null ? "-" : `${selectedTopupPayment.fxRiskBufferBps} bps`}</div>
+                            <div><span className="font-medium">ดึงอัตราเมื่อ:</span> {formatDateTime(selectedTopupPayment?.fxFetchedAt)}</div>
+                          </div>
+                          {selectedTopupPayment?.qrPayload ? (
+                            <div className="flex justify-center rounded-2xl border border-emerald-200 bg-white p-4">
+                              <QRCodeSVG value={String(selectedTopupPayment.qrPayload)} size={260} includeMargin />
+                            </div>
+                          ) : null}
+                          <div className="text-sm text-slate-700">เมื่อโอนสำเร็จ ให้อัปโหลดสลิปเพื่อให้ทีมงานตรวจสอบ</div>
+                          {selectedTopupPayment.status === "payment_pending" || directPaymentQuery.data?.payment.status === "payment_pending" ? (
+                            <div className="space-y-3">
+                              <div
+                                className={`rounded-2xl border-2 border-dashed p-4 transition-colors ${promptPaySlipDragActive ? "border-emerald-500 bg-emerald-100/80" : "border-emerald-300 bg-white/80 hover:border-emerald-400"}`}
+                                onDragEnter={(event) => {
+                                  event.preventDefault();
+                                  setPromptPaySlipDragActive(true);
+                                }}
+                                onDragOver={(event) => event.preventDefault()}
+                                onDragLeave={(event) => {
+                                  event.preventDefault();
+                                  setPromptPaySlipDragActive(false);
+                                }}
+                                onDrop={(event) => {
+                                  event.preventDefault();
+                                  setPromptPaySlipDragActive(false);
+                                  handlePromptPaySlipFileSelected(event.dataTransfer.files?.[0]);
+                                }}
+                                aria-label="พื้นที่อัปโหลดสลิป รองรับการลากไฟล์มาวาง"
+                              >
+                                <input
+                                  ref={promptPaySlipInputRef}
+                                  type="file"
+                                  accept={PROMPTPAY_SLIP_ACCEPT}
+                                  className="sr-only"
+                                  disabled={uploadPromptPaySlipMutation.isPending}
+                                  onChange={(event) => {
+                                    handlePromptPaySlipFileSelected(event.target.files?.[0]);
+                                    event.currentTarget.value = "";
+                                  }}
+                                />
+                                {promptPaySlipFile && promptPaySlipPreviewUrl ? (
+                                  <div className="space-y-3">
+                                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950/5">
+                                      {promptPaySlipFile.type === "application/pdf" ? (
+                                        <iframe
+                                          src={promptPaySlipPreviewUrl}
+                                          title="ตัวอย่างไฟล์สลิป PDF"
+                                          className="h-72 w-full bg-white"
+                                        />
+                                      ) : (
+                                        <img
+                                          src={promptPaySlipPreviewUrl}
+                                          alt="ตัวอย่างสลิปที่จะส่งตรวจสอบ"
+                                          className="max-h-72 w-full object-contain bg-white"
+                                        />
+                                      )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="truncate text-sm font-semibold text-slate-900">{promptPaySlipFile.name}</div>
+                                        <div className="text-xs text-slate-500">{formatFileSize(promptPaySlipFile.size)} · พร้อมส่งให้ทีมงานตรวจสอบ</div>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => promptPaySlipInputRef.current?.click()}
+                                          disabled={uploadPromptPaySlipMutation.isPending}
+                                        >
+                                          เปลี่ยนไฟล์
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setPromptPaySlipFile(null)}
+                                          disabled={uploadPromptPaySlipMutation.isPending}
+                                          aria-label="ล้างไฟล์สลิปที่เลือก"
+                                        >
+                                          <X className="mr-1 h-4 w-4" />
+                                          ล้าง
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+                                    <div className="rounded-full bg-emerald-100 p-3 text-emerald-700">
+                                      <UploadCloud className="h-6 w-6" />
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      {promptPaySlipDragActive ? "ปล่อยไฟล์ที่นี่ได้เลย" : "ลากไฟล์สลิปมาวางที่นี่"}
+                                    </div>
+                                    <div className="text-xs text-slate-500">หรือเลือกไฟล์จากเครื่องของคุณ</div>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => promptPaySlipInputRef.current?.click()}
+                                      disabled={uploadPromptPaySlipMutation.isPending}
+                                    >
+                                      เลือกไฟล์สลิป
+                                    </Button>
+                                    <div className="text-xs text-slate-400">PNG, JPEG, WEBP หรือ PDF · สูงสุด 10 MB</div>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="text-xs text-slate-500" aria-live="polite">
+                                  {promptPaySlipFile ? "ตรวจสอบตัวอย่างไฟล์แล้ว หากถูกต้องกดส่งสลิปได้เลย" : "เลือกไฟล์หรือลากไฟล์เข้าพื้นที่ด้านบนเพื่อดูตัวอย่างก่อนส่ง"}
+                                </div>
+                                <Button
+                                  type="button"
+                                  onClick={() => void handlePromptPaySlipUpload()}
+                                  disabled={!promptPaySlipFile || uploadPromptPaySlipMutation.isPending}
+                                >
+                                  {uploadPromptPaySlipMutation.isPending ? "กำลังส่งสลิป..." : "ส่งสลิปให้ตรวจสอบ"}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm font-medium text-amber-800">{selectedTopupPayment.status === "manual_review_required" ? "ส่งสลิปแล้ว รอ Admin ตรวจสอบ" : "รายการนี้ดำเนินการแล้ว"}</div>
+                          )}
+                        </div>
+                      ) : null}
+
+                      {!isDirectTopup && selectedTopupPayment?.status === "provider_pending_unknown" ? (
                         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
                           Beam payment was not created successfully yet, so no QR code or payment button is available for this invoice.
                           Please check Platform Settings &gt; Payments &gt; Beam and make sure API Base URL, API Key, Charges path, and webhook secrets are configured.
@@ -868,7 +1105,7 @@ export default function BillingCenter() {
                           {refreshInvoiceMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                           Refresh payment status
                         </Button>
-                        {selectedTopupPayment?.paymentUrl ? (
+                        {!isDirectTopup && selectedTopupPayment?.paymentUrl ? (
                           <Button asChild>
                             <a href={String(selectedTopupPayment.paymentUrl)} target="_blank" rel="noreferrer">
                               <CreditCard className="mr-2 h-4 w-4" />
@@ -884,7 +1121,7 @@ export default function BillingCenter() {
                         ) : null}
                       </div>
 
-                      {selectedTopupPayment?.qrCodeUrl ? (
+                      {!isDirectTopup && selectedTopupPayment?.qrCodeUrl ? (
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                           <div className="text-sm font-medium text-slate-900">PromptPay QR</div>
                           <div className="mt-2 text-sm text-slate-500">
@@ -898,7 +1135,7 @@ export default function BillingCenter() {
                             />
                           </div>
                         </div>
-                      ) : pendingTopupContext.paymentMethod === "promptpay" ? (
+                      ) : !isDirectTopup && pendingTopupContext.paymentChannel === "beam_promptpay" ? (
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
                           QR code has not been returned by Beam yet. Click Refresh payment status once, and if it still does not appear, check Beam gateway configuration in Payments.
                         </div>

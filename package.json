@@ -14,8 +14,14 @@
     "build:desktop:windows-local": "node ./scripts/desktop-build-local.mjs --target x86_64-pc-windows-msvc --bundle-mode on-demand",
     "desktop:info": "bash ./scripts/desktop-app.sh info",
     "release:desktop:gh": "node ./scripts/desktop-release-gh.mjs",
+    "release:remotion-executor": "npm --workspace @smartspec/remotion-executor run release:pack",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "check:mcp146": "npm --workspace apps/web run check:mcp146",
+    "security:mcp146": "npm --workspace apps/web run security:mcp146",
+    "mcp:smoke": "npm --workspace apps/web run mcp:smoke",
+    "mcp:failure-harness": "npm --workspace apps/web run mcp:failure-harness",
+    "mcp:readiness": "npm --workspace apps/web run mcp:readiness",
     "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs"
   },
   "engines": {
@@ -27,7 +33,8 @@
     "@vitejs/plugin-react": "^5.1.2",
     "turbo": "^2.5.0",
     "typescript": "^5.5.4",
-    "vite-plugin-manus-runtime": "^0.0.57"
+    "vite-plugin-manus-runtime": "^0.0.57",
+    "vite": "^7.3.6"
   },
   "dependencies": {
     "@xyflow/react": "^12.10.0",
@@ -36,7 +43,7 @@
     "posthog-node": "^5.35.14",
     "reactflow": "^11.11.4",
     "rg": "^0.0.2",
-    "sharp": "^0.34.5"
+    "sharp": "^0.35.3"
   },
   "version": "1.0.0",
   "astryx": {

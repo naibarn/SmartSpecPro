@@ -96,4 +96,16 @@ describe("buildMediaStudioCommonPayload", () => {
 
     expect(payload.originSurface).toBe("media_studio");
   });
+
+  it("preserves the native transparent-background provider input", () => {
+    const payload = buildMediaStudioCommonPayload({
+      prompt: "A product cutout",
+      model: "gpt-image-2-text-to-image",
+      aspectRatio: "1:1",
+      referenceImages: [],
+      extraParams: { background: "transparent" },
+    });
+
+    expect(payload.extraParams).toEqual({ background: "transparent" });
+  });
 });

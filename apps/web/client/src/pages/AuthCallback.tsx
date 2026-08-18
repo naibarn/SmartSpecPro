@@ -99,7 +99,13 @@ export default function AuthCallback() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ json: { accessToken: data.access_token, provider } }),
+          body: JSON.stringify({
+            json: {
+              accessToken: data.access_token,
+              provider,
+              isNewUser: data.is_new_user === true,
+            },
+          }),
         });
 
         if (!sessionRes.ok) {

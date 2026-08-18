@@ -15,6 +15,7 @@ import {
   sourceShotsFor,
   type ClipImportInput,
 } from "../verticalDramaAssembly";
+import { createUniformVerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
 
 /** 8 ready clips on the default-bridge schedule (8+8+8+8+8+8+8+4 = 60). */
 function defaultBridgeClips(): ClipImportInput[] {
@@ -98,6 +99,35 @@ describe("buildAssemblyManifest — fallback profile", () => {
     expect(manifest.clips.map((c) => c.durationSeconds)).toEqual([8, 8, 8, 4, 8, 8, 4, 8, 4]);
     expect(manifest.clips[0].sourceShotNumbers).toEqual([1]);
     expect(manifest.clips.reduce((a, c) => a + c.durationSeconds, 0)).toBe(60);
+  });
+});
+
+describe("buildAssemblyManifest — selected 9-shot duration profile", () => {
+  it("uses the exact 9-shot vector and derived runtime without changing legacy profiles", () => {
+    const durationPlan = createUniformVerticalDramaDurationPlan(10);
+    const clips = durationPlan.shotDurationsSeconds.map((durationSeconds, i) => ({
+      clipNumber: i + 1,
+      durationSeconds,
+      mediaAssetId: `asset_selected_${i + 1}`,
+      status: "ready" as const,
+    }));
+
+    const { manifest, valid, errors } = buildAssemblyManifest({
+      assemblyManifestId: "vdasm_test_selected",
+      durationProfileId: durationPlan.profileId,
+      profileKind: "selected_9_shots",
+      durationPlan,
+      clips,
+    });
+
+    expect(valid).toBe(true);
+    expect(errors).toEqual([]);
+    expect(manifest.targetDurationSeconds).toBe(90);
+    expect(manifest.clips).toHaveLength(9);
+    expect(manifest.clips.map(c => c.sourceShotNumbers)).toEqual(
+      durationPlan.shotDurationsSeconds.map((_, i) => [i + 1]),
+    );
+    expect(manifest.ffmpegCommand).toContain("final_episode_90s_vertical.mp4");
   });
 });
 

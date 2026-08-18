@@ -32,6 +32,7 @@ import { and, asc, desc, eq, lte } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
+  verticalDramaSeries,
   verticalDramaEpisodeRuns,
   verticalDramaRunArtifacts,
   verticalDramaApprovalCheckpoints,
@@ -50,6 +51,10 @@ import {
   VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK,
   VERTICAL_DRAMA_TARGET_DURATION_SECONDS,
   durationsOf,
+  getActiveVerticalDramaShotDurations,
+  resolveVerticalDramaEpisodeDurationPlan,
+  resolveVerticalDramaDurationPlan,
+  type VerticalDramaDurationPlan,
   type VerticalDramaArtifactFilename,
   type VerticalDramaArtifactStage,
   type VerticalDramaAssemblyManifest,
@@ -67,7 +72,10 @@ export interface AssemblyOwner {
 }
 
 /** Which duration profile drives the assembly schedule. */
-export type AssemblyProfileKind = "default_bridge" | "fallback_9_shots";
+export type AssemblyProfileKind =
+  | "default_bridge"
+  | "fallback_9_shots"
+  | "selected_9_shots";
 
 /** Resolve the profile kind from an episode's `durationProfileId`. */
 export function profileKindForEpisode(durationProfileId: string | null | undefined): AssemblyProfileKind {
@@ -77,7 +85,18 @@ export function profileKindForEpisode(durationProfileId: string | null | undefin
 }
 
 /** The per-clip / per-shot duration schedule for a profile kind. */
-export function scheduleFor(kind: AssemblyProfileKind): number[] {
+export function scheduleFor(
+  kind: AssemblyProfileKind,
+  durationPlan?: VerticalDramaDurationPlan | null,
+): number[] {
+  if (kind === "selected_9_shots") {
+    const durations = getActiveVerticalDramaShotDurations(durationPlan);
+    if (durations) return durations;
+    // A selected profile without a valid vector is a structural error. Keep
+    // the pure helper deterministic and let the manifest validator surface a
+    // normal count/duration mismatch instead of guessing a runtime.
+    return [];
+  }
   return kind === "fallback_9_shots"
     ? durationsOf(VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK)
     : durationsOf(VERTICAL_DRAMA_DURATION_PROFILE_DEFAULT);
@@ -218,7 +237,7 @@ export function buildSubtitlesSrt(cues: SubtitleCue[]): string {
  * Build the final assembly manifest for an episode run (pure — no DB).
  *
  * Validates:
- *  - total clip durations sum to the 60s episode target;
+ *  - total clip durations sum to the active profile target;
  *  - with sub-shots, per-parent sub-clip durations sum to the parent main-shot
  *    duration and the shot count stays 9 (sub-shots never add shots/frames);
  *  - each clip has a resolved media asset (missing → repair action).
@@ -232,10 +251,25 @@ export function buildAssemblyManifest(input: {
   audioBgmPlan?: AudioBgmTrack[];
   exportSettings?: Partial<AssemblyExportSettings>;
   subShotsEnabled?: boolean;
+  /** Active 9-logical-shot profile. Omit for legacy 60-second profiles. */
+  durationPlan?: VerticalDramaDurationPlan;
 }): AssemblyBuildResult {
   const errors: string[] = [];
   const repairActions: AssemblyRepairAction[] = [];
-  const schedule = scheduleFor(input.profileKind);
+  const schedule = scheduleFor(input.profileKind, input.durationPlan);
+  const targetDurationSeconds = schedule.reduce((sum, duration) => sum + duration, 0);
+  const expectedTargetDurationSeconds =
+    input.profileKind === "selected_9_shots"
+      ? targetDurationSeconds
+      : VERTICAL_DRAMA_TARGET_DURATION_SECONDS;
+  if (input.profileKind === "selected_9_shots" && schedule.length !== 9) {
+    errors.push("invalid_selected_duration_profile: active profile must contain 9 logical shots");
+    repairActions.push({
+      action: "repair_duration_mismatch",
+      targetType: "assembly",
+      message: "Selected duration profile is missing a valid 9-shot duration vector.",
+    });
+  }
   const subShotsEnabled = input.subShotsEnabled ?? false;
 
   const ordered = flattenClips(input.clips);
@@ -292,14 +326,14 @@ export function buildAssemblyManifest(input: {
 
   // Total-duration validation (always).
   const total = resolvedClips.reduce((acc, c) => acc + c.durationSeconds, 0);
-  if (Math.abs(total - VERTICAL_DRAMA_TARGET_DURATION_SECONDS) > 1e-9) {
+  if (Math.abs(total - expectedTargetDurationSeconds) > 1e-9) {
     errors.push(
-      `episode_duration_mismatch: clips sum to ${total}s, expected ${VERTICAL_DRAMA_TARGET_DURATION_SECONDS}s`,
+      `episode_duration_mismatch: clips sum to ${total}s, expected ${expectedTargetDurationSeconds}s`,
     );
     repairActions.push({
       action: "repair_duration_mismatch",
       targetType: "assembly",
-      message: `Episode clips sum to ${total}s; must total ${VERTICAL_DRAMA_TARGET_DURATION_SECONDS}s.`,
+      message: `Episode clips sum to ${total}s; must total ${expectedTargetDurationSeconds}s.`,
     });
   }
 
@@ -347,7 +381,7 @@ export function buildAssemblyManifest(input: {
 
   // Subtitle-window sanity: a cue past the episode total is a repair action.
   for (const cue of subtitlePlan) {
-    if (cue.endSeconds > VERTICAL_DRAMA_TARGET_DURATION_SECONDS + 1e-9 || cue.endSeconds < cue.startSeconds) {
+    if (cue.endSeconds > expectedTargetDurationSeconds + 1e-9 || cue.endSeconds < cue.startSeconds) {
       repairActions.push({
         action: "repair_subtitle_mismatch",
         targetType: "subtitle",
@@ -375,14 +409,14 @@ export function buildAssemblyManifest(input: {
     "-c:v libx264 -pix_fmt yuv420p",
     subtitlePlan.length ? "-c:s mov_text" : "",
     "-aspect 9:16",
-    "final_episode_60s_vertical.mp4",
+    `final_episode_${expectedTargetDurationSeconds}s_vertical.mp4`,
   ]
     .filter(Boolean)
     .join(" ");
 
   const manifest: VerticalDramaEpisodeAssemblyManifest = {
     handoffType: "video_assembly_manifest",
-    targetDurationSeconds: VERTICAL_DRAMA_TARGET_DURATION_SECONDS,
+    targetDurationSeconds: expectedTargetDurationSeconds,
     assemblyManifestId: input.assemblyManifestId,
     durationProfileId: input.durationProfileId,
     profileKind: input.profileKind,
@@ -613,7 +647,38 @@ export class VerticalDramaAssemblyService {
     storyboardReviewLinked: boolean;
   }> {
     const episode = await this.loadEpisode(owner);
-    const profileKind = args.profileKind ?? profileKindForEpisode(episode.durationProfileId);
+    // A new episode is governed by the exact profile captured at creation
+    // time. Resolve it against the current series bible only when the IDs
+    // still match; changing series settings must never reinterpret a legacy
+    // episode or an episode created under an older profile.
+    const [series] = await db
+      .select({ bible: verticalDramaSeries.bible })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId),
+        ),
+      )
+      .limit(1);
+    const rawPlan = resolveVerticalDramaDurationPlan(
+      series?.bible,
+      episode.targetDurationSeconds,
+    );
+    const durationPlan =
+      rawPlan?.status === "active" &&
+      episode.durationProfileId === rawPlan.profileId
+        ? rawPlan
+        : resolveVerticalDramaEpisodeDurationPlan(
+            episode.durationProfileId,
+            episode.targetDurationSeconds,
+          ) ?? undefined;
+    const profileKind =
+      args.profileKind ??
+      (durationPlan
+        ? "selected_9_shots"
+        : profileKindForEpisode(episode.durationProfileId));
     const assemblyManifestId = `vdasm_${owner.seriesId}_${owner.episodeId}_${Date.now().toString(36)}`;
 
     const build = buildAssemblyManifest({
@@ -625,6 +690,7 @@ export class VerticalDramaAssemblyService {
       audioBgmPlan: args.audioBgmPlan,
       exportSettings: args.exportSettings,
       subShotsEnabled: args.subShotsEnabled,
+      durationPlan,
     });
 
     const runId = await this.createRun(

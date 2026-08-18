@@ -29,6 +29,8 @@ import {
 import { getDb } from "../db";
 import { getExportsByDeckId } from "../services/presentationExportService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
+import { ensurePresentationTaskResultDurable } from "../services/presentationMediaAssetService";
 import {
   PresentationServiceError,
   addSlideToDeck,
@@ -425,6 +427,48 @@ export const presentationRouter = router({
   availability: protectedProcedure.query(() => {
     return presentationAvailabilitySchema.parse(getAvailability());
   }),
+
+  getMediaTask: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      taskId: z.string().min(1),
+      mediaType: z.enum(["image", "video"]),
+      slotId: z.string().max(160).optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      ensureFeatureEnabled();
+      ensureAIGenerationEnabled();
+      const actor = toPresentationActor(ctx);
+      await getPresentationDeckDetail(input.deckId, actor);
+      const task = await getUnifiedMediaTask({
+        taskId: input.taskId,
+        userId: actor.userId,
+        userToken: getPresentationToken(ctx, ["media:generate"]),
+        tenantId: actor.tenantId,
+        auditContext: {
+          userId: actor.userId,
+          source: "trpc.presentation.getMediaTask",
+          stage: "poll",
+          deckId: input.deckId,
+        },
+      });
+      if (task.status !== "completed") return task;
+      const durable = await ensurePresentationTaskResultDurable({
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId: input.deckId,
+        task,
+        mediaType: input.mediaType,
+        slotId: input.slotId,
+      });
+      if (!durable) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "งานสร้างสื่อเสร็จแล้วแต่ไม่พบไฟล์สำหรับจัดเก็บบน R2",
+        });
+      }
+      return durable.task;
+    }),
 
   ai: router({
     generateDraft: protectedProcedure

@@ -7,6 +7,7 @@ import {
   Download,
   FileText,
   Loader2,
+  Maximize2,
   Mail,
   RefreshCw,
   RotateCcw,
@@ -14,7 +15,9 @@ import {
   Settings2,
   ShieldAlert,
   Ticket,
+  Trash2,
   Wallet,
+  X,
 } from "lucide-react";
 
 import { trpc } from "@/lib/trpc";
@@ -174,6 +177,7 @@ type BillingRuntimeForm = {
   BILLING_OVERDUE_DAYS: string;
   BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: string;
   BILLING_TOPUP_DUE_DAYS: string;
+  BILLING_TOPUP_PENDING_RETENTION_DAYS: string;
   BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: string;
   BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: string;
   BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: string;
@@ -182,6 +186,20 @@ type BillingRuntimeForm = {
   BILLING_SUBSCRIPTION_CUTOVER_READY: boolean;
   BILLING_PUBLIC_URL: string;
   BILLING_PHASE2_STEP_UP_SECRET: string;
+  PROMPTPAY_DIRECT_ENABLED: boolean;
+  PROMPTPAY_DIRECT_RECIPIENT_ID: string;
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: "phone" | "national_id" | "tax_id" | "ewallet";
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: string;
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: string;
+  PROMPTPAY_DIRECT_FX_PROVIDER: "frankfurter_daily";
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: string;
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: string;
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: string;
+  PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: "1";
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: string;
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: string;
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: string;
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: string;
 };
 
 type AdminBillingTaxPolicy = {
@@ -271,6 +289,7 @@ const EMPTY_BILLING_RUNTIME_FORM: BillingRuntimeForm = {
   BILLING_OVERDUE_DAYS: "7",
   BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: "7",
   BILLING_TOPUP_DUE_DAYS: "1",
+  BILLING_TOPUP_PENDING_RETENTION_DAYS: "15",
   BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: "4",
   BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: "1",
   BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: "12",
@@ -279,6 +298,20 @@ const EMPTY_BILLING_RUNTIME_FORM: BillingRuntimeForm = {
   BILLING_SUBSCRIPTION_CUTOVER_READY: false,
   BILLING_PUBLIC_URL: "https://smartaihub.app",
   BILLING_PHASE2_STEP_UP_SECRET: "",
+  PROMPTPAY_DIRECT_ENABLED: false,
+  PROMPTPAY_DIRECT_RECIPIENT_ID: "",
+  PROMPTPAY_DIRECT_RECIPIENT_TYPE: "phone",
+  PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: "",
+  PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: "60",
+  PROMPTPAY_DIRECT_FX_PROVIDER: "frankfurter_daily",
+  PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: "72",
+  PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: "200",
+  PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: "300",
+  PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: "1",
+  PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: "20",
+  PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: "60",
+  PROMPTPAY_DIRECT_SLIP_MAX_BYTES: "10485760",
+  PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: "application/pdf,image/png,image/jpeg,image/webp",
 };
 
 async function readFileAsBase64(file: File): Promise<string> {
@@ -311,6 +344,16 @@ export default function AdminBillingCenter() {
   const [internationalTaxForm, setInternationalTaxForm] = useState<TaxPolicyForm>({ ...EMPTY_TAX_FORM, taxName: "International Tax" });
   const [beamProviderForm, setBeamProviderForm] = useState<BeamProviderForm>(EMPTY_BEAM_PROVIDER_FORM);
   const [billingRuntimeForm, setBillingRuntimeForm] = useState<BillingRuntimeForm>(EMPTY_BILLING_RUNTIME_FORM);
+  const [selectedPromptPayPaymentId, setSelectedPromptPayPaymentId] = useState<number | null>(null);
+  const [promptPayPreviewSlipId, setPromptPayPreviewSlipId] = useState<number | null>(null);
+  const [promptPayPreview, setPromptPayPreview] = useState<{
+    url: string;
+    mimeType: string;
+    fileName: string;
+  } | null>(null);
+  const [promptPayPreviewLoading, setPromptPayPreviewLoading] = useState(false);
+  const [promptPayFullscreen, setPromptPayFullscreen] = useState(false);
+  const [promptPayRejectReason, setPromptPayRejectReason] = useState("");
   const [renewalForm, setRenewalForm] = useState({
     subscriptionId: "",
     basePriceOverride: "",
@@ -321,7 +364,7 @@ export default function AdminBillingCenter() {
 
   const invoiceListQuery = trpc.adminBilling.listInvoices.useQuery({
     query: search || null,
-    limit: 50,
+    limit: 200,
   });
   const recoveryCasesQuery = trpc.adminBilling.listRecoveryCases.useQuery({
     invoiceId: selectedInvoiceId ?? null,
@@ -362,6 +405,13 @@ export default function AdminBillingCenter() {
   const beamProviderSettingsQuery = trpc.adminBilling.getBeamProviderSettings.useQuery();
   const beamProviderHealthQuery = trpc.adminBilling.testBeamProviderSettings.useQuery();
   const billingRuntimeSettingsQuery = trpc.adminBilling.getBillingRuntimeSettings.useQuery();
+  const promptPayReviewQueueQuery = trpc.adminBilling.listPromptPayReviewQueue.useQuery({ tenantId: null, limit: 100 });
+  const promptPayReviewQuery = trpc.adminBilling.getPromptPayReview.useQuery(
+    { paymentId: selectedPromptPayPaymentId ?? 0, tenantId: null },
+    { enabled: !!selectedPromptPayPaymentId },
+  );
+  const promptPaySlips = promptPayReviewQuery.data?.slips ?? [];
+  const promptPayPreviewSlip = promptPaySlips.find((slip) => slip.id === promptPayPreviewSlipId) ?? promptPaySlips[0] ?? null;
   const domesticPreviewQuery = trpc.adminBilling.previewInvoiceNumber.useQuery({ stream: "domestic" });
   const internationalPreviewQuery = trpc.adminBilling.previewInvoiceNumber.useQuery({ stream: "international" });
   const selectedInvoicePaymentMethodsQuery = trpc.adminBilling.listPaymentMethods.useQuery(
@@ -394,6 +444,28 @@ export default function AdminBillingCenter() {
         billingRuntimeSettingsQuery.refetch(),
         phase2MetricsQuery.refetch(),
       ]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const approvePromptPayPaymentMutation = trpc.adminBilling.approvePromptPayPayment.useMutation({
+    onSuccess: async () => {
+      toast.success("PromptPay payment approved and credits applied");
+      await Promise.all([promptPayReviewQueueQuery.refetch(), promptPayReviewQuery.refetch(), invoiceListQuery.refetch()]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const rejectPromptPayPaymentMutation = trpc.adminBilling.rejectPromptPayPayment.useMutation({
+    onSuccess: async () => {
+      toast.success("PromptPay slip rejected");
+      setPromptPayRejectReason("");
+      await Promise.all([promptPayReviewQueueQuery.refetch(), promptPayReviewQuery.refetch()]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const clearStaleTopupInvoicesMutation = trpc.adminBilling.clearStaleTopupInvoices.useMutation({
+    onSuccess: async (result) => {
+      toast.success(`Cleared ${result.clearedCount} stale top-up invoice(s)`);
+      await Promise.all([invoiceListQuery.refetch(), selectedInvoiceQuery.refetch(), promptPayReviewQueueQuery.refetch()]);
     },
     onError: (error) => toast.error(error.message),
   });
@@ -708,7 +780,7 @@ export default function AdminBillingCenter() {
   useEffect(() => {
     if (!billingRuntimeSettingsQuery.data) return;
     setBillingRuntimeForm((prev) => {
-      const next = {
+      const next: BillingRuntimeForm = {
         ...prev,
         PAYMENT_RECONCILIATION_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PAYMENT_RECONCILIATION_ENABLED),
         FINAL_RECONCILIATION_BEFORE_DOWNGRADE: Boolean(billingRuntimeSettingsQuery.data.FINAL_RECONCILIATION_BEFORE_DOWNGRADE),
@@ -737,6 +809,7 @@ export default function AdminBillingCenter() {
         BILLING_OVERDUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_OVERDUE_DAYS ?? "7",
         BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_RENEWAL_DUE_DAYS ?? "7",
         BILLING_TOPUP_DUE_DAYS: billingRuntimeSettingsQuery.data.BILLING_TOPUP_DUE_DAYS ?? "1",
+        BILLING_TOPUP_PENDING_RETENTION_DAYS: billingRuntimeSettingsQuery.data.BILLING_TOPUP_PENDING_RETENTION_DAYS ?? "15",
         BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS ?? "4",
         BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_REMINDER_FINAL_THRESHOLD_DAYS ?? "1",
         BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS: billingRuntimeSettingsQuery.data.BILLING_NOTIFICATION_COOLDOWN_REMINDER_HOURS ?? "12",
@@ -745,6 +818,20 @@ export default function AdminBillingCenter() {
         BILLING_SUBSCRIPTION_CUTOVER_READY: Boolean(billingRuntimeSettingsQuery.data.BILLING_SUBSCRIPTION_CUTOVER_READY),
         BILLING_PUBLIC_URL: billingRuntimeSettingsQuery.data.BILLING_PUBLIC_URL ?? "https://smartaihub.app",
         BILLING_PHASE2_STEP_UP_SECRET: "",
+        PROMPTPAY_DIRECT_ENABLED: Boolean(billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ENABLED),
+        PROMPTPAY_DIRECT_RECIPIENT_ID: "",
+        PROMPTPAY_DIRECT_RECIPIENT_TYPE: (billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_RECIPIENT_TYPE ?? "phone") as BillingRuntimeForm["PROMPTPAY_DIRECT_RECIPIENT_TYPE"],
+        PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME ?? "",
+        PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES ?? "60",
+        PROMPTPAY_DIRECT_FX_PROVIDER: "frankfurter_daily" as const,
+        PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS ?? "72",
+        PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS ?? "200",
+        PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS ?? "300",
+        PROMPTPAY_DIRECT_FX_ROUNDING_UNIT_THB: "1",
+        PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE ?? "20",
+        PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE ?? "60",
+        PROMPTPAY_DIRECT_SLIP_MAX_BYTES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_SLIP_MAX_BYTES ?? "10485760",
+        PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: billingRuntimeSettingsQuery.data.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES ?? "application/pdf,image/png,image/jpeg,image/webp",
       };
       return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
     });
@@ -753,7 +840,7 @@ export default function AdminBillingCenter() {
   const stats = useMemo(() => {
     const invoices = invoiceListQuery.data ?? [];
     return [
-      { label: "Recent invoices", value: String(invoices.length), icon: FileText },
+      { label: "Invoices loaded", value: String(invoices.length), icon: FileText },
       { label: "Pending", value: String(invoices.filter((invoice) => ["issued", "payment_pending"].includes(invoice.status)).length), icon: RefreshCw },
       { label: "Manual review", value: String(invoices.filter((invoice) => String(invoice.status) === "manual_review_required").length), icon: ShieldAlert },
       { label: "Recovery cases", value: String((recoveryCasesQuery.data ?? []).length), icon: Ticket },
@@ -775,6 +862,43 @@ export default function AdminBillingCenter() {
       toast.error(error instanceof Error ? error.message : "Failed to open document");
     }
   }
+
+  useEffect(() => {
+    setPromptPayPreviewSlipId(promptPaySlips[0]?.id ?? null);
+    setPromptPayPreview(null);
+    setPromptPayFullscreen(false);
+  }, [selectedPromptPayPaymentId]);
+
+  useEffect(() => {
+    if (!promptPayPreviewSlip) {
+      setPromptPayPreview(null);
+      setPromptPayPreviewLoading(false);
+      return;
+    }
+
+    let active = true;
+    setPromptPayPreviewLoading(true);
+    void utils.adminBilling.getPromptPaySlipAccess.fetch({
+      slipId: promptPayPreviewSlip.id,
+      tenantId: null,
+      ttlSeconds: 3600,
+    }).then((access) => {
+      if (!active) return;
+      setPromptPayPreview(access?.url ? {
+        url: access.url,
+        mimeType: promptPayPreviewSlip.mimeType,
+        fileName: promptPayPreviewSlip.originalFileName,
+      } : null);
+    }).catch(() => {
+      if (active) setPromptPayPreview(null);
+    }).finally(() => {
+      if (active) setPromptPayPreviewLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [promptPayPreviewSlip, utils]);
 
   function saveTaxPolicy(stream: "domestic" | "international") {
     const form = stream === "domestic" ? domesticTaxForm : internationalTaxForm;
@@ -875,12 +999,210 @@ export default function AdminBillingCenter() {
           </TabsList>
 
           <TabsContent value="operations" className="space-y-6">
+            <DashboardCard
+              eyebrow="Invoice retention"
+              title="Clear stale unpaid top-up invoices"
+              description={`ใบแจ้งหนี้ top-up ที่ยังไม่ชำระและไม่มีสลิปตรวจสอบ จะถูกเปลี่ยนเป็น canceled_overdue หลังเก็บไว้ ${billingRuntimeSettingsQuery.data?.BILLING_TOPUP_PENDING_RETENTION_DAYS ?? "15"} วัน โดยไม่ลบ invoice หรือ audit trail`}
+              leading={<Trash2 className="h-5 w-5 text-amber-600" />}
+            >
+              <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-medium">Retention policy: {billingRuntimeSettingsQuery.data?.BILLING_TOPUP_PENDING_RETENTION_DAYS ?? "15"} days</div>
+                  <div className="mt-1 text-amber-800">การเคลียร์จะยกเลิก payment ที่ค้าง ปล่อยเลข satang ที่จองไว้ และบันทึกเหตุผลไว้ใน audit log</div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => clearStaleTopupInvoicesMutation.mutate({ tenantId: null })}
+                  disabled={clearStaleTopupInvoicesMutation.isPending}
+                >
+                  {clearStaleTopupInvoicesMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                  Clear now
+                </Button>
+              </div>
+            </DashboardCard>
+            <DashboardCard
+              eyebrow="PromptPay Direct"
+              title="Manual slip approval queue"
+              description="ตรวจสอบสลิปก่อนอนุมัติ ระบบจะเพิ่มเครดิตให้ผู้ใช้แบบ atomic และกันการอนุมัติซ้ำ"
+              leading={<Wallet className="h-5 w-5 text-cyan-600" />}
+            >
+              <div className="grid gap-5 xl:grid-cols-[1fr_1.1fr]">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm text-slate-600">รายการรอตรวจ {promptPayReviewQueueQuery.data?.length ?? 0} รายการ</div>
+                    <Button variant="outline" size="sm" onClick={() => promptPayReviewQueueQuery.refetch()} disabled={promptPayReviewQueueQuery.isFetching}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                    </Button>
+                  </div>
+                  {(promptPayReviewQueueQuery.data ?? []).map((item) => (
+                    <button
+                      type="button"
+                      key={item.payment.id}
+                      onClick={() => setSelectedPromptPayPaymentId(item.payment.id)}
+                      className={`w-full rounded-xl border p-3 text-left transition ${selectedPromptPayPaymentId === item.payment.id ? "border-cyan-500 bg-cyan-50" : "border-slate-200 bg-white hover:border-cyan-300"}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-slate-900">{item.invoice.invoiceNumber ?? `Invoice #${item.invoice.id}`}</span>
+                        <Badge className={statusClass(item.payment.status)}>{item.payment.status}</Badge>
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600">{item.user.email ?? `User #${item.invoice.userId}`}</div>
+                      <div className="mt-1 text-sm font-semibold text-slate-900">{formatMoney(item.payment.expectedAmount, "THB")}</div>
+                    </button>
+                  ))}
+                  {(promptPayReviewQueueQuery.data ?? []).length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">ไม่มีรายการรอตรวจ</div> : null}
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  {!promptPayReviewQuery.data ? (
+                    <div className="text-sm text-slate-500">เลือก payment จากคิวเพื่อดูสลิปและรายละเอียด</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-2 text-sm">
+                        <div><span className="text-slate-500">Invoice:</span> <span className="font-medium">{promptPayReviewQuery.data.invoice.invoiceNumber ?? promptPayReviewQuery.data.invoice.id}</span></div>
+                        <div><span className="text-slate-500">ยอดโอน:</span> <span className="font-semibold">{formatMoney(promptPayReviewQuery.data.payment.expectedAmount, "THB")}</span></div>
+                        <div><span className="text-slate-500">ผู้ใช้:</span> {promptPayReviewQuery.data.user.email ?? promptPayReviewQuery.data.invoice.userId}</div>
+                        <div><span className="text-slate-500">Satang:</span> {promptPayReviewQuery.data.payment.randomSatang == null ? "-" : String(promptPayReviewQuery.data.payment.randomSatang).padStart(2, "0")}</div>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-medium text-slate-900">Slip preview</div>
+                          {promptPayPreview && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPromptPayFullscreen(true)}
+                            >
+                              <Maximize2 className="mr-2 h-4 w-4" /> Full screen
+                            </Button>
+                          )}
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-900">
+                          {promptPayPreviewLoading ? (
+                            <div className="flex min-h-56 items-center justify-center text-sm text-slate-300">
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading slip preview…
+                            </div>
+                          ) : promptPayPreview?.url ? (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              aria-label="Open slip preview full screen"
+                              className="relative cursor-zoom-in outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-inset"
+                              onClick={() => setPromptPayFullscreen(true)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  setPromptPayFullscreen(true);
+                                }
+                              }}
+                            >
+                              {promptPayPreview.mimeType === "application/pdf" ? (
+                                <iframe
+                                  title={`Slip preview: ${promptPayPreview.fileName}`}
+                                  src={promptPayPreview.url}
+                                  className="h-80 w-full bg-white"
+                                />
+                              ) : (
+                                <img
+                                  src={promptPayPreview.url}
+                                  alt={`Slip preview: ${promptPayPreview.fileName}`}
+                                  className="mx-auto max-h-80 w-full object-contain"
+                                />
+                              )}
+                              <span className="pointer-events-none absolute bottom-3 right-3 rounded-lg bg-slate-950/75 px-3 py-2 text-xs font-medium text-white">
+                                <Maximize2 className="mr-1 inline h-3.5 w-3.5" /> Click to expand
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex min-h-56 items-center justify-center px-6 text-center text-sm text-slate-300">
+                              Preview is unavailable for this slip. The file may have been removed or expired.
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-slate-900">Uploaded slips</div>
+                          {promptPaySlips.map((slip) => (
+                            <button
+                              type="button"
+                              key={slip.id}
+                              onClick={() => setPromptPayPreviewSlipId(slip.id)}
+                              className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left text-sm transition ${promptPayPreviewSlip?.id === slip.id ? "border-cyan-500 bg-cyan-50" : "border-slate-200 bg-white hover:border-cyan-300"}`}
+                            >
+                              <span>
+                                <span className="block font-medium text-slate-900">{slip.originalFileName}</span>
+                                <span className="block text-slate-500">{slip.status} · {formatDateTime(slip.uploadedAt)}</span>
+                              </span>
+                              <Maximize2 className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <Textarea value={promptPayRejectReason} onChange={(e) => setPromptPayRejectReason(e.target.value)} placeholder="เหตุผลเมื่อ reject สลิป" />
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          className="text-rose-700"
+                          disabled={rejectPromptPayPaymentMutation.isPending || promptPayRejectReason.trim().length < 3}
+                          onClick={() => rejectPromptPayPaymentMutation.mutate({ paymentId: promptPayReviewQuery.data.payment.id, tenantId: null, reason: promptPayRejectReason.trim() })}
+                        >Reject slip</Button>
+                        <Button
+                          disabled={approvePromptPayPaymentMutation.isPending}
+                          onClick={() => approvePromptPayPaymentMutation.mutate({ paymentId: promptPayReviewQuery.data.payment.id, tenantId: null })}
+                        >Approve & add credits</Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </DashboardCard>
+            {promptPayFullscreen && promptPayPreview?.url ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Full-screen slip preview: ${promptPayPreview.fileName}`}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4"
+                onClick={() => setPromptPayFullscreen(false)}
+              >
+                <div
+                  className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
+                    <div className="min-w-0 truncate text-sm font-medium">{promptPayPreview.fileName}</div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setPromptPayFullscreen(false)}
+                      aria-label="Close full-screen slip preview"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+                    {promptPayPreview.mimeType === "application/pdf" ? (
+                      <iframe
+                        title={`Full-screen slip preview: ${promptPayPreview.fileName}`}
+                        src={promptPayPreview.url}
+                        className="h-full w-full rounded-lg bg-white"
+                      />
+                    ) : (
+                      <img
+                        src={promptPayPreview.url}
+                        alt={`Full-screen slip preview: ${promptPayPreview.fileName}`}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-6">
                 <DashboardCard
                   eyebrow="Search"
-                  title="Recent invoices"
-                  description="Filter by invoice number, order reference, user id, payment id, or Beam provider reference."
+                  title="All invoices"
+                  description="แสดง invoice ล่าสุดไม่เกิน 200 รายการ และค้นหา invoice เก่าด้วยเลข invoice, order, user id, payment id หรือ provider reference ได้"
                 >
                   <div className="mb-4 flex gap-2">
                     <Input
@@ -1781,6 +2103,10 @@ export default function AdminBillingCenter() {
                       <Input value={billingRuntimeForm.BILLING_TOPUP_DUE_DAYS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, BILLING_TOPUP_DUE_DAYS: e.target.value }))} />
                     </div>
                     <div>
+                      <Label>Top-up pending retention days</Label>
+                      <Input value={billingRuntimeForm.BILLING_TOPUP_PENDING_RETENTION_DAYS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, BILLING_TOPUP_PENDING_RETENTION_DAYS: e.target.value }))} />
+                    </div>
+                    <div>
                       <Label>Reminder threshold days</Label>
                       <Input value={billingRuntimeForm.BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, BILLING_NOTIFICATION_REMINDER_FIRST_THRESHOLD_DAYS: e.target.value }))} placeholder="4" />
                     </div>
@@ -1813,6 +2139,88 @@ export default function AdminBillingCenter() {
                     <Button onClick={() => updateBillingRuntimeSettingsMutation.mutate(billingRuntimeForm)} disabled={updateBillingRuntimeSettingsMutation.isPending}>
                       {updateBillingRuntimeSettingsMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Save runtime settings
+                    </Button>
+                  </div>
+                </DashboardCard>
+
+                <DashboardCard
+                  eyebrow="PromptPay Direct"
+                  title="Direct payment and FX policy"
+                  description="เปิดรับ PromptPay โดยตรง ระบุบัญชีรับเงิน และกำหนดอัตราขายที่รวม spread กับ buffer กันความเสี่ยงอัตราแลกเปลี่ยน"
+                  leading={<Wallet className="h-5 w-5 text-emerald-600" />}
+                >
+                  <div className="mb-4 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div>
+                      <div className="font-medium text-slate-900">Enable PromptPay Direct</div>
+                      <div className="text-xs text-slate-500">ต้องบันทึกบัญชีรับเงินและชื่อบัญชีก่อนจึงจะเปิดให้ลูกค้าเห็น</div>
+                    </div>
+                    <Switch checked={billingRuntimeForm.PROMPTPAY_DIRECT_ENABLED} onCheckedChange={(checked) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ENABLED: checked }))} />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>PromptPay recipient ID</Label>
+                      <Input type="password" value={billingRuntimeForm.PROMPTPAY_DIRECT_RECIPIENT_ID} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_RECIPIENT_ID: e.target.value }))} placeholder={billingRuntimeSettingsQuery.data?.PROMPTPAY_DIRECT_RECIPIENT_IDConfigured ? "Leave blank to keep existing ID" : "0xxxxxxxxx"} />
+                    </div>
+                    <div>
+                      <Label>Account display name</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: e.target.value }))} placeholder="SmartAIHub" />
+                    </div>
+                    <div>
+                      <Label>Recipient type</Label>
+                      <Select value={billingRuntimeForm.PROMPTPAY_DIRECT_RECIPIENT_TYPE} onValueChange={(value) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_RECIPIENT_TYPE: value as BillingRuntimeForm["PROMPTPAY_DIRECT_RECIPIENT_TYPE"] }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="phone">Thai phone</SelectItem>
+                          <SelectItem value="national_id">National ID</SelectItem>
+                          <SelectItem value="tax_id">Tax ID</SelectItem>
+                          <SelectItem value="ewallet">E-wallet ID</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Order expiry minutes</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>FX source</Label>
+                      <Input value="Frankfurter daily USD/THB" readOnly />
+                    </div>
+                    <div>
+                      <Label>Max FX rate age (hours)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Sell spread (bps)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SELL_SPREAD_BPS: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>FX risk buffer (bps)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_RISK_BUFFER_BPS: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Minimum sanity rate</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SANITY_MIN_RATE: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Maximum sanity rate</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_FX_SANITY_MAX_RATE: e.target.value }))} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Allowed slip MIME types</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_SLIP_ALLOWED_TYPES: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Max slip size (bytes)</Label>
+                      <Input value={billingRuntimeForm.PROMPTPAY_DIRECT_SLIP_MAX_BYTES} onChange={(e) => setBillingRuntimeForm((prev) => ({ ...prev, PROMPTPAY_DIRECT_SLIP_MAX_BYTES: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Rounding unit (THB)</Label>
+                      <Input value="1" readOnly />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <Button onClick={() => updateBillingRuntimeSettingsMutation.mutate(billingRuntimeForm)} disabled={updateBillingRuntimeSettingsMutation.isPending}>
+                      Save PromptPay settings
                     </Button>
                   </div>
                 </DashboardCard>

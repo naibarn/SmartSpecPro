@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 
 import { getDb } from "../../db";
 import {
@@ -51,6 +51,9 @@ export async function reconcilePaymentWithProvider(params: {
     .limit(1);
   if (!invoice) {
     throw new Error("Invoice not found");
+  }
+  if (payment.paymentChannel === "promptpay_direct_manual") {
+    return { reconciled: false, reason: "direct_manual_payment" as const };
   }
   const renewalAttempt = await getCurrentRenewalAttemptForInvoice(invoice.id).catch(() => null);
 
@@ -266,11 +269,14 @@ export async function reconcilePendingPayments(params?: {
     .select({ id: payments.id })
     .from(payments)
     .where(
-      or(
+      and(
+        or(
         eq(payments.status, "payment_pending"),
         eq(payments.status, "provider_pending_unknown"),
         eq(payments.status, "reconciliation_required"),
         eq(payments.status, "manual_review_required"),
+        ),
+        ne(payments.paymentChannel, "promptpay_direct_manual"),
       ),
     )
     .limit(params?.limit ?? 50);

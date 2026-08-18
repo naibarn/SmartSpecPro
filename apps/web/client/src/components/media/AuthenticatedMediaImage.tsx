@@ -73,6 +73,8 @@ export function AuthenticatedMediaImage({
   fallback,
   loadingLabel = "กำลังโหลดภาพ...",
   errorLabel = "ไม่พบภาพ",
+  loading = "lazy",
+  decoding = "async",
   onError,
   ...imageProps
 }: AuthenticatedMediaImageProps) {
@@ -105,6 +107,8 @@ export function AuthenticatedMediaImage({
       src={resolvedSrc}
       alt={alt}
       className={className}
+      loading={loading}
+      decoding={decoding}
       onError={handleImageError}
     />
   );

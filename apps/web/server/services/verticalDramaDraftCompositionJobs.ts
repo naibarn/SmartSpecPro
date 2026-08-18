@@ -513,6 +513,8 @@ export async function runVerticalDramaDraftCompositionJob(
   let currentStage: VerticalDramaDraftCompositionFailure["stage"] =
     "building_foundation";
   let selectedModel: string | undefined = record.model;
+  let draft: SynthesizedGenrePresetDraft | undefined;
+  let totalCredits = 0;
   try {
     const model =
       record.model ?? (await resolveVerticalDramaRecommendedDraftModel());
@@ -624,8 +626,8 @@ export async function runVerticalDramaDraftCompositionJob(
           selectedPresets:
             synthesis.selectedPresets as PresetSynthesisPresetInput[],
         });
-    let draft = result.draft as SynthesizedGenrePresetDraft;
-    let totalCredits = foundationCredits + result.creditsUsed;
+    draft = result.draft as SynthesizedGenrePresetDraft;
+    totalCredits = foundationCredits + result.creditsUsed;
     if (result.model !== model) {
       throw new Error(
         `Draft synthesis used an unexpected LLM model: ${result.model}`
@@ -762,10 +764,35 @@ export async function runVerticalDramaDraftCompositionJob(
       stage: currentStage,
       modelId: selectedModel,
     });
+    let partialResult: VerticalDramaDraftCompositionResult | undefined;
+    if (draft) {
+      const synthesis = latest.synthesis;
+      const partialCheck = inspectVerticalDramaDraftCompleteness({
+        draft: draft as Record<string, unknown>,
+        targetEpisodeCount: synthesis.targetEpisodeCount,
+        genre: synthesis.genreHint,
+        userPremise: synthesis.userPremise,
+      });
+      const partialReport = verticalDramaDraftCompletionReportSchema.parse({
+        ...partialCheck.report,
+        repairRound: MAX_REPAIR_ROUNDS,
+        stage: currentStage,
+        fingerprint: fingerprint(draft),
+      });
+      partialResult = {
+        draft,
+        report: partialReport,
+        model: selectedModel ?? "unknown",
+        creditsUsed: totalCredits,
+        draftArtifactId: latest.jobId,
+        draftArtifact: latestArtifact,
+      };
+    }
     await writeRecord(
       {
         ...latest,
         status: "failed",
+        result: partialResult ?? latest.result,
         error: failure.message,
         failure,
         updatedAt: new Date().toISOString(),

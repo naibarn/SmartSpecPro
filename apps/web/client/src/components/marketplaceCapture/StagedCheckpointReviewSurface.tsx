@@ -114,6 +114,37 @@ export function StagedCheckpointReviewSurface(props: {
     trpc.marketplaceCapture.approveStagedAutoReviewCheckpoint.useMutation(
       mutationOptions
     );
+  // Older isolated component tests intentionally provide a partial tRPC
+  // mock. Keep the new additive mutation optional at the client boundary so
+  // those tests (and any embedded legacy surface) remain renderable; the
+  // production router always supplies the real hook.
+  const creativeQcProcedure = (trpc.marketplaceCapture as any)
+    .startAutoReviewDraftQualityQc;
+  const creativeQcMutation = creativeQcProcedure?.useMutation
+    ? creativeQcProcedure.useMutation(mutationOptions)
+    : {
+        isPending: false,
+        error: null,
+        mutate: (_input: unknown) => undefined,
+      };
+  const creativeQcRepairProcedure = (trpc.marketplaceCapture as any)
+    .startAutoReviewDraftQualityQcRepair;
+  const creativeQcRepairMutation = creativeQcRepairProcedure?.useMutation
+    ? creativeQcRepairProcedure.useMutation(mutationOptions)
+    : {
+        isPending: false,
+        error: null,
+        mutate: (_input: unknown) => undefined,
+      };
+  const creativeQcSelectRepairProcedure = (trpc.marketplaceCapture as any)
+    .selectAutoReviewDraftQualityQcRepair;
+  const creativeQcSelectRepairMutation = creativeQcSelectRepairProcedure?.useMutation
+    ? creativeQcSelectRepairProcedure.useMutation(mutationOptions)
+    : {
+        isPending: false,
+        error: null,
+        mutate: (_input: unknown) => undefined,
+      };
   const acceptImageMutation =
     trpc.marketplaceCapture.acceptStagedAutoReviewImage.useMutation(
       mutationOptions
@@ -201,6 +232,9 @@ export function StagedCheckpointReviewSurface(props: {
     if (chainPendingKey) return chainPendingKey;
     const entries: Array<[string, boolean]> = [
       ["approve", approveMutation.isPending],
+      ["creative-qc", creativeQcMutation.isPending],
+      ["creative-qc-repair", creativeQcRepairMutation.isPending],
+      ["creative-qc-repair-select", creativeQcSelectRepairMutation.isPending],
       ["accept-image", acceptImageMutation.isPending],
       ["reject", rejectMutation.isPending],
       ["edit-shot", editShotMutation.isPending],
@@ -223,6 +257,9 @@ export function StagedCheckpointReviewSurface(props: {
     approveMutation.isPending,
     bulkGeneratePending,
     chainPendingKey,
+    creativeQcMutation.isPending,
+    creativeQcRepairMutation.isPending,
+    creativeQcSelectRepairMutation.isPending,
     editAudioMutation.isPending,
     editFinalMutation.isPending,
     editShotMutation.isPending,
@@ -621,6 +658,17 @@ export function StagedCheckpointReviewSurface(props: {
         pendingAction={pendingMutation}
         onRefresh={refresh}
         onApprove={onApprove}
+        onStartCreativeQc={rounds =>
+          creativeQcMutation.mutate({ runId, maxImprovementRounds: rounds })
+        }
+        creativeQcStarting={creativeQcMutation.isPending}
+        creativeQcError={creativeQcMutation.error?.message ?? null}
+        onRepairCreativeQc={() => creativeQcRepairMutation.mutate({ runId })}
+        onSelectCreativeQcRepair={() =>
+          creativeQcSelectRepairMutation.mutate({ runId })
+        }
+        creativeQcRepairing={creativeQcRepairMutation.isPending}
+        creativeQcRepairError={creativeQcRepairMutation.error?.message ?? null}
         onReject={onReject}
         onEdit={onEdit}
         onGeneratePrompt={onGeneratePrompt}

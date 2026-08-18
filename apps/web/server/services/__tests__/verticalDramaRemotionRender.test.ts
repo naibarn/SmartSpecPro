@@ -619,7 +619,11 @@ describe("submitVdEpisodePreview", () => {
         tenantId: owner.tenantId,
         requestedByUserId: owner.userId,
       },
-      { queueJob, stageAsset }
+      {
+        queueJob,
+        stageAsset,
+        resolveWorkerAssetUrls: async urls => urls,
+      }
     );
 
     expect(result).toMatchObject({
@@ -670,7 +674,11 @@ describe("submitVdEpisodePreview", () => {
         tenantId: owner.tenantId,
         requestedByUserId: owner.userId,
       },
-      { queueJob, stageAsset }
+      {
+        queueJob,
+        stageAsset,
+        resolveWorkerAssetUrls: async urls => urls,
+      }
     );
 
     const workerInput = queueJob.mock.calls[0][0];
@@ -680,6 +688,58 @@ describe("submitVdEpisodePreview", () => {
     expect(workerInput.captionLines).toEqual([
       { startSec: 0, endSec: 2, text: "สวัสดี" },
     ]);
+  });
+
+  it("passes signed worker-facing URLs to both the template and asset manifest", async () => {
+    const queueJob = vi.fn().mockResolvedValue({
+      created: true,
+      job: { id: "preview-job-signed" },
+    });
+    const stageAsset = vi.fn(async (url: string, _base: string, wantDuration: boolean) =>
+      wantDuration
+        ? { durationSec: 4, sha256: `hash-${url}` }
+        : { sha256: `hash-${url}` }
+    );
+    const resolveWorkerAssetUrls = vi.fn(async (urls: string[]) =>
+      urls.map((url, index) => `https://signed.example/${index}-${url.split("/").pop()}`)
+    );
+
+    await submitVdEpisodePreview(
+      {
+        owner,
+        slotId: 3,
+        clips: [{ clipNumber: 2, videoUrl: "/api/storage/files/2.mp4" }],
+        coverImageUrl: "/api/storage/files/cover.jpg",
+        episodeLabel: "ตัวอย่าง",
+        internalBaseUrl: "http://localhost:3000",
+        publicBaseUrl: "https://smartaihub.app",
+        tenantId: owner.tenantId,
+        requestedByUserId: owner.userId,
+      },
+      { queueJob, stageAsset, resolveWorkerAssetUrls }
+    );
+
+    const workerInput = queueJob.mock.calls[0][0];
+    expect(resolveWorkerAssetUrls).toHaveBeenCalledWith(
+      [
+        "https://smartaihub.app/api/storage/files/2.mp4",
+        "https://smartaihub.app/api/storage/files/cover.jpg",
+      ],
+      { userId: owner.userId, tenantId: owner.tenantId },
+      "https://smartaihub.app"
+    );
+    expect(workerInput.remotionTemplate.layers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "clip-2", src: "https://signed.example/0-2.mp4" }),
+        expect.objectContaining({ id: "preview-end-card", src: "https://signed.example/1-cover.jpg" }),
+      ])
+    );
+    expect(workerInput.assetManifest.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ url: "https://signed.example/0-2.mp4" }),
+        expect.objectContaining({ url: "https://signed.example/1-cover.jpg" }),
+      ])
+    );
   });
 });
 
@@ -711,6 +771,9 @@ describe("submitVdRemotionAssembly", () => {
 
     expect(result.jobId).toBe("job-1");
     expect(queueJob).toHaveBeenCalledTimes(1);
+    expect(queueJob.mock.calls[0][0].assetManifest.sources[0].url).toBe(
+      "https://cdn.example.com/1.mp4"
+    );
     expect((episodeRow.assemblyManifest as any).compiledVideo).toMatchObject({
       pendingJobId: "job-1",
       status: "pending",
@@ -781,6 +844,112 @@ describe("submitVdRemotionAssembly", () => {
       // Prove it's a real content hash, not `sha256(url string)`.
       expect(source.sha256).not.toBe(hashOf(source.url));
     }
+  });
+
+  it("uses tenant-scoped broker URLs for every managed worker asset", async () => {
+    episodeRow = { assemblyManifest: {} };
+    const queueJob = vi
+      .fn()
+      .mockResolvedValue({ created: true, job: { id: "job-signed-assets" } });
+    const stageAsset = vi
+      .fn()
+      .mockResolvedValue({ durationSec: 8, sha256: "bytes-sha" });
+    const resolveWorkerAssetUrls = vi.fn(async (urls: string[]) =>
+      urls.map(
+        url =>
+          `https://smartaihub.app/api/mcp/downloads/ref/${url.split("/").pop()}`
+      )
+    );
+
+    await submitVdRemotionAssembly(
+      {
+        owner,
+        clips: [{ clipNumber: 1, videoUrl: "/api/storage/files/clip.mp4" }],
+        internalBaseUrl: "http://localhost:3000",
+        publicBaseUrl: "https://smartaihub.app",
+        filename: "ep-1.mp4",
+        banners: [
+          {
+            imageUrl: "/api/storage/files/banner.png",
+            placementId: "bottom_band",
+            startSec: 0,
+            endSec: 8,
+            fadeSec: 0.3,
+          },
+        ],
+        dialogueAudio: {
+          segments: [
+            {
+              audioUrl: "/api/storage/files/dialogue.mp3",
+              startSec: 0,
+              endSec: 2,
+            },
+          ],
+        },
+        watermarkImages: [
+          {
+            slotId: "primary",
+            imageUrl: "/api/storage/files/watermark.png",
+            position: "top_left",
+            opacity: 1,
+            scalePct: 100,
+            marginPx: 16,
+          },
+        ],
+        tenantId: owner.tenantId,
+        requestedByUserId: owner.userId,
+      },
+      { queueJob, stageAsset, resolveWorkerAssetUrls }
+    );
+
+    const workerInput = queueJob.mock.calls[0][0] as Record<string, any>;
+    expect(resolveWorkerAssetUrls).toHaveBeenCalledTimes(4);
+    expect(resolveWorkerAssetUrls).toHaveBeenCalledWith(
+      ["https://smartaihub.app/api/storage/files/clip.mp4"],
+      { userId: owner.userId, tenantId: owner.tenantId },
+      "https://smartaihub.app"
+    );
+    expect(
+      workerInput.assetManifest.sources.map((source: any) => source.url)
+    ).toEqual([
+      "https://smartaihub.app/api/mcp/downloads/ref/clip.mp4",
+      "https://smartaihub.app/api/mcp/downloads/ref/banner.png",
+      "https://smartaihub.app/api/mcp/downloads/ref/dialogue.mp3",
+      "https://smartaihub.app/api/mcp/downloads/ref/watermark.png",
+    ]);
+    expect(
+      workerInput.remotionTemplate.layers
+        .filter((layer: any) => typeof layer.src === "string")
+        .every((layer: any) => layer.src.includes("/api/mcp/downloads/"))
+    ).toBe(true);
+  });
+
+  it("fails before queueing when managed worker URLs cannot be resolved", async () => {
+    episodeRow = { assemblyManifest: {} };
+    const queueJob = vi.fn();
+    const stageAsset = vi
+      .fn()
+      .mockResolvedValue({ durationSec: 8, sha256: "bytes-sha" });
+
+    await expect(
+      submitVdRemotionAssembly(
+        {
+          owner,
+          clips: [{ clipNumber: 1, videoUrl: "/api/storage/files/clip.mp4" }],
+          internalBaseUrl: "http://localhost:3000",
+          publicBaseUrl: "https://smartaihub.app",
+          filename: "ep-1.mp4",
+          tenantId: owner.tenantId,
+          requestedByUserId: owner.userId,
+        },
+        {
+          queueJob,
+          stageAsset,
+          resolveWorkerAssetUrls: vi.fn().mockResolvedValue([]),
+        }
+      )
+    ).rejects.toMatchObject({ code: "asset_url_resolution_failed" });
+    expect(queueJob).not.toHaveBeenCalled();
   });
 
   it("passes top-level Text Overlay Suite events into the Remotion template", async () => {
@@ -907,6 +1076,77 @@ describe("submitVdProductionEpisodeAssembly", () => {
     expect(queuedInput.segmentTemplates).toHaveLength(2);
     expect(queuedInput.segmentPlan.parts).toHaveLength(2);
     expect(queuedInput.postPasses).toEqual(["segment_concat"]);
+  });
+
+  it("uses broker URLs for managed clips, watermark, and BGM in segmented jobs", async () => {
+    const queueJob = vi.fn().mockResolvedValue({
+      created: true,
+      job: { id: "production-job-signed-assets" },
+    });
+    const stageAsset = vi
+      .fn()
+      .mockResolvedValue({ durationSec: 8, sha256: "bytes-sha" });
+    const resolveWorkerAssetUrls = vi.fn(async (urls: string[]) =>
+      urls.map(
+        url =>
+          `https://smartaihub.app/api/mcp/downloads/ref/${url.split("/").pop()}`
+      )
+    );
+
+    await submitVdProductionEpisodeAssembly(
+      {
+        owner: { tenantId: "tenant-1", userId: 1, seriesId: 10 },
+        productionEpisodeNumber: 1,
+        segments: [
+          {
+            subEpisodeNumber: 1,
+            clips: [{ clipNumber: 1, videoUrl: "/api/storage/files/clip.mp4" }],
+          },
+        ],
+        internalBaseUrl: "http://localhost:3000",
+        publicBaseUrl: "https://smartaihub.app",
+        showEpisodeIndicator: false,
+        showSeriesTitle: false,
+        watermarkImages: [
+          {
+            slotId: "primary",
+            imageUrl: "/api/storage/files/watermark.png",
+            position: "top_left",
+            opacity: 1,
+            scalePct: 100,
+            marginPx: 16,
+          },
+        ],
+        bgm: {
+          tracks: [
+            {
+              id: "music-a",
+              url: "/api/storage/files/music.mp3",
+              startSeconds: 0,
+              endSeconds: null,
+              volumePercent: 50,
+              loopUntilEnd: true,
+              duckUnderVideoAudio: false,
+            },
+          ],
+        },
+      },
+      { queueJob, stageAsset, resolveWorkerAssetUrls }
+    );
+
+    const workerInput = queueJob.mock.calls[0][0] as Record<string, any>;
+    expect(
+      workerInput.assetManifest.sources.map((source: any) => source.url)
+    ).toEqual([
+      "https://smartaihub.app/api/mcp/downloads/ref/clip.mp4",
+      "https://smartaihub.app/api/mcp/downloads/ref/watermark.png",
+      "https://smartaihub.app/api/mcp/downloads/ref/music.mp3",
+    ]);
+    expect(
+      workerInput.segmentTemplates[0].layers
+        .filter((layer: any) => typeof layer.src === "string")
+        .every((layer: any) => layer.src.includes("/api/mcp/downloads/"))
+    ).toBe(true);
   });
 
   it("slices multi-track BGM across segments and keeps credits on the final segment", async () => {

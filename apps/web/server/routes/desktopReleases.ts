@@ -48,7 +48,7 @@ import {
 
 const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
-const MARKETPLACE_EXTENSION_FILE_PATTERN = /^smartaihub-marketplace-capture-extension-(.+)\.zip$/i;
+const COMPANION_EXTENSION_FILE_PATTERN = /^smartaihub-(?:companion|marketplace-capture)-extension-(.+)\.zip$/i;
 const WORKER_APP_FILE_PATTERN = /^smart-ai-hub-worker-app-(.+)-x64-setup\.(exe|msi)$/i;
 const WORKER_APP_MAC_SOURCE_FILE_PATTERN = /^smart-ai-hub-worker-app-macos-source-(.+)\.zip$/i;
 
@@ -259,10 +259,10 @@ function listPublicDashboardReleases(options: {
   });
 }
 
-function getLatestMarketplaceExtensionRelease(): PublicDashboardRelease | null {
+function getLatestCompanionExtensionRelease(downloadUrl: string): PublicDashboardRelease | null {
   return listPublicDashboardReleases({
-    filePattern: MARKETPLACE_EXTENSION_FILE_PATTERN,
-    downloadUrl: "/api/desktop-releases/marketplace-extension/download",
+    filePattern: COMPANION_EXTENSION_FILE_PATTERN,
+    downloadUrl,
     resolveContentType: () => "application/zip",
     resolveInstallerFormat: () => "zip",
   })[0] ?? null;
@@ -356,44 +356,63 @@ export function createDesktopReleaseRouter(): Router {
     }
   });
 
-  router.get("/marketplace-extension/latest", (_req, res) => {
-    try {
-      const release = getLatestMarketplaceExtensionRelease();
-      res.setHeader("Cache-Control", "no-store");
-      res.json({
-        generatedAt: new Date().toISOString(),
-        release: release
-          ? {
-            version: release.version,
-            fileName: release.fileName,
-            fileSizeBytes: release.fileSizeBytes,
-            updatedAt: release.updatedAt,
-            downloadUrl: release.downloadUrl,
-          }
-          : null,
-      });
-    } catch (error) {
-      res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_list_marketplace_extension_release",
-      });
-    }
-  });
-
-  router.get("/marketplace-extension/download", (_req, res) => {
-    try {
-      const release = getLatestMarketplaceExtensionRelease();
-      if (!release) {
-        res.status(404).json({ error: "marketplace_extension_release_not_found" });
-        return;
+  const registerCompanionExtensionRoutes = (routeName: "companion-extension" | "marketplace-extension") => {
+    const isLegacyRoute = routeName === "marketplace-extension";
+    const downloadUrl = `/api/desktop-releases/${routeName}/download`;
+    router.get(`/${routeName}/latest`, (_req, res) => {
+      try {
+        const release = getLatestCompanionExtensionRelease(downloadUrl);
+        res.setHeader("Cache-Control", "no-store");
+        res.json({
+          generatedAt: new Date().toISOString(),
+          release: release
+            ? {
+              version: release.version,
+              fileName: release.fileName,
+              fileSizeBytes: release.fileSizeBytes,
+              updatedAt: release.updatedAt,
+              downloadUrl: release.downloadUrl,
+            }
+            : null,
+        });
+      } catch (error) {
+        res.status(400).json({
+          error: error instanceof Error
+            ? error.message
+            : isLegacyRoute
+              ? "failed_to_list_marketplace_extension_release"
+              : "failed_to_list_companion_extension_release",
+        });
       }
+    });
 
-      sendPublicDashboardRelease(res, release);
-    } catch (error) {
-      res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_download_marketplace_extension_release",
-      });
-    }
-  });
+    router.get(`/${routeName}/download`, (_req, res) => {
+      try {
+        const release = getLatestCompanionExtensionRelease(downloadUrl);
+        if (!release) {
+          res.status(404).json({
+            error: isLegacyRoute
+              ? "marketplace_extension_release_not_found"
+              : "companion_extension_release_not_found",
+          });
+          return;
+        }
+
+        sendPublicDashboardRelease(res, release);
+      } catch (error) {
+        res.status(400).json({
+          error: error instanceof Error
+            ? error.message
+            : isLegacyRoute
+              ? "failed_to_download_marketplace_extension_release"
+              : "failed_to_download_companion_extension_release",
+        });
+      }
+    });
+  };
+
+  registerCompanionExtensionRoutes("companion-extension");
+  registerCompanionExtensionRoutes("marketplace-extension");
 
   router.get("/worker-app/latest", (_req, res) => {
     try {

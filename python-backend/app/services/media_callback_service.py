@@ -378,6 +378,14 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
         event.updated_at = datetime.utcnow()
         await db.commit()
 
+        if (
+            task.media_type == "image"
+            and target_status in {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}
+        ):
+            from app.tasks.media_tasks import _dispatch_pending_image_tasks_async
+
+            await _dispatch_pending_image_tasks_async(task.user_id)
+
         logger.info(
             "media_callback_processed",
             event_id=event.id,

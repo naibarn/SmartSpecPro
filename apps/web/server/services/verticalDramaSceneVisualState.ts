@@ -150,6 +150,7 @@ export interface SceneVisualStateWardrobeInput {
 export interface GenerateSceneVisualStateParams {
   userId: number;
   tenantId?: string;
+  publicUrl?: string | null;
   seriesId: number;
   /** Provenance/logging only; never reaches the prompt. */
   episodeId?: number;
@@ -317,6 +318,8 @@ export async function generateSceneVisualState(
     hasVision: resolution.hasVision,
     images,
     userId: params.userId,
+    tenantId: params.tenantId,
+    publicUrl: params.publicUrl,
     schema: sceneVisualStatePlanOutputSchema,
     firstAttemptMaxTokens: 2000,
     retryMaxTokens: 3000,

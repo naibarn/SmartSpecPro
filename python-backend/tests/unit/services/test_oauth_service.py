@@ -10,6 +10,7 @@ import json
 import uuid
 
 from app.services.oauth_service import OAuthService, state_serializer
+from app.models.user import Role, User
 
 
 class TestOAuthServiceInit:
@@ -20,6 +21,28 @@ class TestOAuthServiceInit:
         mock_db = MagicMock()
         service = OAuthService(mock_db)
         assert service.db == mock_db
+
+
+class TestOAuthUserModelContract:
+    """Ensure OAuth user creation uses the shared SmartSpecWeb schema."""
+
+    def test_oauth_user_fields_match_shared_user_model(self):
+        user = User(
+            email="oauth@example.com",
+            password=None,
+            name="OAuth User",
+            loginMethod="google",
+            role=Role.user,
+            credits=0,
+            isDisabled=False,
+        )
+
+        assert user.password is None
+        assert user.name == "OAuth User"
+        assert user.loginMethod == "google"
+        assert user.role == Role.user
+        assert user.credits == 0
+        assert user.isDisabled is False
 
 
 class TestGenerateOAuthState:

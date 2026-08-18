@@ -54,6 +54,10 @@ vi.mock("sonner", () => ({
   },
 }));
 
+vi.mock("@/components/ui/confirm/ConfirmProvider", () => ({
+  useConfirm: () => ({ confirm: vi.fn() }),
+}));
+
 vi.stubGlobal("fetch", fetchMock);
 
 import { DesktopReleasePanel } from "../DesktopReleasePanel";
@@ -61,7 +65,7 @@ import { DesktopReleasePanel } from "../DesktopReleasePanel";
 const BUILD_SESSION_KEY = "smartaihub.desktop-release.build-session.v1";
 
 function maybeHandleDashboardReleaseRequest(href: string): Response | null {
-  if (href.includes("/marketplace-extension/latest")) {
+  if (href.includes("/companion-extension/latest")) {
     return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), {
       status: 200,
       headers: {
@@ -400,7 +404,7 @@ describe("DesktopReleasePanel", () => {
   it("shows the Smart AI Hub Worker App dashboard download when a Windows installer is available", async () => {
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);
-      if (href.includes("/marketplace-extension/latest")) {
+      if (href.includes("/companion-extension/latest")) {
         return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), {
           status: 200,
           headers: {

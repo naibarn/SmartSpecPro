@@ -13,6 +13,8 @@ describe("vertical-drama-draft-quality-controller skill", () => {
     expect(skill).toContain("revise");
     expect(skill).toMatch(/Spoken-language profile is[\s\S]*only for dialogue\/audio downstream/);
     expect(skill).toContain("long_form_sustainability");
+    expect(skill).toContain("allowlisted `storyDesign`");
+    expect(skill).toContain("Do not add or change unknown");
   });
 
   it("contains strict mode-specific schemas and all prompt files", () => {

@@ -16,6 +16,7 @@ import {
   type StagedCheckpointApprovalExpectationV1,
   type StagedSequentialStoryboardMetadataV1,
 } from "@shared/marketplaceAutoReview/stagedContracts";
+import { createMarketplaceDraftQcState } from "@shared/marketplaceAutoReview/draftQualityQc";
 import {
   assessStagedPlanAdherence,
   buildStagedCheckpoint,
@@ -149,9 +150,7 @@ export function modelCost(modelId: string): number {
 
 // Video dispatch used to hardcode `resolution: "1080p"` for every model.
 // Kie.ai rejects the whole task submission for models whose config doesn't
-// list 1080p as a supported option (e.g. grok-imagine-video-1-5-preview only
-// supports 480p/720p — confirmed via a live "resolution is not within the
-// range of allowed options" failure). Prefer 1080p when the model actually
+// list 1080p as a supported option. Prefer 1080p when the model actually
 // supports it, otherwise fall back to whatever its highest supported option
 // is; models with no resolution config at all keep the old "1080p" default.
 function resolveVideoResolution(modelId: string): string {
@@ -1111,6 +1110,7 @@ function buildFreshStagedMetadataFromPlan(input: {
       redraftCount: 0,
       lastOperationId: null,
     },
+    creativeQc: createMarketplaceDraftQcState(),
     stagedSequentialStoryboard: {
       storyPlanStatus: "awaiting" as const,
       planRevision: plan.planRevision,
@@ -1326,6 +1326,7 @@ function stagedMetadataForPlan(input: {
       redraftCount: input.redraftCount,
       lastOperationId: null,
     },
+    creativeQc: createMarketplaceDraftQcState(),
     stagedSequentialStoryboard: {
       ...record(input.base.stagedSequentialStoryboard),
       storyPlanStatus: "awaiting" as const,
@@ -3084,6 +3085,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
         token,
         {
           userId: params.auth.userId,
+          tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
           traceId: `staged-audio-poll:${params.run.id}`,
           source: "marketplace_auto_review_staged",
           stage: "audio_generation",

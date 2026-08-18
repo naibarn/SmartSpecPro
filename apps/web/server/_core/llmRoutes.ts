@@ -2,7 +2,11 @@ import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { decrypt } from "../services/crypto";
 import { ENV } from "./env";
-import { compareCachedInternalToken, getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
+import {
+  compareCachedInternalToken,
+  getCachedAppRuntimeConfig,
+  getCachedPublicAppUrl,
+} from "../services/appRuntimeConfig";
 import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
 import { getUserByOpenId, getUserById, getDb, db } from "../db";
@@ -58,6 +62,25 @@ import { getEffectiveSafetyProfileFromPrefs } from "../services/ageSafetyProfile
 import { getSecurityPinVersion } from "../services/securityPinService";
 import { getPolicyDayKey, getProtectedSurfaceScopes } from "../services/protectedSurfaceTokenService";
 import { DEFAULT_AGE_SAFETY_POLICY } from "../../shared/ageSafetyPolicy";
+import { resolveExternalMediaMessageUrls } from "../services/mediaGenerationService";
+import { resolveMcpDownloadRef } from "../services/mcpDownloadBrokerService";
+
+function getPublicUrlForRequest(req: Request): string | null {
+  const primaryDomain = String((req as any).tenant?.primaryDomain || "").trim();
+  if (primaryDomain) return `https://${primaryDomain}`;
+
+  const configuredPublicUrl = getCachedPublicAppUrl();
+  if (configuredPublicUrl) return configuredPublicUrl;
+
+  const host = String(req.headers.host || "").trim();
+  if (host) {
+    const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
+    const protocol = forwardedProto === "https" || req.secure ? "https" : "http";
+    return `${protocol}://${host}`;
+  }
+
+  return null;
+}
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -3425,6 +3448,53 @@ function estimateDelegatedChatCredits(
 }
 
 export function registerLLMRoutes(app: Express) {
+  const handleManagedMediaDownload = async (req: Request, res: Response) => {
+    try {
+      const result = await resolveMcpDownloadRef(req.params.token, req.headers.range);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Content-Type", result.contentType);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${result.fileName.replace(/"/g, "_")}"; filename*=UTF-8''${encodeURIComponent(result.fileName)}`,
+      );
+      if (result.contentLength != null) {
+        res.setHeader("Content-Length", String(result.contentLength));
+      }
+      if (result.isPartial && result.rangeStart != null && result.rangeEnd != null) {
+        res.status(206);
+        res.setHeader(
+          "Content-Range",
+          `bytes ${result.rangeStart}-${result.rangeEnd}/${result.totalLength ?? "*"}`,
+        );
+      }
+
+      const stream = result.stream as any;
+      if (typeof stream.pipe === "function") {
+        stream.pipe(res);
+        return;
+      }
+      const reader = stream.getReader();
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        res.write(chunk.value);
+      }
+      res.end();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "download_failed";
+      const status = message === "download_ref_invalid" ? 401
+        : message === "download_ref_revoked" ? 410
+          : message === "download_grant_unavailable" ? 503
+            : 404;
+      if (!res.headersSent) res.status(status).json({ error: message });
+    }
+  };
+
+  app.get("/api/mcp/downloads/:token/:fileName", handleManagedMediaDownload);
+  app.get("/api/mcp/downloads/:token", handleManagedMediaDownload);
+
   // Initialize database connection
   try {
     void getDb();
@@ -3795,6 +3865,28 @@ export function registerLLMRoutes(app: Express) {
           }
         } catch (err: any) {
           debugLog("LLM", "Help context injection failed (non-fatal)", err?.message);
+        }
+      }
+
+      if (Array.isArray(req.body?.messages)) {
+        try {
+          const tenantId = String((req as any).tenantId || "").trim();
+          req.body.messages = await resolveExternalMediaMessageUrls(
+            req.body.messages as Array<Record<string, unknown>>,
+            tenantId ? { userId: check.userId, tenantId } : undefined,
+            getPublicUrlForRequest(req),
+          );
+        } catch (err: any) {
+          debugLog("LLM", "Managed chat media resolution failed", err?.message);
+          res.status(200);
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          res.write(`event: error\n`);
+          res.write(
+            `data: ${JSON.stringify({ message: err?.message || "Image attachment could not be prepared" })}\n\n`,
+          );
+          res.write(`data: [DONE]\n\n`);
+          res.end();
+          return;
         }
       }
 

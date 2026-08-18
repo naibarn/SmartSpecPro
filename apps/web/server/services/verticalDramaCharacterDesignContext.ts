@@ -36,6 +36,9 @@ type SeriesContextRow = Pick<
   VerticalDramaSeriesRow,
   "id" | "title" | "genre" | "tone" | "bible" | "updatedAt"
 > & {
+  /** Locale and target-audience facts are optional for fixture/backward compatibility. */
+  locale?: VerticalDramaSeriesRow["locale"];
+  targetAudience?: VerticalDramaSeriesRow["targetAudience"];
   /**
    * Season lineage (`planning/vd-series-memory-and-lineage/plan.md` Stage
    * 2.3) — read-only here, consulted ONLY by `loadCharacterDesignContext`'s
@@ -186,6 +189,15 @@ function buildSeriesDna(series: SeriesContextRow) {
     title: series.title,
     genre: series.genre,
     tone: series.tone,
+    locale: series.locale ?? null,
+    targetAudience: series.targetAudience ?? null,
+    dialogueLanguage:
+      firstText(bible, ["dialogueLanguage", "dialogueStyle", "language"]) ??
+      (series.locale === "th"
+        ? "Natural spoken Thai appropriate to the story setting"
+        : series.locale === "en"
+          ? "Natural spoken English appropriate to the story setting"
+          : undefined),
     storyWorld:
       firstText(bible, [
         "storyWorld",

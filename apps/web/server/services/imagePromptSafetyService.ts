@@ -1,11 +1,13 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
 
 const SKILL_ID = "image-prompt-safety-rewriter";
 const SKILL_VERSION = "1.0.0";
 const MAX_PROMPT_LENGTH = 20_000;
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
 export type ImagePromptSafetyMode = "standard" | "vertical_drama_managed";
 export type ImagePromptRiskLevel = "low" | "medium" | "high";
@@ -59,7 +61,7 @@ function loadSafetySkill(): string {
     path.resolve(process.cwd(), "skills", SKILL_ID, "skill.md"),
     path.resolve(process.cwd(), "apps", "web", "skills", SKILL_ID, "skill.md"),
     path.resolve(process.cwd(), "..", "skills", SKILL_ID, "skill.md"),
-    path.resolve(__dirname, "..", "..", "skills", SKILL_ID, "skill.md"),
+    path.resolve(moduleDir, "..", "..", "skills", SKILL_ID, "skill.md"),
   ];
   for (const skillPath of candidates) {
     try {

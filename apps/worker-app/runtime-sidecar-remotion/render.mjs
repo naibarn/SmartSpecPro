@@ -37,8 +37,22 @@
  * accept a `browserExecutable` override.
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import {
+  copyFileSync,
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { createServer } from "node:http";
+import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
@@ -76,6 +90,235 @@ function loadCompositionApi() {
 // has a much larger execution timeout.
 const REMOTION_RENDER_TIMEOUT_IN_MILLISECONDS =
   REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS;
+
+const REMOTION_STAGED_ASSET_DIRNAME = "remotion-assets";
+const REMOTION_STAGED_ASSET_ROUTE = "/asset/";
+
+function sourceFileExtension(sourceUrl, role) {
+  try {
+    const extension = extname(new URL(sourceUrl).pathname).toLowerCase();
+    if (/^\.[a-z0-9]{1,8}$/.test(extension)) return extension;
+  } catch {
+    // Fall through to a role-based extension for malformed or relative URLs.
+  }
+  return role === "video" ? ".mp4" : role === "audio" ? ".audio" : ".asset";
+}
+
+async function streamResponseToFile(response, filePath) {
+  if (!response.body) {
+    const bytes = Buffer.from(await response.arrayBuffer());
+    writeFileSync(filePath, bytes);
+    return createHash("sha256").update(bytes).digest("hex");
+  }
+
+  const hash = createHash("sha256");
+  const hashingTransform = new Transform({
+    transform(chunk, _encoding, callback) {
+      hash.update(chunk);
+      callback(null, chunk);
+    },
+  });
+  await pipeline(
+    Readable.fromWeb(response.body),
+    hashingTransform,
+    createWriteStream(filePath),
+  );
+  return hash.digest("hex");
+}
+
+async function hashFileSha256(filePath) {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+  return hash.digest("hex");
+}
+
+/**
+ * Downloads manifest sources once per sidecar job. The returned files live
+ * outside the orchestrator's per-attempt subdirectories so retry attempts can
+ * reuse the exact same verified bytes.
+ */
+export async function stageRemotionAssetsLocally({
+  workspace,
+  assetManifest,
+  fetchAsset = globalThis.fetch,
+}) {
+  const sources = Array.isArray(assetManifest?.sources) ? assetManifest.sources : [];
+  const rootDir = join(workspace, REMOTION_STAGED_ASSET_DIRNAME);
+  mkdirSync(rootDir, { recursive: true });
+
+  if (typeof fetchAsset !== "function") {
+    throw new Error("The Remotion sidecar requires fetch to stage HTTP assets");
+  }
+
+  const urlMap = new Map();
+  const stagedBySource = new Map();
+  let verifiedCount = 0;
+  let skippedCount = 0;
+
+  for (const [index, source] of sources.entries()) {
+    const sourceUrl = typeof source?.url === "string" ? source.url : "";
+    if (!/^https?:\/\//i.test(sourceUrl)) {
+      skippedCount += 1;
+      continue;
+    }
+
+    const sourceKey = `${sourceUrl}\u0000${source.sha256 ?? ""}`;
+    const existingFileName = stagedBySource.get(sourceKey);
+    if (existingFileName) {
+      urlMap.set(sourceUrl, existingFileName);
+      verifiedCount += 1;
+      continue;
+    }
+
+    const response = await fetchAsset(sourceUrl, {
+      signal: AbortSignal.timeout(REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS),
+    });
+    if (!response?.ok) {
+      throw new Error(
+        `Failed to stage Remotion asset ${sourceUrl}: HTTP ${response?.status ?? "unknown"}`,
+      );
+    }
+
+    const fileName = `asset-${index}-${source.sha256?.slice(0, 24) || "unhashed"}${sourceFileExtension(sourceUrl, source.role)}`;
+    const filePath = join(rootDir, fileName);
+    if (source.sha256 && existsSync(filePath)) {
+      const cachedSha256 = await hashFileSha256(filePath);
+      if (cachedSha256 === source.sha256) {
+        stagedBySource.set(sourceKey, fileName);
+        urlMap.set(sourceUrl, fileName);
+        verifiedCount += 1;
+        continue;
+      }
+      unlinkSync(filePath);
+    }
+    let actualSha256;
+    try {
+      actualSha256 = await streamResponseToFile(response, filePath);
+      if (source.sha256 && actualSha256 !== source.sha256) {
+        throw new Error(
+          `SHA-256 mismatch for Remotion asset ${sourceUrl}: expected ${source.sha256}, got ${actualSha256}`,
+        );
+      }
+    } catch (error) {
+      if (existsSync(filePath)) unlinkSync(filePath);
+      throw error;
+    }
+
+    stagedBySource.set(sourceKey, fileName);
+    urlMap.set(sourceUrl, fileName);
+    verifiedCount += 1;
+  }
+
+  return { rootDir, urlMap, verifiedCount, skippedCount };
+}
+
+export function rewriteRemotionTemplateAssetUrls(template, urlForAsset) {
+  if (!template || !Array.isArray(template.layers)) return template;
+  return {
+    ...template,
+    layers: template.layers.map(layer => {
+      if (
+        !layer ||
+        !["image", "video", "audio"].includes(layer.type) ||
+        typeof layer.src !== "string"
+      ) {
+        return layer;
+      }
+      const localUrl = urlForAsset(layer.src);
+      return localUrl ? { ...layer, src: localUrl } : layer;
+    }),
+  };
+}
+
+export function rewriteRemotionRenderVideoPayload(payload, urlForAsset) {
+  return {
+    ...payload,
+    remotionTemplate: rewriteRemotionTemplateAssetUrls(
+      payload.remotionTemplate,
+      urlForAsset,
+    ),
+    ...(Array.isArray(payload.segmentTemplates)
+      ? {
+          segmentTemplates: payload.segmentTemplates.map(template =>
+            rewriteRemotionTemplateAssetUrls(template, urlForAsset),
+          ),
+        }
+      : {}),
+  };
+}
+
+export async function startLocalRemotionAssetServer(rootDir) {
+  const server = createServer((request, response) => {
+    if (!request.url?.startsWith(REMOTION_STAGED_ASSET_ROUTE)) {
+      response.writeHead(404).end();
+      return;
+    }
+
+    let fileName;
+    try {
+      const requestPath = new URL(request.url, "http://127.0.0.1").pathname;
+      if (!requestPath.startsWith(REMOTION_STAGED_ASSET_ROUTE)) {
+        response.writeHead(404).end();
+        return;
+      }
+      fileName = decodeURIComponent(requestPath.slice(REMOTION_STAGED_ASSET_ROUTE.length));
+    } catch {
+      response.writeHead(400).end();
+      return;
+    }
+    if (!fileName || fileName.includes("/") || fileName.includes("\\")) {
+      response.writeHead(400).end();
+      return;
+    }
+
+    const filePath = join(rootDir, fileName);
+    const relativePath = relative(resolve(rootDir), resolve(filePath));
+    if (
+      !relativePath ||
+      relativePath.startsWith("..") ||
+      isAbsolute(relativePath) ||
+      !existsSync(filePath)
+    ) {
+      response.writeHead(404).end();
+      return;
+    }
+
+    const sizeBytes = statSync(filePath).size;
+    response.writeHead(200, {
+      "Access-Control-Allow-Origin": "*",
+      Connection: "close",
+      "Content-Length": sizeBytes,
+      "Content-Type": "application/octet-stream",
+    });
+    if (request.method !== "HEAD") createReadStream(filePath).pipe(response);
+    else response.end();
+  });
+
+  await new Promise((resolveServer, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolveServer();
+    });
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    await new Promise(resolveServer => server.close(resolveServer));
+    throw new Error("Remotion local asset server did not expose a TCP port");
+  }
+
+  return {
+    urlFor(fileName) {
+      return `http://127.0.0.1:${address.port}${REMOTION_STAGED_ASSET_ROUTE}${encodeURIComponent(fileName)}`;
+    },
+    close() {
+      return new Promise((resolveServer, reject) => {
+        server.closeIdleConnections?.();
+        server.close(error => (error ? reject(error) : resolveServer()));
+      });
+    },
+  };
+}
 
 /**
  * Whether Remotion may hand H.264 encoding to the GPU.
@@ -404,6 +647,8 @@ export async function runRenderVideoMode(
   const hashSha256 = deps.sha256 ?? (bytes => createHash("sha256").update(bytes).digest("hex"));
   const probeDuration = deps.probeDurationSeconds ?? probeDurationSeconds;
   const sleep = deps.sleep;
+  const stageAssetsLocally = deps.stageAssetsLocally ?? stageRemotionAssetsLocally;
+  const createAssetServer = deps.createAssetServer ?? startLocalRemotionAssetServer;
 
   if (!payloadPath || !workspace || !outputDir) {
     throw new Error("render-video requires --payload, --workspace, and --output-dir");
@@ -434,22 +679,58 @@ export async function runRenderVideoMode(
   process.env.FFMPEG_PATH = ffmpegPath;
   process.env.FFPROBE_PATH = ffprobePath;
 
+  let localAssetServer;
+  let stagedAssets;
+  let renderPayload = payload;
   try {
     let result;
     for (let attempt = 1; attempt <= REMOTION_RENDER_VIDEO_MAX_ATTEMPTS; attempt += 1) {
       try {
+        if (!stagedAssets) {
+          let nextStagedAssets;
+          try {
+            nextStagedAssets = await stageAssetsLocally({
+              workspace,
+              assetManifest: payload.assetManifest,
+              fetchAsset: deps.fetchAsset,
+            });
+            let nextAssetServer;
+            if (nextStagedAssets.urlMap.size > 0) {
+              nextAssetServer = await createAssetServer(nextStagedAssets.rootDir);
+              renderPayload = rewriteRemotionRenderVideoPayload(
+                payload,
+                sourceUrl => {
+                  const fileName = nextStagedAssets.urlMap.get(sourceUrl);
+                  return fileName ? nextAssetServer.urlFor(fileName) : undefined;
+                },
+              );
+            }
+            stagedAssets = nextStagedAssets;
+            localAssetServer = nextAssetServer;
+          } catch (error) {
+            throw new RemotionRenderVideoJobError(
+              "asset_stage_failed",
+              error instanceof Error ? error.message : String(error),
+            );
+          }
+        }
+
         result = await execJob(
           {
             tenantId: null,
             runId: payload.videoProjectId,
             renderJobId: `sidecar-${Date.now()}-attempt-${attempt}`,
-            payload,
+            payload: renderPayload,
             workspaceRoot: workspace,
           },
           {
             render: deps.render ?? makeRenderVideoRenderFn(browserExecutable),
             ffmpeg: deps.ffmpeg ?? defaultFfmpegRunner,
             storagePut: deps.storagePut ?? makeLocalStoragePut(outputDir),
+            stageAssets: async () => ({
+              verifiedCount: stagedAssets.verifiedCount,
+              skippedCount: stagedAssets.skippedCount,
+            }),
             emitEvent: event => emit("progress", { stage: event.stage, message: event.message }),
           },
         );
@@ -494,6 +775,8 @@ export async function runRenderVideoMode(
       message: error instanceof Error ? error.message : String(error),
     });
     return { exitCode: 1 };
+  } finally {
+    if (localAssetServer) await localAssetServer.close();
   }
 }
 

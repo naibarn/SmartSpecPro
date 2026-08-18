@@ -1,9 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
+  isUsableImageUrl,
   mergeRecentUploadedImages,
   normalizeMediaHistoryImageItems,
   normalizeRecentUploadedImageItems,
 } from "./ImageSourcePicker";
+
+describe("isUsableImageUrl", () => {
+  it("accepts authenticated storage proxy URLs", () => {
+    expect(
+      isUsableImageUrl("/api/storage/files/chat/uploads/tenant/7/image.png"),
+    ).toBe(true);
+  });
+
+  it("rejects unsupported URL schemes", () => {
+    expect(isUsableImageUrl("javascript:alert(1)")).toBe(false);
+  });
+});
 
 describe("normalizeMediaHistoryImageItems", () => {
   it("extracts completed generated image URLs from media history tasks", () => {

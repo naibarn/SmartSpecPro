@@ -25,6 +25,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq, or } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
+import type { TrpcContext } from "../_core/context";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
 import {
@@ -56,6 +57,11 @@ import {
   resolveCharacterTargetAudienceRegion,
   isTargetAudienceRegionExplicitlySetInBible,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import {
+  verticalDramaCharacterCastingPreferencesSchema,
+  buildCharacterCastingPreferencesFingerprint,
+  readCharacterCastingPreferencesFromData,
+} from "@shared/verticalDramaSeries/characterCasting";
 import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
@@ -78,6 +84,14 @@ import {
   type VerticalDramaCharacterPromptCapability,
 } from "../services/verticalDramaCharacterPromptContract";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
+import {
+  enqueueVerticalDramaCharacterPromptJob,
+  getActiveVerticalDramaCharacterPromptJob,
+  getVerticalDramaCharacterPromptJobStatus,
+  isVerticalDramaCharacterPromptWorkerExecution,
+  type VerticalDramaCharacterPromptJobInput,
+  type VerticalDramaCharacterPromptJobPayload,
+} from "../services/verticalDramaCharacterPromptJobs";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
 import { ingestVerticalDramaMediaAsset } from "../services/verticalDramaMediaAssetService";
 import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
@@ -1189,7 +1203,11 @@ export function resolveEffectiveCharacterFacts(
  */
 function mergeCharacterRegionOverrideIntoData(
   baseData: Record<string, unknown>,
-  overrides: { region?: string | null; ethnicityText?: string | null },
+  overrides: {
+    region?: string | null;
+    ethnicityText?: string | null;
+    castingPreferences?: unknown | null;
+  },
 ): Record<string, unknown> | null {
   const merged = { ...baseData };
   if (overrides.region !== undefined) {
@@ -1200,7 +1218,43 @@ function mergeCharacterRegionOverrideIntoData(
     if (overrides.ethnicityText === null) delete merged.ethnicityText;
     else merged.ethnicityText = overrides.ethnicityText;
   }
+  if (overrides.castingPreferences !== undefined) {
+    if (overrides.castingPreferences === null) {
+      delete merged.castingPreferences;
+    } else {
+      // The tRPC input schema already validates this object. Parsing again at
+      // the persistence boundary keeps this helper safe for future internal
+      // callers and guarantees defaults/trim rules are stored consistently.
+      const parsed = verticalDramaCharacterCastingPreferencesSchema.parse(
+        overrides.castingPreferences,
+      );
+      merged.castingPreferences = parsed;
+      // New preferences are the authoritative replacement for the legacy
+      // region/free-text pair. Keeping both would make an explicit Auto value
+      // accidentally lose to the old resolver on a later generation.
+      delete merged.region;
+      delete merged.ethnicityText;
+    }
+  }
   return Object.keys(merged).length > 0 ? merged : null;
+}
+
+/**
+ * New casting preferences supersede the legacy region/free-text pair. The
+ * legacy resolver remains available for old rows, but must not reintroduce an
+ * old ethnicity instruction when a user has explicitly saved Auto or a new
+ * casting region in the versioned contract.
+ */
+function readLegacyCharacterRegionOverrideForGeneration(
+  data: Record<string, unknown> | null | undefined,
+) {
+  const hasVersionedCastingPreferences =
+    verticalDramaCharacterCastingPreferencesSchema.safeParse(
+      data?.castingPreferences,
+    ).success;
+  return hasVersionedCastingPreferences
+    ? undefined
+    : readCharacterRegionOverrideFromData(data);
 }
 
 /**
@@ -1534,6 +1588,9 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      const characterCastingPreferences = readCharacterCastingPreferencesFromData(
+        (character.data as Record<string, unknown> | null) ?? null,
+      );
       const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow.bible as Record<string, unknown> | null) ?? null,
@@ -1593,6 +1650,10 @@ export const verticalDramaCharactersRouter = router({
             imagePromptCapability: characterPromptCapability,
             snapshotContractVersion: candidate.promptContractVersion,
             snapshotPromptProfile: candidate.promptProfile,
+            snapshotCastingPreferencesFingerprint:
+              candidate.castingPreferencesFingerprint,
+            currentCastingPreferencesFingerprint:
+              buildCharacterCastingPreferencesFingerprint(characterCastingPreferences),
             hasCharacterFacts: true,
           });
           if (reuseDecision.action !== "reuse") {
@@ -2167,6 +2228,7 @@ export const verticalDramaCharactersRouter = router({
         // existed (user decision: no backfill, no forced regen).
         region: z.enum(VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS).optional(),
         ethnicityText: z.string().trim().max(80).optional(),
+        castingPreferences: verticalDramaCharacterCastingPreferencesSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -2193,6 +2255,7 @@ export const verticalDramaCharactersRouter = router({
           data: mergeCharacterRegionOverrideIntoData(input.data ?? {}, {
             region: input.region,
             ethnicityText: input.ethnicityText,
+            castingPreferences: input.castingPreferences,
           }),
         } as typeof verticalDramaCharacters.$inferInsert)
         .returning();
@@ -2222,6 +2285,7 @@ export const verticalDramaCharactersRouter = router({
         // resend the character's entire `data` blob.
         region: z.enum(VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS).nullable().optional(),
         ethnicityText: z.string().trim().max(80).nullable().optional(),
+        castingPreferences: verticalDramaCharacterCastingPreferencesSchema.nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -2249,15 +2313,24 @@ export const verticalDramaCharactersRouter = router({
         patch.data = mergeCharacterRegionOverrideIntoData(input.data ?? {}, {
           region: input.region,
           ethnicityText: input.ethnicityText,
+          castingPreferences: input.castingPreferences,
         });
-      } else if (input.region !== undefined || input.ethnicityText !== undefined) {
+      } else if (
+        input.region !== undefined ||
+        input.ethnicityText !== undefined ||
+        input.castingPreferences !== undefined
+      ) {
         // No caller-supplied `data` replacement this call — merge onto the
         // EXISTING row's `data` instead of wiping every other key (identity
         // lock, wardrobe rules, description, ...) an unrelated
         // region/ethnicityText-only edit must never touch.
         patch.data = mergeCharacterRegionOverrideIntoData(
           ((existingCharacter.data as Record<string, unknown> | null) ?? {}),
-          { region: input.region, ethnicityText: input.ethnicityText },
+          {
+            region: input.region,
+            ethnicityText: input.ethnicityText,
+            castingPreferences: input.castingPreferences,
+          },
         );
       }
 
@@ -3299,9 +3372,80 @@ export const verticalDramaCharactersRouter = router({
         // data; the skill owns precedence and wording for the generated
         // prompt. This is the PRIMARY path because the UI previews first.
         customInstruction: z.string().trim().max(500).optional(),
+        // Internal BullMQ bridge fields. They are never accepted from a
+        // browser as a synchronous bypass; the worker must prove ownership of
+        // the durable job before this expensive handler is entered.
+        workerJobId: z.string().uuid().optional(),
+        workerExecutionToken: z.string().uuid().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const hasWorkerJobId = Boolean(input.workerJobId);
+      const hasWorkerToken = Boolean(input.workerExecutionToken);
+      const workerExecutionRequested = hasWorkerJobId || hasWorkerToken;
+      if (
+        process.env.NODE_ENV !== "test" &&
+        workerExecutionRequested &&
+        (!hasWorkerJobId ||
+          !hasWorkerToken ||
+          !isVerticalDramaCharacterPromptWorkerExecution(
+            input.workerJobId!,
+            input.workerExecutionToken!,
+          ))
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Character prompt preview worker authorization is invalid",
+        });
+      }
+
+      // Production/browser calls only submit a durable job. This is the
+      // important boundary: the LLM call below is reached only by BullMQ, so
+      // Cloudflare/HTTP proxy timeouts cannot turn a completed prompt into a
+      // lost result or encourage the user to pay and retry twice.
+      if (process.env.NODE_ENV !== "test" && !workerExecutionRequested) {
+        const rateLimitKey = `user:${ctx.user.id}`;
+        if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+          });
+        }
+        const tenantId = requireTenantId(ctx.tenantId);
+        const userId = ctx.user.id;
+        const seriesId = parseId(input.seriesId, "series id");
+        const characterId = parseId(input.characterId, "character id");
+        await loadOwnedSeries(tenantId, userId, seriesId);
+        await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+        const jobInput: VerticalDramaCharacterPromptJobInput = {
+          seriesId: input.seriesId,
+          characterId: input.characterId,
+          ...(input.selectedImageModelId
+            ? { selectedImageModelId: input.selectedImageModelId }
+            : {}),
+          ...(input.portraitCandidateCount
+            ? { portraitCandidateCount: input.portraitCandidateCount }
+            : {}),
+          ...(input.customInstruction
+            ? { customInstruction: input.customInstruction }
+            : {}),
+        };
+        const job = await enqueueVerticalDramaCharacterPromptJob({
+          tenantId,
+          userId,
+          seriesId,
+          characterId,
+          publicUrl: ctx.publicUrl ?? null,
+          input: jobInput,
+        });
+        return {
+          mode: "job" as const,
+          jobId: job.jobId,
+          status: job.status,
+          deduped: job.deduped,
+        };
+      }
+
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
         throw new TRPCError({
@@ -3330,8 +3474,10 @@ export const verticalDramaCharactersRouter = router({
         .select({
           id: verticalDramaSeries.id,
           title: verticalDramaSeries.title,
+          locale: verticalDramaSeries.locale,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
+          targetAudience: verticalDramaSeries.targetAudience,
           bible: verticalDramaSeries.bible,
           updatedAt: verticalDramaSeries.updatedAt,
           // Season lineage (plan Stage 2.3) — feeds `loadCharacterDesignContext`'s
@@ -3360,9 +3506,14 @@ export const verticalDramaCharactersRouter = router({
       // resolves to the exact same `targetAudienceRegion` used today, so an
       // untouched character's generation stays byte-identical.
       const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
-        readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
+        readLegacyCharacterRegionOverrideForGeneration(
+          (character.data as Record<string, unknown> | null) ?? null,
+        ),
         targetAudienceRegion,
         seriesRegionIsExplicit,
+      );
+      const characterCastingPreferences = readCharacterCastingPreferencesFromData(
+        (character.data as Record<string, unknown> | null) ?? null,
       );
       const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
@@ -3420,12 +3571,15 @@ export const verticalDramaCharactersRouter = router({
             storyContext: seriesRow
               ? {
                   title: seriesRow.title,
+                  locale: seriesRow.locale,
                   genre: seriesRow.genre ?? undefined,
                   tone: seriesRow.tone ?? undefined,
+                  targetAudience: seriesRow.targetAudience ?? undefined,
                 }
               : undefined,
             targetAudienceRegion,
             resolvedCharacterRegion,
+            castingPreferences: characterCastingPreferences,
             presetVisualIdentity,
             customInstruction: input.customInstruction,
             characterDesignContext,
@@ -3531,10 +3685,17 @@ export const verticalDramaCharactersRouter = router({
           roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
           description,
           storyContext: seriesRow
-            ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
+            ? {
+                title: seriesRow.title,
+                locale: seriesRow.locale,
+                genre: seriesRow.genre ?? undefined,
+                tone: seriesRow.tone ?? undefined,
+                targetAudience: seriesRow.targetAudience ?? undefined,
+              }
             : undefined,
           targetAudienceRegion,
           resolvedCharacterRegion,
+          castingPreferences: characterCastingPreferences,
           presetVisualIdentity,
           faceSourceReference,
           customInstruction: input.customInstruction,
@@ -3589,6 +3750,66 @@ export const verticalDramaCharactersRouter = router({
           visualBible: promptResult.visualBibleSnapshot,
         },
       };
+    }),
+
+  /** Refresh-safe status read for the asynchronous character prompt preview. */
+  getCharacterPromptJob: verticalDramaProcedure
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        seriesId: z.string().min(1),
+        characterId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const job = await getVerticalDramaCharacterPromptJobStatus(input.jobId, {
+        tenantId: requireTenantId(ctx.tenantId),
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        characterId: parseId(input.characterId, "character id"),
+      });
+      if (!job) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Character prompt preview job not found or expired",
+        });
+      }
+      return {
+        jobId: job.jobId,
+        status: job.status,
+        result: job.result,
+        error: job.error,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+      };
+    }),
+
+  /** Load the active character prompt job after a refresh without submitting
+   * another paid request. */
+  getActiveCharacterPromptJob: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        characterId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const job = await getActiveVerticalDramaCharacterPromptJob({
+        tenantId: requireTenantId(ctx.tenantId),
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        characterId: parseId(input.characterId, "character id"),
+      });
+      return job
+        ? {
+            jobId: job.jobId,
+            status: job.status,
+            result: job.result,
+            error: job.error,
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
+          }
+        : null;
     }),
 
   /**
@@ -3700,8 +3921,10 @@ export const verticalDramaCharactersRouter = router({
         .select({
           id: verticalDramaSeries.id,
           title: verticalDramaSeries.title,
+          locale: verticalDramaSeries.locale,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
+          targetAudience: verticalDramaSeries.targetAudience,
           bible: verticalDramaSeries.bible,
           updatedAt: verticalDramaSeries.updatedAt,
           // Season lineage (plan Stage 2.3) — feeds `loadCharacterDesignContext`'s
@@ -3728,9 +3951,14 @@ export const verticalDramaCharactersRouter = router({
       // ethnicity/plan.md) — see `previewCharacterPrompt`'s identical site
       // for the full contract.
       const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
-        readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
+        readLegacyCharacterRegionOverrideForGeneration(
+          (character.data as Record<string, unknown> | null) ?? null,
+        ),
         targetAudienceRegion,
         seriesRegionIsExplicit,
+      );
+      const characterCastingPreferences = readCharacterCastingPreferencesFromData(
+        (character.data as Record<string, unknown> | null) ?? null,
       );
       const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
@@ -3807,6 +4035,10 @@ export const verticalDramaCharactersRouter = router({
           imagePromptCapability: characterPromptCapability,
           snapshotContractVersion: input.approvedDesignSnapshot.promptContractVersion,
           snapshotPromptProfile: input.approvedDesignSnapshot.promptProfile,
+          snapshotCastingPreferencesFingerprint:
+            input.approvedDesignSnapshot.visualBible.castingPreferencesFingerprint,
+          currentCastingPreferencesFingerprint:
+            buildCharacterCastingPreferencesFingerprint(characterCastingPreferences),
           hasCharacterFacts: true,
         });
         if (reuseDecision.action === "reject") {
@@ -3861,10 +4093,17 @@ export const verticalDramaCharactersRouter = router({
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
             description,
             storyContext: seriesRow
-              ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
+              ? {
+                  title: seriesRow.title,
+                  locale: seriesRow.locale,
+                  genre: seriesRow.genre ?? undefined,
+                  tone: seriesRow.tone ?? undefined,
+                  targetAudience: seriesRow.targetAudience ?? undefined,
+                }
               : undefined,
             targetAudienceRegion,
             resolvedCharacterRegion,
+            castingPreferences: characterCastingPreferences,
             presetVisualIdentity,
             faceSourceReference,
             hasOwnReferenceImage: referenceSourceIsOwnLikeness(referencePortraitSource),
@@ -4391,8 +4630,10 @@ export const verticalDramaCharactersRouter = router({
         .select({
           id: verticalDramaSeries.id,
           title: verticalDramaSeries.title,
+          locale: verticalDramaSeries.locale,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
+          targetAudience: verticalDramaSeries.targetAudience,
           bible: verticalDramaSeries.bible,
           updatedAt: verticalDramaSeries.updatedAt,
           // Season lineage (plan Stage 2.3) — feeds `loadCharacterDesignContext`'s
@@ -4419,9 +4660,14 @@ export const verticalDramaCharactersRouter = router({
       // ethnicity/plan.md) — see `previewCharacterPrompt`'s identical site
       // for the full contract.
       const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
-        readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
+        readLegacyCharacterRegionOverrideForGeneration(
+          (character.data as Record<string, unknown> | null) ?? null,
+        ),
         targetAudienceRegion,
         seriesRegionIsExplicit,
+      );
+      const characterCastingPreferences = readCharacterCastingPreferencesFromData(
+        (character.data as Record<string, unknown> | null) ?? null,
       );
       const { identity: presetVisualIdentity, lookLockEnabled } = await resolveCharacterPresetVisualIdentity(
         tenantId,
@@ -4497,6 +4743,10 @@ export const verticalDramaCharactersRouter = router({
           imagePromptCapability: characterPromptCapability,
           snapshotContractVersion: input.approvedDesignSnapshot.promptContractVersion,
           snapshotPromptProfile: input.approvedDesignSnapshot.promptProfile,
+          snapshotCastingPreferencesFingerprint:
+            input.approvedDesignSnapshot.visualBible.castingPreferencesFingerprint,
+          currentCastingPreferencesFingerprint:
+            buildCharacterCastingPreferencesFingerprint(characterCastingPreferences),
           hasCharacterFacts: true,
         });
         if (reuseDecision.action === "reject") {
@@ -4551,11 +4801,18 @@ export const verticalDramaCharactersRouter = router({
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
             description,
             storyContext: seriesRow
-              ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
+              ? {
+                  title: seriesRow.title,
+                  locale: seriesRow.locale,
+                  genre: seriesRow.genre ?? undefined,
+                  tone: seriesRow.tone ?? undefined,
+                  targetAudience: seriesRow.targetAudience ?? undefined,
+                }
               : undefined,
-            targetAudienceRegion,
-            resolvedCharacterRegion,
-            presetVisualIdentity,
+          targetAudienceRegion,
+          resolvedCharacterRegion,
+          castingPreferences: characterCastingPreferences,
+          presetVisualIdentity,
             faceSourceReference,
             hasOwnReferenceImage: referenceSourceIsOwnLikeness(referencePortraitSource),
             // Same free-text visual brief the portrait endpoint accepts —
@@ -5160,5 +5417,32 @@ export const verticalDramaCharactersRouter = router({
       return { taskId: task.id, creditCost };
     }),
 });
+
+/**
+ * BullMQ execution bridge for `previewCharacterPrompt`. The worker calls the
+ * same mature resolver through an owner-scoped server caller, preserving all
+ * model capability checks, credit accounting, schema validation, and existing
+ * response normalization while moving the long LLM wait outside HTTP.
+ */
+export async function runVerticalDramaCharacterPromptJobExecutor(
+  payload: VerticalDramaCharacterPromptJobPayload,
+  execution: { jobId: string; token: string },
+): Promise<unknown> {
+  const caller = verticalDramaCharactersRouter.createCaller({
+    req: {} as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+    user: { id: payload.userId } as TrpcContext["user"],
+    userToken: null,
+    privateVaultToken: null,
+    protectedSurfaceToken: null,
+    tenantId: payload.tenantId,
+    publicUrl: payload.publicUrl,
+  });
+  return caller.previewCharacterPrompt({
+    ...payload.input,
+    workerJobId: execution.jobId,
+    workerExecutionToken: execution.token,
+  });
+}
 
 export type VerticalDramaCharactersRouter = typeof verticalDramaCharactersRouter;

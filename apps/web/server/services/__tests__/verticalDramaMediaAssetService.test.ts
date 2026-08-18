@@ -50,6 +50,7 @@ describe("Vertical Drama media asset durability", () => {
       },
     ]);
     mocks.getDb.mockReturnValue(db);
+    mocks.storageExists.mockResolvedValue(true);
 
     const result = await ingestVerticalDramaMediaAsset({
       tenantId: "tenant-1",
@@ -126,5 +127,29 @@ describe("Vertical Drama media asset durability", () => {
     );
     expect(db.insert).toHaveBeenCalledTimes(1);
     expect(mocks.storagePutFromPath).not.toHaveBeenCalled();
+  });
+
+  it("marks an existing ready asset expired when its object is gone", async () => {
+    const db = makeDb([
+      {
+        id: 2052,
+        storageKey: "media-jobs/assets/legacy/missing.png",
+        mimeType: "image/png",
+        status: "ready",
+      },
+    ]);
+    mocks.getDb.mockReturnValue(db);
+    mocks.storageExists.mockResolvedValue(false);
+
+    const result = await ensureVerticalDramaManagedMediaAsset({
+      tenantId: "tenant-1",
+      userId: 7,
+      sourceUrl: "/api/storage/files/media-jobs/assets/legacy/missing.png",
+      mediaType: "image",
+    });
+
+    expect(result).toBeNull();
+    expect(db.update).toHaveBeenCalled();
+    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ status: "expired" }));
   });
 });

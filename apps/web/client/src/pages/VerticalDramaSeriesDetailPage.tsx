@@ -84,6 +84,7 @@ import {
   STORY_SCRIPT_TEXT_CHAR_LIMIT,
   type StoryScriptEpisodeInput,
 } from "@shared/verticalDramaSeries/storyScriptText";
+import { readVerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
 import {
   VerticalDramaDeepStoryDraftEpisodeDetail,
   VerticalDramaDeepStoryDraftsActions,
@@ -287,6 +288,7 @@ export default function VerticalDramaSeriesDetailPage() {
         tone?: string | null;
         targetAudience?: string | null;
         targetEpisodeCount?: number | null;
+        /** Legacy compatibility value; new duration profiles live in bible. */
         defaultEpisodeDurationSeconds?: number | null;
         locale?: string | null;
         productTieIn?: {
@@ -567,9 +569,7 @@ export default function VerticalDramaSeriesDetailPage() {
                       tone={series.tone}
                       targetAudience={series.targetAudience}
                       targetEpisodeCount={series.targetEpisodeCount}
-                      defaultEpisodeDurationSeconds={
-                        series.defaultEpisodeDurationSeconds
-                      }
+                      legacyDurationSeconds={series.defaultEpisodeDurationSeconds}
                       locale={series.locale}
                       bible={series.bible}
                       llmModelPolicy={series.llmModelPolicy}
@@ -2422,6 +2422,10 @@ export function StoryBibleOverviewCard({
     });
   };
   const expanded = (bible ?? {}) as ExpandedStoryBible;
+  const durationPlan = readVerticalDramaDurationPlan(
+    (bible as { durationProfile?: unknown } | null | undefined)
+      ?.durationProfile
+  );
   const createdEpisodeNumberSet = useMemo(
     () => new Set(createdEpisodeNumbers),
     [createdEpisodeNumbers]
@@ -2847,6 +2851,7 @@ export function StoryBibleOverviewCard({
                         episodeNumber={ep.episodeNumber}
                         item={activeBreakdownByEpisode.get(ep.episodeNumber)}
                         readOnly={readOnly}
+                        durationPlan={durationPlan ?? undefined}
                         episodeAlreadyCreated={createdEpisodeNumberSet.has(
                           ep.episodeNumber
                         )}

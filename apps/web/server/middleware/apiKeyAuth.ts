@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { authorizeRequest } from "../_core/authz";
 import { getCachedPreferredInternalToken } from "../services/appRuntimeConfig";
+import { setMcpBearerChallenge } from "../_core/mcpOAuthMetadata";
 
 /**
  * Express middleware that authenticates requests for /v1/* routes.
@@ -44,6 +45,7 @@ export async function apiKeyAuthMiddleware(
   });
 
   if (!auth.ok) {
+    setMcpBearerChallenge(req, res, { error: "invalid_token" });
     const isSuspended = auth.error === "key_suspended";
     const code = isSuspended ? "key_suspended" : "invalid_api_key";
     res.setHeader("X-Api-Error-Code", code);

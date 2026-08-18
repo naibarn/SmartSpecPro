@@ -6,6 +6,7 @@ import { buildUnexpectedHtmlResponseMessage } from "@/lib/apiResponseDiagnostics
 vi.mock("sonner", () => ({
   toast: {
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -27,6 +28,7 @@ function makeTrpcClientError(data: { code: string; httpStatus?: number }) {
 describe("systemErrorMonitor handleError toast class selection", () => {
   beforeEach(() => {
     vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.info).mockClear();
   });
 
   it("selects the soft reconnecting toast for a gateway-502 lost-upstream message", () => {
@@ -40,11 +42,22 @@ describe("systemErrorMonitor handleError toast class selection", () => {
 
     handleError(new Error(message), "mcpConnections.listConnections");
 
-    expect(toast.error).toHaveBeenCalledTimes(1);
-    const [title, options] = vi.mocked(toast.error).mock.calls[0];
+    expect(toast.info).toHaveBeenCalledTimes(1);
+    expect(toast.error).not.toHaveBeenCalled();
+    const [title, options] = vi.mocked(toast.info).mock.calls[0];
     expect(title).toBe("กำลังเชื่อมต่อใหม่...");
-    expect(options?.description).toContain("รีเฟรช");
+    expect(options?.description).toContain("ลองเชื่อมต่อ");
     expect(options?.description).not.toContain("ระบบขัดข้องชั่วคราว");
+  });
+
+  it("selects the soft reconnecting toast for a tenant bootstrap 503", () => {
+    handleError(
+      Object.assign(new Error("tenant/current 503"), { status: 503 }),
+      "tenant.current",
+    );
+
+    expect(toast.info).toHaveBeenCalledTimes(1);
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it("selects the generic system-error toast for a plain 500 TRPCClientError", () => {

@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "required": ["mode", "draft", "immutableConstraints"],
+  "properties": {
+    "mode": { "enum": ["evaluate", "revise"] },
+    "draft": { "type": "object" },
+    "immutableConstraints": { "type": "object" },
+    "report": { "type": ["object", "null"] }
+  },
+  "additionalProperties": true
+}

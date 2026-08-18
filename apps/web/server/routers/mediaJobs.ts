@@ -22,6 +22,7 @@ import { assertTextClipRolloutEnabledForSpec } from "../services/textClipRollout
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/asyncJobHandle";
 import { shouldUseCloudTasksForMediaJobs } from "../services/mediaJobDispatchMode";
+import { classifyCreditFailure } from "../services/creditFailurePolicy";
 
 type MediaJobAssetAuth = { userId: string; tenantId: string | null };
 
@@ -200,6 +201,29 @@ async function notifyJobFailure(
   errorMessage: string,
 ) {
   try {
+    const creditClassification = classifyCreditFailure({
+      errorMessage,
+      path: "media_jobs",
+      context: { modelKind: "media" },
+    });
+    if (creditClassification.isCreditFailure) {
+      const { reportSystemFailure } = await import("../services/systemAutoReportService");
+      await reportSystemFailure({
+        source: "media_jobs",
+        userId: userId,
+        jobId,
+        title: "Media job credit failure",
+        errorMessage,
+        creditContext: {
+          source: creditClassification.source,
+          modelKind: "media",
+          requestedCredits: creditClassification.requestedCredits,
+          provider: creditClassification.provider,
+        },
+      });
+      return;
+    }
+
     const { getDb } = await import("../db");
     const { users } = await import("../../drizzle/schema");
     const { createNotification } = await import("../services/notificationService");

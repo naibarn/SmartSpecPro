@@ -10,6 +10,7 @@ import * as db from "../db";
 import { ENV } from "./env";
 import { isJtiRevoked } from "./revocation";
 import { verifyBearerToken } from "./tokens";
+import { enforceFreeCreditPolicyForUser } from "../services/freeCreditInactivityService";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -276,6 +277,25 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
+  private async enforceActiveUser(user: User): Promise<User> {
+    if (user.isDisabled) {
+      throw ForbiddenError(
+        user.disabledReason === "inactive"
+          ? "Account disabled due to free-credit inactivity"
+          : "Account disabled",
+      );
+    }
+
+    const lifecycle = await enforceFreeCreditPolicyForUser({
+      userId: user.id,
+      claimNotice: false,
+    });
+    if (lifecycle.disabled) {
+      throw ForbiddenError("Account disabled due to free-credit inactivity");
+    }
+    return user;
+  }
+
   private async resolveUserFromSession(
     session: Awaited<ReturnType<SDKServer["verifySession"]>>,
     syncJwtToken: string | undefined | null,
@@ -297,7 +317,7 @@ class SDKServer {
     if (user) {
       // Update last signed-in timestamp (non-blocking, uses dedicated update function)
       await db.updateLastSignedIn(user.openId);
-      return user;
+      return this.enforceActiveUser(user);
     }
 
     // If user not in DB, try to sync from OAuth server
@@ -320,7 +340,7 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    return user;
+    return this.enforceActiveUser(user);
   }
 
   private async resolveUserFromBearerAccessToken(token: string): Promise<User> {
@@ -361,7 +381,7 @@ class SDKServer {
     }
 
     await db.updateLastSignedIn(user.openId);
-    return user;
+    return this.enforceActiveUser(user);
   }
 
   async authenticateRequest(req: Request): Promise<User> {

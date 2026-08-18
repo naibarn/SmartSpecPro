@@ -14,9 +14,12 @@ export const CREATE_SERIES_FIELD_LIMITS = {
   tone: 100,
   targetAudience: 100,
   agePolicyId: 64,
-  // Feature 132 §4.2 (F132A) — free-form "โจทย์เรื่องที่อยากได้" premise input,
-  // persisted into the jsonb `bible.userPremise` (no migration).
-  userPremise: 2000,
+  // Feature 132 §4.2 (F132A) — free-form "โจทย์เรื่องที่อยากได้" premise input.
+  // Keep enough room for a complete treatment such as title, genre, premise,
+  // character arc, theme, selling points, and tagline. The value is persisted
+  // in the jsonb `bible.userPremise`, so increasing this limit needs no schema
+  // migration; client and server continue to share this single contract.
+  userPremise: 12000,
 } as const;
 
 export type CreateSeriesFieldLimitKey = keyof typeof CREATE_SERIES_FIELD_LIMITS;

@@ -54,8 +54,13 @@ import {
 import { REMOTION_SCENE_REGISTRY } from "./scenes";
 import { MotionCompositionLayerContent } from "./MotionCompositionContent";
 import type { GenericTemplateInputProps } from "../services/remotionTemplateService";
+import { REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS } from "@smartspec/remotion-render/render-video-schema";
 
 const ENTER_FADE_FRAMES = 15;
+const REMOTION_MEDIA_DELAY_RENDER_TIMEOUT_MS =
+  REMOTION_RENDER_VIDEO_ATTEMPT_TIMEOUT_MS;
+const REMOTION_MEDIA_DELAY_RENDER_RETRIES = 0;
+const REMOTION_FONT_DELAY_RENDER_TIMEOUT_MS = 30_000;
 
 /**
  * Feature 143 §4.10 (RK12 — "Thai text renders as tofu"). Ports
@@ -84,7 +89,10 @@ const AllowlistedFontLoader: React.FC<{ family: VideoStudioFontFamily }> = ({
   family,
 }) => {
   const [handle] = useState(() =>
-    delayRender(`Loading allowlisted font "${family}"`)
+    delayRender(`Loading allowlisted font "${family}"`, {
+      timeoutInMilliseconds: REMOTION_FONT_DELAY_RENDER_TIMEOUT_MS,
+      retries: 0,
+    })
   );
 
   useEffect(() => {
@@ -171,6 +179,8 @@ const ImageLayerContent: React.FC<{
 }> = ({ layer }) => (
   <Img
     src={layer.src}
+    delayRenderTimeoutInMilliseconds={REMOTION_MEDIA_DELAY_RENDER_TIMEOUT_MS}
+    delayRenderRetries={REMOTION_MEDIA_DELAY_RENDER_RETRIES}
     style={{
       width: "100%",
       height: "100%",
@@ -185,6 +195,8 @@ const VideoLayerContent: React.FC<{
 }> = ({ layer, fps }) => (
   <OffthreadVideo
     src={layer.src}
+    delayRenderTimeoutInMilliseconds={REMOTION_MEDIA_DELAY_RENDER_TIMEOUT_MS}
+    delayRenderRetries={REMOTION_MEDIA_DELAY_RENDER_RETRIES}
     volume={layer.muted ? 0 : layer.volume}
     muted={layer.muted}
     trimBefore={Math.max(0, Math.round(layer.trimStartSec * fps))}
@@ -453,6 +465,8 @@ const AudioLayerContent: React.FC<{
   return (
     <Audio
       src={layer.src}
+      delayRenderTimeoutInMilliseconds={REMOTION_MEDIA_DELAY_RENDER_TIMEOUT_MS}
+      delayRenderRetries={REMOTION_MEDIA_DELAY_RENDER_RETRIES}
       volume={layer.volume * envelope}
       loop={layer.loop}
       trimBefore={Math.max(0, Math.round(layer.trimStartSec * fps))}

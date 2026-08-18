@@ -1471,6 +1471,55 @@
       "when": 1786665601001,
       "tag": "0223_vertical_drama_draft_job_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 210,
+      "version": "7",
+      "when": 1786665602000,
+      "tag": "0224_remotion_executor_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1786665603000,
+      "tag": "0225_connected_device_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1787000000000,
+      "tag": "0226_mcp_oauth_authorization",
+      "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1787000001000,
+      "tag": "0227_mcp_oauth_grant_redirect_uri",
+      "breakpoints": true
+    },
+    {
+      "idx": 214,
+      "version": "7",
+      "when": 1787044150743,
+      "tag": "0228_free_credit_inactivity_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 215,
+      "version": "7",
+      "when": 1787044150744,
+      "tag": "0229_grok_imagine_image_2_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 216,
+      "version": "7",
+      "when": 1787044150745,
+      "tag": "0230_promptpay_direct_manual_payments",
+      "breakpoints": true
     }
   ]
 }

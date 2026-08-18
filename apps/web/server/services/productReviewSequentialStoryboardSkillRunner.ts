@@ -64,6 +64,7 @@ import {
   type SkillExecutionPolicyResult,
 } from "./skillExecutionPolicy";
 import { optimizeProductReferenceStoryboardPrompt } from "./productReferenceStoryboardSkillRunner";
+import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import { appendProductReferenceStoryboardCategoryRules } from "./productReferenceStoryboardCategoryRules";
 import { extractJson } from "./verticalDramaStoryBible";
 import {
@@ -2359,6 +2360,11 @@ async function invokeSequentialStoryboardAuthoringCall(args: {
   rawResponse?: unknown;
 }> {
   const { ctx, policy, systemPrompt, userPrompt, referenceImages, round } = args;
+  const providerReferenceImages = await resolveExternalMediaReferenceUrls(
+    referenceImages,
+    { userId: ctx.input.userId, tenantId: ctx.input.tenantId },
+    ctx.input.publicUrl,
+  ) ?? [];
 
   const fallbackResult = await executeSkillLlmWithFallback({
     // buildSequentialStoryboardVisionMessages is declared to return the wide
@@ -2370,7 +2376,7 @@ async function invokeSequentialStoryboardAuthoringCall(args: {
     messages: buildSequentialStoryboardVisionMessages({
       systemPrompt,
       userPrompt,
-      referenceImages,
+      referenceImages: providerReferenceImages,
     }) as unknown as SkillLlmRequest["messages"],
     skillSlug: PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID,
     userId: ctx.input.userId,
@@ -3263,12 +3269,17 @@ function buildProductionSequentialSingleShotRefreshEffects(ctx: {
           validationMode: "structured_json",
         },
         legacyExecute: async () => {
+          const providerReferenceImages = await resolveExternalMediaReferenceUrls(
+            ctx.input.skillVisionUrls,
+            { userId: ctx.input.userId, tenantId: ctx.input.tenantId },
+            ctx.input.publicUrl,
+          ) ?? [];
           const llmResult = await executeWithFallback({
             model: policy.modelId!,
             messages: buildSequentialStoryboardVisionMessages({
               systemPrompt: args.systemPrompt,
               userPrompt: args.userPrompt,
-              referenceImages: ctx.input.skillVisionUrls,
+              referenceImages: providerReferenceImages,
             }),
             stream: false,
             userId: ctx.input.userId,

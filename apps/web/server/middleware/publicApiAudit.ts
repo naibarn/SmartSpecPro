@@ -1,5 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { logPublicApiRequest } from "../services/publicApiAuditLogger";
+import { getMcpTransportMetadata } from "../services/mcpTransportTelemetry";
+import { incrementCreditQuotas } from "../services/apiKeyRateLimiter";
 
 /**
  * Middleware that logs every public API request to public_api_audit_log.
@@ -22,15 +24,28 @@ export function publicApiAuditMiddleware(
     const creditsHeader = res.getHeader("X-Credits-Used");
     const creditsUsed = creditsHeader != null ? Number(creditsHeader) : 0;
 
+    if (auth.mode === "api_key" && auth.keyPurpose === "mcp_cli" && creditsUsed > 0) {
+      void incrementCreditQuotas(auth.apiKeyId, creditsUsed, {
+        creditLimit: auth.creditLimit ?? null,
+        creditQuota5h: auth.creditQuota5h ?? null,
+        creditQuotaDaily: auth.creditQuotaDaily ?? null,
+        creditQuotaWeekly: auth.creditQuotaWeekly ?? null,
+      }).catch(() => {});
+    }
+
     void logPublicApiRequest({
       tenantId: auth.tenantId,
       apiKeyId: auth.apiKeyId,
       userId: auth.userId,
       method: req.method,
-      path: req.path,
+      path: isMcpEndpoint(req) ? req.originalUrl.split("?", 1)[0] : req.path,
       statusCode: res.statusCode,
       creditsUsed,
       durationMs: Date.now() - startMs,
+      traceId: (req as any).requestId,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"]?.slice(0, 500),
+      ...(isMcpEndpoint(req) ? { requestMeta: getMcpTransportMetadata(req, "modern_http") } : {}),
       errorCode: res.statusCode >= 400
         ? (res.getHeader("X-Api-Error-Code") as string | null) ?? String(res.statusCode)
         : null,
@@ -38,4 +53,8 @@ export function publicApiAuditMiddleware(
   });
 
   next();
+}
+
+function isMcpEndpoint(req: Request): boolean {
+  return req.path === "/mcp" || req.path.startsWith("/mcp/");
 }

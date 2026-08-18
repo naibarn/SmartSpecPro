@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 /* -------------------------------------------------------------------------- */
 /* View-model types (client mirrors of the shared/service contracts)           */
@@ -750,7 +751,7 @@ function FrameCandidateCard({
         )}
       >
         {frame.previewUrl ? (
-          <img src={frame.previewUrl} alt={label} className="h-full w-full object-cover" />
+          <AuthenticatedMediaImage src={frame.previewUrl} alt={label} className="h-full w-full object-cover" />
         ) : (
           <span className="text-xs text-muted-foreground">{label}</span>
         )}
@@ -1015,7 +1016,7 @@ function CandidateVersionStrip({
               )}
             >
               {v.previewUrl ? (
-                <img src={v.previewUrl} alt="" className="h-full w-full object-cover" />
+                <AuthenticatedMediaImage src={v.previewUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <span>{v.state === "superseded" ? copy.original : copy.repaired}</span>
               )}
@@ -1054,7 +1055,7 @@ function CompareDialog({
           <figure className="flex flex-col gap-1">
             <div className="flex aspect-[9/16] items-center justify-center overflow-hidden rounded bg-muted">
               {original?.previewUrl ? (
-                <img src={original.previewUrl} alt={copy.original} className="h-full w-full object-cover" />
+                <AuthenticatedMediaImage src={original.previewUrl} alt={copy.original} className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xs text-muted-foreground">{copy.original}</span>
               )}
@@ -1064,7 +1065,7 @@ function CompareDialog({
           <figure className="flex flex-col gap-1">
             <div className="flex aspect-[9/16] items-center justify-center overflow-hidden rounded bg-muted">
               {repaired?.previewUrl ? (
-                <img src={repaired.previewUrl} alt={copy.repaired} className="h-full w-full object-cover" />
+                <AuthenticatedMediaImage src={repaired.previewUrl} alt={copy.repaired} className="h-full w-full object-cover" />
               ) : (
                 <span className="text-xs text-muted-foreground">{copy.repaired}</span>
               )}

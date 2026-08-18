@@ -345,7 +345,6 @@ export function VerticalDramaDraftQualityQcPanel({
       visibleReport &&
       !visibleReport.pass &&
       repairPlan?.available &&
-      visibleReport.criticalFails.length === 0 &&
       !running
   );
   const confirmationEstimate =

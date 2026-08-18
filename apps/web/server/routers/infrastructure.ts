@@ -22,6 +22,13 @@ import { isRedisHealthy, getRedisStatus } from "../services/redis";
 import { encrypt, decrypt } from "../services/crypto";
 import { refreshAppRuntimeConfigCache } from "../services/appRuntimeConfig";
 import {
+  getMcpRuntimeConfigForAdmin,
+  MCP_RUNTIME_CATEGORY,
+  refreshMcpRuntimeConfigCache,
+} from "../services/mcpRuntimeConfig";
+import { MCP_OAUTH_DEFAULT_SCOPES } from "../services/mcpOAuthScopes";
+import { generateMcpOAuthSigningKeyMaterial } from "../services/mcpOAuthKeyService";
+import {
   SCALE_TIERS,
   SCALE_TIER_IDS,
   applyScaleTier as applyTierConfig,
@@ -167,6 +174,31 @@ const APP_RUNTIME_SENSITIVE_KEYS = new Set([
   "forge_api_key",
 ]);
 
+const MCP_RUNTIME_UPDATE_KEYS = [
+  "modern_protocol_enabled",
+  "oauth_inbound_enabled",
+  "oauth_protected_resource_enabled",
+  "oauth_authorization_server_enabled",
+  "oauth_dynamic_registration_enabled",
+  "public_base_url",
+  "oauth_issuer",
+  "oauth_resource",
+  "oauth_jwks_uri",
+  "oauth_audience",
+  "oauth_authorization_servers",
+  "oauth_scopes_supported",
+  "cors_allowed_origins",
+  "session_allowed_origins",
+  "session_ttl_seconds",
+  "workspace_root",
+  "workspace_write_enabled",
+  "workspace_write_token",
+  "max_read_bytes",
+  "max_write_bytes",
+  "extension_allowlist",
+  "mcp_rpm",
+] as const;
+
 // ============================================================
 // Helpers
 // ============================================================
@@ -177,13 +209,14 @@ async function upsertSetting(
   value: string,
   userId?: number,
   sensitive = false,
+  category: string = CATEGORY,
 ) {
   const storedValue = sensitive && value ? encrypt(value) : value;
 
   const [existing] = await db
     .select()
     .from(systemSettings)
-    .where(and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, key)))
+    .where(and(eq(systemSettings.category, category), eq(systemSettings.key, key)))
     .limit(1);
 
   if (existing) {
@@ -193,7 +226,7 @@ async function upsertSetting(
       .where(eq(systemSettings.id, existing.id));
   } else {
     await db.insert(systemSettings).values({
-      category: CATEGORY,
+      category,
       key,
       value: storedValue,
       isSensitive: sensitive,
@@ -246,11 +279,87 @@ function maskApiKey(key: string): string {
   return `${key.slice(0, 4)}...${key.slice(-4)}`;
 }
 
+async function provisionMcpOAuthSigningKey(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  userId?: number,
+): Promise<string> {
+  const { privateJwk, kid } = await generateMcpOAuthSigningKeyMaterial();
+  const privateValue = JSON.stringify(privateJwk);
+  await upsertSetting(db, "oauth_private_jwk", privateValue, userId, true, MCP_RUNTIME_CATEGORY);
+  await upsertSetting(db, "oauth_key_id", kid, userId, false, MCP_RUNTIME_CATEGORY);
+  return kid;
+}
+
 // ============================================================
 // Router
 // ============================================================
 
 export const infrastructureRouter = router({
+  getMcpRuntimeConfig: adminProcedure.query(async () => {
+    await refreshMcpRuntimeConfigCache();
+    const snapshot = getMcpRuntimeConfigForAdmin();
+    return {
+      ...snapshot,
+      defaults: { scopesSupported: [...MCP_OAUTH_DEFAULT_SCOPES] },
+    };
+  }),
+
+  updateMcpRuntimeConfig: rateLimitedAdminProcedure
+    .input(z.object({
+      modern_protocol_enabled: z.boolean(),
+      oauth_inbound_enabled: z.boolean(),
+      oauth_protected_resource_enabled: z.boolean(),
+      oauth_authorization_server_enabled: z.boolean(),
+      oauth_dynamic_registration_enabled: z.boolean(),
+      public_base_url: z.string().trim().url(),
+      oauth_issuer: z.string().trim().url(),
+      oauth_resource: z.string().trim().url(),
+      oauth_jwks_uri: z.string().trim().url(),
+      oauth_audience: z.string().trim().min(1).max(256),
+      oauth_authorization_servers: z.string().trim().max(4096),
+      oauth_scopes_supported: z.string().trim().min(1).max(4096),
+      cors_allowed_origins: z.string().trim().max(4096),
+      session_allowed_origins: z.string().trim().max(4096),
+      session_ttl_seconds: z.number().int().min(300).max(86_400),
+      workspace_root: z.string().trim().max(1024),
+      workspace_write_enabled: z.boolean(),
+      workspace_write_token: z.string().max(512).optional(),
+      max_read_bytes: z.number().int().min(1_024).max(50 * 1024 * 1024),
+      max_write_bytes: z.number().int().min(1_024).max(50 * 1024 * 1024),
+      extension_allowlist: z.string().trim().max(4096),
+      mcp_rpm: z.number().int().min(10).max(10_000),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      for (const key of MCP_RUNTIME_UPDATE_KEYS) {
+        const value = input[key];
+        if (key === "workspace_write_token" && value === "") continue;
+        await upsertSetting(
+          db,
+          key,
+          String(value),
+          ctx.user?.id,
+          key === "workspace_write_token",
+          MCP_RUNTIME_CATEGORY,
+        );
+      }
+      await refreshMcpRuntimeConfigCache();
+      if (input.oauth_authorization_server_enabled && !getMcpRuntimeConfigForAdmin().keyConfigured) {
+        await provisionMcpOAuthSigningKey(db, ctx.user?.id);
+        await refreshMcpRuntimeConfigCache();
+      }
+      return { success: true, config: getMcpRuntimeConfigForAdmin() };
+    }),
+
+  generateMcpOAuthSigningKey: rateLimitedAdminProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const kid = await provisionMcpOAuthSigningKey(db, ctx.user?.id);
+    await refreshMcpRuntimeConfigCache();
+    return { success: true, kid, config: getMcpRuntimeConfigForAdmin() };
+  }),
+
   // ----------------------------------------------------------
   // GCP Configuration
   // ----------------------------------------------------------

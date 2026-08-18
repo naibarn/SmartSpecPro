@@ -4,12 +4,13 @@ import path from "node:path";
 
 import { and, asc, count, eq, gt, isNull, or } from "drizzle-orm";
 
-import { getDb } from "../db";
+import { getDb, getUserById } from "../db";
 import {
   agencies,
   agencyConversations,
   llmProviders,
   modelProviderMap,
+  workers,
 } from "../../drizzle/schema";
 import {
   marketplaceIntelligenceReportTypeSchema,
@@ -42,6 +43,12 @@ import {
   uploadLibraryFile,
 } from "../services/libraryService";
 import {
+  createLibraryDownloadRef,
+  createMediaTaskDownloadRef,
+} from "../services/mcpDownloadBrokerService";
+import { listMcpMediaTasks, getMcpMediaTask } from "../services/mcpMediaAdapter";
+import { getHermesMediaTask, listHermesMediaTasks } from "../services/hermesMediaAdapter";
+import {
   getLibraryContextPack,
   listLibraryContextPacks,
   resolveLibraryContextPack,
@@ -61,6 +68,7 @@ import { executeSkill } from "../services/skillExecutor";
 import { detectSkill } from "../services/skillDetector";
 import { agencyBridge } from "../services/agencyBridge";
 import { mediaGenerationService } from "../services/mediaGenerationService";
+import { listDeferredMediaTasks } from "../services/deferredMediaRetryService";
 import {
   cancelJob,
   createJob,
@@ -101,8 +109,17 @@ import {
   listMarketplaceWatchlists,
 } from "../services/marketplaceIntelligenceService";
 import { saveOpenAiHostedShopeeSearchSnapshot } from "../services/marketplaceOpenAiShopeeWritebackService";
+import {
+  cancelQueuedUserWorkerJob,
+  getUserWorkerJobDetail,
+  listUserWorkerJobs,
+} from "../services/workerJobMonitorService";
+import { videoProjectsRouter } from "../routers/videoProjects";
+import { mediaRouter } from "../routers/media";
+import { hermesConnectionsRouter } from "../routers/hermesConnections";
+import { revokeHermesAgentDevice } from "../services/hermesAgentPairingService";
 
-export type McpSessionMode = "api_key" | "session" | "bearer" | "delegated_worker";
+export type McpSessionMode = "api_key" | "session" | "bearer" | "agent_pairing" | "delegated_worker";
 export type McpToolActionClass = "read" | "compute" | "media" | "mcp_write";
 export type McpToolFamily =
   | "gateway"
@@ -141,6 +158,7 @@ export type McpToolGroup =
 export type McpExecutionMode = "implemented" | "legacy_adapter" | "gated";
 export type McpResultSafetyClass = "structured_json" | "artifact_ref" | "safe_text" | "download_ref";
 export type McpIdempotencyMode = "none" | "optional" | "required";
+export type McpCacheScope = "private" | "tenant" | "public" | "no-store";
 
 export type McpToolSession = {
   state: "ready" | "error";
@@ -157,6 +175,8 @@ export type McpToolSession = {
   runtimeType?: string | null;
   scopeProfile?: string | null;
   teamId?: string | null;
+  deviceIdHash?: string | null;
+  legacyBroadScopeCompatibility?: boolean;
 };
 
 export type McpCatalogTool = {
@@ -172,6 +192,11 @@ export type McpCatalogTool = {
   resultSafetyClass: McpResultSafetyClass;
   idempotencyMode: McpIdempotencyMode;
   inputSchema: Record<string, unknown>;
+  outputSchema?: Record<string, unknown>;
+  aliases?: string[];
+  schemaVersion?: string;
+  cacheScope?: McpCacheScope;
+  auditAction?: string;
 };
 
 type DelegatedManifestToolAvailability = "ready" | "experimental" | "unavailable";
@@ -198,6 +223,10 @@ type ToolListContext = {
     name: string;
     description: string;
     inputSchema: Record<string, unknown>;
+    outputSchema: Record<string, unknown>;
+    requiredScope: string;
+    schemaVersion: string;
+    cacheScope: McpCacheScope;
     annotations: {
       readOnlyHint: boolean;
       destructiveHint: boolean;
@@ -347,7 +376,11 @@ async function evaluateToolAvailability(
   tool: McpToolDefinition,
   ctx: McpExecutionContext,
 ): Promise<AvailabilityResult> {
-  if (!ctx.session.scopes.includes(tool.requiredScope)) {
+  const hasRequiredScope = ctx.session.scopes.includes(tool.requiredScope)
+    || (ctx.session.legacyBroadScopeCompatibility
+      && ((tool.readWrite === "Read" && ctx.session.scopes.includes("mcp:read"))
+        || (tool.readWrite === "Write" && ctx.session.scopes.includes("mcp:write"))));
+  if (!hasRequiredScope) {
     return { available: false, reason: "missing_required_scope" };
   }
   if (!ensureWriteAccess(ctx.session, tool)) {
@@ -503,6 +536,31 @@ async function getOwnerCredits(session: McpToolSession): Promise<unknown> {
   };
 }
 
+async function estimateMcpCredits(args: Record<string, unknown>): Promise<unknown> {
+  const model = typeof args.model === "string" && args.model.trim() ? args.model.trim() : "gpt-5.4-mini";
+  const text = typeof args.prompt === "string"
+    ? args.prompt.slice(0, 32_000)
+    : Array.isArray(args.messages)
+      ? args.messages.slice(0, 100).map((message) => {
+        if (typeof message === "string") return message;
+        if (!message || typeof message !== "object") return "";
+        const content = (message as Record<string, unknown>).content;
+        return typeof content === "string" ? content : JSON.stringify(content ?? "");
+      }).join("\n").slice(0, 32_000)
+      : "";
+  const maxOutputTokens = Number.isFinite(Number(args.max_output_tokens))
+    ? Math.min(32_000, Math.max(1, Number(args.max_output_tokens)))
+    : 512;
+  const inputTokens = Math.max(1, Math.ceil(text.length / 4));
+  return {
+    model,
+    estimated_input_tokens: inputTokens,
+    estimated_output_tokens: maxOutputTokens,
+    estimated_credits: estimateGatewayCredits(model, text, maxOutputTokens),
+    pricing_source: "server_model_catalog",
+  };
+}
+
 async function executeGatewayChat(
   args: Record<string, unknown>,
   ctx: McpExecutionContext,
@@ -646,7 +704,10 @@ async function searchOwnerLibrary(
   args: Record<string, unknown>,
   ctx: McpExecutionContext,
 ): Promise<unknown> {
-  await assertDelegatedWorkerGrant(ctx.session as any, { grantType: "library_search_scope" });
+  const isDelegatedWorker = ctx.session.authMode === "delegated_worker";
+  if (isDelegatedWorker) {
+    await assertDelegatedWorkerGrant(ctx.session as any, { grantType: "library_search_scope" });
+  }
   return runWithDelegatedWorkerExecution({
     auth: ctx.session as any,
     actionClass: "read",
@@ -657,10 +718,10 @@ async function searchOwnerLibrary(
         limit: Number.isFinite(Number(args.limit)) ? Number(args.limit) : undefined,
         offset: Number.isFinite(Number(args.offset)) ? Number(args.offset) : undefined,
         itemType: typeof args.item_type === "string" ? args.item_type : undefined,
-        scope: "my_library",
-        filters: {
-          ownerUserId: ctx.session.userId,
-        },
+        scope: isDelegatedWorker ? "my_library" : "all",
+        ...(isDelegatedWorker
+          ? { filters: { ownerUserId: ctx.session.ownerUserId ?? ctx.session.userId } }
+          : {}),
       } as any,
       {
         userId: ctx.session.userId,
@@ -668,6 +729,117 @@ async function searchOwnerLibrary(
         role: "user",
       } as any,
     ));
+}
+
+function safeMediaHistoryTask(task: any): Record<string, unknown> {
+  const resultData = task?.resultData && typeof task.resultData === "object" ? task.resultData : {};
+  return {
+    id: task.id,
+    media_type: task.mediaType,
+    status: task.status,
+    model: task.model,
+    prompt: typeof task.prompt === "string" ? task.prompt.slice(0, 2_000) : "",
+    created_at: task.createdAt,
+    started_at: task.startedAt ?? null,
+    completed_at: task.completedAt ?? null,
+    error: task.errorMessage ?? null,
+    credits_used: task.creditsUsed ?? null,
+    download_available: task.status === "completed" && Boolean(task.resultUrl || Object.keys(resultData).length),
+  };
+}
+
+function resolveMcpManagedDownloadTarget(rawTarget: unknown) {
+  const target = resolveExportDownloadTarget(rawTarget);
+  if (!target) return null;
+  if (target.kind === "file") return target;
+  try {
+    const parsed = new URL(target.url);
+    if (parsed.pathname.startsWith("/api/storage/files/") || parsed.pathname.startsWith("/uploads/")) {
+      return target;
+    }
+  } catch {
+    // resolveExportDownloadTarget already validated the URL; fail closed here.
+  }
+  return null;
+}
+
+async function listMediaHistory(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
+  const limit = Math.min(100, Math.max(1, Number(args.limit) || 50));
+  const mediaType = typeof args.media_type === "string" ? args.media_type as any : undefined;
+  const status = typeof args.status === "string" ? args.status as any : undefined;
+  const tenantId = ctx.session.tenantId;
+  const internalToken = createInternalTokenFromAuth(
+    { userId: ctx.session.userId, tenantId },
+    ["media:read"],
+  );
+  const [providerResult, deferredTasks, mcpTasks, hermesTasks] = await Promise.all([
+    mediaGenerationService.listTasks(internalToken, { mediaType, status, limit }),
+    listDeferredMediaTasks(ctx.session.userId, limit, tenantId),
+    listMcpMediaTasks({ userId: ctx.session.userId, tenantId: ctx.session.tenantId, mediaType, status, limit }),
+    listHermesMediaTasks({ userId: ctx.session.userId, tenantId: ctx.session.tenantId, mediaType, status, limit }),
+  ]);
+  const providerTasks = providerResult.tasks ?? [];
+  const filteredDeferredTasks = deferredTasks.filter((task) =>
+    (!mediaType || task.mediaType === mediaType) && (!status || task.status === status));
+  return {
+    tasks: [...providerTasks, ...filteredDeferredTasks, ...hermesTasks, ...mcpTasks]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, limit)
+      .map(safeMediaHistoryTask),
+    limit,
+  };
+}
+
+async function getMediaHistoryTask(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
+  const taskId = typeof args.task_id === "string" ? args.task_id.trim() : "";
+  if (!taskId) throw new Error("task_id is required");
+  const task = taskId.startsWith("mcp_")
+    ? await getMcpMediaTask(taskId, ctx.session.userId, ctx.session.tenantId)
+    : taskId.startsWith("hermes_")
+      ? await getHermesMediaTask(taskId, ctx.session.userId, { tenantId: ctx.session.tenantId })
+      : await mediaGenerationService.getTask(
+        taskId,
+        createInternalTokenFromAuth(
+          { userId: ctx.session.userId, tenantId: ctx.session.tenantId },
+          ["media:read"],
+        ),
+        { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp.media.history.get" },
+      ).catch(() => null);
+  if (!task) throw new Error("media_task_not_found");
+  return safeMediaHistoryTask(task);
+}
+
+async function downloadLibraryItem(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
+  const itemId = Number(args.library_item_id);
+  if (!Number.isInteger(itemId) || itemId <= 0) throw new Error("library_item_id must be a positive integer");
+  if (ctx.session.authMode === "delegated_worker") {
+    await assertDelegatedWorkerGrant(ctx.session as any, { grantType: "library_item", resourceId: itemId });
+  }
+  return createLibraryDownloadRef(itemId, {
+    tenantId: ctx.session.tenantId,
+    userId: ctx.session.userId,
+  });
+}
+
+async function downloadMediaHistoryTask(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
+  const taskId = typeof args.task_id === "string" ? args.task_id.trim() : "";
+  if (!taskId) throw new Error("task_id is required");
+  return createMediaTaskDownloadRef(taskId, {
+    tenantId: ctx.session.tenantId,
+    userId: ctx.session.userId,
+  });
 }
 
 async function getOwnerLibraryItem(
@@ -678,10 +850,12 @@ async function getOwnerLibraryItem(
   if (!Number.isInteger(itemId) || itemId <= 0) {
     throw new Error("library_item_id must be a positive integer");
   }
-  await assertDelegatedWorkerGrant(ctx.session as any, {
-    grantType: "library_item",
-    resourceId: itemId,
-  });
+  if (ctx.session.authMode === "delegated_worker") {
+    await assertDelegatedWorkerGrant(ctx.session as any, {
+      grantType: "library_item",
+      resourceId: itemId,
+    });
+  }
   const item = await getLibraryItemById(itemId, {
     userId: ctx.session.userId,
     tenantId: ctx.session.tenantId,
@@ -1173,7 +1347,7 @@ async function executeSkillViaMcp(
         extraParams: rest,
       } as any,
       ctx.session.userId,
-      createInternalTokenFromAuth({ userId: ctx.session.userId }),
+      createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }),
       ctx.session.tenantId,
     );
 
@@ -1310,7 +1484,7 @@ async function invokeAgency(
         agencyId,
         conversationId,
         message,
-        userToken: createInternalTokenFromAuth({ userId: ctx.session.userId }),
+        userToken: createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }),
         tenantId: ctx.session.tenantId,
         userId: ctx.session.userId,
       });
@@ -1375,7 +1549,7 @@ async function getAgencyRunStatus(
   const result = await agencyBridge.getRunDetails(
     agencyId,
     runId,
-    createInternalTokenFromAuth({ userId: ctx.session.userId }),
+    createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }),
   );
   return {
     run_id: result.runId,
@@ -1393,7 +1567,25 @@ async function generateMedia(
   args: Record<string, unknown>,
   ctx: McpExecutionContext,
 ): Promise<unknown> {
-  const userToken = createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate"]);
+  const requestedHermes = args.provider === "hermes" || typeof args.connection_id === "string";
+  if (requestedHermes) {
+    if (kind === "audio") throw new Error("hermes_audio_not_supported");
+    if (!ctx.session.scopes.includes("hermes:generate")) throw new Error("hermes_generate_scope_required");
+    const references = Array.isArray(args.reference_image_urls)
+      ? args.reference_image_urls.filter((value): value is string => typeof value === "string").slice(0, 9)
+      : undefined;
+    return executeHermesMedia({
+      operation: kind === "image"
+        ? (references?.length ? "image.edit" : "image.generate")
+        : (references?.length ? "video.image_to_video" : "video.generate"),
+      connection_id: args.connection_id,
+      model: args.model,
+      prompt: args.prompt,
+      reference_image_urls: references,
+      duration_seconds: args.duration_seconds,
+    }, ctx);
+  }
+  const userToken = createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate"]);
   const idempotencyKey = ctx.idempotencyKey ?? undefined;
   if (kind === "image") {
     const prompt = typeof args.prompt === "string" ? args.prompt : "";
@@ -1522,10 +1714,28 @@ async function getMediaStatus(args: Record<string, unknown>, ctx: McpExecutionCo
     id: task.id,
     status: task.status,
     media_type: task.mediaType,
-    result_url: task.resultUrl ?? null,
     credits_used: task.creditsUsed ?? null,
     error: task.errorMessage ?? null,
   };
+}
+
+async function cancelMediaTask(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const taskId = typeof args.task_id === "string" ? args.task_id.trim() : "";
+  if (!taskId) throw new Error("task_id is required");
+  const user = await getUserById(ctx.session.userId);
+  if (!user) throw new Error("user_not_found");
+  const caller = mediaRouter.createCaller({
+    req: { ip: "127.0.0.1", headers: {} } as any,
+    res: {} as any,
+    user,
+    userToken: null,
+    privateVaultToken: null,
+    protectedSurfaceToken: null,
+    tenantId: ctx.session.tenantId,
+    publicUrl: "https://smartaihub.app",
+  });
+  const result = await caller.cancelTask({ taskId });
+  return { task_id: taskId, status: result.status ?? "canceled" };
 }
 
 async function createMcpJob(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
@@ -1660,7 +1870,7 @@ async function createPresentation(
     generateAIDraft(
       { deckId: deck.id, topic, style, slideCount, ...draftParams } as any,
       { userId: ctx.session.userId, tenantId: ctx.session.tenantId } as any,
-      createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate", "presentation:export"]),
+      createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate", "presentation:export"]),
       taskId,
     ).catch(() => {});
 
@@ -1720,7 +1930,7 @@ async function exportPresentation(args: Record<string, unknown>, ctx: McpExecuti
       idempotencyKey: ctx.idempotencyKey ?? `${deckId}-${format}-${ctx.session.userId}`,
     } as any,
     { userId: ctx.session.userId, tenantId: ctx.session.tenantId } as any,
-    { userToken: createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate", "presentation:export"]) } as any,
+    { userToken: createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate", "presentation:export"]) } as any,
   );
   return {
     export_id: (result as any).exportId,
@@ -1736,20 +1946,19 @@ async function downloadPresentation(args: Record<string, unknown>, ctx: McpExecu
   const status = await getPresentationExportStatus(
     deckId,
     { userId: ctx.session.userId, tenantId: ctx.session.tenantId } as any,
-    createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate", "presentation:export"]),
+    createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate", "presentation:export"]),
   );
   if (!status || (status as any).status !== "done") {
     throw new Error("Export not ready");
   }
   const outputUrl = (status as any).outputUrl ?? (status as any).downloadUrl;
-  const downloadTarget = resolveExportDownloadTarget(outputUrl);
+  const downloadTarget = resolveMcpManagedDownloadTarget(outputUrl);
   if (!downloadTarget) {
     throw new Error("Export file not available");
   }
   return {
     status: (status as any).status,
     format: (status as any).format ?? "pptx",
-    output_url: outputUrl,
     download: downloadTarget,
   };
 }
@@ -1787,7 +1996,7 @@ async function createVideoProject(args: Record<string, unknown>, ctx: McpExecuti
         model: typeof args.model === "string" ? args.model : undefined,
         duration: durationMinutes * 60,
       },
-      createInternalTokenFromAuth({ userId: ctx.session.userId }, ["media:generate"]),
+      createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate"]),
     );
 
     return {
@@ -1817,7 +2026,6 @@ async function getVideoProject(args: Record<string, unknown>, ctx: McpExecutionC
     status: task.status,
     media_type: task.mediaType,
     model: task.model,
-    result_url: task.resultUrl ?? null,
     credits_used: task.creditsUsed ?? null,
     created_at: task.createdAt,
     completed_at: task.completedAt ?? null,
@@ -1838,16 +2046,255 @@ async function downloadVideoProject(args: Record<string, unknown>, ctx: McpExecu
   if (task.status !== "completed" || !task.resultUrl) {
     throw new Error("Export not ready");
   }
-  const downloadTarget = resolveExportDownloadTarget(task.resultUrl);
+  const downloadTarget = resolveMcpManagedDownloadTarget(task.resultUrl);
   if (!downloadTarget) {
     throw new Error("Export file not available");
   }
   return {
     id: task.id,
     status: task.status,
-    result_url: task.resultUrl,
     download: downloadTarget,
   };
+}
+
+async function getHermesConnectorStatus(ctx: McpExecutionContext): Promise<unknown> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: workers.id,
+      status: workers.status,
+      runtimeVersion: workers.runtimeVersion,
+      capabilitiesJson: workers.capabilitiesJson,
+      healthSummaryJson: workers.healthSummaryJson,
+      lastSeenAt: workers.lastSeenAt,
+    })
+    .from(workers)
+    .where(and(
+      eq(workers.tenantId, ctx.session.tenantId),
+      eq(workers.runtimeType, "remotion_executor"),
+      eq(workers.registeredByUserId, ctx.session.userId),
+    ))
+    .limit(10);
+
+  const candidates = rows.map((row) => {
+    const capabilities = row.capabilitiesJson && typeof row.capabilitiesJson === "object"
+      ? row.capabilitiesJson as Record<string, unknown>
+      : {};
+    const metadata = capabilities.runtimeMetadata && typeof capabilities.runtimeMetadata === "object"
+      ? capabilities.runtimeMetadata as Record<string, unknown>
+      : {};
+    const readiness = metadata.readinessStatus === "ready" ? "ready"
+      : metadata.readinessStatus === "blocked" ? "blocked" : "unknown";
+    return {
+      worker_id: row.id,
+      status: row.status,
+      readiness,
+      runtime_version: row.runtimeVersion,
+      runtime_source: typeof metadata.runtimeSource === "string" ? metadata.runtimeSource : null,
+      runtime_pack_id: typeof metadata.runtimePackId === "string" ? metadata.runtimePackId : null,
+      capability_families: Array.isArray(metadata.capabilityFamilies)
+        ? metadata.capabilityFamilies.filter((value): value is string => typeof value === "string").slice(0, 16)
+        : [],
+      doctor_summary: metadata.doctorSummary && typeof metadata.doctorSummary === "object"
+        ? metadata.doctorSummary
+        : null,
+      last_seen_at: row.lastSeenAt,
+      health: row.healthSummaryJson ?? {},
+    };
+  });
+  const ready = candidates.find((candidate) => candidate.status === "online" && candidate.readiness === "ready");
+  return {
+    connected: Boolean(ready),
+    worker: ready ?? candidates[0] ?? null,
+    next_action: ready ? null : "Install or start the SmartAIHub Remotion Executor, then run its doctor and connect flow.",
+  };
+}
+
+async function disconnectHermesAgent(_args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  if (ctx.session.authMode !== "agent_pairing" || !ctx.session.deviceIdHash) {
+    throw new Error("hermes_agent_pairing_required");
+  }
+  await revokeHermesAgentDevice({
+    tenantId: ctx.session.tenantId,
+    userId: ctx.session.userId,
+    deviceIdHash: ctx.session.deviceIdHash,
+  });
+  return {
+    disconnected: true,
+    device_id: "revoked",
+    next_action: "Run the Hermes Connect flow again to create a new approved device session.",
+  };
+}
+
+async function createHermesCaller(ctx: McpExecutionContext) {
+  const user = await getUserById(ctx.session.userId);
+  if (!user) throw new Error("user_not_found");
+  return {
+    user,
+    caller: hermesConnectionsRouter.createCaller({
+      req: { ip: "127.0.0.1", headers: {} } as any,
+      res: {} as any,
+      user,
+      userToken: null,
+      privateVaultToken: null,
+      protectedSurfaceToken: null,
+      tenantId: ctx.session.tenantId,
+      publicUrl: "https://smartaihub.app",
+    }),
+  };
+}
+
+async function hermesCapabilities(_args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const { caller } = await createHermesCaller(ctx);
+  const [availability, connections] = await Promise.all([
+    caller.getAvailability(),
+    caller.listConnections({}),
+  ]);
+  return { availability, connections };
+}
+
+async function hermesConnectionStatus(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const { caller } = await createHermesCaller(ctx);
+  const connectionId = typeof args.connection_id === "string" ? args.connection_id.trim() : "";
+  return connectionId
+    ? caller.getConnection({ connectionId })
+    : caller.listConnections({});
+}
+
+async function authorizeHermesConnection(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  if (args.consent_acknowledged !== true) throw new Error("explicit_consent_acknowledged_required");
+  const scope = args.scope === "server_shared" || args.scope === "server_personal" || args.scope === "private_worker"
+    ? args.scope
+    : "";
+  if (!scope) throw new Error("scope (server_shared|server_personal|private_worker) is required");
+  const { caller } = await createHermesCaller(ctx);
+  return caller.startConnect({
+    scope,
+    consentAcknowledged: true,
+    ...(typeof args.worker_id === "string" && args.worker_id.trim() ? { workerId: args.worker_id.trim() } : {}),
+    ...(typeof args.label === "string" && args.label.trim() ? { label: args.label.trim() } : {}),
+  });
+}
+
+async function probeHermesConnection(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const connectionId = typeof args.connection_id === "string" ? args.connection_id.trim() : "";
+  if (!connectionId) throw new Error("connection_id is required");
+  const testGeneration = args.test_generation === "image" || args.test_generation === "video"
+    ? args.test_generation
+    : undefined;
+  const { caller } = await createHermesCaller(ctx);
+  return caller.probe({ connectionId, ...(testGeneration ? { testGeneration } : {}) });
+}
+
+async function disconnectHermesConnection(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const connectionId = typeof args.connection_id === "string" ? args.connection_id.trim() : "";
+  if (!connectionId) throw new Error("connection_id is required");
+  const { caller } = await createHermesCaller(ctx);
+  return caller.disconnect({ connectionId });
+}
+
+async function executeHermesMedia(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const operation = typeof args.operation === "string" ? args.operation.trim() : "";
+  const connectionId = typeof args.connection_id === "string" ? args.connection_id.trim() : "";
+  const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
+  const model = typeof args.model === "string" ? args.model.trim() : "";
+  if (!connectionId || !prompt) throw new Error("operation, connection_id, and prompt are required");
+  const user = await getUserById(ctx.session.userId);
+  if (!user) throw new Error("user_not_found");
+  const caller = mediaRouter.createCaller({
+    req: { ip: "127.0.0.1", headers: {} } as any,
+    res: {} as any,
+    user,
+    userToken: null,
+    privateVaultToken: null,
+    protectedSurfaceToken: null,
+    tenantId: ctx.session.tenantId,
+    publicUrl: "https://smartaihub.app",
+  });
+  const references = Array.isArray(args.reference_image_urls)
+    ? args.reference_image_urls.filter((value): value is string => typeof value === "string").slice(0, 9)
+    : undefined;
+  if (operation === "image.generate" || operation === "image.edit") {
+    return caller.generateImageAsync({
+      prompt,
+      ...(model ? { model } : {}),
+      transport: "hermes_worker",
+      hermesConnectionId: connectionId,
+      originSurface: "media_studio",
+      ...(references?.length ? { referenceImageUrls: references } : {}),
+      ...(ctx.idempotencyKey ? { idempotencyKey: ctx.idempotencyKey } : {}),
+    });
+  }
+  if (operation === "video.generate" || operation === "video.image_to_video") {
+    return caller.generateVideoAsync({
+      prompt,
+      ...(model ? { model } : {}),
+      transport: "hermes_worker",
+      hermesConnectionId: connectionId,
+      originSurface: "media_studio",
+      ...(references?.length ? { referenceImageUrls: references } : {}),
+      ...(Number.isFinite(Number(args.duration_seconds)) ? { duration: Number(args.duration_seconds) } : {}),
+      ...(ctx.idempotencyKey ? { idempotencyKey: ctx.idempotencyKey } : {}),
+    });
+  }
+  throw new Error("unsupported_hermes_media_operation");
+}
+
+async function submitRemotionRender(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const projectId = Number(args.project_id);
+  const profile = args.profile === "final" ? "final" : args.profile === "preview" ? "preview" : "";
+  if (!Number.isInteger(projectId) || projectId <= 0 || !profile) {
+    throw new Error("project_id and profile (preview|final) are required");
+  }
+  const connector = await getHermesConnectorStatus(ctx) as {
+    connected?: boolean;
+    worker?: { worker_id?: string } | null;
+  };
+  const workerId = connector.connected && connector.worker?.worker_id;
+  if (!workerId) throw new Error("remotion_executor_not_ready");
+  const user = await getUserById(ctx.session.userId);
+  if (!user) throw new Error("user_not_found");
+  const caller = videoProjectsRouter.createCaller({
+    req: {
+      ip: "127.0.0.1",
+      headers: {},
+      smartaihubMcpRemotionExecutor: true,
+      smartaihubRemotionWorkerId: workerId,
+    } as any,
+    res: {} as any,
+    user,
+    userToken: null,
+    privateVaultToken: null,
+    protectedSurfaceToken: null,
+    tenantId: ctx.session.tenantId,
+    publicUrl: "https://smartaihub.app",
+  });
+  return caller.queueRender({ projectId, profile });
+}
+
+async function getRemotionJobStatus(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const jobId = typeof args.job_id === "string" ? args.job_id.trim() : "";
+  if (!jobId) throw new Error("job_id is required");
+  const detail = await getUserWorkerJobDetail({
+    auth: { tenantId: ctx.session.tenantId, userId: ctx.session.userId },
+    jobId,
+  });
+  if (detail.jobType !== "remotion_render_video") throw new Error("remotion_job_not_found");
+  return detail;
+}
+
+async function cancelRemotionJob(args: Record<string, unknown>, ctx: McpExecutionContext): Promise<unknown> {
+  const jobId = typeof args.job_id === "string" ? args.job_id.trim() : "";
+  if (!jobId) throw new Error("job_id is required");
+  const detail = await getUserWorkerJobDetail({
+    auth: { tenantId: ctx.session.tenantId, userId: ctx.session.userId },
+    jobId,
+  });
+  if (detail.jobType !== "remotion_render_video") throw new Error("remotion_job_not_found");
+  return cancelQueuedUserWorkerJob({
+    auth: { tenantId: ctx.session.tenantId, userId: ctx.session.userId },
+    jobId,
+  });
 }
 
 async function workspaceReadFile(args: Record<string, unknown>): Promise<unknown> {
@@ -2208,6 +2655,164 @@ function attachContextStateToResult(
   };
 }
 
+type McpAliasDefinition = {
+  name: string;
+  target: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+};
+
+/**
+ * Validate the bounded JSON Schemas published by the MCP registry before the
+ * canonical executor runs. This deliberately implements the subset used by
+ * this registry; it is not a general JSON Schema engine.
+ */
+function validateMcpSchema(schema: Record<string, unknown>, value: unknown, path = "arguments"): string | null {
+  const type = schema.type;
+  if (type === "object") {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return `${path} must be an object`;
+    const record = value as Record<string, unknown>;
+    const required = Array.isArray(schema.required) ? schema.required : [];
+    for (const key of required) {
+      if (typeof key === "string" && !(key in record)) return `${path}.${key} is required`;
+    }
+    const properties = schema.properties && typeof schema.properties === "object" && !Array.isArray(schema.properties)
+      ? schema.properties as Record<string, unknown>
+      : {};
+    if (schema.additionalProperties === false) {
+      const unknown = Object.keys(record).find((key) => !(key in properties));
+      if (unknown) return `${path}.${unknown} is not allowed`;
+    }
+    for (const [key, child] of Object.entries(properties)) {
+      if (key in record && child && typeof child === "object" && !Array.isArray(child)) {
+        const error = validateMcpSchema(child as Record<string, unknown>, record[key], `${path}.${key}`);
+        if (error) return error;
+      }
+    }
+  } else if (type === "array") {
+    if (!Array.isArray(value)) return `${path} must be an array`;
+    if (typeof schema.minItems === "number" && value.length < schema.minItems) return `${path} has too few items`;
+    if (typeof schema.maxItems === "number" && value.length > schema.maxItems) return `${path} has too many items`;
+    if (schema.items && typeof schema.items === "object" && !Array.isArray(schema.items)) {
+      for (let index = 0; index < value.length; index += 1) {
+        const error = validateMcpSchema(schema.items as Record<string, unknown>, value[index], `${path}[${index}]`);
+        if (error) return error;
+      }
+    }
+  } else if (type === "string") {
+    if (typeof value !== "string") return `${path} must be a string`;
+    if (typeof schema.minLength === "number" && value.length < schema.minLength) return `${path} is too short`;
+    if (typeof schema.maxLength === "number" && value.length > schema.maxLength) return `${path} is too long`;
+  } else if (type === "number" || type === "integer") {
+    if (typeof value !== "number" || !Number.isFinite(value)) return `${path} must be a number`;
+    if (type === "integer" && !Number.isInteger(value)) return `${path} must be an integer`;
+    if (typeof schema.minimum === "number" && value < schema.minimum) return `${path} is below minimum`;
+    if (typeof schema.maximum === "number" && value > schema.maximum) return `${path} is above maximum`;
+  } else if (type === "boolean" && typeof value !== "boolean") {
+    return `${path} must be a boolean`;
+  }
+  if (Array.isArray(schema.enum) && !schema.enum.some((candidate) => Object.is(candidate, value))) {
+    return `${path} has an unsupported value`;
+  }
+  if ("const" in schema && !Object.is(schema.const, value)) return `${path} has an unsupported value`;
+  if (Array.isArray(schema.oneOf) && !schema.oneOf.some((candidate) => (
+    candidate && typeof candidate === "object" && !Array.isArray(candidate)
+      && validateMcpSchema(candidate as Record<string, unknown>, value) === null
+  ))) {
+    return `${path} has an invalid shape`;
+  }
+  return null;
+}
+
+const MCP_ALIAS_DEFINITIONS: McpAliasDefinition[] = [
+  {
+    name: "image.generate",
+    target: "smartspec.media.generate_image",
+    description: "Generate an image through the SmartAIHub media stack",
+    inputSchema: {
+      type: "object",
+      required: ["prompt"],
+      properties: { prompt: { type: "string" }, model: { type: "string" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "video.generate",
+    target: "smartspec.media.generate_video",
+    description: "Generate a video through the SmartAIHub media stack",
+    inputSchema: {
+      type: "object",
+      required: ["prompt"],
+      properties: { prompt: { type: "string" }, model: { type: "string" }, duration_seconds: { type: "number" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "models.list",
+    target: "smartspec.gateway.models.list",
+    description: "List SmartAIHub gateway models",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "account.get_balance",
+    target: "smartspec.gateway.credits.get",
+    description: "Read the current SmartAIHub credit balance",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "credits.estimate",
+    target: "smartspec.gateway.credits.estimate",
+    description: "Estimate SmartAIHub credits without charging the account",
+    inputSchema: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", maxLength: 32_000 },
+        messages: { type: "array", items: { type: "object" }, maxItems: 100 },
+        model: { type: "string", maxLength: 200 },
+        max_output_tokens: { type: "integer", minimum: 1, maximum: 32_000 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "render.get",
+    target: "smartspec.remotion.job.status",
+    description: "Read an owned Remotion render job; kind must be remotion",
+    inputSchema: {
+      type: "object",
+      required: ["kind", "job_id"],
+      properties: { kind: { type: "string", const: "remotion" }, job_id: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "render.list",
+    target: "__smartaihub_remotion_list__",
+    description: "List owned Remotion render jobs; kind must be remotion",
+    inputSchema: {
+      type: "object",
+      required: ["kind"],
+      properties: {
+        kind: { type: "string", const: "remotion" },
+        limit: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+        offset: { type: "integer", minimum: 0, maximum: 10000, default: 0 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "render.cancel",
+    target: "smartspec.remotion.job.cancel",
+    description: "Cancel an owned Remotion render job; kind must be remotion",
+    inputSchema: {
+      type: "object",
+      required: ["kind", "job_id"],
+      properties: { kind: { type: "string", const: "remotion" }, job_id: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+  },
+];
+
 const TOOL_REGISTRY: McpToolDefinition[] = [
   {
     name: "smartspec.marketplace_intelligence.search_snapshot.save",
@@ -2217,7 +2822,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     description: "Save Shopee search results obtained by the OpenAI-hosted Shopee app into SmartSpecPro Marketplace Intelligence. Call this only after the upstream Shopee app has returned real search result items.",
     requiredScope: "mcp:write",
     readWrite: "Write",
-    delegatedWorkerEligible: false,
+    delegatedWorkerEligible: true,
     executionMode: "implemented",
     resultSafetyClass: "structured_json",
     idempotencyMode: "optional",
@@ -2434,6 +3039,31 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     execute: async (_args, ctx) => getOwnerCredits(ctx.session),
   },
   {
+    name: "smartspec.gateway.credits.estimate",
+    family: "gateway",
+    namespace: "gateway",
+    toolGroup: "gateway_read",
+    description: "Estimate gateway credits from the server model catalog without charging the account",
+    requiredScope: "llm:chat",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        prompt: { type: "string", maxLength: 32_000 },
+        messages: { type: "array", items: { type: "object" }, maxItems: 100 },
+        model: { type: "string", maxLength: 200 },
+        max_output_tokens: { type: "integer", minimum: 1, maximum: 32_000 },
+      },
+      additionalProperties: false,
+    },
+    execute: estimateMcpCredits,
+  },
+  {
     name: "smartspec.gateway.chat.create",
     family: "gateway",
     namespace: "gateway",
@@ -2567,6 +3197,29 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
       && (ctx.session.authMode !== "delegated_worker"
         || ((ctx.delegatedManifest?.grantSummary.libraryContextPackIds?.length ?? 0) > 0)),
     execute: listOwnerLibraryContextPacks,
+  },
+  {
+    name: "smartspec.knowledge.library.download",
+    family: "knowledge",
+    namespace: "knowledge",
+    toolGroup: "knowledge_read",
+    description: "Create a short-lived ACL-checked download reference for a visible Library file",
+    requiredScope: "library:download",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "download_ref",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      required: ["library_item_id"],
+      properties: { library_item_id: { type: "integer" } },
+      additionalProperties: false,
+    },
+    listVisibleWhen: (ctx) => ctx.session.authMode !== "delegated_worker"
+      || Boolean(ctx.delegatedManifest?.knowledgeAccess.libraryRead),
+    execute: downloadLibraryItem,
   },
   {
     name: "smartspec.knowledge.context_packs.resolve",
@@ -2848,7 +3501,14 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     inputSchema: {
       type: "object",
       required: ["prompt"],
-      properties: { prompt: { type: "string" }, model: { type: "string" } },
+      properties: {
+        prompt: { type: "string" },
+        model: { type: "string" },
+        provider: { type: "string", enum: ["platform", "hermes"] },
+        connection_id: { type: "string", minLength: 1 },
+        aspect_ratio: { type: "string" },
+        reference_image_urls: { type: "array", items: { type: "string" }, maxItems: 9 },
+      },
       additionalProperties: false,
     },
     execute: (args, ctx) => generateMedia("image", args, ctx),
@@ -2869,7 +3529,15 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     inputSchema: {
       type: "object",
       required: ["prompt"],
-      properties: { prompt: { type: "string" }, model: { type: "string" } },
+      properties: {
+        prompt: { type: "string" },
+        model: { type: "string" },
+        provider: { type: "string", enum: ["platform", "hermes"] },
+        connection_id: { type: "string", minLength: 1 },
+        aspect_ratio: { type: "string" },
+        duration_seconds: { type: "number", minimum: 1, maximum: 60 },
+        reference_image_urls: { type: "array", items: { type: "string" }, maxItems: 9 },
+      },
       additionalProperties: false,
     },
     execute: (args, ctx) => generateMedia("video", args, ctx),
@@ -2915,6 +3583,93 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
       additionalProperties: false,
     },
     execute: getMediaStatus,
+  },
+  {
+    name: "smartspec.media.cancel",
+    family: "media",
+    namespace: "media",
+    toolGroup: "media_generation",
+    description: "Cancel an owned active image/video/audio media task",
+    requiredScope: "media:generate",
+    readWrite: "Write",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "required",
+    actionClass: "mcp_write",
+    inputSchema: {
+      type: "object",
+      required: ["task_id"],
+      properties: { task_id: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+    execute: cancelMediaTask,
+  },
+  {
+    name: "smartspec.media.history.list",
+    family: "media",
+    namespace: "media",
+    toolGroup: "media_generation",
+    description: "List the authenticated user's tenant-scoped media history",
+    requiredScope: "media:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        media_type: { type: "string", enum: ["image", "video", "audio"] },
+        status: { type: "string" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+      },
+      additionalProperties: false,
+    },
+    execute: listMediaHistory,
+  },
+  {
+    name: "smartspec.media.history.get",
+    family: "media",
+    namespace: "media",
+    toolGroup: "media_generation",
+    description: "Read one tenant-scoped media history task without exposing raw URLs",
+    requiredScope: "media:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      required: ["task_id"],
+      properties: { task_id: { type: "string" } },
+      additionalProperties: false,
+    },
+    execute: getMediaHistoryTask,
+  },
+  {
+    name: "smartspec.media.history.download",
+    family: "media",
+    namespace: "media",
+    toolGroup: "media_generation",
+    description: "Create a short-lived download reference for an owned completed media task",
+    requiredScope: "media:download",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "download_ref",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      required: ["task_id"],
+      properties: { task_id: { type: "string" } },
+      additionalProperties: false,
+    },
+    execute: downloadMediaHistoryTask,
   },
   {
     name: "smartspec.presentations.create",
@@ -3094,6 +3849,270 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
       additionalProperties: false,
     },
     execute: downloadVideoProject,
+  },
+  {
+    name: "smartspec.hermes.connector.status",
+    family: "video_projects",
+    namespace: "hermes",
+    toolGroup: "video_generation",
+    description: "Check whether a paired standalone Hermes/Remotion executor is online and render-ready",
+    requiredScope: "hermes:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    execute: async (_args, ctx) => getHermesConnectorStatus(ctx),
+  },
+  {
+    name: "smartspec.hermes.capabilities",
+    family: "media",
+    namespace: "hermes",
+    toolGroup: "media_generation",
+    description: "List the authenticated user's available Hermes connection and media capabilities",
+    requiredScope: "hermes:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    execute: hermesCapabilities,
+  },
+  {
+    name: "smartspec.hermes.connection_status",
+    family: "media",
+    namespace: "hermes",
+    toolGroup: "media_generation",
+    description: "Read one owned Hermes provider connection or list all owned connections",
+    requiredScope: "hermes:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: { connection_id: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+    execute: hermesConnectionStatus,
+  },
+  {
+    name: "smartspec.hermes.connection_authorize",
+    family: "media",
+    namespace: "hermes",
+    toolGroup: "media_generation",
+    description: "Start an owner-consented Hermes provider authorization job",
+    requiredScope: "hermes:connect",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "required",
+    actionClass: "media",
+    inputSchema: {
+      type: "object",
+      required: ["scope", "consent_acknowledged"],
+      properties: {
+        scope: { type: "string", enum: ["server_shared", "server_personal", "private_worker"] },
+        worker_id: { type: "string" },
+        label: { type: "string", maxLength: 120 },
+        consent_acknowledged: { type: "boolean", const: true },
+      },
+      additionalProperties: false,
+    },
+    execute: authorizeHermesConnection,
+  },
+  {
+    name: "smartspec.hermes.connection_probe",
+    family: "media",
+    namespace: "hermes",
+    toolGroup: "media_generation",
+    description: "Probe an owned Hermes connection and optionally run a bounded image/video test",
+    requiredScope: "hermes:connect",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "media",
+    inputSchema: {
+      type: "object",
+      required: ["connection_id"],
+      properties: {
+        connection_id: { type: "string", minLength: 1 },
+        test_generation: { type: "string", enum: ["image", "video"] },
+      },
+      additionalProperties: false,
+    },
+    execute: probeHermesConnection,
+  },
+  {
+    name: "smartspec.hermes.connection_disconnect",
+    family: "media",
+    namespace: "hermes",
+    toolGroup: "media_generation",
+    description: "Disconnect an owned Hermes provider connection",
+    requiredScope: "hermes:disconnect",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "mcp_write",
+    inputSchema: {
+      type: "object",
+      required: ["connection_id"],
+      properties: { connection_id: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+    execute: disconnectHermesConnection,
+  },
+  {
+    name: "smartspec.hermes.connection_test_generation",
+    family: "media",
+    namespace: "hermes",
+    toolGroup: "media_generation",
+    description: "Run the bounded Hermes image/video connection liveness test",
+    requiredScope: "hermes:generate",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "media",
+    inputSchema: {
+      type: "object",
+      required: ["connection_id", "test_generation"],
+      properties: {
+        connection_id: { type: "string", minLength: 1 },
+        test_generation: { type: "string", enum: ["image", "video"] },
+      },
+      additionalProperties: false,
+    },
+    execute: probeHermesConnection,
+  },
+  {
+    name: "smartspec.hermes.media_execute",
+    family: "media",
+    namespace: "hermes",
+    toolGroup: "media_generation",
+    description: "Submit a supported Hermes image/video operation through the existing server media contract",
+    requiredScope: "hermes:generate",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "artifact_ref",
+    idempotencyMode: "optional",
+    actionClass: "media",
+    inputSchema: {
+      type: "object",
+      required: ["operation", "connection_id", "model", "prompt"],
+      properties: {
+        operation: { type: "string", enum: ["image.generate", "image.edit", "video.generate", "video.image_to_video"] },
+        connection_id: { type: "string", minLength: 1 },
+        model: { type: "string", minLength: 1 },
+        prompt: { type: "string", minLength: 1 },
+        reference_image_urls: { type: "array", items: { type: "string" }, maxItems: 9 },
+        duration_seconds: { type: "number", minimum: 1, maximum: 60 },
+      },
+      additionalProperties: false,
+    },
+    execute: executeHermesMedia,
+  },
+  {
+    name: "smartspec.hermes.agent.disconnect",
+    family: "video_projects",
+    namespace: "hermes",
+    toolGroup: "gateway_generation",
+    description: "Revoke the current paired Hermes MCP device session",
+    requiredScope: "hermes:disconnect",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "mcp_write",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    availability: async (ctx) => ctx.session.authMode === "agent_pairing"
+      ? { available: true }
+      : { available: false, reason: "agent_pairing_session_required" },
+    execute: disconnectHermesAgent,
+  },
+  {
+    name: "smartspec.remotion.render_video",
+    family: "video_projects",
+    namespace: "remotion",
+    toolGroup: "video_generation",
+    description: "Queue a server-compiled Remotion video project on the approved executor lane",
+    requiredScope: "remotion:submit",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "artifact_ref",
+    idempotencyMode: "optional",
+    actionClass: "media",
+    inputSchema: {
+      type: "object",
+      required: ["project_id", "profile"],
+      properties: {
+        project_id: { type: "integer", minimum: 1 },
+        profile: { type: "string", enum: ["preview", "final"] },
+      },
+      additionalProperties: false,
+    },
+    availability: async (ctx) => {
+      const enabled = await getTenantFeatureFlag("remotionDedicatedExecutorEnabled", ctx.session.tenantId).catch(() => false);
+      return enabled ? { available: true } : { available: false, reason: "remotion_executor_feature_disabled" };
+    },
+    execute: submitRemotionRender,
+  },
+  {
+    name: "smartspec.remotion.job.status",
+    family: "video_projects",
+    namespace: "remotion",
+    toolGroup: "video_generation",
+    description: "Read the authenticated user's Remotion render job and verified output references",
+    requiredScope: "remotion:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      required: ["job_id"],
+      properties: { job_id: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+    execute: getRemotionJobStatus,
+  },
+  {
+    name: "smartspec.remotion.job.cancel",
+    family: "video_projects",
+    namespace: "remotion",
+    toolGroup: "video_generation",
+    description: "Cancel an owned active Remotion render job",
+    requiredScope: "remotion:cancel",
+    readWrite: "Write",
+    delegatedWorkerEligible: false,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "optional",
+    actionClass: "mcp_write",
+    inputSchema: {
+      type: "object",
+      required: ["job_id"],
+      properties: { job_id: { type: "string", minLength: 1 } },
+      additionalProperties: false,
+    },
+    execute: cancelRemotionJob,
   },
   {
     name: "smartspec.jobs.submit",
@@ -3340,6 +4359,9 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
         room_id: { type: "string" },
         message_id: { type: "string" },
         actor_assistant_id: { type: "string" },
+        title: { type: "string", maxLength: 500 },
+        objective: { type: "string", maxLength: 4_000 },
+        target_step: { type: "string", enum: ["research", "review", "approval"] },
       },
       additionalProperties: false,
     },
@@ -3492,17 +4514,49 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
   },
 ];
 
-function toolAnnotations(tool: McpCatalogTool) {
-  return {
-    readOnlyHint: tool.readWrite === "Read",
-    destructiveHint: tool.readWrite === "Write" && tool.family === "workspace",
-    idempotentHint: tool.readWrite === "Read" || tool.idempotencyMode !== "none",
-  };
+function aliasTargetTool(alias: McpAliasDefinition): McpToolDefinition | null {
+  return TOOL_REGISTRY.find((entry) => entry.name === alias.target) ?? null;
 }
 
-export function getMcpRegistryTools(): McpCatalogTool[] {
-  return TOOL_REGISTRY.map((tool) => ({
-    name: tool.name,
+function aliasArguments(alias: McpAliasDefinition, args: Record<string, unknown>): Record<string, unknown> {
+  if (alias.name.startsWith("render.")) {
+    if (args.kind !== "remotion") {
+      throw Object.assign(new Error("render aliases require kind=remotion"), { code: -32602 });
+    }
+    const { kind: _kind, ...rest } = args;
+    return rest;
+  }
+  return args;
+}
+
+async function executeRemotionListAlias(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
+  if (args.kind !== "remotion") {
+    throw Object.assign(new Error("render.list requires kind=remotion"), { code: -32602 });
+  }
+  const remotionStatusTool = TOOL_REGISTRY.find((entry) => entry.name === "smartspec.remotion.job.status");
+  if (!remotionStatusTool) {
+    throw Object.assign(new Error("Tool unavailable: remotion_status_not_configured"), { code: -32603 });
+  }
+  const availability = await evaluateToolAvailability(remotionStatusTool, ctx);
+  if (!availability.available) {
+    throw Object.assign(new Error(`Tool unavailable: ${availability.reason}`), { code: -32603 });
+  }
+  const limit = Math.min(100, Math.max(1, Number(args.limit) || 50));
+  const offset = Math.min(10_000, Math.max(0, Number(args.offset) || 0));
+  return listUserWorkerJobs({
+    auth: { tenantId: ctx.session.tenantId, userId: ctx.session.userId },
+    jobType: "remotion_render_video",
+    limit,
+    offset,
+  });
+}
+
+function projectCatalogTool(tool: McpCatalogTool, name = tool.name, inputSchema = tool.inputSchema): McpCatalogTool {
+  return {
+    name,
     family: tool.family,
     namespace: tool.namespace,
     toolGroup: tool.toolGroup,
@@ -3513,8 +4567,32 @@ export function getMcpRegistryTools(): McpCatalogTool[] {
     executionMode: tool.executionMode,
     resultSafetyClass: tool.resultSafetyClass,
     idempotencyMode: tool.idempotencyMode,
-    inputSchema: tool.inputSchema,
-  }));
+    inputSchema,
+    outputSchema: tool.outputSchema ?? { type: "object" },
+    schemaVersion: tool.schemaVersion ?? "1",
+    cacheScope: tool.cacheScope ?? (tool.readWrite === "Read" ? "private" : "no-store"),
+    auditAction: tool.auditAction ?? `mcp.${name}`,
+  };
+}
+
+function toolAnnotations(tool: McpCatalogTool) {
+  return {
+    readOnlyHint: tool.readWrite === "Read",
+    destructiveHint: tool.readWrite === "Write" && tool.family === "workspace",
+    idempotentHint: tool.readWrite === "Read" || tool.idempotencyMode !== "none",
+  };
+}
+
+export function getMcpRegistryTools(): McpCatalogTool[] {
+  const canonical = TOOL_REGISTRY.map((tool) => projectCatalogTool(tool));
+  const aliases = MCP_ALIAS_DEFINITIONS.flatMap((alias) => {
+    const target = aliasTargetTool(alias)
+      ?? (alias.target === "__smartaihub_remotion_list__"
+        ? TOOL_REGISTRY.find((entry) => entry.name === "smartspec.remotion.job.status") ?? null
+        : null);
+    return target ? [projectCatalogTool(target, alias.name, alias.inputSchema)] : [];
+  });
+  return [...canonical, ...aliases];
 }
 
 export async function describeDelegatedMcpSurface(input: {
@@ -3687,7 +4765,63 @@ export async function listMcpToolsForSession(
       name: tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema,
+      outputSchema: tool.outputSchema ?? { type: "object" },
+      requiredScope: tool.requiredScope,
+      schemaVersion: tool.schemaVersion ?? "1",
+      cacheScope: tool.cacheScope ?? (tool.readWrite === "Read" ? "private" : "no-store"),
       annotations: toolAnnotations(tool),
+    });
+  }
+
+  const guideAliasesEnabled = await getTenantFeatureFlags(ctx.session.tenantId)
+    .then((flags) => flags.mcpGuideToolAliasesEnabled)
+    .catch(() => false);
+  if (!guideAliasesEnabled) {
+    hidden.push(...MCP_ALIAS_DEFINITIONS.map((alias) => ({
+      name: alias.name,
+      reason: "mcp_guide_aliases_disabled",
+    })));
+    return { tools, hidden };
+  }
+
+  for (const alias of MCP_ALIAS_DEFINITIONS) {
+    const target = aliasTargetTool(alias);
+    if (!target) {
+      if (alias.target === "__smartaihub_remotion_list__") {
+        const remotionTarget = TOOL_REGISTRY.find((entry) => entry.name === "smartspec.remotion.job.status");
+        if (!remotionTarget) continue;
+        const availability = await evaluateToolAvailability(remotionTarget, ctx);
+        if (!availability.available) {
+          hidden.push({ name: alias.name, reason: availability.reason });
+          continue;
+        }
+        tools.push({
+          name: alias.name,
+          description: alias.description,
+          inputSchema: alias.inputSchema,
+          outputSchema: remotionTarget.outputSchema ?? { type: "object" },
+          requiredScope: remotionTarget.requiredScope,
+          schemaVersion: remotionTarget.schemaVersion ?? "1",
+          cacheScope: remotionTarget.cacheScope ?? "private",
+          annotations: toolAnnotations(projectCatalogTool(remotionTarget, alias.name, alias.inputSchema)),
+        });
+      }
+      continue;
+    }
+    const availability = await evaluateToolAvailability(target, ctx);
+    if (!availability.available) {
+      hidden.push({ name: alias.name, reason: availability.reason });
+      continue;
+    }
+    tools.push({
+      name: alias.name,
+      description: alias.description,
+      inputSchema: alias.inputSchema,
+      outputSchema: target.outputSchema ?? { type: "object" },
+      requiredScope: target.requiredScope,
+      schemaVersion: target.schemaVersion ?? "1",
+      cacheScope: target.cacheScope ?? (target.readWrite === "Read" ? "private" : "no-store"),
+      annotations: toolAnnotations(projectCatalogTool(target, alias.name, alias.inputSchema)),
     });
   }
 
@@ -3699,9 +4833,27 @@ export async function executeMcpToolByName(
   args: Record<string, unknown>,
   ctx: McpExecutionContext,
 ): Promise<{ result: unknown; idempotencyRequired: boolean }> {
-  const tool = TOOL_REGISTRY.find((entry) => entry.name === toolName);
+  const alias = MCP_ALIAS_DEFINITIONS.find((entry) => entry.name === toolName);
+  if (alias) {
+    const guideAliasesEnabled = await getTenantFeatureFlags(ctx.session.tenantId)
+      .then((flags) => flags.mcpGuideToolAliasesEnabled)
+      .catch(() => false);
+    if (!guideAliasesEnabled) {
+      throw Object.assign(new Error("Tool unavailable: mcp_guide_aliases_disabled"), { code: -32603 });
+    }
+  }
+  if (alias?.target === "__smartaihub_remotion_list__") {
+    const result = await executeRemotionListAlias(args, ctx);
+    return { result: attachContextStateToResult(toolName, ctx, result), idempotencyRequired: false };
+  }
+  const tool = TOOL_REGISTRY.find((entry) => entry.name === (alias?.target ?? toolName));
   if (!tool) {
     throw Object.assign(new Error("Tool not implemented"), { code: -32601 });
+  }
+
+  const inputError = validateMcpSchema(alias?.inputSchema ?? tool.inputSchema, args);
+  if (inputError) {
+    throw Object.assign(new Error(`Invalid params: ${inputError}`), { code: -32602 });
   }
 
   const availability = await evaluateToolAvailability(tool, ctx);
@@ -3720,7 +4872,7 @@ export async function executeMcpToolByName(
     );
   }
 
-  const rawResult = await tool.execute(args, ctx);
+  const rawResult = await tool.execute(alias ? aliasArguments(alias, args) : args, ctx);
   const result = attachContextStateToResult(toolName, ctx, rawResult);
   return {
     result,
@@ -3737,7 +4889,7 @@ export function buildStaticMcpCatalog(): Record<string, unknown> {
     capabilities: {
       tools: true,
       prompts: false,
-      resources: false,
+      resources: true,
       toolsListChanged: false,
     },
     families: Array.from(new Set(tools.map((tool) => tool.family))).map((family) => ({

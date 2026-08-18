@@ -512,6 +512,14 @@ _MODE_PREDICATE_SUBJECTS = {
 # Mode metadata that describes the mode rather than overriding api_config.
 _MODE_METADATA_KEYS = {"id", "when", "label", "notice", "description"}
 
+_GROK_IMAGE_2_MODEL = "grok-imagine-image-2"
+_GROK_IMAGE_2_SEGMENT_MAP_MODEL = "grok-imagine-image-2/segment-map"
+_GROK_IMAGE_2_OPERATIONS = {
+    "text-to-image": "grok-imagine-image-2-0/text-to-image",
+    "image-edit": "grok-imagine-image-2-0/image-edit",
+    "segment-map": "grok-imagine-image-2-0/segment-map",
+}
+
 
 def normalize_reference_url_list(value: Any) -> list[str]:
     """Flatten any reference input shape into a list of non-empty URL strings."""
@@ -681,6 +689,50 @@ def resolve_generation_api_config(
         return merged, resolve_image_api_model(model, merged, reference_image_urls), None
 
     return merged, resolve_api_model(model, merged), None
+
+
+def resolve_grok_image_2_operation(
+    model: str,
+    api_config: dict[str, Any] | None,
+    extra_params: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, str, str | None]:
+    """Resolve Grok Image 2's logical operation to its Kie model endpoint.
+
+    The catalog exposes text-to-image and image-edit as one user-facing model,
+    while Segment Map has its own catalog row. The Node server authorizes and
+    resolves the source task before this function runs; this function only
+    selects the provider endpoint and removes fields rejected by that endpoint.
+    """
+    normalized_model = str(model or "").strip().lower()
+    if normalized_model not in {_GROK_IMAGE_2_MODEL, _GROK_IMAGE_2_SEGMENT_MAP_MODEL}:
+        return api_config, resolve_api_model(model, api_config), None
+
+    raw_operation = None
+    if isinstance(extra_params, dict):
+        raw_operation = extra_params.get("grokOperation") or extra_params.get("grok_operation")
+    operation = str(raw_operation or "").strip().lower()
+    if normalized_model == _GROK_IMAGE_2_SEGMENT_MAP_MODEL:
+        operation = "segment-map"
+    elif operation not in {"text-to-image", "image-edit"}:
+        operation = "text-to-image"
+
+    merged = dict(api_config or {})
+    configured_operations = merged.get("operations")
+    configured = configured_operations.get(operation) if isinstance(configured_operations, dict) else None
+    if isinstance(configured, dict):
+        merged.update(configured)
+    merged["kie_model_id"] = _GROK_IMAGE_2_OPERATIONS[operation]
+
+    drop_params = set(_get_api_config_str_list(merged, "drop_params", "dropParams"))
+    drop_params.update({"sourceMediaTaskId", "source_media_task_id", "grokOperation", "grok_operation"})
+    if operation == "segment-map":
+        drop_params.update({"prompt", "aspect_ratio", "resolution", "output_format"})
+    elif operation == "image-edit":
+        drop_params.update({"aspect_ratio", "resolution", "output_format"})
+    if drop_params:
+        merged["drop_params"] = sorted(drop_params)
+
+    return merged, _GROK_IMAGE_2_OPERATIONS[operation], operation
 
 
 def _apply_mode_drop_params(input_params: dict[str, Any], api_config: dict[str, Any] | None) -> None:
@@ -1686,7 +1738,13 @@ class KieAIProvider:
                 await asyncio.sleep(poll_interval)
                 elapsed += poll_interval
             else:
-                logger.warning("kie_ai_unknown_state", state=task_state, response=status_response)
+                logger.warning(
+                    "kie_ai_unknown_state",
+                    task_id=task_id,
+                    state=task_state,
+                    response_keys=sorted(status_response.keys()),
+                    data_keys=sorted(nested.keys()),
+                )
                 await asyncio.sleep(poll_interval)
                 elapsed += poll_interval
 
@@ -1881,6 +1939,7 @@ class KieAIProvider:
         # Check for per-model API config from configJson
         api_config = kwargs.pop("api_config", None)
         extra_params = kwargs.pop("extra_params", None)
+        wait_for_completion = kwargs.pop("wait_for_completion", True)
 
         # Determine API model name and payload shape. Reference-driven variants
         # are opt-in through catalog metadata, so unrelated Kie models keep their
@@ -1892,6 +1951,13 @@ class KieAIProvider:
             media_type="image",
             reference_image_urls=reference_image_urls,
         )
+        api_config, api_model, grok_operation = resolve_grok_image_2_operation(
+            model,
+            api_config,
+            extra_params if isinstance(extra_params, dict) else None,
+        )
+        if grok_operation:
+            active_mode_id = grok_operation
 
         # Build input parameters for image generation
         input_params = {
@@ -1917,6 +1983,31 @@ class KieAIProvider:
         # Merge extra_params from configJson-based dynamic fields
         for key, value in _iter_provider_extra_params(extra_params):
             input_params[key] = value
+
+        if grok_operation in {"image-edit", "segment-map"}:
+            task_id = str(input_params.get("task_id") or "").strip()
+            if not task_id:
+                raise ValueError(f"Grok Image 2 {grok_operation} requires task_id")
+            input_params["task_id"] = task_id
+        if grok_operation == "image-edit" and not str(prompt or "").strip():
+            raise ValueError("Grok Image 2 image-edit requires a prompt")
+        if "mask_indexs" in input_params:
+            raw_masks = input_params.get("mask_indexs")
+            if not isinstance(raw_masks, list):
+                raise ValueError("mask_indexs must be an array")
+            normalized_masks: list[int] = []
+            for raw_mask in raw_masks:
+                candidate = raw_mask.get("value") if isinstance(raw_mask, dict) else raw_mask
+                if isinstance(candidate, bool):
+                    raise ValueError("mask_indexs must contain integer indexes")
+                try:
+                    parsed_mask = int(candidate)
+                except (TypeError, ValueError):
+                    raise ValueError("mask_indexs must contain integer indexes") from None
+                if parsed_mask < 0 or parsed_mask > 64:
+                    raise ValueError("mask_indexs values must be between 0 and 64")
+                normalized_masks.append(parsed_mask)
+            input_params["mask_indexs"] = normalized_masks
 
         # Add reference images for style transfer / img2img
         # The target field is driven by model config metadata passed through api_config.
@@ -1945,7 +2036,7 @@ class KieAIProvider:
         # Add reference style URL if provided
         if kwargs.get("reference_style_url"):
             input_params["style_reference"] = kwargs["reference_style_url"]
-            logger.info("kie_ai_style_reference", url=kwargs["reference_style_url"][:50])
+            logger.info("kie_ai_style_reference", has_style_reference=True)
 
         # Last write wins: strip anything the selected mode's endpoint rejects.
         _apply_mode_drop_params(input_params, api_config)
@@ -1988,21 +2079,30 @@ class KieAIProvider:
             operation="image",
         )
 
-        logger.info("kie_ai_task_created", task_id=task_id, has_callback=bool(callback_url), raw_result=result)
+        logger.info(
+            "kie_ai_task_created",
+            task_id=task_id,
+            has_callback=bool(callback_url),
+            response_keys=sorted(result.keys()) if isinstance(result, dict) else [],
+        )
 
-        # If no callback URL, poll for result (synchronous wait)
-        if not callback_url:
+        # Synchronous callers retain blocking polling. Async workers persist the
+        # provider task ID and hand completion polling to a short Celery task.
+        if not callback_url and wait_for_completion:
             logger.info("kie_ai_polling_mode", task_id=task_id)
             return await self.wait_for_task(task_id)
 
-        # With callback URL, return task info immediately (async mode)
-        logger.info("kie_ai_callback_mode", task_id=task_id, callback_url=callback_url)
+        logger.info(
+            "kie_ai_async_mode",
+            task_id=task_id,
+            callback_enabled=bool(callback_url),
+        )
         return {
             "id": task_id,
             "status": "processing",
             "data": [],
             "created": int(time.time()),
-            "message": "Task created. Result will be delivered via callback URL."
+            "message": "Task created and queued for completion tracking.",
         }
 
     async def generate_video(self, model: str, prompt: str, **kwargs) -> dict:

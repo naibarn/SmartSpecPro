@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { trpc } from "@/lib/trpc";
 import {
   pickCopy,
@@ -988,7 +989,7 @@ function BannerFramePreview({
         }}
       >
         {design.imageAsset?.url ? (
-          <img
+          <AuthenticatedMediaImage
             src={design.imageAsset.url}
             alt={pickCopy(lang, t.imagePreviewAlt)}
             className="h-full w-full object-cover"

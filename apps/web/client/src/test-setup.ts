@@ -113,7 +113,7 @@ const originalResolveFilename = (Module as any)._resolveFilename;
   }
   if (request.startsWith("react/")) {
     const subPath = request.slice("react/".length);
-    const redirected = path.join(webNodeModules, "react", subPath);
+    const redirected = path.join(resolvePackageDir("react"), subPath);
     return originalResolveFilename.call(
       this,
       redirected,

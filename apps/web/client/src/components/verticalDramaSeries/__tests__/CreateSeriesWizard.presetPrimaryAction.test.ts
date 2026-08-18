@@ -62,14 +62,15 @@ describe("resolveCreateSeriesPresetAction", () => {
     }
   });
 
-  it("no premise + 1 preset -> applies the preset verbatim (unchanged legacy path)", () => {
+  it("no premise + 1 preset -> synthesizes a new skill-generated variation", () => {
     const action = resolveCreateSeriesPresetAction({
       hasUserPremise: false,
       presetCount: 1,
       lang: "th",
     });
-    expect(action.kind).toBe("apply_preset_verbatim");
-    expect(action.label).toBe("ใช้ Preset นี้");
+    expect(action.kind).toBe("synthesize_single_preset");
+    expect(action.label).toBe("ให้ AI สร้าง draft ใหม่จาก preset นี้");
+    expect(action.outcomeHint).toBeTruthy();
   });
 
   it("no premise + 2-5 presets -> synthesizes presets only", () => {

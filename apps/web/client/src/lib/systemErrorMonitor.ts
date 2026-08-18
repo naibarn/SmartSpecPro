@@ -16,6 +16,7 @@ import {
   isHtmlApiErrorMessage,
   isLostUpstreamApiErrorMessage,
 } from "@/lib/apiResponseDiagnostics";
+import { isTransientTenantServiceError } from "@/lib/tenantServiceRecovery";
 
 export type ErrorClass = "system" | "user" | "auth";
 
@@ -118,7 +119,11 @@ export function classifyError(error: unknown): ErrorClass {
     return "user";
   }
 
-  if (isNetworkFailure(error) || isHtmlInsteadOfJsonError(error)) {
+  if (
+    isNetworkFailure(error) ||
+    isHtmlInsteadOfJsonError(error) ||
+    isTransientTenantServiceError(error)
+  ) {
     return "system";
   }
 
@@ -161,7 +166,7 @@ function currentUrl(): string {
  * auth classification, so query-retry behavior is unchanged.
  */
 function isTransientReconnectClass(error: unknown): boolean {
-  if (isNetworkFailure(error)) return true;
+  if (isTransientTenantServiceError(error)) return true;
   return error instanceof Error && isLostUpstreamApiErrorMessage(error.message);
 }
 
@@ -209,15 +214,11 @@ export function handleError(error: unknown, path?: string): void {
   // classification (which is what makes query retries fire in the first
   // place) are all unchanged either way.
   if (isTransientReconnectClass(error)) {
-    toast.error("กำลังเชื่อมต่อใหม่...", {
+    toast.info("กำลังเชื่อมต่อใหม่...", {
       id: "system-error",
       duration: 8000,
       description:
-        "เซิร์ฟเวอร์กำลังรีสตาร์ท/ขัดข้องชั่วคราว ระบบกำลังลองใหม่ให้อัตโนมัติ หากเป็นการกดสั่งงาน งานอาจสำเร็จแล้ว โปรดรอสักครู่แล้วรีเฟรชตรวจสอบก่อนกดซ้ำ",
-      action: {
-        label: "แจ้งปัญหา",
-        onClick: () => dispatchReportEvent(resolvedPath),
-      },
+        "เซิร์ฟเวอร์กำลังรีสตาร์ทหรือขัดข้องชั่วคราว ระบบกำลังลองเชื่อมต่อให้อัตโนมัติ",
     });
     return;
   }

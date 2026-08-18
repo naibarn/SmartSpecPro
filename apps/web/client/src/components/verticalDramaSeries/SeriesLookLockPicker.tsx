@@ -13,6 +13,8 @@ import {
 export type SeriesLookLockPickerValue = {
   mode: VdLookLockMode;
   genreKey?: VdLookLockGenre;
+  /** Whether the look also becomes soft story-facing guidance during drafting. */
+  visualNarrativeEnabled?: boolean;
 };
 
 const GENRE_LABELS: Record<VdLookLockGenre, { th: string; en: string }> = {
@@ -83,8 +85,8 @@ export function SeriesLookLockPicker(props: {
       </Text>
       <Text type="supporting" color="secondary">
         {props.lang === "th"
-          ? "มีผลกับภาพตัวละคร ฉาก ภาพเริ่มช็อต และการซ่อมภาพครั้งถัดไป"
-          : "Applies to future character, location, start-frame, and repair renders"}
+          ? "เลือกก่อนว่าลุคนี้จะมีผลเฉพาะงานภาพ หรือจะช่วย AI วางบรรยากาศและจังหวะความสัมพันธ์ของเรื่องด้วย"
+          : "Choose whether this look affects only production images or also helps AI plan story texture and relationship staging."}
       </Text>
       <Grid columns={{ minWidth: 180, max: 3, repeat: "fit" }} gap={2}>
         {options.map(option => {
@@ -96,7 +98,14 @@ export function SeriesLookLockPicker(props: {
               label={option.title}
               isSelected={selected}
               isDisabled={props.isDisabled || option.disabled}
-              onChange={isSelected => isSelected && props.onChange(option.value)}
+              onChange={isSelected =>
+                isSelected &&
+                props.onChange({
+                  ...option.value,
+                  ...(props.value.visualNarrativeEnabled !== undefined
+                    ? { visualNarrativeEnabled: props.value.visualNarrativeEnabled }
+                    : {}),
+                })}
               padding={3}
               variant={selected ? "blue" : "default"}
             >
@@ -108,6 +117,66 @@ export function SeriesLookLockPicker(props: {
           );
         })}
       </Grid>
+      <VStack gap={1}>
+        <Text type="label">
+          {props.lang === "th" ? "การนำลุคไปใช้ตอนคิดเรื่อง" : "Use this look during story planning"}
+        </Text>
+        <Text type="supporting" color="secondary">
+          {props.lang === "th"
+            ? "เป็นแนวทางเสริมเท่านั้น ไม่สามารถเขียนทับพล็อต ตัวละคร ปม หรือความต่อเนื่องที่ผู้ใช้กำหนด"
+            : "This is additive guidance only; it never overrides the premise, characters, plot threads, or continuity."}
+        </Text>
+        <Grid columns={{ minWidth: 240, max: 2, repeat: "fit" }} gap={2}>
+          {[
+            {
+              key: "story",
+              enabled: true,
+              title: props.lang === "th" ? "ใช้ช่วยคิดเรื่องและงานภาพ" : "Use for story direction and visuals",
+              description: props.lang === "th"
+                ? "AI จะสกัด Visual Narrative DNA เพื่อช่วยเลือกฉาก อารมณ์ motif และภาษาภาพของความสัมพันธ์ โดยไม่ล็อกพล็อต"
+                : "AI derives Visual Narrative DNA for scene texture, motifs, emotion, and relationship staging without locking the plot.",
+            },
+            {
+              key: "visual-only",
+              enabled: false,
+              title: props.lang === "th" ? "ใช้กับงานภาพเท่านั้น" : "Use for visuals only",
+              description: props.lang === "th"
+                ? "ลุคจะถูกใช้ตอนสร้างภาพตัวละคร ฉาก และเฟรมเท่านั้น เหมาะกับเรื่องเดิมที่ไม่ต้องการให้วางโครงใหม่"
+                : "The look is used for character, location, and frame generation only; story planning stays unchanged.",
+            },
+          ].map(option => {
+            const selected = props.value.visualNarrativeEnabled === option.enabled;
+            return (
+              <SelectableCard
+                key={option.key}
+                label={option.title}
+                isSelected={selected}
+                isDisabled={props.isDisabled || props.value.mode === "none"}
+                onChange={isSelected =>
+                  isSelected &&
+                  props.onChange({
+                    ...props.value,
+                    visualNarrativeEnabled: option.enabled,
+                  })}
+                padding={3}
+                variant={selected ? "blue" : "default"}
+              >
+                <VStack gap={1}>
+                  <Text type="label" weight="semibold">{option.title}</Text>
+                  <Text type="supporting" color="secondary">{option.description}</Text>
+                </VStack>
+              </SelectableCard>
+            );
+          })}
+        </Grid>
+        {props.value.mode === "none" && (
+          <Text type="supporting" color="secondary">
+            {props.lang === "th"
+              ? "เลือก look ก่อน จึงจะเปิดการนำไปใช้ตอนคิดเรื่องได้"
+              : "Choose a look first to enable story-planning use."}
+          </Text>
+        )}
+      </VStack>
     </VStack>
   );
 }

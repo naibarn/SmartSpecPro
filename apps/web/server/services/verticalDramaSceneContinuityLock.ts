@@ -66,6 +66,7 @@ function emptyResolution(): VdSceneContinuityLockResolution {
 export function buildSceneVisualStateAuthoringInput(params: {
   userId: number;
   tenantId?: string;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   group: VdSceneShotGroup;
@@ -86,6 +87,7 @@ export function buildSceneVisualStateAuthoringInput(params: {
   return {
     userId: params.userId,
     tenantId: params.tenantId,
+    publicUrl: params.publicUrl,
     seriesId: params.seriesId,
     episodeId: params.episodeId,
     locationKey: params.group.locationKey,
@@ -106,6 +108,7 @@ export async function resolveSceneContinuityLocks(params: {
   enabled: boolean;
   tenantId: string;
   userId: number;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   storyboard: unknown;
@@ -191,6 +194,7 @@ export async function resolveSceneContinuityLocks(params: {
           buildSceneVisualStateAuthoringInput({
             userId: params.userId,
             tenantId: params.tenantId,
+            publicUrl: params.publicUrl,
             seriesId: params.seriesId,
             episodeId: params.episodeId,
             group,

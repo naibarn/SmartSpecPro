@@ -1,3 +1,3 @@
 platform: standard
 mode: light
-soc​​raticode: unavailable; shell fallback recorded in plan.md
+socraticode: unavailable; shell fallback recorded in plan.md

@@ -21,6 +21,7 @@ import type { CanvasMediaMotionTiming } from "./CanvasObjects";
 import { TransformHandles } from "./components/TransformHandles";
 import type { ArrangeDirection, PresentationCanvasSize } from "@/lib/presentationEditorState";
 import { Button } from "@/components/ui/button";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 export interface CanvasStageOverlayRenderContext {
   interactionScale: number;
@@ -788,14 +789,13 @@ export function CanvasStage({
                     }}
                   >
                     {slideBackground?.type === "image" && (
-                      <div
+                      <AuthenticatedMediaImage
                         className="absolute inset-0 pointer-events-none"
-                        style={{
-                          backgroundImage: `url(${slideBackground.url})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                          backgroundRepeat: "no-repeat",
-                        }}
+                        src={slideBackground.url}
+                        alt=""
+                        aria-hidden="true"
+                        draggable={false}
+                        style={{ objectFit: "cover", objectPosition: "center" }}
                       />
                     )}
                     <CanvasObjects

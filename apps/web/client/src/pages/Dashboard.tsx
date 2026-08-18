@@ -844,6 +844,19 @@ export default function Dashboard() {
     const notices: DashboardNotice[] = [];
     const lowCreditsThreshold = 250;
 
+    if (user.freeCreditStatus?.eligible && user.freeCreditStatus.noticeDue) {
+      notices.push({
+        key: "free-credit-inactivity",
+        title: t("dashboard:notices.freeCreditInactivity", {
+          days: user.freeCreditStatus.daysRemaining ?? 0,
+        }),
+        detail: t("dashboard:notices.freeCreditInactivityDetail"),
+        tone: "critical",
+        ctaLabel: t("dashboard:notices.buyCredits"),
+        ctaHref: "/credits",
+      });
+    }
+
     if ((pendingApprovals?.requests?.length ?? 0) > 0) {
       notices.push({
         key: "approvals",
@@ -940,6 +953,7 @@ export default function Dashboard() {
     reviewOverview,
     t,
     user.credits,
+    user.freeCreditStatus,
   ]);
 
   const nextBestActions = useMemo<DashboardShortcut[]>(() => {
@@ -1254,13 +1268,12 @@ export default function Dashboard() {
   };
 
   const sidebarQuickActionIds = [
-    "work-request",
-    "my-requests",
     "chat",
     "finance",
     "finance-reports",
     "media-studio",
     "storyboard-review",
+    "vertical-drama-series",
     "video-studio",
     "marketplace-capture",
     "marketplace-intelligence",
@@ -1270,18 +1283,15 @@ export default function Dashboard() {
     "document-management",
     "private-files",
     "presentations",
-    "agencies",
-    "workpack-roi",
     "credits",
   ] as const;
   const quickActionColorById: Record<string, string> = {
-    "work-request": "from-slate-700 to-sky-700",
-    "my-requests": "from-slate-700 to-indigo-700",
     chat: "from-slate-700 to-cyan-700",
     finance: "from-slate-700 to-emerald-700",
     "finance-reports": "from-slate-700 to-teal-700",
     "media-studio": "from-slate-700 to-slate-900",
     "storyboard-review": "from-slate-700 to-cyan-700",
+    "vertical-drama-series": "from-slate-700 to-fuchsia-700",
     "video-studio": "from-slate-700 to-fuchsia-700",
     "marketplace-capture": "from-slate-700 to-emerald-700",
     "marketplace-intelligence": "from-slate-700 to-sky-700",
@@ -1291,21 +1301,9 @@ export default function Dashboard() {
     "document-management": "from-slate-700 to-sky-700",
     "private-files": "from-slate-700 to-slate-900",
     presentations: "from-slate-700 to-indigo-700",
-    agencies: "from-slate-700 to-blue-700",
-    "workpack-roi": "from-slate-700 to-violet-700",
     credits: "from-slate-700 to-emerald-700",
   };
   const quickActionFallbackById = {
-    "work-request": {
-      label: t("dashboard:quickActions.startWork"),
-      icon: ClipboardList,
-      href: "/work/request",
-    },
-    "my-requests": {
-      label: t("dashboard:quickActions.myRequests"),
-      icon: FileText,
-      href: "/work/requests",
-    },
     chat: {
       label: t("dashboard:quickActions.chat"),
       icon: MessageSquare,
@@ -1322,7 +1320,7 @@ export default function Dashboard() {
       href: "/media-studio",
     },
     "storyboard-review": {
-      label: "Storyboard Review",
+      label: t("nav:sidebar.storyboard-review"),
       icon: Video,
       href: "/storyboard-review",
     },
@@ -1340,19 +1338,6 @@ export default function Dashboard() {
       label: t("dashboard:quickActions.presentations"),
       icon: Layers,
       href: "/presentations",
-    },
-    agencies: {
-      label: t("dashboard:quickActions.agencies"),
-      icon: Users,
-      href: "/agencies",
-    },
-    "workpack-roi": {
-      label: "Workpacks",
-      icon: Workflow,
-      href: buildWorkpackEntrypointHref({
-        entrypoint: "dashboard",
-        surface: "roi",
-      }),
     },
     credits: {
       label: t("dashboard:quickActions.buyCredits"),

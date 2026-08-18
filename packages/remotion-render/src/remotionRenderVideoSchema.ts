@@ -36,6 +36,8 @@
  * change. If either list of 10 values changes, update BOTH.
  */
 import { z } from "zod";
+export { REMOTION_EXECUTOR_RUNTIME_PACK_IDS, remotionExecutorRuntimePackManifestSchema } from "./remotionExecutorRuntimePackSchema";
+export type { RemotionExecutorRuntimePackManifest } from "./remotionExecutorRuntimePackSchema";
 
 import { RemotionTemplateConfigSchema } from "./layerTemplateSchemas";
 
@@ -116,6 +118,199 @@ export const REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION = "remotion-1";
  */
 export const REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY =
   `remotion-render-contract-${REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION}`;
+
+/**
+ * Feature 145 — neutral registration contract for the standalone executor.
+ * Keep this beside the frozen Remotion job contract so the web server, Worker
+ * App compatibility layer, and standalone Node package cannot drift on the
+ * admission vocabulary. This module must remain free of node:* imports.
+ */
+export const REMOTION_EXECUTOR_SUPPORTED_HOST_PLATFORMS = [
+  "windows",
+  "macos",
+  "linux",
+] as const;
+export const REMOTION_EXECUTOR_SUPPORTED_RUNTIME_PLATFORMS = [
+  "windows",
+  "macos",
+  "linux",
+] as const;
+export const REMOTION_EXECUTOR_SUPPORTED_ARCHITECTURES = ["x64", "arm64"] as const;
+export const REMOTION_EXECUTOR_INSTALLATION_MODES = [
+  "windows_native",
+  "windows_wsl2",
+  "macos_native",
+  "linux_native",
+] as const;
+export const REMOTION_EXECUTOR_READINESS_STATUSES = ["ready", "blocked", "unavailable"] as const;
+export const REMOTION_EXECUTOR_BLOCKING_REASON_CODES = [
+  "browser_missing",
+  "browser_incompatible",
+  "ffmpeg_missing",
+  "ffmpeg_incompatible",
+  "ffprobe_missing",
+  "ffprobe_incompatible",
+  "font_set_incomplete",
+  "low_disk",
+  "credential_store_unavailable",
+  "manifest_invalid",
+  "platform_unsupported",
+  "architecture_mismatch",
+  "contract_mismatch",
+] as const;
+export const REMOTION_EXECUTOR_MAX_CONCURRENCY = 1;
+
+const boundedAuditStringSchema = z.string().trim().min(1).max(256);
+const executorCheckSchema = z.object({
+  status: z.enum(["pass", "error", "unknown"]),
+  reasonCode: z.enum(REMOTION_EXECUTOR_BLOCKING_REASON_CODES).nullable().default(null),
+  version: z.string().trim().min(1).max(128).nullable().default(null),
+}).strict().superRefine((check, ctx) => {
+  if (check.status === "error" && !check.reasonCode) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["reasonCode"], message: "Failed checks require a blocking reason code" });
+  }
+  if (check.status === "pass" && check.reasonCode) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["reasonCode"], message: "Passing checks cannot carry a blocking reason code" });
+  }
+});
+
+export const remotionExecutorRuntimeMetadataSchema = z.object({
+  executorVersion: boundedAuditStringSchema,
+  packId: boundedAuditStringSchema,
+  packVersion: boundedAuditStringSchema,
+  runtimeSource: z.enum(["existing_hermes_install", "managed_runtime_pack"]),
+  hostPlatform: z.enum(REMOTION_EXECUTOR_SUPPORTED_HOST_PLATFORMS),
+  runtimePlatform: z.enum(REMOTION_EXECUTOR_SUPPORTED_RUNTIME_PLATFORMS),
+  architecture: z.enum(REMOTION_EXECUTOR_SUPPORTED_ARCHITECTURES),
+  installationMode: z.enum(REMOTION_EXECUTOR_INSTALLATION_MODES),
+  platformContractVersion: z.literal(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION),
+  rendererPolicyVersion: z.literal(REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION),
+  maxConcurrency: z.number().int().min(1).max(REMOTION_EXECUTOR_MAX_CONCURRENCY),
+  manifestChecksum: z.string().regex(/^[a-f0-9]{64}$/i).nullable().default(null),
+}).strict().superRefine((metadata, ctx) => {
+  const validMatrix = (
+    metadata.installationMode === "windows_native"
+      && metadata.hostPlatform === "windows"
+      && metadata.runtimePlatform === "windows"
+      && metadata.architecture === "x64"
+  ) || (
+    metadata.installationMode === "windows_wsl2"
+      && metadata.hostPlatform === "windows"
+      && metadata.runtimePlatform === "linux"
+      && metadata.architecture === "x64"
+  ) || (
+    metadata.installationMode === "macos_native"
+      && metadata.hostPlatform === "macos"
+      && metadata.runtimePlatform === "macos"
+  ) || (
+    metadata.installationMode === "linux_native"
+      && metadata.hostPlatform === "linux"
+      && metadata.runtimePlatform === "linux"
+      && metadata.architecture === "x64"
+  );
+  if (!validMatrix) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["installationMode"], message: "Host, runtime platform, architecture, and installation mode are incompatible" });
+  }
+});
+
+export const remotionExecutorCapabilityProfileSchema = z.object({
+  capabilityFamilies: z.array(z.enum(REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES)).min(REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES.length).max(8),
+  claimCapability: z.literal(REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY),
+  containers: z.array(z.literal("mp4")).length(1),
+  codecs: z.array(z.literal("h264")).length(1),
+  maxWidth: z.number().int().positive().max(16_384),
+  maxHeight: z.number().int().positive().max(16_384),
+  maxDurationInFrames: z.number().int().positive().max(2_000_000),
+  maxConcurrency: z.number().int().min(1).max(REMOTION_EXECUTOR_MAX_CONCURRENCY),
+  supportsChromiumRendering: z.boolean(),
+  supportsFfmpegProbe: z.boolean(),
+  supportsFfmpegPostPass: z.boolean(),
+  supportsFontMaterialization: z.boolean(),
+}).strict().superRefine((profile, ctx) => {
+  const unique = new Set(profile.capabilityFamilies);
+  if (unique.size !== profile.capabilityFamilies.length) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["capabilityFamilies"], message: "Capability families must be unique" });
+  }
+  for (const family of REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES) {
+    if (!unique.has(family)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["capabilityFamilies"], message: `Missing required capability family ${family}` });
+    }
+  }
+  if (!profile.supportsChromiumRendering || !profile.supportsFfmpegProbe || !profile.supportsFfmpegPostPass || !profile.supportsFontMaterialization) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["supportsChromiumRendering"], message: "The initial Remotion executor must support Chromium, FFmpeg probe/post-pass, and fonts" });
+  }
+});
+
+export const remotionExecutorReadinessSchema = z.object({
+  status: z.enum(REMOTION_EXECUTOR_READINESS_STATUSES),
+  observedAt: z.string().datetime({ offset: true }),
+  checks: z.object({
+    browser: executorCheckSchema,
+    ffmpeg: executorCheckSchema,
+    ffprobe: executorCheckSchema,
+    fontSet: executorCheckSchema,
+    diskFloor: executorCheckSchema,
+    credentialStore: executorCheckSchema,
+    manifestIntegrity: executorCheckSchema,
+    contractCompatibility: executorCheckSchema,
+  }).strict(),
+  blockingReasons: z.array(z.enum(REMOTION_EXECUTOR_BLOCKING_REASON_CODES)).max(8),
+}).strict().superRefine((readiness, ctx) => {
+  const hasFailure = Object.values(readiness.checks).some((check) => check.status === "error");
+  if (readiness.status === "ready" && (hasFailure || readiness.blockingReasons.length > 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["status"], message: "Ready executor must have all checks passing and no blocking reasons" });
+  }
+  if (readiness.status !== "ready" && readiness.blockingReasons.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["blockingReasons"], message: "Blocked or unavailable executor must declare a blocking reason" });
+  }
+});
+
+export type RemotionExecutorRuntimeMetadata = z.infer<typeof remotionExecutorRuntimeMetadataSchema>;
+export type RemotionExecutorCapabilityProfile = z.infer<typeof remotionExecutorCapabilityProfileSchema>;
+export type RemotionExecutorReadiness = z.infer<typeof remotionExecutorReadinessSchema>;
+
+export const remotionExecutionTargetValues = [
+  "auto",
+  "desktop_worker",
+  "remotion_executor",
+] as const;
+export const remotionResolvedExecutionTargetValues = [
+  "desktop_worker",
+  "remotion_executor",
+] as const;
+export const remotionExecutionTargetResolutionReasonValues = [
+  "explicit_desktop_worker",
+  "explicit_remotion_executor",
+  "auto_dedicated_ready",
+  "auto_tenant_flag_disabled",
+  "auto_operator_kill_switch",
+  "auto_no_eligible_executor",
+] as const;
+
+export const remotionExecutionTargetSchema = z.enum(remotionExecutionTargetValues);
+export const remotionResolvedExecutionTargetSchema = z.enum(remotionResolvedExecutionTargetValues);
+export const remotionExecutionTargetResolutionReasonSchema = z.enum(
+  remotionExecutionTargetResolutionReasonValues,
+);
+export const remotionExecutionTargetResolutionSchema = z.object({
+  requestedTarget: remotionExecutionTargetSchema,
+  resolvedTarget: remotionResolvedExecutionTargetSchema,
+  reason: remotionExecutionTargetResolutionReasonSchema,
+  preferredWorkerId: z.string().trim().min(1).max(128).nullable(),
+  selectedWorkerId: z.string().trim().min(1).max(128).nullable(),
+  resolvedAt: z.string().datetime({ offset: true }),
+}).strict().superRefine((resolution, ctx) => {
+  if (resolution.resolvedTarget === "remotion_executor" && !resolution.selectedWorkerId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["selectedWorkerId"], message: "A dedicated executor resolution requires a selected worker" });
+  }
+  if (resolution.reason === "explicit_remotion_executor" && resolution.requestedTarget !== "remotion_executor") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["reason"], message: "Explicit executor reason requires an explicit executor request" });
+  }
+});
+
+export type RemotionExecutionTarget = z.infer<typeof remotionExecutionTargetSchema>;
+export type RemotionResolvedExecutionTarget = z.infer<typeof remotionResolvedExecutionTargetSchema>;
+export type RemotionExecutionTargetResolution = z.infer<typeof remotionExecutionTargetResolutionSchema>;
 
 export type RemotionRenderVideoProgressStage =
   (typeof remotionRenderVideoProgressStageValues)[number];

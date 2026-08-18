@@ -1,3 +1,9 @@
+import {
+  EXTENSION_NATIVE_UPDATE_KEY,
+  persistNativeExtensionUpdateAvailability,
+} from "../shared/extensionUpdate";
+import { isSupportedCompanionTokenMessage } from "../shared/companionIdentity";
+
 declare const chrome: any;
 
 const DEVICE_ID_KEY = "deviceId";
@@ -418,9 +424,14 @@ async function handleNativeLocalAI(message: any, sender: any) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.remove(EXTENSION_NATIVE_UPDATE_KEY).catch(() => undefined);
   if (chrome.sidePanel?.setPanelBehavior) {
     chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   }
+});
+
+chrome.runtime.onUpdateAvailable?.addListener((details: { version?: unknown }) => {
+  persistNativeExtensionUpdateAvailability(chrome.storage.local, details?.version).catch(() => undefined);
 });
 
 chrome.runtime.onMessage.addListener((message: any, _sender: any, sendResponse: (response: any) => void) => {
@@ -559,7 +570,7 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
 });
 
 chrome.runtime.onMessageExternal.addListener((message: any, sender: any, sendResponse: (response: any) => void) => {
-  if (message?.type !== "SMARTAIHUB_MARKETPLACE_EXTENSION_TOKEN") return false;
+  if (!isSupportedCompanionTokenMessage(message?.type)) return false;
   if (!isAllowedExternalSender(sender?.url)) {
     sendResponse({ ok: false, error: "external_sender_not_allowed" });
     return true;

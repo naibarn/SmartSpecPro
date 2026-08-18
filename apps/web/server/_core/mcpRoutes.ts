@@ -2,12 +2,16 @@ import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import { storageGet } from "../storage";
 import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
 import { hasScope } from "./tokens";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { getCachedMcpRuntimeConfig } from "../services/mcpRuntimeConfig";
 import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
+import {
+  attachMcpTransportTelemetry,
+  setMcpTelemetryAuth,
+} from "../services/mcpTransportTelemetry";
 
 type ToolDef = {
   name: string;
@@ -15,23 +19,9 @@ type ToolDef = {
   inputSchema: any;
 };
 
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT
-  ? path.resolve(process.env.WORKSPACE_ROOT)
-  : path.resolve(process.cwd(), "workspace");
-
-const MAX_READ_BYTES = parseInt(process.env.MCP_MAX_READ_BYTES || "1048576"); // 1MB
-const MAX_WRITE_BYTES = parseInt(process.env.MCP_MAX_WRITE_BYTES || "1048576"); // 1MB
-const EXT_ALLOW = new Set(
-  (process.env.MCP_EXT_ALLOWLIST ||
-    ".md,.txt,.json,.yaml,.yml,.ts,.tsx,.js,.py,.css,.html")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-);
-
-const REQUIRE_WRITE_TOKEN = process.env.MCP_REQUIRE_WRITE_TOKEN === "1";
-const WRITE_TOKEN = process.env.MCP_WRITE_TOKEN || "";
-const MCP_RPM = parseInt(process.env.WEB_MCP_RPM || "240");
+function workspaceRoot(): string {
+  return path.resolve(getCachedMcpRuntimeConfig().workspaceRoot || path.resolve(process.cwd(), "workspace"));
+}
 
 // Simple TTL cache for Python-native tools
 const _pythonToolsCache = new Map<string, { tools: ToolDef[]; ts: number }>();
@@ -46,9 +36,10 @@ const DRIVE_TOOL_NAMES = new Set([
 ]);
 
 function safeJoin(rel: string): string {
+  const root = workspaceRoot();
   const cleaned = rel.replace(/^[\\/]+/, "");
-  const full = path.resolve(WORKSPACE_ROOT, cleaned);
-  if (!full.startsWith(WORKSPACE_ROOT + path.sep) && full !== WORKSPACE_ROOT) {
+  const full = path.resolve(root, cleaned);
+  if (!full.startsWith(root + path.sep) && full !== root) {
     throw new Error("Path escapes WORKSPACE_ROOT");
   }
   return full;
@@ -60,7 +51,7 @@ function assertExtAllowed(p: string) {
     throw new Error("Extension not allowed: <hidden>");
   }
   const ext = path.extname(base).toLowerCase();
-  if (!ext || !EXT_ALLOW.has(ext)) throw new Error(`Extension not allowed: ${ext || "<none>"}`);
+  if (!ext || !new Set(getCachedMcpRuntimeConfig().extensionAllowlist.map((value) => value.toLowerCase())).has(ext)) throw new Error(`Extension not allowed: ${ext || "<none>"}`);
 }
 
 function writeAudit(entry: any) {
@@ -192,7 +183,10 @@ const tools: ToolDef[] = [
 
 function requiredScopeForTool(name: string): string {
   if (name.startsWith("smartspec.orchestrator.")) return "mcp:write";
-  if (name === "workspace_write_file") return "mcp:write";
+  // The legacy route keeps read-level transport access so old callers can
+  // use the compatibility write token. OAuth callers are upgraded inside
+  // callTool and must carry mcp:write; the token is never accepted on /v1/mcp.
+  if (name === "workspace_write_file") return "mcp:read";
   return "mcp:read";
 }
 
@@ -213,10 +207,10 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
 
   try {
     if (name === "artifact_get_url") {
-      const key = String(args?.key || "");
-      const res = await storageGet(key);
-      writeAudit({ ...baseAudit, ok: true });
-      return { ok: true, content: [{ type: "text", text: res.url }], url: res.url };
+      // This legacy tool accepted an arbitrary storage key and turned it into
+      // a downloadable URL.  It is intentionally retired: all downloads must
+      // go through the ACL-aware /v1/mcp download broker.
+      throw new Error("legacy_storage_key_access_disabled");
     }
 
     if (name === "workspace_read_file") {
@@ -226,7 +220,7 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
 
       const st = fs.statSync(full);
       if (!st.isFile()) throw new Error("Not a file");
-      if (st.size > MAX_READ_BYTES) throw new Error("File too large");
+      if (st.size > getCachedMcpRuntimeConfig().maxReadBytes) throw new Error("File too large");
 
       const buf = fs.readFileSync(full);
       writeAudit({ ...baseAudit, ok: true, bytes: buf.length });
@@ -234,9 +228,14 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
     }
 
     if (name === "workspace_write_file") {
-      if (REQUIRE_WRITE_TOKEN) {
+      const runtime = getCachedMcpRuntimeConfig();
+      if (!runtime.workspaceWriteEnabled) {
+        throw new Error("Workspace writes are disabled by the MCP admin policy");
+      }
+      if (!hasScope(auth?.scopes, "mcp:write")) {
         const token = String(req.headers["x-mcp-write-token"] || "");
-        if (!WRITE_TOKEN || token !== WRITE_TOKEN) throw new Error("Write token required");
+        const writeToken = runtime.workspaceWriteToken;
+        if (!writeToken || token !== writeToken) throw new Error("Write token required");
       }
       const rel = String(args?.path || "");
       const content = String(args?.content ?? "");
@@ -246,7 +245,7 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
       assertExtAllowed(full);
 
       const bytes = Buffer.byteLength(content, "utf-8");
-      if (bytes > MAX_WRITE_BYTES) throw new Error("Content too large");
+      if (bytes > getCachedMcpRuntimeConfig().maxWriteBytes) throw new Error("Content too large");
 
       fs.mkdirSync(path.dirname(full), { recursive: true });
       if (!overwrite && fs.existsSync(full)) throw new Error("File exists");
@@ -478,10 +477,11 @@ function isLegacyMcpDisallowedForDelegatedWorker(auth: any): boolean {
 }
 
 export function registerMCPRoutes(app: Express) {
-  const limiter = rateLimit("mcp", { rpm: MCP_RPM });
+  const limiter = rateLimit("mcp", { rpm: getCachedMcpRuntimeConfig().mcpRpm });
 
   const toolsHandler = async (req: Request, res: Response) => {
     const auth = await requireMcpAuth(req);
+    setMcpTelemetryAuth(req, auth);
     if (!auth) {
       writeAudit({
         ts: new Date().toISOString(),
@@ -523,6 +523,7 @@ export function registerMCPRoutes(app: Express) {
 
   const callHandler = async (req: Request, res: Response) => {
     const auth = await requireMcpAuth(req);
+    setMcpTelemetryAuth(req, auth);
     if (!auth) {
       writeAudit({
         ts: new Date().toISOString(),
@@ -590,6 +591,12 @@ export function registerMCPRoutes(app: Express) {
     }
   };
 
-  app.get("/api/mcp/tools", limiter, toolsHandler);
-  app.post("/api/mcp/call", limiter, callHandler);
+  app.get("/api/mcp/tools", (req, res, next) => {
+    attachMcpTransportTelemetry(req, res, { transport: "legacy_rest", endpoint: "/api/mcp/tools" });
+    limiter(req, res, next);
+  }, toolsHandler);
+  app.post("/api/mcp/call", (req, res, next) => {
+    attachMcpTransportTelemetry(req, res, { transport: "legacy_rest", endpoint: "/api/mcp/call" });
+    limiter(req, res, next);
+  }, callHandler);
 }

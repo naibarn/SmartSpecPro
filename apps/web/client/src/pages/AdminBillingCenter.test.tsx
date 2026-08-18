@@ -108,6 +108,19 @@ vi.mock("@/lib/trpc", () => ({
           refetch: vi.fn().mockResolvedValue(undefined),
         }),
       },
+      listPromptPayReviewQueue: {
+        useQuery: () => ({
+          data: [],
+          refetch: vi.fn().mockResolvedValue(undefined),
+          isFetching: false,
+        }),
+      },
+      getPromptPayReview: {
+        useQuery: () => ({
+          data: null,
+          refetch: vi.fn().mockResolvedValue(undefined),
+        }),
+      },
       listRecoveryCases: {
         useQuery: () => ({
           data: [],
@@ -283,6 +296,7 @@ vi.mock("@/lib/trpc", () => ({
             BILLING_PHASE2_DEFAULT_COHORT: "pilot-a",
             BILLING_PHASE2_SETUP_CALLBACK_TOLERANCE_SECONDS: "300",
             BILLING_PUBLIC_URL: "https://app.example",
+            BILLING_TOPUP_PENDING_RETENTION_DAYS: "15",
             BILLING_PHASE2_STEP_UP_SECRETConfigured: true,
             BILLING_PHASE2_STEP_UP_SECRETMasked: "********",
           },
@@ -451,6 +465,24 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      approvePromptPayPayment: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+        }),
+      },
+      rejectPromptPayPayment: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+        }),
+      },
+      clearStaleTopupInvoices: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+        }),
+      },
     },
   },
 }));
@@ -462,7 +494,7 @@ describe("AdminBillingCenter", () => {
     render(<AdminBillingCenter />);
 
     expect(screen.getByText("Invoices, recovery, and document operations")).toBeInTheDocument();
-    expect(screen.getAllByText("Recent invoices").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("All invoices").length).toBeGreaterThan(0);
     expect(screen.getByText("Support recovery cases")).toBeInTheDocument();
     expect(screen.getAllByText("TH-INV-2026-000301").length).toBeGreaterThan(0);
     expect(screen.getByRole("tab", { name: "Billing Settings" })).toBeInTheDocument();

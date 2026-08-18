@@ -21,14 +21,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import {
+  createVerticalDramaDurationProfileOptions,
+  formatVerticalDramaDurationPlan,
+  resolveVerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
 import {
   pickCopy,
   seriesStatusCopy,
@@ -49,6 +57,13 @@ import {
   type VerticalDramaSeriesLlmModelPolicy,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries/contracts";
+import {
+  readVerticalDramaDialogueLanguageProfile,
+  VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_EN,
+  VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_TH,
+  VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS,
+  type VerticalDramaSpokenLocaleId,
+} from "@shared/verticalDramaSeries/dialogueLanguageProfile";
 // Text Overlay Suite (F131AB, task #34) — series watermark card. Pure/
 // isomorphic module, safe as a normal static import (same posture as
 // `targetAudienceRegion.ts` above).
@@ -111,7 +126,8 @@ export interface VerticalDramaSettingsTabProps {
   tone?: string | null;
   targetAudience?: string | null;
   targetEpisodeCount?: number | null;
-  defaultEpisodeDurationSeconds?: number | null;
+  /** Legacy DB timing is used only to label old records; never rendered as a selectable input. */
+  legacyDurationSeconds?: number | null;
   locale?: string | null;
   bible?: unknown;
   /** Manual LLM model override (added 2026-07-11 — see
@@ -184,7 +200,7 @@ export function VerticalDramaSettingsTab({
   tone,
   targetAudience,
   targetEpisodeCount,
-  defaultEpisodeDurationSeconds,
+  legacyDurationSeconds,
   locale,
   bible,
   llmModelPolicy,
@@ -198,6 +214,20 @@ export function VerticalDramaSettingsTab({
     (status as VerticalDramaSeriesStatus) ?? "draft"
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  const durationPlan = useMemo(
+    () =>
+      resolveVerticalDramaDurationPlan(bible, legacyDurationSeconds),
+    [bible, legacyDurationSeconds]
+  );
+  const [shotDurationInput, setShotDurationInput] = useState(
+    String(durationPlan?.shotDurationSeconds ?? 8)
+  );
+  const [durationTouched, setDurationTouched] = useState(false);
+  useEffect(() => {
+    setShotDurationInput(String(durationPlan?.shotDurationSeconds ?? 8));
+    setDurationTouched(false);
+  }, [durationPlan]);
 
   const bibleRegion = normalizeTargetAudienceRegion(
     (bible as { targetAudienceRegion?: unknown } | null | undefined)
@@ -224,12 +254,27 @@ export function VerticalDramaSettingsTab({
   const bibleRecord = bible && typeof bible === "object"
     ? bible as Record<string, unknown>
     : {};
+  const dialogueLanguageProfile = readVerticalDramaDialogueLanguageProfile(
+    bibleRecord.dialogueLanguageProfile
+  );
+  const [dialogueSpokenInput, setDialogueSpokenInput] =
+    useState<VerticalDramaSpokenLocaleId>(
+      dialogueLanguageProfile.spokenLocale ?? "auto"
+    );
   const lookControl = readSeriesLookLockControl(bibleRecord.lookLockControl);
+  const visualNarrativeEnabledFromBible =
+    typeof bibleRecord.visualNarrativeProfile === "object" &&
+    bibleRecord.visualNarrativeProfile !== null;
   const lookValueFromProps: SeriesLookLockPickerValue = lookControl
-    ? { mode: lookControl.mode, genreKey: lookControl.genreKey }
+    ? {
+        mode: lookControl.mode,
+        genreKey: lookControl.genreKey,
+        visualNarrativeEnabled:
+          lookControl.visualNarrativeEnabled ?? visualNarrativeEnabledFromBible,
+      }
     : bibleRecord.presetVisualIdentity
-      ? { mode: "inherit_source" }
-      : { mode: "none" };
+      ? { mode: "inherit_source", visualNarrativeEnabled: visualNarrativeEnabledFromBible }
+      : { mode: "none", visualNarrativeEnabled: false };
   const [lookInput, setLookInput] = useState<SeriesLookLockPickerValue>(lookValueFromProps);
 
   // Keep local form state in sync when the parent series data changes
@@ -249,9 +294,20 @@ export function VerticalDramaSettingsTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultModelIdFromProps]);
   useEffect(() => {
+    setDialogueSpokenInput(dialogueLanguageProfile.spokenLocale ?? "auto");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bibleRecord.dialogueLanguageProfile]);
+  useEffect(() => {
     setLookInput(lookValueFromProps);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lookControl?.mode, lookControl?.genreKey, lookControl?.revision, bibleRecord.presetVisualIdentity]);
+  }, [
+    lookControl?.mode,
+    lookControl?.genreKey,
+    lookControl?.visualNarrativeEnabled,
+    lookControl?.revision,
+    bibleRecord.presetVisualIdentity,
+    bibleRecord.visualNarrativeProfile,
+  ]);
 
   // Text Overlay Suite (F131AB, task #34) — series watermark local draft,
   // seeded from the parsed persisted config (never trust the raw jsonb
@@ -287,6 +343,10 @@ export function VerticalDramaSettingsTab({
   const planningModels = planningModelsQuery.data ?? [];
   const llmModelPolicyMutation =
     trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
+  const durationProfileMutation =
+    trpc.verticalDramaSeries.setSeriesDurationProfile.useMutation();
+  const dialogueLanguageProfileMutation =
+    trpc.verticalDramaSeries.setSeriesDialogueLanguageProfile.useMutation();
   const lookLockMutation = trpc.verticalDramaSeries.setSeriesLookLock.useMutation();
   const updateWatermarkMutation =
     trpc.verticalDramaSeries.updateSeriesWatermark.useMutation({
@@ -308,12 +368,19 @@ export function VerticalDramaSettingsTab({
   const dirty = titleInput !== title || statusInput !== status;
   const regionDirty = regionInput !== bibleRegion;
   const llmModelPolicyDirty = defaultModelInput !== defaultModelIdFromProps;
+  const durationDirty =
+    durationTouched && Number.isFinite(Number(shotDurationInput));
+  const dialogueLanguageProfileDirty =
+    dialogueSpokenInput !== (dialogueLanguageProfile.spokenLocale ?? "auto");
   const lookLockDirty = lookInput.mode !== lookValueFromProps.mode
-    || lookInput.genreKey !== lookValueFromProps.genreKey;
+    || lookInput.genreKey !== lookValueFromProps.genreKey
+    || lookInput.visualNarrativeEnabled !== lookValueFromProps.visualNarrativeEnabled;
   const isSaving =
     updateMutation.isPending ||
     regionMutation.isPending ||
     llmModelPolicyMutation.isPending ||
+    durationProfileMutation.isPending ||
+    dialogueLanguageProfileMutation.isPending ||
     lookLockMutation.isPending;
 
   const handleSave = async () => {
@@ -325,13 +392,39 @@ export function VerticalDramaSettingsTab({
           status: statusInput,
         }),
       ];
+      // Region and duration both use read-modify-write updates on the same
+      // bible JSONB field. Chain them instead of sending both snapshots at
+      // once, otherwise saving both controls together can make one setting
+      // erase the other depending on database completion order.
+      let bibleMutation: Promise<unknown> | null = null;
       if (regionDirty) {
-        mutations.push(
-          regionMutation.mutateAsync({
+        bibleMutation = regionMutation.mutateAsync({
+          seriesId,
+          targetAudienceRegion: regionInput,
+        });
+      }
+      if (durationDirty) {
+        const saveDuration = () =>
+          durationProfileMutation.mutateAsync({
             seriesId,
-            targetAudienceRegion: regionInput,
-          })
-        );
+            shotDurationSeconds: Number(shotDurationInput),
+          });
+        bibleMutation = bibleMutation
+          ? bibleMutation.then(saveDuration)
+          : saveDuration();
+      }
+      if (dialogueLanguageProfileDirty) {
+        const saveDialogueLanguageProfile = () =>
+          dialogueLanguageProfileMutation.mutateAsync({
+            seriesId,
+            spokenLocale: dialogueSpokenInput,
+          });
+        bibleMutation = bibleMutation
+          ? bibleMutation.then(saveDialogueLanguageProfile)
+          : saveDialogueLanguageProfile();
+      }
+      if (bibleMutation) {
+        mutations.push(bibleMutation);
       }
       if (llmModelPolicyDirty) {
         // Single required-but-nullable field now (no more partial merge of
@@ -345,6 +438,10 @@ export function VerticalDramaSettingsTab({
         );
       }
       if (lookLockEnabled && lookLockDirty) {
+        const hasPersistedVisualNarrativePreference =
+          lookControl?.visualNarrativeEnabled !== undefined ||
+          visualNarrativeEnabledFromBible ||
+          lookInput.visualNarrativeEnabled === true;
         mutations.push(
           lookLockMutation.mutateAsync({
             seriesId,
@@ -352,6 +449,9 @@ export function VerticalDramaSettingsTab({
             genreKey: lookInput.mode === "genre"
               ? lookInput.genreKey as VdLookLockGenre
               : undefined,
+            ...(hasPersistedVisualNarrativePreference
+              ? { visualNarrativeEnabled: lookInput.visualNarrativeEnabled }
+              : {}),
             expectedRevision: lookControl?.revision ?? 0,
           })
         );
@@ -402,13 +502,6 @@ export function VerticalDramaSettingsTab({
       value: targetEpisodeCount,
     },
     {
-      label: {
-        th: "ความยาวต่อตอนย่อย (วินาที)",
-        en: "Default Sub-episode duration (sec)",
-      },
-      value: defaultEpisodeDurationSeconds,
-    },
-    {
       label: { th: "ภาษา", en: "Locale" },
       value: locale
         ? (VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[
@@ -448,6 +541,68 @@ export function VerticalDramaSettingsTab({
               </span>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="vd-settings-duration-profile">
+        <CardHeader>
+          <CardTitle className="text-base">
+            {lang === "th" ? "ความยาวจาก 9 ช็อต" : "Nine-shot duration"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid max-w-md gap-3">
+          <Badge variant={durationPlan ? "secondary" : "outline"} className="w-fit">
+            {formatVerticalDramaDurationPlan(durationPlan, lang)}
+          </Badge>
+          {durationDirty && (
+            <Badge variant="outline" className="w-fit" data-testid="vd-settings-duration-pending">
+              {lang === "th" ? "มีการเปลี่ยนแปลงที่ยังไม่บันทึก" : "Unsaved duration change"}
+            </Badge>
+          )}
+          {durationPlan?.status === "legacy_compat" && (
+            <p className="text-xs text-muted-foreground">
+              {lang === "th"
+                ? "ซีรีย์เก่าจะคงความหมายเดิมไว้ การเลือกด้านล่างใช้กับการวางตอนใหม่เท่านั้น"
+                : "Existing episodes keep their original meaning. The selection below applies only to newly planned episodes."}
+            </p>
+          )}
+          <Label
+            htmlFor="vd-settings-shot-duration"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            {lang === "th" ? "วินาทีต่อช็อต" : "Seconds per shot"}
+          </Label>
+          <Select
+            value={shotDurationInput}
+            onValueChange={value => {
+              setShotDurationInput(value);
+              setDurationTouched(true);
+            }}
+            disabled={readOnly || isSaving}
+          >
+            <SelectTrigger
+              id="vd-settings-shot-duration"
+              aria-describedby="vd-settings-shot-duration-help"
+              data-testid="vd-settings-shot-duration"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {createVerticalDramaDurationProfileOptions().map(option => (
+                <SelectItem
+                  key={option.profileId}
+                  value={String(option.shotDurationSeconds)}
+                >
+                  {lang === "th" ? option.labelTh : option.labelEn}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p id="vd-settings-shot-duration-help" className="text-xs text-muted-foreground">
+            {lang === "th"
+              ? "ระบบจะวาง 9 ช็อตต่อหนึ่งตอน และคำนวณ runtime จาก duration ที่เลือก ไม่ใช้ค่าความยาวต่อตอนแบบเดิม"
+              : "Each episode is planned as nine shots; runtime is derived from the selected shot duration, not a fixed episode duration."}
+          </p>
         </CardContent>
       </Card>
 
@@ -536,6 +691,73 @@ export function VerticalDramaSettingsTab({
             </p>
           </div>
 
+          <div
+            className="grid gap-1.5 rounded-lg border bg-muted/20 p-3"
+            data-testid="vd-settings-dialogue-language-profile"
+          >
+            <Label
+              htmlFor="vd-settings-dialogue-language-profile-select"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              {lang === "th"
+                ? "ภาษาพูดของตัวละคร (ไม่บังคับ)"
+                : "Character spoken language (optional)"}
+            </Label>
+            <Select
+              value={dialogueSpokenInput}
+              onValueChange={value =>
+                setDialogueSpokenInput(value as VerticalDramaSpokenLocaleId)
+              }
+              disabled={readOnly || isSaving}
+            >
+              <SelectTrigger id="vd-settings-dialogue-language-profile-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-[min(70vh,32rem)]">
+                {Array.from(
+                  new Set(
+                    VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.map(
+                      option => option.group,
+                    ),
+                  ),
+                ).map(group => (
+                  <SelectGroup key={group}>
+                    <SelectLabel>
+                      {(lang === "th"
+                        ? VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_TH
+                        : VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_EN)[group] ??
+                        group}
+                    </SelectLabel>
+                    {VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.filter(
+                      option => option.group === group,
+                    ).map(option => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {lang === "th" ? option.labelTh : option.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {lang === "th"
+                ? "ใช้เฉพาะบทพูด subtitle และเสียงพากย์ — Auto วิเคราะห์จาก setting ตลาด และตัวละคร ไม่สุ่ม และไม่เปลี่ยนภาษาเนื้อเรื่อง"
+                : "Applies only to dialogue, subtitles, and voice — Auto infers from setting, market, and characters without changing the narrative language."}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(
+                option => option.id === dialogueSpokenInput,
+              )?.prompt}
+            </p>
+            {dialogueLanguageProfileDirty && (
+              <Badge variant="outline" className="w-fit">
+                {lang === "th"
+                  ? "มีการเปลี่ยนแปลงที่ยังไม่บันทึก"
+                  : "Unsaved dialogue profile change"}
+              </Badge>
+            )}
+          </div>
+
           <div className="grid gap-1.5">
             <Label className="text-xs font-medium text-muted-foreground">
               {lang === "th"
@@ -589,7 +811,12 @@ export function VerticalDramaSettingsTab({
               onClick={() => void handleSave()}
               disabled={
                 isSaving ||
-                (!dirty && !regionDirty && !llmModelPolicyDirty && !lookLockDirty) ||
+                (!dirty &&
+                  !regionDirty &&
+                  !llmModelPolicyDirty &&
+                  !durationDirty &&
+                  !dialogueLanguageProfileDirty &&
+                  !lookLockDirty) ||
                 titleInput.trim().length === 0
               }
               className="w-fit gap-2"
@@ -1183,7 +1410,7 @@ function VerticalDramaWatermarkSlotForm({
                 data-testid={testId("image-url")}
               />
               {value.imageUrl ? (
-                <img
+                <AuthenticatedMediaImage
                   src={value.imageUrl}
                   alt=""
                   className="h-14 w-14 rounded border border-border bg-muted object-contain"

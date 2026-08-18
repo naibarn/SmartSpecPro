@@ -12,19 +12,21 @@ use std::sync::{
 use std::time::{Duration, Instant, SystemTime};
 use tauri::async_runtime::JoinHandle;
 
+use crate::comfy_executor;
 use crate::credentials::clear_connection;
 use crate::diagnostics::append_diagnostic_event;
 use crate::executor_state::{ExecutorState, ExecutorStatus};
 use crate::hermes_executor::{
     build_production_refresh_closure, download_and_verify_reference, execute_hermes_media_job_core,
     production_fetch_hermes_media, production_fetch_reference, production_ffprobe,
-    run_hermes_connection_authorize,
-    run_hermes_connection_disconnect, run_hermes_connection_probe, spawn_hermes_process,
-    HermesControlOutcome, HermesFailure, HermesMediaJobDeps, HermesProfileStore,
-    ProductionFfprobeMode, RealHermesControlDeps, HERMES_MEDIA_CAPABILITY_FAMILY,
-    HERMES_MEDIA_CLAIM_CAPABILITY,
+    run_hermes_connection_authorize, run_hermes_connection_disconnect, run_hermes_connection_probe,
+    spawn_hermes_process, HermesControlOutcome, HermesFailure, HermesMediaJobDeps,
+    HermesProfileStore, ProductionFfprobeMode, RealHermesControlDeps,
+    HERMES_MEDIA_CAPABILITY_FAMILY, HERMES_MEDIA_CLAIM_CAPABILITY,
 };
-use crate::hermes_runtime::{hermes_doctor_from_manifest_path, hermes_runtime_pack_paths, read_hermes_runtime_manifest};
+use crate::hermes_runtime::{
+    hermes_doctor_from_manifest_path, hermes_runtime_pack_paths, read_hermes_runtime_manifest,
+};
 use crate::runtime_manifest::{
     doctor_from_manifest_path, read_runtime_pack_manifest, runtime_pack_paths,
     sidecar_path_from_manifest, DoctorSummary,
@@ -36,6 +38,7 @@ use crate::worker_control_plane::{
     WorkerJobEventPayload, WorkerLoopConnection,
 };
 use crate::worker_executor::{
+    build_comfy_completed_event, build_comfy_failure_event, build_comfy_progress_event,
     build_failure_event, build_progress_event_plan, build_remotion_render_video_artifacts,
     build_remotion_render_video_completed_event, build_remotion_render_video_failure_event,
     build_remotion_render_video_output_json, build_remotion_render_video_progress_event,
@@ -45,10 +48,11 @@ use crate::worker_executor::{
     prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
     remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
     validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
-    SidecarCommandPlan, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
-    REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
-    WorkerEventPlan, WorkerJobKind, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
-    REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_JOB_TYPE,
+    SidecarCommandPlan, WorkerEventPlan, WorkerJobKind, COMFY_CAPABILITY_FAMILIES,
+    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_WORKFLOW_RUN_JOB_TYPE,
+    HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
+    REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
+    REMOTION_RENDER_VIDEO_JOB_TYPE, REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
 };
 
 /// Feature 135 §11 — hermes has its own single-job slot, independent of the
@@ -63,7 +67,10 @@ const HERMES_MEDIA_MAX_CONCURRENT_JOBS: u32 = 1;
 /// runtime's jobs (this is what unblocks a hermes-only worker: previously
 /// `worker_loop_tick` bailed out entirely whenever the render doctor wasn't
 /// ready, before ever reaching this call).
-pub fn build_worker_claim_capability_hints(render_ready: bool, hermes_media_advertised: bool) -> Vec<String> {
+pub fn build_worker_claim_capability_hints(
+    render_ready: bool,
+    hermes_media_advertised: bool,
+) -> Vec<String> {
     build_worker_claim_capability_hints_with_remotion(render_ready, true, hermes_media_advertised)
 }
 
@@ -152,7 +159,8 @@ pub fn resolve_hermes_doctor_and_version(
 ) -> (DoctorSummary, Option<String>) {
     let (manifest_path, pack_root) = hermes_runtime_pack_paths(app_data_dir);
     let profile_root = app_data_dir.join("hermes-profiles");
-    let doctor = hermes_doctor_from_manifest_path(&manifest_path, &pack_root, &profile_root, query_version);
+    let doctor =
+        hermes_doctor_from_manifest_path(&manifest_path, &pack_root, &profile_root, query_version);
     let hermes_version = read_hermes_runtime_manifest(&manifest_path)
         .ok()
         .map(|manifest| manifest.hermes_version);
@@ -187,9 +195,9 @@ fn hermes_doctor_cached(
     app_data_dir: &Path,
     cache: &mut Option<HermesDoctorCache>,
 ) -> (DoctorSummary, Option<String>) {
-    let needs_refresh = cache
-        .as_ref()
-        .map_or(true, |existing| existing.checked_at.elapsed() >= HERMES_DOCTOR_REFRESH_INTERVAL);
+    let needs_refresh = cache.as_ref().map_or(true, |existing| {
+        existing.checked_at.elapsed() >= HERMES_DOCTOR_REFRESH_INTERVAL
+    });
     if needs_refresh {
         let (doctor, hermes_version) =
             resolve_hermes_doctor_and_version(app_data_dir, crate::commands::query_hermes_version);
@@ -354,7 +362,9 @@ fn parse_render_log_percent(line: &str) -> Option<u8> {
 
 fn parse_sidecar_worker_event_line(line: &str) -> Option<Value> {
     let payload = line.trim().strip_prefix(SIDECAR_WORKER_EVENT_PREFIX)?;
-    serde_json::from_str::<Value>(payload).ok().filter(Value::is_object)
+    serde_json::from_str::<Value>(payload)
+        .ok()
+        .filter(Value::is_object)
 }
 
 fn sidecar_event_percent(event: &Value) -> Option<u8> {
@@ -378,10 +388,7 @@ fn build_sidecar_structured_event(
     event: Value,
     fallback_percent: u8,
 ) -> WorkerEventPlan {
-    let mut payload = event
-        .as_object()
-        .cloned()
-        .unwrap_or_default();
+    let mut payload = event.as_object().cloned().unwrap_or_default();
     payload
         .entry("stage")
         .or_insert_with(|| json!("render_browser_css"));
@@ -502,13 +509,21 @@ async fn run_worker_loop(
         )
         .await;
         if let Err(error) = tick_result {
-            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel).await {
+            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel)
+                .await
+            {
                 stopped_for_terminal_error = true;
                 break;
             }
         }
-        if let Some(error) = terminal_error.lock().ok().and_then(|mut guard| guard.take()) {
-            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel).await {
+        if let Some(error) = terminal_error
+            .lock()
+            .ok()
+            .and_then(|mut guard| guard.take())
+        {
+            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel)
+                .await
+            {
                 stopped_for_terminal_error = true;
                 break;
             }
@@ -613,8 +628,17 @@ async fn worker_loop_tick(
     // between full re-registrations.
     let (hermes_doctor, hermes_version) = hermes_doctor_cached(app_data_dir, hermes_doctor_cache);
     let hermes_ready = hermes_doctor.status == "ready";
+    let comfy_readiness = if settings_snapshot.comfyui_enabled {
+        comfy_executor::check_readiness(&settings_snapshot.comfyui_base_url).await
+    } else {
+        comfy_executor::ComfyReadiness {
+            ready: false,
+            reason: "comfyui_disabled".into(),
+        }
+    };
+    let comfy_ready = comfy_readiness.ready;
 
-    let any_runtime_ready = render_ready || hermes_ready;
+    let any_runtime_ready = render_ready || hermes_ready || comfy_ready;
     let accepts_jobs = settings_snapshot.accept_jobs && any_runtime_ready;
     let connection_snapshot = clone_connection(connection)?;
     let render_active_now = render_active.load(Ordering::Relaxed);
@@ -628,6 +652,7 @@ async fn worker_loop_tick(
         Some((&hermes_doctor, hermes_version.as_deref())),
         render_active_now,
         hermes_active_now,
+        Some(&comfy_readiness),
     )
     .await?;
 
@@ -651,10 +676,13 @@ async fn worker_loop_tick(
     let can_claim_render = render_ready
         && !settings_snapshot.render_update_blocked
         && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
-    let can_claim_hermes = hermes_ready
-        && can_claim_hermes_media_job(if hermes_active_now { 1 } else { 0 });
+    let can_claim_hermes =
+        hermes_ready && can_claim_hermes_media_job(if hermes_active_now { 1 } else { 0 });
+    let can_claim_comfy = comfy_ready
+        && !settings_snapshot.render_update_blocked
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
 
-    if !can_claim_render && !can_claim_hermes {
+    if !can_claim_render && !can_claim_hermes && !can_claim_comfy {
         set_executor_polling(
             executor,
             if render_active_now || hermes_active_now {
@@ -671,11 +699,24 @@ async fn worker_loop_tick(
         connection_snapshot,
         WorkerClaimRequest {
             max_jobs,
-            capability_hints: build_worker_claim_capability_hints_with_remotion(
-                can_claim_render,
-                remotion_render_video_contract_ready(&doctor),
-                can_claim_hermes,
-            ),
+            capability_hints: {
+                let mut hints = build_worker_claim_capability_hints_with_remotion(
+                    can_claim_render,
+                    remotion_render_video_contract_ready(&doctor),
+                    can_claim_hermes,
+                );
+                if can_claim_comfy {
+                    hints.extend(
+                        COMFY_CAPABILITY_FAMILIES
+                            .iter()
+                            .map(|family| (*family).to_string()),
+                    );
+                    hints.push(COMFY_IMAGE_GENERATION_JOB_TYPE.into());
+                    hints.push(COMFY_WORKFLOW_RUN_JOB_TYPE.into());
+                    hints.push("gpu-nvidia".into());
+                }
+                hints
+            },
         },
         CLAIM_WATCHDOG_TIMEOUT,
     )
@@ -760,6 +801,32 @@ async fn worker_loop_tick(
             });
             Ok(())
         }
+        WorkerJobKind::ComfyImageGeneration | WorkerJobKind::ComfyWorkflowRun => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_comfy_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
         WorkerJobKind::HermesMediaImage | WorkerJobKind::HermesMediaVideo => {
             hermes_active.store(true, Ordering::Relaxed);
             let executor = executor.clone();
@@ -796,8 +863,13 @@ async fn worker_loop_tick(
             let hermes_active = hermes_active.clone();
             let terminal_error = terminal_error.clone();
             tauri::async_runtime::spawn(async move {
-                let result =
-                    execute_hermes_control_job(&app_data_dir_owned, &connection, job, &hermes_profiles).await;
+                let result = execute_hermes_control_job(
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &hermes_profiles,
+                )
+                .await;
                 hermes_active.store(false, Ordering::Relaxed);
                 record_terminal_error_if_needed(&terminal_error, result);
             });
@@ -827,7 +899,10 @@ async fn worker_loop_tick(
 /// own `Result` (see `handle_worker_loop_error`'s doc comment) — if it's
 /// terminal, latch it into the shared slot the main loop polls every
 /// iteration.
-fn record_terminal_error_if_needed(terminal_error: &Arc<Mutex<Option<String>>>, result: Result<(), String>) {
+fn record_terminal_error_if_needed(
+    terminal_error: &Arc<Mutex<Option<String>>>,
+    result: Result<(), String>,
+) {
     if let Err(error) = result {
         if is_terminal_worker_auth_error(&error) || is_stale_worker_lease_error(&error) {
             if let Ok(mut guard) = terminal_error.lock() {
@@ -880,6 +955,7 @@ fn build_heartbeat_runtime_metadata(
     accepts_jobs: bool,
     doctor_status: &str,
     hermes_info: Option<(&DoctorSummary, Option<&str>)>,
+    comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
 ) -> Value {
     let runtime_version = doctor
         .checks
@@ -919,7 +995,8 @@ fn build_heartbeat_runtime_metadata(
         runtime_metadata["remotionPlatformContractVersion"] = json!(remotion_contract);
     }
     if let Some(remotion_supported_contracts) = remotion_supported_contracts {
-        runtime_metadata["remotionSupportedContractVersions"] = remotion_supported_contracts.clone();
+        runtime_metadata["remotionSupportedContractVersions"] =
+            remotion_supported_contracts.clone();
     }
     if let Some((hermes_doctor, hermes_version)) = hermes_info {
         let hermes_ready = hermes_doctor.status == "ready";
@@ -928,6 +1005,13 @@ fn build_heartbeat_runtime_metadata(
             "advertised": hermes_ready,
             "reason": if hermes_ready { "doctor_passed" } else { "doctor_not_ready" },
             "hermesVersion": hermes_version,
+        });
+    }
+    if let Some(comfy_readiness) = comfy_readiness {
+        runtime_metadata["comfyUi"] = json!({
+            "advertised": comfy_readiness.ready,
+            "reason": comfy_readiness.reason,
+            "capabilityFamilies": COMFY_CAPABILITY_FAMILIES,
         });
     }
     runtime_metadata
@@ -942,12 +1026,10 @@ async fn heartbeat(
     hermes_info: Option<(&DoctorSummary, Option<&str>)>,
     render_active: bool,
     hermes_active: bool,
+    comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
 ) -> Result<(), String> {
-    let current_job_count = active_worker_job_count(
-        has_active_job(executor)?,
-        render_active,
-        hermes_active,
-    );
+    let current_job_count =
+        active_worker_job_count(has_active_job(executor)?, render_active, hermes_active);
     let status = if doctor.status == "ready" {
         "online"
     } else {
@@ -964,7 +1046,14 @@ async fn heartbeat(
         current_job_count,
         current_queue_depth(executor)?,
         warnings,
-        build_heartbeat_runtime_metadata(settings, doctor, accepts_jobs, &doctor.status, hermes_info),
+        build_heartbeat_runtime_metadata(
+            settings,
+            doctor,
+            accepts_jobs,
+            &doctor.status,
+            hermes_info,
+            comfy_readiness,
+        ),
     );
     let response = send_worker_heartbeat(connection, &payload).await?;
     apply_hermes_heartbeat_warning(executor, &response.warning_flags_json);
@@ -1047,6 +1136,312 @@ fn runtime_block_message(doctor: &DoctorSummary) -> String {
     parts.join(" ")
 }
 
+async fn execute_comfy_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = execute_comfy_job_inner(
+        executor,
+        resource_dir,
+        app_data_dir,
+        connection,
+        &job,
+        settings,
+        cancel,
+    )
+    .await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "ComfyUI job completed and artifacts uploaded.",
+                None,
+            );
+            set_executor_job_complete(
+                executor,
+                &job.id,
+                "ComfyUI job completed and artifacts uploaded.",
+            );
+        }
+        Err(error) => {
+            let failure_code = if error.contains("unreachable") || error.contains("HTTP") {
+                "service_unreachable"
+            } else if error.contains("rejected") || error.contains("prompt_id") {
+                "workflow_rejected"
+            } else if error.contains("timed out") {
+                "execution_timeout"
+            } else if error.contains("output format") || error.contains("supported outputs") {
+                "unsupported_output"
+            } else if error.contains("upload") {
+                "artifact_upload_failed"
+            } else {
+                "adapter_contract_violation"
+            };
+            let failure =
+                build_comfy_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, failure_code, error);
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            let error_msg = format!("ComfyUI job failed: {error}");
+            set_executor_last_job(executor, &job, "error", &error_msg, None);
+            set_executor_job_error(executor, &job.id, error_msg);
+        }
+    }
+    result
+}
+
+async fn execute_comfy_job_inner(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let service_input = job.input_json.get("service");
+    let service = comfy_executor::ComfyServiceBinding {
+        base_url: service_input
+            .and_then(|value| value.get("baseUrl"))
+            .and_then(Value::as_str)
+            .unwrap_or(settings.comfyui_base_url.as_str())
+            .to_string(),
+        submit_path: service_input
+            .and_then(|value| value.get("submitPath"))
+            .and_then(Value::as_str)
+            .unwrap_or("/prompt")
+            .to_string(),
+        history_path_template: service_input
+            .and_then(|value| value.get("historyPathTemplate"))
+            .and_then(Value::as_str)
+            .unwrap_or("/history/{promptId}")
+            .to_string(),
+        view_path: service_input
+            .and_then(|value| value.get("viewPath"))
+            .and_then(Value::as_str)
+            .unwrap_or("/view")
+            .to_string(),
+        client_id: service_input
+            .and_then(|value| value.get("clientId"))
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        poll_interval_ms: service_input
+            .and_then(|value| value.get("pollIntervalMs"))
+            .and_then(Value::as_u64)
+            .unwrap_or(2_000),
+        timeout_seconds: service_input
+            .and_then(|value| value.get("timeoutSeconds"))
+            .and_then(Value::as_u64)
+            .unwrap_or(600),
+    };
+    comfy_executor::validate_registered_service(&service.base_url, &settings.comfyui_base_url)?;
+    let workflow = job
+        .input_json
+        .get("workflowJson")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "ComfyUI workflowJson must be an object".to_string())?;
+    let max_outputs = job
+        .input_json
+        .get("outputTargets")
+        .and_then(|value| {
+            value
+                .get("maxImages")
+                .or_else(|| value.get("maxOutputFiles"))
+        })
+        .and_then(Value::as_u64)
+        .unwrap_or(8) as usize;
+    let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
+    let workspace = workspace_root.join(sanitize_segment(&job.id));
+    fs::create_dir_all(&workspace)
+        .map_err(|error| format!("failed to create ComfyUI workspace: {error}"))?;
+    let mut next_sequence = 1u32;
+    for (stage, percent, message) in [
+        (
+            "validate_service",
+            5,
+            "Checking the registered local ComfyUI service.",
+        ),
+        (
+            "submit_workflow",
+            15,
+            "Submitting the typed workflow to ComfyUI.",
+        ),
+    ] {
+        let event = build_comfy_progress_event(job, next_sequence, stage, percent, Some(message))
+            .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            event,
+            &mut next_sequence,
+        )
+        .await?;
+    }
+    update_executor_progress(executor, &job.id, 20, "Running ComfyUI workflow.");
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
+    let ffprobe_mode = if settings.runtime_environment.is_managed_wsl() {
+        ProductionFfprobeMode::ManagedWsl {
+            runtime_root: settings.managed_wsl_root.clone(),
+        }
+    } else {
+        let executable = if cfg!(target_os = "windows") {
+            "ffprobe.exe"
+        } else {
+            "ffprobe"
+        };
+        ProductionFfprobeMode::Native(
+            effective_runtime_dir
+                .join("runtime-pack")
+                .join("bin")
+                .join(executable),
+        )
+    };
+    let ffprobe = production_ffprobe(ffprobe_mode);
+    let result = comfy_executor::execute_workflow(
+        &service,
+        workflow,
+        &workspace,
+        cancel,
+        max_outputs,
+        &ffprobe,
+    )
+    .await?;
+    let poll_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "poll_execution",
+        65,
+        Some("ComfyUI execution completed."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        poll_event,
+        &mut next_sequence,
+    )
+    .await?;
+    let collect_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "collect_outputs",
+        75,
+        Some("Validating ComfyUI outputs."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        collect_event,
+        &mut next_sequence,
+    )
+    .await?;
+
+    let mut artifacts = Vec::new();
+    for file in result.files {
+        let upload_event = build_comfy_progress_event(
+            job,
+            next_sequence,
+            "upload_artifacts",
+            85,
+            Some("Uploading a verified artifact."),
+        )
+        .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            upload_event,
+            &mut next_sequence,
+        )
+        .await?;
+        let artifact_type = if file.content_type.starts_with("video/") {
+            "comfy_video_output"
+        } else {
+            "comfy_image_output"
+        };
+        let uploaded = upload_worker_artifact_file_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            artifact_type,
+            &file.path,
+            &file.file_name,
+            &file.content_type,
+            &job.lease_owner_token,
+            &job.assignment_attempt,
+            json!({ "promptId": result.prompt_id, "contentType": file.content_type }),
+        )
+        .await
+        .map_err(|error| format!("artifact upload failed: {error}"))?;
+        artifacts.push(json!({
+            "artifactType": artifact_type,
+            "fileName": file.file_name,
+            "contentType": file.content_type,
+            "artifact": uploaded.artifact,
+        }));
+    }
+    let publish_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "publish_artifacts",
+        95,
+        Some("Artifacts accepted by SmartAIHub."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        publish_event,
+        &mut next_sequence,
+    )
+    .await?;
+    let index_event = build_comfy_progress_event(
+        job,
+        next_sequence,
+        "trigger_indexing",
+        100,
+        Some("ComfyUI outputs are ready."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        index_event,
+        &mut next_sequence,
+    )
+    .await?;
+    let completed = build_comfy_completed_event(
+        job,
+        next_sequence,
+        json!({ "promptId": result.prompt_id, "artifacts": artifacts }),
+    );
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        completed,
+        &mut next_sequence,
+    )
+    .await?;
+    Ok(())
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Feature 135 §11 FIX 1/2 — hermes media job dispatch, wired to REAL
 // production deps (spawn_hermes_process, reqwest reference download/refresh,
@@ -1067,9 +1462,15 @@ async fn execute_hermes_media_job(
     set_executor_job(executor, &job);
     let connection_snapshot = clone_connection(connection)?;
 
-    let result =
-        execute_hermes_media_job_inner(app_data_dir, &connection_snapshot, &job, hermes_doctor, hermes_profiles, settings)
-            .await;
+    let result = execute_hermes_media_job_inner(
+        app_data_dir,
+        &connection_snapshot,
+        &job,
+        hermes_doctor,
+        hermes_profiles,
+        settings,
+    )
+    .await;
 
     match &result {
         Ok(()) => {
@@ -1087,7 +1488,12 @@ async fn execute_hermes_media_job(
             );
         }
         Err(error) => {
-            let failure = build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, "hermes_media_failed", error);
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                "hermes_media_failed",
+                error,
+            );
             let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
             let error_msg = format!("Hermes media job failed: {error}");
             set_executor_last_job(executor, &job, "error", &error_msg, None);
@@ -1122,12 +1528,13 @@ async fn execute_hermes_media_job_inner(
             runtime_root: settings.managed_wsl_root.clone(),
         }
     } else {
-        ProductionFfprobeMode::Native(
-            effective_runtime_dir
-                .join("runtime-pack")
-                .join("bin")
-                .join("ffprobe.exe"),
-        )
+        ProductionFfprobeMode::Native(effective_runtime_dir.join("runtime-pack").join("bin").join(
+            if cfg!(target_os = "windows") {
+                "ffprobe.exe"
+            } else {
+                "ffprobe"
+            },
+        ))
     };
 
     let workspace_base = if !settings.workspace_dir.trim().is_empty() {
@@ -1195,61 +1602,63 @@ async fn execute_hermes_media_job_inner(
             )
         };
 
-    let spawn_closure = move |argv: &[String],
-                               cwd: &Path,
-                               env: &HashMap<String, String>,
-                               timeouts: crate::hermes_executor::HermesSpawnTimeouts| {
-        spawn_hermes_process(
-            &hermes_python_executable,
-            argv,
-            cwd,
-            env,
-            timeouts,
-            &mut |_line: &str| {},
-            &mut || {
-                // FIX F — soft timeout notification. No dedicated event
-                // channel exists yet for this (spec: "logged/reported via
-                // onSoftTimeout, never kills"); the hard/inactivity timers
-                // below are what actually protect the job slot.
-            },
-        )
-    };
+    let spawn_closure =
+        move |argv: &[String],
+              cwd: &Path,
+              env: &HashMap<String, String>,
+              timeouts: crate::hermes_executor::HermesSpawnTimeouts| {
+            spawn_hermes_process(
+                &hermes_python_executable,
+                argv,
+                cwd,
+                env,
+                timeouts,
+                &mut |_line: &str| {},
+                &mut || {
+                    // FIX F — soft timeout notification. No dedicated event
+                    // channel exists yet for this (spec: "logged/reported via
+                    // onSoftTimeout, never kills"); the hard/inactivity timers
+                    // below are what actually protect the job slot.
+                },
+            )
+        };
     let ffprobe_closure = production_ffprobe(ffprobe_mode);
 
     let connection_for_upload = connection.clone();
     let job_for_upload = job.clone();
-    let mut upload_fn = move |output: &crate::hermes_executor::CollectedOutput| -> Result<(), String> {
-        let artifact_type = if output.kind == "video" {
-            "hermes_media_video"
-        } else {
-            "hermes_media_image"
+    let mut upload_fn =
+        move |output: &crate::hermes_executor::CollectedOutput| -> Result<(), String> {
+            let artifact_type = if output.kind == "video" {
+                "hermes_media_video"
+            } else {
+                "hermes_media_image"
+            };
+            let file_name = output
+                .path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("output.bin")
+                .to_string();
+            let content_type = output.content_type.clone();
+            let path = output.path.clone();
+            let connection = connection_for_upload.clone();
+            let job = job_for_upload.clone();
+            tauri::async_runtime::block_on(async move {
+                upload_worker_artifact_file(
+                    &connection,
+                    &job.id,
+                    artifact_type,
+                    &path,
+                    &file_name,
+                    &content_type,
+                    &job.lease_owner_token,
+                    &job.assignment_attempt,
+                    json!({}),
+                )
+                .await
+                .map(|_| ())
+            })
         };
-        let file_name = output
-            .path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("output.bin")
-            .to_string();
-        let content_type = output.content_type.clone();
-        let path = output.path.clone();
-        let connection = connection_for_upload.clone();
-        let job = job_for_upload.clone();
-        tauri::async_runtime::block_on(async move {
-            upload_worker_artifact_file(
-                &connection,
-                &job.id,
-                artifact_type,
-                &path,
-                &file_name,
-                &content_type,
-                &job.lease_owner_token,
-                &job.assignment_attempt,
-                json!({}),
-            )
-            .await
-            .map(|_| ())
-        })
-    };
 
     let connection_for_progress = connection.clone();
     let job_for_progress = job.clone();
@@ -1302,13 +1711,14 @@ async fn execute_hermes_media_job_inner(
     })
     .await;
 
-    let outcome: Result<Vec<crate::hermes_executor::CollectedOutput>, HermesFailure> = match blocking_result {
-        Ok(inner_result) => inner_result,
-        Err(join_error) => Err(HermesFailure {
-            code: "HERMES_PROCESS_FAILED".to_string(),
-            message: format!("hermes media job task failed: {join_error}"),
-        }),
-    };
+    let outcome: Result<Vec<crate::hermes_executor::CollectedOutput>, HermesFailure> =
+        match blocking_result {
+            Ok(inner_result) => inner_result,
+            Err(join_error) => Err(HermesFailure {
+                code: "HERMES_PROCESS_FAILED".to_string(),
+                message: format!("hermes media job task failed: {join_error}"),
+            }),
+        };
 
     outcome
         .map(|_collected| ())
@@ -1331,7 +1741,9 @@ async fn execute_hermes_control_job(
         .capability_requirements_json
         .get("connectionId")
         .and_then(Value::as_str)
-        .ok_or_else(|| "hermes control job is missing capabilityRequirementsJson.connectionId".to_string())?
+        .ok_or_else(|| {
+            "hermes control job is missing capabilityRequirementsJson.connectionId".to_string()
+        })?
         .to_string();
     let profile_reference = format!("conn_{connection_id}");
 
@@ -1382,30 +1794,36 @@ async fn execute_hermes_control_job(
         .get("testGeneration")
         .and_then(Value::as_str)
         .map(str::to_string);
-    let outcome = tauri::async_runtime::spawn_blocking(move || match classify_job_type(&job_type) {
-        WorkerJobKind::HermesConnectionAuthorize => {
-            run_hermes_connection_authorize(&connection_id_for_execution, &profile_reference, timeout_ms / 1000, &deps)
-        }
-        WorkerJobKind::HermesConnectionProbe => {
-            run_hermes_connection_probe(
+    let outcome =
+        tauri::async_runtime::spawn_blocking(move || match classify_job_type(&job_type) {
+            WorkerJobKind::HermesConnectionAuthorize => run_hermes_connection_authorize(
+                &connection_id_for_execution,
+                &profile_reference,
+                timeout_ms / 1000,
+                &deps,
+            ),
+            WorkerJobKind::HermesConnectionProbe => run_hermes_connection_probe(
                 &connection_id_for_execution,
                 &profile_reference,
                 timeout_ms / 1000,
                 test_generation.as_deref(),
                 &deps,
-            )
-        }
-        WorkerJobKind::HermesConnectionDisconnect => {
-            run_hermes_connection_disconnect(&connection_id_for_execution, &profile_reference, timeout_ms / 1000, &deps)
-        }
-        _ => HermesControlOutcome::Failure {
-            error_code: "HERMES_PROCESS_FAILED".to_string(),
-            failure_reason: "process_failed".to_string(),
-            diagnostic: "unreachable: non-control job type dispatched to control-job executor".to_string(),
-        },
-    })
-    .await
-    .map_err(|error| format!("hermes control job task failed: {error}"))?;
+            ),
+            WorkerJobKind::HermesConnectionDisconnect => run_hermes_connection_disconnect(
+                &connection_id_for_execution,
+                &profile_reference,
+                timeout_ms / 1000,
+                &deps,
+            ),
+            _ => HermesControlOutcome::Failure {
+                error_code: "HERMES_PROCESS_FAILED".to_string(),
+                failure_reason: "process_failed".to_string(),
+                diagnostic: "unreachable: non-control job type dispatched to control-job executor"
+                    .to_string(),
+            },
+        })
+        .await
+        .map_err(|error| format!("hermes control job task failed: {error}"))?;
 
     if let HermesControlOutcome::Failure {
         error_code,
@@ -1688,7 +2106,12 @@ async fn execute_hyperframes_job_inner(
         managed_wsl_root,
         managed_wsl_workspace_root,
     )?;
-    update_executor_progress(executor, &job.id, 55, "Running official HyperFrames sidecar.");
+    update_executor_progress(
+        executor,
+        &job.id,
+        55,
+        "Running official HyperFrames sidecar.",
+    );
     next_sequence_number = run_sidecar_with_active_heartbeat(
         executor,
         connection,
@@ -1725,7 +2148,18 @@ async fn execute_hyperframes_job_inner(
         let connection_snapshot =
             refresh_connection_for_control_plane(app_data_dir, connection, "artifact upload")
                 .await?;
-        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None, true, false).await;
+        let _ = heartbeat(
+            executor,
+            &connection_snapshot,
+            settings,
+            doctor,
+            true,
+            None,
+            true,
+            false,
+            None,
+        )
+        .await;
         let mut metadata = json!({
             "assignmentAttempt": job.assignment_attempt,
             "runtimeId": runtime_id,
@@ -1750,19 +2184,22 @@ async fn execute_hyperframes_job_inner(
                         &parsed,
                         upload.size_bytes(),
                     );
-                    
+
                     if let Some(summary_obj) = summary.as_object() {
                         for (k, v) in summary_obj {
                             if !v.is_null() {
-                                metadata.as_object_mut().unwrap().insert(k.clone(), v.clone());
+                                metadata
+                                    .as_object_mut()
+                                    .unwrap()
+                                    .insert(k.clone(), v.clone());
                             }
                         }
                     }
 
-                    metadata.as_object_mut().unwrap().insert(
-                        "artifactJsonSummary".to_string(),
-                        summary,
-                    );
+                    metadata
+                        .as_object_mut()
+                        .unwrap()
+                        .insert("artifactJsonSummary".to_string(), summary);
                     if upload.artifact_type == "hyperframes_render_manifest" {
                         if let Some(hash) = parsed
                             .get("finalVideoSha256")
@@ -1771,13 +2208,15 @@ async fn execute_hyperframes_job_inner(
                                 parsed
                                     .get("outputs")
                                     .and_then(|v| v.get("finalVideo"))
-                                    .and_then(|v| v.get("checksumSha256").or_else(|| v.get("sha256")))
+                                    .and_then(|v| {
+                                        v.get("checksumSha256").or_else(|| v.get("sha256"))
+                                    })
                             })
                         {
-                            metadata.as_object_mut().unwrap().insert(
-                                "finalVideoChecksumSha256".to_string(),
-                                hash.clone(),
-                            );
+                            metadata
+                                .as_object_mut()
+                                .unwrap()
+                                .insert("finalVideoChecksumSha256".to_string(), hash.clone());
                         }
                     }
                 }
@@ -2000,7 +2439,12 @@ async fn execute_remotion_render_video_job_inner(
         managed_wsl_root,
         managed_wsl_workspace_root,
     )?;
-    update_executor_progress(executor, &job.id, 20, "Running Remotion render-video sidecar.");
+    update_executor_progress(
+        executor,
+        &job.id,
+        20,
+        "Running Remotion render-video sidecar.",
+    );
 
     let (outcome, sequence_after_run) = run_remotion_sidecar_and_collect(
         executor,
@@ -2047,18 +2491,23 @@ async fn execute_remotion_render_video_job_inner(
         .file_name()
         .ok_or_else(|| format!("sidecar reported an unusable output path: {output_path}"))?;
     let output_path = plan.output_dir.join(output_file_name);
-    validate_workspace_path(workspace_root, &output_path)
-        .map_err(|error| format!("sidecar reported an output path outside the worker workspace: {error}"))?;
-    let output_metadata = fs::metadata(&output_path)
-        .map_err(|error| {
-            format!(
-                "Remotion render-video output is missing at {}: {error}",
-                output_path.display()
-            )
-        })?;
+    validate_workspace_path(workspace_root, &output_path).map_err(|error| {
+        format!("sidecar reported an output path outside the worker workspace: {error}")
+    })?;
+    let output_metadata = fs::metadata(&output_path).map_err(|error| {
+        format!(
+            "Remotion render-video output is missing at {}: {error}",
+            output_path.display()
+        )
+    })?;
     let size_bytes = output_metadata.len();
 
-    update_executor_progress(executor, &job.id, 82, "Uploading Remotion render-video artifact.");
+    update_executor_progress(
+        executor,
+        &job.id,
+        82,
+        "Uploading Remotion render-video artifact.",
+    );
     let upload = ArtifactUploadPlan {
         artifact_type: "remotion_render_mp4".into(),
         file_name: "render.mp4".into(),
@@ -2222,7 +2671,18 @@ async fn run_remotion_sidecar_and_collect(
             let _ =
                 crate::commands::try_refresh_connection_if_needed(app_data_dir, connection).await;
             let connection_snapshot = clone_connection(connection)?;
-            let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None, true, false).await;
+            let _ = heartbeat(
+                executor,
+                &connection_snapshot,
+                settings,
+                doctor,
+                true,
+                None,
+                true,
+                false,
+                None,
+            )
+            .await;
             last_heartbeat = Instant::now();
         }
 
@@ -2401,7 +2861,18 @@ async fn stage_hyperframes_source_videos(
             format!("Downloading source video {}/{}", index + 1, total_videos),
         );
         let connection_snapshot = clone_connection(connection)?;
-        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None, true, false).await;
+        let _ = heartbeat(
+            executor,
+            &connection_snapshot,
+            settings,
+            doctor,
+            true,
+            None,
+            true,
+            false,
+            None,
+        )
+        .await;
 
         let shot_id = source_video
             .get("shotId")
@@ -2754,7 +3225,18 @@ async fn run_sidecar_with_active_heartbeat(
             let _ =
                 crate::commands::try_refresh_connection_if_needed(app_data_dir, connection).await;
             let connection_snapshot = clone_connection(connection)?;
-            let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None, true, false).await;
+            let _ = heartbeat(
+                executor,
+                &connection_snapshot,
+                settings,
+                doctor,
+                true,
+                None,
+                true,
+                false,
+                None,
+            )
+            .await;
             let keepalive = build_sidecar_keepalive_event(
                 job,
                 parse_render_log_percent(&current_progress_line).unwrap_or(55),
@@ -3231,11 +3713,7 @@ fn update_progress_from_event(
 /// the global `set_executor_complete` above, which cleared the single
 /// current-job slot — the app showed "No active job" while the same worker was
 /// at `render_frames 60%` on the server.
-fn set_executor_job_complete(
-    executor: &Arc<Mutex<ExecutorState>>,
-    job_id: &str,
-    message: &str,
-) {
+fn set_executor_job_complete(executor: &Arc<Mutex<ExecutorState>>, job_id: &str, message: &str) {
     if let Ok(mut state) = executor.lock() {
         state.finish_job(job_id);
         state.accepting_jobs = true;
@@ -3419,7 +3897,9 @@ mod tests {
             runtime_kind: Some("official_hyperframes".into()),
         };
 
-        assert!(remotion_render_video_contract_ready(&compatible_legacy_primary));
+        assert!(remotion_render_video_contract_ready(
+            &compatible_legacy_primary
+        ));
     }
 
     #[test]
@@ -3449,7 +3929,10 @@ mod tests {
             "exit status: 1".into(),
         );
         match outcome {
-            RemotionRenderOutcome::Failed { failure_code, message } => {
+            RemotionRenderOutcome::Failed {
+                failure_code,
+                message,
+            } => {
                 assert_eq!(failure_code, "render_failed");
                 assert!(message.contains("chromium crashed"));
             }
@@ -3495,10 +3978,32 @@ mod tests {
             true,
             "ready",
             Some((&hermes_ready, Some("0.18.2"))),
+            None,
         );
         assert_eq!(ready_metadata["hermesMedia"]["advertised"], true);
         assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
-        assert_eq!(ready_metadata["hermesMedia"]["capability"], "hermes-media-generation");
+        assert_eq!(
+            ready_metadata["hermesMedia"]["capability"],
+            "hermes-media-generation"
+        );
+
+        let comfy_ready = comfy_executor::ComfyReadiness {
+            ready: true,
+            reason: "system_stats_ok".into(),
+        };
+        let comfy_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_ready,
+            true,
+            "ready",
+            None,
+            Some(&comfy_ready),
+        );
+        assert_eq!(comfy_metadata["comfyUi"]["advertised"], true);
+        assert_eq!(
+            comfy_metadata["comfyUi"]["capabilityFamilies"][0],
+            "comfyui-image-generate"
+        );
 
         let blocked_metadata = build_heartbeat_runtime_metadata(
             &settings,
@@ -3506,6 +4011,7 @@ mod tests {
             true,
             "ready",
             Some((&hermes_blocked, None)),
+            None,
         );
         assert_eq!(blocked_metadata["hermesMedia"]["advertised"], false);
 
@@ -3513,7 +4019,8 @@ mod tests {
         // HyperFrames render) pass `None` — no hermesMedia key at all, so
         // the server preserves the last-known value instead of clobbering
         // it with a stale/absent probe.
-        let no_hermes_info = build_heartbeat_runtime_metadata(&settings, &hermes_ready, true, "ready", None);
+        let no_hermes_info =
+            build_heartbeat_runtime_metadata(&settings, &hermes_ready, true, "ready", None, None);
         assert!(no_hermes_info.get("hermesMedia").is_none());
     }
 
@@ -3578,7 +4085,10 @@ mod tests {
         assert_eq!(success.event_type, "job.completed");
         assert_eq!(success.sequence_number, FAILURE_EVENT_SEQUENCE_NUMBER);
         assert_eq!(success.payload_json["accountHint"], "account@example.com");
-        assert_eq!(success.payload_json["capabilities"]["operations"], json!({}));
+        assert_eq!(
+            success.payload_json["capabilities"]["operations"],
+            json!({})
+        );
 
         let failure = build_hermes_control_terminal_event(
             &job,
@@ -3601,7 +4111,8 @@ mod tests {
         // hint builder in isolation.
         let dir = tempfile::tempdir().unwrap();
         let app_data_dir = dir.path().join("app-data");
-        let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+        let (manifest_path, pack_root) =
+            crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
         fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
         let python_relative_path = "python/python.exe";
         fs::create_dir_all(pack_root.join("python")).unwrap();
@@ -3622,15 +4133,18 @@ mod tests {
         )
         .unwrap();
 
-        let (ready_hints, ready_doctor, ready_version) = resolve_hermes_claim_hints(&app_data_dir, true, |_path| {
-            Ok("hermes-cli 0.18.2".to_string())
-        });
+        let (ready_hints, ready_doctor, ready_version) =
+            resolve_hermes_claim_hints(&app_data_dir, true, |_path| {
+                Ok("hermes-cli 0.18.2".to_string())
+            });
         assert_eq!(ready_doctor.status, "ready");
         assert!(ready_hints.contains(&"hermes_media".to_string()));
         assert_eq!(ready_version.as_deref(), Some("0.18.2"));
 
         let (degraded_hints, degraded_doctor, _degraded_version) =
-            resolve_hermes_claim_hints(&app_data_dir, true, |_path| Ok("hermes-cli 0.10.0".to_string()));
+            resolve_hermes_claim_hints(&app_data_dir, true, |_path| {
+                Ok("hermes-cli 0.10.0".to_string())
+            });
         assert_eq!(degraded_doctor.status, "degraded");
         assert!(!degraded_hints.contains(&"hermes_media".to_string()));
         // Render hint is untouched by the hermes gate either way.
@@ -3681,7 +4195,10 @@ mod tests {
 
         // Both idle — both claimable.
         assert_eq!(
-            (can_claim_render_job(0, max_jobs), can_claim_hermes_media_job(0)),
+            (
+                can_claim_render_job(0, max_jobs),
+                can_claim_hermes_media_job(0)
+            ),
             (true, true)
         );
     }

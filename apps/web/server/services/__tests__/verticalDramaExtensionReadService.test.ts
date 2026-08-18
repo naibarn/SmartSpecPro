@@ -57,6 +57,8 @@ vi.mock("../../db", () => ({ getDb: mockGetDb }));
 import {
   listDramaSeriesCharactersForPicker,
   projectDramaShotDialogueLinesForExtension,
+  projectDramaShotReferenceImagesForExtension,
+  resolveDramaShotCharacterRefsForExtension,
 } from "../verticalDramaExtensionReadService";
 import { estimateVerticalDramaSpeechSeconds } from "../../../shared/verticalDramaSeries/dialogueQuality";
 
@@ -114,6 +116,211 @@ describe("projectDramaShotDialogueLinesForExtension", () => {
     // The estimate must be a real positive number so the extension shows a
     // speaking length instead of "ยังไม่มีเวลาพูด".
     expect(lines[0].durationSeconds).toBeGreaterThan(0);
+  });
+
+  it("resolves opaque audio-plan speaker identifiers to canonical character names", () => {
+    const lines = projectDramaShotDialogueLinesForExtension({
+      shotNumber: 6,
+      dialogueAudioPlan: {
+        dialogueLines: [
+          {
+            shotNumber: 6,
+            speakerName: "character-2",
+            speakerCharacterId: "character-2",
+            text: "ผมออกแบบดี๊ก็ได้, แต่ชีวิตผมอยากสร้างกับเธอคนเดียว",
+            targetDurationSeconds: 2.7,
+          },
+          {
+            shotNumber: 6,
+            speakerName: "character",
+            speakerCharacterId: "character",
+            text: "คิน...",
+            targetDurationSeconds: 0.8,
+          },
+        ],
+      },
+      clipDialogue: [
+        {
+          characterKey: "character-2",
+          lineTh: "ผมออกแบบดี๊ก็ได้, แต่ชีวิตผมอยากสร้างกับเธอคนเดียว",
+        },
+        { characterKey: "character", lineTh: "คิน..." },
+      ],
+      characterNameByKey: new Map([
+        ["character-2", "ภาคิน"],
+        ["character", "ไอริน"],
+      ]),
+    });
+
+    expect(lines.map(line => line.speaker)).toEqual(["ภาคิน", "ไอริน"]);
+  });
+
+  it("resolves clip-only speaker keys and never exposes unresolved opaque identifiers", () => {
+    const resolved = projectDramaShotDialogueLinesForExtension({
+      shotNumber: 1,
+      dialogueAudioPlan: null,
+      clipDialogue: [
+        { characterKey: "character-2", lineTh: "แต่งงานกับผมนะ" },
+        { characterKey: "ใบข้าว", lineTh: "ชื่อแบบเก่ายังต้องอ่านได้" },
+      ],
+      characterNameByKey: new Map([["character-2", "ภาคิน"]]),
+    });
+    const unresolved = projectDramaShotDialogueLinesForExtension({
+      shotNumber: 1,
+      dialogueAudioPlan: null,
+      clipDialogue: [
+        { characterKey: "character1", lineTh: "ไม่มีข้อมูลตัวละคร" },
+        { characterKey: "char_aria", lineTh: "ไม่มีตัวละครแบบ slug" },
+        { characterKey: "c-0123abcd", lineTh: "ไม่มีตัวละครแบบ hash" },
+      ],
+      characterNameByKey: new Map(),
+    });
+
+    expect(resolved.map(line => line.speaker)).toEqual(["ภาคิน", "ใบข้าว"]);
+    expect(unresolved.map(line => line.speaker)).toEqual([
+      "ไม่ระบุผู้พูด",
+      "ไม่ระบุผู้พูด",
+      "ไม่ระบุผู้พูด",
+    ]);
+  });
+
+  it("keeps narration explicit even when persisted speaker metadata is opaque", () => {
+    const lines = projectDramaShotDialogueLinesForExtension({
+      shotNumber: 1,
+      dialogueAudioPlan: {
+        dialogueLines: [
+          {
+            shotNumber: 1,
+            speakerName: "character-3",
+            speakerCharacterId: "character-3",
+            isNarration: true,
+            text: "หนึ่งปีต่อมา",
+            targetDurationSeconds: 1,
+          },
+        ],
+      },
+      clipDialogue: [],
+      characterNameByKey: new Map([["character-3", "ผู้เล่าเรื่องจำลอง"]]),
+    });
+
+    expect(lines[0]?.speaker).toBe("ผู้บรรยาย");
+  });
+});
+
+describe("projectDramaShotReferenceImagesForExtension", () => {
+  it("keeps only reference frames and one portrait for each character required by this shot", () => {
+    const images = projectDramaShotReferenceImagesForExtension({
+      shotReferenceRows: [
+        {
+          id: 10,
+          mediaAssetId: 100,
+          role: "reference",
+          source: "reference_frame",
+          assetOriginalUrl: "/api/storage/files/reference.png",
+          assetThumbnailUrl: "/api/storage/files/reference-thumb.png",
+        },
+        {
+          id: 11,
+          mediaAssetId: 101,
+          role: "reference",
+          source: "grid_cut",
+          assetOriginalUrl: "/api/storage/files/grid-cut.png",
+          assetThumbnailUrl: null,
+        },
+        {
+          id: 12,
+          mediaAssetId: 102,
+          role: "reference",
+          source: "generated",
+          assetOriginalUrl: "/api/storage/files/generated.png",
+          assetThumbnailUrl: null,
+        },
+      ],
+      requiredCharacterRefs: ["hero"],
+      characterAssetsByCharacterKey: new Map([
+        ["hero", [
+          { assetRowId: 20, mediaAssetId: 200, role: "primary_portrait", characterName: "ภาคิน" },
+          { assetRowId: 21, mediaAssetId: 201, role: "expression", characterName: "ภาคิน" },
+        ]],
+        ["extra", [
+          { assetRowId: 22, mediaAssetId: 202, role: "primary_portrait", characterName: "ตัวประกอบ" },
+        ]],
+      ]),
+      assetById: new Map([
+        [200, { originalUrl: "/api/storage/files/hero.png", thumbnailUrl: "/api/storage/files/hero-thumb.png" }],
+        [201, { originalUrl: "/api/storage/files/hero-expression.png", thumbnailUrl: null }],
+        [202, { originalUrl: "/api/storage/files/extra.png", thumbnailUrl: null }],
+      ]),
+    });
+
+    expect(images).toEqual([
+      {
+        id: "10",
+        url: "/api/storage/files/reference.png",
+        thumbnailUrl: "/api/storage/files/reference-thumb.png",
+        role: "reference",
+        source: "reference_frame",
+      },
+      {
+        id: "char-20",
+        url: "/api/storage/files/hero.png",
+        thumbnailUrl: "/api/storage/files/hero-thumb.png",
+        role: "primary_portrait",
+        source: "character",
+        title: "ภาคิน",
+      },
+    ]);
+  });
+
+  it("deduplicates a character portrait already linked as a reference frame", () => {
+    const images = projectDramaShotReferenceImagesForExtension({
+      shotReferenceRows: [{
+        id: 10,
+        mediaAssetId: 200,
+        role: "reference",
+        source: "reference_frame",
+        assetOriginalUrl: "/api/storage/files/hero.png",
+        assetThumbnailUrl: null,
+      }],
+      requiredCharacterRefs: ["hero"],
+      characterAssetsByCharacterKey: new Map([
+        ["hero", [{ assetRowId: 20, mediaAssetId: 200, role: "primary_portrait", characterName: "ภาคิน" }]],
+      ]),
+      assetById: new Map([
+        [200, { originalUrl: "/api/storage/files/hero.png", thumbnailUrl: null }],
+      ]),
+    });
+
+    expect(images).toHaveLength(1);
+    expect(images[0].source).toBe("reference_frame");
+  });
+
+  it("uses a protected thumbnail when a character asset has no original URL", () => {
+    const images = projectDramaShotReferenceImagesForExtension({
+      shotReferenceRows: [],
+      requiredCharacterRefs: ["hero"],
+      characterAssetsByCharacterKey: new Map([
+        ["hero", [{ assetRowId: 20, mediaAssetId: 200, role: "primary_portrait", characterName: "ภาคิน" }]],
+      ]),
+      assetById: new Map([
+        [200, { originalUrl: null, thumbnailUrl: "/api/storage/files/hero-thumb.png" }],
+      ]),
+    });
+
+    expect(images[0]?.url).toBe("/api/storage/files/hero-thumb.png");
+  });
+});
+
+describe("resolveDramaShotCharacterRefsForExtension", () => {
+  it("uses the shot's explicit required character list even when it is intentionally empty", () => {
+    expect(resolveDramaShotCharacterRefsForExtension([], ["legacy-extra"])).toEqual([]);
+  });
+
+  it("falls back to the storyboard cast for legacy frames without requiredCharacterRefs", () => {
+    expect(resolveDramaShotCharacterRefsForExtension(undefined, ["hero", "support"])).toEqual([
+      "hero",
+      "support",
+    ]);
   });
 });
 

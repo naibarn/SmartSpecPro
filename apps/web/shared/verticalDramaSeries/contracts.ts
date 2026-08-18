@@ -546,6 +546,8 @@ export type VerticalDramaStartFramePlan = {
         | "completed"
         | "failed"
         | "expired";
+      /** Boundary that produced a terminal failure, when known. */
+      failureStage?: "provider" | "sync" | "admission";
       submittedAt?: string;
       updatedAt?: string;
       error?: string;
@@ -580,10 +582,12 @@ export type VerticalDramaStartFramePlan = {
     /** Durable current-shot camera/body-language facts used to ground image prompts. */
     shotComposition?: VerticalDramaShotComposition;
     /** Set when the prompt changed after the previously approved image was created. */
-  imageStaleReason?:
-    | "prompt_changed"
+    imageStaleReason?:
+      | "prompt_changed"
     | "character_references_changed"
-    | "supporting_presence_changed";
+    | "supporting_presence_changed"
+    /** The shot now uses a different approved location camera variant. */
+    | "location_variant_changed";
     imageStaleAt?: string;
     /**
      * Additive (2026-07-06 product-reference picker) — true once the user has
@@ -700,6 +704,13 @@ export type VerticalDramaStartFramePlan = {
      * storyboard-grouping resolution, fully backward compatible.
      */
     locationKey?: string;
+    /**
+     * Optional approved location camera variant for this shot. The value is
+     * the durable `vertical_drama_location_assets.id` (stringified at the
+     * JSON boundary). Absent means the location's primary establishing plate
+     * remains the backwards-compatible default.
+     */
+    locationVariantId?: string;
     /** Persisted 3x3 multi-angle picker state (2026-07-05 fix) — the source
      *  grid image is already a completed, durable media task; this just
      *  remembers which grid to re-split client-side on reload and which of
@@ -1566,9 +1577,9 @@ export type VerticalDramaEpisodeRun = {
 export const VD_IMAGE_PROMPT_MAX = 3800;
 
 /**
- * Hard character cap for any VIDEO prompt (motion prompt, formatted
- * provider-ready clip prompt including embedded dialogue/direction text)
- * persisted/displayed/sent to a provider in the Vertical Drama flow. Same
- * enforcement point as `VD_IMAGE_PROMPT_MAX` above.
+ * Legacy/default character cap for a VIDEO prompt (motion prompt, formatted
+ * provider-ready clip prompt including embedded dialogue/direction text).
+ * Provider-aware callers may widen it up to the selected provider's budget
+ * (currently 4,096 for Kie.ai) through `videoPromptBudget.ts`.
  */
 export const VD_VIDEO_PROMPT_MAX = 2000;

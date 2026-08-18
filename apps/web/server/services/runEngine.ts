@@ -37,7 +37,10 @@ import { getCoordinatorProfile } from "./turnOrderEngine";
 import * as workItemService from "./workItemService";
 import * as roomService from "./roomService";
 import * as monitoringService from "./monitoringService";
-import { recordAssistantTurnScopedMemories, refreshRollingSummaryMemories } from "./teamRoomMemoryService";
+import {
+  recordAssistantTurnScopedMemories,
+  refreshRollingSummaryMemories,
+} from "./teamRoomMemoryService";
 import { queueWorkerJobByRuntime } from "./workerSchedulerService";
 import type { QueueWorkerJobByRuntimeInput } from "./workerSchedulerService";
 import { agencyAgents, personaTemplates } from "../../drizzle/schema";
@@ -93,6 +96,7 @@ import type {
   TeamExecutionPlan,
   WorkOrchestratorSurface,
 } from "../../shared/workOrchestrator";
+import type { HermesTaskCorrelation } from "../../shared/workerRuntime";
 import { workOrchestratorSurfaceValues } from "../../shared/workOrchestrator";
 
 type AppDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -191,7 +195,7 @@ const AUTO_TEAM_SHARED_RUNTIME_SKILL_SLUG = "brainstorm";
 
 function buildAutoTeamSharedRuntimeOptions(
   requestLabel: string,
-  objective: string,
+  objective: string
 ) {
   return {
     skillSlugs: [AUTO_TEAM_SHARED_RUNTIME_SKILL_SLUG],
@@ -208,7 +212,8 @@ function getRequestedSubagentHint(run: TeamRun): string | null {
     if (!source || typeof source !== "object" || Array.isArray(source)) {
       continue;
     }
-    const requestedSubagent = (source as Record<string, unknown>).requestedSubagent;
+    const requestedSubagent = (source as Record<string, unknown>)
+      .requestedSubagent;
     if (typeof requestedSubagent === "string") {
       const normalized = requestedSubagent.trim();
       if (normalized.length > 0) {
@@ -423,7 +428,7 @@ function selectActivePlanStep(
 }
 
 function extractRuntimeDispatchPolicy(
-  value: unknown,
+  value: unknown
 ): RuntimeDispatchPolicy | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
@@ -438,15 +443,17 @@ function extractRuntimeDispatchPolicy(
 }
 
 function getStepRuntimeDispatchPolicy(
-  step: monitoringService.RunPlanStep | null | undefined,
+  step: monitoringService.RunPlanStep | null | undefined
 ): RuntimeDispatchPolicy | null {
   return extractRuntimeDispatchPolicy(step?.runtimeDispatchPolicy ?? null);
 }
 
-const workOrchestratorSurfaceSet = new Set<string>(workOrchestratorSurfaceValues);
+const workOrchestratorSurfaceSet = new Set<string>(
+  workOrchestratorSurfaceValues
+);
 
 function normalizePlanStepSurface(
-  value: string | null | undefined,
+  value: string | null | undefined
 ): WorkOrchestratorSurface {
   return value && workOrchestratorSurfaceSet.has(value)
     ? (value as WorkOrchestratorSurface)
@@ -454,16 +461,24 @@ function normalizePlanStepSurface(
 }
 
 function inferPlanStepSideEffectClass(
-  step: monitoringService.RunPlanStep,
+  step: monitoringService.RunPlanStep
 ): RuntimeDispatchPolicy["sideEffectClass"] {
   const surface = normalizePlanStepSurface(step.surface ?? null);
-  if (surface === "media_studio" || surface === "video_editor" || surface === "agency") {
+  if (
+    surface === "media_studio" ||
+    surface === "video_editor" ||
+    surface === "agency"
+  ) {
     return "external_side_effect";
   }
   if (surface === "document_management" || surface === "work_os") {
     return "bounded_write";
   }
-  if (surface === "browser" || surface === "workflow" || surface === "skill_studio") {
+  if (
+    surface === "browser" ||
+    surface === "workflow" ||
+    surface === "skill_studio"
+  ) {
     return "external_side_effect";
   }
   return "read_only";
@@ -471,7 +486,7 @@ function inferPlanStepSideEffectClass(
 
 function buildSyntheticExecutionPlanStep(
   step: monitoringService.RunPlanStep,
-  index: number,
+  index: number
 ): TeamExecutionPlan["steps"][number] {
   const surface = normalizePlanStepSurface(step.surface ?? null);
   const sideEffectClass = inferPlanStepSideEffectClass(step);
@@ -479,7 +494,11 @@ function buildSyntheticExecutionPlanStep(
     id: step.stepKey || `runtime-step-${index + 1}`,
     stepKey: step.stepKey || `runtime-step-${index + 1}`,
     title: step.title || `Runtime step ${index + 1}`,
-    objective: step.objective || step.deliverable || step.title || "Execute the current plan step.",
+    objective:
+      step.objective ||
+      step.deliverable ||
+      step.title ||
+      "Execute the current plan step.",
     surface,
     action: null,
     capabilityId: step.selectedCapabilityId ?? null,
@@ -503,7 +522,9 @@ function buildSyntheticExecutionPlanStep(
       : [step.deliverable || "evidence"],
     optional: false,
     metadata: {
-      ...(step.selectedCapabilityId ? { selectedCapabilityId: step.selectedCapabilityId } : {}),
+      ...(step.selectedCapabilityId
+        ? { selectedCapabilityId: step.selectedCapabilityId }
+        : {}),
       stepKey: step.stepKey,
       sideEffectClass,
       requiresApproval: sideEffectClass !== "read_only",
@@ -527,7 +548,11 @@ function scoreApprovedStepMatch(input: {
   const approvedSurface = input.approvedStep.surface ?? null;
   const artifactSurface = input.artifactStep.surface ?? null;
   let score = 0;
-  if (approvedSurface && artifactSurface && approvedSurface === artifactSurface) {
+  if (
+    approvedSurface &&
+    artifactSurface &&
+    approvedSurface === artifactSurface
+  ) {
     score += 4;
   } else if (approvedSurface || artifactSurface) {
     score -= 4;
@@ -538,18 +563,28 @@ function scoreApprovedStepMatch(input: {
       ? input.approvedStep.metadata.selectedCapabilityId
       : null);
   const artifactCapability = input.artifactStep.selectedCapabilityId ?? null;
-  if (approvedCapability && artifactCapability && approvedCapability === artifactCapability) {
+  if (
+    approvedCapability &&
+    artifactCapability &&
+    approvedCapability === artifactCapability
+  ) {
     score += 5;
   } else if (approvedCapability && artifactCapability) {
     score -= 3;
   }
   const approvedText = normalizePolicyMatchText(
-    [input.approvedStep.title, input.approvedStep.objective].filter(Boolean).join(" "),
+    [input.approvedStep.title, input.approvedStep.objective]
+      .filter(Boolean)
+      .join(" ")
   );
   const artifactText = normalizePolicyMatchText(
-    [input.artifactStep.title, input.artifactStep.objective, input.artifactStep.deliverable]
+    [
+      input.artifactStep.title,
+      input.artifactStep.objective,
+      input.artifactStep.deliverable,
+    ]
       .filter(Boolean)
-      .join(" "),
+      .join(" ")
   );
   if (approvedText && artifactText) {
     if (approvedText === artifactText) {
@@ -570,7 +605,7 @@ function selectApprovedExecutionStepForArtifactStep(input: {
   artifactStepIndex: number;
 }): TeamExecutionPlan["steps"][number] {
   const stepKeyMatch = input.snapshot.executionPlan.steps.find(
-    step => (step.stepKey ?? step.id) === input.artifactStep.stepKey,
+    step => (step.stepKey ?? step.id) === input.artifactStep.stepKey
   );
   if (stepKeyMatch) return stepKeyMatch;
 
@@ -589,12 +624,13 @@ function selectApprovedExecutionStepForArtifactStep(input: {
           (left, right) =>
             right.score - left.score ||
             Math.abs(left.index - input.artifactStepIndex) -
-              Math.abs(right.index - input.artifactStepIndex),
+              Math.abs(right.index - input.artifactStepIndex)
         )[0]?.step
     : null;
   if (capabilityMatch) return capabilityMatch;
 
-  const indexCandidate = input.snapshot.executionPlan.steps[input.artifactStepIndex] ?? null;
+  const indexCandidate =
+    input.snapshot.executionPlan.steps[input.artifactStepIndex] ?? null;
   if (
     indexCandidate &&
     scoreApprovedStepMatch({
@@ -607,15 +643,17 @@ function selectApprovedExecutionStepForArtifactStep(input: {
 
   return buildSyntheticExecutionPlanStep(
     input.artifactStep,
-    input.artifactStepIndex,
+    input.artifactStepIndex
   );
 }
 
-function isSyntheticExecutionPlanStep(step: TeamExecutionPlan["steps"][number]): boolean {
+function isSyntheticExecutionPlanStep(
+  step: TeamExecutionPlan["steps"][number]
+): boolean {
   return Boolean(
     step.metadata &&
-      typeof step.metadata === "object" &&
-      (step.metadata as Record<string, unknown>).synthesizedRuntimePolicy === true,
+    typeof step.metadata === "object" &&
+    (step.metadata as Record<string, unknown>).synthesizedRuntimePolicy === true
   );
 }
 
@@ -639,7 +677,8 @@ function ensurePlanArtifactRuntimePolicies(input: {
       if (
         existingPolicy &&
         existingPolicy.stepId === approvedStep.id &&
-        existingPolicy.inputHash === input.snapshot!.preflightRevision.fingerprint &&
+        existingPolicy.inputHash ===
+          input.snapshot!.preflightRevision.fingerprint &&
         existingPolicy.surface === step.surface &&
         (existingPolicy.selectedCapabilityId ?? null) ===
           (step.selectedCapabilityId ?? approvedStep.capabilityId ?? null)
@@ -695,12 +734,22 @@ function validatePlanWithinApprovedBudget(input: {
     toolCalls += policy?.budgetReservation.toolCalls ?? 0;
     mediaJobs +=
       policy?.budgetReservation.mediaJobs ??
-      (step.surface === "video_editor" ? 8 : step.surface === "media_studio" ? 1 : 0);
+      (step.surface === "video_editor"
+        ? 8
+        : step.surface === "media_studio"
+          ? 1
+          : 0);
     workflowRuns +=
-      policy?.budgetReservation.workflowRuns ?? (step.surface === "workflow" ? 1 : 0);
-    agencyRuns += policy?.budgetReservation.agencyRuns ?? (step.surface === "agency" ? 1 : 0);
+      policy?.budgetReservation.workflowRuns ??
+      (step.surface === "workflow" ? 1 : 0);
+    agencyRuns +=
+      policy?.budgetReservation.agencyRuns ??
+      (step.surface === "agency" ? 1 : 0);
   }
-  if (budget.maxBudgetCredits != null && costCredits > budget.maxBudgetCredits) {
+  if (
+    budget.maxBudgetCredits != null &&
+    costCredits > budget.maxBudgetCredits
+  ) {
     return { ok: false, reason: "budget_replan_cost_exceeds_envelope" };
   }
   if (budget.maxTokens != null && tokens > budget.maxTokens) {
@@ -738,7 +787,7 @@ function applyRuntimeDispatchPolicyToPlanArtifact(input: {
             ...step,
             runtimeDispatchPolicy: input.policy,
           }
-        : step,
+        : step
     ),
   };
 }
@@ -779,13 +828,14 @@ async function resolveCurrentRuntimeDispatchPolicy(input: {
   }
 
   const activeArtifactStepIndex = input.planArtifact.steps.findIndex(
-    step => step.status !== "completed" && step.status !== "failed",
+    step => step.status !== "completed" && step.status !== "failed"
   );
   if (activeArtifactStepIndex < 0) {
     return null;
   }
 
-  const activeArtifactStep = input.planArtifact.steps[activeArtifactStepIndex] ?? null;
+  const activeArtifactStep =
+    input.planArtifact.steps[activeArtifactStepIndex] ?? null;
   if (!activeArtifactStep) {
     return null;
   }
@@ -838,19 +888,23 @@ async function resolveCurrentRuntimeDispatchPolicy(input: {
 }
 
 function getRuntimeDispatchGateFromResult(
-  result: TeamRunSkillExecutionResult,
+  result: TeamRunSkillExecutionResult
 ): RuntimeDispatchPolicy | null {
   const policy = extractRuntimeDispatchPolicy(
-    result.metadata?.runtimeDispatchPolicy,
+    result.metadata?.runtimeDispatchPolicy
   );
   return policy && policy.authorityDecision !== "allowed" ? policy : null;
 }
 
 function getBudgetGateBlockFromResult(
-  result: TeamRunSkillExecutionResult,
+  result: TeamRunSkillExecutionResult
 ): { reasonCode: string; budgetGate: Record<string, unknown> } | null {
   const budgetGate = result.metadata?.budgetGate;
-  if (!budgetGate || typeof budgetGate !== "object" || Array.isArray(budgetGate)) {
+  if (
+    !budgetGate ||
+    typeof budgetGate !== "object" ||
+    Array.isArray(budgetGate)
+  ) {
     return null;
   }
   const record = budgetGate as Record<string, unknown>;
@@ -865,7 +919,7 @@ function getBudgetGateBlockFromResult(
 }
 
 function isWorkOsAutoTeamRun(
-  run: Pick<TeamRun, "executionMode" | "constraintsJson">,
+  run: Pick<TeamRun, "executionMode" | "constraintsJson">
 ): boolean {
   const constraints =
     run.constraintsJson && typeof run.constraintsJson === "object"
@@ -879,18 +933,20 @@ function isWorkOsAutoTeamRun(
 }
 
 function getCapabilityGapResolutionFromMetadata(
-  metadata: Record<string, unknown> | null | undefined,
+  metadata: Record<string, unknown> | null | undefined
 ): Record<string, unknown> | null {
   const resolution = metadata?.capabilityGapResolution;
-  if (!resolution || typeof resolution !== "object" || Array.isArray(resolution)) {
+  if (
+    !resolution ||
+    typeof resolution !== "object" ||
+    Array.isArray(resolution)
+  ) {
     return null;
   }
   return resolution as Record<string, unknown>;
 }
 
-function resolveCapabilityGapTargetSkillId(
-  value: unknown,
-): string | null {
+function resolveCapabilityGapTargetSkillId(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const raw = value.trim();
   const match = /^skill:(.+)$/i.exec(raw);
@@ -908,7 +964,7 @@ function summarizeBudgetUsage(snapshot: BudgetSnapshot): {
   const totalTokensUsed = Object.values(snapshot.perAgent ?? {}).reduce(
     (sum, agentBudget) =>
       sum + (agentBudget.inputTokens ?? 0) + (agentBudget.outputTokens ?? 0),
-    0,
+    0
   );
   return {
     totalTokensUsed,
@@ -937,7 +993,7 @@ function asRuntimeStateRecord(value: unknown): Record<string, unknown> {
 }
 
 function getBudgetRecoveryAttempts(
-  runtimeState: Record<string, unknown>,
+  runtimeState: Record<string, unknown>
 ): number {
   const value = runtimeState.budgetRecoveryAttempts;
   return typeof value === "number" && Number.isFinite(value)
@@ -968,12 +1024,11 @@ function buildBudgetRecoveryState(input: {
 }
 
 function incrementBudgetRecoveryAttempt(
-  runtimeState: Record<string, unknown>,
+  runtimeState: Record<string, unknown>
 ): Record<string, unknown> {
   return {
     ...runtimeState,
-    budgetRecoveryAttempts:
-      getBudgetRecoveryAttempts(runtimeState) + 1,
+    budgetRecoveryAttempts: getBudgetRecoveryAttempts(runtimeState) + 1,
     budgetRecoveryMaxAttempts: AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS,
     budgetRecoveryExhausted: false,
   };
@@ -1004,9 +1059,11 @@ export function evaluateRuntimeBudgetGate(input: {
     };
   }
 
-  const appliedReservationKeys = Array.isArray(input.budgetSnapshot.appliedReservationKeys)
+  const appliedReservationKeys = Array.isArray(
+    input.budgetSnapshot.appliedReservationKeys
+  )
     ? input.budgetSnapshot.appliedReservationKeys.filter(
-        (value): value is string => typeof value === "string",
+        (value): value is string => typeof value === "string"
       )
     : [];
   const reservationAlreadyApplied =
@@ -1071,7 +1128,8 @@ export function evaluateRuntimeBudgetGate(input: {
   }
   if (
     input.budget.maxWorkflowRuns != null &&
-    usage.workflowRunsUsed + reservation.workflowRuns > input.budget.maxWorkflowRuns
+    usage.workflowRunsUsed + reservation.workflowRuns >
+      input.budget.maxWorkflowRuns
   ) {
     return {
       blocked: true,
@@ -1160,7 +1218,8 @@ function parseRuntimeBudgetReservationKey(key: string): {
 } | null {
   const parts = key.split(":");
   if (parts.length !== 5) return null;
-  const [runId, stepKey, attemptRaw, authorityDecision, sideEffectClass] = parts;
+  const [runId, stepKey, attemptRaw, authorityDecision, sideEffectClass] =
+    parts;
   if (!runId || !stepKey || !authorityDecision || !sideEffectClass) return null;
   const attempt = Number(attemptRaw);
   if (!Number.isInteger(attempt) || attempt < 0) return null;
@@ -1177,34 +1236,51 @@ export function resolveAlreadyAppliedRuntimeReservationKey(input: {
 }): string | null {
   if (!input.stepKey) return null;
   const normalizedStepKeyCandidates = Array.from(
-    new Set([
-      input.stepKey,
-      input.stepKey.includes(":") ? input.stepKey.split(":").at(-1) : null,
-    ].filter((value): value is string => typeof value === "string" && value.length > 0)),
+    new Set(
+      [
+        input.stepKey,
+        input.stepKey.includes(":") ? input.stepKey.split(":").at(-1) : null,
+      ].filter(
+        (value): value is string =>
+          typeof value === "string" && value.length > 0
+      )
+    )
   );
-  const appliedReservationKeys = Array.isArray(input.budgetSnapshot.appliedReservationKeys)
+  const appliedReservationKeys = Array.isArray(
+    input.budgetSnapshot.appliedReservationKeys
+  )
     ? input.budgetSnapshot.appliedReservationKeys.filter(
-        (value): value is string => typeof value === "string",
+        (value): value is string => typeof value === "string"
       )
     : [];
   const parsedCandidates = appliedReservationKeys
     .map(key => ({ key, parsed: parseRuntimeBudgetReservationKey(key) }))
-    .filter((entry): entry is {
-      key: string;
-      parsed: NonNullable<ReturnType<typeof parseRuntimeBudgetReservationKey>>;
-    } => Boolean(entry.parsed))
+    .filter(
+      (
+        entry
+      ): entry is {
+        key: string;
+        parsed: NonNullable<
+          ReturnType<typeof parseRuntimeBudgetReservationKey>
+        >;
+      } => Boolean(entry.parsed)
+    )
     .filter(entry => entry.parsed.runId === input.runId)
     .filter(entry =>
-      normalizedStepKeyCandidates.some(stepKey => entry.parsed.stepKey === stepKey),
+      normalizedStepKeyCandidates.some(
+        stepKey => entry.parsed.stepKey === stepKey
+      )
     );
 
   const attemptCandidates =
     input.attempt == null
       ? parsedCandidates
-      : parsedCandidates.filter(entry => entry.parsed.attempt === input.attempt);
+      : parsedCandidates.filter(
+          entry => entry.parsed.attempt === input.attempt
+        );
   const sideEffectCandidates = input.sideEffectClass
     ? attemptCandidates.filter(
-        entry => entry.parsed.sideEffectClass === input.sideEffectClass,
+        entry => entry.parsed.sideEffectClass === input.sideEffectClass
       )
     : attemptCandidates;
   if (sideEffectCandidates.length === 0) {
@@ -1221,13 +1297,15 @@ export function resolveAlreadyAppliedRuntimeReservationKey(input: {
     }
     return 2;
   };
-  return [...sideEffectCandidates].sort((left, right) => {
-    const authorityDelta =
-      authorityRank(left.parsed.authorityDecision) -
-      authorityRank(right.parsed.authorityDecision);
-    if (authorityDelta !== 0) return authorityDelta;
-    return right.parsed.attempt - left.parsed.attempt;
-  })[0]?.key ?? null;
+  return (
+    [...sideEffectCandidates].sort((left, right) => {
+      const authorityDelta =
+        authorityRank(left.parsed.authorityDecision) -
+        authorityRank(right.parsed.authorityDecision);
+      if (authorityDelta !== 0) return authorityDelta;
+      return right.parsed.attempt - left.parsed.attempt;
+    })[0]?.key ?? null
+  );
 }
 
 function buildMissingRuntimePolicyBlockedResult(input: {
@@ -1276,7 +1354,8 @@ async function pauseRunForRuntimeDispatchGate(input: {
     : `runtime_dispatch_blocked:${reasonCode}`;
   const budgetRecoveryRequested = reasonCode === "budget_cap_exceeded";
   const previousRuntimeState = asRuntimeStateRecord(input.run.runtimeStateJson);
-  const budgetRecoveryAttempts = getBudgetRecoveryAttempts(previousRuntimeState);
+  const budgetRecoveryAttempts =
+    getBudgetRecoveryAttempts(previousRuntimeState);
   const canRequestBudgetRecovery =
     budgetRecoveryRequested &&
     budgetRecoveryAttempts < AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS;
@@ -1377,15 +1456,13 @@ async function pauseRunForRuntimeDispatchGate(input: {
                       : "blocked",
                     notes: reasonCode,
                   }
-                : step,
+                : step
             ),
           },
         }
       : undefined,
     runtimeState: {
-      currentPhase: approvalRequired
-        ? "awaiting_human_approval"
-        : "blocked",
+      currentPhase: approvalRequired ? "awaiting_human_approval" : "blocked",
       waitingReason: stopReason,
       policyGateReason: reasonCode,
       autoReplanRequested: canRequestBudgetRecovery,
@@ -1416,7 +1493,8 @@ async function pauseRunForRuntimeBudgetGate(input: {
   const stopReason = `runtime_dispatch_blocked:${input.reasonCode}`;
   const previousRuntimeState = asRuntimeStateRecord(input.run.runtimeStateJson);
   const budgetRecoveryRequested = input.reasonCode === "budget_cap_exceeded";
-  const budgetRecoveryAttempts = getBudgetRecoveryAttempts(previousRuntimeState);
+  const budgetRecoveryAttempts =
+    getBudgetRecoveryAttempts(previousRuntimeState);
   const canRequestBudgetRecovery =
     budgetRecoveryRequested &&
     budgetRecoveryAttempts < AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS;
@@ -1506,7 +1584,7 @@ async function pauseRunForRuntimeBudgetGate(input: {
                     status: "blocked",
                     notes: input.reasonCode,
                   }
-                : step,
+                : step
             ),
           },
         }
@@ -1620,7 +1698,7 @@ export function advanceAutoTeamPlanArtifactProgress(
     completedStepKey,
     nextStepKey: isComplete
       ? null
-      : normalizedSteps[nextStepIndex]?.stepKey ?? null,
+      : (normalizedSteps[nextStepIndex]?.stepKey ?? null),
     isComplete,
   };
 }
@@ -1628,13 +1706,13 @@ export function advanceAutoTeamPlanArtifactProgress(
 const AUTO_TEAM_STEP_VALIDATION_MAX_ATTEMPTS = 2;
 
 function getAutoTeamStepValidationAttempt(
-  step: monitoringService.RunPlanStep,
+  step: monitoringService.RunPlanStep
 ): number {
   return step.validationState?.attempt ?? 0;
 }
 
 function buildAutoTeamStepValidationDescriptor(
-  step: monitoringService.RunPlanStep,
+  step: monitoringService.RunPlanStep
 ): string {
   return [
     step.stepKey,
@@ -1653,12 +1731,14 @@ function buildAutoTeamStepValidationDescriptor(
     .toLowerCase();
 }
 
-function isStoryboardScriptPlanStep(step: monitoringService.RunPlanStep): boolean {
+function isStoryboardScriptPlanStep(
+  step: monitoringService.RunPlanStep
+): boolean {
   const descriptor = buildAutoTeamStepValidationDescriptor(step);
   const keyAndTitle = `${step.stepKey} ${step.title}`.toLowerCase();
   const explicitStoryboardScript =
     /storyboard[-_\s]*(and[-_\s]*)?script|script[-_\s]*(and[-_\s]*)?storyboard/.test(
-      keyAndTitle,
+      keyAndTitle
     ) ||
     (/(storyboard|สตอรี่บอร์ด|สตอรี่บอร์ด)/i.test(keyAndTitle) &&
       /(script|สคริปต์|บทพูด|บทบรรยาย)/i.test(keyAndTitle));
@@ -1667,11 +1747,11 @@ function isStoryboardScriptPlanStep(step: monitoringService.RunPlanStep): boolea
   const mentionsStoryboard = /(storyboard|สตอรี่บอร์ด)/i.test(descriptor);
   const mentionsScript =
     /(script|voiceover|narration|scene-by-scene|สคริปต์|บทพูด|บทบรรยาย|ฉาก)/i.test(
-      descriptor,
+      descriptor
     );
   const isGenerationOrComposition =
     /(keyframe|image|asset|media studio|generate|compose|render|clip|final video|สร้างภาพ|สร้างคีย์เฟรม|สร้างคลิป|ตัดต่อ|เรนเดอร์|รวมวิดีโอ)/i.test(
-      descriptor,
+      descriptor
     );
   return mentionsStoryboard && mentionsScript && !isGenerationOrComposition;
 }
@@ -1681,7 +1761,9 @@ function isMediaArtifactPlanStep(step: monitoringService.RunPlanStep): boolean {
   return step.surface === "media_studio";
 }
 
-function isVisualPromptPackagePlanStep(step: monitoringService.RunPlanStep): boolean {
+function isVisualPromptPackagePlanStep(
+  step: monitoringService.RunPlanStep
+): boolean {
   const descriptor = [
     step.stepKey,
     step.title,
@@ -1696,11 +1778,11 @@ function isVisualPromptPackagePlanStep(step: monitoringService.RunPlanStep): boo
     .join(" ");
   const asksForPromptPackage =
     /(prompt|prompts|image prompt|visual prompt|keyframe|style frame|reference frame|พรอมป์|พรอมต์|คีย์เฟรม|แนวภาพ|ภาพอ้างอิง|ชุดพรอมป์)/i.test(
-      descriptor,
+      descriptor
     );
   const requiresRenderedMediaArtifact =
     /(final image|rendered image|generated image|image file|media job|artifact url|final video|video file|clip url|ไฟล์ภาพ|ภาพที่สร้างแล้ว|ลิงก์ภาพ|งาน media|เรนเดอร์ภาพ|วิดีโอสุดท้าย|ไฟล์วิดีโอ|คลิปวิดีโอ)/i.test(
-      descriptor,
+      descriptor
     );
   return asksForPromptPackage && !requiresRenderedMediaArtifact;
 }
@@ -1709,16 +1791,16 @@ function hasVisualPromptPackageEvidence(content: string): boolean {
   const normalizedContent = content.trim();
   if (normalizedContent.length < 160) return false;
   const sceneMatches = normalizedContent.match(
-    /\bscene\s*\d+\b|ฉากที่\s*\d+|ช็อตที่\s*\d+/gi,
+    /\bscene\s*\d+\b|ฉากที่\s*\d+|ช็อตที่\s*\d+/gi
   );
   const sceneCount = sceneMatches?.length ?? 0;
   const mentionsVisualPrompt =
     /(prompt|พรอมป์|พรอมต์|visual|ภาพ|คีย์เฟรม|keyframe|composition|โทน|lighting|แสง|สี|มุมกล้อง|ฉาก)/i.test(
-      normalizedContent,
+      normalizedContent
     );
   const hasProductionReadyDetail =
     /(split-screen|close-up|montage|portrait|cinematic|style|mood|tone|composition|แสง|โทน|องค์ประกอบ|บรรยากาศ|ตัดต่อ|มอนทาจ|ภาพเปิด|ภาพปิด)/i.test(
-      normalizedContent,
+      normalizedContent
     );
   return sceneCount >= 2 && mentionsVisualPrompt && hasProductionReadyDetail;
 }
@@ -1761,7 +1843,8 @@ export async function validateAutoTeamStepResult(input: {
     metadata.runtimeDispatchOutcome === "awaiting_async_assets";
   if (awaitingAsyncAssets) {
     const retryAfterMs =
-      typeof metadata.retryAfterMs === "number" && Number.isFinite(metadata.retryAfterMs)
+      typeof metadata.retryAfterMs === "number" &&
+      Number.isFinite(metadata.retryAfterMs)
         ? Math.max(5_000, Math.min(120_000, metadata.retryAfterMs))
         : 30_000;
     return {
@@ -1799,7 +1882,7 @@ export async function validateAutoTeamStepResult(input: {
   }
   if (
     /\b(blocked|failed|error|waiting for approval|awaiting approval)\b/i.test(
-      normalizedContent,
+      normalizedContent
     )
   ) {
     issues.push("step_result_reports_blocker");
@@ -1808,7 +1891,7 @@ export async function validateAutoTeamStepResult(input: {
   const mediaJob = metadata.mediaJob;
   const mediaJobs = Array.isArray(metadata.mediaJobs) ? metadata.mediaJobs : [];
   const mediaEvidenceIds = [mediaJob, ...mediaJobs].flatMap(job =>
-    collectMediaJobEvidenceIds(job),
+    collectMediaJobEvidenceIds(job)
   );
   const hasMediaJobMetadataEvidence = mediaEvidenceIds.length > 0;
   const hasArtifactMetadataEvidence =
@@ -1875,12 +1958,13 @@ export async function validateAutoTeamStepResult(input: {
         issues.push(
           ...(semantic.data.issues.length > 0
             ? semantic.data.issues.map(issue => `semantic:${issue}`)
-            : ["semantic_quality_below_threshold"]),
+            : ["semantic_quality_below_threshold"])
         );
       }
     } catch {
       semanticScore = null;
-      semanticSummary = "Semantic validation unavailable; deterministic artifact checks passed.";
+      semanticSummary =
+        "Semantic validation unavailable; deterministic artifact checks passed.";
     }
   }
 
@@ -1892,7 +1976,7 @@ export async function validateAutoTeamStepResult(input: {
     maxAttempts: AUTO_TEAM_STEP_VALIDATION_MAX_ATTEMPTS,
     issues,
     summary: passed
-      ? semanticSummary ?? "Step result passed automatic artifact validation."
+      ? (semanticSummary ?? "Step result passed automatic artifact validation.")
       : `Step result failed automatic artifact validation: ${issues.join(", ")}`,
     semanticScore,
   };
@@ -1901,7 +1985,7 @@ export async function validateAutoTeamStepResult(input: {
 function applyAutoTeamStepValidationRetry(
   planArtifact: monitoringService.RunPlanArtifact,
   stepKey: string,
-  validation: Awaited<ReturnType<typeof validateAutoTeamStepResult>>,
+  validation: Awaited<ReturnType<typeof validateAutoTeamStepResult>>
 ): monitoringService.RunPlanArtifact {
   return {
     ...planArtifact,
@@ -1934,7 +2018,7 @@ function normalizeEvidenceRef(value: unknown): string | null {
 
 function mergeEvidenceRefs(
   currentRefs: readonly string[] | null | undefined,
-  nextRefs: readonly string[] | null | undefined,
+  nextRefs: readonly string[] | null | undefined
 ): string[] {
   const refs = new Set<string>();
   for (const ref of [...(currentRefs ?? []), ...(nextRefs ?? [])]) {
@@ -1946,7 +2030,7 @@ function mergeEvidenceRefs(
 
 function readStringField(
   record: Record<string, unknown>,
-  keys: readonly string[],
+  keys: readonly string[]
 ): string | null {
   for (const key of keys) {
     const value = record[key];
@@ -1979,7 +2063,8 @@ function collectMediaJobEvidenceIds(value: unknown): string[] {
   if (directId) ids.add(directId);
   for (const nestedKey of ["jobPayload", "task", "jobRef", "providerTask"]) {
     const nested = record[nestedKey];
-    if (!nested || typeof nested !== "object" || Array.isArray(nested)) continue;
+    if (!nested || typeof nested !== "object" || Array.isArray(nested))
+      continue;
     const nestedId = readStringField(nested as Record<string, unknown>, [
       "id",
       "taskId",
@@ -2009,7 +2094,10 @@ function buildAutoTeamStepEvidenceRefs(input: {
       refs.push(`media-job:${taskId}`);
     }
   }
-  const agencyRunId = readStringField(metadata, ["agencyRunId", "agency_run_id"]);
+  const agencyRunId = readStringField(metadata, [
+    "agencyRunId",
+    "agency_run_id",
+  ]);
   if (agencyRunId) refs.push(`agency-run:${agencyRunId}`);
   const runtimeMetadata =
     metadata.runtimeMetadata &&
@@ -2024,7 +2112,10 @@ function buildAutoTeamStepEvidenceRefs(input: {
   ]) {
     refs.push(ref.includes(":") ? ref : `artifact:${ref}`);
   }
-  const finalVideoUrl = readStringField(metadata, ["finalVideoUrl", "final_video_url"]);
+  const finalVideoUrl = readStringField(metadata, [
+    "finalVideoUrl",
+    "final_video_url",
+  ]);
   if (finalVideoUrl) {
     refs.push(`media:${finalVideoUrl}`);
   }
@@ -2035,7 +2126,7 @@ function applyAutoTeamStepValidationPass(
   planArtifact: monitoringService.RunPlanArtifact,
   stepKey: string,
   validation: Awaited<ReturnType<typeof validateAutoTeamStepResult>>,
-  evidenceRefs: string[] = [],
+  evidenceRefs: string[] = []
 ): monitoringService.RunPlanArtifact {
   return {
     ...planArtifact,
@@ -2054,7 +2145,7 @@ function applyAutoTeamStepValidationPass(
               checkedAt: new Date().toISOString(),
             },
           }
-        : step,
+        : step
     ),
     lastUpdatedAt: new Date().toISOString(),
   };
@@ -2767,11 +2858,9 @@ function compactPlannerText(
 function normalizePlannerStringList(
   value: string[] | null | undefined,
   errorCode: string,
-  stepKey: string,
+  stepKey: string
 ): string[] {
-  const normalized = (value ?? [])
-    .map(item => item.trim())
-    .filter(Boolean);
+  const normalized = (value ?? []).map(item => item.trim()).filter(Boolean);
   if (normalized.length === 0) {
     throw new Error(`${errorCode}:${stepKey}`);
   }
@@ -2833,7 +2922,9 @@ const plannerSurfaceSet = new Set<string>([
   "skill_studio",
 ]);
 
-function normalizePlannerSurface(value: string | null | undefined): WorkOrchestratorSurface | null {
+function normalizePlannerSurface(
+  value: string | null | undefined
+): WorkOrchestratorSurface | null {
   const normalized = value?.trim();
   return normalized && plannerSurfaceSet.has(normalized)
     ? (normalized as WorkOrchestratorSurface)
@@ -2852,9 +2943,13 @@ function findPlannerCapability(input: {
     if (byId) return byId;
   }
   if (input.surface) {
-    return catalog.find(entry => entry.surface === input.surface && !entry.blockedReason) ??
+    return (
+      catalog.find(
+        entry => entry.surface === input.surface && !entry.blockedReason
+      ) ??
       catalog.find(entry => entry.surface === input.surface) ??
-      null;
+      null
+    );
   }
   return null;
 }
@@ -2892,7 +2987,9 @@ function normalizePlannerStepsStrict(input: {
     const reviewer = membersById.get(reviewerMemberId);
 
     if (!owner) {
-      throw new Error(`planner_unknown_owner_member:${stepKey}:${ownerMemberId}`);
+      throw new Error(
+        `planner_unknown_owner_member:${stepKey}:${ownerMemberId}`
+      );
     }
     if (!reviewer) {
       throw new Error(
@@ -2908,17 +3005,17 @@ function normalizePlannerStepsStrict(input: {
     const evidenceRequirements = normalizePlannerStringList(
       step.evidenceRequirements,
       "planner_missing_evidence_requirements",
-      stepKey,
+      stepKey
     );
     const qualityCriteria = normalizePlannerStringList(
       step.qualityCriteria,
       "planner_missing_quality_criteria",
-      stepKey,
+      stepKey
     );
     const reviewChecklist = normalizePlannerStringList(
       step.reviewChecklist,
       "planner_missing_review_checklist",
-      stepKey,
+      stepKey
     );
 
     const matchingBaseStep = input.baseArtifact.steps.find(
@@ -2937,7 +3034,10 @@ function normalizePlannerStepsStrict(input: {
       surface: plannerSurface ?? matchingBaseStep?.surface ?? null,
     });
     const resolvedSurface =
-      plannerSurface ?? matchingCapability?.surface ?? matchingBaseStep?.surface ?? null;
+      plannerSurface ??
+      matchingCapability?.surface ??
+      matchingBaseStep?.surface ??
+      null;
     const resolvedCapabilityId =
       matchingCapability?.id ??
       step.selectedCapabilityId?.trim() ??
@@ -2949,7 +3049,9 @@ function normalizePlannerStepsStrict(input: {
         ? `Assumptions: ${assumptions.join("; ")}`
         : null,
       resolvedSurface ? `Execution surface: ${resolvedSurface}` : null,
-      resolvedCapabilityId ? `Selected capability: ${resolvedCapabilityId}` : null,
+      resolvedCapabilityId
+        ? `Selected capability: ${resolvedCapabilityId}`
+        : null,
       compactPlannerText(step.notes, 600),
     ].filter((value): value is string => Boolean(value));
 
@@ -3205,7 +3307,9 @@ export async function buildAutoTeamPlanArtifactWithLlmPlanner(
       roomLanguage: input.roomLanguage ?? null,
       memberCount: input.members.length,
       memberIds: input.members.map(member => member.id),
-      personaNames: input.members.map(member => member.personaName ?? member.displayName ?? member.id),
+      personaNames: input.members.map(
+        member => member.personaName ?? member.displayName ?? member.id
+      ),
       noFallbackApplied: true,
     },
   });
@@ -3243,7 +3347,7 @@ export async function buildAutoTeamPlanArtifactWithLlmPlanner(
       },
       runtimeOptions: buildAutoTeamSharedRuntimeOptions(
         "auto_team_plan_generation",
-        baseArtifact.objective,
+        baseArtifact.objective
       ),
       maxRetries: 1,
     });
@@ -3536,7 +3640,7 @@ const PLAN_REVIEW_AUTO_REPAIR_HARD_BLOCK_PATTERNS = [
 ];
 
 function isPlanReviewAutoRepairAllowed(
-  artifact: monitoringService.RunPlanArtifact,
+  artifact: monitoringService.RunPlanArtifact
 ): boolean {
   const reviewText = [
     ...artifact.review.issues,
@@ -3552,7 +3656,7 @@ function isPlanReviewAutoRepairAllowed(
 
 function buildPlanReviewRepairFeedback(
   artifact: monitoringService.RunPlanArtifact,
-  repairAttempt: number,
+  repairAttempt: number
 ): AutoTeamPlanReviewRepairFeedback {
   return {
     repairAttempt,
@@ -3564,7 +3668,7 @@ function buildPlanReviewRepairFeedback(
 
 function appendUniqueNonEmpty(
   existing: readonly string[] | null | undefined,
-  additions: readonly string[],
+  additions: readonly string[]
 ): string[] {
   const seen = new Set<string>();
   const merged: string[] = [];
@@ -3581,7 +3685,8 @@ function appendSentenceOnce(existing: string, addition: string): string {
   const normalizedExisting = existing.trim();
   const normalizedAddition = addition.trim();
   if (!normalizedAddition) return normalizedExisting;
-  if (normalizedExisting.includes(normalizedAddition)) return normalizedExisting;
+  if (normalizedExisting.includes(normalizedAddition))
+    return normalizedExisting;
   if (!normalizedExisting) return normalizedAddition;
   return `${normalizedExisting} ${normalizedAddition}`;
 }
@@ -3598,13 +3703,13 @@ function isVideoOrMediaPlanStep(step: monitoringService.RunPlanStep): boolean {
     .join(" ")
     .toLowerCase();
   return /video|media|veo|storyboard|keyframe|clip|compose|วิดีโอ|วีดีโอ|สตอรี่บอร์ด|คีย์เฟรม|คลิป/.test(
-    text,
+    text
   );
 }
 
 function buildPlanReviewFallbackRepair(
   artifact: monitoringService.RunPlanArtifact,
-  input: { roomLanguage?: string | null },
+  input: { roomLanguage?: string | null }
 ): monitoringService.RunPlanArtifact {
   const isThai = input.roomLanguage === "th";
   const now = new Date().toISOString();
@@ -3692,26 +3797,28 @@ function buildPlanReviewFallbackRepair(
         status: step.status === "completed" ? step.status : "planned",
         evidenceRequirements: appendUniqueNonEmpty(
           step.evidenceRequirements,
-          mediaStep ? [...genericEvidence, ...videoEvidence] : genericEvidence,
+          mediaStep ? [...genericEvidence, ...videoEvidence] : genericEvidence
         ),
         qualityCriteria: appendUniqueNonEmpty(
           step.qualityCriteria,
-          mediaStep ? [...genericQuality, ...videoQuality] : genericQuality,
+          mediaStep ? [...genericQuality, ...videoQuality] : genericQuality
         ),
         reviewChecklist: appendUniqueNonEmpty(
           step.reviewChecklist,
-          mediaStep ? [...genericChecklist, ...videoChecklist] : genericChecklist,
+          mediaStep
+            ? [...genericChecklist, ...videoChecklist]
+            : genericChecklist
         ),
         verificationMethod: appendSentenceOnce(
           step.verificationMethod,
-          verificationAddition,
+          verificationAddition
         ),
         retryRule: appendSentenceOnce(step.retryRule, retryAddition),
         notes: appendSentenceOnce(
           step.notes ?? "",
           isThai
             ? `ซ่อมแผนอัตโนมัติตามผลตรวจ: ${feedbackSummary || "เพิ่ม gate ข้อเท็จจริง สิทธิ์ใช้งาน ข้อจำกัด capability และ retry policy"}`
-            : `Automatic plan repair applied from review feedback: ${feedbackSummary || "added fact, rights, capability constraint, and retry policy gates"}`,
+            : `Automatic plan repair applied from review feedback: ${feedbackSummary || "added fact, rights, capability constraint, and retry policy gates"}`
         ),
       };
     }),
@@ -3778,10 +3885,7 @@ function formatPlanReviewContext(
         exampleShape: {
           pass: false,
           score: 0.42,
-          issues: [
-            "missing_final_output_spec",
-            "retry_path_not_deterministic",
-          ],
+          issues: ["missing_final_output_spec", "retry_path_not_deterministic"],
           recommendation:
             "Clarify the final output spec and make the retry route deterministic before execution.",
         },
@@ -3870,15 +3974,12 @@ export async function reviewAutoTeamPlanArtifactWithPersonaReview(
       },
       runtimeOptions: buildAutoTeamSharedRuntimeOptions(
         "auto_team_plan_review",
-        artifact.objective,
+        artifact.objective
       ),
     });
 
     const mergedIssues = Array.from(
-      new Set([
-        ...structurallyReviewed.review.issues,
-        ...llmResult.data.issues,
-      ])
+      new Set([...structurallyReviewed.review.issues, ...llmResult.data.issues])
     );
     const passed =
       structurallyReviewed.review.status === "passed" &&
@@ -4022,14 +4123,18 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
 }): Promise<monitoringService.RunPlanArtifact> {
   const maxRepairAttempts = Math.max(
     0,
-    Math.min(3, Math.trunc(input.maxRepairAttempts ?? 0)),
+    Math.min(3, Math.trunc(input.maxRepairAttempts ?? 0))
   );
   let reviewed = await reviewAutoTeamPlanArtifactWithPersonaReview(
     input.planArtifact,
-    input.reviewer,
+    input.reviewer
   );
 
-  for (let repairAttempt = 1; repairAttempt <= maxRepairAttempts; repairAttempt += 1) {
+  for (
+    let repairAttempt = 1;
+    repairAttempt <= maxRepairAttempts;
+    repairAttempt += 1
+  ) {
     if (reviewed.review.status !== "failed") break;
     if (!isPlanReviewAutoRepairAllowed(reviewed)) break;
 
@@ -4061,8 +4166,11 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
         input.baseArtifact,
         {
           ...input.planner,
-          plannerFeedback: buildPlanReviewRepairFeedback(reviewed, repairAttempt),
-        },
+          plannerFeedback: buildPlanReviewRepairFeedback(
+            reviewed,
+            repairAttempt
+          ),
+        }
       );
     } catch (error) {
       const errorMessage = normalizeRunErrorMessage(error);
@@ -4091,7 +4199,7 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
             new Set([
               ...reviewed.review.issues,
               `plan_repair_failed:${errorMessage}`,
-            ]),
+            ])
           ),
           recommendation:
             "Plan repair could not run safely. Automation paused before execution.",
@@ -4103,11 +4211,11 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
 
     const nextReviewed = await reviewAutoTeamPlanArtifactWithPersonaReview(
       repairedPlan,
-      input.reviewer,
+      input.reviewer
     );
     const adjustedIteration = Math.max(
       nextReviewed.review.iteration,
-      reviewed.review.iteration + 1,
+      reviewed.review.iteration + 1
     );
     reviewed = {
       ...nextReviewed,
@@ -4156,11 +4264,11 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
     });
     const fallbackReviewed = reviewAutoTeamPlanArtifact(
       fallbackRepair,
-      input.reviewer,
+      input.reviewer
     );
     const adjustedIteration = Math.max(
       fallbackReviewed.review.iteration,
-      reviewed.review.iteration + 1,
+      reviewed.review.iteration + 1
     );
 
     if (fallbackReviewed.review.status === "passed") {
@@ -4319,7 +4427,7 @@ export async function reviewAutoTeamFinalResultWithPersonaReview(
       },
       runtimeOptions: buildAutoTeamSharedRuntimeOptions(
         "auto_team_final_review",
-        artifact.objective,
+        artifact.objective
       ),
     });
 
@@ -4538,6 +4646,23 @@ export function buildExternalConnectorDispatchJobInput(params: {
     return {
       runtimeType: "hermes_agent_gateway",
       capabilityFamilies: ["artifact-producing-session"],
+      correlation: {
+        schemaVersion: "2026-08-18.1",
+        tenantId,
+        requestedByUserId: run.initiatedByUserId,
+        conversationId: run.roomId,
+        messageId: candidate.threadRootMessageId,
+        targetDeviceId: candidate.externalWorkerId,
+        operation: "external_agent_task",
+        approvalState: "not_required",
+        reservationId: null,
+        parentJobId: null,
+        childJobIds: [],
+        state: "queued",
+        idempotencyKey: `run:${run.id}:work-item:${candidate.workItemId}:worker:${candidate.externalWorkerId}`,
+        expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        safeSummary: candidate.title.slice(0, 500),
+      } satisfies HermesTaskCorrelation,
       ...sharedInput,
     };
   }
@@ -4695,7 +4820,7 @@ function queueAutoAdvance(
           runId,
           tenantId,
           maxTurns,
-          AUTO_TEAM_CONTINUATION_DELAY_MS,
+          AUTO_TEAM_CONTINUATION_DELAY_MS
         );
         return;
       }
@@ -5205,7 +5330,9 @@ function extractStructuredOutputDiagnostics(error: unknown): {
     typeof error.rawResponse === "string" && error.rawResponse.trim().length > 0
       ? stripStructuredOutputMarkdown(error.rawResponse)
       : null;
-  const responsePreview = cleanedResponse ? cleanedResponse.slice(0, 1200) : null;
+  const responsePreview = cleanedResponse
+    ? cleanedResponse.slice(0, 1200)
+    : null;
 
   let parsedResponse: unknown = null;
   if (cleanedResponse) {
@@ -5248,7 +5375,7 @@ function buildPlanningStopReason(reasonCode: string, detail: string): string {
 }
 
 function summarizePlanStepTrace(
-  step: monitoringService.RunPlanStep,
+  step: monitoringService.RunPlanStep
 ): Record<string, unknown> {
   return {
     stepKey: step.stepKey,
@@ -5290,7 +5417,8 @@ async function emitAutoTeamPlanningTraceEvent(params: {
       severity: params.severity ?? "info",
       summary: params.summary ?? null,
       redactedMetadataJson: params.metadata ?? {},
-      idempotencyKey: params.idempotencyKey ?? `${params.eventName}:${params.run.id}`,
+      idempotencyKey:
+        params.idempotencyKey ?? `${params.eventName}:${params.run.id}`,
     });
   } catch (error) {
     const message = normalizeRunErrorMessage(error);
@@ -5366,7 +5494,7 @@ export function buildAutoTeamPlanRoomMessage(params: {
 
   if (params.planArtifact.review.recommendation?.trim()) {
     lines.push(
-      `${recommendationLabel}: ${params.planArtifact.review.recommendation.trim()}`,
+      `${recommendationLabel}: ${params.planArtifact.review.recommendation.trim()}`
     );
   }
 
@@ -5523,7 +5651,9 @@ async function pauseAutoTeamRunForPlanningFailure(params: {
   issues?: string[];
 }): Promise<TeamRun> {
   const stopReason = buildPlanningStopReason(params.reasonCode, params.detail);
-  const previousRuntimeState = asRuntimeStateRecord(params.run.runtimeStateJson);
+  const previousRuntimeState = asRuntimeStateRecord(
+    params.run.runtimeStateJson
+  );
   const planningFailureFromBudgetRecovery =
     params.reasonCode.includes("budget") ||
     previousRuntimeState.autoReplanRequested === true ||
@@ -5712,22 +5842,26 @@ async function replanAfterRejectedExploration(params: {
         capabilityCatalog:
           getApprovedPlanForRun({
             constraintsJson:
-              params.run.constraintsJson && typeof params.run.constraintsJson === "object"
+              params.run.constraintsJson &&
+              typeof params.run.constraintsJson === "object"
                 ? (params.run.constraintsJson as Record<string, unknown>)
                 : null,
             approvalPolicyJson:
-              params.run.approvalPolicyJson && typeof params.run.approvalPolicyJson === "object"
+              params.run.approvalPolicyJson &&
+              typeof params.run.approvalPolicyJson === "object"
                 ? (params.run.approvalPolicyJson as Record<string, unknown>)
                 : null,
           })?.bundle.capabilityCatalog ?? null,
         approvedExecutionPlan:
           getApprovedPlanForRun({
             constraintsJson:
-              params.run.constraintsJson && typeof params.run.constraintsJson === "object"
+              params.run.constraintsJson &&
+              typeof params.run.constraintsJson === "object"
                 ? (params.run.constraintsJson as Record<string, unknown>)
                 : null,
             approvalPolicyJson:
-              params.run.approvalPolicyJson && typeof params.run.approvalPolicyJson === "object"
+              params.run.approvalPolicyJson &&
+              typeof params.run.approvalPolicyJson === "object"
                 ? (params.run.approvalPolicyJson as Record<string, unknown>)
                 : null,
           })?.executionPlan ?? null,
@@ -5736,17 +5870,19 @@ async function replanAfterRejectedExploration(params: {
     planArtifact = await reviewAutoTeamPlanArtifactWithPersonaReview(
       llmPlanArtifact,
       {
-      tenantId: params.tenantId,
-      userId: params.run.initiatedByUserId,
-      coordinatorPersona,
-      reviewerPersona: toPersonaLabel(reviewerMember ?? teamMembers[0] ?? null),
-      specialtyPersona: toPersonaLabel(
-        specialtyMember ?? teamMembers[0] ?? null
-      ),
-      publisherPersona: toPersonaLabel(
-        publisherMember ?? teamMembers[0] ?? null
-      ),
-      roomLanguage,
+        tenantId: params.tenantId,
+        userId: params.run.initiatedByUserId,
+        coordinatorPersona,
+        reviewerPersona: toPersonaLabel(
+          reviewerMember ?? teamMembers[0] ?? null
+        ),
+        specialtyPersona: toPersonaLabel(
+          specialtyMember ?? teamMembers[0] ?? null
+        ),
+        publisherPersona: toPersonaLabel(
+          publisherMember ?? teamMembers[0] ?? null
+        ),
+        roomLanguage,
       }
     );
   } catch (error) {
@@ -5870,7 +6006,8 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
         ? (input.run.constraintsJson as Record<string, unknown>)
         : null,
     approvalPolicyJson:
-      input.run.approvalPolicyJson && typeof input.run.approvalPolicyJson === "object"
+      input.run.approvalPolicyJson &&
+      typeof input.run.approvalPolicyJson === "object"
         ? (input.run.approvalPolicyJson as Record<string, unknown>)
         : null,
   });
@@ -5878,7 +6015,9 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
     return null;
   }
 
-  const latestSnapshot = await monitoringService.getLatestRunSnapshot(input.run.id);
+  const latestSnapshot = await monitoringService.getLatestRunSnapshot(
+    input.run.id
+  );
   let planArtifact = selectAutoTeamPlanArtifact({
     latestArtifact: monitoringService.extractRunPlanArtifact(latestSnapshot),
     approvedPlanSnapshot,
@@ -5908,7 +6047,8 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
   }
 
   const budgetSnapshot =
-    (input.run.budgetSnapshotJson as BudgetSnapshot | null) ?? initBudgetSnapshot();
+    (input.run.budgetSnapshotJson as BudgetSnapshot | null) ??
+    initBudgetSnapshot();
   const reservationKey = buildRuntimeBudgetReservationKey({
     runId: input.run.id,
     step: activeStep,
@@ -5950,7 +6090,7 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
                     ? null
                     : step.notes,
               }
-            : step,
+            : step
         ),
       }
     : null;
@@ -6014,7 +6154,12 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
 
   if (updated) {
     startAutoStopChecker(updated.id);
-    queueAutoAdvance(updated.id, input.tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
+    queueAutoAdvance(
+      updated.id,
+      input.tenantId,
+      1,
+      AUTO_TEAM_CONTINUATION_DELAY_MS
+    );
   }
   return updated ?? null;
 }
@@ -6035,7 +6180,8 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
         ? (input.run.constraintsJson as Record<string, unknown>)
         : null,
     approvalPolicyJson:
-      input.run.approvalPolicyJson && typeof input.run.approvalPolicyJson === "object"
+      input.run.approvalPolicyJson &&
+      typeof input.run.approvalPolicyJson === "object"
         ? (input.run.approvalPolicyJson as Record<string, unknown>)
         : null,
   });
@@ -6043,16 +6189,19 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
     return null;
   }
 
-  const latestSnapshot = await monitoringService.getLatestRunSnapshot(input.run.id);
-  const latestPlanArtifact = monitoringService.extractRunPlanArtifact(latestSnapshot);
+  const latestSnapshot = await monitoringService.getLatestRunSnapshot(
+    input.run.id
+  );
+  const latestPlanArtifact =
+    monitoringService.extractRunPlanArtifact(latestSnapshot);
   const blockedRuntimePolicy = extractRuntimeDispatchPolicy(
-    input.runtimeState.runtimeDispatchPolicy ?? null,
+    input.runtimeState.runtimeDispatchPolicy ?? null
   );
   const blockedStepKey =
     input.run.runtimeCurrentStepKey ??
     blockedRuntimePolicy?.stepId ??
     latestPlanArtifact?.steps?.find(
-      step => step.status !== "completed" && step.status !== "failed",
+      step => step.status !== "completed" && step.status !== "failed"
     )?.stepKey ??
     null;
   const approvedPlanArtifact = buildApprovedRunPlanArtifact({
@@ -6077,18 +6226,20 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
   }
   const activeStep = selectActivePlanStep(planArtifact);
   const exactBlockedPlanStep = blockedStepKey
-    ? planArtifact.steps.find(step => step.stepKey === blockedStepKey) ?? null
+    ? (planArtifact.steps.find(step => step.stepKey === blockedStepKey) ?? null)
     : null;
   const currentPlanStep = exactBlockedPlanStep ?? activeStep;
   const runtimePolicy = exactBlockedPlanStep
-    ? getStepRuntimeDispatchPolicy(exactBlockedPlanStep) ?? blockedRuntimePolicy
-    : blockedRuntimePolicy ?? getStepRuntimeDispatchPolicy(activeStep);
+    ? (getStepRuntimeDispatchPolicy(exactBlockedPlanStep) ??
+      blockedRuntimePolicy)
+    : (blockedRuntimePolicy ?? getStepRuntimeDispatchPolicy(activeStep));
   if (!currentPlanStep || !runtimePolicy || !blockedStepKey) {
     return null;
   }
 
   const budgetSnapshot =
-    (input.run.budgetSnapshotJson as BudgetSnapshot | null) ?? initBudgetSnapshot();
+    (input.run.budgetSnapshotJson as BudgetSnapshot | null) ??
+    initBudgetSnapshot();
   const reservationKey = resolveAlreadyAppliedRuntimeReservationKey({
     runId: input.run.id,
     stepKey: blockedStepKey,
@@ -6133,7 +6284,7 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
                 ? null
                 : step.notes,
           }
-        : step,
+        : step
     ),
   };
 
@@ -6200,30 +6351,43 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
 
   if (updated) {
     startAutoStopChecker(updated.id);
-    queueAutoAdvance(updated.id, input.tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
+    queueAutoAdvance(
+      updated.id,
+      input.tenantId,
+      1,
+      AUTO_TEAM_CONTINUATION_DELAY_MS
+    );
   }
   return updated ?? null;
 }
 
 function extractRunStatePlanArtifact(
-  value: unknown,
+  value: unknown
 ): monitoringService.RunPlanArtifact | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const state = value as Record<string, unknown>;
-  return monitoringService.extractRunRuntimeState({
-    artifactCountJson: { runtimeState: state },
-  })?.planArtifact ?? null;
+  return (
+    monitoringService.extractRunRuntimeState({
+      artifactCountJson: { runtimeState: state },
+    })?.planArtifact ?? null
+  );
 }
 
 function getValidationRecoveryCandidateMetadata(
-  metadataJson: unknown,
+  metadataJson: unknown
 ): Record<string, unknown> {
-  if (!metadataJson || typeof metadataJson !== "object" || Array.isArray(metadataJson)) {
+  if (
+    !metadataJson ||
+    typeof metadataJson !== "object" ||
+    Array.isArray(metadataJson)
+  ) {
     return {};
   }
   const metadata = metadataJson as Record<string, unknown>;
   const details =
-    metadata.details && typeof metadata.details === "object" && !Array.isArray(metadata.details)
+    metadata.details &&
+    typeof metadata.details === "object" &&
+    !Array.isArray(metadata.details)
       ? (metadata.details as Record<string, unknown>)
       : {};
   const runtimeMetadata =
@@ -6244,7 +6408,7 @@ function getValidationRecoveryCandidateMetadata(
 
 export async function recoverPromptPackageValidationAutoTeamRun(
   runId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<TeamRun | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -6255,7 +6419,7 @@ export async function recoverPromptPackageValidationAutoTeamRun(
     run.status !== "paused" ||
     run.stopReason !== "auto_team_step_validation_failed" ||
     !String(run.runtimeTerminalReason ?? "").includes(
-      "media_step_missing_artifact_reference",
+      "media_step_missing_artifact_reference"
     )
   ) {
     return null;
@@ -6327,14 +6491,18 @@ export async function recoverPromptPackageValidationAutoTeamRun(
           sql`${teamRoomMessages.metadataJson}->'details'->>'stepKey' = ${stepKey}`,
           sql`${teamRoomMessages.content} ILIKE ${`%${stepKey}%`}`,
           sql`${teamRoomMessages.content} ILIKE ${"%Scene 1%"}`
-        ),
-      ),
+        )
+      )
     )
     .orderBy(desc(teamRoomMessages.createdAt))
     .limit(20);
   const candidate = candidateMessages.find(message => {
     const content = message.content.trim();
-    if (/media_step_missing_artifact_reference|หยุดที่แผนขั้น|paused at plan step/i.test(content)) {
+    if (
+      /media_step_missing_artifact_reference|หยุดที่แผนขั้น|paused at plan step/i.test(
+        content
+      )
+    ) {
       return false;
     }
     return hasVisualPromptPackageEvidence(content);
@@ -6367,8 +6535,10 @@ export async function recoverPromptPackageValidationAutoTeamRun(
     candidate.metadataJson &&
     typeof candidate.metadataJson === "object" &&
     !Array.isArray(candidate.metadataJson) &&
-    typeof (candidate.metadataJson as Record<string, unknown>).workItemId === "string"
-      ? ((candidate.metadataJson as Record<string, unknown>).workItemId as string)
+    typeof (candidate.metadataJson as Record<string, unknown>).workItemId ===
+      "string"
+      ? ((candidate.metadataJson as Record<string, unknown>)
+          .workItemId as string)
       : null;
   const evidenceRefs = buildAutoTeamStepEvidenceRefs({
     runId: run.id,
@@ -6380,11 +6550,11 @@ export async function recoverPromptPackageValidationAutoTeamRun(
     planArtifact,
     stepKey,
     validation,
-    evidenceRefs,
+    evidenceRefs
   );
   const progression = advanceAutoTeamPlanArtifactProgress(
     recoveredPlanArtifact,
-    stepKey,
+    stepKey
   );
   recoveredPlanArtifact = progression.planArtifact;
 
@@ -6461,7 +6631,7 @@ export async function recoverPromptPackageValidationAutoTeamRun(
 
   if (updated && !progression.isComplete) {
     const assistantId = await resolveCurrentAssistantId(db, updated).catch(
-      () => updated.activeAssistantId ?? null,
+      () => updated.activeAssistantId ?? null
     );
     if (assistantId) {
       await roomService
@@ -6483,12 +6653,15 @@ export async function recoverPromptPackageValidationAutoTeamRun(
           sensitivity: "medium",
         })
         .catch(error => {
-          console.warn("[runEngine] failed to post prompt package recovery message", {
-            runId: run.id,
-            roomId: run.roomId,
-            stepKey,
-            error: error instanceof Error ? error.message : String(error),
-          });
+          console.warn(
+            "[runEngine] failed to post prompt package recovery message",
+            {
+              runId: run.id,
+              roomId: run.roomId,
+              stepKey,
+              error: error instanceof Error ? error.message : String(error),
+            }
+          );
         });
     }
     startAutoStopChecker(updated.id);
@@ -6500,7 +6673,7 @@ export async function recoverPromptPackageValidationAutoTeamRun(
 
 export async function recoverBudgetBlockedAutoTeamRun(
   runId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<TeamRun | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -6548,12 +6721,13 @@ export async function recoverBudgetBlockedAutoTeamRun(
     runtimeStateJson: runtimeStateForAttempt,
   } as TeamRun;
 
-  const alreadyReservedRecovery = await resumeAlreadyReservedBudgetBlockedAutoTeamRun({
-    db,
-    run: runForAttempt,
-    tenantId,
-    runtimeState: runtimeStateForAttempt,
-  });
+  const alreadyReservedRecovery =
+    await resumeAlreadyReservedBudgetBlockedAutoTeamRun({
+      db,
+      run: runForAttempt,
+      tenantId,
+      runtimeState: runtimeStateForAttempt,
+    });
   if (alreadyReservedRecovery) {
     return alreadyReservedRecovery;
   }
@@ -6571,8 +6745,15 @@ export async function recoverBudgetBlockedAutoTeamRun(
     return tokenOnlyRecovery;
   }
 
-  const teamMembers = await listAutoTeamPlannerMembers(db, run.teamId, tenantId);
-  const currentWorkItems = await workItemService.listWorkItemsByRoom(run.roomId, tenantId);
+  const teamMembers = await listAutoTeamPlannerMembers(
+    db,
+    run.teamId,
+    tenantId
+  );
+  const currentWorkItems = await workItemService.listWorkItemsByRoom(
+    run.roomId,
+    tenantId
+  );
   const roomLanguage = await resolveRoomLanguage(db, run.roomId, tenantId);
   const approvedPlanSnapshot = getApprovedPlanForRun({
     constraintsJson:
@@ -6600,55 +6781,71 @@ export async function recoverBudgetBlockedAutoTeamRun(
       runtimeState: {
         ...monitoringService.buildRunRuntimeState(run),
         currentPhase: "planned",
-        waitingReason: "Replanning automatically after the approved budget cap was exceeded.",
+        waitingReason:
+          "Replanning automatically after the approved budget cap was exceeded.",
       },
       members: teamMembers,
       workItems: currentWorkItems,
       source: "team_run",
     });
-    const llmPlanArtifact = await buildAutoTeamPlanArtifactWithLlmPlanner(basePlanArtifact, {
-      tenantId,
-      userId: run.initiatedByUserId,
-      members: teamMembers,
-      roomTitle: null,
-      roomGoal: null,
-      roomLanguage,
-      capabilityCatalog: approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
-      approvedExecutionPlan: approvedPlanSnapshot?.executionPlan ?? null,
-    });
-    planArtifact = await reviewAutoTeamPlanArtifactWithPersonaReview(llmPlanArtifact, {
-      tenantId,
-      userId: run.initiatedByUserId,
-      coordinatorPersona: toPersonaLabel(
-        selectAssistantMember(teamMembers, [
-          member => member.memberKind === "assistant" && member.memberRole === "orchestrator",
-          member => member.memberKind === "assistant" && member.isLead,
-          member => member.memberKind === "assistant",
-        ]),
-      ),
-      reviewerPersona: toPersonaLabel(
-        selectAssistantMember(teamMembers, [
-          member => member.memberRole === "reviewer",
-          member => member.memberRole === "publisher",
-          member => member.memberKind === "assistant" && member.isLead,
-        ]) ?? teamMembers[0] ?? null,
-      ),
-      specialtyPersona: toPersonaLabel(
-        selectAssistantMember(teamMembers, [
-          member => member.memberRole === "researcher",
-          member => member.memberRole === "specialist",
-          member => member.memberKind === "assistant" && !member.isLead,
-        ]) ?? teamMembers[0] ?? null,
-      ),
-      publisherPersona: toPersonaLabel(
-        selectAssistantMember(teamMembers, [
-          member => member.memberRole === "publisher",
-          member => member.memberRole === "reviewer",
-          member => member.memberKind === "assistant" && member.isLead,
-        ]) ?? teamMembers[0] ?? null,
-      ),
-      roomLanguage,
-    });
+    const llmPlanArtifact = await buildAutoTeamPlanArtifactWithLlmPlanner(
+      basePlanArtifact,
+      {
+        tenantId,
+        userId: run.initiatedByUserId,
+        members: teamMembers,
+        roomTitle: null,
+        roomGoal: null,
+        roomLanguage,
+        capabilityCatalog:
+          approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
+        approvedExecutionPlan: approvedPlanSnapshot?.executionPlan ?? null,
+      }
+    );
+    planArtifact = await reviewAutoTeamPlanArtifactWithPersonaReview(
+      llmPlanArtifact,
+      {
+        tenantId,
+        userId: run.initiatedByUserId,
+        coordinatorPersona: toPersonaLabel(
+          selectAssistantMember(teamMembers, [
+            member =>
+              member.memberKind === "assistant" &&
+              member.memberRole === "orchestrator",
+            member => member.memberKind === "assistant" && member.isLead,
+            member => member.memberKind === "assistant",
+          ])
+        ),
+        reviewerPersona: toPersonaLabel(
+          selectAssistantMember(teamMembers, [
+            member => member.memberRole === "reviewer",
+            member => member.memberRole === "publisher",
+            member => member.memberKind === "assistant" && member.isLead,
+          ]) ??
+            teamMembers[0] ??
+            null
+        ),
+        specialtyPersona: toPersonaLabel(
+          selectAssistantMember(teamMembers, [
+            member => member.memberRole === "researcher",
+            member => member.memberRole === "specialist",
+            member => member.memberKind === "assistant" && !member.isLead,
+          ]) ??
+            teamMembers[0] ??
+            null
+        ),
+        publisherPersona: toPersonaLabel(
+          selectAssistantMember(teamMembers, [
+            member => member.memberRole === "publisher",
+            member => member.memberRole === "reviewer",
+            member => member.memberKind === "assistant" && member.isLead,
+          ]) ??
+            teamMembers[0] ??
+            null
+        ),
+        roomLanguage,
+      }
+    );
   } catch (error) {
     const diagnostics = extractStructuredOutputDiagnostics(error);
     await pauseAutoTeamRunForPlanningFailure({
@@ -6731,7 +6928,8 @@ export async function recoverBudgetBlockedAutoTeamRun(
     tenantId,
     run,
     eventName: "planning.replanned",
-    summary: "A revised plan was generated automatically after the approved budget cap was exceeded.",
+    summary:
+      "A revised plan was generated automatically after the approved budget cap was exceeded.",
     metadata: {
       trigger: "budget_cap_exceeded",
       stepCount: executablePlan.steps.length,
@@ -6778,7 +6976,7 @@ export async function recoverBudgetBlockedAutoTeamRun(
 
 export async function recoverCapabilityGapAutoTeamRun(
   runId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<TeamRun | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -6836,7 +7034,7 @@ export async function recoverCapabilityGapAutoTeamRun(
       stepKey:
         typeof runtimeState.runtimeCurrentStepKey === "string"
           ? runtimeState.runtimeCurrentStepKey
-          : run.runtimeCurrentStepKey ?? null,
+          : (run.runtimeCurrentStepKey ?? null),
       recovery: "retry_original_step_with_available_skill",
     },
   });
@@ -6918,7 +7116,8 @@ async function applyExplorationChoice(params: {
       waitingReason: null,
       choiceDeadlineAt: null,
       nextPollAt: null,
-      planArtifact: prepareAutoTeamPlanArtifactForExecution(updatedPlanArtifact),
+      planArtifact:
+        prepareAutoTeamPlanArtifactForExecution(updatedPlanArtifact),
     } as Partial<monitoringService.RunRuntimeState>,
   });
 
@@ -6937,7 +7136,7 @@ async function applyExplorationChoice(params: {
       updated.id,
       params.tenantId,
       1,
-      AUTO_TEAM_CONTINUATION_DELAY_MS,
+      AUTO_TEAM_CONTINUATION_DELAY_MS
     );
   }
 }
@@ -7051,18 +7250,19 @@ function isRuntimeFinalApprovalEvidenceRef(ref: string): boolean {
 }
 
 function collectFinalApprovalEvidenceRefs(
-  planArtifact: monitoringService.RunPlanArtifact,
+  planArtifact: monitoringService.RunPlanArtifact
 ): string[] {
   return mergeEvidenceRefs(
     planArtifact.evidenceRefs,
-    planArtifact.steps.flatMap(step => step.evidenceRefs ?? []),
+    planArtifact.steps.flatMap(step => step.evidenceRefs ?? [])
   ).filter(isRuntimeFinalApprovalEvidenceRef);
 }
 
 function hasDurableStepEvidence(refs: readonly string[]): boolean {
-  return refs.some(ref =>
-    !/^run:[^:\s]+$/i.test(ref.trim()) &&
-    isRuntimeFinalApprovalEvidenceRef(ref),
+  return refs.some(
+    ref =>
+      !/^run:[^:\s]+$/i.test(ref.trim()) &&
+      isRuntimeFinalApprovalEvidenceRef(ref)
   );
 }
 
@@ -7089,7 +7289,7 @@ const FINAL_APPROVAL_AGENCY_EVIDENCE_KINDS = new Set([
 
 function hasSurfaceRequiredFinalApprovalEvidence(
   surface: WorkOrchestratorSurface,
-  refs: readonly string[],
+  refs: readonly string[]
 ): boolean {
   const hasKind = (allowedKinds: Set<string>) =>
     refs.some(ref => {
@@ -7112,7 +7312,7 @@ export function shouldAutoCompleteFinalApprovalForRun(
   options: {
     requireResolvedEvidence?: boolean;
     resolvedEvidenceRefs?: Iterable<string>;
-  } = {},
+  } = {}
 ): boolean {
   if (run.executionMode !== "auto_team") return false;
   if (planArtifact.status !== "completed") return false;
@@ -7120,7 +7320,7 @@ export function shouldAutoCompleteFinalApprovalForRun(
   const resolvedEvidenceRefs = new Set(
     Array.from(options.resolvedEvidenceRefs ?? [])
       .map(ref => normalizeEvidenceRef(ref))
-      .filter((ref): ref is string => Boolean(ref)),
+      .filter((ref): ref is string => Boolean(ref))
   );
 
   return planArtifact.steps.every(step => {
@@ -7130,8 +7330,10 @@ export function shouldAutoCompleteFinalApprovalForRun(
       return false;
     }
     if (step.validationState?.status !== "passed") return false;
-    const stepEvidenceRefs = mergeEvidenceRefs([], step.evidenceRefs ?? [])
-      .filter(isRuntimeFinalApprovalEvidenceRef);
+    const stepEvidenceRefs = mergeEvidenceRefs(
+      [],
+      step.evidenceRefs ?? []
+    ).filter(isRuntimeFinalApprovalEvidenceRef);
     if (stepEvidenceRefs.length === 0) {
       return false;
     }
@@ -7167,9 +7369,7 @@ function splitEvidenceRef(ref: string): { kind: string; value: string } | null {
   };
 }
 
-async function tableHasRow<T>(
-  rowsPromise: PromiseLike<T[]>,
-): Promise<boolean> {
+async function tableHasRow<T>(rowsPromise: PromiseLike<T[]>): Promise<boolean> {
   const rows = await rowsPromise;
   return rows.length > 0;
 }
@@ -7213,7 +7413,7 @@ export function isFinalApprovalMediaJobEvidenceSatisfied(input: {
 }): boolean {
   const resultRefs = Array.isArray(input.resultArtifactRefsJson)
     ? input.resultArtifactRefsJson.filter(
-        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0,
+        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0
       )
     : [];
   const mediaType = String(input.mediaType ?? "").toLowerCase();
@@ -7242,7 +7442,7 @@ export function isFinalApprovalFinalResultEvidenceSatisfied(input: {
 }): boolean {
   const artifactRefs = Array.isArray(input.finalArtifactRefsJson)
     ? input.finalArtifactRefsJson.filter(
-        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0,
+        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0
       )
     : [];
   return (
@@ -7304,22 +7504,22 @@ async function resolveAutoTeamArtifactEvidenceRef(input: {
             eq(autoTeamArtifactRefs.id, candidate),
             eq(autoTeamArtifactRefs.storageRef, candidate),
             eq(autoTeamArtifactRefs.externalRef, candidate),
-          ]),
-        ),
-      ),
+          ])
+        )
+      )
     )
     .limit(1);
   return Boolean(
     artifact &&
-      isFinalApprovalArtifactEvidenceSatisfied({
-        safetyStatus: artifact.safetyStatus,
-        storageRef: artifact.storageRef,
-        externalRef: artifact.externalRef,
-        contentHash: artifact.contentHash,
-        artifactType: artifact.artifactType,
-        artifactRole: artifact.artifactRole,
-        source: artifact.source,
-      }),
+    isFinalApprovalArtifactEvidenceSatisfied({
+      safetyStatus: artifact.safetyStatus,
+      storageRef: artifact.storageRef,
+      externalRef: artifact.externalRef,
+      contentHash: artifact.contentHash,
+      artifactType: artifact.artifactType,
+      artifactRole: artifact.artifactRole,
+      source: artifact.source,
+    })
   );
 }
 
@@ -7365,15 +7565,15 @@ async function resolveMediaJobEvidenceRef(input: {
         eq(autoTeamMediaJobRefs.runId, input.runId),
         or(
           eq(autoTeamMediaJobRefs.id, input.value),
-          eq(autoTeamMediaJobRefs.providerTaskId, input.value),
-        ),
-      ),
+          eq(autoTeamMediaJobRefs.providerTaskId, input.value)
+        )
+      )
     )
     .limit(1);
   if (!job) return false;
   const resultRefs = Array.isArray(job.resultArtifactRefsJson)
     ? job.resultArtifactRefsJson.filter(
-        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0,
+        (ref): ref is string => typeof ref === "string" && ref.trim().length > 0
       )
     : [];
   const resultRefsResolved = await areAutoTeamArtifactEvidenceRefsSafe({
@@ -7411,8 +7611,8 @@ async function resolveAgencyRunEvidenceRef(input: {
     .where(
       and(
         eq(agencyRunArtifacts.tenantId, input.tenantId),
-        eq(agencyRunArtifacts.runId, input.value),
-      ),
+        eq(agencyRunArtifacts.runId, input.value)
+      )
     )
     .limit(1)
     .catch(() => []);
@@ -7460,10 +7660,10 @@ async function resolveFinalApprovalEvidenceRef(input: {
             and(
               eq(teamWorkItems.id, parsed.value),
               eq(teamWorkItems.tenantId, input.tenantId),
-              eq(teamWorkItems.runId, input.run.id),
-            ),
+              eq(teamWorkItems.runId, input.run.id)
+            )
           )
-          .limit(1),
+          .limit(1)
       );
     case "message":
       return tableHasRow(
@@ -7474,10 +7674,10 @@ async function resolveFinalApprovalEvidenceRef(input: {
             and(
               eq(teamRoomMessages.id, parsed.value),
               eq(teamRoomMessages.runId, input.run.id),
-              eq(teamRoomMessages.roomId, input.run.roomId),
-            ),
+              eq(teamRoomMessages.roomId, input.run.roomId)
+            )
           )
-          .limit(1),
+          .limit(1)
       );
     case "snapshot":
       return tableHasRow(
@@ -7487,10 +7687,10 @@ async function resolveFinalApprovalEvidenceRef(input: {
           .where(
             and(
               eq(runSnapshots.id, parsed.value),
-              eq(runSnapshots.runId, input.run.id),
-            ),
+              eq(runSnapshots.runId, input.run.id)
+            )
           )
-          .limit(1),
+          .limit(1)
       );
     case "stage":
       return tableHasRow(
@@ -7502,10 +7702,10 @@ async function resolveFinalApprovalEvidenceRef(input: {
               eq(autoTeamExecutionStages.id, parsed.value),
               eq(autoTeamExecutionStages.tenantId, input.tenantId),
               eq(autoTeamExecutionStages.runId, input.run.id),
-              eq(autoTeamExecutionStages.status, "completed"),
-            ),
+              eq(autoTeamExecutionStages.status, "completed")
+            )
           )
-          .limit(1),
+          .limit(1)
       );
     case "media-job":
     case "media_job":
@@ -7525,70 +7725,68 @@ async function resolveFinalApprovalEvidenceRef(input: {
       });
     case "review":
     case "review-record":
-    case "review_record":
-      {
-        const [review] = await input.db
-          .select({
-            id: autoTeamReviewRecords.id,
-            passed: autoTeamReviewRecords.passed,
-          })
-          .from(autoTeamReviewRecords)
-          .where(
-            and(
-              eq(autoTeamReviewRecords.id, parsed.value),
-              eq(autoTeamReviewRecords.tenantId, input.tenantId),
-              eq(autoTeamReviewRecords.runId, input.run.id),
-            ),
+    case "review_record": {
+      const [review] = await input.db
+        .select({
+          id: autoTeamReviewRecords.id,
+          passed: autoTeamReviewRecords.passed,
+        })
+        .from(autoTeamReviewRecords)
+        .where(
+          and(
+            eq(autoTeamReviewRecords.id, parsed.value),
+            eq(autoTeamReviewRecords.tenantId, input.tenantId),
+            eq(autoTeamReviewRecords.runId, input.run.id)
           )
-          .limit(1);
-        return Boolean(
-          review &&
-            isFinalApprovalReviewEvidenceSatisfied({
-              passed: review.passed,
-            }),
-        );
-      }
+        )
+        .limit(1);
+      return Boolean(
+        review &&
+        isFinalApprovalReviewEvidenceSatisfied({
+          passed: review.passed,
+        })
+      );
+    }
     case "final-result":
-    case "final_result":
-      {
-        const [finalResult] = await input.db
-          .select({
-            id: autoTeamFinalResults.id,
-            status: autoTeamFinalResults.status,
-            failureReason: autoTeamFinalResults.failureReason,
-            blockedReason: autoTeamFinalResults.blockedReason,
-            finalArtifactRefsJson: autoTeamFinalResults.finalArtifactRefsJson,
-          })
-          .from(autoTeamFinalResults)
-          .where(
-            and(
-              eq(autoTeamFinalResults.id, parsed.value),
-              eq(autoTeamFinalResults.tenantId, input.tenantId),
-              eq(autoTeamFinalResults.runId, input.run.id),
-            ),
+    case "final_result": {
+      const [finalResult] = await input.db
+        .select({
+          id: autoTeamFinalResults.id,
+          status: autoTeamFinalResults.status,
+          failureReason: autoTeamFinalResults.failureReason,
+          blockedReason: autoTeamFinalResults.blockedReason,
+          finalArtifactRefsJson: autoTeamFinalResults.finalArtifactRefsJson,
+        })
+        .from(autoTeamFinalResults)
+        .where(
+          and(
+            eq(autoTeamFinalResults.id, parsed.value),
+            eq(autoTeamFinalResults.tenantId, input.tenantId),
+            eq(autoTeamFinalResults.runId, input.run.id)
           )
-          .limit(1);
-        return Boolean(
-          finalResult &&
-            isFinalApprovalFinalResultEvidenceSatisfied({
-              status: finalResult.status,
-              failureReason: finalResult.failureReason,
-              blockedReason: finalResult.blockedReason,
-              finalArtifactRefsJson: finalResult.finalArtifactRefsJson,
-            }) &&
-            (await areAutoTeamArtifactEvidenceRefsSafe({
-              db: input.db,
-              tenantId: input.tenantId,
-              runId: input.run.id,
-              refs: Array.isArray(finalResult.finalArtifactRefsJson)
-                ? finalResult.finalArtifactRefsJson.filter(
-                    (ref): ref is string =>
-                      typeof ref === "string" && ref.trim().length > 0,
-                  )
-                : [],
-            }).catch(() => false)),
-        );
-      }
+        )
+        .limit(1);
+      return Boolean(
+        finalResult &&
+        isFinalApprovalFinalResultEvidenceSatisfied({
+          status: finalResult.status,
+          failureReason: finalResult.failureReason,
+          blockedReason: finalResult.blockedReason,
+          finalArtifactRefsJson: finalResult.finalArtifactRefsJson,
+        }) &&
+        (await areAutoTeamArtifactEvidenceRefsSafe({
+          db: input.db,
+          tenantId: input.tenantId,
+          runId: input.run.id,
+          refs: Array.isArray(finalResult.finalArtifactRefsJson)
+            ? finalResult.finalArtifactRefsJson.filter(
+                (ref): ref is string =>
+                  typeof ref === "string" && ref.trim().length > 0
+              )
+            : [],
+        }).catch(() => false))
+      );
+    }
     case "artifact":
     case "auto-team-artifact":
     case "auto_team_artifact":
@@ -7802,11 +8000,13 @@ async function replanAfterRejectedFinalReview(params: {
     });
     const approvedPlanSnapshot = getApprovedPlanForRun({
       constraintsJson:
-        params.run.constraintsJson && typeof params.run.constraintsJson === "object"
+        params.run.constraintsJson &&
+        typeof params.run.constraintsJson === "object"
           ? (params.run.constraintsJson as Record<string, unknown>)
           : null,
       approvalPolicyJson:
-        params.run.approvalPolicyJson && typeof params.run.approvalPolicyJson === "object"
+        params.run.approvalPolicyJson &&
+        typeof params.run.approvalPolicyJson === "object"
           ? (params.run.approvalPolicyJson as Record<string, unknown>)
           : null,
     });
@@ -7819,24 +8019,27 @@ async function replanAfterRejectedFinalReview(params: {
         roomTitle: null,
         roomGoal: null,
         roomLanguage,
-        capabilityCatalog: approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
+        capabilityCatalog:
+          approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
         approvedExecutionPlan: approvedPlanSnapshot?.executionPlan ?? null,
       }
     );
     planArtifact = await reviewAutoTeamPlanArtifactWithPersonaReview(
       llmPlanArtifact,
       {
-      tenantId: params.tenantId,
-      userId: params.run.initiatedByUserId,
-      coordinatorPersona,
-      reviewerPersona: toPersonaLabel(reviewerMember ?? teamMembers[0] ?? null),
-      specialtyPersona: toPersonaLabel(
-        specialtyMember ?? teamMembers[0] ?? null
-      ),
-      publisherPersona: toPersonaLabel(
-        publisherMember ?? teamMembers[0] ?? null
-      ),
-      roomLanguage,
+        tenantId: params.tenantId,
+        userId: params.run.initiatedByUserId,
+        coordinatorPersona,
+        reviewerPersona: toPersonaLabel(
+          reviewerMember ?? teamMembers[0] ?? null
+        ),
+        specialtyPersona: toPersonaLabel(
+          specialtyMember ?? teamMembers[0] ?? null
+        ),
+        publisherPersona: toPersonaLabel(
+          publisherMember ?? teamMembers[0] ?? null
+        ),
+        roomLanguage,
       }
     );
   } catch (error) {
@@ -7994,7 +8197,7 @@ export function accumulateBudget(
   agentId: string,
   cost: TurnCost,
   reservation?: RuntimeDispatchPolicy["budgetReservation"] | null,
-  reservationKey?: string | null,
+  reservationKey?: string | null
 ): BudgetSnapshot {
   const existing = snapshot.perAgent[agentId] ?? {
     creditsUsed: 0,
@@ -8003,7 +8206,9 @@ export function accumulateBudget(
     turnCount: 0,
   };
   const appliedReservationKeys = Array.isArray(snapshot.appliedReservationKeys)
-    ? snapshot.appliedReservationKeys.filter((value): value is string => typeof value === "string")
+    ? snapshot.appliedReservationKeys.filter(
+        (value): value is string => typeof value === "string"
+      )
     : [];
   const shouldApplyReservation =
     Boolean(reservation) &&
@@ -8016,13 +8221,17 @@ export function accumulateBudget(
   return {
     totalCreditsUsed: snapshot.totalCreditsUsed + cost.costCredits,
     toolCallsUsed:
-      (snapshot.toolCallsUsed ?? 0) + (shouldApplyReservation ? reservation?.toolCalls ?? 0 : 0),
+      (snapshot.toolCallsUsed ?? 0) +
+      (shouldApplyReservation ? (reservation?.toolCalls ?? 0) : 0),
     mediaJobsUsed:
-      (snapshot.mediaJobsUsed ?? 0) + (shouldApplyReservation ? reservation?.mediaJobs ?? 0 : 0),
+      (snapshot.mediaJobsUsed ?? 0) +
+      (shouldApplyReservation ? (reservation?.mediaJobs ?? 0) : 0),
     workflowRunsUsed:
-      (snapshot.workflowRunsUsed ?? 0) + (shouldApplyReservation ? reservation?.workflowRuns ?? 0 : 0),
+      (snapshot.workflowRunsUsed ?? 0) +
+      (shouldApplyReservation ? (reservation?.workflowRuns ?? 0) : 0),
     agencyRunsUsed:
-      (snapshot.agencyRunsUsed ?? 0) + (shouldApplyReservation ? reservation?.agencyRuns ?? 0 : 0),
+      (snapshot.agencyRunsUsed ?? 0) +
+      (shouldApplyReservation ? (reservation?.agencyRuns ?? 0) : 0),
     appliedReservationKeys: nextAppliedReservationKeys,
     runtimePolicyMissingCount: snapshot.runtimePolicyMissingCount ?? 0,
     perAgent: {
@@ -8253,13 +8462,12 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
       initiatedByUserId: input.initiatedByUserId,
       executionMode: input.executionMode,
       objective: input.objective,
-      constraintsJson:
-        input.requestedSubagent?.trim()
-          ? {
-              ...(input.constraintsJson ?? {}),
-              requestedSubagent: input.requestedSubagent.trim(),
-            }
-          : input.constraintsJson ?? null,
+      constraintsJson: input.requestedSubagent?.trim()
+        ? {
+            ...(input.constraintsJson ?? {}),
+            requestedSubagent: input.requestedSubagent.trim(),
+          }
+        : (input.constraintsJson ?? null),
       approvalPolicyJson: input.approvalPolicyJson ?? null,
       stopPolicyJson: input.stopPolicy,
       budgetSnapshotJson: initBudgetSnapshot(),
@@ -8349,13 +8557,13 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
         member => member.memberKind === "assistant" && member.isLead,
       ]) ?? reviewerMember;
     const basePlanArtifact = buildAutoTeamPlanArtifact({
-        run,
-        roomGoal: room.goalPrompt ?? room.title ?? null,
-        runtimeState,
-        members: teamMembers,
-        workItems: currentWorkItems,
-        source: "team_run",
-      });
+      run,
+      roomGoal: room.goalPrompt ?? room.title ?? null,
+      runtimeState,
+      members: teamMembers,
+      workItems: currentWorkItems,
+      source: "team_run",
+    });
     const llmPlanArtifact = await buildAutoTeamPlanArtifactWithLlmPlanner(
       basePlanArtifact,
       {
@@ -8365,7 +8573,8 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
         roomTitle: room.title,
         roomGoal: room.goalPrompt ?? null,
         roomLanguage: room.language,
-        capabilityCatalog: approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
+        capabilityCatalog:
+          approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
         approvedExecutionPlan: approvedPlanSnapshot?.executionPlan ?? null,
       }
     );
@@ -8379,7 +8588,8 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
         roomTitle: room.title,
         roomGoal: room.goalPrompt ?? null,
         roomLanguage: room.language,
-        capabilityCatalog: approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
+        capabilityCatalog:
+          approvedPlanSnapshot?.bundle.capabilityCatalog ?? null,
         approvedExecutionPlan: approvedPlanSnapshot?.executionPlan ?? null,
       },
       reviewer: {
@@ -8674,7 +8884,7 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
       runId,
       input.tenantId,
       AUTO_TEAM_INITIAL_TURNS,
-      AUTO_TEAM_CONTINUATION_DELAY_MS,
+      AUTO_TEAM_CONTINUATION_DELAY_MS
     );
   }
 
@@ -8765,7 +8975,7 @@ export async function pauseRun(
 export async function updateRunObjective(
   runId: string,
   tenantId: string,
-  objective: string,
+  objective: string
 ): Promise<TeamRun> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -8916,7 +9126,7 @@ export async function approveFinalReview(
 export async function autoCompleteFinalReviewIfEvidenceReady(
   runId: string,
   tenantId: string,
-  comment?: string | null,
+  comment?: string | null
 ): Promise<TeamRun | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -8932,8 +9142,10 @@ export async function autoCompleteFinalReviewIfEvidenceReady(
   if (!planArtifact) {
     return null;
   }
-  const structurallySafeFinalApproval =
-    shouldAutoCompleteFinalApprovalForRun(run, planArtifact);
+  const structurallySafeFinalApproval = shouldAutoCompleteFinalApprovalForRun(
+    run,
+    planArtifact
+  );
   if (!structurallySafeFinalApproval) {
     return null;
   }
@@ -8954,13 +9166,15 @@ export async function autoCompleteFinalReviewIfEvidenceReady(
   return completeFinalReviewApproval({
     run,
     tenantId,
-    comment: comment ?? "Auto-completed after final review timeout with resolved final evidence.",
+    comment:
+      comment ??
+      "Auto-completed after final review timeout with resolved final evidence.",
   });
 }
 
 export async function recoverFinalEvidenceGateIfReady(
   runId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<TeamRun | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -8980,8 +9194,10 @@ export async function recoverFinalEvidenceGateIfReady(
     .catch(() => null);
   const planArtifact = monitoringService.extractRunPlanArtifact(latestSnapshot);
   if (!planArtifact) return null;
-  const structurallySafeFinalApproval =
-    shouldAutoCompleteFinalApprovalForRun(run, planArtifact);
+  const structurallySafeFinalApproval = shouldAutoCompleteFinalApprovalForRun(
+    run,
+    planArtifact
+  );
   if (!structurallySafeFinalApproval) return null;
   const evidenceValidation = await validateFinalApprovalEvidenceForRun({
     run,
@@ -9005,8 +9221,8 @@ export async function recoverFinalEvidenceGateIfReady(
       and(
         eq(teamRoomMessages.roomId, run.roomId),
         eq(teamRoomMessages.runId, run.id),
-        sql`${teamRoomMessages.metadataJson}->>'idempotencyKey' = ${recoveryMessageKey}`,
-      ),
+        sql`${teamRoomMessages.metadataJson}->>'idempotencyKey' = ${recoveryMessageKey}`
+      )
     )
     .limit(1);
   if (!existingRecoveryMessage) {
@@ -9120,9 +9336,9 @@ export async function runNextTurn(
     let autoTeamPlanArtifact: monitoringService.RunPlanArtifact | null = null;
     let approvedExecutionBudget: ExecutionBudgetEnvelope | null = null;
     let approvedPlanSnapshot: ApprovedPlanBundleSnapshot | null = null;
-    let latestSnapshotForTurn:
-      | Awaited<ReturnType<typeof monitoringService.getLatestRunSnapshot>>
-      | null = null;
+    let latestSnapshotForTurn: Awaited<
+      ReturnType<typeof monitoringService.getLatestRunSnapshot>
+    > | null = null;
     if (run.executionMode === "auto_team") {
       const [currentWorkItems, latestSnapshot] = await Promise.all([
         workItemService.listWorkItemsByRoom(run.roomId, tenantId),
@@ -9134,8 +9350,7 @@ export async function runNextTurn(
             ? (run.constraintsJson as Record<string, unknown>)
             : null,
         approvalPolicyJson:
-          run.approvalPolicyJson &&
-          typeof run.approvalPolicyJson === "object"
+          run.approvalPolicyJson && typeof run.approvalPolicyJson === "object"
             ? (run.approvalPolicyJson as Record<string, unknown>)
             : null,
       });
@@ -9144,7 +9359,8 @@ export async function runNextTurn(
       latestSnapshotForTurn = latestSnapshot;
       autoTeamActiveWorkItem = selectAutoTeamWorkItemForTurn(autoTeamWorkItems);
       autoTeamPlanArtifact = selectAutoTeamPlanArtifact({
-        latestArtifact: monitoringService.extractRunPlanArtifact(latestSnapshot),
+        latestArtifact:
+          monitoringService.extractRunPlanArtifact(latestSnapshot),
         approvedPlanSnapshot,
         runId: run.id,
         roomId: run.roomId,
@@ -9204,7 +9420,7 @@ export async function runNextTurn(
     }
 
     const hasContextState = Object.values(turnContextState).some(
-      (value) => value !== null && value !== undefined,
+      value => value !== null && value !== undefined
     );
     const turnDynamicParams = hasContextState
       ? {
@@ -9213,7 +9429,8 @@ export async function runNextTurn(
       : undefined;
 
     const plannedActiveStep = selectActivePlanStep(autoTeamPlanArtifact);
-    const plannedRuntimePolicy = getStepRuntimeDispatchPolicy(plannedActiveStep);
+    const plannedRuntimePolicy =
+      getStepRuntimeDispatchPolicy(plannedActiveStep);
     const plannedReservationKey =
       plannedActiveStep && plannedRuntimePolicy?.budgetReservation
         ? buildRuntimeBudgetReservationKey({
@@ -9374,7 +9591,7 @@ export async function runNextTurn(
     const currentAutoTeamStepIndex =
       currentAutoTeamStep && autoTeamPlanArtifact
         ? autoTeamPlanArtifact.steps.findIndex(
-            step => step.stepKey === currentAutoTeamStep.stepKey,
+            step => step.stepKey === currentAutoTeamStep.stepKey
           )
         : -1;
     const currentAutoTeamStepCount = autoTeamPlanArtifact?.steps.length ?? null;
@@ -9391,7 +9608,9 @@ export async function runNextTurn(
             stepKey: currentAutoTeamStep.stepKey,
             stepTitle: currentAutoTeamStep.title,
             stepIndex:
-              currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+              currentAutoTeamStepIndex >= 0
+                ? currentAutoTeamStepIndex + 1
+                : null,
             stepCount: currentAutoTeamStepCount,
             stepObjective: currentAutoTeamStep.objective,
             stepDeliverable: currentAutoTeamStep.deliverable,
@@ -9406,13 +9625,18 @@ export async function runNextTurn(
             reviewChecklist: currentAutoTeamStep.reviewChecklist,
             attempt: autoTeamActiveWorkItem?.revisionVersion ?? null,
             selectedSkillId:
-              (turnResponse.metadata?.selectedSkillId as string | null | undefined) ??
+              (turnResponse.metadata?.selectedSkillId as
+                | string
+                | null
+                | undefined) ??
               route.selectedSkillId ??
               null,
             selectedProvider: null,
             selectedModelId:
-              (turnResponse.metadata?.llmModelId as string | null | undefined) ??
-              null,
+              (turnResponse.metadata?.llmModelId as
+                | string
+                | null
+                | undefined) ?? null,
           },
           resultSummary: content,
           reviewStatus: "pending",
@@ -9438,7 +9662,9 @@ export async function runNextTurn(
               stepKey: currentAutoTeamStep.stepKey,
               stepTitle: currentAutoTeamStep.title,
               stepIndex:
-                currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+                currentAutoTeamStepIndex >= 0
+                  ? currentAutoTeamStepIndex + 1
+                  : null,
               stepCount: currentAutoTeamStepCount,
               stepObjective: currentAutoTeamStep.objective,
               stepDeliverable: currentAutoTeamStep.deliverable,
@@ -9453,13 +9679,18 @@ export async function runNextTurn(
               reviewChecklist: currentAutoTeamStep.reviewChecklist,
               attempt: autoTeamActiveWorkItem?.revisionVersion ?? null,
               selectedSkillId:
-                (turnResponse.metadata?.selectedSkillId as string | null | undefined) ??
+                (turnResponse.metadata?.selectedSkillId as
+                  | string
+                  | null
+                  | undefined) ??
                 route.selectedSkillId ??
                 null,
               selectedProvider: null,
               selectedModelId:
-                (turnResponse.metadata?.llmModelId as string | null | undefined) ??
-                null,
+                (turnResponse.metadata?.llmModelId as
+                  | string
+                  | null
+                  | undefined) ?? null,
             },
             resultSummary: content,
             reviewStatus: "pending",
@@ -9468,13 +9699,16 @@ export async function runNextTurn(
         });
         autoTeamStepResultPosted = true;
       } catch (error) {
-        console.warn("[runEngine] failed to post auto-team step result message", {
-          runId,
-          roomId: run.roomId,
-          assistantId,
-          stepKey: currentAutoTeamStep.stepKey,
-          error: error instanceof Error ? error.message : String(error),
-        });
+        console.warn(
+          "[runEngine] failed to post auto-team step result message",
+          {
+            runId,
+            roomId: run.roomId,
+            assistantId,
+            stepKey: currentAutoTeamStep.stepKey,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
       }
     }
 
@@ -9496,7 +9730,7 @@ export async function runNextTurn(
         autoTeamPlanArtifact = applyAutoTeamStepValidationRetry(
           autoTeamPlanArtifact,
           currentAutoTeamStep.stepKey,
-          stepValidation,
+          stepValidation
         );
 
         logAutomationStartTrace("auto_team.plan_step_validation_failed", {
@@ -9548,11 +9782,17 @@ export async function runNextTurn(
               retryable: stepValidation.retryable,
             },
             selectedSkillId:
-              (turnResponse.metadata?.selectedSkillId as string | null | undefined) ??
+              (turnResponse.metadata?.selectedSkillId as
+                | string
+                | null
+                | undefined) ??
               route.selectedSkillId ??
               null,
             routeReason:
-              (turnResponse.metadata?.routeReason as string | null | undefined) ??
+              (turnResponse.metadata?.routeReason as
+                | string
+                | null
+                | undefined) ??
               route.reason ??
               null,
             planArtifact: autoTeamPlanArtifact,
@@ -9562,7 +9802,8 @@ export async function runNextTurn(
         const awaitingAsyncMediaPipeline =
           stepValidation.issues.includes("awaiting_async_media_assets") &&
           (turnResponse.metadata?.mediaPipelineAwaitingAssets === true ||
-            turnResponse.metadata?.runtimeDispatchOutcome === "awaiting_async_assets");
+            turnResponse.metadata?.runtimeDispatchOutcome ===
+              "awaiting_async_assets");
 
         if (awaitingAsyncMediaPipeline) {
           const runtimeState =
@@ -9604,7 +9845,7 @@ export async function runNextTurn(
               waitingReason:
                 "Waiting for async media generation/composition before continuing.",
               nextPollAt: new Date(
-                Date.now() + AUTO_TEAM_CONTINUATION_DELAY_MS,
+                Date.now() + AUTO_TEAM_CONTINUATION_DELAY_MS
               ).toISOString(),
               verificationState: "pending",
               stepValidation: {
@@ -9616,11 +9857,17 @@ export async function runNextTurn(
                 retryable: true,
               },
               selectedSkillId:
-                (turnResponse.metadata?.selectedSkillId as string | null | undefined) ??
+                (turnResponse.metadata?.selectedSkillId as
+                  | string
+                  | null
+                  | undefined) ??
                 route.selectedSkillId ??
                 null,
               routeReason:
-                (turnResponse.metadata?.routeReason as string | null | undefined) ??
+                (turnResponse.metadata?.routeReason as
+                  | string
+                  | null
+                  | undefined) ??
                 route.reason ??
                 null,
               planArtifact: autoTeamPlanArtifact,
@@ -9648,7 +9895,9 @@ export async function runNextTurn(
                 stepKey: currentAutoTeamStep.stepKey,
                 stepTitle: currentAutoTeamStep.title,
                 stepIndex:
-                  currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+                  currentAutoTeamStepIndex >= 0
+                    ? currentAutoTeamStepIndex + 1
+                    : null,
                 stepCount: currentAutoTeamStepCount,
                 runStopReason: "awaiting_async_media_pipeline",
                 validationIssues: stepValidation.issues,
@@ -9656,17 +9905,19 @@ export async function runNextTurn(
               sensitivity: "medium",
             })
             .catch(error => {
-              console.warn("[runEngine] failed to post async media wait message", {
-                runId,
-                roomId: run.roomId,
-                stepKey: currentAutoTeamStep.stepKey,
-                error: error instanceof Error ? error.message : String(error),
-              });
+              console.warn(
+                "[runEngine] failed to post async media wait message",
+                {
+                  runId,
+                  roomId: run.roomId,
+                  stepKey: currentAutoTeamStep.stepKey,
+                  error: error instanceof Error ? error.message : String(error),
+                }
+              );
             });
         } else if (!stepValidation.retryable) {
-          const capabilityGapResolution = getCapabilityGapResolutionFromMetadata(
-            turnResponse.metadata ?? {},
-          );
+          const capabilityGapResolution =
+            getCapabilityGapResolutionFromMetadata(turnResponse.metadata ?? {});
           await db
             .update(teamRuns)
             .set({
@@ -9698,11 +9949,13 @@ export async function runNextTurn(
                       capabilityGapResolution,
                       capabilityGapResumeRequested: true,
                       selectedCapabilityId:
-                        typeof capabilityGapResolution.selectedCapabilityId === "string"
+                        typeof capabilityGapResolution.selectedCapabilityId ===
+                        "string"
                           ? capabilityGapResolution.selectedCapabilityId
-                          : currentAutoTeamStep.selectedCapabilityId ?? null,
+                          : (currentAutoTeamStep.selectedCapabilityId ?? null),
                       missingSkillId:
-                        typeof capabilityGapResolution.missingSkillId === "string"
+                        typeof capabilityGapResolution.missingSkillId ===
+                        "string"
                           ? capabilityGapResolution.missingSkillId
                           : null,
                     }
@@ -9740,7 +9993,9 @@ export async function runNextTurn(
                 stepKey: currentAutoTeamStep.stepKey,
                 stepTitle: currentAutoTeamStep.title,
                 stepIndex:
-                  currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+                  currentAutoTeamStepIndex >= 0
+                    ? currentAutoTeamStepIndex + 1
+                    : null,
                 stepCount: currentAutoTeamStepCount,
                 validationIssues: stepValidation.issues,
                 validationSummary: stepValidation.summary,
@@ -9751,19 +10006,22 @@ export async function runNextTurn(
               sensitivity: "medium",
             })
             .catch(error => {
-              console.warn("[runEngine] failed to post auto-team validation block message", {
-                runId,
-                roomId: run.roomId,
-                stepKey: currentAutoTeamStep.stepKey,
-                error: error instanceof Error ? error.message : String(error),
-              });
+              console.warn(
+                "[runEngine] failed to post auto-team validation block message",
+                {
+                  runId,
+                  roomId: run.roomId,
+                  stepKey: currentAutoTeamStep.stepKey,
+                  error: error instanceof Error ? error.message : String(error),
+                }
+              );
             });
         } else if (run.executionMode === "auto_team") {
           queueAutoAdvance(
             runId,
             tenantId,
             1,
-            stepValidation.retryDelayMs ?? AUTO_TEAM_CONTINUATION_DELAY_MS,
+            stepValidation.retryDelayMs ?? AUTO_TEAM_CONTINUATION_DELAY_MS
           );
         }
       } else {
@@ -9777,11 +10035,11 @@ export async function runNextTurn(
           autoTeamPlanArtifact,
           currentAutoTeamStep.stepKey,
           stepValidation,
-          stepEvidenceRefs,
+          stepEvidenceRefs
         );
         const progression = advanceAutoTeamPlanArtifactProgress(
           autoTeamPlanArtifact,
-          currentAutoTeamStep.stepKey,
+          currentAutoTeamStep.stepKey
         );
         autoTeamPlanArtifact = progression.planArtifact;
 
@@ -9826,10 +10084,10 @@ export async function runNextTurn(
             .where(eq(teamRuns.id, runId))
             .limit(1);
           asyncMediaPipelineStatus = getAutoTeamMediaPipelineStatus(
-            latestRunState?.runtimeStateJson,
+            latestRunState?.runtimeStateJson
           );
           awaitingAsyncMediaPipeline = isAwaitingAutoTeamMediaPipeline(
-            asyncMediaPipelineStatus,
+            asyncMediaPipelineStatus
           );
 
           if (asyncMediaPipelineStatus === "failed") {
@@ -9909,7 +10167,8 @@ export async function runNextTurn(
             if (canCompletePlan) {
               await stopRun(runId, "plan_completed", tenantId);
             } else {
-              finalCompletionBlockedReason = finalEvidenceValidation?.unresolvedRefs.length
+              finalCompletionBlockedReason = finalEvidenceValidation
+                ?.unresolvedRefs.length
                 ? `Unresolved final evidence refs: ${finalEvidenceValidation.unresolvedRefs.join(", ")}`
                 : "Final evidence gate rejected automatic completion for this Auto Team plan.";
               await db
@@ -9921,7 +10180,8 @@ export async function runNextTurn(
                 })
                 .where(eq(teamRuns.id, runId));
               autoTeamPausedByGate = true;
-              autoTeamPauseNextSpeakerReason = "auto_team_final_evidence_unresolved";
+              autoTeamPauseNextSpeakerReason =
+                "auto_team_final_evidence_unresolved";
               clearQueuedAutoAdvance(runId);
               await emitAutoTeamPlanningTraceEvent({
                 tenantId,
@@ -9961,11 +10221,17 @@ export async function runNextTurn(
                 ? "Waiting for async media generation/composition before final completion."
                 : finalCompletionBlockedReason,
               selectedSkillId:
-                (turnResponse.metadata?.selectedSkillId as string | null | undefined) ??
+                (turnResponse.metadata?.selectedSkillId as
+                  | string
+                  | null
+                  | undefined) ??
                 route.selectedSkillId ??
                 null,
               routeReason:
-                (turnResponse.metadata?.routeReason as string | null | undefined) ??
+                (turnResponse.metadata?.routeReason as
+                  | string
+                  | null
+                  | undefined) ??
                 route.reason ??
                 null,
               mediaPipelineStatus: asyncMediaPipelineStatus,
@@ -9973,14 +10239,17 @@ export async function runNextTurn(
             } as Partial<monitoringService.RunRuntimeState>,
           });
         } catch (snapshotError) {
-          console.warn("[runEngine] failed to persist auto-team plan progression snapshot", {
-            runId,
-            roomId: run.roomId,
-            error:
-              snapshotError instanceof Error
-                ? snapshotError.message
-                : String(snapshotError),
-          });
+          console.warn(
+            "[runEngine] failed to persist auto-team plan progression snapshot",
+            {
+              runId,
+              roomId: run.roomId,
+              error:
+                snapshotError instanceof Error
+                  ? snapshotError.message
+                  : String(snapshotError),
+            }
+          );
         }
       }
     }
@@ -10052,7 +10321,7 @@ export async function runNextTurn(
         costCredits: turnResponse.costCredits,
       },
       plannedRuntimePolicy?.budgetReservation ?? null,
-      plannedReservationKey,
+      plannedReservationKey
     );
     if (
       run.executionMode === "auto_team" &&
@@ -10066,7 +10335,8 @@ export async function runNextTurn(
     const runTurnUpdate: Partial<typeof teamRuns.$inferInsert> = {
       activeAssistantId: nextSpeaker.nextAssistantId,
       budgetSnapshotJson: updatedBudget,
-      runtimeCurrentStepKey: plannedActiveStep?.stepKey ?? run.runtimeCurrentStepKey,
+      runtimeCurrentStepKey:
+        plannedActiveStep?.stepKey ?? run.runtimeCurrentStepKey,
     };
     if (!autoTeamPausedByGate) {
       runTurnUpdate.stopReason = null;
@@ -10108,7 +10378,10 @@ export async function runNextTurn(
               route.selectedSkillId ??
               null,
             routeReason:
-              (turnResponse.metadata?.routeReason as string | null | undefined) ??
+              (turnResponse.metadata?.routeReason as
+                | string
+                | null
+                | undefined) ??
               route.reason ??
               null,
           },
@@ -10183,7 +10456,7 @@ export async function advanceRun(
         runId,
         tenantId,
         turnsToRun - index,
-        AUTO_TEAM_CONTINUATION_DELAY_MS,
+        AUTO_TEAM_CONTINUATION_DELAY_MS
       );
       break;
     }
@@ -10503,12 +10776,15 @@ export async function stopRun(
         reason,
       });
     } catch (error) {
-      console.warn("[runEngine] failed to sync linked Work Request after run stop", {
-        runId,
-        tenantId,
-        reason,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      console.warn(
+        "[runEngine] failed to sync linked Work Request after run stop",
+        {
+          runId,
+          tenantId,
+          reason,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
     }
   }
 
@@ -10552,12 +10828,15 @@ export async function stopRun(
       tenantId,
       reason,
     }).catch(error => {
-      console.warn("[runEngine] failed to persist work orchestrator learning proposals", {
-        runId,
-        tenantId,
-        reason,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      console.warn(
+        "[runEngine] failed to persist work orchestrator learning proposals",
+        {
+          runId,
+          tenantId,
+          reason,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
     });
   }
 
@@ -10568,12 +10847,15 @@ export async function stopRun(
       reason,
       context: workCompletionContext,
     }).catch(error => {
-      console.warn("[runEngine] failed to notify requester of team run completion", {
-        runId,
-        tenantId,
-        reason,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      console.warn(
+        "[runEngine] failed to notify requester of team run completion",
+        {
+          runId,
+          tenantId,
+          reason,
+          error: error instanceof Error ? error.message : String(error),
+        }
+      );
     });
   }
 
@@ -10583,14 +10865,16 @@ export async function stopRun(
 export async function failRun(
   runId: string,
   reason: string,
-  tenantId?: string,
+  tenantId?: string
 ): Promise<TeamRun> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const run = await loadRunWithTenantCheck(db, runId, tenantId);
   if (!run) throw new Error(`Run ${runId} not found`);
   if (!["queued", "running", "paused"].includes(run.status)) {
-    throw new Error(`Run must be active to fail, current status: ${run.status}`);
+    throw new Error(
+      `Run must be active to fail, current status: ${run.status}`
+    );
   }
   const [updated] = await db
     .update(teamRuns)
@@ -10609,10 +10893,12 @@ export async function failRun(
 
 function readRunConstraintString(
   run: Pick<TeamRun, "constraintsJson">,
-  key: string,
+  key: string
 ): string | null {
   const constraints =
-    run.constraintsJson && typeof run.constraintsJson === "object" && !Array.isArray(run.constraintsJson)
+    run.constraintsJson &&
+    typeof run.constraintsJson === "object" &&
+    !Array.isArray(run.constraintsJson)
       ? (run.constraintsJson as Record<string, unknown>)
       : {};
   const value = constraints[key];
@@ -10624,16 +10910,30 @@ async function resolveWorkRequestCompletionContext(input: {
   run: TeamRun;
   tenantId: string;
 }): Promise<WorkRequestCompletionContext | null> {
-  const requestIdFromConstraints = readRunConstraintString(input.run, "workRequestId");
-  const caseIdFromConstraints = readRunConstraintString(input.run, "workCaseId");
-  const automationRunId = readRunConstraintString(input.run, "workOsAutomationRunId");
+  const requestIdFromConstraints = readRunConstraintString(
+    input.run,
+    "workRequestId"
+  );
+  const caseIdFromConstraints = readRunConstraintString(
+    input.run,
+    "workCaseId"
+  );
+  const automationRunId = readRunConstraintString(
+    input.run,
+    "workOsAutomationRunId"
+  );
 
   let workCase: typeof workCases.$inferSelect | null = null;
   if (caseIdFromConstraints) {
     const [row] = await input.db
       .select()
       .from(workCases)
-      .where(and(eq(workCases.id, caseIdFromConstraints), eq(workCases.tenantId, input.tenantId)))
+      .where(
+        and(
+          eq(workCases.id, caseIdFromConstraints),
+          eq(workCases.tenantId, input.tenantId)
+        )
+      )
       .limit(1);
     workCase = row ?? null;
   }
@@ -10644,8 +10944,8 @@ async function resolveWorkRequestCompletionContext(input: {
       .where(
         and(
           eq(workCases.tenantId, input.tenantId),
-          eq(workCases.automationRunId, automationRunId),
-        ),
+          eq(workCases.automationRunId, automationRunId)
+        )
       )
       .limit(1);
     workCase = row ?? null;
@@ -10658,7 +10958,12 @@ async function resolveWorkRequestCompletionContext(input: {
     ? await input.db
         .select()
         .from(workRequests)
-        .where(and(eq(workRequests.id, requestId), eq(workRequests.tenantId, input.tenantId)))
+        .where(
+          and(
+            eq(workRequests.id, requestId),
+            eq(workRequests.tenantId, input.tenantId)
+          )
+        )
         .limit(1)
         .then(rows => rows[0] ?? null)
         .catch(() => null)
@@ -10674,7 +10979,8 @@ async function resolveWorkRequestCompletionContext(input: {
 
   return {
     requestId: workRequest?.id ?? requestId,
-    requestTitle: workRequest?.title ?? workCase?.title ?? input.run.objective ?? null,
+    requestTitle:
+      workRequest?.title ?? workCase?.title ?? input.run.objective ?? null,
     caseId: workCase?.id ?? caseIdFromConstraints,
     requesterUserId: parsedRequesterUserId,
     actionUrl: buildWorkRequestResultUrl({
@@ -10720,7 +11026,12 @@ async function syncLinkedWorkRequestAfterRunStop(input: {
         automationUpdatedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(workCases.id, context.caseId), eq(workCases.tenantId, input.tenantId)));
+      .where(
+        and(
+          eq(workCases.id, context.caseId),
+          eq(workCases.tenantId, input.tenantId)
+        )
+      );
   }
   if (context.requestId) {
     await input.db
@@ -10729,7 +11040,12 @@ async function syncLinkedWorkRequestAfterRunStop(input: {
         currentState: nextState,
         updatedAt: new Date(),
       })
-      .where(and(eq(workRequests.id, context.requestId), eq(workRequests.tenantId, input.tenantId)));
+      .where(
+        and(
+          eq(workRequests.id, context.requestId),
+          eq(workRequests.tenantId, input.tenantId)
+        )
+      );
   }
   return context;
 }
@@ -10775,8 +11091,7 @@ async function persistWorkOrchestratorLearningProposals(input: {
     existingProposals: storedState?.state.learningProposals ?? [],
     completedRun,
   });
-  const exceptionSummaries =
-    completedRun ? [] : [input.reason];
+  const exceptionSummaries = completedRun ? [] : [input.reason];
   const evaluation = evaluateRunForLearning({
     runId: input.run.id,
     objective,
@@ -10784,10 +11099,10 @@ async function persistWorkOrchestratorLearningProposals(input: {
     repeatedPathCount,
     exceptionSummaries,
     evidenceRefs: snapshot.approvalSnapshots.map(
-      approvalSnapshot => `source:${approvalSnapshot.source.sourceId}`,
+      approvalSnapshot => `source:${approvalSnapshot.source.sourceId}`
     ),
     finalArtifacts: snapshot.executionPlan.steps.map(
-      step => step.stepKey ?? step.id,
+      step => step.stepKey ?? step.id
     ),
     generatedAt,
   });
@@ -10844,15 +11159,12 @@ export async function getRun(
 export async function findLatestRunForWorkAutomationRun(
   workAutomationRunId: string,
   tenantId: string
-): Promise<
-  | {
-      teamRunId: string;
-      roomId: string;
-      teamId: string;
-      status: TeamRun["status"];
-    }
-  | null
-> {
+): Promise<{
+  teamRunId: string;
+  roomId: string;
+  teamId: string;
+  status: TeamRun["status"];
+} | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -10868,8 +11180,8 @@ export async function findLatestRunForWorkAutomationRun(
     .where(
       and(
         eq(teamRooms.tenantId, tenantId),
-        sql`${teamRuns.constraintsJson}->>'workOsAutomationRunId' = ${workAutomationRunId}`,
-      ),
+        sql`${teamRuns.constraintsJson}->>'workOsAutomationRunId' = ${workAutomationRunId}`
+      )
     )
     .orderBy(desc(teamRuns.startedAt))
     .limit(1);

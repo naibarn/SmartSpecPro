@@ -197,6 +197,8 @@ export function registerOAuthRoutes(app: Express) {
               if (usageResult.success) {
                 await giveInviteCodeBonuses(inviteCodeId, newUser.id);
                 console.log(`[OAuth] Processed invite code ${inviteCodeId} for user ${newUser.id}`);
+              } else {
+                console.error(`[OAuth] Invite code ${inviteCodeId} was not consumed for user ${newUser.id}: ${usageResult.error || "unknown error"}`);
               }
             } catch (err) {
               console.error(`[OAuth] Failed to process invite code:`, err);

@@ -16,6 +16,43 @@
         "en"
       ]
     },
+    "dialogue_language_profile": {
+      "description": "Optional shared spoken-language/market contract. Missing legacy data resolves to Auto.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "spokenLocale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explicit spoken language/market id from the shared Vertical Drama spoken-locale registry; auto is allowed."
+        },
+        "marketMode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "american",
+            "british",
+            "australian",
+            "international"
+          ]
+        },
+        "resolvedSpokenLocale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolutionReason": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    },
     "story_title": {
       "type": "string"
     },

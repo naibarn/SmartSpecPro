@@ -1588,36 +1588,52 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects a custom-identity dialogue line without an explicit speaker cue", async () => {
+  it("deterministically adds a canonical speaker cue after the corrective retry misses it", async () => {
     mockExecute.mockResolvedValue(
       successResponse(
         shotVideoPromptOutput({
-          prompt: 'The woman wearing an apron reacts while Bob listens: "Hello there".',
+          prompt: `Alice, the woman wearing an apron, says: "First line". ${"She holds the listener's gaze and gathers her resolve. ".repeat(5)}Then, with more resolve: "Hello there".`,
         }),
       ),
     );
 
-    await expect(
-      generateVerticalDramaShotVideoPrompt(
-        baseShotVideoPromptParams({
-          characterReferenceImages: [
-            { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        characterReferenceImages: [
+          {
+            characterKey: "alice",
+            name: "Alice",
+            url: "https://example.com/alice.png",
+          },
+        ],
+        characterDescriptionOverrides: {
+          alice: "the woman wearing an apron",
+        },
+        shotContext: {
+          description: "A character stands in a kitchen",
+          camera: "medium shot",
+          dialogueLines: [
+            {
+              characterKey: "alice",
+              speakerName: "Alice",
+              lineTh: "First line",
+            },
+            {
+              characterKey: "alice",
+              speakerName: "Alice",
+              lineTh: "Hello there",
+            },
           ],
-          characterDescriptionOverrides: {
-            alice: "the woman wearing an apron",
-          },
-          shotContext: {
-            description: "A character stands in a kitchen",
-            camera: "medium shot",
-            dialogueLines: [
-              { characterKey: "alice", speakerName: "Alice", lineTh: "Hello there" },
-            ],
-          },
-        }),
-      ),
-    ).rejects.toThrow("speaker cues");
+        },
+      }),
+    );
+
+    expect(result.prompt).toContain('Alice says: "Hello there"');
+    expect(result.prompt).toContain(
+      'Alice, the woman wearing an apron, says: "First line"',
+    );
     expect(mockExecute).toHaveBeenCalledTimes(2);
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("compliance-retry-carries-same-images: the hand-rolled compliance-correction retry (native-audio verbatim-embedding fix) attaches the same images as the first attempt", async () => {

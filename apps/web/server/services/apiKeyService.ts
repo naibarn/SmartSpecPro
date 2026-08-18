@@ -5,10 +5,49 @@ import { apiKeys, publicApiAuditLog } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
 import {
   ALLOWED_API_SCOPES_SET,
+  MCP_CLI_DEFAULT_CREDIT_QUOTAS,
   type AuthContext,
 } from "../../shared/publicApiTypes";
 
 const KEY_PREFIX = "sk-ssp_";
+const MCP_CLI_PURPOSE = "mcp_cli" as const;
+type ApiKeyPurpose = "public_api" | typeof MCP_CLI_PURPOSE;
+
+type ApiKeyMetadata = Record<string, unknown> & {
+  purpose?: ApiKeyPurpose;
+  creditQuota5h?: number | null;
+  creditQuotaDaily?: number | null;
+  creditQuotaWeekly?: number | null;
+};
+
+function normalizedMetadata(value: unknown): ApiKeyMetadata {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as ApiKeyMetadata
+    : {};
+}
+
+function isMcpCliMetadata(value: unknown): boolean {
+  return normalizedMetadata(value).purpose === MCP_CLI_PURPOSE;
+}
+
+function mcpCliQuotas(value: unknown): {
+  creditQuota5h: number | null;
+  creditQuotaDaily: number | null;
+  creditQuotaWeekly: number | null;
+} {
+  const metadata = normalizedMetadata(value);
+  const quota = (field: keyof Pick<ApiKeyMetadata, "creditQuota5h" | "creditQuotaDaily" | "creditQuotaWeekly">, fallback: number) => {
+    // A purpose marker added before the budget fields existed must remain
+    // protected by the conservative defaults. Only an explicit null opts out.
+    if (metadata[field] === undefined) return fallback;
+    return typeof metadata[field] === "number" ? metadata[field] : null;
+  };
+  return {
+    creditQuota5h: quota("creditQuota5h", MCP_CLI_DEFAULT_CREDIT_QUOTAS.fiveHour),
+    creditQuotaDaily: quota("creditQuotaDaily", MCP_CLI_DEFAULT_CREDIT_QUOTAS.daily),
+    creditQuotaWeekly: quota("creditQuotaWeekly", MCP_CLI_DEFAULT_CREDIT_QUOTAS.weekly),
+  };
+}
 
 /** Compute HMAC-SHA256 hash of raw key using server pepper. */
 function computeKeyHash(rawKey: string): string {
@@ -57,6 +96,10 @@ export async function createKey(
     quotaDaily?: number | null;
     quotaWeekly?: number | null;
     quotaMonthly?: number | null;
+    purpose?: ApiKeyPurpose;
+    creditQuota5h?: number | null;
+    creditQuotaDaily?: number | null;
+    creditQuotaWeekly?: number | null;
     metadata?: Record<string, unknown>;
   },
 ): Promise<{ id: string; rawKey: string; keyPrefix: string }> {
@@ -71,6 +114,25 @@ export async function createKey(
   const keyHash = computeKeyHash(rawKey);
   const keyPrefix = rawKey.slice(0, 16);
   const id = crypto.randomUUID();
+
+  const purpose = options?.purpose ?? "public_api";
+  const metadata: ApiKeyMetadata = {
+    ...(options?.metadata ?? {}),
+    purpose,
+    ...(purpose === MCP_CLI_PURPOSE
+      ? {
+          creditQuota5h: options?.creditQuota5h === undefined
+            ? MCP_CLI_DEFAULT_CREDIT_QUOTAS.fiveHour
+            : options.creditQuota5h,
+          creditQuotaDaily: options?.creditQuotaDaily === undefined
+            ? MCP_CLI_DEFAULT_CREDIT_QUOTAS.daily
+            : options.creditQuotaDaily,
+          creditQuotaWeekly: options?.creditQuotaWeekly === undefined
+            ? MCP_CLI_DEFAULT_CREDIT_QUOTAS.weekly
+            : options.creditQuotaWeekly,
+        }
+      : {}),
+  };
 
   await db.insert(apiKeys).values({
     id,
@@ -87,7 +149,7 @@ export async function createKey(
     quotaWeekly: options?.quotaWeekly ?? null,
     quotaMonthly: options?.quotaMonthly ?? null,
     expiresAt: options?.expiresAt ?? null,
-    metadata: options?.metadata ?? null,
+    metadata,
     isActive: true,
   });
 
@@ -138,18 +200,29 @@ export async function validateKey(
     .where(eq(apiKeys.id, row.id))
     .catch(() => {});
 
+  const purpose = isMcpCliMetadata(row.metadata) ? MCP_CLI_PURPOSE : "public_api";
+  const quotas = mcpCliQuotas(row.metadata);
+
+  const hasStoredQuotaSettings = Object.prototype.hasOwnProperty.call(row, "rateLimit");
   return {
     userId: row.userId,
     tenantId: row.tenantId,
     mode: "api_key",
     apiKeyId: row.id,
     scopes: row.scopes as string[],
-    rateLimit: row.rateLimit,
-    creditLimit: row.creditLimit ?? null,
-    quotaHourly: row.quotaHourly ?? null,
-    quotaDaily: row.quotaDaily ?? null,
-    quotaWeekly: row.quotaWeekly ?? null,
-    quotaMonthly: row.quotaMonthly ?? null,
+    ...(hasStoredQuotaSettings
+      ? {
+          rateLimit: row.rateLimit,
+          creditLimit: row.creditLimit ?? null,
+          quotaHourly: row.quotaHourly ?? null,
+          quotaDaily: row.quotaDaily ?? null,
+          quotaWeekly: row.quotaWeekly ?? null,
+          quotaMonthly: row.quotaMonthly ?? null,
+        }
+      : {}),
+    ...(purpose === MCP_CLI_PURPOSE
+      ? { keyPurpose: purpose, ...quotas }
+      : {}),
   };
 }
 
@@ -183,12 +256,20 @@ export async function listKeys(tenantId: string, userId?: number) {
       suspendedAt: apiKeys.suspendedAt,
       suspendedBy: apiKeys.suspendedBy,
       createdAt: apiKeys.createdAt,
+      metadata: apiKeys.metadata,
     })
     .from(apiKeys)
     .where(and(...conditions))
     .orderBy(desc(apiKeys.createdAt));
 
-  return rows;
+  return rows.map(({ metadata, ...row }) => {
+    const purpose = isMcpCliMetadata(metadata) ? MCP_CLI_PURPOSE : "public_api";
+    return {
+      ...row,
+      keyPurpose: purpose,
+      ...(purpose === MCP_CLI_PURPOSE ? mcpCliQuotas(metadata) : {}),
+    };
+  });
 }
 
 /**
@@ -260,11 +341,34 @@ export async function updateKeySettings(
     quotaDaily?: number | null;
     quotaWeekly?: number | null;
     quotaMonthly?: number | null;
+    creditQuota5h?: number | null;
+    creditQuotaDaily?: number | null;
+    creditQuotaWeekly?: number | null;
   },
 ): Promise<{ updated: boolean }> {
+  const [existing] = await db
+    .select({ metadata: apiKeys.metadata })
+    .from(apiKeys)
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId), eq(apiKeys.userId, userId)))
+    .limit(1);
+  if (!existing) throw new Error("API key not found");
+
+  const metadata = normalizedMetadata(existing.metadata);
+  const creditQuotaFields = {
+    creditQuota5h: settings.creditQuota5h,
+    creditQuotaDaily: settings.creditQuotaDaily,
+    creditQuotaWeekly: settings.creditQuotaWeekly,
+  };
+  const nextMetadata: ApiKeyMetadata = { ...metadata };
+  if (isMcpCliMetadata(metadata)) {
+    if (creditQuotaFields.creditQuota5h !== undefined) nextMetadata.creditQuota5h = creditQuotaFields.creditQuota5h;
+    if (creditQuotaFields.creditQuotaDaily !== undefined) nextMetadata.creditQuotaDaily = creditQuotaFields.creditQuotaDaily;
+    if (creditQuotaFields.creditQuotaWeekly !== undefined) nextMetadata.creditQuotaWeekly = creditQuotaFields.creditQuotaWeekly;
+  }
+  const { creditQuota5h: _fiveHour, creditQuotaDaily: _daily, creditQuotaWeekly: _weekly, ...columnSettings } = settings;
   const result = await db
     .update(apiKeys)
-    .set({ ...settings, updatedAt: new Date() })
+    .set({ ...columnSettings, metadata: nextMetadata, updatedAt: new Date() })
     .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId), eq(apiKeys.userId, userId)))
     .returning({ id: apiKeys.id });
 
@@ -287,13 +391,15 @@ export async function revokeKey(
   if (userId !== undefined) {
     conditions.push(eq(apiKeys.userId, userId));
   }
-  const result = await db
+  const updateQuery = db
     .update(apiKeys)
     .set({ isActive: false, updatedAt: new Date() })
-    .where(and(...conditions))
-    .returning({ id: apiKeys.id });
+    .where(and(...conditions));
+  const result = typeof (updateQuery as any).returning === "function"
+    ? await (updateQuery as any).returning({ id: apiKeys.id })
+    : await updateQuery;
 
-  if (result.length === 0) {
+  if ((Array.isArray(result) && result.length === 0) || (!Array.isArray(result) && !(result as any)?.rowCount)) {
     throw new Error("API key not found");
   }
 

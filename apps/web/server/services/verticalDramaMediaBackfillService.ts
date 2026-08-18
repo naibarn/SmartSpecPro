@@ -9,7 +9,7 @@ import {
   verticalDramaShotReferences,
 } from "../../drizzle/schema";
 import { db } from "../db";
-import { assertR2StorageActive } from "../storage";
+import { assertR2StorageActive, storageExists } from "../storage";
 import {
   extractVerticalDramaManagedMediaKey,
   ingestVerticalDramaMediaAsset,
@@ -283,9 +283,64 @@ export async function backfillVerticalDramaMedia(
     mimeType: string;
     status: string | null;
   }) => {
+    const managedKey = row.originalUrl
+      ? extractVerticalDramaManagedMediaKey(row.originalUrl)
+      : null;
+    if (managedKey) {
+      report.managedAssetCount += 1;
+      if (!options.apply) return;
+      try {
+        if (!(await storageExists(managedKey))) {
+          report.expiredAssetCount += 1;
+          report.errors.push({
+            assetId: row.id,
+            url: row.originalUrl ?? undefined,
+            message: "Managed media object is missing from storage",
+          });
+          await db
+            .update(mediaAssets)
+            .set({ status: "expired", updatedAt: new Date() })
+            .where(
+              and(
+                eq(mediaAssets.id, row.id),
+                eq(mediaAssets.tenantId, options.tenantId),
+                eq(mediaAssets.userId, options.userId),
+              ),
+            );
+          return;
+        }
+
+        const durableUrl = `/api/storage/files/${encodeURI(managedKey)}`;
+        if (row.originalUrl !== durableUrl || row.status !== "ready") {
+          await db
+            .update(mediaAssets)
+            .set({
+              status: "ready",
+              storageKey: managedKey,
+              originalUrl: durableUrl,
+              thumbnailUrl: row.mimeType.startsWith("image/") ? durableUrl : null,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(mediaAssets.id, row.id),
+                eq(mediaAssets.tenantId, options.tenantId),
+                eq(mediaAssets.userId, options.userId),
+              ),
+            );
+          report.migratedAssetCount += 1;
+        }
+      } catch (error) {
+        report.errors.push({
+          assetId: row.id,
+          url: row.originalUrl ?? undefined,
+          message: error instanceof Error ? error.message : "Managed media validation failed",
+        });
+      }
+      return;
+    }
     if (
       !row.originalUrl ||
-      extractVerticalDramaManagedMediaKey(row.originalUrl) ||
       (!isExternalMediaUrl(row.originalUrl) && !isDataMediaUrl(row.originalUrl))
     ) {
       report.managedAssetCount += 1;

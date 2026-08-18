@@ -16,7 +16,7 @@
       "required": ["draft", "changedFields"],
       "properties": {
         "draft": { "type": "object", "additionalProperties": true },
-        "changedFields": { "type": "array", "maxItems": 12 }
+        "changedFields": { "type": "array", "maxItems": 64 }
       }
     }
   ]

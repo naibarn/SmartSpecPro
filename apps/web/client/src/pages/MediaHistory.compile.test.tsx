@@ -16,6 +16,16 @@ describe("MediaHistory module", () => {
     ).toBe("https://api.magnific.com/v1/ai/text-to-image/nano-banana-pro");
   });
 
+  it("does not duplicate a provider base path when Kie stores an absolute endpoint path", () => {
+    expect(
+      buildFallbackApiUrl(
+        "kie_ai",
+        "/api/v1/jobs/createTask",
+        "https://api.kie.ai/api/v1"
+      )
+    ).toBe("https://api.kie.ai/api/v1/jobs/createTask");
+  });
+
   it("does not fall back to Kie.ai for unknown explicit providers", () => {
     expect(buildFallbackApiUrl("unknown-provider", "/v1/jobs/status")).toBeUndefined();
   });

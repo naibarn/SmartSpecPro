@@ -2651,12 +2651,24 @@ export class MediaGenerationService {
       argumentShape: rawMetadata.argumentShape ?? modelTransport.argumentShape,
       idempotencyKey: rawMetadata.idempotencyKey,
     });
+    const parameters = buildMcpServiceParameters(assetType, request);
+    if (Array.isArray(parameters.referenceImageUrls)) {
+      parameters.referenceImageUrls =
+        (await resolveProviderReferenceUrls(
+          parameters.referenceImageUrls.filter(
+            (value): value is string => typeof value === "string"
+          ),
+          request,
+          "",
+          request.publicUrl,
+        )) ?? parameters.referenceImageUrls;
+    }
     return submitMcpMediaGeneration({
       tenantId,
       prompt,
       model: modelId,
       metadata,
-      parameters: buildMcpServiceParameters(assetType, request),
+      parameters,
     });
   }
 

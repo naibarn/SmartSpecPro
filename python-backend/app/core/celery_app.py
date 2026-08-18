@@ -62,6 +62,7 @@ celery_app.conf.update(
         "app.tasks.media_job_worker.execute_media_job": {"queue": "video"},
         # API-based media generation -> media queue (network-bound)
         "app.tasks.media_tasks.generate_image_task": {"queue": "media"},
+        "app.tasks.media_tasks.poll_kie_image_task": {"queue": "media"},
         "app.tasks.media_tasks.generate_video_task": {"queue": "media"},
         "app.tasks.media_tasks.poll_wavespeed_video_task": {"queue": "media"},
         "app.tasks.media_tasks.poll_magnific_media_task": {"queue": "media"},

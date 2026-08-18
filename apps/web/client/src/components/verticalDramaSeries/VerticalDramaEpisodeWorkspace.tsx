@@ -439,6 +439,9 @@ export interface VerticalDramaStoryboardPanelData {
   ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
+  imageGenerationErrorByShot?: Record<number, string>;
+  onRetryStartFrameImage?: (shotNumber: number) => void;
+  onRetryStartFrameSync?: (shotNumber: number) => void;
   /** Runs `start_frame_render_plan` for real (mode "full", spends credits). */
   onGenerateStartFramePlan?: () => void;
   generatingStartFramePlan?: boolean;
@@ -750,6 +753,7 @@ export interface VerticalDramaStoryboardPanelData {
   onGenerateShotVideoPrompt?: (shotNumber: number) => void;
   generatingShotVideoPromptForShot?: ReadonlySet<number>;
   videoPromptJobStatusByShot?: Record<number, "queued" | "running">;
+  videoPromptJobErrorByShot?: Record<number, string>;
   usedVisionByShot?: Record<number, boolean>;
 
   /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
@@ -1386,6 +1390,11 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateReal={storyboardPanel?.onGenerateReal}
           onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
           onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
+          imageGenerationErrorByShot={
+            storyboardPanel?.imageGenerationErrorByShot
+          }
+          onRetryStartFrameImage={storyboardPanel?.onRetryStartFrameImage}
+          onRetryStartFrameSync={storyboardPanel?.onRetryStartFrameSync}
           onGenerateStartFramePlan={storyboardPanel?.onGenerateStartFramePlan}
           generatingStartFramePlan={storyboardPanel?.generatingStartFramePlan}
           onEditStartFramePrompt={storyboardPanel?.onEditStartFramePrompt}
@@ -1631,6 +1640,9 @@ export function VerticalDramaEpisodeWorkspace({
           }
           videoPromptJobStatusByShot={
             storyboardPanel?.videoPromptJobStatusByShot
+          }
+          videoPromptJobErrorByShot={
+            storyboardPanel?.videoPromptJobErrorByShot
           }
           usedVisionByShot={storyboardPanel?.usedVisionByShot}
           compiledVideo={storyboardPanel?.compiledVideo}
@@ -2190,6 +2202,15 @@ export function VerticalDramaEpisodeWorkspace({
                         onGenerateReal={storyboardPanel?.onGenerateReal}
                         onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
                         onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
+                        imageGenerationErrorByShot={
+                          storyboardPanel?.imageGenerationErrorByShot
+                        }
+                        onRetryStartFrameImage={
+                          storyboardPanel?.onRetryStartFrameImage
+                        }
+                        onRetryStartFrameSync={
+                          storyboardPanel?.onRetryStartFrameSync
+                        }
                         productTieInByShot={storyboardPanel?.productTieInByShot}
                         productImages={storyboardPanel?.productImages}
                         productImagesLoading={

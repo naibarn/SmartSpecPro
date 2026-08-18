@@ -13,7 +13,13 @@ vi.mock("../../../db", () => {
   return { getDb: vi.fn().mockResolvedValue(mockDb) };
 });
 
-import { classifyByKeywords, processTicket, adminNotificationGroupKey } from "../feedbackProcessor";
+import {
+  buildAdminNotificationContent,
+  classifyByKeywords,
+  processTicket,
+  adminNotificationGroupKey,
+  resolveAdminNotificationPriority,
+} from "../feedbackProcessor";
 import { getDb } from "../../../db";
 
 describe("FeedbackProcessor", () => {
@@ -72,6 +78,46 @@ describe("FeedbackProcessor", () => {
     });
   });
 
+  describe("buildAdminNotificationContent", () => {
+    it("includes affected user emails and IDs for admin diagnosis", () => {
+      expect(
+        buildAdminNotificationContent({
+          ticketType: "bug",
+          autoSummary: "Auto-classified as bug (high priority)",
+          title: "Credit failure",
+          ticketId: 354,
+          affectedUsers: [
+            { id: 119, email: "user119@example.com" },
+            { id: 120, email: null },
+          ],
+        }),
+      ).toContain(
+        "Affected user(s): user119@example.com (user #119), user #120",
+      );
+    });
+
+    it("keeps the existing notification shape when no user is attached", () => {
+      expect(
+        buildAdminNotificationContent({
+          ticketType: "bug",
+          autoSummary: "Auto-classified as bug (high priority)",
+          title: "Credit failure",
+          ticketId: 354,
+        }),
+      ).toBe("[bug] Auto-classified as bug (high priority)\nTicket #354");
+    });
+  });
+
+  describe("resolveAdminNotificationPriority", () => {
+    it("does not downgrade critical ticket priority during keyword processing", () => {
+      expect(resolveAdminNotificationPriority("critical", "high")).toBe("critical");
+    });
+
+    it("uses the auto-classified priority for ordinary tickets", () => {
+      expect(resolveAdminNotificationPriority("normal", "low")).toBe("low");
+    });
+  });
+
   describe("processTicket", () => {
     it("updates ticket with classification results", async () => {
       const db = await getDb() as any;
@@ -122,6 +168,23 @@ describe("FeedbackProcessor", () => {
       const setArg = db.set.mock.calls[0][0];
       expect(setArg.status).toBe("triaged");
       expect(setArg.triagedAt).toBeInstanceOf(Date);
+    });
+
+    it("preserves critical ticket priority for urgent admin alerts", async () => {
+      const db = await getDb() as any;
+      db.limit.mockResolvedValueOnce([{
+        id: 4,
+        title: "[Auto] OpenRouter account balance is insufficient",
+        description: "provider account credit failure",
+        tenantId: "t1",
+        submittedByType: "system",
+        priority: "critical",
+        ticketType: "bug",
+        contextJson: {},
+      }]);
+
+      await processTicket(4);
+      expect(db.update).toHaveBeenCalled();
     });
 
     it("returns defaults when ticket not found", async () => {
