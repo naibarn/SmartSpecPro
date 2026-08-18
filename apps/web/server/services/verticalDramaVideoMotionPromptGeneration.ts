@@ -1579,6 +1579,7 @@ function findQuotedLineStartIndex(prompt: string, lineTh: string): number {
 const POSITION_ANCHOR_WORDS = /\b(center[-\s]left|center[-\s]right|left|center|right)\b/i;
 const POSITION_ANCHOR_MARKER = "position mismatch";
 const CUSTOM_IDENTITY_POSITION_MARKER = "custom identity position conflict";
+const SPEAKER_CUE_MARKER = "missing explicit speaker cue";
 const CUSTOM_IDENTITY_POSITION_WORDS =
   /\b(?:viewer|screen)[ -](?:left|right|center(?:[ -](?:left|right))?)\b/iu;
 const POSITION_AMBIGUITY_MARKER = "ambiguous screen position";
@@ -1927,6 +1928,13 @@ function findPositionAnchorIssues(
       characterDescriptionOverrides,
     );
     if (customDescription) {
+      const normalizedWindow = normalizeSpeakerLabel(window);
+      const normalizedSpeaker = speaker ? normalizeSpeakerLabel(speaker) : "";
+      if (speaker && !normalizedWindow.includes(normalizedSpeaker)) {
+        issues.push(
+          `"${line.lineTh}" (${speaker}) — ${SPEAKER_CUE_MARKER}: place the speaker name and a speaking verb immediately before the quoted line`,
+        );
+      }
       const customPosition = findDirectCustomIdentityPositionCue(
         window,
         speaker ?? line.characterKey,
@@ -3123,6 +3131,19 @@ export async function generateVerticalDramaShotVideoPrompt(
             `CUSTOM IDENTITY CORRECTION (MANDATORY): ${customIdentityIssues.join("; ")}. Preserve each user's custom character description as the identity anchor, include the exact supplied detail in the final "prompt", and remove every viewer-left/viewer-right/viewer-center position cue for those characters. Use screen positions only for characters without a custom identity description.`,
           );
         }
+        const speakerCueIssues = initialPositionAnchorIssues.filter(issue =>
+          issue.includes(SPEAKER_CUE_MARKER),
+        );
+        if (speakerCueIssues.length > 0) {
+          correctionParts.push(
+            `SPEAKER CUE CORRECTION (MANDATORY): ${speakerCueIssues.join("; ")}. Immediately precede every quoted dialogue line with the exact named speaker and a speaking verb (for example, "Name says:"). A custom identity description replaces screen position only; it never replaces the named speaker cue.`,
+          );
+        }
+        const genericPositionIssues = initialPositionAnchorIssues.filter(
+          issue =>
+            !issue.includes(CUSTOM_IDENTITY_POSITION_MARKER) &&
+            !issue.includes(SPEAKER_CUE_MARKER),
+        );
         const positionLock = buildFrameAnalysisPositionLock(
           outcome.data.frame_analysis,
           params.shotContext.barrierMultiView,
@@ -3130,9 +3151,11 @@ export async function generateVerticalDramaShotVideoPrompt(
         const dualViewCorrection = params.shotContext.barrierMultiView
           ? ` This is a DUAL IMAGE shot: analyze Image 1 and Image 2 as separate coordinate spaces. Image 1 is the start frame and Image 2 is the reference frame. Return view_role=start_frame only for Image 1 characters and view_role=barrier_reference only for Image 2 characters. Prefix every spoken cue with its exact Image 1 or Image 2 label; never report an Image 2 person as not_visible/tiny inside Image 1.`
           : "";
-        correctionParts.push(
-          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
-        );
+        if (genericPositionIssues.length > 0) {
+          correctionParts.push(
+            `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${genericPositionIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
+          );
+        }
       }
       const complianceRetryText = `${userPromptText}\n\n${correctionParts.join("\n\n")}`;
       const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
@@ -3197,12 +3220,15 @@ export async function generateVerticalDramaShotVideoPrompt(
         issue.includes(POSITION_ANCHOR_MARKER) ||
         issue.includes(POSITION_AMBIGUITY_MARKER) ||
         issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
-        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER),
+        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER) ||
+        issue.includes(SPEAKER_CUE_MARKER),
       );
       if (positionMismatches.length > 0) {
         throw new VdSchemaValidationError(
           positionMismatches.some(issue => issue.includes(CUSTOM_IDENTITY_POSITION_MARKER))
             ? `Shot ${params.shotNumber}: custom identity position conflicts with the assigned character description after 1 corrective retry`
+            : positionMismatches.some(issue => issue.includes(SPEAKER_CUE_MARKER))
+              ? `Shot ${params.shotNumber}: dialogue lines are missing explicit speaker cues after 1 corrective retry`
             : `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
           positionMismatches,
         );
@@ -3867,6 +3893,19 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
             `CUSTOM IDENTITY CORRECTION (MANDATORY): ${customIdentityIssues.join("; ")}. Preserve each user's custom character description as the identity anchor, include the exact supplied detail in the final "prompt", and remove every viewer-left/viewer-right/viewer-center position cue for those characters. Use screen positions only for characters without a custom identity description.`,
           );
         }
+        const speakerCueIssues = initialPositionAnchorIssues.filter(issue =>
+          issue.includes(SPEAKER_CUE_MARKER),
+        );
+        if (speakerCueIssues.length > 0) {
+          correctionParts.push(
+            `SPEAKER CUE CORRECTION (MANDATORY): ${speakerCueIssues.join("; ")}. Immediately precede every quoted dialogue line with the exact named speaker and a speaking verb (for example, "Name says:"). A custom identity description replaces screen position only; it never replaces the named speaker cue.`,
+          );
+        }
+        const genericPositionIssues = initialPositionAnchorIssues.filter(
+          issue =>
+            !issue.includes(CUSTOM_IDENTITY_POSITION_MARKER) &&
+            !issue.includes(SPEAKER_CUE_MARKER),
+        );
         const positionLock = buildFrameAnalysisPositionLock(
           outcome.data.frame_analysis,
           params.shotContext.barrierMultiView,
@@ -3874,9 +3913,11 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         const dualViewCorrection = params.shotContext.barrierMultiView
           ? ` This is a DUAL IMAGE shot: analyze Image 1 and Image 2 as separate coordinate spaces. Image 1 is the start frame and Image 2 is the reference frame. Return view_role=start_frame only for Image 1 characters and view_role=barrier_reference only for Image 2 characters. Prefix every spoken cue with its exact Image 1 or Image 2 label; never report an Image 2 person as not_visible/tiny inside Image 1.`
           : "";
-        correctionParts.push(
-          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
-        );
+        if (genericPositionIssues.length > 0) {
+          correctionParts.push(
+            `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${genericPositionIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
+          );
+        }
       }
       const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
         model,
@@ -3931,12 +3972,15 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         issue.includes(POSITION_ANCHOR_MARKER) ||
         issue.includes(POSITION_AMBIGUITY_MARKER) ||
         issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
-        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER),
+        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER) ||
+        issue.includes(SPEAKER_CUE_MARKER),
       );
       if (positionMismatches.length > 0) {
         throw new VdSchemaValidationError(
           positionMismatches.some(issue => issue.includes(CUSTOM_IDENTITY_POSITION_MARKER))
             ? `Shot ${params.shotNumber}: custom identity position conflicts with the assigned character description after 1 corrective retry`
+            : positionMismatches.some(issue => issue.includes(SPEAKER_CUE_MARKER))
+              ? `Shot ${params.shotNumber}: dialogue lines are missing explicit speaker cues after 1 corrective retry`
             : `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
           positionMismatches,
         );

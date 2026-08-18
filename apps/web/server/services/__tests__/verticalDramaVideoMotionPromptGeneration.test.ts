@@ -1558,7 +1558,7 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     mockExecute.mockResolvedValue(
       successResponse(
         shotVideoPromptOutput({
-          prompt: 'The woman wearing an apron says "Hello there" while Bob listens.',
+          prompt: 'Alice, the woman wearing an apron, says "Hello there" while Bob listens.',
         }),
       ),
     );
@@ -1586,6 +1586,38 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     );
     expect(result.prompt).not.toContain("Alice on viewer-left");
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a custom-identity dialogue line without an explicit speaker cue", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse(
+        shotVideoPromptOutput({
+          prompt: 'The woman wearing an apron reacts while Bob listens: "Hello there".',
+        }),
+      ),
+    );
+
+    await expect(
+      generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          characterReferenceImages: [
+            { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
+          ],
+          characterDescriptionOverrides: {
+            alice: "the woman wearing an apron",
+          },
+          shotContext: {
+            description: "A character stands in a kitchen",
+            camera: "medium shot",
+            dialogueLines: [
+              { characterKey: "alice", speakerName: "Alice", lineTh: "Hello there" },
+            ],
+          },
+        }),
+      ),
+    ).rejects.toThrow("speaker cues");
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it("compliance-retry-carries-same-images: the hand-rolled compliance-correction retry (native-audio verbatim-embedding fix) attaches the same images as the first attempt", async () => {
