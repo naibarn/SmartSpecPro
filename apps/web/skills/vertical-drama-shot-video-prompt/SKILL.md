@@ -356,6 +356,11 @@ none of these entries.
      no named speaker attached; an explicit "X says:" cue immediately before
      the quoted text is what native-audio models lip-sync against, and an
      unattributed quote is how the wrong character's mouth ends up moving.
+     **SPOKEN-TEXT BOUNDARY (MANDATORY):** the text inside the quotation marks
+     is ONLY the exact source line. The speaker name and `characterKey` are
+     attribution metadata and must stay outside the quote; never copy a name
+     into the spoken text (write `ภาคิน says: "หยุด คุณไปไหนไม่ได้แล้ว"`, never
+     `"ภาคินหยุด คุณไปไหนไม่ได้แล้ว"`).
      **Lip-sync emphasis (MANDATORY for native audio) — this is the single
      biggest fix for "wrong person's mouth moves / wrong line":**
      - Place a GLOBAL directive up front in `prompt` (at or near the opening),
@@ -410,8 +415,9 @@ none of these entries.
    camera instead of each other during the conversation, a listener looking
    away from or not reacting to the active speaker, and stiff frontal blank
    stares that read as posing for the lens rather than talking to each other.
-8. **Prompt length limit — MANDATORY:** `prompt` MUST be **2000 characters or
-   fewer**, INCLUDING any embedded dialogue/delivery text (this is the base
+8. **Prompt length limit — MANDATORY:** `prompt` MUST be **4096 characters or
+   fewer for Kie.ai/Grok; otherwise use the provider budget supplied by the
+   caller (legacy default 2000)**, INCLUDING any embedded dialogue/delivery text (this is the base
    motion prompt the router formats into the final provider request, so write
    with that combined budget in mind). AIM for **≤1800 characters** so the
    final formatted request keeps headroom (the caller may append an
@@ -572,7 +578,7 @@ none of these entries.
 
 The caller supplies a `TARGET VIDEO MODEL` fact block naming the exact video
 model this prompt will be rendered on and its family: `grok`, `veo`,
-`seedance`, or `other`. Your `prompt` is consumed by THAT model — shape the
+`seedance`, `minimax_h3`, `flux3`, or `other`. Your `prompt` is consumed by THAT model — shape the
 writing for it. Every Hard Rule above still applies for every family; this
 section tunes how you spend the budget and phrase the direction. Never name
 the model or its family inside `prompt` itself.
@@ -629,6 +635,23 @@ the model or its family inside `prompt` itself.
   prose is wasted budget — spend it on motion instead.
 - Concrete camera verbs work well: push-in, pull-back, tracking, orbit,
   crane-down. Keep every move physically continuous from the start frame.
+
+### family: minimax_h3 (MiniMax H3)
+
+- Write short, unambiguous subject → action → object beats. Repeat the named
+  speaker and visible-face identity at every speaking beat; avoid pronouns that
+  can make the voice move to the wrong face.
+- Keep one continuous physical action with explicit contact, weight, inertia,
+  and prop continuity. Use cinematic camera language, but do not trade face
+  readability or the established cast count for spectacle.
+
+### family: flux3 (Flux3)
+
+- Use concrete cinematic composition, motivated camera movement, and explicit
+  temporal order. Re-anchor each established identity after an action or cut.
+- Keep effects bounded by the declared genre and preserve facial geometry,
+  wardrobe, body proportions, and the exact cast; never let an effect create a
+  duplicate or an accidental background person.
 
 ### family: other
 
@@ -719,8 +742,8 @@ Write the sound direction (in both places) in TWO TIERS, in this order:
    shot's emotional beat (a hushed, low-level bed for a tense quiet moment;
    a fuller, more present bed for a chaotic or high-energy beat).
 
-**Budget:** the in-`prompt` sound clause counts toward the 2000-character
-hard cap (rule 8). It is the LAST tier in rule 8's priority order, so when
+**Budget:** the in-`prompt` sound clause counts toward the provider budget
+(4096 for Kie.ai/Grok, otherwise the caller-supplied cap; rule 8). It is the LAST tier in rule 8's priority order, so when
 the shot is dialogue-heavy and the budget is tight, compress the sound clause
 to a single short sentence (SFX cues only, ambience dropped) rather than
 cutting camera, emotion, or speaker/position direction. Only when even one

@@ -169,6 +169,7 @@ import {
 } from "./verticalDramaSeriesMemoryPlanning";
 import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
 import { resolveVdImagePromptBudgetForModel } from "./modelPromptBudget";
+import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import { VD_IMAGE_PROMPT_MAX } from "@shared/verticalDramaSeries/contracts";
 import { stampArtifactForStoryboard } from "./verticalDramaStoryboardRevision";
 import {
@@ -3922,7 +3923,19 @@ export class VerticalDramaEpisodePipeline {
     pack: VideoMotionPromptPackProjection;
     creditsUsed: number;
     model: string;
+    videoPromptMaxChars: number;
   }> {
+    const [motionSeriesRow] = await db
+      .select({ genre: verticalDramaSeries.genre })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId),
+        ),
+      )
+      .limit(1);
     const storyboard =
       (episode.storyboard as Record<string, unknown> | null) ?? null;
     const shots: Array<Record<string, unknown>> = Array.isArray(
@@ -4210,13 +4223,14 @@ export class VerticalDramaEpisodePipeline {
       }
     })();
 
-    return generateVideoMotionPromptPack({
+    const generatedPack = await generateVideoMotionPromptPack({
       userId: owner.userId,
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       durationSeconds: episode.targetDurationSeconds ?? 60,
+      genre: motionSeriesRow?.genre ?? undefined,
       durationProfileId:
         episode.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
       selectedVideoModelId: existingSelectedVideoModelId,
@@ -4239,6 +4253,13 @@ export class VerticalDramaEpisodePipeline {
           description: String(s.description ?? s.visual_description ?? ""),
           durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
           characterKeys: characterKeys.length ? characterKeys : undefined,
+          supportingPresence: startFrame?.supportingPresence?.length
+            ? normalizeVerticalDramaSupportingPresence(startFrame.supportingPresence)
+            : undefined,
+          screenCallerCharacterKeys: startFrame?.screenCallerCharacterRefs
+            ?.length
+            ? startFrame.screenCallerCharacterRefs
+            : undefined,
           dialogueLines: dialogueLines?.length ? dialogueLines : undefined,
           dialogueExcerpt:
             typeof s.dialogue_excerpt === "string" && s.dialogue_excerpt
@@ -4249,6 +4270,13 @@ export class VerticalDramaEpisodePipeline {
         };
       }),
     });
+    return {
+      ...generatedPack,
+      videoPromptMaxChars: resolveVdVideoPromptBudgetForCatalogModel({
+        provider: selectedVideoModel?.provider,
+        configJson: selectedVideoModel?.configJson,
+      }),
+    };
   }
 
   /**
@@ -5127,6 +5155,7 @@ export class VerticalDramaEpisodePipeline {
               const qc = await ensurePromptWithinLimit({
                 kind: "video",
                 prompt: clip.prompt,
+                maxChars: generated.videoPromptMaxChars,
                 userId: owner.userId,
                 tenantId: owner.tenantId,
                 seriesId: owner.seriesId,

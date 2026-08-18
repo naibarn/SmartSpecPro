@@ -360,6 +360,11 @@ return `negative_motion_prompt` for other consumers. Low-risk shots add none.
    quoted line with an explicit speech cue** — the named speaker + a
    speaking verb (and delivery tone) immediately BEFORE the quote — never a
    floating, unattributed quote.
+   **SPOKEN-TEXT BOUNDARY (MANDATORY):** the text inside the quotation marks is
+   ONLY the exact source line for that segment. The speaker name and
+   `characterKey` are attribution metadata and must stay outside the quote;
+   never copy a name into the spoken text (write `ภาคิน says: "หยุด คุณไปไหนไม่ได้แล้ว"`,
+   never `"ภาคินหยุด คุณไปไหนไม่ได้แล้ว"`).
 5. **Every prompt you write must be unique to this shot.** Never reuse
    boilerplate phrasing verbatim across different shots even when the
    underlying scene is similar — ground the motion description in this
@@ -407,10 +412,10 @@ return `negative_motion_prompt` for other consumers. Low-risk shots add none.
    When motion contracts are active, also apply the compact list under
    "Anti-morph negatives — family-shaped" without contradicting the declared move.
 8. **Prompt length limit — MANDATORY, and now a SHARED budget across every
-   segment in this ONE prompt.** `prompt` MUST be **2000 characters or
-   fewer total**, including any embedded dialogue/delivery text for every
-   segment combined — this is no longer 2000 characters per segment, it is
-   2000 characters for the whole shot. AIM for **≤1800 characters** so the
+   segment in this ONE prompt.** `prompt` MUST be **4096 characters or fewer
+   for Kie.ai/Grok; otherwise use the provider budget supplied by the caller
+   (legacy default 2000)**, including any embedded dialogue/delivery text for every
+   segment combined. AIM for **≤1800 characters** so the
    final formatted request keeps headroom (the caller may append an
    SFX/ambient tail from `audio_direction` when the budget allows). Budget
    roughly `1800 / number of segments` characters of description per segment
@@ -487,7 +492,7 @@ return `negative_motion_prompt` for other consumers. Low-risk shots add none.
 
 The caller supplies a `TARGET VIDEO MODEL` fact block naming the exact video
 model this prompt will be rendered on and its family: `grok`, `veo`,
-`seedance`, or `other`. Your combined timed-segment `prompt` is consumed by
+`seedance`, `minimax_h3`, `flux3`, or `other`. Your combined timed-segment `prompt` is consumed by
 THAT model — shape the writing for it. Every Hard Rule above still applies
 for every family; this section tunes how you spend the shared budget and
 phrase the cut sequence. Never name the model or its family inside `prompt`
@@ -545,6 +550,21 @@ itself.
   sequence instead.
 - Concrete camera verbs per segment work well: push-in, pull-back,
   tracking, orbit, crane-down.
+
+### family: minimax_h3 (MiniMax H3)
+
+- Keep each timed segment explicit: named speaker → visible action → camera
+  transition. Re-anchor the face identity after every segment boundary and do
+  not rely on pronouns for who speaks.
+- Preserve continuous contact, weight, inertia, and prop continuity across
+  the cut; keep all established faces readable.
+
+### family: flux3 (Flux3)
+
+- Use concrete cinematic composition and explicit temporal order for every
+  segment. Re-anchor identity and the exact cast after each action or cut.
+- Keep genre effects bounded and internally consistent; never let spectacle
+  morph a face or create an unlisted person.
 
 ### family: other
 
@@ -634,8 +654,8 @@ Write the sound direction (in both places) in TWO TIERS, in this order:
    and location, plus intensity guidance matched to the shot's emotional
    beat.
 
-**Budget:** the in-`prompt` sound clause counts toward the 2000-character
-hard cap shared by every segment (rule 8), where sound is the LAST tier in
+**Budget:** the in-`prompt` sound clause counts toward the provider budget
+(4096 for Kie.ai/Grok, otherwise the caller-supplied cap; rule 8), where sound is the LAST tier in
 the priority order. When the budget is tight, compress it to a single short
 sentence (SFX cues only, ambience dropped) rather than cutting any segment's
 speaker/position, cut-sequence, or camera direction. Only when even one short

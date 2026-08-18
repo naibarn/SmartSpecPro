@@ -202,6 +202,12 @@ import {
   VD_IMAGE_PROMPT_ABSOLUTE_MAX,
   resolveVdImagePromptBudgetForModel,
 } from "../services/modelPromptBudget";
+import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
+import {
+  assureVideoPromptMotion,
+  type VideoPromptAssuranceFinding,
+} from "@shared/verticalDramaSeries/videoPromptMotionAssurance";
+import { resolveVideoPromptTargetFamily } from "@shared/verticalDramaSeries/videoPromptModelFamily";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
 // section-15 change D, Wave-4A/section-14 completing the "start
 // frames/motion prompts" leg of the rule — character refs were already
@@ -7927,6 +7933,7 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
 async function generateAndPersistSplitShotVideoPrompt(args: {
   tenantId: string;
   userId: number;
+  publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
   shotNumber: number;
@@ -7939,6 +7946,9 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   storyboardShot: VerticalDramaShotgrid["shots"][number] | undefined;
   shotVideoCharacterIdentityMapBlock: string | undefined;
   dialogueLines: ShotDialogueLine[];
+  /** Explicit screen-only callers used to assign spoken callers to separate
+   * vertical phone screens in the split-speaker prompt path. */
+  screenCallerCharacterRefs: string[];
   /**
    * Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
    * Phase 1a) — the CALLER's already-resolved
@@ -7959,6 +7969,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
    * byte-identical prompt.
    */
   beatIsSilent?: boolean;
+  genre?: string;
+  supportingPresence?: ReturnType<typeof resolveVerticalDramaSupportingPresenceForShot>;
   /**
    * Lip-sync discipline fix — `characterKey -> roster display name`,
    * pre-resolved by the CALLER from the identity sources it already fetched
@@ -8050,6 +8062,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     dialogueLines,
     canonicalShotSummary,
     beatIsSilent,
+    genre,
+    supportingPresence,
     characterNameByKey,
     tieInPlacement,
     tieInProductName,
@@ -8112,18 +8126,24 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
         dialogueLines: dialogueLines.length
           ? dialogueLinesWithSpeakerNames
           : undefined,
+        screenCallerCharacterRefs: args.screenCallerCharacterRefs,
+        speakingOrder: dialogueLines
+          .map(line => line.characterKey)
+          .filter((key): key is string => Boolean(key)),
         characterIdentityMap: shotVideoCharacterIdentityMapBlock,
         barrierMultiView,
         sceneContinuityLockBlock,
-        productContext: tieInPlacement
+          productContext: tieInPlacement
           ? {
               productName: tieInProductName,
               benefitTalkingPoint: tieInPlacement.benefitTalkingPoint,
               placementStyle: tieInPlacement.placementStyle,
               productCategory: tieInProductCategory,
             }
-          : undefined,
-      },
+              : undefined,
+          genre,
+          supportingPresence,
+        },
       selectedVideoModelId: selectedVideoModel.id,
       selectedVideoModel,
       locale,
@@ -8221,6 +8241,10 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   const qc = await ensurePromptWithinLimit({
     kind: "video",
     prompt,
+    maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+      provider: selectedVideoModel.provider,
+      configJson: selectedVideoModel.configJson,
+    }),
     // Dialogue-duplication fix (2026-07-15) — protect each individual
     // spoken line (not the `buildNativeDialogueVerbatimBlock` boilerplate
     // block). The refiner already keeps dialogue inline/verbatim while
@@ -8239,6 +8263,25 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     label: `shot video prompt (episode #${episodeId}, shot ${shotNumber})`,
   });
   prompt = qc.prompt;
+  const splitMotionAssurance = assureVideoPromptMotion({
+    prompt,
+    negativePrompt: negativeMotionPrompt,
+    family: speakerSwitchGeneration.family,
+    genre,
+    establishedCharacterNames: (characterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+    dialogueSpeakerNames: speakerSwitchGeneration.dialogue
+      .map(line => (line.characterKey ? characterNameByKey?.get(line.characterKey) ?? line.characterKey : undefined))
+      .filter((value): value is string => Boolean(value)),
+    supportingPresence,
+    frameAnalysis: speakerSwitchGeneration.frameAnalysis,
+    motionProfile: speakerSwitchGeneration.motionProfile,
+  });
+  if (splitMotionAssurance.blocking.length > 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `ยังสร้างวิดีโอไม่ได้: prompt ของช็อต ${shotNumber} ไม่ผ่านการตรวจ motion/identity (${splitMotionAssurance.blocking.map(f => f.message).join("; ")})`,
+    });
+  }
 
   // Resolve every distinct speaker's own approved primary-portrait media
   // asset id, in `distinctSpeakerCharacterKeys` order. The shot's approved
@@ -8313,6 +8356,16 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     targetClipNumber: shotNumber,
     repairable: true,
   }));
+  splitShotVideoPromptWarnings.push(
+    ...splitMotionAssurance.warnings.map((finding: VideoPromptAssuranceFinding) => ({
+      code: "vd_video_prompt_motion_assurance_degraded",
+      severity: "warning" as const,
+      message: finding.message,
+      targetShotNumber: shotNumber,
+      targetClipNumber: shotNumber,
+      repairable: true,
+    })),
+  );
   if (splitShotVideoPromptWarnings.length > 0) {
     console.warn(
       "[vd_video_prompt] position-anchor check degraded (speaker-switch)",
@@ -17985,10 +18038,14 @@ export const verticalDramaEpisodesRouter = router({
       // final string must be re-checked here (the base motion prompt alone
       // may already be within cap, but the formatted result can exceed it).
       // Zero-cost no-op when the formatted prompt is already within
-      // `VD_VIDEO_PROMPT_MAX`.
+      // the selected provider's video-prompt budget.
       const videoPromptQc = await ensurePromptWithinLimit({
         kind: "video",
         prompt: formatted.prompt,
+        maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          provider: model.provider,
+          configJson: model.configJson,
+        }),
         protectedFragments:
           videoClipProtectedFragments.length > 0
             ? videoClipProtectedFragments
@@ -18031,6 +18088,10 @@ export const verticalDramaEpisodesRouter = router({
       const finalProviderPromptQc = await ensurePromptWithinLimit({
         kind: "video",
         prompt: formatted.prompt,
+        maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          provider: model.provider,
+          configJson: model.configJson,
+        }),
         protectedFragments: videoClipProtectedFragments,
         userId,
         tenantId,
@@ -18041,6 +18102,31 @@ export const verticalDramaEpisodesRouter = router({
         label: `final provider video prompt (episode #${episodeId}, clip ${input.clipNumber})`,
       });
       formatted.prompt = finalProviderPromptQc.prompt;
+
+      const providerMotionAssurance = assureVideoPromptMotion({
+        prompt: formatted.prompt,
+        negativePrompt: formatted.negativePrompt,
+        family: resolveVideoPromptTargetFamily({
+          modelId: model.id,
+          name: model.name,
+          provider: model.provider,
+          configJson: model.configJson,
+        }),
+        genre: clip.promptModelTarget?.genre,
+        establishedCharacterNames: videoSafetyCharacterRefs,
+        dialogueSpeakerNames: dialogueLinesWithSpeakerNames
+          .map(line => line.speakerName ?? line.characterKey)
+          .filter((value): value is string => Boolean(value)),
+        supportingPresence: clip.promptModelTarget?.supportingPresence,
+        frameAnalysis: clip.frameAnalysis,
+        motionProfile: clip.motionProfile,
+      });
+      if (providerMotionAssurance.blocking.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `ยังส่งวิดีโอไม่ได้: clip ${input.clipNumber} ไม่ผ่าน provider motion/identity QC (${providerMotionAssurance.blocking.map(f => f.message).join("; ")})`,
+        });
+      }
 
       const [pricingRow] = await db
         .select({
@@ -20767,6 +20853,14 @@ export const verticalDramaEpisodesRouter = router({
       const storyboardShot = storyboard?.shots?.find(
         s => s.shotNumber === input.shotNumber
       );
+      const shotSupportingPresence = resolveVerticalDramaSupportingPresenceForShot(
+        (frame as unknown as { supportingPresence?: unknown } | undefined)
+          ?.supportingPresence,
+        {
+          description: storyboardShot?.description,
+        },
+        { idPrefix: `shot-${input.shotNumber}-supporting` },
+      );
       // Video prompt generation is a read-only scene-lock consumer. The
       // start-frame authoring path (or batch pre-pass) is responsible for
       // creating a missing state; this path must not introduce an extra paid
@@ -20890,6 +20984,7 @@ export const verticalDramaEpisodesRouter = router({
         .select({
           locale: verticalDramaSeries.locale,
           bible: verticalDramaSeries.bible,
+          genre: verticalDramaSeries.genre,
         })
         .from(verticalDramaSeries)
         .where(
@@ -21329,6 +21424,8 @@ export const verticalDramaEpisodesRouter = router({
             canonicalShotSummary:
               deepDraftShotForDialogue?.summary?.trim() || undefined,
             beatIsSilent: Boolean(deepDraftShotForDialogue?.silence_intent),
+            genre: typeof localeSeriesRow?.genre === "string" ? localeSeriesRow.genre : undefined,
+            supportingPresence: shotSupportingPresence,
             // Lip-sync discipline fix — same `characterKey -> name` map the
             // non-split path uses below (`shotVideoCharacterNameByKey`,
             // resolved once from `shotVideoCharacterIdentitySources` — no new
@@ -21440,6 +21537,8 @@ export const verticalDramaEpisodesRouter = router({
                   productCategory: tieInProductCategory,
                 }
               : undefined,
+            genre: typeof localeSeriesRow?.genre === "string" ? localeSeriesRow.genre : undefined,
+            supportingPresence: shotSupportingPresence,
           },
           // Retention hooks (W7) — omitted (all four) whenever the tenant flag
           // is off, reproducing the exact prior prompt byte-for-byte.
@@ -21575,6 +21674,10 @@ export const verticalDramaEpisodesRouter = router({
       const shotVideoPromptQc = await ensurePromptWithinLimit({
         kind: "video",
         prompt: result.prompt,
+        maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          provider: selectedVideoModel.provider,
+          configJson: selectedVideoModel.configJson,
+        }),
         // Dialogue-duplication fix (2026-07-15) — protect each individual
         // spoken line, not the `buildNativeDialogueVerbatimBlock` boilerplate
         // block. See the sub-shots path's identical fix (near
@@ -21592,6 +21695,25 @@ export const verticalDramaEpisodesRouter = router({
         label: `shot video prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
       result.prompt = shotVideoPromptQc.prompt;
+      const shotMotionAssurance = assureVideoPromptMotion({
+        prompt: result.prompt,
+        negativePrompt: result.negativeMotionPrompt,
+        family: result.family,
+        genre: typeof localeSeriesRow?.genre === "string" ? localeSeriesRow.genre : undefined,
+        establishedCharacterNames: (shotVideoCharacterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+        dialogueSpeakerNames: dialogueLines
+          .map(line => shotVideoCharacterNameByKey.get(line.characterKey ?? "") ?? line.characterKey)
+          .filter((value): value is string => Boolean(value)),
+        supportingPresence: shotSupportingPresence,
+        frameAnalysis: result.frameAnalysis,
+        motionProfile: result.motionProfile,
+      });
+      if (shotMotionAssurance.blocking.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `ยังสร้าง video prompt ไม่ได้: ช็อต ${input.shotNumber} ไม่ผ่านการตรวจ motion/identity (${shotMotionAssurance.blocking.map(f => f.message).join("; ")})`,
+        });
+      }
 
       // Persist-pin (planning/`polished-toasting-gadget.md`, anti-lock-in fix
       // hardened by `planning/vd-video-prompt-skill-first/plan.md` Phase 2a)
@@ -21651,6 +21773,8 @@ export const verticalDramaEpisodesRouter = router({
         family: result.family,
         modelId: selectedVideoModel.id,
         modelName: selectedVideoModel.name,
+        ...(typeof localeSeriesRow?.genre === "string" ? { genre: localeSeriesRow.genre } : {}),
+        ...(shotSupportingPresence.length ? { supportingPresence: shotSupportingPresence } : {}),
         generatedAt: new Date().toISOString(),
       };
       // Position-anchor compliance warning(s) (item C) — converted onto the
@@ -21668,6 +21792,16 @@ export const verticalDramaEpisodesRouter = router({
         targetClipNumber: input.shotNumber,
         repairable: true,
       }));
+      shotVideoPromptWarnings.push(
+        ...shotMotionAssurance.warnings.map((finding: VideoPromptAssuranceFinding) => ({
+          code: "vd_video_prompt_motion_assurance_degraded",
+          severity: "warning" as const,
+          message: finding.message,
+          targetShotNumber: input.shotNumber,
+          targetClipNumber: input.shotNumber,
+          repairable: true,
+        })),
+      );
       if (shotVideoPromptWarnings.length > 0) {
         console.warn(
           "[vd_video_prompt] position-anchor check degraded",

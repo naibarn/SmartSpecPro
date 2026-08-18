@@ -104,12 +104,31 @@ describe("videoPromptFamilySupportsNegativePrompt", () => {
 });
 
 describe("VIDEO_PROMPT_MODEL_FAMILIES / VIDEO_PROMPT_MODEL_FAMILY_LABELS", () => {
-  it("carries exactly the 4 families, each with a UI label", () => {
-    expect(VIDEO_PROMPT_MODEL_FAMILIES).toEqual(["grok", "veo", "seedance", "other"]);
-    const families: VideoPromptModelFamily[] = ["grok", "veo", "seedance", "other"];
+  it("carries every supported family, each with a UI label", () => {
+    expect(VIDEO_PROMPT_MODEL_FAMILIES).toEqual([
+      "grok",
+      "veo",
+      "seedance",
+      "minimax_h3",
+      "flux3",
+      "other",
+    ]);
+    const families: VideoPromptModelFamily[] = [
+      "grok",
+      "veo",
+      "seedance",
+      "minimax_h3",
+      "flux3",
+      "other",
+    ];
     for (const family of families) {
       expect(typeof VIDEO_PROMPT_MODEL_FAMILY_LABELS[family]).toBe("string");
       expect(VIDEO_PROMPT_MODEL_FAMILY_LABELS[family].length).toBeGreaterThan(0);
     }
+  });
+
+  it("recognizes MiniMax H3 and Flux3 video model aliases", () => {
+    expect(resolveVideoPromptTargetFamily({ modelId: "minimax-h3-video", name: "MiniMax H3" })).toBe("minimax_h3");
+    expect(resolveVideoPromptTargetFamily({ modelId: "fal-ai/flux-3-video", name: "Flux3" })).toBe("flux3");
   });
 });

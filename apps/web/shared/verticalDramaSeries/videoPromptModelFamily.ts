@@ -1,3 +1,5 @@
+import type { VerticalDramaSupportingPresence } from "./supportingPresence";
+
 /**
  * Video-prompt model-family taxonomy for Vertical Drama shot video prompts.
  *
@@ -15,12 +17,20 @@
  * different consumers with different taxonomies (neither knows `grok`).
  */
 
-export type VideoPromptModelFamily = "grok" | "veo" | "seedance" | "other";
+export type VideoPromptModelFamily =
+  | "grok"
+  | "veo"
+  | "seedance"
+  | "minimax_h3"
+  | "flux3"
+  | "other";
 
 export const VIDEO_PROMPT_MODEL_FAMILIES: readonly VideoPromptModelFamily[] = [
   "grok",
   "veo",
   "seedance",
+  "minimax_h3",
+  "flux3",
   "other",
 ] as const;
 
@@ -29,6 +39,8 @@ export const VIDEO_PROMPT_MODEL_FAMILY_LABELS: Record<VideoPromptModelFamily, st
   grok: "Grok",
   veo: "Veo",
   seedance: "Seedance",
+  minimax_h3: "MiniMax H3",
+  flux3: "Flux3",
   other: "Other",
 };
 
@@ -42,6 +54,10 @@ export interface VideoPromptModelTarget {
   family: VideoPromptModelFamily;
   modelId: string;
   modelName?: string;
+  /** Genre policy used by deterministic motion/physics assurance. */
+  genre?: string;
+  /** Explicit shot-local generic people allowed by the assurance contract. */
+  supportingPresence?: VerticalDramaSupportingPresence[];
   /** ISO timestamp of generation. */
   generatedAt: string;
 }
@@ -59,6 +75,8 @@ export interface VideoPromptModelFamilySource {
 const GROK_TOKEN = /(^|[^a-z])grok([^a-z]|$)/i;
 const VEO_TOKEN = /(^|[^a-z])veo([^a-z]|$)/i;
 const SEEDANCE_TOKEN = /seedance/i;
+const MINIMAX_H3_TOKEN = /(?:minimax|mini[ -]?max)[^\n]{0,24}\bh3\b|\bh3\b[^\n]{0,24}(?:minimax|mini[ -]?max)/i;
+const FLUX3_TOKEN = /\bflux[ -]?3(?:\b|[-_.])/i;
 /** Seedance ships via ByteDance's BytePlus / ModelArk platforms. */
 const SEEDANCE_PROVIDER_TOKEN = /byteplus|modelark/i;
 
@@ -92,6 +110,8 @@ export function resolveVideoPromptTargetFamily(
   if (SEEDANCE_TOKEN.test(idAndName) || SEEDANCE_PROVIDER_TOKEN.test(provider)) {
     return "seedance";
   }
+  if (MINIMAX_H3_TOKEN.test(haystack)) return "minimax_h3";
+  if (FLUX3_TOKEN.test(haystack)) return "flux3";
   return "other";
 }
 

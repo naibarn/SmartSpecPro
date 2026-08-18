@@ -108,10 +108,11 @@ import {
   // Sound-direction ownership fix (recorded gap 4, 2026-07-22) removed this
   // module's OWN generation-time SFX/ambient concat (the skill now writes
   // its closing sound clause directly into `prompt`, budget-guarded by the
-  // skill itself), so this is the only remaining use of the constant here.
+  // skill itself), so this remains the legacy/default fallback here.
   VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
 import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
+import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import { VD_PRODUCT_LOCK_VIDEO_INSTRUCTION } from "./verticalDramaProductTieIn";
 import { buildThaiAdComplianceInstruction } from "@shared/verticalDramaSeries/thaiAdCompliance";
 import {
@@ -140,6 +141,12 @@ import {
   type VdMotionProfile,
   type VdMotionContractStatus,
 } from "@shared/verticalDramaSeries/motionProfile";
+import {
+  assureVideoPromptMotion,
+  buildVideoPromptMotionAssuranceDirective,
+  type VideoPromptAssuranceFinding,
+} from "@shared/verticalDramaSeries/videoPromptMotionAssurance";
+import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -675,6 +682,8 @@ export interface GenerateVideoMotionPromptPackParams {
   seriesId: number;
   episodeId: number;
   episodeTitle: string;
+  /** Series genre used to select the motion/physics policy. */
+  genre?: string;
   durationSeconds: number;
   durationProfileId: string;
   selectedVideoModelId?: string;
@@ -744,6 +753,7 @@ export interface GenerateVideoMotionPromptPackParams {
       speakerName?: string;
       characterKey?: string;
     }>;
+    supportingPresence?: VerticalDramaSupportingPresence[];
     /**
      * The shot's spoken line (from the storyboard's `dialogue_excerpt` /
      * `subtitle_text`), when the shot has one. Without this, the motion-
@@ -1531,6 +1541,9 @@ export function buildTargetVideoModelFactBlock(params: {
   frameAnalysisRequested: boolean;
   frameObservabilityRequested?: boolean;
   motionContractsEnabled?: boolean;
+  genre?: unknown;
+  establishedCharacterCount?: number;
+  supportingPresence?: readonly VerticalDramaSupportingPresence[];
 }): string {
   const modelLabel = params.modelName
     ? `${params.modelName} (${params.modelId})`
@@ -1551,6 +1564,12 @@ export function buildTargetVideoModelFactBlock(params: {
       ? `- motion_profile: REQUIRED — return the motion_profile output field per the skill's "${VD_MOTION_PROFILE_SKILL_SECTION_NAME}" section, grounding start_facing in the ATTACHED IMAGE and end_facing in the shot beat.`
       : null,
     `Apply the skill's "MODEL-FAMILY SHAPING" section for this family.`,
+    buildVideoPromptMotionAssuranceDirective({
+      family: params.family,
+      genre: params.genre,
+      establishedCharacterCount: params.establishedCharacterCount,
+      supportingPresence: params.supportingPresence,
+    }),
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n");
@@ -2399,6 +2418,10 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
       /** Additive (2026-07-06 Thai ad-compliance upgrade) — drives the mandatory disclosure line, see `buildThaiAdComplianceInstruction`. */
       productCategory?: string;
     };
+    /** Series/shot genre used only to select the physics policy. */
+    genre?: string;
+    /** Explicit generic people allowed by the shot; never identity-locked. */
+    supportingPresence?: VerticalDramaSupportingPresence[];
   };
   selectedVideoModelId: string;
   /**
@@ -3073,6 +3096,9 @@ export async function generateVerticalDramaShotVideoPrompt(
     frameAnalysisRequested,
     frameObservabilityRequested,
     motionContractsEnabled,
+    genre: params.shotContext.genre,
+    establishedCharacterCount: params.characterReferenceImages?.length,
+    supportingPresence: params.shotContext.supportingPresence,
   });
 
   const userPromptText = buildShotVideoPromptUserPrompt(
@@ -3399,6 +3425,33 @@ export async function generateVerticalDramaShotVideoPrompt(
     characterDescriptionOverrides,
     characterNameByKey,
   );
+  const frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
+  const motionResolution = resolveShotVideoPromptMotionProfile(
+    data.motion_profile,
+    motionContractsEnabled,
+  );
+  const assurance = assureVideoPromptMotion({
+    prompt: finalPrompt,
+    negativePrompt: data.negative_motion_prompt || undefined,
+    family,
+    genre: params.shotContext.genre,
+    establishedCharacterNames: (params.characterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+    dialogueSpeakerNames: requiredDialogue
+      .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
+      .filter((v): v is string => Boolean(v)),
+    supportingPresence: params.shotContext.supportingPresence,
+    frameAnalysis,
+    motionProfile: motionResolution.motionProfile,
+  });
+  if (assurance.blocking.length > 0) {
+    throw new VdSchemaValidationError(
+      `Shot ${params.shotNumber}: video prompt failed motion/identity assurance before provider submission`,
+      assurance.blocking.map(f => `${f.code}: ${f.message} ${f.repair}`),
+    );
+  }
+  const assuranceWarnings = assurance.warnings.map(
+    (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
+  );
   // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — this
   // function used to fold ` SFX cues: <audioDirection>` onto the returned
   // `prompt` here (the "SFX budget-aware concat", item E of `planning/vd-
@@ -3427,9 +3480,11 @@ export async function generateVerticalDramaShotVideoPrompt(
     requiredDisclosure: data.requiredDisclosure || undefined,
     audioDirection: resolvedAudioDirection,
     family,
-    frameAnalysis: normalizeFrameAnalysis(data.frame_analysis),
-    ...resolveShotVideoPromptMotionProfile(data.motion_profile, motionContractsEnabled),
-    warnings: warnings.length > 0 ? warnings : undefined,
+    frameAnalysis,
+    ...motionResolution,
+    warnings: warnings.concat(assuranceWarnings).length > 0
+      ? warnings.concat(assuranceWarnings)
+      : undefined,
   };
 }
 
@@ -3855,6 +3910,9 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     frameAnalysisRequested,
     frameObservabilityRequested,
     motionContractsEnabled,
+    genre: params.shotContext.genre,
+    establishedCharacterCount: params.characterReferenceImages?.length,
+    supportingPresence: params.shotContext.supportingPresence,
   });
 
   const userPromptText = buildSpeakerSwitchUserPrompt(
@@ -4166,6 +4224,33 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     characterDescriptionOverrides,
     characterNameByKey,
   );
+  const frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
+  const motionResolution = resolveShotVideoPromptMotionProfile(
+    data.motion_profile,
+    motionContractsEnabled,
+  );
+  const assurance = assureVideoPromptMotion({
+    prompt: finalPrompt,
+    negativePrompt: data.negative_motion_prompt || undefined,
+    family,
+    genre: params.shotContext.genre,
+    establishedCharacterNames: (params.characterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+    dialogueSpeakerNames: dialogue
+      .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
+      .filter((v): v is string => Boolean(v)),
+    supportingPresence: params.shotContext.supportingPresence,
+    frameAnalysis,
+    motionProfile: motionResolution.motionProfile,
+  });
+  if (assurance.blocking.length > 0) {
+    throw new VdSchemaValidationError(
+      `Shot ${params.shotNumber}: speaker-switch video prompt failed motion/identity assurance before provider submission`,
+      assurance.blocking.map(f => `${f.code}: ${f.message} ${f.repair}`),
+    );
+  }
+  const assuranceWarnings = assurance.warnings.map(
+    (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
+  );
   // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — mirrors
   // `generateVerticalDramaShotVideoPrompt`'s identical fix above: this
   // function no longer folds an SFX tail onto `prompt` (the skill now
@@ -4187,9 +4272,11 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     requiredDisclosure: data.requiredDisclosure || undefined,
     audioDirection: resolvedAudioDirection,
     family,
-    frameAnalysis: normalizeFrameAnalysis(data.frame_analysis),
-    ...resolveShotVideoPromptMotionProfile(data.motion_profile, motionContractsEnabled),
-    warnings: warnings.length > 0 ? warnings : undefined,
+    frameAnalysis,
+    ...motionResolution,
+    warnings: warnings.concat(assuranceWarnings).length > 0
+      ? warnings.concat(assuranceWarnings)
+      : undefined,
   };
 }
 
@@ -4350,6 +4437,7 @@ function buildCandidateFactSheet(
   barrierMultiView?: VerticalDramaBarrierMultiView,
   verifiedCastPositions?: readonly VerticalDramaVerifiedCastPosition[],
   characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides,
+  promptMaxChars: number = VD_VIDEO_PROMPT_MAX,
 ): VdVideoPromptCandidateFactSheet {
   const chars = data.prompt.length;
   const musicHaystack = `${data.prompt} ${data.audioDirection ?? ""}`;
@@ -4384,7 +4472,7 @@ function buildCandidateFactSheet(
     }));
   return {
     chars,
-    overCap: chars > VD_VIDEO_PROMPT_MAX,
+    overCap: chars > promptMaxChars,
     musicTermHits,
     veoSubtitleGuardPresent: family === "veo" ? VEO_SUBTITLE_GUARD_REGEX.test(data.prompt) : null,
     perLineVerbatimCoverage: requiredDialogue.map(line => ({
@@ -4688,6 +4776,10 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     configJson: params.selectedVideoModel.configJson,
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
+  const videoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel({
+    provider: params.selectedVideoModel.provider,
+    configJson: params.selectedVideoModel.configJson,
+  });
   const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 1;
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
@@ -4701,6 +4793,9 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     frameAnalysisRequested,
     frameObservabilityRequested,
     motionContractsEnabled,
+    genre: params.shotContext.genre,
+    establishedCharacterCount: params.characterReferenceImages?.length,
+    supportingPresence: params.shotContext.supportingPresence,
   });
 
   const factSheetA = buildCandidateFactSheet(
@@ -4711,6 +4806,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
     params.characterDescriptionOverrides,
+    videoPromptMaxChars,
   );
   const factSheetB = buildCandidateFactSheet(
     { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
@@ -4720,6 +4816,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
     params.characterDescriptionOverrides,
+    videoPromptMaxChars,
   );
 
   const judgeUserPromptText = buildJudgeUserPrompt({
@@ -4841,6 +4938,7 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
     params.characterDescriptionOverrides,
+    videoPromptMaxChars,
   );
 
   const repairedImprovesContract =
@@ -4945,6 +5043,10 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     configJson: params.selectedVideoModel.configJson,
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
+  const videoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel({
+    provider: params.selectedVideoModel.provider,
+    configJson: params.selectedVideoModel.configJson,
+  });
   const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 1;
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
@@ -4958,6 +5060,9 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     frameAnalysisRequested,
     frameObservabilityRequested,
     motionContractsEnabled,
+    genre: params.shotContext.genre,
+    establishedCharacterCount: params.characterReferenceImages?.length,
+    supportingPresence: params.shotContext.supportingPresence,
   });
 
   const factSheetA = buildCandidateFactSheet(
@@ -4968,6 +5073,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
     params.characterDescriptionOverrides,
+    videoPromptMaxChars,
   );
   const factSheetB = buildCandidateFactSheet(
     { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis, motionProfile: candidateB.motionProfile },
@@ -4977,6 +5083,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
     params.characterDescriptionOverrides,
+    videoPromptMaxChars,
   );
 
   const judgeUserPromptText = buildJudgeUserPrompt({
@@ -5097,6 +5204,7 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
     params.shotContext.barrierMultiView,
     params.verifiedCastPositions,
     params.characterDescriptionOverrides,
+    videoPromptMaxChars,
   );
 
   const repairedImprovesContract =
