@@ -2,9 +2,15 @@
 
 Version: 0.1
 Date: 2026-07-02
-Status: Proposed
+Status: Superseded — implementation governed by Feature 151
 Depends-on: 088-agentops-tracing-evaluation-and-release-gates, 099-context-engineering-ready-chat-and-team, 100-team-orchestration-audit-trail-and-completion, 101-openai-agents-sdk-chat-team-orchestration, 105-work-os-team-orchestrator-unified-automation, 106-openai-agents-python-native-skill-system
 Audience: Chat UX, Hybrid Orchestration, Agent Runtime, Python Backend, Skill Runtime, Agency Migration, Product, QA, Observability
+
+> **Superseded decision (2026-08-18):** Feature 151 is now the governing
+> specification for the Agents SDK Orchestra and Agency Swarm decommission.
+> This document remains as the Hybrid Flow implementation history. Any line
+> that describes Agency Swarm as a future fallback must be read as migration
+> compatibility only and must not permit new Agency execution.
 
 ---
 
@@ -20,7 +26,8 @@ The target outcome:
 - Direct skill commands such as `create image:` and `create video:` never route to Hybrid Flow.
 - Hybrid Flow runs real workflow, swarm, validation, approval, and commit stages.
 - OpenAI Agents SDK is the primary runtime boundary through `python-backend/app/services/openai_agents_adapter.py`.
-- `agency-swarm` and legacy agency execution remain temporary fallback paths only.
+- Agency Swarm is not a new-runtime fallback. Existing records may be exported
+  or rendered read-only during migration, but all new work uses the Orchestra.
 - Hybrid Flow exposes durable outputs, traceability, approval checkpoints, stage artifacts, cost metadata, and replay evidence.
 
 ---
@@ -94,8 +101,9 @@ Feature 101 explicitly defines OpenAI Agents SDK as the shared runtime boundary 
 
 ## 4. Non-Goals
 
-- Do not remove all Agency UI in this feature.
-- Do not remove `agency-swarm` until parity and usage migration are proven.
+- Agency UI/dependency removal is governed by Feature 151's decommission gate;
+  this feature may retain only a read-only historical redirect during migration.
+- Do not create new Agency Swarm runs or treat it as an automatic fallback.
 - Do not let frontend code call Python or OpenAI Agents SDK directly.
 - Do not bypass SmartSpecPro model gateway, billing, or provider governance.
 - Do not route direct media generation commands into Hybrid Flow.
@@ -109,7 +117,8 @@ Feature 101 explicitly defines OpenAI Agents SDK as the shared runtime boundary 
 2. Python backend remains the only place that imports SDK packages.
 3. Hybrid Flow must call the existing agent runtime adapter boundary, not import or instantiate SDK objects in Node.
 4. Chat must not depend on Agency workflow to run Hybrid Flow.
-5. `agency-swarm` must be treated as legacy or fallback, not the new product-grade Hybrid runtime.
+5. `agency-swarm` is migration-only and read-only; it must not be selected for
+   new Hybrid or skill execution.
 6. Direct skill routing wins over Hybrid Flow.
 7. Hybrid Flow requires structured stage outputs, not only prose.
 8. Human approval must use durable checkpoints and must be resumable.
@@ -187,8 +196,9 @@ Implementation requirements:
 - use `apps/web/server/services/agentRuntime/client.ts` as the Node runtime boundary
 - extend `python-backend/app/services/openai_agents_adapter.py` for Hybrid stage execution
 - keep all model/provider routing under SmartSpecPro gateway policy
-- keep `agency_swarm_adapter.py` as legacy Agency-only compatibility
-- do not expand `agency-swarm` into Chat, Team, shared skill runtime, or new Hybrid execution
+- move `agency_swarm_adapter.py` behind a temporary read-only migration worker;
+  do not expand `agency-swarm` into Chat, Team, shared skill runtime, or new
+  Hybrid execution
 
 If Feature 101 contract fields are insufficient, Feature 130 should version the shared runtime contract instead of adding an ad hoc Hybrid payload.
 
@@ -204,7 +214,7 @@ The first implementation should touch the smallest set of known boundaries:
 | Hybrid coordinator | `apps/web/server/services/hybridOrchestrationRuntime.ts` | replace simulated stage completion with real stage execution orchestration |
 | Agent runtime client | `apps/web/server/services/agentRuntime/client.ts` | reuse `run`, `runStreamed`, `resume`, `cancel`, and `health` for Hybrid stages |
 | Python SDK adapter | `python-backend/app/services/openai_agents_adapter.py` | add Hybrid surface, stage metadata, role graph, and structured result support |
-| Legacy Agency adapter | `python-backend/app/services/agency_swarm_adapter.py` | keep compatibility only; do not call it for new Chat-origin Hybrid |
+| Agency migration worker | `python-backend/app/services/agency_migration_export.py` | export/reconcile old records only; never execute new work |
 | Skill routing | `apps/web/shared/chatSkillRouting.ts` and Chat local routing tests | keep direct image/video/skill commands out of Hybrid |
 
 Any implementation plan must call out additional files before editing them.
@@ -798,13 +808,16 @@ Mixed deploy tests are required before canary because Chat-origin Hybrid spans U
   - save output to library
 - Gate destructive or publish actions behind approval.
 
-### 11.5 Phase 5: Agency Legacy Migration
+### 11.5 Phase 5: Agency Legacy Migration (superseded by Feature 151)
 
-- Keep `agency_swarm_adapter.py` for legacy agency-only routes.
-- Add parity tests against SDK Hybrid runner.
-- Migrate active Agency Hybrid entry points to neutral Hybrid runtime.
-- Mark `agency-swarm` dependency deprecated.
-- Remove dependency only after no production route needs it.
+- Stop new Agency runs and mark existing runs `agency_deprecated` or
+  `migration_required` with explicit credit reconciliation.
+- Export and validate historical definitions, graphs, artifacts, and audit
+  events through a read-only migration worker.
+- Migrate active entry points to the neutral Agents Orchestra and map every
+  unsupported graph explicitly; do not silently substitute a different plan.
+- Remove `agency-swarm`, its adapter/routes/tasks, and Agency-only package
+  destinations after the Feature 151 zero-usage and retention gates pass.
 
 ---
 
@@ -1130,7 +1143,10 @@ The implementation must define user-visible and operator-visible behavior for:
 | user cancels execution | stop future stages; do not cancel already committed side effects |
 | legacy Agency route opened | redirect/wrap neutral runtime or show migration-safe read-only state |
 
-Automatic fallback to legacy Agency execution is allowed only for explicit Agency-origin legacy flows and only behind `hybridFlow.agencyLegacyFallbackEnabled`.
+Automatic fallback to legacy Agency execution is prohibited. An old Agency
+link may open a read-only historical view or a migration-required result; a
+failed Orchestra run must block, retry within its contract, or replay a prior
+verified artifact.
 
 ### 16.6 Release Gates
 
