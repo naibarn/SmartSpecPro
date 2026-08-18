@@ -35,6 +35,10 @@ source, focused tests, and dependency/runtime probes.
 6. The desktop runtime selector could still choose the retired Agency Swarm
    enum for new complex/connector runs. New selection now routes to the cloud
    Orchestra; the legacy enum remains readable only for historical records.
+7. Section 06 required a repeatable forbidden-reference audit, but no CI
+   check existed. `scripts/ci/forbid-agency-swarm-active-references.sh` now
+   verifies the dependency profile and all fail-closed execution boundaries
+   while allowing historical compatibility references.
 
 ## Existing protections confirmed
 
@@ -47,15 +51,16 @@ source, focused tests, and dependency/runtime probes.
   preset transforms, immediately before credit reservation/provider submit.
 - Agency Swarm execution is fail-closed at the bridge/API boundary and is no
   longer selected for new desktop runs; historical data/types remain readable
-  and recoverable for migration.
+  and recoverable for migration. The CI audit script passes.
 
 ## Focused proof
 
-- Node prompt/assurance/budget/client suites: 205 tests passed.
+- Node prompt/assurance/budget/client/desktop-runtime suites: 211 tests passed.
 - Router/reference/draft/desktop-runtime suites: 61 tests passed.
 - Python API/assurance/contracts/adapter suites: 57 tests passed.
 - `pip check`: clean with `openai-agents==0.21.1` in the active environment.
 - `git diff --check`: clean for the touched patch.
+- Agency active-reference audit: PASS.
 
 ## Release-only checks (not falsely claimed as local proof)
 
