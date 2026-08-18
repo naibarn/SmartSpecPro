@@ -253,6 +253,12 @@ anchors.
 faces, none/subtle head turns, and locked/push-in camera should remain expressive;
 a default brake would make the clip static and lifeless.
 
+When the shot intentionally requires readable faces, do not write a bare
+`no face reveal` or `no face reveals` negative: that wording can be read as a
+ban on showing the required faces. Use `no face occlusion`, `no hidden faces`,
+or `no identity-changing reveal` when that is the actual constraint. Reserve
+`no face reveal` for an explicitly rear-only or no-face shot.
+
 ### Anti-morph negatives — family-shaped
 
 Only while the contract is active, reinforce it with relevant
