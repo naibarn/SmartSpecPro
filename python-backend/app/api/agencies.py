@@ -317,30 +317,18 @@ async def with_retry(coro_factory, max_retries=MAX_RETRIES):
 async def require_agency_feature(
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Dependency that raises 404 if AGENCY_SWARM_ENABLED is false.
+    """Fail closed for every legacy Agency endpoint.
 
-    Checks env config first (fast path), then falls back to system_settings table.
+    Historical rows remain available to migration tooling, but no feature flag
+    or environment override may reactivate the retired execution surface.
     """
-    if settings.AGENCY_SWARM_ENABLED:
-        return
-
-    # Check system_settings table as override
-    try:
-        result = await db.execute(
-            text("""
-                SELECT value FROM system_settings
-                WHERE category = 'feature_flags'
-                  AND key = 'AGENCY_SWARM_ENABLED'
-                LIMIT 1
-            """)
-        )
-        row = result.first()
-        if row and str(row.value).lower() in ("true", "1", "yes"):
-            return
-    except Exception:
-        pass  # DB error -- fall through to disabled
-
-    raise HTTPException(status_code=404, detail="Agency feature is disabled")
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "agency_swarm_retired",
+            "message": "Agency Swarm has been retired; use the OpenAI Agents Orchestra.",
+        },
+    )
 
 
 # ── Helpers ────────────────────────────────────────────────────

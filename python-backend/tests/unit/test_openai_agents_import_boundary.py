@@ -15,8 +15,8 @@ def test_openai_agents_is_exactly_pinned():
     requirements_path = PYTHON_BACKEND_ROOT / "requirements.txt"
     requirements_text = requirements_path.read_text(encoding="utf-8")
 
-    assert get_declared_openai_agents_version(requirements_path) == "0.17.4"
-    assert "openai-agents==0.17.4" in requirements_text
+    assert get_declared_openai_agents_version(requirements_path) == "0.21.1"
+    assert "openai-agents==0.21.1" in requirements_text
     assert "openai-agents>=" not in requirements_text
 
 

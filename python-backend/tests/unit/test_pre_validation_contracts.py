@@ -151,17 +151,14 @@ class TestAnthropicCompatibility:
 
 @pytest.mark.agency
 class TestAgencySwarmInstallation:
-    """Verify agency-swarm is installed and importable."""
+    """Verify the retired package cannot be reintroduced by requirements."""
 
-    def test_agency_swarm_importable(self):
-        """agency-swarm must be importable after installation."""
-        import agency_swarm
-        assert agency_swarm is not None
+    def test_agency_swarm_not_declared(self):
+        """The production manifest must not install the retired package."""
+        from pathlib import Path
 
-    def test_agency_swarm_version(self):
-        """agency-swarm should be version 1.8.0."""
-        import agency_swarm
-        assert hasattr(agency_swarm, "__version__") or True  # version attr may vary
+        requirements = Path(__file__).resolve().parents[2] / "requirements.txt"
+        assert "agency-swarm" not in requirements.read_text(encoding="utf-8")
 
 
 @pytest.mark.agency

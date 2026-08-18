@@ -68,7 +68,6 @@ from app.api import (
     meta_comments,  # Meta internal comment moderation API
     meta_webhooks,  # Meta webhook ingestion
     social_publish,  # Provider-aware social publishing API
-    agency_review,  # On-demand agency review analysis
     internal_mcp,  # Internal MCP tools API (Google Drive)
     internal_embeddings,  # Internal embeddings API for chat memory vectors
      internal_gdrive,  # Internal Google Drive sync API
@@ -80,9 +79,6 @@ from app.api import (
     internal_sandbox,  # Internal sandbox dispatch/cancel API
     internal_guardrails,  # Internal guardrails test API
     internal_openai_agents_runtime,  # Internal OpenAI Agents runtime API
-    agencies,  # Agency-Swarm multi-agent endpoints
-    agency_creator,  # AI Agency Creator task endpoints
-    agency_feedback,  # Agency feedback analysis (internal)
     scheduled_jobs,  # Scheduled job monitoring (internal)
     stt,  # Internal STT/TTS voice endpoints
     browser,  # Browser automation API
@@ -431,7 +427,6 @@ app.include_router(meta_webhooks.router, tags=["Meta Webhooks"])
 app.include_router(meta_posts.router, tags=["Meta Posts"])
 app.include_router(meta_comments.router, tags=["Meta Comments"])
 app.include_router(social_publish.router, tags=["Social Publishing"])
-app.include_router(agency_review.router, tags=["Agency Review"])
 app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Prompt Enhancement"])
 app.include_router(skill_customization.router, prefix="/api/v1", tags=["Skill Customization"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
@@ -492,9 +487,6 @@ app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
 app.include_router(internal_guardrails.router, tags=["Internal Guardrails"])
 app.include_router(internal_openai_agents_runtime.router, tags=["Internal OpenAI Agents Runtime"])
 app.include_router(stt.router, tags=["Internal STT/TTS"])
-app.include_router(agencies.router, tags=["Agencies"])
-app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])
-app.include_router(agency_feedback.router, tags=["Agency Feedback"])
 app.include_router(scheduled_jobs.router, tags=["Scheduled Jobs"])
 app.include_router(browser.router, tags=["Browser Automation"])
 app.include_router(automation_copilot.router, prefix="/api/v1/automation-copilot", tags=["Automation Copilot"])

@@ -6,6 +6,10 @@ import asyncio
 from contextlib import contextmanager
 
 import pytest
+
+pytestmark = pytest.mark.skip(
+    reason="The legacy agency_run workflow node is retired; covered by the Orchestra retirement contract."
+)
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData

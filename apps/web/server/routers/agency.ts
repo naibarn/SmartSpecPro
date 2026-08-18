@@ -53,7 +53,7 @@ import {
   ensureBuiltInAgencyExperienceTemplates,
   resolveAgencyRetrievalScope,
 } from "../services/agencyExperienceTemplateService";
-import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
+import { getTenantFeatureFlag } from "../services/featureFlags";
 import {
   expireRunPreviewArtifacts,
   recordAgencyPreviewMetric,
@@ -92,20 +92,14 @@ function resolveTenantId(ctx: { tenantId?: string | null; user?: { currentTenant
 
 // Feature flag guard (tenant-scoped)
 async function assertAgencyEnabled(tenantId: string): Promise<void> {
-  // Always enable in non-production environments for local development
-  // OR if explicitly enabled via environment variable
-  if (process.env.NODE_ENV !== "production" || process.env.AGENCY_SWARM_ENABLED === "true") {
-    return;
-  }
-  // Skip tenant flag check when no tenant context (admin/system users)
-  if (!tenantId || tenantId.length === 0) {
-    return;
-  }
-
-  const enabled = await getTenantFeatureFlag("AGENCY_SWARM_ENABLED", tenantId);
-  if (!enabled) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
-  }
+  // Permanent retirement boundary. Historical CRUD/read procedures remain
+  // mounted for migration visibility, but no flag or environment override may
+  // reactivate Agency Swarm execution or mutation workflows.
+  void tenantId;
+  throw new TRPCError({
+    code: "NOT_FOUND",
+    message: "Agency Swarm has been retired; use the Agent Orchestra.",
+  });
 }
 
 async function getAgencyHybridFlags(tenantId: string): Promise<{
@@ -3049,8 +3043,12 @@ export const agencyRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await setTenantFeatureFlag("AGENCY_SWARM_ENABLED", input.tenantId, input.enabled);
-      return { success: true, tenantId: input.tenantId, enabled: input.enabled };
+      void ctx;
+      void input;
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Agency Swarm has been retired; tenant execution flags cannot be enabled.",
+      });
     }),
 
   adminKillRun: adminProcedure

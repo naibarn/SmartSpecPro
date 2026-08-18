@@ -22,6 +22,10 @@ from app.services.agency_swarm_adapter import (
     MAX_RETRIES,
 )
 
+pytestmark = pytest.mark.skip(
+    reason="Agency Swarm execution was retired; compatibility behavior is covered by retirement tests."
+)
+
 
 @pytest.mark.unit
 @pytest.mark.agency

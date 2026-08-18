@@ -2160,41 +2160,9 @@ async def list_agencies_for_workflow(
     Returns draft and published agencies (excludes archived).
     Format: {value: agency_id, label: agency_name} for the select input.
     """
-    from sqlalchemy import text as sa_text
-    from app.core.config import settings as app_settings
-
-    if not getattr(app_settings, "AGENCY_SWARM_ENABLED", False):
-        return {"agencies": []}
-
-    tenant_id = getattr(current_user, "tenantId", None) or getattr(
-        current_user, "tenant_id", None
-    )
-
-    # Enforce tenant isolation: return empty if no tenant context
-    if not tenant_id:
-        return {"agencies": []}
-
-    query = sa_text("""
-        SELECT id, name, description, status
-        FROM agencies
-        WHERE status IN ('draft', 'published')
-          AND "tenantId" = :tenant_id
-        ORDER BY name ASC
-    """)
-    result = await db.execute(query, {"tenant_id": tenant_id})
-    rows = result.mappings().all()
-
-    return {
-        "agencies": [
-            {
-                "value": str(row["id"]),
-                "label": row["name"],
-                "description": row.get("description", ""),
-                "status": row.get("status", "draft"),
-            }
-            for row in rows
-        ]
-    }
+    # Agency Swarm workflow nodes are permanently retired. Keep the endpoint
+    # shape for old clients, but never expose historical agencies for selection.
+    return {"agencies": []}
 
 
 # ── Internal: Webhook-triggered workflow execution ────────────────────────────

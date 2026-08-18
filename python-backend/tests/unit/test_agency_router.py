@@ -11,10 +11,15 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-pytestmark = [pytest.mark.unit, pytest.mark.agency]
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.agency,
+    pytest.mark.skip(reason="Legacy Agency HTTP router is no longer mounted; use Agent Orchestra runtime tests."),
+]
 
 
 # ── Helpers ─────────────────────────────────────────────────────

@@ -172,6 +172,14 @@ export function createPublicAgencyRouter(): Router {
     "/:agencyId/invoke",
     requireScopes("agencies:invoke"),
     async (req, res) => {
+      sendApiError(
+        res,
+        410,
+        "agency_swarm_retired",
+        "Agency Swarm has been retired; use the Agent Orchestra.",
+      );
+      return;
+
       try {
         const { agencyId } = req.params;
 

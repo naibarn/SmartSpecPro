@@ -39,10 +39,6 @@ from app.tasks.sandbox_maintenance_tasks import (
     cleanup_orphan_sandboxes,
     detect_stuck_sandbox_jobs,
 )
-from app.tasks.agency_creator_task import (
-    create_agency_discover_task,
-    create_agency_design_task,
-)
 from app.tasks.automation_copilot_task import (
     automation_analyze_task,
     automation_execute_task,
@@ -87,8 +83,6 @@ __all__ = [
     "cleanup_expired_sandbox_jobs",
     "cleanup_orphan_sandboxes",
     "detect_stuck_sandbox_jobs",
-    "create_agency_discover_task",
-    "create_agency_design_task",
     "automation_analyze_task",
     "automation_execute_task",
     "browser_pool_health_check",

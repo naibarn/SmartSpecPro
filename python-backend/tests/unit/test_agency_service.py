@@ -1,10 +1,15 @@
 """Tests for AgencyService -- lifecycle management."""
 import json
 import pytest
+
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
 
-pytestmark = [pytest.mark.unit, pytest.mark.agency]
+pytestmark = [
+    pytest.mark.unit,
+    pytest.mark.agency,
+    pytest.mark.skip(reason="Legacy Agency service execution is retired and fails closed at the adapter boundary."),
+]
 
 
 def _make_mock_db():

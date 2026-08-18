@@ -19,8 +19,8 @@ langchain-community>=0.3.0
 langchain-openai>=0.2.0
 
 # LLM Providers
-openai>=2.36.0,<3
-openai-agents==0.17.4
+openai>=3,<4
+openai-agents==0.21.1
 anthropic>=0.40.0
 google-generativeai==0.3.2
 groq==0.4.1
@@ -183,13 +183,6 @@ python-pptx>=1.0.2
 
 # Circuit breaker for sandbox client resilience
 pybreaker>=1.0.0
-
-# ==========================================
-# Section 027: Agency-Swarm Integration
-# ==========================================
-
-# Multi-agent orchestration framework
-agency-swarm==1.8.0
 
 # Section 032: Browser Automation Security
 bleach>=6.0.0,<7.0.0

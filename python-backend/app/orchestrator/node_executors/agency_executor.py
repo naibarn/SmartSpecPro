@@ -9,7 +9,6 @@ from typing import Any
 
 import structlog
 
-from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData
 from app.services.agency_service import AgencyService, RunContext
@@ -42,13 +41,11 @@ class AgencyExecutor:
         data: NodeExecutionData,
         context: ExecutionContext,
     ) -> dict[str, Any]:
-        """Execute an agency run within a workflow."""
-        # Feature flag check
-        if not getattr(settings, "AGENCY_SWARM_ENABLED", False):
-            return {
-                "outputs": {"result": "", "status": "error"},
-                "error": "Agency workflow node is not enabled",
-            }
+        """Reject the retired Agency workflow node before any DB/credit work."""
+        return {
+            "outputs": {"result": "", "status": "retired"},
+            "error": "Agency Swarm workflow nodes are retired; use the OpenAI Agents Orchestra",
+        }
 
         inputs = data.inputs or {}
         config = data.config or {}
