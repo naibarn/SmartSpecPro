@@ -83,7 +83,9 @@ The repo already has:
 - `python-backend/requirements.txt` with `openai-agents==0.17.4`
 - `python-backend/requirements.txt` with `agency-swarm==1.8.0`
 
-Feature 101 explicitly defines OpenAI Agents SDK as the shared runtime boundary and treats `agency_swarm_adapter.py` as an agency-only temporary exception. This feature follows that decision.
+Feature 101 explicitly defines OpenAI Agents SDK as the shared runtime boundary.
+The older Agency-only exception is now migration/read-only scope under Feature
+151 and is not an execution dependency for this feature.
 
 ---
 
@@ -1093,7 +1095,8 @@ Add flags:
 - `hybridFlow.openAiAgentsRuntimeEnabled`
 - `hybridFlow.openAiAgentsRuntimeShadow`
 - `hybridFlow.neutralWorkspaceEnabled`
-- `hybridFlow.agencyLegacyFallbackEnabled`
+- `hybridFlow.agencyMigrationReadOnlyEnabled` (temporary export/read-only view;
+  never an execution fallback)
 - `hybridFlow.commitStageEnabled`
 
 ### 16.2 Shadow Mode
@@ -1326,7 +1329,8 @@ Feature 130 is complete when:
 6. Human approval, repair, cancel, retry, and idempotent commit behavior are all test-covered.
 7. Operators have dashboards/log queries and a recovery playbook before canary.
 8. Release gates prove no regression to Chat, Team, Responses, or shared skill runtime.
-9. `agency-swarm` is not used for new Chat-origin Hybrid execution and has a documented deprecation path.
+9. `agency-swarm` is not used for new execution, has no automatic fallback flag,
+   and reaches the Feature 151 zero-reference decommission gate.
 
 ---
 
