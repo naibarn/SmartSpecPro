@@ -565,7 +565,7 @@ type HybridRuntimeStageRequest = {
   hybridExecutionId: string;
   hybridStageId: string;
   tenantId: string;
-  userId: string;
+  userId: number;
   originSurface: "chat" | "agency" | "work_os" | "review_center";
   entryPoint:
     | "hybrid_stage_workflow"
@@ -592,6 +592,10 @@ type HybridRuntimeStageRequest = {
 ```
 
 The request must be generated server-side. Client-provided values may influence objective text but must not directly set allowlists, model route, side-effect class, or executor id.
+
+For the superseding Feature 151 contract, `originSurface="agency"` is valid
+only for read-only migration/archive reads. The active Orchestra executor must
+reject it for new work and use the canonical tenant/user identifiers from Node.
 
 ### 9.8 Stage Result Envelope
 
@@ -873,7 +877,7 @@ If new tables are required, the minimum schema should cover:
 type HybridExecutionRecord = {
   id: string;
   tenantId: string;
-  userId: string;
+  userId: number;
   conversationId?: string | null;
   originSurface: "chat" | "agency" | "work_os" | "review_center";
   status: "draft_preview" | "ready_to_start" | "running_stage" | "awaiting_approval" | "repairing" | "committing" | "completed" | "failed" | "cancelled" | "expired";

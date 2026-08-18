@@ -97,6 +97,9 @@ production-oriented path selects it explicitly.**
 ```ts
 type AgentTaskContract = {
   schemaVersion: number;
+  contractVersion: string;
+  minReaderVersion: string;
+  maxReaderVersion: string;
   contractId: string;
   taskId: string;
   attemptId: string;
@@ -133,8 +136,9 @@ The contract is immutable for one attempt. A repair creates a new attempt that
 references the previous contract and output hashes.
 
 Contracts are serialized as canonical UTF-8 JSON with sorted keys and explicit
-schema/version metadata. Node computes the contract hash and owns the attempt
-record; Python must echo the hash and reject mismatches. A changed objective,
+schema/version metadata, then hashed with SHA-256 over the canonical bytes. Node
+computes the contract hash and owns the attempt record; Python must echo the
+hash and reject mismatches. A changed objective,
 evidence set, rule pack, provider policy, or side-effect scope always creates a
 new attempt rather than mutating a running one.
 
@@ -254,6 +258,46 @@ type ConstraintSet = {
 The generic contract allows domain-specific constraints without forcing all
 tasks to understand Vertical Drama fields.
 
+The shared contract vocabulary must also define the following non-domain fields
+in the versioned schema registry:
+
+```ts
+type ValidationPolicy = {
+  deterministicRulePackIds: string[];
+  riskVerifierIds: string[];
+  requireHumanReview: boolean;
+  failClosedOnUnknown: boolean;
+  maxFindings: number;
+};
+
+type ProviderPolicy = {
+  providerId?: string;
+  modelId?: string;
+  capabilityProfileRef?: string;
+  allowedProviderIds: string[];
+  allowModelFallback: boolean;
+  requireHealthyProvider: boolean;
+};
+
+type ExactOutputItem = {
+  key: string;
+  value: string;
+  matchMode: "exact" | "normalized";
+  required: boolean;
+};
+
+type UserAction = {
+  type: "replace_evidence" | "edit_details" | "approve" | "retry" | "stop";
+  label: string;
+  fields?: string[];
+};
+```
+
+`VerifiedArtifact` and `AttemptSummary` are platform-owned schemas and must
+include immutable artifact/reference hashes, parent attempt, owner scope,
+verification verdict, and creation timestamps; an agent cannot self-assert
+either type.
+
 ### 5.5 Universal skill orchestration contract
 
 The Orchestra is the product entry point for complex work. A user objective is
@@ -266,6 +310,8 @@ type SkillManifest = {
   version: string;
   manifestHash: string;
   signature: string;
+  signatureAlgorithm: "ed25519";
+  signingKeyId: string;
   source: "builtin" | "tenant" | "marketplace";
   status: "active" | "quarantined" | "revoked";
   taskKinds: string[];
@@ -281,6 +327,8 @@ type SkillManifest = {
   budgetClass: string;
   owner: string;
   compatibleContractVersions: string[];
+  publishedAt: string;
+  revokedAt?: string;
 };
 
 type OrchestraExecutionPlan = {
@@ -468,6 +516,12 @@ admitted -> planned -> running -> verifying -> repairing
                                       committed | blocked | failed | cancelled | expired
 ```
 
+Provider submission has an explicit uncertainty branch: if the client or
+webhook cannot prove whether a provider accepted the task, transition to
+`provider_result_unknown`/`reconciliation_required`, freeze further retries,
+and let the reconciliation worker resolve the provider task and credit ledger.
+Never submit a second paid task merely because the first response was lost.
+
 Every state transition is persisted with `executionId`, `attemptId`, actor,
 reason code, contract hash, output hash, and an idempotency key. Streaming is
 progress only; a client reconnect must replay the durable event cursor and may
@@ -477,13 +531,20 @@ budgets. The final answer to the user must include the selected skill(s), the
 result/artifact references, warnings, verification status, and the next action
 when the result is blocked.
 
+Active execution origins are tenant-scoped Chat, Work OS, review, API, and
+domain surfaces. `agency` is accepted only by the read-only migration/archive
+adapter and is rejected by the active Orchestra executor.
+
 ## 6. Assurance stages
 
 ### Stage 0 — Admission and normalization
 
 Deterministically validate tenant/user scope, evidence authorization, provider
 capabilities, task kind, schema version, budgets, idempotency, and allowed tools.
-Reject malformed or contradictory contracts before an agent call.
+Reject malformed or contradictory contracts before an agent call. In particular,
+`allowTextOnlyFallback` is ignored when `requireVisionFor` is non-empty, and a
+missing required capability becomes `vision_capability_missing` or
+`provider_capability_mismatch` rather than an ungrounded text-only run.
 
 ### Stage 1 — Planner
 
@@ -658,13 +719,26 @@ type AssuranceRunResult = {
     | "blocked"
     | "failed"
     | "cancelled"
-    | "expired";
+    | "expired"
+    | "provider_result_unknown"
+    | "reconciliation_required";
+  executionId: string;
+  attemptId: string;
   artifact?: VerifiedArtifact;
   findings: AssuranceFinding[];
   attempts: AttemptSummary[];
   traceId: string;
   contractHash: string;
   outputHash?: string;
+  eventCursor?: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    toolCalls: number;
+    runtimeMs: number;
+    estimatedCost?: number;
+  };
+  sideEffectAuthorizationId?: string;
   nextAction?: UserAction;
 };
 
@@ -703,6 +777,8 @@ Required shared codes include:
 - `side_effect_not_authorized`
 - `side_effect_token_expired`
 - `idempotency_conflict`
+- `provider_result_unknown`
+- `reconciliation_required`
 - `repair_budget_exhausted`
 - `dependency_profile_unresolved`
 
@@ -842,6 +918,8 @@ agents-orchestra profile:
   openai-agents==0.21.1
   openai>=3,<4
   HTTPX2-compatible transport stack
+  Python >=3.10
+  lockfile hashes + SBOM + vulnerability/license scan
 
 agency-migration profile (temporary, read-only export/reconciliation only):
   agency-swarm and its exact transitive SDK constraints
@@ -877,7 +955,10 @@ closeout gate.
     usage reaches zero and historical retention checks pass.
 
 The latest SDK release and its dependency changes must be rechecked at the
-implementation date; the exact pin is not allowed to float in production.
+implementation date; the exact pin is not allowed to float in production. A
+dependency update is incomplete until the lockfile, SBOM, vulnerability scan,
+license review, container image, and rollback artifact all identify the same
+profile hash.
 
 ## 13. Rollout by task kind
 
@@ -1049,6 +1130,9 @@ task id, and credit ledger id without exposing secrets or raw private evidence.
 11. Define retention/deletion policy for prompts, evidence refs, traces, QC
     findings, migration exports, and provider payloads; honor legal holds and
     tenant deletion requests without deleting immutable credit/audit records.
+12. Store manifest signing keys in the platform key registry with rotation,
+    revocation, and audit metadata; never accept a manifest signature supplied
+    only inside user content or the agent context.
 
 ## 17. Acceptance criteria
 
@@ -1089,6 +1173,12 @@ task id, and credit ledger id without exposing secrets or raw private evidence.
 20. Agency Swarm has no executable active reference, no new-run flag, no
     automatic fallback, and its migration state/credit reconciliation is proven
     for all retained records.
+21. Contract hashes use one documented canonicalization/SHA-256 procedure and
+    current/current-1 reader compatibility is tested during mixed deploys.
+22. Unknown provider acceptance enters reconciliation-required state and never
+    automatically retries a potentially paid task.
+23. Active Orchestra execution rejects `originSurface=agency`; only the
+    read-only migration/archive adapter may process that origin.
 
 ## 18. Risks and mitigations
 
