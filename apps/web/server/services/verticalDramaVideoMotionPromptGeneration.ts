@@ -148,7 +148,9 @@ import {
 } from "@shared/verticalDramaSeries/motionProfile";
 import {
   assureVideoPromptMotion,
+  applyVideoPromptMotionSafetyFallback,
   buildVideoPromptMotionAssuranceDirective,
+  isVideoPromptSourceBlockingFinding,
   type VideoPromptAssuranceFinding,
 } from "@shared/verticalDramaSeries/videoPromptMotionAssurance";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
@@ -3739,10 +3741,34 @@ export async function generateVerticalDramaShotVideoPrompt(
     });
   }
   if (assurance.blocking.length > 0) {
-    throw new VdSchemaValidationError(
-      `Shot ${params.shotNumber}: video prompt failed motion/identity assurance before provider submission`,
-      assurance.blocking.map(f => `${f.code}: ${f.message} ${f.repair}`),
-    );
+    const sourceBlockers = assurance.blocking.filter(isVideoPromptSourceBlockingFinding);
+    if (sourceBlockers.length > 0) {
+      throw new VdVisionRequiredError(
+        `Shot ${params.shotNumber}: reference frame faces are ambiguous or not readable; replace/repair the Video-Safe reference frame before rendering`,
+      );
+    }
+    // The LLM loop is best-effort.  A deterministic final pass closes the
+    // remaining known contract failures without returning an opaque error to
+    // the user (and without another paid call).
+    finalPrompt = applyVideoPromptMotionSafetyFallback(finalPrompt, assurance.blocking);
+    assurance = assureVideoPromptMotion({
+      prompt: finalPrompt,
+      negativePrompt: data.negative_motion_prompt || undefined,
+      family,
+      genre: params.shotContext.genre,
+      establishedCharacterNames: (params.characterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+      dialogueSpeakerNames: requiredDialogue
+        .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
+        .filter((v): v is string => Boolean(v)),
+      supportingPresence: params.shotContext.supportingPresence,
+      frameAnalysis,
+      motionProfile: motionResolution.motionProfile,
+    });
+    if (assurance.blocking.some(isVideoPromptSourceBlockingFinding)) {
+      throw new VdVisionRequiredError(
+        `Shot ${params.shotNumber}: reference frame faces are ambiguous or not readable; replace/repair the Video-Safe reference frame before rendering`,
+      );
+    }
   }
   const assuranceWarnings = assurance.warnings.map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
@@ -4637,10 +4663,27 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     });
   }
   if (assurance.blocking.length > 0) {
-    throw new VdSchemaValidationError(
-      `Shot ${params.shotNumber}: speaker-switch video prompt failed motion/identity assurance before provider submission`,
-      assurance.blocking.map(f => `${f.code}: ${f.message} ${f.repair}`),
-    );
+    const sourceBlockers = assurance.blocking.filter(isVideoPromptSourceBlockingFinding);
+    if (sourceBlockers.length > 0) {
+      throw new VdVisionRequiredError(
+        `Shot ${params.shotNumber}: reference frame faces are ambiguous or not readable; replace/repair the Video-Safe reference frame before rendering`,
+      );
+    }
+    finalPrompt = applyVideoPromptMotionSafetyFallback(finalPrompt, assurance.blocking);
+    assurance = assureVideoPromptMotion({
+      prompt: finalPrompt,
+      negativePrompt: data.negative_motion_prompt || undefined,
+      family,
+      genre: params.shotContext.genre,
+      establishedCharacterNames: (params.characterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+      dialogueSpeakerNames: dialogue
+        .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
+        .filter((v): v is string => Boolean(v)),
+      supportingPresence: params.shotContext.supportingPresence,
+      frameAnalysis,
+      motionProfile: motionResolution.motionProfile,
+    });
+    if (assurance.blocking.some(isVideoPromptSourceBlockingFinding)) {
   }
   const assuranceWarnings = assurance.warnings.map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   assureVideoPromptMotion,
+  applyVideoPromptMotionSafetyFallback,
   buildVideoPromptMotionAssuranceDirective,
+  isVideoPromptSourceBlockingFinding,
   resolveVideoPromptGenrePolicy,
 } from "../videoPromptMotionAssurance";
 
@@ -64,5 +66,36 @@ describe("video prompt motion assurance", () => {
     expect(directive).toContain("physics_mode: genre_consistent");
     expect(directive).toContain("Flux3");
     expect(directive).toContain("exactly the 2 established cast members");
+  });
+
+  it("repairs non-source blocking findings deterministically", () => {
+    const unsafe = assureVideoPromptMotion({
+      prompt: "A crowd watches while the speaker's face morphs and teleports.",
+      family: "grok",
+      establishedCharacterNames: ["A"],
+    });
+    const repaired = applyVideoPromptMotionSafetyFallback(
+      "A crowd watches while the speaker's face morphs and teleports.",
+      unsafe.blocking,
+    );
+    const after = assureVideoPromptMotion({
+      prompt: repaired,
+      family: "grok",
+      establishedCharacterNames: ["A"],
+    });
+    expect(after.blocking).toHaveLength(0);
+    expect(repaired).toContain("established cast only");
+    expect(repaired).toContain("faces remain readable");
+  });
+
+  it("reserves user action for genuinely ambiguous source frames", () => {
+    const result = assureVideoPromptMotion({
+      prompt: "Exactly one established face, preserve identity and readable eyes.",
+      family: "grok",
+      establishedCharacterNames: ["A"],
+      dialogueSpeakerNames: ["A"],
+      frameAnalysis: { facesSeparated: false },
+    });
+    expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(true);
   });
 });

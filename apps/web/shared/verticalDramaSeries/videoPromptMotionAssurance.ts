@@ -80,6 +80,61 @@ export interface VideoPromptMotionAssuranceResult {
   warnings: VideoPromptAssuranceFinding[];
 }
 
+/**
+ * Only these findings are genuine source-frame blockers.  All other findings
+ * are prompt-contract problems that the orchestra can repair without asking
+ * the user to spend another credit or manually rewrite the prompt.
+ */
+export function isVideoPromptSourceBlockingFinding(
+  finding: VideoPromptAssuranceFinding,
+): boolean {
+  return finding.code === "face_observability_risk";
+}
+
+/**
+ * Deterministic last-mile repair used when an LLM repair candidate still
+ * contains a known unsafe phrase.  This is intentionally conservative: it
+ * removes only positive instructions that the verifier can identify and then
+ * appends an explicit safety contract.  It never invents dialogue or people.
+ */
+export function applyVideoPromptMotionSafetyFallback(
+  prompt: string,
+  findings: readonly VideoPromptAssuranceFinding[],
+): string {
+  let repaired = prompt.trim();
+  const codes = new Set(findings.map(f => f.code));
+
+  if (codes.has("unlisted_people")) {
+    repaired = repaired.replace(
+      /\b(?:an?\s+)?(?:extra|additional|background|unrelated|random)\s+(?:person|people|human|character|staff|passer(?:by|s))\b|\b(?:crowd|onlookers?|bystanders?|passers[- ]by)\b|(?:คนเพิ่ม|คนอื่น|ผู้คนด้านหลัง|ฝูงชน|ตัวประกอบ|คนเดินผ่าน)/giu,
+      "the established cast only",
+    );
+    repaired += " Keep exactly the established cast only; no unnamed person, background extra, reflection, or duplicate body.";
+  }
+
+  if (codes.has("face_identity_risk")) {
+    repaired = repaired.replace(
+      /\b(?:full profile|back of (?:the )?head|face (?:hidden|obscured|covered|cropped|outside|unreadable)|eyes (?:not|never) visible|mouth (?:not|never) visible|extreme side angle|identity (?:changes|swap|drift)|face (?:morph|morphs|warping|distort(?:s|ed|ing)?)\b)|(?:ใบหน้าหันหลัง|ปิดบังใบหน้า|ใบหน้าเพี้ยน|สลับใบหน้า|ตาไม่เห็น|ปากไม่เห็น)/giu,
+      "faces remain readable and identities remain preserved",
+    );
+    repaired += " Keep every required face readable, with preserved facial identity and natural frontal or three-quarter angles; never morph, swap, duplicate, or obscure a face.";
+  }
+
+  if (codes.has("grounded_physics_violation")) {
+    repaired = repaired.replace(
+      /\b(?:teleport(?:s|ed|ing)?|instant(?:ly)? transform|levitat(?:e|es|ed|ing)|float(?:s|ed|ing) without support|weightless|gravity[- ]defying|fuse[sd]? (?:with|into)|impossible (?:physics|motion)|rubber(?:y)? limbs?|extra limbs?|duplicate body)\b|(?:ละเมิดฟิสิกส์|ลอยโดยไม่มีแรงพยุง|หายตัว|วาร์ป|แขนขาเพิ่ม)/giu,
+      "one continuous physically grounded action",
+    );
+    repaired += " The action obeys gravity, weight, contact, inertia, collision, cloth, hair, and prop continuity; no teleporting, floating, fused objects, rubber limbs, or impossible body changes.";
+  }
+
+  if (codes.has("motion_contract_risk")) {
+    repaired += " Re-anchor every attached identity after each turn or cut; keep the speaking face readable and unchanged.";
+  }
+
+  return repaired.replace(/\s{2,}/g, " ").trim();
+}
+
 const NON_REALISTIC_GENRE = /(fantasy|supernatural|magic|fairy|myth|เทพ|เซียน|เหนือธรรมชาติ|เวทมนตร์|นิยาย|มหัศจรรย์|ไซไฟ|sci[- ]?fi)/iu;
 const SCI_FI_GENRE = /(sci[- ]?fi|science fiction|ไซไฟ|อนาคต|อวกาศ)/iu;
 const FAIRY_GENRE = /(fairy|fairytale|เทพนิยาย|นิทาน|มหัศจรรย์)/iu;

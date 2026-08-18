@@ -205,6 +205,8 @@ import {
 import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import {
   assureVideoPromptMotion,
+  applyVideoPromptMotionSafetyFallback,
+  isVideoPromptSourceBlockingFinding,
   type VideoPromptAssuranceFinding,
 } from "@shared/verticalDramaSeries/videoPromptMotionAssurance";
 import { resolveVideoPromptTargetFamily } from "@shared/verticalDramaSeries/videoPromptModelFamily";
@@ -8277,10 +8279,13 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     motionProfile: speakerSwitchGeneration.motionProfile,
   });
   if (splitMotionAssurance.blocking.length > 0) {
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: `ยังสร้างวิดีโอไม่ได้: prompt ของช็อต ${shotNumber} ไม่ผ่านการตรวจ motion/identity (${splitMotionAssurance.blocking.map(f => f.message).join("; ")})`,
-    });
+    if (splitMotionAssurance.blocking.some(isVideoPromptSourceBlockingFinding)) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `ภาพอ้างอิงของช็อต ${shotNumber} มีใบหน้าซ้อนหรืออ่านไม่ชัด กรุณาใช้ภาพ Video-Safe ที่แยกใบหน้าให้ชัดก่อนสร้างวิดีโอ`,
+      });
+    }
+    prompt = applyVideoPromptMotionSafetyFallback(prompt, splitMotionAssurance.blocking);
   }
 
   // Resolve every distinct speaker's own approved primary-portrait media
@@ -18122,10 +18127,16 @@ export const verticalDramaEpisodesRouter = router({
         motionProfile: clip.motionProfile,
       });
       if (providerMotionAssurance.blocking.length > 0) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `ยังส่งวิดีโอไม่ได้: clip ${input.clipNumber} ไม่ผ่าน provider motion/identity QC (${providerMotionAssurance.blocking.map(f => f.message).join("; ")})`,
-        });
+        if (providerMotionAssurance.blocking.some(isVideoPromptSourceBlockingFinding)) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `ภาพอ้างอิงของ clip ${input.clipNumber} มีใบหน้าซ้อนหรืออ่านไม่ชัด กรุณาใช้ภาพ Video-Safe ที่แยกใบหน้าให้ชัดก่อนสร้างวิดีโอ`,
+          });
+        }
+        formatted.prompt = applyVideoPromptMotionSafetyFallback(
+          formatted.prompt,
+          providerMotionAssurance.blocking,
+        );
       }
 
       const [pricingRow] = await db
@@ -21709,10 +21720,16 @@ export const verticalDramaEpisodesRouter = router({
         motionProfile: result.motionProfile,
       });
       if (shotMotionAssurance.blocking.length > 0) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `ยังสร้าง video prompt ไม่ได้: ช็อต ${input.shotNumber} ไม่ผ่านการตรวจ motion/identity (${shotMotionAssurance.blocking.map(f => f.message).join("; ")})`,
-        });
+        if (shotMotionAssurance.blocking.some(isVideoPromptSourceBlockingFinding)) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `ภาพอ้างอิงของช็อต ${input.shotNumber} มีใบหน้าซ้อนหรืออ่านไม่ชัด กรุณาใช้ภาพ Video-Safe ที่แยกใบหน้าให้ชัดก่อนสร้างวิดีโอ`,
+          });
+        }
+        result.prompt = applyVideoPromptMotionSafetyFallback(
+          result.prompt,
+          shotMotionAssurance.blocking,
+        );
       }
 
       // Persist-pin (planning/`polished-toasting-gadget.md`, anti-lock-in fix
