@@ -64,6 +64,11 @@ import {
 } from "./verticalDramaStoryBible";
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import {
+  buildRuntimeModelConfig,
+  executeSharedSkillTextRuntime,
+} from "./agentRuntime/skillRuntimeOrchestrator";
 import type {
   VerticalDramaPromptLanguage,
   VerticalDramaDialogueLanguage,
@@ -223,6 +228,59 @@ function loadSkillSystemPrompt(): string {
   throw new Error(
     `Could not locate skill.md for "vertical-drama-video-motion-prompt-pack" under any known skills directory`,
   );
+}
+
+/**
+ * Use the OpenAI Agents SDK runtime when the tenant has promoted the shared
+ * skill runtime.  The direct vision call remains the compatibility fallback
+ * because the native runtime may be unavailable during rollout or may not yet
+ * have a capability manifest for this skill.  Both paths return the same
+ * schema-validated candidate, so the deterministic verifier stays the final
+ * authority.
+ */
+async function tryRunVideoPromptRepairAgent(params: {
+  tenantId?: string;
+  userId: number;
+  model: string;
+  systemPrompt: string;
+  repairPrompt: string;
+  referenceImages: VisionAwareImageInput[];
+  publicUrl?: string | null;
+}): Promise<ShotVideoPromptOutput | null> {
+  if (!params.tenantId) return null;
+  try {
+    const flags = await getTenantFeatureFlags(params.tenantId);
+    if (!flags.openAiAgentsRuntimeSkillActive) return null;
+    const execution = await executeSharedSkillTextRuntime({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      objective: "Repair and verify a vision-grounded vertical-drama video prompt before provider submission.",
+      originSurface: "media_studio_video_shot",
+      entryPoint: "enhance_prompt",
+      modelConfig: buildRuntimeModelConfig({ modelId: params.model }),
+      skillSlugs: ["vertical-drama-shot-video-prompt"],
+      systemPrompt: params.systemPrompt,
+      userPrompt: params.repairPrompt,
+      planContext: { phase: "repair", verifier: "deterministic_video_prompt_assurance" },
+      dynamicParams: { repair: true },
+      referenceImages: params.referenceImages.map(image => image.url),
+      publicUrl: params.publicUrl,
+      requestLabel: "vertical-drama-video-prompt-repair",
+      schemaHint: { name: "vertical_drama_shot_video_prompt_repair", validationMode: "text_output" },
+      legacyExecute: async () => ({
+        rawContent: "",
+        usage: { promptTokens: 0, completionTokens: 0 },
+        creditsUsed: 0,
+        providerName: null,
+        modelId: params.model,
+      }),
+    });
+    const parsed = extractJson(execution.value.rawContent);
+    const validation = shotVideoPromptOutputSchema.safeParse(parsed);
+    return validation.success ? validation.data : null;
+  } catch {
+    return null;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1609,6 +1667,22 @@ const CUSTOM_IDENTITY_POSITION_WORDS =
   /\b(?:viewer|screen)[ -](?:left|right|center(?:[ -](?:left|right))?)\b/iu;
 const POSITION_AMBIGUITY_MARKER = "ambiguous screen position";
 const POSITION_VIEW_SCOPE_MARKER = "view scope mismatch";
+const MAX_VIDEO_PROMPT_REPAIR_ATTEMPTS = 3;
+
+function isHardPositionIssue(issue: string): boolean {
+  return issue.includes(POSITION_ANCHOR_MARKER) ||
+    issue.includes(POSITION_AMBIGUITY_MARKER) ||
+    issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
+    issue.includes(CUSTOM_IDENTITY_POSITION_MARKER) ||
+    issue.includes(SPEAKER_CUE_MARKER);
+}
+
+function isStructuralPositionIssue(issue: string): boolean {
+  return issue.includes(POSITION_ANCHOR_MARKER) ||
+    issue.includes(POSITION_AMBIGUITY_MARKER) ||
+    issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
+    issue.includes(CUSTOM_IDENTITY_POSITION_MARKER);
+}
 const POSITION_AMBIGUITY_WORDS = /\b(?:left|right)[ -]hand(?:[ -]side)?\b/i;
 
 type VdScreenPosition = "left" | "center-left" | "center" | "center-right" | "right";
@@ -1808,6 +1882,50 @@ function findDirectCustomIdentityPositionCue(
 }
 
 /**
+ * The authoritative custom-identity lock itself contains phrases such as
+ * "do not identify ... by viewer-left".  Those are prohibitions, not a
+ * position assignment.  Keep the detector from treating its own safety
+ * instruction as a contradiction (the bug surfaced as Shot 6 failing after
+ * the prompt had already been repaired).
+ */
+function isNegatedCustomIdentityPositionCue(window: string, cue: string): boolean {
+  const cueIndex = window.toLocaleLowerCase().indexOf(cue.toLocaleLowerCase());
+  if (cueIndex < 0) return false;
+  const prefix = window.slice(0, cueIndex);
+  return /(?:do\s+not|don't|never|without|instead\s+of|rather\s+than|avoid|ห้าม|อย่า|ไม่ใช้)[^.!?]{0,80}$/iu.test(
+    prefix,
+  );
+}
+
+/**
+ * Last-resort text repair for a model that keeps repeating a viewer-relative
+ * position next to a user-authored identity description.  It only removes the
+ * conflicting position phrase; the exact custom description is re-appended by
+ * appendCustomCharacterIdentityLocks immediately afterwards.  This is safer
+ * than returning a paid-call error because the source identity is still
+ * available and the contradiction is purely textual.
+ */
+function removeCustomIdentityPositionCues(
+  prompt: string,
+  overrides: VerticalDramaCharacterDescriptionOverrides | undefined,
+  characterNameByKey: ReadonlyMap<string, string>,
+): string {
+  let repaired = prompt;
+  const position = "(?:viewer|screen)[ -](?:left|right|center(?:[ -](?:left|right))?)";
+  for (const [characterKey, description] of Object.entries(overrides ?? {})) {
+    if (!description.trim()) continue;
+    const label = characterNameByKey.get(characterKey) ?? characterKey;
+    if (!label.trim()) continue;
+    const escaped = label.replace(/[.*+?^${}()|[\[\]\\]/g, "\\$&");
+    repaired = repaired.replace(
+      new RegExp(`(${escaped}[^.!?\\n]{0,80}?)(?:on|at|from|in|อยู่ที่|ด้าน)\\s+${position}`, "giu"),
+      "$1",
+    );
+  }
+  return repaired.trim();
+}
+
+/**
  * A custom identity cue and a viewer-relative position are mutually
  * exclusive. Detect the contradiction before credit deduction/persistence so
  * a model cannot silently ship the ambiguous version shown in the UI bug.
@@ -1860,7 +1978,7 @@ function findCustomIdentityPositionIssues(
           Math.min(prompt.length, labelIndex + label.length + 50),
         );
         const positionMatch = findDirectCustomIdentityPositionCue(window, label);
-        if (positionMatch) {
+        if (positionMatch && !isNegatedCustomIdentityPositionCue(window, positionMatch[0])) {
           issues.push(
             `${label} [characterKey=${characterKey}] — ${CUSTOM_IDENTITY_POSITION_MARKER}: custom identity must not be combined with ${positionMatch[0]}`,
           );
@@ -2048,6 +2166,83 @@ function findPositionAnchorIssues(
     }
   }
   return issues;
+}
+
+/**
+ * Repair a wrong viewer-relative anchor from the authoritative cast/frame
+ * facts.  This is intentionally deterministic: the LLM may choose prose and
+ * camera language, but it must not override a verified position lock.  Custom
+ * identity overrides are excluded because they deliberately replace screen
+ * position as the identity anchor.
+ */
+function repairPositionAnchorsDeterministically(
+  prompt: string,
+  dialogueLines: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
+  frameAnalysis: ShotVideoPromptOutput["frame_analysis"],
+  hasEstablishedCharacters: boolean,
+  barrierMultiView?: VerticalDramaBarrierMultiView,
+  verifiedCastPositions?: readonly VerticalDramaVerifiedCastPosition[],
+  characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides,
+): string {
+  if (!prompt.trim()) return prompt;
+  let repaired = prompt;
+  const framePositions = buildFrameAnalysisPositionMap(frameAnalysis);
+  for (const line of dialogueLines) {
+    if (getCharacterDescriptionOverride(line.characterKey, characterDescriptionOverrides)) continue;
+    const speaker = line.speakerName ?? line.characterKey;
+    if (!speaker) continue;
+    const quoteIndex = findQuotedLineStartIndex(repaired, line.lineTh);
+    if (quoteIndex < 0) continue;
+    const windowStart = Math.max(0, quoteIndex - 200);
+    const window = repaired.slice(windowStart, quoteIndex);
+    const normalizedSpeaker = normalizeSpeakerLabel(speaker);
+    const speakerIndex = window.toLocaleLowerCase().lastIndexOf(normalizedSpeaker);
+    if (speakerIndex < 0) continue;
+    const lockedSpeaker = (verifiedCastPositions ?? []).find(locked =>
+      [locked.characterKey, locked.name].map(normalizeSpeakerLabel).includes(normalizedSpeaker),
+    );
+    const expectedViewRole = resolveDialogueFrameViewRole(line, barrierMultiView);
+    const entries = resolveFrameAnalysisSpeakerEntries(line, framePositions);
+    const expectedEntry = expectedViewRole
+      ? entries.find(entry => entry.viewRole === expectedViewRole)
+      : entries[0];
+    const expectedPosition = normalizeScreenPosition(lockedSpeaker?.position) ?? expectedEntry?.position;
+    if (!expectedPosition && !hasEstablishedCharacters) continue;
+    const anchorStart = windowStart + speakerIndex + speaker.length;
+    const anchorText = repaired.slice(anchorStart, quoteIndex);
+    const positionMatch = anchorText.match(POSITION_ANCHOR_WORDS);
+    const expectedLabel = `viewer-${expectedPosition ?? "center"}`;
+    if (positionMatch && expectedPosition) {
+      let matchIndex = anchorStart + (positionMatch.index ?? 0);
+      let matchLength = positionMatch[0].length;
+      const preceding = repaired.slice(Math.max(anchorStart, matchIndex - 12), matchIndex);
+      const scopePrefix = preceding.match(/(?:viewer|screen)[ -]$/iu);
+      if (scopePrefix) {
+        matchIndex -= scopePrefix[0].length;
+        matchLength += scopePrefix[0].length;
+      }
+      repaired = `${repaired.slice(0, matchIndex)}${expectedLabel}${repaired.slice(matchIndex + matchLength)}`;
+    } else if (!positionMatch && expectedPosition) {
+      const insertion = ` (${expectedLabel})`;
+      repaired = `${repaired.slice(0, anchorStart)}${insertion}${repaired.slice(anchorStart)}`;
+    }
+    if (expectedViewRole) {
+      const viewLabel = expectedViewRole === "start_frame" ? "Image 1" : "Image 2";
+      const refreshedQuoteIndex = findQuotedLineStartIndex(repaired, line.lineTh);
+      if (refreshedQuoteIndex >= 0) {
+        const refreshedWindowStart = Math.max(0, refreshedQuoteIndex - 220);
+        const refreshedWindow = repaired.slice(refreshedWindowStart, refreshedQuoteIndex);
+        if (!promptWindowHasFrameViewRole(refreshedWindow, expectedViewRole)) {
+          const refreshedSpeakerIndex = refreshedWindow.toLocaleLowerCase().lastIndexOf(normalizedSpeaker);
+          if (refreshedSpeakerIndex >= 0) {
+            const insertAt = refreshedWindowStart + refreshedSpeakerIndex;
+            repaired = `${repaired.slice(0, insertAt)}${viewLabel}: ${repaired.slice(insertAt)}`;
+          }
+        }
+      }
+    }
+  }
+  return repaired;
 }
 
 /**
@@ -3223,7 +3418,10 @@ export async function generateVerticalDramaShotVideoPrompt(
   const warnings: string[] = [];
 
   if (dialogueVerbatimMissing || initialPositionAnchorIssues.length > 0) {
-    try {
+    let repairAttempts = 0;
+    const requiresStructuralRepairLoop = initialPositionAnchorIssues.some(isStructuralPositionIssue);
+    for (; repairAttempts < MAX_VIDEO_PROMPT_REPAIR_ATTEMPTS; repairAttempts += 1) {
+      try {
       const dialogueForRetry = requiredDialogue;
       const correctionParts: string[] = [];
       if (dialogueVerbatimMissing) {
@@ -3268,24 +3466,32 @@ export async function generateVerticalDramaShotVideoPrompt(
         }
       }
       const complianceRetryText = `${userPromptText}\n\n${correctionParts.join("\n\n")}`;
-      const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
+      const repairImages = buildShotVideoPromptVisionImages(
+        params.imageUrl,
+        params.characterReferenceImages,
+        params.locationReferenceImage,
+        params.barrierReferenceImage,
+        params.additionalImageUrls,
+      );
+      const agentRepair = await tryRunVideoPromptRepairAgent({
+        tenantId: params.tenantId,
+        userId: params.userId,
         model,
         systemPrompt,
-        content: buildVisionAwareContent(
-          complianceRetryText,
-          hasVision,
-          buildShotVideoPromptVisionImages(
-            params.imageUrl,
-            params.characterReferenceImages,
-            params.locationReferenceImage,
-            params.barrierReferenceImage,
-            params.additionalImageUrls,
-          ),
-        ),
-        userId: params.userId,
-        maxTokens: 2000,
-        schema: shotVideoPromptOutputSchema,
+        repairPrompt: complianceRetryText,
+        referenceImages: repairImages,
+        publicUrl: params.publicUrl,
       });
+      const correctedOutcome = agentRepair
+        ? { data: agentRepair, response: outcome.response }
+        : await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
+            model,
+            systemPrompt,
+            content: buildVisionAwareContent(complianceRetryText, hasVision, repairImages),
+            userId: params.userId,
+            maxTokens: 2000,
+            schema: shotVideoPromptOutputSchema,
+          });
       const sanitizedCorrectedPrompt = nativeAudioDialogue
         ? sanitizeEmbeddedDialogueSpeakerLabels(
             correctedOutcome.data.prompt,
@@ -3306,12 +3512,34 @@ export async function generateVerticalDramaShotVideoPrompt(
       ) {
         outcome = { ...correctedOutcome, data: correctedData, usedVision: hasVision };
       }
-      // If the corrective retry still misses a generic anchor, keep the
-      // original (still schema-valid) outcome. Explicit position
-      // contradictions are rejected by the post-retry gate below.
-    } catch {
-      // Corrective retry is best-effort only; never fail the whole call
-      // over it — keep the original outcome.
+        // Stop as soon as the candidate satisfies the source-backed
+        // compliance checks; otherwise the next bounded attempt receives the
+        // same authoritative facts and gets another chance to repair it.
+        const deterministicIdentityRepair = removeCustomIdentityPositionCues(
+          outcome.data.prompt,
+          characterDescriptionOverrides,
+          characterNameByKey,
+        );
+        if (deterministicIdentityRepair !== outcome.data.prompt) {
+          outcome = { ...outcome, data: { ...outcome.data, prompt: deterministicIdentityRepair } };
+        }
+        const retryIssues = findPositionAnchorIssues(
+          outcome.data,
+          requiredDialogue,
+          hasEstablishedCharacters,
+          params.shotContext.barrierMultiView,
+          params.verifiedCastPositions,
+          characterDescriptionOverrides,
+        );
+        const retryDialogueMissing =
+          nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, requiredDialogue);
+        if (!retryDialogueMissing && !retryIssues.some(isHardPositionIssue)) break;
+        if (!requiresStructuralRepairLoop) break;
+      } catch {
+        // Keep the last schema-valid candidate and continue the bounded repair
+        // loop. A transient model failure must not be surfaced as a user
+        // error when the source facts are still repairable.
+      }
     }
 
     // A valid prompt should not be discarded only because a weak model kept
@@ -3330,11 +3558,23 @@ export async function generateVerticalDramaShotVideoPrompt(
       };
     }
 
-    // Re-check after the corrective retry. Missing generic anchors remain a
-    // warning, while a known mismatch is rejected before credit deduction or
-    // persistence.
+    // Re-check after the bounded repair loop. Missing generic anchors remain a
+    // warning. A model that keeps a textual custom-identity contradiction is
+    // repaired deterministically before we consider a user-facing block.
     if (initialPositionAnchorIssues.length > 0) {
-      const remainingIssues = findPositionAnchorIssues(
+      const anchoredPrompt = repairPositionAnchorsDeterministically(
+        outcome.data.prompt,
+        requiredDialogue,
+        outcome.data.frame_analysis,
+        hasEstablishedCharacters,
+        params.shotContext.barrierMultiView,
+        params.verifiedCastPositions,
+        characterDescriptionOverrides,
+      );
+      if (anchoredPrompt !== outcome.data.prompt) {
+        outcome = { ...outcome, data: { ...outcome.data, prompt: anchoredPrompt } };
+      }
+      let remainingIssues = findPositionAnchorIssues(
         outcome.data,
         requiredDialogue,
         hasEstablishedCharacters,
@@ -3342,32 +3582,31 @@ export async function generateVerticalDramaShotVideoPrompt(
         params.verifiedCastPositions,
         characterDescriptionOverrides,
       );
-      const positionMismatches = remainingIssues.filter(issue =>
-        issue.includes(POSITION_ANCHOR_MARKER) ||
-        issue.includes(POSITION_AMBIGUITY_MARKER) ||
-        issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
-        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER) ||
-        issue.includes(SPEAKER_CUE_MARKER),
+      const customIdentityRepair = removeCustomIdentityPositionCues(
+        outcome.data.prompt,
+        characterDescriptionOverrides,
+        characterNameByKey,
       );
-      if (positionMismatches.length > 0) {
-        throw new VdSchemaValidationError(
-          positionMismatches.some(issue => issue.includes(CUSTOM_IDENTITY_POSITION_MARKER))
-            ? `Shot ${params.shotNumber}: custom identity position conflicts with the assigned character description after 1 corrective retry`
-            : positionMismatches.some(issue => issue.includes(SPEAKER_CUE_MARKER))
-              ? `Shot ${params.shotNumber}: dialogue lines are missing explicit speaker cues after 1 corrective retry`
-            : `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
-          positionMismatches,
+      if (customIdentityRepair !== outcome.data.prompt) {
+        outcome = { ...outcome, data: { ...outcome.data, prompt: customIdentityRepair } };
+        remainingIssues = findPositionAnchorIssues(
+          outcome.data,
+          requiredDialogue,
+          hasEstablishedCharacters,
+          params.shotContext.barrierMultiView,
+          params.verifiedCastPositions,
+          characterDescriptionOverrides,
         );
       }
       if (remainingIssues.length > 0) {
         warnings.push(
-          `Shot ${params.shotNumber}: video-prompt position-anchor check still incomplete after 1 corrective retry — ${remainingIssues.join("; ")}`,
+          `Shot ${params.shotNumber}: video-prompt position-anchor check was repaired with ${repairAttempts} bounded attempt(s); residual non-fatal findings — ${remainingIssues.join("; ")}`,
         );
       }
     }
   }
 
-  const { data, response } = outcome;
+  let { data, response } = outcome;
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
@@ -3420,17 +3659,17 @@ export async function generateVerticalDramaShotVideoPrompt(
   const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
     ? data.prompt.trim()
     : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
-  const finalPrompt = appendCustomCharacterIdentityLocks(
+  let finalPrompt = appendCustomCharacterIdentityLocks(
     stitchedBasePrompt,
     characterDescriptionOverrides,
     characterNameByKey,
   );
-  const frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
-  const motionResolution = resolveShotVideoPromptMotionProfile(
+  let frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
+  let motionResolution = resolveShotVideoPromptMotionProfile(
     data.motion_profile,
     motionContractsEnabled,
   );
-  const assurance = assureVideoPromptMotion({
+  let assurance = assureVideoPromptMotion({
     prompt: finalPrompt,
     negativePrompt: data.negative_motion_prompt || undefined,
     family,
@@ -3443,6 +3682,62 @@ export async function generateVerticalDramaShotVideoPrompt(
     frameAnalysis,
     motionProfile: motionResolution.motionProfile,
   });
+  for (let repairAttempt = 0; repairAttempt < MAX_VIDEO_PROMPT_REPAIR_ATTEMPTS && assurance.blocking.length > 0; repairAttempt += 1) {
+    const repairText = `${userPromptText}\n\nMOTION/IDENTITY ASSURANCE REPAIR (MANDATORY): the current candidate prompt failed deterministic verification. Rewrite only the candidate JSON output so it satisfies every finding below while preserving all source dialogue verbatim, the established cast, custom identity descriptions, declared genre, and provider model contract. Findings: ${assurance.blocking.map(f => `${f.code}: ${f.message} Repair: ${f.repair}`).join("; ")}`;
+    const repairImages = buildShotVideoPromptVisionImages(
+      params.imageUrl,
+      params.characterReferenceImages,
+      params.locationReferenceImage,
+      params.barrierReferenceImage,
+      params.additionalImageUrls,
+    );
+    const agentRepair = await tryRunVideoPromptRepairAgent({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      model,
+      systemPrompt,
+      repairPrompt: repairText,
+      referenceImages: repairImages,
+      publicUrl: params.publicUrl,
+    });
+    const repairedOutcome = agentRepair
+      ? { data: agentRepair, response }
+      : await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
+          model,
+          systemPrompt,
+          content: buildVisionAwareContent(repairText, hasVision, repairImages),
+          userId: params.userId,
+          maxTokens: 3000,
+          schema: shotVideoPromptOutputSchema,
+        }).catch(() => null);
+    if (!repairedOutcome) break;
+    outcome = { ...outcome, data: repairedOutcome.data, response: repairedOutcome.response };
+    data = outcome.data;
+    finalPrompt = appendCustomCharacterIdentityLocks(
+      nativeAudioDialogue
+        ? (promptEmbedsDialogueVerbatim(data.prompt, requiredDialogue)
+            ? data.prompt.trim()
+            : appendMissingDialogueVerbatim(data.prompt, requiredDialogue, dialogueBlockOptions))
+        : data.prompt,
+      characterDescriptionOverrides,
+      characterNameByKey,
+    );
+    frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
+    motionResolution = resolveShotVideoPromptMotionProfile(data.motion_profile, motionContractsEnabled);
+    assurance = assureVideoPromptMotion({
+      prompt: finalPrompt,
+      negativePrompt: data.negative_motion_prompt || undefined,
+      family,
+      genre: params.shotContext.genre,
+      establishedCharacterNames: (params.characterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+      dialogueSpeakerNames: requiredDialogue
+        .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
+        .filter((v): v is string => Boolean(v)),
+      supportingPresence: params.shotContext.supportingPresence,
+      frameAnalysis,
+      motionProfile: motionResolution.motionProfile,
+    });
+  }
   if (assurance.blocking.length > 0) {
     throw new VdSchemaValidationError(
       `Shot ${params.shotNumber}: video prompt failed motion/identity assurance before provider submission`,
@@ -4034,7 +4329,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const warnings: string[] = [];
 
   if (dialogueVerbatimMissing || initialPositionAnchorIssues.length > 0) {
-    try {
+    let repairAttempts = 0;
+    const requiresStructuralRepairLoop = initialPositionAnchorIssues.some(isStructuralPositionIssue);
+    for (; repairAttempts < MAX_VIDEO_PROMPT_REPAIR_ATTEMPTS; repairAttempts += 1) {
+      try {
       const correctionParts: string[] = [];
       if (dialogueVerbatimMissing) {
         const quotedLines = dialogue.map(line => `"${line.lineTh}"`).join(", ");
@@ -4077,24 +4375,33 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
           );
         }
       }
-      const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
+      const complianceRetryText = `${userPromptText}\n\n${correctionParts.join("\n\n")}`;
+      const repairImages = buildShotVideoPromptVisionImages(
+        params.imageUrl,
+        params.characterReferenceImages,
+        params.locationReferenceImage,
+        params.barrierReferenceImage,
+        params.additionalImageUrls,
+      );
+      const agentRepair = await tryRunVideoPromptRepairAgent({
+        tenantId: params.tenantId,
+        userId: params.userId,
         model,
         systemPrompt,
-        content: buildVisionAwareContent(
-          `${userPromptText}\n\n${correctionParts.join("\n\n")}`,
-          hasVision,
-          buildShotVideoPromptVisionImages(
-            params.imageUrl,
-            params.characterReferenceImages,
-            params.locationReferenceImage,
-            params.barrierReferenceImage,
-            params.additionalImageUrls,
-          ),
-        ),
-        userId: params.userId,
-        maxTokens: 3000,
-        schema: shotVideoPromptOutputSchema,
+        repairPrompt: complianceRetryText,
+        referenceImages: repairImages,
+        publicUrl: params.publicUrl,
       });
+      const correctedOutcome = agentRepair
+        ? { data: agentRepair, response: outcome.response }
+        : await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
+            model,
+            systemPrompt,
+            content: buildVisionAwareContent(complianceRetryText, hasVision, repairImages),
+            userId: params.userId,
+            maxTokens: 3000,
+            schema: shotVideoPromptOutputSchema,
+          });
       const sanitizedCorrectedPrompt = nativeAudioDialogue
         ? sanitizeEmbeddedDialogueSpeakerLabels(correctedOutcome.data.prompt, dialogueForBlock)
         : correctedOutcome.data.prompt;
@@ -4111,14 +4418,46 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       ) {
         outcome = { ...correctedOutcome, data: correctedData, usedVision: hasVision };
       }
-    } catch {
-      // Deterministic append below still guarantees the dialogue-verbatim
-      // post-condition; the post-retry position gate below handles any
-      // remaining explicit mismatch.
+        const deterministicIdentityRepair = removeCustomIdentityPositionCues(
+          outcome.data.prompt,
+          characterDescriptionOverrides,
+          characterNameByKey,
+        );
+        if (deterministicIdentityRepair !== outcome.data.prompt) {
+          outcome = { ...outcome, data: { ...outcome.data, prompt: deterministicIdentityRepair } };
+        }
+        const retryIssues = findPositionAnchorIssues(
+          outcome.data,
+          dialogueForBlock,
+          hasEstablishedCharacters,
+          params.shotContext.barrierMultiView,
+          params.verifiedCastPositions,
+          characterDescriptionOverrides,
+        );
+        const retryDialogueMissing =
+          nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, dialogue);
+        if (!retryDialogueMissing && !retryIssues.some(isHardPositionIssue)) break;
+        if (!requiresStructuralRepairLoop) break;
+      } catch {
+        // Continue the bounded repair loop. The last schema-valid candidate
+        // remains usable while the source-backed facts are still available.
+      }
     }
 
     if (initialPositionAnchorIssues.length > 0) {
-      const remainingIssues = findPositionAnchorIssues(
+      const anchoredPrompt = repairPositionAnchorsDeterministically(
+        outcome.data.prompt,
+        dialogueForBlock,
+        outcome.data.frame_analysis,
+        hasEstablishedCharacters,
+        params.shotContext.barrierMultiView,
+        params.verifiedCastPositions,
+        characterDescriptionOverrides,
+      );
+      if (anchoredPrompt !== outcome.data.prompt) {
+        outcome = { ...outcome, data: { ...outcome.data, prompt: anchoredPrompt } };
+      }
+      let remainingIssues = findPositionAnchorIssues(
         outcome.data,
         dialogueForBlock,
         hasEstablishedCharacters,
@@ -4126,32 +4465,31 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         params.verifiedCastPositions,
         characterDescriptionOverrides,
       );
-      const positionMismatches = remainingIssues.filter(issue =>
-        issue.includes(POSITION_ANCHOR_MARKER) ||
-        issue.includes(POSITION_AMBIGUITY_MARKER) ||
-        issue.includes(POSITION_VIEW_SCOPE_MARKER) ||
-        issue.includes(CUSTOM_IDENTITY_POSITION_MARKER) ||
-        issue.includes(SPEAKER_CUE_MARKER),
+      const customIdentityRepair = removeCustomIdentityPositionCues(
+        outcome.data.prompt,
+        characterDescriptionOverrides,
+        characterNameByKey,
       );
-      if (positionMismatches.length > 0) {
-        throw new VdSchemaValidationError(
-          positionMismatches.some(issue => issue.includes(CUSTOM_IDENTITY_POSITION_MARKER))
-            ? `Shot ${params.shotNumber}: custom identity position conflicts with the assigned character description after 1 corrective retry`
-            : positionMismatches.some(issue => issue.includes(SPEAKER_CUE_MARKER))
-              ? `Shot ${params.shotNumber}: dialogue lines are missing explicit speaker cues after 1 corrective retry`
-            : `Shot ${params.shotNumber}: video-prompt position anchors contradict or view scopes contradict the assigned frame analysis after 1 corrective retry`,
-          positionMismatches,
+      if (customIdentityRepair !== outcome.data.prompt) {
+        outcome = { ...outcome, data: { ...outcome.data, prompt: customIdentityRepair } };
+        remainingIssues = findPositionAnchorIssues(
+          outcome.data,
+          dialogueForBlock,
+          hasEstablishedCharacters,
+          params.shotContext.barrierMultiView,
+          params.verifiedCastPositions,
+          characterDescriptionOverrides,
         );
       }
       if (remainingIssues.length > 0) {
         warnings.push(
-          `Shot ${params.shotNumber}: video-prompt position-anchor check still incomplete after 1 corrective retry — ${remainingIssues.join("; ")}`,
+          `Shot ${params.shotNumber}: video-prompt position-anchor check was repaired with ${repairAttempts} bounded attempt(s); residual non-fatal findings — ${remainingIssues.join("; ")}`,
         );
       }
     }
   }
 
-  const { data, response } = outcome;
+  let { data, response } = outcome;
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
@@ -4219,17 +4557,17 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
     ? data.prompt.trim()
     : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
-  const finalPrompt = appendCustomCharacterIdentityLocks(
+  let finalPrompt = appendCustomCharacterIdentityLocks(
     stitchedBasePrompt,
     characterDescriptionOverrides,
     characterNameByKey,
   );
-  const frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
-  const motionResolution = resolveShotVideoPromptMotionProfile(
+  let frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
+  let motionResolution = resolveShotVideoPromptMotionProfile(
     data.motion_profile,
     motionContractsEnabled,
   );
-  const assurance = assureVideoPromptMotion({
+  let assurance = assureVideoPromptMotion({
     prompt: finalPrompt,
     negativePrompt: data.negative_motion_prompt || undefined,
     family,
@@ -4242,6 +4580,62 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     frameAnalysis,
     motionProfile: motionResolution.motionProfile,
   });
+  for (let repairAttempt = 0; repairAttempt < MAX_VIDEO_PROMPT_REPAIR_ATTEMPTS && assurance.blocking.length > 0; repairAttempt += 1) {
+    const repairText = `${userPromptText}\n\nMOTION/IDENTITY ASSURANCE REPAIR (MANDATORY): rewrite the candidate JSON until deterministic verification passes. Preserve every timed dialogue line verbatim, each named speaker, the established cast, custom identities, declared genre, and the provider model contract. Findings: ${assurance.blocking.map(f => `${f.code}: ${f.message} Repair: ${f.repair}`).join("; ")}`;
+    const repairImages = buildShotVideoPromptVisionImages(
+      params.imageUrl,
+      params.characterReferenceImages,
+      params.locationReferenceImage,
+      params.barrierReferenceImage,
+      params.additionalImageUrls,
+    );
+    const agentRepair = await tryRunVideoPromptRepairAgent({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      model,
+      systemPrompt,
+      repairPrompt: repairText,
+      referenceImages: repairImages,
+      publicUrl: params.publicUrl,
+    });
+    const repairedOutcome = agentRepair
+      ? { data: agentRepair, response }
+      : await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
+          model,
+          systemPrompt,
+          content: buildVisionAwareContent(repairText, hasVision, repairImages),
+          userId: params.userId,
+          maxTokens: 3600,
+          schema: shotVideoPromptOutputSchema,
+        }).catch(() => null);
+    if (!repairedOutcome) break;
+    outcome = { ...outcome, data: repairedOutcome.data, response: repairedOutcome.response };
+    data = outcome.data;
+    finalPrompt = appendCustomCharacterIdentityLocks(
+      nativeAudioDialogue
+        ? (promptEmbedsDialogueVerbatim(data.prompt, dialogueForBlock)
+            ? data.prompt.trim()
+            : appendMissingDialogueVerbatim(data.prompt, dialogueForBlock, dialogueBlockOptions))
+        : data.prompt,
+      characterDescriptionOverrides,
+      characterNameByKey,
+    );
+    frameAnalysis = normalizeFrameAnalysis(data.frame_analysis);
+    motionResolution = resolveShotVideoPromptMotionProfile(data.motion_profile, motionContractsEnabled);
+    assurance = assureVideoPromptMotion({
+      prompt: finalPrompt,
+      negativePrompt: data.negative_motion_prompt || undefined,
+      family,
+      genre: params.shotContext.genre,
+      establishedCharacterNames: (params.characterReferenceImages ?? []).map(c => c.name ?? c.characterKey),
+      dialogueSpeakerNames: dialogue
+        .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
+        .filter((v): v is string => Boolean(v)),
+      supportingPresence: params.shotContext.supportingPresence,
+      frameAnalysis,
+      motionProfile: motionResolution.motionProfile,
+    });
+  }
   if (assurance.blocking.length > 0) {
     throw new VdSchemaValidationError(
       `Shot ${params.shotNumber}: speaker-switch video prompt failed motion/identity assurance before provider submission`,

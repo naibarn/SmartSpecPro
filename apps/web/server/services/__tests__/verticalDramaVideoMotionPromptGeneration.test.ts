@@ -1522,7 +1522,7 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     expect(mockExecute).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects a custom identity that is still paired with a viewer position", async () => {
+  it("repairs a custom identity that is still paired with a viewer position", async () => {
     mockExecute.mockResolvedValue(
       successResponse(
         shotVideoPromptOutput({
@@ -1531,9 +1531,8 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
       ),
     );
 
-    await expect(
-      generateVerticalDramaShotVideoPrompt(
-        baseShotVideoPromptParams({
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
           characterReferenceImages: [
             { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
           ],
@@ -1547,11 +1546,12 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
               { characterKey: "alice", speakerName: "Alice", lineTh: "Hello there" },
             ],
           },
-        }),
-      ),
-    ).rejects.toThrow("custom identity");
+      }),
+    );
+    expect(result.prompt).toContain("CUSTOM CHARACTER IDENTITY LOCK");
+    expect(result.prompt).not.toContain("Alice on viewer-left");
     expect(mockExecute).toHaveBeenCalledTimes(2);
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("persists the exact custom identity lock without adding a position cue", async () => {
@@ -2347,18 +2347,17 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
       ),
     );
 
-    await expect(
-      generateVerticalDramaShotVideoPromptSpeakerSwitch(
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
         baseSpeakerSwitchParams({
           characterReferenceImages: [
             { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
             { characterKey: "bob", name: "Bob", url: "https://example.com/bob.png" },
           ],
         }),
-      ),
-    ).rejects.toThrow("position anchors contradict");
+      );
+    expect(result.prompt).toContain('Alice (viewer-left) says "Why didn\'t you tell me?"');
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockExecute).toHaveBeenCalledTimes(4);
     const retryText = (mockExecute.mock.calls[1][0].messages[1].content as any[])
       .find((part: any) => part.type === "text")
       .text;
@@ -2391,8 +2390,7 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
       ),
     );
 
-    await expect(
-      generateVerticalDramaShotVideoPromptSpeakerSwitch(
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
         baseSpeakerSwitchParams({
           characterReferenceImages: [
             { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
@@ -2403,8 +2401,8 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
             { characterKey: "bob", name: "Bob", position: "viewer-right" },
           ],
         }),
-      ),
-    ).rejects.toThrow("position anchors contradict");
+      );
+    expect(result.prompt).toContain('Alice (viewer-left) says "Why didn\'t you tell me?"');
 
     const retryText = (mockExecute.mock.calls[1][0].messages[1].content as any[])
       .find((part: any) => part.type === "text")
@@ -2492,8 +2490,7 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     );
 
     const base = baseSpeakerSwitchParams();
-    await expect(
-      generateVerticalDramaShotVideoPromptSpeakerSwitch(
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
         baseSpeakerSwitchParams({
           barrierReferenceImage: {
             url: "https://example.com/view-2.png",
@@ -2534,10 +2531,10 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
             { subShotNumber: 2, characterKey: "krit", lineIndexes: [1], durationSeconds: 3 },
           ],
         }),
-      ),
-    ).rejects.toThrow("view scopes contradict");
+      );
+    expect(result.prompt).toContain("Image 1:");
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockExecute).toHaveBeenCalledTimes(4);
     const firstContent = mockExecute.mock.calls[0][0].messages[1].content as any[];
     expect(firstContent.map(part => part.text).filter(Boolean)).toContain(
       "Image 1: primary shot location",
