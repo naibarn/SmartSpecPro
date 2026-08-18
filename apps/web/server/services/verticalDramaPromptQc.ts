@@ -2,7 +2,9 @@
  * Vertical Drama Series — final-prompt quality control (hard length caps).
  *
  * Enforces the legacy `VD_IMAGE_PROMPT_MAX` (3800 chars) / `VD_VIDEO_PROMPT_MAX`
- * (2000 chars) defaults on any FINAL prompt string BEFORE it is used for real generation or
+ * (2000 chars) defaults, widened only by a selected provider's explicit
+ * allowance (currently 4096 for Kie.ai video), on any FINAL prompt string
+ * BEFORE it is used for real generation or
  * persisted/displayed in the UI. When a prompt is already within its cap this
  * is a zero-cost, zero-LLM-call no-op (`refined: false`, `creditsUsed: 0`) —
  * every enforcement point below must stay free for the common case.
@@ -41,6 +43,7 @@ import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { debugLog, debugError } from "../_core/logger";
 import { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX } from "@shared/verticalDramaSeries";
 import { VD_IMAGE_PROMPT_ABSOLUTE_MAX } from "./modelPromptBudget";
+import { VD_VIDEO_PROMPT_ABSOLUTE_MAX } from "@shared/verticalDramaSeries/videoPromptBudget";
 
 export { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX };
 
@@ -120,17 +123,19 @@ export function promptCapForKind(kind: VerticalDramaPromptKind): number {
   return kind === "image" ? VD_IMAGE_PROMPT_MAX : VD_VIDEO_PROMPT_MAX;
 }
 
-/** Resolve one call's cap while preserving the legacy floor and video limit. */
+/** Resolve one call's cap while preserving the legacy floor and provider limit. */
 export function resolveEffectivePromptCap(
   kind: VerticalDramaPromptKind,
   override?: number,
 ): number {
   const defaultCap = promptCapForKind(kind);
-  if (kind === "video" || override === undefined || !Number.isFinite(override)) {
+  if (override === undefined || !Number.isFinite(override)) {
     return defaultCap;
   }
+  const absoluteCap =
+    kind === "video" ? VD_VIDEO_PROMPT_ABSOLUTE_MAX : VD_IMAGE_PROMPT_ABSOLUTE_MAX;
   return Math.min(
-    VD_IMAGE_PROMPT_ABSOLUTE_MAX,
+    absoluteCap,
     Math.max(defaultCap, Math.floor(override)),
   );
 }
@@ -142,8 +147,10 @@ export interface EnsurePromptWithinLimitParams {
   context?: string;
   /** Exact fragments (normally native-audio dialogue) that must survive every refinement/truncation pass. */
   protectedFragments?: string[];
-  /** Optional selected-image-model cap for this call; widening-only. */
+  /** Optional selected-provider cap for this call; widening-only. */
   maxChars?: number;
+  /** Provider-ready paths must never silently truncate semantic clauses. */
+  failClosed?: boolean;
   userId: number;
   tenantId?: string;
   seriesId: number;
@@ -157,6 +164,22 @@ export class PromptProtectedFragmentsOverflowError extends Error {
   constructor(maxChars: number) {
     super(`Mandatory prompt fragments exceed the ${maxChars}-character hard limit`);
     this.name = "PromptProtectedFragmentsOverflowError";
+  }
+}
+
+/** Raised when a provider-ready prompt cannot be losslessly compressed. */
+export class PromptBudgetExceededError extends Error {
+  readonly code = "provider_budget_exceeded" as const;
+  constructor(
+    readonly kind: VerticalDramaPromptKind,
+    readonly maxChars: number,
+    readonly originalLength: number,
+    readonly creditsUsed: number,
+  ) {
+    super(
+      `${kind} prompt exceeds the provider limit (${originalLength}/${maxChars}) and could not be losslessly compressed`,
+    );
+    this.name = "PromptBudgetExceededError";
   }
 }
 
@@ -363,15 +386,17 @@ async function refineOnce(params: {
  *
  * Over-cap path: refine via `cinematic-prompt-refiner-pro` (1 call). If the
  * refined result is STILL over the cap, retry once more with a stricter
- * compression instruction (2nd call). If that also fails, fall back to a
- * hard sentence-boundary truncation at the cap with a logged warning — this
- * function never throws for a length-cap reason and never blocks the user.
+ * compression instruction (2nd call). Provider-ready paths then throw
+ * `PromptBudgetExceededError`; they never truncate or drop required clauses.
+ * Legacy image callers retain the advisory truncation fallback unless they
+ * explicitly opt into `failClosed`.
  */
 export async function ensurePromptWithinLimit(
   params: EnsurePromptWithinLimitParams,
 ): Promise<EnsurePromptWithinLimitResult> {
   const { kind, prompt, context, userId, tenantId, seriesId, idempotencyKey } = params;
   const maxChars = resolveEffectivePromptCap(kind, params.maxChars);
+  const failClosed = params.failClosed ?? kind === "video";
   const label = params.label ?? `${kind} prompt`;
   assertProtectedFragmentsFit(kind, params.protectedFragments, params.maxChars);
 
@@ -435,9 +460,17 @@ export async function ensurePromptWithinLimit(
 
     debugError(
       "vd_prompt_qc",
-      `${label}: refiner still over cap after strict retry (${second.optimizedPrompt.length} > ${maxChars}) — falling back to hard truncation`,
+      `${label}: refiner still over cap after strict retry (${second.optimizedPrompt.length} > ${maxChars})`,
       { kind, maxChars },
     );
+    if (failClosed) {
+      throw new PromptBudgetExceededError(
+        kind,
+        maxChars,
+        second.optimizedPrompt.length,
+        creditsUsed,
+      );
+    }
     const finalized = finalizeProtectedFragments(
       truncateAtSentenceBoundary(second.optimizedPrompt, maxChars),
       params.protectedFragments,
@@ -451,6 +484,15 @@ export async function ensurePromptWithinLimit(
     };
   } catch (error) {
     if (error instanceof PromptProtectedFragmentsOverflowError) throw error;
+    if (error instanceof PromptBudgetExceededError) throw error;
+    if (failClosed) {
+      debugError(
+        "vd_prompt_qc",
+        `${label}: provider-ready refinement failed; blocking instead of truncating`,
+        { kind, maxChars, message: error instanceof Error ? error.message : String(error) },
+      );
+      throw new PromptBudgetExceededError(kind, maxChars, prompt.length, creditsUsed);
+    }
     // Refinement failing entirely (rate limit, insufficient credits, LLM
     // error) must never block the user's generation — fall back to hard
     // truncation of the ORIGINAL prompt, logged as a warning.

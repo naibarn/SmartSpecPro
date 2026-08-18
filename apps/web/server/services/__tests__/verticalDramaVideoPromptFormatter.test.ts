@@ -190,7 +190,7 @@ describe("formatVideoClipRequest — Grok Imagine 1.5 (native audio — xAI sync
     type: "video" as const,
     provider: "kie.ai",
     aliases: ["grok imagine 1.5", "grok imagine video 1.5"],
-    configJson: { maxReferenceImages: 1, hasAudio: true },
+    configJson: { maxReferenceImages: 7, hasAudio: true },
   };
 
   it("embeds the Thai dialogue verbatim with generateAudio and no ttsFallback", () => {
@@ -208,7 +208,7 @@ describe("formatVideoClipRequest — Grok Imagine 1.5 (native audio — xAI sync
     // Literal transcript IS embedded for native-audio models.
     expect(result.prompt).toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
     expect(result.prompt).toContain("in natural spoken Thai, exactly:");
-    expect(result.maxReferenceImages).toBe(1);
+    expect(result.maxReferenceImages).toBe(7);
   });
 
   it("states 'spoken in English' when dialogueLanguage is 'en'", () => {
@@ -591,12 +591,12 @@ describe("formatVideoClipRequest — final VD_VIDEO_PROMPT_MAX tiered guard, rec
   const veoModel = {
     id: "veo3/generate-veo-3-video-lite",
     type: "video" as const,
-    provider: "kie.ai",
+    provider: "other-provider",
     aliases: ["veo 3.1 lite", "veo3-lite"],
     configJson: {},
   };
 
-  it("drops ONLY the accent directive when grounding + dialogue clause + accent directive together exceed VD_VIDEO_PROMPT_MAX, keeping grounding + dialogue clause + base intact", () => {
+  it("keeps grounding, dialogue, and accent clauses when the complete payload exceeds the legacy cap", () => {
     const line = dialogueLine();
     const probe = formatVideoClipRequest({
       clip: clip({ prompt: "X" }),
@@ -616,14 +616,14 @@ describe("formatVideoClipRequest — final VD_VIDEO_PROMPT_MAX tiered guard, rec
       thaiAccent: "standard_central_thai",
     });
 
-    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    expect(result.prompt.length).toBeGreaterThan(2000);
     expect(result.prompt).toContain(basePrompt);
     expect(result.prompt).toContain("Use the attached first image");
     expect(result.prompt).toContain(line.lineTh);
-    expect(result.prompt).not.toContain("Apply this delivery direction to every spoken line.");
+    expect(result.prompt).toContain("Apply this delivery direction to every spoken line.");
   });
 
-  it("drops the accent directive AND the dialogue clause when even grounding + dialogue clause alone exceeds VD_VIDEO_PROMPT_MAX, keeping grounding + base intact", () => {
+  it("keeps the dialogue clause when grounding + dialogue exceeds the legacy cap", () => {
     const line = dialogueLine();
     const probe = formatVideoClipRequest({
       clip: clip({ prompt: "X" }),
@@ -642,13 +642,13 @@ describe("formatVideoClipRequest — final VD_VIDEO_PROMPT_MAX tiered guard, rec
       model: veoModel,
     });
 
-    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    expect(result.prompt.length).toBeGreaterThan(2000);
     expect(result.prompt).toContain(basePrompt);
     expect(result.prompt).toContain("Use the attached first image");
-    expect(result.prompt).not.toContain(line.lineTh);
+    expect(result.prompt).toContain(line.lineTh);
   });
 
-  it("drops the grounding prepend too when even grounding + base alone would exceed VD_VIDEO_PROMPT_MAX, leaving only the base prompt (which always fits on its own)", () => {
+  it("keeps the start-frame grounding clause when it pushes the payload over the legacy cap", () => {
     const probe = formatVideoClipRequest({
       clip: clip({ prompt: "X" }),
       dialogueLines: [],
@@ -665,8 +665,9 @@ describe("formatVideoClipRequest — final VD_VIDEO_PROMPT_MAX tiered guard, rec
       model: veoModel,
     });
 
-    expect(result.prompt).toBe(basePrompt);
-    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    expect(result.prompt).toContain(basePrompt);
+    expect(result.prompt).toContain("Use the attached first image");
+    expect(result.prompt.length).toBeGreaterThan(2000);
   });
 
   it("never involves clip.audioDirection in the guard at all — a set audioDirection has zero effect on the formatted prompt or its length, regardless of size", () => {
@@ -678,6 +679,23 @@ describe("formatVideoClipRequest — final VD_VIDEO_PROMPT_MAX tiered guard, rec
     });
 
     expect(result.prompt).toBe(clip().prompt);
+  });
+
+  it("keeps a Kie.ai prompt between 2000 and 4096 characters intact", () => {
+    const longPrompt = "K".repeat(2500);
+    const kieModel = {
+      ...veoModel,
+      provider: "kie.ai",
+    };
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: longPrompt, startFrameAssetId: undefined }),
+      dialogueLines: [],
+      modelId: kieModel.id,
+      model: kieModel,
+    });
+
+    expect(result.prompt).toBe(longPrompt);
+    expect(result.prompt).toHaveLength(2500);
   });
 });
 

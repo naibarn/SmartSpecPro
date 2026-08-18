@@ -61,6 +61,7 @@ import {
   VD_IMAGE_PROMPT_MAX,
   VD_VIDEO_PROMPT_MAX,
   PromptProtectedFragmentsOverflowError,
+  PromptBudgetExceededError,
   assertProtectedFragmentsFit,
   resolveEffectivePromptCap,
 } from "../verticalDramaPromptQc";
@@ -134,7 +135,7 @@ describe("verticalDramaPromptQc", () => {
       expect(resolveEffectivePromptCap("image", 500)).toBe(VD_IMAGE_PROMPT_MAX);
       expect(resolveEffectivePromptCap("image", 5000)).toBe(5000);
       expect(resolveEffectivePromptCap("image", 99_999)).toBe(20_000);
-      expect(resolveEffectivePromptCap("video", 20_000)).toBe(VD_VIDEO_PROMPT_MAX);
+      expect(resolveEffectivePromptCap("video", 20_000)).toBe(4096);
     });
   });
 
@@ -174,6 +175,21 @@ describe("verticalDramaPromptQc", () => {
       expect(mockDeductCredits).not.toHaveBeenCalled();
     });
 
+    it("accepts a Kie.ai-sized video prompt without refining or truncating", async () => {
+      const prompt = "x".repeat(4096);
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt,
+        maxChars: 4096,
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result).toEqual({ prompt, refined: false, creditsUsed: 0, truncated: false });
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+
     it("never narrows below the legacy image cap", async () => {
       const prompt = "x".repeat(3000);
       const result = await ensurePromptWithinLimit({
@@ -196,8 +212,8 @@ describe("verticalDramaPromptQc", () => {
       ).toThrow(PromptProtectedFragmentsOverflowError);
     });
 
-    it("does not widen video prompts through an image-model override", async () => {
-      const prompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 1);
+    it("clamps an oversized video override to the 4096 absolute ceiling", async () => {
+      const prompt = "x".repeat(4096 + 1);
       mockExecuteRetry.mockResolvedValueOnce(refinerResult("short", "video"));
       await ensurePromptWithinLimit({
         kind: "video",
@@ -375,7 +391,7 @@ describe("verticalDramaPromptQc", () => {
       );
     });
 
-    it("refine-still-over: retries once with stricter instruction, then truncation fallback when still over", async () => {
+    it("refine-still-over: retries once with stricter instruction, then blocks instead of truncating", async () => {
       const overCapPrompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 800);
       const stillOverAfterFirst = "y".repeat(VD_VIDEO_PROMPT_MAX + 300);
       const stillOverAfterSecond = "z".repeat(VD_VIDEO_PROMPT_MAX + 100);
@@ -383,19 +399,16 @@ describe("verticalDramaPromptQc", () => {
         .mockResolvedValueOnce(refinerResult(stillOverAfterFirst, "video"))
         .mockResolvedValueOnce(refinerResult(stillOverAfterSecond, "video"));
 
-      const result = await ensurePromptWithinLimit({
+      await expect(ensurePromptWithinLimit({
         kind: "video",
         prompt: overCapPrompt,
         userId: 1,
         seriesId: 6,
-      });
+      })).rejects.toBeInstanceOf(PromptBudgetExceededError);
 
       expect(mockExecuteRetry).toHaveBeenCalledTimes(2);
-      expect(result.truncated).toBe(true);
-      expect(result.refined).toBe(true);
-      expect(result.prompt.length).toBeLessThanOrEqual(VD_VIDEO_PROMPT_MAX);
       // Credits from both refine attempts should be counted.
-      expect(result.creditsUsed).toBe(4);
+      expect(mockDeductCredits).toHaveBeenCalledTimes(2);
     });
 
     it("credits are only spent when refinement actually runs (second call has strict instruction)", async () => {
@@ -452,6 +465,43 @@ describe("verticalDramaPromptQc", () => {
       expect(result.prompt.length).toBeLessThanOrEqual(VD_IMAGE_PROMPT_MAX);
       expect(mockExecuteRetry).not.toHaveBeenCalled();
       expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+
+    it("fails closed for an over-cap video prompt instead of silently truncating", async () => {
+      const overCapPrompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 100);
+      mockHasEnoughCredits.mockResolvedValue(false);
+
+      await expect(
+        ensurePromptWithinLimit({
+          kind: "video",
+          prompt: overCapPrompt,
+          userId: 1,
+          seriesId: 6,
+        }),
+      ).rejects.toMatchObject({
+        name: "PromptBudgetExceededError",
+        code: "provider_budget_exceeded",
+        maxChars: VD_VIDEO_PROMPT_MAX,
+      } satisfies Partial<PromptBudgetExceededError>);
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+
+    it("fails closed after two over-cap refiner attempts", async () => {
+      const overCapPrompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 100);
+      mockExecuteRetry
+        .mockResolvedValueOnce(refinerResult("y".repeat(VD_VIDEO_PROMPT_MAX + 10), "video"))
+        .mockResolvedValueOnce(refinerResult("z".repeat(VD_VIDEO_PROMPT_MAX + 1), "video"));
+
+      await expect(
+        ensurePromptWithinLimit({
+          kind: "video",
+          prompt: overCapPrompt,
+          userId: 1,
+          seriesId: 6,
+        }),
+      ).rejects.toBeInstanceOf(PromptBudgetExceededError);
+      expect(mockExecuteRetry).toHaveBeenCalledTimes(2);
     });
 
     // Dialogue-duplication fix (2026-07-15, ground truth from
