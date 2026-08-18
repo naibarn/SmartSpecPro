@@ -323,6 +323,22 @@ def _native_runtime_result_to_agent_response(
             )
         )
 
+    # Native skill execution is an alternate bounded executor, not an escape
+    # hatch from the shared assurance contract.  Preserve the optional
+    # non-assured runtime behavior, but when the caller supplied an assurance
+    # envelope return the same provider-ready/failed result shape as
+    # ``run_orchestra`` so the Node client/final gate can verify this path too.
+    assurance_result = None
+    if body.assurance is not None:
+        assurance_result = {
+            "executionId": body.runId or body.requestId,
+            "attemptId": body.assurance.attemptId,
+            "state": "provider_ready" if status == "completed" else "failed",
+            "contractHash": body.assurance.contractHash,
+            "findings": [],
+            "sideEffectAuthorizationId": None,
+        }
+
     return AgentRuntimeResponse.model_validate(
         {
             "runtimeContractVersion": CURRENT_RUNTIME_CONTRACT_VERSION,
@@ -373,6 +389,7 @@ def _native_runtime_result_to_agent_response(
             "checkpointMetadata": None,
             "eventSequenceMetadata": {"count": 0},
             "stepLinks": [],
+            "assurance": assurance_result,
         }
     )
 

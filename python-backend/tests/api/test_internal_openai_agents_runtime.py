@@ -224,6 +224,42 @@ def test_run_routes_native_skill_runtime_when_plan_context_requests_it(tmp_path,
             "workspaceDir": str(workspace_dir),
         }
     }
+    request_payload["assurance"] = {
+        "contractVersion": 1,
+        "contractId": "native-skill-contract",
+        "attemptId": "attempt_native",
+        "taskKind": "skill_execution",
+        "contractHash": "a" * 64,
+        "evidencePolicy": {
+            "requiredPurposes": [],
+            "requireVisionFor": [],
+            "allowTextOnlyFallback": True,
+            "maxEvidenceItems": 16,
+            "minQualityScore": 0.7,
+        },
+        "evidence": [],
+        "outputContract": {
+            "schemaRef": "native-skill-artifact",
+            "requiredFields": [],
+            "maxChars": None,
+        },
+        "providerProfile": None,
+        "budget": {
+            "maxTurns": 8,
+            "maxToolCalls": 16,
+            "maxParallelAgents": 3,
+            "maxPlanDepth": 4,
+            "maxWallClockSeconds": 180,
+            "maxInputTokens": 32000,
+            "maxOutputTokens": 8000,
+            "maxRepairAttempts": 2,
+            "estimatedCost": 0,
+        },
+        "rulePackIds": [],
+        "sideEffectPolicy": "read_only",
+        "sideEffectAuthorization": None,
+        "repairAttempts": 0,
+    }
 
     with (
         patch("app.api.internal_openai_agents_runtime.settings") as mock_settings,
@@ -246,6 +282,9 @@ def test_run_routes_native_skill_runtime_when_plan_context_requests_it(tmp_path,
     assert body["status"] == "completed"
     assert body["toolCallsMade"] == ["native-skill-shell"]
     assert body["traceMetadata"]["nativeSkillRuntime"] is True
+    assert body["assurance"]["state"] == "provider_ready"
+    assert body["assurance"]["attemptId"] == "attempt_native"
+    assert body["assurance"]["contractHash"] == "a" * 64
     assert mock_adapter.run.await_count == 0
 
 

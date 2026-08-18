@@ -28,6 +28,13 @@ source, focused tests, and dependency/runtime probes.
 4. The Node runtime client accepted an assured response with no assurance
    result. Assured requests now fail closed when the adapter omits the result,
    while preserving current/current-minus-one runtime compatibility.
+5. Native skill requests could bypass the assurance result because the native
+   executor returned directly from the API route. Assured native responses now
+   carry the same attempt/contract-bound `provider_ready` (or `failed`) result
+   used by the normal Orchestra adapter path.
+6. The desktop runtime selector could still choose the retired Agency Swarm
+   enum for new complex/connector runs. New selection now routes to the cloud
+   Orchestra; the legacy enum remains readable only for historical records.
 
 ## Existing protections confirmed
 
@@ -38,14 +45,15 @@ source, focused tests, and dependency/runtime probes.
   are checked before paid video submission.
 - The paid render performs a second provider-aware prompt-QC after formatter and
   preset transforms, immediately before credit reservation/provider submit.
-- Agency Swarm package/runtime activation is retired; historical data remains
-  read-only and recoverable.
+- Agency Swarm execution is fail-closed at the bridge/API boundary and is no
+  longer selected for new desktop runs; historical data/types remain readable
+  and recoverable for migration.
 
 ## Focused proof
 
 - Node prompt/assurance/budget/client suites: 205 tests passed.
-- Router/reference/draft suites: 55 tests passed.
-- Python assurance/contracts/adapter suites: 51 tests passed.
+- Router/reference/draft/desktop-runtime suites: 61 tests passed.
+- Python API/assurance/contracts/adapter suites: 57 tests passed.
 - `pip check`: clean with `openai-agents==0.21.1` in the active environment.
 - `git diff --check`: clean for the touched patch.
 

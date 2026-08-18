@@ -32,7 +32,9 @@ function isRuntimeAvailable(
     case "pi":
       return input.piAvailable;
     case "agency_swarm":
-      return input.agencyAvailable;
+      // Agency Swarm is retired. Keep the historical enum readable for old
+      // desktop records, but never advertise it as an executable runtime.
+      return false;
     case "openclaw_gateway":
       return input.openClawAvailable;
     case "cloud_agent":
@@ -75,10 +77,10 @@ export function routeDesktopRun(
     reason = "explicit_user_choice";
   } else if (
     !input.offline
-    && input.agencyAvailable
+    && input.cloudAllowed
     && (input.orchestrationComplexity === "complex" || input.requiresConnectors)
   ) {
-    selectedRuntime = "agency_swarm";
+    selectedRuntime = "cloud_agent";
     reason = input.requiresConnectors
       ? "connector_orchestration"
       : "multi_agent_complexity";
