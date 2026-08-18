@@ -11,6 +11,7 @@ import { getFeatureFlag } from "../services/featureFlags";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { hasEnoughCredits } from "../services/creditService";
 import { debugError } from "./logger";
+import { assertAgencyExecutionFrozen } from "../services/agentRuntime/agencyDecommissionService";
 export const HEARTBEAT_INTERVAL_MS = 15_000;
 
 /** Conservative credit estimate for an agency run pre-check */
@@ -60,6 +61,12 @@ export function registerAgencyStreamRoutes(app: Express): void {
     });
     if (!auth.ok) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      assertAgencyExecutionFrozen({ originSurface: "agency" });
+    } catch {
+      return res.status(410).json({ error: "Agency Swarm execution has been retired; use the Agent Orchestra." });
     }
 
     // Step 2: Check feature flag

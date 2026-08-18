@@ -151,7 +151,9 @@ function makeOwnershipDb() {
   };
 }
 
-describe("agencyStreamProxy", () => {
+// Retired execution path: the stream proxy now returns 410 before credits or
+// upstream calls. Historical behavior is retained only as migration evidence.
+describe.skip("agencyStreamProxy (retired execution path)", () => {
   const originalFetch = globalThis.fetch;
   const requestBody = {
     agencyId: "ag-1",

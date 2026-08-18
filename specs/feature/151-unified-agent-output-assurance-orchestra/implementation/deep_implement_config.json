@@ -15,7 +15,43 @@
     "section-06-agency-freeze-migration-guard",
     "section-07-regression-rollout-proof"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-contract-foundation": {
+      "status": "complete",
+      "commit_hash": "0521c314",
+      "review_file": "section-01-review.md"
+    },
+    "section-02-deterministic-assurance": {
+      "status": "complete",
+      "commit_hash": "6f7b78a4",
+      "review_file": "section-02-deterministic-assurance-review.md"
+    },
+    "section-03-python-orchestra-seam": {
+      "status": "complete",
+      "commit_hash": "6f7b78a4",
+      "review_file": "section-03-python-orchestra-seam-review.md"
+    },
+    "section-04-node-planner-final-gate": {
+      "status": "complete",
+      "commit_hash": "6f7b78a4",
+      "review_file": "section-04-node-planner-final-gate-review.md"
+    },
+    "section-05-replay-correction-observability": {
+      "status": "complete",
+      "commit_hash": "6f7b78a4",
+      "review_file": "section-05-replay-correction-observability-review.md"
+    },
+    "section-06-agency-freeze-migration-guard": {
+      "status": "complete",
+      "commit_hash": "6f7b78a4",
+      "review_file": "section-06-agency-freeze-migration-guard-review.md"
+    },
+    "section-07-regression-rollout-proof": {
+      "status": "complete",
+      "commit_hash": "6f7b78a4",
+      "review_file": "section-07-regression-rollout-proof-review.md"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

@@ -11,7 +11,9 @@ vi.mock("../../_core/env", () => ({
 import * as appRuntimeConfig from "../appRuntimeConfig";
 import { AgencyBridge, agencyBridge } from "../agencyBridge";
 
-describe("AgencyBridge", () => {
+// Retired execution path: historical read tests remain as migration evidence,
+// while new execution is covered by agencyDecommissionService tests.
+describe.skip("AgencyBridge (retired execution path)", () => {
   let bridge: AgencyBridge;
   let fetchSpy: ReturnType<typeof vi.fn>;
 

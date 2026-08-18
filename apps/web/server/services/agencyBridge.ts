@@ -10,6 +10,7 @@ import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConf
 import type { AgencyTaskMetadata } from "./agencyEscalation";
 import type { ResolvedAgencyRetrievalScope } from "./agencyExperienceTemplateService";
 import type { AgencyCompilePreview } from "./agencyHybridCompile";
+import { assertAgencyExecutionFrozen } from "./agentRuntime/agencyDecommissionService";
 const RUN_TIMEOUT_MS = 120_000; // 2 minutes for multi-agent runs
 
 interface RunParams {
@@ -171,6 +172,9 @@ async function handleResponse<T>(response: Response, context: string): Promise<T
 
 export class AgencyBridge {
   async executeRun(params: RunParams): Promise<RunResult> {
+    // Agency Swarm is migration-only. Historical reads remain available, but
+    // no new paid execution may bypass the assurance Orchestra.
+    assertAgencyExecutionFrozen({ originSurface: "agency" });
     const runtime = await getAppRuntimeConfig();
     const url = `${runtime.pythonBackendUrl}/api/v1/agencies/${params.agencyId}/run`;
 
