@@ -325,9 +325,30 @@ export function verifyAgentRuntimeResponseForRequest(
     | "stepContext"
     | "gatewayInvocationMetadata"
     | "productionAgentsSdkCapabilityManifest"
+    | "assurance"
   >,
   response: AgentRuntimeResponse
 ): AgentRuntimeResponse {
+  if (request.assurance && response.assurance) {
+    if (response.assurance.attemptId !== request.assurance.attemptId) {
+      throw new AgentRuntimeClientError({
+        code: "assurance_attempt_mismatch",
+        message: "Adapter assurance attempt does not match the request.",
+        status: 422,
+      });
+    }
+    if (
+      request.assurance.contractHash &&
+      response.assurance.contractHash &&
+      request.assurance.contractHash !== response.assurance.contractHash
+    ) {
+      throw new AgentRuntimeClientError({
+        code: "assurance_contract_hash_mismatch",
+        message: "Adapter assurance contract hash does not match the request.",
+        status: 422,
+      });
+    }
+  }
   if (
     response.selectedSkillSlug &&
     request.allowedSkills.length > 0 &&
