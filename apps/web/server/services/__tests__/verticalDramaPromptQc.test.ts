@@ -64,6 +64,7 @@ import {
   PromptBudgetExceededError,
   assertProtectedFragmentsFit,
   resolveEffectivePromptCap,
+  extractCustomCharacterIdentityLockFragments,
 } from "../verticalDramaPromptQc";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
@@ -160,6 +161,23 @@ describe("verticalDramaPromptQc", () => {
   });
 
   describe("ensurePromptWithinLimit", () => {
+    it("extracts and preserves custom identity locks as protected provider fragments", async () => {
+      const lock =
+        "CUSTOM CHARACTER IDENTITY LOCK (AUTHORITATIVE; use instead of screen position): ไอริณ [characterKey=character]: ผู้หญิงใส่ผ้ากันเปื้อน.";
+      expect(extractCustomCharacterIdentityLockFragments(`Intro\n${lock}`)).toEqual([lock]);
+      mockExecuteRetry.mockResolvedValueOnce(refinerResult("compressed camera motion", "video"));
+
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: `${"x".repeat(VD_VIDEO_PROMPT_MAX + 50)}\n${lock}`,
+        protectedFragments: [lock],
+        userId: 1,
+        seriesId: 6,
+      });
+      expect(result.prompt).toContain(lock);
+      expect(result.prompt.length).toBeLessThanOrEqual(VD_VIDEO_PROMPT_MAX);
+    });
+
     it("accepts a wider per-model image prompt without an LLM call", async () => {
       const prompt = "x".repeat(5000);
       const result = await ensurePromptWithinLimit({

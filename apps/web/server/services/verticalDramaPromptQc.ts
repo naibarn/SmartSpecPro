@@ -159,6 +159,25 @@ export interface EnsurePromptWithinLimitParams {
   label?: string;
 }
 
+/**
+ * Extract user-authored character identity locks already present in a
+ * persisted prompt.  Provider refiner passes are allowed to compress prose,
+ * but they must never erase the only unambiguous identity description the
+ * user supplied for a crowded/ambiguous frame.
+ */
+export function extractCustomCharacterIdentityLockFragments(
+  prompt: string,
+): string[] {
+  return prompt
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line =>
+      /CUSTOM CHARACTER IDENTITY LOCK|CUSTOM CHARACTER IDENTIFICATION OVERRIDES/i.test(
+        line,
+      ),
+    );
+}
+
 export class PromptProtectedFragmentsOverflowError extends Error {
   code = "VD_PROMPT_PROTECTED_FRAGMENTS_OVERFLOW" as const;
   constructor(maxChars: number) {

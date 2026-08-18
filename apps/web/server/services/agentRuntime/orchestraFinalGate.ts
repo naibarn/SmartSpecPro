@@ -28,7 +28,7 @@ export function assertOrchestraFinalGate(
   )
     throw new Error(`assurance_state_not_ready:${input.result.state}`);
   if (
-    input.result.contractHash &&
+    input.contractHash &&
     input.result.contractHash !== input.contractHash
   )
     throw new Error("contract_hash_mismatch");

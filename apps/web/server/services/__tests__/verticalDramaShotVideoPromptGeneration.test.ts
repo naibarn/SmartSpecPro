@@ -1399,6 +1399,10 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
       // Fail-open: generation is never blocked/thrown over a still-imperfect
       // anchor — the result is accepted and a warning is surfaced instead.
       expect(result.prompt).toContain("อย่าเข้ามา");
+      // Even when the model misses the cue, the deterministic repair must
+      // bind the canonical speaker to the exact quoted line before the
+      // prompt can be persisted or sent to a video provider.
+      expect(result.prompt).toContain('หนูนา says: "อย่าเข้ามา"');
       expect(result.warnings?.length).toBeGreaterThan(0);
       expect(result.warnings?.[0]).toContain("position-anchor");
     });

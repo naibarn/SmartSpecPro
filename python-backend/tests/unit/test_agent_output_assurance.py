@@ -1,4 +1,8 @@
+import asyncio
 from datetime import datetime, timezone
+from types import SimpleNamespace
+
+import pytest
 
 from app.services.agent_output_assurance import (
     AssuranceRequest,
@@ -11,7 +15,11 @@ from app.services.agent_output_assurance import (
     validate_provider_prompt_length,
     validate_side_effect_authorization,
 )
-from app.services.openai_agents_orchestra import OrchestraAdmissionError, preflight_orchestra_request
+from app.services.openai_agents_orchestra import (
+    OrchestraAdmissionError,
+    preflight_orchestra_request,
+    run_orchestra,
+)
 
 
 def make_request(**overrides):
@@ -89,3 +97,102 @@ def test_orchestra_preflight_rejects_agency_origin_without_running_sdk():
         assert exc.finding.code == "agency_origin_forbidden"
     else:
         raise AssertionError("Agency origin must be rejected before SDK execution")
+
+
+def test_orchestra_marks_completed_artifact_provider_ready_and_checks_hash():
+    payload = {
+        "runtimeContractVersion": 2,
+        "traceSchemaVersion": 2,
+        "checkpointSchemaVersion": 2,
+        "surface": "chat",
+        "originSurface": "chat",
+        "entryPoint": "chat_turn",
+        "tenantId": "tenant",
+        "requestId": "request-1",
+        "idempotencyKey": "idem-1",
+        "objective": "test",
+        "teamMembers": [],
+        "candidateSkillManifests": [],
+        "allowedTools": [],
+        "allowedSkills": [],
+        "allowedAgents": [],
+        "completionPolicy": {},
+        "reviewPolicy": {},
+        "retryPolicy": {},
+        "traceCorrelationIds": {"traceId": "trace-1"},
+        "modelConfig": {"providerId": "test", "modelId": "test"},
+        "executionEnvelope": {
+            "envelopeId": "env-1",
+            "tenantId": "tenant",
+            "issuedAt": "2026-01-01T00:00:00Z",
+            "expiresAt": "2099-01-01T00:00:00Z",
+            "allowedTools": [],
+            "allowedSkills": [],
+            "allowedAgents": [],
+            "sideEffectPolicy": "read_only",
+        },
+        "contextEvidenceItems": [],
+        "assurance": make_request(contractHash="a" * 64).model_dump(),
+    }
+    from app.services.openai_agents_contracts import AgentRuntimeRequest
+
+    request = AgentRuntimeRequest.model_validate(payload)
+
+    async def adapter_run(_request, **_kwargs):
+        return SimpleNamespace(
+            status="completed",
+            assurance=None,
+        )
+
+    response = asyncio.run(run_orchestra(request, adapter_run))
+    assert response.assurance.state == "provider_ready"
+    assert response.assurance.contractHash == "a" * 64
+
+
+def test_orchestra_rejects_completed_artifact_with_missing_contract_hash():
+    from app.services.openai_agents_contracts import AgentRuntimeRequest
+
+    request = AgentRuntimeRequest.model_validate({
+        "runtimeContractVersion": 2,
+        "traceSchemaVersion": 2,
+        "checkpointSchemaVersion": 2,
+        "surface": "chat",
+        "originSurface": "chat",
+        "entryPoint": "chat_turn",
+        "tenantId": "tenant",
+        "requestId": "request-2",
+        "idempotencyKey": "idem-2",
+        "objective": "test",
+        "teamMembers": [],
+        "candidateSkillManifests": [],
+        "allowedTools": [],
+        "allowedSkills": [],
+        "allowedAgents": [],
+        "completionPolicy": {},
+        "reviewPolicy": {},
+        "retryPolicy": {},
+        "traceCorrelationIds": {"traceId": "trace-2"},
+        "modelConfig": {"providerId": "test", "modelId": "test"},
+        "executionEnvelope": {
+            "envelopeId": "env-2",
+            "tenantId": "tenant",
+            "issuedAt": "2026-01-01T00:00:00Z",
+            "expiresAt": "2099-01-01T00:00:00Z",
+            "allowedTools": [],
+            "allowedSkills": [],
+            "allowedAgents": [],
+            "sideEffectPolicy": "read_only",
+        },
+        "contextEvidenceItems": [],
+        "assurance": make_request(contractHash="a" * 64).model_dump(),
+    })
+
+    async def adapter_run(_request, **_kwargs):
+        return SimpleNamespace(
+            status="completed",
+            assurance=SimpleNamespace(attemptId=request.assurance.attemptId, contractHash=None),
+        )
+
+    with pytest.raises(OrchestraAdmissionError) as exc_info:
+        asyncio.run(run_orchestra(request, adapter_run))
+    assert exc_info.value.finding.code == "contract_hash_mismatch"

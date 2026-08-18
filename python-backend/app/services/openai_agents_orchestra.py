@@ -32,7 +32,11 @@ def preflight_orchestra_request(request: AgentRuntimeRequest) -> AssuranceReques
         return None
     raw_origin = (request.originSurface or "").strip().lower()
     context_origin = request.planContext.get("originSurface") if request.planContext else None
-    if raw_origin == "agency" or context_origin == "agency":
+    if raw_origin in {"agency", "agency_swarm", "agency-swarm"} or str(context_origin or "").strip().lower() in {
+        "agency",
+        "agency_swarm",
+        "agency-swarm",
+    }:
         raise OrchestraAdmissionError(
             AssuranceFinding(code="agency_origin_forbidden", severity="blocking", message="agency_swarm_active_execution_forbidden")
         )
@@ -59,7 +63,13 @@ async def run_orchestra(
         response.assurance = AssuranceResult.model_validate({
             "executionId": request.runId or request.requestId,
             "attemptId": assurance.attemptId,
-            "state": "verifying" if response.status == "completed" else "failed",
+            # The adapter has already completed its bounded run at this
+            # boundary.  Exposing `verifying` here made every Node final gate
+            # reject an otherwise valid artifact because only `provider_ready`
+            # and `committed` are admissible for side-effect review.  Python
+            # still never performs the side effect; this state means the
+            # artifact is ready for Node's final deterministic gate.
+            "state": "provider_ready" if response.status == "completed" else "failed",
             "contractHash": assurance.contractHash,
             "findings": [],
             "sideEffectAuthorizationId": None,
@@ -67,5 +77,9 @@ async def run_orchestra(
     elif response.assurance.attemptId != assurance.attemptId:
         raise OrchestraAdmissionError(
             AssuranceFinding(code="contract_hash_mismatch", severity="blocking", message="assurance_attempt_mismatch")
+        )
+    elif assurance.contractHash and response.assurance.contractHash != assurance.contractHash:
+        raise OrchestraAdmissionError(
+            AssuranceFinding(code="contract_hash_mismatch", severity="blocking", message="assurance_contract_hash_mismatch")
         )
     return response

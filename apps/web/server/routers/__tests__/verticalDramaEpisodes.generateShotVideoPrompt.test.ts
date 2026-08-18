@@ -265,6 +265,7 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaClipDialogue: mockGenerateVerticalDramaClipDialogue,
   appendPresetVisualIdentityStyleTokensToMotionPrompt:
     mockAppendPresetVisualIdentityStyleTokensToMotionPrompt,
+  buildCustomCharacterIdentityLockFragments: vi.fn(() => []),
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
   RateLimitExceededError: MockRateLimitExceededError,
@@ -283,6 +284,7 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
     creditsUsed: 0,
     truncated: false,
   })),
+  extractCustomCharacterIdentityLockFragments: vi.fn(() => []),
 }));
 
 // Part B3 (planning/`polished-toasting-gadget.md`) — `generateShotVideoPrompt`

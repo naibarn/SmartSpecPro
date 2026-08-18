@@ -329,7 +329,14 @@ export function verifyAgentRuntimeResponseForRequest(
   >,
   response: AgentRuntimeResponse
 ): AgentRuntimeResponse {
-  if (request.assurance && response.assurance) {
+  if (request.assurance) {
+    if (!response.assurance) {
+      throw new AgentRuntimeClientError({
+        code: "assurance_result_missing",
+        message: "Adapter omitted the assurance result for an assured request.",
+        status: 422,
+      });
+    }
     if (response.assurance.attemptId !== request.assurance.attemptId) {
       throw new AgentRuntimeClientError({
         code: "assurance_attempt_mismatch",
@@ -339,7 +346,6 @@ export function verifyAgentRuntimeResponseForRequest(
     }
     if (
       request.assurance.contractHash &&
-      response.assurance.contractHash &&
       request.assurance.contractHash !== response.assurance.contractHash
     ) {
       throw new AgentRuntimeClientError({

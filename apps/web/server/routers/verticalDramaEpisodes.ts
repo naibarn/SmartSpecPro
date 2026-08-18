@@ -166,6 +166,7 @@ import {
   VdSchemaValidationError as ClipDialogueSchemaValidationError,
   RateLimitExceededError as ClipDialogueRateLimitExceededError,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
+  buildCustomCharacterIdentityLockFragments,
   // Multi-character reference images (multi-character disambiguation fix,
   // `polished-toasting-gadget.md`) — type-only, shared by
   // `resolveShotVideoPromptCharacterReferenceImages` below and every
@@ -193,7 +194,10 @@ import {
   // out-of-scope call sites via `verticalDramaProductTieIn.ts` directly.
 } from "../services/verticalDramaProductTieIn";
 import { VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL } from "@shared/verticalDramaSeries/characterLock";
-import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
+import {
+  ensurePromptWithinLimit,
+  extractCustomCharacterIdentityLockFragments,
+} from "../services/verticalDramaPromptQc";
 import {
   VD_IMAGE_PROMPT_ABSOLUTE_MAX,
   resolveVdImagePromptBudgetForModel,
@@ -8203,6 +8207,17 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       configJson: selectedVideoModel.configJson,
     }
   );
+  const splitProtectedFragments = [
+    ...(speakerSwitchCapabilities.nativeAudioDialogue === true
+      ? speakerSwitchGeneration.dialogue
+          .map(l => l.lineTh.trim())
+          .filter(Boolean)
+      : []),
+    ...buildCustomCharacterIdentityLockFragments(
+      characterDescriptionOverrides,
+      characterNameByKey ?? new Map(),
+    ),
+  ];
   const qc = await ensurePromptWithinLimit({
     kind: "video",
     prompt,
@@ -8216,17 +8231,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     // as already-present (no duplicate) and only re-append a genuinely
     // dropped line, as a single bare quoted line — never the block.
     protectedFragments:
-      speakerSwitchCapabilities.nativeAudioDialogue === true
-        ? speakerSwitchGeneration.dialogue
-            .map(l => l.lineTh.trim())
-            // BARE, UNQUOTED line text — do NOT wrap in `"..."`.
-            // finalizeProtectedFragments matches via a raw `indexOf`, and the
-            // skill/refiner writes inline dialogue in CURLY quotes; a
-            // straight-quoted fragment never matches inline, so it gets wrongly
-            // re-appended (dialogue-duplication regression, 2026-07-15). The
-            // unquoted line is found inside the curly-quoted inline text.
-            .filter(Boolean)
-        : undefined,
+      splitProtectedFragments.length > 0 ? splitProtectedFragments : undefined,
     userId,
     tenantId,
     seriesId,
@@ -17968,6 +17973,12 @@ export const verticalDramaEpisodesRouter = router({
               // curly-quoted inline dialogue and gets wrongly re-appended.
               .filter(Boolean)
           : undefined;
+      const videoClipIdentityLockFragments =
+        extractCustomCharacterIdentityLockFragments(clip.prompt);
+      const videoClipProtectedFragments = [
+        ...(videoClipDialogueLineFragments ?? []),
+        ...videoClipIdentityLockFragments,
+      ];
 
       // Final-prompt QC (hard length cap) — the formatter folds
       // dialogue/delivery/acting direction text INTO `clip.prompt`, so the
@@ -17978,7 +17989,10 @@ export const verticalDramaEpisodesRouter = router({
       const videoPromptQc = await ensurePromptWithinLimit({
         kind: "video",
         prompt: formatted.prompt,
-        protectedFragments: videoClipDialogueLineFragments,
+        protectedFragments:
+          videoClipProtectedFragments.length > 0
+            ? videoClipProtectedFragments
+            : undefined,
         userId,
         tenantId,
         seriesId,
@@ -18017,7 +18031,7 @@ export const verticalDramaEpisodesRouter = router({
       const finalProviderPromptQc = await ensurePromptWithinLimit({
         kind: "video",
         prompt: formatted.prompt,
-        protectedFragments: videoClipDialogueLineFragments,
+        protectedFragments: videoClipProtectedFragments,
         userId,
         tenantId,
         seriesId,
@@ -21549,6 +21563,15 @@ export const verticalDramaEpisodesRouter = router({
           configJson: selectedVideoModel.configJson,
         }
       );
+      const shotVideoProtectedFragments = [
+        ...(finalVideoCapabilities.nativeAudioDialogue === true
+          ? dialogueLines.map(l => l.lineTh.trim()).filter(Boolean)
+          : []),
+        ...buildCustomCharacterIdentityLockFragments(
+          characterDescriptionOverrides,
+          shotVideoCharacterNameByKey,
+        ),
+      ];
       const shotVideoPromptQc = await ensurePromptWithinLimit({
         kind: "video",
         prompt: result.prompt,
@@ -21557,13 +21580,8 @@ export const verticalDramaEpisodesRouter = router({
         // block. See the sub-shots path's identical fix (near
         // `speakerSwitchGeneration.dialogue` above) for the full rationale.
         protectedFragments:
-          finalVideoCapabilities.nativeAudioDialogue === true
-            ? dialogueLines
-                .map(l => l.lineTh.trim())
-                // BARE, UNQUOTED line text (see the sub-shots site's comment):
-                // a straight-quoted fragment never matches the refiner's
-                // curly-quoted inline dialogue and gets wrongly re-appended.
-                .filter(Boolean)
+          shotVideoProtectedFragments.length > 0
+            ? shotVideoProtectedFragments
             : undefined,
         userId,
         tenantId,

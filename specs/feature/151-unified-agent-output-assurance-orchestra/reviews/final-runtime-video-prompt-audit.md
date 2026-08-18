@@ -1,0 +1,56 @@
+# Feature 151 final runtime/video-prompt audit
+
+Date: 2026-08-18
+
+## Scope
+
+This audit compares the Feature 151 spec/plan with the executable Node and
+Python boundaries and the Vertical Drama paid-render path. SocratiCode was not
+available in the execution environment, so the evidence was traced from the
+source, focused tests, and dependency/runtime probes.
+
+## Gaps found and closed
+
+1. A weak model could mention a character earlier in the paragraph but leave a
+   quoted line without an explicit speaker + speech verb. The deterministic
+   repair now adds the resolved canonical speaker immediately before the exact
+   quote for every known speaker, and the verifier checks for a real speech
+   verb rather than a coincidental name occurrence.
+2. Provider prompt-QC protected dialogue text but not user-authored custom
+   identity locks. Kie/Grok refiner passes could therefore keep the line while
+   removing the detail that disambiguates two people. Custom identity-lock
+   fragments are now protected in shot generation and again at the paid video
+   render boundary.
+3. The Python Orchestra returned `verifying` after a completed adapter run,
+   which made Node's provider-ready final gate reject a valid completed
+   artifact. Completed bounded runs now return `provider_ready`; contract hash
+   mismatches and all Agency origin spellings are rejected before execution.
+4. The Node runtime client accepted an assured response with no assurance
+   result. Assured requests now fail closed when the adapter omits the result,
+   while preserving current/current-minus-one runtime compatibility.
+
+## Existing protections confirmed
+
+- Kie.ai video prompt budget resolves to 4,096 characters; video overflow is
+  fail-closed after bounded lossless refinement and never hard-truncated.
+- Start-frame/character/location evidence, multi-character cast locks, barrier
+  dual-view references, dialogue source pinning, and tenant-scoped asset URLs
+  are checked before paid video submission.
+- The paid render performs a second provider-aware prompt-QC after formatter and
+  preset transforms, immediately before credit reservation/provider submit.
+- Agency Swarm package/runtime activation is retired; historical data remains
+  read-only and recoverable.
+
+## Focused proof
+
+- Node prompt/assurance/budget/client suites: 205 tests passed.
+- Router/reference/draft suites: 55 tests passed.
+- Python assurance/contracts/adapter suites: 51 tests passed.
+- `pip check`: clean with `openai-agents==0.21.1` in the active environment.
+- `git diff --check`: clean for the touched patch.
+
+## Release-only checks (not falsely claimed as local proof)
+
+Authenticated browser flow, a real Kie/Grok provider submission, credit-ledger
+reconciliation, deployment installation from `python-backend/requirements.txt`,
+and full-repository TypeScript checks still require the release environment.

@@ -1580,6 +1580,12 @@ const POSITION_ANCHOR_WORDS = /\b(center[-\s]left|center[-\s]right|left|center|r
 const POSITION_ANCHOR_MARKER = "position mismatch";
 const CUSTOM_IDENTITY_POSITION_MARKER = "custom identity position conflict";
 const SPEAKER_CUE_MARKER = "missing explicit speaker cue";
+// A nearby character name is not sufficient to bind a quoted line to the
+// correct voice.  Weak models often mention the speaker in the preceding
+// sentence and then emit an un-attributed quote; treat only a name paired
+// with an explicit speech verb as a deterministic speaker cue.
+const SPEAKING_VERB_WORDS =
+  /\b(?:say|says|said|speak|speaks|spoke|whisper|whispers|whispered|reply|replies|replied|answer|answers|answered|continue|continues|continued|state|states|stated|utter|utters|call|calls|shout|shouts|shouted|yell|yells|yelled|talk|talks)\b|พูด|กล่าว|กระซิบ|ตอบ|ตะโกน|ตะโกนเรียก/iu;
 const CUSTOM_IDENTITY_POSITION_WORDS =
   /\b(?:viewer|screen)[ -](?:left|right|center(?:[ -](?:left|right))?)\b/iu;
 const POSITION_AMBIGUITY_MARKER = "ambiguous screen position";
@@ -1595,6 +1601,18 @@ type VdFramePositionEntry = {
 
 function normalizeSpeakerLabel(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+function hasExplicitSpeakerCue(window: string, speaker: string | undefined): boolean {
+  if (!speaker?.trim()) return false;
+  const normalizedWindow = normalizeSpeakerLabel(window);
+  const normalizedSpeaker = normalizeSpeakerLabel(speaker);
+  if (!normalizedWindow.includes(normalizedSpeaker)) return false;
+  const speakerIndex = normalizedWindow.lastIndexOf(normalizedSpeaker);
+  const afterSpeaker = normalizedWindow.slice(
+    speakerIndex + normalizedSpeaker.length,
+  );
+  return SPEAKING_VERB_WORDS.test(afterSpeaker);
 }
 
 /** Normalize the weak-model position prose into the contract's five buckets. */
@@ -1928,9 +1946,7 @@ function findPositionAnchorIssues(
       characterDescriptionOverrides,
     );
     if (customDescription) {
-      const normalizedWindow = normalizeSpeakerLabel(window);
-      const normalizedSpeaker = speaker ? normalizeSpeakerLabel(speaker) : "";
-      if (speaker && !normalizedWindow.includes(normalizedSpeaker)) {
+      if (speaker && !hasExplicitSpeakerCue(window, speaker)) {
         issues.push(
           `"${line.lineTh}" (${speaker}) — ${SPEAKER_CUE_MARKER}: place the speaker name and a speaking verb immediately before the quoted line`,
         );
@@ -2013,6 +2029,74 @@ function findPositionAnchorIssues(
     }
   }
   return issues;
+}
+
+/**
+ * Repair the narrow case where the model preserved a canonical dialogue line
+ * verbatim but omitted that line's explicit named-speaker cue after the one
+ * allowed corrective retry. This is deterministic and text-preserving: it
+ * inserts only `<canonical speaker> says:` immediately before the existing
+ * opening quote. This is safe for every known speaker (not only custom
+ * identity overrides): the canonical dialogue source already resolved the
+ * speaker key, so adding the missing attribution cannot change the spoken
+ * text or invent a new person. Identity/position contradictions remain
+ * fail-closed in the normal post-repair validation below.
+ */
+function addMissingCanonicalSpeakerCues(
+  prompt: string,
+  dialogueLines: Array<{
+    lineTh: string;
+    characterKey?: string;
+    speakerName?: string;
+  }>,
+  _characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides,
+): string {
+  let repaired = prompt;
+  const ANCHOR_WINDOW_CHARS = 200;
+
+  for (const line of dialogueLines) {
+    const speaker = line.speakerName ?? line.characterKey;
+    if (!speaker) continue;
+    const lineStart = findQuotedLineStartIndex(repaired, line.lineTh);
+    if (lineStart < 0) continue;
+    const precedingWindow = repaired.slice(
+      Math.max(0, lineStart - ANCHOR_WINDOW_CHARS),
+      lineStart,
+    );
+    if (hasExplicitSpeakerCue(precedingWindow, speaker)) {
+      continue;
+    }
+
+    const immediatePrefix = repaired.slice(
+      Math.max(0, lineStart - 8),
+      lineStart,
+    );
+    const quoteMatch = /["'“‘]\s*$/u.exec(immediatePrefix);
+    const insertionIndex = quoteMatch
+      ? lineStart - quoteMatch[0].length
+      : lineStart;
+    repaired = `${repaired.slice(0, insertionIndex)}${speaker} says: ${repaired.slice(insertionIndex)}`;
+  }
+
+  return repaired;
+}
+
+/**
+ * Return the exact user-authored identity fragments that must survive every
+ * provider-ready refinement pass.  Keeping this helper next to the prompt
+ * composer gives the router and the paid-render boundary one canonical
+ * representation instead of each reconstructing a subtly different lock.
+ */
+export function buildCustomCharacterIdentityLockFragments(
+  overrides: VerticalDramaCharacterDescriptionOverrides | undefined,
+  characterNameByKey: ReadonlyMap<string, string>,
+): string[] {
+  return Object.entries(overrides ?? {})
+    .filter(([, description]) => description.trim().length > 0)
+    .map(([characterKey, description]) => {
+      const name = characterNameByKey.get(characterKey) ?? characterKey;
+      return `${name} [characterKey=${characterKey}]: ${description.trim()}`;
+    });
 }
 
 /**
@@ -3202,6 +3286,22 @@ export async function generateVerticalDramaShotVideoPrompt(
     } catch {
       // Corrective retry is best-effort only; never fail the whole call
       // over it — keep the original outcome.
+    }
+
+    // A valid prompt should not be discarded only because a weak model kept
+    // the exact dialogue but missed a repeated named-speaker cue. Repair that
+    // bounded omission without another LLM call, then run the same strict
+    // validator again. No dialogue text or position/identity claim changes.
+    const deterministicallyRepairedPrompt = addMissingCanonicalSpeakerCues(
+      outcome.data.prompt,
+      requiredDialogue,
+      characterDescriptionOverrides,
+    );
+    if (deterministicallyRepairedPrompt !== outcome.data.prompt) {
+      outcome = {
+        ...outcome,
+        data: { ...outcome.data, prompt: deterministicallyRepairedPrompt },
+      };
     }
 
     // Re-check after the corrective retry. Missing generic anchors remain a
