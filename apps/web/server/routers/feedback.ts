@@ -76,6 +76,12 @@ export const feedbackRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
       const normalized = deriveTitleFromDescription(input.title, input.description);
+      const reporterLabel = ctx.user.email?.trim() || `user #${ctx.user.id}`;
+      const reporterLine = `Reporter: ${reporterLabel} (user #${ctx.user.id})`;
+      const ticketTitle = sanitizeHtml(`[${reporterLabel}] ${normalized.title}`).slice(0, 255);
+      const ticketDescription = normalized.description
+        ? `${reporterLine}\n${normalized.description}`
+        : reporterLine;
 
       const [ticket] = await db
         .insert(feedbackTickets)
@@ -84,8 +90,8 @@ export const feedbackRouter = router({
           submittedBy: ctx.user.id,
           submittedByType: "human",
           ticketType: input.ticketType,
-          title: sanitizeHtml(normalized.title),
-          description: normalized.description ? sanitizeHtml(normalized.description) : null,
+          title: ticketTitle,
+          description: sanitizeHtml(ticketDescription),
           stepsToReproduce: input.stepsToReproduce ? sanitizeHtml(input.stepsToReproduce) : null,
           expectedBehavior: input.expectedBehavior ? sanitizeHtml(input.expectedBehavior) : null,
           actualBehavior: input.actualBehavior ? sanitizeHtml(input.actualBehavior) : null,
@@ -206,7 +212,24 @@ export const feedbackRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
-      return conditions.length > 0 ? query.where(and(...conditions)) : query;
+      const tickets = await (conditions.length > 0 ? query.where(and(...conditions)) : query);
+      const reporterIds = tickets
+        .map((ticket) => ticket.submittedBy)
+        .filter((id): id is number => typeof id === "number");
+      let reporters: AffectedUser[] = [];
+      if (reporterIds.length > 0) {
+        try {
+          reporters = await resolveAffectedUsers(db, reporterIds, ctx.tenantId, 100);
+        } catch (err) {
+          console.error("[Feedback] Failed to resolve reporter emails:", err);
+        }
+      }
+      const reporterById = new Map(reporters.map((reporter) => [reporter.id, reporter.email]));
+      return tickets.map((ticket) => ({
+        ...ticket,
+        reporterEmail:
+          ticket.submittedBy != null ? reporterById.get(ticket.submittedBy) ?? null : null,
+      }));
     }),
 
   getTicket: adminProcedure
@@ -229,19 +252,38 @@ export const feedbackRouter = router({
 
       const ticket = tickets[0];
       const affectedUserIds = extractAffectedUserIds(ticket.contextJson);
+      const reporterId = typeof ticket.submittedBy === "number" ? ticket.submittedBy : null;
       let affectedUsers: AffectedUser[] = affectedUserIds.map((id) => ({
         id,
         email: null,
       }));
+      let reporter: AffectedUser | null = reporterId != null
+        ? { id: reporterId, email: null }
+        : null;
       if (affectedUserIds.length > 0) {
         try {
-          affectedUsers = await resolveAffectedUsers(
+          const resolvedUsers = await resolveAffectedUsers(
             db,
-            affectedUserIds,
+            [...affectedUserIds, ...(reporterId != null ? [reporterId] : [])],
+            ticket.tenantId ?? ctx.tenantId,
+            affectedUserIds.length + (reporterId != null ? 1 : 0),
+          );
+          affectedUsers = resolvedUsers.filter((user) => affectedUserIds.includes(user.id));
+          reporter = reporterId != null
+            ? resolvedUsers.find((user) => user.id === reporterId) ?? { id: reporterId, email: null }
+            : null;
+        } catch (err) {
+          console.error("[Feedback] Failed to resolve affected user emails:", err);
+        }
+      } else if (reporterId != null) {
+        try {
+          [reporter] = await resolveAffectedUsers(
+            db,
+            [reporterId],
             ticket.tenantId ?? ctx.tenantId,
           );
         } catch (err) {
-          console.error("[Feedback] Failed to resolve affected user emails:", err);
+          console.error("[Feedback] Failed to resolve reporter email:", err);
         }
       }
 
@@ -264,7 +306,7 @@ export const feedbackRouter = router({
         }),
       );
 
-      return { ...ticket, affectedUsers, comments, attachments: resolvedAttachments };
+      return { ...ticket, reporter, affectedUsers, comments, attachments: resolvedAttachments };
     }),
 
   addComment: adminProcedure

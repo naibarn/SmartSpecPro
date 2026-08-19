@@ -33,9 +33,10 @@ export function extractAffectedUserIds(contextJson: unknown): number[] {
 export async function resolveAffectedUsers(
   db: DrizzleDB,
   affectedUserIds: number[],
-  tenantId?: string | null
+  tenantId?: string | null,
+  maxUsers = 5
 ): Promise<AffectedUser[]> {
-  const ids = Array.from(new Set(affectedUserIds)).slice(0, 5);
+  const ids = Array.from(new Set(affectedUserIds)).slice(0, maxUsers);
   if (ids.length === 0) return [];
 
   const conditions = [inArray(users.id, ids)];

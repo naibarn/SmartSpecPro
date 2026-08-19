@@ -53,6 +53,16 @@ import {
   Stethoscope,
 } from "lucide-react";
 
+function formatTicketTitle(
+  title: string,
+  reporterEmail?: string | null,
+  reporterId?: number | null,
+): string {
+  const label = reporterEmail || (reporterId != null ? `user #${reporterId}` : "");
+  if (!label || title.startsWith(`[${label}]`)) return title;
+  return `[${label}] ${title}`;
+}
+
 export default function AdminFeedbackHub() {
   const { confirm } = useConfirm();
   const [, setLocation] = useLocation();
@@ -141,6 +151,10 @@ export default function AdminFeedbackHub() {
       email: string | null;
     }>
   );
+  const reporter = ((detail as any)?.reporter ?? null) as {
+    id: number;
+    email: string | null;
+  } | null;
   const imageAttachments = attachmentsList.filter((att: any) =>
     att.mimeType?.startsWith("image/")
   );
@@ -249,7 +263,9 @@ export default function AdminFeedbackHub() {
     if (!detail) return "";
     const d = detail as any;
     const lines: string[] = [];
-    lines.push(`# Error Report: ${d.title}`);
+    lines.push(
+      `# Error Report: ${formatTicketTitle(d.title, d.reporter?.email, d.reporter?.id ?? d.submittedBy)}`,
+    );
     lines.push(
       `- Ticket: #${d.id} | Type: ${d.ticketType} | Status: ${d.status} | Created: ${
         d.createdAt ? new Date(d.createdAt).toISOString() : ""
@@ -260,6 +276,9 @@ export default function AdminFeedbackHub() {
         d.tenantId ?? "unknown"
       })`
     );
+    if (d.reporter?.email) {
+      lines.push(`- Reporter email: ${d.reporter.email}`);
+    }
     lines.push("");
     lines.push("## User Description");
     lines.push(d.description || "(none)");
@@ -537,7 +556,9 @@ export default function AdminFeedbackHub() {
                             ` ×${ticketOccurrences}`}
                         </Badge>
                       )}
-                      <span className="truncate">{ticket.title}</span>
+                      <span className="truncate">
+                        {formatTicketTitle(ticket.title, ticket.reporterEmail, ticket.submittedBy)}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -619,9 +640,16 @@ export default function AdminFeedbackHub() {
                         Ticket ID: {detail.id}
                       </span>
                     </div>
-                    <h2 className="text-lg font-semibold">{detail.title}</h2>
+                    <h2 className="text-lg font-semibold">
+                      {formatTicketTitle(detail.title, reporter?.email, reporter?.id ?? detail.submittedBy)}
+                    </h2>
                     <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
                       <span>Created {formatDate(detail.createdAt)}</span>
+                      {reporter && (
+                        <span>
+                          Reporter: {reporter.email ?? `user #${reporter.id}`}
+                        </span>
+                      )}
                       {detail.respondedAt && (
                         <span className="flex items-center gap-1">
                           <CheckCircle className="h-3 w-3 text-green-500" />

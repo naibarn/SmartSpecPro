@@ -36,6 +36,25 @@ describe("feedback admin tenant scope", () => {
     vi.clearAllMocks();
   });
 
+  it("adds the reporter email to newly submitted feedback title and description", async () => {
+    const values = vi.fn().mockReturnThis();
+    const returning = vi.fn().mockResolvedValue([{ id: 359 }]);
+    mockGetDb.mockResolvedValue({
+      insert: vi.fn(() => ({ values, returning })),
+    });
+
+    await createCaller().submit({
+      ticketType: "bug",
+      title: "สร้าง prompt vdo ไม่ผ่าน",
+      description: "สร้างไม่สำเร็จ",
+    });
+
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({
+      title: "[admin@example.com] สร้าง prompt vdo ไม่ผ่าน",
+      description: "Reporter: admin@example.com (user #1)\nสร้างไม่สำเร็จ",
+    }));
+  });
+
   it("allows an admin to open a legacy unscoped system ticket from a notification", async () => {
     const ticket = {
       id: 262,
@@ -78,6 +97,7 @@ describe("feedback admin tenant scope", () => {
       id: 354,
       tenantId: "tenant-ZCSKEM9s",
       submittedByType: "system",
+      submittedBy: 42,
       ticketType: "bug",
       title: "[Auto][e4937deb] tRPC failure",
       contextJson: { kind: "system_auto_report", affectedUserIds: [119] },
@@ -89,7 +109,10 @@ describe("feedback admin tenant scope", () => {
     };
     const affectedUsersQuery = {
       from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockResolvedValue([{ id: 119, email: "user119@example.com" }]),
+      where: vi.fn().mockResolvedValue([
+        { id: 119, email: "user119@example.com" },
+        { id: 42, email: "reporter@example.com" },
+      ]),
     };
     const commentsQuery = {
       from: vi.fn().mockReturnThis(),
@@ -111,5 +134,6 @@ describe("feedback admin tenant scope", () => {
     expect(result.affectedUsers).toEqual([
       { id: 119, email: "user119@example.com" },
     ]);
+    expect(result.reporter).toEqual({ id: 42, email: "reporter@example.com" });
   });
 });

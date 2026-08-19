@@ -96,6 +96,18 @@ describe("FeedbackProcessor", () => {
       );
     });
 
+    it("includes the reporter email in the notification title data", () => {
+      expect(
+        buildAdminNotificationContent({
+          ticketType: "bug",
+          autoSummary: "Auto-classified as bug (high priority)",
+          title: "สร้าง prompt vdo ไม่ผ่าน",
+          ticketId: 359,
+          reporter: { id: 42, email: "reporter@example.com" },
+        }),
+      ).toContain("Reporter: reporter@example.com (user #42)");
+    });
+
     it("keeps the existing notification shape when no user is attached", () => {
       expect(
         buildAdminNotificationContent({

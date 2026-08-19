@@ -104,12 +104,16 @@ export function buildAdminNotificationContent(params: {
   autoSummary: string | null;
   title: string;
   ticketId: number;
+  reporter?: AffectedUser | null;
   affectedUsers?: AffectedUser[];
 }): string {
   const lines = [
     `[${params.ticketType}] ${params.autoSummary ?? params.title}`,
     `Ticket #${params.ticketId}`,
   ];
+  if (params.reporter) {
+    lines.push(`Reporter: ${formatAffectedUsersForText([params.reporter])}`);
+  }
   if (params.affectedUsers && params.affectedUsers.length > 0) {
     lines.push(`Affected user(s): ${formatAffectedUsersForText(params.affectedUsers)}`);
   }
@@ -182,15 +186,32 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
   // Notify all admins about the new feedback ticket
   try {
     const affectedUserIds = extractAffectedUserIds(ticket.contextJson);
+    const reporterId = typeof ticket.submittedBy === "number" ? ticket.submittedBy : null;
     let affectedUsers: AffectedUser[] = affectedUserIds.map((id) => ({
       id,
       email: null,
     }));
-    if (affectedUserIds.length > 0) {
+    let reporter: AffectedUser | null = reporterId != null
+      ? { id: reporterId, email: null }
+      : null;
+    const userIdsToResolve = [
+      ...affectedUserIds,
+      ...(reporterId != null ? [reporterId] : []),
+    ];
+    if (userIdsToResolve.length > 0) {
       try {
-        affectedUsers = await resolveAffectedUsers(db, affectedUserIds, ticket.tenantId);
+        const resolvedUsers = await resolveAffectedUsers(
+          db,
+          userIdsToResolve,
+          ticket.tenantId,
+          userIdsToResolve.length,
+        );
+        affectedUsers = resolvedUsers.filter((user) => affectedUserIds.includes(user.id));
+        reporter = reporterId != null
+          ? resolvedUsers.find((user) => user.id === reporterId) ?? { id: reporterId, email: null }
+          : null;
       } catch (err) {
-        console.error("[Feedback] Failed to resolve affected user emails:", err);
+        console.error("[Feedback] Failed to resolve reporter/affected user emails:", err);
       }
     }
 
@@ -211,17 +232,24 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
     for (const admin of adminRows) {
       if (admin.id === ticket.submittedBy) continue;
       const hasIncident = result.relatedIncidentId != null;
+      const reporterPrefix = reporter
+        ? `[${reporter.email ?? `user #${reporter.id}`}] `
+        : "";
+      const displayTitle = reporterPrefix && !ticket.title.startsWith(reporterPrefix)
+        ? `${reporterPrefix}${ticket.title}`
+        : ticket.title;
       await createNotification({
         db,
         userId: admin.id,
         groupKey: adminNotificationGroupKey(ticket),
         type: "alert",
-        title: `New Feedback: ${ticket.title.slice(0, 80)}`,
+        title: `New Feedback: ${displayTitle.slice(0, 80)}`,
         content: buildAdminNotificationContent({
           ticketType: ticket.ticketType,
           autoSummary: result.autoSummary,
           title: ticket.title,
           ticketId,
+          reporter,
           affectedUsers,
         }),
         priority: notificationPriority,
