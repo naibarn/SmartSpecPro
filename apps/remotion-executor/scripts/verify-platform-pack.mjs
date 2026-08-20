@@ -19,7 +19,7 @@ if (!publicKey || !crypto.verify(null, Buffer.from(actualHash), crypto.createPub
 }
 let entries;
 try {
-  entries = (await exec("unzip", ["-Z1", archivePath])).stdout.split(/\r?\n/).filter(Boolean);
+  entries = (await exec("unzip", ["-Z1", archivePath], { maxBuffer: 64 * 1024 * 1024 })).stdout.split(/\r?\n/).filter(Boolean);
 } catch (error) {
   if (error?.code !== "ENOENT") throw error;
   entries = new AdmZip(archivePath).getEntries().map((entry) => entry.entryName).filter(Boolean);
