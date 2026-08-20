@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import crypto from "crypto";
 import express from "express";
 import fs from "fs";
 import os from "os";
@@ -334,6 +335,51 @@ describe("workerRuntime routes", () => {
       zip.addFile(entry, Buffer.from(`fixture:${entry}`));
     }
     zip.writeZip(filePath);
+  }
+
+  function writeSignedRemotionExecutorZip(filePath: string, runtimeId = "remotion-executor-macos-x64") {
+    const zip = new AdmZip();
+    const paths = [
+      "runtime-pack/remotion-sidecar/render.mjs",
+      "runtime-pack/executor/dist/cli.js",
+      "runtime-pack/executor/package.json",
+      "runtime-pack/node/bin/node",
+      "runtime-pack/browser/Chromium.app/Contents/MacOS/Chromium",
+      "runtime-pack/bin/ffmpeg",
+      "runtime-pack/bin/ffprobe",
+      "runtime-pack/fonts/NotoSansThai.ttf",
+    ];
+    for (const entry of paths) zip.addFile(entry, Buffer.from(`fixture:${entry}`));
+    zip.writeZip(filePath);
+
+    const archiveSha256 = crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+    const keyPair = crypto.generateKeyPairSync("ed25519");
+    const archiveSignature = crypto.sign(null, Buffer.from(archiveSha256), keyPair.privateKey).toString("base64");
+    const manifest = {
+      schemaVersion: "2026-08-16.1",
+      runtimeId,
+      runtimePackId: runtimeId,
+      version: "0.1.0",
+      runtimeKind: "standalone_remotion_executor",
+      runtimePlatform: "macos",
+      platform: "macos",
+      architecture: "x64",
+      executionEnvironment: "native",
+      allowed: true,
+      nodePath: "node/bin/node",
+      browserPath: "browser/Chromium.app/Contents/MacOS/Chromium",
+      ffmpegPath: "bin/ffmpeg",
+      ffprobePath: "bin/ffprobe",
+      fontsPath: "fonts",
+      sidecarPath: "remotion-sidecar/render.mjs",
+      signingAlgorithm: "ed25519",
+      archiveSha256,
+      archiveSizeBytes: fs.statSync(filePath).size,
+      archiveSignature,
+      archiveEntries: zip.getEntries().map((entry) => entry.entryName),
+    };
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify(manifest));
+    return keyPair.publicKey.export({ type: "spki", format: "pem" }).toString();
   }
 
   function officialRuntimeManifest(runtimeId = "hyperframes-wsl2") {
@@ -1135,18 +1181,8 @@ describe("workerRuntime routes", () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-executor-"));
     const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
     const filePath = path.join(tempDir, fileName);
-    fs.writeFileSync(filePath, "remotion-executor-pack-fixture");
-    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
-      runtimeId: "remotion-executor-macos-x64",
-      version: "0.1.0",
-      runtimeKind: "standalone_remotion_executor",
-      runtimePlatform: "macos",
-      architecture: "x86_64",
-      allowed: true,
-      archiveSignature: "signed-hash-fixture",
-      archiveEntries: ["runtime-pack/remotion-sidecar/render.mjs"],
-    }));
-    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+    const publicKey = writeSignedRemotionExecutorZip(filePath);
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir], publicKey } });
 
     const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
     expect(res.status).toBe(200);
@@ -1154,7 +1190,7 @@ describe("workerRuntime routes", () => {
       runtimeId: "remotion-executor-macos-x64",
       runtimeKind: "standalone_remotion_executor",
       runtimePlatform: "macos",
-      architecture: "x86_64",
+      architecture: "x64",
       allowed: true,
       archiveFileName: fileName,
       archiveUrl: `/api/workers/runtime-pack/download/${fileName}`,
@@ -1163,6 +1199,21 @@ describe("workerRuntime routes", () => {
     const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
+  });
+
+  it("does not publish an executor archive without a trusted signature", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-unsigned-"));
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeSignedRemotionExecutorZip(filePath);
+    const manifestPath = `${filePath}.manifest.json`;
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    manifest.archiveSignature = "not-trusted";
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    expect(res.status).toBe(404);
   });
 
   it("rejects a download of an unbuilt/denied hermes pack", async () => {

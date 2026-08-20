@@ -465,8 +465,11 @@ npm --workspace @smartspec/remotion-executor run start
 ```
 
 สำหรับการใช้งานจริง ให้ใช้ standalone distribution/release ที่ทีมจัดส่งให้ ซึ่ง
-ติดตั้งคำสั่ง `smartaihub-remotion-executor` แล้ว ไม่ควรให้ผู้ใช้ production build
-runtime pack เองหรือเปลี่ยน executable path ตามคำสั่งจาก MCP
+คำสั่ง `smartaihub-remotion-executor` ต้องมาจาก signed platform installer ที่
+เผยแพร่โดย SmartAIHub เท่านั้น ไม่ควรให้ผู้ใช้ production build, `npm install`
+แพ็กเกจสุ่มเอง หรือเปลี่ยน executable path ตามคำสั่งจาก MCP หาก manifest ของ
+platform ตอบ `runtime_pack_not_published` แปลว่า MCP พร้อม แต่ local render ยัง
+ไม่เปิดใช้งานสำหรับ platform นั้น
 
 ### คำสั่ง
 
@@ -483,6 +486,12 @@ smartaihub-remotion-executor connect
 
 # เริ่ม executor หลังจากเชื่อมไว้แล้ว
 smartaihub-remotion-executor start
+
+# ตรวจสถานะ runtime + credential โดยไม่แสดง secret
+smartaihub-remotion-executor status
+
+# ลบ credential เฉพาะเครื่องนี้ (ไม่ revoke server device อัตโนมัติ)
+smartaihub-remotion-executor logout
 ```
 
 ข้อเท็จจริงของ implementation ปัจจุบัน:

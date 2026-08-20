@@ -22,8 +22,64 @@ export function isSafeArchiveListing(listing: string): boolean {
 export function isSafeArchiveVerboseListing(listing: string): boolean {
   return listing.split(/\r?\n/).map((entry) => entry.trim()).filter(Boolean).every((entry) => {
     const type = entry[0]?.toLowerCase();
-    return type !== "l" && type !== "h";
+    // GNU/BSD tar prints the link type as the first mode character. Info-ZIP
+    // (`unzip -Z -v`) prints it after "Unix file attributes" instead, so
+    // inspect both formats before extraction.
+    return type !== "l"
+      && type !== "h"
+      && !/unix file attributes[^:]*:\s*[lh]/i.test(entry)
+      && !/\b(?:symbolic|hard) link\b/i.test(entry);
   });
+}
+
+export type RuntimeArchiveCommands = {
+  list: { file: string; args: (archivePath: string) => string[] };
+  verbose: { file: string; args: (archivePath: string) => string[] };
+  extract: { file: string; args: (archivePath: string, stagingRoot: string) => string[] };
+};
+
+/**
+ * Runtime packs are ZIP archives. Windows 11 ships bsdtar, while macOS ships
+ * `ditto` and Info-ZIP. Do not use the host `tar` blindly: the macOS tar
+ * binary is a tar reader and cannot extract the ZIP produced by the release
+ * builder. Keeping the command choice here also makes the bootstrap path
+ * deterministic and testable without requiring a platform-specific host.
+ */
+export function runtimeArchiveCommands(platform = process.platform): RuntimeArchiveCommands {
+  if (platform === "win32") {
+    return {
+      list: { file: "tar", args: (archivePath) => ["-tf", archivePath] },
+      verbose: { file: "tar", args: (archivePath) => ["-tvf", archivePath] },
+      extract: { file: "tar", args: (archivePath, stagingRoot) => ["-xf", archivePath, "-C", stagingRoot] },
+    };
+  }
+  if (platform === "darwin") {
+    return {
+      list: { file: "unzip", args: (archivePath) => ["-Z1", archivePath] },
+      verbose: { file: "unzip", args: (archivePath) => ["-Z", "-v", archivePath] },
+      extract: { file: "ditto", args: (archivePath, stagingRoot) => ["-x", "-k", archivePath, stagingRoot] },
+    };
+  }
+  return {
+    list: { file: "unzip", args: (archivePath) => ["-Z1", archivePath] },
+    verbose: { file: "unzip", args: (archivePath) => ["-Z", "-v", archivePath] },
+    extract: { file: "unzip", args: (archivePath, stagingRoot) => ["-q", archivePath, "-d", stagingRoot] },
+  };
+}
+
+async function assertNoExtractedLinks(root: string): Promise<void> {
+  const visit = async (current: string): Promise<void> => {
+    const stat = await fs.lstat(current);
+    if (stat.isSymbolicLink()) throw new Error("runtime_pack_extracted_link");
+    if (!stat.isDirectory()) return;
+    const directory = await fs.opendir(current);
+    try {
+      for await (const entry of directory) await visit(path.join(current, entry.name));
+    } finally {
+      await directory.close().catch(() => {});
+    }
+  };
+  await visit(root);
 }
 
 const MAX_MANIFEST_BYTES = 1024 * 1024;
@@ -111,8 +167,15 @@ export async function ensureRuntimePack(): Promise<void> {
     if (!crypto.verify(null, Buffer.from(archiveSha256), crypto.createPublicKey(publicKey), Buffer.from(signature, "base64"))) {
       throw new Error("runtime_pack_signature_invalid");
     }
-    const listing = await runFile("tar", ["-tf", archivePath]);
-    const verboseListing = await runFile("tar", ["-tvf", archivePath]);
+    const archiveCommands = runtimeArchiveCommands();
+    let listing;
+    let verboseListing;
+    try {
+      listing = await runFile(archiveCommands.list.file, archiveCommands.list.args(archivePath));
+      verboseListing = await runFile(archiveCommands.verbose.file, archiveCommands.verbose.args(archivePath));
+    } catch {
+      throw new Error("runtime_pack_archive_tool_unavailable");
+    }
     if (
       listing.code !== 0
       || verboseListing.code !== 0
@@ -121,9 +184,18 @@ export async function ensureRuntimePack(): Promise<void> {
     ) throw new Error("runtime_pack_archive_invalid");
     await fs.rm(staging, { recursive: true, force: true });
     await fs.mkdir(staging, { recursive: true, mode: 0o700 });
-    const extracted = await runFile("tar", ["-xf", archivePath, "-C", staging]);
+    let extracted;
+    try {
+      extracted = await runFile(
+        archiveCommands.extract.file,
+        archiveCommands.extract.args(archivePath, staging),
+      );
+    } catch {
+      throw new Error("runtime_pack_extract_tool_unavailable");
+    }
     if (extracted.code !== 0) throw new Error("runtime_pack_extract_failed");
     const stagedRoot = path.join(staging, "runtime-pack");
+    await assertNoExtractedLinks(stagedRoot);
     const stagedReadiness = await managedRuntimeDoctor(stagedRoot);
     if (stagedReadiness.status !== "ready") throw new Error("runtime_pack_doctor_blocked");
     const previousRoot = path.join(stateRoot(), "runtime-pack-previous");

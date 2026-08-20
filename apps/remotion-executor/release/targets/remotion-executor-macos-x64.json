@@ -1,0 +1,16 @@
+{
+  "runtimeId": "remotion-executor-macos-x64",
+  "runtimePlatform": "macos",
+  "architecture": "x64",
+  "executionEnvironment": "native",
+  "minimumOsVersion": "12.0",
+  "nodePath": "node/bin/node",
+  "browserPath": "browser/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+  "ffmpegPath": "bin/ffmpeg",
+  "ffprobePath": "bin/ffprobe",
+  "fontsPath": "fonts",
+  "sidecarPath": "remotion-sidecar/render.mjs",
+  "installer": "packaging/macos/install.sh",
+  "uninstaller": "packaging/macos/uninstall.sh",
+  "serviceTemplate": "packaging/macos/com.smartaihub.remotion-executor.plist"
+}

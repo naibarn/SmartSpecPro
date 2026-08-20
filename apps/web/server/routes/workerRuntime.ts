@@ -83,6 +83,8 @@ import { isConnectedDeviceRevoked, upsertConnectedDevice, updateConnectedDeviceT
 interface WorkerRuntimeRouteDeps {
   runtimePacks?: {
     releaseDirs?: string[];
+    /** Pinned Ed25519 public key used to admit signed executor archives. */
+    publicKey?: string;
   };
   workerCallbacks?: {
     publishWorkerCallback: typeof publishWorkerCallback;
@@ -627,7 +629,73 @@ function findLatestHermesRuntimePack(releaseDirs: string[], runtimeId: string) {
   })[0] ?? null;
 }
 
-function findLatestRemotionExecutorPack(releaseDirs: string[], runtimeId: string) {
+type RemotionPackVerificationCacheEntry = {
+  mtimeMs: number;
+  sizeBytes: number;
+  publicKey: string;
+  valid: boolean;
+};
+
+const remotionPackVerificationCache = new Map<string, RemotionPackVerificationCacheEntry>();
+
+function packagedRuntimePath(relativePath: string, allowDirectory = false): string | null {
+  const normalized = relativePath.replaceAll("\\", "/").replace(/^\/+/, "");
+  if (!normalized || normalized.includes("\0") || normalized.split("/").some((part) => part === "..")) return null;
+  return allowDirectory ? `runtime-pack/${normalized.replace(/\/$/, "")}*` : `runtime-pack/${normalized}`;
+}
+
+function isSignedRemotionExecutorPack(
+  filePath: string,
+  manifest: Record<string, unknown> | null,
+  runtimeId: string,
+  publicKey: string,
+): manifest is Record<string, unknown> {
+  if (!publicKey) return false;
+  const parsed = remotionExecutorRuntimePackManifestSchema.safeParse(manifest);
+  if (!parsed.success || parsed.data.allowed !== true || parsed.data.runtimeId !== runtimeId) return false;
+  const stat = fs.statSync(filePath);
+  const cached = remotionPackVerificationCache.get(filePath);
+  if (cached && cached.mtimeMs === stat.mtimeMs && cached.sizeBytes === stat.size && cached.publicKey === publicKey) {
+    return cached.valid;
+  }
+
+  let valid = false;
+  try {
+    const archiveSha256 = parsed.data.archiveSha256?.toLowerCase() ?? "";
+    const signature = parsed.data.archiveSignature ?? "";
+    const expectedHash = sha256File(filePath);
+    const requiredFiles = [
+      "runtime-pack/executor/dist/cli.js",
+      "runtime-pack/executor/package.json",
+      packagedRuntimePath(parsed.data.sidecarPath ?? "remotion-sidecar/render.mjs"),
+      packagedRuntimePath(parsed.data.nodePath ?? ""),
+      packagedRuntimePath(parsed.data.browserPath ?? ""),
+      packagedRuntimePath(parsed.data.ffmpegPath ?? ""),
+      packagedRuntimePath(parsed.data.ffprobePath ?? ""),
+      packagedRuntimePath(parsed.data.fontsPath ?? "", true),
+    ];
+    valid = /^[a-f0-9]{64}$/.test(archiveSha256)
+      && archiveSha256 === expectedHash
+      && (parsed.data.archiveSizeBytes === undefined || parsed.data.archiveSizeBytes === stat.size)
+      && (parsed.data.archiveFileName === undefined || parsed.data.archiveFileName === path.basename(filePath))
+      && parsed.data.signingAlgorithm === "ed25519"
+      && /^[A-Za-z0-9+/]+={0,2}$/.test(signature)
+      && crypto.verify(
+        null,
+        Buffer.from(archiveSha256),
+        crypto.createPublicKey(publicKey),
+        Buffer.from(signature, "base64"),
+      )
+      && requiredFiles.every((entry): entry is string => Boolean(entry))
+      && archiveContainsFiles(filePath, requiredFiles.filter((entry): entry is string => Boolean(entry)));
+  } catch {
+    valid = false;
+  }
+  remotionPackVerificationCache.set(filePath, { mtimeMs: stat.mtimeMs, sizeBytes: stat.size, publicKey, valid });
+  return valid;
+}
+
+function findLatestRemotionExecutorPack(releaseDirs: string[], runtimeId: string, publicKey: string) {
   const candidates: Array<NonNullable<ReturnType<typeof findLatestRuntimePack>>> = [];
   for (const releaseDir of releaseDirs) {
     if (!fs.existsSync(releaseDir)) continue;
@@ -638,7 +706,7 @@ function findLatestRemotionExecutorPack(releaseDirs: string[], runtimeId: string
       const stat = fs.statSync(filePath);
       if (!stat.isFile()) continue;
       const manifest = readRuntimePackManifest(filePath);
-      if (!remotionExecutorRuntimePackManifestSchema.safeParse(manifest).success) continue;
+      if (!isSignedRemotionExecutorPack(filePath, manifest, runtimeId, publicKey)) continue;
       const manifestRuntimeId = stringField(manifest?.runtimeId);
       const runtimeKind = stringField(manifest?.runtimeKind);
       const platform = stringField(manifest?.runtimePlatform).toLowerCase();
@@ -649,7 +717,7 @@ function findLatestRemotionExecutorPack(releaseDirs: string[], runtimeId: string
       const architecture = stringField(manifest?.architecture).toLowerCase();
       if (runtimeId.includes("arm64") && !architecture.includes("arm64")) continue;
       if (runtimeId.includes("macos-x64") && !architecture.includes("x86_64") && !architecture.includes("x64")) continue;
-      if (!runtimeArchiveContainsFiles(filePath, manifest, ["runtime-pack/remotion-sidecar/render.mjs"])) continue;
+      if (!archiveContainsFiles(filePath, ["runtime-pack/remotion-sidecar/render.mjs", "runtime-pack/executor/dist/cli.js", "runtime-pack/executor/package.json"])) continue;
       candidates.push({ fileName, filePath, runtimeId: match[1], version: match[2], updatedAt: stat.mtime.toISOString(), sizeBytes: stat.size });
     }
   }
@@ -809,6 +877,9 @@ export function registerWorkerRuntimeRoutes(
   };
   const workerPolicy = deps.workerPolicy ?? { getWorkerPolicySnapshot };
   const runtimePackReleaseDirs = deps.runtimePacks?.releaseDirs ?? getRuntimePackReleaseDirs();
+  const runtimePackPublicKey = deps.runtimePacks?.publicKey?.trim()
+    || process.env.SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY?.trim()
+    || "";
 
   const registrationLimiter = rateLimit("workers-register", { rpm: 10 });
   const heartbeatLimiter = rateLimit("workers-heartbeat", { rpm: 120 });
@@ -865,7 +936,7 @@ export function registerWorkerRuntimeRoutes(
         }
 
         if (REMOTION_EXECUTOR_PACK_IDS.has(runtimeId)) {
-          const executorPack = findLatestRemotionExecutorPack(runtimePackReleaseDirs, runtimeId);
+          const executorPack = findLatestRemotionExecutorPack(runtimePackReleaseDirs, runtimeId, runtimePackPublicKey);
           if (!executorPack) {
             sendApiError(res, 404, "runtime_pack_not_published", "The standalone Remotion executor pack has not been published yet.", "not_found_error");
             return;
@@ -961,7 +1032,7 @@ export function registerWorkerRuntimeRoutes(
 
         const executorMatch = fileName.match(REMOTION_EXECUTOR_PACK_FILE_PATTERN);
         if (executorMatch?.[1] && REMOTION_EXECUTOR_PACK_IDS.has(executorMatch[1])) {
-          const executorPack = findLatestRemotionExecutorPack(runtimePackReleaseDirs, executorMatch[1]);
+          const executorPack = findLatestRemotionExecutorPack(runtimePackReleaseDirs, executorMatch[1], runtimePackPublicKey);
           if (!executorPack || executorPack.fileName !== fileName) {
             sendApiError(res, 404, "runtime_pack_not_found", "Standalone Remotion executor pack was not found", "not_found_error");
             return;

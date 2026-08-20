@@ -12,7 +12,11 @@
     "doctor": "tsx src/cli.ts doctor",
     "connect": "tsx src/cli.ts connect",
     "setup": "tsx src/cli.ts setup",
-    "start": "tsx src/cli.ts start"
+    "start": "tsx src/cli.ts start",
+    "run": "tsx src/cli.ts run",
+    "status": "tsx src/cli.ts status",
+    "logout": "tsx src/cli.ts logout"
+    ,"release:prepare-runtime": "node scripts/prepare-platform-runtime.mjs"
     ,"release:pack": "node scripts/build-platform-pack.mjs"
     ,"release:verify": "node scripts/verify-platform-pack.mjs"
     ,"release:promote": "node scripts/promote-platform-pack.mjs"
@@ -20,6 +24,7 @@
     ,"platform:smoke": "tsx src/cli.ts doctor"
   },
   "dependencies": {
+    "adm-zip": "^0.6.0",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3"
   }

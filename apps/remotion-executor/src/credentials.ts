@@ -47,6 +47,22 @@ export async function saveCredential(key: string, value: string): Promise<void> 
   throw new Error("A protected credential store is required on this platform");
 }
 
+/** Remove one local secret; server-side device revocation remains explicit. */
+export async function deleteCredential(key: string): Promise<void> {
+  if (process.platform === "darwin") {
+    const result = await runFile("security", ["delete-generic-password", "-a", account(), "-s", `${SERVICE}.${key}`]);
+    if (result.code !== 0 && !/could not be found|item not found/i.test(result.stderr)) {
+      throw new Error("macOS Keychain delete failed");
+    }
+    return;
+  }
+  if (process.platform === "win32") {
+    await fs.rm(path.join(stateRoot(), "credentials", `${key}.dpapi`), { force: true });
+    return;
+  }
+  throw new Error("A protected credential store is required on this platform");
+}
+
 export function newDeviceId(): string {
   return `remotion-${crypto.randomUUID()}`;
 }

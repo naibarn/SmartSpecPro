@@ -50,6 +50,24 @@ function safeRuntimePath(root: string, value: unknown): string | null {
   return resolved === root || resolved.startsWith(`${root}${path.sep}`) ? resolved : null;
 }
 
+/** Resolve a manifest-declared executable without allowing pack escape. */
+export function resolveManagedRuntimePath(root: string, declaredPath: unknown): string | null {
+  return safeRuntimePath(root, declaredPath);
+}
+
+export async function managedRuntimeNodePath(root = managedRuntimeRoot()): Promise<string | null> {
+  try {
+    const raw = await fs.readFile(path.join(root, "manifest.json"), "utf8");
+    const manifest = JSON.parse(raw) as RuntimeManifest;
+    const nodePath = resolveManagedRuntimePath(root, manifest.nodePath);
+    if (!nodePath) return null;
+    await fs.access(nodePath);
+    return nodePath;
+  } catch {
+    return null;
+  }
+}
+
 export async function managedRuntimeDoctor(root = managedRuntimeRoot()): Promise<Pick<DoctorResult, "status" | "checks" | "recommendedActions">> {
   const checks: DoctorResult["checks"] = [];
   const actions: string[] = [];

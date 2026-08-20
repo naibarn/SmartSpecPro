@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { loadCredential, loadOrCreateDeviceIdentity, saveCredential } from "./credentials.js";
+import { deleteCredential, loadCredential, loadOrCreateDeviceIdentity, saveCredential } from "./credentials.js";
 import { pollConnect, refreshTokenWithProof, startConnect, type DeviceProofMaterial } from "./controlPlane.js";
 import { normalizedArchitecture, PROTOCOL, REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_CONTRACT_VERSION, runtimePackId, RUNTIME_VERSION, serverUrl } from "./config.js";
 import { ensureRuntimePack } from "./runtimeProvisioner.js";
@@ -134,6 +134,25 @@ export async function credentials(): Promise<{ workerId: string; accessToken: st
   } catch { throw new Error("stored_access_token_invalid"); }
   const identity = await loadOrCreateDeviceIdentity(await loadCredential(DEVICE_KEY) ?? undefined);
   return { workerId, accessToken, uploadToken, refreshToken: refreshTokenValue!, device: identity };
+}
+
+/** Clear local executor credentials without silently revoking the server device. */
+export async function logout(): Promise<void> {
+  for (const key of [ACCESS_KEY, REFRESH_KEY, "upload-token", "worker-id"]) {
+    await deleteCredential(key);
+  }
+  console.log("SmartAIHub Remotion Executor local credentials removed.");
+  console.log("To revoke this device on the server, use Settings > Connected Devices.");
+}
+
+export async function connectionStatus(): Promise<{ connected: boolean; workerId: string | null }> {
+  const [accessToken, refreshToken, uploadToken, workerId] = await Promise.all([
+    loadCredential(ACCESS_KEY),
+    loadCredential(REFRESH_KEY),
+    loadCredential("upload-token"),
+    loadCredential("worker-id"),
+  ]);
+  return { connected: Boolean(accessToken && refreshToken && uploadToken && workerId), workerId: workerId || null };
 }
 
 export function pkcePair(): { verifier: string; challenge: string } {

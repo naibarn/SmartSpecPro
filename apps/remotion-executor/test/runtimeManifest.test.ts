@@ -3,7 +3,15 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { managedRuntimeDoctor } from "../src/doctor.js";
+import { managedRuntimeDoctor, resolveManagedRuntimePath } from "../src/doctor.js";
+
+test("managed runtime executable paths stay inside the active pack", () => {
+  const root = path.join(os.tmpdir(), "smartaihub-runtime-root");
+  assert.equal(resolveManagedRuntimePath(root, "node/node.exe"), path.join(root, "node", "node.exe"));
+  assert.equal(resolveManagedRuntimePath(root, "../outside/node.exe"), null);
+  assert.equal(resolveManagedRuntimePath(root, "C:/outside/node.exe"), null);
+  assert.equal(resolveManagedRuntimePath(root, "/outside/node"), null);
+});
 
 test("managed runtime doctor fails closed when the manifest is absent", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "smartaihub-runtime-manifest-"));

@@ -1,4 +1,4 @@
-import { connect } from "./agent.js";
+import { connect, connectionStatus, logout } from "./agent.js";
 import { doctor } from "./doctor.js";
 import { runWorker } from "./worker.js";
 
@@ -9,6 +9,14 @@ if (command === "doctor") {
   if (result.status !== "ready") process.exitCode = 2;
 } else if (command === "connect") {
   await connect();
+} else if (command === "status") {
+  const [readiness, connection] = await Promise.all([doctor(), connectionStatus()]);
+  console.log(JSON.stringify({ readiness, connection }, null, 2));
+  if (readiness.status !== "ready" || !connection.connected) process.exitCode = 2;
+} else if (command === "logout") {
+  await logout();
+} else if (command === "run") {
+  await runWorker();
 } else if (command === "setup") {
   await connect();
   await runWorker();

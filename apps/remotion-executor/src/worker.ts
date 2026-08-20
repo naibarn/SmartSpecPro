@@ -6,7 +6,7 @@ import { normalizedArchitecture, REMOTION_CAPABILITY_FAMILIES, REMOTION_RENDER_C
 import { uploadArtifact, workerRequest } from "./controlPlane.js";
 import { ensureRuntimePack } from "./runtimeProvisioner.js";
 import { discoverHermesInstallations } from "./hermesInstallDiscovery.js";
-import { doctor, toExecutorReadiness } from "./doctor.js";
+import { doctor, managedRuntimeNodePath, toExecutorReadiness } from "./doctor.js";
 
 async function runtimeSource(): Promise<"existing_hermes_install" | "managed_runtime_pack"> {
   const explicitSidecar = process.env.SMARTAIHUB_REMOTION_SIDECAR?.trim();
@@ -36,7 +36,10 @@ async function render(job: Job): Promise<string> {
   const outputDir = path.join(root, "output");
   await fs.mkdir(outputDir, { recursive: true });
   await fs.writeFile(payloadPath, JSON.stringify(job.inputJson), { mode: 0o600 });
-  const child = spawn(process.execPath, [sidecarPath(), "render-video", "--payload", payloadPath, "--workspace", root, "--output-dir", outputDir], { shell: false, stdio: ["ignore", "pipe", "pipe"] });
+  const rendererNode = process.env.SMARTAIHUB_REMOTION_SIDECAR?.trim()
+    ? process.execPath
+    : await managedRuntimeNodePath() ?? process.execPath;
+  const child = spawn(rendererNode, [sidecarPath(), "render-video", "--payload", payloadPath, "--workspace", root, "--output-dir", outputDir], { shell: false, stdio: ["ignore", "pipe", "pipe"] });
   let stdout = "";
   let stderr = "";
   child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout += chunk; });
