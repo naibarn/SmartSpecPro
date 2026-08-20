@@ -461,6 +461,43 @@ describe("GlobalNotificationBell occurrence badge", () => {
     );
   });
 
+  it("shows a submitted PromptPay slip as an urgent admin alert with a billing action", async () => {
+    urgentRemindersData = [
+      {
+        id: 150,
+        title: "มีสลิปใหม่รออนุมัติ",
+        content: "Invoice: TH-INV-2026-000010\nลูกค้า: customer@example.com\nไฟล์สลิป: transfer-slip.png",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/admin/billing",
+        actionLabel: "ตรวจสอบสลิป",
+        relatedResourceType: "approval",
+        relatedResourceId: "10",
+        metadata: {
+          source: "billing",
+          relatedItems: {
+            invoiceNumber: "TH-INV-2026-000010",
+            notificationType: "promptpay_slip_submitted",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByRole("dialog", { name: /มีสลิปใหม่รออนุมัติ/i })).toBeTruthy();
+    expect(screen.getByText("Slip Review Alert")).toBeTruthy();
+    expect(screen.getByText(/customer@example\.com/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบสลิป/i }));
+
+    expect(openWindowMock).toHaveBeenCalledWith(
+      "/admin/billing",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
+
   it("formats observed timestamps with the app locale instead of the browser locale", async () => {
     const toLocaleStringSpy = vi
       .spyOn(Date.prototype, "toLocaleString")

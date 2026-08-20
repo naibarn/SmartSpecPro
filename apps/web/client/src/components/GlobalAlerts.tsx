@@ -611,16 +611,16 @@ function GlobalUrgentReminders({
   const billingNotificationType = typeof metadata?.relatedItems?.notificationType === "string"
     ? metadata.relatedItems.notificationType.toLowerCase()
     : null;
+  const isPromptPaySlipReminder = billingNotificationType === "promptpay_slip_submitted";
   const invoiceNumber = typeof metadata?.relatedItems?.invoiceNumber === "string"
     ? metadata.relatedItems.invoiceNumber
     : null;
   const isBillingReminder =
-    modalReminder.relatedResourceType === "scheduled_message" &&
-    (
-      metadataSource === "billing" ||
-      Boolean(billingNotificationType?.startsWith("invoice_")) ||
-      Boolean(modalReminder.actionUrl?.startsWith("/billing"))
-    );
+    metadataSource === "billing" ||
+    Boolean(billingNotificationType?.startsWith("invoice_")) ||
+    isPromptPaySlipReminder ||
+    Boolean(modalReminder.actionUrl?.startsWith("/billing")) ||
+    modalReminder.actionUrl === "/admin/billing";
   const isOpsIncidentReminder =
     !isBillingReminder &&
     (modalReminder.relatedResourceType === "system_health" || modalReminder.relatedResourceType === "incident");
@@ -653,7 +653,9 @@ function GlobalUrgentReminders({
       ? "Critical"
       : "Important";
   const reminderLabel = isBillingReminder
-    ? (locale === "th" ? "การแจ้งเตือนใบแจ้งหนี้" : "Billing Reminder")
+    ? isPromptPaySlipReminder
+      ? (locale === "th" ? "แจ้งเตือนสลิปโอนเงิน" : "Slip Review Alert")
+      : (locale === "th" ? "การแจ้งเตือนใบแจ้งหนี้" : "Billing Reminder")
     : guidance.reminderLabel;
   const title = isOpsIncidentReminder
     ? guidance.headline

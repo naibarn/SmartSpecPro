@@ -18,6 +18,7 @@ import {
 } from "../../../drizzle/schema";
 import { addCreditsWithinTransaction } from "../creditService";
 import { storageDelete, storagePresignGet, storagePut, storageResolveUrl } from "../../storage";
+import { createNotification } from "../notificationService";
 import { getBillingRuntimeConfig } from "./runtimeConfig";
 import { getBillingProfileForUser, getSellerProfileForTenant } from "./profiles";
 import {
@@ -74,6 +75,80 @@ function validateSlipContent(buffer: Buffer, contentType: string) {
   if (contentType === "image/jpeg") return buffer[0] === 0xff && buffer[1] === 0xd8;
   if (contentType === "image/webp") return buffer.subarray(0, 4).toString("utf8") === "RIFF" && buffer.subarray(8, 12).toString("utf8") === "WEBP";
   return false;
+}
+
+export async function notifyAdminsOfPromptPaySlipSubmission(params: {
+  invoiceId: number;
+  invoiceNumber: string | null;
+  paymentId: number;
+  slipId: number;
+  userId: number;
+  fileName: string;
+  uploadedAt: Date;
+}) {
+  const db = getDb();
+  const [customer] = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, params.userId))
+    .limit(1);
+  const admins = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.role, "admin"));
+
+  const invoiceLabel = params.invoiceNumber ?? `#${params.invoiceId}`;
+  const customerEmail = customer?.email ?? "ไม่พบอีเมลลูกค้า";
+  const uploadedAtLabel = new Intl.DateTimeFormat("th-TH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Bangkok",
+  }).format(params.uploadedAt);
+  const content = [
+    `Invoice: ${invoiceLabel}`,
+    `ลูกค้า: ${customerEmail}`,
+    `ไฟล์สลิป: ${params.fileName}`,
+    `อัปโหลดเมื่อ: ${uploadedAtLabel}`,
+  ].join("\n");
+
+  let sent = 0;
+  await Promise.all(admins.map(async (admin) => {
+    try {
+      const notification = await createNotification({
+        db,
+        userId: admin.id,
+        type: "alert",
+        title: "มีสลิปใหม่รออนุมัติ",
+        content,
+        priority: "high",
+        relatedResourceType: "approval",
+        relatedResourceId: String(params.invoiceId),
+        actionUrl: "/admin/billing",
+        actionLabel: "ตรวจสอบสลิป",
+        groupKey: `promptpay_slip_review:invoice:${params.invoiceId}`,
+        metadata: {
+          source: "billing",
+          relatedItems: {
+            invoiceId: String(params.invoiceId),
+            invoiceNumber: invoiceLabel,
+            paymentId: String(params.paymentId),
+            slipId: String(params.slipId),
+            customerEmail,
+            notificationType: "promptpay_slip_submitted",
+          },
+        },
+      });
+      if (notification) sent += 1;
+    } catch (error) {
+      console.error("[promptpay] Failed to notify admin about submitted slip", {
+        adminId: admin.id,
+        invoiceId: params.invoiceId,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
+  }));
+
+  return { attempted: admins.length, sent };
 }
 
 function directConfigError(runtime: DirectRuntime) {
@@ -443,6 +518,25 @@ export async function uploadPromptPaySlip(params: {
       });
       return slip;
     });
+    try {
+      await notifyAdminsOfPromptPaySlipSubmission({
+        invoiceId: payment.invoice.id,
+        invoiceNumber: payment.invoice.invoiceNumber,
+        paymentId: params.paymentId,
+        slipId: result.id,
+        userId: params.userId,
+        fileName,
+        uploadedAt: result.uploadedAt,
+      });
+    } catch (error) {
+      // The slip is already durably stored; notification delivery must not
+      // turn a successful upload into a failed upload.
+      console.error("[promptpay] Admin slip notification dispatch failed", {
+        invoiceId: payment.invoice.id,
+        paymentId: params.paymentId,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
     return result;
   } catch (error) {
     await storageDelete(stored.key).catch(() => {});
