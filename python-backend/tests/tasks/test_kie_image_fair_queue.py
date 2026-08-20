@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -59,6 +59,34 @@ async def test_dispatcher_claims_only_free_per_user_slots():
     assert apply_async.call_args.kwargs["args"][2]["model"] == "nano-banana-2"
     assert session.execute.await_args_list[0].args[1] == {"lock_key": "kie-image-user:7"}
     assert session.execute.await_args_list[1].args[0].compile().params["user_id_1"] == 7
+
+
+def test_recovery_runs_unclaimed_dispatch_when_processing_recovery_fails():
+    from app.tasks.media_tasks import recover_stuck_tasks
+
+    with patch(
+        "app.tasks.media_tasks._recover_stuck_tasks_async",
+        side_effect=RuntimeError("processing recovery unavailable"),
+    ), patch(
+        "app.tasks.media_tasks._recover_stuck_pending_tasks_async",
+        return_value={"status": "success", "recovered": 0},
+    ), patch(
+        "app.tasks.media_tasks._recover_unclaimed_pending_image_tasks_async",
+        return_value={"users_checked": 1, "dispatched": 1},
+    ), patch(
+        "app.tasks.media_tasks._run_async",
+        side_effect=[
+            RuntimeError("processing recovery unavailable"),
+            {"status": "success", "recovered": 0},
+            {"users_checked": 1, "dispatched": 1},
+        ],
+    ):
+        result = recover_stuck_tasks()
+
+    assert result["status"] == "partial"
+    assert result["pending_recovered"] == 0
+    assert result["pending_dispatched"] == 1
+    assert result["phase_errors"] == ["processing"]
 
 
 @pytest.mark.asyncio
@@ -129,6 +157,8 @@ async def test_kie_async_submission_does_not_wait_and_schedules_poll():
     assert result["status"] == "submitted"
     assert task.task_id == "kie-provider-1"
     assert task.status == TaskStatus.PROCESSING
+    assert task.result_data["polling"]["provider"] == "kie_ai"
+    assert task.result_data["polling"]["started_at"]
 
 
 @pytest.mark.asyncio
@@ -298,3 +328,135 @@ async def test_kie_poller_never_revives_cancelled_task():
         "state": TaskStatus.CANCELLED.value,
     }
     dispatch.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_kie_poller_keeps_provider_job_processing_after_soft_deadline():
+    from app.tasks.media_tasks import _poll_kie_image_task_async
+
+    old_started_at = datetime.now(timezone.utc) - timedelta(seconds=90)
+    task = SimpleNamespace(
+        id="task-soft-timeout",
+        user_id=42,
+        media_type="image",
+        model="nano-banana-2",
+        parameters={},
+        status=TaskStatus.PROCESSING.value,
+        task_id="provider-soft-timeout",
+        started_at=old_started_at,
+        created_at=old_started_at,
+        completed_at=None,
+        result_url=None,
+        result_data={
+            "polling": {
+                "provider": "kie_ai",
+                "attempts": 3,
+                "started_at": old_started_at.isoformat(),
+            }
+        },
+        error_message=None,
+    )
+    task_lookup = MagicMock()
+    task_lookup.scalar_one_or_none.return_value = task
+    model_lookup = MagicMock()
+    model_lookup.fetchone.return_value = None
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(side_effect=[task_lookup, model_lookup])
+    session.commit = AsyncMock()
+    provider = MagicMock()
+    provider.get_task_status = AsyncMock(return_value={
+        "code": 200,
+        "data": {"taskId": task.task_id, "state": "generating"},
+    })
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.services.media_provider_service.get_media_provider_key",
+        AsyncMock(return_value={"apiKey": "key"}),
+    ), patch(
+        "app.tasks.media_tasks._kie_image_poll_rate_limiter.acquire",
+        AsyncMock(return_value=SimpleNamespace(
+            allowed=True, retry_after_seconds=1, redis_available=True,
+        )),
+    ), patch(
+        "app.llm_proxy.providers.kie_ai_provider.KieAIProvider", return_value=provider
+    ), patch(
+        "app.tasks.media_tasks.KIE_IMAGE_POLL_SOFT_TIMEOUT_SECONDS", 60
+    ), patch(
+        "app.tasks.media_tasks.KIE_IMAGE_POLL_HARD_TIMEOUT_SECONDS", 180
+    ):
+        result = await _poll_kie_image_task_async("task-soft-timeout", schedule_next_poll=False)
+
+    assert result["status"] == "processing"
+    assert task.status == TaskStatus.PROCESSING.value
+    assert task.result_data["polling"]["soft_timeout_reached"] is True
+    assert task.result_data["polling"]["timeout_stage"] == "soft"
+    assert task.error_message is None
+
+
+@pytest.mark.asyncio
+async def test_kie_poller_reconciles_late_success_for_failed_timeout_task():
+    from app.tasks.media_tasks import _poll_kie_image_task_async
+
+    task = SimpleNamespace(
+        id="task-late-success",
+        user_id=42,
+        media_type="image",
+        model="nano-banana-2",
+        parameters={},
+        status=TaskStatus.FAILED.value,
+        task_id="provider-late-success",
+        started_at=datetime.now(timezone.utc) - timedelta(minutes=12),
+        created_at=datetime.now(timezone.utc) - timedelta(minutes=12),
+        completed_at=datetime.now(timezone.utc),
+        result_url=None,
+        result_data={"polling": {"provider": "kie_ai", "attempts": 40}},
+        error_message="Kie.ai image polling timed out",
+    )
+    task_lookup = MagicMock()
+    task_lookup.scalar_one_or_none.return_value = task
+    model_lookup = MagicMock()
+    model_lookup.fetchone.return_value = None
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(side_effect=[task_lookup, model_lookup])
+    session.commit = AsyncMock()
+    provider = MagicMock()
+    provider.get_task_status = AsyncMock(return_value={
+        "code": 200,
+        "data": {
+            "taskId": task.task_id,
+            "state": "success",
+            "resultJson": '{"resultUrls":["https://cdn.example/late.png"]}',
+        },
+    })
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.services.media_provider_service.get_media_provider_key",
+        AsyncMock(return_value={"apiKey": "key"}),
+    ), patch(
+        "app.tasks.media_tasks._kie_image_poll_rate_limiter.acquire",
+        AsyncMock(return_value=SimpleNamespace(
+            allowed=True, retry_after_seconds=1, redis_available=True,
+        )),
+    ), patch(
+        "app.llm_proxy.providers.kie_ai_provider.KieAIProvider", return_value=provider
+    ), patch(
+        "app.tasks.media_tasks._dispatch_pending_image_tasks_async", AsyncMock()
+    ) as dispatch, patch(
+        "app.tasks.media_tasks._send_failure_notifications", AsyncMock()
+    ) as notify:
+        result = await _poll_kie_image_task_async(
+            "task-late-success",
+            schedule_next_poll=False,
+            allow_failed_recovery=True,
+        )
+
+    assert result["status"] == "completed"
+    assert task.status == TaskStatus.COMPLETED.value
+    assert task.result_url == "https://cdn.example/late.png"
+    assert task.error_message is None
+    dispatch.assert_awaited_once_with(42)
+    notify.assert_not_awaited()

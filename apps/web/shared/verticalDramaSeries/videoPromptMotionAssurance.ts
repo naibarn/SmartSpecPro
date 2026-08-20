@@ -47,6 +47,8 @@ export interface VideoPromptMotionAssuranceInput {
   genre?: unknown;
   establishedCharacterNames?: readonly string[];
   dialogueSpeakerNames?: readonly string[];
+  /** Characters rendered only inside a phone/video screen. */
+  screenCallerCharacterNames?: readonly string[];
   supportingPresence?: readonly VerticalDramaSupportingPresence[];
   frameAnalysis?: {
     facesSeparated?: boolean;
@@ -216,6 +218,7 @@ export function buildVideoPromptMotionAssuranceDirective(params: {
     `- ${castRule}`,
     "- Preserve each attached identity's face geometry, eyes, hair, wardrobe, age, and body proportions; never morph, swap, duplicate, fuse, or invent a face.",
     "- Every speaking beat must keep the named speaker's face readable (frontal or natural three-quarter when possible); listeners keep mouths closed unless explicitly speaking.",
+    "- A screen-only caller shown inside a phone/video display is not a physical-scene face: preserve the caller's identity and keep the screen present, but do not require physical-scene face separation or block natural display softness/overlap.",
     policy.allowsNonRealisticMotion
       ? "- Non-realistic motion is allowed only when explicitly motivated by the declared genre; keep gravity, contact, collision, scale, and character identity internally consistent, with no accidental extra bodies or face changes."
       : "- Keep one continuous physically plausible action: gravity, weight, contact, inertia, collision, cloth, hair, and props must behave naturally; no teleporting, floating, fused objects, rubber limbs, or impossible body changes.",
@@ -247,6 +250,19 @@ export function assureVideoPromptMotion(
   const prompt = input.prompt.trim();
   const establishedCount = input.establishedCharacterNames?.length ?? 0;
   const supportingCount = (input.supportingPresence ?? []).length;
+  const normalizeIdentity = (value: string) =>
+    value
+      .trim()
+      .replace(/^(?:คุณ|นาย|นางสาว|นาง)\s*/iu, "")
+      .replace(/\s+/g, "")
+      .toLocaleLowerCase();
+  const screenCallerNames = new Set(
+    (input.screenCallerCharacterNames ?? [])
+      .map(normalizeIdentity)
+      .filter(Boolean),
+  );
+  const isScreenCaller = (name: string) =>
+    screenCallerNames.has(normalizeIdentity(name));
 
   if (establishedCount > 0 && supportingCount === 0 && hasUnnegatedMatch(prompt, EXTRA_PERSON_PATTERN)) {
     findings.push({
@@ -272,7 +288,11 @@ export function assureVideoPromptMotion(
       repair: "Rewrite as one continuous action obeying gravity, weight, contact, inertia, collision, and prop continuity, or explicitly select a genre that authorizes the effect.",
     });
   }
-  if (input.frameAnalysis?.facesSeparated === false) {
+  // A global `faces_separated=false` result is common when one of the
+  // detected faces belongs to a small/soft phone or video-call display. It
+  // must not block those shots; per-person physical-scene findings below
+  // remain blocking when the vision model identifies them explicitly.
+  if (input.frameAnalysis?.facesSeparated === false && screenCallerNames.size === 0) {
     findings.push({
       code: "face_observability_risk",
       severity: "blocking",
@@ -283,6 +303,7 @@ export function assureVideoPromptMotion(
   const dialogueNames = new Set((input.dialogueSpeakerNames ?? []).map(name => name.trim()).filter(Boolean));
   for (const person of input.frameAnalysis?.people ?? []) {
     if (!person.name || !dialogueNames.has(person.name)) continue;
+    if (isScreenCaller(person.name)) continue;
     if (person.eyesVisible === false || /^(?:false|no|hidden|not visible)$/iu.test(String(person.eyesVisible ?? "")) || person.overlappedByOtherFace === true || /tiny|small|hidden|occluded/iu.test(person.faceSize ?? "") || /occluded|covered|hidden/iu.test(person.occlusion ?? "")) {
       findings.push({
         code: "face_observability_risk",

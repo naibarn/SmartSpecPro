@@ -103,6 +103,43 @@ describe("vertical drama episode cover service helpers", () => {
     );
   });
 
+  it("assigns disjoint scene-reference bands across four cover slots", () => {
+    const startFramePlan = {
+      frames: Array.from({ length: 9 }, (_, index) => ({
+        shotNumber: index + 1,
+        approvedMediaAssetId: String(index + 11),
+      })),
+    };
+    const referenceUrls = new Map<string, string>(
+      Array.from(
+        { length: 9 },
+        (_, index) => [String(index + 11), `https://cdn/${index + 11}.jpg`],
+      ),
+    );
+
+    const snapshots = ([1, 2, 3, 4] as const).map((coverSlotId, index) =>
+      buildEpisodeCoverGenerationSnapshot({
+        narrative: {
+          seriesTitle: "เรื่องหลัก",
+          episodeNumber: 2,
+          episodeTitle: "เหตุการณ์สำคัญ",
+          synopsis: "",
+          plotBeats: [],
+        },
+        startFramePlan,
+        referenceUrls,
+        coverSlotId,
+        referenceImageCount: [1, 2, 3, 3][index],
+      }),
+    );
+
+    expect(
+      snapshots.map(snapshot =>
+        snapshot.references.map(reference => reference.shotNumber),
+      ),
+    ).toEqual([[1], [2, 3], [4, 5, 6], [7, 8, 9]]);
+  });
+
   it("projects only safe fields for the episode list", () => {
     expect(
       projectEpisodeCover(

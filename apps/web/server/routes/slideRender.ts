@@ -886,7 +886,9 @@ window.__slideReady = false;
     for (var i = 0; i < imgs.length; i += 1) {
       var img = imgs[i];
       if (img.complete) {
-        doneOne(false);
+        // The complete flag is also true after a failed request. Only a positive
+        // naturalWidth means the browser decoded an actual image.
+        doneOne(img.naturalWidth > 0 ? false : true);
       } else {
         img.addEventListener("load", function() {
           doneOne(false);

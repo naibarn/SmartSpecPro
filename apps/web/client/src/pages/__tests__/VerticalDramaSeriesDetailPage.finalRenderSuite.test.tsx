@@ -175,8 +175,8 @@ describe("EpisodesTab — season batch render (task #21 phase B)", () => {
 
     const mediaRow = screen.getByTestId("vd-episode-media-row-1");
     expect(mediaRow).toHaveClass("md:grid-cols-[minmax(0,1fr)_11rem]");
-    const coverSurface = screen.getByTestId("vd-episode-cover-surface-1");
-    const coverActions = screen.getByTestId("vd-episode-cover-actions-1");
+    const coverSurface = screen.getByTestId("vd-episode-cover-surface-1-1");
+    const coverActions = screen.getByTestId("vd-episode-cover-actions-1-1");
     expect(coverSurface).toHaveClass("w-full");
     expect(coverActions).toHaveClass("mt-2");
     expect(coverSurface).not.toContainElement(coverActions);

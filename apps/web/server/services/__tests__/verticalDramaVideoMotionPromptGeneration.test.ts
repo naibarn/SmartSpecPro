@@ -2212,6 +2212,24 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     };
   }
 
+  function truncatedSpeakerSwitchResponse() {
+    return {
+      type: "success" as const,
+      response: {
+        choices: [
+          {
+            message: { content: '{"prompt":"A continuous kitchen argument' },
+            index: 0,
+            finish_reason: "length",
+          },
+        ],
+        usage: { prompt_tokens: 220, completion_tokens: 6000 },
+      },
+      providerName: "openai",
+      providerId: 1,
+    } as any;
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockHasEnoughCredits.mockResolvedValue(true);
@@ -2239,6 +2257,21 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
       nativeAudioDialogue: false,
       supportsNativeAudio: false,
     } as any);
+  });
+
+  it("recovers from repeated truncated JSON before surfacing a parser error", async () => {
+    mockExecute
+      .mockResolvedValueOnce(truncatedSpeakerSwitchResponse())
+      .mockResolvedValueOnce(truncatedSpeakerSwitchResponse())
+      .mockResolvedValueOnce(truncatedSpeakerSwitchResponse())
+      .mockResolvedValueOnce(successResponse(speakerSwitchOutput()));
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams(),
+    );
+
+    expect(result.prompt).toContain("continuous kitchen argument");
+    expect(mockExecute).toHaveBeenCalledTimes(4);
   });
 
   it("emits the same reference-only scene lock in the speaker-switch builder", async () => {

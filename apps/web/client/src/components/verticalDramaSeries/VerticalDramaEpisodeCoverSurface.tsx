@@ -22,6 +22,7 @@ export function VerticalDramaEpisodeCoverSurface({
   status,
   error,
   readOnly,
+  fillContainer,
   isGenerating,
   isUploading,
   canGenerate,
@@ -39,6 +40,7 @@ export function VerticalDramaEpisodeCoverSurface({
   status?: "generating" | "ready" | "failed";
   error?: string | null;
   readOnly?: boolean;
+  fillContainer?: boolean;
   isGenerating?: boolean;
   isUploading?: boolean;
   canGenerate?: boolean;
@@ -68,7 +70,7 @@ export function VerticalDramaEpisodeCoverSurface({
   };
 
   return (
-    <div className="w-36 shrink-0">
+    <div className={fillContainer ? "w-full min-w-0" : "w-36 shrink-0"}>
       <div
         className={`group relative aspect-[9/16] w-full overflow-hidden rounded-xl border bg-muted/30 shadow-sm ${
           dragging

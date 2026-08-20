@@ -98,4 +98,55 @@ describe("video prompt motion assurance", () => {
     });
     expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(true);
   });
+
+  it("does not block a naturally soft or overlapping screen-only caller", () => {
+    const result = assureVideoPromptMotion({
+      prompt: "A physical character speaks while the caller appears only inside a visible phone screen; preserve both identities.",
+      family: "grok",
+      establishedCharacterNames: ["A", "Caller"],
+      dialogueSpeakerNames: ["Caller"],
+      screenCallerCharacterNames: ["caller"],
+      frameAnalysis: {
+        facesSeparated: false,
+        people: [
+          {
+            name: "Caller",
+            eyesVisible: false,
+            faceSize: "tiny",
+            occlusion: "occluded by screen glare",
+            overlappedByOtherFace: true,
+          },
+        ],
+      },
+    });
+    expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(false);
+  });
+
+  it("still blocks an explicitly ambiguous physical-scene speaker when a screen caller is present", () => {
+    const result = assureVideoPromptMotion({
+      prompt: "The physical speaker and the screen caller keep their identities.",
+      family: "grok",
+      establishedCharacterNames: ["A", "Caller"],
+      dialogueSpeakerNames: ["A", "Caller"],
+      screenCallerCharacterNames: ["Caller"],
+      frameAnalysis: {
+        facesSeparated: false,
+        people: [
+          {
+            name: "A",
+            eyesVisible: false,
+            faceSize: "small",
+            overlappedByOtherFace: true,
+          },
+          {
+            name: "Caller",
+            eyesVisible: false,
+            faceSize: "tiny",
+            overlappedByOtherFace: true,
+          },
+        ],
+      },
+    });
+    expect(result.blocking.some(isVideoPromptSourceBlockingFinding)).toBe(true);
+  });
 });

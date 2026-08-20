@@ -60,6 +60,8 @@ export interface VerticalDramaStoryArchitecturePlannerInput {
   audienceAgeRating?: AudienceAgeRating;
   dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   lineageContext?: VerticalDramaSeriesLineage;
+  /** Existing contract to repair before create-time persistence. */
+  existingContract?: unknown;
 }
 
 export interface VerticalDramaStoryArchitecturePlannerResult {
@@ -367,14 +369,38 @@ export async function planVerticalDramaStoryArchitecture(
   }
   const systemPrompt = loadSkillSystemPrompt();
   assertStoryArchitecturePlannerSkillSupportsContract(systemPrompt);
-  let contract: VerticalDramaStoryArchitectureContract | null = null;
-  let diagnostics: VerticalDramaStoryArchitectureDiagnostic[] = [];
+  const initialEvaluation =
+    input.existingContract !== undefined
+      ? evaluateVerticalDramaStoryArchitecture({
+          contract: input.existingContract,
+          genre: input.genreHint,
+          userPremise: input.userPremise,
+          targetEpisodeCount: input.targetEpisodeCount,
+        })
+      : null;
+  if (initialEvaluation?.ready && initialEvaluation.contract) {
+    return {
+      contract: initialEvaluation.contract,
+      diagnostics: [],
+      repairRounds: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      model,
+    };
+  }
+  let contract = initialEvaluation?.contract ?? null;
+  let diagnostics = initialEvaluation?.diagnostics ?? [];
   let repairRounds = 0;
   let promptTokens = 0;
   let completionTokens = 0;
 
-  for (let attempt = 0; attempt <= MAX_REPAIR_ROUNDS; attempt += 1) {
-    const mode = attempt === 0 ? "plan" : "repair";
+  // A seeded contract is already a creator-visible draft. Repair it directly
+  // instead of spending a fresh plan call first. Keep the same two-repair
+  // bound used by the initial composition pipeline.
+  const hasRepairSeed = Boolean(initialEvaluation?.contract);
+  const maxAttempts = hasRepairSeed ? MAX_REPAIR_ROUNDS : MAX_REPAIR_ROUNDS + 1;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const mode = hasRepairSeed || attempt > 0 ? "repair" : "plan";
     const result: {
       data: VerticalDramaStoryArchitectureContract;
       response: {
@@ -428,7 +454,7 @@ export async function planVerticalDramaStoryArchitecture(
     });
     diagnostics = evaluated.diagnostics;
     if (evaluated.ready) break;
-    if (attempt < MAX_REPAIR_ROUNDS) repairRounds += 1;
+    if (mode === "repair") repairRounds += 1;
   }
 
   return {

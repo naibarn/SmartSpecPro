@@ -13,6 +13,7 @@ import {
   paymentAttempts,
   payments,
   promptpayAmountReservations,
+  userNotifications,
   users,
 } from "../../../drizzle/schema";
 import { addCreditsWithinTransaction } from "../creditService";
@@ -422,6 +423,17 @@ export async function uploadPromptPaySlip(params: {
         customerNote: params.note?.trim() || null,
       }).returning();
       await tx.update(payments).set({ status: "manual_review_required", updatedAt: new Date() }).where(eq(payments.id, params.paymentId));
+      await tx.update(userNotifications).set({
+        isRead: true,
+        isDismissed: true,
+        expiresAt: new Date(),
+      }).where(and(
+        eq(userNotifications.userId, params.userId),
+        eq(userNotifications.relatedResourceType, "scheduled_message"),
+        eq(userNotifications.relatedResourceId, String(fresh.invoice.id)),
+        eq(userNotifications.isRead, false),
+        sql`${userNotifications.groupKey} LIKE ${`invoice_due_reminder:invoice:${fresh.invoice.id}:%`}`,
+      ));
       await tx.insert(invoiceAuditLogs).values({
         invoiceId: fresh.invoice.id,
         action: "promptpay_slip_submitted",

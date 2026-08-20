@@ -94,11 +94,15 @@ async function sendInApp(n: GuardianNotification): Promise<void> {
 
     // Find admin users
     const { users } = await import("../../../drizzle/schema");
-    const { inArray, sql } = await import("drizzle-orm");
+    const { and, inArray, sql } = await import("drizzle-orm");
+    const adminConditions = [inArray(users.role, ["admin", "domain_admin"] as any)];
+    if (n.tenantId) {
+      adminConditions.push(sql`${users.currentTenantId}::text = ${n.tenantId}`);
+    }
     const admins = await db
       .select({ id: users.id })
       .from(users)
-      .where(inArray(users.role, ["admin", "domain_admin"]));
+      .where(and(...adminConditions));
 
     // Create in-app notification for each admin
     const { userNotifications } = await import("../../../drizzle/schema");
@@ -109,6 +113,18 @@ async function sendInApp(n: GuardianNotification): Promise<void> {
         title: `[${n.severity.toUpperCase()}] ${n.title}`,
         content: n.message,
         priority: n.severity === "critical" ? "high" : "normal",
+        relatedResourceType: "incident",
+        relatedResourceId: String(n.incidentId),
+        actionUrl: `/admin/system-guardian?incident=${n.incidentId}`,
+        actionLabel: "Open Incident",
+        metadata: {
+          source: "guardian.notifier",
+          eventId: String(n.incidentId),
+          relatedItems: {
+            ruleId: n.ruleId,
+            sensorId: n.sensorId,
+          },
+        },
       }).onConflictDoNothing();
     }
   } catch (err) {

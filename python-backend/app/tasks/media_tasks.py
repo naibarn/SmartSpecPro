@@ -856,10 +856,27 @@ KIE_IMAGE_POLL_MAX_SECONDS = max(
     KIE_IMAGE_POLL_INITIAL_SECONDS,
     int(os.getenv("KIE_IMAGE_POLL_MAX_SECONDS", "30")),
 )
-KIE_IMAGE_POLL_TIMEOUT_SECONDS = max(
+# Keep the old setting as the soft-deadline compatibility knob.  A provider
+# task can legitimately outlive the local worker's first polling window (Kie
+# image-to-image jobs have been observed to complete after ~13 minutes), so a
+# soft deadline must not turn a still-running provider job into a permanent
+# failure.
+KIE_IMAGE_POLL_SOFT_TIMEOUT_SECONDS = max(
     60,
-    int(os.getenv("KIE_IMAGE_POLL_TIMEOUT_SECONDS", "600")),
+    int(
+        os.getenv(
+            "KIE_IMAGE_POLL_SOFT_TIMEOUT_SECONDS",
+            os.getenv("KIE_IMAGE_POLL_TIMEOUT_SECONDS", "600"),
+        )
+    ),
 )
+KIE_IMAGE_POLL_HARD_TIMEOUT_SECONDS = max(
+    KIE_IMAGE_POLL_SOFT_TIMEOUT_SECONDS,
+    int(os.getenv("KIE_IMAGE_POLL_HARD_TIMEOUT_SECONDS", "1800")),
+)
+# Existing imports/tests and deployments may still refer to this name.
+KIE_IMAGE_POLL_TIMEOUT_SECONDS = KIE_IMAGE_POLL_SOFT_TIMEOUT_SECONDS
+KIE_IMAGE_TIMEOUT_ERROR = "Kie.ai image polling timed out"
 _kie_image_poll_rate_limiter = KieSubmissionRateLimiter(
     max_requests=int(os.getenv("KIE_IMAGE_POLLS_PER_WINDOW", "60")),
     window_seconds=int(os.getenv("KIE_IMAGE_POLL_WINDOW_SECONDS", "10")),
@@ -975,6 +992,18 @@ def _next_kie_image_poll_delay(previous_delay: int) -> int:
     return min(KIE_IMAGE_POLL_MAX_SECONDS, max(previous_delay + 1, previous_delay * 2))
 
 
+def _kie_poll_started_at(polling: dict[str, Any], fallback: datetime) -> datetime:
+    """Read the provider submission time, with a legacy task fallback."""
+    raw_started_at = polling.get("started_at")
+    if isinstance(raw_started_at, str) and raw_started_at.strip():
+        try:
+            parsed = datetime.fromisoformat(raw_started_at.replace("Z", "+00:00"))
+            return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+        except ValueError:
+            logger.warning("kie_image_invalid_poll_started_at")
+    return fallback.replace(tzinfo=timezone.utc) if fallback.tzinfo is None else fallback
+
+
 def _compact_kie_status(status_response: Any, state: str, raw_state: str) -> dict[str, Any]:
     """Keep operational metadata without prompts, params, or signed result URLs."""
     payload = status_response if isinstance(status_response, dict) else {}
@@ -1027,6 +1056,7 @@ async def _poll_kie_image_task_async(
     task_id: str,
     *,
     schedule_next_poll: bool = True,
+    allow_failed_recovery: bool = False,
 ) -> dict[str, Any]:
     """Perform one Kie status check and release/admit the user's next slot."""
     from app.llm_proxy.providers.kie_ai_provider import KieAIProvider
@@ -1043,164 +1073,188 @@ async def _poll_kie_image_task_async(
 
         owner_id = task.user_id
         persisted_state = _enum_value_or_str(task.status)
+        can_recover_failed_timeout = (
+            allow_failed_recovery
+            and persisted_state == TaskStatus.FAILED.value
+            and str(task.error_message or "").startswith(KIE_IMAGE_TIMEOUT_ERROR)
+        )
         if persisted_state in {
             TaskStatus.COMPLETED.value,
-            TaskStatus.FAILED.value,
             TaskStatus.CANCELLED.value,
-        }:
+        } or (persisted_state == TaskStatus.FAILED.value and not can_recover_failed_timeout):
             return {"status": "terminal", "task_id": task_id, "state": persisted_state}
         if not task.task_id:
             return {"status": "skipped", "task_id": task_id, "reason": "missing_provider_task_id"}
 
         now = datetime.now(timezone.utc)
-        started_at = task.started_at or task.created_at or now
-        if started_at.tzinfo is None:
-            started_at = started_at.replace(tzinfo=timezone.utc)
         result_data = _coerce_json_dict(task.result_data)
         polling = result_data.get("polling") if isinstance(result_data.get("polling"), dict) else {}
+        started_at = _kie_poll_started_at(polling, task.started_at or task.created_at or now)
+        elapsed_seconds = max(0, int((now - started_at).total_seconds()))
+        soft_timeout_reached = elapsed_seconds >= KIE_IMAGE_POLL_SOFT_TIMEOUT_SECONDS
+        hard_timeout_reached = elapsed_seconds >= KIE_IMAGE_POLL_HARD_TIMEOUT_SECONDS
         attempts = int(polling.get("attempts") or 0)
         previous_delay = int(polling.get("next_delay_seconds") or 0)
 
-        if (now - started_at).total_seconds() >= KIE_IMAGE_POLL_TIMEOUT_SECONDS:
-            task.status = TaskStatus.FAILED.value
-            task.error_message = "Kie.ai image polling timed out"
-            task.completed_at = now
+        if soft_timeout_reached:
+            logger.info(
+                "kie_image_soft_poll_deadline_reached",
+                task_id=task_id,
+                external_task_id=task.task_id,
+                elapsed_seconds=elapsed_seconds,
+                hard_timeout_seconds=KIE_IMAGE_POLL_HARD_TIMEOUT_SECONDS,
+            )
+
+        poll_rate_state = await _kie_image_poll_rate_limiter.acquire(task_id=task_id)
+        if not poll_rate_state.allowed:
+            next_delay = max(
+                _next_kie_image_poll_delay(previous_delay),
+                poll_rate_state.retry_after_seconds,
+            )
             task.result_data = _merge_task_result_data(
                 result_data,
                 {
                     "polling": {
                         "provider": "kie_ai",
-                        "state": "timeout",
+                        "state": "rate_limited",
                         "attempts": attempts,
                         "last_polled_at": now.isoformat(),
+                        "next_delay_seconds": next_delay,
+                        "redis_available": poll_rate_state.redis_available,
+                        "started_at": started_at.isoformat(),
+                        "elapsed_seconds": elapsed_seconds,
+                        "soft_timeout_reached": soft_timeout_reached,
                     }
                 },
+                remove_keys=("failure",),
             )
             await db.commit()
-            terminal = True
-            result_payload = {"status": "failed", "task_id": task_id, "reason": "timeout"}
-        else:
-            poll_rate_state = await _kie_image_poll_rate_limiter.acquire(task_id=task_id)
-            if not poll_rate_state.allowed:
-                next_delay = max(
-                    _next_kie_image_poll_delay(previous_delay),
-                    poll_rate_state.retry_after_seconds,
-                )
-                task.result_data = _merge_task_result_data(
-                    result_data,
-                    {
-                        "polling": {
-                            "provider": "kie_ai",
-                            "state": "rate_limited",
-                            "attempts": attempts,
-                            "last_polled_at": now.isoformat(),
-                            "next_delay_seconds": next_delay,
-                            "redis_available": poll_rate_state.redis_available,
-                        }
-                    },
-                    remove_keys=("failure",),
-                )
-                await db.commit()
-                if schedule_next_poll:
-                    _enqueue_kie_image_poll(task_id, next_delay)
-                return {
-                    "status": "processing",
-                    "task_id": task_id,
-                    "rate_limited": True,
-                    "next_delay_seconds": next_delay,
-                }
+            if schedule_next_poll:
+                _enqueue_kie_image_poll(task_id, next_delay)
+            return {
+                "status": "processing",
+                "task_id": task_id,
+                "rate_limited": True,
+                "next_delay_seconds": next_delay,
+            }
 
-            provider_config = await get_media_provider_key("kie_ai")
-            if not provider_config or not provider_config.get("apiKey"):
-                raise RuntimeError("Kie.ai provider configuration unavailable during polling")
-            provider = KieAIProvider(
-                api_key=provider_config["apiKey"],
-                base_url=provider_config.get("baseUrl") or "https://api.kie.ai/api/v1",
-                callback_url=provider_config.get("callbackUrl"),
-            )
-            preferred_endpoint = await _kie_query_endpoint_for_task(db, task)
-            status_response = await provider.get_task_status(
-                task.task_id,
-                preferred_status_endpoint=preferred_endpoint,
-            )
-            state, raw_state = _normalize_kie_task_state(status_response)
-            compact_status = _compact_kie_status(status_response, state, raw_state)
+        provider_config = await get_media_provider_key("kie_ai")
+        if not provider_config or not provider_config.get("apiKey"):
+            raise RuntimeError("Kie.ai provider configuration unavailable during polling")
+        provider = KieAIProvider(
+            api_key=provider_config["apiKey"],
+            base_url=provider_config.get("baseUrl") or "https://api.kie.ai/api/v1",
+            callback_url=provider_config.get("callbackUrl"),
+        )
+        preferred_endpoint = await _kie_query_endpoint_for_task(db, task)
+        status_response = await provider.get_task_status(
+            task.task_id,
+            preferred_status_endpoint=preferred_endpoint,
+        )
+        state, raw_state = _normalize_kie_task_state(status_response)
+        compact_status = _compact_kie_status(status_response, state, raw_state)
+        polling_metadata = {
+            "provider": "kie_ai",
+            "attempts": attempts + 1,
+            "last_polled_at": now.isoformat(),
+            "started_at": started_at.isoformat(),
+            "elapsed_seconds": elapsed_seconds,
+            "soft_timeout_reached": soft_timeout_reached,
+        }
 
-            if state == "success":
-                result_url = _extract_first_kie_result_url(status_response)
-                if not result_url:
-                    state = "processing"
-                else:
-                    task.status = TaskStatus.COMPLETED.value
-                    task.result_url = result_url
-                    task.error_message = None
-                    task.completed_at = now
-                    task.result_data = _merge_task_result_data(
-                        result_data,
-                        {
-                            "provider_status": compact_status,
-                            "polling": {
-                                "provider": "kie_ai",
-                                "state": "completed",
-                                "attempts": attempts + 1,
-                                "last_polled_at": now.isoformat(),
-                            },
-                        },
-                        remove_keys=("failure", "retry"),
-                    )
-                    await db.commit()
-                    terminal = True
-                    result_payload = {"status": "completed", "task_id": task_id}
-
-            if state == "fail":
-                task.status = TaskStatus.FAILED.value
-                task.error_message = f"Provider failed: {_extract_kie_failure_message(status_response)}"
+        if state == "success":
+            result_url = _extract_first_kie_result_url(status_response)
+            if not result_url:
+                state = "processing"
+            else:
+                task.status = TaskStatus.COMPLETED.value
+                task.result_url = result_url
+                task.error_message = None
                 task.completed_at = now
                 task.result_data = _merge_task_result_data(
                     result_data,
                     {
                         "provider_status": compact_status,
-                        "polling": {
-                            "provider": "kie_ai",
-                            "state": "failed",
-                            "attempts": attempts + 1,
-                            "last_polled_at": now.isoformat(),
-                        },
+                        "polling": {**polling_metadata, "state": "completed"},
                     },
-                    remove_keys=("retry",),
+                    remove_keys=("failure", "retry"),
                 )
                 await db.commit()
                 terminal = True
-                result_payload = {"status": "failed", "task_id": task_id}
-            elif not terminal:
-                next_delay = _next_kie_image_poll_delay(previous_delay)
-                task.status = TaskStatus.PROCESSING.value
-                task.result_data = _merge_task_result_data(
-                    result_data,
-                    {
-                        "provider_status": compact_status,
-                        "polling": {
-                            "provider": "kie_ai",
-                            "state": "processing",
-                            "attempts": attempts + 1,
-                            "last_polled_at": now.isoformat(),
-                            "last_delay_seconds": previous_delay,
-                            "next_delay_seconds": next_delay,
-                        },
+                result_payload = {"status": "completed", "task_id": task_id}
+
+        if state == "fail":
+            task.status = TaskStatus.FAILED.value
+            task.error_message = f"Provider failed: {_extract_kie_failure_message(status_response)}"
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "provider_status": compact_status,
+                    "polling": {**polling_metadata, "state": "failed"},
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            terminal = True
+            result_payload = {"status": "failed", "task_id": task_id}
+        elif not terminal and hard_timeout_reached:
+            # The provider was queried at the hard boundary and is still not
+            # complete. Only now is it safe to fail locally; a soft deadline
+            # alone must never discard a provider job that can still finish.
+            task.status = TaskStatus.FAILED.value
+            task.error_message = (
+                f"{KIE_IMAGE_TIMEOUT_ERROR} after {elapsed_seconds}s "
+                f"(provider state: {raw_state or state})"
+            )
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "provider_status": compact_status,
+                    "polling": {
+                        **polling_metadata,
+                        "state": "timeout",
+                        "timeout_stage": "hard",
+                        "raw_state": raw_state,
                     },
-                    remove_keys=("failure",),
-                )
-                await db.commit()
-                if schedule_next_poll:
-                    _enqueue_kie_image_poll(task_id, next_delay)
-                result_payload = {
-                    "status": "processing",
-                    "task_id": task_id,
-                    "next_delay_seconds": next_delay,
-                }
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            terminal = True
+            result_payload = {"status": "failed", "task_id": task_id, "reason": "timeout"}
+        elif not terminal:
+            next_delay = _next_kie_image_poll_delay(previous_delay)
+            task.status = TaskStatus.PROCESSING.value
+            if can_recover_failed_timeout:
+                task.error_message = None
+                task.completed_at = None
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "provider_status": compact_status,
+                    "polling": {
+                        **polling_metadata,
+                        "state": "processing",
+                        "last_delay_seconds": previous_delay,
+                        "next_delay_seconds": next_delay,
+                        "timeout_stage": "soft" if soft_timeout_reached else "normal",
+                    },
+                },
+                remove_keys=("failure",),
+            )
+            await db.commit()
+            if schedule_next_poll:
+                _enqueue_kie_image_poll(task_id, next_delay)
+            result_payload = {
+                "status": "processing",
+                "task_id": task_id,
+                "next_delay_seconds": next_delay,
+            }
 
     if terminal and owner_id is not None:
-        if result_payload.get("status") == "failed":
+        if result_payload.get("status") == "failed" and not allow_failed_recovery:
             await _send_failure_notifications(
                 task_id,
                 owner_id,
@@ -2213,6 +2267,7 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                 raise RuntimeError("Kie.ai submission returned no provider task ID")
             task.result_url = result_url
             submission_record = None
+            kie_polling_record = None
             if response.provider == "magnific":
                 submission_record = _build_magnific_submission_record(
                     provider_task_id=provider_task_id,
@@ -2220,6 +2275,18 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                     media_type="image",
                     request_data=request_data,
                 )
+            if response.provider == "kie_ai" and provider_task_id and not result_url:
+                # Anchor the deadline to the provider submission, not the
+                # local task-processing timestamp. The latter can include
+                # queue/admission time and caused valid Kie jobs to be timed
+                # out before the provider finished them.
+                kie_polling_record = {
+                    "provider": "kie_ai",
+                    "state": "scheduled",
+                    "attempts": 0,
+                    "raw_state": "created",
+                    "started_at": datetime.now(timezone.utc).isoformat(),
+                }
             task.result_data = _make_json_safe({
                 "response": response.dict(),
                 **({"submission": submission_record} if submission_record else {}),
@@ -2237,6 +2304,7 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                     if response.provider == "magnific" and provider_task_id and not result_url
                     else {}
                 ),
+                **({"polling": kie_polling_record} if kie_polling_record else {}),
             })
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
@@ -3200,6 +3268,29 @@ async def _recover_stuck_tasks_async():
                 )
             ]
 
+            # A legacy poller could mark a Kie task failed at the soft
+            # deadline even though the provider was still generating it. Give
+            # those rows a bounded reconciliation window so a late provider
+            # success is restored instead of leaving a permanent false error.
+            kie_failed_result = await db.execute(
+                select(MediaTask).filter(
+                    MediaTask.status == TaskStatus.FAILED,
+                    MediaTask.media_type == MediaType.IMAGE.value,
+                    MediaTask.task_id.isnot(None),
+                    MediaTask.completed_at > failed_cutoff_time,
+                    MediaTask.error_message.like(f"%{KIE_IMAGE_TIMEOUT_ERROR}%"),
+                ).limit(20)
+            )
+            recoverable_failed_kie_tasks = [
+                task
+                for task in kie_failed_result.scalars().all()
+                if (
+                    _coerce_json_dict(task.result_data).get("polling", {}).get("provider")
+                    == "kie_ai"
+                )
+            ]
+            recoverable_failed_tasks.extend(recoverable_failed_kie_tasks)
+
             if recoverable_failed_tasks:
                 deduped_tasks = {task.id: task for task in stuck_tasks}
                 for task in recoverable_failed_tasks:
@@ -3299,9 +3390,14 @@ async def _recover_stuck_tasks_async():
                         and isinstance(kie_polling, dict)
                         and kie_polling.get("provider") == "kie_ai"
                     ):
+                        is_failed_kie_timeout = (
+                            _enum_value_or_str(previous_status) == TaskStatus.FAILED.value
+                            and str(task.error_message or "").startswith(KIE_IMAGE_TIMEOUT_ERROR)
+                        )
                         kie_result = await _poll_kie_image_task_async(
                             task.id,
                             schedule_next_poll=True,
+                            allow_failed_recovery=is_failed_kie_timeout,
                         )
                         if kie_result.get("status") == "completed":
                             recovered_count += 1
@@ -3927,28 +4023,37 @@ def recover_stuck_tasks():
     Runs every 2 minutes (see celery beat schedule)
     """
     logger.info("recover_stuck_tasks_started")
+    result: dict[str, Any] = {"status": "success"}
+    phase_errors: list[str] = []
+
+    # Keep each recovery phase independent. A failure while inspecting an
+    # unrelated processing task must not prevent unclaimed image rows from
+    # being dispatched; those rows have no Celery task to recover later.
+    try:
+        result.update(_run_async(_recover_stuck_tasks_async()))
+    except Exception as e:
+        phase_errors.append("processing")
+        logger.error("recover_stuck_tasks_exception", error=str(e))
+
+    # Also recover tasks stuck in 'pending' (silently dropped by Celery).
+    try:
+        pending_result = _run_async(_recover_stuck_pending_tasks_async())
+        result["pending_recovered"] = pending_result.get("recovered", 0)
+    except Exception as e:
+        phase_errors.append("claimed_pending")
+        logger.error("recover_stuck_pending_exception", error=str(e))
 
     try:
-        result = _run_async(_recover_stuck_tasks_async())
-
-        # Also recover tasks stuck in 'pending' (silently dropped by Celery)
-        try:
-            pending_result = _run_async(_recover_stuck_pending_tasks_async())
-            result["pending_recovered"] = pending_result.get("recovered", 0)
-        except Exception as e:
-            logger.error("recover_stuck_pending_exception", error=str(e))
-
-        try:
-            unclaimed_result = _run_async(_recover_unclaimed_pending_image_tasks_async())
-            result["pending_dispatched"] = unclaimed_result.get("dispatched", 0)
-        except Exception as e:
-            logger.error("recover_unclaimed_pending_images_exception", error=str(e))
-
-        return result
-
+        unclaimed_result = _run_async(_recover_unclaimed_pending_image_tasks_async())
+        result["pending_dispatched"] = unclaimed_result.get("dispatched", 0)
     except Exception as e:
-        logger.error("recover_stuck_tasks_exception", error=str(e))
-        return {"status": "failed", "error": str(e)}
+        phase_errors.append("unclaimed_pending_images")
+        logger.error("recover_unclaimed_pending_images_exception", error=str(e))
+
+    if phase_errors:
+        result["status"] = "partial"
+        result["phase_errors"] = phase_errors
+    return result
 
 
 async def _backfill_missing_media_thumbnails_async(

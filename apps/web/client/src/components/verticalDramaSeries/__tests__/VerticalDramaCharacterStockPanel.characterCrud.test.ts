@@ -7,11 +7,16 @@ import {
   buildPreviewCharacterPromptInput,
   decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
+  resolveCharacterReferenceDisclosureDefault,
   resolveDirectCharacterImageInstruction,
   resolvePortraitCandidateVisibility,
   resolveCharacterRoleTierMismatchMessage,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
+import {
+  AGE_STAGE_VARIANT_REQUIRED_MARKER,
+  parseAgeStageVariantRequiredMessage,
+} from "@shared/verticalDramaSeries/ageStageVariant";
 
 /**
  * Coverage for W2 manual CRUD
@@ -218,7 +223,7 @@ describe("buildPreviewCharacterPromptInput", () => {
         characterId: "5",
         selectedImageModelId: "gpt-image-2",
         customInstruction: "  natural daylight  ",
-      }),
+      })
     ).toEqual({
       seriesId: "10",
       characterId: "5",
@@ -240,8 +245,8 @@ describe("isFirstPortraitCandidateEligible", () => {
     expect(
       isFirstPortraitCandidateEligible(
         { characterId: "5", data: { visualBible: { version: 1 } } },
-        [],
-      ),
+        []
+      )
     ).toBe(true);
   });
 
@@ -267,7 +272,7 @@ describe("resolveVdCharacterMutationErrorMessage", () => {
         message:
           'Character portrait candidate batch response failed schema validation: portrait_candidate_batch.candidates.0.character_design_dna.role_tier: Reported role tier "support" does not match authoritative input tier "child".',
       },
-      "th",
+      "th"
     );
 
     expect(message).toContain("บทบาทตัวละครไม่ตรงกัน");
@@ -279,8 +284,11 @@ describe("resolveVdCharacterMutationErrorMessage", () => {
 
   it("keeps unrelated schema failures unchanged", () => {
     const message = resolveCharacterRoleTierMismatchMessage(
-      { message: "Character visual bible response failed schema validation: characters is required" },
-      "en",
+      {
+        message:
+          "Character visual bible response failed schema validation: characters is required",
+      },
+      "en"
     );
     expect(message).toBeNull();
   });
@@ -321,6 +329,36 @@ describe("resolveVdCharacterMutationErrorMessage", () => {
     expect(resolveVdCharacterMutationErrorMessage({}, "en")).toBe(
       "Something went wrong"
     );
+  });
+});
+
+describe("age-stage variant recovery marker", () => {
+  it("parses the requested age from the recoverable server message", () => {
+    expect(
+      parseAgeStageVariantRequiredMessage(
+        `${AGE_STAGE_VARIANT_REQUIRED_MARKER} age=6`
+      )
+    ).toEqual({ age: 6 });
+  });
+
+  it("does not classify unrelated errors as age-stage recovery", () => {
+    expect(
+      parseAgeStageVariantRequiredMessage("image provider failed")
+    ).toBeNull();
+  });
+});
+
+describe("character reference disclosure default", () => {
+  it("opens automatically when the character has no primary portrait", () => {
+    expect(
+      resolveCharacterReferenceDisclosureDefault({ hasPrimaryPortrait: false })
+    ).toBe(true);
+  });
+
+  it("collapses automatically when the character already has a primary portrait", () => {
+    expect(
+      resolveCharacterReferenceDisclosureDefault({ hasPrimaryPortrait: true })
+    ).toBe(false);
   });
 });
 
@@ -405,7 +443,7 @@ describe("resolveDirectCharacterImageInstruction", () => {
       resolveDirectCharacterImageInstruction({
         characterId: "7",
         instructionByCharacter: { "7": "ภาพเต็มตัว ชุดสูทสีดำ" },
-      }),
+      })
     ).toBe("ภาพเต็มตัว ชุดสูทสีดำ");
   });
 
@@ -415,7 +453,7 @@ describe("resolveDirectCharacterImageInstruction", () => {
         characterId: "7",
         instructionByCharacter: { "7": "stale value" },
         override: "  ภาพเต็มตัว  ",
-      }),
+      })
     ).toBe("ภาพเต็มตัว");
   });
 
@@ -424,20 +462,20 @@ describe("resolveDirectCharacterImageInstruction", () => {
       resolveDirectCharacterImageInstruction({
         characterId: "7",
         instructionByCharacter: {},
-      }),
+      })
     ).toBeUndefined();
     expect(
       resolveDirectCharacterImageInstruction({
         characterId: "7",
         instructionByCharacter: { "7": "   " },
-      }),
+      })
     ).toBeUndefined();
     expect(
       resolveDirectCharacterImageInstruction({
         characterId: "7",
         instructionByCharacter: { "7": "kept" },
         override: "   ",
-      }),
+      })
     ).toBeUndefined();
   });
 
@@ -446,7 +484,7 @@ describe("resolveDirectCharacterImageInstruction", () => {
       resolveDirectCharacterImageInstruction({
         characterId: "8",
         instructionByCharacter: { "7": "ภาพเต็มตัว" },
-      }),
+      })
     ).toBeUndefined();
   });
 });

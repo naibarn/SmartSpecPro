@@ -113,6 +113,34 @@ describe("approved Start Frame selection", () => {
       second.map(item => item.shotNumber),
     );
   });
+
+  it("assigns nine approved shots to disjoint cover-variant bands", () => {
+    const variants = ([1, 2, 3, 4] as const).map((_slotId, index) =>
+      selectEpisodeCoverReferences(
+        candidates,
+        "",
+        [1, 2, 3, 3][index],
+        0,
+        index
+      )
+    );
+
+    expect(variants.map(variant => variant.map(item => item.shotNumber))).toEqual([
+      [1],
+      [2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+    ]);
+    expect(new Set(variants.flat().map(item => item.shotNumber)).size).toBe(9);
+  });
+
+  it("keeps narrative-ranked variant bands disjoint", () => {
+    const variants = [0, 1, 2, 3].map(index =>
+      selectEpisodeCoverReferences(candidates, "แผลที่มือ", [1, 2, 3, 3][index], 0, index)
+    );
+
+    expect(new Set(variants.flat().map(item => item.shotNumber)).size).toBe(9);
+  });
 });
 
 describe("cover state parsing", () => {

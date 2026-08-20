@@ -289,6 +289,7 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   appendPresetVisualIdentityStyleTokensToMotionPrompt:
     mockAppendPresetVisualIdentityStyleTokensToMotionPrompt,
   buildCustomCharacterIdentityLockFragments: vi.fn(() => []),
+  resolveScreenCallerCharacterNames: vi.fn((refs: string[] = []) => refs),
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
   RateLimitExceededError: MockRateLimitExceededError,

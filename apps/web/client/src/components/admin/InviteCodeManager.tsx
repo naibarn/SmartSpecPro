@@ -233,6 +233,7 @@ export default function InviteCodeManager() {
                 <th className="text-left px-4 py-2 font-medium">Label</th>
                 <th className="text-left px-4 py-2 font-medium">Code</th>
                 <th className="text-left px-4 py-2 font-medium">Type</th>
+                <th className="text-left px-4 py-2 font-medium">Issued by</th>
                 <th className="text-left px-4 py-2 font-medium">Bonus</th>
                 <th className="text-left px-4 py-2 font-medium">Uses</th>
                 <th className="text-left px-4 py-2 font-medium">Expires</th>
@@ -321,6 +322,16 @@ function CodeRow({
             {code.type}
           </span>
         </td>
+        <td className="px-4 py-3 text-xs">
+          {code.ownerEmail ? (
+            <>
+              {code.ownerName && <div className="font-medium">{code.ownerName}</div>}
+              <div className="text-gray-500">{code.ownerEmail}</div>
+            </>
+          ) : (
+            <span className="text-gray-400">User #{code.ownerId}</span>
+          )}
+        </td>
         <td className="px-4 py-3">{code.bonusCreditsForNewUser}</td>
         <td className="px-4 py-3">
           {code.currentUses}
@@ -394,7 +405,7 @@ function CodeRow({
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={8} className="px-4 py-3 bg-gray-50">
+          <td colSpan={9} className="px-4 py-3 bg-gray-50">
             <div className="text-sm">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4" />

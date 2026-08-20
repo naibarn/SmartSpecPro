@@ -545,6 +545,60 @@ describe("vertical drama draft quality QC loop", () => {
     });
   });
 
+  it("allows server-managed legacy control archive changes during revision", async () => {
+    const injected = deps([2, 4]);
+    const draftWithLegacyArchive = {
+      ...draft,
+      storyDesign: {
+        ...validStoryDesign,
+        legacyControlArchive: {
+          version: 1,
+          superseded: true,
+          romanceProgression: validStoryDesign.romanceProgression,
+          advantageBeats: validStoryDesign.advantageBeats,
+        },
+      },
+    };
+    injected.revise = vi.fn(async ({ draft: current }) => ({
+      data: {
+        draft: {
+          ...current,
+          storyDesign: {
+            ...(current.storyDesign as Record<string, unknown>),
+            primaryEngine: "The rivalry creates earned trust through testing.",
+            legacyControlArchive: { forgedByProvider: true },
+          },
+        },
+        changedFields: ["storyDesign.primaryEngine"],
+      },
+      promptTokens: 1,
+      completionTokens: 1,
+    }));
+
+    const result = await runVerticalDramaDraftQualityQc(
+      {
+        draft: draftWithLegacyArchive,
+        immutableConstraints: { targetEpisodeCount: 30 },
+        userId: 1,
+        maxImprovementRounds: 1,
+      },
+      injected,
+    );
+
+    expect(injected.evaluate).toHaveBeenCalledTimes(2);
+    expect(result.evaluationsCompleted).toBe(2);
+    expect(result.best.draft.storyDesign).toMatchObject({
+      primaryEngine: "The rivalry creates earned trust through testing.",
+    });
+    expect(result.best.draft.storyDesign).toHaveProperty(
+      "legacyControlArchive.superseded",
+      true,
+    );
+    expect(result.best.draft.storyDesign).not.toHaveProperty(
+      "legacyControlArchive.forgedByProvider",
+    );
+  });
+
   it("rejects an unknown storyDesign passthrough mutation", async () => {
     const injected = deps([2]);
     const draftWithControl = { ...draft, storyDesign: validStoryDesign };

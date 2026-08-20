@@ -1,6 +1,6 @@
-import { eq, and, isNull, sql, desc } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../db";
-import { feedbackTickets, virtualAdminIncidents, users } from "../../../drizzle/schema";
+import { feedbackTickets, users } from "../../../drizzle/schema";
 import { createNotification } from "../notificationService";
 import {
   extractAffectedUserIds,
@@ -58,31 +58,43 @@ async function findDuplicate(title: string, tenantId?: string | null): Promise<n
   return existing[0]?.id ?? null;
 }
 
-// Correlate: find related open incidents by keyword match
-async function findRelatedIncident(title: string, tenantId?: string | null): Promise<number | null> {
-  const db = await getDb();
-  if (!db) return null;
-
-  const keywords = title.toLowerCase().split(/\s+/).filter((w) => w.length > 3).slice(0, 3);
-  if (keywords.length === 0) return null;
-
-  const conditions = [eq(virtualAdminIncidents.status, "open")];
-  conditions.push(tenantId ? eq(virtualAdminIncidents.tenantId, tenantId) : isNull(virtualAdminIncidents.tenantId));
-
-  const incidents = await db
-    .select({ id: virtualAdminIncidents.id, title: virtualAdminIncidents.title })
-    .from(virtualAdminIncidents)
-    .where(and(...conditions))
-    .orderBy(desc(virtualAdminIncidents.createdAt))
-    .limit(20);
-
-  for (const inc of incidents) {
-    const incTitle = inc.title.toLowerCase();
-    if (keywords.some((k) => incTitle.includes(k))) {
-      return inc.id;
-    }
+/**
+ * Return an incident reference only when the producer supplied one explicitly.
+ * Title keyword matching caused unrelated feedback (for example, any error
+ * containing "media") to deep-link to an arbitrary open incident.
+ */
+export function extractExplicitRelatedIncidentId(contextJson: unknown): number | null {
+  if (!contextJson || typeof contextJson !== "object" || Array.isArray(contextJson)) {
+    return null;
   }
+
+  const context = contextJson as Record<string, unknown>;
+  const extra = context.extra && typeof context.extra === "object" && !Array.isArray(context.extra)
+    ? context.extra as Record<string, unknown>
+    : null;
+
+  for (const candidate of [
+    context.relatedIncidentId,
+    context.incidentId,
+    extra?.relatedIncidentId,
+    extra?.incidentId,
+  ]) {
+    const id = typeof candidate === "number"
+      ? candidate
+      : typeof candidate === "string" && /^\d+$/.test(candidate.trim())
+        ? Number(candidate)
+        : NaN;
+    if (Number.isSafeInteger(id) && id > 0) return id;
+  }
+
   return null;
+}
+
+export function shouldNotifyAdminForTicket(
+  submittedByType: string | null | undefined,
+  duplicateOf: number | null,
+): boolean {
+  return submittedByType === "human" || duplicateOf == null;
 }
 
 /**
@@ -149,7 +161,7 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
   const ticket = tickets[0];
   const { category, priority } = classifyByKeywords(ticket.title, ticket.description);
   const duplicateOf = await findDuplicate(ticket.title, ticket.tenantId);
-  const relatedIncidentId = await findRelatedIncident(ticket.title, ticket.tenantId);
+  const relatedIncidentId = extractExplicitRelatedIncidentId(ticket.contextJson);
 
   const result: ProcessedTicket = {
     autoCategory: category,
@@ -182,6 +194,13 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
       updatedAt: new Date(),
     })
     .where(eq(feedbackTickets.id, ticketId));
+
+  // Repeated system diagnostics are already represented by the original
+  // ticket. Keep the duplicate record for auditability, but do not turn it
+  // into another high-priority modal notification.
+  if (!shouldNotifyAdminForTicket(ticket.submittedByType, result.duplicateOf)) {
+    return result;
+  }
 
   // Notify all admins about the new feedback ticket
   try {
@@ -231,7 +250,6 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
 
     for (const admin of adminRows) {
       if (admin.id === ticket.submittedBy) continue;
-      const hasIncident = result.relatedIncidentId != null;
       const reporterPrefix = reporter
         ? `[${reporter.email ?? `user #${reporter.id}`}] `
         : "";
@@ -253,17 +271,15 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
           affectedUsers,
         }),
         priority: notificationPriority,
-        relatedResourceType: hasIncident ? "incident" : "feedback",
+        relatedResourceType: "feedback",
         relatedResourceId: String(ticketId),
-        actionUrl: hasIncident
-          ? `/admin/system-guardian?incident=${result.relatedIncidentId}`
-          : `/admin/feedback-hub?ticketId=${ticketId}`,
+        actionUrl: `/admin/feedback-hub?ticketId=${ticketId}`,
         actionLabel: "View Feedback",
         metadata: {
           source: "guardian.feedbackProcessor",
           eventId: String(ticketId),
           relatedItems: {
-            ruleId: result.relatedIncidentId != null ? String(result.relatedIncidentId) : "",
+            incidentId: result.relatedIncidentId != null ? String(result.relatedIncidentId) : "",
             sensorId: "feedbackProcessor",
             actionTaken: result.duplicateOf ? "duplicate_detected" : "triaged",
           },

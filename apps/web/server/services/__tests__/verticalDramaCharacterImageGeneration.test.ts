@@ -81,6 +81,8 @@ import {
   findLeadPromptQualityIssues,
   findPortraitCandidateDiversityIssues,
   resolveCharacterRoleTier,
+  resolveEffectiveCharacterVisualRoleTier,
+  shouldRequireAgeStageVariantForRequest,
   extractAgeFromDescription,
   detectChildGenderHint,
   readPresetVisualIdentityFromBible,
@@ -629,6 +631,70 @@ describe("resolveCharacterRoleTier", () => {
       expect(resolveCharacterRoleTier("นางเอก", null)).toBe("lead_female");
       expect(resolveCharacterRoleTier("นางเอก", undefined)).toBe("lead_female");
     });
+  });
+});
+
+describe("age-stage visual role separation", () => {
+  it("serializes the effective child tier for an age-stage variant", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ content: "System prompt body" } as any);
+    mockExecute.mockResolvedValue(successResponse(validOutput([validCharacter("char-1", "child")])));
+
+    await generateCharacterVisualPrompts(
+      baseParams({
+        role: "พระเอก",
+        roleTier: "lead_male",
+        variantType: "age_stage",
+        description: "อายุ 6 ปี",
+      }),
+    );
+
+    const userMessage = (mockExecute.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    }).messages.find(message => message.role === "user")!.content;
+    expect(userMessage).toContain('"role_tier": "child"');
+    expect(userMessage).toContain('"variant_type": "age_stage"');
+  });
+
+  it("uses child visual rules for a child age-stage variant while preserving lead story role", () => {
+    expect(
+      resolveEffectiveCharacterVisualRoleTier({
+        role: "พระเอก",
+        roleTier: "lead_male",
+        variantType: "age_stage",
+        description: "อายุ 6 ปี",
+      }),
+    ).toBe("child");
+  });
+
+  it("keeps an adult age-stage look on the canonical lead visual tier", () => {
+    expect(
+      resolveEffectiveCharacterVisualRoleTier({
+        role: "พระเอก",
+        roleTier: "lead_male",
+        variantType: "age_stage",
+        description: "อายุ 30 ปี",
+      }),
+    ).toBe("lead_male");
+  });
+
+  it("requires confirmation only for an explicit child brief on a base adult lead", () => {
+    expect(
+      shouldRequireAgeStageVariantForRequest({
+        roleTier: "lead_male",
+        customInstruction: "เด็กชายอายุ 6 ขวบ",
+      }),
+    ).toBe(true);
+    expect(
+      shouldRequireAgeStageVariantForRequest({
+        roleTier: "lead_male",
+        parentCharacterId: 7,
+        variantType: "age_stage",
+        customInstruction: "เด็กชายอายุ 6 ขวบ",
+      }),
+    ).toBe(false);
   });
 });
 
@@ -1940,6 +2006,39 @@ describe("generateCharacterVisualPrompts", () => {
       generateCharacterVisualPrompts(baseParams({ role: "นางเอก" })),
     ).rejects.toThrow(VdSchemaValidationError);
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("auto-repairs an authoritative lead role-tier mismatch before failing the generation", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const invalid = validCharacter("char-1", "child");
+    const repaired = validCharacter("char-1", "lead_male");
+    mockExecute
+      .mockResolvedValueOnce(successResponse(validOutput([invalid])))
+      .mockResolvedValueOnce(successResponse(validOutput([invalid])))
+      .mockResolvedValueOnce(successResponse(validOutput([invalid])))
+      .mockResolvedValueOnce(successResponse(validOutput([repaired])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ role: "พระเอก", roleTier: "lead_male" }),
+    );
+
+    expect(result.visualBibleSnapshot.designDna.roleTier).toBe("lead_male");
+    expect(mockExecute).toHaveBeenCalledTimes(4);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          operation: "auto_repair_character_visual_bible_role_tier",
+          expectedRoleTier: "lead_male",
+        }),
+      }),
+    );
+
+    const repairUserMessage = mockExecute.mock.calls[3][0].messages.find(
+      (message: { role: string }) => message.role === "user",
+    ).content;
+    expect(repairUserMessage).toContain("BOUNDED SERVER AUTO-REPAIR");
+    expect(repairUserMessage).toContain("authoritative server role tier for this request is lead_male");
   });
 
   it("normalizes server-derived comparison evidence without retrying the otherwise valid response", async () => {

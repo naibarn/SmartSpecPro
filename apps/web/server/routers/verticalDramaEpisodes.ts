@@ -178,6 +178,7 @@ import {
   RateLimitExceededError as ClipDialogueRateLimitExceededError,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
   buildCustomCharacterIdentityLockFragments,
+  resolveScreenCallerCharacterNames,
   // Multi-character reference images (multi-character disambiguation fix,
   // `polished-toasting-gadget.md`) — type-only, shared by
   // `resolveShotVideoPromptCharacterReferenceImages` below and every
@@ -8165,6 +8166,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     beatIsSilent,
     genre,
     supportingPresence,
+    screenCallerCharacterRefs,
     characterNameByKey,
     tieInPlacement,
     tieInProductName,
@@ -8373,6 +8375,10 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     dialogueSpeakerNames: speakerSwitchGeneration.dialogue
       .map(line => (line.characterKey ? characterNameByKey?.get(line.characterKey) ?? line.characterKey : undefined))
       .filter((value): value is string => Boolean(value)),
+    screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+      screenCallerCharacterRefs,
+      characterReferenceImages,
+    ),
     supportingPresence,
     frameAnalysis: speakerSwitchGeneration.frameAnalysis,
     motionProfile: speakerSwitchGeneration.motionProfile,
@@ -8450,6 +8456,17 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     modelName: selectedVideoModel.name,
     ...(genre ? { genre } : {}),
     ...(supportingPresence?.length ? { supportingPresence } : {}),
+    ...(screenCallerCharacterRefs?.length
+      ? { screenCallerCharacterRefs }
+      : {}),
+    ...(screenCallerCharacterRefs?.length
+      ? {
+          screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+            screenCallerCharacterRefs,
+            characterReferenceImages,
+          ),
+        }
+      : {}),
     generatedAt: new Date().toISOString(),
   };
   const splitShotVideoPromptWarnings: VerticalDramaWarning[] = (
@@ -18534,6 +18551,11 @@ export const verticalDramaEpisodesRouter = router({
           .map(line => line.speakerName ?? line.characterKey)
           .filter((value): value is string => Boolean(value)),
         supportingPresence: clip.promptModelTarget?.supportingPresence,
+        screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+          clip.promptModelTarget?.screenCallerCharacterNames ??
+            clip.promptModelTarget?.screenCallerCharacterRefs,
+          videoSafetyCharacterRefs.map(name => ({ characterKey: name, name })),
+        ),
         frameAnalysis: clip.frameAnalysis,
         motionProfile: clip.motionProfile,
       });
@@ -22175,6 +22197,10 @@ export const verticalDramaEpisodesRouter = router({
         dialogueSpeakerNames: dialogueLines
           .map(line => shotVideoCharacterNameByKey.get(line.characterKey ?? "") ?? line.characterKey)
           .filter((value): value is string => Boolean(value)),
+        screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+          frame?.screenCallerCharacterRefs,
+          shotVideoCharacterReferenceImages,
+        ),
         supportingPresence: shotSupportingPresence,
         frameAnalysis: result.frameAnalysis,
         motionProfile: result.motionProfile,
@@ -22252,6 +22278,17 @@ export const verticalDramaEpisodesRouter = router({
         modelName: selectedVideoModel.name,
         ...(typeof localeSeriesRow?.genre === "string" ? { genre: localeSeriesRow.genre } : {}),
         ...(shotSupportingPresence.length ? { supportingPresence: shotSupportingPresence } : {}),
+        ...(frame?.screenCallerCharacterRefs?.length
+          ? { screenCallerCharacterRefs: frame.screenCallerCharacterRefs }
+          : {}),
+        ...(frame?.screenCallerCharacterRefs?.length
+          ? {
+              screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+                frame.screenCallerCharacterRefs,
+                shotVideoCharacterReferenceImages,
+              ),
+            }
+          : {}),
         generatedAt: new Date().toISOString(),
       };
       // Position-anchor compliance warning(s) (item C) — converted onto the

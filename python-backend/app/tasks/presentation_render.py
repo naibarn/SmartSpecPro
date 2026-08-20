@@ -105,7 +105,13 @@ def _safe_delay_ms(v: object, default: int = 0) -> int:
     retry_jitter=True,
     queue="presentation_export",
 )
-def render_presentation(self, render_spec: dict, quality: str, format: str) -> dict:
+def render_presentation(
+    self,
+    render_spec: dict,
+    quality: str,
+    format: str,
+    render_auth: dict[str, Any] | None = None,
+) -> dict:
     """
     Render a presentation deck to the requested output format.
 
@@ -118,6 +124,11 @@ def render_presentation(self, render_spec: dict, quality: str, format: str) -> d
         {"output_url": str, "output_bytes": int}
     """
     # M-6: Validate required fields at entry point with descriptive errors
+    if render_auth is None:
+        embedded_render_auth = render_spec.pop("__presentation_render_auth", None)
+        if isinstance(embedded_render_auth, dict):
+            render_auth = embedded_render_auth
+
     if "deckId" not in render_spec:
         raise ValueError("render_spec missing required field: deckId")
     if "slides" not in render_spec:
@@ -129,7 +140,9 @@ def render_presentation(self, render_spec: dict, quality: str, format: str) -> d
         dynamic_video_mode = format == "mp4" and bool(render_spec.get("hasDynamicVideo"))
         if dynamic_video_mode:
             # Stage 1: Record each slide as a clip when the deck contains video elements.
-            video_clip_segments = _render_slides_to_video_clips(self, render_spec, tmp_dir)
+            video_clip_segments = _render_slides_to_video_clips(
+                self, render_spec, tmp_dir, render_auth
+            )
             # Stage 2: MP4 encode from dynamic clips (75–90%)
             output_path = _build_mp4_from_clips(render_spec, quality, video_clip_segments, tmp_dir)
             self.update_state(
@@ -138,7 +151,9 @@ def render_presentation(self, render_spec: dict, quality: str, format: str) -> d
             )
         else:
             # Stage 1: Screenshots (0–75%)
-            screenshot_paths = _render_slides_to_screenshots(self, render_spec, tmp_dir)
+            screenshot_paths = _render_slides_to_screenshots(
+                self, render_spec, tmp_dir, render_auth
+            )
             # Stage 2: Format processing (75–90%)
             output_path = _process_format(self, render_spec, format, quality, screenshot_paths, tmp_dir)
 
@@ -171,19 +186,29 @@ def render_presentation(self, render_spec: dict, quality: str, format: str) -> d
 # ---------------------------------------------------------------------------
 
 
-def _make_slide_token(deck_id: int, slide_index: int) -> str:
+def _make_slide_token(
+    deck_id: int,
+    slide_index: int,
+    render_auth: dict[str, Any] | None = None,
+) -> str:
     """Generate a short-lived JWT for a single slide render request (5-minute TTL)."""
     secret = os.getenv("JWT_SECRET") or settings.JWT_SECRET
     if not secret:
         raise RuntimeError("JWT_SECRET is not configured for presentation export worker")
+    claims: dict[str, Any] = {
+        "sub": "internal-render",
+        "scopes": ["internal:slide-render"],
+        "deckId": deck_id,
+        "slideIndex": slide_index,
+        "exp": int(time.time()) + 300,
+    }
+    if render_auth:
+        claims.update({
+            "userId": int(render_auth["user_id"]),
+            "tenantId": str(render_auth["tenant_id"]),
+        })
     return jwt.encode(
-        {
-            "sub": "internal-render",
-            "scopes": ["internal:slide-render"],
-            "deckId": deck_id,
-            "slideIndex": slide_index,
-            "exp": int(time.time()) + 300,
-        },
+        claims,
         secret,
         algorithm="HS256",
     )
@@ -284,7 +309,34 @@ def _poll_slide_ready(page, deck_id: int, slide_index: int, mode: str) -> dict[s
     }
 
 
-def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) -> list[str]:
+def _validate_png_file(path: str, slide_index: int) -> None:
+    """Reject missing, truncated, or non-PNG screenshots before packaging."""
+    if not os.path.isfile(path) or os.path.getsize(path) <= 0:
+        raise RuntimeError(
+            f"E_PNG_SCREENSHOT_INVALID: slide {slide_index} screenshot is missing or empty"
+        )
+
+    try:
+        with PillowImage.open(path) as image:
+            if image.format != "PNG" or image.width <= 0 or image.height <= 0:
+                raise ValueError("invalid PNG format or dimensions")
+            image.verify()
+        # verify() does not decode pixel data; load it in a fresh handle so a
+        # truncated IDAT stream cannot pass validation.
+        with PillowImage.open(path) as image:
+            image.load()
+    except Exception as exc:
+        raise RuntimeError(
+            f"E_PNG_SCREENSHOT_INVALID: slide {slide_index} screenshot cannot be decoded"
+        ) from exc
+
+
+def _render_slides_to_screenshots(
+    task_self,
+    render_spec: dict,
+    tmp_dir: str,
+    render_auth: dict[str, Any] | None = None,
+) -> list[str]:
     """
     Navigate Playwright to each slide's internal render URL and capture screenshots.
 
@@ -314,12 +366,22 @@ def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) ->
             context = browser.new_context(viewport={"width": width, "height": height})
             try:
                 for idx, _slide in enumerate(slides):
-                    token = _make_slide_token(deck_id, idx)
+                    token = _make_slide_token(deck_id, idx, render_auth)
                     url = f"{base_url}/internal/slide-render/{deck_id}/{idx}"
 
                     page = context.new_page()
-                    page.set_extra_http_headers({"X-Internal-Token": token})
-                    page.goto(url, wait_until="domcontentloaded")
+                    headers = {"X-Internal-Token": token}
+                    if render_auth:
+                        headers["Authorization"] = f"Bearer {token}"
+                    page.set_extra_http_headers(headers)
+                    response = page.goto(url, wait_until="domcontentloaded")
+                    if response is not None:
+                        response_status = response.status()
+                        if isinstance(response_status, int) and not 200 <= response_status < 300:
+                            raise RuntimeError(
+                                f"E_SLIDE_RENDER_HTTP_{response_status}: "
+                                f"slide-render route rejected deck {deck_id} slide {idx}"
+                            )
 
                     ready_result = _poll_slide_ready(page, deck_id, idx, mode="screenshot")
                     ready = bool(ready_result["ready"])
@@ -329,6 +391,11 @@ def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) ->
                     if not ready:
                         logger.warning("slide_ready_timeout", deck_id=deck_id, slide_index=idx)
                     elif state_status == "degraded":
+                        if bool((state or {}).get("mediaDegraded")):
+                            raise RuntimeError(
+                                "E_SLIDE_MEDIA_DEGRADED: "
+                                f"deck {deck_id} slide {idx} has media that failed to load"
+                            )
                         logger.warning(
                             "slide_ready_degraded",
                             deck_id=deck_id,
@@ -342,6 +409,7 @@ def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) ->
                         clip={"x": 0, "y": 0, "width": width, "height": height},
                         animations="disabled",
                     )
+                    _validate_png_file(out_path, idx)
                     page.close()
                     screenshot_paths.append(out_path)
 
@@ -358,7 +426,12 @@ def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) ->
     return screenshot_paths
 
 
-def _render_slides_to_video_clips(task_self, render_spec: dict, tmp_dir: str) -> list[dict]:
+def _render_slides_to_video_clips(
+    task_self,
+    render_spec: dict,
+    tmp_dir: str,
+    render_auth: dict[str, Any] | None = None,
+) -> list[dict]:
     """
     Record each slide as a short video clip for dynamic MP4 exports.
 
@@ -387,13 +460,23 @@ def _render_slides_to_video_clips(task_self, render_spec: dict, tmp_dir: str) ->
             )
             try:
                 for idx, slide in enumerate(slides):
-                    token = _make_slide_token(deck_id, idx)
+                    token = _make_slide_token(deck_id, idx, render_auth)
                     url = f"{base_url}/internal/slide-render/{deck_id}/{idx}?mode=record"
 
                     page = context.new_page()
-                    page.set_extra_http_headers({"X-Internal-Token": token})
+                    headers = {"X-Internal-Token": token}
+                    if render_auth:
+                        headers["Authorization"] = f"Bearer {token}"
+                    page.set_extra_http_headers(headers)
                     navigation_started_at = time.monotonic()
-                    page.goto(url, wait_until="domcontentloaded")
+                    response = page.goto(url, wait_until="domcontentloaded")
+                    if response is not None:
+                        response_status = response.status()
+                        if isinstance(response_status, int) and not 200 <= response_status < 300:
+                            raise RuntimeError(
+                                f"E_SLIDE_RENDER_HTTP_{response_status}: "
+                                f"slide-render route rejected deck {deck_id} slide {idx}"
+                            )
 
                     ready_result = _poll_slide_ready(page, deck_id, idx, mode="record")
                     ready = bool(ready_result["ready"])
@@ -403,6 +486,11 @@ def _render_slides_to_video_clips(task_self, render_spec: dict, tmp_dir: str) ->
                     if not ready:
                         logger.warning("slide_ready_timeout_record_mode", deck_id=deck_id, slide_index=idx)
                     elif state_status == "degraded":
+                        if bool((state or {}).get("mediaDegraded")):
+                            raise RuntimeError(
+                                "E_SLIDE_MEDIA_DEGRADED: "
+                                f"deck {deck_id} slide {idx} has media that failed to load"
+                            )
                         logger.warning(
                             "slide_ready_degraded_record_mode",
                             deck_id=deck_id,
@@ -847,15 +935,21 @@ def _build_png_zip(screenshot_paths: list[str], tmp_dir: str) -> str:
     """Zip all PNG screenshots into a single archive."""
     output_path = os.path.join(tmp_dir, "output.zip")
     with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for path in screenshot_paths:
+        for idx, path in enumerate(screenshot_paths):
+            _validate_png_file(path, idx)
             zf.write(path, arcname=os.path.basename(path))
+    with zipfile.ZipFile(output_path) as zf:
+        broken_member = zf.testzip()
+        if broken_member is not None:
+            raise RuntimeError(f"E_PNG_ARCHIVE_CORRUPT: archive member {broken_member} failed validation")
     return output_path
 
 
 def _build_jpg_zip(screenshot_paths: list[str], tmp_dir: str) -> str:
     """Convert PNG screenshots to JPEG quality=90, then zip."""
     jpg_paths: list[str] = []
-    for png_path in screenshot_paths:
+    for idx, png_path in enumerate(screenshot_paths):
+        _validate_png_file(png_path, idx)
         jpg_path = png_path.replace(".png", ".jpg")
         with PillowImage.open(png_path) as img:
             img.convert("RGB").save(jpg_path, "JPEG", quality=90)

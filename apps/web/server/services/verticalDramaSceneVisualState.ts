@@ -323,6 +323,11 @@ export async function generateSceneVisualState(
     schema: sceneVisualStatePlanOutputSchema,
     firstAttemptMaxTokens: 2000,
     retryMaxTokens: 3000,
+    // Scene-state calls are vision-aware and can receive an empty/truncated
+    // response from an otherwise healthy provider. Use the bounded shared
+    // recovery path before surfacing an error to the creator.
+    maxSchemaRetries: 2,
+    modelFallbackPolicy: "recommended",
   });
   const inputTokens = response.usage?.prompt_tokens ?? 0;
   const outputTokens = response.usage?.completion_tokens ?? 0;

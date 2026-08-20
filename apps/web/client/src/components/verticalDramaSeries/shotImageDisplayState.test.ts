@@ -107,4 +107,20 @@ describe("resolveVerticalDramaShotImageDisplayState", () => {
       }).kind
     ).toBe("generating");
   });
+
+  it("does not overlay a stale failed task on an already-loaded asset", () => {
+    expect(
+      resolveVerticalDramaShotImageDisplayState({
+        hasPrompt: true,
+        hasAsset: true,
+        browserState: "loaded",
+        imageTask: {
+          status: "failed",
+          failureStage: "sync",
+          lastTaskId: "old-task",
+          error: "Task failed: Image fetch failed",
+        },
+      })
+    ).toEqual({ kind: "ready" });
+  });
 });

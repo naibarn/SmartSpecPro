@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   extractAffectedUserIds,
   formatAffectedUsersForText,
+  resolveAffectedUsers,
 } from "../feedbackAffectedUsers";
 
 describe("feedback affected users", () => {
@@ -33,5 +34,21 @@ describe("feedback affected users", () => {
         { id: 120, email: null },
       ])
     ).toBe("user119@example.com (user #119), user #120");
+  });
+
+  it("resolves the reporter by ID even when their current tenant differs", async () => {
+    const where = vi.fn().mockResolvedValue([
+      { id: 119, email: "user119@example.com" },
+    ]);
+    const db = {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({ where })),
+      })),
+    } as any;
+
+    await expect(resolveAffectedUsers(db, [119], "historical-ticket-tenant")).resolves.toEqual([
+      { id: 119, email: "user119@example.com" },
+    ]);
+    expect(where).toHaveBeenCalledTimes(1);
   });
 });

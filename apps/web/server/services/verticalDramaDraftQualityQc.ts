@@ -9,6 +9,7 @@ import {
   DRAFT_QC_MAX_CHANGED_FIELDS,
   DRAFT_QC_MAX_IMPROVEMENT_ROUNDS,
   DRAFT_QC_MUTABLE_STORY_DESIGN_KEYS,
+  DRAFT_QC_SERVER_MANAGED_STORY_DESIGN_KEYS,
   estimateDraftQualityQcCredits,
   fingerprintDraftQualityQcCandidate,
   normalizeDraftQualityQcRoundBudget,
@@ -434,6 +435,13 @@ function assertMutableStoryDesignContract(
   ]);
   for (const key of changedKeys) {
     if (
+      (DRAFT_QC_SERVER_MANAGED_STORY_DESIGN_KEYS as readonly string[]).includes(
+        key,
+      )
+    ) {
+      continue;
+    }
+    if (
       (DRAFT_QC_MUTABLE_STORY_DESIGN_KEYS as readonly string[]).includes(key)
     ) {
       continue;
@@ -459,6 +467,21 @@ function assertMutableStoryDesignContract(
         .join(", ")}`,
     );
   }
+}
+
+function stripServerManagedStoryDesignMetadata(
+  draft: DraftQualityQcDraft,
+): DraftQualityQcDraft {
+  const storyDesign = draft.storyDesign;
+  if (!isRecord(storyDesign)) return draft;
+  const sanitizedStoryDesign = { ...storyDesign };
+  for (const key of DRAFT_QC_SERVER_MANAGED_STORY_DESIGN_KEYS) {
+    delete sanitizedStoryDesign[key];
+  }
+  return {
+    ...draft,
+    storyDesign: sanitizedStoryDesign,
+  };
 }
 
 /**
@@ -1040,10 +1063,13 @@ export async function runVerticalDramaDraftQualityQc(
         parsedRevision = recoveredRevision.data;
       }
       const changedFields = normalizeChangedFields(parsedRevision.changedFields);
-      assertBoundedDraft(parsedRevision.draft);
+      const providerRevisionDraft = stripServerManagedStoryDesignMetadata(
+        parsedRevision.draft,
+      );
+      assertBoundedDraft(providerRevisionDraft);
       const mergedRevision = mergeDraftRevisionPreservingFields(
         best.draft,
-        parsedRevision.draft
+        providerRevisionDraft
       );
       const repairedRevisionDraft = repairStoryControlPlaneForQc(
         mergedRevision.draft,
@@ -1375,9 +1401,12 @@ export async function runVerticalDramaDraftQualityQcRepair(
         `Vertical Drama draft QC repair response failed schema validation: ${parsedRevisionResult.success ? "response" : parsedRevisionResult.error.issues.map(issue => issue.path.join(".") || "response").join(", ")}`,
       );
     }
+    const providerRevisionDraft = stripServerManagedStoryDesignMetadata(
+      recoveredRevision.data.draft,
+    );
     const mergedRevision = mergeDraftRevisionPreservingFields(
       input.draft,
-      recoveredRevision.data.draft,
+      providerRevisionDraft,
     );
     mergedRevision.draft = repairStoryControlPlaneForQc(
       mergedRevision.draft,

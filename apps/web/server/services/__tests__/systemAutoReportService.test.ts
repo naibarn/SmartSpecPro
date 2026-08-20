@@ -76,8 +76,10 @@ describe("systemAutoReportService credit routing", () => {
     expect(mockDb.values).toHaveBeenCalledWith(expect.objectContaining({
       priority: "high",
       severity: "high",
+      description: expect.stringContaining("user@example.com"),
       contextJson: expect.objectContaining({
         creditFailure: expect.objectContaining({ route: "admin_suspicious", requestedCredits: 3001 }),
+        affectedUserIds: [7],
       }),
     }));
     expect(mockProcessTicket).toHaveBeenCalledWith(99);

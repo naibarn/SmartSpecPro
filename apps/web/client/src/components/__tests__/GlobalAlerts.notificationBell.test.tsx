@@ -395,6 +395,33 @@ describe("GlobalNotificationBell occurrence badge", () => {
     );
   });
 
+  it("repairs legacy guardian-routed feedback notifications", async () => {
+    urgentRemindersData = [
+      {
+        id: 102,
+        title: "New Feedback: [Auto] media generation failed (image)",
+        content: "[bug] Auto-classified as bug (high priority) Ticket #398",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/admin/system-guardian?incident=8",
+        actionLabel: "View Feedback",
+        relatedResourceType: "incident",
+        metadata: { source: "guardian.feedbackProcessor" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /view feedback/i }));
+
+    expect(openWindowMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=398",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
+
   it("treats billing invoice due reminders as billing reminders instead of incident guidance", async () => {
     urgentRemindersData = [
       {

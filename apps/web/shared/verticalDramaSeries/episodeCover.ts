@@ -73,6 +73,7 @@ export type EpisodeCoverReference = {
 };
 
 const MAX_REFERENCES = 4;
+const COVER_VARIANT_REFERENCE_BUDGETS = [1, 2, 3, 3] as const;
 
 function clean(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -222,7 +223,8 @@ export function selectEpisodeCoverReferences(
   candidates: readonly EpisodeCoverReferenceCandidate[],
   narrativeText: string,
   maxReferences: number = MAX_REFERENCES,
-  selectionOffset: number = 0
+  selectionOffset: number = 0,
+  variantSlotIndex?: number
 ): EpisodeCoverReference[] {
   const limit = Math.max(
     0,
@@ -258,6 +260,20 @@ export function selectEpisodeCoverReferences(
   }));
   const hasNarrativeMatch = scored.some(item => item.score > 0);
 
+  const ranked = hasNarrativeMatch
+    ? scored
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            a.candidate.sourceIndex - b.candidate.sourceIndex
+        )
+        .map(item => item.candidate)
+    : unique;
+
+  if (variantSlotIndex !== undefined) {
+    return selectCoverVariantBand(ranked, limit, variantSlotIndex);
+  }
+
   let selected: EpisodeCoverReferenceCandidate[];
   if (!hasNarrativeMatch) {
     const step = (unique.length - 1) / Math.max(1, limit - 1);
@@ -272,16 +288,67 @@ export function selectEpisodeCoverReferences(
       .sort((a, b) => a - b)
       .map(index => unique[index]);
   } else {
-    const ranked = scored
-      .sort(
-        (a, b) =>
-          b.score - a.score || a.candidate.sourceIndex - b.candidate.sourceIndex
-      )
-      .map(item => item.candidate);
     const offset = Math.abs(Math.floor(selectionOffset)) % ranked.length;
     selected = Array.from({ length: limit }, (_, index) =>
       ranked[(index + offset) % ranked.length]
     );
+  }
+
+  return selected
+    .sort((a, b) => a.sourceIndex - b.sourceIndex)
+    .map(({ shotNumber, approvedMediaAssetId, sourceIndex }) => ({
+      shotNumber,
+      approvedMediaAssetId,
+      sourceIndex,
+    }));
+}
+
+function allocateCoverVariantBandSizes(candidateCount: number): number[] {
+  const sizes = COVER_VARIANT_REFERENCE_BUDGETS.map(() => 0);
+  const initialAssignments = Math.min(candidateCount, sizes.length);
+  for (let index = 0; index < initialAssignments; index += 1) {
+    sizes[index] = 1;
+  }
+
+  let remaining = candidateCount - initialAssignments;
+  for (
+    let index = 1;
+    index < COVER_VARIANT_REFERENCE_BUDGETS.length && remaining > 0;
+    index += 1
+  ) {
+    const room = COVER_VARIANT_REFERENCE_BUDGETS[index] - sizes[index];
+    const addition = Math.min(room, remaining);
+    sizes[index] += addition;
+    remaining -= addition;
+  }
+  return sizes;
+}
+
+function selectCoverVariantBand(
+  orderedCandidates: readonly EpisodeCoverReferenceCandidate[],
+  limit: number,
+  variantSlotIndex: number
+): EpisodeCoverReference[] {
+  const normalizedSlotIndex =
+    Math.abs(Math.floor(variantSlotIndex)) %
+    COVER_VARIANT_REFERENCE_BUDGETS.length;
+  const bandSizes = allocateCoverVariantBandSizes(orderedCandidates.length);
+  const bandStart = bandSizes
+    .slice(0, normalizedSlotIndex)
+    .reduce((total, size) => total + size, 0);
+  const bandEnd = bandStart + bandSizes[normalizedSlotIndex];
+  const selected = orderedCandidates.slice(bandStart, bandEnd).slice(0, limit);
+  const selectedIds = new Set(
+    selected.map(candidate => candidate.approvedMediaAssetId)
+  );
+
+  // Short episodes cannot fill every variant's preferred band. Complete the
+  // requested count deterministically, while keeping the preferred band first.
+  for (const candidate of orderedCandidates) {
+    if (selected.length >= limit) break;
+    if (selectedIds.has(candidate.approvedMediaAssetId)) continue;
+    selected.push(candidate);
+    selectedIds.add(candidate.approvedMediaAssetId);
   }
 
   return selected

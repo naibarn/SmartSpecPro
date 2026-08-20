@@ -1,11 +1,7 @@
-[2026-08-18T16:00:00Z] DECISION: Use explicit credit context with conservative fallback routing.
-  Context: Ordinary user-credit failures must not create admin feedback; suspicious user requests and provider-account credit failures must escalate.
-  Alternatives considered: message-only keyword matching, per-router notification patches.
+[2026-08-19T01:06:51Z] DECISION: Start a fresh Orchestra session by archiving the prior completed session.
+  Context: The repository had an existing completed `orchestra/` state without a snapshot; it belonged to an earlier credit-routing task.
+  Alternatives considered: Reuse stale artifacts; rejected because they describe a different task.
 
-[2026-08-18T16:00:00Z] DECISION: Thresholds are LLM >3000, media >10000, and unknown >3000 credits.
-  Context: User-approved policy; media is the only explicit high-cost exception.
-  Alternatives considered: existing 10000 single-job cap for all model types.
-
-[2026-08-18T16:50:00Z] DECISION: Keep the existing tracked orchestra files intact while preserving the archived prior session.
-  Context: The prior session files were tracked and the archive directory is intentionally gitignored; restoring unchanged files avoids unrelated deletions.
-  Alternatives considered: leave tracked session files deleted in the fresh archive-only layout.
+[2026-08-19T01:12:00Z] DECISION: Keep `legacyControlArchive` as server-managed audit metadata rather than treating it as an active mutable story-control field.
+  Context: The shared story-design repair intentionally rewrites this archive when canonical windows/beats are repaired, while QC must continue enforcing active control fields.
+  Alternatives considered: Remove the archive; rejected because it is needed for audit/recovery. Mark all unknown storyDesign keys mutable; rejected because it would weaken the revision contract.

@@ -85,6 +85,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -6049,31 +6050,70 @@ export function VerticalDramaStoryboardPanel({
                         visibleBarrierKeys.length > 0 &&
                         callerKeys.length > 0 &&
                         !frame?.barrierDialogue ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 border-amber-300 px-2 text-[10px] text-amber-700 hover:bg-amber-50 dark:text-amber-200 dark:hover:bg-amber-950/30"
-                            onClick={() =>
-                              onSetShotBarrierDialogue(shotNumber, {
-                                state: "locked",
-                                cameraSide: "inside",
-                                visibleCharacterRefs: visibleBarrierKeys,
-                                offscreenCharacterRefs: callerKeys,
-                              })
-                            }
-                            title={t(
-                              locale,
-                              "เปลี่ยน Caller ให้เป็นตัวละครอยู่นอกประตูที่ปิดอยู่",
-                              "Convert the Caller into a physical character outside the closed door"
-                            )}
-                          >
-                            {t(
-                              locale,
-                              "ใช้เป็นบทสนทนาผ่านประตู",
-                              "Use closed-door dialogue"
-                            )}
-                          </Button>
+                          <div className="w-full rounded-md border border-sky-200/80 bg-background/70 p-2 dark:border-sky-900/80">
+                            <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">
+                              {t(
+                                locale,
+                                "รูปแบบการสื่อสาร",
+                                "Communication mode"
+                              )}
+                            </p>
+                            <RadioGroup
+                              value="phone"
+                              aria-label={t(
+                                locale,
+                                "รูปแบบการสื่อสาร",
+                                "Communication mode"
+                              )}
+                              onValueChange={value => {
+                                if (value !== "closed_door") return;
+                                onSetShotBarrierDialogue(shotNumber, {
+                                  state: "locked",
+                                  cameraSide: "inside",
+                                  visibleCharacterRefs: visibleBarrierKeys,
+                                  offscreenCharacterRefs: callerKeys,
+                                });
+                              }}
+                              className="gap-1.5"
+                            >
+                              <label
+                                htmlFor={`vd-shot-communication-phone-${shotNumber}`}
+                                className="flex cursor-pointer items-start gap-2 rounded-md border border-sky-200 bg-sky-50/70 px-2 py-1.5 text-[10px] text-sky-900 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100"
+                              >
+                                <RadioGroupItem
+                                  id={`vd-shot-communication-phone-${shotNumber}`}
+                                  value="phone"
+                                  data-testid={`vd-shot-communication-phone-${shotNumber}`}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  {t(
+                                    locale,
+                                    "ผ่านโทรศัพท์ — แสดง Caller บนหน้าจอเท่านั้น",
+                                    "Phone — show the caller on screen only"
+                                  )}
+                                </span>
+                              </label>
+                              <label
+                                htmlFor={`vd-shot-communication-door-${shotNumber}`}
+                                className="flex cursor-pointer items-start gap-2 rounded-md border border-amber-200 bg-amber-50/60 px-2 py-1.5 text-[10px] text-amber-900 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-100 dark:hover:bg-amber-950/40"
+                              >
+                                <RadioGroupItem
+                                  id={`vd-shot-communication-door-${shotNumber}`}
+                                  value="closed_door"
+                                  data-testid={`vd-shot-communication-door-${shotNumber}`}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  {t(
+                                    locale,
+                                    "ผ่านประตู — อีกฝั่งอยู่นอกเฟรม",
+                                    "Closed door — the other actor stays offscreen"
+                                  )}
+                                </span>
+                              </label>
+                            </RadioGroup>
+                          </div>
                         ) : null}
                         {callerKeys.map(key =>
                           frame?.barrierDialogue ? (

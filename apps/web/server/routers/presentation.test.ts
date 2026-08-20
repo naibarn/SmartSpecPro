@@ -1128,6 +1128,23 @@ describe("presentationRouter", () => {
     );
   });
 
+  it("triggerExport sends a tenant-scoped Python token", async () => {
+    const fn = presentationRouter.triggerExport as Function;
+    await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: { deckId: 88, format: "png", idempotencyKey: "key-tenant-token-1" },
+    });
+
+    const [, , dependencies] = playbackMocks.triggerPresentationExport.mock.calls.at(-1);
+    const token = dependencies.userToken as string;
+    const [, payload] = token.split(".");
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+
+    expect(claims.sub).toBe("10");
+    expect(claims.tenantId).toBe("tenant-1");
+    expect(claims.type).toBe("access");
+  });
+
   it("triggerExport accepts format: 'pdf' and passes it to service", async () => {
     const fn = presentationRouter.triggerExport as Function;
     await fn({

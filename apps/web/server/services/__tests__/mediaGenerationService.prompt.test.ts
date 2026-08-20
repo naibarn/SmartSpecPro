@@ -57,6 +57,18 @@ describe("resolveExternalMediaReferenceUrls", () => {
       ),
     ).rejects.toThrow("tenant-scoped access");
   });
+
+  it("brokers managed storage references with tenant-scoped identity", async () => {
+    await expect(
+      resolveExternalMediaReferenceUrls(
+        ["/api/storage/files/tenant-a/reference.png"],
+        { userId: 24, tenantId: "tenant-a" },
+        "https://smartaihub.app",
+      ),
+    ).resolves.toEqual([
+      "https://smartaihub.app/api/mcp/downloads/download-ref-for-tenant-a%2Freference.png/reference.png",
+    ]);
+  });
 });
 
 describe("resolveExternalMediaMessageUrls", () => {

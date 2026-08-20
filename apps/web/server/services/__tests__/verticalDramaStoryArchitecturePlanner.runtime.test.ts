@@ -114,7 +114,66 @@ const contract = {
 };
 
 describe("Vertical Drama story architecture runtime contract", () => {
+  it("repairs a stale seeded contract directly without spending a fresh plan call", async () => {
+    mocks.execute.mockReset();
+    const repairedContract = {
+      ...contract,
+      requiredArcTypes: ["romance"],
+      arcBundles: [
+        {
+          ...contract.arcBundles[0],
+          id: "romance",
+          label: "Romance arc",
+        },
+      ],
+    };
+    mocks.execute.mockResolvedValue({
+      data: repairedContract,
+      response: { usage: { prompt_tokens: 11, completion_tokens: 21 } },
+    });
+
+    const result = await planVerticalDramaStoryArchitecture({
+      userId: 7,
+      model: "openai/gpt-5.6-luna",
+      locale: "en",
+      userPremise: "Two creators learn to trust each other.",
+      genreHint: "romance",
+      selectedCategories: ["romance"],
+      selectedPresets: [],
+      targetEpisodeCount: 10,
+      existingContract: contract,
+    });
+
+    expect(result.contract?.requiredArcTypes).toEqual(["romance"]);
+    expect(result.repairRounds).toBe(0);
+    expect(mocks.execute).toHaveBeenCalledTimes(1);
+    expect(mocks.execute.mock.calls[0][0].userPrompt).toContain(
+      "ARCHITECTURE REPAIR MODE"
+    );
+  });
+
+  it("does not call the model when the seeded contract is already ready", async () => {
+    mocks.execute.mockReset();
+
+    const result = await planVerticalDramaStoryArchitecture({
+      userId: 7,
+      model: "openai/gpt-5.6-luna",
+      locale: "en",
+      userPremise: "A creator builds a community project under pressure.",
+      selectedCategories: [],
+      selectedPresets: [],
+      targetEpisodeCount: 10,
+      existingContract: contract,
+    });
+
+    expect(result.contract).toEqual(contract);
+    expect(result.repairRounds).toBe(0);
+    expect(result.promptTokens).toBe(0);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
   it("pins the selected recommended model and sends structured output without provider fallback", async () => {
+    mocks.execute.mockReset();
     mocks.execute.mockResolvedValue({
       data: contract,
       response: { usage: { prompt_tokens: 10, completion_tokens: 20 } },

@@ -1468,6 +1468,7 @@ export function EpisodesTab({
                         <VerticalDramaEpisodeCoverSurface
                           lang={lang}
                           episodeNumber={ep.episodeNumber}
+                          coverSlotId={1}
                           title={ep.title}
                           imageUrl={ep.coverImage?.url ?? null}
                           fallbackUrl={ep.thumbnailUrl ?? null}

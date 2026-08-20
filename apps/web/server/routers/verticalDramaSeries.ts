@@ -10,7 +10,7 @@
  * file here.
  */
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
@@ -125,6 +125,7 @@ import { readVerticalDramaDraftStoryDesign } from "@shared/verticalDramaSeries/d
 import {
   evaluateVerticalDramaStoryArchitecture,
   readVerticalDramaStoryArchitecture,
+  type VerticalDramaStoryArchitectureContract,
 } from "@shared/verticalDramaSeries/storyArchitecture";
 import {
   buildVerticalDramaDialogueLanguageProfile,
@@ -517,6 +518,7 @@ function recoveredDraftCompositionStatus(ledger: {
  * `confirmImproveScript`'s inline skill-id literal below.
  */
 import type { RunImproveScriptJobResult } from "../services/verticalDramaImproveScript";
+import type { VerticalDramaStoryArchitecturePlannerResult } from "../services/verticalDramaStoryArchitecturePlanner";
 /**
  * Phase F (added 2026-07-09) — JSONL audit logger. The `record*AuditEvent`
  * helpers already in this file only write to the `api_audit_events` DB
@@ -5212,8 +5214,11 @@ export const verticalDramaSeriesRouter = router({
 
   /**
    * Create a series SHELL in dry-run mode. This persists metadata only and
-   * MUST NOT trigger any paid generation. Ownership is stamped from the
-   * authenticated context (never client-supplied).
+   * does not trigger episode/story generation. A stale or incomplete Story
+   * Architecture may invoke one bounded, separately charged repair so the
+   * submitted metadata can be made valid without creator intervention.
+   * Ownership is stamped from the authenticated context (never client-
+   * supplied).
    */
   create: verticalDramaProcedure
     .input(createSeriesInput)
@@ -5223,35 +5228,153 @@ export const verticalDramaSeriesRouter = router({
 
       // New synthesized drafts carry a foundation contract. Re-evaluate it at
       // the server boundary so a client cannot bypass the pre-QC gate by
-      // sending a receipt/candidate pair with the contract removed or
-      // malformed. Legacy/manual creates remain additive-compatible because
-      // this check is only activated when a storyContract field is present.
+      // sending a receipt/candidate pair with a stale contract. When the
+      // contract is incomplete, repair it here before persistence so a creator
+      // is not asked to diagnose internal architecture diagnostics manually.
       const candidateStoryContract =
         input.bible?.storyContract ??
         input.draftQualityQcCandidate?.storyContract;
-      if (candidateStoryContract !== undefined) {
-        if (
-          input.draftQualityQcCandidate?.storyContract !== undefined &&
-          input.bible?.storyContract === undefined
-        ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Applied draft is missing its Story Architecture contract",
-          });
-        }
+      const shouldAutoRepairStoryArchitecture =
+        candidateStoryContract !== undefined ||
+        (input.draftQualityQcReceipt !== undefined &&
+          input.draftQualityQcCandidate !== undefined);
+      let repairedStoryContract:
+        | VerticalDramaStoryArchitectureContract
+        | undefined;
+      let storyArchitectureRepairAudit: Record<string, unknown> | undefined;
+      if (shouldAutoRepairStoryArchitecture) {
         const architecture = evaluateVerticalDramaStoryArchitecture({
           contract: candidateStoryContract,
           genre: input.genre,
           userPremise: input.userPremise,
           targetEpisodeCount: input.targetEpisodeCount,
         });
-        if (!architecture.ready) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "Story Architecture must be complete before creating the series",
-            cause: architecture.diagnostics,
+        if (architecture.ready && architecture.contract) {
+          // Transport self-healing: a valid candidate contract may be present
+          // in the QC payload but omitted from bible by an older client.
+          if (input.bible?.storyContract === undefined) {
+            repairedStoryContract = architecture.contract;
+          }
+        } else {
+          const bibleRecord = (input.bible ?? {}) as Record<string, unknown>;
+          const candidateRecord = (input.draftQualityQcCandidate ??
+            {}) as Record<string, unknown>;
+          const premise = [
+            input.userPremise,
+            typeof bibleRecord.userPremise === "string"
+              ? bibleRecord.userPremise
+              : undefined,
+            typeof candidateRecord.userPremise === "string"
+              ? candidateRecord.userPremise
+              : undefined,
+            typeof candidateRecord.logline === "string"
+              ? candidateRecord.logline
+              : undefined,
+            typeof candidateRecord.mainPlot === "string"
+              ? candidateRecord.mainPlot
+              : undefined,
+            typeof candidateRecord.seasonArc === "string"
+              ? candidateRecord.seasonArc
+              : undefined,
+          ]
+            .map(value => value?.trim())
+            .filter((value): value is string => Boolean(value))
+            .join("\n\n")
+            .slice(0, CREATE_SERIES_FIELD_LIMITS.userPremise);
+
+          let repairResult: VerticalDramaStoryArchitecturePlannerResult;
+          try {
+            const { planVerticalDramaStoryArchitecture } =
+              await import("../services/verticalDramaStoryArchitecturePlanner");
+            repairResult = await planVerticalDramaStoryArchitecture({
+              userId,
+              model: input.defaultModelId ?? undefined,
+              locale: input.locale === "en" ? "en" : "th",
+              userPremise: premise || input.title,
+              genreHint: input.genre,
+              seriesTitleHint: input.title,
+              toneHint: input.tone,
+              selectedCategories: input.genre ? [input.genre] : [],
+              selectedPresets: [],
+              targetEpisodeCount: input.targetEpisodeCount,
+              audienceAgeRating: resolveAudienceAgeRating(
+                input.audienceAgeRating
+              ),
+              existingContract: candidateStoryContract,
+            });
+          } catch (error) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message:
+                (input.locale === "en" ? "en" : "th") === "th"
+                  ? "ระบบพยายามซ่อมโครงสร้างเรื่องอัตโนมัติแล้ว แต่ยังไม่สำเร็จ"
+                  : "The system attempted to repair Story Architecture automatically but could not complete it.",
+              cause: error,
+            });
+          }
+
+          const repairedArchitecture = evaluateVerticalDramaStoryArchitecture({
+            contract: repairResult.contract,
+            genre: input.genre,
+            userPremise: premise || input.userPremise,
+            targetEpisodeCount: input.targetEpisodeCount,
           });
+          if (!repairedArchitecture.ready || !repairedArchitecture.contract) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message:
+                (input.locale === "en" ? "en" : "th") === "th"
+                  ? "ระบบพยายามซ่อมโครงสร้างเรื่องอัตโนมัติแล้ว แต่ยังตรวจสอบไม่ผ่าน"
+                  : "The system attempted to repair Story Architecture automatically but validation still failed.",
+              cause: repairedArchitecture.diagnostics,
+            });
+          }
+
+          repairedStoryContract = repairedArchitecture.contract;
+          const repairCreditAmount = calculateCreditsForLLM(
+            repairResult.promptTokens,
+            repairResult.completionTokens,
+            repairResult.model
+          );
+          const repairIdempotencySeed =
+            input.draftQualityQcReceipt?.candidateFingerprint ??
+            createHash("sha256")
+              .update(
+                JSON.stringify({
+                  userId,
+                  tenantId,
+                  title: input.title,
+                  genre: input.genre,
+                  targetEpisodeCount: input.targetEpisodeCount,
+                  candidateStoryContract,
+                })
+              )
+              .digest("hex");
+          await deductCredits({
+            userId,
+            tenantId,
+            amount: repairCreditAmount,
+            description: `Vertical Drama — automatic Story Architecture repair for ${input.title}`,
+            idempotencyKey: `vd-story-architecture-repair:${userId}:${repairIdempotencySeed}`,
+            skillSlug: "vertical-drama-story-architecture-planner",
+            sourceType: "skill",
+            metadata: {
+              feature: "vertical_drama_series_create",
+              stage: "story_architecture_auto_repair",
+              model: repairResult.model,
+              promptTokens: repairResult.promptTokens,
+              completionTokens: repairResult.completionTokens,
+              repairRounds: repairResult.repairRounds,
+            },
+          });
+          storyArchitectureRepairAudit = {
+            applied: true,
+            model: repairResult.model,
+            repairRounds: repairResult.repairRounds,
+            promptTokens: repairResult.promptTokens,
+            completionTokens: repairResult.completionTokens,
+            creditAmount: repairCreditAmount,
+          };
         }
       }
 
@@ -5376,6 +5499,12 @@ export const verticalDramaSeriesRouter = router({
           history: qcResult.history,
           creditEstimate: qcResult.creditEstimate,
           evaluatedAt: qcResult.best.report.evaluatedAt,
+        };
+      }
+      if (validatedDraftQualityQcAudit && storyArchitectureRepairAudit) {
+        validatedDraftQualityQcAudit = {
+          ...validatedDraftQualityQcAudit,
+          storyArchitectureAutoRepair: storyArchitectureRepairAudit,
         };
       }
 
@@ -5577,6 +5706,9 @@ export const verticalDramaSeriesRouter = router({
                 { source: "user_selected" }
               ),
             }
+          : {}),
+        ...(repairedStoryContract
+          ? { storyContract: repairedStoryContract }
           : {}),
       };
       let lookLockAppliedAtCreate = false;

@@ -68,6 +68,12 @@ function buildTenantScope(
   return [or(eq(inviteCodes.tenantId, ctx.tenantId), isNull(inviteCodes.tenantId))!];
 }
 
+export function getInviteCodeStatsCutoff(now = new Date()): string {
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - 30);
+  return cutoff.toISOString();
+}
+
 export const inviteCodeRouter = router({
   // ============================================================
   // Public procedures (no auth required)
@@ -223,8 +229,7 @@ export const inviteCodeRouter = router({
       .limit(5);
 
     // 5. Registration trend (last 30 days, daily)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgo = getInviteCodeStatsCutoff();
 
     const dailyTrend = await db
       .select({
@@ -272,7 +277,7 @@ export const inviteCodeRouter = router({
         db
           .select({
             fp: deviceFingerprints.fingerprintHash,
-            cnt: sql<number>`count(distinct ${deviceFingerprints.userId})::int`,
+            cnt: sql<number>`count(distinct ${deviceFingerprints.userId})::int`.as("cnt"),
           })
           .from(deviceFingerprints)
           .where(sql`${deviceFingerprints.firstSeenAt} >= ${thirtyDaysAgo}`)

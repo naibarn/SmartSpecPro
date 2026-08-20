@@ -168,6 +168,17 @@ describe("ActuatorRegistry", () => {
     });
   });
 
+  describe("approval expiry", () => {
+    it("expires critical approvals instead of leaving them permanently pending", async () => {
+      mockDb.returning.mockResolvedValue([{ id: 7 }]);
+
+      await expireStaleApprovals();
+
+      expect(mockDb.set).toHaveBeenCalledWith({ status: "expired" });
+      expect(mockDb.returning).toHaveBeenCalledWith({ id: expect.anything() });
+    });
+  });
+
   describe("action execution failure", () => {
     it("returns failure when auto-fix action throws", async () => {
       const throwFn: ActuatorFn = vi.fn().mockRejectedValue(new Error("Kaboom"));

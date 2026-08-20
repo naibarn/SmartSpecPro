@@ -72,8 +72,11 @@ import {
   decideCharacterPromptSnapshotReuse,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  extractAgeFromDescription,
+  shouldRequireAgeStageVariantForRequest,
   resolveFaceSourceReferenceForCharacter,
 } from "../services/verticalDramaCharacterImageGeneration";
+import { buildAgeStageVariantRequiredMessage } from "@shared/verticalDramaSeries/ageStageVariant";
 import {
   VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION,
   VERTICAL_DRAMA_CHARACTER_REQUEST_MARKER,
@@ -263,6 +266,29 @@ async function loadOwnedCharacter(
     .limit(1);
   if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
   return row;
+}
+
+function rejectBaseAdultChildRequest(params: {
+  character: VerticalDramaCharacterRow;
+  customInstruction?: string | null;
+}): void {
+  if (
+    !shouldRequireAgeStageVariantForRequest({
+      role: params.character.role,
+      customInstruction: params.customInstruction,
+      roleTier: params.character.roleTier as RoleTier | null | undefined,
+      parentCharacterId: params.character.parentCharacterId,
+      variantType: params.character.variantType as "outfit" | "age_stage" | null,
+    })
+  ) {
+    return;
+  }
+  throw new TRPCError({
+    code: "PRECONDITION_FAILED",
+    message: buildAgeStageVariantRequiredMessage(
+      extractAgeFromDescription(params.customInstruction),
+    ),
+  });
 }
 
 /**
@@ -3416,7 +3442,11 @@ export const verticalDramaCharactersRouter = router({
         const seriesId = parseId(input.seriesId, "series id");
         const characterId = parseId(input.characterId, "character id");
         await loadOwnedSeries(tenantId, userId, seriesId);
-        await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+        const queuedCharacter = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+        rejectBaseAdultChildRequest({
+          character: queuedCharacter,
+          customInstruction: input.customInstruction,
+        });
         const jobInput: VerticalDramaCharacterPromptJobInput = {
           seriesId: input.seriesId,
           characterId: input.characterId,
@@ -3460,6 +3490,10 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      rejectBaseAdultChildRequest({
+        character,
+        customInstruction: input.customInstruction,
+      });
       let previewPromptCapability: VerticalDramaCharacterPromptCapability | undefined;
       if (input.selectedImageModelId) {
         try {
@@ -3564,6 +3598,7 @@ export const verticalDramaCharactersRouter = router({
             role: effectiveCharacterFacts.role,
             narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
             roleTier: character.roleTier as RoleTier | null | undefined,
+            variantType: character.variantType as "outfit" | "age_stage" | null,
             occupation: effectiveCharacterFacts.occupation,
             roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
@@ -3680,6 +3715,7 @@ export const verticalDramaCharactersRouter = router({
           role: effectiveCharacterFacts.role,
           narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
           roleTier: character.roleTier as RoleTier | null | undefined,
+          variantType: character.variantType as "outfit" | "age_stage" | null,
           occupation: effectiveCharacterFacts.occupation,
           roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
           roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
@@ -3901,6 +3937,10 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      rejectBaseAdultChildRequest({
+        character,
+        customInstruction: input.customInstruction,
+      });
       if (input.approvedDesignSnapshot && !input.approvedPrompt) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -4088,6 +4128,7 @@ export const verticalDramaCharactersRouter = router({
             role: effectiveCharacterFacts.role,
             narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
             roleTier: character.roleTier as RoleTier | null | undefined,
+            variantType: character.variantType as "outfit" | "age_stage" | null,
             occupation: effectiveCharacterFacts.occupation,
             roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
@@ -4610,6 +4651,10 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      rejectBaseAdultChildRequest({
+        character,
+        customInstruction: input.customInstruction,
+      });
       if (input.approvedDesignSnapshot && !input.approvedPrompt) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -4796,6 +4841,7 @@ export const verticalDramaCharactersRouter = router({
             role: effectiveCharacterFacts.role,
             narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
             roleTier: character.roleTier as RoleTier | null | undefined,
+            variantType: character.variantType as "outfit" | "age_stage" | null,
             occupation: effectiveCharacterFacts.occupation,
             roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,

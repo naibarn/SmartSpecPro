@@ -68,6 +68,12 @@
 import { randomUUID } from "crypto";
 import { getRedisClient } from "./redis";
 import { debugError } from "../_core/logger";
+import { classifyCreditFailure } from "./creditFailurePolicy";
+import {
+  formatAffectedUsersForText,
+  resolveAffectedUsers,
+} from "./feedbackAffectedUsers";
+import type { DrizzleDB } from "../db";
 
 export const VERTICAL_DRAMA_STORY_JOBS_QUEUE = "vertical_drama_story_jobs";
 
@@ -600,6 +606,13 @@ async function insertAndProcessSystemFeedbackTicket(
 ): Promise<void> {
   const { feedbackTickets } = await import("../../drizzle/schema");
   const { processTicket } = await import("./virtualAdmin/feedbackProcessor");
+  const [reporter] = await resolveAffectedUsers(
+    db as DrizzleDB,
+    [input.userId],
+    input.tenantId,
+    1,
+  ).catch(() => []);
+  const reporterLine = `Reporter: ${reporter ? formatAffectedUsersForText([reporter]) : `user #${input.userId}`}`;
 
   const [ticket] = await (db as {
     insert: (table: typeof feedbackTickets) => {
@@ -618,7 +631,7 @@ async function insertAndProcessSystemFeedbackTicket(
       severity: "high",
       category: input.category,
       title: sanitizeFeedbackText(input.title).slice(0, 255),
-      description: sanitizeFeedbackText(input.description).slice(0, 5000),
+      description: sanitizeFeedbackText(`${reporterLine}\n${input.description}`).slice(0, 5000),
       stepsToReproduce: sanitizeFeedbackText(input.stepsToReproduce),
       expectedBehavior: input.expectedBehavior,
       actualBehavior: sanitizeFeedbackText(input.actualBehavior).slice(0, 2000),
@@ -656,90 +669,29 @@ export async function submitVerticalDramaSystemFeedback(
   }
 }
 
-async function submitFailedStoryJobFeedback(
-  record: VerticalDramaStoryJobRecord,
-  db: unknown,
-): Promise<void> {
-  const kindLabel = STORY_JOB_KIND_LABEL_TH[record.kind];
+async function reportStoryJobFailure(record: VerticalDramaStoryJobRecord): Promise<void> {
   const actionUrl = storyJobActionUrl(record);
-  const errorMessage = record.error ?? "Unknown vertical drama story job failure";
-  const createdAt = record.createdAt ?? null;
-  const updatedAt = record.updatedAt ?? null;
-  const contextJson = {
+  const { reportSystemFailure } = await import("./systemAutoReportService");
+  const creditFailure = classifyCreditFailure({
+    errorMessage: record.error,
+    path: actionUrl,
+  });
+  await reportSystemFailure({
     source: "vertical_drama_story_jobs",
-    eventType: "system_job_failure",
-    user: {
-      id: record.userId,
-      tenantId: record.tenantId,
-    },
-    verticalDrama: {
-      seriesId: record.seriesId,
-      jobId: record.jobId,
-      kind: record.kind,
-      status: record.status,
-      input: record.input,
-      progress: record.progress,
-      createdAt,
-      updatedAt,
-    },
-    diagnostics: {
-      pageUrl: actionUrl,
-      actionUrl,
-      redisKey: storyJobRedisKey(record.jobId),
-      activePointerKey: activePointerKey(record.tenantId, record.seriesId),
-      queue: VERTICAL_DRAMA_STORY_JOBS_QUEUE,
-      ownerService: "apps/web/server/services/verticalDramaStoryJobs.ts",
-      executorBoundary: "apps/web/server/routers/verticalDramaSeries.ts:runVerticalDramaStoryJobExecutor",
-      lookupHints: [
-        `Open ${actionUrl}`,
-        `Search Redis key ${storyJobRedisKey(record.jobId)}`,
-        "Search server logs for source=vertical_drama_story_jobs and this jobId",
-        "Inspect feedback contextJson.verticalDrama for kind/input/progress",
-      ],
-      screenshotCapture: {
-        attached: false,
-        reason:
-          "This ticket was created by a server-side background worker, which has no browser viewport to capture automatically.",
-        fallback:
-          "Client-side system-error feedback can attach pasted/uploaded screenshots when a browser-visible error opens the feedback dialog.",
-      },
-    },
-    error: {
-      message: errorMessage,
-    },
-  };
-
-  const description = [
-    `ระบบ Vertical Drama background job ล้มเหลวและสร้าง feedback นี้อัตโนมัติ`,
-    `User ID: ${record.userId}`,
-    `Tenant ID: ${record.tenantId}`,
-    `Series ID: ${record.seriesId}`,
-    `Job ID: ${record.jobId}`,
-    `Kind: ${record.kind} (${kindLabel})`,
-    `Page: ${actionUrl}`,
-    `Error: ${errorMessage}`,
-  ].join("\n");
-
-  await submitVerticalDramaSystemFeedback(
-    {
-      tenantId: record.tenantId,
-      userId: record.userId,
-      seriesId: record.seriesId,
-      category: "vertical_drama_story_jobs",
-      title: `[System] ${kindLabel} ล้มเหลว (series #${record.seriesId})`,
-      description,
-      stepsToReproduce: [
-        `1. เปิดหน้า ${actionUrl}`,
-        `2. ตรวจ job ${record.jobId} ใน Redis key ${storyJobRedisKey(record.jobId)}`,
-        `3. ค้น log ด้วย jobId และ source vertical_drama_story_jobs`,
-        "4. ดู contextJson ของ ticket นี้เพื่อเทียบ kind/input/progress/error",
-      ].join("\n"),
-      expectedBehavior: `${kindLabel} ควรเสร็จหรือบันทึกผลลัพธ์บางส่วนได้โดยไม่ทำให้ workflow ล้มเหลวเงียบ`,
-      actualBehavior: errorMessage,
-      contextJson,
-    },
-    db,
-  );
+    userId: record.userId,
+    tenantId: record.tenantId,
+    jobId: record.jobId,
+    path: actionUrl,
+    title: `Story job failed (${record.kind})`,
+    errorMessage: record.error ?? "Unknown vertical drama story job failure",
+    // Only attach the user-credit hint after the message has been identified
+    // as a credit failure; otherwise an unrelated story-job error must remain
+    // a normal system failure.
+    creditContext: creditFailure.isCreditFailure
+      ? { source: "user", modelKind: "llm" }
+      : undefined,
+    extra: { seriesId: record.seriesId, kind: record.kind },
+  });
 }
 
 /**
@@ -766,32 +718,36 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
     const db = await getDb();
     const kindLabel = STORY_JOB_KIND_LABEL_TH[record.kind];
     const succeeded = record.status === "succeeded";
+    const creditFailure = !succeeded
+      ? classifyCreditFailure({
+          errorMessage: record.error,
+          path: storyJobActionUrl(record),
+        })
+      : null;
     try {
-      await createNotification({
-        db,
-        userId: record.userId,
-        type: succeeded ? "system" : "alert",
-        title: succeeded ? `${kindLabel} เสร็จแล้ว` : `${kindLabel} ไม่สำเร็จ`,
-        content: succeeded
-          ? `งาน "${kindLabel}" เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`
-          : `งาน "${kindLabel}" ล้มเหลว: ${(record.error ?? "").slice(0, 200)}`,
-        priority: succeeded ? "normal" : "high",
-        // No `relatedResourceType` fits (the `ResourceType` union has no
-        // "vertical drama series/job" member) — omitted, same as any other
-        // caller with no matching category (`mapToCategory` falls back to
-        // `"business"`).
-        relatedResourceId: record.jobId,
-        actionUrl: storyJobActionUrl(record),
-        actionLabel: "เปิดซีรีย์",
-        groupKey: `vd_story_job:${record.jobId}`,
-        metadata: {
-          source: "vertical_drama_story_jobs",
-          relatedItems: { seriesId: String(record.seriesId), kind: record.kind },
-          ...(succeeded
-            ? {}
-            : { errorDetails: { errorMessage: (record.error ?? "").slice(0, 500) } }),
-        },
-      });
+      if (!creditFailure?.isCreditFailure) {
+        await createNotification({
+          db,
+          userId: record.userId,
+          type: succeeded ? "system" : "alert",
+          title: succeeded ? `${kindLabel} เสร็จแล้ว` : `${kindLabel} ไม่สำเร็จ`,
+          content: succeeded
+            ? `งาน "${kindLabel}" เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`
+            : `งาน "${kindLabel}" ล้มเหลว: ${(record.error ?? "").slice(0, 200)}`,
+          priority: succeeded ? "normal" : "high",
+          relatedResourceId: record.jobId,
+          actionUrl: storyJobActionUrl(record),
+          actionLabel: "เปิดซีรีย์",
+          groupKey: `vd_story_job:${record.jobId}`,
+          metadata: {
+            source: "vertical_drama_story_jobs",
+            relatedItems: { seriesId: String(record.seriesId), kind: record.kind },
+            ...(succeeded
+              ? {}
+              : { errorDetails: { errorMessage: (record.error ?? "").slice(0, 500) } }),
+          },
+        });
+      }
     } catch (error) {
       debugError(
         "verticalDramaStoryJobs",
@@ -801,37 +757,11 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
     }
     if (!succeeded) {
       try {
-        await submitFailedStoryJobFeedback(record, db);
+        await reportStoryJobFailure(record);
       } catch (error) {
         debugError(
           "verticalDramaStoryJobs",
           `Failed to submit auto feedback for story job ${record.jobId}`,
-          error,
-        );
-      }
-      // Fingerprinted/deduped system auto-report (task: server-side auto-
-      // report service) — separate from `submitFailedStoryJobFeedback` above,
-      // which always creates a new ticket per failure. This one dedups
-      // repeats of the "same" failure across a rolling 24h window instead of
-      // flooding the queue. Kept as an additional call (not a replacement)
-      // to avoid touching the existing, already-tested
-      // `submitFailedStoryJobFeedback` behavior/tests; see the auto-report
-      // task's Result Report for a follow-up consolidation recommendation.
-      try {
-        const { reportSystemFailure } = await import("./systemAutoReportService");
-        await reportSystemFailure({
-          source: "vertical_drama_story_jobs",
-          userId: record.userId,
-          tenantId: record.tenantId,
-          jobId: record.jobId,
-          title: `Story job failed (${record.kind})`,
-          errorMessage: record.error ?? "unknown",
-          extra: { seriesId: record.seriesId, kind: record.kind },
-        });
-      } catch (error) {
-        debugError(
-          "verticalDramaStoryJobs",
-          `Failed to file system auto-report for story job ${record.jobId}`,
           error,
         );
       }

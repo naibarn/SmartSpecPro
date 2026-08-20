@@ -123,10 +123,14 @@ function validOutput(overrides: Record<string, unknown> = {}) {
 }
 
 function successResponse(payload: unknown) {
+  return successResponseContent(JSON.stringify(payload));
+}
+
+function successResponseContent(content: string) {
   return {
     type: "success" as const,
     response: {
-      choices: [{ message: { content: JSON.stringify(payload) }, index: 0, finish_reason: "stop" }],
+      choices: [{ message: { content }, index: 0, finish_reason: "stop" }],
       usage: { prompt_tokens: 500, completion_tokens: 150 },
     },
     providerName: "openai",
@@ -295,6 +299,20 @@ describe("scene visual state credit and failure contract", () => {
     await expect(generateSceneVisualState(params())).rejects.toThrow(InsufficientCreditsError);
     expect(mockExecute).not.toHaveBeenCalled();
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("recovers from empty provider JSON before charging credits", async () => {
+    mockExecute
+      .mockReset()
+      .mockResolvedValueOnce(successResponseContent(""))
+      .mockResolvedValueOnce(successResponseContent(""))
+      .mockResolvedValueOnce(successResponse(validOutput()));
+
+    const result = await generateSceneVisualState(params());
+
+    expect(result.state.locationKey).toBe("home-kitchen");
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("propagates schema and transport failures without deducting", async () => {

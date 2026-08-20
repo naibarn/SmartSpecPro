@@ -242,12 +242,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         const [owner] = await db
           .select({ email: users.email })
           .from(users)
-          .where(
-            and(
-              eq(users.id, numericUserId),
-              eq(users.currentTenantId, tenantId!),
-            ),
-          )
+          .where(eq(users.id, numericUserId))
           .limit(1);
         affectedUserEmail = owner?.email ?? null;
       } catch (err) {

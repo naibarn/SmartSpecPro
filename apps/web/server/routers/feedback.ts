@@ -22,6 +22,7 @@ import { authorizeRequest } from "../_core/authz";
 import { storagePut, storageResolveUrl, storageDelete } from "../storage";
 import {
   extractAffectedUserIds,
+  formatAffectedUsersForText,
   resolveAffectedUsers,
   type AffectedUser,
 } from "../services/feedbackAffectedUsers";
@@ -306,7 +307,19 @@ export const feedbackRouter = router({
         }),
       );
 
-      return { ...ticket, reporter, affectedUsers, comments, attachments: resolvedAttachments };
+      const description =
+        reporter?.email && !/^Reporter:/m.test(ticket.description ?? "")
+          ? `Reporter: ${formatAffectedUsersForText([reporter])}\n${ticket.description ?? ""}`
+          : ticket.description;
+
+      return {
+        ...ticket,
+        description,
+        reporter,
+        affectedUsers,
+        comments,
+        attachments: resolvedAttachments,
+      };
     }),
 
   addComment: adminProcedure

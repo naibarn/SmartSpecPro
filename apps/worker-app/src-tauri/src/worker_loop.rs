@@ -60,6 +60,13 @@ use crate::worker_executor::{
 /// per spec §11 5.3 ("1 hermes job max; render throughput unaffected").
 const HERMES_MEDIA_MAX_CONCURRENT_JOBS: u32 = 1;
 
+/// Worker progress events are idempotent by `(jobId, assignmentAttempt,
+/// sequenceNumber)` on the server. A response can be lost after the server
+/// has committed the event, so retry the exact same event instead of failing
+/// an otherwise healthy render.
+const WORKER_EVENT_MAX_ATTEMPTS: u8 = 3;
+const WORKER_EVENT_RETRY_BACKOFF_MS: [u64; 2] = [250, 750];
+
 /// Feature 135 §11 — claim `capability_hints` construction. Render hints are
 /// included only when the render (HyperFrames) doctor is ready; `hermes_media`
 /// is appended only when this worker's Hermes doctor is ready. Both gates are
@@ -3458,7 +3465,7 @@ async fn refresh_connection_after_expired_token(
     clone_connection(connection)
 }
 
-async fn send_event_with_refresh(
+async fn send_event_once_with_refresh(
     app_data_dir: &Path,
     connection: &Arc<Mutex<WorkerLoopConnection>>,
     job_id: &str,
@@ -3484,6 +3491,70 @@ async fn send_event_with_refresh(
         }
         Err(error) => Err(error),
     }
+}
+
+async fn send_event_with_refresh(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job_id: &str,
+    event: WorkerEventPlan,
+) -> Result<(), String> {
+    let mut last_error = None;
+
+    for attempt in 0..WORKER_EVENT_MAX_ATTEMPTS {
+        match send_event_once_with_refresh(app_data_dir, connection, job_id, event.clone()).await {
+            Ok(()) => return Ok(()),
+            Err(error)
+                if is_retryable_worker_event_error(&error)
+                    && attempt + 1 < WORKER_EVENT_MAX_ATTEMPTS =>
+            {
+                last_error = Some(error.clone());
+                append_diagnostic_event(
+                    app_data_dir,
+                    "worker.event.retry",
+                    json!({
+                        "jobId": job_id,
+                        "attempt": attempt + 1,
+                        "maxAttempts": WORKER_EVENT_MAX_ATTEMPTS,
+                        "errorClass": "transient_worker_event_transport",
+                    }),
+                );
+                let backoff = WORKER_EVENT_RETRY_BACKOFF_MS
+                    .get(attempt as usize)
+                    .copied()
+                    .unwrap_or(750);
+                tokio::time::sleep(Duration::from_millis(backoff)).await;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| "worker event failed without an error".into()))
+}
+
+fn is_retryable_worker_event_error(message: &str) -> bool {
+    let normalized = message.to_ascii_lowercase();
+    if is_expired_worker_token_error(message)
+        || is_terminal_worker_auth_error(message)
+        || is_stale_worker_lease_error(message)
+    {
+        return false;
+    }
+
+    [
+        "failed to read control plane response",
+        "worker control plane request failed",
+        "worker control plane request timed out",
+        "http 408 request timeout",
+        "http 425 too early",
+        "http 429 too many requests",
+        "http 500 internal server error",
+        "http 502 bad gateway",
+        "http 503 service unavailable",
+        "http 504 gateway timeout",
+    ]
+    .iter()
+    .any(|marker| normalized.contains(marker))
 }
 
 async fn upload_worker_artifact_file_with_refresh(
@@ -4226,6 +4297,35 @@ mod tests {
         ));
         assert!(!is_expired_worker_token_error(
             "worker control plane returned HTTP 401 Unauthorized: Worker token has been revoked"
+        ));
+    }
+
+    #[test]
+    fn transient_worker_event_transport_errors_are_retryable() {
+        assert!(is_retryable_worker_event_error(
+            "failed to read control plane response: error decoding response body for url"
+        ));
+        assert!(is_retryable_worker_event_error(
+            "worker control plane returned HTTP 503 Service Unavailable"
+        ));
+        assert!(is_retryable_worker_event_error(
+            "worker control plane request timed out after 30000ms"
+        ));
+    }
+
+    #[test]
+    fn terminal_worker_event_errors_are_not_retried() {
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 409 Conflict: Worker lease token is stale or invalid"
+        ));
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 401 Unauthorized: Worker token has been revoked"
+        ));
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 400 Bad Request: invalid progress stage"
+        ));
+        assert!(!is_retryable_worker_event_error(
+            "worker control plane returned HTTP 401 Unauthorized: jwt expired"
         ));
     }
 

@@ -51,6 +51,16 @@ export function resolveVerticalDramaShotImageDisplayState(input: {
     };
   }
 
+  // A previous failed/expired task can remain beside an already-approved
+  // asset (for example, after a retry or a manual image selection). Once the
+  // current asset is present, do not paint that stale task error over the
+  // image; keep the browser load state authoritative for what the user sees.
+  if (input.hasAsset) {
+    if (input.browserState === "error") return { kind: "asset_load_failed" };
+    if (input.browserState !== "loaded") return { kind: "asset_loading" };
+    return { kind: "ready" };
+  }
+
   const failure = input.transientError || task?.error;
   if (failure || task?.status === "failed" || task?.status === "expired") {
     return {
@@ -61,8 +71,5 @@ export function resolveVerticalDramaShotImageDisplayState(input: {
     };
   }
 
-  if (!input.hasAsset) return { kind: "no_image" };
-  if (input.browserState === "error") return { kind: "asset_load_failed" };
-  if (input.browserState !== "loaded") return { kind: "asset_loading" };
-  return { kind: "ready" };
+  return { kind: "no_image" };
 }

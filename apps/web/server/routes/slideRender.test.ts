@@ -430,6 +430,15 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
     expect(res.text).toContain("waitForMediaThenReady(function(hadFallback)");
   });
 
+  it("HTML response does not treat a failed completed image as loaded", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("img.naturalWidth > 0 ? false : true");
+  });
+
   it("HTML response encodes ready-gate timing contract constants", async () => {
     const app = await buildApp();
     const token = makeValidToken();

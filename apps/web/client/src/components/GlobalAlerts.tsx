@@ -128,13 +128,22 @@ function safeOpenInNewTab(url: string) {
  * refreshed their structured action fields. New notifications already carry
  * the latest target; only override a conflicting legacy feedback target.
  */
-function resolveNotificationActionUrl(notification: {
+export function resolveNotificationActionUrl(notification: {
   actionUrl?: string | null;
   relatedResourceType?: string | null;
   content?: string | null;
+  title?: string | null;
+  metadata?: { source?: unknown } | null;
 }): string | null {
   const actionUrl = notification.actionUrl ?? null;
-  if (notification.relatedResourceType !== "feedback") return actionUrl;
+  const metadataSource = typeof notification.metadata?.source === "string"
+    ? notification.metadata.source
+    : null;
+  const isFeedbackNotification =
+    notification.relatedResourceType === "feedback" ||
+    metadataSource === "guardian.feedbackProcessor" ||
+    notification.title?.toLowerCase().startsWith("new feedback:");
+  if (!isFeedbackNotification) return actionUrl;
 
   const ticketMatch = notification.content?.match(/\bTicket #(\d+)\b/i);
   if (!ticketMatch?.[1]) return actionUrl;

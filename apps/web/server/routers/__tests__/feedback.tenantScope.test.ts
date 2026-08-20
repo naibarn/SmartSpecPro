@@ -100,6 +100,7 @@ describe("feedback admin tenant scope", () => {
       submittedBy: 42,
       ticketType: "bug",
       title: "[Auto][e4937deb] tRPC failure",
+      description: "User ID: 42\nInsufficient credits",
       contextJson: { kind: "system_auto_report", affectedUserIds: [119] },
     };
     const ticketQuery = {
@@ -135,5 +136,53 @@ describe("feedback admin tenant scope", () => {
       { id: 119, email: "user119@example.com" },
     ]);
     expect(result.reporter).toEqual({ id: 42, email: "reporter@example.com" });
+    expect(result.description).toBe(
+      "Reporter: reporter@example.com (user #42)\nUser ID: 42\nInsufficient credits",
+    );
+  });
+
+  it("resolves the reporter email for a legacy system ticket without affected IDs", async () => {
+    const ticket = {
+      id: 383,
+      tenantId: "tenant-ZCSKEM9s",
+      submittedByType: "system",
+      submittedBy: 119,
+      ticketType: "bug",
+      title: "[System] สร้างร่างละเอียดเนื้อเรื่อง ล้มเหลวบางส่วน",
+      description: "User ID: 119\nError: Insufficient credits",
+      contextJson: null,
+    };
+    const ticketQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([ticket]),
+    };
+    const reporterQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([
+        { id: 119, email: "user119@example.com" },
+      ]),
+    };
+    const commentsQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([]),
+    };
+    const attachmentsQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([]),
+    };
+    const queries = [ticketQuery, reporterQuery, commentsQuery, attachmentsQuery];
+    mockGetDb.mockResolvedValue({
+      select: vi.fn(() => queries.shift()),
+    });
+
+    const result = await createCaller().getTicket({ id: 383 });
+
+    expect(result.reporter).toEqual({ id: 119, email: "user119@example.com" });
+    expect(result.description).toBe(
+      "Reporter: user119@example.com (user #119)\nUser ID: 119\nError: Insufficient credits",
+    );
   });
 });

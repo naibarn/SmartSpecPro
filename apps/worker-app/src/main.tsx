@@ -237,15 +237,15 @@ const fallbackDoctor: DoctorSummary = {
       id: isMacOSHost ? "runtime_host_platform" : "managed_wsl_runtime",
       status: "error",
       message: isMacOSHost
-        ? "Native macOS runtime has not been checked yet."
-        : "Managed WSL runtime has not been checked yet.",
+        ? "Worker App runtime has not been checked yet."
+        : "Worker App runtime has not been checked yet.",
       detailsJson: {},
     },
   ],
   recommendedActions: [
     isMacOSHost
-      ? "Install the native hyperframes-macos-arm64 runtime, then run checks again."
-      : "Prepare the managed WSL runtime environment, then run checks again.",
+      ? "Download the Worker App runtime, then run checks again."
+      : "Prepare the Worker App runtime environment, then run checks again.",
   ],
 };
 
@@ -274,9 +274,9 @@ function renderTerminalText(executor: ExecutorState): string {
     return "";
   }
   return [
-    "Waiting for HyperFrames render output...",
+    "Waiting for Worker App runtime output...",
     executor.lastMessage,
-    "If CPU or memory stays high without new lines, the render process may be stuck before HyperFrames emits progress.",
+    "If CPU or memory stays high without new lines, the runtime process may be stuck before it emits progress.",
   ]
     .filter(Boolean)
     .join("\n");
@@ -398,16 +398,16 @@ function shouldClearSavedConnectionAfterRefreshError(message: string): boolean {
 const runtimeRequirements = isMacOSHost
   ? [
       "Native macOS arm64 host (Darwin + arm64) is detected",
-      "The installed manifest is hyperframes-macos-arm64",
-      "Native arm64 Node, Chrome, FFmpeg, ffprobe, and Remotion sidecar are present",
-      "Darwin arm64 Sharp/libvips dependencies are present",
+      "The Worker App runtime manifest is present",
+      "Required runtime tools and media components are present",
+      "Required native runtime dependencies are present",
       "Runtime checksum/signature and required fonts are verified",
     ]
   : [
       "WSL2 host responds to wsl.exe --status on Windows",
-      "Prepare checks the latest Smart AI Hub runtime manifest and updates the WSL root when HyperFrames changes",
-      "Managed WSL runtime root contains Node 22+ and the HyperFrames render script",
-      "Linux Chrome Headless Shell plus FFmpeg and ffprobe are executable in WSL",
+      "The latest Worker App runtime manifest is checked before installation",
+      "The managed runtime root contains the required Worker App runtime files",
+      "Required browser and media tools are executable in WSL",
       "Chrome shared libraries, fontconfig, and Noto/Liberation fonts are resolved inside WSL",
     ];
 
@@ -438,9 +438,14 @@ function App() {
   const [runtimeUpdate, setRuntimeUpdate] = useState<RuntimeUpdateCheck | null>(
     null,
   );
+  const [runtimeVersionCheck, setRuntimeVersionCheck] =
+    useState<RuntimeUpdateCheck | null>(null);
   const [runtimeUpdateCheckError, setRuntimeUpdateCheckError] = useState<
     string | null
   >(null);
+  const [runtimeInstallError, setRuntimeInstallError] = useState<string | null>(
+    null,
+  );
   const [runtimeSetupStatus, setRuntimeSetupStatus] =
     useState<RuntimeSetupStatus | null>(null);
   const [renderUpdateBlocked, setRenderUpdateBlocked] = useState(false);
@@ -457,7 +462,13 @@ function App() {
   const liveLogRef = useRef<HTMLPreElement | null>(null);
   const updateCheckRunningRef = useRef(false);
   const updatePromptedRef = useRef<string | null>(null);
+  const runtimeAutoInstallKeyRef = useRef<string | null>(null);
   const runtimeInstallStartedAtRef = useRef<number | null>(null);
+
+  const applyRuntimeUpdateCheck = (check: RuntimeUpdateCheck) => {
+    setRuntimeVersionCheck(check);
+    setRuntimeUpdate(check.updateAvailable ? check : null);
+  };
 
   useEffect(() => {
     connectionStateRef.current = connectionState;
@@ -555,6 +566,76 @@ function App() {
     return message;
   };
 
+  const startRuntimeInstall = async (runtimeUpdate: RuntimeUpdateCheck) => {
+    const installKey = [
+      settings.serverUrl,
+      runtimeUpdate.runtimeId,
+      runtimeUpdate.channel,
+      runtimeUpdate.latestVersion ?? "unknown",
+    ].join(":");
+    if (runtimeAutoInstallKeyRef.current === installKey) {
+      return runtimeUpdate.updateAvailable;
+    }
+
+    runtimeAutoInstallKeyRef.current = installKey;
+    runtimeInstallStartedAtRef.current = Date.now();
+    setRuntimeInstallError(null);
+    setRuntimeUpdateCheckError(null);
+    setRuntimeInstallRequested(true);
+    setRuntimeInstallMessage(
+      `Downloading Worker App runtime... Installed ${runtimeUpdate.currentVersion ?? "not installed"}; latest ${runtimeUpdate.latestVersion ?? "unknown"}.`,
+    );
+
+    try {
+      if (!isMacOSHost && settings.runtimeEnvironment === "managed_wsl") {
+        await openManagedWslSetup();
+        setRuntimeInstallMessage(
+          "Worker App runtime download and installation started automatically. Keep the setup window open; this app will verify the result and continue automatically.",
+        );
+        return true;
+      }
+
+      const result = await invoke<RuntimeInstallResult>(
+        "worker_app_install_runtime_pack",
+      );
+      setRuntimeInstallMessage(result.message);
+
+      const verifiedRuntime = await invoke<RuntimeUpdateCheck>(
+        "worker_app_check_runtime_update",
+      );
+      applyRuntimeUpdateCheck(verifiedRuntime);
+      const stillNeedsUpdate = verifiedRuntime.updateAvailable;
+      setRenderUpdateBlocked(stillNeedsUpdate);
+      await invoke<Settings>("worker_app_set_render_update_blocked", {
+        blocked: stillNeedsUpdate,
+      });
+      if (!stillNeedsUpdate) {
+        setRuntimeInstallRequested(false);
+        runtimeInstallStartedAtRef.current = null;
+        await refresh({
+          updateConnectionMessage: false,
+          fullDoctor: true,
+        });
+      } else {
+        runtimeAutoInstallKeyRef.current = null;
+        setRuntimeInstallMessage(
+          `Worker App runtime installation finished, but version ${verifiedRuntime.currentVersion ?? "not installed"} is still below latest ${verifiedRuntime.latestVersion ?? "unknown"}.`,
+        );
+      }
+      return stillNeedsUpdate;
+    } catch (error) {
+      const message = formatInvokeError(error);
+      runtimeAutoInstallKeyRef.current = null;
+      setRuntimeInstallRequested(false);
+      setRenderUpdateBlocked(true);
+      setRuntimeInstallError(message);
+      setRuntimeInstallMessage(
+        `Automatic Worker App runtime installation failed: ${message}`,
+      );
+      return true;
+    }
+  };
+
   useEffect(() => {
     if (
       !settingsReady ||
@@ -565,7 +646,7 @@ function App() {
       return;
     // Runtime freshness must be checked independently from the Worker App
     // version. A transient Tauri app-version read failure must not suppress a
-    // render-runtime warning.
+    // Worker App runtime warning.
     if (!settings.serverUrl.trim()) {
       setStartupUpdateCheckDone(true);
       return;
@@ -656,8 +737,8 @@ function App() {
         }
         if (cancelled) return;
         setRuntimeUpdateCheckError(null);
+        applyRuntimeUpdateCheck(runtimeUpdate);
         const runtimeUpdateRequired = runtimeUpdate.updateAvailable;
-        setRuntimeUpdate(runtimeUpdateRequired ? runtimeUpdate : null);
         const shouldBlockRender =
           runtimeUpdateRequired || (!appCheckSucceeded && renderUpdateBlocked);
         setRenderUpdateBlocked(shouldBlockRender);
@@ -671,63 +752,8 @@ function App() {
 
         if (!runtimeUpdateRequired || !runtimeUpdate.latestVersion) return;
 
-        const runtimePromptKey = [
-          "runtime",
-          settings.serverUrl,
-          runtimeUpdate.runtimeId,
-          runtimeUpdate.channel,
-          runtimeUpdate.latestVersion,
-        ].join(":");
-        if (updatePromptedRef.current === runtimePromptKey) return;
-        updatePromptedRef.current = runtimePromptKey;
-
-        const confirmed = await nativeConfirm(
-          `A newer render runtime is available.\n\nRuntime: ${runtimeUpdate.runtimeId}\nInstalled: ${runtimeUpdate.currentVersion ?? "not installed"}\nLatest: ${runtimeUpdate.latestVersion}\n\nDownload and install it now? Render jobs stay paused until the full readiness check passes.`,
-          {
-            title: "Smart AI Hub Worker — runtime update required",
-            kind: "warning",
-          },
-        );
-        if (cancelled || !confirmed) return;
-
-        try {
-          if (!isMacOSHost && settings.runtimeEnvironment === "managed_wsl") {
-            await openManagedWslSetup();
-            setRuntimeInstallMessage(
-              "Runtime installation is running in the visible WSL terminal. Keep it open; this app will verify the result and continue automatically.",
-            );
-          } else {
-            const result = await invoke<RuntimeInstallResult>(
-              "worker_app_install_runtime_pack",
-            );
-            setRuntimeInstallMessage(result.message);
-            await nativeMessage(result.message, {
-              title:
-                result.status === "installed"
-                  ? "Smart AI Hub Worker — runtime updated"
-                  : "Smart AI Hub Worker — runtime update incomplete",
-              kind: result.status === "installed" ? "info" : "warning",
-            }).catch(() => undefined);
-            if (result.status === "installed") {
-              setRuntimeUpdate(null);
-              setRenderUpdateBlocked(false);
-              void invoke("worker_app_set_render_update_blocked", {
-                blocked: false,
-              }).catch(() => undefined);
-              await refresh({
-                updateConnectionMessage: false,
-                fullDoctor: true,
-              });
-            }
-          }
-        } catch (error) {
-          const message = formatInvokeError(error);
-          setRuntimeInstallMessage(message);
-          await nativeMessage(message, {
-            title: "Smart AI Hub Worker — runtime update failed",
-            kind: "error",
-          }).catch(() => undefined);
-        }
+        if (cancelled) return;
+        await startRuntimeInstall(runtimeUpdate);
       } finally {
         updateCheckRunningRef.current = false;
         if (!cancelled) setStartupUpdateCheckDone(true);
@@ -951,6 +977,64 @@ function App() {
     return "Runtime blocked";
   }, [doctor.status, renderUpdateBlocked]);
 
+  const runtimeVersionStatus = useMemo(() => {
+    if (runtimeInstallError) {
+      return {
+        tone: "error",
+        label: "Worker App runtime installation failed",
+        detail: "Retry from the Video render tab after resolving the issue.",
+      };
+    }
+    if (runtimeInstallRequested) {
+      return {
+        tone: "pending",
+        label: "Downloading Worker App runtime...",
+        detail:
+          runtimeInstallMessage ||
+          "The app is downloading and installing the runtime automatically.",
+      };
+    }
+    if (runtimeUpdateCheckError) {
+      return {
+        tone: "error",
+        label: "Runtime version could not be verified",
+        detail: "Run checks in the Video render tab to try again.",
+      };
+    }
+    if (!runtimeVersionCheck) {
+      return {
+        tone: startupUpdateCheckDone ? "error" : "pending",
+        label: startupUpdateCheckDone
+          ? "Runtime version not verified"
+          : "Checking runtime version...",
+        detail: startupUpdateCheckDone
+          ? "The latest runtime version is unavailable right now."
+          : "Checking the installed runtime against the latest published version.",
+      };
+    }
+    const installed = runtimeVersionCheck.currentVersion ?? "not installed";
+    const latest = runtimeVersionCheck.latestVersion ?? "unknown";
+    if (runtimeVersionCheck.updateAvailable) {
+      return {
+        tone: "warning",
+        label: "Runtime update available",
+        detail: `Installed ${installed} · Latest ${latest}`,
+      };
+    }
+    return {
+      tone: "ready",
+      label: "Runtime is up to date",
+      detail: `Installed ${installed} · Latest ${latest}`,
+    };
+  }, [
+    runtimeInstallError,
+    runtimeInstallMessage,
+    runtimeInstallRequested,
+    runtimeUpdateCheckError,
+    runtimeVersionCheck,
+    startupUpdateCheckDone,
+  ]);
+
   const connectionStatus = useMemo(() => {
     if (connectionState === "pending") {
       return {
@@ -1059,7 +1143,7 @@ function App() {
           ]),
       {
         id: "runtime",
-        label: isMacOSHost ? "Native macOS runtime" : "Managed runtime",
+        label: "Worker App runtime",
         check: (() => {
           const checks = [
             ...(isMacOSHost ? [] : [doctorCheckById.get("managed_wsl_runtime")]),
@@ -1357,8 +1441,11 @@ function App() {
         return;
       }
       setRuntimeUpdateCheckError(null);
-      const runtimeUpdateRequired = nextRuntimeUpdate.updateAvailable;
-      setRuntimeUpdate(runtimeUpdateRequired ? nextRuntimeUpdate : null);
+      let runtimeUpdateRequired = nextRuntimeUpdate.updateAvailable;
+      applyRuntimeUpdateCheck(nextRuntimeUpdate);
+      if (runtimeUpdateRequired) {
+        runtimeUpdateRequired = await startRuntimeInstall(nextRuntimeUpdate);
+      }
       const shouldBlockRender =
         runtimeUpdateRequired || (!appCheckSucceeded && renderUpdateBlocked);
       setRenderUpdateBlocked(shouldBlockRender);
@@ -1429,8 +1516,12 @@ function App() {
               return;
             }
             if (setupStatus.status === "failed") {
+              runtimeAutoInstallKeyRef.current = null;
               setRuntimeInstallRequested(false);
               setRenderUpdateBlocked(true);
+              setRuntimeInstallError(
+                setupStatus.message || "Worker App runtime installation failed.",
+              );
               setRuntimeInstallMessage(
                 `Runtime installation failed. ${setupStatus.message || "Read the setup terminal and try again."}`,
               );
@@ -1447,15 +1538,15 @@ function App() {
           "worker_app_check_runtime_update",
         );
         if (cancelled) return;
-        setRuntimeUpdate(
-          nextRuntimeUpdate.updateAvailable ? nextRuntimeUpdate : null,
-        );
+        applyRuntimeUpdateCheck(nextRuntimeUpdate);
         if (nextRuntimeUpdate.updateAvailable) {
           setRuntimeInstallMessage(
             observedSetupStatus?.status === "succeeded"
               ? `The installer finished, but the installed runtime is still ${nextRuntimeUpdate.currentVersion ?? "not detected"}; latest is ${nextRuntimeUpdate.latestVersion ?? "unknown"}. Run the setup again after reviewing the terminal.`
               : `Downloading runtime update... installed ${nextRuntimeUpdate.currentVersion ?? "not installed"}; latest ${nextRuntimeUpdate.latestVersion ?? "unknown"}.`,
           );
+          if (observedSetupStatus?.status === "succeeded")
+            runtimeAutoInstallKeyRef.current = null;
           if (observedSetupStatus?.status === "succeeded")
             setRuntimeInstallRequested(false);
           return;
@@ -1604,8 +1695,20 @@ function App() {
           {appVersion ? (
             <p className="app-version">Version {appVersion}</p>
           ) : null}
+          <div
+            className={`runtime-version-card ${runtimeVersionStatus.tone}`}
+            data-testid="runtime-version-status"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="runtime-version-heading">
+              <span>Worker App runtime</span>
+            </div>
+            <strong>{runtimeVersionStatus.label}</strong>
+            <span>{runtimeVersionStatus.detail}</span>
+          </div>
           <p className="subtle">
-            Connect in your browser, verify the render runtime, then let this
+            Connect in your browser, verify the Worker App runtime, then let this
             app process jobs in the background.
           </p>
         </div>
@@ -1624,10 +1727,10 @@ function App() {
       </section>
       {renderUpdateBlocked ? (
         <div className="connect-message error" role="alert">
-          <strong>Render update required.</strong>{" "}
+          <strong>Worker App runtime update required.</strong>{" "}
           {runtimeUpdate
-            ? `Runtime ${runtimeUpdate.latestVersion ?? "latest"} is available; installed version is ${runtimeUpdate.currentVersion ?? "not installed"}. Confirm the update and keep the setup terminal open until verification completes.`
-            : "The app cannot prove that the installed render components are current. Complete the update check before using render jobs."}
+            ? `Latest version is ${runtimeUpdate.latestVersion ?? "unknown"}; installed version is ${runtimeUpdate.currentVersion ?? "not installed"}. The app will download it automatically.`
+            : "The app cannot prove that the Worker App runtime is current. Complete the update check before using render jobs."}
         </div>
       ) : null}
       {runtimeUpdateCheckError ? (
@@ -1636,8 +1739,8 @@ function App() {
           role="alert"
           data-testid="runtime-update-check-error"
         >
-          <strong>Runtime update check incomplete.</strong>{" "}
-          {`The latest render runtime could not be verified: ${runtimeUpdateCheckError} Use Run checks in the Runtime tab to try again.`}
+          <strong>Worker App runtime update check incomplete.</strong>{" "}
+          {`The latest Worker App runtime could not be verified: ${runtimeUpdateCheckError} Use Run checks in the Runtime tab to try again.`}
         </div>
       ) : null}
       {workerAppUpdate ? (
@@ -1655,14 +1758,17 @@ function App() {
           <strong>Worker App update:</strong> {workerAppUpdateStatus}
         </div>
       ) : null}
-      {runtimeInstallRequested && runtimeSetupStatus ? (
+      {runtimeInstallRequested && runtimeInstallMessage ? (
         <div
           className="connect-message pending"
           role="status"
           data-testid="runtime-install-status"
         >
-          <strong>Runtime update: {runtimeSetupStatus.status}</strong>{" "}
-          {runtimeSetupStatus.message || runtimeInstallMessage}
+          <strong>
+            Worker App runtime update
+            {runtimeSetupStatus ? `: ${runtimeSetupStatus.status}` : ""}
+          </strong>{" "}
+          {runtimeSetupStatus?.message || runtimeInstallMessage}
         </div>
       ) : null}
 
@@ -2001,7 +2107,7 @@ function App() {
             <div className="panel-heading inline">
               <div>
                 <p className="eyebrow">Readiness</p>
-                <h2>Runtime doctor</h2>
+                <h2>Worker App runtime checks</h2>
               </div>
               <button
                 type="button"
@@ -2057,8 +2163,8 @@ function App() {
                 </ul>
                 <p className="subtle">
                   {isMacOSHost
-                    ? "macOS uses only the native hyperframes-macos-arm64 runtime. WSL2 and Windows runtime archives are rejected and never used as a fallback."
-                    : "Managed WSL is the default render path. The Worker App runs directly from the WSL runtime root and reports the real missing file, executable, or shared library instead of falling back to the legacy runtime path."}
+                    ? "The Worker App uses the installed runtime for this machine and does not fall back to another platform's runtime."
+                    : "The Worker App uses the managed runtime environment and reports the real missing file, executable, or shared library when a check fails."}
                 </p>
                 {!isMacOSHost ? (
                   <button
@@ -2452,8 +2558,7 @@ function App() {
                     <span className="field-help">
                       This folder lives inside WSL, for example
                       ~/.smartaihub-worker/runtime. The setup terminal installs
-                      Node, HyperFrames, Chrome, FFmpeg, and Linux dependencies into
-                      this root.
+                      the required Worker App runtime components into this root.
                     </span>
                   </label>
                   <label>
@@ -2477,8 +2582,8 @@ function App() {
                 </>
               ) : (
                 <p className="field-help">
-                  macOS is locked to the native <code>hyperframes-macos-arm64</code>
-                  runtime. WSL2 and Windows runtime settings are not available.
+                  macOS uses the Worker App runtime for this platform. WSL2 and
+                  Windows runtime settings are not available.
                 </p>
               )}
               <label className="toggle-row">

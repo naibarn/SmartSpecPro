@@ -379,14 +379,17 @@ export function VerticalDramaEpisodePreviewPanel({
       </div>
 
       <div className="grid min-w-0 gap-5 p-4 sm:p-5 2xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)]">
-        <Card className="border-border/70 bg-background/60 shadow-none">
+        <Card className="min-w-0 border-border/70 bg-background/60 shadow-none">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">
               {lang === "th" ? "หน้าปกของตอน" : "Episode cover"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3" data-testid="vd-episode-cover-slots">
+          <CardContent className="flex min-w-0 flex-col gap-3">
+            <div
+              className="grid min-w-0 grid-cols-2 gap-3"
+              data-testid="vd-episode-cover-slots"
+            >
               {([1, 2, 3, 4] as const).map(coverSlotId => {
                 const coverImage = coverImageBySlot.get(coverSlotId);
                 const slotBusy =
@@ -397,7 +400,7 @@ export function VerticalDramaEpisodePreviewPanel({
                 return (
                   <div
                     key={coverSlotId}
-                    className="min-w-0 rounded-lg border border-border/60 bg-background/50 p-2"
+                    className="min-w-0 overflow-hidden rounded-lg border border-border/60 bg-background/50 p-2"
                     data-testid={`vd-episode-cover-slot-${coverSlotId}`}
                   >
                     <p className="mb-2 text-xs font-semibold">
@@ -407,6 +410,7 @@ export function VerticalDramaEpisodePreviewPanel({
                       lang={lang}
                       episodeNumber={episodeNumber}
                       coverSlotId={coverSlotId}
+                      fillContainer
                       title={episodeTitle}
                       imageUrl={coverImage?.url ?? null}
                       fallbackUrl={null}

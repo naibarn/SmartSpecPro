@@ -79,6 +79,10 @@ const mockProcessTicket = vi.fn().mockResolvedValue({});
 vi.mock("../virtualAdmin/feedbackProcessor", () => ({
   processTicket: (...args: unknown[]) => mockProcessTicket(...args),
 }));
+const mockReportSystemFailure = vi.fn().mockResolvedValue(undefined);
+vi.mock("../systemAutoReportService", () => ({
+  reportSystemFailure: (...args: unknown[]) => mockReportSystemFailure(...args),
+}));
 const mockFeedbackInsertValues = vi.fn();
 const mockFeedbackReturning = vi.fn().mockResolvedValue([{ id: 123 }]);
 const mockDb = {
@@ -115,6 +119,7 @@ beforeEach(() => {
   mockCreateNotification.mockResolvedValue({ notificationId: 1, deduplicated: false });
   mockProcessTicket.mockClear();
   mockProcessTicket.mockResolvedValue({});
+  mockReportSystemFailure.mockClear();
   mockDb.insert.mockClear();
   mockFeedbackInsertValues.mockClear();
   mockFeedbackReturning.mockClear();
@@ -404,7 +409,7 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
     expect(input.groupKey).toBe(`vd_story_job:${jobId}`);
   });
 
-  it("failed: sends a Thai, type='alert', priority='high' notification including the error message", async () => {
+  it("failed: routes insufficient user credits to the central credit policy without a generic failure notification", async () => {
     const redis = makeFakeRedis();
     const { jobId } = await enqueueVerticalDramaStoryJob(basePayload({ userId: 42, seriesId: 10 }), {
       redis,
@@ -415,15 +420,16 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
       redis,
     });
 
-    expect(mockCreateNotification).toHaveBeenCalledTimes(1);
-    const input = mockCreateNotification.mock.calls[0][0] as Record<string, unknown>;
-    expect(input.type).toBe("alert");
-    expect(input.priority).toBe("high");
-    expect(input.title).toContain("ไม่สำเร็จ");
-    expect(input.content).toContain("insufficient credits");
+    expect(mockCreateNotification).not.toHaveBeenCalled();
+    expect(mockReportSystemFailure).toHaveBeenCalledTimes(1);
+    expect(mockReportSystemFailure.mock.calls[0][0]).toMatchObject({
+      source: "vertical_drama_story_jobs",
+      userId: 42,
+      creditContext: { source: "user", modelKind: "llm" },
+    });
   });
 
-  it("failed: creates an automatic system feedback ticket for admins with diagnostic context and original user attribution", async () => {
+  it("failed: sends non-credit failures through the central admin auto-report path", async () => {
     const redis = makeFakeRedis();
     const { jobId } = await enqueueVerticalDramaStoryJob(
       basePayload({ userId: 42, tenantId: "tenant-1", seriesId: 10, input: { mode: "premium" } }),
@@ -441,48 +447,19 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
       },
     );
 
-    expect(mockDb.insert).toHaveBeenCalledTimes(1);
-    expect(mockFeedbackInsertValues).toHaveBeenCalledTimes(1);
-    const values = mockFeedbackInsertValues.mock.calls[0][0] as Record<string, any>;
-    expect(values).toMatchObject({
-      tenantId: "tenant-1",
-      submittedBy: 42,
-      submittedByType: "system",
-      ticketType: "bug",
-      priority: "high",
-      severity: "high",
-      category: "vertical_drama_story_jobs",
-    });
-    expect(values.description).toContain("User ID: 42");
-    expect(values.description).toContain(`Job ID: ${jobId}`);
-    expect(values.description).toContain("response failed schema validation");
-    expect(values.contextJson).toMatchObject({
-      source: "vertical_drama_story_jobs",
-      eventType: "system_job_failure",
-      user: { id: 42, tenantId: "tenant-1" },
-      verticalDrama: {
-        seriesId: 10,
+    expect(mockReportSystemFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "vertical_drama_story_jobs",
+        userId: 42,
+        tenantId: "tenant-1",
         jobId,
-        kind: "deep_generate",
-        status: "failed",
-        input: { mode: "premium" },
-      },
-      diagnostics: {
-        pageUrl: "/drama-series/10",
-        redisKey: `vd:story-job:${jobId}`,
-        activePointerKey: "vd:story-job:active:tenant-1:10",
-        screenshotCapture: {
-          attached: false,
-        },
-      },
-      error: {
-        message: "response failed schema validation",
-      },
-    });
-    expect(mockProcessTicket).toHaveBeenCalledWith(123);
+        errorMessage: "response failed schema validation",
+      }),
+    );
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
-  it("failed: still creates admin feedback even when the owner notification fails", async () => {
+  it("failed: still reports through the central path when the owner notification fails", async () => {
     const redis = makeFakeRedis();
     mockCreateNotification.mockRejectedValueOnce(new Error("notification service down"));
     const { jobId } = await enqueueVerticalDramaStoryJob(basePayload({ userId: 42, seriesId: 10 }), {
@@ -498,8 +475,8 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
 
     const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
     expect(record?.status).toBe("failed");
-    expect(mockFeedbackInsertValues).toHaveBeenCalledTimes(1);
-    expect(mockProcessTicket).toHaveBeenCalledWith(123);
+    expect(mockReportSystemFailure).toHaveBeenCalledTimes(1);
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
   it("differentiates the notification content per job kind (extend vs. deep_generate)", async () => {
@@ -592,7 +569,7 @@ describe("submitVerticalDramaSystemFeedback", () => {
       severity: "high",
       category: "vertical_drama_season_critique_apply",
       title: "[System] ปรับปรุงเนื้อเรื่องตามคำแนะนำ ล้มเหลวบางส่วน (series #10)",
-      description: "some description",
+      description: "Reporter: user #42\nsome description",
       expectedBehavior: "should not fail silently",
       actualBehavior: "การเรียก AI เพื่อแก้ไขล้มเหลว",
     });
@@ -614,7 +591,7 @@ describe("submitVerticalDramaSystemFeedback", () => {
     const values = mockFeedbackInsertValues.mock.calls[0][0] as Record<string, any>;
     expect(values.title.startsWith("&lt;script&gt;")).toBe(true);
     expect(values.title.length).toBe(255);
-    expect(values.description.startsWith("&lt;b&gt;")).toBe(true);
+    expect(values.description.startsWith("Reporter: user #42\n&lt;b&gt;")).toBe(true);
     expect(values.description.length).toBe(5000);
     expect(values.actualBehavior.startsWith("&lt;i&gt;")).toBe(true);
     expect(values.actualBehavior.length).toBe(2000);

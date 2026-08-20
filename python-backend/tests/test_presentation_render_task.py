@@ -277,6 +277,61 @@ class TestMakeSlideToken:
 
         assert "internal:slide-render" in payload["scopes"]
 
+    def test_token_contains_render_actor_claims(self, monkeypatch):
+        """Token carries user and tenant claims used by protected storage routes."""
+        import jwt
+
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        from app.tasks.presentation_render import _make_slide_token
+
+        token = _make_slide_token(
+            deck_id=42,
+            slide_index=3,
+            render_auth={"user_id": 9, "tenant_id": "tenant-1"},
+        )
+        payload = jwt.decode(token, "test-secret-key-for-unit-tests", algorithms=["HS256"])
+
+        assert payload["userId"] == 9
+        assert payload["tenantId"] == "tenant-1"
+
+    def test_embedded_render_actor_is_consumed_for_rolling_deploy_compatibility(
+        self, monkeypatch, tmp_path
+    ):
+        """The worker accepts actor context embedded by a newer API."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1)
+        render_spec["__presentation_render_auth"] = {
+            "user_id": 9,
+            "tenant_id": "tenant-1",
+        }
+
+        with (
+            patch("app.tasks.presentation_render._render_slides_to_screenshots") as mock_stage1,
+            patch("app.tasks.presentation_render._process_format", return_value="output.zip"),
+            patch("app.tasks.presentation_render._upload_output", return_value={
+                "output_url": "https://example.com/output.zip",
+                "output_bytes": 10,
+            }),
+            patch("tempfile.mkdtemp", return_value=str(tmp_path)),
+            patch("shutil.rmtree"),
+        ):
+            mock_stage1.return_value = ["slide_0000.png"]
+            from app.tasks.presentation_render import render_presentation
+
+            render_presentation.run.__wrapped__.__func__(
+                task_self,
+                render_spec,
+                "standard",
+                "png",
+            )
+
+        assert mock_stage1.call_args.args[3] == {
+            "user_id": 9,
+            "tenant_id": "tenant-1",
+        }
+        assert "__presentation_render_auth" not in render_spec
+
     def test_token_has_expiry_approximately_5_minutes(self, monkeypatch):
         """Token exp claim is approximately 5 minutes (300s) from now."""
         import jwt
@@ -350,6 +405,27 @@ class TestJWTHeaderSecurity:
         goto_url = mock_page.goto.call_args[0][0]
         assert "token" not in goto_url.lower()
         assert "?" not in goto_url
+
+    def test_actor_token_is_sent_as_bearer_for_media_subrequests(self, monkeypatch, tmp_path):
+        """Playwright subrequests receive the tenant-scoped bearer token."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        mock_sync_playwright, mock_page = _make_mock_playwright()
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1)
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            from app.tasks.presentation_render import _render_slides_to_screenshots
+            _render_slides_to_screenshots(
+                task_self,
+                render_spec,
+                str(tmp_path),
+                {"user_id": 9, "tenant_id": "tenant-1"},
+            )
+
+        headers_passed = mock_page.set_extra_http_headers.call_args[0][0]
+        assert headers_passed["Authorization"].startswith("Bearer ")
 
     def test_internal_render_base_url_env_var(self, monkeypatch, tmp_path):
         """INTERNAL_RENDER_BASE_URL controls the base URL used in Playwright navigation."""
@@ -544,7 +620,7 @@ class TestDynamicVideoExportPath:
             mock_upload.return_value = {"output_url": "https://presigned.example.com/out.mp4?token=x", "output_bytes": 120}
             from app.tasks.presentation_render import render_presentation
 
-            result = render_presentation.run.__func__(task_self, render_spec, "standard", "mp4")
+            result = render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "mp4")
 
         assert result["output_url"].startswith("https://presigned.example.com/")
         mock_clips.assert_called_once()
@@ -707,6 +783,16 @@ class TestBuildPngZip:
 
         assert output.startswith(str(tmp_path))
         assert output.endswith(".zip")
+
+    def test_rejects_corrupt_png_before_packaging(self, tmp_path):
+        """A truncated screenshot must fail instead of producing a bad export."""
+        from app.tasks.presentation_render import _build_png_zip
+
+        p = tmp_path / "slide_0000.png"
+        p.write_bytes(b"\x89PNG\r\n\x1a\ntruncated")
+
+        with pytest.raises(RuntimeError, match="E_PNG_SCREENSHOT_INVALID"):
+            _build_png_zip([str(p)], str(tmp_path))
 
 
 # ---------------------------------------------------------------------------
@@ -1031,7 +1117,7 @@ class TestTempDirCleanup:
             from app.tasks.presentation_render import render_presentation
 
             # Call the underlying function directly (bypass Celery)
-            render_presentation.run.__func__(task_self, render_spec, "standard", "png")
+            render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
 
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)
 
@@ -1052,7 +1138,7 @@ class TestTempDirCleanup:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(RuntimeError, match="Playwright crash"):
-                render_presentation.run.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
 
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)
 
@@ -1073,7 +1159,7 @@ class TestTempDirCleanup:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(SoftTimeLimitExceeded):
-                render_presentation.run.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
 
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)
 
@@ -1098,7 +1184,7 @@ class TestRenderSpecValidation:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(ValueError, match="deckId"):
-                render_presentation.run.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
 
     def test_missing_slides_raises_value_error(self, monkeypatch, tmp_path):
         """ValueError is raised when slides is absent from render_spec."""
@@ -1111,4 +1197,4 @@ class TestRenderSpecValidation:
             from app.tasks.presentation_render import render_presentation
 
             with pytest.raises(ValueError, match="slides"):
-                render_presentation.run.__func__(task_self, render_spec, "standard", "png")
+                render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")

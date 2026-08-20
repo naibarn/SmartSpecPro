@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 import { users } from "../../drizzle/schema";
 
@@ -29,23 +29,25 @@ export function extractAffectedUserIds(contextJson: unknown): number[] {
 /**
  * Resolve the current email for affected IDs at an admin-only server boundary.
  * Missing users/emails remain represented by their ID for diagnosis.
+ *
+ * The ticket query is already tenant-scoped before this helper is called.
+ * Do not additionally filter by `users.currentTenantId`: that field describes
+ * the user's current tenant and can hide the historical reporter for a ticket
+ * after the user changes tenant.
  */
 export async function resolveAffectedUsers(
   db: DrizzleDB,
   affectedUserIds: number[],
-  tenantId?: string | null,
+  _tenantId?: string | null,
   maxUsers = 5
 ): Promise<AffectedUser[]> {
   const ids = Array.from(new Set(affectedUserIds)).slice(0, maxUsers);
   if (ids.length === 0) return [];
 
-  const conditions = [inArray(users.id, ids)];
-  if (tenantId) conditions.push(eq(users.currentTenantId, tenantId));
-
   const rows = await db
     .select({ id: users.id, email: users.email })
     .from(users)
-    .where(and(...conditions));
+    .where(inArray(users.id, ids));
   const byId = new Map(rows.map(row => [row.id, row.email ?? null]));
 
   return ids.map(id => ({ id, email: byId.get(id) ?? null }));

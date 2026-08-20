@@ -13,12 +13,12 @@ from typing import Any, Optional, Self
 
 import structlog
 from celery.result import AsyncResult
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import FileResponse
 from jose import JWTError, jwt
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, verify_token
 from app.core.config import settings
 from app.models.user import User
 
@@ -48,12 +48,20 @@ _RENDER_SPEC_MAX_BYTES = 65_536
 # ============================================================
 
 
+class PresentationRenderAuth(BaseModel):
+    """Tenant-scoped actor forwarded to the Playwright render task."""
+
+    user_id: int = Field(gt=0)
+    tenant_id: str = Field(min_length=1, max_length=255)
+
+
 class PresentationExportRequest(BaseModel):
     """Request body for POST /api/v1/presentations/export."""
 
     render_spec: dict[str, Any]
     quality: str  # "draft" | "standard" | "high"
     format: str  # "png" | "jpg" | "pdf" | "mp4"
+    render_auth: Optional["PresentationRenderAuth"] = None
 
     @field_validator("render_spec")
     @classmethod
@@ -161,6 +169,10 @@ class PresentationExportStatusResponse(BaseModel):
 async def create_export_job(
     request: PresentationExportRequest,
     current_user: User = Depends(get_current_user),
+    presentation_render_token: Optional[str] = Header(
+        default=None,
+        alias="X-Presentation-Render-Token",
+    ),
 ) -> PresentationExportJobResponse:
     """Enqueue a Celery presentation render task and return the task id."""
     if not CELERY_ENABLED:
@@ -170,7 +182,40 @@ async def create_export_job(
         )
 
     try:
-        task = render_presentation.delay(request.render_spec, request.quality, request.format)
+        render_auth = request.render_auth
+        if render_auth is not None:
+            render_claims = verify_token(
+                presentation_render_token or "",
+                expected_type="access",
+            )
+            render_scopes = render_claims.get("scopes", []) if render_claims else []
+            try:
+                render_user_id = int(render_claims.get("sub")) if render_claims else 0
+            except (TypeError, ValueError):
+                render_user_id = 0
+            render_tenant_id = str(render_claims.get("tenantId", "")) if render_claims else ""
+            if (
+                not render_claims
+                or render_claims.get("tokenUse") != "presentation_render"
+                or "presentation:export" not in render_scopes
+                or render_user_id != int(current_user.id)
+                or render_user_id != render_auth.user_id
+                or render_tenant_id != render_auth.tenant_id
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Render actor proof is invalid for the authenticated export",
+                )
+
+        task_render_spec = dict(request.render_spec)
+        if render_auth is not None:
+            # Keep Celery dispatch compatible with workers that still expose
+            # the original 3-argument task signature during rolling deploys.
+            task_render_spec["__presentation_render_auth"] = render_auth.model_dump()
+
+        task = render_presentation.delay(task_render_spec, request.quality, request.format)
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("presentation_render_dispatch_failed", error=str(exc))
         raise HTTPException(

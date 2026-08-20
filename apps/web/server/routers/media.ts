@@ -3418,6 +3418,9 @@ export const mediaRouter = router({
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
+              tenantId:
+                resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ??
+                undefined,
               traceId: debugTraceId,
               source: "trpc.media.generateImageAsync",
               stage: "submission",
@@ -3450,9 +3453,14 @@ export const mediaRouter = router({
           console.error("[Media] Failed to refund credits:", refundError);
         }
 
+        const message = error instanceof Error ? error.message : "Async image generation failed";
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: error instanceof Error ? error.message : "Async image generation failed",
+          code:
+            message ===
+            "Reference image requires tenant-scoped access before provider submission"
+              ? "PRECONDITION_FAILED"
+              : "INTERNAL_SERVER_ERROR",
+          message,
         });
       }
     }),

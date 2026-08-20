@@ -1493,6 +1493,32 @@ export interface ShotVideoPromptCharacterReferenceImage {
 }
 
 /**
+ * Return both canonical keys and display names for explicitly screen-only
+ * callers so frame-analysis findings can be matched even when the vision
+ * model uses a roster key instead of the character's display name.
+ */
+export function resolveScreenCallerCharacterNames(
+  screenCallerCharacterRefs: readonly string[] | undefined,
+  characterReferenceImages: readonly Pick<
+    ShotVideoPromptCharacterReferenceImage,
+    "characterKey" | "name"
+  >[] | undefined,
+): string[] {
+  const refs = (screenCallerCharacterRefs ?? [])
+    .map(value => value.trim())
+    .filter(Boolean);
+  const names = new Set(refs);
+  for (const ref of refs) {
+    for (const entry of characterReferenceImages ?? []) {
+      if (entry.characterKey === ref && entry.name?.trim()) {
+        names.add(entry.name.trim());
+      }
+    }
+  }
+  return Array.from(names);
+}
+
+/**
  * Build the vision-call images array for a shot-video-prompt generation
  * call: the shot's own start frame FIRST (unlabeled, preserving today's
  * single-image shape when `characterReferenceImages`/`locationReferenceImage`
@@ -3328,6 +3354,10 @@ export async function generateVerticalDramaShotVideoPrompt(
     // Bumped 2000 -> 2600 (frame_analysis headroom); retry ceiling unchanged.
     firstAttemptMaxTokens: 2600,
     retryMaxTokens: 4000,
+    // Long, vision-grounded prompts can be cut off twice by a busy provider.
+    // Allow two additional same-model JSON repairs before any fallback that
+    // could lose the attached identity evidence.
+    maxSchemaRetries: 2,
     modelFallbackPolicy: "recommended",
   });
 
@@ -3684,6 +3714,10 @@ export async function generateVerticalDramaShotVideoPrompt(
     dialogueSpeakerNames: requiredDialogue
       .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
       .filter((v): v is string => Boolean(v)),
+    screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+      params.shotContext.screenCallerCharacterRefs,
+      params.characterReferenceImages,
+    ),
     supportingPresence: params.shotContext.supportingPresence,
     frameAnalysis,
     motionProfile: motionResolution.motionProfile,
@@ -3739,6 +3773,10 @@ export async function generateVerticalDramaShotVideoPrompt(
       dialogueSpeakerNames: requiredDialogue
         .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
         .filter((v): v is string => Boolean(v)),
+      screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+        params.shotContext.screenCallerCharacterRefs,
+        params.characterReferenceImages,
+      ),
       supportingPresence: params.shotContext.supportingPresence,
       frameAnalysis,
       motionProfile: motionResolution.motionProfile,
@@ -3764,6 +3802,10 @@ export async function generateVerticalDramaShotVideoPrompt(
       dialogueSpeakerNames: requiredDialogue
         .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
         .filter((v): v is string => Boolean(v)),
+      screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+        params.shotContext.screenCallerCharacterRefs,
+        params.characterReferenceImages,
+      ),
       supportingPresence: params.shotContext.supportingPresence,
       frameAnalysis,
       motionProfile: motionResolution.motionProfile,
@@ -4301,6 +4343,12 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     // Bumped 3000 -> 3600 (frame_analysis headroom); retry ceiling unchanged.
     firstAttemptMaxTokens: 3600,
     retryMaxTokens: 6000,
+    // Speaker-switch prompts carry multiple face anchors, timed dialogue,
+    // frame analysis, and motion-profile facts. They are therefore just as
+    // vulnerable to a provider cutting the JSON response as the single-shot
+    // path. Keep the same bounded malformed-JSON recovery window here so a
+    // transient truncation does not surface as a raw parser error.
+    maxSchemaRetries: 2,
     modelFallbackPolicy: "recommended",
   });
 
@@ -4606,6 +4654,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     dialogueSpeakerNames: dialogue
       .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
       .filter((v): v is string => Boolean(v)),
+    screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+      params.shotContext.screenCallerCharacterRefs,
+      params.characterReferenceImages,
+    ),
     supportingPresence: params.shotContext.supportingPresence,
     frameAnalysis,
     motionProfile: motionResolution.motionProfile,
@@ -4661,6 +4713,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       dialogueSpeakerNames: dialogue
         .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
         .filter((v): v is string => Boolean(v)),
+      screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+        params.shotContext.screenCallerCharacterRefs,
+        params.characterReferenceImages,
+      ),
       supportingPresence: params.shotContext.supportingPresence,
       frameAnalysis,
       motionProfile: motionResolution.motionProfile,
@@ -4683,6 +4739,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       dialogueSpeakerNames: dialogue
         .map(l => ("speakerName" in l ? l.speakerName : undefined) ?? l.characterKey)
         .filter((v): v is string => Boolean(v)),
+      screenCallerCharacterNames: resolveScreenCallerCharacterNames(
+        params.shotContext.screenCallerCharacterRefs,
+        params.characterReferenceImages,
+      ),
       supportingPresence: params.shotContext.supportingPresence,
       frameAnalysis,
       motionProfile: motionResolution.motionProfile,

@@ -58,6 +58,10 @@ export interface VideoPromptModelTarget {
   genre?: string;
   /** Explicit shot-local generic people allowed by the assurance contract. */
   supportingPresence?: VerticalDramaSupportingPresence[];
+  /** Characters rendered only inside a phone/video-call display. */
+  screenCallerCharacterRefs?: string[];
+  /** Display names paired with `screenCallerCharacterRefs` for frame-analysis matching. */
+  screenCallerCharacterNames?: string[];
   /** ISO timestamp of generation. */
   generatedAt: string;
 }

@@ -33,6 +33,15 @@ export const DRAFT_QC_MUTABLE_STORY_DESIGN_KEYS = [
   "storyControlSeed",
 ] as const;
 
+/**
+ * Server-owned audit metadata may be rewritten when the canonical control
+ * plane is repaired. It is never an active story constraint and is stripped
+ * from provider patches before the additive revision merge.
+ */
+export const DRAFT_QC_SERVER_MANAGED_STORY_DESIGN_KEYS = [
+  "legacyControlArchive",
+] as const;
+
 export const DRAFT_QC_CRITERIA = [
   { id: "hook_strength", weight: 1.5 },
   { id: "premise_core_conflict", weight: 1 },

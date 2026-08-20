@@ -392,10 +392,11 @@ function toPresentationActor(ctx: {
   };
 }
 
-function createPresentationToken(userId: number, scopes: string[]): string {
+function createPresentationToken(userId: number, scopes: string[], tenantId?: string): string {
   return signBearerToken(
     {
       sub: String(userId),
+      ...(tenantId ? { tenantId } : {}),
       type: "access",
       scopes,
       jti: `presentation_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -1528,8 +1529,13 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         ensureExportWriteEnabled();
-        const userToken = getPresentationToken(ctx, ["presentation:export"]);
-        return await triggerPresentationExport(input, toPresentationActor(ctx), {
+        const actor = toPresentationActor(ctx);
+        const userToken = createPresentationToken(
+          actor.userId,
+          ["presentation:export"],
+          actor.tenantId,
+        );
+        return await triggerPresentationExport(input, actor, {
           userToken,
         });
       } catch (error) {

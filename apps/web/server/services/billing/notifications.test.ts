@@ -134,6 +134,14 @@ describe("billing notifications", () => {
         from: vi.fn().mockImplementation(() => {
           const query: any = {};
           query.where = vi.fn().mockReturnValue(query);
+          query.limit = vi.fn().mockResolvedValue([]);
+          return query;
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
           query.limit = vi.fn().mockResolvedValue([
             { id: 1, userId: 4, invoiceId: 7, channel: "in_app", sentAt: now },
             { id: 2, userId: 4, invoiceId: 8, channel: "in_app", sentAt: now },
@@ -159,6 +167,63 @@ describe("billing notifications", () => {
       invoiceId: 7,
       notificationType: "invoice_due_reminder",
       variant: "day3",
+    });
+
+    expect(result).toEqual({ sent: false, reason: "suppressed" });
+    expect(mockCreateNotification).not.toHaveBeenCalled();
+  });
+
+  it("suppresses due reminders after a PromptPay Direct slip is submitted", async () => {
+    mockDb.select
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.limit = vi.fn().mockResolvedValue([{ id: 12, userId: 4, invoiceNumber: "TH-INV-2026-000012", status: "payment_pending" }]);
+          return query;
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.limit = vi.fn().mockResolvedValue([]);
+          return query;
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.limit = vi.fn().mockResolvedValue([{ paymentChannel: "promptpay_direct_manual", status: "manual_review_required" }]);
+          return query;
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.limit = vi.fn().mockResolvedValue([]);
+          return query;
+        }),
+      }));
+    mockDb.insert.mockImplementation(() => ({
+      values: vi.fn().mockImplementation(() => ({
+        onConflictDoNothing: vi.fn()
+          .mockImplementationOnce(() => ({
+            returning: vi.fn().mockResolvedValue([{ id: 31, channel: "in_app" }]),
+          }))
+          .mockImplementationOnce(() => ({
+            returning: vi.fn().mockResolvedValue([{ id: 32, channel: "email" }]),
+          })),
+      })),
+    }));
+
+    const { sendInvoiceNotification } = await import("./notifications");
+    const result = await sendInvoiceNotification({
+      invoiceId: 12,
+      notificationType: "invoice_due_reminder",
+      variant: "day6",
     });
 
     expect(result).toEqual({ sent: false, reason: "suppressed" });

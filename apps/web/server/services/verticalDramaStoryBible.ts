@@ -1899,6 +1899,12 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   }
 
   const responseContent = result.response.choices?.[0]?.message?.content ?? "";
+  if (!responseContent.trim()) {
+    throw new VdSchemaValidationError(
+      "LLM response was empty; expected one complete JSON object",
+      { rawResponse: responseContent },
+    );
+  }
   const parsed = extractJson(responseContent);
   const validation = args.schema.safeParse(parsed);
   if (!validation.success) {
@@ -1929,6 +1935,8 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
   firstAttemptMaxTokens: number;
   retryMaxTokens: number;
+  /** Additional same-model schema recovery attempts before model/text fallback. */
+  maxSchemaRetries?: number;
   /**
    * Video-prompt generation must not jump to an unrelated catalog model after
    * a schema/provider hiccup. Its caller already selected the authoritative
@@ -1977,6 +1985,40 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       return { ...result, usedVision: args.hasVision };
     } catch (retryError) {
       if (isProviderUnavailableError(retryError) && !args.modelFallbackPolicy) throw retryError;
+      // Vision calls historically had only one schema retry. That was too
+      // brittle for long, image-grounded shot prompts: a provider can return
+      // a second truncated JSON envelope even when the retry ceiling is
+      // larger. Give the same authoritative model a small, bounded recovery
+      // window before rotating models or dropping images. This keeps the
+      // failure self-healing and avoids surfacing a raw JSON parser error to
+      // the creator (or spending an LLM credit on a bad prompt).
+      const isSchemaFailure = (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        // This recovery is specifically for truncated/structurally invalid
+        // JSON. A valid JSON object that merely fails the output schema must
+        // keep the existing retry/fallback contract (some callers rely on its
+        // bounded call count and their own graceful-degradation behavior).
+        return /not valid JSON|response was empty/i.test(message);
+      };
+      const extraSchemaRetries = Math.max(0, Math.min(2, args.maxSchemaRetries ?? 0));
+      if (isSchemaFailure(firstError) && isSchemaFailure(retryError) && extraSchemaRetries > 0) {
+        for (let recoveryAttempt = 0; recoveryAttempt < extraSchemaRetries; recoveryAttempt += 1) {
+          const recoveryText = `${args.userPromptText}\n\n${VD_COMPACT_JSON_INSTRUCTION}\n${VD_RETRY_STRICT_INSTRUCTION}\nThis is recovery attempt ${recoveryAttempt + 1}. Keep the prompt prose concise enough to finish, but preserve every required character, speaker cue, action, dialogue quote, and model constraint. Output one complete JSON object only.`;
+          try {
+            const result = await runVisionAwareJsonAttempt<T>({
+              model: args.model,
+              systemPrompt: args.systemPrompt,
+              content: buildVisionAwareContent(recoveryText, args.hasVision, images),
+              userId: args.userId,
+              maxTokens: Math.max(args.retryMaxTokens * 2, 8000),
+              schema: args.schema,
+            });
+            return { ...result, usedVision: args.hasVision };
+          } catch (recoveryError) {
+            if (!isSchemaFailure(recoveryError)) break;
+          }
+        }
+      }
       const fallbackModel = args.modelFallbackPolicy === "recommended"
         ? await resolveRecommendedModelFallback(args.model, {
             supportsVision: args.hasVision,
@@ -2021,6 +2063,8 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
         // contracts instead of persisting a text-only guess as vision work.
         return { ...result, usedVision: false };
       }
+      // Preserve the historical final error surface for callers that do not
+      // opt into the extra malformed-JSON recovery attempts.
       throw retryError;
     }
   }

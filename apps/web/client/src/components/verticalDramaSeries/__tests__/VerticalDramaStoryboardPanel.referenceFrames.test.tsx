@@ -617,6 +617,60 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
     expect(onSetShotViewMode).toHaveBeenCalledWith(1, { mode: "dual" });
   });
 
+  it("shows communication mode as two explicit choices and converts only when closed door is selected", () => {
+    const onSetShotBarrierDialogue = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onSetShotBarrierDialogue,
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "phone call",
+                requiredCharacterRefs: ["hero"],
+                screenCallerCharacterRefs: ["caller"],
+              },
+            ],
+          },
+          characterPortraits: {
+            hero: {
+              characterId: "1",
+              name: "พระเอก",
+              portraitUrl: "https://cdn/hero.jpg",
+            },
+            caller: {
+              characterId: "2",
+              name: "ผู้โทร",
+              portraitUrl: "https://cdn/caller.jpg",
+            },
+          },
+        }) as any)}
+      />
+    );
+
+    const phoneOption = screen.getByTestId("vd-shot-communication-phone-1");
+    const closedDoorOption = screen.getByTestId(
+      "vd-shot-communication-door-1"
+    );
+    expect(
+      screen.getByRole("radiogroup", { name: "รูปแบบการสื่อสาร" })
+    ).toBeInTheDocument();
+    expect(phoneOption).toHaveAttribute("aria-checked", "true");
+    expect(closedDoorOption).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.queryByRole("button", { name: "ใช้เป็นบทสนทนาผ่านประตู" })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(closedDoorOption);
+    expect(onSetShotBarrierDialogue).toHaveBeenCalledWith(1, {
+      state: "locked",
+      cameraSide: "inside",
+      visibleCharacterRefs: ["hero"],
+      offscreenCharacterRefs: ["caller"],
+    });
+  });
+
   it("shows auto-detection evidence and lets the user return to single view", () => {
     const onSetShotViewMode = vi.fn();
     render(

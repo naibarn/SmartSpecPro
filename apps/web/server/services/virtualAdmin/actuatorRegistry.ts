@@ -1,4 +1,4 @@
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and, gt, lt } from "drizzle-orm";
 import { getDb } from "../../db";
 import { virtualAdminApprovals, virtualAdminIncidents } from "../../../drizzle/schema";
 import type { ActuatorFn, ActuatorResult } from "./types";
@@ -146,6 +146,7 @@ export async function decideApproval(
       and(
         eq(virtualAdminApprovals.id, approvalId),
         eq(virtualAdminApprovals.status, "pending"),
+        gt(virtualAdminApprovals.expiresAt, new Date()),
       ),
     )
     .returning({ id: virtualAdminApprovals.id });
@@ -237,33 +238,17 @@ export async function expireStaleApprovals(): Promise<void> {
   if (!db) return;
 
   const expired = await db
-    .select()
-    .from(virtualAdminApprovals)
+    .update(virtualAdminApprovals)
+    .set({ status: "expired" })
     .where(
       and(
         eq(virtualAdminApprovals.status, "pending"),
         lt(virtualAdminApprovals.expiresAt, new Date()),
       ),
-    );
+    )
+    .returning({ id: virtualAdminApprovals.id });
 
-  for (const approval of expired) {
-    // Check incident severity
-    const incidents = await db
-      .select({ severity: virtualAdminIncidents.severity })
-      .from(virtualAdminIncidents)
-      .where(eq(virtualAdminIncidents.id, approval.incidentId))
-      .limit(1);
-
-    const severity = incidents[0]?.severity;
-
-    if (severity === "critical") {
-      // Keep pending for visibility, just log warning
-      console.warn(`[Guardian] Critical approval ${approval.id} expired — needs attention`);
-    } else {
-      await db
-        .update(virtualAdminApprovals)
-        .set({ status: "expired" })
-        .where(eq(virtualAdminApprovals.id, approval.id));
-    }
+  if (expired.length > 0) {
+    console.warn(`[Guardian] Expired ${expired.length} approval(s); related incidents remain open for triage`);
   }
 }

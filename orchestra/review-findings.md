@@ -1,16 +1,15 @@
-# Review Findings: Credit Insufficiency Feedback Routing
+# Review Findings
 
 ## Round 1
 
-- Reviewed spec: `docs/portable-skill-pack/specs/2026-08-18-credit-insufficient-feedback-design.md`
-- Findings: none blocking.
-- Confirmed: ordinary user-credit failures stop before admin ticket creation; explicit media is the only >3,000-credit exception; unknown uses the conservative 3,000-credit threshold; provider-account failures remain critical.
-- Stop reason: spec is ready for user review.
+- Reviewed the shared QC constants, revision merge, server repair path, and create receipt tests.
+- Finding fixed: `legacyControlArchive` was treated as immutable despite being server-managed audit metadata.
+- Confirmed: unknown active `storyDesign` passthrough mutations remain rejected.
+- Stop reason: focused tests converged; browser/provider/deployment checks remain outside local proof.
 
 ## Round 2
 
-- Reviewed changed policy, auto-report, media-job, tRPC, and feedback-processor paths.
-- Findings: none blocking.
-- Focused proof: 4 test files, 40 tests passed; critical priority is covered by a pure regression helper and provider routing integration tests.
-- Full typecheck residuals are baseline errors in unrelated dirty files; no changed credit-routing file appeared in the error output.
-- Stop reason: implementation converged with focused proof; browser/provider/deployment checks are not applicable to this server-only routing change.
+- Targeted conductor review after the fix: no new material findings.
+- Verified impact closure: both automatic QC revisions and explicit repair use the sanitized provider patch and the same story-design guard; create receipt validation remains unchanged.
+- Gates rerun after the final code/test change: QC service test 28/28 and `git diff --check` passed.
+- Stop reason: one clean targeted round reached for small + medium risk in standard light mode.

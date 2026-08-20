@@ -19,6 +19,8 @@ import {
   processTicket,
   adminNotificationGroupKey,
   resolveAdminNotificationPriority,
+  extractExplicitRelatedIncidentId,
+  shouldNotifyAdminForTicket,
 } from "../feedbackProcessor";
 import { getDb } from "../../../db";
 
@@ -127,6 +129,20 @@ describe("FeedbackProcessor", () => {
 
     it("uses the auto-classified priority for ordinary tickets", () => {
       expect(resolveAdminNotificationPriority("normal", "low")).toBe("low");
+    });
+  });
+
+  describe("incident correlation and duplicate notification policy", () => {
+    it("accepts only an explicit incident reference from ticket context", () => {
+      expect(extractExplicitRelatedIncidentId({ extra: { incidentId: "42" } })).toBe(42);
+      expect(extractExplicitRelatedIncidentId({ title: "media generation failed" })).toBeNull();
+      expect(extractExplicitRelatedIncidentId(null)).toBeNull();
+    });
+
+    it("suppresses duplicate system alerts but keeps human feedback visible", () => {
+      expect(shouldNotifyAdminForTicket("system", 381)).toBe(false);
+      expect(shouldNotifyAdminForTicket("system", null)).toBe(true);
+      expect(shouldNotifyAdminForTicket("human", 381)).toBe(true);
     });
   });
 

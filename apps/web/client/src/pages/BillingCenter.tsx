@@ -333,7 +333,13 @@ export default function BillingCenter() {
       setPromptPaySlipFile(null);
       setPromptPaySlipDragActive(false);
       if (promptPaySlipInputRef.current) promptPaySlipInputRef.current.value = "";
-      await Promise.all([selectedInvoiceQuery.refetch(), directPaymentQuery.refetch(), invoicesQuery.refetch()]);
+      await Promise.all([
+        selectedInvoiceQuery.refetch(),
+        directPaymentQuery.refetch(),
+        invoicesQuery.refetch(),
+        utils.scheduledMessages.getUrgentReminders.invalidate(),
+        utils.scheduledMessages.getNotificationCount.invalidate(),
+      ]);
     },
     onError: (error) => toast.error(error.message),
   });

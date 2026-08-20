@@ -143,14 +143,20 @@ const {
   mockGenerateCharacterVisualPrompts,
   mockGenerateCharacterPortraitCandidates,
   mockResolveFaceSourceReferenceForCharacter,
+  mockShouldRequireAgeStageVariantForRequest,
+  mockExtractAgeFromDescription,
 } = vi.hoisted(() => ({
   mockGenerateCharacterVisualPrompts: vi.fn(),
   mockGenerateCharacterPortraitCandidates: vi.fn(),
   mockResolveFaceSourceReferenceForCharacter: vi.fn(async () => null),
+  mockShouldRequireAgeStageVariantForRequest: vi.fn(() => false),
+  mockExtractAgeFromDescription: vi.fn(() => undefined),
 }));
 vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   generateCharacterVisualPrompts: mockGenerateCharacterVisualPrompts,
   generateCharacterPortraitCandidates: mockGenerateCharacterPortraitCandidates,
+  shouldRequireAgeStageVariantForRequest: mockShouldRequireAgeStageVariantForRequest,
+  extractAgeFromDescription: mockExtractAgeFromDescription,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
   readPresetVisualIdentityFromBible: vi.fn(() => undefined),
@@ -186,6 +192,7 @@ vi.mock("../../services/mediaAssetService", () => ({
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: vi.fn(async () => []),
+  isDbModelCatalogLoaded: vi.fn(() => false),
 }));
 
 vi.mock("../../services/mediaTransportResolver", () => ({
@@ -204,6 +211,7 @@ vi.mock("../media", () => ({
 }));
 
 import { verticalDramaCharactersRouter } from "../verticalDramaCharacters";
+import { AGE_STAGE_VARIANT_REQUIRED_MARKER } from "@shared/verticalDramaSeries/ageStageVariant";
 
 const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
 
@@ -355,6 +363,7 @@ describe("generatePortraitCandidateBatch — legacy DNA compatibility", () => {
         seriesId: "10",
         characterId: "1",
         batchId: "6cc9da31-8a44-4742-b9c9-0dc6558db621",
+        selectedImageModelId: "google-nano-banana-pro",
       },
     });
 
@@ -633,6 +642,31 @@ describe("settlePortraitCandidate — failed branch (Set A gap 7 policy classifi
 /* -------------------------------------------------------------------------- */
 
 describe("generateCharacterImage — customInstruction flow-through (no-approvedPrompt fallback path)", () => {
+  it("returns a recoverable age-stage precondition before any paid prompt call", async () => {
+    mockShouldRequireAgeStageVariantForRequest.mockReturnValueOnce(true);
+    mockExtractAgeFromDescription.mockReturnValueOnce(6);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(
+        selectChain([{ ...CHARACTER_ROW, roleTier: "lead_male" }]),
+      );
+
+    await expect(
+      router.generateCharacterImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          characterId: "1",
+          customInstruction: "เด็กชายอายุ 6 ขวบ",
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining(`${AGE_STAGE_VARIANT_REQUIRED_MARKER} age=6`),
+    });
+    expect(mockGenerateCharacterVisualPrompts).not.toHaveBeenCalled();
+  });
+
   it("threads customInstruction into generateCharacterVisualPrompts when supplied and approvedPrompt is absent", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW])) // loadOwnedSeries

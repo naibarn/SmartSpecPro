@@ -1043,6 +1043,7 @@ describe("presentationPlaybackExport", () => {
       "mp4",
       undefined,
       undefined,
+      { userId: 9, tenantId: "tenant-1", role: "user" },
     );
     expect(result.status).toBe("queued");
   });

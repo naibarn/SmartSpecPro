@@ -218,7 +218,8 @@ export function buildEpisodeCoverGenerationSnapshot(input: {
     narrativeText,
     Math.min(frameReferenceLimit, input.referenceImageCount ?? frameReferenceLimit),
     input.referenceSelectionOffset ??
-      (input.coverSlotId ? input.coverSlotId - 1 : 0)
+      (input.coverSlotId ? input.coverSlotId - 1 : 0),
+    input.coverSlotId ? input.coverSlotId - 1 : undefined
   );
   const references = selected.flatMap(reference => {
     const url = input.referenceUrls.get(reference.approvedMediaAssetId);
