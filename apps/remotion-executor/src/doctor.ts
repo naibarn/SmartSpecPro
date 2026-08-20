@@ -137,7 +137,7 @@ export async function managedRuntimeDoctor(root = managedRuntimeRoot()): Promise
 
   const probes: Array<[string, unknown, string[]]> = [
     ["runtime_node_probe", manifest.nodePath, ["--version"]],
-    ["runtime_browser_probe", manifest.browserPath, ["--version"]],
+    ["runtime_browser_probe", manifest.browserPath, ["--headless=new", "--disable-gpu", "--dump-dom", "about:blank"]],
     ["runtime_ffmpeg_probe", manifest.ffmpegPath, ["-version"]],
     ["runtime_ffprobe_probe", manifest.ffprobePath, ["-version"]],
   ];

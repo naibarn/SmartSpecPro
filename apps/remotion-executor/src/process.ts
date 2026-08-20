@@ -1,8 +1,12 @@
 import { spawn } from "node:child_process";
 
-export function runFile(file: string, args: string[], input?: string): Promise<{ code: number; stdout: string; stderr: string }> {
+export function runFile(file: string, args: string[], input?: string, timeoutMs = 30_000): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(file, args, { shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error("process_timeout"));
+    }, timeoutMs);
     let stdout = "";
     let stderr = "";
     let outputLimitExceeded = false;
@@ -22,8 +26,9 @@ export function runFile(file: string, args: string[], input?: string): Promise<{
     };
     child.stdout.setEncoding("utf8").on("data", (chunk) => { stdout = append(stdout, String(chunk)); });
     child.stderr.setEncoding("utf8").on("data", (chunk) => { stderr = append(stderr, String(chunk)); });
-    child.on("error", reject);
+    child.on("error", (error) => { clearTimeout(timeout); reject(error); });
     child.on("close", (code) => {
+      clearTimeout(timeout);
       if (outputLimitExceeded) {
         reject(new Error("process_output_too_large"));
       } else {
