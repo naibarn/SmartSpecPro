@@ -4,6 +4,11 @@ on:
   release:
     types: [created]
   workflow_dispatch:
+    inputs:
+      release_run_id:
+        description: "Successful Remotion Executor Release Gates run ID to promote"
+        required: false
+        type: string
   workflow_run:
     workflows: ["Remotion Executor Release Gates"]
     types: [completed]
@@ -30,16 +35,17 @@ jobs:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Download promoted Remotion runtime packs
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.release_run_id != '')
         uses: actions/download-artifact@v4
         with:
-          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.release_run_id }}
           pattern: remotion-runtime-*
           merge-multiple: true
           path: apps/web/client/public/releases/runtime
 
       - name: Verify Remotion archive and manifest pairing
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.release_run_id != '')
         shell: bash
         run: |
           shopt -s nullglob
