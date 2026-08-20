@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import os from "node:os";
@@ -18,7 +19,9 @@ const outputRoot = path.resolve(
   arg("--output") ?? process.env.REMOTION_EXECUTOR_PREPARED_RUNTIME_ROOT ?? path.join(os.tmpdir(), "smartaihub-remotion-runtime"),
 );
 const runtimeRoot = path.join(outputRoot, "runtime-pack");
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const npmExecPath = process.env.npm_execpath?.trim();
+const npmCommand = npmExecPath ? process.execPath : process.platform === "win32" ? "npm.cmd" : "npm";
+const npmPrefixArgs = npmExecPath ? [npmExecPath] : [];
 
 const target = {
   "remotion-executor-windows-x64": {
@@ -111,11 +114,11 @@ async function prepareSidecar(destination) {
     await fs.writeFile(path.join(sidecarDir, "package.json"), `${JSON.stringify(packageJson, null, 2)}\n`);
     const packOutput = await fs.mkdtemp(path.join(os.tmpdir(), "smartaihub-remotion-render-pack-"));
     try {
-      execFileSync(npmCommand, ["pack", path.join(repositoryRoot, "packages/remotion-render"), "--pack-destination", packOutput], { cwd: repositoryRoot, stdio: "inherit" });
+      execFileSync(npmCommand, [...npmPrefixArgs, "pack", path.join(repositoryRoot, "packages/remotion-render"), "--pack-destination", packOutput], { cwd: repositoryRoot, stdio: "inherit" });
       const tarball = (await fs.readdir(packOutput)).find((name) => name.endsWith(".tgz"));
       if (!tarball) throw new Error("remotion_render_package_missing");
       await fs.copyFile(path.join(packOutput, tarball), path.join(sidecarDir, "smartspec-remotion-render.tgz"));
-      execFileSync(npmCommand, ["install", "--ignore-scripts", "--no-package-lock", "--prefix", sidecarDir], { cwd: repositoryRoot, stdio: "inherit" });
+      execFileSync(npmCommand, [...npmPrefixArgs, "install", "--ignore-scripts", "--no-package-lock", "--prefix", sidecarDir], { cwd: repositoryRoot, stdio: "inherit" });
     } finally {
       await fs.rm(packOutput, { recursive: true, force: true });
     }
@@ -156,8 +159,7 @@ await fs.writeFile(path.join(runtimeRoot, "manifest.json"), `${JSON.stringify({
   runtimeId,
   runtimePlatform: runtimeId.includes("windows") ? "windows-x64" : `macos-${target.architecture}`,
   architecture: target.architecture,
-  allowed: false,
-  denyReason: "prepared_runtime_pending_signed_release",
+  allowed: true,
   remotionPlatformContractVersion: "2026-08-04.2",
   nodePath: target.nodePath,
   browserPath: target.browserPath,
@@ -165,5 +167,6 @@ await fs.writeFile(path.join(runtimeRoot, "manifest.json"), `${JSON.stringify({
   ffprobePath: target.ffprobePath,
   fontsPath: "fonts",
   sidecarPath: "remotion-sidecar/render.mjs",
+  sidecarSha256: crypto.createHash("sha256").update(await fs.readFile(path.join(runtimeRoot, "remotion-sidecar/render.mjs"))).digest("hex"),
 }, null, 2)}\n`);
 console.log(JSON.stringify({ runtimeId, runtimeRoot, node: target.nodePath, browser: target.browserPath, ffmpeg: target.ffmpegPath, ffprobe: target.ffprobePath }));
