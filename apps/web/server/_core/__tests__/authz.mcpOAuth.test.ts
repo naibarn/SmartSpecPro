@@ -16,8 +16,15 @@ vi.mock("../../services/appRuntimeConfig", () => ({
   getCachedPreferredInternalToken: vi.fn(() => ""),
 }));
 vi.mock("../../services/workerDelegationService", () => ({ verifyDelegatedWorkerBearerToken: vi.fn() }));
+vi.mock("../../services/mcpOAuthAuthorizationService", () => ({
+  isMcpOAuthGrantActive: vi.fn(async () => true),
+}));
 vi.mock("../../services/hermesAgentPairingService", () => ({ hermesAgentDeviceRevocationKey: vi.fn(() => "revocation-key") }));
-vi.mock("../../services/connectedDeviceService", () => ({ isConnectedDeviceRevoked: vi.fn(async () => false) }));
+const connectedDeviceMocks = vi.hoisted(() => ({
+  isConnectedDeviceRevoked: vi.fn(async () => false),
+  applyConnectedDeviceScopePolicy: vi.fn(async (input: { grantedScopes: string[] }) => input.grantedScopes),
+}));
+vi.mock("../../services/connectedDeviceService", () => connectedDeviceMocks);
 vi.mock("../mcpOAuthJwks", () => ({
   getMcpOAuthJwksConfig: vi.fn(() => ({ issuer: "https://issuer.example.test", audience: "smartaihub-mcp", jwksUri: "https://issuer.example.test/jwks", resource: "https://smartaihub.app/v1/mcp" })),
   verifyMcpOAuthBearerToken: mocks.verifyMcpOAuthBearerToken,
@@ -57,6 +64,46 @@ describe("authorizeRequest inbound MCP OAuth integration", () => {
     mocks.verifyMcpOAuthBearerToken.mockRejectedValue(new Error("bad signature"));
     await expect(authorizeRequest(requestWithToken("oauth-token"), { allowBearer: true, allowSession: false }))
       .resolves.toEqual({ ok: false, error: "Invalid OAuth token" });
+  });
+
+  it("keeps Hermes pairing on the local verifier when OAuth is enabled", async () => {
+    const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
+    const payload = Buffer.from(JSON.stringify({ tokenUse: "mcp_agent_pairing" })).toString("base64url");
+    const pairingToken = `${header}.${payload}.signature`;
+    mocks.verifyBearerToken.mockResolvedValue({
+      sub: "24",
+      tenantId: "tenant-1",
+      userId: 24,
+      deviceIdHash: "a".repeat(64),
+      tokenUse: "mcp_agent_pairing",
+      type: "access",
+      jti: "pairing-jti",
+      scopes: ["mcp:read", "media:download"],
+    });
+    connectedDeviceMocks.applyConnectedDeviceScopePolicy.mockResolvedValue(["mcp:read"]);
+    await expect(authorizeRequest(requestWithToken(pairingToken), { allowBearer: true, allowSession: false }))
+      .resolves.toMatchObject({ ok: true, mode: "agent_pairing", scopes: ["mcp:read"] });
+    expect(mocks.verifyMcpOAuthBearerToken).not.toHaveBeenCalled();
+  });
+
+  it("applies the current per-device permission policy to OAuth scopes", async () => {
+    mocks.verifyMcpOAuthBearerToken.mockResolvedValue({
+      sub: "user-24",
+      tenantId: "tenant-1",
+      userId: 24,
+      grantId: "grant-1",
+      scopes: ["mcp:read", "media:download"],
+    });
+    connectedDeviceMocks.applyConnectedDeviceScopePolicy.mockResolvedValue(["mcp:read"]);
+    await expect(authorizeRequest(requestWithToken("oauth-token"), { allowBearer: true, allowSession: false }))
+      .resolves.toMatchObject({ ok: true, scopes: ["mcp:read"] });
+    expect(connectedDeviceMocks.applyConnectedDeviceScopePolicy).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      ownerUserId: 24,
+      authKind: "mcp_oauth",
+      grantedScopes: ["mcp:read", "media:download"],
+      grantId: "grant-1",
+    });
   });
 
   it("does not let MCP OAuth configuration break local bearer auth on non-MCP routes", async () => {

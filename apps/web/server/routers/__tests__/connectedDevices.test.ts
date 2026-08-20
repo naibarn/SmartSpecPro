@@ -16,16 +16,18 @@ vi.mock("../../_core/trpc", () => {
   };
 });
 
-const { mockList, mockRevoke, mockRevokeAll } = vi.hoisted(() => ({
+const { mockList, mockRevoke, mockRevokeAll, mockUpdatePermissions } = vi.hoisted(() => ({
   mockList: vi.fn(),
   mockRevoke: vi.fn(),
   mockRevokeAll: vi.fn(),
+  mockUpdatePermissions: vi.fn(),
 }));
 
 vi.mock("../../services/connectedDeviceService", () => ({
   listConnectedDevicesForUser: mockList,
   revokeConnectedDevice: mockRevoke,
   revokeAllMcpConnectionsForUser: mockRevokeAll,
+  updateConnectedDevicePermissions: mockUpdatePermissions,
 }));
 
 import { connectedDevicesRouter } from "../connectedDevices";
@@ -98,6 +100,26 @@ describe("connectedDevicesRouter", () => {
       tenantId: "tenant-a",
       ownerUserId: 7,
       reason: "user_revoked_all_mcp_connections",
+    });
+  });
+
+  it("updates device permissions only in the authenticated tenant and user scope", async () => {
+    const device = {
+      deviceId: "device-1",
+      allowedScopes: ["mcp:read"],
+      effectiveScopes: ["mcp:read"],
+    };
+    mockUpdatePermissions.mockResolvedValue(device);
+    const result = await (connectedDevicesRouter.updatePermissions as any)({
+      ctx: { tenantId: "tenant-a", user: { id: 7 } },
+      input: { deviceId: "device-1", allowedScopes: ["mcp:read"] },
+    });
+    expect(result).toEqual({ device });
+    expect(mockUpdatePermissions).toHaveBeenCalledWith({
+      tenantId: "tenant-a",
+      ownerUserId: 7,
+      deviceId: "device-1",
+      allowedScopes: ["mcp:read"],
     });
   });
 });

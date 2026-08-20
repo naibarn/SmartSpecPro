@@ -64,6 +64,25 @@ describe("MCP OAuth authorization contract", () => {
     ]);
   });
 
+  it("filters internal capability scopes out of OAuth discovery and consent", () => {
+    process.env.MCP_OAUTH_ISSUER = "https://smartaihub.app";
+    process.env.MCP_OAUTH_RESOURCE = "https://smartaihub.app/v1/mcp";
+    process.env.MCP_OAUTH_JWKS_URI = "https://smartaihub.app/.well-known/jwks.json";
+    process.env.MCP_OAUTH_SCOPES_SUPPORTED =
+      "mcp:read,media:read,skills:execute,jobs:read,presentations:create";
+
+    expect(getMcpOAuthServerConfig()?.scopesSupported).toEqual([
+      "mcp:read",
+      "media:read",
+    ]);
+    expect(
+      normalizeMcpOAuthScopes(
+        "mcp:read skills:execute jobs:read media:read",
+        ["mcp:read", "skills:execute", "jobs:read", "media:read"],
+      ),
+    ).toEqual(["mcp:read", "media:read"]);
+  });
+
   it("verifies RFC 7636 S256 and hashes opaque secrets", () => {
     const verifier = "a".repeat(43);
     const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");

@@ -14139,6 +14139,10 @@ export const connectedDevices = pgTable(
     platform: varchar("platform", { length: 40 }),
     architecture: varchar("architecture", { length: 40 }),
     scopesJson: jsonb("scopesJson").$type<string[]>().notNull().default([]),
+    // Optional per-device restriction. A null value means the device keeps
+    // every scope granted by OAuth/pairing (the safe backwards-compatible
+    // default). It can never add scopes beyond scopesJson.
+    permissionPolicyJson: jsonb("permissionPolicyJson").$type<string[] | null>(),
     metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
     status: varchar("status", { length: 24 }).notNull().default("active"),
     approvedAt: timestamp("approvedAt", { withTimezone: true }),

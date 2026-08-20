@@ -1235,15 +1235,15 @@ function mcpDiscoveryHandler(_req: Request, res: Response): void {
     protocols: discovery.protocolVersions,
     eras: discovery.eras,
     serverDiscover: discovery.eras.modern,
-    // Keep the historical boolean manifest shape while adding the modern
-    // capability keys. JSON-RPC server/discover is the authoritative typed
-    // capability document.
+    // Keep the historical boolean `tools` marker for older clients, but omit
+    // unsupported capability keys. Several strict MCP clients deserialize
+    // this discovery object with the same model they use for InitializeResult
+    // and reject `prompts: false`/`tasks: false` because those fields must be
+    // capability objects when present. JSON-RPC server/discover remains the
+    // authoritative typed capability document.
     capabilities: {
       tools: true,
-      prompts: false,
       resources: Boolean(discovery.capabilities.resources),
-      tasks: false,
-      subscriptions: false,
       toolsListChanged: discovery.capabilities.tools.listChanged,
     },
     authorization: discovery.authorization,

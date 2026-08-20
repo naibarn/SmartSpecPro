@@ -6,6 +6,7 @@ import {
   listConnectedDevicesForUser,
   revokeAllMcpConnectionsForUser,
   revokeConnectedDevice,
+  updateConnectedDevicePermissions,
 } from "../services/connectedDeviceService";
 
 function tenantRequired(ctx: {
@@ -72,4 +73,35 @@ export const connectedDevicesRouter = router({
         reason: input?.reason,
       }),
     })),
+
+  updatePermissions: protectedProcedure
+    .input(
+      z.object({
+        deviceId: z.string().min(1).max(36),
+        allowedScopes: z.array(z.string().trim().min(1).max(80)).max(128),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return {
+          device: await updateConnectedDevicePermissions({
+            tenantId: tenantRequired(ctx),
+            ownerUserId: ctx.user.id,
+            deviceId: input.deviceId,
+            allowedScopes: input.allowedScopes,
+          }),
+        };
+      } catch (error) {
+        if (error instanceof Error && error.message === "Connected device not found") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Connected device not found" });
+        }
+        if (error instanceof Error && error.message === "Connected device is revoked") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Connected device is revoked" });
+        }
+        if (error instanceof Error && error.message.includes("unapproved scope")) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        throw error;
+      }
+    }),
 });

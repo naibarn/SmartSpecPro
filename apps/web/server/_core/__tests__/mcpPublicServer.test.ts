@@ -966,6 +966,9 @@ describe("GET /.well-known/mcp.json", () => {
     expect(res.body.auth.type).toBe("bearer");
     expect(res.body.capabilities.tools).toBe(true);
     expect(res.body.capabilities.resources).toBe(false);
+    expect(res.body.capabilities).not.toHaveProperty("prompts");
+    expect(res.body.capabilities).not.toHaveProperty("tasks");
+    expect(res.body.capabilities).not.toHaveProperty("subscriptions");
     expect(res.body.docs).toBeDefined();
   });
 

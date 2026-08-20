@@ -19,8 +19,11 @@ import { getCacheClient } from "./redisClients";
 const MCP_DOWNLOAD_AUDIENCE = "smartspec-mcp-download";
 const MCP_DOWNLOAD_TTL = "5m";
 const MCP_DOWNLOAD_TTL_SECONDS = 5 * 60;
-const MCP_PROVIDER_DOWNLOAD_TTL = "60m";
-export const MCP_PROVIDER_DOWNLOAD_TTL_SECONDS = 60 * 60;
+// Provider submissions can wait behind the per-user image queue before KIE
+// fetches the references. Keep this provider-only grant alive for the queue
+// window while retaining the short TTL for browser/MCP downloads.
+const MCP_PROVIDER_DOWNLOAD_TTL = "24h";
+export const MCP_PROVIDER_DOWNLOAD_TTL_SECONDS = 24 * 60 * 60;
 const MCP_DOWNLOAD_GRANT_PREFIX = "ssp:f145:mcp:download:grant:";
 
 type DownloadResourceType = "library_item" | "media_task" | "storage_key";

@@ -4,6 +4,7 @@ import { systemSettings } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { decrypt } from "./crypto";
 import {
+  MCP_OAUTH_ALLOWED_SCOPES,
   MCP_OAUTH_DEFAULT_SCOPES,
   MCP_OAUTH_LEGACY_SCOPE_ALIASES,
 } from "./mcpOAuthScopes";
@@ -125,7 +126,9 @@ function canonicalScopes(value: string | undefined): string[] {
   const configured = splitList(value).map((scope) =>
     MCP_OAUTH_LEGACY_SCOPE_ALIASES[scope as keyof typeof MCP_OAUTH_LEGACY_SCOPE_ALIASES] ?? scope,
   );
-  return Array.from(new Set(configured.length ? configured : MCP_OAUTH_DEFAULT_SCOPES))
+  const supported = (configured.length ? configured : [...MCP_OAUTH_DEFAULT_SCOPES])
+    .filter(scope => MCP_OAUTH_ALLOWED_SCOPES.has(scope));
+  return Array.from(new Set(supported.length ? supported : MCP_OAUTH_DEFAULT_SCOPES))
     .filter((scope) => /^[a-zA-Z0-9:_-]{1,80}$/.test(scope))
     .slice(0, 128);
 }

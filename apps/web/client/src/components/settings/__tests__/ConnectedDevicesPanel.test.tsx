@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 const revokeAllMock = vi.fn();
+const updatePermissionsMock = vi.fn();
 const invalidateMock = vi.fn();
 
 vi.mock("@/lib/trpc", () => ({
@@ -27,6 +28,9 @@ vi.mock("@/lib/trpc", () => ({
                 architecture: "arm64",
                 deviceFingerprint: "abc123def456",
                 scopes: ["mcp:read", "media:download"],
+                allowedScopes: ["mcp:read", "media:download"],
+                permissionPolicyCustomized: false,
+                effectiveScopes: ["mcp:read", "media:download"],
                 status: "active",
                 approvedAt: "2026-08-17T01:00:00.000Z",
                 lastSeenAt: "2026-08-17T01:05:00.000Z",
@@ -63,6 +67,26 @@ vi.mock("@/lib/trpc", () => ({
           mutate: revokeAllMock,
           isPending: false,
           variables: undefined,
+        }),
+      },
+      updatePermissions: {
+        useMutation: () => ({
+          mutate: updatePermissionsMock,
+          isPending: false,
+          variables: undefined,
+        }),
+      },
+    },
+    tenantFeatureFlags: {
+      getFeatureFlags: {
+        useQuery: () => ({
+          data: {
+            mcpModernProtocolEnabled: true,
+            mcpResourcesEnabled: true,
+            mcpOAuthProtectedResourceEnabled: true,
+            mcpOAuthAuthorizationServerEnabled: true,
+            remotionDedicatedExecutorEnabled: true,
+          },
         }),
       },
     },
@@ -102,6 +126,31 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
           "Matched registered callback.",
         "connectedDevices.tenantContext": "Approved tenant/workspace",
         "connectedDevices.permissionsTitle": "Granted permissions",
+        "connectedDevices.effectivePermissions": `Effective now: ${options?.count ?? 0}`,
+        "connectedDevices.deniedPermissions": `Blocked: ${options?.count ?? 0}`,
+        "connectedDevices.permissionPolicyTitle": "Permissions for this device",
+        "connectedDevices.permissionPolicyDescription": "Uncheck a scope",
+        "connectedDevices.permissionReset": "Allow all approved",
+        "connectedDevices.permissionSave": "Save permissions",
+        "connectedDevices.permissionSaveHint": "Save changed permissions",
+        "connectedDevices.permissionNoChanges": "No permission changes",
+        "connectedDevices.moduleStatusTitle": "MCP and runtime readiness",
+        "connectedDevices.moduleStatusDescription": "Live status",
+        "connectedDevices.statusReady": "Ready",
+        "connectedDevices.statusUnavailable": "Unavailable",
+        "connectedDevices.statusChecking": "Checking status...",
+        "connectedDevices.httpStatus": "HTTP",
+        "connectedDevices.tenantFeatureFlags": "Current tenant feature flags",
+        "connectedDevices.flagOn": "On",
+        "connectedDevices.flagOff": "Off",
+        "connectedDevices.probe.protectedResource": "Protected resource metadata",
+        "connectedDevices.probe.authorizationServer": "Authorization server",
+        "connectedDevices.probe.jwks": "JWKS",
+        "connectedDevices.flag.modernMcp": "Modern MCP",
+        "connectedDevices.flag.mcpResources": "MCP resources",
+        "connectedDevices.flag.oauthPrm": "OAuth PRM",
+        "connectedDevices.flag.oauthAuthorization": "OAuth authorization",
+        "connectedDevices.flag.remotion": "Remotion executor",
         "connectedDevices.scope.mcp_read": "Discover and read MCP",
         "connectedDevices.scope.media_download": "Download media",
         "connectedDevices.scopeDescription.mcp_read":
@@ -154,6 +203,7 @@ vi.mock("lucide-react", () => {
     Clock3: Icon,
     Copy: Icon,
     ExternalLink: Icon,
+    HelpCircle: Icon,
     Bot: Icon,
     Laptop: Icon,
     Loader2: Icon,
@@ -164,8 +214,20 @@ vi.mock("lucide-react", () => {
     ShieldOff: Icon,
     TriangleAlert: Icon,
     Trash2: Icon,
+    RotateCcw: Icon,
+    Save: Icon,
   };
 });
+
+vi.mock("@/components/ui/checkbox", () => ({
+  Checkbox: ({ checked, onCheckedChange }: any) => (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={event => onCheckedChange(event.target.checked)}
+    />
+  ),
+}));
 
 import { ConnectedDevicesPanel } from "../ConnectedDevicesPanel";
 
@@ -176,8 +238,8 @@ describe("ConnectedDevicesPanel", () => {
     expect(
       screen.getByRole("button", { name: "Revoke all MCP access" })
     ).toBeTruthy();
-    expect(screen.getByText("Discover and read MCP")).toBeTruthy();
-    expect(screen.getByText("Download media")).toBeTruthy();
+    expect(screen.getAllByText("Discover and read MCP").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Download media").length).toBeGreaterThan(0);
     expect(screen.getByText("SmartAIHub")).toBeTruthy();
     expect(screen.getByText("tenant-smartaihub")).toBeTruthy();
     expect(screen.getByText("https://claude.ai")).toBeTruthy();
@@ -186,6 +248,8 @@ describe("ConnectedDevicesPanel", () => {
     ).toBeTruthy();
     expect(screen.getByText("Hermes CLI / Agent")).toBeTruthy();
     expect(screen.getByText("Other MCP clients")).toBeTruthy();
+    expect(screen.getByText("MCP and runtime readiness")).toBeTruthy();
+    expect(screen.getByText("Permissions for this device")).toBeTruthy();
     expect(
       screen.getByText("If this client does not support OAuth")
     ).toBeTruthy();
@@ -215,6 +279,20 @@ describe("ConnectedDevicesPanel", () => {
     await waitFor(() =>
       expect(revokeAllMock).toHaveBeenCalledWith({
         reason: "user_revoked_all_mcp_connections",
+      })
+    );
+  });
+
+  it("sends a server-enforced device scope policy update", async () => {
+    render(<ConnectedDevicesPanel />);
+    const mediaCheckbox = screen.getAllByRole("checkbox")[1];
+    fireEvent.click(mediaCheckbox);
+    fireEvent.click(screen.getByRole("button", { name: "Save permissions" }));
+
+    await waitFor(() =>
+      expect(updatePermissionsMock).toHaveBeenCalledWith({
+        deviceId: "device-claude",
+        allowedScopes: ["mcp:read"],
       })
     );
   });

@@ -10,6 +10,7 @@ import {
 import { getDb } from "../db";
 import { revokeJti } from "../_core/revocation";
 import { auditLogger } from "./auditLogger";
+import { MCP_OAUTH_ALLOWED_SCOPES } from "./mcpOAuthScopes";
 import {
   connectedDeviceRecordSchema,
   type ConnectedDeviceRecord,
@@ -67,6 +68,44 @@ function safeClientOrigin(redirectUri: string | null): string | null {
   }
 }
 
+function normalizeScopes(scopes: unknown): string[] {
+  return Array.from(
+    new Set(
+      (Array.isArray(scopes) ? scopes : [])
+        .filter((scope): scope is string => typeof scope === "string")
+        .map(scope => scope.trim())
+        .filter(Boolean)
+    )
+  ).sort();
+}
+
+function effectiveScopesForRow(row: ConnectedDevice): {
+  grantedScopes: string[];
+  allowedScopes: string[];
+  effectiveScopes: string[];
+  permissionPolicyCustomized: boolean;
+} {
+  const allGrantedScopes = normalizeScopes(row.scopesJson);
+  const isUserMcpConnection = ["mcp_oauth", "mcp_agent_pairing"].includes(
+    row.authKind,
+  );
+  const grantedScopes = isUserMcpConnection
+    ? allGrantedScopes.filter(scope => MCP_OAUTH_ALLOWED_SCOPES.has(scope))
+    : allGrantedScopes;
+  const configuredPolicy = Array.isArray(row.permissionPolicyJson)
+    ? normalizeScopes(row.permissionPolicyJson)
+    : null;
+  const granted = new Set(grantedScopes);
+  const allowedScopes = configuredPolicy ?? grantedScopes;
+  const effectiveScopes = allowedScopes.filter(scope => granted.has(scope));
+  return {
+    grantedScopes,
+    allowedScopes,
+    effectiveScopes,
+    permissionPolicyCustomized: configuredPolicy !== null,
+  };
+}
+
 function deriveStatus(row: ConnectedDevice): ConnectedDeviceRecord["status"] {
   if (row.revokedAt) return "revoked";
   if (
@@ -81,7 +120,12 @@ function deriveStatus(row: ConnectedDevice): ConnectedDeviceRecord["status"] {
 
 function toRecord(
   row: ConnectedDevice,
-  tenantName?: string | null
+  tenantName?: string | null,
+  worker?: {
+    status: string | null;
+    runtimeVersion: string | null;
+    lastSeenAt: Date | null;
+  } | null
 ): ConnectedDeviceRecord {
   const metadata =
     row.metadataJson && typeof row.metadataJson === "object"
@@ -91,6 +135,7 @@ function toRecord(
     const value = metadata[key];
     return typeof value === "string" && value.length <= 1024 ? value : null;
   };
+  const scopePolicy = effectiveScopesForRow(row);
   return connectedDeviceRecordSchema.parse({
     deviceId: row.id,
     displayName: row.displayName,
@@ -100,7 +145,10 @@ function toRecord(
     platform: row.platform ?? null,
     architecture: row.architecture ?? null,
     deviceFingerprint: row.deviceFingerprint ?? null,
-    scopes: Array.isArray(row.scopesJson) ? row.scopesJson : [],
+    scopes: scopePolicy.grantedScopes,
+    allowedScopes: scopePolicy.allowedScopes,
+    permissionPolicyCustomized: scopePolicy.permissionPolicyCustomized,
+    effectiveScopes: scopePolicy.effectiveScopes,
     status: deriveStatus(row),
     approvedAt: dateOrNull(row.approvedAt),
     lastSeenAt: dateOrNull(row.lastSeenAt),
@@ -110,6 +158,9 @@ function toRecord(
     revokedByUserId: row.revokedByUserId ?? null,
     revocationReason: row.revocationReason ?? null,
     workerId: row.workerId ?? null,
+    workerStatus: worker?.status ?? null,
+    workerRuntimeVersion: worker?.runtimeVersion ?? null,
+    workerLastSeenAt: dateOrNull(worker?.lastSeenAt),
     consentId: row.consentId ?? null,
     tenantId: row.tenantId,
     tenantName: tenantName ?? null,
@@ -126,9 +177,12 @@ export async function upsertConnectedDevice(
   const db = await getDb();
   const hash = deviceIdHash(input.deviceId);
   const now = new Date();
-  const scopes = Array.from(
+  const requestedScopes = Array.from(
     new Set((input.scopes ?? []).map(scope => scope.trim()).filter(Boolean))
   ).sort();
+  const scopes = ["mcp_oauth", "mcp_agent_pairing"].includes(input.authKind)
+    ? requestedScopes.filter(scope => MCP_OAUTH_ALLOWED_SCOPES.has(scope))
+    : requestedScopes;
   const values = {
     tenantId: input.tenantId,
     ownerUserId: input.ownerUserId,
@@ -144,6 +198,7 @@ export async function upsertConnectedDevice(
     platform: input.platform?.trim().slice(0, 40) || null,
     architecture: input.architecture?.trim().slice(0, 40) || null,
     scopesJson: scopes,
+    permissionPolicyJson: null,
     metadataJson: input.metadataJson ?? {},
     status: "active",
     approvedAt: input.approvedAt ?? now,
@@ -166,10 +221,122 @@ export async function upsertConnectedDevice(
         connectedDevices.deviceIdHash,
         connectedDevices.authKind,
       ],
-      set: values,
+      // A token refresh/upsert must never reset a user's device permission
+      // policy back to the default. `undefined` is omitted by Drizzle.
+      set: { ...values, permissionPolicyJson: undefined },
     })
     .returning();
   return row ? toRecord(row) : null;
+}
+
+export async function updateConnectedDevicePermissions(input: {
+  tenantId: string;
+  ownerUserId: number;
+  deviceId: string;
+  allowedScopes: string[];
+}): Promise<ConnectedDeviceRecord> {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(connectedDevices)
+    .where(
+      and(
+        eq(connectedDevices.id, input.deviceId),
+        eq(connectedDevices.tenantId, input.tenantId),
+        eq(connectedDevices.ownerUserId, input.ownerUserId)
+      )
+    )
+    .limit(1);
+  if (!row) throw new Error("Connected device not found");
+  if (row.revokedAt) throw new Error("Connected device is revoked");
+
+  const grantedScopes = new Set(effectiveScopesForRow(row).grantedScopes);
+  const allowedScopes = normalizeScopes(input.allowedScopes);
+  if (allowedScopes.some(scope => !grantedScopes.has(scope))) {
+    throw new Error("Permission policy cannot grant an unapproved scope");
+  }
+
+  const [updated] = await db
+    .update(connectedDevices)
+    .set({
+      permissionPolicyJson: allowedScopes,
+      updatedAt: new Date(),
+    })
+    .where(eq(connectedDevices.id, row.id))
+    .returning();
+
+  auditLogger.log({
+    eventType: "connected_device_permissions_updated",
+    userId: input.ownerUserId,
+    tenantId: input.tenantId,
+    metadata: {
+      deviceRecordId: row.id,
+      authKind: row.authKind,
+      deviceFingerprint: row.deviceFingerprint,
+      grantedScopeCount: grantedScopes.size,
+      allowedScopeCount: allowedScopes.length,
+      deniedScopes: [...grantedScopes].filter(scope => !allowedScopes.includes(scope)),
+    },
+  });
+
+  return toRecord(updated ?? { ...row, permissionPolicyJson: allowedScopes });
+}
+
+/**
+ * Applies the user-controlled device policy at request time. OAuth claims
+ * remain the upper bound, while a policy change takes effect without waiting
+ * for an access-token refresh. Missing policy is intentionally treated as
+ * allow-all for backwards compatibility with existing approved devices.
+ */
+export async function applyConnectedDeviceScopePolicy(input: {
+  tenantId: string;
+  ownerUserId: number;
+  authKind: "mcp_oauth" | "mcp_agent_pairing";
+  grantedScopes: string[];
+  deviceIdHash?: string | null;
+  grantId?: string | null;
+}): Promise<string[]> {
+  const grantedScopes = normalizeScopes(input.grantedScopes).filter(scope =>
+    MCP_OAUTH_ALLOWED_SCOPES.has(scope),
+  );
+  try {
+    const db = await getDb();
+    const rows = await db
+      .select({
+        deviceIdHash: connectedDevices.deviceIdHash,
+        permissionPolicyJson: connectedDevices.permissionPolicyJson,
+        metadataJson: connectedDevices.metadataJson,
+      })
+      .from(connectedDevices)
+      .where(
+        and(
+          eq(connectedDevices.tenantId, input.tenantId),
+          eq(connectedDevices.ownerUserId, input.ownerUserId),
+          eq(connectedDevices.authKind, input.authKind),
+          isNull(connectedDevices.revokedAt)
+        )
+      );
+    const row = rows.find(candidate => {
+      if (input.deviceIdHash && candidate.deviceIdHash === deviceIdHash(input.deviceIdHash)) {
+        return true;
+      }
+      if (!input.grantId) return false;
+      const metadata = candidate.metadataJson;
+      return Boolean(
+        metadata &&
+        typeof metadata === "object" &&
+        (metadata as Record<string, unknown>).grantId === input.grantId
+      );
+    });
+    if (!row || !Array.isArray(row.permissionPolicyJson)) return grantedScopes;
+    const allowed = new Set(normalizeScopes(row.permissionPolicyJson));
+    return grantedScopes.filter(scope => allowed.has(scope));
+  } catch (error) {
+    // Production must fail closed: a configured DB error must not silently
+    // bypass a user-maintained permission restriction.
+    if (process.env.DATABASE_URL) throw error;
+    return grantedScopes;
+  }
 }
 
 export async function updateConnectedDeviceTokenMetadata(input: {
@@ -224,9 +391,24 @@ export async function listConnectedDevicesForUser(input: {
 }): Promise<ConnectedDeviceRecord[]> {
   const db = await getDb();
   const rows = await db
-    .select({ device: connectedDevices, tenantName: tenants.name })
+    .select({
+      device: connectedDevices,
+      tenantName: tenants.name,
+      worker: {
+        status: workers.status,
+        runtimeVersion: workers.runtimeVersion,
+        lastSeenAt: workers.lastSeenAt,
+      },
+    })
     .from(connectedDevices)
     .leftJoin(tenants, eq(connectedDevices.tenantId, tenants.id))
+    .leftJoin(
+      workers,
+      and(
+        eq(connectedDevices.workerId, workers.id),
+        eq(connectedDevices.tenantId, workers.tenantId)
+      )
+    )
     .where(
       and(
         eq(connectedDevices.tenantId, input.tenantId),
@@ -237,7 +419,9 @@ export async function listConnectedDevicesForUser(input: {
       desc(connectedDevices.updatedAt),
       desc(connectedDevices.createdAt)
     );
-  return rows.map(({ device, tenantName }) => toRecord(device, tenantName));
+  return rows.map(({ device, tenantName, worker }) =>
+    toRecord(device, tenantName, worker)
+  );
 }
 
 export async function isConnectedDeviceRevoked(input: {

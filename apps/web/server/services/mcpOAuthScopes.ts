@@ -18,6 +18,11 @@ export const MCP_OAUTH_DEFAULT_SCOPES = [
   "hermes:disconnect",
 ] as const;
 
+/** Public permissions exposed to OAuth and Hermes clients. */
+export const MCP_OAUTH_ALLOWED_SCOPES = new Set<string>(
+  MCP_OAUTH_DEFAULT_SCOPES,
+);
+
 export const MCP_OAUTH_LEGACY_SCOPE_ALIASES = {
   "models:read": "llm:chat",
   "render:submit": "remotion:submit",

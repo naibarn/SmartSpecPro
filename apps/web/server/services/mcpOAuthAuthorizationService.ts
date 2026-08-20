@@ -11,6 +11,7 @@ import {
 import { getDb } from "../db";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import {
+  MCP_OAUTH_ALLOWED_SCOPES,
   MCP_OAUTH_DEFAULT_SCOPES,
   MCP_OAUTH_LEGACY_SCOPE_ALIASES,
 } from "./mcpOAuthScopes";
@@ -107,6 +108,7 @@ export function getMcpOAuthServerConfig(): McpOAuthServerConfig | null {
             ] ?? scope
         )
         .filter(scope => /^[a-zA-Z0-9:_-]{1,80}$/.test(scope))
+        .filter(scope => MCP_OAUTH_ALLOWED_SCOPES.has(scope))
     )
   ).slice(0, 128);
   if (!scopesSupported.includes("mcp:read")) return null;
@@ -256,7 +258,7 @@ export function normalizeMcpOAuthScopes(
             ];
           return canonical && supported.includes(canonical) ? canonical : value;
         })
-        .filter(value => supported.includes(value))
+        .filter(value => supported.includes(value) && MCP_OAUTH_ALLOWED_SCOPES.has(value))
     )
   ).slice(0, 64);
 }

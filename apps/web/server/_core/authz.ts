@@ -8,7 +8,10 @@ import { getRedisClient } from "../services/redis";
 import { getCachedMcpServerToken, getCachedPreferredInternalToken } from "../services/appRuntimeConfig";
 import { verifyDelegatedWorkerBearerToken } from "../services/workerDelegationService";
 import { hermesAgentDeviceRevocationKey } from "../services/hermesAgentPairingService";
-import { isConnectedDeviceRevoked } from "../services/connectedDeviceService";
+import {
+  applyConnectedDeviceScopePolicy,
+  isConnectedDeviceRevoked,
+} from "../services/connectedDeviceService";
 import { getMcpOAuthJwksConfig, verifyMcpOAuthBearerToken } from "./mcpOAuthJwks";
 import { isMcpOAuthGrantActive } from "../services/mcpOAuthAuthorizationService";
 
@@ -109,6 +112,22 @@ function isMcpOAuthRequest(req: Request): boolean {
   return path === "/v1/mcp" || path.startsWith("/v1/mcp/") || path === "/mcp" || path.startsWith("/mcp/");
 }
 
+/**
+ * First-party Hermes pairing is a signed local JWT, not an OAuth access token.
+ * When OAuth is enabled we must still route that token to the local verifier;
+ * this untrusted preview is only a dispatch hint and is never authorization.
+ */
+function looksLikeMcpPairingToken(token: string): boolean {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return false;
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return decoded?.tokenUse === "mcp_agent_pairing";
+  } catch {
+    return false;
+  }
+}
+
 export async function authorizeRequest(
   req: Request,
   opts: { allowBearer: boolean; allowSession: boolean }
@@ -191,17 +210,28 @@ export async function authorizeRequest(
       // checked before the local HS256 verifier and fails closed when enabled;
       // an invalid external token must not be reinterpreted as another auth
       // mode or leak implementation details to the caller.
-      if (getMcpOAuthJwksConfig() && isMcpOAuthRequest(req)) {
+      if (
+        getMcpOAuthJwksConfig() &&
+        isMcpOAuthRequest(req) &&
+        !looksLikeMcpPairingToken(token)
+      ) {
         try {
           const identity = await verifyMcpOAuthBearerToken(token);
           if (identity.grantId && !(await isMcpOAuthGrantActive({ grantId: identity.grantId, userId: identity.userId, tenantId: identity.tenantId }))) {
             return { ok: false, error: "OAuth grant revoked" };
           }
+          const effectiveScopes = await applyConnectedDeviceScopePolicy({
+            tenantId: identity.tenantId,
+            ownerUserId: identity.userId,
+            authKind: "mcp_oauth",
+            grantedScopes: identity.scopes,
+            grantId: identity.grantId,
+          });
           return {
             ok: true,
             mode: "bearer",
             sub: identity.sub,
-            scopes: identity.scopes,
+            scopes: effectiveScopes,
             tenantId: identity.tenantId,
             userId: identity.userId,
             tokenUse: "mcp_oauth",
@@ -287,11 +317,18 @@ export async function authorizeRequest(
           })) {
             return { ok: false, error: "MCP pairing has been revoked" };
           }
+          const effectiveScopes = await applyConnectedDeviceScopePolicy({
+            tenantId,
+            ownerUserId: userId,
+            authKind: "mcp_agent_pairing",
+            grantedScopes: claims.scopes || [],
+            deviceIdHash,
+          });
           return {
             ok: true,
             mode: "agent_pairing",
             sub,
-            scopes: claims.scopes || [],
+            scopes: effectiveScopes,
             tenantId,
             userId,
             tokenUse,

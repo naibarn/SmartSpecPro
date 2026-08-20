@@ -137,8 +137,8 @@ describe("MCP download broker ACL and transfer contract", () => {
 
     const ref = await createProviderManagedStorageDownloadRef("media/tenant-1/24/reference.png", owner);
 
-    expect(ref.expiresInSeconds).toBe(60 * 60);
-    expect((mocks as any).lastTtl).toBe("60m");
+    expect(ref.expiresInSeconds).toBe(24 * 60 * 60);
+    expect((mocks as any).lastTtl).toBe("24h");
     expect(mocks.canReadManagedStorageKey).toHaveBeenCalledWith(
       "media/tenant-1/24/reference.png",
       owner,
