@@ -175,15 +175,21 @@ export async function addCreditsWithinTransaction(
     }
   }
 
+  // Keep the timestamp as an ISO string when interpolating it into a Drizzle
+  // SQL expression. Passing a Date object through this nested sql fragment
+  // reaches postgres-js as a raw bind value and fails with ERR_INVALID_ARG_TYPE
+  // in the update path used by manual PromptPay approval.
+  const grantTimestamp = new Date().toISOString();
+
   const [result] = await tx
     .update(users)
     .set({
       credits: sql`${users.credits} + ${amount}`,
       ...(params.freeCreditGrant
-        ? { freeCreditGrantedAt: sql`COALESCE(${users.freeCreditGrantedAt}, ${new Date()})` }
+        ? { freeCreditGrantedAt: sql`COALESCE(${users.freeCreditGrantedAt}, ${grantTimestamp})` }
         : {}),
       ...(type === "purchase"
-        ? { freeCreditPolicyCancelledAt: sql`COALESCE(${users.freeCreditPolicyCancelledAt}, ${new Date()})` }
+        ? { freeCreditPolicyCancelledAt: sql`COALESCE(${users.freeCreditPolicyCancelledAt}, ${grantTimestamp})` }
         : {}),
     })
     .where(eq(users.id, userId))
