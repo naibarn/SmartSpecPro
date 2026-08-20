@@ -118,7 +118,7 @@ async function prepareSidecar(destination) {
       const tarball = (await fs.readdir(packOutput)).find((name) => name.endsWith(".tgz"));
       if (!tarball) throw new Error("remotion_render_package_missing");
       await fs.copyFile(path.join(packOutput, tarball), path.join(sidecarDir, "smartspec-remotion-render.tgz"));
-      execFileSync(npmCommand, [...npmPrefixArgs, "install", "--ignore-scripts", "--no-package-lock", "--prefix", sidecarDir], { cwd: repositoryRoot, stdio: "inherit" });
+      execFileSync(npmCommand, [...npmPrefixArgs, "install", "--ignore-scripts", "--no-package-lock", "--prefix", sidecarDir], { cwd: sidecarDir, stdio: "inherit" });
     } finally {
       await fs.rm(packOutput, { recursive: true, force: true });
     }
