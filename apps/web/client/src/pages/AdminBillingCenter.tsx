@@ -418,6 +418,7 @@ export default function AdminBillingCenter() {
     fileName: string;
   } | null>(null);
   const [invoiceSlipPreviewLoading, setInvoiceSlipPreviewLoading] = useState(false);
+  const [invoiceSlipFullscreen, setInvoiceSlipFullscreen] = useState(false);
   const [renewalForm, setRenewalForm] = useState({
     subscriptionId: "",
     basePriceOverride: "",
@@ -960,6 +961,7 @@ export default function AdminBillingCenter() {
 
   useEffect(() => {
     setInvoiceSlipPreview(null);
+    setInvoiceSlipFullscreen(false);
   }, [selectedInvoiceId]);
 
   useEffect(() => {
@@ -1011,6 +1013,48 @@ export default function AdminBillingCenter() {
   const selectedInvoiceLineItems = invoiceAuditDetails?.lineItems ?? [];
   const selectedInvoicePayments = invoiceAuditDetails?.payments ?? [];
   const selectedInvoiceAuditLogs = invoiceAuditDetails?.auditLogs ?? [];
+
+  useEffect(() => {
+    const firstSlip = selectedInvoicePayments.flatMap((payment) => payment.slips)[0] ?? null;
+    if (!firstSlip) {
+      setInvoiceSlipPreview(null);
+      setInvoiceSlipPreviewLoading(false);
+      return;
+    }
+
+    let active = true;
+    setInvoiceSlipPreviewLoading(true);
+    void utils.adminBilling.getPromptPaySlipAccess.fetch({
+      slipId: firstSlip.id,
+      tenantId: null,
+      ttlSeconds: 3600,
+    }).then((access) => {
+      if (!active || !access?.url) return;
+      setInvoiceSlipPreview({
+        slipId: firstSlip.id,
+        url: access.url,
+        mimeType: firstSlip.mimeType,
+        fileName: firstSlip.originalFileName,
+      });
+    }).catch(() => {
+      if (active) setInvoiceSlipPreview(null);
+    }).finally(() => {
+      if (active) setInvoiceSlipPreviewLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedInvoiceId, selectedInvoicePayments, utils]);
+
+  useEffect(() => {
+    if (!invoiceSlipFullscreen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setInvoiceSlipFullscreen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [invoiceSlipFullscreen]);
   const invoices = invoiceListQuery.data ?? [];
   const recoveryCases = recoveryCasesQuery.data ?? [];
   const notificationDispatches = notificationDispatchesQuery.data ?? [];
@@ -1295,45 +1339,95 @@ export default function AdminBillingCenter() {
                 </div>
               </div>
             ) : null}
-            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-6">
+            {invoiceSlipFullscreen && invoiceSlipPreview?.url ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Full-screen invoice slip preview: ${invoiceSlipPreview.fileName}`}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4"
+                onClick={() => setInvoiceSlipFullscreen(false)}
+              >
+                <div
+                  className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-slate-900 shadow-2xl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
+                    <div className="min-w-0 truncate text-sm font-medium">{invoiceSlipPreview.fileName}</div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setInvoiceSlipFullscreen(false)}
+                      aria-label="Close full-screen invoice slip preview"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+                    {invoiceSlipPreview.mimeType === "application/pdf" ? (
+                      <iframe
+                        title={`Full-screen invoice slip preview: ${invoiceSlipPreview.fileName}`}
+                        src={invoiceSlipPreview.url}
+                        className="h-full w-full rounded-lg bg-white"
+                      />
+                    ) : (
+                      <img
+                        src={invoiceSlipPreview.url}
+                        alt={`Full-screen invoice slip preview: ${invoiceSlipPreview.fileName}`}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="grid items-start gap-6 xl:grid-cols-[minmax(250px,280px)_minmax(0,1fr)]">
+              <div className="space-y-6 xl:space-y-0 xl:contents">
                 <DashboardCard
                   eyebrow="Search"
-                  title="All invoices"
-                  description="แสดง invoice ล่าสุดไม่เกิน 200 รายการ และค้นหา invoice เก่าด้วยเลข invoice, order, user id, payment id หรือ provider reference ได้"
+                  title="Invoices"
+                  description="เลือก Invoice เพื่อเปิดรายละเอียด"
+                  className="xl:sticky xl:top-6 xl:col-start-1 xl:row-start-1 xl:order-1 xl:self-start"
                 >
-                  <div className="mb-4 flex gap-2">
+                  <div className="mb-4 space-y-2">
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search invoice / order / user / payment / provider ref"
+                      placeholder="ค้นหาเลข Invoice / Order"
                     />
-                    <Button variant="outline" onClick={() => invoiceListQuery.refetch()}>
+                    <Button className="w-full" variant="outline" onClick={() => invoiceListQuery.refetch()}>
                       <Search className="mr-2 h-4 w-4" />
-                      Search
+                      Search invoices
                     </Button>
                   </div>
-                  <div className="space-y-3">
+                  <div className="max-h-[calc(100vh-260px)] space-y-2 overflow-y-auto pr-1">
                     {invoices.map((invoice) => (
-                      <div key={invoice.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <div className="font-medium text-slate-900">{invoice.invoiceNumber ?? `Invoice #${invoice.id}`}</div>
-                            <Badge className={statusClass(invoice.status)}>{invoice.status}</Badge>
+                      <button
+                        type="button"
+                        key={invoice.id}
+                        aria-pressed={selectedInvoiceId === invoice.id}
+                        onClick={() => setSelectedInvoiceId(invoice.id)}
+                        className={`w-full rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${selectedInvoiceId === invoice.id ? "border-cyan-500 bg-cyan-50/80 shadow-sm" : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50/30"}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900">{invoice.invoiceNumber ?? `Invoice #${invoice.id}`}</div>
+                            <div className="mt-1 truncate text-xs text-slate-500">{invoice.invoiceType}</div>
                           </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {invoice.invoiceType} · {formatMoney(invoice.totalAmount, invoice.currency)}
+                          <Badge className="shrink-0 text-[10px]">{invoice.status}</Badge>
+                        </div>
+                        <div className="mt-3 grid gap-1 text-xs text-slate-500">
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Issued</span>
+                            <span className="text-right text-slate-700">{formatDateTime(invoice.issuedAt ?? invoice.createdAt)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span>Total</span>
+                            <span className="font-semibold text-slate-900">{formatMoney(invoice.totalAmount, invoice.currency)}</span>
                           </div>
                         </div>
-                        <Button
-                          variant={selectedInvoiceId === invoice.id ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedInvoiceId(invoice.id)}
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          Inspect
-                        </Button>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </DashboardCard>
@@ -1342,6 +1436,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Recovery"
                   title="Support recovery cases"
                   description="Open a support case tied to the selected invoice for reconciliation and follow-up."
+                  className="xl:col-start-2 xl:order-3"
                 >
                   <div className="grid gap-3 md:grid-cols-[0.8fr_1.2fr]">
                     <div>
@@ -1488,6 +1583,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Timeline"
                   title="Payments, reconciliation, and audit trail"
                   description="Read sanitized provider responses, recent reconciliation runs, and invoice audit entries."
+                  className="xl:col-start-2 xl:order-4"
                 >
                   <div className="space-y-4">
                     <div>
@@ -1595,11 +1691,12 @@ export default function AdminBillingCenter() {
                 </DashboardCard>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-6 xl:space-y-0 xl:contents">
                 <DashboardCard
                   eyebrow="Selected Invoice"
                   title={selectedInvoice ? selectedInvoice.invoiceNumber ?? `Invoice #${selectedInvoice.id}` : "Choose an invoice"}
                   description="ตรวจสอบประวัติ Invoice ลูกค้า รายการสั่งซื้อ การชำระเงิน และหลักฐานการอนุมัติได้ในจุดเดียว"
+                  className="xl:col-start-2 xl:row-start-1 xl:order-2"
                 >
                   {selectedInvoice ? (
                     <div className="space-y-4">
@@ -1754,7 +1851,22 @@ export default function AdminBillingCenter() {
                                     <div className="rounded-xl border border-slate-200 bg-white p-3">
                                       <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-slate-600">
                                         <span className="truncate">{invoiceSlipPreview.fileName}</span>
-                                        <Button variant="ghost" size="sm" onClick={() => setInvoiceSlipPreview(null)}><X className="h-4 w-4" /></Button>
+                                        <div className="flex items-center gap-1">
+                                          <Button variant="ghost" size="sm" onClick={() => setInvoiceSlipFullscreen(true)} aria-label="Expand invoice slip preview">
+                                            <Maximize2 className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                              setInvoiceSlipPreview(null);
+                                              setInvoiceSlipFullscreen(false);
+                                            }}
+                                            aria-label="Close invoice slip preview"
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </Button>
+                                        </div>
                                       </div>
                                       {invoiceSlipPreview.mimeType.startsWith("image/") ? (
                                         <img src={invoiceSlipPreview.url} alt={invoiceSlipPreview.fileName} className="max-h-80 w-full rounded-lg object-contain" />
@@ -2017,6 +2129,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Documents"
                   title="Invoice documents"
                   description="Latest PDF variants and render history for the selected invoice."
+                  className="xl:col-start-2 xl:order-5"
                 >
                   <div className="space-y-2">
                     {documents.map((document) => (
@@ -2041,6 +2154,7 @@ export default function AdminBillingCenter() {
                   eyebrow="Notifications"
                   title="Dispatch history"
                   description="Dedupe-aware notification records created for this invoice."
+                  className="xl:col-start-2 xl:order-6"
                 >
                   <div className="space-y-2">
                     {notificationDispatches.map((dispatch) => (

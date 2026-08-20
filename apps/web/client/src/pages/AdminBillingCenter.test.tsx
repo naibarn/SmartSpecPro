@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mockSetLocation = vi.fn();
 const sellerProfileData = {
@@ -564,11 +564,11 @@ vi.mock("@/lib/trpc", () => ({
 import AdminBillingCenter from "./AdminBillingCenter";
 
 describe("AdminBillingCenter", () => {
-  it("renders invoice search, recovery case tools, renewal attempts, and payment method settings", () => {
+  it("renders invoice search, recovery case tools, renewal attempts, and payment method settings", async () => {
     render(<AdminBillingCenter />);
 
     expect(screen.getByText("Invoices, recovery, and document operations")).toBeInTheDocument();
-    expect(screen.getAllByText("All invoices").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Invoices").length).toBeGreaterThan(0);
     expect(screen.getByText("Support recovery cases")).toBeInTheDocument();
     expect(screen.getAllByText("TH-INV-2026-000301").length).toBeGreaterThan(0);
     expect(screen.getByText("customer@example.com")).toBeInTheDocument();
@@ -579,5 +579,13 @@ describe("AdminBillingCenter", () => {
     expect(screen.getAllByText(/admin@example\.com/).length).toBeGreaterThan(0);
     expect(screen.getByRole("tab", { name: "Billing Settings" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Renewals" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText("promptpay-slip.png").length).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: "Expand invoice slip preview" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Expand invoice slip preview" }));
+    expect(screen.getByRole("dialog", { name: "Full-screen invoice slip preview: promptpay-slip.png" })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Full-screen invoice slip preview: promptpay-slip.png" })).not.toBeInTheDocument();
   });
 });
