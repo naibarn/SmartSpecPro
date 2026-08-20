@@ -53,13 +53,23 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $ffmpeg = Get-Command ffmpeg.exe -ErrorAction SilentlyContinue
-          $ffprobe = Get-Command ffprobe.exe -ErrorAction SilentlyContinue
+          function Resolve-Executable([string] $name) {
+            $command = Get-Command $name -ErrorAction SilentlyContinue
+            if ($command -and $command.Source -notlike '*\Chocolatey\bin\*') { return $command.Source }
+            $chocolateyRoot = if ($env:ChocolateyInstall) { $env:ChocolateyInstall } else { 'C:\ProgramData\chocolatey' }
+            $packageBinary = Get-ChildItem -Path (Join-Path $chocolateyRoot 'lib') -Filter $name -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($packageBinary) { return $packageBinary.FullName }
+            if ($command) { return $command.Source }
+            return $null
+          }
+
+          $ffmpeg = Resolve-Executable 'ffmpeg.exe'
+          $ffprobe = Resolve-Executable 'ffprobe.exe'
           if (-not $ffmpeg -or -not $ffprobe) {
             for ($attempt = 1; $attempt -le 3; $attempt++) {
               choco install ffmpeg -y --no-progress --limit-output
-              $ffmpeg = Get-Command ffmpeg.exe -ErrorAction SilentlyContinue
-              $ffprobe = Get-Command ffprobe.exe -ErrorAction SilentlyContinue
+              $ffmpeg = Resolve-Executable 'ffmpeg.exe'
+              $ffprobe = Resolve-Executable 'ffprobe.exe'
               if ($ffmpeg -and $ffprobe) { break }
               if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
             }
@@ -71,15 +81,15 @@ jobs:
               -Uri 'https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip' `
               -OutFile $ffmpegZip
             Expand-Archive -Path $ffmpegZip -DestinationPath $ffmpegRoot -Force
-            $ffmpeg = Get-ChildItem -Path $ffmpegRoot -Filter ffmpeg.exe -Recurse -File | Select-Object -First 1
-            $ffprobe = Get-ChildItem -Path $ffmpegRoot -Filter ffprobe.exe -Recurse -File | Select-Object -First 1
+            $ffmpeg = (Get-ChildItem -Path $ffmpegRoot -Filter ffmpeg.exe -Recurse -File | Select-Object -First 1).FullName
+            $ffprobe = (Get-ChildItem -Path $ffmpegRoot -Filter ffprobe.exe -Recurse -File | Select-Object -First 1).FullName
           }
           if (-not $ffmpeg -or -not $ffprobe) { throw 'ffmpeg and ffprobe were not installed' }
           npx --yes @puppeteer/browsers install chrome@stable --path "$env:RUNNER_TEMP\smartaihub-chrome"
           $chrome = Get-ChildItem -Path "$env:RUNNER_TEMP\smartaihub-chrome" -Filter chrome.exe -Recurse -File | Select-Object -First 1
           if (-not $chrome) { throw "chrome.exe was not installed" }
-          "REMOTION_EXECUTOR_FFMPEG_PATH=$($ffmpeg.Source ?? $ffmpeg.FullName)" >> $env:GITHUB_ENV
-          "REMOTION_EXECUTOR_FFPROBE_PATH=$($ffprobe.Source ?? $ffprobe.FullName)" >> $env:GITHUB_ENV
+          "REMOTION_EXECUTOR_FFMPEG_PATH=$ffmpeg" >> $env:GITHUB_ENV
+          "REMOTION_EXECUTOR_FFPROBE_PATH=$ffprobe" >> $env:GITHUB_ENV
           "REMOTION_EXECUTOR_CHROME_PATH=$($chrome.FullName)" >> $env:GITHUB_ENV
 
       - name: Install FFmpeg and Chrome (macOS)
