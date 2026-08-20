@@ -133,9 +133,47 @@ function getSourceUsdAmount(invoice: { totalsSnapshotJson?: unknown }, payments:
 function getLineItemMetaLabel(value: unknown) {
   if (!value || typeof value !== "object") return null;
   const metadata = value as Record<string, unknown>;
-  return [metadata.packageCode, metadata.credits ? `${metadata.credits} credits` : null, metadata.planCode]
+  return [
+    metadata.packageName,
+    metadata.packageCode,
+    metadata.credits ? `${formatQuantity(metadata.credits)} credits` : null,
+    metadata.planCode,
+  ]
     .filter(Boolean)
     .join(" · ") || null;
+}
+
+function cleanInvoiceText(value: string) {
+  return value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getInvoiceLineItemPresentation(description: unknown, metadataValue: unknown) {
+  const rawDescription = String(description ?? "").trim();
+  const titleMatch = rawDescription.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+  const bulletItems = Array.from(rawDescription.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi))
+    .map((match) => cleanInvoiceText(match[1] ?? ""))
+    .filter(Boolean);
+  const plainDescription = cleanInvoiceText(rawDescription);
+  const descriptionTitle = cleanInvoiceText(titleMatch?.[1] ?? "");
+  const metadata = metadataValue && typeof metadataValue === "object"
+    ? metadataValue as Record<string, unknown>
+    : {};
+  const packageName = typeof metadata.packageName === "string" ? metadata.packageName.trim() : "";
+
+  return {
+    title: packageName ? `${packageName} credit package` : descriptionTitle || plainDescription || "Invoice item",
+    subtitle: packageName && descriptionTitle && descriptionTitle !== packageName ? descriptionTitle : null,
+    bulletItems,
+  };
 }
 
 function renderJsonSummary(value: unknown) {
@@ -1394,7 +1432,7 @@ export default function AdminBillingCenter() {
                     <Input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="ค้นหาเลข Invoice / Order"
+                      placeholder="ค้นหา Invoice / email / Order"
                     />
                     <Button className="w-full" variant="outline" onClick={() => invoiceListQuery.refetch()}>
                       <Search className="mr-2 h-4 w-4" />
@@ -1410,13 +1448,12 @@ export default function AdminBillingCenter() {
                         onClick={() => setSelectedInvoiceId(invoice.id)}
                         className={`w-full rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 ${selectedInvoiceId === invoice.id ? "border-cyan-500 bg-cyan-50/80 shadow-sm" : "border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50/30"}`}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900">{invoice.invoiceNumber ?? `Invoice #${invoice.id}`}</div>
-                            <div className="mt-1 truncate text-xs text-slate-500">{invoice.invoiceType}</div>
-                          </div>
+                        <div className="flex items-center justify-between gap-2">
                           <Badge className="shrink-0 text-[10px]">{invoice.status}</Badge>
                         </div>
+                        <div className="mt-2 break-all font-mono text-[13px] font-semibold leading-5 tracking-tight text-slate-900">{invoice.invoiceNumber ?? `Invoice #${invoice.id}`}</div>
+                        <div className="mt-1 text-xs text-slate-500">{invoice.invoiceType}</div>
+                        <div className="mt-1 break-all text-xs leading-4 text-slate-600" title={invoice.customerEmail ?? undefined}>{invoice.customerEmail ?? "ไม่พบอีเมลลูกค้า"}</div>
                         <div className="mt-3 grid gap-1 text-xs text-slate-500">
                           <div className="flex items-center justify-between gap-2">
                             <span>Issued</span>
@@ -1767,16 +1804,26 @@ export default function AdminBillingCenter() {
                           <div>Item</div><div>Qty</div><div className="text-right">Amount</div>
                         </div>
                         <div className="divide-y divide-slate-100">
-                          {selectedInvoiceLineItems.map((lineItem) => (
-                            <div key={lineItem.id} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
-                              <div className="min-w-0">
-                                <div className="font-medium text-slate-900">{lineItem.description || lineItem.itemType}</div>
-                                <div className="text-xs text-slate-500">{lineItem.itemType}{getLineItemMetaLabel(lineItem.metadataJson) ? ` · ${getLineItemMetaLabel(lineItem.metadataJson)}` : ""}</div>
+                          {selectedInvoiceLineItems.map((lineItem) => {
+                            const presentation = getInvoiceLineItemPresentation(lineItem.description, lineItem.metadataJson);
+                            const metadataLabel = getLineItemMetaLabel(lineItem.metadataJson);
+                            return (
+                              <div key={lineItem.id} className="grid gap-3 px-4 py-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-start sm:gap-6">
+                                <div className="min-w-0">
+                                  <div className="font-medium text-slate-900">{presentation.title}</div>
+                                  {presentation.subtitle ? <div className="mt-1 text-xs text-slate-600">{presentation.subtitle}</div> : null}
+                                  {presentation.bulletItems.length > 0 ? (
+                                    <ul className="mt-2 grid gap-x-4 gap-y-1 text-xs leading-5 text-slate-600 sm:grid-cols-2">
+                                      {presentation.bulletItems.map((item) => <li key={item} className="flex gap-2"><span className="text-cyan-600">•</span><span>{item}</span></li>)}
+                                    </ul>
+                                  ) : null}
+                                  <div className="mt-2 text-xs text-slate-500">{lineItem.itemType}{metadataLabel ? ` · ${metadataLabel}` : ""}</div>
+                                </div>
+                                <div className="text-slate-600 sm:pt-0.5">{formatQuantity(lineItem.quantity)}</div>
+                                <div className="text-left font-medium text-slate-900 sm:text-right">{formatMoney(lineItem.amount, selectedInvoice.currency)}</div>
                               </div>
-                              <div className="text-slate-600">Qty {formatQuantity(lineItem.quantity)}</div>
-                              <div className="text-left font-medium text-slate-900 sm:text-right">{formatMoney(lineItem.amount, selectedInvoice.currency)}</div>
-                            </div>
-                          ))}
+                            );
+                          })}
                           {selectedInvoiceLineItems.length === 0 ? <div className="px-4 py-5 text-sm text-slate-500">ไม่พบรายการสินค้าใน Invoice นี้</div> : null}
                         </div>
                       </div>

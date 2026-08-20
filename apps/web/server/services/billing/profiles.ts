@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   billingProfiles,
@@ -641,18 +641,24 @@ export async function listAdminInvoices(params: {
   const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
   const search = params.query?.trim() || null;
   const scopedTenantClause = params.tenantId ? eq(invoices.tenantId, params.tenantId) : undefined;
+  const invoiceListSelection = {
+    ...getTableColumns(invoices),
+    customerEmail: users.email,
+  };
 
   if (!search) {
     if (!scopedTenantClause) {
       return db
-        .select()
+        .select(invoiceListSelection)
         .from(invoices)
+        .leftJoin(users, eq(users.id, invoices.userId))
         .orderBy(desc(invoices.createdAt))
         .limit(limit);
     }
     return db
-      .select()
+      .select(invoiceListSelection)
       .from(invoices)
+      .leftJoin(users, eq(users.id, invoices.userId))
       .where(scopedTenantClause)
       .orderBy(desc(invoices.createdAt))
       .limit(limit);
@@ -676,6 +682,7 @@ export async function listAdminInvoices(params: {
   const invoiceSearchClauses = [
     ilike(invoices.invoiceNumber, `%${search}%`),
     ilike(invoices.orderId, `%${search}%`),
+    ilike(users.email, `%${search}%`),
     Number.isInteger(numericSearch) ? eq(invoices.userId, numericSearch) : undefined,
     invoiceIdMatches.length > 0 ? inArray(invoices.id, invoiceIdMatches) : undefined,
   ].filter(Boolean) as any[];
@@ -684,8 +691,9 @@ export async function listAdminInvoices(params: {
   const whereClause = scopedTenantClause && searchClause ? and(scopedTenantClause, searchClause) : scopedTenantClause ?? searchClause;
 
   return db
-    .select()
+    .select(invoiceListSelection)
     .from(invoices)
+    .leftJoin(users, eq(users.id, invoices.userId))
     .where(whereClause)
     .orderBy(desc(invoices.createdAt))
     .limit(limit);

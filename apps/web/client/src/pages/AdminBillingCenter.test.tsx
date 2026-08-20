@@ -34,6 +34,7 @@ const invoicesData = [
     invoiceType: "subscription_renewal",
     totalAmount: "999.00",
     currency: "THB",
+    customerEmail: "customer@example.com",
   },
 ] as const;
 const selectedInvoiceData = {
@@ -65,11 +66,11 @@ const selectedInvoiceAuditData = {
       id: 1,
       invoiceId: 301,
       itemType: "credit_package",
-      description: "Starter credit package",
+      description: "<div class=\"space-y-2\"><p class=\"font-medium text-primary\">Most Popular - Best value for regular users</p><ul><li>10,000 credits</li><li>Priority support</li></ul></div>",
       quantity: "1.00",
       unitPrice: "10.00",
       amount: "10.00",
-      metadataJson: { packageCode: "starter", credits: 1000 },
+      metadataJson: { packageName: "Standard", packageCode: "starter", credits: 1000 },
       createdAt: "2026-03-30T00:00:00.000Z",
     },
   ],
@@ -571,8 +572,10 @@ describe("AdminBillingCenter", () => {
     expect(screen.getAllByText("Invoices").length).toBeGreaterThan(0);
     expect(screen.getByText("Support recovery cases")).toBeInTheDocument();
     expect(screen.getAllByText("TH-INV-2026-000301").length).toBeGreaterThan(0);
-    expect(screen.getByText("customer@example.com")).toBeInTheDocument();
-    expect(screen.getByText("Starter credit package")).toBeInTheDocument();
+    expect(screen.getAllByText("customer@example.com").length).toBeGreaterThan(1);
+    expect(screen.getByText("Standard credit package")).toBeInTheDocument();
+    expect(screen.getByText("Most Popular - Best value for regular users")).toBeInTheDocument();
+    expect(screen.queryByText(/<div class=/)).not.toBeInTheDocument();
     expect(screen.getByText("Source amount (USD)")).toBeInTheDocument();
     expect(screen.getByText("promptpay-slip.png")).toBeInTheDocument();
     expect(screen.getByText("Approved")).toBeInTheDocument();
