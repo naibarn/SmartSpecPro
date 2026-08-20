@@ -1201,6 +1201,20 @@ describe("workerRuntime routes", () => {
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
   });
 
+  it("accepts a signed executor pack when the public key uses escaped newlines", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-executor-escaped-key-"));
+    const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    const publicKey = writeSignedRemotionExecutorZip(filePath);
+    const app = await makeApp({
+      runtimePacks: { releaseDirs: [tempDir], publicKey: publicKey.replaceAll("\n", "\\n") },
+    });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=remotion-executor-macos-x64");
+    expect(res.status).toBe(200);
+    expect(res.body.archiveFileName).toBe(fileName);
+  });
+
   it("does not publish an executor archive without a trusted signature", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-remotion-unsigned-"));
     const fileName = "smart-ai-hub-remotion-executor-remotion-executor-macos-x64-0.1.0.zip";

@@ -424,6 +424,13 @@ function stringField(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function normalizeRuntimePackPublicKey(value: string): string {
+  // systemd EnvironmentFile keeps escaped newlines literal, while dotenv
+  // expands them. Accept both forms so production verification is stable
+  // across the supported service managers.
+  return value.replaceAll("\\r", "\r").replaceAll("\\n", "\n").trim();
+}
+
 function archiveContainsFiles(filePath: string, requiredFiles: string[]): boolean {
   try {
     const entries = new Set(new AdmZip(filePath).getEntries().map((entry) => entry.entryName));
@@ -683,7 +690,7 @@ function isSignedRemotionExecutorPack(
       && crypto.verify(
         null,
         Buffer.from(archiveSha256),
-        crypto.createPublicKey(publicKey),
+        crypto.createPublicKey(normalizeRuntimePackPublicKey(publicKey)),
         Buffer.from(signature, "base64"),
       )
       && requiredFiles.every((entry): entry is string => Boolean(entry))
@@ -877,9 +884,9 @@ export function registerWorkerRuntimeRoutes(
   };
   const workerPolicy = deps.workerPolicy ?? { getWorkerPolicySnapshot };
   const runtimePackReleaseDirs = deps.runtimePacks?.releaseDirs ?? getRuntimePackReleaseDirs();
-  const runtimePackPublicKey = deps.runtimePacks?.publicKey?.trim()
+  const runtimePackPublicKey = normalizeRuntimePackPublicKey(deps.runtimePacks?.publicKey?.trim()
     || process.env.SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY?.trim()
-    || "";
+    || "");
 
   const registrationLimiter = rateLimit("workers-register", { rpm: 10 });
   const heartbeatLimiter = rateLimit("workers-heartbeat", { rpm: 120 });
