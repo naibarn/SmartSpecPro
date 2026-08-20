@@ -3,12 +3,18 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  CheckCircle2,
+  Clock3,
   BadgeDollarSign,
   Download,
+  ExternalLink,
   FileText,
+  ImageIcon,
   Loader2,
   Maximize2,
   Mail,
+  Package,
+  ReceiptText,
   RefreshCw,
   RotateCcw,
   Search,
@@ -16,6 +22,7 @@ import {
   ShieldAlert,
   Ticket,
   Trash2,
+  UserRound,
   Wallet,
   X,
 } from "lucide-react";
@@ -79,6 +86,56 @@ function statusClass(status: string | null | undefined) {
     default:
       return "bg-slate-100 text-slate-700";
   }
+}
+
+function formatQuantity(value: unknown) {
+  const quantity = Number(value ?? 0);
+  return Number.isFinite(quantity)
+    ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(quantity)
+    : String(value ?? "-");
+}
+
+function formatFileSize(value: unknown) {
+  const bytes = Number(value ?? 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "-";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getAuditActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    promptpay_direct_order_created: "สร้างรายการ PromptPay",
+    promptpay_slip_submitted: "อัปโหลดสลิป",
+    promptpay_payment_approved: "อนุมัติการชำระเงิน",
+    promptpay_slip_rejected: "ปฏิเสธสลิป",
+    payment_status_changed: "เปลี่ยนสถานะการชำระเงิน",
+    invoice_status_changed: "เปลี่ยนสถานะ Invoice",
+  };
+  return labels[action] ?? action.replaceAll("_", " ");
+}
+
+function getAuditPaymentId(afterJson: unknown) {
+  if (!afterJson || typeof afterJson !== "object") return null;
+  const paymentId = (afterJson as Record<string, unknown>).paymentId;
+  return typeof paymentId === "number" ? paymentId : null;
+}
+
+function getSourceUsdAmount(invoice: { totalsSnapshotJson?: unknown }, payments: Array<{ sourceAmountUsd?: unknown }>) {
+  const paymentSource = payments.find((payment) => payment.sourceAmountUsd != null)?.sourceAmountUsd;
+  if (paymentSource != null) return paymentSource;
+  if (invoice.totalsSnapshotJson && typeof invoice.totalsSnapshotJson === "object") {
+    return (invoice.totalsSnapshotJson as Record<string, unknown>).sourceAmountUsd ?? null;
+  }
+  return null;
+}
+
+function getLineItemMetaLabel(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const metadata = value as Record<string, unknown>;
+  return [metadata.packageCode, metadata.credits ? `${metadata.credits} credits` : null, metadata.planCode]
+    .filter(Boolean)
+    .join(" · ") || null;
 }
 
 function renderJsonSummary(value: unknown) {
@@ -354,6 +411,13 @@ export default function AdminBillingCenter() {
   const [promptPayPreviewLoading, setPromptPayPreviewLoading] = useState(false);
   const [promptPayFullscreen, setPromptPayFullscreen] = useState(false);
   const [promptPayRejectReason, setPromptPayRejectReason] = useState("");
+  const [invoiceSlipPreview, setInvoiceSlipPreview] = useState<{
+    slipId: number;
+    url: string;
+    mimeType: string;
+    fileName: string;
+  } | null>(null);
+  const [invoiceSlipPreviewLoading, setInvoiceSlipPreviewLoading] = useState(false);
   const [renewalForm, setRenewalForm] = useState({
     subscriptionId: "",
     basePriceOverride: "",
@@ -370,7 +434,7 @@ export default function AdminBillingCenter() {
     invoiceId: selectedInvoiceId ?? null,
     limit: 20,
   });
-  const selectedInvoiceQuery = trpc.adminBilling.getInvoice.useQuery(
+  const selectedInvoiceQuery = trpc.adminBilling.getInvoiceAuditDetails.useQuery(
     { invoiceId: selectedInvoiceId ?? 0 },
     { enabled: !!selectedInvoiceId },
   );
@@ -415,16 +479,16 @@ export default function AdminBillingCenter() {
   const domesticPreviewQuery = trpc.adminBilling.previewInvoiceNumber.useQuery({ stream: "domestic" });
   const internationalPreviewQuery = trpc.adminBilling.previewInvoiceNumber.useQuery({ stream: "international" });
   const selectedInvoicePaymentMethodsQuery = trpc.adminBilling.listPaymentMethods.useQuery(
-    { userId: selectedInvoiceQuery.data?.userId ?? null },
-    { enabled: !!selectedInvoiceQuery.data?.userId },
+    { userId: selectedInvoiceQuery.data?.invoice.userId ?? null },
+    { enabled: !!selectedInvoiceQuery.data?.invoice.userId },
   );
   const selectedSubscriptionSettingsQuery = trpc.adminBilling.getSubscriptionPaymentSettings.useQuery(
-    { subscriptionId: selectedInvoiceQuery.data?.subscriptionId ?? 0 },
-    { enabled: !!selectedInvoiceQuery.data?.subscriptionId },
+    { subscriptionId: selectedInvoiceQuery.data?.invoice.subscriptionId ?? 0 },
+    { enabled: !!selectedInvoiceQuery.data?.invoice.subscriptionId },
   );
   const renewalAttemptsQuery = trpc.adminBilling.listRenewalAttempts.useQuery(
-    { subscriptionId: selectedInvoiceQuery.data?.subscriptionId ?? 0, limit: 20 },
-    { enabled: !!selectedInvoiceQuery.data?.subscriptionId },
+    { subscriptionId: selectedInvoiceQuery.data?.invoice.subscriptionId ?? 0, limit: 20 },
+    { enabled: !!selectedInvoiceQuery.data?.invoice.subscriptionId },
   );
   const phase2MetricsQuery = trpc.adminBilling.getPhase2Metrics.useQuery({});
   const updateBeamProviderSettingsMutation = trpc.adminBilling.updateBeamProviderSettings.useMutation({
@@ -863,11 +927,40 @@ export default function AdminBillingCenter() {
     }
   }
 
+  async function handleInvoiceSlipPreview(slip: { id: number; mimeType: string; originalFileName: string }) {
+    setInvoiceSlipPreviewLoading(true);
+    try {
+      const access = await utils.adminBilling.getPromptPaySlipAccess.fetch({
+        slipId: slip.id,
+        tenantId: null,
+        ttlSeconds: 3600,
+      });
+      if (!access?.url) {
+        toast.error("Slip is not ready to view");
+        return;
+      }
+      setInvoiceSlipPreview({
+        slipId: slip.id,
+        url: access.url,
+        mimeType: slip.mimeType,
+        fileName: slip.originalFileName,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to open slip");
+    } finally {
+      setInvoiceSlipPreviewLoading(false);
+    }
+  }
+
   useEffect(() => {
     setPromptPayPreviewSlipId(promptPaySlips[0]?.id ?? null);
     setPromptPayPreview(null);
     setPromptPayFullscreen(false);
   }, [selectedPromptPayPaymentId]);
+
+  useEffect(() => {
+    setInvoiceSlipPreview(null);
+  }, [selectedInvoiceId]);
 
   useEffect(() => {
     if (!promptPayPreviewSlip) {
@@ -912,7 +1005,12 @@ export default function AdminBillingCenter() {
     });
   }
 
-  const selectedInvoice = selectedInvoiceQuery.data ?? null;
+  const invoiceAuditDetails = selectedInvoiceQuery.data ?? null;
+  const selectedInvoice = invoiceAuditDetails?.invoice ?? null;
+  const selectedInvoiceCustomer = invoiceAuditDetails?.customer ?? null;
+  const selectedInvoiceLineItems = invoiceAuditDetails?.lineItems ?? [];
+  const selectedInvoicePayments = invoiceAuditDetails?.payments ?? [];
+  const selectedInvoiceAuditLogs = invoiceAuditDetails?.auditLogs ?? [];
   const invoices = invoiceListQuery.data ?? [];
   const recoveryCases = recoveryCasesQuery.data ?? [];
   const notificationDispatches = notificationDispatchesQuery.data ?? [];
@@ -1501,21 +1599,200 @@ export default function AdminBillingCenter() {
                 <DashboardCard
                   eyebrow="Selected Invoice"
                   title={selectedInvoice ? selectedInvoice.invoiceNumber ?? `Invoice #${selectedInvoice.id}` : "Choose an invoice"}
-                  description="Run reconciliation, manually recover a payment, or regenerate invoice documents."
+                  description="ตรวจสอบประวัติ Invoice ลูกค้า รายการสั่งซื้อ การชำระเงิน และหลักฐานการอนุมัติได้ในจุดเดียว"
                 >
                   {selectedInvoice ? (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Badge className={statusClass(selectedInvoice.status)}>{selectedInvoice.status}</Badge>
-                        <span className="text-sm text-slate-500">{selectedInvoice.invoiceType}</span>
+                      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-5 text-white shadow-xl shadow-slate-900/10">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div>
+                            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200">Invoice audit record</div>
+                            <div className="mt-2 text-xl font-semibold tracking-tight">{selectedInvoice.invoiceNumber ?? `Invoice #${selectedInvoice.id}`}</div>
+                            <div className="mt-1 text-sm text-slate-300">{selectedInvoice.invoiceType} · issued {formatDateTime(selectedInvoice.issuedAt ?? selectedInvoice.createdAt)}</div>
+                          </div>
+                          <Badge className={statusClass(selectedInvoice.status)}>{selectedInvoice.status}</Badge>
+                        </div>
+                        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Invoice total</div>
+                            <div className="mt-1 text-lg font-semibold">{formatMoney(selectedInvoice.totalAmount, selectedInvoice.currency)}</div>
+                          </div>
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Source amount (USD)</div>
+                            <div className="mt-1 text-lg font-semibold">{getSourceUsdAmount(selectedInvoice, selectedInvoicePayments) != null ? formatMoney(getSourceUsdAmount(selectedInvoice, selectedInvoicePayments), "USD") : "-"}</div>
+                          </div>
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Issued</div>
+                            <div className="mt-1 text-sm font-medium">{formatDateTime(selectedInvoice.issuedAt ?? selectedInvoice.createdAt)}</div>
+                          </div>
+                          <div className="rounded-xl bg-white/10 p-3">
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-300">Due</div>
+                            <div className="mt-1 text-sm font-medium">{formatDateTime(selectedInvoice.dueAt)}</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="grid gap-2 text-sm text-slate-600">
-                        <div>Total: {formatMoney(selectedInvoice.totalAmount, selectedInvoice.currency)}</div>
-                        <div>Header version: {selectedInvoice.headerVersion}</div>
-                        <div>Issued: {formatDateTime(selectedInvoice.issuedAt)}</div>
-                        <div>Due: {formatDateTime(selectedInvoice.dueAt)}</div>
-                        <div>Default language: {selectedInvoice.defaultDocumentLanguage}</div>
+
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <UserRound className="h-4 w-4 text-cyan-700" />
+                            <div className="text-sm font-semibold text-slate-900">Customer & invoice</div>
+                          </div>
+                          <div className="mt-3 space-y-1 text-sm">
+                            <div className="font-medium text-slate-900">{selectedInvoiceCustomer?.name ?? "-"}</div>
+                            <div className="break-all text-slate-600">{selectedInvoiceCustomer?.email ?? "ไม่พบอีเมลลูกค้า"}</div>
+                            <div className="pt-2 text-xs text-slate-500">Order ID: {selectedInvoice.orderId ?? "-"} · Header v{selectedInvoice.headerVersion}</div>
+                          </div>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <ReceiptText className="h-4 w-4 text-cyan-700" />
+                            <div className="text-sm font-semibold text-slate-900">Document settings</div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                            <div><div className="text-xs text-slate-500">Language</div><div className="font-medium text-slate-900">{selectedInvoice.defaultDocumentLanguage}</div></div>
+                            <div><div className="text-xs text-slate-500">Currency</div><div className="font-medium text-slate-900">{selectedInvoice.currency}</div></div>
+                            <div><div className="text-xs text-slate-500">Created</div><div className="font-medium text-slate-900">{formatDateTime(selectedInvoice.createdAt)}</div></div>
+                            <div><div className="text-xs text-slate-500">Paid</div><div className="font-medium text-slate-900">{formatDateTime(selectedInvoice.paidAt)}</div></div>
+                          </div>
+                        </div>
                       </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                          <Package className="h-4 w-4 text-cyan-700" />
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">Ordered line items</div>
+                            <div className="text-xs text-slate-500">แสดงรายการทั้งหมดจาก Invoice ฉบับนี้</div>
+                          </div>
+                        </div>
+                        <div className="hidden grid-cols-[minmax(0,1fr)_auto_auto] gap-4 border-b border-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 sm:grid">
+                          <div>Item</div><div>Qty</div><div className="text-right">Amount</div>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {selectedInvoiceLineItems.map((lineItem) => (
+                            <div key={lineItem.id} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
+                              <div className="min-w-0">
+                                <div className="font-medium text-slate-900">{lineItem.description || lineItem.itemType}</div>
+                                <div className="text-xs text-slate-500">{lineItem.itemType}{getLineItemMetaLabel(lineItem.metadataJson) ? ` · ${getLineItemMetaLabel(lineItem.metadataJson)}` : ""}</div>
+                              </div>
+                              <div className="text-slate-600">Qty {formatQuantity(lineItem.quantity)}</div>
+                              <div className="text-left font-medium text-slate-900 sm:text-right">{formatMoney(lineItem.amount, selectedInvoice.currency)}</div>
+                            </div>
+                          ))}
+                          {selectedInvoiceLineItems.length === 0 ? <div className="px-4 py-5 text-sm text-slate-500">ไม่พบรายการสินค้าใน Invoice นี้</div> : null}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                          <Wallet className="h-4 w-4 text-cyan-700" />
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900">Payment & approval evidence</div>
+                            <div className="text-xs text-slate-500">ยอดชำระ สลิป และวันเวลาที่ผู้ดูแลอนุมัติ</div>
+                          </div>
+                        </div>
+                        <div className="space-y-4 p-4">
+                          {selectedInvoicePayments.map((payment) => {
+                            const approvalLog = selectedInvoiceAuditLogs.find((log) => log.action === "promptpay_payment_approved" && getAuditPaymentId(log.afterJson) === payment.id);
+                            return (
+                              <div key={payment.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                                      <span>Payment #{payment.id}</span>
+                                      <Badge className={statusClass(payment.status)}>{payment.status}</Badge>
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500">{payment.paymentChannel} · created {formatDateTime(payment.createdAt)}</div>
+                                  </div>
+                                  <div className="text-right text-sm">
+                                    <div className="font-semibold text-slate-900">{formatMoney(payment.amount, payment.currency)}</div>
+                                    <div className="text-xs text-slate-500">Expected {formatMoney(payment.expectedAmount, payment.expectedCurrency ?? "THB")}</div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                                  <div><span className="text-slate-500">Source USD:</span> {payment.sourceAmountUsd != null ? formatMoney(payment.sourceAmountUsd, "USD") : "-"}</div>
+                                  <div><span className="text-slate-500">Paid at:</span> {formatDateTime(payment.paidAt)}</div>
+                                  <div><span className="text-slate-500">Business effect:</span> {payment.businessEffectStatus ?? "-"}</div>
+                                </div>
+                                <div className={`mt-3 rounded-xl border p-3 ${approvalLog ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                                  <div className="flex items-start gap-2">
+                                    {approvalLog ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" /> : <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />}
+                                    <div className="min-w-0 text-sm">
+                                      <div className={`font-semibold ${approvalLog ? "text-emerald-900" : "text-amber-900"}`}>
+                                        {approvalLog ? "Approved" : "ยังไม่มีหลักฐานการอนุมัติ"}
+                                      </div>
+                                      {approvalLog ? (
+                                        <div className="mt-1 text-xs text-emerald-800">
+                                          <div>{formatDateTime(approvalLog.createdAt)} · {approvalLog.actor?.name ?? approvalLog.actor?.email ?? "ระบบ/ผู้ดูแล"}</div>
+                                          {approvalLog.actor?.email ? <div>ผู้อนุมัติ: {approvalLog.actor.email}</div> : null}
+                                        </div>
+                                      ) : <div className="mt-1 text-xs text-amber-800">สถานะปัจจุบันยังรอตรวจสอบหรือยังไม่มี audit log การ approve</div>}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Uploaded slips</div>
+                                  {payment.slips.length > 0 ? payment.slips.map((slip) => (
+                                    <div key={slip.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                                      <div className="flex min-w-0 items-center gap-3">
+                                        <ImageIcon className="h-4 w-4 shrink-0 text-slate-500" />
+                                        <div className="min-w-0">
+                                          <div className="truncate font-medium text-slate-900">{slip.originalFileName}</div>
+                                          <div className="text-xs text-slate-500">{slip.status} · uploaded {formatDateTime(slip.uploadedAt)} · {formatFileSize(slip.fileSizeBytes)}</div>
+                                          <div className="text-xs text-slate-500">Reviewed {formatDateTime(slip.reviewedAt)} · {slip.reviewer?.name ?? slip.reviewer?.email ?? "ยังไม่มีผู้ตรวจสอบ"}{slip.reviewer?.email && slip.reviewer.name ? ` · ${slip.reviewer.email}` : ""}</div>
+                                          {slip.rejectionReason ? <div className="mt-1 text-xs text-rose-700">เหตุผล: {slip.rejectionReason}</div> : null}
+                                        </div>
+                                      </div>
+                                      <Button variant="outline" size="sm" onClick={() => void handleInvoiceSlipPreview(slip)} disabled={invoiceSlipPreviewLoading}>
+                                        {invoiceSlipPreviewLoading && invoiceSlipPreview?.slipId === slip.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+                                        View slip
+                                      </Button>
+                                    </div>
+                                  )) : <div className="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500">ยังไม่มีสลิปที่อัปโหลด</div>}
+                                  {invoiceSlipPreview && payment.slips.some((slip) => slip.id === invoiceSlipPreview.slipId) ? (
+                                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                      <div className="mb-2 flex items-center justify-between gap-3 text-xs font-medium text-slate-600">
+                                        <span className="truncate">{invoiceSlipPreview.fileName}</span>
+                                        <Button variant="ghost" size="sm" onClick={() => setInvoiceSlipPreview(null)}><X className="h-4 w-4" /></Button>
+                                      </div>
+                                      {invoiceSlipPreview.mimeType.startsWith("image/") ? (
+                                        <img src={invoiceSlipPreview.url} alt={invoiceSlipPreview.fileName} className="max-h-80 w-full rounded-lg object-contain" />
+                                      ) : (
+                                        <iframe title={invoiceSlipPreview.fileName} src={invoiceSlipPreview.url} className="h-80 w-full rounded-lg border border-slate-200" />
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {selectedInvoicePayments.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">ยังไม่มีข้อมูลการชำระเงิน</div> : null}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <Clock3 className="h-4 w-4 text-cyan-700" />
+                          <div className="text-sm font-semibold text-slate-900">Activity timeline</div>
+                        </div>
+                        <div className="mt-4 space-y-3">
+                          {selectedInvoiceAuditLogs.length > 0 ? selectedInvoiceAuditLogs.slice().reverse().map((log) => (
+                            <div key={log.id} className="relative flex gap-3 pl-1">
+                              <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-600 ring-4 ring-cyan-50" />
+                              <div className="min-w-0 flex-1 border-b border-slate-100 pb-3 last:border-0">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div className="text-sm font-medium text-slate-900">{getAuditActionLabel(log.action)}</div>
+                                  <div className="text-xs text-slate-500">{formatDateTime(log.createdAt)}</div>
+                                </div>
+                                <div className="mt-1 text-xs text-slate-500">{log.actor?.name ?? log.actor?.email ?? "ระบบ"}{log.actor?.email && log.actor.name ? ` · ${log.actor.email}` : ""}</div>
+                                {log.reason ? <div className="mt-1 text-xs text-slate-600">{log.reason}</div> : null}
+                              </div>
+                            </div>
+                          )) : <div className="text-sm text-slate-500">ยังไม่มีประวัติการเปลี่ยนแปลง</div>}
+                        </div>
+                      </div>
+
                       <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"

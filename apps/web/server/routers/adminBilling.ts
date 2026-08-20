@@ -41,6 +41,7 @@ import {
 } from "../services/billing/autoRenew";
 import {
   getAdminVisibleInvoice,
+  getAdminInvoiceAuditDetails,
   getSellerProfileForTenant,
   listAdminInvoices,
   listInvoiceAuditLogsForAdmin,
@@ -337,6 +338,18 @@ export const adminBillingRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
       }
       return invoice;
+    }),
+
+  getInvoiceAuditDetails: protectedProcedure
+    .input(z.object({ invoiceId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      assertBillingActionAuthorized(actorFromContext(ctx), "view_invoice", { tenantId });
+      const details = await getAdminInvoiceAuditDetails({ invoiceId: input.invoiceId, tenantId });
+      if (!details) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found" });
+      }
+      return details;
     }),
 
   listInvoices: protectedProcedure

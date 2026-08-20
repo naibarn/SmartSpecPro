@@ -48,12 +48,85 @@ const selectedInvoiceData = {
   headerVersion: 2,
   issuedAt: "2026-03-30T00:00:00.000Z",
   dueAt: "2026-04-06T00:00:00.000Z",
+  createdAt: "2026-03-30T00:00:00.000Z",
+  paidAt: null,
   defaultDocumentLanguage: "th",
   invoiceStream: "domestic",
   billingCycleStart: "2026-04-01T00:00:00.000Z",
   billingCycleEnd: "2026-04-30T23:59:59.000Z",
   buyerSnapshotJson: { legalNameTh: "ลูกค้าทดสอบ" },
   sellerSnapshotJson: { entityNameTh: "SmartSpecPro Co., Ltd." },
+};
+const selectedInvoiceAuditData = {
+  invoice: selectedInvoiceData,
+  customer: { id: 42, name: "ลูกค้าทดสอบ", email: "customer@example.com" },
+  lineItems: [
+    {
+      id: 1,
+      invoiceId: 301,
+      itemType: "credit_package",
+      description: "Starter credit package",
+      quantity: "1.00",
+      unitPrice: "10.00",
+      amount: "10.00",
+      metadataJson: { packageCode: "starter", credits: 1000 },
+      createdAt: "2026-03-30T00:00:00.000Z",
+    },
+  ],
+  payments: [
+    {
+      id: 901,
+      invoiceId: 301,
+      provider: "promptpay",
+      paymentChannel: "promptpay_direct_manual",
+      status: "paid",
+      amount: "417.41",
+      currency: "THB",
+      expectedAmount: "417.41",
+      expectedCurrency: "THB",
+      sourceAmountUsd: "10.00",
+      sourceCurrency: "USD",
+      paidAt: "2026-03-30T01:00:00.000Z",
+      businessEffectStatus: "applied",
+      createdAt: "2026-03-30T00:10:00.000Z",
+      slips: [
+        {
+          id: 77,
+          paymentId: 901,
+          invoiceId: 301,
+          userId: 42,
+          tenantId: null,
+          originalFileName: "promptpay-slip.png",
+          mimeType: "image/png",
+          fileSizeBytes: 102400,
+          status: "accepted",
+          customerNote: null,
+          rejectionReason: null,
+          uploadedAt: "2026-03-30T00:20:00.000Z",
+          reviewedAt: "2026-03-30T01:05:00.000Z",
+          reviewedBy: 1,
+          reviewer: { id: 1, name: "Billing Admin", email: "admin@example.com" },
+          createdAt: "2026-03-30T00:20:00.000Z",
+          updatedAt: "2026-03-30T01:05:00.000Z",
+        },
+      ],
+      attempts: [],
+      rawResponseJson: null,
+    },
+  ],
+  auditLogs: [
+    {
+      id: 1,
+      invoiceId: 301,
+      action: "promptpay_payment_approved",
+      actorId: 1,
+      reason: "Slip verified",
+      beforeJson: { paymentId: 901, status: "manual_review_required" },
+      afterJson: { paymentId: 901, status: "paid" },
+      createdAt: "2026-03-30T01:05:00.000Z",
+      actor: { id: 1, name: "Billing Admin", email: "admin@example.com" },
+    },
+  ],
 };
 
 vi.mock("wouter", () => ({
@@ -73,6 +146,7 @@ vi.mock("@/lib/trpc", () => ({
       adminBilling: {
         getInvoiceDocumentAccess: { fetch: vi.fn().mockResolvedValue(null) },
         getRecoveryEvidenceAccess: { fetch: vi.fn().mockResolvedValue(null) },
+        getPromptPaySlipAccess: { fetch: vi.fn().mockResolvedValue({ url: "https://cdn.example/slip.png" }) },
       },
     }),
     adminBilling: {
@@ -127,9 +201,9 @@ vi.mock("@/lib/trpc", () => ({
           refetch: vi.fn().mockResolvedValue(undefined),
         }),
       },
-      getInvoice: {
+      getInvoiceAuditDetails: {
         useQuery: () => ({
-          data: selectedInvoiceData,
+          data: selectedInvoiceAuditData,
           refetch: vi.fn().mockResolvedValue(undefined),
         }),
       },
@@ -497,6 +571,12 @@ describe("AdminBillingCenter", () => {
     expect(screen.getAllByText("All invoices").length).toBeGreaterThan(0);
     expect(screen.getByText("Support recovery cases")).toBeInTheDocument();
     expect(screen.getAllByText("TH-INV-2026-000301").length).toBeGreaterThan(0);
+    expect(screen.getByText("customer@example.com")).toBeInTheDocument();
+    expect(screen.getByText("Starter credit package")).toBeInTheDocument();
+    expect(screen.getByText("Source amount (USD)")).toBeInTheDocument();
+    expect(screen.getByText("promptpay-slip.png")).toBeInTheDocument();
+    expect(screen.getByText("Approved")).toBeInTheDocument();
+    expect(screen.getAllByText(/admin@example\.com/).length).toBeGreaterThan(0);
     expect(screen.getByRole("tab", { name: "Billing Settings" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Renewals" })).toBeInTheDocument();
   });
