@@ -38,6 +38,7 @@ const createWebhookInput = z.object({
     .array(
       z.enum([
         "system_health",
+        "credits",
         "media_jobs",
         "workflow",
         "skill",
@@ -49,7 +50,7 @@ const createWebhookInput = z.object({
         "business",
       ])
     )
-    .max(10)
+    .max(11)
     .nullable()
     .optional(),
   minSeverity: z
@@ -68,6 +69,7 @@ const updateWebhookInput = z.object({
     .array(
       z.enum([
         "system_health",
+        "credits",
         "media_jobs",
         "workflow",
         "skill",
@@ -79,7 +81,7 @@ const updateWebhookInput = z.object({
         "business",
       ])
     )
-    .max(10)
+    .max(11)
     .nullable()
     .optional(),
   minSeverity: z

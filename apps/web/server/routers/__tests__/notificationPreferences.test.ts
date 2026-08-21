@@ -23,7 +23,7 @@ const snoozeCategoryInput = z.object({
 });
 
 describe("notificationPreferences schema", () => {
-  it("accepts all 10 valid categories", () => {
+  it("accepts all 11 valid categories", () => {
     for (const cat of NOTIFICATION_CATEGORIES) {
       expect(categorySchema.safeParse(cat).success).toBe(true);
     }
@@ -116,9 +116,10 @@ describe("notificationPreferencesRouter", () => {
   });
 
   describe("upsertPreference", () => {
-    it("validates category is in the allowed list of 10 categories", () => {
-      expect(NOTIFICATION_CATEGORIES).toHaveLength(10);
+    it("validates category is in the allowed list of 11 categories", () => {
+      expect(NOTIFICATION_CATEGORIES).toHaveLength(11);
       expect(categorySchema.safeParse("system_health").success).toBe(true);
+      expect(categorySchema.safeParse("credits").success).toBe(true);
     });
 
     it("rejects unknown category values", () => {

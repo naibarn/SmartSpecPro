@@ -846,6 +846,7 @@ const th: TranslationDictionary = {
 
   // -- การแจ้งเตือน (Feature 049) --
   "notifications.category.system_health": "สุขภาพระบบ",
+  "notifications.category.credits": "เครดิต",
   "notifications.category.media_jobs": "งานสื่อ",
   "notifications.category.workflow": "เวิร์กโฟลว์",
   "notifications.category.skill": "ทักษะ",

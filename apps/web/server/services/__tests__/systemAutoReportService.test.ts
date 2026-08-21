@@ -48,7 +48,9 @@ describe("systemAutoReportService credit routing", () => {
     expect(mockCreateNotification).toHaveBeenCalledWith(expect.objectContaining({
       userId: 7,
       actionUrl: "/credits",
-      priority: "normal",
+      actionLabel: "ซื้อเครดิตเพิ่ม",
+      priority: "high",
+      relatedResourceType: "credits",
       groupKey: "credit-failure:user_purchase:7",
     }));
     expect(mockDb.insert).not.toHaveBeenCalled();

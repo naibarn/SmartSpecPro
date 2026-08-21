@@ -871,6 +871,7 @@ const en: TranslationDictionary = {
 
   // -- Notifications (Feature 049) --
   "notifications.category.system_health": "System Health",
+  "notifications.category.credits": "Credits",
   "notifications.category.media_jobs": "Media Jobs",
   "notifications.category.workflow": "Workflows",
   "notifications.category.skill": "Skills",

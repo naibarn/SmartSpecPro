@@ -92,6 +92,7 @@ type ReminderPriority = "low" | "normal" | "high" | "critical";
  */
 type ResourceType =
   | "media_job"
+  | "credits"
   | "workflow"
   | "skill"
   | "feedback"
@@ -164,7 +165,7 @@ interface CreateNotificationParams {
 }
 
 /**
- * Maps a notification's resource type and type to one of the 10 preference categories.
+ * Maps a notification's resource type and type to one of the 11 preference categories.
  * Evaluated in order — first match wins. relatedResourceType takes priority over type.
  */
 function mapToCategory(
@@ -172,6 +173,7 @@ function mapToCategory(
   type?: NotificationType
 ): string {
   if (relatedResourceType === "system_health") return "system_health";
+  if (relatedResourceType === "credits") return "credits";
   if (relatedResourceType === "media_job") return "media_jobs";
   if (relatedResourceType === "workflow") return "workflow";
   if (relatedResourceType === "skill") return "skill";
@@ -298,7 +300,7 @@ async function createNotification(
     type,
     title,
     content,
-    priority = "normal",
+    priority: requestedPriority = "normal",
     conversationId,
     scheduledMessageId,
     relatedResourceType,
@@ -309,6 +311,7 @@ async function createNotification(
     expiresAt,
     groupKey: rawGroupKey,
   } = params;
+  let priority = requestedPriority;
 
   // --- Rate limit gate ---
   // Escalated notifications bypass rate limiting (they're system-critical).
@@ -345,6 +348,13 @@ async function createNotification(
     const pref = await loadUserPreference(db, userId, category);
 
     if (pref) {
+      // Credit exhaustion is a user-action alert. Its default priority is High,
+      // but the category setting is also the user's explicit display priority:
+      // lowering it must lower the persisted/delivered priority so it no longer
+      // enters the center-screen urgent reminder query.
+      if (category === "credits") {
+        priority = pref.minSeverity ?? "high";
+      }
       // Check mute window
       if (pref.mutedUntil && new Date(pref.mutedUntil) > new Date()) {
         console.log("[NotificationService] notification_preference_check", {
@@ -353,7 +363,7 @@ async function createNotification(
         return null;
       }
       // Check minimum severity threshold
-      if (pref.minSeverity && !severityAtOrAbove(priority, pref.minSeverity)) {
+      if (category !== "credits" && pref.minSeverity && !severityAtOrAbove(priority, pref.minSeverity)) {
         console.log("[NotificationService] notification_preference_check", {
           userId, category, result: "severity_filtered",
         });

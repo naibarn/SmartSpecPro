@@ -1200,7 +1200,7 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
       title: z.string().min(1).max(255),
       content: z.string().max(2000).default(""),
       priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
-      relatedResourceType: z.enum(["media_job", "workflow", "skill", "feedback", "agency", "approval", "team_run", "room", "user", "conversation", "scheduled_message", "system_health", "security", "incident"]).optional(),
+      relatedResourceType: z.enum(["media_job", "credits", "workflow", "skill", "feedback", "agency", "approval", "team_run", "room", "user", "conversation", "scheduled_message", "system_health", "security", "incident"]).optional(),
       actionUrl: z.string().max(2000).optional(),
       actionLabel: z.string().max(100).optional(),
       groupKey: z.string().max(200).optional(),

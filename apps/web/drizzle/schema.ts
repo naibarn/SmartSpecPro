@@ -8687,6 +8687,7 @@ export type InsertNotificationOccurrence =
  */
 export const NOTIFICATION_CATEGORIES = [
   "system_health",
+  "credits",
   "media_jobs",
   "workflow",
   "skill",
