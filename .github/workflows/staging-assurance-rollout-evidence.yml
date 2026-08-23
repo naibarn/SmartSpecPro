@@ -165,8 +165,8 @@ jobs:
         run: |
           set +e
           mkdir -p evidence
-          gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format=json > evidence/node-after.json
-          gcloud run services describe "${PYTHON_SERVICE}" --region "${REGION}" --format=json > evidence/python-after.json
+          gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format=json > evidence/node-after.json || true
+          gcloud run services describe "${PYTHON_SERVICE}" --region "${REGION}" --format=json > evidence/python-after.json || true
           node - <<'NODE'
           const fs = require("fs");
           const redact = value => {
@@ -177,7 +177,8 @@ jobs:
           const evidence = { runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT, imageTag: process.env.IMAGE_TAG, capturedAt: new Date().toISOString(), restartNonce: process.env.RESTART_NONCE ?? null };
           for (const name of ["node", "python"]) {
             const file = `evidence/${name}-after.json`;
-            if (fs.existsSync(file)) evidence[name] = redact(JSON.parse(fs.readFileSync(file, "utf8")));
+            if (!fs.existsSync(file) || fs.statSync(file).size === 0) continue;
+            try { evidence[name] = redact(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { /* preflight may have no GCP response */ }
           }
           fs.writeFileSync("evidence/manifest.json", JSON.stringify(evidence, null, 2));
           NODE
