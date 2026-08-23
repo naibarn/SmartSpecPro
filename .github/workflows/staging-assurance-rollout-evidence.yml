@@ -164,6 +164,7 @@ jobs:
         shell: bash
         run: |
           set +e
+          mkdir -p evidence
           gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format=json > evidence/node-after.json
           gcloud run services describe "${PYTHON_SERVICE}" --region "${REGION}" --format=json > evidence/python-after.json
           node - <<'NODE'
