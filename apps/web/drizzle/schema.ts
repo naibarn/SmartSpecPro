@@ -21930,3 +21930,242 @@ export type VideoProjectRevisionRow =
   typeof videoProjectRevisions.$inferSelect;
 export type InsertVideoProjectRevisionRow =
   typeof videoProjectRevisions.$inferInsert;
+/** Feature 160 — immutable source-media segment revisions for still/video B-roll. */
+export const verticalDramaSourceMediaSegments = pgTable(
+  "vertical_drama_source_media_segments",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    packId: bigint("packId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourcePacks.id, { onDelete: "cascade" }),
+    sourceAssetId: bigint("sourceAssetId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourceAssets.id, { onDelete: "cascade" }),
+    segmentKey: varchar("segmentKey", { length: 128 }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    mediaType: varchar("mediaType", { length: 16 }).notNull(),
+    inSeconds: real("inSeconds"),
+    outSeconds: real("outSeconds"),
+    displayDurationSeconds: real("displayDurationSeconds"),
+    label: varchar("label", { length: 180 }).notNull(),
+    description: text("description"),
+    evidenceScopeJson: jsonb("evidenceScopeJson").$type<string[]>().notNull().default([]),
+    captureAt: timestamp("captureAt", { withTimezone: true }),
+    locationLabel: varchar("locationLabel", { length: 240 }),
+    sourceLabel: varchar("sourceLabel", { length: 240 }),
+    audioPolicy: varchar("audioPolicy", { length: 16 }).notNull().default("keep"),
+    status: varchar("status", { length: 24 }).notNull().default("draft"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_source_segments_revision_unique").on(
+      t.tenantId,
+      t.sourceAssetId,
+      t.segmentKey,
+      t.revision
+    ),
+    index("vds_source_segments_pack_idx").on(t.tenantId, t.packId, t.status),
+    index("vds_source_segments_asset_idx").on(t.tenantId, t.sourceAssetId),
+  ]
+);
+export type VerticalDramaSourceMediaSegment =
+  typeof verticalDramaSourceMediaSegments.$inferSelect;
+export type InsertVerticalDramaSourceMediaSegment =
+  typeof verticalDramaSourceMediaSegments.$inferInsert;
+
+/** Feature 160 — immutable visual canon consumed by story generation and assembly. */
+export const verticalDramaVisualSourceSnapshots = pgTable(
+  "vertical_drama_visual_source_snapshots",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    snapshotId: varchar("snapshotId", { length: 128 }).notNull(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    packId: bigint("packId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourcePacks.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).references(
+      () => verticalDramaSeries.id,
+      { onDelete: "cascade" }
+    ),
+    profileId: varchar("profileId", { length: 96 }).notNull(),
+    profileVersion: integer("profileVersion").notNull().default(1),
+    revision: integer("revision").notNull().default(1),
+    fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+    snapshotJson: jsonb("snapshotJson").notNull(),
+    coverageJson: jsonb("coverageJson").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("approved"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_visual_snapshot_identity_unique").on(
+      t.tenantId,
+      t.snapshotId
+    ),
+    uniqueIndex("vds_visual_snapshot_revision_unique").on(
+      t.tenantId,
+      t.packId,
+      t.revision
+    ),
+    index("vds_visual_snapshot_series_idx").on(t.tenantId, t.seriesId, t.createdAt),
+    index("vds_visual_snapshot_fingerprint_idx").on(t.tenantId, t.fingerprint),
+  ]
+);
+export type VerticalDramaVisualSourceSnapshot =
+  typeof verticalDramaVisualSourceSnapshots.$inferSelect;
+export type InsertVerticalDramaVisualSourceSnapshot =
+  typeof verticalDramaVisualSourceSnapshots.$inferInsert;
+
+/** Feature 160 — current/news claim revisions and their audit-safe evidence. */
+export const verticalDramaNewsClaims = pgTable(
+  "vertical_drama_news_claims",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    claimId: varchar("claimId", { length: 128 }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    claimText: text("claimText").notNull(),
+    claimType: varchar("claimType", { length: 32 }).notNull(),
+    geography: varchar("geography", { length: 240 }),
+    validFrom: timestamp("validFrom", { withTimezone: true }),
+    validUntil: timestamp("validUntil", { withTimezone: true }),
+    asOf: timestamp("asOf", { withTimezone: true }),
+    status: varchar("status", { length: 32 }).notNull().default("needs_verification"),
+    freshness: varchar("freshness", { length: 16 }).notNull().default("unknown"),
+    attribution: varchar("attribution", { length: 500 }),
+    visualSlotIdsJson: jsonb("visualSlotIdsJson").$type<string[]>().notNull().default([]),
+    correctionRevision: integer("correctionRevision").notNull().default(0),
+    correctionNote: text("correctionNote"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_news_claim_revision_unique").on(
+      t.tenantId,
+      t.seriesId,
+      t.claimId,
+      t.revision
+    ),
+    index("vds_news_claim_lookup_idx").on(t.tenantId, t.seriesId, t.status, t.asOf),
+  ]
+);
+export type VerticalDramaNewsClaim = typeof verticalDramaNewsClaims.$inferSelect;
+export type InsertVerticalDramaNewsClaim = typeof verticalDramaNewsClaims.$inferInsert;
+
+export const verticalDramaNewsEvidenceRevisions = pgTable(
+  "vertical_drama_news_evidence_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    claimId: varchar("claimId", { length: 128 }).notNull(),
+    evidenceId: varchar("evidenceId", { length: 128 }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    refsJson: jsonb("refsJson").notNull(),
+    correctionNote: text("correctionNote"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_news_evidence_revision_unique").on(
+      t.tenantId,
+      t.seriesId,
+      t.claimId,
+      t.evidenceId,
+      t.revision
+    ),
+    index("vds_news_evidence_claim_idx").on(t.tenantId, t.seriesId, t.claimId, t.createdAt),
+  ]
+);
+export type VerticalDramaNewsEvidenceRevision =
+  typeof verticalDramaNewsEvidenceRevisions.$inferSelect;
+export type InsertVerticalDramaNewsEvidenceRevision =
+  typeof verticalDramaNewsEvidenceRevisions.$inferInsert;
+
+/** Feature 160 — explicit still/video B-roll bindings; image references stay separate. */
+export const verticalDramaShotBrollBindings = pgTable(
+  "vertical_drama_shot_broll_bindings",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    shotNumber: integer("shotNumber").notNull(),
+    bindingId: varchar("bindingId", { length: 128 }).notNull(),
+    sourceSlotId: bigint("sourceSlotId", { mode: "number" }).references(
+      () => verticalDramaSourceSlots.id,
+      { onDelete: "set null" }
+    ),
+    sourceAssetId: bigint("sourceAssetId", { mode: "number" }).references(
+      () => verticalDramaSourceAssets.id,
+      { onDelete: "set null" }
+    ),
+    mediaAssetId: bigint("mediaAssetId", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" }
+    ),
+    segmentId: varchar("segmentId", { length: 128 }),
+    segmentRevision: integer("segmentRevision"),
+    snapshotRevision: integer("snapshotRevision").notNull(),
+    snapshotFingerprint: varchar("snapshotFingerprint", { length: 64 }).notNull(),
+    semanticRole: varchar("semanticRole", { length: 32 }).notNull(),
+    mediaType: varchar("mediaType", { length: 16 }).notNull(),
+    inSeconds: real("inSeconds"),
+    outSeconds: real("outSeconds"),
+    displayDurationSeconds: real("displayDurationSeconds"),
+    order: integer("order").notNull().default(0),
+    fitMode: varchar("fitMode", { length: 24 }).notNull().default("cover"),
+    audioPolicy: varchar("audioPolicy", { length: 16 }).notNull().default("keep"),
+    labelMode: varchar("labelMode", { length: 32 }).notNull().default("none"),
+    status: varchar("status", { length: 24 }).notNull().default("draft"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_shot_broll_binding_identity_unique").on(
+      t.tenantId,
+      t.episodeId,
+      t.shotNumber,
+      t.bindingId
+    ),
+    index("vds_shot_broll_lookup_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.episodeId,
+      t.shotNumber,
+      t.active,
+      t.order
+    ),
+    index("vds_shot_broll_media_idx").on(t.tenantId, t.mediaAssetId),
+  ]
+);
+export type VerticalDramaShotBrollBinding =
+  typeof verticalDramaShotBrollBindings.$inferSelect;
+export type InsertVerticalDramaShotBrollBinding =
+  typeof verticalDramaShotBrollBindings.$inferInsert;
+
