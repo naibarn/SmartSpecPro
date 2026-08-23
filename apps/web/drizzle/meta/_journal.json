@@ -1527,6 +1527,104 @@
       "when": 1787044150746,
       "tag": "0231_connected_device_permission_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 218,
+      "version": "7",
+      "when": 1787283662329,
+      "tag": "0232_media_task_artifacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 219,
+      "version": "7",
+      "when": 1787283662330,
+      "tag": "0233_infrastructure_capacity_advisor",
+      "breakpoints": true
+    },
+    {
+      "idx": 220,
+      "version": "7",
+      "when": 1787283662331,
+      "tag": "0234_media_durability_provenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 221,
+      "version": "7",
+      "when": 1787350000000,
+      "tag": "0235_media_task_tenant_scope_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 222,
+      "version": "7",
+      "when": 1787350000001,
+      "tag": "0236_tenant_id_varchar_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 223,
+      "version": "7",
+      "when": 1787350000002,
+      "tag": "0237_capacity_advisor_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 224,
+      "version": "7",
+      "when": 1787350000003,
+      "tag": "0238_vertical_drama_story_generation_assurance",
+      "breakpoints": true
+    },
+    {
+      "idx": 225,
+      "version": "7",
+      "when": 1787356800004,
+      "tag": "0239_vertical_drama_source_packs",
+      "breakpoints": true
+    },
+    {
+      "idx": 226,
+      "version": "7",
+      "when": 1787393769106,
+      "tag": "0240_vertical_drama_draft_series_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 227,
+      "version": "7",
+      "when": 1787402309182,
+      "tag": "0241_admin_database_backups",
+      "breakpoints": true
+    },
+    {
+      "idx": 228,
+      "version": "7",
+      "when": 1787402309183,
+      "tag": "0242_vertical_drama_story_ready_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 229,
+      "version": "7",
+      "when": 1787469051794,
+      "tag": "0243_vertical_drama_visual_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1787469051795,
+      "tag": "0244_vertical_drama_prompt_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1787469051796,
+      "tag": "0245_vertical_drama_assurance_attempts_reconciliation",
+      "breakpoints": true
     }
   ]
 }
