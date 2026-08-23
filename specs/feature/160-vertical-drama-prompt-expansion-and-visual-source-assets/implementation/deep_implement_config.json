@@ -24,6 +24,30 @@
     "section-02-visual-source-schema": {
       "status": "complete",
       "commit_hash": "HEAD"
+    },
+    "section-03-prompt-expansion-and-source-slots": {
+      "status": "complete",
+      "commit_hash": "6b7f4c1ea"
+    },
+    "section-04-visual-canon-story-propagation": {
+      "status": "complete",
+      "commit_hash": "6b7f4c1ea"
+    },
+    "section-05-news-report-evidence": {
+      "status": "complete",
+      "commit_hash": "6b7f4c1ea"
+    },
+    "section-06-footage-broll-assembly": {
+      "status": "complete",
+      "commit_hash": "6b7f4c1ea"
+    },
+    "section-07-ui-and-browser-flow": {
+      "status": "complete",
+      "commit_hash": "6b7f4c1ea"
+    },
+    "section-08-integration-gates-and-traceability": {
+      "status": "complete",
+      "commit_hash": "6b7f4c1ea"
     }
   },
   "pre_commit": {
