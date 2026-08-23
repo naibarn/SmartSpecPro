@@ -98,3 +98,5 @@ Test image reference/video B-roll separation, explicit scene-anchor promotion, e
 - Added `bindShotBroll` and `validateShotBrollTimeline` episode procedures writing only to `vertical_drama_shot_broll_bindings`; image references remain owned by `verticalDramaShotReferences`.
 - Added `VerticalDramaFootageSegmentEditor.tsx` for exact in/out, audio policy, invalid-range, and save states.
 - Existing Story Sources & Media already admits creator image/video uploads through managed media paths; generated references remain explicitly reference/illustrative.
+- Added owner-scoped `createSourceMediaSegment`/`listSourceMediaSegments` procedures so uploaded footage can be cut into immutable revisions before shot binding.
+- Added `VerticalDramaShotVisualSourcePicker.tsx` to keep scene/reference/still-B-roll/footage-B-roll selection explicit.
