@@ -6,6 +6,10 @@ const migration = fs.readFileSync(
   path.resolve(__dirname, "../0243_vertical_drama_visual_sources.sql"),
   "utf8"
 );
+const expansionMigration = fs.readFileSync(
+  path.resolve(__dirname, "../0244_vertical_drama_prompt_expansion.sql"),
+  "utf8"
+);
 const schema = fs.readFileSync(path.resolve(__dirname, "../schema.ts"), "utf8");
 
 describe("Feature 160 visual source persistence", () => {
@@ -54,5 +58,13 @@ describe("Feature 160 visual source persistence", () => {
     ]) {
       expect(schema).toContain("export const " + exportName);
     }
+  });
+
+  it("adds a CAS-safe prompt expansion run ledger without destructive SQL", () => {
+    expect(expansionMigration).toContain('CREATE TABLE IF NOT EXISTS "vertical_drama_prompt_expansion_runs"');
+    expect(expansionMigration).toContain("originalPromptHash");
+    expect(expansionMigration).toContain("vds_prompt_expansion_idempotency_unique");
+    expect(expansionMigration).not.toMatch(/DROP TABLE|DELETE FROM|TRUNCATE/i);
+    expect(schema).toContain("export const verticalDramaPromptExpansionRuns");
   });
 });

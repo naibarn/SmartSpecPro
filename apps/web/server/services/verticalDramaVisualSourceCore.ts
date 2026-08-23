@@ -52,7 +52,14 @@ function finding(
   message: string,
   extra: Partial<VisualCoverageFinding> = {}
 ): VisualCoverageFinding {
-  return { code, severity, message, ...extra };
+  return {
+    code,
+    severity,
+    message,
+    requirementId: extra.requirementId ?? null,
+    slotId: extra.slotId ?? null,
+    claimId: extra.claimId ?? null,
+  };
 }
 
 function evidenceRank(status: string): number {

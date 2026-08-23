@@ -22169,3 +22169,36 @@ export type VerticalDramaShotBrollBinding =
 export type InsertVerticalDramaShotBrollBinding =
   typeof verticalDramaShotBrollBindings.$inferInsert;
 
+/** Feature 160 — dialog-first prompt expansion preview with CAS apply. */
+export const verticalDramaPromptExpansionRuns = pgTable(
+  "vertical_drama_prompt_expansion_runs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    draftSessionId: varchar("draftSessionId", { length: 128 }).references(
+      () => verticalDramaSourcePackSessions.draftSessionId,
+      { onDelete: "set null" },
+    ),
+    seriesId: bigint("seriesId", { mode: "number" }).references(
+      () => verticalDramaSeries.id,
+      { onDelete: "cascade" },
+    ),
+    idempotencyKey: varchar("idempotencyKey", { length: 256 }).notNull(),
+    originalPrompt: text("originalPrompt").notNull(),
+    originalPromptHash: varchar("originalPromptHash", { length: 64 }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    status: varchar("status", { length: 24 }).notNull().default("preview"),
+    previewJson: jsonb("previewJson").notNull(),
+    approvedJson: jsonb("approvedJson"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vds_prompt_expansion_idempotency_unique").on(t.tenantId, t.userId, t.idempotencyKey),
+    index("vds_prompt_expansion_owner_idx").on(t.tenantId, t.userId, t.seriesId, t.draftSessionId, t.createdAt),
+  ],
+);
+export type VerticalDramaPromptExpansionRun = typeof verticalDramaPromptExpansionRuns.$inferSelect;
+export type InsertVerticalDramaPromptExpansionRun = typeof verticalDramaPromptExpansionRuns.$inferInsert;
+
